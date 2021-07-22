@@ -1,0 +1,22 @@
+{
+  "name": "@sagemath/mpir",
+  "version": "1.0.0",
+  "description": "MPIR: Multiple Precision Integers and Rationals",
+  "main": "index.js",
+  "files": ["dist/*", "index.js", "README.md", "*.sh", "package.json"],
+  "scripts": {
+    "build": "./src/build.sh",
+    "clean": "rm -rf build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sagemathinc/sagejs.git"
+  },
+  "keywords": ["number", "theory"],
+  "author": "William Stein",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/sagemathinc/sagejs/issues"
+  },
+  "homepage": "https://github.com/sagemathinc/sagejs/tree/main/src/packages/mpir"
+}
