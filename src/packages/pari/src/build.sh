@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 set -ev
 
-export VERSION=2.13.2
+. "$INIT_CWD"/src/build-env.sh
 
-rm -rf build dist
-mkdir build dist
-cd build
-wget https://pari.math.u-bordeaux.fr/pub/pari/unix/pari-$VERSION.tar.gz
+rm -rf "$BUILD" "$DIST"
+mkdir "$BUILD" "$DIST"
+cd "$BUILD"
+
+curl https://pari.math.u-bordeaux.fr/pub/pari/unix/pari-$VERSION.tar.gz -o pari-$VERSION.tar.gz
 tar xvf pari-$VERSION.tar.gz
+rm -rf pari-$VERSION.tar.gz
 cd pari-$VERSION
 
 # --graphic=none since we obviously can't build X11 support.
-emconfigure ./Configure --host=wasm-emscripten --graphic=none
+emconfigure ./Configure --host=wasm-emscripten --graphic=none --prefix=$PREFIX
 
 # We have to undefine UNIX because otherwise es.c tries to call getpwuid.
 # This is because they don't detect that in Configure.  There is even
@@ -23,10 +25,17 @@ cd Oemscripten-wasm
 # Explanation of each of these:
 #  - ERROR_ON_UNDEFINED_SYMBOLS=0  -- entirely because we do not have popen (no filesystem integration yet)
 #  - the exported function and methods because those are what we use.
-#  - initial memory: I just set the max value
+#  - initial memory: I just set the max value. TODO: Probably NOT good!
 #  - MODULARIZE=1: so we build a normal npm module that we can require in node.
 
-emmake make "CC_FLAVOR=-s ERROR_ON_UNDEFINED_SYMBOLS=0 -s EXPORTED_FUNCTIONS=[\'_gp_embedded\',\'_gp_embedded_init\',\'_pari_emscripten_plot_init\'] -s EXPORTED_RUNTIME_METHODS=[\'ccall\',\'cwrap\'] -s INITIAL_MEMORY=2146435072 -s MODULARIZE=1"
+export CC_FLAVOR="\
+  -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
+  -s EXPORTED_FUNCTIONS=[\'_gp_embedded\',\'_gp_embedded_init\',\'_pari_emscripten_plot_init\'] \
+  -s EXPORTED_RUNTIME_METHODS=[\'ccall\',\'cwrap\'] \
+  -s INITIAL_MEMORY=2146435072
+  -s MODULARIZE=1"
 
-cp gp-sta* ../../../dist/
-cd ../../..
+emmake make -j8
+
+emmake make install
+
