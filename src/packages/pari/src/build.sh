@@ -22,8 +22,14 @@ echo "#undef UNIX" >> Oemscripten-wasm/paricfg.h
 
 cd Oemscripten-wasm
 
+# We first build without the emscripten-specific options below, since using
+# them leads to many warnings.
+emmake make -j4
+
+# We then remove gp-sta.js and build it with the extra options.
+# CC_FLAVOR emscript settings below.
 # Explanation of each of these:
-#  - ERROR_ON_UNDEFINED_SYMBOLS=0  -- entirely because we do not have popen (no filesystem integration yet)
+#  - ERROR_ON_UNDEFINED_SYMBOLS=0  -- entirely because we do not have popen yet; need to sort that out (TODO)
 #  - the exported function and methods because those are what we use.
 #  - initial memory: I just set the max value. TODO: Probably NOT good!
 #  - MODULARIZE=1: so we build a normal npm module that we can require in node.
@@ -32,10 +38,10 @@ export CC_FLAVOR="\
   -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
   -s EXPORTED_FUNCTIONS=[\'_gp_embedded\',\'_gp_embedded_init\',\'_pari_emscripten_plot_init\'] \
   -s EXPORTED_RUNTIME_METHODS=[\'ccall\',\'cwrap\'] \
-  -s INITIAL_MEMORY=2146435072
+  -s INITIAL_MEMORY=2146435072 \
   -s MODULARIZE=1"
-
-emmake make -j8
+rm -f gp-sta.js
+emmake make gp-sta.js "CC_FLAVOR=$CC_FLAVOR"
 
 emmake make install
 
