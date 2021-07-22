@@ -22,10 +22,6 @@ echo "#undef UNIX" >> Oemscripten-wasm/paricfg.h
 
 cd Oemscripten-wasm
 
-# We first build without the emscripten-specific options below, since using
-# them leads to many warnings.
-emmake make -j4
-
 # We then remove gp-sta.js and build it with the extra options.
 # CC_FLAVOR emscript settings below.
 # Explanation of each of these:
@@ -36,12 +32,12 @@ emmake make -j4
 
 export CC_FLAVOR="\
   -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
-  -s EXPORTED_FUNCTIONS=[\'_gp_embedded\',\'_gp_embedded_init\',\'_pari_emscripten_plot_init\'] \
+  -s EXPORTED_FUNCTIONS=[\'_gp_embedded\',\'_gp_embedded_init\',\'_pari_emscripten_plot_init\',\'_main\'] \
   -s EXPORTED_RUNTIME_METHODS=[\'ccall\',\'cwrap\'] \
   -s INITIAL_MEMORY=2146435072 \
   -s MODULARIZE=1"
-rm -f gp-sta.js
-emmake make gp-sta.js "CC_FLAVOR=$CC_FLAVOR"
+emmake make "CC_FLAVOR=$CC_FLAVOR" -j4
 
 emmake make install
 
+cp gp-sta* "$DIST"/
