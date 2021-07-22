@@ -1,0 +1,3 @@
+/src/packages/*/dist/
+/src/packages/*/build/
+*.term
