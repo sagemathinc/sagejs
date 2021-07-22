@@ -1,0 +1,23 @@
+{
+  "name": "@sagemath/pari",
+  "version": "1.0.3",
+  "description": "PARI/GP is a widely used computer algebra system designed for fast computations in number theory.  This is a WASM version of Pari.",
+  "main": "index.js",
+  "files": ["dist/*", "index.js", "README.md", "build.sh", "package.json"],
+  "scripts": {
+    "build": "./build.sh",
+    "clean": "rm -rf build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sagemathinc/wasm-pari.git"
+  },
+  "keywords": ["number", "theory"],
+  "author": "William Stein",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/sagemathinc/wasm-pari/issues"
+  },
+  "homepage": "https://github.com/sagemathinc/wasm-pari#readme"
+}
