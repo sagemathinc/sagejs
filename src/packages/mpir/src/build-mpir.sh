@@ -4,14 +4,8 @@ set -ev
 cd $BUILD
 
 ### Download and build MPIR
-git clone git://github.com/wbhart/mpir.git mpir
+git clone https://github.com/sagemathinc/mpir.git
 cd mpir
-
-# Checkout a specific commit we have tested with...
-git checkout $COMMIT
-
-# Create autoconf files
-./autogen.sh
 
 time CC_FOR_BUILD=gcc ABI=long emconfigure ./configure \
   --build i686-pc-linux-gnu \
