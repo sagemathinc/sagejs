@@ -19,3 +19,7 @@ time emconfigure ./Configure
 time emmake make -j4
 
 emmake make install
+
+# Of course sympow doesn't know about our wasm file.
+cp sympow.wasm $PREFIX/bin/
+
