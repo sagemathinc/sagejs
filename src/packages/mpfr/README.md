@@ -20,8 +20,4 @@ npm run build
 
 This will download and build MPFR from source.
 
-## TODO
-
-### Automate running the test suite.
-
-(See comments for the GMP package.)
+You can then build the sample program in src/sample and run it.

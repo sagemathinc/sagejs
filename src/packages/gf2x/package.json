@@ -1,0 +1,22 @@
+{
+  "name": "@sagemath/gf2x",
+  "version": "1.0.0",
+  "description": "GF2X:  a C/C++ software package containing routines for fast arithmetic in GF(2)[x] (multiplication, squaring, GCD) and searching for irreducible/primitive trinomials.",
+  "main": "index.js",
+  "files": ["dist/*", "README.md", "package.json", "src/*"],
+  "scripts": {
+    "build": "./src/build/build.sh",
+    "clean": "rm -rf build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sagemathinc/sagejs.git"
+  },
+  "keywords": ["number", "theory"],
+  "author": "William Stein",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/sagemathinc/sagejs/issues"
+  },
+  "homepage": "https://github.com/sagemathinc/sagejs/tree/main/src/packages/gf2x"
+}
