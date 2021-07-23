@@ -1,6 +1,6 @@
 {
   "name": "@sagemath/pari",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "PARI/GP is a widely used computer algebra system designed for fast computations in number theory.",
   "main": "index.js",
   "files": ["dist/*", "index.js", "README.md", "build.sh", "package.json"],

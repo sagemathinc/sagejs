@@ -1,5 +1,5 @@
 {
-  "name": "@sagemath/mpir",
+  "name": "@sagemath/mpfr",
   "version": "1.0.0",
   "description": "MPFR: a C library for multiple-precision floating-point computations with correct rounding.",
   "main": "index.js",
