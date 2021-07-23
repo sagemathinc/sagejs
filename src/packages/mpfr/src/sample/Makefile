@@ -1,7 +1,7 @@
 PACKAGES = $(shell pwd)/../../../
 
 sample.js:
-	emcc sample.c -o sample.js -I$(PACKAGES)/mpfr/dist/local/include -L${PACKAGES}/mpfr/dist/local/lib -I${PACKAGES}/gmp/dist/local/include -L${PACKAGES}/gmp/dist/local/lib -lmpfr -lgmp
+	emcc -O3 sample.c -o sample.js -I$(PACKAGES)/mpfr/dist/local/include -L${PACKAGES}/mpfr/dist/local/lib -I${PACKAGES}/gmp/dist/local/include -L${PACKAGES}/gmp/dist/local/lib -lmpfr -lgmp
 
 clean:
 	rm sample.js sample.wasm
