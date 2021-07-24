@@ -4,9 +4,9 @@ set -ev
 cd $BUILD
 
 ### Download and build GMP
-curl https://gmplib.org/download/gmp/gmp-$GMP_VERSION.tar.lz -o gmp-$GMP_VERSION.tar.lz
-tar xf gmp-$GMP_VERSION.tar.lz
-rm gmp-$GMP_VERSION.tar.lz
+curl https://gmplib.org/download/gmp/gmp-$GMP_VERSION.tar.bz2 -o gmp-$GMP_VERSION.tar.bz2
+tar xf gmp-$GMP_VERSION.tar.bz2
+rm gmp-$GMP_VERSION.tar.bz2
 
 cd gmp-$GMP_VERSION
 
