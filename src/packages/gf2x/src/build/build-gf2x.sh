@@ -9,9 +9,9 @@ tar xvf gf2x-$VERSION.tar.gz
 rm gf2x-$VERSION.tar.gz
 cd gf2x-$VERSION
 
-time emconfigure ./configure --build i686-pc-linux-gnu --host=none --prefix=$PREFIX CFLAGS="-O3 -Wall"
+emconfigure ./configure --build i686-pc-linux-gnu --host=none --prefix=$PREFIX CFLAGS="-O3 -Wall"
 
-time emmake make -j 4
+emmake make -j 4
 
 emmake make install
 

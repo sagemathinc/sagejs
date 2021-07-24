@@ -14,9 +14,9 @@ chmod +x help2man
 export PATH=`pwd`:$PATH
 touch sympow.1 # what would be output by help2man
 
-time emconfigure ./Configure
+emconfigure ./Configure
 
-time emmake make -j4
+emmake make -j4
 
 emmake make install
 

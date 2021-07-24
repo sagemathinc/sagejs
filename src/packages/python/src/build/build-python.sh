@@ -14,8 +14,8 @@ rm Python-$PYTHON_VERSION.tar.xz
 
 # Build native version
 cd Python-$PYTHON_VERSION.native
-time ./configure --prefix=$PREFIX_NATIVE --enable-optimizations
-time make -j10
+./configure --prefix=$PREFIX_NATIVE --enable-optimizations
+make -j8
 make install
 # Set the PATH to start with our native install, so that cross compile below works.
 export PATH=$PREFIX_NATIVE/bin:$PATH
@@ -44,7 +44,7 @@ cp $SRC/build/config.site .
 #     --host=wasm32-unknown-emscripten: target we are cross compiling for; matches paches above.
 #     --build=`./config.guess`: the host machine for cross compiling is easily computed via
 #       this config.guess autoconf script.
-time CONFIG_SITE=./config.site READELF=true emconfigure ./configure \
+CONFIG_SITE=./config.site READELF=true emconfigure ./configure \
     --prefix=$PREFIX \
     --enable-big-digits=30 \
     --enable-optimizations \
@@ -55,10 +55,10 @@ time CONFIG_SITE=./config.site READELF=true emconfigure ./configure \
     --build=`./config.guess`
 
 # Build Python in parallel...
-time emmake make -j8
+emmake make -j8
 
 # And install it into our local $PREFIX path.
-time emmake make install
+emmake make install
 
 # Rebuild python interpreter with the entire Python library as a filesystem:
 # TODO: This is *brittle* and needs to be done better!

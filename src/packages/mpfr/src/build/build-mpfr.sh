@@ -9,9 +9,8 @@ tar xvf mpfr-$MPFR_VERSION.tar.xz
 rm mpfr-$MPFR_VERSION.tar.xz
 cd mpfr-$MPFR_VERSION
 
-time CC_FOR_BUILD=gcc ABI=long emconfigure ./configure --build i686-pc-linux-gnu --host=none --with-gmp="$PACKAGES"/gmp/dist/local/ --prefix=$PREFIX CFLAGS="-O3 -Wall"
+CC_FOR_BUILD=gcc ABI=long emconfigure ./configure --build i686-pc-linux-gnu --host=none --with-gmp="$PACKAGES"/gmp/dist/local/ --prefix=$PREFIX CFLAGS="-O3 -Wall"
 
-time emmake make -j 4
+emmake make -j 4
 
 emmake make install
-
