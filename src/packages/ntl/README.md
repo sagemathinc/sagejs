@@ -10,7 +10,15 @@ Install the package
 $ npm i @sagemath/ntl
 ```
 
-There's nothing you can directly do with this yet.
+There's one included example of computing `(a+1)*(b+1)`:
+```sh
+$ cd node_modules/@sagemath/ntl/src/examples/example1
+$ wasmer example.wasm
+Enter two numbers: 
+9
+10
+110
+```
 
 ## TODO
 

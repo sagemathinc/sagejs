@@ -1,6 +1,6 @@
 {
   "name": "@sagemath/ntl",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "NTL: A Library for doing Number Theory",
   "main": "index.js",
   "files": ["dist/*", "README.md", "package.json", "src/*"],

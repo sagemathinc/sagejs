@@ -1,4 +1,14 @@
+# This is a wrapper script to make versions of emcc and em++ that
+# behave much more like on a native system, since some build systems
+# have no support for cross compiling, and just want to build and
+# run executables.  Fortunately just making the -o output be executable
+# and adding '#!/usr/bin/env node' to the top of the file works.
+# I've noticed that emconfigure seems to do this already, but not
+# emmake, so maybe this can be better done by directly using emscripten somehow.
+
 import os, sys
+
+
 
 def get_output():
     for i in range(len(sys.argv)):
