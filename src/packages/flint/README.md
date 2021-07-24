@@ -4,34 +4,29 @@ This is a cross-platform wasm build that make the functionality of FLINT availab
 
 ## Test a program using FLINT
 
-There are examples in `build/flint-*/examples` . For example, to build `primegen`, do as in src/examples:
+There are examples in `flint-*/examples`, and we copy some of them here in src/examples. For example, to build `primegen`, do as in src/examples:
 
 ```sh
-$ cd src/examples
-$ make primegen.wasm
-$ wasmer primegen.wasm 100
-$ make partitions.wasm
-$ wasmer partitions.wasm 100093982083408923
+~/sagejs/src/packages/flint/src/examples$ make run-primegen
+emcc primegen.c -o primegen.js ... -lflint -lmpfr -lgmp
+node ./primegen.js 20
+2
+3
+5
+7
+11
+13
+17
+19
 ```
 
-```
-$ emcc primegen.c -o primegen.js -L$PREFIX/lib -I$PREFIX/include/flint -I$PREFIX/include -lflint -lmpir -lmpfr
-
-````
-
-To run it from node.js:
+There's also a C++ example:
 
 ```sh
-$ node primegen.js 20
-````
-
-The same instructions should work with any other program there, except for cpp, use `em++`:
-
-```sh
-$ em++ partitions.cpp -o partitions.js -L$PREFIX/lib -I$PREFIX/include/flint -I$PREFIX/include -lflint -lmpir -lmpfr
-$ time node partitions.js 100093982083408923
-p(1178362907) =969255932718701...362545
-real    0m1.429s
+$ ~/sagejs/src/packages/flint/src/examples$ make run-partitions
+em++ partitions.cpp -o partitions.js ... -lflint -lmpfr -lgmp
+node ./partitions.js 2021
+p(2021) =
+8518741657943308344041302580996941768179250799
 ```
 
-Note: use the option `-s INITIAL_MEMORY=2146435072` to `emcc` if you want to use more than a tiny amount of RAM.
