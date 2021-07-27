@@ -7,7 +7,8 @@ rm -rf "$BUILD" "$DIST"
 mkdir "$BUILD" "$DIST"
 cd "$BUILD"
 
-curl https://pari.math.u-bordeaux.fr/pub/pari/unix/pari-$VERSION.tar.gz -o pari-$VERSION.tar.gz
+# retry-max-time: For some reason pari.math.u-bordeaux.fr is flaky.
+curl --retry-max-time 120 https://pari.math.u-bordeaux.fr/pub/pari/unix/pari-$VERSION.tar.gz -o pari-$VERSION.tar.gz
 tar xvf pari-$VERSION.tar.gz
 rm -rf pari-$VERSION.tar.gz
 cd pari-$VERSION
