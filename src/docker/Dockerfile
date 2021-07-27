@@ -11,7 +11,10 @@ RUN \
      yasm \
      git \
      python3 \
-     curl
+     curl \
+     zlib1g-dev \
+     libffi-dev \
+     texinfo
 
 # So we can source (see http://goo.gl/oBPi5G)
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
@@ -22,9 +25,10 @@ RUN \
   && ./emsdk install latest \
   && ./emsdk activate latest
 
+
 RUN \
      cd emsdk && source ./emsdk_env.sh \
   && git clone https://github.com/sagemathinc/sagejs \
   && cd sagejs/src \
-  && make
+  && make -j16
      
