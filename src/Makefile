@@ -21,6 +21,9 @@ packages/pari/dist/local: packages/gmp/dist/local
 packages/mpfr/dist/local: packages/gmp/dist/local
 	cd packages/mpfr && npm run build
 
+packages/mpc/dist/local: packages/gmp/dist/local packages/mpfr/dist/local
+	cd packages/mpc && npm run build
+
 packages/ntl/dist/local: packages/gmp/dist/local packages/gf2x/dist/local
 	cd packages/ntl && npm run build
 

@@ -1,0 +1,22 @@
+{
+  "name": "@sagemath/mpc",
+  "version": "1.0.0",
+  "description": "MPC: arithmetic of complex numbers with arbitrarily high precision and correct rounding of the result",
+  "main": "index.js",
+  "files": ["dist/*", "README.md", "package.json", "src/*"],
+  "scripts": {
+    "build": "./src/build/build.sh",
+    "clean": "rm -rf build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sagemathinc/sagejs.git"
+  },
+  "keywords": ["number", "theory"],
+  "author": "William Stein",
+  "license": "LGPLv3+",
+  "bugs": {
+    "url": "https://github.com/sagemathinc/sagejs/issues"
+  },
+  "homepage": "https://github.com/sagemathinc/sagejs/tree/main/src/packages/mpc"
+}
