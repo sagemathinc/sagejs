@@ -10,7 +10,11 @@ RUN \
      dpkg-dev \
      yasm \
      git \
-     python3
+     python3 \
+     curl
+
+# So we can source (see http://goo.gl/oBPi5G)
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
 RUN \
      git clone https://github.com/emscripten-core/emsdk.git \
@@ -19,7 +23,7 @@ RUN \
   && ./emsdk activate latest
 
 RUN \
-     source ./emsdk_env.sh \
+     cd emsdk && source ./emsdk_env.sh \
   && git clone https://github.com/sagemathinc/sagejs \
   && cd sagejs/src \
   && make
