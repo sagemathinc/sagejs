@@ -22,6 +22,11 @@ $ node ./python.js -c 'print("hello world", 2+3)'
 hello world 5
 ```
 
+If you have a script `a.py` in the current directory, you can run it like so:
+```sh
+$ node ./python.js -c "`cat ./a.py`"
+```
+
 ## Build from source
 
 This will download and build Python  from source, and copy the resulting WebAssembly build into `dist/` , assuming you have [installed the emscripten toolchain](https://emscripten.org/docs/getting_started/downloads.html).
