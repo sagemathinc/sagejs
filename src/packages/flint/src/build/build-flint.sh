@@ -5,7 +5,7 @@ cd $BUILD
 ### Now build FLINT
 
 curl http://www.flintlib.org/flint-$FLINT_VERSION.tar.gz -o flint-$FLINT_VERSION.tar.gz
-tar xvf flint-$FLINT_VERSION.tar.gz
+tar xf flint-$FLINT_VERSION.tar.gz
 rm flint-$FLINT_VERSION.tar.gz
 cd flint-$FLINT_VERSION
 
