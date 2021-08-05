@@ -37,8 +37,11 @@ export CC_FLAVOR="\
   -s EXPORTED_RUNTIME_METHODS=[\'ccall\',\'cwrap\'] \
   -s INITIAL_MEMORY=2146435072 \
   -s MODULARIZE=1"
-emmake make "CC_FLAVOR=$CC_FLAVOR" -j4
 
-emmake make install
+# We set AR=emar, since PARI's configure doesn't properly recognize the AR env
+# variable, i.e., exactly the problem discussed here: https://emscripten.org/docs/compiling/Building-Projects.html
+emmake make AR=emar RANLIB=emranlib "CC_FLAVOR=$CC_FLAVOR" -j4
+
+emmake make AR=emar RANLIB=emranlib install
 
 cp gp-sta* "$DIST"/
