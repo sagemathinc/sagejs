@@ -1,12 +1,13 @@
 {
-  "name": "@sagemath/flint",
-  "version": "1.0.1",
-  "description": "FLINT: Fast Library for Number Theory",
+  "name": "@sagemath/eclib",
+  "version": "1.0.0",
+  "description": "ECLIB: mwrank (for 2-descent on elliptic curves over Q) and modular symbol code used to create the elliptic curve database",
   "main": "index.js",
   "files": ["dist/*", "README.md", "package.json", "src/*"],
   "scripts": {
     "build": "./src/build/build.sh",
-    "clean": "rm -rf build"
+    "clean": "rm -rf build",
+    "e": "export"
   },
   "repository": {
     "type": "git",
@@ -18,5 +19,5 @@
   "bugs": {
     "url": "https://github.com/sagemathinc/sagejs/issues"
   },
-  "homepage": "https://github.com/sagemathinc/sagejs/tree/main/src/packages/flint"
+  "homepage": "https://github.com/sagemathinc/sagejs/tree/main/src/packages/eclib"
 }
