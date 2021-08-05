@@ -27,6 +27,6 @@ def run(compiler):
     if not output:
         return
     content = open(output,'r').read()
-    open(output,'w').write("#!/usr/bin/env node\n\n" + content)
+    open(output,'w').write("#!/usr/bin/env -S node --experimental-wasm-threads --experimental-wasm-bulk-memory \n\n" + content)
     if os.system("chmod +x " + output):
         raise RuntimeError
