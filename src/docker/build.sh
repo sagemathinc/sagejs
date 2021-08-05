@@ -6,7 +6,7 @@
 # use amd64).
 
 if [[ `uname -m` == 'arm64' ]]; then
-  sudo docker build  --platform linux/amd64 -t sagejs .
+  sudo docker buildx build --platform linux/amd64 -t sagejs .
 else
   sudo docker build -t sagejs .
 fi
