@@ -18,7 +18,9 @@ RUN \
      zlib1g-dev \
      libffi-dev \
      texinfo \
-     pari-gp 
+     pari-gp \
+     automake \
+     libtool
 
 # So we can source (see http://goo.gl/oBPi5G)
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
@@ -35,4 +37,4 @@ RUN \
   && git clone https://github.com/sagemathinc/sagejs \
   && cd sagejs/src \
   && make -j4
-     
+
