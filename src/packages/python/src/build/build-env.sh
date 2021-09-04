@@ -3,7 +3,7 @@
 # This should get sourced from the directory that contains src (i.e. the build.sh script).
 
 # See https://www.python.org/downloads/source/
-export PYTHON_VERSION=3.9.6
+export PYTHON_VERSION=3.9.7
 
 export BUILD="$INIT_CWD"/build
 export SRC="$INIT_CWD"/src
