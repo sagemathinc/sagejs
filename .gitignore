@@ -1,4 +1,5 @@
 /src/packages/*/dist/
+/src/packages/*/dist.native/
 /src/packages/*/build/
 *.term
 *.wasm
