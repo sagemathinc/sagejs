@@ -1,1 +1,1 @@
-# Moved to https://github.com/sagemathinc/sagemathjs
+# Moved to https://github.com/sagemathinc/JSage
