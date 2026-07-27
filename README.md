@@ -39,7 +39,10 @@ The short version is:
 > **Sage semantics. Native mathematics. The JavaScript ecosystem.**
 
 See [MISSION.md](MISSION.md) for the complete project charter, guiding
-principles, non-goals, and decision criteria.
+principles, non-goals, and decision criteria. See
+[IMPLEMENTATION.md](IMPLEMENTATION.md) for the empirically motivated division
+between maintainable Sage.js library source, typed native lowering, and
+hand-written native code.
 
 ## Relationship to SageMath and OSCAR
 
@@ -344,10 +347,11 @@ pnpm run bench:native
 For a matched comparison where both Sage.js and SageMath call MPFR's
 `mpfr_mul`, see
 [`bench/MPFR-BENCHMARK.md`](bench/MPFR-BENCHMARK.md). On the initial machine,
-the generated 53-bit real loop took about 11.7 ns per multiplication, versus
-126.5 ns through SageMath's Cython `RealNumber` and 1194 ns through scalar
-Sage.js. The benchmark reports the loaded MPFR and GMP versions so this
-comparison remains auditable.
+the generated 53-bit real loop took about 12 ns per multiplication, versus
+128 ns through SageMath's Cython `RealNumber` and 1204 ns through scalar
+Sage.js. Julia's ordinary `BigFloat` loop took about 96 ns, while an explicit
+in-place Julia MPFR loop took about 21 ns. The benchmark reports loaded MPFR
+and GMP versions and allocation so this comparison remains auditable.
 
 ## Build from source
 

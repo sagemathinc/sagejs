@@ -43,6 +43,7 @@
     "tools",
     "CONTRIBUTORS.md",
     "HACKING.md",
+    "IMPLEMENTATION.md",
     "MISSION.md",
     "index.cjs"
   ],

@@ -127,6 +127,9 @@ The intended system has four cooperating layers:
 JavaScript remains the interactive runtime and integration language. Native
 compilation complements it; it does not replace it.
 
+See [`IMPLEMENTATION.md`](IMPLEMENTATION.md) for the implementation-language
+strategy and the MPFR/Cython/Julia measurements which motivate it.
+
 ## Decision test
 
 Every significant piece of work should advance at least one of these:
