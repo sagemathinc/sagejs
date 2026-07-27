@@ -41,6 +41,35 @@ The short version is:
 See [MISSION.md](MISSION.md) for the complete project charter, guiding
 principles, non-goals, and decision criteria.
 
+## Relationship to SageMath and OSCAR
+
+SageMath, OSCAR, and Sage.js apply the same broad open-source strategy in
+different language ecosystems:
+
+| System | Primary ecosystem | Integration strategy |
+|---|---|---|
+| SageMath | Python and Cython | Combine the best open mathematical libraries behind a coherent Python-based language, parent/coercion model, distribution, and library of high-level algorithms. |
+| OSCAR | Julia | Combine high-performance systems such as GAP, Singular, polymake, and the Julia algebra ecosystem behind coherent Julia interfaces and mathematical structures. |
+| Sage.js | Node.js and JavaScript | Combine the best open mathematical libraries with Sage-compatible semantics, fast JavaScript startup and integration, npm distribution, and optional native compilation of hot library code. |
+
+All three reject the idea that a serious computer algebra system must
+reimplement every mathematical kernel or use a proprietary bespoke language.
+Instead, each makes a general-purpose language ecosystem into the connective
+tissue around specialized state-of-the-art libraries.
+
+Sage.js is closest to SageMath semantically: Sage is its executable
+specification for syntax, parents, coercions, representations, defaults, and
+edge cases. It is not intended to reproduce all of CPython, however. Its
+distinct experiment is to discover what the Sage model becomes when
+JavaScript and Node are the interactive runtime, package ecosystem, and
+default compilation target—while typed mathematical library code can still
+compile to C, C++, or Rust when native performance is required.
+
+The projects are therefore complementary rather than mutually exclusive.
+They share libraries, mathematical ideas, tests, and an open-software mission,
+while bringing the integration pattern to researchers working in different
+language ecosystems.
+
 ## Install
 
 Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.
