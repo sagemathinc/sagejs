@@ -6,7 +6,7 @@
  */
 
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "fs";
-import { dirname, join, resolve } from "path";
+import { dirname, join } from "path";
 import { runInThisContext } from "vm";
 import {
   getImportDirs,
@@ -19,6 +19,7 @@ import Completer from "./completer";
 import { clearLine, createInterface } from "readline";
 import createCompiler from "./compiler";
 import { arch } from "os";
+import { expandSageLoads, parseLoadDirective } from "./sage-source";
 
 const DEFAULT_HISTORY_SIZE = 1000;
 const HOME =
@@ -274,33 +275,12 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     return line;
   }
 
-  function loadDirective(source: string):
-    | { attach: boolean; filename: string }
-    | undefined {
-    const stripped = source.trim();
-    let match = stripped.match(/^(load|attach)\s+(.+)$/);
-    if (!match) {
-      match = stripped.match(/^(load|attach)\s*\(\s*(['"])(.*?)\2\s*\)$/);
-      if (match) match = [match[0], match[1], match[3]];
-    }
-    if (!match) return;
-    let filename = match[2].trim();
-    if (
-      filename.length >= 2 &&
-      ((filename.startsWith('"') && filename.endsWith('"')) ||
-        (filename.startsWith("'") && filename.endsWith("'")))
-    ) {
-      filename = filename.slice(1, -1);
-    }
-    return {
-      attach: match[1] === "attach",
-      filename: resolve(expandUser(filename)),
-    };
-  }
-
   function loadFile(filename: string, attach: boolean): void {
     try {
-      const contents = readFileSync(filename, "utf-8");
+      const contents = expandSageLoads(
+        readFileSync(filename, "utf-8"),
+        filename,
+      );
       if (attach) {
         attachedFiles.set(filename, statSync(filename).mtimeMs);
       }
@@ -338,7 +318,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     } = {},
   ): boolean {
     if (runOptions.allowLoadDirective !== false) {
-      const directive = loadDirective(source);
+      const directive = parseLoadDirective(source);
       if (directive) {
         loadFile(directive.filename, directive.attach);
         return false;

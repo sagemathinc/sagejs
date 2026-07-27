@@ -213,6 +213,7 @@ try {
   const sageFile = join(temporary, "example.sage");
   const pythonFile = join(temporary, "example.py");
   const loadedFile = join(temporary, "loaded example.sage");
+  const loadingFile = join(temporary, "loading-example.sage");
   writeFileSync(sageFile, "print(2^5)\n", "utf8");
   writeFileSync(pythonFile, "print(2^5)\n", "utf8");
   writeFileSync(
@@ -225,8 +226,18 @@ try {
     ].join("\n"),
     "utf8",
   );
+  writeFileSync(
+    loadingFile,
+    [
+      `load ${JSON.stringify(loadedFile)}`,
+      "print(loaded_square(7))",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
   assert.match(run([sageFile]), /^32\s*$/);
   assert.match(run(["--python", pythonFile]), /^7\s*$/);
+  assert.equal(run([loadingFile]).trim(), "49");
   assert.match(
     run(["compile", "--omit-baselib", sageFile]),
     /var ρσ_const_0 = Integer\("2"\),\s+ρσ_const_1 = Integer\("5"\)/,

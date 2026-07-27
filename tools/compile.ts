@@ -11,6 +11,7 @@ import { readFile } from "fs/promises";
 import { runInThisContext } from "vm";
 import { getImportDirs, once } from "./utils";
 import createCompiler from "./compiler";
+import { expandSageLoads } from "./sage-source";
 
 const PyLang = createCompiler();
 
@@ -140,10 +141,17 @@ export default async function Compile({
     }
   }
 
-  async function compileSingleFile(code: string): Promise<void> {
+  async function compileSingleFile(
+    code: string,
+    sourceFilename?: string,
+  ): Promise<void> {
     let topLevel;
     timeIt("parse", () => {
-      const filename = files[0] || argv.filename_for_stdin || "<stdin>";
+      const filename =
+        sourceFilename || argv.filename_for_stdin || "<stdin>";
+      if (argv.sage && filename !== "<stdin>") {
+        code = expandSageLoads(code, filename);
+      }
       try {
         topLevel = parseFile(code, filename);
       } catch (err) {
@@ -207,7 +215,7 @@ export default async function Compile({
 
   if (files.length > 0) {
     for (const filename of files) {
-      await compileSingleFile(await readWholeFile(filename));
+      await compileSingleFile(await readWholeFile(filename), filename);
     }
   } else {
     await compileSingleFile(await readWholeFile());
