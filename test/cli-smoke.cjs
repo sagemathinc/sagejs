@@ -84,6 +84,23 @@ assert.equal(
   ].join("\n"),
 );
 assert.match(run(["--python"], "print(2^3)\nprint(2**3)\n"), /1\s+8\s*$/);
+assert.equal(
+  run(
+    [],
+    [
+      "sage: print(2^3)",
+      "sage: for n in [1..3]:",
+      "....:     print(n)",
+      "....:",
+      "",
+    ].join("\n"),
+  ).trim(),
+  "8\n1\n2\n3",
+);
+assert.equal(
+  run(["--python"], ">>> print(2**5)\n").trim(),
+  "32",
+);
 
 assert.equal(
   run(
@@ -195,10 +212,44 @@ const temporary = mkdtempSync(join(tmpdir(), "sagejs-test-"));
 try {
   const sageFile = join(temporary, "example.sage");
   const pythonFile = join(temporary, "example.py");
+  const loadedFile = join(temporary, "loaded example.sage");
   writeFileSync(sageFile, "print(2^5)\n", "utf8");
   writeFileSync(pythonFile, "print(2^5)\n", "utf8");
+  writeFileSync(
+    loadedFile,
+    [
+      "loaded_value = 17",
+      "def loaded_square(n):",
+      "    return n^2",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
   assert.match(run([sageFile]), /^32\s*$/);
   assert.match(run(["--python", pythonFile]), /^7\s*$/);
+  assert.equal(
+    run(
+      [],
+      [
+        `load ${JSON.stringify(loadedFile)}`,
+        "print(loaded_value)",
+        "print(loaded_square(5))",
+        "",
+      ].join("\n"),
+    ).trim(),
+    "17\n25",
+  );
+  assert.equal(
+    run(
+      [],
+      [
+        `attach(${JSON.stringify(loadedFile)})`,
+        "print(loaded_square(6))",
+        "",
+      ].join("\n"),
+    ).trim(),
+    "36",
+  );
 } finally {
   rmSync(temporary, { recursive: true, force: true });
 }

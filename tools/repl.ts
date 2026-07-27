@@ -5,8 +5,8 @@
  * Distributed under terms of the BSD license
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
+import { mkdirSync, readFileSync, statSync, writeFileSync } from "fs";
+import { dirname, join, resolve } from "path";
 import { runInThisContext } from "vm";
 import {
   getImportDirs,
@@ -150,6 +150,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   readline.off("line", duringInit);
 
   const buffer: string[] = [];
+  const attachedFiles = new Map<string, number>();
   let more: boolean = false;
   const LINE_CONTINUATION_CHARS = ":\\";
   let toplevel;
@@ -255,8 +256,94 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     }
   }
 
+  function stripCopiedPrompt(line: string): string {
+    if (options.sage) {
+      const sagePrompt = line.match(/^sage:\s?/);
+      if (sagePrompt) return line.slice(sagePrompt[0].length);
+      const sageContinuation = line.match(/^\.\.\.\.:\s?/);
+      if (sageContinuation) {
+        return line.slice(sageContinuation[0].length);
+      }
+    }
+    const pythonPrompt = line.match(/^>>>\s?/);
+    if (pythonPrompt) return line.slice(pythonPrompt[0].length);
+    const pythonContinuation = line.match(/^\.\.\.\s/);
+    if (pythonContinuation) {
+      return line.slice(pythonContinuation[0].length);
+    }
+    return line;
+  }
+
+  function loadDirective(source: string):
+    | { attach: boolean; filename: string }
+    | undefined {
+    const stripped = source.trim();
+    let match = stripped.match(/^(load|attach)\s+(.+)$/);
+    if (!match) {
+      match = stripped.match(/^(load|attach)\s*\(\s*(['"])(.*?)\2\s*\)$/);
+      if (match) match = [match[0], match[1], match[3]];
+    }
+    if (!match) return;
+    let filename = match[2].trim();
+    if (
+      filename.length >= 2 &&
+      ((filename.startsWith('"') && filename.endsWith('"')) ||
+        (filename.startsWith("'") && filename.endsWith("'")))
+    ) {
+      filename = filename.slice(1, -1);
+    }
+    return {
+      attach: match[1] === "attach",
+      filename: resolve(expandUser(filename)),
+    };
+  }
+
+  function loadFile(filename: string, attach: boolean): void {
+    try {
+      const contents = readFileSync(filename, "utf-8");
+      if (attach) {
+        attachedFiles.set(filename, statSync(filename).mtimeMs);
+      }
+      compileAndRun(contents, {
+        filename,
+        noPrint: true,
+        allowLoadDirective: false,
+      });
+    } catch (err) {
+      options.console.error(err?.stack ?? err);
+    }
+  }
+
+  function refreshAttachedFiles(): void {
+    for (const [filename, previousMtime] of attachedFiles) {
+      try {
+        const mtime = statSync(filename).mtimeMs;
+        if (mtime > previousMtime) {
+          attachedFiles.set(filename, mtime);
+          loadFile(filename, true);
+        }
+      } catch (err) {
+        options.console.error(err?.stack ?? err);
+      }
+    }
+  }
+
   // returns true if incomplete
-  function compileAndRun(source: string): boolean {
+  function compileAndRun(
+    source: string,
+    runOptions: {
+      filename?: string;
+      noPrint?: boolean;
+      allowLoadDirective?: boolean;
+    } = {},
+  ): boolean {
+    if (runOptions.allowLoadDirective !== false) {
+      const directive = loadDirective(source);
+      if (directive) {
+        loadFile(directive.filename, directive.attach);
+        return false;
+      }
+    }
     let time: number | undefined = undefined;
     if (source.startsWith("%time ") || source.startsWith("time ")) {
       time = 0;
@@ -266,8 +353,10 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     const scoped_flags = toplevel?.scoped_flags;
     try {
       toplevel = PyLang.parse(source, {
-        filename: "<repl>",
-        basedir: process.cwd(),
+        filename: runOptions.filename ?? "<repl>",
+        basedir: runOptions.filename
+          ? dirname(runOptions.filename)
+          : process.cwd(),
         libdir: importPath,
         import_dirs: importDirs,
         classes,
@@ -276,7 +365,12 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
         tokens: options.tokens,
       });
     } catch (err) {
-      if (err.is_eof && err.line == buffer.length && err.col > 0) {
+      if (
+        !runOptions.filename &&
+        err.is_eof &&
+        err.line == buffer.length &&
+        err.col > 0
+      ) {
         return true;
       }
       if (err.message && err.line !== undefined) {
@@ -298,7 +392,8 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
         }
       }
     }
-    const noPrint = source.trimRight().endsWith(";");
+    const noPrint =
+      !!runOptions.noPrint || source.trimRight().endsWith(";");
     if (time != null) {
       time = new Date().valueOf();
     }
@@ -334,6 +429,10 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   }
 
   function readLine(line: string) {
+    if (!more) {
+      refreshAttachedFiles();
+    }
+    line = stripCopiedPrompt(line);
     if (more) {
       // We are in a block
       const lineIsEmpty = !line.trimLeft();

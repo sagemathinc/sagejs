@@ -71,6 +71,22 @@ by the compiler; their mathematical runtime is still under development.
 These features are implemented in the parser and compiler, not by textual
 preprocessing.
 
+The interactive CLI accepts pasted Sage and Python prompts, so transcript
+examples can be pasted directly:
+
+```text
+sage: for n in [1..3]:
+....:     print(n)
+1
+2
+3
+```
+
+`load path/to/file.sage` executes a file in the current session namespace.
+`attach path/to/file.sage` additionally watches its modification time and
+reloads it before the next input after it changes. Quoted paths and
+`load("path with spaces.sage")` are accepted.
+
 Integer source text is preserved before JavaScript parses it. The initial
 `Integer` hook uses a JavaScript `Number` when the value is safely
 representable and a `BigInt` otherwise:
