@@ -85,11 +85,51 @@ sage: 9007199254740991 + 1 + 1
 9007199254740993
 ```
 
-This hybrid is an intentionally compatible step, not the final Sage.js
-numeric tower. Division, modulo, bit operations, and coercion with future
-mathematical element types still need explicit semantics. The constructor
-seam allows a future `Integer` element type to replace the representation
-without changing the parser again.
+Exact integer division constructs an immutable normalized rational:
+
+```text
+sage: a = 2/3
+sage: a
+2/3
+sage: type(a)
+<class 'Rational'>
+sage: parent(a)
+Rational Field
+sage: 1 + a
+5/3
+```
+
+This hybrid remains an intentionally compatible step, not the final Sage.js
+numeric tower. Modulo, bit operations, comparisons across mathematical
+parents, and floating-point literal interactions still need explicit
+semantics. The constructor seam allows a future `Integer` element type to
+replace the representation without changing the parser again.
+
+## Parents, coercion, and native polynomials
+
+The first mathematical object model implements singleton `ZZ` and `QQ`
+parents, immutable rational elements, canonical maps, interned polynomial
+parents, and symmetric binary coercion. It does not depend on
+`__add__`/`__radd__` fallback. A coercion plan contains a common parent and a
+map for each operand.
+
+Common parents may be constructed rather than equal to either input parent:
+
+```text
+sage: R = PolynomialRing(ZZ, "x")
+sage: x = R.gen()
+sage: g = (1 + x) + 1/3
+sage: g
+x + 4/3
+sage: parent(g)
+Univariate Polynomial Ring in x over Rational Field
+```
+
+Here the resolver recursively computes `QQ` as the common coefficient parent,
+constructs the interned parent `QQ[x]`, converts the `ZZ[x]` operand, and
+embeds `1/3` as a constant. Polynomial coefficients and arithmetic live in
+native FLINT `fmpz_poly` and `fmpq_poly` values behind opaque Node-API objects;
+polynomial arithmetic does not copy coefficient arrays through JavaScript.
 
 Run a file directly:
 
@@ -170,6 +210,8 @@ FLINT 3.5 and demonstrates:
 
 - linear, word-array conversion between JavaScript `BigInt` and FLINT `fmpz`;
 - exact GCD, factorial, Fibonacci, binomial, primorial, and factorization;
+- opaque native `fmpz_poly` and `fmpq_poly` values with arithmetic, powers,
+  equality, formatting, and native `ZZ[x]` to `QQ[x]` conversion;
 - a global `factor(n)` returning an `IntegerFactorization`;
 - lazy loading on the first `factor` call, so the core language pays no native
   startup cost;
@@ -201,8 +243,7 @@ sage: factor(202693990283402830942083402834)
 Safe JavaScript integer `Number` values and arbitrary-size `BigInt` values are
 accepted. Factoring zero is undefined and raises an error. The generic
 `Factorization` core also supports simplification, formal multiplication and
-powers, radicals, iteration, and value reconstruction. Parent and coercion
-semantics remain future work.
+powers, radicals, iteration, and value reconstruction.
 
 On the initial Linux x86-64 build, the stripped addon is about 11 MB and packs
 to about 5.3 MB. A 4096-bit round trip takes roughly half a microsecond, and
@@ -218,13 +259,23 @@ pnpm --dir packages/flint build
 pnpm test:native
 pnpm --dir packages/flint bench
 pnpm bench:cold
+pnpm bench:arithmetic
 ```
+
+The arithmetic benchmark runs identical source through Sage.js and an
+installed Sagelite. On the initial x86-64 development machine, repeated small
+rational operations and degree-64 polynomial additions were about four times
+slower in Sage.js, degree-64 FLINT polynomial multiplication was within about
+15%, and repeated `ZZ[x] + QQ` coercion was about four times faster in
+Sage.js. These microbenchmarks exclude startup and are directional rather than
+release claims; the scripts are included to keep comparisons reproducible.
 
 ## Status
 
 Sage.js 0.1 is a research prototype. Its existing language test suite is
-substantial, but Python compatibility is deliberately incomplete and exact
-integer semantics still need design work. The FLINT package is an architectural
+substantial, but Python compatibility is deliberately incomplete and the
+mathematical object model covers only integers, rationals, and univariate
+polynomials over `ZZ` and `QQ`. The FLINT package is an architectural
 prototype, not yet a supported or published dependency.
 
 ## History and licensing

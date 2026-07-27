@@ -49,4 +49,25 @@ assert.throws(() => flint.factor(0n), /factor zero/);
 assert.throws(() => flint.factorial(1n), /Number/);
 assert.throws(() => flint.factorial(-1), /nonnegative/);
 
+const zx = flint.zzPolyGen();
+const zone = flint.zzPolyConstant(1n);
+const zf = flint.polyPow(flint.polyAdd(zx, zone), 3n);
+assert.equal(flint.polyToString(zf, "x"), "x^3+3*x^2+3*x+1");
+assert.equal(flint.polyEqual(zf, zf), true);
+
+const qx = flint.zzPolyToQQ(zx);
+const third = flint.qqPolyConstant(1n, 3n);
+const qf = flint.polyAdd(flint.polyAdd(qx, flint.qqPolyConstant(1n, 1n)), third);
+assert.equal(flint.polyToString(qf, "x"), "x+4/3");
+assert.equal(
+  flint.polyEqual(qf, flint.polyAdd(qx, flint.qqPolyConstant(4n, 3n))),
+  true,
+);
+assert.throws(() => flint.polyAdd(zx, qx), /different base rings/);
+assert.throws(
+  () => flint.polyAdd(zx, {}),
+  /expected a Sage\.js FLINT polynomial/,
+);
+assert.throws(() => flint.qqPolyConstant(1n, 0n), /denominator is zero/);
+
 console.log("Native FLINT arithmetic and BigInt conversion passed.");

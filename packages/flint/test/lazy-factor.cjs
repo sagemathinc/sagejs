@@ -30,6 +30,48 @@ assert.equal(
 );
 assert.doesNotMatch(arithmetic.stderr, new RegExp(marker));
 
+const rationals = run("print(1/3 + 1/6)\n");
+assert.equal(rationals.stdout.trim(), "1/2");
+assert.doesNotMatch(rationals.stderr, new RegExp(marker));
+
+const polynomialParent = run('print(PolynomialRing(ZZ, "x"))\n');
+assert.match(
+  polynomialParent.stdout,
+  /Univariate Polynomial Ring in x over Integer Ring/,
+);
+assert.doesNotMatch(polynomialParent.stderr, new RegExp(marker));
+
+const polynomial = run(
+  [
+    'R = PolynomialRing(ZZ, "x");',
+    "x = R.gen();",
+    "print((1 + x) + 1/3)",
+    "print(parent((1 + x) + 1/3))",
+    'S = PolynomialRing(QQ, "x");',
+    "print(S is PolynomialRing(QQ, \"x\"))",
+    "print(QQ(1/3) + (1 + x) == x + 4/3)",
+    "print(QQ(1/3) == S(QQ(1/3)))",
+    "print(not (QQ(1/3) == S(QQ(2/3))))",
+    "print((x + 1)^3)",
+    "try:",
+    '    x + PolynomialRing(ZZ, "y").gen()',
+    "except TypeError:",
+    '    print("incompatible variables rejected")',
+    "",
+  ].join("\n"),
+);
+assert.deepEqual(polynomial.stdout.trim().split("\n"), [
+  "x + 4/3",
+  "Univariate Polynomial Ring in x over Rational Field",
+  "True",
+  "True",
+  "True",
+  "True",
+  "x^3 + 3*x^2 + 3*x + 1",
+  "incompatible variables rejected",
+]);
+assert.equal(polynomial.stderr.match(new RegExp(marker, "g"))?.length, 1);
+
 const factoring = run(
   [
     "a = factor(2026);",

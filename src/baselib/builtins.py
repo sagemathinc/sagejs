@@ -10,6 +10,8 @@ def ρσ_exact_integer_primitive(value):
         (typeof value === "number" && Number.isSafeInteger(value))"""
 
 def ρσ_operator_add(a, b):
+    if ρσ_is_math_element(a) or ρσ_is_math_element(b):
+        return ρσ_coercion_model.binOp('add', a, b)
     return r"""%js (
 typeof a !== 'object' ? a + b :
     ((a.__add__ !== undefined ? a.__add__(b) :
@@ -20,6 +22,8 @@ typeof a !== 'object' ? a + b :
 """
 
 def ρσ_operator_add_exact(a, b):
+    if ρσ_is_math_element(a) or ρσ_is_math_element(b):
+        return ρσ_coercion_model.binOp('add', a, b)
     if jstype(a) is 'object':
         if a.__add__ is not undefined:
             return a.__add__(b)
@@ -43,9 +47,13 @@ def ρσ_operator_neg(a):
     return v"(typeof a === 'object' && a.__neg__ !== undefined) ? a.__neg__() : (-a)"
 
 def ρσ_operator_sub(a, b):
+    if ρσ_is_math_element(a) or ρσ_is_math_element(b):
+        return ρσ_coercion_model.binOp('sub', a, b)
     return v"(typeof a === 'object' && a.__sub__ !== undefined) ? a.__sub__(b) : a - b"
 
 def ρσ_operator_sub_exact(a, b):
+    if ρσ_is_math_element(a) or ρσ_is_math_element(b):
+        return ρσ_coercion_model.binOp('sub', a, b)
     if jstype(a) is 'object' and a.__sub__ is not undefined:
         return a.__sub__(b)
     if jstype(a) is 'bigint' or jstype(b) is 'bigint':
@@ -62,9 +70,13 @@ def ρσ_operator_sub_exact(a, b):
     return result
 
 def ρσ_operator_mul(a, b):
+    if ρσ_is_math_element(a) or ρσ_is_math_element(b):
+        return ρσ_coercion_model.binOp('mul', a, b)
     return v"(typeof a === 'object'  && a.__mul__ !== undefined) ? a.__mul__(b) : a * b"
 
 def ρσ_operator_mul_exact(a, b):
+    if ρσ_is_math_element(a) or ρσ_is_math_element(b):
+        return ρσ_coercion_model.binOp('mul', a, b)
     if jstype(a) is 'object' and a.__mul__ is not undefined:
         return a.__mul__(b)
     if jstype(a) is 'bigint' or jstype(b) is 'bigint':
@@ -81,6 +93,8 @@ def ρσ_operator_mul_exact(a, b):
     return result
 
 def ρσ_operator_div(a, b):
+    if ρσ_is_math_element(a) or ρσ_is_math_element(b):
+        return ρσ_coercion_model.binOp('truediv', a, b)
     return v"(typeof a === 'object'  && a.__div__ !== undefined) ? a.__div__(b) : a / b"
 
 def ρσ_operator_pow(a, b):
@@ -133,9 +147,23 @@ def ρσ_operator_imul_exact(a, b):
 def ρσ_operator_ipow_exact(a, b):
     return v"(typeof a === 'object' && a.__ipow__ !== undefined) ? a.__ipow__(b) : ρσ_operator_pow_exact(a,b)"
 
+def ρσ_operator_idiv_exact(a, b):
+    return v"(typeof a === 'object' && a.__itruediv__ !== undefined) ? a.__itruediv__(b) : ρσ_operator_truediv_exact(a,b)"
+
 
 def ρσ_operator_truediv(a, b):
+    if ρσ_is_math_element(a) or ρσ_is_math_element(b):
+        return ρσ_coercion_model.binOp('truediv', a, b)
     return v"(typeof a === 'object'  && a.__truediv__ !== undefined) ? a.__truediv__(b) : a / b"
+
+def ρσ_operator_truediv_exact(a, b):
+    if ρσ_is_math_element(a) or ρσ_is_math_element(b):
+        return ρσ_coercion_model.binOp('truediv', a, b)
+    if ρσ_exact_integer_primitive(a) and ρσ_exact_integer_primitive(b):
+        return new Rational(a, b)
+    if jstype(a) is 'object' and a.__truediv__ is not undefined:
+        return a.__truediv__(b)
+    return v'a / b'
 
 def ρσ_operator_floordiv(a, b):
     return v"(typeof a === 'object'  && a.__floordiv__ !== undefined) ? a.__floordiv__(b) : Math.floor(a / b)"
@@ -166,6 +194,8 @@ def ρσ_int(val, base):
 def ρσ_float(val):
     if jstype(val) is "number":
         ans = val
+    elif val and jstype(val.__float__) is 'function':
+        ans = val.__float__()
     else:
         ans = parseFloat(val)
     if isNaN(ans):
@@ -442,8 +472,6 @@ def ρσ_divmod(x, y):
     return d, x - d * y
 
 
-ρσ_factor_state = v'{"backend": null}'
-
 def ρσ_factor(value):
     if jstype(value) is 'number':
         if not Number.isSafeInteger(value):
@@ -452,10 +480,7 @@ def ρσ_factor(value):
     elif jstype(value) is not 'bigint':
         raise TypeError('factor() requires an integer')
 
-    if ρσ_factor_state.backend is None:
-        ρσ_factor_state.backend = require('@sagemath/sagejs-flint')
-
-    result = ρσ_factor_state.backend.factor(value)
+    result = ρσ_flint_backend().factor(value)
     return new IntegerFactorization(
         result.factors, BigInt(result.sign), False, False, False)
 

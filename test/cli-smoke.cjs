@@ -23,6 +23,16 @@ function run(args, input) {
   return result.stdout;
 }
 
+function runError(args, input) {
+  const result = spawnSync(process.execPath, [cli, ...args], {
+    cwd: root,
+    encoding: "utf8",
+    input,
+  });
+  assert.notEqual(result.stderr, "", "command unexpectedly produced no error");
+  return result.stderr;
+}
+
 assert.match(run(["--version"]), /^sagejs 0\.1\.0\s*$/);
 assert.match(run([], "print(2^3)\nprint(sum([1..10]))\n"), /8\s+55\s*$/);
 assert.equal(
@@ -54,6 +64,42 @@ assert.equal(
   ].join("\n"),
 );
 assert.match(run(["--python"], "print(2^3)\nprint(2**3)\n"), /1\s+8\s*$/);
+
+assert.equal(
+  run(
+    [],
+    [
+      "a = 2/1;",
+      "print(a)",
+      "print(type(a))",
+      "print(parent(a))",
+      "print(a == 2)",
+      "print(1 + a)",
+      "print(a + 1)",
+      "print(2/3 + 1/6)",
+      "print(QQ(2, -4))",
+      "q = 2;",
+      "q /= 3;",
+      "print(q)",
+      "n = 923098402834028349082348209384;",
+      "print((n/3)*3)",
+      "",
+    ].join("\n"),
+  ).trim(),
+  [
+    "2",
+    "<class 'Rational'>",
+    "Rational Field",
+    "True",
+    "3",
+    "3",
+    "5/6",
+    "-1/2",
+    "2/3",
+    "923098402834028349082348209384",
+  ].join("\n"),
+);
+assert.match(runError([], "print(1/0)\n"), /rational division by zero/);
 
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-test-"));
 try {

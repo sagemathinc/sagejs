@@ -57,6 +57,7 @@
     "test:cli": "node test/cli-smoke.cjs",
     "test:native": "pnpm --dir packages/flint test && node bin/sagejs packages/flint/test/integration.sage",
     "bench:cold": "node bench/cold-start.cjs",
+    "bench:arithmetic": "node bench/compare-sagelite.cjs",
     "prepack": "pnpm test"
   },
   "devDependencies": {

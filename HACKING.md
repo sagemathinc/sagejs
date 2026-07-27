@@ -12,7 +12,7 @@
 - `dist/tools/` is generated from `tools/` by TypeScript.
 - `test/` contains the language test suite and CLI smoke tests.
 - `packages/flint/` is the optional native FLINT Node-API experiment.
-- `bench/` contains process-startup benchmarks.
+- `bench/` contains process-startup and Sage/Sagelite arithmetic benchmarks.
 
 ## Build
 
@@ -44,7 +44,14 @@ test the native workspace explicitly:
 ```sh
 pnpm --dir packages/flint build
 pnpm test:native
+pnpm bench:arithmetic
 ```
+
+`src/baselib/algebra.py` contains the small parent/coercion kernel and the
+language wrappers around native polynomial values. The coercion resolver is
+responsible for both operand maps and may construct a common parent such as
+`QQ[x]`; do not reintroduce asymmetric `__radd__` dispatch for mathematical
+elements.
 
 ## Modes
 

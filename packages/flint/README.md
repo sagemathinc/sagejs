@@ -6,11 +6,17 @@ the stable C Node-API. It is deliberately separate from `@sagemath/sagejs`:
 loading the language must not initialize native mathematics libraries.
 
 The first API exposes JavaScript `BigInt` round trips, GCD, factorial,
-Fibonacci numbers, binomial coefficients, primorials, and integer
-factorization. Conversion uses Node-API's little-endian 64-bit word arrays and
-FLINT's `fmpz_set_ui_array` / `fmpz_get_ui_array` functions, so crossing the
-boundary requires one linear copy in each direction and no decimal-string
-conversion.
+Fibonacci numbers, binomial coefficients, primorials, integer factorization,
+and opaque `fmpz_poly`/`fmpq_poly` values. Conversion uses Node-API's
+little-endian 64-bit word arrays and FLINT's `fmpz_set_ui_array` /
+`fmpz_get_ui_array` functions, so crossing the integer boundary requires one
+linear copy in each direction and no decimal-string conversion.
+
+Polynomial constants and generators enter the addon once. Addition,
+subtraction, multiplication, powers, and `fmpz_poly` to `fmpq_poly`
+coercion operate directly on C-owned values. JavaScript receives only an
+opaque object with a native finalizer; coefficients are converted back only
+when formatting is explicitly requested.
 
 When this package is available to Sage.js, the language-level function loads
 it only upon first use and caches it:

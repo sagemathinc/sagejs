@@ -14,8 +14,15 @@
         "-lm",
         "-lpthread"
       ],
-      "defines": ["NAPI_VERSION=6"],
-      "cflags": ["-O3", "-fPIC", "-ffunction-sections", "-fdata-sections"],
+      "defines": ["NAPI_VERSION=8"],
+      "cflags": [
+        "-O3",
+        "-fPIC",
+        "-Wall",
+        "-Wextra",
+        "-ffunction-sections",
+        "-fdata-sections"
+      ],
       "ldflags": [
         "-Wl,--gc-sections",
         "-Wl,--exclude-libs,ALL",
