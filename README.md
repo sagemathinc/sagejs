@@ -55,10 +55,31 @@ In Sage mode:
 - `^` means exponentiation;
 - `^^` means bitwise xor;
 - `[a..b]` means the inclusive range from `a` through `b`;
-- numerical literals pass through the language's configurable number hook.
+- numerical literals pass through exact-text `Integer(...)` and
+  `RealNumber(...)` hooks.
 
 These features are implemented in the parser and compiler, not by textual
 preprocessing.
+
+Integer source text is preserved before JavaScript parses it. The initial
+`Integer` hook uses a JavaScript `Number` when the value is safely
+representable and a `BigInt` otherwise:
+
+```text
+sage: 202693990283402830942083402834
+202693990283402830942083402834
+sage: jstype(9007199254740991)
+number
+sage: jstype(9007199254740992)
+bigint
+```
+
+This hybrid is an intentionally compatible first step, not the final Sage.js
+integer model. In particular, mixed arithmetic between a large `BigInt` and a
+small `Number` does not yet have Sage coercion semantics, and arithmetic that
+starts with safe `Number` values is not yet promoted automatically when its
+result grows. The constructor seam allows a future `Integer` element type to
+replace this representation without changing the parser again.
 
 Run a file directly:
 
@@ -152,6 +173,8 @@ sage: factor(-360)
 [[-1, 1], [2, 3], [3, 2], [5, 1]]
 sage: factor(1)
 []
+sage: factor(202693990283402830942083402834)
+[[2, 1], [3, 2], [37, 1], [20390333, 1], [14925961766090828753, 1]]
 ```
 
 Safe JavaScript integer `Number` values and arbitrary-size `BigInt` values are

@@ -1592,14 +1592,18 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     'end': tok,
                     'value': tok.value
                 })
+            constructor = 'Number'
+            if options.jsage:
+                constructor = 'Integer' if tok.is_integer else 'RealNumber'
             return AST_Call({
                 'expression':
-                AST_SymbolRef({'name': 'Number'}),
+                AST_SymbolRef({'name': constructor}),
                 'args':
                 [AST_String({
                     'start': tok,
                     'end': tok,
-                    'value': str(tok.value)
+                    'value': tok.raw if tok.raw is not undefined else str(
+                        tok.value)
                 })]
             })
         elif tmp_ is "string":

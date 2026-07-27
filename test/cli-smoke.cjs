@@ -25,6 +25,22 @@ function run(args, input) {
 
 assert.match(run(["--version"]), /^sagejs 0\.1\.0\s*$/);
 assert.match(run([], "print(2^3)\nprint(sum([1..10]))\n"), /8\s+55\s*$/);
+assert.equal(
+  run(
+    [],
+    [
+      "print(202693990283402830942083402834)",
+      "print(jstype(9007199254740991))",
+      "print(jstype(9007199254740992))",
+      "",
+    ].join("\n"),
+  ).trim(),
+  [
+    "202693990283402830942083402834",
+    "number",
+    "bigint",
+  ].join("\n"),
+);
 assert.match(run(["--python"], "print(2^3)\nprint(2**3)\n"), /1\s+8\s*$/);
 
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-test-"));

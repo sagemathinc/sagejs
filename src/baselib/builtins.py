@@ -83,6 +83,24 @@ def ρσ_float(val):
         raise ValueError('Could not convert string to float: ' + arguments[0])
     return ans
 
+ρσ_max_safe_integer = BigInt(Number.MAX_SAFE_INTEGER)
+ρσ_min_safe_integer = BigInt(Number.MIN_SAFE_INTEGER)
+
+def ρσ_integer_literal(text):
+    # Preserve exact Sage integer literals without yet replacing the pervasive
+    # JavaScript Number representation used by the existing base library.
+    # This constructor is the seam for a future Sage Integer element type.
+    if text.length > 1 and RegExp(r'^0[0-7]+$').test(text):
+        value = BigInt('0o' + text.slice(1))
+    else:
+        value = BigInt(text)
+    if ρσ_min_safe_integer <= value <= ρσ_max_safe_integer:
+        return Number(value)
+    return value
+
+def ρσ_real_literal(text):
+    return Number(text)
+
 def ρσ_arraylike_creator():
     names = 'Int8Array Uint8Array Uint8ClampedArray Int16Array Uint16Array Int32Array Uint32Array Float32Array Float64Array'.split(' ')
     if jstype(HTMLCollection) is 'function':
@@ -373,7 +391,8 @@ def ρσ_max(*args, **kwargs):
     raise TypeError('expected at least one argument')
 
 v'var round = ρσ_round; var max = ρσ_max.bind(Math.max), min = ρσ_max.bind(Math.min), bool = ρσ_bool, type = ρσ_type'
-v'var float = ρσ_float, int = ρσ_int, arraylike = ρσ_arraylike_creator(), ρσ_arraylike = arraylike'
+v'var float = ρσ_float, int = ρσ_int, Integer = ρσ_integer_literal, RealNumber = ρσ_real_literal'
+v'var arraylike = ρσ_arraylike_creator(), ρσ_arraylike = arraylike'
 v'var print = ρσ_print, id = ρσ_id, get_module = ρσ_get_module, pow = ρσ_pow, divmod = ρσ_divmod'
 v'var dir = ρσ_dir, ord = ρσ_ord, chr = ρσ_chr, bin = ρσ_bin, hex = ρσ_hex, callable = ρσ_callable'
 v'var enumerate = ρσ_enumerate, iter = ρσ_iter, reversed = ρσ_reversed, len = ρσ_len'

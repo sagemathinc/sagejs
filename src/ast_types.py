@@ -39,6 +39,10 @@ class AST_Token(AST):
         'The type of the token',
         'value':
         'The value of the token',
+        'raw':
+        'The exact source text of a numeric token',
+        'is_integer':
+        'Whether a numeric token is an integer literal',
         'line':
         'The line number at which the token occurs',
         'col':

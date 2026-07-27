@@ -47,5 +47,12 @@ assrt.equal(str([1.5..5]), 'range(1.5, 6)')
 from __python__ import numbers
 # will parse all numbers as one less!
 def Number(s):
+    if s == '202693990283402830942083402834':
+        return s
     return parseFloat(s) - parseFloat('1.0')
 assrt.equal(2.5, parseFloat('1.5'))
+
+# The number hook receives exact source text, even when JavaScript Number
+# could not represent the literal.
+assrt.equal(202693990283402830942083402834,
+            '202693990283402830942083402834')

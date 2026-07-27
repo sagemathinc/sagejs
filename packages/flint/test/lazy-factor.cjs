@@ -28,12 +28,19 @@ assert.equal(arithmetic.stdout.trim(), "1.2676506002282294e+30");
 assert.doesNotMatch(arithmetic.stderr, new RegExp(marker));
 
 const factoring = run(
-  "print(factor(2026))\nprint(factor(-360))\nprint(factor(1))\n",
+  [
+    "print(factor(2026))",
+    "print(factor(-360))",
+    "print(factor(1))",
+    "print(factor(202693990283402830942083402834))",
+    "",
+  ].join("\n"),
 );
 assert.deepEqual(factoring.stdout.trim().split("\n"), [
   "[[2, 1], [1013, 1]]",
   "[[-1, 1], [2, 3], [3, 2], [5, 1]]",
   "[]",
+  "[[2, 1], [3, 2], [37, 1], [20390333, 1], [14925961766090828753, 1]]",
 ]);
 assert.equal(factoring.stderr.match(new RegExp(marker, "g"))?.length, 1);
 

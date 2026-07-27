@@ -242,7 +242,9 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
     def token(type: str,
               value: Any,
               is_comment: bool = False,
-              keep_newline: bool = False) -> AST_Token:
+              keep_newline: bool = False,
+              raw: Any = undefined,
+              is_integer: Any = undefined) -> AST_Token:
         if S['exponent'] and type == 'operator':
             if value == '^':
                 value = '**'
@@ -264,6 +266,8 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
         ret = {
             'type': type,
             'value': value,
+            'raw': raw,
+            'is_integer': is_integer,
             'line': S['tokline'],
             'col': S['tokcol'],
             'pos': S['tokpos'],
@@ -384,7 +388,7 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
                 valid = int(num, 2)  # type: Union[float, int]
             except:
                 parse_error('Invalid syntax for a binary number')
-            return token('num', valid)
+            return token('num', valid, False, False, '0b' + num, True)
         seen = []  # type: List[str]
 
         def is_num(ch, i):
@@ -433,7 +437,8 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
             parse_error("SyntaxError: invalid syntax in numeric literal -- " +
                         num)
             return undefined
-        return token("num", valid)
+        return token("num", valid, False, False, num,
+                     not has_dot and not has_e)
 
     # This returns str or int, since it could be a
     # hex number or a hex character code.

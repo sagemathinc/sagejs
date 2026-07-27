@@ -44,7 +44,7 @@ var BUILTINS = Object.create(null);
   " float iter Error EvalError set_wrap RangeError ReferenceError SyntaxError" +
   " str TypeError URIError Exception AssertionError IndexError AttributeError KeyError" +
   " ValueError ZeroDivisionError map hex filter zip dict dict_wrap UnicodeDecodeError HTMLCollection" +
-  " NodeList alert console Node Symbol NamedNodeMap ρσ_eslice ρσ_delslice Number BigInt" +
+  " NodeList alert console Node Symbol NamedNodeMap ρσ_eslice ρσ_delslice Number BigInt Integer RealNumber" +
   " Boolean encodeURIComponent decodeURIComponent setTimeout setInterval" +
   " setImmediate clearTimeout clearInterval clearImmediate requestAnimationFrame" +
   " id repr sorted __name__ equals get_module ρσ_str jstype divmod NaN"
