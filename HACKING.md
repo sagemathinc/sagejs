@@ -15,8 +15,8 @@
 ## Build
 
 ```sh
-npm ci
-npm run build
+pnpm install --frozen-lockfile
+pnpm build
 ```
 
 The build removes `dist/`, copies the bootstrap compiler into it, compiles the
@@ -26,13 +26,13 @@ compiler signatures agree.
 Run every check with:
 
 ```sh
-npm test
+pnpm test
 ```
 
 Inspect the exact npm payload with:
 
 ```sh
-npm pack --dry-run
+pnpm pack --dry-run
 ```
 
 ## Modes

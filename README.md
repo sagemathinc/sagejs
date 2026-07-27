@@ -24,7 +24,7 @@ does not yet contain the native mathematical library layer.
 Sage.js requires Node.js 20.17 or newer.
 
 ```sh
-npm install --global @sagemath/sagejs
+pnpm add --global @sagemath/sagejs
 ```
 
 It can also be tried without a global installation:
@@ -118,11 +118,11 @@ node output.js
 ```sh
 git clone https://github.com/sagemathinc/sagejs
 cd sagejs
-npm ci
-npm test
+pnpm install --frozen-lockfile
+pnpm test
 ```
 
-`npm run build` compiles the TypeScript tooling and then uses the checked-in
+`pnpm build` compiles the TypeScript tooling and then uses the checked-in
 bootstrap compiler to rebuild the compiler from its Python-like source. The
 build continues until the compiler is compiled with an up-to-date version of
 itself.

@@ -1,6 +1,7 @@
 {
   "name": "@sagemath/sagejs",
   "version": "0.1.0",
+  "packageManager": "pnpm@11.9.0",
   "description": "Open research mathematics, native to Node",
   "homepage": "https://github.com/sagemathinc/sagejs#readme",
   "repository": {
@@ -51,10 +52,10 @@
     "build": "node scripts/build.cjs",
     "clean": "node scripts/clean.cjs",
     "start": "node bin/sagejs",
-    "test": "npm run build && npm run test:compiler && npm run test:cli",
+    "test": "pnpm run build && pnpm run test:compiler && pnpm run test:cli",
     "test:compiler": "node bin/sagejs test",
     "test:cli": "node test/cli-smoke.cjs",
-    "prepack": "npm test"
+    "prepack": "pnpm test"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
