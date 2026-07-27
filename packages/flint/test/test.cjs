@@ -5,6 +5,9 @@ const flint = require("..");
 
 assert.equal(flint.version(), "3.5.0");
 assert.equal(flint.nativeAbiVersion(), 1);
+assert.equal(flint.mpfrVersion(), "4.2.2");
+assert.equal(flint.mpcVersion(), "1.4.1");
+assert.match(flint.gmpVersion(), /^6\./);
 
 for (const value of [
   0n,

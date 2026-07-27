@@ -817,6 +817,35 @@ static napi_value native_abi_version(napi_env env, napi_callback_info info)
     return result;
 }
 
+static napi_value library_version(
+    napi_env env, const char *value)
+{
+    napi_value result;
+
+    if (!check_napi(env,
+        napi_create_string_utf8(env, value, NAPI_AUTO_LENGTH, &result)))
+        return NULL;
+    return result;
+}
+
+static napi_value mpfr_version_value(napi_env env, napi_callback_info info)
+{
+    (void) info;
+    return library_version(env, mpfr_get_version());
+}
+
+static napi_value mpc_version(napi_env env, napi_callback_info info)
+{
+    (void) info;
+    return library_version(env, mpc_get_version());
+}
+
+static napi_value gmp_version_value(napi_env env, napi_callback_info info)
+{
+    (void) info;
+    return library_version(env, gmp_version);
+}
+
 static napi_value initialize(napi_env env, napi_value exports)
 {
     napi_property_descriptor properties[] = {
@@ -895,6 +924,12 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"complexPrecision", NULL, sagejs_complex_precision, NULL, NULL, NULL,
             napi_default, NULL},
         {"nativeAbiVersion", NULL, native_abi_version, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpfrVersion", NULL, mpfr_version_value, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpcVersion", NULL, mpc_version, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"gmpVersion", NULL, gmp_version_value, NULL, NULL, NULL,
             napi_default, NULL},
         {"version", NULL, version, NULL, NULL, NULL, napi_default, NULL},
     };

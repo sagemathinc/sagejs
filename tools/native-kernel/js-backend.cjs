@@ -12,11 +12,18 @@ function jsString(value) {
 }
 
 function emitStatement(operation, indent) {
+  if (operation.kind === "real.constant") {
+    return `${indent}let ${operation.target} = ${operation.parent}(` +
+      `${jsString(operation.value)});`;
+  }
   if (operation.kind === "complex.constant") {
     return `${indent}let ${operation.target} = ${operation.parent}(` +
       `${jsString(operation.real)}, ${jsString(operation.imag)});`;
   }
-  if (operation.kind === "complex.binary") {
+  if (
+    operation.kind === "real.binary" ||
+    operation.kind === "complex.binary"
+  ) {
     return `${indent}${operation.target} = ${operation.left}.` +
       `${METHOD[operation.operation]}(${operation.right});`;
   }
@@ -43,12 +50,15 @@ ${fn.body.map((item) => emitStatement(item, "  ")).join("\n")}
 }
 
 function emitPublicFunction(fn) {
-  const parent = fn.params.find((param) => param.type === "ComplexField");
+  const parent = fn.params.find(
+    (param) =>
+      param.type === "RealField" || param.type === "ComplexField",
+  );
   const iterations = fn.params.find((param) => param.type === "uint64");
   const params = fn.params.map((param) => param.name).join(", ");
   const nativeArgs = fn.params
     .map((param) =>
-      param.type === "ComplexField"
+      param.type === "RealField" || param.type === "ComplexField"
         ? `${param.name}.precision()`
         : param.name,
     )
@@ -56,9 +66,9 @@ function emitPublicFunction(fn) {
   return `${emitFallback(fn)}
 
 function validate_${fn.name}(${params}) {
-  if (${parent.name} == null || ${parent.name}._kind !== "ComplexField" ||
+  if (${parent.name} == null || ${parent.name}._kind !== "${parent.type}" ||
       typeof ${parent.name}._fromNative !== "function") {
-    throw new TypeError("${parent.name} must be a Sage.js ComplexField");
+    throw new TypeError("${parent.name} must be a Sage.js ${parent.type}");
   }
   if (!(typeof ${iterations.name} === "bigint"
         ? ${iterations.name} >= 0n && ${iterations.name} <= 18446744073709551615n

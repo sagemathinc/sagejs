@@ -27,6 +27,10 @@ module.exports = {
       arguments: ["ComplexField", "uint64"],
       returns: "ComplexNumber",
     },
+    real_multiply_loop: {
+      arguments: ["RealField", "uint64"],
+      returns: "RealNumber",
+    },
   },
 };
 ```
@@ -50,21 +54,25 @@ MPFR/MPC prefix built by `packages/flint`.
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
 lowers the selected functions to typed IR. Native Kernel v0 supports:
 
-- one `ComplexField` parent and one nonnegative `uint64` argument;
-- local `ComplexNumber` values constructed from two decimal strings;
+- one `RealField` or `ComplexField` parent and one nonnegative `uint64`
+  argument;
+- local `RealNumber` or `ComplexNumber` values constructed from decimal
+  strings;
 - `for ... in range(iterations)`;
-- local complex addition, subtraction, multiplication, and division;
-- return of a complex local.
+- local real or complex addition, subtraction, multiplication, and division;
+- return of a local matching the supplied field.
 
 Unsupported syntax and missing types are rejected during lowering. The IR
 marks the returned local separately from non-escaping temporaries: the C
 backend allocates only the result in the shared native heap representation and
-keeps other MPC values as local storage.
+keeps other MPFR/MPC values as local storage.
 
 Two backends consume the same IR:
 
-- the JavaScript backend uses ordinary immutable Sage.js complex operations;
-- the C backend uses MPC and mutates non-escaping native locals in place.
+- the JavaScript backend uses ordinary immutable Sage.js real or complex
+  operations;
+- the C backend uses MPFR or MPC and mutates non-escaping native locals in
+  place.
 
 The generated module validates the Sage.js parent and iteration count. It uses
 the C addon when available and otherwise uses the JavaScript implementation.
@@ -75,8 +83,8 @@ the C addon when available and otherwise uses the JavaScript implementation.
 
 `packages/flint/include/sagejs/native.h` is ABI version 1. It defines ownership
 and stable Node-API type tags for opaque MPFR and MPC elements. The generated
-kernel returns one of these ordinary native complex values. The supplied
-`ComplexField` verifies its precision and wraps it in the standard Sage.js
+kernel returns one of these ordinary native values. The supplied field verifies
+its precision and wraps it in the standard Sage.js `RealNumber` or
 `ComplexNumber` class.
 
 Consequently:
@@ -86,9 +94,13 @@ Consequently:
 - users receive a normal Sage.js element with the correct parent;
 - the JavaScript and native backends expose the same public return type.
 
-The regression test compiles into a fresh cache, checks a cache hit, consumes
-the result across the two independently built addons at 53, 1000, and 10000
-bits, and runs the same generated module through both backends.
+The regression test compiles real and complex kernels into a fresh cache,
+checks a cache hit, consumes results across the two independently built addons
+at 53, 1000, and 10000 bits, and runs the same generated module through both
+backends.
+
+For the matched real-number comparison against SageMath, see
+[`MPFR-BENCHMARK.md`](MPFR-BENCHMARK.md).
 
 ## Performance
 

@@ -3,7 +3,14 @@
 const createCompiler = require("../..");
 
 const IR_VERSION = 0;
-const SUPPORTED_ARGUMENT_TYPES = new Set(["ComplexField", "uint64"]);
+const PARENT_ELEMENT_TYPES = new Map([
+  ["RealField", "RealNumber"],
+  ["ComplexField", "ComplexNumber"],
+]);
+const SUPPORTED_ARGUMENT_TYPES = new Set([
+  ...PARENT_ELEMENT_TYPES.keys(),
+  "uint64",
+]);
 const BINARY_OPERATIONS = new Map([
   ["+", "add"],
   ["-", "sub"],
@@ -41,14 +48,21 @@ function assignment(statement, description) {
   return statement.body;
 }
 
-function lowerComplexConstant(node, parentName, description) {
+function lowerConstant(node, parentName, elementType, description) {
   expect(
     nodeType(node) === "AST_Call" &&
       nodeType(node.expression) === "AST_SymbolRef" &&
       node.expression.name === parentName,
-    `expected ${description} to call ComplexField argument ${parentName}`,
+    `expected ${description} to call field argument ${parentName}`,
   );
   const args = array(node.args);
+  if (elementType === "RealNumber") {
+    expect(
+      args.length === 1 && nodeType(args[0]) === "AST_String",
+      `expected ${description} to contain one decimal string literal`,
+    );
+    return { value: args[0].value };
+  }
   expect(
     args.length === 2 &&
       nodeType(args[0]) === "AST_String" &&
@@ -58,7 +72,7 @@ function lowerComplexConstant(node, parentName, description) {
   return { real: args[0].value, imag: args[1].value };
 }
 
-function lowerBinary(statement, localTypes) {
+function lowerBinary(statement, localTypes, elementType) {
   const update = assignment(statement, "native loop operation");
   expect(
     nodeType(update.left) === "AST_SymbolRef" &&
@@ -79,20 +93,21 @@ function lowerBinary(statement, localTypes) {
   const left = update.right.left.name;
   const right = update.right.right.name;
   expect(
-    localTypes.get(left) === "ComplexNumber" &&
-      localTypes.get(right) === "ComplexNumber",
-    "native arithmetic currently requires ComplexNumber operands",
+    localTypes.get(left) === elementType &&
+      localTypes.get(right) === elementType,
+    `native arithmetic currently requires ${elementType} operands`,
   );
   if (localTypes.has(target)) {
     expect(
-      localTypes.get(target) === "ComplexNumber",
+      localTypes.get(target) === elementType,
       `native local ${target} changed type`,
     );
   } else {
-    localTypes.set(target, "ComplexNumber");
+    localTypes.set(target, elementType);
   }
   return {
-    kind: "complex.binary",
+    kind:
+      elementType === "RealNumber" ? "real.binary" : "complex.binary",
     operation,
     target,
     left,
@@ -110,11 +125,6 @@ function lowerFunction(fn, signature) {
     Array.isArray(signature.arguments),
     `signature for ${fn.name.name} needs an arguments array`,
   );
-  expect(
-    signature.returns === "ComplexNumber",
-    `${fn.name.name} must return ComplexNumber in Native Kernel v0`,
-  );
-
   const args = array(fn.argnames);
   expect(
     args.length === signature.arguments.length,
@@ -132,15 +142,21 @@ function lowerFunction(fn, signature) {
     );
     return { name: arg.name, type };
   });
-  const complexParents = params.filter(
-    (param) => param.type === "ComplexField",
+  const parentParams = params.filter((param) =>
+    PARENT_ELEMENT_TYPES.has(param.type),
   );
   const iterationParams = params.filter((param) => param.type === "uint64");
   expect(
-    complexParents.length === 1 && iterationParams.length === 1,
-    "Native Kernel v0 requires one ComplexField and one uint64 argument",
+    parentParams.length === 1 && iterationParams.length === 1,
+    "Native Kernel v0 requires one supported field and one uint64 argument",
   );
-  const parentName = complexParents[0].name;
+  const parent = parentParams[0];
+  const elementType = PARENT_ELEMENT_TYPES.get(parent.type);
+  expect(
+    signature.returns === elementType,
+    `${fn.name.name} with ${parent.type} must return ${elementType}`,
+  );
+  const parentName = parent.name;
   const iterationName = iterationParams[0].name;
   const localTypes = new Map();
   const body = [];
@@ -159,14 +175,18 @@ function lowerFunction(fn, signature) {
         `native local ${target} must also be a C identifier`,
       );
       expect(!localTypes.has(target), `native local ${target} is redefined`);
-      const value = lowerComplexConstant(
+      const value = lowerConstant(
         init.right,
         parentName,
+        elementType,
         `initializer for ${target}`,
       );
-      localTypes.set(target, "ComplexNumber");
+      localTypes.set(target, elementType);
       body.push({
-        kind: "complex.constant",
+        kind:
+          elementType === "RealNumber"
+            ? "real.constant"
+            : "complex.constant",
         target,
         parent: parentName,
         ...value,
@@ -202,7 +222,7 @@ function lowerFunction(fn, signature) {
         `native loop must use range(${iterationName})`,
       );
       const loopBody = array(statement.body?.body).map((item) =>
-        lowerBinary(item, localTypes),
+        lowerBinary(item, localTypes, elementType),
       );
       expect(loopBody.length > 0, "native loop body cannot be empty");
       body.push({
@@ -218,8 +238,8 @@ function lowerFunction(fn, signature) {
       expect(returned === undefined, "native function has multiple returns");
       expect(
         nodeType(statement.value) === "AST_SymbolRef" &&
-          localTypes.get(statement.value.name) === "ComplexNumber",
-        "native function must return a ComplexNumber local",
+          localTypes.get(statement.value.name) === elementType,
+        `native function must return a ${elementType} local`,
       );
       returned = statement.value.name;
       body.push({ kind: "return", value: returned });
@@ -244,7 +264,7 @@ function lowerFunction(fn, signature) {
   return {
     name: fn.name.name,
     params,
-    returnType: "ComplexNumber",
+    returnType: elementType,
     locals,
     body,
   };

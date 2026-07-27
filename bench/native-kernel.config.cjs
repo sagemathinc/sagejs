@@ -8,5 +8,9 @@ module.exports = {
       arguments: ["ComplexField", "uint64"],
       returns: "ComplexNumber",
     },
+    real_multiply_loop: {
+      arguments: ["RealField", "uint64"],
+      returns: "RealNumber",
+    },
   },
 };

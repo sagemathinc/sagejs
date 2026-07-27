@@ -316,16 +316,16 @@ node output.js
 The first structured native compiler path parses selected Sage.js functions
 through the ordinary frontend, lowers them to an explicitly typed
 intermediate representation, and generates both a JavaScript fallback and a
-C/MPC Node addon. It currently accepts a deliberately narrow `ComplexField`
-loop subset. A content-addressed cache incorporates the source, signature,
-typed IR, compiler implementation, native ABI, Node ABI, platform, and
-mathematical-library versions.
+C/MPFR/MPC Node addon. It currently accepts deliberately narrow `RealField`
+and `ComplexField` loop subsets. A content-addressed cache incorporates the
+source, signature, typed IR, compiler implementation, native ABI, Node ABI,
+platform, and mathematical-library versions.
 
 Generated native kernels cross Node-API once for the whole algorithm and
-return the same opaque native value used by the standard Sage.js
-`ComplexNumber` class—not a compiler-specific result object. The generated
-JavaScript wrapper validates the parent and arguments and turns that native
-value into an ordinary element of the supplied `ComplexField`. Setting
+return the same opaque native values used by the standard Sage.js
+`RealNumber` and `ComplexNumber` classes—not compiler-specific result objects.
+The generated JavaScript wrapper validates the parent and arguments and turns
+that native value into an ordinary element of the supplied field. Setting
 `SAGEJS_NATIVE_DISABLE=1` runs the generated JavaScript backend instead.
 
 On the initial benchmark machine, a 53-bit multiplication loop took about
@@ -340,6 +340,14 @@ run its comparative benchmark with:
 node tools/native-kernel.cjs bench/native-kernel.config.cjs
 pnpm run bench:native
 ```
+
+For a matched comparison where both Sage.js and SageMath call MPFR's
+`mpfr_mul`, see
+[`bench/MPFR-BENCHMARK.md`](bench/MPFR-BENCHMARK.md). On the initial machine,
+the generated 53-bit real loop took about 11.7 ns per multiplication, versus
+126.5 ns through SageMath's Cython `RealNumber` and 1194 ns through scalar
+Sage.js. The benchmark reports the loaded MPFR and GMP versions so this
+comparison remains auditable.
 
 ## Build from source
 

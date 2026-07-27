@@ -17,6 +17,13 @@ function nativeValue(local) {
 }
 
 function emitOperation(operation, locals, indent) {
+  if (operation.kind === "real.binary") {
+    const target = locals.get(operation.target);
+    const left = locals.get(operation.left);
+    const right = locals.get(operation.right);
+    return `${indent}mpfr_${operation.operation}(${nativeValue(target)}, ` +
+      `${nativeValue(left)}, ${nativeValue(right)}, MPFR_RNDN);`;
+  }
   if (operation.kind === "complex.binary") {
     const target = locals.get(operation.target);
     const left = locals.get(operation.left);
@@ -28,7 +35,12 @@ function emitOperation(operation, locals, indent) {
 }
 
 function emitFunction(fn) {
-  const parent = fn.params.find((param) => param.type === "ComplexField");
+  const real = fn.returnType === "RealNumber";
+  const prefix = real ? "real" : "complex";
+  const parentType = real ? "RealField" : "ComplexField";
+  const nativeType = real ? "sagejs_real" : "sagejs_complex";
+  const localType = real ? "mpfr_t" : "mpc_t";
+  const parent = fn.params.find((param) => param.type === parentType);
   const iterations = fn.params.find((param) => param.type === "uint64");
   const locals = new Map(fn.locals.map((local) => [local.name, local]));
   const returned = fn.locals.find((local) => local.storage === "return");
@@ -43,29 +55,42 @@ function emitFunction(fn) {
 
   for (const local of fn.locals) {
     if (local.storage === "return") {
-      declarations.push(`    sagejs_complex *${cName(local.name)} = NULL;`);
+      declarations.push(`    ${nativeType} *${cName(local.name)} = NULL;`);
       initialization.push(
-        `    ${cName(local.name)} = sagejs_native_new_complex(env, precision);`,
+        `    ${cName(local.name)} = sagejs_native_new_${prefix}` +
+          "(env, precision);",
         `    if (${cName(local.name)} == NULL)`,
         "        goto fail;",
       );
     } else {
-      declarations.push(`    mpc_t ${cName(local.name)};`);
+      declarations.push(`    ${localType} ${cName(local.name)};`);
       declarations.push(`    int ${cName(local.name)}_initialized = 0;`);
       initialization.push(
-        `    mpc_init2(${cName(local.name)}, precision);`,
+        `    ${prefix === "real" ? "mpfr" : "mpc"}_init2(` +
+          `${cName(local.name)}, precision);`,
         `    ${cName(local.name)}_initialized = 1;`,
       );
       cleanup.push(
         `    if (${cName(local.name)}_initialized)`,
-        `        mpc_clear(${cName(local.name)});`,
+        `        ${prefix === "real" ? "mpfr" : "mpc"}_clear(` +
+          `${cName(local.name)});`,
       );
     }
   }
 
   const statements = [];
   for (const operation of fn.body) {
-    if (operation.kind === "complex.constant") {
+    if (operation.kind === "real.constant") {
+      const local = locals.get(operation.target);
+      statements.push(
+        `    if (mpfr_set_str(${nativeValue(local)}, ` +
+          `${cString(operation.value)}, 10, MPFR_RNDN) != 0)`,
+        "    {",
+        '        napi_throw_type_error(env, NULL, "invalid native literal");',
+        "        goto fail;",
+        "    }",
+      );
+    } else if (operation.kind === "complex.constant") {
       const local = locals.get(operation.target);
       statements.push(
         `    if (mpfr_set_str(mpc_realref(${nativeValue(local)}), ` +
@@ -118,14 +143,15 @@ ${declarations.join("\n")}
 ${initialization.join("\n")}
 ${statements.join("\n")}
 ${cleanup.join("\n")}
-    wrapped = sagejs_native_wrap_complex(env, ${cName(returned.name)});
+    wrapped = sagejs_native_wrap_${prefix}(env, ${cName(returned.name)});
     ${cName(returned.name)} = NULL;
     return wrapped;
 
 fail:
 ${cleanup.join("\n")}
     if (${cName(returned.name)} != NULL)
-        sagejs_native_finalize_complex(env, ${cName(returned.name)}, NULL);
+        sagejs_native_finalize_${prefix}(
+            env, ${cName(returned.name)}, NULL);
     return NULL;
 }`;
 }
@@ -155,7 +181,7 @@ static int get_precision(
         return 0;
     if (result < MPFR_PREC_MIN || (uint64_t) result > MPFR_PREC_MAX)
     {
-        napi_throw_range_error(env, NULL, "invalid ComplexField precision");
+        napi_throw_range_error(env, NULL, "invalid field precision");
         return 0;
     }
     *precision = (mpfr_prec_t) result;

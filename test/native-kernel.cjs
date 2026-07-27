@@ -23,24 +23,49 @@ const signatures = {
     arguments: ["ComplexField", "uint64"],
     returns: "ComplexNumber",
   },
+  real_multiply_loop: {
+    arguments: ["RealField", "uint64"],
+    returns: "RealNumber",
+  },
 };
 const ir = lowerSource(source, sourcePath, signatures);
+const complexFunction = ir.functions.find(
+  (fn) => fn.name === "multiply_loop",
+);
+const realFunction = ir.functions.find(
+  (fn) => fn.name === "real_multiply_loop",
+);
+const generatedC = generateC(ir);
 
 assert.equal(ir.version, 0);
-assert.equal(ir.functions[0].params[0].type, "ComplexField");
-assert.equal(ir.functions[0].params[1].type, "uint64");
-assert.equal(ir.functions[0].returnType, "ComplexNumber");
-assert.equal(ir.functions[0].locals[0].storage, "return");
-assert.deepEqual(ir.functions[0].body[2].body[0], {
+assert.equal(complexFunction.params[0].type, "ComplexField");
+assert.equal(complexFunction.params[1].type, "uint64");
+assert.equal(complexFunction.returnType, "ComplexNumber");
+assert.equal(complexFunction.locals[0].storage, "return");
+assert.deepEqual(complexFunction.body[2].body[0], {
   kind: "complex.binary",
   operation: "mul",
   target: "value",
   left: "value",
   right: "step",
 });
+assert.equal(realFunction.params[0].type, "RealField");
+assert.equal(realFunction.returnType, "RealNumber");
+assert.equal(realFunction.locals[0].type, "RealNumber");
+assert.deepEqual(realFunction.body[2].body[0], {
+  kind: "real.binary",
+  operation: "mul",
+  target: "value",
+  left: "value",
+  right: "step",
+});
 assert.match(
-  generateC(ir),
+  generatedC,
   /mpc_mul\(sagejs_value->value, sagejs_value->value, sagejs_step/,
+);
+assert.match(
+  generatedC,
+  /mpfr_mul\(sagejs_value->value, sagejs_value->value, sagejs_step/,
 );
 assert.throws(
   () =>
@@ -75,6 +100,14 @@ function reference(precision, iterations) {
   );
   for (let index = 0; index < iterations; index += 1)
     value = mpc.complexMul(value, step);
+  return value;
+}
+
+function realReference(precision, iterations) {
+  let value = mpc.realFromString("1.25", precision);
+  const step = mpc.realFromString("1.0000000000000002", precision);
+  for (let index = 0; index < iterations; index += 1)
+    value = mpc.realMul(value, step);
   return value;
 }
 
@@ -120,6 +153,12 @@ try {
       mpc.complexToString(actual),
       mpc.complexToString(reference(precision, 25)),
     );
+    const actualReal = addon.real_multiply_loop(precision, 25);
+    assert.equal(mpc.realPrecision(actualReal), precision);
+    assert.equal(
+      mpc.realToString(actualReal),
+      mpc.realToString(realReference(precision, 25)),
+    );
   }
 
   const modulePath = JSON.stringify(first.modulePath);
@@ -132,13 +171,27 @@ def reference(field, iterations):
         value = value * step
     return value
 
+def real_reference(field, iterations):
+    value = field("1.25")
+    step = field("1.0000000000000002")
+    for _ in range(iterations):
+        value = value * step
+    return value
+
 actual = kernel.multiply_loop(CC, 25)
 fallback = kernel.multiply_loop.javascript(CC, 25)
 expected = reference(CC, 25)
+real_actual = kernel.real_multiply_loop(RR, 25)
+real_fallback = kernel.real_multiply_loop.javascript(RR, 25)
+real_expected = real_reference(RR, 25)
 print(type(actual))
 print(parent(actual))
 print(actual == expected)
 print(fallback == expected)
+print(type(real_actual))
+print(parent(real_actual))
+print(real_actual == real_expected)
+print(real_fallback == real_expected)
 print(kernel.nativeAvailable)
 `;
   assert.deepEqual(runSage(script), [
@@ -146,11 +199,19 @@ print(kernel.nativeAvailable)
     "Complex Field with 53 bits of precision",
     "True",
     "True",
+    "<class 'RealNumber'>",
+    "Real Field with 53 bits of precision",
+    "True",
+    "True",
     "True",
   ]);
   assert.deepEqual(runSage(script, { SAGEJS_NATIVE_DISABLE: "1" }), [
     "<class 'ComplexNumber'>",
     "Complex Field with 53 bits of precision",
+    "True",
+    "True",
+    "<class 'RealNumber'>",
+    "Real Field with 53 bits of precision",
     "True",
     "True",
     "False",
