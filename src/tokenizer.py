@@ -678,6 +678,11 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
         c = peek().charCodeAt(0)
 
         if is_digit(c):
+            if (S['prev'] and
+                    (S['prev'].type is 'name' or
+                     (S['prev'].type is 'punc'
+                      and S['prev'].value in ')]'))):
+                return token("punc", ".")
             return read_num(".")
 
         if is_dot(c):

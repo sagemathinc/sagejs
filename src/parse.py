@@ -691,6 +691,11 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 continue
             break
         expect_token('operator', '>')
+
+        other_targets = []
+        while is_('punc', ','):
+            next()
+            other_targets.push(as_symbol(AST_SymbolRef))
         expect_token('operator', '=')
 
         # In Sage, the names on the left provide the missing names in ZZ[]
@@ -700,29 +705,50 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             is_('name') and is_token(peek_n(0), 'punc', '[')
             and is_token(peek_n(1), 'punc', ']'))
         if is_empty_bracket_constructor:
-            if generators.length is not 1:
-                croak(
-                    'empty-bracket polynomial declarations currently require exactly one generator'
-                )
             base = as_atom_node()
             expect('[')
             expect(']')
+            variable_names = AST_String({'value': generators[0].name})
+            if generators.length is not 1:
+                variable_names = AST_Array({
+                    'elements': [
+                        AST_String({'value': generator.name})
+                        for generator in generators
+                    ]
+                })
             parent_value = AST_Call({
                 'start':
                 start,
                 'expression':
                 AST_SymbolRef({'name': 'PolynomialRing'}),
-                'args': [base,
-                         AST_String({'value': generators[0].name})],
+                'args': [base, variable_names],
                 'end':
                 prev()
             })
         else:
             parent_value = expression(True)
+            if is_node_type(parent_value, AST_Call):
+                if not parent_value.args.kwargs:
+                    parent_value.args.kwargs = r'%js []'
+                parent_value.args.kwargs.push([
+                    AST_SymbolRef({'name': 'names'}),
+                    AST_Array({
+                        'elements': [
+                            AST_String({'value': generator.name})
+                            for generator in generators
+                        ]
+                    })
+                ])
+
+        parent_target = parent_symbol
+        if other_targets.length:
+            parent_target = AST_Array({
+                'elements': [parent_symbol] + other_targets
+            })
 
         parent_assignment = create_assign({
             'start': start,
-            'left': parent_symbol,
+            'left': parent_target,
             'operator': '=',
             'right': parent_value,
             'end': prev()
@@ -2307,6 +2333,28 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
 
     def get_attr(expr, allow_calls):
         next()
+        if options.jsage and is_('num') and S.token.is_integer:
+            generator_index = AST_Number({
+                'start': S.token,
+                'end': S.token,
+                'value': S.token.value
+            })
+            next()
+            return subscripts(
+                AST_Call({
+                    'start':
+                    expr.start,
+                    'expression':
+                    AST_Dot({
+                        'start': expr.start,
+                        'expression': expr,
+                        'property': 'gen',
+                        'end': prev()
+                    }),
+                    'args': [generator_index],
+                    'end':
+                    prev()
+                }), allow_calls)
         prop = as_name()
         c = get_class_in_scope(expr)
         if c:

@@ -132,8 +132,43 @@ assert.match(
   /Unexpected token/,
 );
 assert.match(
-  run([], "R.<x, y> = ZZ[]\n"),
-  /currently require exactly one generator/,
+  runError([], "R.<x, y> = ZZ[]\n"),
+  /multivariate polynomial rings are not implemented yet/,
+);
+
+assert.equal(
+  run(
+    [],
+    [
+      'R.<x> = PolynomialRing(ZZ)',
+      'print(R)',
+      'print(x)',
+      'print(R.0 == x)',
+      '',
+    ].join("\n"),
+  ).trim(),
+  "Univariate Polynomial Ring in x over Integer Ring\nx\nTrue",
+);
+
+assert.deepEqual(
+  run(
+    [],
+    [
+      'class Extension:',
+      '    def _first_ngens(self, count):',
+      '        return [29]',
+      '',
+      'def extension(names=None):',
+      '    return Extension(), names[0], names[0] + \"-map\"',
+      '',
+      'F.<b>, f, g = extension()',
+      'print(b)',
+      'print(f)',
+      'print(g)',
+      '',
+    ].join("\n"),
+  ).trim().split("\n").slice(-3),
+  ["29", "b", "b-map"],
 );
 
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-test-"));

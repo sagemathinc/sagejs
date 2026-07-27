@@ -560,6 +560,17 @@ PolynomialRingParent.prototype.__call__ = function(value) {
 
 var ρσ_polynomial_ring_cache = new Map();
 function PolynomialRing(base, variable) {
+    if (variable !== null && typeof variable === "object" &&
+            variable[ρσ_kwargs_symbol]) {
+        variable = variable.names;
+    }
+    if (Array.isArray(variable)) {
+        if (variable.length !== 1) {
+            throw new TypeError(
+                "multivariate polynomial rings are not implemented yet");
+        }
+        variable = variable[0];
+    }
     if (base !== ZZ && base !== QQ) {
         throw new TypeError(
             "the prototype currently supports polynomial rings over ZZ and QQ");

@@ -56,6 +56,8 @@ In Sage mode:
 - `^^` means bitwise xor;
 - `[a..b]` means the inclusive range from `a` through `b`;
 - `R.<x> = ZZ[]` constructs a named polynomial ring and binds its generator;
+- general declarations such as `R.<x> = PolynomialRing(ZZ)` pass generator
+  names to their constructor, and `R.0` is shorthand for `R.gen(0)`;
 - numerical literals pass through exact-text `Integer(...)` and
   `RealNumber(...)` hooks.
 
