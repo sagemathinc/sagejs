@@ -43,16 +43,16 @@ assert.doesNotMatch(polynomialParent.stderr, new RegExp(marker));
 
 const polynomial = run(
   [
-    'R = PolynomialRing(ZZ, "x");',
-    "x = R.gen();",
+    "R.<x> = ZZ[]",
     "print((1 + x) + 1/3)",
     "print(parent((1 + x) + 1/3))",
-    'S = PolynomialRing(QQ, "x");',
-    "print(S is PolynomialRing(QQ, \"x\"))",
+    "S.<y> = QQ[]",
+    "print(S is PolynomialRing(QQ, \"y\"))",
     "print(QQ(1/3) + (1 + x) == x + 4/3)",
     "print(QQ(1/3) == S(QQ(1/3)))",
     "print(not (QQ(1/3) == S(QQ(2/3))))",
     "print((x + 1)^3)",
+    "print(y + 1/3)",
     "try:",
     '    x + PolynomialRing(ZZ, "y").gen()',
     "except TypeError:",
@@ -68,6 +68,7 @@ assert.deepEqual(polynomial.stdout.trim().split("\n"), [
   "True",
   "True",
   "x^3 + 3*x^2 + 3*x + 1",
+  "y + 1/3",
   "incompatible variables rejected",
 ]);
 assert.equal(polynomial.stderr.match(new RegExp(marker, "g"))?.length, 1);

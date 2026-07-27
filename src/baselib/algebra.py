@@ -506,6 +506,13 @@ PolynomialRingParent.prototype.gen = function() {
         : backend.qqPolyGen();
     return new PolynomialElement(this, nativeValue);
 };
+PolynomialRingParent.prototype._first_ngens = function(count) {
+    if (count !== 1) {
+        throw new ValueError(
+            "a univariate polynomial ring has exactly one generator");
+    }
+    return [this.gen()];
+};
 PolynomialRingParent.prototype._constant = function(value) {
     const backend = ρσ_flint_backend();
     if (this._base === ZZ) {

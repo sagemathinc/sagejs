@@ -101,6 +101,41 @@ assert.equal(
 );
 assert.match(runError([], "print(1/0)\n"), /rational division by zero/);
 
+assert.deepEqual(
+  run(
+    [],
+    [
+      "class FakeParent:",
+      "    def _first_ngens(self, count):",
+      "        return [17, 23]",
+      "",
+      "P = FakeParent();",
+      "R.<x, y> = P",
+      "print(R is P)",
+      "print(x)",
+      "print(y)",
+      "",
+      "def local_generators(parent):",
+      "    S.<u, v> = parent",
+      "    return S, u, v",
+      "",
+      "result = local_generators(P);",
+      "print(result[0] is P)",
+      "print(result[1] + result[2])",
+      "",
+    ].join("\n"),
+  ).trim().split("\n").slice(-5),
+  ["True", "17", "23", "True", "40"],
+);
+assert.match(
+  run(["--python"], "R.<x> = ZZ[]\n"),
+  /Unexpected token/,
+);
+assert.match(
+  run([], "R.<x, y> = ZZ[]\n"),
+  /currently require exactly one generator/,
+);
+
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-test-"));
 try {
   const sageFile = join(temporary, "example.sage");

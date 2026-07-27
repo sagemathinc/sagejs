@@ -55,6 +55,7 @@ In Sage mode:
 - `^` means exponentiation;
 - `^^` means bitwise xor;
 - `[a..b]` means the inclusive range from `a` through `b`;
+- `R.<x> = ZZ[]` constructs a named polynomial ring and binds its generator;
 - numerical literals pass through exact-text `Integer(...)` and
   `RealNumber(...)` hooks.
 
@@ -116,8 +117,7 @@ map for each operand.
 Common parents may be constructed rather than equal to either input parent:
 
 ```text
-sage: R = PolynomialRing(ZZ, "x")
-sage: x = R.gen()
+sage: R.<x> = ZZ[]
 sage: g = (1 + x) + 1/3
 sage: g
 x + 4/3
@@ -130,6 +130,13 @@ constructs the interned parent `QQ[x]`, converts the `ZZ[x]` operand, and
 embeds `1/3` as a constant. Polynomial coefficients and arithmetic live in
 native FLINT `fmpz_poly` and `fmpq_poly` values behind opaque Node-API objects;
 polynomial arithmetic does not copy coefficient arrays through JavaScript.
+
+Generator declarations are parsed contextually and lowered to ordinary
+assignment AST nodes. For example, `R.<x> = ZZ[]` constructs
+`PolynomialRing(ZZ, "x")`, assigns it to `R`, and binds the result of
+`R._first_ngens(1)` to `x`. Existing parent expressions support multiple
+bindings through `_first_ngens(n)`; empty-bracket `ZZ[]` and `QQ[]`
+construction is currently restricted to the univariate runtime.
 
 Run a file directly:
 

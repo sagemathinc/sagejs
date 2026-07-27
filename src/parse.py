@@ -221,6 +221,11 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             S.peeked.push(S.input())
         return S.peeked[0]
 
+    def peek_n(index):
+        while S.peeked.length <= index:
+            S.peeked.push(S.input())
+        return S.peeked[index]
+
     def prev():
         return S.prev
 
@@ -514,6 +519,9 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         elif tmp_ is "name":
             if is_token(peek(), 'punc', ':'):
                 token_error(peek(), 'invalid syntax, colon not allowed here')
+            if (options.jsage and is_token(peek_n(0), 'punc', '.')
+                    and is_token(peek_n(1), 'operator', '<')):
+                return sage_generator_assignment()
             return simple_statement()
         elif tmp_ is "keyword":
             tmp_ = S.token.value
@@ -661,6 +669,99 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         tmp = expression(True)
         semicolon()
         return AST_SimpleStatement({'body': tmp})
+
+    def sage_generator_assignment():
+        """
+        Parse Sage's ``R.<x> = ...`` parent/generator declaration.
+
+        This is represented using ordinary assignment AST nodes so scope
+        discovery, output generation, and future parent implementations do
+        not need to know about special syntax.
+        """
+        start = S.token
+        parent_symbol = as_symbol(AST_SymbolRef)
+        expect('.')
+        expect_token('operator', '<')
+
+        generators = []
+        while True:
+            generators.push(as_symbol(AST_SymbolRef))
+            if is_('punc', ','):
+                next()
+                continue
+            break
+        expect_token('operator', '>')
+        expect_token('operator', '=')
+
+        # In Sage, the names on the left provide the missing names in ZZ[]
+        # and QQ[].  The first runtime slice is univariate, but keeping this
+        # contextual lowering here leaves ordinary indexing untouched.
+        is_empty_bracket_constructor = (
+            is_('name') and is_token(peek_n(0), 'punc', '[')
+            and is_token(peek_n(1), 'punc', ']'))
+        if is_empty_bracket_constructor:
+            if generators.length is not 1:
+                croak(
+                    'empty-bracket polynomial declarations currently require exactly one generator'
+                )
+            base = as_atom_node()
+            expect('[')
+            expect(']')
+            parent_value = AST_Call({
+                'start':
+                start,
+                'expression':
+                AST_SymbolRef({'name': 'PolynomialRing'}),
+                'args': [base,
+                         AST_String({'value': generators[0].name})],
+                'end':
+                prev()
+            })
+        else:
+            parent_value = expression(True)
+
+        parent_assignment = create_assign({
+            'start': start,
+            'left': parent_symbol,
+            'operator': '=',
+            'right': parent_value,
+            'end': prev()
+        })
+        first_ngens = AST_Call({
+            'start':
+            start,
+            'expression':
+            AST_Dot({
+                'start': start,
+                'expression': AST_SymbolRef({'name': parent_symbol.name}),
+                'property': '_first_ngens',
+                'end': prev()
+            }),
+            'args': [AST_Number({'value': generators.length})],
+            'end':
+            prev()
+        })
+        generator_assignment = create_assign({
+            'start': start,
+            'left': AST_Array({'elements': generators}),
+            'operator': '=',
+            'right': first_ngens,
+            'end': prev()
+        })
+        semicolon()
+        return AST_BlockStatement({
+            'start':
+            start,
+            'body': [
+                AST_SimpleStatement({'body': parent_assignment}),
+                AST_SimpleStatement({'body': generator_assignment}),
+                # A declaration statement has no display value in Sage's
+                # REPL, even though JavaScript assignments do.
+                AST_SimpleStatement({'body': AST_Undefined()})
+            ],
+            'end':
+            prev()
+        })
 
     def break_cont(t):
         if S.in_loop is 0:

@@ -61,6 +61,10 @@ The same parser supports two intentional modes:
 - `sagepython`, or `sagejs --python`, uses Python-like syntax.
 
 When adding syntax, add tests for both its enabled and disabled behavior.
+Sage generator declarations such as `R.<x> = ZZ[]` are recognized in
+`statement()` and lowered to ordinary assignment nodes; they are not a
+textual preprocessing pass. Keep the contextual meaning of empty brackets
+isolated from normal indexing syntax.
 
 ## Bootstrap changes
 
