@@ -521,6 +521,8 @@ class AST_Class(AST_Scope):
         "[boolean] true if class is declared elsewhere, but will be within current scope at runtime",
         'lightweight':
         "[boolean] true if instances omit the generic Python identity slot",
+        'sequence_class':
+        "[boolean] expose class instances through the generic sequence proxy",
         'bigint_fields':
         "[dict] instance fields known by the compiler to contain JS BigInts",
         'bound':

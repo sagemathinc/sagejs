@@ -6,6 +6,32 @@ class Blank:
 blank = Blank()
 assrt.ok(isinstance(blank, Blank))
 
+
+@ρσ_sequence_class
+class RuntimeSequence:
+    def __init__(self, values):
+        self._values = values
+
+    def __len__(self):
+        return self._values.length
+
+    def __getitem__(self, index):
+        return self._values[index]
+
+    def __setitem__(self, index, value):
+        self._values[index] = value
+
+
+runtime_sequence_constructor = RuntimeSequence
+runtime_sequence = runtime_sequence_constructor([10, 20])
+assrt.ok(isinstance(runtime_sequence, RuntimeSequence))
+assrt.equal(len(runtime_sequence), 2)
+assrt.equal(runtime_sequence[0], 10)
+assrt.equal(runtime_sequence[-1], 20)
+runtime_sequence[1] = 30
+assrt.equal(runtime_sequence[1], 30)
+
+
 # Internal immutable mathematical element classes can opt out of the generic
 # eagerly allocated identity slot without falling back to handwritten JS.
 @ρσ_lightweight_math_class

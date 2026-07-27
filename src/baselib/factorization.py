@@ -8,8 +8,15 @@
 # globals: ρσ_iterator_symbol, ρσ_equals, ρσ_repr, ρσ_operator_mul_exact,
 # globals: ρσ_operator_pow_exact, BigInt, Number, Object
 
+
+def ρσ_sequence_class(cls):
+    # Identity fallback for bootstrap compilers which predate sequence-class
+    # lowering. The converged compiler consumes this decorator.
+    return cls
+
+
 def ρσ_factor_pair(prime, exponent):
-    pair = v'[prime, exponent]'
+    pair = [prime, exponent]
     pair_repr = def():
         return '(' + ρσ_repr(this[0]) + ', ' + ρσ_repr(this[1]) + ')'
     Object.defineProperties(pair, {
@@ -19,6 +26,7 @@ def ρσ_factor_pair(prime, exponent):
     return Object.freeze(pair)
 
 
+@ρσ_sequence_class
 class Factorization:
     """
     A formal product represented by factor-exponent pairs and a unit.
@@ -72,7 +80,7 @@ class Factorization:
             return False
         if self._factors.length is not other._factors.length:
             return False
-        for v'var i = 0; i < self._factors.length; i++':
+        for i in range(self._factors.length):
             if not ρσ_equals(self._factors[i], other._factors[i]):
                 return False
         return True
@@ -164,7 +172,7 @@ class Factorization:
         simplified = []
         for pair in self._factors:
             found = -1
-            for v'var i = 0; i < simplified.length; i++':
+            for i in range(simplified.length):
                 if ρσ_equals(simplified[i][0], pair[0]):
                     found = i
                     break
@@ -214,6 +222,7 @@ class Factorization:
         return self.radical().value()
 
 
+@ρσ_sequence_class
 class IntegerFactorization(Factorization):
     """A factorization whose factors and unit are exact integers."""
 
@@ -240,52 +249,3 @@ class IntegerFactorization(Factorization):
 
         Factorization.__init__(
             self, converted, unit, cr, sort, simplify)
-
-
-# Base-library classes are not visible to the parser's per-program class table.
-# Keep their normal prototype/instance behavior while also allowing natural
-# Python-style calls such as Factorization([...]) from user code.
-v"""
-function ρσ_factorization_sequence_proxy(instance) {
-    return new Proxy(instance, {
-        get: function(target, property, receiver) {
-            if (typeof property === "string" && /^-?[0-9]+$/.test(property)) {
-                return target.__getitem__(Number(property));
-            }
-            if (property === "length") {
-                return target.__len__();
-            }
-            return Reflect.get(target, property, receiver);
-        },
-        set: function(target, property, value, receiver) {
-            if (typeof property === "string" && /^-?[0-9]+$/.test(property)) {
-                target.__setitem__(Number(property), value);
-                return true;
-            }
-            return Reflect.set(target, property, value, receiver);
-        }
-    });
-}
-function ρσ_callable_factorization_class(target) {
-    const wrapper = new Proxy(target, {
-        apply: function(target, thisArg, args) {
-            return ρσ_factorization_sequence_proxy(
-                Reflect.construct(target, args));
-        },
-        construct: function(target, args, newTarget) {
-            return ρσ_factorization_sequence_proxy(
-                Reflect.construct(target, args, newTarget));
-        }
-    });
-    target.prototype.constructor = wrapper;
-    Object.defineProperty(wrapper, "__repr__", {
-        value: function() {
-            return "<class '" + target.name + "'>";
-        }
-    });
-    return wrapper;
-}
-Factorization = ρσ_callable_factorization_class(Factorization);
-IntegerFactorization =
-    ρσ_callable_factorization_class(IntegerFactorization);
-"""

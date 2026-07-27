@@ -2,6 +2,7 @@
 # License: BSD
 
 # globals: exports, console, ρσ_iterator_symbol, ρσ_kwargs_symbol, ρσ_arraylike, ρσ_list_contains, ρσ_list_constructor, ρσ_str, ρσ_int, ρσ_float
+# globals: Proxy, Reflect, RegExp, Number, Object
 
 def ρσ_eslice(arr, step, start, end):
     if jstype(arr) is 'string' or v'arr instanceof String':
@@ -71,6 +72,46 @@ def ρσ_unpack_asarray(num, iterable):
 def ρσ_extends(child, parent):
     child.prototype = Object.create(parent.prototype)
     child.prototype.constructor = child
+
+
+def ρσ_sequence_proxy(instance):
+    def get_item(target, property_name, receiver):
+        if (jstype(property_name) is 'string'
+                and RegExp(r'^-?[0-9]+$').test(property_name)):
+            return target.__getitem__(Number(property_name))
+        if property_name is 'length':
+            return target.__len__()
+        return Reflect.get(target, property_name, receiver)
+
+    def set_item(target, property_name, value, receiver):
+        if (jstype(property_name) is 'string'
+                and RegExp(r'^-?[0-9]+$').test(property_name)):
+            target.__setitem__(Number(property_name), value)
+            return True
+        return Reflect.set(target, property_name, value, receiver)
+
+    return Proxy(instance, {'get': get_item, 'set': set_item})
+
+
+def ρσ_callable_sequence_class(target):
+    def call_class(target, this_arg, args):
+        return ρσ_sequence_proxy(Reflect.construct(target, args))
+
+    def construct_class(target, args, new_target):
+        return ρσ_sequence_proxy(
+            Reflect.construct(target, args, new_target))
+
+    wrapper = Proxy(target, {
+        'apply': call_class,
+        'construct': construct_class,
+    })
+    target.prototype.constructor = wrapper
+    Object.defineProperty(wrapper, '__repr__', {
+        'value': def():
+            return "<class '" + target.name + "'>"
+    })
+    return wrapper
+
 
 ρσ_in = (def ():
     if jstype(Map) is 'function' and jstype(Set) is 'function':

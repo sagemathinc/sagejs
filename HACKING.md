@@ -71,11 +71,19 @@ license to use JavaScript arithmetic. The no-op decorator fallback lets an
 older bootstrap compiler complete the first self-build; the converged compiler
 consumes the annotation and emits the specialized code.
 
+`@ρσ_sequence_class` is the corresponding narrow contract for a class whose
+instances implement numeric `__getitem__`, `__setitem__`, and `__len__`
+semantics. The compiler applies the shared callable sequence adapter after the
+class is complete. This keeps dynamic calls to a base-library class and direct
+JavaScript bracket access compatible with the Python methods without embedding
+a bespoke `Proxy` implementation in each mathematical module.
+
 Verbatim `v` expressions are appropriate in the runtime substrate and
 JavaScript/native adapters. Mathematical library code should not use them to
 work around compiler performance gaps: add a focused, tested compiler contract
-instead. `test/typed-math-lowering.cjs` guards both the readable source and the
-generated fast path.
+instead. `test/typed-math-lowering.cjs` guards the generated fast path, while
+`test/baselib-boundaries.cjs` prevents escape syntax from returning to
+mathematical modules which have been migrated.
 
 `tools/native-kernel/` contains Native Kernel v0. The frontend lowers a
 restricted Sage.js AST to typed IR; independent JavaScript and C/MPC backends

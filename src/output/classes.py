@@ -324,3 +324,11 @@ def print_class(output):
         output.print('.ρσ_decorators')
         output.semicolon()
         output.newline()
+
+    if self.sequence_class:
+        output.indent()
+        output.assign(self.name)
+        output.print('ρσ_callable_sequence_class(')
+        self.name.print(output)
+        output.print(')')
+        output.end_statement()

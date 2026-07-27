@@ -56,7 +56,7 @@
     "start": "node bin/sagejs",
     "test": "pnpm run build && pnpm run test:compiler && pnpm run test:cli && pnpm run test:upstream:run",
     "test:compiler": "node bin/sagejs test",
-    "test:cli": "node test/cli-smoke.cjs && node test/typed-math-lowering.cjs",
+    "test:cli": "node test/cli-smoke.cjs && node test/typed-math-lowering.cjs && node test/baselib-boundaries.cjs",
     "test:upstream": "pnpm run build && pnpm run test:upstream:run",
     "test:upstream:run": "node test/upstream-doctest-tools.cjs && node scripts/run-sage-doctests.cjs upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.doctests.json --expectations upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.expectations.json",
     "test:native": "pnpm --dir packages/flint test && node bin/sagejs packages/flint/test/integration.sage && node test/native-kernel.cjs",
