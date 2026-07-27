@@ -168,7 +168,8 @@ ATOMIC_START_TOKEN = array_to_hash(
 
 compile_time_decorators = [
     'staticmethod', 'external', 'property', 'ρσ_lightweight_math_class',
-    'ρσ_bigint_fields', 'ρσ_sequence_class'
+    'ρσ_bigint_fields', 'ρσ_sequence_class',
+    'ρσ_callable_instance_class'
 ]
 
 DIRECT_CALL_TYPES = {
@@ -1235,6 +1236,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             S.decorators, 'ρσ_lightweight_math_class')
         sequence_class_decorator = has_simple_decorator(
             S.decorators, 'ρσ_sequence_class')
+        callable_instance_class_decorator = has_simple_decorator(
+            S.decorators, 'ρσ_callable_instance_class')
         bigint_fields = {}
         for argument in call_decorator_args(
                 S.decorators, 'ρσ_bigint_fields'):
@@ -1312,6 +1315,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'external': externaldecorator,
             'lightweight': lightweightdecorator,
             'sequence_class': sequence_class_decorator,
+            'callable_instance_class': callable_instance_class_decorator,
             'bigint_fields': bigint_fields,
             'bound': class_details.bound,
             'statements': [],

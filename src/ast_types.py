@@ -523,6 +523,8 @@ class AST_Class(AST_Scope):
         "[boolean] true if instances omit the generic Python identity slot",
         'sequence_class':
         "[boolean] expose class instances through the generic sequence proxy",
+        'callable_instance_class':
+        "[boolean] construct callable function objects as class instances",
         'bigint_fields':
         "[dict] instance fields known by the compiler to contain JS BigInts",
         'bound':

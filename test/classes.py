@@ -32,6 +32,21 @@ runtime_sequence[1] = 30
 assrt.equal(runtime_sequence[1], 30)
 
 
+@ρσ_callable_instance_class
+class CallableValue:
+    def __init__(self, offset):
+        self._offset = offset
+
+    def __call__(self, value):
+        return self._offset + value
+
+
+callable_value_constructor = CallableValue
+callable_value = callable_value_constructor(7)
+assrt.ok(isinstance(callable_value, CallableValue))
+assrt.equal(callable_value(5), 12)
+
+
 # Internal immutable mathematical element classes can opt out of the generic
 # eagerly allocated identity slot without falling back to handwritten JS.
 @ρσ_lightweight_math_class

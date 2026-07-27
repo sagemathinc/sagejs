@@ -8,6 +8,7 @@ const root = join(__dirname, "..");
 const mathematicalModules = [
   "src/baselib/factorization.py",
   "src/baselib/finite_fields.py",
+  "src/baselib/polynomial.py",
 ];
 const verbatimExpression =
   /\bv(?:'[^']*'|"[^"]*"|'''[\s\S]*?'''|"""[\s\S]*?""")/;
@@ -35,5 +36,16 @@ assert.match(
 );
 assert.doesNotMatch(generated, /ρσ_factorization_sequence_proxy/);
 assert.doesNotMatch(generated, /ρσ_callable_factorization_class/);
+assert.match(
+  generated,
+  /PolynomialRingParent = ρσ_callable_instance_class_adapter\(PolynomialRingParent\)/,
+);
+
+const algebraSource = readFileSync(
+  join(root, "src/baselib/algebra.py"),
+  "utf8",
+);
+assert.doesNotMatch(algebraSource, /function PolynomialElement/);
+assert.doesNotMatch(algebraSource, /function PolynomialRingParent/);
 
 console.log("Mathematical baselib source boundaries passed.");

@@ -78,6 +78,13 @@ class is complete. This keeps dynamic calls to a base-library class and direct
 JavaScript bracket access compatible with the Python methods without embedding
 a bespoke `Proxy` implementation in each mathematical module.
 
+`@ρσ_callable_instance_class` supports mathematical parents whose instances
+are simultaneously ordinary class instances and callable element
+constructors. The shared adapter creates a callable function object with the
+class prototype, then runs the normal generated constructor on it. Parent
+classes can consequently be written using ordinary `class`, `__init__`, and
+`__call__` syntax instead of hand-assembling JavaScript function objects.
+
 Verbatim `v` expressions are appropriate in the runtime substrate and
 JavaScript/native adapters. Mathematical library code should not use them to
 work around compiler performance gaps: add a focused, tested compiler contract

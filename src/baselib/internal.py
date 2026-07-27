@@ -106,10 +106,40 @@ def ρσ_callable_sequence_class(target):
         'construct': construct_class,
     })
     target.prototype.constructor = wrapper
-    Object.defineProperty(wrapper, '__repr__', {
-        'value': def():
-            return "<class '" + target.name + "'>"
+    if Object.getOwnPropertyDescriptor(wrapper, '__repr__') is undefined:
+        Object.defineProperty(wrapper, '__repr__', {
+            'value': def():
+                return "<class '" + target.name + "'>"
+        })
+    return wrapper
+
+
+def ρσ_callable_instance_class_adapter(target):
+    def make_instance(target, args):
+        def callable_instance():
+            return callable_instance.__call__.apply(
+                callable_instance, arguments)
+
+        Object.setPrototypeOf(callable_instance, target.prototype)
+        target.apply(callable_instance, args)
+        return callable_instance
+
+    def call_class(target, this_arg, args):
+        return make_instance(target, args)
+
+    def construct_class(target, args, new_target):
+        return make_instance(target, args)
+
+    wrapper = Proxy(target, {
+        'apply': call_class,
+        'construct': construct_class,
     })
+    target.prototype.constructor = wrapper
+    if Object.getOwnPropertyDescriptor(wrapper, '__repr__') is undefined:
+        Object.defineProperty(wrapper, '__repr__', {
+            'value': def():
+                return "<class '" + target.name + "'>"
+        })
     return wrapper
 
 

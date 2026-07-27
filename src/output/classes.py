@@ -332,3 +332,11 @@ def print_class(output):
         self.name.print(output)
         output.print(')')
         output.end_statement()
+
+    if self.callable_instance_class:
+        output.indent()
+        output.assign(self.name)
+        output.print('ρσ_callable_instance_class_adapter(')
+        self.name.print(output)
+        output.print(')')
+        output.end_statement()
