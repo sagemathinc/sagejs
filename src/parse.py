@@ -698,47 +698,35 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             other_targets.push(as_symbol(AST_SymbolRef))
         expect_token('operator', '=')
 
-        # In Sage, the names on the left provide the missing names in ZZ[]
-        # and QQ[].  The first runtime slice is univariate, but keeping this
-        # contextual lowering here leaves ordinary indexing untouched.
-        is_empty_bracket_constructor = (
-            is_('name') and is_token(peek_n(0), 'punc', '[')
-            and is_token(peek_n(1), 'punc', ']'))
-        if is_empty_bracket_constructor:
-            base = as_atom_node()
-            expect('[')
-            expect(']')
-            variable_names = AST_String({'value': generators[0].name})
-            if generators.length is not 1:
-                variable_names = AST_Array({
+        variable_names = AST_String({'value': generators[0].name})
+        if generators.length is not 1:
+            variable_names = AST_Array({
+                'elements': [
+                    AST_String({'value': generator.name})
+                    for generator in generators
+                ]
+            })
+
+        # In a generator declaration only, a terminal empty subscript turns
+        # the complete expression to its left into a polynomial-ring base.
+        # Thus ZZ[] and GF(5)[] lower uniformly, while ordinary empty
+        # subscripts remain syntax errors.
+        S.sage_empty_bracket_names = variable_names
+        parent_value = expression(True)
+        S.sage_empty_bracket_names = None
+        if (is_node_type(parent_value, AST_Call)
+                and not parent_value.sage_empty_bracket_constructor):
+            if not parent_value.args.kwargs:
+                parent_value.args.kwargs = r'%js []'
+            parent_value.args.kwargs.push([
+                AST_SymbolRef({'name': 'names'}),
+                AST_Array({
                     'elements': [
                         AST_String({'value': generator.name})
                         for generator in generators
                     ]
                 })
-            parent_value = AST_Call({
-                'start':
-                start,
-                'expression':
-                AST_SymbolRef({'name': 'PolynomialRing'}),
-                'args': [base, variable_names],
-                'end':
-                prev()
-            })
-        else:
-            parent_value = expression(True)
-            if is_node_type(parent_value, AST_Call):
-                if not parent_value.args.kwargs:
-                    parent_value.args.kwargs = r'%js []'
-                parent_value.args.kwargs.push([
-                    AST_SymbolRef({'name': 'names'}),
-                    AST_Array({
-                        'elements': [
-                            AST_String({'value': generator.name})
-                            for generator in generators
-                        ]
-                    })
-                ])
+            ])
 
         parent_target = parent_symbol
         if other_targets.length:
@@ -2196,6 +2184,20 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
     def getitem(expr, allow_calls):
         start = expr.start
         next()
+        if (S.sage_empty_bracket_names is not None
+                and is_("punc", "]")):
+            next()
+            constructor = AST_Call({
+                'start':
+                start,
+                'expression':
+                AST_SymbolRef({'name': 'PolynomialRing'}),
+                'args': [expr, S.sage_empty_bracket_names],
+                'end':
+                prev()
+            })
+            constructor.sage_empty_bracket_constructor = True
+            return subscripts(constructor, allow_calls)
         is_py_sub = S.scoped_flags.get('overload_getitem', False)
         slice_bounds = r'%js []'
         is_slice = False
@@ -2832,6 +2834,8 @@ def parse(text, options):
         False,
         'in_delete':
         False,
+        'sage_empty_bracket_names':
+        None,
         'in_loop':
         0,
         'in_class': [False],
@@ -2855,7 +2859,7 @@ def parse(text, options):
 
     if options.jsage:
         # Set all the jsage compiler options; this is only used in the repl.
-        for name in ['exponent', 'ellipses', 'numbers']:
+        for name in ['exponent', 'ellipses', 'numbers', 'overload_getitem']:
             S.scoped_flags.set(name, True)
 
     if S.scoped_flags.get('exponent'):

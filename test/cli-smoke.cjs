@@ -35,6 +35,12 @@ function runError(args, input) {
 
 assert.match(run(["--version"]), /^sagejs 0\.1\.0\s*$/);
 assert.match(run([], "print(2^3)\nprint(sum([1..10]))\n"), /8\s+55\s*$/);
+assert.equal(run([], "value = GF(5)\n").trim(), "");
+assert.equal(
+  run([], "value = GF(5)\nvalue\n").trim(),
+  "Finite Field of size 5",
+);
+assert.equal(run(["--python"], "value = 17\n").trim(), "");
 assert.equal(
   run(
     [],
@@ -189,6 +195,48 @@ assert.deepEqual(
     ].join("\n"),
   ).trim().split("\n").slice(-5),
   ["True", "17", "23", "True", "40"],
+);
+
+assert.deepEqual(
+  run(
+    [],
+    [
+      'values = [10, 20];',
+      'print(values[1])',
+      'values[0] = 30',
+      'print(values)',
+      'print({"key": 7}["key"])',
+      'print(GF(5)["x"])',
+      'print(type(GF(5)["x"]))',
+      'A.<a> = GF(5)[];',
+      'print(A)',
+      'print(a)',
+      'B.<b> = (GF(5))[];',
+      'print(B)',
+      'print(b)',
+      'C.<c> = FiniteField(5)[];',
+      'print(C)',
+      'print(c)',
+      '',
+    ].join("\n"),
+  ).trim().split("\n"),
+  [
+    "20",
+    "[30, 20]",
+    "7",
+    "Univariate Polynomial Ring in x over Finite Field of size 5",
+    "<class 'PolynomialRingParent'>",
+    "Univariate Polynomial Ring in a over Finite Field of size 5",
+    "a",
+    "Univariate Polynomial Ring in b over Finite Field of size 5",
+    "b",
+    "Univariate Polynomial Ring in c over Finite Field of size 5",
+    "c",
+  ],
+);
+assert.match(
+  run([], "GF(5)[]\n"),
+  /Unexpected token/,
 );
 assert.match(
   run(["--python"], "R.<x> = ZZ[]\n"),

@@ -55,6 +55,9 @@ Parent.prototype.__repr__ = function() {
 };
 Parent.prototype.__str__ = Parent.prototype.__repr__;
 Parent.prototype.toString = Parent.prototype.__repr__;
+Parent.prototype.__getitem__ = function(variable) {
+    return PolynomialRing(this, variable);
+};
 Object.defineProperty(Parent, "__repr__", {
     value: function() { return "<class 'Parent'>"; }
 });
@@ -1110,6 +1113,9 @@ function PolynomialRingParent(base, variable) {
 }
 PolynomialRingParent.prototype = Object.create(Parent.prototype);
 PolynomialRingParent.prototype.constructor = PolynomialRingParent;
+Object.defineProperty(PolynomialRingParent, "__repr__", {
+    value: function() { return "<class 'PolynomialRingParent'>"; }
+});
 PolynomialRingParent.prototype.base_ring = function() {
     return this._base;
 };

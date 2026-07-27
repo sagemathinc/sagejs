@@ -202,7 +202,7 @@ sage: F(-1)
 4
 sage: F(1/2)
 3
-sage: R.<x> = F[]
+sage: R.<x> = GF(5)[]
 sage: f = x^4 - 1
 sage: f.factor()
 (x + 1) * (x + 2) * (x + 3) * (x + 4)

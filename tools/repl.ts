@@ -372,8 +372,14 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
         }
       }
     }
+    const finalStatement = toplevel.body[toplevel.body.length - 1];
+    const finalStatementIsAssignment =
+      finalStatement instanceof PyLang.AST_SimpleStatement &&
+      finalStatement.body instanceof PyLang.AST_Assign;
     const noPrint =
-      !!runOptions.noPrint || source.trimRight().endsWith(";");
+      !!runOptions.noPrint ||
+      source.trimRight().endsWith(";") ||
+      finalStatementIsAssignment;
     if (time != null) {
       time = new Date().valueOf();
     }

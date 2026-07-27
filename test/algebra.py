@@ -8,6 +8,7 @@ assrt.equal(parent(BigInt(2)), ZZ)
 assrt.equal(parent(QQ(1, 3)), QQ)
 R = PolynomialRing(ZZ, 'x')
 assrt.equal(R, PolynomialRing(ZZ, 'x'))
+assrt.equal(R, ZZ.__getitem__('x'))
 assrt.equal(R.base_ring(), ZZ)
 assrt.equal(R.variable_name(), 'x')
 assrt.equal(repr(R),
@@ -82,9 +83,12 @@ assrt.throws(divide_by_zero_in_F5, ZeroDivisionError)
 F5x = PolynomialRing(F5, 'x')
 F5x_again = PolynomialRing(GF(5), 'x')
 assrt.ok(F5x is F5x_again)
+assrt.ok(F5x is GF(5).__getitem__('x'))
+assrt.ok(F5x is FiniteField(5).__getitem__('x'))
 assrt.equal(
     repr(F5x),
     'Univariate Polynomial Ring in x over Finite Field of size 5')
+assrt.equal(repr(type(F5x)), "<class 'PolynomialRingParent'>")
 fx = F5x.gen()
 ff = fx ** 4 - 1
 fg = (fx - 1) ** 2 * (fx + 2)
