@@ -6,6 +6,22 @@ class Blank:
 blank = Blank()
 assrt.ok(isinstance(blank, Blank))
 
+# Internal immutable mathematical element classes can opt out of the generic
+# eagerly allocated identity slot without falling back to handwritten JS.
+@ρσ_lightweight_math_class
+class LightweightMathElement:
+    def __init__(self, value):
+        self.value = value
+
+    def __repr__(self):
+        return 'lightweight'
+
+
+lightweight_element = LightweightMathElement(5)
+assrt.equal(lightweight_element.value, 5)
+assrt.equal(repr(lightweight_element), 'lightweight')
+assrt.equal(lightweight_element.ρσ_object_id, undefined)
+
 # basic class
 class Human:
 

@@ -69,11 +69,12 @@ def print_class(output):
         output.space()
 
         def f_constructor():
-            output.indent()
-            output.spaced('if', '(this.ρσ_object_id', '===', 'undefined)',
-                          'Object.defineProperty(this,', '"ρσ_object_id",',
-                          '{"value":++ρσ_object_counter})')
-            output.end_statement()
+            if not self.lightweight:
+                output.indent()
+                output.spaced('if', '(this.ρσ_object_id', '===', 'undefined)',
+                              'Object.defineProperty(this,', '"ρσ_object_id",',
+                              '{"value":++ρσ_object_counter})')
+                output.end_statement()
             if self.bound.length:
                 output.indent()
                 self.name.print(output), output.print(

@@ -47,11 +47,20 @@ pnpm test:native
 pnpm bench:arithmetic
 ```
 
-`src/baselib/algebra.py` contains the small parent/coercion kernel and the
-language wrappers around native polynomial values. The coercion resolver is
-responsible for both operand maps and may construct a common parent such as
-`QQ[x]`; do not reintroduce asymmetric `__radd__` dispatch for mathematical
-elements.
+`src/baselib/algebra.py` contains the small low-level parent/coercion kernel
+and JavaScript/native adapters. Keep its raw JavaScript escape block small.
+Mathematical parents, elements, and algorithms should normally be ordinary
+Sage.js source; `src/baselib/finite_fields.py` is the first complete example.
+The coercion resolver is responsible for both operand maps and may construct a
+common parent such as `QQ[x]`; do not reintroduce asymmetric `__radd__`
+dispatch for mathematical elements.
+
+`@ρσ_lightweight_math_class` is an internal compile-time annotation for hot,
+immutable element classes. It omits the generic eagerly allocated object
+identity slot; use it only when profiling demonstrates construction overhead
+and the type supplies its own representation and mathematical identity
+semantics. The identity decorator implementation in `finite_fields.py` keeps
+the source bootstrappable by older checked-in compilers.
 
 `tools/native-kernel/` contains Native Kernel v0. The frontend lowers a
 restricted Sage.js AST to typed IR; independent JavaScript and C/MPC backends

@@ -519,6 +519,8 @@ class AST_Class(AST_Scope):
         "[dict] A hash whose keys are names of static methods for this class",
         'external':
         "[boolean] true if class is declared elsewhere, but will be within current scope at runtime",
+        'lightweight':
+        "[boolean] true if instances omit the generic Python identity slot",
         'bound':
         "[string*] list of methods that need to be bound to self",
         'decorators':

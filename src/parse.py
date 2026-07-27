@@ -166,7 +166,9 @@ STATEMENTS_WITH_LABELS = array_to_hash(["for", "do", "while", "switch"])
 ATOMIC_START_TOKEN = array_to_hash(
     ["atom", "num", "string", "regexp", "name", "js"])
 
-compile_time_decorators = ['staticmethod', 'external', 'property']
+compile_time_decorators = [
+    'staticmethod', 'external', 'property', 'ρσ_lightweight_math_class'
+]
 
 
 def has_simple_decorator(decorators, name):
@@ -1144,6 +1146,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
 
         # detect external classes
         externaldecorator = has_simple_decorator(S.decorators, 'external')
+        lightweightdecorator = has_simple_decorator(
+            S.decorators, 'ρσ_lightweight_math_class')
 
         class_details = {
             "static": {},
@@ -1210,6 +1214,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'classvars': class_details.classvars,
             'static': class_details.static,
             'external': externaldecorator,
+            'lightweight': lightweightdecorator,
             'bound': class_details.bound,
             'statements': [],
             'decorators': decorators(),

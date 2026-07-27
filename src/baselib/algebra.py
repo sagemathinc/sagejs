@@ -455,191 +455,6 @@ function ρσ_modular_power(value, exponent, modulus) {
     return result;
 }
 
-function FiniteFieldElement(parent, value) {
-    if (value instanceof FiniteFieldElement) {
-        if (value._parent !== parent) {
-            throw new TypeError(
-                "no canonical conversion between distinct finite fields");
-        }
-        return value;
-    }
-    let residue;
-    if (value instanceof Rational) {
-        let numerator = value._numerator % parent._modulus;
-        let denominator = value._denominator % parent._modulus;
-        if (numerator < 0n) numerator += parent._modulus;
-        if (denominator < 0n) denominator += parent._modulus;
-        residue = numerator * ρσ_modular_inverse(
-            denominator, parent._modulus);
-    } else {
-        residue = ρσ_integer_bigint(value);
-    }
-    residue %= parent._modulus;
-    if (residue < 0n) residue += parent._modulus;
-    Element.call(this, parent);
-    this._value = residue;
-    Object.freeze(this);
-}
-FiniteFieldElement.prototype = Object.create(Element.prototype);
-FiniteFieldElement.prototype.constructor = FiniteFieldElement;
-Object.defineProperty(FiniteFieldElement, "__repr__", {
-    value: function() { return "<class 'FiniteFieldElement'>"; }
-});
-FiniteFieldElement.prototype._add_ = function(other) {
-    return new FiniteFieldElement(
-        this._parent, this._value + other._value);
-};
-FiniteFieldElement.prototype._sub_ = function(other) {
-    return new FiniteFieldElement(
-        this._parent, this._value - other._value);
-};
-FiniteFieldElement.prototype._mul_ = function(other) {
-    return new FiniteFieldElement(
-        this._parent, this._value * other._value);
-};
-FiniteFieldElement.prototype._truediv_ = function(other) {
-    return new FiniteFieldElement(
-        this._parent,
-        this._value * ρσ_modular_inverse(
-            other._value, this._parent._modulus));
-};
-FiniteFieldElement.prototype._eq_ = function(other) {
-    return this._value === other._value;
-};
-FiniteFieldElement.prototype.__add__ = function(other) {
-    return ρσ_coercion_model.binOp("add", this, other);
-};
-FiniteFieldElement.prototype.__sub__ = function(other) {
-    return ρσ_coercion_model.binOp("sub", this, other);
-};
-FiniteFieldElement.prototype.__mul__ = function(other) {
-    return ρσ_coercion_model.binOp("mul", this, other);
-};
-FiniteFieldElement.prototype.__truediv__ = function(other) {
-    return ρσ_coercion_model.binOp("truediv", this, other);
-};
-FiniteFieldElement.prototype.__eq__ = function(other) {
-    return ρσ_coercion_model.equals(this, other);
-};
-FiniteFieldElement.prototype.__neg__ = function() {
-    return new FiniteFieldElement(this._parent, -this._value);
-};
-FiniteFieldElement.prototype.__pow__ = function(exponent) {
-    exponent = ρσ_integer_bigint(exponent);
-    let value = this._value;
-    if (exponent < 0n) {
-        value = ρσ_modular_inverse(value, this._parent._modulus);
-        exponent = -exponent;
-    }
-    return new FiniteFieldElement(
-        this._parent,
-        ρσ_modular_power(value, exponent, this._parent._modulus));
-};
-FiniteFieldElement.prototype.lift = function() {
-    return ρσ_normalize_integer(this._value);
-};
-FiniteFieldElement.prototype.integer_representation =
-    FiniteFieldElement.prototype.lift;
-FiniteFieldElement.prototype.is_zero = function() {
-    return this._value === 0n;
-};
-FiniteFieldElement.prototype.is_one = function() {
-    return this._value === 1n;
-};
-FiniteFieldElement.prototype.__repr__ = function() {
-    return this._value.toString();
-};
-FiniteFieldElement.prototype.__str__ = FiniteFieldElement.prototype.__repr__;
-FiniteFieldElement.prototype.toString = FiniteFieldElement.prototype.__repr__;
-
-function FiniteFieldExtensionElement(parent, nativeValue) {
-    Element.call(this, parent);
-    this._native = nativeValue;
-    Object.defineProperty(this, "constructor", {
-        value: parent._elementType
-    });
-    Object.freeze(this);
-}
-
-FiniteFieldExtensionElement.prototype = Object.create(Element.prototype);
-FiniteFieldExtensionElement.prototype.constructor =
-    FiniteFieldExtensionElement;
-Object.defineProperty(FiniteFieldExtensionElement, "__repr__", {
-    value: function() {
-        return "<class 'sage.rings.finite_rings.element_givaro." +
-            "FiniteField_givaroElement'>";
-    }
-});
-FiniteFieldExtensionElement.prototype._add_ = function(other) {
-    return new FiniteFieldExtensionElement(
-        this._parent,
-        ρσ_flint_backend().fqAdd(this._native, other._native));
-};
-FiniteFieldExtensionElement.prototype._sub_ = function(other) {
-    return new FiniteFieldExtensionElement(
-        this._parent,
-        ρσ_flint_backend().fqSub(this._native, other._native));
-};
-FiniteFieldExtensionElement.prototype._mul_ = function(other) {
-    return new FiniteFieldExtensionElement(
-        this._parent,
-        ρσ_flint_backend().fqMul(this._native, other._native));
-};
-FiniteFieldExtensionElement.prototype._truediv_ = function(other) {
-    if (other.is_zero()) {
-        throw new ZeroDivisionError("finite field division by zero");
-    }
-    return new FiniteFieldExtensionElement(
-        this._parent,
-        ρσ_flint_backend().fqDiv(this._native, other._native));
-};
-FiniteFieldExtensionElement.prototype._eq_ = function(other) {
-    return ρσ_flint_backend().fqEqual(this._native, other._native);
-};
-FiniteFieldExtensionElement.prototype.__add__ = function(other) {
-    return ρσ_coercion_model.binOp("add", this, other);
-};
-FiniteFieldExtensionElement.prototype.__sub__ = function(other) {
-    return ρσ_coercion_model.binOp("sub", this, other);
-};
-FiniteFieldExtensionElement.prototype.__mul__ = function(other) {
-    return ρσ_coercion_model.binOp("mul", this, other);
-};
-FiniteFieldExtensionElement.prototype.__truediv__ = function(other) {
-    return ρσ_coercion_model.binOp("truediv", this, other);
-};
-FiniteFieldExtensionElement.prototype.__eq__ = function(other) {
-    return ρσ_coercion_model.equals(this, other);
-};
-FiniteFieldExtensionElement.prototype.__neg__ = function() {
-    return new FiniteFieldExtensionElement(
-        this._parent, ρσ_flint_backend().fqNeg(this._native));
-};
-FiniteFieldExtensionElement.prototype.__pow__ = function(exponent) {
-    exponent = ρσ_integer_bigint(exponent);
-    if (exponent < 0n && this.is_zero()) {
-        throw new ZeroDivisionError(
-            "cannot invert zero in a finite field");
-    }
-    return new FiniteFieldExtensionElement(
-        this._parent,
-        ρσ_flint_backend().fqPow(this._native, exponent));
-};
-FiniteFieldExtensionElement.prototype.is_zero = function() {
-    return ρσ_flint_backend().fqIsZero(this._native);
-};
-FiniteFieldExtensionElement.prototype.is_one = function() {
-    return ρσ_flint_backend().fqIsOne(this._native);
-};
-FiniteFieldExtensionElement.prototype.__repr__ = function() {
-    const raw = ρσ_flint_backend().fqToString(this._native);
-    return raw.replace(/\+/g, " + ").replace(/([^-])-+/g, "$1 - ");
-};
-FiniteFieldExtensionElement.prototype.__str__ =
-    FiniteFieldExtensionElement.prototype.__repr__;
-FiniteFieldExtensionElement.prototype.toString =
-    FiniteFieldExtensionElement.prototype.__repr__;
-
 function ρσ_math_tuple(values) {
     function tupleRepr() {
         const entries = this.map(function(value) {
@@ -665,62 +480,6 @@ var AlgebraicExtensionFunctor = Object.freeze({
     "__repr__": function() { return "AlgebraicExtensionFunctor"; },
     "__str__": function() { return "AlgebraicExtensionFunctor"; },
     "toString": function() { return "AlgebraicExtensionFunctor"; }
-});
-
-function FiniteField_prime_modn() {}
-Object.defineProperty(FiniteField_prime_modn, "__repr__", {
-    value: function() {
-        return "<class 'sage.rings.finite_rings.finite_field_prime_modn." +
-            "FiniteField_prime_modn_with_category'>";
-    }
-});
-
-function FiniteField_givaro() {}
-Object.defineProperty(FiniteField_givaro, "__repr__", {
-    value: function() {
-        return "<class 'sage.rings.finite_rings.finite_field_givaro." +
-            "FiniteField_givaro_with_category'>";
-    }
-});
-
-function FiniteField_givaroElement() {}
-Object.defineProperty(FiniteField_givaroElement, "__repr__", {
-    value: function() {
-        return "<class 'sage.rings.finite_rings.element_givaro." +
-            "FiniteField_givaroElement'>";
-    }
-});
-
-function FiniteField_ntl_gf2e() {}
-Object.defineProperty(FiniteField_ntl_gf2e, "__repr__", {
-    value: function() {
-        return "<class 'sage.rings.finite_rings.finite_field_ntl_gf2e." +
-            "FiniteField_ntl_gf2e_with_category'>";
-    }
-});
-
-function FiniteField_ntl_gf2eElement() {}
-Object.defineProperty(FiniteField_ntl_gf2eElement, "__repr__", {
-    value: function() {
-        return "<class 'sage.rings.finite_rings.element_ntl_gf2e." +
-            "FiniteField_ntl_gf2eElement'>";
-    }
-});
-
-function FiniteField_pari_ffelt() {}
-Object.defineProperty(FiniteField_pari_ffelt, "__repr__", {
-    value: function() {
-        return "<class 'sage.rings.finite_rings.finite_field_pari_ffelt." +
-            "FiniteField_pari_ffelt_with_category'>";
-    }
-});
-
-function FiniteFieldElement_pari_ffelt() {}
-Object.defineProperty(FiniteFieldElement_pari_ffelt, "__repr__", {
-    value: function() {
-        return "<class 'sage.rings.finite_rings.element_pari_ffelt." +
-            "FiniteFieldElement_pari_ffelt'>";
-    }
 });
 
 function ρσ_finite_field_name(name, names, degree) {
@@ -819,12 +578,10 @@ function ρσ_make_extension_field(order, prime, degree, name, modulus) {
                 return numerator._truediv_(denominator);
             }
             value = ρσ_integer_bigint(value);
-            return new FiniteFieldExtensionElement(
+            return ρσ_new_extension_field_element(
                 field, backend.fqFromBigInt(context, value));
         });
-    Object.defineProperty(field, "constructor", {
-        value: parentType
-    });
+    Object.setPrototypeOf(field, parentType.prototype);
     Object.defineProperty(field, "_kind", {value: "GF_EXTENSION"});
     Object.defineProperty(field, "_elementType", {value: elementType});
     Object.defineProperty(field, "_nativeContext", {value: context});
@@ -832,71 +589,10 @@ function ρσ_make_extension_field(order, prime, degree, name, modulus) {
         value: Object.freeze(modulusCoefficients)
     });
     Object.defineProperty(field, "_primeSubfield", {value: primeField});
-    field.order = function() {
-        return ρσ_normalize_integer(order);
-    };
-    field.cardinality = field.order;
-    field.characteristic = function() {
-        return ρσ_normalize_integer(prime);
-    };
-    field.degree = function() { return degree; };
-    field.is_field = function() { return true; };
-    field.is_finite = function() { return true; };
-    field.is_prime_field = function() { return false; };
-    field.zero = function() { return field(0); };
-    field.one = function() { return field(1); };
-    field.gen = function(index) {
-        if (index === undefined) index = 0;
-        index = ρσ_integer_bigint(index);
-        if (index !== 0n) {
-            throw new IndexError("only one generator");
-        }
-        return new FiniteFieldExtensionElement(
-            field, backend.fqGen(context));
-    };
-    field._first_ngens = function(count) {
-        count = ρσ_integer_bigint(count);
-        if (count !== 1n) {
-            throw new ValueError(
-                "finite fields have exactly one generator");
-        }
-        return [field.gen()];
-    };
-    field.gens = function() {
-        return ρσ_math_tuple([field.gen()]);
-    };
-    field.variable_name = function() { return variable; };
-    field.prime_subfield = function() { return primeField; };
-    field.modulus = function() {
-        return ρσ_polynomial_from_coefficients(
-            primeField, "x", modulusCoefficients);
-    };
-    field.polynomial = function() {
-        return ρσ_polynomial_from_coefficients(
-            primeField, variable, modulusCoefficients);
-    };
-    field.construction = function() {
-        return ρσ_math_tuple([AlgebraicExtensionFunctor, primeField]);
-    };
-    field[ρσ_iterator_symbol] = function() {
-        let index = 0n;
-        let value = field.gen();
-        return {
-            "next": function() {
-                if (index >= order) return {"done": true};
-                if (index === 0n) {
-                    index += 1n;
-                    return {"done": false, "value": field.zero()};
-                }
-                const result = {"done": false, "value": value};
-                value = value._mul_(field.gen());
-                index += 1n;
-                return result;
-            },
-            [ρσ_iterator_symbol]: function() { return this; }
-        };
-    };
-    field.__iter__ = field[ρσ_iterator_symbol];
+    Object.defineProperty(field, "_order", {value: order});
+    Object.defineProperty(field, "_prime", {value: prime});
+    Object.defineProperty(field, "_degree", {value: degree});
+    Object.defineProperty(field, "_variable", {value: variable});
     ρσ_extension_fields.set(key, field);
     ρσ_coercion_model.register(ZZ, field, function(value) {
         return field(value);
@@ -950,74 +646,18 @@ function GF(order, name, modulus, names) {
     field = ρσ_make_parent(
         "Finite Field of size " + order,
         function(value) {
-            return new FiniteFieldElement(field, value);
+            return ρσ_new_prime_field_element(field, value);
         });
-    Object.defineProperty(field, "constructor", {
-        value: FiniteField_prime_modn
-    });
+    Object.setPrototypeOf(field, FiniteField_prime_modn.prototype);
     Object.defineProperty(field, "_kind", {value: "GF"});
     Object.defineProperty(field, "_modulus", {value: order});
+    Object.defineProperty(field, "_order", {value: order});
     Object.defineProperty(field, "_generator", {
         value: primitive ? backend.wordPrimitiveRootPrime(order) : 1n
     });
-    field.order = function() {
-        return ρσ_normalize_integer(order);
-    };
-    field.cardinality = field.order;
-    field.characteristic = field.order;
-    field.degree = function() { return 1; };
-    field.is_field = function() { return true; };
-    field.is_finite = function() { return true; };
-    field.is_prime_field = function() { return true; };
-    field.zero = function() { return new FiniteFieldElement(field, 0n); };
-    field.one = function() { return new FiniteFieldElement(field, 1n); };
-    field.gen = function(index) {
-        if (index === undefined) index = 0;
-        index = ρσ_integer_bigint(index);
-        if (index !== 0n) {
-            throw new IndexError("only one generator");
-        }
-        return new FiniteFieldElement(field, field._generator);
-    };
-    field._first_ngens = function(count) {
-        count = ρσ_integer_bigint(count);
-        if (count !== 1n) {
-            throw new ValueError("prime fields have exactly one generator");
-        }
-        return [field.gen()];
-    };
-    field.gens = function() {
-        return ρσ_math_tuple([field.gen()]);
-    };
-    field.variable_name = function() { return "x"; };
-    field.polynomial = function(variable) {
-        if (variable === undefined) variable = "x";
-        return PolynomialRing(field, variable).gen();
-    };
-    field.construction = function() {
-        return ρσ_math_tuple([QuotientFunctor, ZZ]);
-    };
-    field[ρσ_iterator_symbol] = function() {
-        let value = 0n;
-        const iterator = {
-            "next": function() {
-                if (value >= order) return {"done": true};
-                const result = {
-                    "done": false,
-                    "value": new FiniteFieldElement(field, value)
-                };
-                value += 1n;
-                return result;
-            }
-        };
-        iterator[ρσ_iterator_symbol] = function() { return this; };
-        return iterator;
-    };
-    field.__iter__ = field[ρσ_iterator_symbol];
-    field.prime_subfield = function() { return field; };
     ρσ_prime_fields.set(key, field);
     ρσ_coercion_model.register(ZZ, field, function(value) {
-        return new FiniteFieldElement(field, value);
+        return ρσ_new_prime_field_element(field, value);
     });
     return field;
 }
