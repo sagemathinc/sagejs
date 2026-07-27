@@ -29,19 +29,19 @@ assrt.equal(2^3, 1)
 from __python__ import ellipses
 
 # With numerical literals
-assrt.equal(str([1..5]), 'range(1, 6)')
+assrt.equal(str([1..5]), '[1, 2, 3, 4, 5]')
 
 # With expressions
 a = 2; b = 7
-assrt.equal(str([a+a..b+2]), 'range(4, 10)')
+assrt.equal(str([a+a..b+2]), '[4, 5, 6, 7, 8, 9]')
 
 # With a function call
 def f(n):
     return n+1
-assrt.equal(str([f(10)..f(1000)]), 'range(11, 1002)')
+assrt.equal(len([f(10)..f(1000)]), 991)
 
 # With a floating point literal
-assrt.equal(str([1.5..5]), 'range(1.5, 6)')
+assrt.equal(str([1.5..5]), '[1.5, 2.5, 3.5, 4.5]')
 
 # Sage-compatible spelling and interpretation of numeric literals.
 assrt.equal(042, 42)

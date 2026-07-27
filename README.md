@@ -54,7 +54,8 @@ In Sage mode:
 
 - `^` means exponentiation;
 - `^^` means bitwise xor;
-- `[a..b]` means the inclusive range from `a` through `b`;
+- Sage ellipses construct concrete sequences: `[a..b]`, stepped
+  `[a,b,..,z]`, repeated ellipses, and iterator form `(a..b)`;
 - `R.<x> = ZZ[]` constructs a named polynomial ring and binds its generator;
 - general declarations such as `R.<x> = PolynomialRing(ZZ)` pass generator
   names to their constructor, and `R.0` is shorthand for `R.gen(0)`;

@@ -686,8 +686,11 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
             return read_num(".")
 
         if is_dot(c):
-            # ellipses: Two dots in a row, e.g., [a..b]
+            # Sage ranges use two dots; three retain Python's Ellipsis atom.
             next()
+            if is_dot(peek().charCodeAt(0)):
+                next()
+                return token("atom", "Ellipsis")
             return token("punc", "..")
 
         return token("punc", ".")

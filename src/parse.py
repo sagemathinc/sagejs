@@ -1759,6 +1759,12 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 return AST_True({'start': tok, 'end': tok})
             elif tmp__ is "None":
                 return AST_Null({'start': tok, 'end': tok})
+            elif tmp__ is "Ellipsis":
+                return AST_SymbolRef({
+                    'name': 'Ellipsis',
+                    'start': tok,
+                    'end': tok
+                })
         elif tmp_ is "js":
             return AST_Verbatim({
                 'start': tok,
@@ -1789,6 +1795,26 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     # since we don't have tuples in pylang (yet?)...
                     return AST_Array({'elements': []})
                 ex = expression(True)
+                if is_('punc', '..'):
+                    if not S.scoped_flags.get('ellipses'):
+                        croak(
+                            "Use 'from __python__ import ellipses' to support the (a..b) syntax"
+                        )
+                    next()
+                    last = expression(False)
+                    expect(")")
+                    S.in_parenthesized_expr = False
+                    return subscripts(
+                        AST_EllipsesRange({
+                            'start': start,
+                            'elements': [
+                                ex,
+                                AST_SymbolRef({'name': 'Ellipsis'}),
+                                last
+                            ],
+                            'is_iterator': True,
+                            'end': prev()
+                        }), allow_calls)
                 if is_('keyword', 'for'):
                     ret = read_comprehension(
                         AST_GeneratorComprehension({'statement': ex}), ')')
@@ -1930,6 +1956,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
 
     @embed_tokens
     def array_():
+        if options.jsage:
+            return sage_array()
         expect("[")
         expr = []
         if not is_("punc", "]"):
@@ -1941,7 +1969,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     )
                 # ellipses range
                 return read_ellipses_range(
-                    AST_EllipsesRange({'first': expr[0]}), ']')
+                    AST_EllipsesRange({
+                        'elements': [expr[0]],
+                        'is_iterator': False
+                    }), ']')
 
             if is_("keyword", "for"):
                 # list comprehension
@@ -1952,6 +1983,64 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 expect(",")
 
         return AST_Array({'elements': expr.concat(expr_list("]", True, True))})
+
+    def sage_array():
+        expect("[")
+        elements = []
+        saw_ellipsis = False
+        if is_("punc", "]"):
+            next()
+            return AST_Array({'elements': elements})
+
+        while not is_("punc", "]"):
+            if is_("punc", ".."):
+                if not S.scoped_flags.get('ellipses'):
+                    croak(
+                        "Use 'from __python__ import ellipses' to support Sage range syntax"
+                    )
+                saw_ellipsis = True
+                elements.push(AST_SymbolRef({
+                    'name': 'Ellipsis',
+                    'start': S.token,
+                    'end': S.token
+                }))
+                next()
+                if is_("punc", ","):
+                    next()
+                continue
+            else:
+                element = expression(False)
+                if is_('keyword', 'for') and elements.length is 0:
+                    return read_comprehension(
+                        AST_ListComprehension({'statement': element}), ']')
+                elements.push(element)
+
+            if is_("punc", ","):
+                next()
+                if is_("punc", "]"):
+                    break
+            elif not is_("punc", "]") and not is_("punc", ".."):
+                expect("]")
+
+        expect("]")
+        if saw_ellipsis:
+            return AST_EllipsesRange({
+                'elements': elements,
+                'is_iterator': False
+            })
+        return AST_Array({'elements': elements})
+
+    def read_ellipses_range(obj, terminator):
+        marker = AST_SymbolRef({
+            'name': 'Ellipsis',
+            'start': S.token,
+            'end': S.token
+        })
+        next()
+        obj.elements.push(marker)
+        obj.elements.push(expression(False))
+        expect(terminator)
+        return obj
 
     @embed_tokens
     def object_():
@@ -2025,12 +2114,6 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 }))
         next()
         return AST_Set({'items': a, 'start': ostart, 'end': prev()})
-
-    def read_ellipses_range(obj, terminator):
-        next()
-        obj['last'] = expression(False)
-        expect("]")
-        return obj
 
     def read_comprehension(obj, terminator):
         if is_node_type(obj, AST_GeneratorComprehension):

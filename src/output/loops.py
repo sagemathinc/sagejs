@@ -375,8 +375,10 @@ def print_list_comprehension(self, output):
 
 
 def print_ellipses_range(self, output):
-    output.print("ρσ_range(")
-    self.first.print(output)
-    output.print(",ρσ_operator_add(")
-    self.last.print(output)
-    output.print(",1))")
+    output.print("ρσ_ellipsis_iter(" if self.is_iterator else
+                 "ρσ_ellipsis_range(")
+    for i, element in enumerate(self.elements):
+        if i:
+            output.comma()
+        element.print(output)
+    output.print(")")

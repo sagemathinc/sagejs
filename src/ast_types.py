@@ -280,9 +280,16 @@ class AST_ForJS(AST_StatementWithBody):
 
 class AST_EllipsesRange(AST_Node):
     properties = {
-        'first': "[AST_Node] the 'a' in [a..b] expression",
-        'last': "[AST_Node] the 'b' in [a..b] expression"
+        'elements': "[AST_Node*] anchors and Ellipsis markers",
+        'is_iterator': "[boolean] whether this came from parenthesized syntax"
     }
+
+    def _walk(self, visitor):
+        def f_ellipses_range():
+            for element in self.elements:
+                element._walk(visitor)
+
+        return visitor._visit(self, f_ellipses_range)
 
 
 class AST_ListComprehension(AST_ForIn):

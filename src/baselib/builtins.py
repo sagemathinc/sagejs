@@ -418,6 +418,52 @@ def ρσ_range(start, stop, step):
         })
     return ans
 
+v"""var Ellipsis = Object.freeze({
+    __repr__: function() { return "Ellipsis"; },
+    __str__: function() { return "Ellipsis"; },
+    toString: function() { return "Ellipsis"; }
+});"""
+
+def ρσ_ellipsis_range(*specification):
+    result = []
+    saw_ellipsis = False
+    for value in specification:
+        if value is Ellipsis:
+            saw_ellipsis = True
+            continue
+        if not saw_ellipsis:
+            result.push(value)
+            continue
+        if result.length is 0:
+            raise ValueError('an ellipsis range requires a starting value')
+
+        last = result[result.length - 1]
+        if result.length >= 2:
+            step = ρσ_operator_sub_exact(
+                last, result[result.length - 2])
+        else:
+            step = v"typeof last === 'bigint' ? 1n : 1"
+        if step is 0 or (jstype(step) is 'bigint' and step == BigInt(0)):
+            raise ValueError('ellipsis range step must not be zero')
+
+        current = ρσ_operator_add_exact(last, step)
+        if step > 0:
+            while current <= value:
+                result.push(current)
+                current = ρσ_operator_add_exact(current, step)
+        else:
+            while current >= value:
+                result.push(current)
+                current = ρσ_operator_add_exact(current, step)
+        saw_ellipsis = False
+
+    if saw_ellipsis:
+        raise ValueError('an ellipsis range requires an endpoint')
+    return list(result)
+
+def ρσ_ellipsis_iter(*specification):
+    return iter(ρσ_ellipsis_range.apply(None, specification))
+
 def ρσ_getattr(obj, name, defval):
     try:
         ret = obj[name]
