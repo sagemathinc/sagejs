@@ -138,6 +138,32 @@ assert.equal(
 );
 assert.match(runError([], "print(1/0)\n"), /rational division by zero/);
 
+const longReal =
+  "1.00000000000000000000000000000000000000000000000000001505";
+assert.equal(
+  run(
+    [],
+    [
+      `literal = ${longReal}`,
+      `text = "${longReal}"`,
+      "R = RealField(1000)",
+      "print(type(literal))",
+      "print(parent(literal).precision())",
+      "print(R(literal) == R(text))",
+      "print(R(RR(text)) == R(text))",
+      'print(R(-literal) == R("-" + text))',
+      "",
+    ].join("\n"),
+  ).trim().split("\n").slice(-5).join("\n"),
+  [
+    "<class 'RealLiteral'>",
+    "190",
+    "True",
+    "False",
+    "True",
+  ].join("\n"),
+);
+
 assert.deepEqual(
   run(
     [],

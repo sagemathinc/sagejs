@@ -523,6 +523,25 @@ RealNumberElement.prototype.__repr__ = function() {
 RealNumberElement.prototype.__str__ = RealNumberElement.prototype.__repr__;
 RealNumberElement.prototype.toString = RealNumberElement.prototype.__repr__;
 
+function RealLiteral(parent, nativeValue, literal) {
+    Element.call(this, parent);
+    this._native = nativeValue;
+    this.literal = literal;
+    this.base = 10;
+    Object.freeze(this);
+}
+RealLiteral.prototype = Object.create(RealNumberElement.prototype);
+RealLiteral.prototype.constructor = RealLiteral;
+Object.defineProperty(RealLiteral, "__repr__", {
+    value: function() { return "<class 'RealLiteral'>"; }
+});
+RealLiteral.prototype.__neg__ = function() {
+    const literal = this.literal[0] === "-"
+        ? this.literal.slice(1)
+        : "-" + this.literal;
+    return ρσ_create_real_literal(literal);
+};
+
 function ComplexNumberElement(parent, nativeValue) {
     Element.call(this, parent);
     this._native = nativeValue;
@@ -597,6 +616,10 @@ function ρσ_real_from_exact(field, value) {
 
 function ρσ_real_field_element(field, value) {
     const backend = ρσ_flint_backend();
+    if (value instanceof RealLiteral) {
+        return new RealNumberElement(field,
+            backend.realFromString(value.literal, field._precision));
+    }
     if (value instanceof RealNumberElement) {
         if (value._parent === field) return value;
         return new RealNumberElement(
@@ -652,6 +675,27 @@ function RealField(precision) {
     ρσ_real_fields.set(precision, field);
     ρσ_register_real_field(field);
     return field;
+}
+
+function ρσ_create_real_literal(text) {
+    text = String(text).replace(RegExp("_", "g"), "");
+    let precision = 53;
+    if (text.length > 15) {
+        const exponentIndex = Math.max(
+            text.indexOf("e"), text.indexOf("E"));
+        const mantissa = exponentIndex === -1
+            ? text
+            : text.slice(0, exponentIndex);
+        const significant = mantissa.replace(RegExp("^[-0.]*"), "");
+        const significantDigits = significant.length -
+            (significant.indexOf(".") === -1 ? 0 : 1);
+        const bits = Math.floor(
+            3.321928094887363 * significantDigits) + 1;
+        precision = Math.max(bits, 53);
+    }
+    const field = RealField(precision);
+    return new RealLiteral(field,
+        ρσ_flint_backend().realFromString(text, precision), text);
 }
 
 function ρσ_complex_field_element(field, value, imag) {

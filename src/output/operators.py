@@ -42,7 +42,7 @@ def print_getitem(self, output):  # AST_Sub
 
     if is_negative_number:
         output.print('['), expr.print(output), output.print(
-            '.length'), prop.print(output), output.print(']')
+            '.length-'), prop.expression.print(output), output.print(']')
         return
     is_repeatable = is_node_type(prop, AST_SymbolRef)
     # We have to check the type of the property because if it is a Symbol, it
@@ -110,13 +110,18 @@ def print_unary_prefix(self, output):
     op = self.operator
     if op is 'delete':
         return print_delete(self.expression, output)
-    output.print(op)
+    if op is '-':
+        output.print("ρσ_operator_neg(")
+    else:
+        output.print(op)
     if RegExp("^[a-z]", "i").test(op):
         output.space()
     if self.parenthesized:
         output.with_parens(lambda: self.expression.print(output))
     else:
         self.expression.print(output)
+    if op is '-':
+        output.print(")")
 
 def write_instanceof(left, right, output):
     def do_many(vals):

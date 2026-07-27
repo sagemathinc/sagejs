@@ -163,6 +163,18 @@ higher-precision field to a lower-precision field. Consequently the common
 parent need not be either operand: an element of `RealField(53)` plus one of
 `ComplexField(100)` has parent `ComplexField(53)`.
 
+As in Sage, decimal source constructs a `RealLiteral`. It retains the original
+normalized source text and uses enough initial precision for its significant
+digits, with a minimum of 53 bits. A later conversion to a wider field parses
+that text again instead of widening an already-rounded binary value:
+
+```text
+sage: R = RealField(1000)
+sage: R(1.00000000000000000000000000000000000000000000000000001505) == \
+....: R("1.00000000000000000000000000000000000000000000000000001505")
+True
+```
+
 ## Parents, coercion, and native polynomials
 
 The first mathematical object model implements singleton `ZZ` and `QQ`
