@@ -50,6 +50,7 @@ interface OutputOptions {
   baselib_plain?: string;
   sage?: boolean; // sage-style preparsing
   exact_integers?: boolean;
+  pool_numeric_literals?: boolean;
 }
 
 export default async function Compile({
@@ -87,6 +88,7 @@ export default async function Compile({
     discard_asserts: argv.discard_asserts,
     module_cache_dir,
     exact_integers: !!argv.sage,
+    pool_numeric_literals: !!argv.sage,
   } as OutputOptions;
 
   const files: string[] = argv.files.slice();

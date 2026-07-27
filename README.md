@@ -111,6 +111,10 @@ sage: 9007199254740991 + 1 + 1
 9007199254740993
 ```
 
+When compiling Sage.js files, numeric constructors are pooled at module scope.
+A literal inside a hot loop is therefore constructed once and reused; the
+interactive REPL deliberately keeps each submitted line independent.
+
 Exact integer division constructs an immutable normalized rational:
 
 ```text

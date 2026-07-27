@@ -227,6 +227,10 @@ try {
   );
   assert.match(run([sageFile]), /^32\s*$/);
   assert.match(run(["--python", pythonFile]), /^7\s*$/);
+  assert.match(
+    run(["compile", "--omit-baselib", sageFile]),
+    /var ρσ_const_0 = Integer\("2"\),\s+ρσ_const_1 = Integer\("5"\)/,
+  );
   assert.equal(
     run(
       [],

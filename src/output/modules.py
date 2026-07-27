@@ -10,6 +10,59 @@ from output.comments import print_comments, output_comments
 from output.functions import set_module_name
 from parse import get_compiler_version
 from utils import cache_file_name
+from ast_types import (
+    AST_Call, AST_String, AST_SymbolRef, TreeWalker, is_node_type)
+
+
+def prepare_numeric_literal_pool(module, output):
+    if not output.options.pool_numeric_literals:
+        return []
+    entries = []
+    by_key = {}
+
+    def collect(node, descend):
+        if (is_node_type(node, AST_Call)
+                and is_node_type(node.expression, AST_SymbolRef)
+                and node.expression.name in ('Integer', 'RealNumber')
+                and node.args.length is 1
+                and is_node_type(node.args[0], AST_String)):
+            constructor = node.expression.name
+            source = node.args[0].value
+            key = constructor + ':' + source
+            name = by_key[key]
+            if not name:
+                name = 'ρσ_const_' + entries.length
+                by_key[key] = name
+                entries.push({
+                    'name': name,
+                    'constructor': constructor,
+                    'source': source
+                })
+            node.pooled_numeric_name = name
+            return True
+
+    module.walk(TreeWalker(collect))
+    return entries
+
+
+def write_numeric_literal_pool(entries, output):
+    if not entries.length:
+        return
+    output.indent()
+    output.print('var ')
+    for i, entry in enumerate(entries):
+        if i:
+            output.comma()
+            output.space()
+        output.print(entry.name)
+        output.space()
+        output.print('=')
+        output.space()
+        output.print(entry.constructor)
+        output.print('(')
+        output.print_string(entry.source)
+        output.print(')')
+    output.end_statement()
 
 
 def write_imports(module, output):
@@ -133,6 +186,7 @@ def prologue(module, output):
 def print_top_level(self, output):
     set_module_name(self.module_id)
     is_main = self.module_id is '__main__'
+    numeric_literal_pool = prepare_numeric_literal_pool(self, output)
 
     def write_docstrings():
         if is_main and output.options.keep_docstrings and self.docstrings and self.docstrings.length:
@@ -165,6 +219,7 @@ def print_top_level(self, output):
                     def f_body():
                         write_main_name(output)
                         output.newline()
+                        write_numeric_literal_pool(numeric_literal_pool, output)
                         declare_vars(self.localvars, output)
                         display_body(self.body, True, output)
                         output.newline()
@@ -192,6 +247,7 @@ def print_top_level(self, output):
             write_imports(self, output)
             write_main_name(output)
 
+        write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)
         display_body(self.body, True, output)
         if self.comments_after and self.comments_after.length:
@@ -201,8 +257,10 @@ def print_top_level(self, output):
 
 def print_module(self, output):
     set_module_name(self.module_id)
+    numeric_literal_pool = prepare_numeric_literal_pool(self, output)
 
     def output_module(output):
+        write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)
         display_body(self.body, True, output)
         declare_exports(self.module_id, self.exports, output, self.docstrings)

@@ -309,6 +309,10 @@ def print_this(expression, output):
 
 
 def print_function_call(self, output):
+    if self.pooled_numeric_name:
+        output.print(self.pooled_numeric_name)
+        return
+
     is_prototype_call = False
 
     def print_function_name(no_call):
