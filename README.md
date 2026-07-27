@@ -47,7 +47,7 @@ sage: sum([1..100])
 sage: 7^^3
 4
 sage: factor(2026)
-[[2, 1], [1013, 1]]
+2 * 1013
 ```
 
 In Sage mode:
@@ -160,26 +160,39 @@ FLINT 3.5 and demonstrates:
 
 - linear, word-array conversion between JavaScript `BigInt` and FLINT `fmpz`;
 - exact GCD, factorial, Fibonacci, binomial, primorial, and factorization;
-- a global `factor(n)` returning `[prime, exponent]` pairs;
+- a global `factor(n)` returning an `IntegerFactorization`;
 - lazy loading on the first `factor` call, so the core language pays no native
   startup cost;
 - a Sage.js program calling FLINT and receiving JavaScript `BigInt` results.
 
-For now, positive prime factors are returned as JavaScript `BigInt` values,
-although their Sage.js representation looks like an ordinary integer:
+The factorization is an immutable sequence of prime-exponent pairs with a
+separate unit, following Sage's factorization model:
 
 ```text
 sage: factor(-360)
-[[-1, 1], [2, 3], [3, 2], [5, 1]]
+-1 * 2^3 * 3^2 * 5
+sage: a = factor(-360)
+sage: type(a)
+<class 'IntegerFactorization'>
+sage: a[0]
+(2, 3)
+sage: list(a)
+[(2, 3), (3, 2), (5, 1)]
+sage: a.unit()
+-1
+sage: a.value()
+-360
 sage: factor(1)
-[]
+1
 sage: factor(202693990283402830942083402834)
-[[2, 1], [3, 2], [37, 1], [20390333, 1], [14925961766090828753, 1]]
+2 * 3^2 * 37 * 20390333 * 14925961766090828753
 ```
 
 Safe JavaScript integer `Number` values and arbitrary-size `BigInt` values are
-accepted. Factoring zero is undefined and raises an error. A later interface
-will replace the raw list with a Sage-style factorization object.
+accepted. Factoring zero is undefined and raises an error. The generic
+`Factorization` core also supports simplification, formal multiplication and
+powers, radicals, iteration, and value reconstruction. Parent and coercion
+semantics remain future work.
 
 On the initial Linux x86-64 build, the stripped addon is about 11 MB and packs
 to about 5.3 MB. A 4096-bit round trip takes roughly half a microsecond, and

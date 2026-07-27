@@ -37,7 +37,7 @@ var MESSAGES = {
 
 var BUILTINS = Object.create(null);
 (
-  "this self window document chr ord iterator_symbol print len range dir factor" +
+  "this self window document chr ord iterator_symbol print len range dir factor Factorization IntegerFactorization" +
   " eval undefined arguments abs max min enumerate pow callable reversed sum" +
   " getattr isFinite setattr hasattr parseInt parseFloat options_object" +
   " isNaN JSON Math list set list_wrap ρσ_modules require bool int bin" +

@@ -17,13 +17,14 @@ it only upon first use and caches it:
 
 ```text
 sage: factor(2026)
-[[2, 1], [1013, 1]]
+2 * 1013
 ```
 
 The raw Node API remains available as
 `require("@sagemath/sagejs-flint").factor(2026n)`. It returns an object with a
-separate sign and canonical ascending prime factors; the Sage.js wrapper turns
-a negative sign into the pair `[-1, 1]`.
+separate sign and canonical ascending prime factors. The Sage.js wrapper turns
+that result into an `IntegerFactorization`, retaining the sign as its unit
+rather than adding it to the factor list.
 
 ## Build
 

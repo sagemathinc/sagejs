@@ -367,10 +367,8 @@ def ρσ_factor(value):
         ρσ_factor_state.backend = require('@sagemath/sagejs-flint')
 
     result = ρσ_factor_state.backend.factor(value)
-    factors = result.factors
-    if result.sign < 0:
-        factors.unshift([BigInt(-1), 1])
-    return factors
+    return new IntegerFactorization(
+        result.factors, BigInt(result.sign), False, False, False)
 
 
 def ρσ_max(*args, **kwargs):
