@@ -12,6 +12,19 @@ FLINT's `fmpz_set_ui_array` / `fmpz_get_ui_array` functions, so crossing the
 boundary requires one linear copy in each direction and no decimal-string
 conversion.
 
+When this package is available to Sage.js, the language-level function loads
+it only upon first use and caches it:
+
+```text
+sage: factor(2026)
+[[2, 1], [1013, 1]]
+```
+
+The raw Node API remains available as
+`require("@sagemath/sagejs-flint").factor(2026n)`. It returns an object with a
+separate sign and canonical ascending prime factors; the Sage.js wrapper turns
+a negative sign into the pair `[-1, 1]`.
+
 ## Build
 
 The current prototype supports 64-bit Linux hosts with a C compiler, `make`,

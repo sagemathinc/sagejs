@@ -17,7 +17,7 @@ system, package distribution, and collection of high-level algorithms.
 
 Version 0.1 is intentionally much smaller. It revives and modernizes the
 self-hosting language compiler formerly developed as JPython and PyLang. It
-does not yet contain the native mathematical library layer.
+is now beginning to acquire an optional native mathematical library layer.
 
 ## Install
 
@@ -46,6 +46,8 @@ sage: sum([1..100])
 5050
 sage: 7^^3
 4
+sage: factor(2026)
+[[2, 1], [1013, 1]]
 ```
 
 In Sage mode:
@@ -137,8 +139,24 @@ FLINT 3.5 and demonstrates:
 
 - linear, word-array conversion between JavaScript `BigInt` and FLINT `fmpz`;
 - exact GCD, factorial, Fibonacci, binomial, primorial, and factorization;
-- lazy loading, so the core language pays no native startup cost;
+- a global `factor(n)` returning `[prime, exponent]` pairs;
+- lazy loading on the first `factor` call, so the core language pays no native
+  startup cost;
 - a Sage.js program calling FLINT and receiving JavaScript `BigInt` results.
+
+For now, positive prime factors are returned as JavaScript `BigInt` values,
+although their Sage.js representation looks like an ordinary integer:
+
+```text
+sage: factor(-360)
+[[-1, 1], [2, 3], [3, 2], [5, 1]]
+sage: factor(1)
+[]
+```
+
+Safe JavaScript integer `Number` values and arbitrary-size `BigInt` values are
+accepted. Factoring zero is undefined and raises an error. A later interface
+will replace the raw list with a Sage-style factorization object.
 
 On the initial Linux x86-64 build, the stripped addon is about 11 MB and packs
 to about 5.3 MB. A 4096-bit round trip takes roughly half a microsecond, and

@@ -1,4 +1,4 @@
-# globals: exports, console, ρσ_iterator_symbol, ρσ_kwargs_symbol, ρσ_arraylike, ρσ_list_contains
+# globals: exports, console, require, BigInt, ρσ_iterator_symbol, ρσ_kwargs_symbol, ρσ_arraylike, ρσ_list_contains
 
 def abs(a):
     return r"%js (typeof a === 'object' && a.__abs__ !== undefined) ? a.__abs__() : Math.abs(a)"
@@ -335,6 +335,26 @@ def ρσ_divmod(x, y):
     return d, x - d * y
 
 
+ρσ_factor_state = v'{"backend": null}'
+
+def ρσ_factor(value):
+    if jstype(value) is 'number':
+        if not Number.isSafeInteger(value):
+            raise TypeError('factor() requires a safe integer; use a BigInt for larger values')
+        value = BigInt(value)
+    elif jstype(value) is not 'bigint':
+        raise TypeError('factor() requires an integer')
+
+    if ρσ_factor_state.backend is None:
+        ρσ_factor_state.backend = require('@sagemath/sagejs-flint')
+
+    result = ρσ_factor_state.backend.factor(value)
+    factors = result.factors
+    if result.sign < 0:
+        factors.unshift([BigInt(-1), 1])
+    return factors
+
+
 def ρσ_max(*args, **kwargs):
     if args.length is 0:
         if kwargs.defval is not undefined:
@@ -357,4 +377,4 @@ v'var float = ρσ_float, int = ρσ_int, arraylike = ρσ_arraylike_creator(), 
 v'var print = ρσ_print, id = ρσ_id, get_module = ρσ_get_module, pow = ρσ_pow, divmod = ρσ_divmod'
 v'var dir = ρσ_dir, ord = ρσ_ord, chr = ρσ_chr, bin = ρσ_bin, hex = ρσ_hex, callable = ρσ_callable'
 v'var enumerate = ρσ_enumerate, iter = ρσ_iter, reversed = ρσ_reversed, len = ρσ_len'
-v'var range = ρσ_range, getattr = ρσ_getattr, setattr = ρσ_setattr, hasattr = ρσ_hasattr'
+v'var range = ρσ_range, getattr = ρσ_getattr, setattr = ρσ_setattr, hasattr = ρσ_hasattr, factor = ρσ_factor'

@@ -19,7 +19,7 @@
     "build:deps": "node scripts/build-deps.cjs",
     "build:addon": "node-gyp rebuild",
     "build": "pnpm run build:deps && pnpm run build:addon",
-    "test": "node test/test.cjs",
+    "test": "node test/test.cjs && node test/lazy-factor.cjs",
     "bench": "node bench/benchmark.cjs"
   },
   "devDependencies": {

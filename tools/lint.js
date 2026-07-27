@@ -37,14 +37,14 @@ var MESSAGES = {
 
 var BUILTINS = Object.create(null);
 (
-  "this self window document chr ord iterator_symbol print len range dir" +
+  "this self window document chr ord iterator_symbol print len range dir factor" +
   " eval undefined arguments abs max min enumerate pow callable reversed sum" +
   " getattr isFinite setattr hasattr parseInt parseFloat options_object" +
   " isNaN JSON Math list set list_wrap ρσ_modules require bool int bin" +
   " float iter Error EvalError set_wrap RangeError ReferenceError SyntaxError" +
   " str TypeError URIError Exception AssertionError IndexError AttributeError KeyError" +
   " ValueError ZeroDivisionError map hex filter zip dict dict_wrap UnicodeDecodeError HTMLCollection" +
-  " NodeList alert console Node Symbol NamedNodeMap ρσ_eslice ρσ_delslice Number" +
+  " NodeList alert console Node Symbol NamedNodeMap ρσ_eslice ρσ_delslice Number BigInt" +
   " Boolean encodeURIComponent decodeURIComponent setTimeout setInterval" +
   " setImmediate clearTimeout clearInterval clearImmediate requestAnimationFrame" +
   " id repr sorted __name__ equals get_module ρσ_str jstype divmod NaN"
