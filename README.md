@@ -59,6 +59,12 @@ In Sage mode:
 - numerical literals pass through exact-text `Integer(...)` and
   `RealNumber(...)` hooks.
 
+Sage-style digit separators, binary/octal/hexadecimal integers, leading-zero
+decimal integers, raw suffixes, and attribute access on numeric literals are
+accepted. For example, `123_456`, `0o100`, `042`, and `87.toString()` parse
+without losing the original numeric text. Complex `j` literals are recognized
+by the compiler; their mathematical runtime is still under development.
+
 These features are implemented in the parser and compiler, not by textual
 preprocessing.
 

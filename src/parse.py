@@ -1687,6 +1687,20 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         if tmp_ is "name":
             return token_as_symbol(tok, AST_SymbolRef)
         elif tmp_ is "num":
+            suffix = (tok.numeric_suffix or '').toLowerCase()
+            if suffix.indexOf('j') is not -1:
+                return AST_Call({
+                    'expression':
+                    AST_SymbolRef({'name': 'ComplexNumber'}),
+                    'args': [
+                        AST_Number({'value': 0}),
+                        AST_String({
+                            'start': tok,
+                            'end': tok,
+                            'value': tok.raw
+                        })
+                    ]
+                })
             if not S.scoped_flags.get('numbers'):
                 return AST_Number({
                     'start': tok,

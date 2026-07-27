@@ -43,6 +43,8 @@ class AST_Token(AST):
         'The exact source text of a numeric token',
         'is_integer':
         'Whether a numeric token is an integer literal',
+        'numeric_suffix':
+        'The Sage/Python suffix on a numeric token, such as r, L, or j',
         'line':
         'The line number at which the token occurs',
         'col':

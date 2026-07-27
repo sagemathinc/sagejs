@@ -11,8 +11,12 @@ from errors import EOFError, SyntaxError
 from string_interpolation import interpolate  # type: ignore
 
 RE_HEX_NUMBER = RegExp(r"^0x[0-9a-f]+$", "i")
-RE_OCT_NUMBER = RegExp(r"^0[0-7]+$")
-RE_DEC_NUMBER = RegExp(r"^\d*\.?\d*(?:e[+-]?\d*(?:\d\.?|\.?\d)\d*)?$", "i")
+RE_OCT_NUMBER = RegExp(r"^0o[0-7]+$", "i")
+RE_BIN_NUMBER = RegExp(r"^0b[01]+$", "i")
+RE_DEC_NUMBER = RegExp(r"^(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:e[+-]?\d+)?$", "i")
+RE_SAGE_NUMBER = RegExp(
+    r"^((?:0[xX][0-9a-fA-F](?:_?[0-9a-fA-F])*|0[oO][0-7](?:_?[0-7])*|0[bB][01](?:_?[01])*|(?:(?:\d(?:_?\d)*(?:\.(?:\d(?:_?\d)*)?)?)|(?:\.\d(?:_?\d)*))(?:[eE][+-]?\d(?:_?\d)*)?))([rRlLjJ]{0,2})"
+)
 
 OPERATOR_CHARS = make_predicate(characters("+-*&%=<>!?|~^@"))
 
@@ -126,10 +130,13 @@ def is_identifier_char(ch: str) -> bool:
 
 
 def parse_js_number(num: str) -> Union[float, int]:
+    num = num.replace(RegExp("_", "g"), "")
     if RE_HEX_NUMBER.test(num):
         return int(num[2:], 16)
     elif RE_OCT_NUMBER.test(num):
-        return int(num[1:], 8)
+        return int(num[2:], 8)
+    elif RE_BIN_NUMBER.test(num):
+        return int(num[2:], 2)
     elif RE_DEC_NUMBER.test(num):
         return float(num)
     raise ValueError("invalid number")
@@ -244,7 +251,8 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
               is_comment: bool = False,
               keep_newline: bool = False,
               raw: Any = undefined,
-              is_integer: Any = undefined) -> AST_Token:
+              is_integer: Any = undefined,
+              numeric_suffix: Any = undefined) -> AST_Token:
         if S['exponent'] and type == 'operator':
             if value == '^':
                 value = '**'
@@ -268,6 +276,7 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
             'value': value,
             'raw': raw,
             'is_integer': is_integer,
+            'numeric_suffix': numeric_suffix,
             'line': S['tokline'],
             'col': S['tokcol'],
             'pos': S['tokpos'],
@@ -371,74 +380,44 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
                           S['tokpos'], is_eof)
 
     def read_num(prefix: str) -> Optional[AST_Token]:
-        has_e = False
-        has_x = False
-        has_dot = prefix is "."
+        source = (prefix or '') + S['text'].slice(S['pos'])
+        match = RE_SAGE_NUMBER.exec(source)
+        if not match:
+            parse_error("SyntaxError: invalid syntax in numeric literal")
+            return undefined
 
-        # Read a binary number
-        if not prefix and peek() is '0' and charAt(S['text'],
-                                                   S['pos'] + 1) is 'b':
-            next(), next()
+        num = match[1]
+        suffix = match[2] or ''
+        suffix_lower = suffix.toLowerCase()
+        if suffix_lower not in ('', 'j', 'l', 'r', 'rj', 'rl', 'jr', 'lr'):
+            parse_error("SyntaxError: invalid numeric literal suffix -- " +
+                        suffix)
+            return undefined
 
-            def is01(ch):
-                return ch is '0' or ch is '1'
+        # ``87.sqrt()`` means a method on the integer 87, whereas ``1.j`` is
+        # a complex literal.  Do not consume the trailing dot in the former.
+        consumed = num.length + suffix.length - (prefix or '').length
+        after = charAt(S['text'], S['pos'] + consumed)
+        if (num.endsWith('.') and not suffix and after
+                and (after is '.'
+                     or is_identifier_start(after.charCodeAt(0)))):
+            num = num[:-1]
+            consumed -= 1
 
-            num = read_while(is01)
-            try:
-                valid = int(num, 2)  # type: Union[float, int]
-            except:
-                parse_error('Invalid syntax for a binary number')
-            return token('num', valid, False, False, '0b' + num, True)
-        seen = []  # type: List[str]
+        for i in range(consumed):
+            next()
 
-        def is_num(ch, i):
-            nonlocal has_dot, has_e, has_x
-            seen.push(ch)
-            if ch is 'x' or ch is 'X':
-                if has_x or seen.length is not 2 or seen[0] is not '0':
-                    return False
-                has_x = True
-                return True
-            elif ch is 'e' or ch is 'E':
-                if has_x:
-                    return True
-                if has_e or i == 0:
-                    return False
-                has_e = True
-                return True
-            elif ch is '-':
-                if i is 0 and not prefix:
-                    return True
-                if has_e and seen[i - 1].toLowerCase() is 'e':
-                    return True
-                return False
-            elif ch is '+':
-                if has_e and seen[i - 1].toLowerCase() is 'e':
-                    return True
-                return False
-            elif ch is '.':
-                # If next ch after this is also a ., then its
-                # something like [389..5077], so we stop
-                if peekpeek() is '.':
-                    return False
-                if not has_dot and not has_x and not has_e:
-                    has_dot = True
-                    return True
-                return False
-            return is_alphanumeric_char(ch.charCodeAt(0))
-
-        num = read_while(is_num)
-        if prefix:
-            num = prefix + num
-
+        plain_num = num.replace(RegExp("_", "g"), "")
         try:
-            valid = parse_js_number(num)
+            valid = parse_js_number(plain_num)
         except:
             parse_error("SyntaxError: invalid syntax in numeric literal -- " +
                         num)
             return undefined
-        return token("num", valid, False, False, num,
-                     not has_dot and not has_e)
+        is_integer = (not RE_DEC_NUMBER.test(plain_num)
+                      or (plain_num.indexOf('.') is -1
+                          and plain_num.toLowerCase().indexOf('e') is -1))
+        return token("num", valid, False, False, num, is_integer, suffix)
 
     # This returns str or int, since it could be a
     # hex number or a hex character code.

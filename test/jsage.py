@@ -43,6 +43,18 @@ assrt.equal(str([f(10)..f(1000)]), 'range(11, 1002)')
 # With a floating point literal
 assrt.equal(str([1.5..5]), 'range(1.5, 6)')
 
+# Sage-compatible spelling and interpretation of numeric literals.
+assrt.equal(042, 42)
+assrt.equal(000042, 42)
+assrt.equal(123_456, 123456)
+assrt.equal(0b11_011, 27)
+assrt.equal(0o76_321, 31953)
+assrt.equal(0xaa_aaa, 699050)
+assrt.equal(1_3.2_5e-2, 0.1325)
+assrt.equal(87.toString(), '87')
+assrt.equal(100r, 100)
+assrt.equal(5L, 5)
+
 # Numerical literals
 from __python__ import numbers
 # will parse all numbers as one less!
