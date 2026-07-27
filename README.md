@@ -14,6 +14,8 @@ system in the Node.js ecosystem. It combines:
 The long-term goal is analogous to SageMath and OSCAR: integrate the best open
 mathematical libraries behind a coherent language, object model, coercion
 system, package distribution, and collection of high-level algorithms.
+SageMath is the semantic specification by default; an eventual compatibility
+target is to run substantial upstream Sage test suites unchanged.
 
 Version 0.1 is intentionally much smaller. It revives and modernizes the
 self-hosting language compiler formerly developed as JPython and PyLang. It
@@ -65,8 +67,8 @@ In Sage mode:
 Sage-style digit separators, binary/octal/hexadecimal integers, leading-zero
 decimal integers, raw suffixes, and attribute access on numeric literals are
 accepted. For example, `123_456`, `0o100`, `042`, and `87.toString()` parse
-without losing the original numeric text. Complex `j` literals are recognized
-by the compiler; their mathematical runtime is still under development.
+without losing the original numeric text. Real literals construct elements of
+`RR`, and complex `j` literals construct elements of `CC`.
 
 These features are implemented in the parser and compiler, not by textual
 preprocessing.
@@ -135,10 +137,31 @@ sage: 1 + a
 ```
 
 This hybrid remains an intentionally compatible step, not the final Sage.js
-numeric tower. Modulo, bit operations, comparisons across mathematical
-parents, and floating-point literal interactions still need explicit
+integer representation. Modulo and several bit operations still need explicit
 semantics. The constructor seam allows a future `Integer` element type to
 replace the representation without changing the parser again.
+
+Sage-compatible arbitrary-precision real and complex fields are backed by
+MPFR and MPC. The default fields are cached 53-bit parents:
+
+```text
+sage: RR
+Real Field with 53 bits of precision
+sage: CC
+Complex Field with 53 bits of precision
+sage: 1.2
+1.20000000000000
+sage: (1 + 1j)^-2
+-0.500000000000000*I
+sage: RealField(100)(1/3)
+0.33333333333333333333333333333
+```
+
+`RealField(p)` and `ComplexField(p)` are interned by precision. Their canonical
+maps follow Sage, including the intentionally information-losing maps from a
+higher-precision field to a lower-precision field. Consequently the common
+parent need not be either operand: an element of `RealField(53)` plus one of
+`ComplexField(100)` has parent `ComplexField(53)`.
 
 ## Parents, coercion, and native polynomials
 

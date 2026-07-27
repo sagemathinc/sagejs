@@ -70,4 +70,40 @@ assert.throws(
 );
 assert.throws(() => flint.qqPolyConstant(1n, 0n), /denominator is zero/);
 
+const r53 = flint.realFromString("1.2", 53);
+const r100 = flint.realFromRational(1n, 3n, 100);
+assert.equal(flint.realPrecision(r53), 53);
+assert.equal(flint.realToString(r53), "1.20000000000000");
+assert.equal(
+  flint.realToString(r100),
+  "0.33333333333333333333333333333",
+);
+assert.equal(
+  flint.realToString(
+    flint.realDiv(
+      flint.realFromBigInt(1n, 53),
+      flint.realFromBigInt(0n, 53),
+    ),
+  ),
+  "+infinity",
+);
+assert.equal(
+  flint.realToString(flint.realPowInt(flint.realFromBigInt(2n, 53), -3n)),
+  "0.125000000000000",
+);
+
+const c53 = flint.complexFromReals(
+  flint.realFromBigInt(1n, 53),
+  flint.realFromBigInt(2n, 53),
+);
+assert.equal(flint.complexPrecision(c53), 53);
+assert.equal(
+  flint.complexToString(c53),
+  "1.00000000000000 + 2.00000000000000*I",
+);
+assert.equal(
+  flint.complexToString(flint.complexPowInt(c53, -2n)),
+  "-0.120000000000000 - 0.160000000000000*I",
+);
+
 console.log("Native FLINT arithmetic and BigInt conversion passed.");

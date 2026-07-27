@@ -5,10 +5,11 @@
   "targets": [
     {
       "target_name": "sagejs_flint",
-      "sources": ["src/addon.c"],
+      "sources": ["src/addon.c", "src/floating.c"],
       "include_dirs": ["<(native_prefix)/include"],
       "libraries": [
         "<(native_prefix)/lib/libflint.a",
+        "<(native_prefix)/lib/libmpc.a",
         "<(native_prefix)/lib/libmpfr.a",
         "-lgmp",
         "-lm",

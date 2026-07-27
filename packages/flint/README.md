@@ -7,7 +7,8 @@ loading the language must not initialize native mathematics libraries.
 
 The first API exposes JavaScript `BigInt` round trips, GCD, factorial,
 Fibonacci numbers, binomial coefficients, primorials, integer factorization,
-and opaque `fmpz_poly`/`fmpq_poly` values. Conversion uses Node-API's
+opaque `fmpz_poly`/`fmpq_poly` values, and opaque MPFR/MPC real and complex
+values. Integer conversion uses Node-API's
 little-endian 64-bit word arrays and FLINT's `fmpz_set_ui_array` /
 `fmpz_get_ui_array` functions, so crossing the integer boundary requires one
 linear copy in each direction and no decimal-string conversion.
@@ -17,6 +18,11 @@ subtraction, multiplication, powers, and `fmpz_poly` to `fmpq_poly`
 coercion operate directly on C-owned values. JavaScript receives only an
 opaque object with a native finalizer; coefficients are converted back only
 when formatting is explicitly requested.
+
+MPFR and MPC values likewise stay behind opaque Node-API objects. Sage.js uses
+them to implement Sage-compatible `RealField(p)` and `ComplexField(p)` parents,
+with round-to-nearest arithmetic and exact conversion from `BigInt`
+numerators and denominators.
 
 When this package is available to Sage.js, the language-level function loads
 it only upon first use and caches it:
@@ -35,10 +41,10 @@ rather than adding it to the factor list.
 ## Build
 
 The current prototype supports 64-bit Linux hosts with a C compiler, `make`,
-and GMP development files. MPFR 4.2.2 and FLINT 3.5.0 are downloaded,
-verified by SHA-256, and built statically. The prototype dynamically links the
-host's GMP ABI; release prebuilds will need to bundle or otherwise provide a
-compatible GMP runtime:
+and GMP development files. MPFR 4.2.2, MPC 1.4.1, and FLINT 3.5.0 are
+downloaded, verified by SHA-256, and built statically. The prototype
+dynamically links the host's GMP ABI; release prebuilds will need to bundle or
+otherwise provide a compatible GMP runtime:
 
 ```sh
 pnpm --dir packages/flint build

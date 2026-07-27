@@ -254,6 +254,32 @@ CoercionModel.prototype.resolveParents = function(left, right) {
         });
     }
 
+    const leftTargets = this._maps.get(left);
+    const rightTargets = this._maps.get(right);
+    if (leftTargets !== undefined && rightTargets !== undefined) {
+        const common = [];
+        for (const target of leftTargets.keys()) {
+            if (rightTargets.has(target)) common.push(target);
+        }
+        if (common.length > 0) {
+            common.sort(function(a, b) {
+                const ap = a._precision === undefined ? -1 : a._precision;
+                const bp = b._precision === undefined ? -1 : b._precision;
+                return bp - ap;
+            });
+            const target = common[0];
+            if (common.length === 1 ||
+                    (target._kind === common[1]._kind &&
+                     target._precision !== common[1]._precision)) {
+                return this._cache(left, right, {
+                    parent: target,
+                    leftMap: leftTargets.get(target),
+                    rightMap: rightTargets.get(target)
+                });
+            }
+        }
+    }
+
     const leftConstruction = left._construction;
     const rightConstruction = right._construction;
     if (leftConstruction !== undefined &&
@@ -418,6 +444,287 @@ function ρσ_flint_backend() {
         ρσ_flint_state.backend = require("@sagemath/sagejs-flint");
     }
     return ρσ_flint_state.backend;
+}
+
+var ρσ_real_fields = new Map();
+var ρσ_complex_fields = new Map();
+
+function ρσ_field_precision(precision) {
+    if (precision === undefined) precision = 53;
+    if (!ρσ_is_exact_integer(precision)) {
+        throw new TypeError("precision must be an integer");
+    }
+    precision = Number(precision);
+    if (!Number.isSafeInteger(precision) || precision < 2) {
+        throw new ValueError("precision must be at least 2");
+    }
+    return precision;
+}
+
+function RealNumberElement(parent, nativeValue) {
+    Element.call(this, parent);
+    this._native = nativeValue;
+    Object.freeze(this);
+}
+RealNumberElement.prototype = Object.create(Element.prototype);
+RealNumberElement.prototype.constructor = RealNumberElement;
+Object.defineProperty(RealNumberElement, "__repr__", {
+    value: function() { return "<class 'RealNumber'>"; }
+});
+RealNumberElement.prototype._add_ = function(other) {
+    return new RealNumberElement(
+        this._parent, ρσ_flint_backend().realAdd(this._native, other._native));
+};
+RealNumberElement.prototype._sub_ = function(other) {
+    return new RealNumberElement(
+        this._parent, ρσ_flint_backend().realSub(this._native, other._native));
+};
+RealNumberElement.prototype._mul_ = function(other) {
+    return new RealNumberElement(
+        this._parent, ρσ_flint_backend().realMul(this._native, other._native));
+};
+RealNumberElement.prototype._truediv_ = function(other) {
+    return new RealNumberElement(
+        this._parent, ρσ_flint_backend().realDiv(this._native, other._native));
+};
+RealNumberElement.prototype._eq_ = function(other) {
+    return ρσ_flint_backend().realEqual(this._native, other._native);
+};
+RealNumberElement.prototype.__neg__ = function() {
+    return new RealNumberElement(
+        this._parent, ρσ_flint_backend().realNeg(this._native));
+};
+RealNumberElement.prototype.__pow__ = function(exponent) {
+    exponent = ρσ_integer_bigint(exponent);
+    return new RealNumberElement(this._parent,
+        ρσ_flint_backend().realPowInt(this._native, exponent));
+};
+RealNumberElement.prototype.__add__ = function(other) {
+    return ρσ_coercion_model.binOp("add", this, other);
+};
+RealNumberElement.prototype.__sub__ = function(other) {
+    return ρσ_coercion_model.binOp("sub", this, other);
+};
+RealNumberElement.prototype.__mul__ = function(other) {
+    return ρσ_coercion_model.binOp("mul", this, other);
+};
+RealNumberElement.prototype.__truediv__ = function(other) {
+    return ρσ_coercion_model.binOp("truediv", this, other);
+};
+RealNumberElement.prototype.__eq__ = function(other) {
+    return ρσ_coercion_model.equals(this, other);
+};
+RealNumberElement.prototype.precision = function() {
+    return this._parent.precision();
+};
+RealNumberElement.prototype.__repr__ = function() {
+    return ρσ_flint_backend().realToString(this._native);
+};
+RealNumberElement.prototype.__str__ = RealNumberElement.prototype.__repr__;
+RealNumberElement.prototype.toString = RealNumberElement.prototype.__repr__;
+
+function ComplexNumberElement(parent, nativeValue) {
+    Element.call(this, parent);
+    this._native = nativeValue;
+    Object.freeze(this);
+}
+ComplexNumberElement.prototype = Object.create(Element.prototype);
+ComplexNumberElement.prototype.constructor = ComplexNumberElement;
+Object.defineProperty(ComplexNumberElement, "__repr__", {
+    value: function() { return "<class 'ComplexNumber'>"; }
+});
+ComplexNumberElement.prototype._add_ = function(other) {
+    return new ComplexNumberElement(this._parent,
+        ρσ_flint_backend().complexAdd(this._native, other._native));
+};
+ComplexNumberElement.prototype._sub_ = function(other) {
+    return new ComplexNumberElement(this._parent,
+        ρσ_flint_backend().complexSub(this._native, other._native));
+};
+ComplexNumberElement.prototype._mul_ = function(other) {
+    return new ComplexNumberElement(this._parent,
+        ρσ_flint_backend().complexMul(this._native, other._native));
+};
+ComplexNumberElement.prototype._truediv_ = function(other) {
+    return new ComplexNumberElement(this._parent,
+        ρσ_flint_backend().complexDiv(this._native, other._native));
+};
+ComplexNumberElement.prototype._eq_ = function(other) {
+    return ρσ_flint_backend().complexEqual(this._native, other._native);
+};
+ComplexNumberElement.prototype.__neg__ = function() {
+    return new ComplexNumberElement(
+        this._parent, ρσ_flint_backend().complexNeg(this._native));
+};
+ComplexNumberElement.prototype.__pow__ = function(exponent) {
+    exponent = ρσ_integer_bigint(exponent);
+    return new ComplexNumberElement(this._parent,
+        ρσ_flint_backend().complexPowInt(this._native, exponent));
+};
+ComplexNumberElement.prototype.__add__ = function(other) {
+    return ρσ_coercion_model.binOp("add", this, other);
+};
+ComplexNumberElement.prototype.__sub__ = function(other) {
+    return ρσ_coercion_model.binOp("sub", this, other);
+};
+ComplexNumberElement.prototype.__mul__ = function(other) {
+    return ρσ_coercion_model.binOp("mul", this, other);
+};
+ComplexNumberElement.prototype.__truediv__ = function(other) {
+    return ρσ_coercion_model.binOp("truediv", this, other);
+};
+ComplexNumberElement.prototype.__eq__ = function(other) {
+    return ρσ_coercion_model.equals(this, other);
+};
+ComplexNumberElement.prototype.precision = function() {
+    return this._parent.precision();
+};
+ComplexNumberElement.prototype.__repr__ = function() {
+    return ρσ_flint_backend().complexToString(this._native);
+};
+ComplexNumberElement.prototype.__str__ = ComplexNumberElement.prototype.__repr__;
+ComplexNumberElement.prototype.toString = ComplexNumberElement.prototype.__repr__;
+
+function ρσ_real_from_exact(field, value) {
+    const backend = ρσ_flint_backend();
+    if (value instanceof Rational) {
+        return new RealNumberElement(field, backend.realFromRational(
+            value._numerator, value._denominator, field._precision));
+    }
+    return new RealNumberElement(field,
+        backend.realFromBigInt(BigInt(value), field._precision));
+}
+
+function ρσ_real_field_element(field, value) {
+    const backend = ρσ_flint_backend();
+    if (value instanceof RealNumberElement) {
+        if (value._parent === field) return value;
+        return new RealNumberElement(
+            field, backend.realRound(value._native, field._precision));
+    }
+    if (value instanceof Rational || ρσ_is_exact_integer(value)) {
+        return ρσ_real_from_exact(field, value);
+    }
+    if (typeof value === "number" || typeof value === "string") {
+        return new RealNumberElement(field,
+            backend.realFromString(String(value), field._precision));
+    }
+    throw new TypeError("unable to convert value to " + field);
+}
+
+function ρσ_register_real_field(field) {
+    ρσ_coercion_model.register(ZZ, field, function(value) {
+        return ρσ_real_from_exact(field, value);
+    });
+    ρσ_coercion_model.register(QQ, field, function(value) {
+        return ρσ_real_from_exact(field, value);
+    });
+    for (const other of ρσ_real_fields.values()) {
+        if (other === field) continue;
+        if (other._precision >= field._precision) {
+            ρσ_coercion_model.register(other, field, function(value) {
+                return ρσ_real_field_element(field, value);
+            });
+        }
+        if (field._precision >= other._precision) {
+            ρσ_coercion_model.register(field, other, function(value) {
+                return ρσ_real_field_element(other, value);
+            });
+        }
+    }
+    for (const complexField of ρσ_complex_fields.values()) {
+        ρσ_register_real_complex_maps(field, complexField);
+    }
+}
+
+function RealField(precision) {
+    precision = ρσ_field_precision(precision);
+    if (ρσ_real_fields.has(precision)) {
+        return ρσ_real_fields.get(precision);
+    }
+    const field = ρσ_make_parent(
+        "Real Field with " + precision + " bits of precision",
+        function(value) { return ρσ_real_field_element(field, value); });
+    Object.defineProperty(field, "_kind", {value: "RealField"});
+    Object.defineProperty(field, "_precision", {value: precision});
+    field.precision = function() { return precision; };
+    field.prec = field.precision;
+    ρσ_real_fields.set(precision, field);
+    ρσ_register_real_field(field);
+    return field;
+}
+
+function ρσ_complex_field_element(field, value, imag) {
+    const backend = ρσ_flint_backend();
+    if (imag === undefined && value instanceof ComplexNumberElement) {
+        if (value._parent === field) return value;
+        return new ComplexNumberElement(
+            field, backend.complexRound(value._native, field._precision));
+    }
+    const realField = RealField(field._precision);
+    const realPart = realField(value);
+    const imagPart = realField(imag === undefined ? 0 : imag);
+    return new ComplexNumberElement(field,
+        backend.complexFromReals(realPart._native, imagPart._native));
+}
+
+function ρσ_register_real_complex_maps(realField, complexField) {
+    if (realField._precision >= complexField._precision) {
+        ρσ_coercion_model.register(realField, complexField, function(value) {
+            return ρσ_complex_field_element(complexField, value);
+        });
+    }
+}
+
+function ρσ_register_complex_field(field) {
+    ρσ_coercion_model.register(ZZ, field, function(value) {
+        return ρσ_complex_field_element(field, value);
+    });
+    ρσ_coercion_model.register(QQ, field, function(value) {
+        return ρσ_complex_field_element(field, value);
+    });
+    for (const realField of ρσ_real_fields.values()) {
+        ρσ_register_real_complex_maps(realField, field);
+    }
+    for (const other of ρσ_complex_fields.values()) {
+        if (other === field) continue;
+        if (other._precision >= field._precision) {
+            ρσ_coercion_model.register(other, field, function(value) {
+                return ρσ_complex_field_element(field, value);
+            });
+        }
+        if (field._precision >= other._precision) {
+            ρσ_coercion_model.register(field, other, function(value) {
+                return ρσ_complex_field_element(other, value);
+            });
+        }
+    }
+}
+
+function ComplexField(precision) {
+    precision = ρσ_field_precision(precision);
+    if (ρσ_complex_fields.has(precision)) {
+        return ρσ_complex_fields.get(precision);
+    }
+    const field = ρσ_make_parent(
+        "Complex Field with " + precision + " bits of precision",
+        function(value, imag) {
+            return ρσ_complex_field_element(field, value, imag);
+        });
+    Object.defineProperty(field, "_kind", {value: "ComplexField"});
+    Object.defineProperty(field, "_precision", {value: precision});
+    field.precision = function() { return precision; };
+    field.prec = field.precision;
+    ρσ_complex_fields.set(precision, field);
+    ρσ_register_complex_field(field);
+    return field;
+}
+
+var RR = RealField(53);
+var CC = ComplexField(53);
+
+function ComplexNumber(real, imag) {
+    return CC(real, imag);
 }
 
 function PolynomialElement(parent, nativeValue) {

@@ -44,6 +44,13 @@ const dependencies = [
     archive: process.env.SAGEJS_MPFR_TARBALL,
   },
   {
+    name: "mpc",
+    version: "1.4.1",
+    url: "https://ftp.gnu.org/gnu/mpc/mpc-1.4.1.tar.xz",
+    sha256: "91204cd32f164bd3b7c992d4a6a8ce6519511aadab30f78b6982d0bf8d73e931",
+    archive: process.env.SAGEJS_MPC_TARBALL,
+  },
+  {
     name: "flint",
     version: "3.5.0",
     url: "https://flintlib.org/download/flint-3.5.0.tar.gz",
@@ -123,6 +130,25 @@ function buildMpfr(source) {
   run("make", ["install"], { cwd: source });
 }
 
+function buildMpc(source) {
+  run(
+    "./configure",
+    [
+      `--prefix=${prefix}`,
+      "--disable-shared",
+      "--enable-static",
+      `--with-gmp=${gmpPrefix}`,
+      `--with-mpfr=${prefix}`,
+    ],
+    {
+      cwd: source,
+      env: { CFLAGS: "-O3 -fPIC" },
+    }
+  );
+  run("make", [`-j${jobs}`], { cwd: source });
+  run("make", ["install"], { cwd: source });
+}
+
 function buildFlint(source) {
   run(
     "./configure",
@@ -146,12 +172,14 @@ function buildFlint(source) {
 async function main() {
   const stampPath = join(prefix, ".sagejs-flint-dependencies.json");
   const expectedStamp = {
-    flint: dependencies[1].version,
+    flint: dependencies[2].version,
+    mpc: dependencies[1].version,
     mpfr: dependencies[0].version,
   };
 
   if (
     existsSync(join(prefix, "lib", "libflint.a")) &&
+    existsSync(join(prefix, "lib", "libmpc.a")) &&
     existsSync(join(prefix, "lib", "libmpfr.a")) &&
     existsSync(stampPath) &&
     JSON.stringify(JSON.parse(readFileSync(stampPath, "utf8"))) ===
@@ -164,9 +192,11 @@ async function main() {
   mkdirSync(prefix, { recursive: true });
   mkdirSync(sources, { recursive: true });
   const mpfrArchive = await obtainArchive(dependencies[0]);
-  const flintArchive = await obtainArchive(dependencies[1]);
+  const mpcArchive = await obtainArchive(dependencies[1]);
+  const flintArchive = await obtainArchive(dependencies[2]);
   buildMpfr(extract(mpfrArchive, dependencies[0]));
-  buildFlint(extract(flintArchive, dependencies[1]));
+  buildMpc(extract(mpcArchive, dependencies[1]));
+  buildFlint(extract(flintArchive, dependencies[2]));
   writeFileSync(stampPath, `${JSON.stringify(expectedStamp, null, 2)}\n`);
   process.stdout.write(`Native dependencies installed in ${prefix}\n`);
 }

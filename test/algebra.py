@@ -35,3 +35,36 @@ def zero_denominator():
 
 
 assrt.throws(zero_denominator, ZeroDivisionError)
+
+# These are the MPFR/MPC parents and display semantics used by SageMath.
+assrt.ok(RealField(53) is RR)
+assrt.ok(ComplexField(53) is CC)
+assrt.equal(repr(RR), 'Real Field with 53 bits of precision')
+assrt.equal(repr(CC), 'Complex Field with 53 bits of precision')
+assrt.equal(RR.precision(), 53)
+assrt.equal(CC.precision(), 53)
+
+r = RR('1.2')
+assrt.equal(parent(r), RR)
+assrt.equal(repr(type(r)), "<class 'RealNumber'>")
+assrt.equal(repr(r), '1.20000000000000')
+assrt.equal(repr(RR(1) / RR(3)), '0.333333333333333')
+assrt.equal(repr(RR(1) / RR(0)), '+infinity')
+assrt.equal(repr(RR(2) ** -3), '0.125000000000000')
+
+z = CC(1, 2)
+assrt.equal(parent(z), CC)
+assrt.equal(repr(type(z)), "<class 'ComplexNumber'>")
+assrt.equal(repr(z), '1.00000000000000 + 2.00000000000000*I')
+assrt.equal(repr(5j), '5.00000000000000*I')
+assrt.equal(repr((1 + 1j) ** -2), '-0.500000000000000*I')
+
+R100 = RealField(100)
+C100 = ComplexField(100)
+assrt.equal(
+    repr(R100('1.2')), '1.2000000000000000000000000000')
+# Sage's canonical maps intentionally go from higher precision to lower.
+assrt.equal(parent(RR(1) + R100(2)), RR)
+assrt.equal(parent(CC(1) + C100(2)), CC)
+assrt.equal(parent(R100(1) + CC(2)), CC)
+assrt.equal(parent(RR(1) + C100(2)), CC)
