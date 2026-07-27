@@ -419,6 +419,8 @@ class AST_Import(AST_Statement):
         "[AST_SymbolAlias] The name this module is imported as, can be None. For import x as y statements.",
         'argnames': "[AST_ImportedVar*] names of objects to be imported",
         'body': "[AST_TopLevel] parsed contents of the imported file",
+        'intrinsic':
+        "[boolean] True for a compiler-only import which emits no module binding",
     }
 
     def _walk(self, visitor):

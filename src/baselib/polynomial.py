@@ -5,8 +5,9 @@
 #
 # globals: Array, BigInt, Map, Object, RegExp
 # globals: Element, Parent, Factorization, FiniteFieldElement, Rational
-# globals: QQ, ZZ, ρσ_coercion_model, ρσ_factor_pair, ρσ_flint_backend
-# globals: ρσ_integer_bigint, ρσ_kwargs_symbol, ρσ_set_class_repr
+# globals: QQ, ZZ
+
+import sagejs.runtime as runtime
 
 
 def ρσ_callable_instance_class(cls):
@@ -28,51 +29,51 @@ class PolynomialElement(Element):
 
     def _add_(self, other):
         return self._new(
-            ρσ_flint_backend().polyAdd(self._native, other._native))
+            runtime.flint_backend().polyAdd(self._native, other._native))
 
     def _sub_(self, other):
         return self._new(
-            ρσ_flint_backend().polySub(self._native, other._native))
+            runtime.flint_backend().polySub(self._native, other._native))
 
     def _mul_(self, other):
         return self._new(
-            ρσ_flint_backend().polyMul(self._native, other._native))
+            runtime.flint_backend().polyMul(self._native, other._native))
 
     def __add__(self, other):
-        return ρσ_coercion_model.binOp('add', self, other)
+        return runtime.coercion_model.binOp('add', self, other)
 
     def __sub__(self, other):
-        return ρσ_coercion_model.binOp('sub', self, other)
+        return runtime.coercion_model.binOp('sub', self, other)
 
     def __mul__(self, other):
-        return ρσ_coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp('mul', self, other)
 
     def __neg__(self):
-        return self._new(ρσ_flint_backend().polyNeg(self._native))
+        return self._new(runtime.flint_backend().polyNeg(self._native))
 
     def __pow__(self, exponent):
-        exponent = ρσ_integer_bigint(exponent)
+        exponent = runtime.integer_bigint(exponent)
         if exponent < 0:
             raise ValueError('negative polynomial exponent')
         return self._new(
-            ρσ_flint_backend().polyPow(self._native, exponent))
+            runtime.flint_backend().polyPow(self._native, exponent))
 
     def _eq_(self, other):
-        return ρσ_flint_backend().polyEqual(
+        return runtime.flint_backend().polyEqual(
             self._native, other._native)
 
     def __eq__(self, other):
-        return ρσ_coercion_model.equals(self, other)
+        return runtime.coercion_model.equals(self, other)
 
     def gcd(self, other):
-        operands = ρσ_coercion_model.coercePair(self, other)
+        operands = runtime.coercion_model.coercePair(self, other)
         if (not isinstance(operands.left, PolynomialElement)
                 or operands.parent.base_ring()._kind is not 'GF'):
             raise TypeError(
                 'polynomial gcd is currently implemented over finite fields')
         return PolynomialElement(
             operands.parent,
-            ρσ_flint_backend().nmodPolyGcd(
+            runtime.flint_backend().nmodPolyGcd(
                 operands.left._native, operands.right._native))
 
     def is_irreducible(self):
@@ -80,14 +81,14 @@ class PolynomialElement(Element):
             raise TypeError(
                 'irreducibility testing is currently implemented ' +
                 'over finite fields')
-        return ρσ_flint_backend().nmodPolyIsIrreducible(self._native)
+        return runtime.flint_backend().nmodPolyIsIrreducible(self._native)
 
     def factor(self):
         if self._parent.base_ring()._kind is not 'GF':
             raise TypeError(
                 'polynomial factorization is currently implemented ' +
                 'over finite fields')
-        result = ρσ_flint_backend().nmodPolyFactor(self._native)
+        result = runtime.flint_backend().nmodPolyFactor(self._native)
         parent = self._parent
 
         def make_factor(pair):
@@ -106,12 +107,12 @@ class PolynomialElement(Element):
 
         def make_root(pair):
             root = field(pair[0])
-            return ρσ_factor_pair(root, pair[1]) if multiplicities else root
+            return runtime.factor_pair(root, pair[1]) if multiplicities else root
 
-        return ρσ_flint_backend().nmodPolyRoots(self._native).map(make_root)
+        return runtime.flint_backend().nmodPolyRoots(self._native).map(make_root)
 
     def __repr__(self):
-        raw = ρσ_flint_backend().polyToString(
+        raw = runtime.flint_backend().polyToString(
             self._native, self._parent.variable_name())
         return raw.replace(RegExp(r'\+', 'g'), ' + ').replace(
             RegExp(r'([^-])-+', 'g'), '$1 - ')
@@ -147,7 +148,7 @@ class PolynomialRingParent(Parent):
         return self._variable
 
     def gen(self):
-        backend = ρσ_flint_backend()
+        backend = runtime.flint_backend()
         if self._base is ZZ:
             native_value = backend.zzPolyGen()
         elif self._base is QQ:
@@ -163,10 +164,10 @@ class PolynomialRingParent(Parent):
         return [self.gen()]
 
     def _constant(self, value):
-        backend = ρσ_flint_backend()
+        backend = runtime.flint_backend()
         if self._base is ZZ:
             return PolynomialElement(
-                self, backend.zzPolyConstant(ρσ_integer_bigint(value)))
+                self, backend.zzPolyConstant(runtime.integer_bigint(value)))
         if self._base is QQ and isinstance(value, Rational):
             return PolynomialElement(
                 self,
@@ -193,11 +194,11 @@ class PolynomialRingParent(Parent):
             raise TypeError('incompatible polynomial rings')
         if source.base_ring() is ZZ and self._base is QQ:
             return PolynomialElement(
-                self, ρσ_flint_backend().zzPolyToQQ(value._native))
+                self, runtime.flint_backend().zzPolyToQQ(value._native))
         if source.base_ring() is ZZ and self._base._kind is 'GF':
             return PolynomialElement(
                 self,
-                ρσ_flint_backend().zzPolyToNmod(
+                runtime.flint_backend().zzPolyToNmod(
                     value._native, self._base._modulus))
         raise TypeError(
             'unsupported polynomial coefficient coercion from ' +
@@ -206,8 +207,8 @@ class PolynomialRingParent(Parent):
     def __call__(self, value):
         if isinstance(value, PolynomialElement):
             return self._coercePolynomial(value)
-        plan = ρσ_coercion_model.resolveParents(
-            ρσ_coercion_model.parentOf(value), self._base)
+        plan = runtime.coercion_model.resolveParents(
+            runtime.coercion_model.parentOf(value), self._base)
         if plan.parent is not self._base:
             raise TypeError('coefficient does not canonically coerce')
         return self._constant(plan.leftMap(value))
@@ -218,7 +219,7 @@ class PolynomialRingParent(Parent):
 
 def PolynomialRing(base, variable=None, names=None):
     if (variable is not None and jstype(variable) is 'object'
-            and variable[ρσ_kwargs_symbol]):
+            and variable[runtime.kwargs_symbol]):
         names = variable.names
         variable = None
     if names is not None:
@@ -248,5 +249,5 @@ def PolynomialRing(base, variable=None, names=None):
     return parent
 
 
-ρσ_set_class_repr(
+runtime.set_class_repr(
     PolynomialElement, "<class 'PolynomialElement'>")

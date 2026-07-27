@@ -371,6 +371,8 @@ def print_imports(container, output):
         output.end_statement()
 
     for self in container.imports:
+        if self.intrinsic:
+            continue
         if self.argnames:
             # A from import
             for argname in self.argnames:

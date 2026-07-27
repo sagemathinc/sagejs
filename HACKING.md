@@ -85,6 +85,26 @@ class prototype, then runs the normal generated constructor on it. Parent
 classes can consequently be written using ordinary `class`, `__init__`, and
 `__call__` syntax instead of hand-assembling JavaScript function objects.
 
+Low-level operations used by mathematical source belong to the explicit
+compiler-intrinsic namespace:
+
+```py
+import sagejs.runtime as runtime
+
+product = runtime.operator_mul_exact(left, right)
+backend = runtime.flint_backend()
+```
+
+The compiler validates every attribute against a small manifest, erases the
+import, and lowers the attribute directly to its internal runtime global.
+Thus generated JavaScript has no module allocation or property-lookup cost.
+Keep `src/baselib/sagejs/runtime.py` in sync with the manifest: it is the
+ordinary source implementation used when the checked-in older compiler
+bootstraps a new compiler. This Python-shaped boundary is also the intended
+starting point for a future CPython compatibility package. For now, use the
+explicit `import sagejs.runtime as runtime` form; wildcard and `from` imports
+are deliberately unsupported.
+
 Verbatim `v` expressions are appropriate in the runtime substrate and
 JavaScript/native adapters. Mathematical library code should not use them to
 work around compiler performance gaps: add a focused, tested compiler contract

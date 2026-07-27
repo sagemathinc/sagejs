@@ -5,8 +5,9 @@
 # Copyright (C) 2026 Sage.js contributors
 # License: GPL-3.0-only
 #
-# globals: ρσ_iterator_symbol, ρσ_equals, ρσ_repr, ρσ_operator_mul_exact,
-# globals: ρσ_operator_pow_exact, BigInt, Number, Object
+# globals: BigInt, Number, Object
+
+import sagejs.runtime as runtime
 
 
 def ρσ_sequence_class(cls):
@@ -18,7 +19,7 @@ def ρσ_sequence_class(cls):
 def ρσ_factor_pair(prime, exponent):
     pair = [prime, exponent]
     pair_repr = def():
-        return '(' + ρσ_repr(this[0]) + ', ' + ρσ_repr(this[1]) + ')'
+        return '(' + runtime.repr(this[0]) + ', ' + runtime.repr(this[1]) + ')'
     Object.defineProperties(pair, {
         '__repr__': {'value': pair_repr},
         '__str__': {'value': pair_repr},
@@ -44,7 +45,7 @@ class Factorization:
             if jstype(exponent) is not 'number' or not Number.isSafeInteger(exponent):
                 raise TypeError('factor exponents must be safe integers')
             if exponent is not 0:
-                self._factors.push(ρσ_factor_pair(pair[0], exponent))
+                self._factors.push(runtime.factor_pair(pair[0], exponent))
 
         self._unit = 1 if unit is None else unit
         self._cr_value = bool(cr)
@@ -57,7 +58,7 @@ class Factorization:
         return self._factors.length
 
     def __iter__(self):
-        return self._factors[ρσ_iterator_symbol]()
+        return self._factors[runtime.iterator_symbol]()
 
     def __getitem__(self, index):
         if jstype(index) is 'bigint':
@@ -76,18 +77,18 @@ class Factorization:
     def __eq__(self, other):
         if not isinstance(other, Factorization):
             return False
-        if not ρσ_equals(self._unit, other._unit):
+        if not runtime.equals(self._unit, other._unit):
             return False
         if self._factors.length is not other._factors.length:
             return False
         for i in range(self._factors.length):
-            if not ρσ_equals(self._factors[i], other._factors[i]):
+            if not runtime.equals(self._factors[i], other._factors[i]):
                 return False
         return True
 
     def __contains__(self, value):
         for pair in self._factors:
-            if ρσ_equals(pair, value):
+            if runtime.equals(pair, value):
                 return True
         return False
 
@@ -104,7 +105,7 @@ class Factorization:
         constructor = self.constructor
         if not isinstance(other, constructor):
             constructor = Factorization
-        unit = ρσ_operator_mul_exact(self._unit, other._unit)
+        unit = runtime.operator_mul_exact(self._unit, other._unit)
         return constructor(
             self._factors.concat(other._factors), unit, self._cr_value)
 
@@ -122,13 +123,13 @@ class Factorization:
             if pair[1] * exponent is not 0:
                 factors.push([pair[0], pair[1] * exponent])
         unit_exponent = BigInt(exponent) if jstype(self._unit) is 'bigint' else exponent
-        unit = ρσ_operator_pow_exact(self._unit, unit_exponent)
+        unit = runtime.operator_pow_exact(self._unit, unit_exponent)
         return self.constructor(
             factors, unit, self._cr_value, False, False)
 
     def __repr__(self):
         if self._factors.length is 0:
-            return ρσ_repr(self._unit)
+            return runtime.repr(self._unit)
 
         separator = ' *\n' if self._cr_value else ' * '
         terms = []
@@ -137,15 +138,15 @@ class Factorization:
                     and pair[0]._factorization_repr is not undefined):
                 prime = pair[0]._factorization_repr()
             else:
-                prime = ρσ_repr(pair[0])
+                prime = runtime.repr(pair[0])
             exponent = pair[1]
             if exponent is not 1:
                 prime += '^' + exponent
             terms.push(prime)
 
         one = BigInt(1) if jstype(self._unit) is 'bigint' else 1
-        if not ρσ_equals(self._unit, one):
-            terms.unshift(ρσ_repr(self._unit))
+        if not runtime.equals(self._unit, one):
+            terms.unshift(runtime.repr(self._unit))
         return terms.join(separator)
 
     def unit(self):
@@ -173,7 +174,7 @@ class Factorization:
         for pair in self._factors:
             found = -1
             for i in range(simplified.length):
-                if ρσ_equals(simplified[i][0], pair[0]):
+                if runtime.equals(simplified[i][0], pair[0]):
                     found = i
                     break
             if found is -1:
@@ -183,7 +184,7 @@ class Factorization:
                 if exponent is 0:
                     simplified.splice(found, 1)
                 else:
-                    simplified[found] = ρσ_factor_pair(pair[0], exponent)
+                    simplified[found] = runtime.factor_pair(pair[0], exponent)
         self._factors = simplified
 
     def value(self):
@@ -192,8 +193,8 @@ class Factorization:
             prime, exponent = pair
             if jstype(prime) is 'bigint':
                 exponent = BigInt(exponent)
-            value = ρσ_operator_mul_exact(
-                value, ρσ_operator_pow_exact(prime, exponent))
+            value = runtime.operator_mul_exact(
+                value, runtime.operator_pow_exact(prime, exponent))
         return value
 
     def expand(self):

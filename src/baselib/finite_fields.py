@@ -10,9 +10,8 @@
 # globals: AlgebraicExtensionFunctor, BigInt, Element, Object, Parent, QQ
 # globals: QuotientFunctor, Rational, Reflect, RegExp, ZZ
 # globals: PolynomialRing, ZeroDivisionError, IndexError, ValueError
-# globals: ρσ_coercion_model, ρσ_flint_backend, ρσ_integer_bigint
-# globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power
-# globals: ρσ_normalize_integer, ρσ_polynomial_from_coefficients
+
+import sagejs.runtime as runtime
 
 
 def ρσ_lightweight_math_class(cls):
@@ -54,10 +53,10 @@ class FiniteFieldElement(Element):
                 numerator += parent._modulus
             if denominator < 0:
                 denominator += parent._modulus
-            residue = numerator * ρσ_modular_inverse(
+            residue = numerator * runtime.modular_inverse(
                 denominator, parent._modulus)
         else:
-            residue = ρσ_integer_bigint(value)
+            residue = runtime.integer_bigint(value)
 
         residue %= parent._modulus
         if residue < 0:
@@ -81,42 +80,42 @@ class FiniteFieldElement(Element):
     def _truediv_(self, other: FiniteFieldElement):
         return ρσ_new_prime_field_element(
             self._parent,
-            self._value * ρσ_modular_inverse(
+            self._value * runtime.modular_inverse(
                 other._value, self._parent._modulus))
 
     def _eq_(self, other: FiniteFieldElement):
         return self._value is other._value
 
     def __add__(self, other):
-        return ρσ_coercion_model.binOp('add', self, other)
+        return runtime.coercion_model.binOp('add', self, other)
 
     def __sub__(self, other):
-        return ρσ_coercion_model.binOp('sub', self, other)
+        return runtime.coercion_model.binOp('sub', self, other)
 
     def __mul__(self, other):
-        return ρσ_coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp('mul', self, other)
 
     def __truediv__(self, other):
-        return ρσ_coercion_model.binOp('truediv', self, other)
+        return runtime.coercion_model.binOp('truediv', self, other)
 
     def __eq__(self, other):
-        return ρσ_coercion_model.equals(self, other)
+        return runtime.coercion_model.equals(self, other)
 
     def __neg__(self):
         return FiniteFieldElement(self._parent, -self._value)
 
     def __pow__(self, exponent):
-        exponent = ρσ_integer_bigint(exponent)
+        exponent = runtime.integer_bigint(exponent)
         value = self._value
         if exponent < 0:
-            value = ρσ_modular_inverse(value, self._parent._modulus)
+            value = runtime.modular_inverse(value, self._parent._modulus)
             exponent = -exponent
         return ρσ_new_prime_field_element(
             self._parent,
-            ρσ_modular_power(value, exponent, self._parent._modulus))
+            runtime.modular_power(value, exponent, self._parent._modulus))
 
     def lift(self):
-        return ρσ_normalize_integer(self._value)
+        return runtime.normalize_integer(self._value)
 
     integer_representation = lift
 
@@ -152,58 +151,58 @@ class FiniteFieldExtensionElement(Element):
 
     def _add_(self, other):
         return self._new(
-            ρσ_flint_backend().fqAdd(self._native, other._native))
+            runtime.flint_backend().fqAdd(self._native, other._native))
 
     def _sub_(self, other):
         return self._new(
-            ρσ_flint_backend().fqSub(self._native, other._native))
+            runtime.flint_backend().fqSub(self._native, other._native))
 
     def _mul_(self, other):
         return self._new(
-            ρσ_flint_backend().fqMul(self._native, other._native))
+            runtime.flint_backend().fqMul(self._native, other._native))
 
     def _truediv_(self, other):
         if other.is_zero():
             raise ZeroDivisionError('finite field division by zero')
         return self._new(
-            ρσ_flint_backend().fqDiv(self._native, other._native))
+            runtime.flint_backend().fqDiv(self._native, other._native))
 
     def _eq_(self, other):
-        return ρσ_flint_backend().fqEqual(self._native, other._native)
+        return runtime.flint_backend().fqEqual(self._native, other._native)
 
     def __add__(self, other):
-        return ρσ_coercion_model.binOp('add', self, other)
+        return runtime.coercion_model.binOp('add', self, other)
 
     def __sub__(self, other):
-        return ρσ_coercion_model.binOp('sub', self, other)
+        return runtime.coercion_model.binOp('sub', self, other)
 
     def __mul__(self, other):
-        return ρσ_coercion_model.binOp('mul', self, other)
+        return runtime.coercion_model.binOp('mul', self, other)
 
     def __truediv__(self, other):
-        return ρσ_coercion_model.binOp('truediv', self, other)
+        return runtime.coercion_model.binOp('truediv', self, other)
 
     def __eq__(self, other):
-        return ρσ_coercion_model.equals(self, other)
+        return runtime.coercion_model.equals(self, other)
 
     def __neg__(self):
-        return self._new(ρσ_flint_backend().fqNeg(self._native))
+        return self._new(runtime.flint_backend().fqNeg(self._native))
 
     def __pow__(self, exponent):
-        exponent = ρσ_integer_bigint(exponent)
+        exponent = runtime.integer_bigint(exponent)
         if exponent < 0 and self.is_zero():
             raise ZeroDivisionError('cannot invert zero in a finite field')
         return self._new(
-            ρσ_flint_backend().fqPow(self._native, exponent))
+            runtime.flint_backend().fqPow(self._native, exponent))
 
     def is_zero(self):
-        return ρσ_flint_backend().fqIsZero(self._native)
+        return runtime.flint_backend().fqIsZero(self._native)
 
     def is_one(self):
-        return ρσ_flint_backend().fqIsOne(self._native)
+        return runtime.flint_backend().fqIsOne(self._native)
 
     def __repr__(self):
-        raw = ρσ_flint_backend().fqToString(self._native)
+        raw = runtime.flint_backend().fqToString(self._native)
         return raw.replace(RegExp(r'\+', 'g'), ' + ').replace(
             RegExp(r'([^-])-+', 'g'), '$1 - ')
 
@@ -219,7 +218,7 @@ def ρσ_new_extension_field_element(parent, native_value):
 class FiniteField_prime_modn(Parent):
 
     def order(self):
-        return ρσ_normalize_integer(self._order)
+        return runtime.normalize_integer(self._order)
 
     cardinality = order
     characteristic = order
@@ -243,19 +242,19 @@ class FiniteField_prime_modn(Parent):
         return ρσ_new_prime_field_element(self, BigInt(1))
 
     def gen(self, index=0):
-        index = ρσ_integer_bigint(index)
+        index = runtime.integer_bigint(index)
         if index is not BigInt(0):
             raise IndexError('only one generator')
         return ρσ_new_prime_field_element(self, self._generator)
 
     def _first_ngens(self, count):
-        count = ρσ_integer_bigint(count)
+        count = runtime.integer_bigint(count)
         if count is not BigInt(1):
             raise ValueError('prime fields have exactly one generator')
         return [self.gen()]
 
     def gens(self):
-        return ρσ_math_tuple([self.gen()])
+        return runtime.math_tuple([self.gen()])
 
     def variable_name(self):
         return 'x'
@@ -264,7 +263,7 @@ class FiniteField_prime_modn(Parent):
         return PolynomialRing(self, variable).gen()
 
     def construction(self):
-        return ρσ_math_tuple([QuotientFunctor, ZZ])
+        return runtime.math_tuple([QuotientFunctor, ZZ])
 
     def __iter__(self):
         value = BigInt(0)
@@ -279,12 +278,12 @@ class FiniteField_prime_modn(Parent):
 class FiniteFieldExtensionParent(Parent):
 
     def order(self):
-        return ρσ_normalize_integer(self._order)
+        return runtime.normalize_integer(self._order)
 
     cardinality = order
 
     def characteristic(self):
-        return ρσ_normalize_integer(self._prime)
+        return runtime.normalize_integer(self._prime)
 
     def degree(self):
         return self._degree
@@ -305,20 +304,20 @@ class FiniteFieldExtensionParent(Parent):
         return self(1)
 
     def gen(self, index=0):
-        index = ρσ_integer_bigint(index)
+        index = runtime.integer_bigint(index)
         if index is not BigInt(0):
             raise IndexError('only one generator')
         return ρσ_new_extension_field_element(
-            self, ρσ_flint_backend().fqGen(self._nativeContext))
+            self, runtime.flint_backend().fqGen(self._nativeContext))
 
     def _first_ngens(self, count):
-        count = ρσ_integer_bigint(count)
+        count = runtime.integer_bigint(count)
         if count is not BigInt(1):
             raise ValueError('finite fields have exactly one generator')
         return [self.gen()]
 
     def gens(self):
-        return ρσ_math_tuple([self.gen()])
+        return runtime.math_tuple([self.gen()])
 
     def variable_name(self):
         return self._variable
@@ -327,16 +326,16 @@ class FiniteFieldExtensionParent(Parent):
         return self._primeSubfield
 
     def modulus(self):
-        return ρσ_polynomial_from_coefficients(
+        return runtime.polynomial_from_coefficients(
             self._primeSubfield, 'x', self._modulusCoefficients)
 
     def polynomial(self):
-        return ρσ_polynomial_from_coefficients(
+        return runtime.polynomial_from_coefficients(
             self._primeSubfield, self._variable,
             self._modulusCoefficients)
 
     def construction(self):
-        return ρσ_math_tuple(
+        return runtime.math_tuple(
             [AlgebraicExtensionFunctor, self._primeSubfield])
 
     def __iter__(self):
@@ -377,37 +376,37 @@ class FiniteFieldElement_pari_ffelt(FiniteFieldExtensionElement):
     pass
 
 
-ρσ_set_class_repr(
+runtime.set_class_repr(
     FiniteFieldElement, "<class 'FiniteFieldElement'>")
-ρσ_set_class_repr(
+runtime.set_class_repr(
     FiniteFieldExtensionElement,
     "<class 'sage.rings.finite_rings.element_givaro." +
     "FiniteField_givaroElement'>")
-ρσ_set_class_repr(
+runtime.set_class_repr(
     FiniteField_prime_modn,
     "<class 'sage.rings.finite_rings.finite_field_prime_modn." +
     "FiniteField_prime_modn_with_category'>")
-ρσ_set_class_repr(
+runtime.set_class_repr(
     FiniteField_givaro,
     "<class 'sage.rings.finite_rings.finite_field_givaro." +
     "FiniteField_givaro_with_category'>")
-ρσ_set_class_repr(
+runtime.set_class_repr(
     FiniteField_givaroElement,
     "<class 'sage.rings.finite_rings.element_givaro." +
     "FiniteField_givaroElement'>")
-ρσ_set_class_repr(
+runtime.set_class_repr(
     FiniteField_ntl_gf2e,
     "<class 'sage.rings.finite_rings.finite_field_ntl_gf2e." +
     "FiniteField_ntl_gf2e_with_category'>")
-ρσ_set_class_repr(
+runtime.set_class_repr(
     FiniteField_ntl_gf2eElement,
     "<class 'sage.rings.finite_rings.element_ntl_gf2e." +
     "FiniteField_ntl_gf2eElement'>")
-ρσ_set_class_repr(
+runtime.set_class_repr(
     FiniteField_pari_ffelt,
     "<class 'sage.rings.finite_rings.finite_field_pari_ffelt." +
     "FiniteField_pari_ffelt_with_category'>")
-ρσ_set_class_repr(
+runtime.set_class_repr(
     FiniteFieldElement_pari_ffelt,
     "<class 'sage.rings.finite_rings.element_pari_ffelt." +
     "FiniteFieldElement_pari_ffelt'>")

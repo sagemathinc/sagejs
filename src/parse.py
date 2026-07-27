@@ -177,6 +177,34 @@ DIRECT_CALL_TYPES = {
     'ρσ_integer_bigint': 'bigint',
 }
 
+# Source code refers to compiler/runtime primitives through this ordinary,
+# Python-shaped namespace.  The converged compiler validates and lowers each
+# attribute to the existing direct global, so there is no module allocation or
+# property lookup in generated JavaScript.  A small source module provides the
+# same names while bootstrapping with an older checked-in compiler.
+SAGEJS_RUNTIME_INTRINSICS = {
+    'coercion_model': 'ρσ_coercion_model',
+    'equals': 'ρσ_equals',
+    'factor_pair': 'ρσ_factor_pair',
+    'flint_backend': 'ρσ_flint_backend',
+    'integer_bigint': 'ρσ_integer_bigint',
+    'iterator_symbol': 'ρσ_iterator_symbol',
+    'kwargs_symbol': 'ρσ_kwargs_symbol',
+    'math_tuple': 'ρσ_math_tuple',
+    'modular_inverse': 'ρσ_modular_inverse',
+    'modular_power': 'ρσ_modular_power',
+    'normalize_integer': 'ρσ_normalize_integer',
+    'operator_mul_exact': 'ρσ_operator_mul_exact',
+    'operator_pow_exact': 'ρσ_operator_pow_exact',
+    'polynomial_from_coefficients': 'ρσ_polynomial_from_coefficients',
+    'repr': 'ρσ_repr',
+    'set_class_repr': 'ρσ_set_class_repr',
+}
+
+INTRINSIC_MODULES = {
+    'sagejs.runtime': SAGEJS_RUNTIME_INTRINSICS,
+}
+
 
 def has_simple_decorator(decorators, name):
     remove = []
@@ -1148,6 +1176,16 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             if not from_import and is_('keyword', 'as'):
                 next()
                 alias = as_symbol(AST_SymbolAlias)
+            intrinsic = INTRINSIC_MODULES[key] \
+                if has_prop(INTRINSIC_MODULES, key) else None
+            if intrinsic and from_import:
+                import_error(
+                    'Compiler intrinsic modules must be imported as modules: '
+                    'import ' + key + ' as runtime')
+            if intrinsic and not alias:
+                import_error(
+                    'Compiler intrinsic modules require an explicit alias: '
+                    'import ' + key + ' as runtime')
 
             def body():
                 return imported_modules[key]
@@ -1157,7 +1195,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 'key': key,
                 'alias': alias,
                 'argnames': None,
-                'body': body
+                'body': body,
+                'intrinsic': bool(intrinsic),
             })
             aimp.start, aimp.end = tok.start, last_tok.end
             ans.imports.push(aimp)
@@ -1169,10 +1208,14 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 break
 
         for imp in ans['imports']:
+            if imp.intrinsic:
+                S.intrinsic_modules[imp.alias.name] = \
+                    INTRINSIC_MODULES[imp.key]
+                continue
             do_import(imp.key)
             if imported_module_ids.indexOf(imp.key) is -1:
                 imported_module_ids.push(imp.key)
-            classes = imported_modules[key].classes
+            classes = imported_modules[imp.key].classes
             if from_import:
                 expect_token("keyword", "import")
                 imp.argnames = argnames = []
@@ -2562,6 +2605,20 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     prev()
                 }), allow_calls)
         prop = as_name()
+        if (is_node_type(expr, AST_SymbolRef)
+                and has_prop(S.intrinsic_modules, expr.name)):
+            intrinsics = S.intrinsic_modules[expr.name]
+            if not has_prop(intrinsics, prop):
+                croak(
+                    'sagejs.runtime has no compiler intrinsic named "' +
+                    prop + '"')
+            if not options.for_linting:
+                return subscripts(
+                    AST_SymbolRef({
+                        'start': expr.start,
+                        'name': intrinsics[prop],
+                        'end': prev()
+                    }), allow_calls)
         c = get_class_in_scope(expr)
         if c:
             classvars = c.provisional_classvars if c.processing else c.classvars
@@ -2961,6 +3018,7 @@ def parse(text, options):
         0,
         'in_class': [False],
         'classes': [{}],
+        'intrinsic_modules': {},
         'functions': [{}],
         'labels': [],
         'decorators':

@@ -20,6 +20,11 @@ for (const relativePath of mathematicalModules) {
     verbatimExpression,
     `${relativePath} must not contain verbatim JavaScript`,
   );
+  assert.match(
+    source,
+    /^import sagejs\.runtime as runtime$/m,
+    `${relativePath} must use the readable runtime namespace`,
+  );
 }
 
 const generated = readFileSync(
@@ -40,6 +45,8 @@ assert.match(
   generated,
   /PolynomialRingParent = ρσ_callable_instance_class_adapter\(PolynomialRingParent\)/,
 );
+assert.doesNotMatch(generated, /ρσ_modules\["sagejs\.runtime"\]/);
+assert.doesNotMatch(generated, /\bruntime\.(?:flint_backend|coercion_model)/);
 
 const algebraSource = readFileSync(
   join(root, "src/baselib/algebra.py"),
