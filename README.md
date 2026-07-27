@@ -262,6 +262,19 @@ sagejs --python compile input.py --output output.js
 node output.js
 ```
 
+## Experimental native compiler
+
+The first native-compiler proof of concept parses a restricted, typed
+`ComplexField` loop through the Sage.js AST, emits C/MPC, builds a Node addon,
+and crosses Node-API once for the whole algorithm. On the benchmark machine it
+reduced a 53-bit multiplication loop from about 1514 ns to 172 ns per
+iteration, comparable to Sage's Cython implementation. See
+[`bench/NATIVE-COMPILER.md`](bench/NATIVE-COMPILER.md) and run:
+
+```sh
+pnpm run bench:native
+```
+
 ## Build from source
 
 ```sh

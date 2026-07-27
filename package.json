@@ -55,10 +55,11 @@
     "test": "pnpm run build && pnpm run test:compiler && pnpm run test:cli",
     "test:compiler": "node bin/sagejs test",
     "test:cli": "node test/cli-smoke.cjs",
-    "test:native": "pnpm --dir packages/flint test && node bin/sagejs packages/flint/test/integration.sage",
+    "test:native": "pnpm --dir packages/flint test && node bin/sagejs packages/flint/test/integration.sage && node test/native-compiler-poc.cjs",
     "bench:cold": "node bench/cold-start.cjs",
     "bench:arithmetic": "node bench/compare-sagelite.cjs",
     "bench:complex": "node bench/compare-complex.cjs",
+    "bench:native": "node bench/compare-native-compiler.cjs",
     "prepack": "pnpm test"
   },
   "devDependencies": {

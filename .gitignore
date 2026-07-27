@@ -5,3 +5,4 @@ dist
 *.term
 *.chat
 *.wasm
+bench/.native-poc
