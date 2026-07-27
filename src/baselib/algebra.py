@@ -547,28 +547,62 @@ FiniteFieldElement.prototype.__repr__ = function() {
 FiniteFieldElement.prototype.__str__ = FiniteFieldElement.prototype.__repr__;
 FiniteFieldElement.prototype.toString = FiniteFieldElement.prototype.__repr__;
 
+function ρσ_math_tuple(values) {
+    function tupleRepr() {
+        const entries = this.map(function(value) {
+            return ρσ_repr(value);
+        }).join(", ");
+        return "(" + entries + (this.length === 1 ? "," : "") + ")";
+    }
+    Object.defineProperties(values, {
+        "__repr__": {value: tupleRepr},
+        "__str__": {value: tupleRepr},
+        "toString": {value: tupleRepr}
+    });
+    return Object.freeze(values);
+}
+
+var QuotientFunctor = Object.freeze({
+    "__repr__": function() { return "QuotientFunctor"; },
+    "__str__": function() { return "QuotientFunctor"; },
+    "toString": function() { return "QuotientFunctor"; }
+});
+
+function FiniteField_prime_modn() {}
+Object.defineProperty(FiniteField_prime_modn, "__repr__", {
+    value: function() {
+        return "<class 'sage.rings.finite_rings.finite_field_prime_modn." +
+            "FiniteField_prime_modn_with_category'>";
+    }
+});
+
 var ρσ_prime_fields = new Map();
-function GF(order, name) {
+function GF(order, name, modulus, names) {
+    if (name !== null && typeof name === "object" &&
+            name[ρσ_kwargs_symbol]) {
+        modulus = name.modulus;
+        names = name.names;
+        name = undefined;
+    }
     order = ρσ_integer_bigint(order);
     if (order < 2n) {
         throw new ValueError(
             "the order of a finite field must be at least 2");
     }
-    const key = order.toString();
+    if (modulus !== undefined && modulus !== null &&
+            modulus !== "primitive") {
+        throw new NotImplementedError(
+            "only the default and primitive prime-field moduli " +
+            "are implemented");
+    }
+    const primitive = modulus === "primitive";
+    const key = order.toString() + (primitive ? "|primitive" : "");
     let field = ρσ_prime_fields.get(key);
     if (field !== undefined) return field;
-    let prime;
-    try {
-        prime = ρσ_flint_backend().wordIsPrime(order);
-    } catch (error) {
-        if (error instanceof RangeError) {
-            throw new Error(
-                "finite fields larger than a FLINT word are not implemented");
-        }
-        throw error;
-    }
+    const backend = ρσ_flint_backend();
+    const prime = backend.isPrime(order);
     if (!prime) {
-        const decomposition = ρσ_flint_backend().factor(order);
+        const decomposition = backend.factor(order);
         if (decomposition.factors.length !== 1) {
             throw new ValueError(
                 "the order of a finite field must be a prime power");
@@ -581,8 +615,14 @@ function GF(order, name) {
         function(value) {
             return new FiniteFieldElement(field, value);
         });
+    Object.defineProperty(field, "constructor", {
+        value: FiniteField_prime_modn
+    });
     Object.defineProperty(field, "_kind", {value: "GF"});
     Object.defineProperty(field, "_modulus", {value: order});
+    Object.defineProperty(field, "_generator", {
+        value: primitive ? backend.wordPrimitiveRootPrime(order) : 1n
+    });
     field.order = function() {
         return ρσ_normalize_integer(order);
     };
@@ -594,7 +634,49 @@ function GF(order, name) {
     field.is_prime_field = function() { return true; };
     field.zero = function() { return new FiniteFieldElement(field, 0n); };
     field.one = function() { return new FiniteFieldElement(field, 1n); };
-    field.gen = field.one;
+    field.gen = function(index) {
+        if (index === undefined) index = 0;
+        index = ρσ_integer_bigint(index);
+        if (index !== 0n) {
+            throw new IndexError("only one generator");
+        }
+        return new FiniteFieldElement(field, field._generator);
+    };
+    field._first_ngens = function(count) {
+        count = ρσ_integer_bigint(count);
+        if (count !== 1n) {
+            throw new ValueError("prime fields have exactly one generator");
+        }
+        return [field.gen()];
+    };
+    field.gens = function() {
+        return ρσ_math_tuple([field.gen()]);
+    };
+    field.variable_name = function() { return "x"; };
+    field.polynomial = function(variable) {
+        if (variable === undefined) variable = "x";
+        return PolynomialRing(field, variable).gen();
+    };
+    field.construction = function() {
+        return ρσ_math_tuple([QuotientFunctor, ZZ]);
+    };
+    field[ρσ_iterator_symbol] = function() {
+        let value = 0n;
+        const iterator = {
+            "next": function() {
+                if (value >= order) return {"done": true};
+                const result = {
+                    "done": false,
+                    "value": new FiniteFieldElement(field, value)
+                };
+                value += 1n;
+                return result;
+            }
+        };
+        iterator[ρσ_iterator_symbol] = function() { return this; };
+        return iterator;
+    };
+    field.__iter__ = field[ρσ_iterator_symbol];
     field.prime_subfield = function() { return field; };
     ρσ_prime_fields.set(key, field);
     ρσ_coercion_model.register(ZZ, field, function(value) {
@@ -602,6 +684,10 @@ function GF(order, name) {
     });
     return field;
 }
+
+Object.defineProperty(GF, "__argnames__", {
+    value: ["order", "name", "modulus", "names"]
+});
 
 var FiniteField = GF;
 

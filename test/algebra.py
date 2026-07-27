@@ -55,6 +55,15 @@ assrt.equal(F5.degree(), 1)
 assrt.ok(F5.is_field())
 assrt.ok(F5.is_finite())
 assrt.ok(F5.is_prime_field())
+assrt.equal(
+    repr(type(F5)),
+    "<class 'sage.rings.finite_rings.finite_field_prime_modn." +
+    "FiniteField_prime_modn_with_category'>")
+assrt.equal(repr(F5.construction()), '(QuotientFunctor, Integer Ring)')
+assrt.ok(F5._first_ngens(1)[0] == F5(1))
+assrt.equal(repr(F5.gens()), '(1,)')
+assrt.equal(repr(F5.polynomial()), 'x')
+assrt.equal(repr(list(F5)), '[0, 1, 2, 3, 4]')
 assrt.ok(1 + F5(2) == F5(3))
 assrt.ok(F5(2) + 1 == F5(3))
 assrt.ok(F5(2) - 4 == F5(3))
@@ -72,8 +81,39 @@ def construct_non_prime_power_field():
 def construct_extension_field():
     return GF(4)
 
+def invalid_prime_field_generator():
+    return F5.gen(1)
+
 assrt.throws(construct_non_prime_power_field, ValueError)
 assrt.throws(construct_extension_field, NotImplementedError)
+assrt.throws(invalid_prime_field_generator, IndexError)
+
+F1009_primitive = GF(1009, modulus='primitive')
+assrt.ok(F1009_primitive is GF(1009, modulus='primitive'))
+assrt.ok(F1009_primitive is not GF(1009))
+assrt.ok(F1009_primitive.gen() == F1009_primitive(11))
+assrt.equal(repr(F1009_primitive.gens()), '(11,)')
+
+assrt.equal(next_prime(1000), 1009)
+large_prime = next_prime(BigInt(2) ** BigInt(256))
+assrt.equal(
+    large_prime,
+    BigInt(
+        '115792089237316195423570985008687907853269984665640564039457584' +
+        '007913129640233'))
+large_field_iterator = iter(GF(large_prime))
+assrt.equal(next(large_field_iterator).lift(), 0)
+assrt.equal(next(large_field_iterator).lift(), 1)
+
+finite_iterator = iter(GF(2))
+assrt.equal(next(finite_iterator).lift(), 0)
+assrt.equal(next(finite_iterator).lift(), 1)
+assrt.equal(next(finite_iterator, 'finished'), 'finished')
+
+def exhaust_prime_field_iterator():
+    return next(finite_iterator)
+
+assrt.throws(exhaust_prime_field_iterator, StopIteration)
 
 def divide_by_zero_in_F5():
     return F5(1) / F5(0)

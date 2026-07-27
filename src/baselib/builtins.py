@@ -337,6 +337,14 @@ def ρσ_iter(iterable):
         return ans
     return ρσ_iter(Object.keys(iterable))
 
+def ρσ_next(iterator, fallback=undefined):
+    result = iterator.next()
+    if not result.done:
+        return result.value
+    if arguments.length > 1:
+        return fallback
+    raise StopIteration()
+
 def ρσ_range_next(step, length):
     this._i += step
     this._idx += 1
@@ -545,6 +553,15 @@ def ρσ_gcd(left, right):
         return right.gcd(left)
     raise TypeError('gcd() is not defined for these arguments')
 
+def ρσ_next_prime(value):
+    if jstype(value) is 'number':
+        if not Number.isSafeInteger(value):
+            raise TypeError('next_prime() requires an integer')
+        value = BigInt(value)
+    elif jstype(value) is not 'bigint':
+        raise TypeError('next_prime() requires an integer')
+    return ρσ_normalize_integer(ρσ_flint_backend().nextPrime(value))
+
 
 def ρσ_max(*args, **kwargs):
     if args.length is 0:
@@ -568,5 +585,6 @@ v'var float = ρσ_float, int = ρσ_int, Integer = ρσ_integer_literal, RealNu
 v'var arraylike = ρσ_arraylike_creator(), ρσ_arraylike = arraylike'
 v'var print = ρσ_print, id = ρσ_id, get_module = ρσ_get_module, pow = ρσ_pow, divmod = ρσ_divmod'
 v'var dir = ρσ_dir, ord = ρσ_ord, chr = ρσ_chr, bin = ρσ_bin, hex = ρσ_hex, callable = ρσ_callable'
-v'var enumerate = ρσ_enumerate, iter = ρσ_iter, reversed = ρσ_reversed, len = ρσ_len'
+v'var enumerate = ρσ_enumerate, iter = ρσ_iter, next = ρσ_next, reversed = ρσ_reversed, len = ρσ_len'
 v'var range = ρσ_range, getattr = ρσ_getattr, setattr = ρσ_setattr, hasattr = ρσ_hasattr, factor = ρσ_factor, gcd = ρσ_gcd'
+v'var next_prime = ρσ_next_prime'

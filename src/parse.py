@@ -122,6 +122,7 @@ ERROR_CLASSES = {
     'UnicodeDecodeError': {},
     'AssertionError': {},
     'ZeroDivisionError': {},
+    'StopIteration': {},
 }
 COMMON_STATIC = static_predicate('call apply bind toString')
 FORBIDDEN_CLASS_VARS = 'prototype constructor'.split(' ')

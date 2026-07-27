@@ -77,6 +77,21 @@ assert.throws(() => flint.qqPolyConstant(1n, 0n), /denominator is zero/);
 assert.equal(flint.wordIsPrime(2n), true);
 assert.equal(flint.wordIsPrime(18446744073709551557n), true);
 assert.equal(flint.wordIsPrime(15n), false);
+assert.equal(flint.isPrime(2n), true);
+assert.equal(flint.isPrime(15n), false);
+assert.equal(
+  flint.isPrime(
+    115792089237316195423570985008687907853269984665640564039457584007913129640233n,
+  ),
+  true,
+);
+assert.equal(flint.nextPrime(1000n), 1009n);
+assert.equal(
+  flint.nextPrime(2n ** 256n),
+  115792089237316195423570985008687907853269984665640564039457584007913129640233n,
+);
+assert.equal(flint.wordPrimitiveRootPrime(2n), 1n);
+assert.equal(flint.wordPrimitiveRootPrime(1009n), 11n);
 
 const nmod5x = flint.nmodPolyGen(5n);
 const nmod5one = flint.nmodPolyConstant(1n, 5n);

@@ -486,6 +486,70 @@ static napi_value word_is_prime(napi_env env, napi_callback_info info)
     return result;
 }
 
+static napi_value is_prime(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    fmpz_t value;
+    int prime;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    fmpz_init(value);
+    if (!bigint_to_fmpz(env, args[0], value))
+    {
+        fmpz_clear(value);
+        return NULL;
+    }
+    prime = fmpz_is_prime(value);
+    fmpz_clear(value);
+    if (!check_napi(env, napi_get_boolean(env, prime, &result)))
+        return NULL;
+    return result;
+}
+
+static napi_value next_prime(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    fmpz_t value;
+    fmpz_t answer;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    fmpz_init(value);
+    fmpz_init(answer);
+    if (!bigint_to_fmpz(env, args[0], value))
+    {
+        fmpz_clear(value);
+        fmpz_clear(answer);
+        return NULL;
+    }
+    fmpz_nextprime(answer, value, 1);
+    result = fmpz_to_bigint(env, answer);
+    fmpz_clear(value);
+    fmpz_clear(answer);
+    return result;
+}
+
+static napi_value word_primitive_root_prime(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    ulong value;
+    ulong root;
+
+    if (!require_arguments(env, info, 1, args) ||
+        !bigint_to_prime_modulus(env, args[0], &value))
+        return NULL;
+    root = n_primitive_root_prime(value);
+    if (!check_napi(env, napi_create_bigint_uint64(env, root, &result)))
+        return NULL;
+    return result;
+}
+
 static napi_value nmod_poly_constant(napi_env env, napi_callback_info info)
 {
     napi_value args[2];
@@ -1229,6 +1293,12 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"wordIsPrime", NULL, word_is_prime, NULL, NULL, NULL,
             napi_default, NULL},
+        {"isPrime", NULL, is_prime, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"nextPrime", NULL, next_prime, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"wordPrimitiveRootPrime", NULL, word_primitive_root_prime,
+            NULL, NULL, NULL, napi_default, NULL},
         {"nmodPolyConstant", NULL, nmod_poly_constant, NULL, NULL, NULL,
             napi_default, NULL},
         {"nmodPolyGen", NULL, nmod_poly_gen_value, NULL, NULL, NULL,

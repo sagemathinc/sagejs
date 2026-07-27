@@ -17,22 +17,5 @@
     "src/sage/rings/finite_rings/finite_field_prime_modn.py:207": "extension finite fields GF(p^n) are the next finite-field subsystem",
     "src/sage/rings/finite_rings/finite_field_prime_modn.py:208": "continuation of the extension finite-field example"
   },
-  "xfail": {
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:50": "next_prime is not implemented",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:88": "prime finite-field parent type representation differs from Sage",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:180": "finite-field construction metadata is not implemented",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:203": "prime fields do not implement _first_ngens",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:219": "prime fields do not implement _first_ngens",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:220": "prime-field defining polynomial is not implemented",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:279": "primitive-modulus generator selection is not implemented",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:281": "gen does not validate its generator index",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:314": "gens is not implemented",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:318": "gens is not implemented",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:329": "prime fields are not iterable",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:335": "next_prime and arbitrary-size prime validation are not implemented",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:336": "prime fields are not iterable",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:337": "the next builtin is not implemented",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:339": "the next builtin is not implemented",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:341": "the next builtin is not implemented"
-  }
+  "xfail": {}
 }
