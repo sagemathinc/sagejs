@@ -3,6 +3,7 @@ dist
 *.tgz
 *.tsbuildinfo
 *.term
+*.term.init
 *.chat
 *.wasm
 bench/.native-kernel-cache

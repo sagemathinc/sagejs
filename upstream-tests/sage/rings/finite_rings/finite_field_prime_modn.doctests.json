@@ -1,0 +1,468 @@
+{
+  "schema": "sagejs.sage-doctests/v1",
+  "generatedBy": "scripts/extract-sage-doctests.cjs",
+  "source": {
+    "repository": "https://github.com/sagemathinc/sagelite",
+    "revision": "acc8c18d6a620c940df09d3791c5b8e939e146ae",
+    "path": "src/sage/rings/finite_rings/finite_field_prime_modn.py",
+    "sha256": "998161203762b3010e03f7b0c5ed497208cd81919cabea334d96f472831a0ece",
+    "license": "GPL-2.0-or-later"
+  },
+  "summary": {
+    "groups": 15,
+    "examples": 48
+  },
+  "groups": [
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#<module>@1",
+      "owner": "<module>",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:12",
+          "line": 12,
+          "source": "k = GF(3)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:13",
+          "line": 13,
+          "source": "TestSuite(k).run()",
+          "want": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn@42",
+      "owner": "FiniteField_prime_modn",
+      "line": 42,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:47",
+          "line": 47,
+          "source": "FiniteField(3)",
+          "want": "Finite Field of size 3\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:50",
+          "line": 50,
+          "source": "FiniteField(next_prime(1000))                                             # needs sage.rings.finite_rings",
+          "want": "Finite Field of size 1009\n",
+          "tags": [
+            {
+              "name": "needs",
+              "value": "sage.rings.finite_rings"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn.__init__@54",
+      "owner": "FiniteField_prime_modn.__init__",
+      "line": 54,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:66",
+          "line": 66,
+          "source": "F = FiniteField(3); F",
+          "want": "Finite Field of size 3\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn.__reduce__@83",
+      "owner": "FiniteField_prime_modn.__reduce__",
+      "line": 83,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:88",
+          "line": 88,
+          "source": "k = FiniteField(5); type(k)",
+          "want": "<class 'sage.rings.finite_rings.finite_field_prime_modn.FiniteField_prime_modn_with_category'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:90",
+          "line": 90,
+          "source": "k is loads(dumps(k))",
+          "want": "True\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn._coerce_map_from_@96",
+      "owner": "FiniteField_prime_modn._coerce_map_from_",
+      "line": 96,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:101",
+          "line": 101,
+          "source": "k = GF(7)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:102",
+          "line": 102,
+          "source": "e = k(6)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:103",
+          "line": 103,
+          "source": "e * 2 # indirect doctest",
+          "want": "5\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:105",
+          "line": 105,
+          "source": "12 % 7",
+          "want": "5\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:108",
+          "line": 108,
+          "source": "ZZ.residue_field(7).hom(GF(7))(1)  # See trac 11319",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:111",
+          "line": 111,
+          "source": "K.<w> = QuadraticField(337)  # See trac 11319",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:112",
+          "line": 112,
+          "source": "pp = K.ideal(13).factor()[0][0]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:113",
+          "line": 113,
+          "source": "RF13 = K.residue_field(pp)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:114",
+          "line": 114,
+          "source": "RF13.hom([GF(13)(1)])",
+          "want": "Ring morphism:\n  From: Residue field of Fractional ideal (w + 18)\n  To:   Finite Field of size 13\n  Defn: 1 |--> 1\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:122",
+          "line": 122,
+          "source": "Integers(9).hom(GF(3))",
+          "want": "Natural morphism:\n  From: Ring of integers modulo 9\n  To:   Finite Field of size 3\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:127",
+          "line": 127,
+          "source": "Integers(9).hom(GF(5))",
+          "want": "Traceback (most recent call last):\n...\nTypeError: natural coercion morphism from Ring of integers modulo 9 to Finite Field of size 5 not defined\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:134",
+          "line": 134,
+          "source": "GF(3).has_coerce_map_from(Zp(3))                                      # needs sage.rings.padics",
+          "want": "False\n",
+          "tags": [
+            {
+              "name": "needs",
+              "value": "sage.rings.padics"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn._convert_map_from_@155",
+      "owner": "FiniteField_prime_modn._convert_map_from_",
+      "line": 155,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:160",
+          "line": 160,
+          "source": "GF(3).convert_map_from(Qp(3))",
+          "want": "Reduction morphism:\n  From: 3-adic Field with capped relative precision 20\n  To:   Finite Field of size 3\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:164",
+          "line": 164,
+          "source": "GF(3).convert_map_from(Zp(3))",
+          "want": "Reduction morphism:\n  From: 3-adic Ring with capped relative precision 20\n  To:   Finite Field of size 3\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn.construction@174",
+      "owner": "FiniteField_prime_modn.construction",
+      "line": 174,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:180",
+          "line": 180,
+          "source": "GF(3).construction()",
+          "want": "(QuotientFunctor, Integer Ring)\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn.characteristic@186",
+      "owner": "FiniteField_prime_modn.characteristic",
+      "line": 186,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:191",
+          "line": 191,
+          "source": "k = GF(7)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:192",
+          "line": 192,
+          "source": "k.characteristic()",
+          "want": "7\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn.is_prime_field@198",
+      "owner": "FiniteField_prime_modn.is_prime_field",
+      "line": 198,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:203",
+          "line": 203,
+          "source": "k.<a> = GF(3)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:204",
+          "line": 204,
+          "source": "k.is_prime_field()",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:207",
+          "line": 207,
+          "source": "k.<a> = GF(3^2)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:208",
+          "line": 208,
+          "source": "k.is_prime_field()",
+          "want": "False\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn.polynomial@214",
+      "owner": "FiniteField_prime_modn.polynomial",
+      "line": 214,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:219",
+          "line": 219,
+          "source": "k.<a> = GF(3)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:220",
+          "line": 220,
+          "source": "k.polynomial()",
+          "want": "x\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn.order@237",
+      "owner": "FiniteField_prime_modn.order",
+      "line": 237,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:242",
+          "line": 242,
+          "source": "k = GF(5)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:243",
+          "line": 243,
+          "source": "k.order()",
+          "want": "5\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn.gen@249",
+      "owner": "FiniteField_prime_modn.gen",
+      "line": 249,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:274",
+          "line": 274,
+          "source": "k = GF(13)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:275",
+          "line": 275,
+          "source": "k.gen()",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:278",
+          "line": 278,
+          "source": "k = GF(1009, modulus='primitive')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:279",
+          "line": 279,
+          "source": "k.gen()  # this gives a primitive element",
+          "want": "11\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:281",
+          "line": 281,
+          "source": "k.gen(1)",
+          "want": "Traceback (most recent call last):\n...\nIndexError: only one generator\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn.gens@300",
+      "owner": "FiniteField_prime_modn.gens",
+      "line": 300,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:313",
+          "line": 313,
+          "source": "k = GF(1009, modulus='primitive')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:314",
+          "line": 314,
+          "source": "k.gens()",
+          "want": "(11,)\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:317",
+          "line": 317,
+          "source": "k = GF(1009)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:318",
+          "line": 318,
+          "source": "k.gens()",
+          "want": "(1,)\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn.__iter__@324",
+      "owner": "FiniteField_prime_modn.__iter__",
+      "line": 324,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:329",
+          "line": 329,
+          "source": "list(GF(7))",
+          "want": "[0, 1, 2, 3, 4, 5, 6]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:335",
+          "line": 335,
+          "source": "K = GF(next_prime(2^256))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:336",
+          "line": 336,
+          "source": "all = iter(K)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:337",
+          "line": 337,
+          "source": "next(all)",
+          "want": "0\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:339",
+          "line": 339,
+          "source": "next(all)",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:341",
+          "line": 341,
+          "source": "next(all)",
+          "want": "2\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py#FiniteField_prime_modn.degree@351",
+      "owner": "FiniteField_prime_modn.degree",
+      "line": 351,
+      "examples": [
+        {
+          "id": "src/sage/rings/finite_rings/finite_field_prime_modn.py:358",
+          "line": 358,
+          "source": "FiniteField(3).degree()",
+          "want": "1\n",
+          "tags": []
+        }
+      ]
+    }
+  ]
+}

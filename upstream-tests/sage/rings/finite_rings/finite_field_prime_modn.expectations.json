@@ -1,0 +1,38 @@
+{
+  "schema": "sagejs.sage-doctest-expectations/v1",
+  "fixture": "finite_field_prime_modn.doctests.json",
+  "skip": {
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:13": "Sage TestSuite infrastructure is a separate compatibility subsystem",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:90": "Sage persistence and identity-preserving pickling are a separate compatibility subsystem",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:108": "requires residue fields and morphisms",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:111": "requires quadratic fields",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:112": "continuation of the quadratic-field example",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:113": "continuation of the quadratic/residue-field example",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:114": "requires quadratic residue fields and morphisms",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:122": "requires integer-modulo rings and morphisms",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:127": "requires integer-modulo rings and morphisms",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:134": "requires p-adic rings",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:160": "requires p-adic fields and reduction morphisms",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:164": "requires p-adic rings and reduction morphisms",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:207": "extension finite fields GF(p^n) are the next finite-field subsystem",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:208": "continuation of the extension finite-field example"
+  },
+  "xfail": {
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:50": "next_prime is not implemented",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:88": "prime finite-field parent type representation differs from Sage",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:180": "finite-field construction metadata is not implemented",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:203": "prime fields do not implement _first_ngens",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:219": "prime fields do not implement _first_ngens",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:220": "prime-field defining polynomial is not implemented",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:279": "primitive-modulus generator selection is not implemented",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:281": "gen does not validate its generator index",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:314": "gens is not implemented",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:318": "gens is not implemented",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:329": "prime fields are not iterable",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:335": "next_prime and arbitrary-size prime validation are not implemented",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:336": "prime fields are not iterable",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:337": "the next builtin is not implemented",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:339": "the next builtin is not implemented",
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:341": "the next builtin is not implemented"
+  }
+}

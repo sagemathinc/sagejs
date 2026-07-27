@@ -1,0 +1,28 @@
+# Upstream semantic tests
+
+This directory contains generated semantic snapshots of upstream Sage doctests,
+not copies of Sage implementations. Each fixture preserves the exact Sage input,
+expected output, docstring grouping, source locations, tags, repository revision,
+and SHA-256 hash of the complete source file.
+
+Regenerate a fixture from a Sage or Sagelite checkout with:
+
+```sh
+node scripts/extract-sage-doctests.cjs \
+  --source /path/to/sage/src/sage/rings/example.py \
+  --license GPL-2.0-or-later \
+  --output upstream-tests/sage/rings/example.doctests.json
+```
+
+Run a fixture against Sage.js with:
+
+```sh
+node scripts/run-sage-doctests.cjs \
+  upstream-tests/sage/rings/example.doctests.json \
+  --expectations upstream-tests/sage/rings/example.expectations.json
+```
+
+Expectations are separate from upstream tests. A `skip` records a deliberately
+out-of-scope dependency and does not execute the example. An `xfail` records a
+known Sage.js compatibility gap and is executed; an unexpected pass fails the
+suite until the obsolete expectation is removed.

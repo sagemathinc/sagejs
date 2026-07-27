@@ -398,6 +398,16 @@ pnpm install --frozen-lockfile
 pnpm test
 ```
 
+The main suite includes generated semantic snapshots of selected upstream Sage
+doctests. These contain the exact inputs and expected outputs, grouped as in
+their original docstrings, but none of Sage's implementation code. Provenance
+includes the source path, Git revision, line numbers, optional-package tags,
+and a hash of the complete upstream file. Known compatibility gaps are tracked
+separately as explicit skips or expected failures, so a regression or an
+unrecorded new pass fails CI. See
+[upstream-tests/README.md](upstream-tests/README.md) for extraction and runner
+commands.
+
 `pnpm build` compiles the TypeScript tooling and then uses the checked-in
 bootstrap compiler to rebuild the compiler from its Python-like source. The
 build continues until the compiler is compiled with an up-to-date version of
