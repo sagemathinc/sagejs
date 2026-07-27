@@ -8,6 +8,11 @@
 # Copyright (C) 2026 Sage.js contributors
 # License: GPL-3.0-only
 
+# The v-string below is emitted as literal JavaScript.  This low-level runtime
+# kernel intentionally uses the same function/prototype representation as the
+# existing Parent, Element, and compiler-generated Python class machinery.
+# Higher-level mathematical library code should normally be written in
+# Sage.js/Python syntax rather than added here as raw JavaScript.
 v"""
 function ρσ_is_exact_integer(value) {
     return typeof value === "bigint" ||
