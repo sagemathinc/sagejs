@@ -1,5 +1,5 @@
 {
-  "name": "sagejs",
+  "name": "@sagemath/sagejs",
   "version": "0.1.0",
   "description": "Open research mathematics, native to Node",
   "homepage": "https://github.com/sagemathinc/sagejs#readme",
@@ -65,8 +65,5 @@
   },
   "directories": {
     "test": "test"
-  },
-  "dependencies": {
-    "undici-types": "^8.3.0"
   }
 }

@@ -666,6 +666,6 @@ if (argv.help) {
 
 if (argv.version) {
   var json = require(path.join(__dirname, "..", "..", "package.json"));
-  console.log(json.name + " " + json.version);
+  console.log("sagejs " + json.version);
   process.exit(0);
 }

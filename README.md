@@ -24,13 +24,13 @@ does not yet contain the native mathematical library layer.
 Sage.js requires Node.js 20.17 or newer.
 
 ```sh
-npm install --global sagejs
+npm install --global @sagemath/sagejs
 ```
 
 It can also be tried without a global installation:
 
 ```sh
-npx sagejs
+npx --package @sagemath/sagejs sagejs
 ```
 
 ## Sage mode
@@ -100,7 +100,7 @@ through CPython or WebAssembly.
 The compiler can also be loaded from Node:
 
 ```js
-const createCompiler = require("sagejs");
+const createCompiler = require("@sagemath/sagejs");
 const compiler = createCompiler();
 const ast = compiler.parse("print(2 + 3)");
 ```
