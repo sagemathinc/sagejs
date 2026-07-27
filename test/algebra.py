@@ -78,14 +78,10 @@ assrt.ok(2 == F5(2))
 def construct_non_prime_power_field():
     return GF(15)
 
-def construct_extension_field():
-    return GF(4)
-
 def invalid_prime_field_generator():
     return F5.gen(1)
 
 assrt.throws(construct_non_prime_power_field, ValueError)
-assrt.throws(construct_extension_field, NotImplementedError)
 assrt.throws(invalid_prime_field_generator, IndexError)
 
 F1009_primitive = GF(1009, modulus='primitive')
@@ -114,6 +110,90 @@ def exhaust_prime_field_iterator():
     return next(finite_iterator)
 
 assrt.throws(exhaust_prime_field_iterator, StopIteration)
+
+# Extension fields use FLINT Conway polynomials and keep their elements as
+# opaque native fq values.
+F9 = GF(9, 'a')
+assrt.ok(F9 is GF(9, 'a'))
+assrt.ok(F9 is not GF(9, 'b'))
+assrt.equal(repr(F9), 'Finite Field in a of size 3^2')
+assrt.equal(
+    repr(type(F9)),
+    "<class 'sage.rings.finite_rings.finite_field_givaro." +
+    "FiniteField_givaro_with_category'>")
+assrt.equal(F9.order(), 9)
+assrt.equal(F9.cardinality(), 9)
+assrt.equal(F9.characteristic(), 3)
+assrt.equal(F9.degree(), 2)
+assrt.ok(F9.is_field())
+assrt.ok(F9.is_finite())
+assrt.ok(not F9.is_prime_field())
+assrt.ok(F9.prime_subfield() is GF(3))
+assrt.equal(F9.variable_name(), 'a')
+assrt.equal(repr(F9.modulus()), 'x^2 + 2*x + 2')
+assrt.equal(repr(F9.polynomial()), 'a^2 + 2*a + 2')
+assrt.equal(
+    repr(F9.construction()),
+    '(AlgebraicExtensionFunctor, Finite Field of size 3)')
+
+a9 = F9.gen()
+assrt.equal(repr(a9), 'a')
+assrt.equal(parent(a9), F9)
+assrt.equal(
+    repr(type(a9)),
+    "<class 'sage.rings.finite_rings.element_givaro." +
+    "FiniteField_givaroElement'>")
+assrt.ok(F9._first_ngens(1)[0] == a9)
+assrt.equal(repr(F9.gens()), '(a,)')
+assrt.ok(a9 * a9 == a9 + 1)
+assrt.ok(a9 - 1 == a9 + 2)
+assrt.ok(-a9 == 2*a9)
+assrt.ok(1 / a9 == a9 + 2)
+assrt.ok(a9 ** -1 == a9 + 2)
+assrt.ok(a9 ** 8 == 1)
+assrt.ok(1 + a9 == a9 + 1)
+assrt.ok(a9 + GF(3)(2) == a9 + 2)
+assrt.ok(F9(QQ(1, 2)) == 2)
+assrt.equal(
+    repr(list(F9)),
+    '[0, a, a + 1, 2*a + 1, 2, 2*a, 2*a + 2, a + 2, 1]')
+assrt.equal(GF(9).variable_name(), 'z2')
+assrt.equal(repr(GF(8, 'b').modulus()), 'x^3 + x + 1')
+
+F65536 = GF(BigInt(2) ** BigInt(16), 'b')
+assrt.equal(
+    repr(type(F65536)),
+    "<class 'sage.rings.finite_rings.finite_field_ntl_gf2e." +
+    "FiniteField_ntl_gf2e_with_category'>")
+assrt.equal(
+    repr(type(F65536.gen())),
+    "<class 'sage.rings.finite_rings.element_ntl_gf2e." +
+    "FiniteField_ntl_gf2eElement'>")
+assrt.equal(
+    repr(F65536.modulus()),
+    'x^16 + x^5 + x^3 + x^2 + 1')
+
+F177147 = GF(BigInt(3) ** BigInt(11), 'c')
+assrt.equal(
+    repr(type(F177147)),
+    "<class 'sage.rings.finite_rings.finite_field_pari_ffelt." +
+    "FiniteField_pari_ffelt_with_category'>")
+assrt.equal(
+    repr(type(F177147.gen())),
+    "<class 'sage.rings.finite_rings.element_pari_ffelt." +
+    "FiniteFieldElement_pari_ffelt'>")
+assrt.equal(repr(F177147.modulus()), 'x^11 + 2*x^2 + 1')
+
+def divide_by_zero_in_F9():
+    return a9 / F9(0)
+
+def construct_extension_without_conway_polynomial():
+    return GF(BigInt(65537) ** BigInt(2), 'a')
+
+assrt.throws(divide_by_zero_in_F9, ZeroDivisionError)
+assrt.throws(
+    construct_extension_without_conway_polynomial,
+    NotImplementedError)
 
 def divide_by_zero_in_F5():
     return F5(1) / F5(0)

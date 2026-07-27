@@ -193,7 +193,7 @@ integer representation. Modulo and several bit operations still need explicit
 semantics. The constructor seam allows a future `Integer` element type to
 replace the representation without changing the parser again.
 
-Prime finite fields and their polynomial rings follow Sage's parent,
+Finite fields and prime-field polynomial rings follow Sage's parent,
 coercion, representation, and factorization interfaces:
 
 ```py
@@ -210,6 +210,15 @@ sage: ((x - 1)^2 * (x + 2)).roots()
 [(3, 1), (1, 2)]
 sage: gcd(f, (x - 1)^2 * (x + 2))
 x^2 + x + 3
+sage: K.<a> = GF(3^2)
+sage: K
+Finite Field in a of size 3^2
+sage: K.modulus()
+x^2 + 2*x + 2
+sage: a^2
+a + 1
+sage: list(K)
+[0, a, a + 1, 2*a + 1, 2, 2*a, 2*a + 2, a + 2, 1]
 ```
 
 `GF(p)` is interned and exact scalar elements use reduced JavaScript `BigInt`
@@ -217,9 +226,15 @@ values, so ordinary field arithmetic does not cross Node-API. Polynomials are
 opaque native FLINT `nmod_poly` values; multiplication, GCD, irreducibility,
 factorization, and root finding each cross into native code once for the
 complete operation. Canonical coercion from `ZZ` and `ZZ[x]` is supported.
-This first slice implements word-sized prime fields. Sage-compatible extension
-fields such as `GF(2^8)` remain to be added rather than being given invented
-semantics.
+
+For database-backed `GF(p^n)`, Sage.js uses the same Conway defining
+polynomials and polynomial-basis representation as Sage. Extension-field
+contexts and elements remain opaque native FLINT `fq_nmod` or `fq` values.
+Arithmetic, inverses, and powers cross Node-API once per operation; coercions
+from `ZZ` and the prime subfield, generator declarations, defining polynomials,
+and Sage's finite iteration order are implemented. Fields requiring Sage's
+pseudo-Conway construction currently raise `NotImplementedError` instead of
+silently selecting an incompatible modulus.
 
 Sage-compatible arbitrary-precision real and complex fields are backed by
 MPFR and MPC. The default fields are cached 53-bit parents:

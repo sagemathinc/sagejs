@@ -547,6 +547,94 @@ FiniteFieldElement.prototype.__repr__ = function() {
 FiniteFieldElement.prototype.__str__ = FiniteFieldElement.prototype.__repr__;
 FiniteFieldElement.prototype.toString = FiniteFieldElement.prototype.__repr__;
 
+function FiniteFieldExtensionElement(parent, nativeValue) {
+    Element.call(this, parent);
+    this._native = nativeValue;
+    Object.defineProperty(this, "constructor", {
+        value: parent._elementType
+    });
+    Object.freeze(this);
+}
+
+FiniteFieldExtensionElement.prototype = Object.create(Element.prototype);
+FiniteFieldExtensionElement.prototype.constructor =
+    FiniteFieldExtensionElement;
+Object.defineProperty(FiniteFieldExtensionElement, "__repr__", {
+    value: function() {
+        return "<class 'sage.rings.finite_rings.element_givaro." +
+            "FiniteField_givaroElement'>";
+    }
+});
+FiniteFieldExtensionElement.prototype._add_ = function(other) {
+    return new FiniteFieldExtensionElement(
+        this._parent,
+        ρσ_flint_backend().fqAdd(this._native, other._native));
+};
+FiniteFieldExtensionElement.prototype._sub_ = function(other) {
+    return new FiniteFieldExtensionElement(
+        this._parent,
+        ρσ_flint_backend().fqSub(this._native, other._native));
+};
+FiniteFieldExtensionElement.prototype._mul_ = function(other) {
+    return new FiniteFieldExtensionElement(
+        this._parent,
+        ρσ_flint_backend().fqMul(this._native, other._native));
+};
+FiniteFieldExtensionElement.prototype._truediv_ = function(other) {
+    if (other.is_zero()) {
+        throw new ZeroDivisionError("finite field division by zero");
+    }
+    return new FiniteFieldExtensionElement(
+        this._parent,
+        ρσ_flint_backend().fqDiv(this._native, other._native));
+};
+FiniteFieldExtensionElement.prototype._eq_ = function(other) {
+    return ρσ_flint_backend().fqEqual(this._native, other._native);
+};
+FiniteFieldExtensionElement.prototype.__add__ = function(other) {
+    return ρσ_coercion_model.binOp("add", this, other);
+};
+FiniteFieldExtensionElement.prototype.__sub__ = function(other) {
+    return ρσ_coercion_model.binOp("sub", this, other);
+};
+FiniteFieldExtensionElement.prototype.__mul__ = function(other) {
+    return ρσ_coercion_model.binOp("mul", this, other);
+};
+FiniteFieldExtensionElement.prototype.__truediv__ = function(other) {
+    return ρσ_coercion_model.binOp("truediv", this, other);
+};
+FiniteFieldExtensionElement.prototype.__eq__ = function(other) {
+    return ρσ_coercion_model.equals(this, other);
+};
+FiniteFieldExtensionElement.prototype.__neg__ = function() {
+    return new FiniteFieldExtensionElement(
+        this._parent, ρσ_flint_backend().fqNeg(this._native));
+};
+FiniteFieldExtensionElement.prototype.__pow__ = function(exponent) {
+    exponent = ρσ_integer_bigint(exponent);
+    if (exponent < 0n && this.is_zero()) {
+        throw new ZeroDivisionError(
+            "cannot invert zero in a finite field");
+    }
+    return new FiniteFieldExtensionElement(
+        this._parent,
+        ρσ_flint_backend().fqPow(this._native, exponent));
+};
+FiniteFieldExtensionElement.prototype.is_zero = function() {
+    return ρσ_flint_backend().fqIsZero(this._native);
+};
+FiniteFieldExtensionElement.prototype.is_one = function() {
+    return ρσ_flint_backend().fqIsOne(this._native);
+};
+FiniteFieldExtensionElement.prototype.__repr__ = function() {
+    const raw = ρσ_flint_backend().fqToString(this._native);
+    return raw.replace(/\+/g, " + ").replace(/([^-])-+/g, "$1 - ");
+};
+FiniteFieldExtensionElement.prototype.__str__ =
+    FiniteFieldExtensionElement.prototype.__repr__;
+FiniteFieldExtensionElement.prototype.toString =
+    FiniteFieldExtensionElement.prototype.__repr__;
+
 function ρσ_math_tuple(values) {
     function tupleRepr() {
         const entries = this.map(function(value) {
@@ -568,6 +656,12 @@ var QuotientFunctor = Object.freeze({
     "toString": function() { return "QuotientFunctor"; }
 });
 
+var AlgebraicExtensionFunctor = Object.freeze({
+    "__repr__": function() { return "AlgebraicExtensionFunctor"; },
+    "__str__": function() { return "AlgebraicExtensionFunctor"; },
+    "toString": function() { return "AlgebraicExtensionFunctor"; }
+});
+
 function FiniteField_prime_modn() {}
 Object.defineProperty(FiniteField_prime_modn, "__repr__", {
     value: function() {
@@ -576,7 +670,238 @@ Object.defineProperty(FiniteField_prime_modn, "__repr__", {
     }
 });
 
+function FiniteField_givaro() {}
+Object.defineProperty(FiniteField_givaro, "__repr__", {
+    value: function() {
+        return "<class 'sage.rings.finite_rings.finite_field_givaro." +
+            "FiniteField_givaro_with_category'>";
+    }
+});
+
+function FiniteField_givaroElement() {}
+Object.defineProperty(FiniteField_givaroElement, "__repr__", {
+    value: function() {
+        return "<class 'sage.rings.finite_rings.element_givaro." +
+            "FiniteField_givaroElement'>";
+    }
+});
+
+function FiniteField_ntl_gf2e() {}
+Object.defineProperty(FiniteField_ntl_gf2e, "__repr__", {
+    value: function() {
+        return "<class 'sage.rings.finite_rings.finite_field_ntl_gf2e." +
+            "FiniteField_ntl_gf2e_with_category'>";
+    }
+});
+
+function FiniteField_ntl_gf2eElement() {}
+Object.defineProperty(FiniteField_ntl_gf2eElement, "__repr__", {
+    value: function() {
+        return "<class 'sage.rings.finite_rings.element_ntl_gf2e." +
+            "FiniteField_ntl_gf2eElement'>";
+    }
+});
+
+function FiniteField_pari_ffelt() {}
+Object.defineProperty(FiniteField_pari_ffelt, "__repr__", {
+    value: function() {
+        return "<class 'sage.rings.finite_rings.finite_field_pari_ffelt." +
+            "FiniteField_pari_ffelt_with_category'>";
+    }
+});
+
+function FiniteFieldElement_pari_ffelt() {}
+Object.defineProperty(FiniteFieldElement_pari_ffelt, "__repr__", {
+    value: function() {
+        return "<class 'sage.rings.finite_rings.element_pari_ffelt." +
+            "FiniteFieldElement_pari_ffelt'>";
+    }
+});
+
+function ρσ_finite_field_name(name, names, degree) {
+    let variable = name;
+    if (names !== undefined && names !== null) variable = names;
+    if (Array.isArray(variable)) {
+        if (variable.length !== 1) {
+            throw new TypeError(
+                "a finite-field extension needs exactly one generator name");
+        }
+        variable = variable[0];
+    }
+    if (variable === undefined || variable === null) {
+        variable = "z" + degree;
+    }
+    if (typeof variable !== "string" ||
+            !/^[A-Za-z_][A-Za-z0-9_]*$/.test(variable)) {
+        throw new TypeError(
+            "the finite-field generator must be a valid identifier");
+    }
+    return variable;
+}
+
+function ρσ_polynomial_from_coefficients(base, variable, coefficients) {
+    const ring = PolynomialRing(base, variable);
+    const generator = ring.gen();
+    let result = ring.__call__(0);
+    for (let index = coefficients.length - 1; index >= 0; index--) {
+        result = result._mul_(generator)._add_(
+            ring.__call__(base(coefficients[index])));
+    }
+    return result;
+}
+
 var ρσ_prime_fields = new Map();
+var ρσ_extension_fields = new Map();
+
+function ρσ_make_extension_field(order, prime, degree, name, modulus) {
+    if (modulus !== undefined && modulus !== null) {
+        throw new NotImplementedError(
+            "explicit extension-field moduli are not implemented yet");
+    }
+    const variable = ρσ_finite_field_name(name.name, name.names, degree);
+    const key = order.toString() + "|" + variable;
+    let field = ρσ_extension_fields.get(key);
+    if (field !== undefined) return field;
+
+    const backend = ρσ_flint_backend();
+    let context;
+    try {
+        context = backend.fqContext(prime, degree, variable);
+    } catch (error) {
+        if (error !== null && error !== undefined &&
+                typeof error.message === "string" &&
+                error.message.includes("Conway polynomial")) {
+            throw new NotImplementedError(
+                "Sage-compatible pseudo-Conway polynomials are not " +
+                "implemented for this finite field");
+        }
+        throw error;
+    }
+    const modulusCoefficients = backend.fqContextModulus(context);
+    const primeField = GF(prime);
+    const givaroRepresentation = order < 65536n;
+    const parentType = givaroRepresentation
+        ? FiniteField_givaro
+        : (prime === 2n
+            ? FiniteField_ntl_gf2e
+            : FiniteField_pari_ffelt);
+    const elementType = givaroRepresentation
+        ? FiniteField_givaroElement
+        : (prime === 2n
+            ? FiniteField_ntl_gf2eElement
+            : FiniteFieldElement_pari_ffelt);
+    field = ρσ_make_parent(
+        "Finite Field in " + variable + " of size " +
+            prime + "^" + degree,
+        function(value) {
+            if (value instanceof FiniteFieldExtensionElement) {
+                if (value._parent !== field) {
+                    throw new TypeError(
+                        "cannot convert between incompatible finite fields");
+                }
+                return value;
+            }
+            if (value instanceof FiniteFieldElement) {
+                if (value._parent !== primeField) {
+                    throw new TypeError(
+                        "finite-field characteristics do not match");
+                }
+                value = value.lift();
+            }
+            if (value instanceof Rational) {
+                const numerator = field(value.numerator());
+                const denominator = field(value.denominator());
+                return numerator._truediv_(denominator);
+            }
+            value = ρσ_integer_bigint(value);
+            return new FiniteFieldExtensionElement(
+                field, backend.fqFromBigInt(context, value));
+        });
+    Object.defineProperty(field, "constructor", {
+        value: parentType
+    });
+    Object.defineProperty(field, "_kind", {value: "GF_EXTENSION"});
+    Object.defineProperty(field, "_elementType", {value: elementType});
+    Object.defineProperty(field, "_nativeContext", {value: context});
+    Object.defineProperty(field, "_modulusCoefficients", {
+        value: Object.freeze(modulusCoefficients)
+    });
+    Object.defineProperty(field, "_primeSubfield", {value: primeField});
+    field.order = function() {
+        return ρσ_normalize_integer(order);
+    };
+    field.cardinality = field.order;
+    field.characteristic = function() {
+        return ρσ_normalize_integer(prime);
+    };
+    field.degree = function() { return degree; };
+    field.is_field = function() { return true; };
+    field.is_finite = function() { return true; };
+    field.is_prime_field = function() { return false; };
+    field.zero = function() { return field(0); };
+    field.one = function() { return field(1); };
+    field.gen = function(index) {
+        if (index === undefined) index = 0;
+        index = ρσ_integer_bigint(index);
+        if (index !== 0n) {
+            throw new IndexError("only one generator");
+        }
+        return new FiniteFieldExtensionElement(
+            field, backend.fqGen(context));
+    };
+    field._first_ngens = function(count) {
+        count = ρσ_integer_bigint(count);
+        if (count !== 1n) {
+            throw new ValueError(
+                "finite fields have exactly one generator");
+        }
+        return [field.gen()];
+    };
+    field.gens = function() {
+        return ρσ_math_tuple([field.gen()]);
+    };
+    field.variable_name = function() { return variable; };
+    field.prime_subfield = function() { return primeField; };
+    field.modulus = function() {
+        return ρσ_polynomial_from_coefficients(
+            primeField, "x", modulusCoefficients);
+    };
+    field.polynomial = function() {
+        return ρσ_polynomial_from_coefficients(
+            primeField, variable, modulusCoefficients);
+    };
+    field.construction = function() {
+        return ρσ_math_tuple([AlgebraicExtensionFunctor, primeField]);
+    };
+    field[ρσ_iterator_symbol] = function() {
+        let index = 0n;
+        let value = field.gen();
+        return {
+            "next": function() {
+                if (index >= order) return {"done": true};
+                if (index === 0n) {
+                    index += 1n;
+                    return {"done": false, "value": field.zero()};
+                }
+                const result = {"done": false, "value": value};
+                value = value._mul_(field.gen());
+                index += 1n;
+                return result;
+            },
+            [ρσ_iterator_symbol]: function() { return this; }
+        };
+    };
+    field.__iter__ = field[ρσ_iterator_symbol];
+    ρσ_extension_fields.set(key, field);
+    ρσ_coercion_model.register(ZZ, field, function(value) {
+        return field(value);
+    });
+    ρσ_coercion_model.register(primeField, field, function(value) {
+        return field(value);
+    });
+    return field;
+}
+
 function GF(order, name, modulus, names) {
     if (name !== null && typeof name === "object" &&
             name[ρσ_kwargs_symbol]) {
@@ -589,13 +914,11 @@ function GF(order, name, modulus, names) {
         throw new ValueError(
             "the order of a finite field must be at least 2");
     }
-    if (modulus !== undefined && modulus !== null &&
-            modulus !== "primitive") {
-        throw new NotImplementedError(
-            "only the default and primitive prime-field moduli " +
-            "are implemented");
-    }
     const primitive = modulus === "primitive";
+    if (modulus !== undefined && modulus !== null && !primitive) {
+        throw new NotImplementedError(
+            "explicit finite-field moduli are not implemented yet");
+    }
     const key = order.toString() + (primitive ? "|primitive" : "");
     let field = ρσ_prime_fields.get(key);
     if (field !== undefined) return field;
@@ -607,8 +930,17 @@ function GF(order, name, modulus, names) {
             throw new ValueError(
                 "the order of a finite field must be a prime power");
         }
-        throw new NotImplementedError(
-            "finite fields of non-prime order are not implemented yet");
+        const primePower = decomposition.factors[0];
+        if (primePower[1] < 2) {
+            throw new ValueError(
+                "the order of a finite field must be a prime power");
+        }
+        return ρσ_make_extension_field(
+            order,
+            primePower[0],
+            primePower[1],
+            {"name": name, "names": names},
+            modulus);
     }
     field = ρσ_make_parent(
         "Finite Field of size " + order,

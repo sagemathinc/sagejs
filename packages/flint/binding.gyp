@@ -5,7 +5,11 @@
   "targets": [
     {
       "target_name": "sagejs_flint",
-      "sources": ["src/addon.c", "src/floating.c"],
+      "sources": [
+        "src/addon.c",
+        "src/extension_field.c",
+        "src/floating.c"
+      ],
       "include_dirs": ["<(native_prefix)/include", "include"],
       "libraries": [
         "<(native_prefix)/lib/libflint.a",

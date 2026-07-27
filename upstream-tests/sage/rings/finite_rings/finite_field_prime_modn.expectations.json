@@ -13,9 +13,7 @@
     "src/sage/rings/finite_rings/finite_field_prime_modn.py:127": "requires integer-modulo rings and morphisms",
     "src/sage/rings/finite_rings/finite_field_prime_modn.py:134": "requires p-adic rings",
     "src/sage/rings/finite_rings/finite_field_prime_modn.py:160": "requires p-adic fields and reduction morphisms",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:164": "requires p-adic rings and reduction morphisms",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:207": "extension finite fields GF(p^n) are the next finite-field subsystem",
-    "src/sage/rings/finite_rings/finite_field_prime_modn.py:208": "continuation of the extension finite-field example"
+    "src/sage/rings/finite_rings/finite_field_prime_modn.py:164": "requires p-adic rings and reduction morphisms"
   },
   "xfail": {}
 }

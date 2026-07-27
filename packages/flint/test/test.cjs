@@ -93,6 +93,35 @@ assert.equal(
 assert.equal(flint.wordPrimitiveRootPrime(2n), 1n);
 assert.equal(flint.wordPrimitiveRootPrime(1009n), 11n);
 
+const fq9 = flint.fqContext(3n, 2, "a");
+const fq9gen = flint.fqGen(fq9);
+const fq9one = flint.fqFromBigInt(fq9, 1n);
+assert.deepEqual(flint.fqContextModulus(fq9), [2n, 2n, 1n]);
+assert.equal(flint.fqToString(fq9gen), "a");
+assert.equal(flint.fqToString(flint.fqMul(fq9gen, fq9gen)), "a+1");
+assert.equal(flint.fqToString(flint.fqAdd(fq9gen, fq9one)), "a+1");
+assert.equal(
+  flint.fqToString(flint.fqSub(flint.fqAdd(fq9gen, fq9one), fq9gen)),
+  "1",
+);
+assert.equal(flint.fqToString(flint.fqNeg(fq9gen)), "2*a");
+assert.equal(flint.fqToString(flint.fqDiv(fq9one, fq9gen)), "a+2");
+assert.equal(flint.fqToString(flint.fqPow(fq9gen, -1n)), "a+2");
+assert.equal(flint.fqToString(flint.fqPow(fq9gen, 8n)), "1");
+assert.equal(flint.fqIsZero(flint.fqFromBigInt(fq9, 9n)), true);
+assert.equal(flint.fqIsOne(flint.fqFromBigInt(fq9, 4n)), true);
+assert.equal(flint.fqEqual(fq9gen, fq9gen), true);
+assert.throws(
+  () => flint.fqDiv(fq9one, flint.fqFromBigInt(fq9, 0n)),
+  /division by zero/,
+);
+assert.throws(
+  () => flint.fqAdd(fq9gen, flint.fqGen(flint.fqContext(3n, 2, "b"))),
+  /different parents/,
+);
+assert.throws(() => flint.fqContext(3n, 1, "a"), /degree/);
+assert.throws(() => flint.fqContext(65537n, 2, "a"), /Conway polynomial/);
+
 const nmod5x = flint.nmodPolyGen(5n);
 const nmod5one = flint.nmodPolyConstant(1n, 5n);
 const nmod5f = flint.polySub(flint.polyPow(nmod5x, 4n), nmod5one);

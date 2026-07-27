@@ -13,6 +13,16 @@ little-endian 64-bit word arrays and FLINT's `fmpz_set_ui_array` /
 `fmpz_get_ui_array` functions, so crossing the integer boundary requires one
 linear copy in each direction and no decimal-string conversion.
 
+Finite extensions use FLINT's `fq_nmod` polynomial-basis backend for
+word-sized characteristics and `fq` for larger characteristics. Their Conway
+contexts and elements are opaque native objects; context construction rejects
+pairs absent from FLINT's Conway database so that Sage.js does not silently
+choose a modulus incompatible with Sage. Native reference counting lets every
+element retain its context independently of JavaScript finalizer order, so the
+context remains alive until its last element is finalized. Sage.js receives
+coefficients only when it
+explicitly requests the defining polynomial.
+
 Polynomial constants and generators enter the addon once. Addition,
 subtraction, multiplication, powers, and `fmpz_poly` to `fmpq_poly`
 coercion operate directly on C-owned values. JavaScript receives only an

@@ -16,6 +16,7 @@
 #include <flint/ulong_extras.h>
 #include <sagejs/native.h>
 
+#include "extension_field.h"
 #include "floating.h"
 
 #if ULONG_MAX != UINT64_MAX
@@ -1299,6 +1300,34 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"wordPrimitiveRootPrime", NULL, word_primitive_root_prime,
             NULL, NULL, NULL, napi_default, NULL},
+        {"fqContext", NULL, sagejs_fq_context, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqContextModulus", NULL, sagejs_fq_context_modulus,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"fqFromBigInt", NULL, sagejs_fq_from_bigint, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqGen", NULL, sagejs_fq_gen, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqAdd", NULL, sagejs_fq_add, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqSub", NULL, sagejs_fq_sub, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqMul", NULL, sagejs_fq_mul, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqDiv", NULL, sagejs_fq_div, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqNeg", NULL, sagejs_fq_neg, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqPow", NULL, sagejs_fq_pow, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqEqual", NULL, sagejs_fq_equal, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqIsZero", NULL, sagejs_fq_is_zero, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqIsOne", NULL, sagejs_fq_is_one, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"fqToString", NULL, sagejs_fq_to_string, NULL, NULL, NULL,
+            napi_default, NULL},
         {"nmodPolyConstant", NULL, nmod_poly_constant, NULL, NULL, NULL,
             napi_default, NULL},
         {"nmodPolyGen", NULL, nmod_poly_gen_value, NULL, NULL, NULL,
