@@ -2,18 +2,18 @@
 # License: BSD
 # Copyright: 2015, Kovid Goyal <kovid at kovidgoyal.net>
 
-# globals: ρσ_iterator_symbol, ρσ_bool
+# globals: ρσ_iterator_symbol, ρσ_bool, ρσ_operator_add_exact
 
 def sum(iterable, start=0):
     if Array.isArray(iterable):
         def add(prev, cur):
-            return prev + cur
+            return ρσ_operator_add_exact(prev, cur)
         return iterable.reduce(add, start)
     ans = start
     iterator = iter(iterable)
     r = iterator.next()
     while not r.done:
-        ans += r.value
+        ans = ρσ_operator_add_exact(ans, r.value)
         r = iterator.next()
     return ans
 

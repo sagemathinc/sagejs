@@ -24,7 +24,10 @@ function run(source) {
 }
 
 const arithmetic = run("print(2^100)\n");
-assert.equal(arithmetic.stdout.trim(), "1.2676506002282294e+30");
+assert.equal(
+  arithmetic.stdout.trim(),
+  "1267650600228229401496703205376",
+);
 assert.doesNotMatch(arithmetic.stderr, new RegExp(marker));
 
 const factoring = run(

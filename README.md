@@ -41,7 +41,7 @@ The `sagejs` command uses Sage-style syntax by default:
 $ sagejs
 Welcome to Sage.js [Node.js v26.5.0 on x64].
 sage: 2^100
-1.2676506002282294e+30
+1267650600228229401496703205376
 sage: sum([1..100])
 5050
 sage: 7^^3
@@ -74,12 +74,22 @@ sage: jstype(9007199254740992)
 bigint
 ```
 
-This hybrid is an intentionally compatible first step, not the final Sage.js
-integer model. In particular, mixed arithmetic between a large `BigInt` and a
-small `Number` does not yet have Sage coercion semantics, and arithmetic that
-starts with safe `Number` values is not yet promoted automatically when its
-result grows. The constructor seam allows a future `Integer` element type to
-replace this representation without changing the parser again.
+Exact integer addition, subtraction, multiplication, and nonnegative powers
+promote mixed operands to `BigInt`. Operations beginning with safe `Number`
+integers are recomputed as `BigInt` when their result leaves the safe range:
+
+```text
+sage: 923098402834028349082348209384 + 1
+923098402834028349082348209385
+sage: 9007199254740991 + 1 + 1
+9007199254740993
+```
+
+This hybrid is an intentionally compatible step, not the final Sage.js
+numeric tower. Division, modulo, bit operations, and coercion with future
+mathematical element types still need explicit semantics. The constructor
+seam allows a future `Integer` element type to replace the representation
+without changing the parser again.
 
 Run a file directly:
 

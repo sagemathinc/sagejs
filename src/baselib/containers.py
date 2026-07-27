@@ -2,13 +2,18 @@
 # License: BSD
 # Copyright: 2015, Kovid Goyal <kovid at kovidgoyal.net>
 
-# globals:ρσ_iterator_symbol, ρσ_kwargs_symbol, ρσ_arraylike, ρσ_repr
+# globals:ρσ_iterator_symbol, ρσ_kwargs_symbol, ρσ_arraylike, ρσ_repr, Number, BigInt
 
 def ρσ_equals(a, b):
     if a is b:
         return True
     type_a = jstype(a)
     type_b = jstype(b)
+    if ((type_a is 'bigint' and type_b is 'number'
+         and Number.isSafeInteger(b))
+            or (type_b is 'bigint' and type_a is 'number'
+                and Number.isSafeInteger(a))):
+        return v'BigInt(a) === BigInt(b)'
     # WARNING: We have to use "is" here to avoid recursive call to ρσ_equals by getting "===".
     # However, in genuine Python is comparison with a constant is a WARNING/Error.
     if type_a is type_b and (type_a is 'number' or type_a is 'string'

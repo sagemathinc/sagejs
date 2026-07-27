@@ -59,6 +59,7 @@ output_stream_defaults = {
     'discard_asserts': False,
     'module_cache_dir': '',
     'write_name': True,
+    'exact_integers': False,
 }
 
 

@@ -178,6 +178,10 @@ function_ops = {
     'nin': '!ρσ_in',
 }
 
+def print_arithmetic_call(output, name):
+    suffix = '_exact(' if output.options.exact_integers else '('
+    output.print(name + suffix)
+
 
 def print_binary_op(self, output):
     if function_ops[self.operator]:
@@ -225,7 +229,7 @@ def print_binary_op(self, output):
         if is_node_type(self.left, AST_Unary) and not self.left.parenthesized:
             left = self.left.expression
             output.print(self.left.operator)
-        output.print("ρσ_operator_pow(")
+        print_arithmetic_call(output, 'ρσ_operator_pow')
         left.print(output)
         output.comma()
         self.right.print(output)
@@ -252,17 +256,17 @@ def print_binary_op(self, output):
         else:
             output.spaced(self.left, self.operator, self.right)
     elif self.operator is '+':
-        output.print('ρσ_operator_add('), self.left.print(
-            output), output.comma(), self.right.print(output), output.print(
-                ')')
+        print_arithmetic_call(output, 'ρσ_operator_add')
+        self.left.print(output), output.comma(), self.right.print(
+            output), output.print(')')
     elif self.operator is '-':
-        output.print('ρσ_operator_sub('), self.left.print(
-            output), output.comma(), self.right.print(output), output.print(
-                ')')
+        print_arithmetic_call(output, 'ρσ_operator_sub')
+        self.left.print(output), output.comma(), self.right.print(
+            output), output.print(')')
     elif self.operator is '*':
-        output.print('ρσ_operator_mul('), self.left.print(
-            output), output.comma(), self.right.print(output), output.print(
-                ')')
+        print_arithmetic_call(output, 'ρσ_operator_mul')
+        self.left.print(output), output.comma(), self.right.print(
+            output), output.print(')')
     elif self.operator is '/':
         output.print('ρσ_operator_truediv('), self.left.print(
             output), output.comma(), self.right.print(output), output.print(
@@ -355,21 +359,21 @@ def print_assign(self, output):
         return
     if self.operator is '+=':
         output.assign(self.left)
-        output.print('ρσ_operator_iadd('), self.left.print(
-            output), output.comma(), self.right.print(output), output.print(
-                ')')
+        print_arithmetic_call(output, 'ρσ_operator_iadd')
+        self.left.print(output), output.comma(), self.right.print(
+            output), output.print(')')
         return
     if self.operator is '-=':
         output.assign(self.left)
-        output.print('ρσ_operator_isub('), self.left.print(
-            output), output.comma(), self.right.print(output), output.print(
-                ')')
+        print_arithmetic_call(output, 'ρσ_operator_isub')
+        self.left.print(output), output.comma(), self.right.print(
+            output), output.print(')')
         return
     if self.operator is '*=':
         output.assign(self.left)
-        output.print('ρσ_operator_imul('), self.left.print(
-            output), output.comma(), self.right.print(output), output.print(
-                ')')
+        print_arithmetic_call(output, 'ρσ_operator_imul')
+        self.left.print(output), output.comma(), self.right.print(
+            output), output.print(')')
         return
     if self.operator is '/=':
         output.assign(self.left)

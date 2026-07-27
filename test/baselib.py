@@ -1,5 +1,7 @@
 # vim:fileencoding=utf-8
 # globals: ρσ_iterator_symbol, ρσ_set_polyfill, ρσ_dict_polyfill, assrt
+# globals: ρσ_operator_add_exact, ρσ_operator_sub_exact,
+# globals: ρσ_operator_mul_exact, ρσ_operator_pow_exact
 nonlocal ρσ_set_implementation, ρσ_dict_implementation
 
 
@@ -108,6 +110,24 @@ assrt.equal(sum(['a', 'b'], 'x'), 'xab')
 assrt.equal(sum([BigInt(2), BigInt(3)], BigInt(0)), 5)
 assrt.equal(sum(range(1, 101)), 5050)
 assrt.equal(sum(['x', 'y', 'z'], ''), 'xyz')
+
+# Exact integer arithmetic promotes mixed and overflowing Number values.
+assrt.equal(ρσ_operator_add_exact(BigInt(5), 1), BigInt(6))
+assrt.equal(ρσ_operator_add_exact(1, BigInt(5)), BigInt(6))
+assrt.equal(ρσ_operator_sub_exact(BigInt(5), 1), BigInt(4))
+assrt.equal(ρσ_operator_mul_exact(2, BigInt(5)), BigInt(10))
+overflow = ρσ_operator_add_exact(9007199254740991, 1)
+assrt.equal(overflow, BigInt('9007199254740992'))
+assrt.equal(ρσ_operator_add_exact(overflow, 1), BigInt('9007199254740993'))
+assrt.equal(ρσ_operator_mul_exact(3037000500, 3037000500),
+            BigInt('9223372037000250000'))
+assrt.equal(ρσ_operator_pow_exact(2, 100),
+            BigInt('1267650600228229401496703205376'))
+assrt.equal(ρσ_operator_pow_exact(2, -1), 0.5)
+assrt.equal(ρσ_operator_add_exact(1.5, 2), 3.5)
+assrt.ok(BigInt(1) == 1)
+assrt.equal(abs(-BigInt('923098402834028349082348209384')),
+            BigInt('923098402834028349082348209384'))
 
 
 # map()/filter()/zip()

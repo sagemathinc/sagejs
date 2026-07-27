@@ -177,6 +177,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       private_scope: false,
       beautify: true,
       keep_docstrings: true,
+      exact_integers: !!options.sage,
       baselib_plain: keepBaselib
         ? readFileSync(join(libraryPath, "baselib-plain-pretty.js"), "utf-8")
         : undefined,

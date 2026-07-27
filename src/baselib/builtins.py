@@ -1,7 +1,13 @@
 # globals: exports, console, require, BigInt, ρσ_iterator_symbol, ρσ_kwargs_symbol, ρσ_arraylike, ρσ_list_contains
 
 def abs(a):
+    if jstype(a) is 'bigint':
+        return v'a < 0n ? -a : a'
     return r"%js (typeof a === 'object' && a.__abs__ !== undefined) ? a.__abs__() : Math.abs(a)"
+
+def ρσ_exact_integer_primitive(value):
+    return v"""typeof value === "bigint" ||
+        (typeof value === "number" && Number.isSafeInteger(value))"""
 
 def ρσ_operator_add(a, b):
     return r"""%js (
@@ -13,20 +19,91 @@ typeof a !== 'object' ? a + b :
 )
 """
 
+def ρσ_operator_add_exact(a, b):
+    if jstype(a) is 'object':
+        if a.__add__ is not undefined:
+            return a.__add__(b)
+        if a.concat is not undefined:
+            return a.concat(b)
+        return v'a + b'
+    if jstype(a) is 'bigint' or jstype(b) is 'bigint':
+        if ρσ_exact_integer_primitive(a) and ρσ_exact_integer_primitive(b):
+            return v'BigInt(a) + BigInt(b)'
+        return v'a + b'
+    if jstype(a) is not 'number' or jstype(b) is not 'number':
+        return v'a + b'
+    result = v'a + b'
+    if v'result <= Number.MAX_SAFE_INTEGER && result >= Number.MIN_SAFE_INTEGER':
+        return result
+    if Number.isSafeInteger(a) and Number.isSafeInteger(b):
+        return v'BigInt(a) + BigInt(b)'
+    return result
+
 def ρσ_operator_neg(a):
     return v"(typeof a === 'object' && a.__neg__ !== undefined) ? a.__neg__() : (-a)"
 
 def ρσ_operator_sub(a, b):
     return v"(typeof a === 'object' && a.__sub__ !== undefined) ? a.__sub__(b) : a - b"
 
+def ρσ_operator_sub_exact(a, b):
+    if jstype(a) is 'object' and a.__sub__ is not undefined:
+        return a.__sub__(b)
+    if jstype(a) is 'bigint' or jstype(b) is 'bigint':
+        if ρσ_exact_integer_primitive(a) and ρσ_exact_integer_primitive(b):
+            return v'BigInt(a) - BigInt(b)'
+        return v'a - b'
+    if jstype(a) is not 'number' or jstype(b) is not 'number':
+        return v'a - b'
+    result = v'a - b'
+    if v'result <= Number.MAX_SAFE_INTEGER && result >= Number.MIN_SAFE_INTEGER':
+        return result
+    if Number.isSafeInteger(a) and Number.isSafeInteger(b):
+        return v'BigInt(a) - BigInt(b)'
+    return result
+
 def ρσ_operator_mul(a, b):
     return v"(typeof a === 'object'  && a.__mul__ !== undefined) ? a.__mul__(b) : a * b"
+
+def ρσ_operator_mul_exact(a, b):
+    if jstype(a) is 'object' and a.__mul__ is not undefined:
+        return a.__mul__(b)
+    if jstype(a) is 'bigint' or jstype(b) is 'bigint':
+        if ρσ_exact_integer_primitive(a) and ρσ_exact_integer_primitive(b):
+            return v'BigInt(a) * BigInt(b)'
+        return v'a * b'
+    if jstype(a) is not 'number' or jstype(b) is not 'number':
+        return v'a * b'
+    result = v'a * b'
+    if v'result <= Number.MAX_SAFE_INTEGER && result >= Number.MIN_SAFE_INTEGER':
+        return result
+    if Number.isSafeInteger(a) and Number.isSafeInteger(b):
+        return v'BigInt(a) * BigInt(b)'
+    return result
 
 def ρσ_operator_div(a, b):
     return v"(typeof a === 'object'  && a.__div__ !== undefined) ? a.__div__(b) : a / b"
 
 def ρσ_operator_pow(a, b):
     return v"(typeof a === 'object'  && a.__pow__ !== undefined) ? a.__pow__(b) : a ** b"
+
+def ρσ_operator_pow_exact(a, b):
+    if jstype(a) is 'object' and a.__pow__ is not undefined:
+        return a.__pow__(b)
+    if ((jstype(a) is 'bigint' or jstype(b) is 'bigint')
+            and ρσ_exact_integer_primitive(a)
+            and ρσ_exact_integer_primitive(b)):
+        if b < 0:
+            raise ValueError(
+                'negative powers of exact integers are not implemented yet')
+        return v'BigInt(a) ** BigInt(b)'
+    if jstype(a) is not 'number' or jstype(b) is not 'number':
+        return v'a ** b'
+    result = v'a ** b'
+    if v'result <= Number.MAX_SAFE_INTEGER && result >= Number.MIN_SAFE_INTEGER':
+        return result
+    if Number.isSafeInteger(a) and Number.isSafeInteger(b) and b >= 0:
+        return v'BigInt(a) ** BigInt(b)'
+    return result
 
 
 def ρσ_operator_iadd(a, b):
@@ -43,6 +120,18 @@ def ρσ_operator_idiv(a, b):
 
 def ρσ_operator_ipow(a, b):
     return v"(typeof a === 'object' && a.__ipow__ !== undefined) ? a.__ipow__(b) : ρσ_operator_pow(a,b)"
+
+def ρσ_operator_iadd_exact(a, b):
+    return v"(typeof a === 'object' && a.__iadd__ !== undefined) ? a.__iadd__(b) : ρσ_operator_add_exact(a,b)"
+
+def ρσ_operator_isub_exact(a, b):
+    return v"(typeof a === 'object' && a.__isub__ !== undefined) ? a.__isub__(b) : ρσ_operator_sub_exact(a,b)"
+
+def ρσ_operator_imul_exact(a, b):
+    return v"(typeof a === 'object' && a.__imul__ !== undefined) ? a.__imul__(b) : ρσ_operator_mul_exact(a,b)"
+
+def ρσ_operator_ipow_exact(a, b):
+    return v"(typeof a === 'object' && a.__ipow__ !== undefined) ? a.__ipow__(b) : ρσ_operator_pow_exact(a,b)"
 
 
 def ρσ_operator_truediv(a, b):

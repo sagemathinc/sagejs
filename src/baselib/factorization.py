@@ -5,8 +5,8 @@
 # Copyright (C) 2026 Sage.js contributors
 # License: GPL-3.0-only
 #
-# globals: ρσ_iterator_symbol, ρσ_equals, ρσ_repr, ρσ_operator_mul,
-# globals: ρσ_operator_pow, BigInt, Number, Object
+# globals: ρσ_iterator_symbol, ρσ_equals, ρσ_repr, ρσ_operator_mul_exact,
+# globals: ρσ_operator_pow_exact, BigInt, Number, Object
 
 def ρσ_factor_pair(prime, exponent):
     pair = v'[prime, exponent]'
@@ -96,7 +96,7 @@ class Factorization:
         constructor = self.constructor
         if not isinstance(other, constructor):
             constructor = Factorization
-        unit = ρσ_operator_mul(self._unit, other._unit)
+        unit = ρσ_operator_mul_exact(self._unit, other._unit)
         return constructor(
             self._factors.concat(other._factors), unit, self._cr_value)
 
@@ -114,7 +114,7 @@ class Factorization:
             if pair[1] * exponent is not 0:
                 factors.push([pair[0], pair[1] * exponent])
         unit_exponent = BigInt(exponent) if jstype(self._unit) is 'bigint' else exponent
-        unit = ρσ_operator_pow(self._unit, unit_exponent)
+        unit = ρσ_operator_pow_exact(self._unit, unit_exponent)
         return self.constructor(
             factors, unit, self._cr_value, False, False)
 
@@ -180,7 +180,8 @@ class Factorization:
             prime, exponent = pair
             if jstype(prime) is 'bigint':
                 exponent = BigInt(exponent)
-            value = ρσ_operator_mul(value, ρσ_operator_pow(prime, exponent))
+            value = ρσ_operator_mul_exact(
+                value, ρσ_operator_pow_exact(prime, exponent))
         return value
 
     def expand(self):
