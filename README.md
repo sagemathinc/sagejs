@@ -88,7 +88,7 @@ pnpm dlx @sagemath/sagejs
 
 The `sagejs` command uses Sage-style syntax by default:
 
-```text
+```py
 $ sagejs
 Welcome to Sage.js [Node.js v26.5.0 on x64].
 sage: 2^100
@@ -125,7 +125,7 @@ preprocessing.
 The interactive CLI accepts pasted Sage and Python prompts, so transcript
 examples can be pasted directly:
 
-```text
+```py
 sage: for n in [1..3]:
 ....:     print(n)
 1
@@ -147,7 +147,7 @@ Integer source text is preserved before JavaScript parses it. The initial
 `Integer` hook uses a JavaScript `Number` when the value is safely
 representable and a `BigInt` otherwise:
 
-```text
+```py
 sage: 202693990283402830942083402834
 202693990283402830942083402834
 sage: jstype(9007199254740991)
@@ -160,7 +160,7 @@ Exact integer addition, subtraction, multiplication, and nonnegative powers
 promote mixed operands to `BigInt`. Operations beginning with safe `Number`
 integers are recomputed as `BigInt` when their result leaves the safe range:
 
-```text
+```py
 sage: 923098402834028349082348209384 + 1
 923098402834028349082348209385
 sage: 9007199254740991 + 1 + 1
@@ -173,7 +173,7 @@ interactive REPL deliberately keeps each submitted line independent.
 
 Exact integer division constructs an immutable normalized rational:
 
-```text
+```py
 sage: a = 2/3
 sage: a
 2/3
@@ -193,7 +193,7 @@ replace the representation without changing the parser again.
 Sage-compatible arbitrary-precision real and complex fields are backed by
 MPFR and MPC. The default fields are cached 53-bit parents:
 
-```text
+```py
 sage: RR
 Real Field with 53 bits of precision
 sage: CC
@@ -217,7 +217,7 @@ normalized source text and uses enough initial precision for its significant
 digits, with a minimum of 53 bits. A later conversion to a wider field parses
 that text again instead of widening an already-rounded binary value:
 
-```text
+```py
 sage: R = RealField(1000)
 sage: R(1.00000000000000000000000000000000000000000000000000001505) == \
 ....: R("1.00000000000000000000000000000000000000000000000000001505")
@@ -234,7 +234,7 @@ map for each operand.
 
 Common parents may be constructed rather than equal to either input parent:
 
-```text
+```py
 sage: R.<x> = ZZ[]
 sage: g = (1 + x) + 1/3
 sage: g
@@ -272,7 +272,7 @@ sagejs compile program.sage --output program.js
 
 Python mode retains Python's meaning of `^`:
 
-```text
+```py
 $ sagejs --python
 Welcome to Sage.js (Python mode) [Node.js v26.5.0 on x64].
 >>> 2^3
@@ -358,7 +358,7 @@ FLINT 3.5 and demonstrates:
 The factorization is an immutable sequence of prime-exponent pairs with a
 separate unit, following Sage's factorization model:
 
-```text
+```py
 sage: factor(-360)
 -1 * 2^3 * 3^2 * 5
 sage: a = factor(-360)
