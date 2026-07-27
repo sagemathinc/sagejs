@@ -21,7 +21,7 @@ does not yet contain the native mathematical library layer.
 
 ## Install
 
-Sage.js requires Node.js 20.17 or newer.
+Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.
 
 ```sh
 pnpm add --global @sagemath/sagejs
@@ -30,7 +30,7 @@ pnpm add --global @sagemath/sagejs
 It can also be tried without a global installation:
 
 ```sh
-npx --package @sagemath/sagejs sagejs
+pnpm dlx @sagemath/sagejs
 ```
 
 ## Sage mode
@@ -129,15 +129,39 @@ itself.
 
 See [HACKING.md](HACKING.md) for the source layout.
 
+## Native FLINT experiment
+
+The first optional native package now lives under
+[`packages/flint`](packages/flint/). It is a direct C Node-API binding to
+FLINT 3.5 and demonstrates:
+
+- linear, word-array conversion between JavaScript `BigInt` and FLINT `fmpz`;
+- exact GCD, factorial, Fibonacci, binomial, primorial, and factorization;
+- lazy loading, so the core language pays no native startup cost;
+- a Sage.js program calling FLINT and receiving JavaScript `BigInt` results.
+
+On the initial Linux x86-64 build, the stripped addon is about 11 MB and packs
+to about 5.3 MB. A 4096-bit round trip takes roughly half a microsecond, and
+FLINT GCD including conversion is already competitive with V8 `BigInt`.
+These figures are preliminary and machine-dependent; reproducible benchmark
+scripts are included.
+
+The package remains private while platform prebuilds and the GMP runtime
+contract are designed. Build and test it explicitly with:
+
+```sh
+pnpm --dir packages/flint build
+pnpm test:native
+pnpm --dir packages/flint bench
+pnpm bench:cold
+```
+
 ## Status
 
 Sage.js 0.1 is a research prototype. Its existing language test suite is
 substantial, but Python compatibility is deliberately incomplete and exact
-integer semantics still need design work.
-
-The next architectural milestone is a native Node-API package demonstrating
-efficient conversion between JavaScript `BigInt` and a serious mathematical
-library such as FLINT or PARI.
+integer semantics still need design work. The FLINT package is an architectural
+prototype, not yet a supported or published dependency.
 
 ## History and licensing
 

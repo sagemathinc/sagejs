@@ -46,7 +46,7 @@
     "index.cjs"
   ],
   "engines": {
-    "node": ">=20.17.0"
+    "node": ">=22.22.2"
   },
   "scripts": {
     "build": "node scripts/build.cjs",
@@ -55,9 +55,12 @@
     "test": "pnpm run build && pnpm run test:compiler && pnpm run test:cli",
     "test:compiler": "node bin/sagejs test",
     "test:cli": "node test/cli-smoke.cjs",
+    "test:native": "pnpm --dir packages/flint test && node bin/sagejs packages/flint/test/integration.sage",
+    "bench:cold": "node bench/cold-start.cjs",
     "prepack": "pnpm test"
   },
   "devDependencies": {
+    "@sagemath/sagejs-flint": "workspace:*",
     "@types/node": "^26.1.1",
     "typescript": "^7.0.2"
   },

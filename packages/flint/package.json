@@ -1,0 +1,28 @@
+{
+  "name": "@sagemath/sagejs-flint",
+  "version": "0.0.1",
+  "description": "Native FLINT exact arithmetic for Sage.js",
+  "license": "GPL-3.0-only",
+  "private": true,
+  "type": "commonjs",
+  "main": "index.cjs",
+  "engines": {
+    "node": ">=22.22.2"
+  },
+  "files": [
+    "build/Release/sagejs_flint.node",
+    "index.cjs",
+    "README.md"
+  ],
+  "scripts": {
+    "install": "node scripts/install.cjs",
+    "build:deps": "node scripts/build-deps.cjs",
+    "build:addon": "node-gyp rebuild",
+    "build": "pnpm run build:deps && pnpm run build:addon",
+    "test": "node test/test.cjs",
+    "bench": "node bench/benchmark.cjs"
+  },
+  "devDependencies": {
+    "node-gyp": "^13.0.1"
+  }
+}

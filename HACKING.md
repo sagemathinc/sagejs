@@ -11,6 +11,8 @@
 - `dist/compiler/` is the newly self-compiled compiler.
 - `dist/tools/` is generated from `tools/` by TypeScript.
 - `test/` contains the language test suite and CLI smoke tests.
+- `packages/flint/` is the optional native FLINT Node-API experiment.
+- `bench/` contains process-startup benchmarks.
 
 ## Build
 
@@ -33,6 +35,15 @@ Inspect the exact npm payload with:
 
 ```sh
 pnpm pack --dry-run
+```
+
+The default checks intentionally do not compile FLINT. Native mathematics must
+remain optional so language development and installation stay fast. Build and
+test the native workspace explicitly:
+
+```sh
+pnpm --dir packages/flint build
+pnpm test:native
 ```
 
 ## Modes
