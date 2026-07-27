@@ -110,7 +110,7 @@ def print_unary_prefix(self, output):
     op = self.operator
     if op is 'delete':
         return print_delete(self.expression, output)
-    if op is '-':
+    if op is '-' and not self.native_operator:
         output.print("ρσ_operator_neg(")
     else:
         output.print(op)
@@ -120,7 +120,7 @@ def print_unary_prefix(self, output):
         output.with_parens(lambda: self.expression.print(output))
     else:
         self.expression.print(output)
-    if op is '-':
+    if op is '-' and not self.native_operator:
         output.print(")")
 
 def write_instanceof(left, right, output):
@@ -189,7 +189,9 @@ def print_arithmetic_call(output, name):
 
 
 def print_binary_op(self, output):
-    if function_ops[self.operator]:
+    if self.native_operator:
+        output.spaced(self.left, self.operator, self.right)
+    elif function_ops[self.operator]:
         output.print(function_ops[self.operator])
 
         def f_comma():
@@ -349,6 +351,9 @@ def print_assignment(self, output):
 
 
 def print_assign(self, output):
+    if self.native_operator:
+        output.spaced(self.left, self.operator, self.right)
+        return
     if self.operator is '//=':
         output.assign(self.left)
         output.print('Math.floor')

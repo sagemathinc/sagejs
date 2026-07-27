@@ -521,6 +521,8 @@ class AST_Class(AST_Scope):
         "[boolean] true if class is declared elsewhere, but will be within current scope at runtime",
         'lightweight':
         "[boolean] true if instances omit the generic Python identity slot",
+        'bigint_fields':
+        "[dict] instance fields known by the compiler to contain JS BigInts",
         'bound':
         "[string*] list of methods that need to be bound to self",
         'decorators':
@@ -725,7 +727,12 @@ class AST_BaseCall(AST_Node):
 
 class AST_Call(AST_BaseCall):
     "A function call expression"
-    properties = {'expression': "[AST_Node] expression to invoke as function"}
+    properties = {
+        'expression': "[AST_Node] expression to invoke as function",
+        'direct_call':
+        "[boolean] call a compiler-known JavaScript function directly",
+        'inferred_type': "[string?] compiler-inferred primitive result type",
+    }
 
     def _walk(self, visitor):
         def f_call():
@@ -902,6 +909,9 @@ class AST_Unary(AST_Node):
         "[AST_Node] expression that this unary operator applies to",
         'parenthesized':
         "[bool] Whether this unary expression was parenthesized",
+        'native_operator':
+        "[boolean] emit the JavaScript operator without Python dispatch",
+        'inferred_type': "[string?] compiler-inferred primitive result type",
     }
 
     def _walk(self, visitor):
@@ -917,7 +927,10 @@ class AST_Binary(AST_Node):
     properties = {
         'left': "[AST_Node] left-hand side expression",
         'operator': "[string] the operator",
-        'right': "[AST_Node] right-hand side expression"
+        'right': "[AST_Node] right-hand side expression",
+        'native_operator':
+        "[boolean] emit the JavaScript operator without Python dispatch",
+        'inferred_type': "[string?] compiler-inferred primitive result type",
     }
 
     def _walk(self, visitor):

@@ -59,8 +59,23 @@ dispatch for mathematical elements.
 immutable element classes. It omits the generic eagerly allocated object
 identity slot; use it only when profiling demonstrates construction overhead
 and the type supplies its own representation and mathematical identity
-semantics. The identity decorator implementation in `finite_fields.py` keeps
-the source bootstrappable by older checked-in compilers.
+semantics. The no-op decorator definition in `finite_fields.py` keeps the
+source bootstrappable by older checked-in compilers: they treat it as an
+ordinary decorator, while the converged compiler consumes it at compile time.
+
+`@ρσ_bigint_fields(...)` declares the named private storage fields to be
+JavaScript BigInts. Method argument annotations then let the compiler lower
+arithmetic between those fields directly to JavaScript operators. This is a
+narrow compile-time contract, not a runtime type assertion or a general
+license to use JavaScript arithmetic. The no-op decorator fallback lets an
+older bootstrap compiler complete the first self-build; the converged compiler
+consumes the annotation and emits the specialized code.
+
+Verbatim `v` expressions are appropriate in the runtime substrate and
+JavaScript/native adapters. Mathematical library code should not use them to
+work around compiler performance gaps: add a focused, tested compiler contract
+instead. `test/typed-math-lowering.cjs` guards both the readable source and the
+generated fast path.
 
 `tools/native-kernel/` contains Native Kernel v0. The frontend lowers a
 restricted Sage.js AST to typed IR; independent JavaScript and C/MPC backends

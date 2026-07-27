@@ -22,6 +22,13 @@ def ρσ_lightweight_math_class(cls):
     return cls
 
 
+def ρσ_bigint_fields(*names):
+    # Like ρσ_lightweight_math_class, this is an identity decorator fallback
+    # for bootstrap compilers which predate the typed-field lowering pass.
+    return def(cls):
+        return cls
+
+
 def ρσ_set_class_repr(cls, text):
     Object.defineProperty(cls, '__repr__', {
         'value': def():
@@ -29,21 +36,18 @@ def ρσ_set_class_repr(cls, text):
     })
 
 
+@ρσ_bigint_fields('_value')
 @ρσ_lightweight_math_class
 class FiniteFieldElement(Element):
 
     def __init__(self, parent, value):
-        # These exact runtime checks and the three primitive operations below
-        # are the deliberately small unboxed-BigInt fast path.  Until typed
-        # lowering can prove these values are BigInts, ordinary Sage.js
-        # operators must retain general coercion dispatch.
-        if v'value instanceof FiniteFieldElement':
+        if isinstance(value, FiniteFieldElement):
             if value._parent is not parent:
                 raise TypeError(
                     'no canonical conversion between distinct finite fields')
             value = value._value
 
-        if v'value instanceof Rational':
+        if isinstance(value, Rational):
             numerator = value._numerator % parent._modulus
             denominator = value._denominator % parent._modulus
             if numerator < 0:
@@ -53,7 +57,7 @@ class FiniteFieldElement(Element):
             residue = numerator * ρσ_modular_inverse(
                 denominator, parent._modulus)
         else:
-            residue = v'ρσ_integer_bigint(value)'
+            residue = ρσ_integer_bigint(value)
 
         residue %= parent._modulus
         if residue < 0:
@@ -62,22 +66,25 @@ class FiniteFieldElement(Element):
         self._value = residue
         Object.freeze(self)
 
-    def _add_(self, other):
-        return v'new FiniteFieldElement(self._parent, self._value + other._value)'
+    def _add_(self, other: FiniteFieldElement):
+        return FiniteFieldElement(
+            self._parent, self._value + other._value)
 
-    def _sub_(self, other):
-        return v'new FiniteFieldElement(self._parent, self._value - other._value)'
+    def _sub_(self, other: FiniteFieldElement):
+        return FiniteFieldElement(
+            self._parent, self._value - other._value)
 
-    def _mul_(self, other):
-        return v'new FiniteFieldElement(self._parent, self._value * other._value)'
+    def _mul_(self, other: FiniteFieldElement):
+        return FiniteFieldElement(
+            self._parent, self._value * other._value)
 
-    def _truediv_(self, other):
+    def _truediv_(self, other: FiniteFieldElement):
         return ρσ_new_prime_field_element(
             self._parent,
             self._value * ρσ_modular_inverse(
                 other._value, self._parent._modulus))
 
-    def _eq_(self, other):
+    def _eq_(self, other: FiniteFieldElement):
         return self._value is other._value
 
     def __add__(self, other):

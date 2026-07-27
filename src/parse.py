@@ -167,8 +167,14 @@ ATOMIC_START_TOKEN = array_to_hash(
     ["atom", "num", "string", "regexp", "name", "js"])
 
 compile_time_decorators = [
-    'staticmethod', 'external', 'property', 'ρσ_lightweight_math_class'
+    'staticmethod', 'external', 'property', 'ρσ_lightweight_math_class',
+    'ρσ_bigint_fields'
 ]
+
+DIRECT_CALL_TYPES = {
+    'BigInt': 'bigint',
+    'ρσ_integer_bigint': 'bigint',
+}
 
 
 def has_simple_decorator(decorators, name):
@@ -199,6 +205,85 @@ def has_setter_decorator(decorators, name):
             decorators.splice(remove[i], 1)
         return True
     return False
+
+
+def call_decorator_args(decorators, name):
+    for i in range(decorators.length):
+        decorator = decorators[i]
+        if (not is_node_type(decorator, AST_Call)
+                or not is_node_type(decorator.expression, AST_SymbolRef)
+                or decorator.expression.name is not name):
+            continue
+        decorators.splice(i, 1)
+        return decorator.args
+    return []
+
+
+def specialize_bigint_class(definition):
+    if not Object.keys(definition.bigint_fields).length:
+        return
+
+    class_name = definition.name.name
+
+    for method in definition.body:
+        if not is_node_type(method, AST_Method):
+            continue
+
+        object_types = {}
+        bigint_locals = {}
+        if not method.static and method.argnames.length:
+            object_types[method.argnames[0].name] = class_name
+        for argument in method.argnames:
+            annotation = argument.annotation
+            if is_node_type(annotation, AST_SymbolRef):
+                object_types[argument.name] = annotation.name
+            elif is_node_type(annotation, AST_String):
+                object_types[argument.name] = annotation.value
+
+        def is_bigint(node):
+            if node.inferred_type is 'bigint':
+                return True
+            if (is_node_type(node, AST_SymbolRef)
+                    and bigint_locals[node.name]):
+                return True
+            if not is_node_type(node, AST_Dot):
+                return False
+            owner = node.expression
+            return (
+                is_node_type(owner, AST_SymbolRef)
+                and object_types[owner.name] is class_name
+                and definition.bigint_fields[node.property])
+
+        def typed_walker():
+            def visit_node(node, descend):
+                if descend:
+                    descend.call(node)
+
+                if is_node_type(node, AST_Binary):
+                    if (node.operator is 'instanceof'
+                            and is_node_type(node.right, AST_SymbolRef)):
+                        node.native_operator = True
+                    elif (['+', '-', '*'].indexOf(node.operator) is not -1
+                          and is_bigint(node.left)
+                          and is_bigint(node.right)):
+                        node.native_operator = True
+                        node.inferred_type = 'bigint'
+
+                elif (is_node_type(node, AST_UnaryPrefix)
+                      and node.operator is '-'
+                      and is_bigint(node.expression)):
+                    node.native_operator = True
+                    node.inferred_type = 'bigint'
+
+                if (is_node_type(node, AST_Assign)
+                        and node.operator is '='
+                        and is_node_type(node.left, AST_SymbolRef)
+                        and is_bigint(node.right)):
+                    bigint_locals[node.left.name] = True
+
+            this._visit = visit_node
+
+        method.walk(js_new(typed_walker))
 
 
 # -----[ Parser ]-----
@@ -1148,11 +1233,20 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         externaldecorator = has_simple_decorator(S.decorators, 'external')
         lightweightdecorator = has_simple_decorator(
             S.decorators, 'ρσ_lightweight_math_class')
+        bigint_fields = {}
+        for argument in call_decorator_args(
+                S.decorators, 'ρσ_bigint_fields'):
+            if not is_node_type(argument, AST_String):
+                token_error(
+                    argument,
+                    'ρσ_bigint_fields arguments must be string literals')
+            bigint_fields[argument.value] = True
 
         class_details = {
             "static": {},
             'bound': r'%js []',
             'classvars': {},
+            'bigint_fields': bigint_fields,
             'processing': name.name,
             'provisional_classvars': {},
         }
@@ -1215,6 +1309,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'static': class_details.static,
             'external': externaldecorator,
             'lightweight': lightweightdecorator,
+            'bigint_fields': bigint_fields,
             'bound': class_details.bound,
             'statements': [],
             'decorators': decorators(),
@@ -1269,6 +1364,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             if not is_node_type(stmt, AST_Class):
                 stmt.walk(visitor)
                 definition.statements.push(stmt)
+        specialize_bigint_class(definition)
         return definition
 
     def function_(in_class, is_expression, is_lambda):
@@ -2408,6 +2504,18 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'right': args[1],
                         'end': prev()
                     })
+                    S.in_parenthesized_expr = False
+                    return ret
+                elif has_prop(DIRECT_CALL_TYPES, tmp_):
+                    ret = subscripts(
+                        AST_Call({
+                            'start': start,
+                            'expression': expr,
+                            'args': func_call_list(),
+                            'direct_call': True,
+                            'inferred_type': DIRECT_CALL_TYPES[tmp_],
+                            'end': prev()
+                        }), True)
                     S.in_parenthesized_expr = False
                     return ret
 
