@@ -1,0 +1,72 @@
+{
+  "name": "sagejs",
+  "version": "0.1.0",
+  "description": "Open research mathematics, native to Node",
+  "homepage": "https://github.com/sagemathinc/sagejs#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sagemathinc/sagejs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sagemathinc/sagejs/issues"
+  },
+  "license": "GPL-3.0-only",
+  "author": "William Stein <wstein@sagemath.com>",
+  "keywords": [
+    "computer-algebra",
+    "javascript",
+    "mathematics",
+    "node",
+    "python",
+    "sage",
+    "scientific-computing"
+  ],
+  "type": "commonjs",
+  "main": "index.cjs",
+  "exports": {
+    ".": "./index.cjs",
+    "./embedded": "./dist/tools/embedded_compiler.js"
+  },
+  "bin": {
+    "sagejs": "bin/sagejs",
+    "sagepython": "bin/sagejs"
+  },
+  "files": [
+    "bin",
+    "bootstrap",
+    "dist",
+    "licenses",
+    "scripts",
+    "src",
+    "test",
+    "tools",
+    "CONTRIBUTORS.md",
+    "HACKING.md",
+    "index.cjs"
+  ],
+  "engines": {
+    "node": ">=20.17.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "clean": "node scripts/clean.cjs",
+    "start": "node bin/sagejs",
+    "test": "npm run build && npm run test:compiler && npm run test:cli",
+    "test:compiler": "node bin/sagejs test",
+    "test:cli": "node test/cli-smoke.cjs",
+    "prepack": "npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "undici-types": "^8.3.0"
+  }
+}

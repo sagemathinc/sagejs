@@ -1,0 +1,61 @@
+#!/usr/bin/env node
+
+"use strict";
+
+function load(mod) {
+  return require("../dist/tools/" + mod);
+}
+
+const path = require("path");
+const argv = load("cli").argv;
+
+// `sagejs` uses mathematics-friendly Sage syntax by default.  The second npm
+// binary, `sagepython`, and the explicit --python flag select Python-like mode.
+const executable = path.basename(process.argv[1]);
+let sageMode = executable !== "sagepython";
+if (argv.python) sageMode = false;
+if (argv.sage) sageMode = true;
+argv.sage = sageMode;
+
+const basePath = path.resolve(
+  argv.base_path
+    ? argv.base_path
+    : path.normalize(path.join(path.dirname(module.filename), ".."))
+);
+const srcPath = path.join(basePath, "src");
+const compilerPath = path.join(basePath, "dist", "compiler");
+
+if (argv.mode === "self") {
+  if (argv.files.length > 0) {
+    console.error("WARN: Ignoring input files since --self was passed");
+  }
+  load("self")(
+    basePath,
+    srcPath,
+    compilerPath,
+    argv.complete,
+    argv.profile
+  );
+  if (argv.test) {
+    console.log("\nRunning test suite...\n");
+    argv.files = [];
+    load("test").default(argv, basePath, srcPath, compilerPath);
+  }
+  process.exit(0);
+} else if (argv.mode === "test") {
+  load("test").default(argv, basePath, srcPath, compilerPath);
+} else if (argv.mode === "lint") {
+  load("lint").cli(argv, basePath, srcPath, compilerPath);
+} else if (argv.mode === "repl") {
+  load("repl").default({
+    show_js: !argv.no_js,
+    sage: sageMode,
+    tokens: argv.tokens,
+  });
+} else if (argv.mode === "msgfmt") {
+  load("msgfmt").cli(argv, basePath, srcPath, compilerPath);
+} else if (argv.mode === "compile") {
+  load("compile").default({ argv, src_path: srcPath, lib_path: compilerPath });
+} else {
+  throw Error(`unknown mode "${argv.mode}"`);
+}

@@ -1,5 +1,7 @@
-/src/packages/*/dist/
-/src/packages/*/dist.native/
-/src/packages/*/build/
+node_modules
+dist
+*.tgz
+*.tsbuildinfo
 *.term
+*.chat
 *.wasm

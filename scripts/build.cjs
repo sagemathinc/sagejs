@@ -1,0 +1,28 @@
+"use strict";
+
+const { cpSync, mkdirSync, rmSync } = require("node:fs");
+const { join } = require("node:path");
+const { spawnSync } = require("node:child_process");
+
+const root = join(__dirname, "..");
+const dist = join(root, "dist");
+
+function run(command, args) {
+  const result = spawnSync(command, args, {
+    cwd: root,
+    stdio: "inherit",
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}
+
+rmSync(dist, { recursive: true, force: true });
+mkdirSync(join(dist, "compiler"), { recursive: true });
+cpSync(join(root, "bootstrap"), join(dist, "compiler"), { recursive: true });
+
+run(process.execPath, [
+  join(root, "node_modules", "typescript", "bin", "tsc"),
+  "--project",
+  join(root, "tsconfig.json"),
+]);
+run(process.execPath, [join(root, "bin", "sagejs"), "self", "--complete"]);
