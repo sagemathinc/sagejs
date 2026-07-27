@@ -4,13 +4,12 @@ const assert = require("node:assert/strict");
 const { performance } = require("node:perf_hooks");
 const { spawnSync } = require("node:child_process");
 const { join } = require("node:path");
-const { compile } = require("../tools/native-compiler-poc.cjs");
+const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
+const config = require("./native-kernel.config.cjs");
 const mpc = require("../packages/flint");
 
 const root = join(__dirname, "..");
-const source = join(__dirname, "native-compiler-input.sage");
 const benchmarkSource = join(__dirname, "native-multiply-benchmark.sage");
-const output = join(__dirname, ".native-poc");
 const sagejs = join(root, "bin", "sagejs");
 const sage =
   process.env.SAGELITE_SAGE || "/opt/cocalc-webdev-python/bin/sage";
@@ -73,15 +72,16 @@ function rawMultiply(precision, iterations) {
   return value;
 }
 
-const generated = compile(source, output);
-const addon = require(generated.modulePath);
-const nativeLoop = addon[generated.functionName];
+const generated = compileKernel({
+  ...config,
+  sourcePath: join(__dirname, config.sourcePath),
+  cacheRoot: join(__dirname, config.cacheRoot),
+});
+const addon = require(generated.addonPath);
+const nativeLoop = addon.multiply_loop;
 
 const expected = mpc.complexToString(rawMultiply(53, 1000));
-const actualParts = nativeLoop(53, 1000);
-const actual = mpc.complexToString(
-  complex(actualParts.real, actualParts.imag, 53),
-);
+const actual = mpc.complexToString(nativeLoop(53, 1000));
 assert.equal(actual, expected, "generated loop changed MPC semantics");
 
 const nativeTimings = new Map();
@@ -92,13 +92,13 @@ for (const [precision, iterations] of cases) {
     const start = performance.now();
     const answer = nativeLoop(precision, iterations);
     samples.push((performance.now() - start) / 1000);
-    assert.equal(typeof answer.real, "string");
+    assert.equal(mpc.complexPrecision(answer), precision);
   }
   nativeTimings.set(precision, { iterations, samples });
 }
 
 const results = [
-  ["generated C", nativeTimings],
+  ["native kernel", nativeTimings],
   [
     "Sage.js",
     execute("Sage.js", process.execPath, [sagejs, benchmarkSource]),
@@ -123,10 +123,10 @@ for (const [label, timings] of results) {
       `${String(precision).padStart(5)} bits  ${label.padEnd(14)}`.padEnd(29),
       `${(seconds * 1000).toFixed(2)} ms`.padStart(10),
       nanoseconds.toFixed(1).padStart(15),
-      label === "generated C"
+      label === "native kernel"
         ? "-".padStart(10)
         : `${(
-            nanoseconds / medians.get(`generated C:${precision}`)
+            nanoseconds / medians.get(`native kernel:${precision}`)
           ).toFixed(1)}x`.padStart(10),
     );
   }

@@ -11,6 +11,7 @@
 #include <flint/fmpz_poly.h>
 #include <flint/fmpq.h>
 #include <flint/fmpq_poly.h>
+#include <sagejs/native.h>
 
 #include "floating.h"
 
@@ -805,6 +806,17 @@ static napi_value version(napi_env env, napi_callback_info info)
     return result;
 }
 
+static napi_value native_abi_version(napi_env env, napi_callback_info info)
+{
+    napi_value result;
+    (void) info;
+
+    if (!check_napi(env,
+        napi_create_uint32(env, SAGEJS_NATIVE_ABI_VERSION, &result)))
+        return NULL;
+    return result;
+}
+
 static napi_value initialize(napi_env env, napi_value exports)
 {
     napi_property_descriptor properties[] = {
@@ -881,6 +893,8 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"complexToString", NULL, sagejs_complex_to_string, NULL, NULL, NULL,
             napi_default, NULL},
         {"complexPrecision", NULL, sagejs_complex_precision, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"nativeAbiVersion", NULL, native_abi_version, NULL, NULL, NULL,
             napi_default, NULL},
         {"version", NULL, version, NULL, NULL, NULL, napi_default, NULL},
     };

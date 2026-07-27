@@ -6,7 +6,7 @@
     {
       "target_name": "sagejs_flint",
       "sources": ["src/addon.c", "src/floating.c"],
-      "include_dirs": ["<(native_prefix)/include"],
+      "include_dirs": ["<(native_prefix)/include", "include"],
       "libraries": [
         "<(native_prefix)/lib/libflint.a",
         "<(native_prefix)/lib/libmpc.a",

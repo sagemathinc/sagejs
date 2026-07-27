@@ -58,9 +58,11 @@ not cross Node-API and allocate a JavaScript wrapper for every arithmetic
 operation. Batch operations, compile whole loops, and move complete algorithms
 across the boundary.
 
-The native-compiler proof of concept demonstrates that compiling a complete
-`ComplexField` loop removes nearly all of the small-operation gap with
-Sage/Cython.
+Native Kernel v0 demonstrates that compiling a complete `ComplexField` loop
+can remove the small-operation gap with Sage/Cython. Its shared native element
+ABI also lets generated addons return the ordinary Sage.js `ComplexNumber`
+representation without serialization or copying through an intermediate
+result format.
 
 ### 5. Be server-native first
 

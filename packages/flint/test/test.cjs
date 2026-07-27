@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const flint = require("..");
 
 assert.equal(flint.version(), "3.5.0");
+assert.equal(flint.nativeAbiVersion(), 1);
 
 for (const value of [
   0n,

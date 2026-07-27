@@ -6,7 +6,7 @@
   library. Most compiler sources are themselves written in the language that
   Sage.js compiles.
 - `tools/` contains the TypeScript and JavaScript CLI, REPL, bootstrap, lint,
-  and test tooling.
+  test tooling, and the experimental typed native-kernel compiler.
 - `bootstrap/` is the checked-in compiler required to build from a clean clone.
 - `dist/compiler/` is the newly self-compiled compiler.
 - `dist/tools/` is generated from `tools/` by TypeScript.
@@ -52,6 +52,13 @@ language wrappers around native polynomial values. The coercion resolver is
 responsible for both operand maps and may construct a common parent such as
 `QQ[x]`; do not reintroduce asymmetric `__radd__` dispatch for mathematical
 elements.
+
+`tools/native-kernel/` contains Native Kernel v0. The frontend lowers a
+restricted Sage.js AST to typed IR; independent JavaScript and C/MPC backends
+consume that IR. Generated addons and `packages/flint` share the native
+MPFR/MPC element ABI in `packages/flint/include/sagejs/native.h`. Keep ABI
+changes explicit and versioned, and preserve a JavaScript fallback for every
+supported kernel.
 
 ## Modes
 

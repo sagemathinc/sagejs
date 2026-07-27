@@ -10,43 +10,17 @@
 #include <mpc.h>
 #include <mpfr.h>
 
-#define SAGEJS_REAL_MAGIC UINT64_C(0x534147454A535252)
-#define SAGEJS_COMPLEX_MAGIC UINT64_C(0x534147454A534343)
+#include <sagejs/native.h>
 
-typedef struct
-{
-    uint64_t magic;
-    mpfr_t value;
-} sagejs_real;
-
-typedef struct
-{
-    uint64_t magic;
-    mpc_t value;
-} sagejs_complex;
-
-static const napi_type_tag real_type_tag = {
-    UINT64_C(0xa4b095178be44412),
-    UINT64_C(0xb77dd488e7a725e1)
-};
-static const napi_type_tag complex_type_tag = {
-    UINT64_C(0xbde856381fd245b2),
-    UINT64_C(0x889323467057a9cf)
-};
-
-static int check_napi(napi_env env, napi_status status)
-{
-    const napi_extended_error_info *info;
-
-    if (status == napi_ok)
-        return 1;
-    napi_get_last_error_info(env, &info);
-    napi_throw_error(env, NULL,
-        info != NULL && info->error_message != NULL
-            ? info->error_message
-            : "Node-API call failed");
-    return 0;
-}
+#define check_napi sagejs_native_check_napi
+#define finalize_real sagejs_native_finalize_real
+#define finalize_complex sagejs_native_finalize_complex
+#define wrap_real sagejs_native_wrap_real
+#define wrap_complex sagejs_native_wrap_complex
+#define new_real sagejs_native_new_real
+#define new_complex sagejs_native_new_complex
+#define unwrap_real sagejs_native_unwrap_real
+#define unwrap_complex sagejs_native_unwrap_complex
 
 static int require_arguments(
     napi_env env,
@@ -121,128 +95,6 @@ static int bigint_to_mpz(napi_env env, napi_value value, mpz_t result)
     if (sign)
         mpz_neg(result, result);
     return 1;
-}
-
-static void finalize_real(napi_env env, void *data, void *hint)
-{
-    sagejs_real *real = data;
-    (void) env;
-    (void) hint;
-
-    if (real != NULL && real->magic == SAGEJS_REAL_MAGIC)
-    {
-        mpfr_clear(real->value);
-        real->magic = 0;
-        free(real);
-    }
-}
-
-static void finalize_complex(napi_env env, void *data, void *hint)
-{
-    sagejs_complex *complex = data;
-    (void) env;
-    (void) hint;
-
-    if (complex != NULL && complex->magic == SAGEJS_COMPLEX_MAGIC)
-    {
-        mpc_clear(complex->value);
-        complex->magic = 0;
-        free(complex);
-    }
-}
-
-static napi_value wrap_real(napi_env env, sagejs_real *real)
-{
-    napi_value object;
-
-    if (!check_napi(env, napi_create_object(env, &object)) ||
-        !check_napi(env,
-            napi_wrap(env, object, real, finalize_real, NULL, NULL)) ||
-        !check_napi(env, napi_type_tag_object(env, object, &real_type_tag)))
-    {
-        finalize_real(env, real, NULL);
-        return NULL;
-    }
-    return object;
-}
-
-static napi_value wrap_complex(napi_env env, sagejs_complex *complex)
-{
-    napi_value object;
-
-    if (!check_napi(env, napi_create_object(env, &object)) ||
-        !check_napi(env,
-            napi_wrap(env, object, complex, finalize_complex, NULL, NULL)) ||
-        !check_napi(env, napi_type_tag_object(env, object, &complex_type_tag)))
-    {
-        finalize_complex(env, complex, NULL);
-        return NULL;
-    }
-    return object;
-}
-
-static sagejs_real *new_real(napi_env env, mpfr_prec_t precision)
-{
-    sagejs_real *real = malloc(sizeof(*real));
-
-    if (real == NULL)
-    {
-        napi_throw_error(env, NULL, "unable to allocate an MPFR value");
-        return NULL;
-    }
-    real->magic = SAGEJS_REAL_MAGIC;
-    mpfr_init2(real->value, precision);
-    return real;
-}
-
-static sagejs_complex *new_complex(napi_env env, mpfr_prec_t precision)
-{
-    sagejs_complex *complex = malloc(sizeof(*complex));
-
-    if (complex == NULL)
-    {
-        napi_throw_error(env, NULL, "unable to allocate an MPC value");
-        return NULL;
-    }
-    complex->magic = SAGEJS_COMPLEX_MAGIC;
-    mpc_init2(complex->value, precision);
-    return complex;
-}
-
-static sagejs_real *unwrap_real(napi_env env, napi_value object)
-{
-    bool tagged = false;
-    sagejs_real *real = NULL;
-
-    if (!check_napi(env,
-        napi_check_object_type_tag(env, object, &real_type_tag, &tagged)))
-        return NULL;
-    if (!tagged ||
-        !check_napi(env, napi_unwrap(env, object, (void **) &real)) ||
-        real == NULL || real->magic != SAGEJS_REAL_MAGIC)
-    {
-        napi_throw_type_error(env, NULL, "expected a Sage.js MPFR real");
-        return NULL;
-    }
-    return real;
-}
-
-static sagejs_complex *unwrap_complex(napi_env env, napi_value object)
-{
-    bool tagged = false;
-    sagejs_complex *complex = NULL;
-
-    if (!check_napi(env,
-        napi_check_object_type_tag(env, object, &complex_type_tag, &tagged)))
-        return NULL;
-    if (!tagged ||
-        !check_napi(env, napi_unwrap(env, object, (void **) &complex)) ||
-        complex == NULL || complex->magic != SAGEJS_COMPLEX_MAGIC)
-    {
-        napi_throw_type_error(env, NULL, "expected a Sage.js MPC complex");
-        return NULL;
-    }
-    return complex;
 }
 
 static char *value_string(napi_env env, napi_value value)

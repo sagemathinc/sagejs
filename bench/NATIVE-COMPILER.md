@@ -1,14 +1,9 @@
-# Native compiler proof of concept
+# Native Kernel v0
 
-This experiment asks whether Sage.js can compile selected library functions as
-whole native algorithms instead of crossing Node-API for every scalar
-operation.
-
-Run it with:
-
-```sh
-pnpm run bench:native
-```
+Native Kernel v0 asks whether selected Sage.js library functions can compile
+as whole native algorithms instead of crossing Node-API for every scalar
+operation. It is a small but structured compiler path, replacing the earlier
+single-function code-generation proof.
 
 The input is ordinary Sage.js source:
 
@@ -21,61 +16,117 @@ def multiply_loop(field, iterations):
     return value
 ```
 
-`tools/native-compiler-poc.cjs` parses this through the existing Sage.js
-parser. It does not use textual substitution. It validates a deliberately
-small statically typed subset of the AST:
+Types are currently declared in a build configuration:
 
-- one function whose arguments are externally typed as `ComplexField` and a
-  nonnegative machine iteration count;
-- local complex values constructed from two decimal string literals;
+```js
+module.exports = {
+  sourcePath: "native-kernel-input.sage",
+  cacheRoot: ".native-kernel-cache",
+  signatures: {
+    multiply_loop: {
+      arguments: ["ComplexField", "uint64"],
+      returns: "ComplexNumber",
+    },
+  },
+};
+```
+
+Build that kernel with:
+
+```sh
+pnpm --dir packages/flint build
+node tools/native-kernel.cjs bench/native-kernel.config.cjs
+```
+
+The command prints the content-addressed generated-module path. A subsequent
+identical build reports `cached`. The cache identity includes source,
+signatures, typed IR, all backend source, the shared native header, native ABI,
+Node module ABI, operating system, architecture, and MPFR/MPC versions.
+Native Kernel v0 is currently a source-tree development feature and uses the
+MPFR/MPC prefix built by `packages/flint`.
+
+## Pipeline
+
+`tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
+lowers the selected functions to typed IR. Native Kernel v0 supports:
+
+- one `ComplexField` parent and one nonnegative `uint64` argument;
+- local `ComplexNumber` values constructed from two decimal strings;
 - `for ... in range(iterations)`;
-- local complex multiplication;
-- return of the local complex result.
+- local complex addition, subtraction, multiplication, and division;
+- return of a complex local.
 
-The backend emits C using MPC, invokes `node-gyp`, and loads the resulting
-Node addon. The JavaScript/native boundary is crossed once for the complete
-loop. Because the local value cannot escape during the loop, the generated C
-updates its MPC storage in place without creating an immutable JavaScript
-wrapper on every iteration. The final proof-of-concept addon returns decimal
-components; a production backend would return the standard Sage.js native
-element representation through a shared native ABI.
+Unsupported syntax and missing types are rejected during lowering. The IR
+marks the returned local separately from non-escaping temporaries: the C
+backend allocates only the result in the shared native heap representation and
+keeps other MPC values as local storage.
 
-## Representative result
+Two backends consume the same IR:
+
+- the JavaScript backend uses ordinary immutable Sage.js complex operations;
+- the C backend uses MPC and mutates non-escaping native locals in place.
+
+The generated module validates the Sage.js parent and iteration count. It uses
+the C addon when available and otherwise uses the JavaScript implementation.
+`SAGEJS_NATIVE_DISABLE=1` forces the fallback, while
+`SAGEJS_NATIVE_REQUIRED=1` makes a missing or unloadable addon an error.
+
+## Shared native values
+
+`packages/flint/include/sagejs/native.h` is ABI version 1. It defines ownership
+and stable Node-API type tags for opaque MPFR and MPC elements. The generated
+kernel returns one of these ordinary native complex values. The supplied
+`ComplexField` verifies its precision and wraps it in the standard Sage.js
+`ComplexNumber` class.
+
+Consequently:
+
+- there is no decimal serialization at the kernel boundary;
+- the result is accepted directly by the normal FLINT/MPC addon;
+- users receive a normal Sage.js element with the correct parent;
+- the JavaScript and native backends expose the same public return type.
+
+The regression test compiles into a fresh cache, checks a cache hit, consumes
+the result across the two independently built addons at 53, 1000, and 10000
+bits, and runs the same generated module through both backends.
+
+## Performance
+
+Run the comparative benchmark with:
+
+```sh
+pnpm run bench:native
+```
 
 Measured on 2026-07-27 using an AMD EPYC 7B13, Node.js 26.5.0, and SageMath
 10.9.post1:
 
-| Precision | Generated C/MPC | Sage.js loop | Speedup | SageMath/Cython |
+| Precision | Native kernel | Sage.js loop | Native speedup | SageMath/Cython |
 |---:|---:|---:|---:|---:|
-| 53 bits | 172 ns/iteration | 1514 ns | 8.8x | 207 ns |
-| 1000 bits | 1033 ns/iteration | 2560 ns | 2.5x | 789 ns |
-| 10000 bits | 26254 ns/iteration | 29100 ns | 1.1x | 20531 ns |
+| 53 bits | 141 ns/iteration | 1470 ns | 10.4x | 206 ns |
+| 1000 bits | 1027 ns/iteration | 2510 ns | 2.4x | 773 ns |
+| 10000 bits | 26103 ns/iteration | 28900 ns | 1.1x | 20505 ns |
 
-The generated 53-bit loop is comparable to, and in this run slightly faster
-than, Sage's Cython loop. This demonstrates that the earlier small-operation
-gap is not a fundamental limitation of Node or JavaScript as the calling
-environment. It comes from placing immutable native-object creation and a
-Node-API crossing inside the hot scalar loop.
+The 53-bit generated loop is faster than Sage's Cython loop in this
+microbenchmark. This demonstrates that the scalar-operation gap is not a
+fundamental limitation of Node or JavaScript as the calling environment. It
+comes from placing immutable native-object creation and a Node-API crossing
+inside the hot loop.
 
 Sage's complex field implements multiplication directly using four MPFR
-multiplications, while the generated prototype calls MPC. The remaining
-large-precision difference therefore includes a native-kernel implementation
+multiplications, while this backend calls MPC. The remaining
+large-precision difference therefore includes a kernel implementation
 difference, not merely compiler or language overhead.
 
-## What a real backend would need
+## Deliberate v0 limits
 
-The next design layer is a typed intermediate representation rather than more
-special cases in this proof:
+This is not yet a general Cython replacement or transparent JIT. It does not
+infer argument types, compile arbitrary control flow, accept native elements
+as arguments, release the event loop, build asynchronously, or provide
+prebuilt kernels. The next compiler work should be driven by real Sage.js
+library code and Sage-compatible semantics rather than by accumulating
+unconnected AST cases.
 
-- explicit argument, local, parent, and element types;
-- ownership and escape analysis so safe local mutation is automatic;
-- lowering of arithmetic and coercion plans to backend operations;
-- error and cleanup paths with Sage-compatible exceptions;
-- a shared native element ABI for zero-copy arguments and results;
-- caching keyed by source, types, compiler flags, library ABI, and platform;
-- C, C++, or Rust backends selected independently of the Sage.js frontend;
-- tests which run the same source through JavaScript and native targets.
-
-This is analogous to the role Cython plays for Sage: ordinary interactive code
-continues to compile quickly to JavaScript, while stable, frequently executed
-library kernels opt into typed ahead-of-time native compilation.
+The architectural seams are now present: typed IR, escape-aware native
+storage, independent backends, a JavaScript fallback, a versioned shared
+element ABI, standard runtime results, and deterministic compilation caching.

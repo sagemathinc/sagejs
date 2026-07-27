@@ -670,6 +670,15 @@ function RealField(precision) {
         function(value) { return ρσ_real_field_element(field, value); });
     Object.defineProperty(field, "_kind", {value: "RealField"});
     Object.defineProperty(field, "_precision", {value: precision});
+    Object.defineProperty(field, "_fromNative", {
+        value: function(nativeValue) {
+            if (ρσ_flint_backend().realPrecision(nativeValue) !== precision) {
+                throw new ValueError(
+                    "native real has the wrong precision for " + field);
+            }
+            return new RealNumberElement(field, nativeValue);
+        }
+    });
     field.precision = function() { return precision; };
     field.prec = field.precision;
     ρσ_real_fields.set(precision, field);
@@ -757,6 +766,15 @@ function ComplexField(precision) {
         });
     Object.defineProperty(field, "_kind", {value: "ComplexField"});
     Object.defineProperty(field, "_precision", {value: precision});
+    Object.defineProperty(field, "_fromNative", {
+        value: function(nativeValue) {
+            if (ρσ_flint_backend().complexPrecision(nativeValue) !== precision) {
+                throw new ValueError(
+                    "native complex has the wrong precision for " + field);
+            }
+            return new ComplexNumberElement(field, nativeValue);
+        }
+    });
     field.precision = function() { return precision; };
     field.prec = field.precision;
     ρσ_complex_fields.set(precision, field);

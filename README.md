@@ -311,16 +311,33 @@ sagejs --python compile input.py --output output.js
 node output.js
 ```
 
-## Experimental native compiler
+## Native Kernel v0
 
-The first native-compiler proof of concept parses a restricted, typed
-`ComplexField` loop through the Sage.js AST, emits C/MPC, builds a Node addon,
-and crosses Node-API once for the whole algorithm. On the benchmark machine it
-reduced a 53-bit multiplication loop from about 1514 ns to 172 ns per
-iteration, comparable to Sage's Cython implementation. See
-[`bench/NATIVE-COMPILER.md`](bench/NATIVE-COMPILER.md) and run:
+The first structured native compiler path parses selected Sage.js functions
+through the ordinary frontend, lowers them to an explicitly typed
+intermediate representation, and generates both a JavaScript fallback and a
+C/MPC Node addon. It currently accepts a deliberately narrow `ComplexField`
+loop subset. A content-addressed cache incorporates the source, signature,
+typed IR, compiler implementation, native ABI, Node ABI, platform, and
+mathematical-library versions.
+
+Generated native kernels cross Node-API once for the whole algorithm and
+return the same opaque native value used by the standard Sage.js
+`ComplexNumber` class—not a compiler-specific result object. The generated
+JavaScript wrapper validates the parent and arguments and turns that native
+value into an ordinary element of the supplied `ComplexField`. Setting
+`SAGEJS_NATIVE_DISABLE=1` runs the generated JavaScript backend instead.
+
+On the initial benchmark machine, a 53-bit multiplication loop took about
+141 ns per iteration as a native kernel, 1470 ns through scalar Sage.js
+operations, and 206 ns in SageMath/Cython. See
+[`bench/NATIVE-COMPILER.md`](bench/NATIVE-COMPILER.md) for the architecture,
+limitations, configuration format, and full results. Build the included
+example from a source checkout (after `pnpm --dir packages/flint build`) or
+run its comparative benchmark with:
 
 ```sh
+node tools/native-kernel.cjs bench/native-kernel.config.cjs
 pnpm run bench:native
 ```
 
