@@ -21,6 +21,26 @@ Version 0.1 is intentionally much smaller. It revives and modernizes the
 self-hosting language compiler formerly developed as JPython and PyLang. It
 is now beginning to acquire an optional native mathematical library layer.
 
+## Mission
+
+Sage.js aims to be an open, research-grade mathematical computing system
+native to Node.js: a viable free alternative to Magma, Mathematica, and Maple
+which adopts SageMath's mature semantics, integrates the best open native
+mathematics libraries, and compiles performance-critical mathematical code to
+native speed.
+
+The north-star user experience is simple: a researcher can take serious Sage
+code, run it with Sage.js, obtain the same mathematical objects and answers,
+and achieve competitive performance—while benefiting from instant startup,
+npm distribution, and seamless access to the JavaScript ecosystem.
+
+The short version is:
+
+> **Sage semantics. Native mathematics. The JavaScript ecosystem.**
+
+See [MISSION.md](MISSION.md) for the complete project charter, guiding
+principles, non-goals, and decision criteria.
+
 ## Install
 
 Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.

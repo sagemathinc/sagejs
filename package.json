@@ -43,6 +43,7 @@
     "tools",
     "CONTRIBUTORS.md",
     "HACKING.md",
+    "MISSION.md",
     "index.cjs"
   ],
   "engines": {
