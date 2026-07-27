@@ -752,7 +752,13 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
 
         if is_identifier_start(code):
             tok = read_word()
-            if '\'"'.includes(peek()) and is_string_modifier(tok.value):
+            # JavaScript considers the empty string to be contained in every
+            # string.  At end-of-input, therefore, ``"'\"".includes(peek())``
+            # is true even though there is no quote.  Require an actual next
+            # character so identifiers such as ``R``, ``f``, and ``RR`` are
+            # not mistaken for unterminated prefixed string literals.
+            quote = peek()
+            if quote and '\'"'.includes(quote) and is_string_modifier(tok.value):
                 mods = tok.value.toLowerCase()
                 start_pos_for_string = S['tokpos']
                 stok = read_string(

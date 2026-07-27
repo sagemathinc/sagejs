@@ -269,6 +269,27 @@ assert.equal(
   "Univariate Polynomial Ring in x over Integer Ring\nx\nTrue",
 );
 
+assert.equal(
+  run(
+    [],
+    [
+      "R.<x> = GF(5)[]",
+      "R",
+      "R.0",
+      "",
+    ].join("\n"),
+  ).trim(),
+  "Univariate Polynomial Ring in x over Finite Field of size 5\nx",
+);
+
+for (const identifier of ["r", "R", "f", "F", "u", "U", "v", "V", "rr", "RR"]) {
+  assert.equal(
+    run(["--python"], `${identifier} = 17\n${identifier}\n`).trim(),
+    "17",
+    `string-prefix-like identifier failed at end-of-input: ${identifier}`,
+  );
+}
+
 assert.deepEqual(
   run(
     [],
