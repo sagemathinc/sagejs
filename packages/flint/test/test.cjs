@@ -74,6 +74,70 @@ assert.throws(
 );
 assert.throws(() => flint.qqPolyConstant(1n, 0n), /denominator is zero/);
 
+assert.equal(flint.wordIsPrime(2n), true);
+assert.equal(flint.wordIsPrime(18446744073709551557n), true);
+assert.equal(flint.wordIsPrime(15n), false);
+
+const nmod5x = flint.nmodPolyGen(5n);
+const nmod5one = flint.nmodPolyConstant(1n, 5n);
+const nmod5f = flint.polySub(flint.polyPow(nmod5x, 4n), nmod5one);
+assert.equal(flint.polyToString(nmod5f, "x"), "x^4+4");
+assert.equal(
+  flint.polyToString(
+    flint.nmodPolyGcd(
+      nmod5f,
+      flint.polyPow(flint.polySub(nmod5x, nmod5one), 2n),
+    ),
+    "x",
+  ),
+  "x+4",
+);
+assert.equal(
+  flint.nmodPolyIsIrreducible(
+    flint.polyAdd(
+      flint.polyPow(nmod5x, 2n),
+      flint.nmodPolyConstant(2n, 5n),
+    ),
+  ),
+  true,
+);
+const nmod5factorization = flint.nmodPolyFactor(nmod5f);
+assert.equal(nmod5factorization.unit, 1n);
+assert.deepEqual(
+  nmod5factorization.factors
+    .map(([factor, exponent]) => [
+      flint.polyToString(factor, "x"),
+      exponent,
+    ])
+    .sort(),
+  [
+    ["x+1", 1],
+    ["x+2", 1],
+    ["x+3", 1],
+    ["x+4", 1],
+  ],
+);
+const nmod5g = flint.polyMul(
+  flint.polyPow(flint.polySub(nmod5x, nmod5one), 2n),
+  flint.polyAdd(nmod5x, flint.nmodPolyConstant(2n, 5n)),
+);
+assert.deepEqual(flint.nmodPolyRoots(nmod5g), [
+  [3n, 1],
+  [1n, 2],
+]);
+assert.equal(
+  flint.polyToString(
+    flint.zzPolyToNmod(flint.zzPolyConstant(-7n), 5n),
+    "x",
+  ),
+  "3",
+);
+assert.throws(
+  () => flint.polyAdd(nmod5x, flint.nmodPolyGen(7n)),
+  /different finite fields/,
+);
+assert.throws(() => flint.nmodPolyGen(4n), /modulus must be prime/);
+
 const r53 = flint.realFromString("1.2", 53);
 const r100 = flint.realFromRational(1n, 3n, 100);
 assert.equal(flint.realPrecision(r53), 53);

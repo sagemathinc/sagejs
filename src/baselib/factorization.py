@@ -125,7 +125,11 @@ class Factorization:
         separator = ' *\n' if self._cr_value else ' * '
         terms = []
         for pair in self._factors:
-            prime = ρσ_repr(pair[0])
+            if (jstype(pair[0]) is 'object'
+                    and pair[0]._factorization_repr is not undefined):
+                prime = pair[0]._factorization_repr()
+            else:
+                prime = ρσ_repr(pair[0])
             exponent = pair[1]
             if exponent is not 1:
                 prime += '^' + exponent

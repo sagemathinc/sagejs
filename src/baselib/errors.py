@@ -27,6 +27,9 @@ class KeyError(Exception):
 class ValueError(Exception):
     pass
 
+class NotImplementedError(Exception):
+    pass
+
 class UnicodeDecodeError(Exception):
     pass
 

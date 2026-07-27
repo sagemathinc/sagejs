@@ -413,6 +413,195 @@ var ρσ_coercion_model = new CoercionModel();
     return new Rational(value, 1);
 });
 
+function ρσ_modular_inverse(value, modulus) {
+    let oldR = value;
+    let r = modulus;
+    let oldS = 1n;
+    let s = 0n;
+    while (r !== 0n) {
+        const quotient = oldR / r;
+        const nextR = oldR - quotient * r;
+        const nextS = oldS - quotient * s;
+        oldR = r;
+        r = nextR;
+        oldS = s;
+        s = nextS;
+    }
+    if (oldR !== 1n) {
+        throw new ZeroDivisionError(
+            "inverse of Mod(0, " + modulus + ") does not exist");
+    }
+    oldS %= modulus;
+    return oldS < 0n ? oldS + modulus : oldS;
+}
+
+function ρσ_modular_power(value, exponent, modulus) {
+    let result = 1n;
+    while (exponent > 0n) {
+        if ((exponent & 1n) !== 0n) {
+            result = (result * value) % modulus;
+        }
+        exponent >>= 1n;
+        if (exponent !== 0n) value = (value * value) % modulus;
+    }
+    return result;
+}
+
+function FiniteFieldElement(parent, value) {
+    if (value instanceof FiniteFieldElement) {
+        if (value._parent !== parent) {
+            throw new TypeError(
+                "no canonical conversion between distinct finite fields");
+        }
+        return value;
+    }
+    let residue;
+    if (value instanceof Rational) {
+        let numerator = value._numerator % parent._modulus;
+        let denominator = value._denominator % parent._modulus;
+        if (numerator < 0n) numerator += parent._modulus;
+        if (denominator < 0n) denominator += parent._modulus;
+        residue = numerator * ρσ_modular_inverse(
+            denominator, parent._modulus);
+    } else {
+        residue = ρσ_integer_bigint(value);
+    }
+    residue %= parent._modulus;
+    if (residue < 0n) residue += parent._modulus;
+    Element.call(this, parent);
+    this._value = residue;
+    Object.freeze(this);
+}
+FiniteFieldElement.prototype = Object.create(Element.prototype);
+FiniteFieldElement.prototype.constructor = FiniteFieldElement;
+Object.defineProperty(FiniteFieldElement, "__repr__", {
+    value: function() { return "<class 'FiniteFieldElement'>"; }
+});
+FiniteFieldElement.prototype._add_ = function(other) {
+    return new FiniteFieldElement(
+        this._parent, this._value + other._value);
+};
+FiniteFieldElement.prototype._sub_ = function(other) {
+    return new FiniteFieldElement(
+        this._parent, this._value - other._value);
+};
+FiniteFieldElement.prototype._mul_ = function(other) {
+    return new FiniteFieldElement(
+        this._parent, this._value * other._value);
+};
+FiniteFieldElement.prototype._truediv_ = function(other) {
+    return new FiniteFieldElement(
+        this._parent,
+        this._value * ρσ_modular_inverse(
+            other._value, this._parent._modulus));
+};
+FiniteFieldElement.prototype._eq_ = function(other) {
+    return this._value === other._value;
+};
+FiniteFieldElement.prototype.__add__ = function(other) {
+    return ρσ_coercion_model.binOp("add", this, other);
+};
+FiniteFieldElement.prototype.__sub__ = function(other) {
+    return ρσ_coercion_model.binOp("sub", this, other);
+};
+FiniteFieldElement.prototype.__mul__ = function(other) {
+    return ρσ_coercion_model.binOp("mul", this, other);
+};
+FiniteFieldElement.prototype.__truediv__ = function(other) {
+    return ρσ_coercion_model.binOp("truediv", this, other);
+};
+FiniteFieldElement.prototype.__eq__ = function(other) {
+    return ρσ_coercion_model.equals(this, other);
+};
+FiniteFieldElement.prototype.__neg__ = function() {
+    return new FiniteFieldElement(this._parent, -this._value);
+};
+FiniteFieldElement.prototype.__pow__ = function(exponent) {
+    exponent = ρσ_integer_bigint(exponent);
+    let value = this._value;
+    if (exponent < 0n) {
+        value = ρσ_modular_inverse(value, this._parent._modulus);
+        exponent = -exponent;
+    }
+    return new FiniteFieldElement(
+        this._parent,
+        ρσ_modular_power(value, exponent, this._parent._modulus));
+};
+FiniteFieldElement.prototype.lift = function() {
+    return ρσ_normalize_integer(this._value);
+};
+FiniteFieldElement.prototype.integer_representation =
+    FiniteFieldElement.prototype.lift;
+FiniteFieldElement.prototype.is_zero = function() {
+    return this._value === 0n;
+};
+FiniteFieldElement.prototype.is_one = function() {
+    return this._value === 1n;
+};
+FiniteFieldElement.prototype.__repr__ = function() {
+    return this._value.toString();
+};
+FiniteFieldElement.prototype.__str__ = FiniteFieldElement.prototype.__repr__;
+FiniteFieldElement.prototype.toString = FiniteFieldElement.prototype.__repr__;
+
+var ρσ_prime_fields = new Map();
+function GF(order, name) {
+    order = ρσ_integer_bigint(order);
+    if (order < 2n) {
+        throw new ValueError(
+            "the order of a finite field must be at least 2");
+    }
+    const key = order.toString();
+    let field = ρσ_prime_fields.get(key);
+    if (field !== undefined) return field;
+    let prime;
+    try {
+        prime = ρσ_flint_backend().wordIsPrime(order);
+    } catch (error) {
+        if (error instanceof RangeError) {
+            throw new Error(
+                "finite fields larger than a FLINT word are not implemented");
+        }
+        throw error;
+    }
+    if (!prime) {
+        const decomposition = ρσ_flint_backend().factor(order);
+        if (decomposition.factors.length !== 1) {
+            throw new ValueError(
+                "the order of a finite field must be a prime power");
+        }
+        throw new NotImplementedError(
+            "finite fields of non-prime order are not implemented yet");
+    }
+    field = ρσ_make_parent(
+        "Finite Field of size " + order,
+        function(value) {
+            return new FiniteFieldElement(field, value);
+        });
+    Object.defineProperty(field, "_kind", {value: "GF"});
+    Object.defineProperty(field, "_modulus", {value: order});
+    field.order = function() {
+        return ρσ_normalize_integer(order);
+    };
+    field.cardinality = field.order;
+    field.characteristic = field.order;
+    field.degree = function() { return 1; };
+    field.is_field = function() { return true; };
+    field.is_finite = function() { return true; };
+    field.is_prime_field = function() { return true; };
+    field.zero = function() { return new FiniteFieldElement(field, 0n); };
+    field.one = function() { return new FiniteFieldElement(field, 1n); };
+    field.gen = field.one;
+    field.prime_subfield = function() { return field; };
+    ρσ_prime_fields.set(key, field);
+    ρσ_coercion_model.register(ZZ, field, function(value) {
+        return new FiniteFieldElement(field, value);
+    });
+    return field;
+}
+
+var FiniteField = GF;
+
 function ρσ_is_math_element(value) {
     return value !== null && typeof value === "object" &&
         value._parent !== undefined;
@@ -842,6 +1031,59 @@ PolynomialElement.prototype._eq_ = function(other) {
 PolynomialElement.prototype.__eq__ = function(other) {
     return ρσ_coercion_model.equals(this, other);
 };
+PolynomialElement.prototype.gcd = function(other) {
+    const operands = ρσ_coercion_model.coercePair(this, other);
+    if (!(operands.left instanceof PolynomialElement) ||
+            operands.parent.base_ring()._kind !== "GF") {
+        throw new TypeError(
+            "polynomial gcd is currently implemented over finite fields");
+    }
+    return new PolynomialElement(
+        operands.parent,
+        ρσ_flint_backend().nmodPolyGcd(
+            operands.left._native, operands.right._native));
+};
+PolynomialElement.prototype.is_irreducible = function() {
+    if (this._parent.base_ring()._kind !== "GF") {
+        throw new TypeError(
+            "irreducibility testing is currently implemented " +
+            "over finite fields");
+    }
+    return ρσ_flint_backend().nmodPolyIsIrreducible(this._native);
+};
+PolynomialElement.prototype.factor = function() {
+    if (this._parent.base_ring()._kind !== "GF") {
+        throw new TypeError(
+            "polynomial factorization is currently implemented " +
+            "over finite fields");
+    }
+    const result = ρσ_flint_backend().nmodPolyFactor(this._native);
+    const parent = this._parent;
+    const factors = result.factors.map(function(pair) {
+        return [new PolynomialElement(parent, pair[0]), pair[1]];
+    });
+    return new Factorization(
+        factors, parent.base_ring()(result.unit), false, true, false);
+};
+PolynomialElement.prototype.roots = function(multiplicities) {
+    if (multiplicities !== null && typeof multiplicities === "object" &&
+            multiplicities[ρσ_kwargs_symbol]) {
+        multiplicities = multiplicities.multiplicities;
+    }
+    if (multiplicities === undefined) multiplicities = true;
+    if (this._parent.base_ring()._kind !== "GF") {
+        throw new TypeError(
+            "polynomial roots are currently implemented over finite fields");
+    }
+    const field = this._parent.base_ring();
+    return ρσ_flint_backend().nmodPolyRoots(this._native).map(
+        function(pair) {
+            const root = field(pair[0]);
+            return multiplicities
+                ? ρσ_factor_pair(root, pair[1])
+                : root;
+        });
+};
 PolynomialElement.prototype.__repr__ = function() {
     const raw = ρσ_flint_backend().polyToString(
         this._native, this._parent.variable_name());
@@ -849,6 +1091,12 @@ PolynomialElement.prototype.__repr__ = function() {
 };
 PolynomialElement.prototype.__str__ = PolynomialElement.prototype.__repr__;
 PolynomialElement.prototype.toString = PolynomialElement.prototype.__repr__;
+PolynomialElement.prototype._factorization_repr = function() {
+    const value = this.__repr__();
+    return value.includes(" + ") || value.includes(" - ")
+        ? "(" + value + ")"
+        : value;
+};
 
 function PolynomialRingParent(base, variable) {
     Parent.call(
@@ -870,9 +1118,14 @@ PolynomialRingParent.prototype.variable_name = function() {
 };
 PolynomialRingParent.prototype.gen = function() {
     const backend = ρσ_flint_backend();
-    const nativeValue = this._base === ZZ
-        ? backend.zzPolyGen()
-        : backend.qqPolyGen();
+    let nativeValue;
+    if (this._base === ZZ) {
+        nativeValue = backend.zzPolyGen();
+    } else if (this._base === QQ) {
+        nativeValue = backend.qqPolyGen();
+    } else {
+        nativeValue = backend.nmodPolyGen(this._base._modulus);
+    }
     return new PolynomialElement(this, nativeValue);
 };
 PolynomialRingParent.prototype._first_ngens = function(count) {
@@ -894,6 +1147,14 @@ PolynomialRingParent.prototype._constant = function(value) {
             backend.qqPolyConstant(
                 value._numerator, value._denominator));
     }
+    if (this._base._kind === "GF" &&
+            value instanceof FiniteFieldElement &&
+            value._parent === this._base) {
+        return new PolynomialElement(
+            this,
+            backend.nmodPolyConstant(
+                value._value, this._base._modulus));
+    }
     throw new TypeError("unsupported polynomial coefficient parent");
 };
 PolynomialRingParent.prototype._coercePolynomial = function(value) {
@@ -910,6 +1171,12 @@ PolynomialRingParent.prototype._coercePolynomial = function(value) {
     if (source.base_ring() === ZZ && this._base === QQ) {
         return new PolynomialElement(
             this, ρσ_flint_backend().zzPolyToQQ(value._native));
+    }
+    if (source.base_ring() === ZZ && this._base._kind === "GF") {
+        return new PolynomialElement(
+            this,
+            ρσ_flint_backend().zzPolyToNmod(
+                value._native, this._base._modulus));
     }
     throw new TypeError(
         "unsupported polynomial coefficient coercion from " +
@@ -940,9 +1207,10 @@ function PolynomialRing(base, variable) {
         }
         variable = variable[0];
     }
-    if (base !== ZZ && base !== QQ) {
+    if (base !== ZZ && base !== QQ && base._kind !== "GF") {
         throw new TypeError(
-            "the prototype currently supports polynomial rings over ZZ and QQ");
+            "the prototype currently supports polynomial rings over " +
+            "ZZ, QQ, and prime finite fields");
     }
     if (typeof variable !== "string" ||
             !/^[A-Za-z_][A-Za-z0-9_]*$/.test(variable)) {

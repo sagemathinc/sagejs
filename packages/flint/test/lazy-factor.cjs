@@ -73,6 +73,27 @@ assert.deepEqual(polynomial.stdout.trim().split("\n"), [
 ]);
 assert.equal(polynomial.stderr.match(new RegExp(marker, "g"))?.length, 1);
 
+const finiteFields = run(
+  [
+    "F = GF(5);",
+    "R.<x> = F[];",
+    "f = x^4 - 1;",
+    "g = (x - 1)^2 * (x + 2);",
+    "print(F)",
+    "print(f.factor())",
+    "print(gcd(f, g))",
+    "print(g.roots())",
+    "",
+  ].join("\n"),
+);
+assert.deepEqual(finiteFields.stdout.trim().split("\n"), [
+  "Finite Field of size 5",
+  "(x + 1) * (x + 2) * (x + 3) * (x + 4)",
+  "x^2 + x + 3",
+  "[(3, 1), (1, 2)]",
+]);
+assert.equal(finiteFields.stderr.match(new RegExp(marker, "g"))?.length, 1);
+
 const factoring = run(
   [
     "a = factor(2026);",

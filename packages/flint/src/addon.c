@@ -11,6 +11,9 @@
 #include <flint/fmpz_poly.h>
 #include <flint/fmpq.h>
 #include <flint/fmpq_poly.h>
+#include <flint/nmod_poly.h>
+#include <flint/nmod_poly_factor.h>
+#include <flint/ulong_extras.h>
 #include <sagejs/native.h>
 
 #include "floating.h"
@@ -178,17 +181,34 @@ static int bigint_to_ulong(napi_env env, napi_value value, ulong *result)
         return 0;
     if (!lossless || number > ULONG_MAX)
     {
-        napi_throw_range_error(env, NULL, "polynomial exponent is too large");
+        napi_throw_range_error(
+            env, NULL, "BigInt does not fit in an unsigned FLINT word");
         return 0;
     }
     *result = (ulong) number;
     return 1;
 }
 
+static int bigint_to_prime_modulus(
+    napi_env env,
+    napi_value value,
+    ulong *result)
+{
+    if (!bigint_to_ulong(env, value, result))
+        return 0;
+    if (*result < 2 || !n_is_prime(*result))
+    {
+        napi_throw_range_error(env, NULL, "modulus must be prime");
+        return 0;
+    }
+    return 1;
+}
+
 typedef enum
 {
     SAGEJS_POLY_ZZ = 1,
-    SAGEJS_POLY_QQ = 2
+    SAGEJS_POLY_QQ = 2,
+    SAGEJS_POLY_NMOD = 3
 } sagejs_poly_kind;
 
 typedef struct
@@ -197,6 +217,7 @@ typedef struct
     sagejs_poly_kind kind;
     fmpz_poly_t integer;
     fmpq_poly_t rational;
+    nmod_poly_t modular;
 } sagejs_poly;
 
 #define SAGEJS_POLY_MAGIC UINT64_C(0x534147454A53504F)
@@ -217,11 +238,16 @@ static void finalize_poly(napi_env env, void *data, void *hint)
         fmpz_poly_clear(poly->integer);
     else if (poly->kind == SAGEJS_POLY_QQ)
         fmpq_poly_clear(poly->rational);
+    else if (poly->kind == SAGEJS_POLY_NMOD)
+        nmod_poly_clear(poly->modular);
     poly->magic = 0;
     free(poly);
 }
 
-static napi_value create_poly(napi_env env, sagejs_poly_kind kind)
+static napi_value create_poly(
+    napi_env env,
+    sagejs_poly_kind kind,
+    ulong modulus)
 {
     sagejs_poly *poly;
     napi_value object;
@@ -236,8 +262,16 @@ static napi_value create_poly(napi_env env, sagejs_poly_kind kind)
     poly->kind = kind;
     if (kind == SAGEJS_POLY_ZZ)
         fmpz_poly_init(poly->integer);
-    else
+    else if (kind == SAGEJS_POLY_QQ)
         fmpq_poly_init(poly->rational);
+    else if (kind == SAGEJS_POLY_NMOD)
+        nmod_poly_init(poly->modular, modulus);
+    else
+    {
+        free(poly);
+        napi_throw_error(env, NULL, "unknown polynomial base ring");
+        return NULL;
+    }
 
     if (!check_napi(env, napi_create_object(env, &object)) ||
         !check_napi(env,
@@ -294,7 +328,16 @@ static sagejs_poly *unwrap_same_kind(
     if (left == NULL)
         return NULL;
     *right = unwrap_poly(env, right_value, left->kind);
-    return *right == NULL ? NULL : left;
+    if (*right == NULL)
+        return NULL;
+    if (left->kind == SAGEJS_POLY_NMOD &&
+        left->modular->mod.n != (*right)->modular->mod.n)
+    {
+        napi_throw_type_error(env, NULL,
+            "polynomials have different finite fields");
+        return NULL;
+    }
+    return left;
 }
 
 static napi_value zz_poly_constant(napi_env env, napi_callback_info info)
@@ -312,7 +355,7 @@ static napi_value zz_poly_constant(napi_env env, napi_callback_info info)
         fmpz_clear(value);
         return NULL;
     }
-    result = create_poly(env, SAGEJS_POLY_ZZ);
+    result = create_poly(env, SAGEJS_POLY_ZZ, 0);
     if (result == NULL)
     {
         fmpz_clear(value);
@@ -356,7 +399,7 @@ static napi_value qq_poly_constant(napi_env env, napi_callback_info info)
         return NULL;
     }
     fmpq_set_fmpz_frac(value, numerator, denominator);
-    result = create_poly(env, SAGEJS_POLY_QQ);
+    result = create_poly(env, SAGEJS_POLY_QQ, 0);
     if (result != NULL)
     {
         poly = unwrap_poly(env, result, SAGEJS_POLY_QQ);
@@ -380,7 +423,7 @@ static napi_value zz_poly_gen(napi_env env, napi_callback_info info)
 
     if (!require_arguments(env, info, 0, NULL))
         return NULL;
-    result = create_poly(env, SAGEJS_POLY_ZZ);
+    result = create_poly(env, SAGEJS_POLY_ZZ, 0);
     if (result == NULL)
         return NULL;
     poly = unwrap_poly(env, result, SAGEJS_POLY_ZZ);
@@ -397,7 +440,7 @@ static napi_value qq_poly_gen(napi_env env, napi_callback_info info)
 
     if (!require_arguments(env, info, 0, NULL))
         return NULL;
-    result = create_poly(env, SAGEJS_POLY_QQ);
+    result = create_poly(env, SAGEJS_POLY_QQ, 0);
     if (result == NULL)
         return NULL;
     poly = unwrap_poly(env, result, SAGEJS_POLY_QQ);
@@ -419,13 +462,115 @@ static napi_value zz_poly_to_qq(napi_env env, napi_callback_info info)
     source = unwrap_poly(env, args[0], SAGEJS_POLY_ZZ);
     if (source == NULL)
         return NULL;
-    result = create_poly(env, SAGEJS_POLY_QQ);
+    result = create_poly(env, SAGEJS_POLY_QQ, 0);
     if (result == NULL)
         return NULL;
     target = unwrap_poly(env, result, SAGEJS_POLY_QQ);
     if (target == NULL)
         return NULL;
     fmpq_poly_set_fmpz_poly(target->rational, source->integer);
+    return result;
+}
+
+static napi_value word_is_prime(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    ulong value;
+
+    if (!require_arguments(env, info, 1, args) ||
+        !bigint_to_ulong(env, args[0], &value))
+        return NULL;
+    if (!check_napi(env, napi_get_boolean(env, n_is_prime(value), &result)))
+        return NULL;
+    return result;
+}
+
+static napi_value nmod_poly_constant(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result;
+    sagejs_poly *poly;
+    fmpz_t value;
+    ulong modulus;
+    ulong residue;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !bigint_to_prime_modulus(env, args[1], &modulus))
+        return NULL;
+    fmpz_init(value);
+    if (!bigint_to_fmpz(env, args[0], value))
+    {
+        fmpz_clear(value);
+        return NULL;
+    }
+    residue = fmpz_fdiv_ui(value, modulus);
+    fmpz_clear(value);
+    result = create_poly(env, SAGEJS_POLY_NMOD, modulus);
+    if (result == NULL)
+        return NULL;
+    poly = unwrap_poly(env, result, SAGEJS_POLY_NMOD);
+    if (poly == NULL)
+        return NULL;
+    nmod_poly_set_coeff_ui(poly->modular, 0, residue);
+    return result;
+}
+
+static napi_value nmod_poly_gen_value(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_poly *poly;
+    ulong modulus;
+
+    if (!require_arguments(env, info, 1, args) ||
+        !bigint_to_prime_modulus(env, args[0], &modulus))
+        return NULL;
+    result = create_poly(env, SAGEJS_POLY_NMOD, modulus);
+    if (result == NULL)
+        return NULL;
+    poly = unwrap_poly(env, result, SAGEJS_POLY_NMOD);
+    if (poly == NULL)
+        return NULL;
+    nmod_poly_set_coeff_ui(poly->modular, 1, 1);
+    return result;
+}
+
+static napi_value zz_poly_to_nmod(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result;
+    sagejs_poly *source;
+    sagejs_poly *target;
+    fmpz_t coefficient;
+    ulong modulus;
+    slong index;
+    slong length;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !bigint_to_prime_modulus(env, args[1], &modulus))
+        return NULL;
+    source = unwrap_poly(env, args[0], SAGEJS_POLY_ZZ);
+    if (source == NULL)
+        return NULL;
+    result = create_poly(env, SAGEJS_POLY_NMOD, modulus);
+    if (result == NULL)
+        return NULL;
+    target = unwrap_poly(env, result, SAGEJS_POLY_NMOD);
+    if (target == NULL)
+        return NULL;
+
+    fmpz_init(coefficient);
+    length = fmpz_poly_length(source->integer);
+    for (index = 0; index < length; index++)
+    {
+        fmpz_poly_get_coeff_fmpz(coefficient, source->integer, index);
+        nmod_poly_set_coeff_ui(
+            target->modular,
+            index,
+            fmpz_fdiv_ui(coefficient, modulus));
+    }
+    fmpz_clear(coefficient);
     return result;
 }
 
@@ -452,7 +597,10 @@ static napi_value poly_binary(
     left = unwrap_same_kind(env, args[0], args[1], &right);
     if (left == NULL)
         return NULL;
-    result = create_poly(env, left->kind);
+    result = create_poly(
+        env,
+        left->kind,
+        left->kind == SAGEJS_POLY_NMOD ? left->modular->mod.n : 0);
     if (result == NULL)
         return NULL;
     answer = unwrap_poly(env, result, left->kind);
@@ -468,7 +616,7 @@ static napi_value poly_binary(
         else
             fmpz_poly_mul(answer->integer, left->integer, right->integer);
     }
-    else
+    else if (left->kind == SAGEJS_POLY_QQ)
     {
         if (operation == SAGEJS_POLY_ADD)
             fmpq_poly_add(answer->rational, left->rational, right->rational);
@@ -476,6 +624,15 @@ static napi_value poly_binary(
             fmpq_poly_sub(answer->rational, left->rational, right->rational);
         else
             fmpq_poly_mul(answer->rational, left->rational, right->rational);
+    }
+    else
+    {
+        if (operation == SAGEJS_POLY_ADD)
+            nmod_poly_add(answer->modular, left->modular, right->modular);
+        else if (operation == SAGEJS_POLY_SUB)
+            nmod_poly_sub(answer->modular, left->modular, right->modular);
+        else
+            nmod_poly_mul(answer->modular, left->modular, right->modular);
     }
     return result;
 }
@@ -507,7 +664,10 @@ static napi_value poly_neg(napi_env env, napi_callback_info info)
     source = unwrap_poly(env, args[0], 0);
     if (source == NULL)
         return NULL;
-    result = create_poly(env, source->kind);
+    result = create_poly(
+        env,
+        source->kind,
+        source->kind == SAGEJS_POLY_NMOD ? source->modular->mod.n : 0);
     if (result == NULL)
         return NULL;
     answer = unwrap_poly(env, result, source->kind);
@@ -515,8 +675,10 @@ static napi_value poly_neg(napi_env env, napi_callback_info info)
         return NULL;
     if (source->kind == SAGEJS_POLY_ZZ)
         fmpz_poly_neg(answer->integer, source->integer);
-    else
+    else if (source->kind == SAGEJS_POLY_QQ)
         fmpq_poly_neg(answer->rational, source->rational);
+    else
+        nmod_poly_neg(answer->modular, source->modular);
     return result;
 }
 
@@ -534,7 +696,10 @@ static napi_value poly_pow(napi_env env, napi_callback_info info)
     source = unwrap_poly(env, args[0], 0);
     if (source == NULL)
         return NULL;
-    result = create_poly(env, source->kind);
+    result = create_poly(
+        env,
+        source->kind,
+        source->kind == SAGEJS_POLY_NMOD ? source->modular->mod.n : 0);
     if (result == NULL)
         return NULL;
     answer = unwrap_poly(env, result, source->kind);
@@ -542,8 +707,10 @@ static napi_value poly_pow(napi_env env, napi_callback_info info)
         return NULL;
     if (source->kind == SAGEJS_POLY_ZZ)
         fmpz_poly_pow(answer->integer, source->integer, exponent);
-    else
+    else if (source->kind == SAGEJS_POLY_QQ)
         fmpq_poly_pow(answer->rational, source->rational, exponent);
+    else
+        nmod_poly_pow(answer->modular, source->modular, exponent);
     return result;
 }
 
@@ -560,9 +727,12 @@ static napi_value poly_equal(napi_env env, napi_callback_info info)
     left = unwrap_same_kind(env, args[0], args[1], &right);
     if (left == NULL)
         return NULL;
-    equal = left->kind == SAGEJS_POLY_ZZ
-        ? fmpz_poly_equal(left->integer, right->integer)
-        : fmpq_poly_equal(left->rational, right->rational);
+    if (left->kind == SAGEJS_POLY_ZZ)
+        equal = fmpz_poly_equal(left->integer, right->integer);
+    else if (left->kind == SAGEJS_POLY_QQ)
+        equal = fmpq_poly_equal(left->rational, right->rational);
+    else
+        equal = nmod_poly_equal(left->modular, right->modular);
     if (!check_napi(env, napi_get_boolean(env, equal, &result)))
         return NULL;
     return result;
@@ -598,9 +768,12 @@ static napi_value poly_to_string(napi_env env, napi_callback_info info)
         free(variable);
         return NULL;
     }
-    pretty = poly->kind == SAGEJS_POLY_ZZ
-        ? fmpz_poly_get_str_pretty(poly->integer, variable)
-        : fmpq_poly_get_str_pretty(poly->rational, variable);
+    if (poly->kind == SAGEJS_POLY_ZZ)
+        pretty = fmpz_poly_get_str_pretty(poly->integer, variable);
+    else if (poly->kind == SAGEJS_POLY_QQ)
+        pretty = fmpq_poly_get_str_pretty(poly->rational, variable);
+    else
+        pretty = nmod_poly_get_str_pretty(poly->modular, variable);
     free(variable);
     if (pretty == NULL)
     {
@@ -614,6 +787,194 @@ static napi_value poly_to_string(napi_env env, napi_callback_info info)
         return NULL;
     }
     flint_free(pretty);
+    return result;
+}
+
+static napi_value nmod_poly_gcd_value(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result;
+    sagejs_poly *left;
+    sagejs_poly *right;
+    sagejs_poly *answer;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    left = unwrap_same_kind(env, args[0], args[1], &right);
+    if (left == NULL)
+        return NULL;
+    if (left->kind != SAGEJS_POLY_NMOD)
+    {
+        napi_throw_type_error(
+            env, NULL, "gcd currently requires finite-field polynomials");
+        return NULL;
+    }
+    result = create_poly(env, SAGEJS_POLY_NMOD, left->modular->mod.n);
+    if (result == NULL)
+        return NULL;
+    answer = unwrap_poly(env, result, SAGEJS_POLY_NMOD);
+    if (answer == NULL)
+        return NULL;
+    nmod_poly_gcd(answer->modular, left->modular, right->modular);
+    return result;
+}
+
+static napi_value nmod_poly_is_irreducible_value(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_poly *poly;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    poly = unwrap_poly(env, args[0], SAGEJS_POLY_NMOD);
+    if (poly == NULL)
+        return NULL;
+    if (!check_napi(env,
+        napi_get_boolean(
+            env, nmod_poly_is_irreducible(poly->modular), &result)))
+        return NULL;
+    return result;
+}
+
+static napi_value nmod_factorization_result(
+    napi_env env,
+    const nmod_poly_factor_t decomposition,
+    ulong unit,
+    ulong modulus)
+{
+    napi_value result;
+    napi_value factors;
+    napi_value unit_value;
+    slong index;
+
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env,
+            napi_create_bigint_uint64(env, (uint64_t) unit, &unit_value)) ||
+        !check_napi(env,
+            napi_set_named_property(env, result, "unit", unit_value)) ||
+        !check_napi(env,
+            napi_create_array_with_length(
+                env, (size_t) decomposition->num, &factors)))
+        return NULL;
+
+    for (index = 0; index < decomposition->num; index++)
+    {
+        napi_value pair;
+        napi_value polynomial;
+        napi_value exponent;
+        sagejs_poly *target;
+
+        if (!check_napi(env, napi_create_array_with_length(env, 2, &pair)))
+            return NULL;
+        polynomial = create_poly(env, SAGEJS_POLY_NMOD, modulus);
+        if (polynomial == NULL)
+            return NULL;
+        target = unwrap_poly(env, polynomial, SAGEJS_POLY_NMOD);
+        if (target == NULL)
+            return NULL;
+        nmod_poly_set(target->modular, decomposition->p + index);
+        if (!check_napi(env,
+                napi_create_double(
+                    env, (double) decomposition->exp[index], &exponent)) ||
+            !check_napi(env, napi_set_element(env, pair, 0, polynomial)) ||
+            !check_napi(env, napi_set_element(env, pair, 1, exponent)) ||
+            !check_napi(env,
+                napi_set_element(env, factors, (uint32_t) index, pair)))
+            return NULL;
+    }
+    if (!check_napi(env,
+        napi_set_named_property(env, result, "factors", factors)))
+        return NULL;
+    return result;
+}
+
+static napi_value nmod_poly_factor_value(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_poly *poly;
+    nmod_poly_factor_t decomposition;
+    ulong unit;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    poly = unwrap_poly(env, args[0], SAGEJS_POLY_NMOD);
+    if (poly == NULL)
+        return NULL;
+    if (nmod_poly_is_zero(poly->modular))
+    {
+        napi_throw_range_error(env, NULL, "factorization of 0 is not defined");
+        return NULL;
+    }
+    nmod_poly_factor_init(decomposition);
+    unit = nmod_poly_factor(decomposition, poly->modular);
+    result = nmod_factorization_result(
+        env, decomposition, unit, poly->modular->mod.n);
+    nmod_poly_factor_clear(decomposition);
+    return result;
+}
+
+static napi_value nmod_poly_roots_value(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_poly *poly;
+    nmod_poly_factor_t roots;
+    slong index;
+    ulong modulus;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    poly = unwrap_poly(env, args[0], SAGEJS_POLY_NMOD);
+    if (poly == NULL)
+        return NULL;
+    if (nmod_poly_is_zero(poly->modular))
+    {
+        napi_throw_range_error(
+            env, NULL, "roots of the zero polynomial are not defined");
+        return NULL;
+    }
+    modulus = poly->modular->mod.n;
+    nmod_poly_factor_init(roots);
+    nmod_poly_roots(roots, poly->modular, 1);
+    if (!check_napi(env,
+        napi_create_array_with_length(env, (size_t) roots->num, &result)))
+    {
+        nmod_poly_factor_clear(roots);
+        return NULL;
+    }
+    for (index = 0; index < roots->num; index++)
+    {
+        napi_value pair;
+        napi_value root;
+        napi_value exponent;
+        ulong constant = nmod_poly_get_coeff_ui(roots->p + index, 0);
+        ulong root_value = constant == 0 ? 0 : modulus - constant;
+
+        if (!check_napi(env, napi_create_array_with_length(env, 2, &pair)) ||
+            !check_napi(env,
+                napi_create_bigint_uint64(
+                    env, (uint64_t) root_value, &root)) ||
+            !check_napi(env,
+                napi_create_double(
+                    env, (double) roots->exp[index], &exponent)) ||
+            !check_napi(env, napi_set_element(env, pair, 0, root)) ||
+            !check_napi(env, napi_set_element(env, pair, 1, exponent)) ||
+            !check_napi(env,
+                napi_set_element(env, result, (uint32_t) index, pair)))
+        {
+            nmod_poly_factor_clear(roots);
+            return NULL;
+        }
+    }
+    nmod_poly_factor_clear(roots);
     return result;
 }
 
@@ -866,6 +1227,14 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"zzPolyToQQ", NULL, zz_poly_to_qq, NULL, NULL, NULL,
             napi_default, NULL},
+        {"wordIsPrime", NULL, word_is_prime, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"nmodPolyConstant", NULL, nmod_poly_constant, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"nmodPolyGen", NULL, nmod_poly_gen_value, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"zzPolyToNmod", NULL, zz_poly_to_nmod, NULL, NULL, NULL,
+            napi_default, NULL},
         {"polyAdd", NULL, poly_add, NULL, NULL, NULL, napi_default, NULL},
         {"polySub", NULL, poly_sub, NULL, NULL, NULL, napi_default, NULL},
         {"polyMul", NULL, poly_mul, NULL, NULL, NULL, napi_default, NULL},
@@ -874,6 +1243,14 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"polyEqual", NULL, poly_equal, NULL, NULL, NULL,
             napi_default, NULL},
         {"polyToString", NULL, poly_to_string, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"nmodPolyGcd", NULL, nmod_poly_gcd_value, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"nmodPolyIsIrreducible", NULL, nmod_poly_is_irreducible_value,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"nmodPolyFactor", NULL, nmod_poly_factor_value, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"nmodPolyRoots", NULL, nmod_poly_roots_value, NULL, NULL, NULL,
             napi_default, NULL},
         {"realFromString", NULL, sagejs_real_from_string, NULL, NULL, NULL,
             napi_default, NULL},

@@ -61,6 +61,7 @@
     "bench:cold": "node bench/cold-start.cjs",
     "bench:arithmetic": "node bench/compare-sagelite.cjs",
     "bench:complex": "node bench/compare-complex.cjs",
+    "bench:finite-fields": "node bench/compare-finite-fields.cjs",
     "bench:native": "node bench/compare-native-compiler.cjs",
     "prepack": "pnpm test"
   },

@@ -38,9 +38,9 @@ The short version is:
 
 > **Sage semantics. Native mathematics. The JavaScript ecosystem.**
 
-See [MISSION.md](MISSION.md) for the complete project charter, guiding
+See MISSION.md for the complete project charter, guiding
 principles, non-goals, and decision criteria. See
-[IMPLEMENTATION.md](IMPLEMENTATION.md) for the empirically motivated division
+IMPLEMENTATION.md for the empirically motivated division
 between maintainable Sage.js library source, typed native lowering, and
 hand-written native code.
 
@@ -193,6 +193,34 @@ integer representation. Modulo and several bit operations still need explicit
 semantics. The constructor seam allows a future `Integer` element type to
 replace the representation without changing the parser again.
 
+Prime finite fields and their polynomial rings follow Sage's parent,
+coercion, representation, and factorization interfaces:
+
+```py
+sage: F = GF(5)
+sage: F(-1)
+4
+sage: F(1/2)
+3
+sage: R.<x> = F[]
+sage: f = x^4 - 1
+sage: f.factor()
+(x + 1) * (x + 2) * (x + 3) * (x + 4)
+sage: ((x - 1)^2 * (x + 2)).roots()
+[(3, 1), (1, 2)]
+sage: gcd(f, (x - 1)^2 * (x + 2))
+x^2 + x + 3
+```
+
+`GF(p)` is interned and exact scalar elements use reduced JavaScript `BigInt`
+values, so ordinary field arithmetic does not cross Node-API. Polynomials are
+opaque native FLINT `nmod_poly` values; multiplication, GCD, irreducibility,
+factorization, and root finding each cross into native code once for the
+complete operation. Canonical coercion from `ZZ` and `ZZ[x]` is supported.
+This first slice implements word-sized prime fields. Sage-compatible extension
+fields such as `GF(2^8)` remain to be added rather than being given invented
+semantics.
+
 Sage-compatible arbitrary-precision real and complex fields are backed by
 MPFR and MPC. The default fields are cached 53-bit parents:
 
@@ -229,9 +257,9 @@ True
 
 ## Parents, coercion, and native polynomials
 
-The first mathematical object model implements singleton `ZZ` and `QQ`
-parents, immutable rational elements, canonical maps, interned polynomial
-parents, and symmetric binary coercion. It does not depend on
+The mathematical object model implements singleton `ZZ` and `QQ` parents,
+interned prime finite fields, immutable scalar elements, canonical maps,
+interned polynomial parents, and symmetric binary coercion. It does not depend on
 `__add__`/`__radd__` fallback. A coercion plan contains a common parent and a
 map for each operand.
 
@@ -249,8 +277,9 @@ Univariate Polynomial Ring in x over Rational Field
 Here the resolver recursively computes `QQ` as the common coefficient parent,
 constructs the interned parent `QQ[x]`, converts the `ZZ[x]` operand, and
 embeds `1/3` as a constant. Polynomial coefficients and arithmetic live in
-native FLINT `fmpz_poly` and `fmpq_poly` values behind opaque Node-API objects;
-polynomial arithmetic does not copy coefficient arrays through JavaScript.
+native FLINT `fmpz_poly`, `fmpq_poly`, and `nmod_poly` values behind opaque
+Node-API objects; polynomial arithmetic does not copy coefficient arrays
+through JavaScript.
 
 Generator declarations are parsed contextually and lowered to ordinary
 assignment AST nodes. For example, `R.<x> = ZZ[]` constructs
@@ -352,6 +381,13 @@ the generated 53-bit real loop took about 12 ns per multiplication, versus
 Sage.js. Julia's ordinary `BigFloat` loop took about 96 ns, while an explicit
 in-place Julia MPFR loop took about 21 ns. The benchmark reports loaded MPFR
 and GMP versions and allocation so this comparison remains auditable.
+
+The same unchanged-source comparison for `GF(65537)` and `GF(65537)[x]`
+shows scalar arithmetic within about 10% of SageMath, small polynomial
+multiplication within about 2x, and the tested native GCD and factorization
+workloads slightly faster on the initial machine. See
+[`bench/FINITE-FIELD-BENCHMARK.md`](bench/FINITE-FIELD-BENCHMARK.md) and run
+`pnpm run bench:finite-fields`.
 
 ## Build from source
 

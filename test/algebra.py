@@ -36,6 +36,78 @@ def zero_denominator():
 
 assrt.throws(zero_denominator, ZeroDivisionError)
 
+# Prime finite fields use JavaScript BigInt for cheap scalar arithmetic and
+# FLINT nmod_poly for opaque native polynomial values.
+F5 = GF(5)
+assrt.ok(F5 is GF(5))
+assrt.ok(F5 is FiniteField(5))
+assrt.equal(repr(F5), 'Finite Field of size 5')
+assrt.equal(repr(type(F5(-1))), "<class 'FiniteFieldElement'>")
+assrt.equal(parent(F5(-1)), F5)
+assrt.ok(F5(-1) == F5(4))
+assrt.equal(F5(-1).lift(), 4)
+assrt.ok(F5.gen() == F5(1))
+assrt.equal(F5.order(), 5)
+assrt.equal(F5.cardinality(), 5)
+assrt.equal(F5.characteristic(), 5)
+assrt.equal(F5.degree(), 1)
+assrt.ok(F5.is_field())
+assrt.ok(F5.is_finite())
+assrt.ok(F5.is_prime_field())
+assrt.ok(1 + F5(2) == F5(3))
+assrt.ok(F5(2) + 1 == F5(3))
+assrt.ok(F5(2) - 4 == F5(3))
+assrt.ok(4 - F5(2) == F5(2))
+assrt.ok(F5(2) * 4 == F5(3))
+assrt.ok(F5(2) / 4 == F5(3))
+assrt.ok(F5(2) ** -3 == F5(2))
+assrt.ok(F5(QQ(1, 2)) == F5(3))
+assrt.ok(F5(2) == 2)
+assrt.ok(2 == F5(2))
+
+def construct_non_prime_power_field():
+    return GF(15)
+
+def construct_extension_field():
+    return GF(4)
+
+assrt.throws(construct_non_prime_power_field, ValueError)
+assrt.throws(construct_extension_field, NotImplementedError)
+
+def divide_by_zero_in_F5():
+    return F5(1) / F5(0)
+
+assrt.throws(divide_by_zero_in_F5, ZeroDivisionError)
+
+F5x = PolynomialRing(F5, 'x')
+F5x_again = PolynomialRing(GF(5), 'x')
+assrt.ok(F5x is F5x_again)
+assrt.equal(
+    repr(F5x),
+    'Univariate Polynomial Ring in x over Finite Field of size 5')
+fx = F5x.gen()
+ff = fx ** 4 - 1
+fg = (fx - 1) ** 2 * (fx + 2)
+assrt.equal(repr(ff), 'x^4 + 4')
+assrt.equal(repr(ff.gcd(fg)), 'x^2 + x + 3')
+assrt.equal(repr(gcd(ff, fg)), 'x^2 + x + 3')
+assrt.ok((fx ** 2 + 2).is_irreducible())
+assrt.equal(repr(ff.factor()),
+            '(x + 1) * (x + 2) * (x + 3) * (x + 4)')
+assrt.equal(parent(ff.factor().unit()), F5)
+assrt.ok(ff.factor().value() == ff)
+assrt.equal(repr(factor(ff)), repr(ff.factor()))
+scaled_factorization = (2 * (fx + 1) ** 2).factor()
+assrt.equal(repr(scaled_factorization), '2 * (x + 1)^2')
+assrt.ok(scaled_factorization.unit() == F5(2))
+assrt.ok(scaled_factorization.value() == 2 * (fx + 1) ** 2)
+assrt.equal(repr(fg.roots()), '[(3, 1), (1, 2)]')
+assrt.equal(repr(fg.roots(multiplicities=False)), '[3, 1]')
+
+ZZx = PolynomialRing(ZZ, 'x')
+assrt.equal(repr(F5x(ZZx.gen() + 7)), 'x + 2')
+assrt.equal(parent((ZZx.gen() + 1) + F5(1)), F5x)
+
 # These are the MPFR/MPC parents and display semantics used by SageMath.
 assrt.ok(RealField(53) is RR)
 assrt.ok(ComplexField(53) is CC)

@@ -520,6 +520,8 @@ def ρσ_divmod(x, y):
 
 
 def ρσ_factor(value):
+    if jstype(value) is 'object' and value.factor is not undefined:
+        return value.factor()
     if jstype(value) is 'number':
         if not Number.isSafeInteger(value):
             raise TypeError('factor() requires a safe integer; use a BigInt for larger values')
@@ -530,6 +532,18 @@ def ρσ_factor(value):
     result = ρσ_flint_backend().factor(value)
     return new IntegerFactorization(
         result.factors, BigInt(result.sign), False, False, False)
+
+def ρσ_gcd(left, right):
+    if ((jstype(left) is 'number' or jstype(left) is 'bigint')
+            and (jstype(right) is 'number' or jstype(right) is 'bigint')):
+        left = BigInt(left)
+        right = BigInt(right)
+        return ρσ_normalize_integer(ρσ_flint_backend().gcd(left, right))
+    if jstype(left) is 'object' and left.gcd is not undefined:
+        return left.gcd(right)
+    if jstype(right) is 'object' and right.gcd is not undefined:
+        return right.gcd(left)
+    raise TypeError('gcd() is not defined for these arguments')
 
 
 def ρσ_max(*args, **kwargs):
@@ -555,4 +569,4 @@ v'var arraylike = ρσ_arraylike_creator(), ρσ_arraylike = arraylike'
 v'var print = ρσ_print, id = ρσ_id, get_module = ρσ_get_module, pow = ρσ_pow, divmod = ρσ_divmod'
 v'var dir = ρσ_dir, ord = ρσ_ord, chr = ρσ_chr, bin = ρσ_bin, hex = ρσ_hex, callable = ρσ_callable'
 v'var enumerate = ρσ_enumerate, iter = ρσ_iter, reversed = ρσ_reversed, len = ρσ_len'
-v'var range = ρσ_range, getattr = ρσ_getattr, setattr = ρσ_setattr, hasattr = ρσ_hasattr, factor = ρσ_factor'
+v'var range = ρσ_range, getattr = ρσ_getattr, setattr = ρσ_setattr, hasattr = ρσ_hasattr, factor = ρσ_factor, gcd = ρσ_gcd'

@@ -5,10 +5,10 @@ This experimental package binds native
 the stable C Node-API. It is deliberately separate from `@sagemath/sagejs`:
 loading the language must not initialize native mathematics libraries.
 
-The first API exposes JavaScript `BigInt` round trips, GCD, factorial,
+The API exposes JavaScript `BigInt` round trips, GCD, factorial,
 Fibonacci numbers, binomial coefficients, primorials, integer factorization,
-opaque `fmpz_poly`/`fmpq_poly` values, and opaque MPFR/MPC real and complex
-values. Integer conversion uses Node-API's
+word-prime testing, opaque `fmpz_poly`/`fmpq_poly`/`nmod_poly` values, and
+opaque MPFR/MPC real and complex values. Integer conversion uses Node-API's
 little-endian 64-bit word arrays and FLINT's `fmpz_set_ui_array` /
 `fmpz_get_ui_array` functions, so crossing the integer boundary requires one
 linear copy in each direction and no decimal-string conversion.
@@ -18,6 +18,12 @@ subtraction, multiplication, powers, and `fmpz_poly` to `fmpq_poly`
 coercion operate directly on C-owned values. JavaScript receives only an
 opaque object with a native finalizer; coefficients are converted back only
 when formatting is explicitly requested.
+
+The `nmod_poly` API additionally provides GCD, irreducibility testing,
+factorization, and roots over word-sized prime fields. Factorization returns
+opaque native factors and a separate scalar unit. Sage.js wraps these as
+ordinary polynomial elements and a Sage-compatible `Factorization`; it never
+copies coefficient arrays through JavaScript.
 
 MPFR and MPC values likewise stay behind opaque Node-API objects. Sage.js uses
 them to implement Sage-compatible `RealField(p)` and `ComplexField(p)` parents,
