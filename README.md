@@ -87,6 +87,11 @@ sage: for n in [1..3]:
 reloads it before the next input after it changes. Quoted paths and
 `load("path with spaces.sage")` are accepted.
 
+Sage's symbolic shorthand `f(x) = expression` is intentionally gated for now:
+it requires a symbolic-expression parent and explicit symbolic variables,
+neither of which should be faked using implicit undefined identifiers.
+Ordinary executable functions use `def` or `lambda`.
+
 Integer source text is preserved before JavaScript parses it. The initial
 `Integer` hook uses a JavaScript `Number` when the value is safely
 representable and a `BigInt` otherwise:

@@ -2612,6 +2612,12 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         left = maybe_conditional(no_in)
         val = S.token.value
         if is_("operator") and ASSIGNMENT[val]:
+            if is_node_type(left, AST_Call):
+                if options.jsage and val is '=':
+                    croak(
+                        "symbolic function assignment f(x)=... requires the future symbolic-expression runtime; use def or lambda for ordinary functions"
+                    )
+                croak("cannot assign to a function call")
             if only_plain_assignment and val is not '=':
                 croak('Invalid assignment operator for chained assignment: ' +
                       val)

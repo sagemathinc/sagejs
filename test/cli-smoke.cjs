@@ -169,6 +169,14 @@ assert.match(
   /Unexpected token/,
 );
 assert.match(
+  run([], "f(x) = x^2\n"),
+  /requires the future symbolic-expression runtime/,
+);
+assert.match(
+  run(["--python"], "f(x) = x**2\n"),
+  /cannot assign to a function call/,
+);
+assert.match(
   runError([], "R.<x, y> = ZZ[]\n"),
   /multivariate polynomial rings are not implemented yet/,
 );
