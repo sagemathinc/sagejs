@@ -1871,19 +1871,43 @@ def _builtins_native_map(value: Any) -> _Bool:
     )
 
 
+@runtime.sequence_class
+class _BuiltinsSequenceIterator:
+    """Iterator for objects implementing only Python's ``__getitem__``."""
+
+    def __init__(self, sequence: Any) -> None:
+        self._sequence = sequence
+        self._index = 0
+
+    def __iter__(self) -> _BuiltinsSequenceIterator:
+        return self
+
+    def __next__(self) -> Any:
+        index = self._index
+        self._index += 1
+        try:
+            return _builtins_call_member(
+                self._sequence, '__getitem__', [index])
+        except IndexError:
+            raise StopIteration  # noqa: B904
+        except StopIteration:
+            raise StopIteration  # noqa: B904
+
+
 def ρσ_iter(iterable: Any) -> Any:
     iterator_method = _builtins_get_member(
         iterable, runtime.iterator_symbol)
     if runtime.strict_equal(runtime.jstype(iterator_method), 'function'):
         if _builtins_native_map(iterable):
             return _builtins_call_member(iterable, 'keys', [])
-        return runtime.reflect.apply(iterator_method, iterable, [])
-    keys = runtime.object.keys(iterable)
-    return runtime.reflect.apply(
-        runtime.reflect.get(keys, runtime.iterator_symbol),
-        keys,
-        [],
-    )
+        iterator = runtime.reflect.apply(
+            iterator_method, iterable, [])
+        if _builtins_member_is_function(iterator, 'next'):
+            return iterator
+        raise TypeError('iter() returned non-iterator')
+    if _builtins_member_is_function(iterable, '__getitem__'):
+        return _BuiltinsSequenceIterator(iterable)
+    raise TypeError('object is not iterable')
 
 
 def _builtins_generator_result(result: Any) -> Any:
@@ -2097,6 +2121,22 @@ class _Range:
         )
 
 
+def _builtins_index_value(value: Any) -> _Int:
+    if value is True:
+        return 1
+    if value is False:
+        return 0
+    if _builtins_exact_integer_primitive(value):
+        return value
+    if _builtins_member_is_function(value, '__index__'):
+        answer = _builtins_call_member(value, '__index__', [])
+        if _builtins_exact_integer_primitive(answer):
+            return answer
+        raise TypeError('__index__ returned non-int')
+    raise TypeError(
+        'object cannot be interpreted as an integer')
+
+
 def ρσ_range(
     start: _Int,
     stop: Any = runtime.undefined,
@@ -2107,6 +2147,9 @@ def ρσ_range(
         start = 0
     if step is runtime.undefined:
         step = 1
+    start = _builtins_index_value(start)
+    stop = _builtins_index_value(stop)
+    step = _builtins_index_value(step)
     if (
         runtime.strict_equal(runtime.jstype(start), 'bigint')
         or runtime.strict_equal(runtime.jstype(stop), 'bigint')
@@ -2116,6 +2159,9 @@ def ρσ_range(
         stop = runtime.bigint(stop)
         step = runtime.bigint(step)
     return _Range(start, stop, step)
+
+
+runtime.reflect.set(ρσ_range, '__positional_only__', True)
 
 
 class _EllipsisType:
@@ -2198,6 +2244,15 @@ def ρσ_getattr(
                 python_string_member,
                 [value],
             )
+    if (
+        name == '__next__'
+        and not _builtins_member_is_function(value, '__next__')
+        and _builtins_member_is_function(value, 'next')
+    ):
+        def native_next() -> Any:
+            return ρσ_next(value)
+
+        return native_next
     if runtime.strict_equal(runtime.jstype(value), 'function'):
         class_prototype = _builtins_get_member(value, 'prototype')
         if (

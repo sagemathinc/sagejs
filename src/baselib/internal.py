@@ -40,6 +40,59 @@ def _internal_is_native_map(value: Any) -> bool:
     )
 
 
+def _internal_is_plain_object(value: Any) -> bool:
+    if not _internal_type_is(runtime.jstype(value), 'object'):
+        return False
+    prototype = runtime.object.getPrototypeOf(value)
+    return (
+        prototype is None
+        or prototype is runtime.object.prototype
+    )
+
+
+@runtime.native_method
+def ρσ_python_iterator_next(self: Any) -> Any:
+    result = runtime.object.create(None)
+    try:
+        value = runtime.reflect.apply(
+            _internal_get_member(self, '__next__'),
+            self,
+            [],
+        )
+        runtime.reflect.set(result, 'value', value)
+        runtime.reflect.set(result, 'done', False)
+    except StopIteration:
+        runtime.reflect.set(result, 'value', runtime.undefined)
+        runtime.reflect.set(result, 'done', True)
+    return result
+
+
+@runtime.sequence_class
+class _PythonSequenceIterator:
+    """Adapt Python's legacy ``__getitem__`` iteration protocol to ES."""
+
+    def __init__(self, sequence: Any) -> None:
+        self._sequence = sequence
+        self._index = 0
+
+    def __iter__(self) -> _PythonSequenceIterator:
+        return self
+
+    def __next__(self) -> Any:
+        index = self._index
+        self._index += 1
+        try:
+            return runtime.reflect.apply(
+                _internal_get_member(self._sequence, '__getitem__'),
+                self._sequence,
+                [index],
+            )
+        except IndexError:
+            raise StopIteration  # noqa: B904
+        except StopIteration:
+            raise StopIteration  # noqa: B904
+
+
 def ρσ_check_unbound(value: Any, name: str) -> Any:
     if value is runtime.undefined:
         raise NameError(
@@ -380,24 +433,25 @@ def ρσ_in(value: Any, container: Any) -> bool:
 
 
 def ρσ_Iterable(iterable: Any) -> Any:
-    """Return the eager iterable used by generated ``for`` loops."""
+    """Return an ES iterable implementing Python's iteration protocol."""
     if runtime.arraylike(iterable):
         return iterable
     iterator_method = _internal_get_member(
         iterable, runtime.iterator_symbol)
     if _internal_type_is(runtime.jstype(iterator_method), 'function'):
         if _internal_is_native_map(iterable):
-            iterator = iterable.keys()
-        else:
-            iterator = runtime.reflect.apply(
-                iterator_method, iterable, [])
-        answer = []
-        result = iterator.next()
-        while not result.done:
-            answer.append(result.value)
-            result = iterator.next()
-        return answer
-    return runtime.object.keys(iterable)
+            return iterable.keys()
+        # Let JavaScript's ``for of`` invoke the iterator method exactly
+        # once.  Calling it here as well breaks self-iterating proxies and
+        # generators used by the compiler itself.
+        return iterable
+    if _internal_member_is_function(iterable, '__getitem__'):
+        return _PythonSequenceIterator(iterable)
+    # Keyword-argument dictionaries and a few legacy library mappings are
+    # represented by null-prototype or ordinary JavaScript objects.
+    if _internal_is_plain_object(iterable):
+        return runtime.object.keys(iterable)
+    raise TypeError('object is not iterable')
 
 
 def ρσ_desugar_kwargs(sources: Any) -> Any:
@@ -421,6 +475,14 @@ def ρσ_interpolate_kwargs(
     target_function: Any,
     supplied_args: Any,
 ) -> Any:
+    keyword_object = supplied_args[-1]
+    if (
+        _internal_get_member(
+            target_function, '__positional_only__')
+        and runtime.object.keys(keyword_object).length
+    ):
+        raise TypeError(
+            'function takes no keyword arguments')
     argnames = _internal_get_member(
         target_function, '__argnames__')
     if not argnames:

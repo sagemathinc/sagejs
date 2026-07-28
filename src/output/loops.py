@@ -2,7 +2,7 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 
-from ast_types import AST_BaseCall, AST_SymbolRef, AST_Array, AST_Unary, AST_Number, has_calls, AST_Seq, AST_ListComprehension, is_node_type
+from ast_types import AST_Array, AST_BaseCall, AST_GeneratorComprehension, AST_ListComprehension, AST_Number, AST_Seq, AST_SymbolRef, AST_Unary, has_calls, is_node_type
 from output.stream import OutputStream
 from output.statements import force_statement
 
@@ -73,12 +73,24 @@ def is_simple_for_in(self):
 
 def is_simple_for(self):
     # returns true if this loop can be simplified into a basic for(i=n;i<h;i++) loop
+    args = self.object.args if is_node_type(
+        self.object, AST_BaseCall) else None
+    if args:
+        for argument in args:
+            if is_node_type(
+                argument, AST_GeneratorComprehension
+            ):
+                return False
     if (self.builtin_range is not False
             and is_node_type(self.object, AST_BaseCall)
             and is_node_type(self.object.expression, AST_SymbolRef)
             and self.object.expression.name is "range"
+            and not args.starargs
+            and not (
+                args.kwarg_items and args.kwarg_items.length)
+            and not (args.kwargs and args.kwargs.length)
             and not (is_node_type(self.init, AST_Array))):
-        a = self.object.args
+        a = args
         l = a.length
         if l < 3 or (is_node_type(a[2], AST_Number) or
                      (is_node_type(a[2], AST_Unary) and a[2].operator is '-'
@@ -126,6 +138,10 @@ def print_for_loop_body(output):
 
 def init_es6_itervar(output, itervar):
     output.indent()
+    if output.options.python_attributes:
+        output.print(itervar + ' = ρσ_Iterable(' + itervar + ')')
+        output.end_statement()
+        return
     output.spaced(itervar, '=', '((typeof', itervar + '[Symbol.iterator]',
                   '===', '"function")', '?', '(' + itervar, 'instanceof',
                   'Map', '?', itervar + '.keys()', ':', itervar + ')', ':',

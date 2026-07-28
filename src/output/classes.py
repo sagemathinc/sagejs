@@ -329,6 +329,11 @@ def print_class(output):
         elif is_node_type(stmt, AST_Class):
             console.error('Nested classes aren\'t supported yet')  # noqa:undef
 
+    if defined_methods['__next__']:
+        class_def('next', False)
+        output.print('ρσ_python_iterator_next')
+        output.end_statement()
+
     if not defined_methods['__repr__']:
 
         def f_repr():
