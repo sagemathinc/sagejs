@@ -15,6 +15,7 @@ class _Number:
     MAX_SAFE_INTEGER: int
     MIN_SAFE_INTEGER: int
     POSITIVE_INFINITY: float
+    prototype: Any
 
     @staticmethod
     def isInteger(value: object) -> bool: ...

@@ -581,7 +581,7 @@
     "tuple_subclass.py": "pass",
     "types1.py": "pass",
     "types2.py": "pass",
-    "unary_op.py": "output-mismatch",
+    "unary_op.py": "pass",
     "unboundlocal.py": "pass",
     "unpack1.py": "pass",
     "weakref_finalize_basic.py": "missing-module",

@@ -1067,6 +1067,13 @@ def ρσ_bool(value: Any) -> _Bool:
         runtime.strict_equal(value_type, 'object')
         or runtime.strict_equal(value_type, 'function')
     ):
+        if runtime.strict_equal(
+            runtime.reflect.apply(
+                runtime.object.prototype.toString, value, []),
+            '[object Number]',
+        ):
+            return runtime.reflect.apply(
+                runtime.number.prototype.valueOf, value, []) != 0
         if _builtins_member_is_function(value, '__bool__'):
             answer = _builtins_call_member(value, '__bool__', [])
             if answer is not True and answer is not False:

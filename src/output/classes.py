@@ -19,8 +19,8 @@ def print_class(output):
     if (
         is_node_type(self.parent, AST_SymbolRef)
         and self.parent.name in [
-            'dict', 'list', 'map', 'str',
-            'ρσ_dict', 'ρσ_list_constructor', 'ρσ_str']
+            'dict', 'int', 'list', 'map', 'str',
+            'ρσ_dict', 'ρσ_int', 'ρσ_list_constructor', 'ρσ_str']
     ):
         native_storage_parent = self.parent.name
 
@@ -148,6 +148,10 @@ def print_class(output):
                     output.print(
                         'if (Object.prototype.toString.call(this)'
                         ' !== "[object String]")')
+                elif native_storage_parent in ('int', 'ρσ_int'):
+                    output.print(
+                        'if (Object.prototype.toString.call(this)'
+                        ' !== "[object Number]")')
                 elif native_storage_parent == 'map':
                     output.print(
                         'if (this.ρσ_native_map_subclass !== true)')
@@ -163,6 +167,12 @@ def print_class(output):
                         output.print(
                             'Reflect.construct('
                             'String, arguments, ')
+                        self.name.print(output)
+                        output.print(')')
+                    elif native_storage_parent in ('int', 'ρσ_int'):
+                        output.print(
+                            'Reflect.construct('
+                            'Number, arguments, ')
                         self.name.print(output)
                         output.print(')')
                     elif native_storage_parent == 'map':
