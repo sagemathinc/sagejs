@@ -554,7 +554,7 @@
     "sys_exit.py": "pass",
     "sys_getsizeof.py": "pass",
     "sys_path.py": "pass",
-    "sys_stdio.py": "output-mismatch",
+    "sys_stdio.py": "pass",
     "true_value.py": "pass",
     "try1.py": "pass",
     "try2.py": "pass",

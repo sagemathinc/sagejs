@@ -18,6 +18,22 @@ class _Implementation:
 
 implementation = _Implementation()
 
+
+class TextIOWrapper:
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return "<_io.TextIOWrapper name='" + self.name + "'>"
+
+    __str__ = __repr__
+
+
+stdin = TextIOWrapper('<stdin>')
+stdout = TextIOWrapper('<stdout>')
+stderr = TextIOWrapper('<stderr>')
+
+
 def exit(status=None):
     if status is None:
         raise SystemExit
