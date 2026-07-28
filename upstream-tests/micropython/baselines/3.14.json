@@ -236,7 +236,7 @@
     "class_item.py": "pass",
     "class_misc.py": "pass",
     "class_new.py": "output-mismatch",
-    "class_notimpl.py": "output-mismatch",
+    "class_notimpl.py": "pass",
     "class_number.py": "pass",
     "class_ordereddict.py": "output-mismatch",
     "class_reverse_op.py": "pass",

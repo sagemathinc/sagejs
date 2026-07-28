@@ -190,6 +190,17 @@ def ρσ_exact_integer_primitive(value: Any) -> _Bool:
     return _builtins_exact_integer_primitive(value)
 
 
+class NotImplementedType:
+
+    def __repr__(self) -> _Str:
+        return 'NotImplemented'
+
+    __str__ = __repr__
+
+
+NotImplemented = NotImplementedType()
+
+
 def ρσ_operator_add(left: Any, right: Any) -> Any:
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
@@ -205,9 +216,13 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('add', left, right)
     if _builtins_member_is_function(left, '__add__'):
-        return _builtins_call_member(left, '__add__', [right])
+        result = _builtins_call_member(left, '__add__', [right])
+        if result is not NotImplemented:
+            return result
     if _builtins_member_is_function(right, '__radd__'):
-        return _builtins_call_member(right, '__radd__', [left])
+        result = _builtins_call_member(right, '__radd__', [left])
+        if result is not NotImplemented:
+            return result
     if (
         _builtins_member_is_function(left, 'concat')
         and (
@@ -228,9 +243,13 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('add', left, right)
     if _builtins_special_is_function(left, '__add__'):
-        return _builtins_call_special(left, '__add__', [right])
+        result = _builtins_call_special(left, '__add__', [right])
+        if result is not NotImplemented:
+            return result
     if _builtins_special_is_function(right, '__radd__'):
-        return _builtins_call_special(right, '__radd__', [left])
+        result = _builtins_call_special(right, '__radd__', [left])
+        if result is not NotImplemented:
+            return result
     if (
         _builtins_member_is_function(left, 'concat')
         and (
@@ -384,9 +403,15 @@ def _builtins_rich_compare(
         'ge': '__le__',
     }[operation]
     if _builtins_member_is_function(left, left_method):
-        return _builtins_call_member(left, left_method, [right])
+        result = _builtins_call_member(
+            left, left_method, [right])
+        if result is not NotImplemented:
+            return result
     if _builtins_member_is_function(right, right_method):
-        return _builtins_call_member(right, right_method, [left])
+        result = _builtins_call_member(
+            right, right_method, [left])
+        if result is not NotImplemented:
+            return result
 
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
@@ -451,15 +476,37 @@ def ρσ_operator_sub(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('sub', left, right)
     if _builtins_member_is_function(left, '__sub__'):
-        return _builtins_call_member(left, '__sub__', [right])
+        result = _builtins_call_member(left, '__sub__', [right])
+        if result is not NotImplemented:
+            return result
+    if _builtins_member_is_function(right, '__rsub__'):
+        result = _builtins_call_member(right, '__rsub__', [left])
+        if result is not NotImplemented:
+            return result
+    if (
+        runtime.strict_equal(runtime.jstype(left), 'object')
+        or runtime.strict_equal(runtime.jstype(right), 'object')
+    ):
+        raise TypeError('unsupported operand type(s) for -')
     return runtime.native_sub(left, right)
 
 
 def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('sub', left, right)
-    if _builtins_member_is_function(left, '__sub__'):
-        return _builtins_call_member(left, '__sub__', [right])
+    if _builtins_special_is_function(left, '__sub__'):
+        result = _builtins_call_special(left, '__sub__', [right])
+        if result is not NotImplemented:
+            return result
+    if _builtins_special_is_function(right, '__rsub__'):
+        result = _builtins_call_special(right, '__rsub__', [left])
+        if result is not NotImplemented:
+            return result
+    if (
+        runtime.strict_equal(runtime.jstype(left), 'object')
+        or runtime.strict_equal(runtime.jstype(right), 'object')
+    ):
+        raise TypeError('unsupported operand type(s) for -')
     if (
         runtime.strict_equal(runtime.jstype(left), 'bigint')
         or runtime.strict_equal(runtime.jstype(right), 'bigint')
