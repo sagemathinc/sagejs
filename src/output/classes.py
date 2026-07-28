@@ -1,6 +1,6 @@
 from __python__ import hash_literals
 
-from ast_types import AST_Class, AST_Method, is_node_type
+from ast_types import AST_Class, AST_Method, AST_SymbolRef, is_node_type
 from output.functions import decorate, function_definition, function_annotation
 from output.utils import create_doctring
 from utils import has_prop
@@ -10,6 +10,14 @@ def print_class(output):
     self = this
     if self.external:
         return
+    native_storage_parent = None
+    if (
+        is_node_type(self.parent, AST_SymbolRef)
+        and self.parent.name in [
+            'dict', 'list', 'map', 'str',
+            'ρσ_dict', 'ρσ_list_constructor', 'ρσ_str']
+    ):
+        native_storage_parent = self.parent.name
 
     def class_def(method, is_var):
         output.indent()
@@ -125,6 +133,72 @@ def print_class(output):
             self.name.print(output)
             output.print(', arguments)')
             output.end_statement()
+            if native_storage_parent:
+                output.indent()
+                if native_storage_parent in (
+                    'list', 'ρσ_list_constructor'
+                ):
+                    output.print('if (!Array.isArray(this))')
+                elif native_storage_parent in ('str', 'ρσ_str'):
+                    output.print(
+                        'if (Object.prototype.toString.call(this)'
+                        ' !== "[object String]")')
+                elif native_storage_parent == 'map':
+                    output.print(
+                        'if (this.ρσ_native_map_subclass !== true)')
+                else:
+                    output.print(
+                        'if (this.jsmap === undefined'
+                        ' || this.keymap === undefined)')
+
+                def f_native_storage():
+                    output.indent()
+                    output.print('var ρσ_native_instance = ')
+                    if native_storage_parent in ('str', 'ρσ_str'):
+                        output.print(
+                            'Reflect.construct('
+                            'String, arguments, ')
+                        self.name.print(output)
+                        output.print(')')
+                    elif native_storage_parent == 'map':
+                        output.print(
+                            'map.apply(undefined, arguments)')
+                    else:
+                        self.parent.print(output)
+                        output.print('()')
+                    output.end_statement()
+                    if native_storage_parent == 'map':
+                        output.indent()
+                        output.print(
+                            'Object.setPrototypeOf('
+                            'map.prototype, '
+                            'Object.getPrototypeOf('
+                            'ρσ_native_instance))')
+                        output.end_statement()
+                        output.indent()
+                        output.print(
+                            'Object.defineProperty('
+                            'ρσ_native_instance, '
+                            '"ρσ_native_map_subclass", '
+                            '{value: true})')
+                        output.end_statement()
+                    output.indent()
+                    output.print(
+                        'Object.setPrototypeOf('
+                        'ρσ_native_instance, ')
+                    self.name.print(output)
+                    output.print('.prototype)')
+                    output.end_statement()
+                    output.indent()
+                    self.name.print(output)
+                    output.print(
+                        '.apply(ρσ_native_instance, arguments)')
+                    output.end_statement()
+                    output.indent()
+                    output.print('return ρσ_native_instance')
+                    output.end_statement()
+
+                output.with_block(f_native_storage)
             if not self.lightweight:
                 output.indent()
                 output.spaced('if', '(this.ρσ_object_id', '===', 'undefined)',
@@ -359,7 +433,10 @@ def print_class(output):
         output.print('ρσ_python_iterator_next')
         output.end_statement()
 
-    if not defined_methods['__repr__']:
+    native_list_parent = native_storage_parent in (
+        'list', 'ρσ_list_constructor')
+
+    if not defined_methods['__repr__'] and not native_list_parent:
 
         def f_repr():
             if self.parent:
@@ -375,7 +452,10 @@ def print_class(output):
 
         define_default_method('__repr__', f_repr)
 
-    if not defined_methods['__str__']:
+    if (
+        not defined_methods['__str__']
+        and (not native_list_parent or defined_methods['__repr__'])
+    ):
 
         def f_str():
             if self.parent:

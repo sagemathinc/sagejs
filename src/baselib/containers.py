@@ -49,6 +49,38 @@ def _get_member(value: Any, name: str) -> Any:
 def equals(left: Any, right: Any) -> bool:
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
+    if (
+        runtime.strict_equal(left_type, 'object')
+        and runtime.reflect.apply(
+            runtime.object.prototype.toString,
+            left,
+            [],
+        ) == '[object String]'
+        and runtime.object.getPrototypeOf(left)
+        is not runtime.string_class.prototype
+    ):
+        left = runtime.reflect.apply(
+            runtime.string_class.prototype.valueOf,
+            left,
+            [],
+        )
+        left_type = 'string'
+    if (
+        runtime.strict_equal(right_type, 'object')
+        and runtime.reflect.apply(
+            runtime.object.prototype.toString,
+            right,
+            [],
+        ) == '[object String]'
+        and runtime.object.getPrototypeOf(right)
+        is not runtime.string_class.prototype
+    ):
+        right = runtime.reflect.apply(
+            runtime.string_class.prototype.valueOf,
+            right,
+            [],
+        )
+        right_type = 'string'
     if runtime.strict_equal(left_type, 'boolean'):
         left = 1 if left else 0
         left_type = 'number'
@@ -196,6 +228,16 @@ def _list_extend(self: Any, iterable: Any) -> None:
         return
     for value in iterable:
         self.push(value)
+
+
+@runtime.native_method
+def _list_init(
+    self: Any,
+    iterable: Any = runtime.undefined,
+) -> None:
+    self.length = 0
+    if iterable is not runtime.undefined:
+        runtime.reflect.apply(_list_extend, self, [iterable])
 
 
 @runtime.native_method
@@ -383,6 +425,7 @@ def _list_prototype() -> Any:
         prototype.append = runtime.array.prototype.push
         prototype.toString = _list_to_string
         prototype.inspect = _list_to_string
+        prototype.__init__ = _list_init
         prototype.extend = _list_extend
         prototype.index = _list_index
         prototype.pop = _list_pop

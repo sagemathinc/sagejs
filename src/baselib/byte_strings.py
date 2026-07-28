@@ -145,6 +145,8 @@ def _normalise_bound(
 class SageBytes:
 
     def __init__(self, values: list[_Int]) -> None:
+        if isinstance(values, SageBytes):
+            values = values._values[:]
         self._values = values
         for index, value in enumerate(values):
             runtime.object.defineProperty(

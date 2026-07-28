@@ -62,8 +62,8 @@ def _repr_js_builtin(value: Any, as_array: bool = False) -> _Str:
     entries = []
     brackets = '[]' if as_array else '{}'
     if as_array:
-        for item in value:
-            entries.append(ρσ_repr(item))
+        for index in range(value.length):
+            entries.append(ρσ_repr(value[index]))
     else:
         for key in runtime.object.keys(value):
             entries.append(ρσ_repr(key) + ': ' + ρσ_repr(value[key]))

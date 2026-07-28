@@ -61,8 +61,8 @@ def ρσ_python_iterator_next(self: Any) -> Any:
         )
         runtime.reflect.set(result, 'value', value)
         runtime.reflect.set(result, 'done', False)
-    except StopIteration:
-        runtime.reflect.set(result, 'value', runtime.undefined)
+    except StopIteration as error:
+        runtime.reflect.set(result, 'value', error.value)
         runtime.reflect.set(result, 'done', True)
     return result
 
@@ -636,11 +636,20 @@ def ρσ_interpolate_kwargs_constructor(
     supplied_args: Any,
 ) -> Any:
     if use_apply:
-        runtime.reflect.apply(
+        result = runtime.reflect.apply(
             target_function, receiver, supplied_args)
     else:
-        ρσ_interpolate_kwargs(
+        result = ρσ_interpolate_kwargs(
             receiver, target_function, supplied_args)
+    if (
+        result is not None
+        and result is not runtime.undefined
+        and (
+            runtime.strict_equal(runtime.jstype(result), 'object')
+            or runtime.strict_equal(runtime.jstype(result), 'function')
+        )
+    ):
+        return result
     return receiver
 
 
@@ -651,11 +660,20 @@ def ρσ_interpolate_kwargs_constructor_legacy(
     supplied_args: Any,
 ) -> Any:
     if use_apply:
-        runtime.reflect.apply(
+        result = runtime.reflect.apply(
             target_function, receiver, supplied_args)
     else:
-        ρσ_interpolate_kwargs_legacy(
+        result = ρσ_interpolate_kwargs_legacy(
             receiver, target_function, supplied_args)
+    if (
+        result is not None
+        and result is not runtime.undefined
+        and (
+            runtime.strict_equal(runtime.jstype(result), 'object')
+            or runtime.strict_equal(runtime.jstype(result), 'function')
+        )
+    ):
+        return result
     return receiver
 
 
@@ -883,6 +901,19 @@ def ρσ_mixin(*classes: Any) -> None:
 
     resolved_properties = {}
     target = classes[0].prototype
+    primary_prototype = runtime.object.getPrototypeOf(target)
+    python_type_prototype = _internal_get_member(type, 'prototype')
+    for class_index in range(1, len(classes)):
+        secondary_prototype = _internal_get_member(
+            classes[class_index], 'prototype')
+        if secondary_prototype is runtime.undefined:
+            raise TypeError('bases must be types')
+        if (
+            classes[class_index] is runtime.tuple_builtin
+            and primary_prototype is python_type_prototype
+        ):
+            raise TypeError(
+                'multiple bases have instance lay-out conflict')
 
     def tuple_mixin_initializer(
         tuple_initializer: Any,
@@ -898,6 +929,7 @@ def ρσ_mixin(*classes: Any) -> None:
 
         return runtime.native_method(initialize_tuple_mixin)
 
+    mixed_tuple_secondary = False
     for class_index in range(1, len(classes)):
         if classes[class_index] is not runtime.tuple_builtin:
             continue
@@ -905,7 +937,34 @@ def ρσ_mixin(*classes: Any) -> None:
         original_initializer = target.__init__
         target.__init__ = tuple_mixin_initializer(
             tuple_initializer, original_initializer)
+        mixed_tuple_secondary = True
         break
+    if not mixed_tuple_secondary:
+        prototype = target
+        tuple_prototype = runtime.reflect.get(
+            runtime.tuple_builtin, 'prototype')
+        primary_is_tuple = False
+        while prototype and prototype is not runtime.object.prototype:
+            if prototype is tuple_prototype:
+                primary_is_tuple = True
+                break
+            prototype = runtime.object.getPrototypeOf(prototype)
+        if primary_is_tuple:
+            for class_index in range(1, len(classes)):
+                secondary_initializer = runtime.reflect.get(
+                    runtime.reflect.get(
+                        classes[class_index], 'prototype'),
+                    '__init__',
+                )
+                if runtime.strict_equal(
+                    runtime.jstype(secondary_initializer),
+                    'function',
+                ):
+                    target.__init__ = tuple_mixin_initializer(
+                        target.__init__,
+                        secondary_initializer,
+                    )
+                    break
 
     prototype = target
     while prototype and prototype is not runtime.object.prototype:
