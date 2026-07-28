@@ -25,6 +25,7 @@ def print_class(output):
 
     def define_method(stmt, is_property):
         name = stmt.name.name
+        javascript_name = 'ρσ_method_' + name
         if not is_property:
             class_def(name)
         # only strip first argument if the method is static
@@ -35,10 +36,22 @@ def print_class(output):
         if stmt.decorators and stmt.decorators.length:
             decorate(
                 stmt.decorators, output,
-                lambda: function_definition(stmt, output, strip_first, True))
+                lambda: function_definition(
+                    stmt,
+                    output,
+                    strip_first,
+                    True,
+                    javascript_name,
+                ))
             output.end_statement()
         else:
-            function_definition(stmt, output, strip_first)
+            function_definition(
+                stmt,
+                output,
+                strip_first,
+                False,
+                javascript_name,
+            )
             if not is_property:
                 output.end_statement()
                 fname = self.name.name + ('.' if is_static else
@@ -321,12 +334,16 @@ def print_class(output):
 
     # Multiple inheritance
     def f_basis():
+        if output.options.python_tuples:
+            output.print('ρσ_math_tuple(')
         output.print('[')
         for i in range(len(self.bases)):
             self.bases[i].print(output)
             if i < self.bases.length - 1:
                 output.comma()
         output.print(']')
+        if output.options.python_tuples:
+            output.print(')')
 
     add_hidden_property('__bases__', f_basis)
     add_hidden_class_property('__bases__', f_basis)

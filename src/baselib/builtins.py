@@ -1789,9 +1789,39 @@ def ρσ_type(value: Any) -> Any:
         return ρσ_bool
     if runtime.strict_equal(value_type, 'string'):
         return runtime.string_builtin
+    if runtime.array.isArray(value):
+        if runtime.object.isFrozen(value):
+            return ρσ_tuple
+        return runtime.list_constructor
+    python_type = _builtins_get_member(value, '__python_type__')
+    if runtime.strict_equal(
+        runtime.jstype(python_type), 'function'
+    ):
+        return python_type
     if _builtins_is_python_class(value):
         return ρσ_type
     return _builtins_get_member(value, 'constructor')
+
+
+def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
+    if runtime.array.isArray(candidates):
+        for candidate in candidates:
+            if ρσ_issubclass(cls, candidate):
+                return True
+        return False
+    if (
+        not runtime.strict_equal(runtime.jstype(cls), 'function')
+        or not runtime.strict_equal(
+            runtime.jstype(candidates), 'function')
+    ):
+        raise TypeError('issubclass() arg 1 must be a class')
+    return (
+        cls is candidates
+        or runtime.instance_of(
+            runtime.reflect.get(cls, 'prototype'),
+            candidates,
+        )
+    )
 
 
 def ρσ_divmod(left: Any, right: Any) -> Any:
@@ -1934,6 +1964,8 @@ runtime.set_class_repr(ρσ_int, "<class 'int'>")
 runtime.set_class_repr(ρσ_bool, "<class 'bool'>")
 runtime.set_class_repr(ρσ_float, "<class 'float'>")
 runtime.set_class_repr(ρσ_type, "<class 'type'>")
+runtime.set_class_repr(ρσ_tuple, "<class 'tuple'>")
+runtime.set_class_repr(runtime.list_constructor, "<class 'list'>")
 runtime.set_class_repr(runtime.string_builtin, "<class 'str'>")
 
 
@@ -1962,6 +1994,18 @@ runtime.reflect.set(
     ),
 )
 runtime.set_class_repr(SageObject, "<class 'object'>")
+_object_bases = runtime.object.freeze(
+    runtime.object.keys(runtime.object.create(None)))
+runtime.reflect.set(
+    SageObject,
+    '__bases__',
+    _object_bases,
+)
+runtime.reflect.set(
+    runtime.reflect.get(SageObject, 'prototype'),
+    '__bases__',
+    _object_bases,
+)
 runtime.reflect.set(runtime.global_object, 'object', SageObject)
 hex = ρσ_hex
 oct = ρσ_oct
@@ -1969,6 +2013,7 @@ hash = ρσ_hash
 callable = ρσ_callable
 enumerate = ρσ_enumerate
 tuple = ρσ_tuple
+issubclass = ρσ_issubclass
 iter = ρσ_iter
 next = ρσ_next
 reversed = ρσ_reversed

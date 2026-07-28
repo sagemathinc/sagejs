@@ -87,7 +87,11 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
     offset = 0
     # argument offset
     # this is a method, add 'var self = this'
-    if is_node_type(node, AST_Method) and not node.static:
+    if (
+        is_node_type(node, AST_Method)
+        and not node.static
+        and node.argnames.length
+    ):
         output.indent()
         output.print("var")
         output.space()

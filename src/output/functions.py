@@ -47,12 +47,15 @@ def function_args(argnames, output, strip_first):
     output.space()
 
 
-def function_preamble(node, output, offset):
+def function_preamble(node, output, offset, javascript_name):
     a = node.argnames
     if not a or a.is_simple_func:
         return
     # If this function has optional parameters/*args/**kwargs declare it differently
-    fname = node.name.name if node.name else anonfunc
+    fname = (
+        javascript_name
+        or (node.name.name if node.name else anonfunc)
+    )
     kw = 'arguments[arguments.length-1]'
     # Define all formal parameters
     for c, arg in enumerate(a):
@@ -254,7 +257,13 @@ def function_annotation(self, output, strip_first, name):
     output.end_statement()
 
 
-def function_definition(self, output, strip_first, as_expression):
+def function_definition(
+    self,
+    output,
+    strip_first,
+    as_expression,
+    javascript_name,
+):
     as_expression = as_expression or self.is_expression or self.is_anonymous
     if as_expression:
         orig_indent = output.indentation()
@@ -263,7 +272,18 @@ def function_definition(self, output, strip_first, as_expression):
         output.indent(), output.spaced('var', anonfunc, '='), output.space()
     output.print("function"), output.space()
     if self.name:
-        self.name.print(output)
+        if javascript_name:
+            output.print_name(javascript_name)
+        else:
+            self.name.print(output)
+
+    def output_function_preamble(node, output, offset):
+        function_preamble(
+            node,
+            output,
+            offset,
+            javascript_name,
+        )
 
     if self.is_generator:
         output.print('()'), output.space()
@@ -272,7 +292,12 @@ def function_definition(self, output, strip_first, as_expression):
             output.indent()
             output.print('function* js_generator')
             function_args(self.argnames, output, strip_first)
-            print_bracketed(self, output, True, function_preamble)
+            print_bracketed(
+                self,
+                output,
+                True,
+                output_function_preamble,
+            )
 
             output.newline()
             output.indent()
@@ -330,7 +355,7 @@ def function_definition(self, output, strip_first, as_expression):
             self,
             output,
             True,
-            function_preamble,
+            output_function_preamble,
             None,
             python_implicit_return,
         )

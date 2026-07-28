@@ -876,8 +876,19 @@ runtime.reflect.set(
     'prototype',
     runtime.reflect.get(SageDict, 'prototype'),
 )
-
+runtime.reflect.set(
+    runtime.reflect.get(SageDict, 'prototype'),
+    '__python_type__',
+    ρσ_dict,
+)
+runtime.reflect.set(
+    runtime.reflect.get(SageSet, 'prototype'),
+    '__python_type__',
+    ρσ_set,
+)
 list_constructor = ρσ_list_constructor
+runtime.set_class_repr(ρσ_dict, "<class 'dict'>")
+runtime.set_class_repr(ρσ_set, "<class 'set'>")
 list_decorate = ρσ_list_decorate
 list = ρσ_list_constructor
 list_wrap = ρσ_list_decorate
