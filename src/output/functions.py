@@ -368,6 +368,16 @@ def function_annotation(self, output, strip_first, name):
         props[name]()  # calling this prints it out
         output.end_statement()
 
+    if not compiling_baselib and module_name != 'null':
+        output.print('Object.defineProperty(' + fname)
+        output.comma()
+        output.print('"__globals__"')
+        output.comma()
+        output.print('{value:ρσ_live_scope_dict(ρσ_modules[')
+        output.print(module_name)
+        output.print(']),writable:false})')
+        output.end_statement()
+
     output.print(
         "undefined"
     )  # so defining function in repl doesn't print out last assignment above.
@@ -596,6 +606,12 @@ def print_function_call(self, output):
                 if index:
                     output.comma()
                 output.print(JSON.stringify(name))
+            output.print('])')
+            return
+
+        if want_globals:
+            output.print('ρσ_live_scope_dict(ρσ_modules[')
+            output.print(JSON.stringify(scope.module_id))
             output.print('])')
             return
 

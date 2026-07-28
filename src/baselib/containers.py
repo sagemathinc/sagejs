@@ -1272,6 +1272,167 @@ class SageDict:
         return answer
 
 
+class _LiveScopeDict(SageDict):
+    """A Python dictionary view over a compiled module namespace."""
+
+    def __init__(self, scope: Any) -> None:
+        SageDict.__init__(self)
+        self._scope = scope
+        self._exports_to_global = (
+            runtime.reflect.get(scope, '__name__') == '__main__'
+        )
+
+    def _refresh(self) -> None:
+        self.jsmap.clear()
+        self.keymap.clear()
+        for key in runtime.object.keys(self._scope):
+            value = runtime.reflect.get(self._scope, key)
+            if value is not runtime.undefined:
+                SageDict.__setitem__(self, key, value)
+
+    @property
+    def length(self) -> int:
+        self._refresh()
+        return self.jsmap.size
+
+    @property
+    def size(self) -> int:
+        self._refresh()
+        return self.jsmap.size
+
+    def __len__(self) -> int:
+        self._refresh()
+        return self.jsmap.size
+
+    def __contains__(self, key: Any) -> bool:
+        self._refresh()
+        return SageDict.__contains__(self, key)
+
+    has = __contains__
+
+    def __iter__(self) -> Any:
+        self._refresh()
+        return SageDict.__iter__(self)
+
+    def __getitem__(self, key: Any) -> Any:
+        self._refresh()
+        return SageDict.__getitem__(self, key)
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        if not runtime.strict_equal(runtime.jstype(key), 'string'):
+            raise TypeError('globals dictionary keys must be strings')
+        runtime.reflect.set(self._scope, key, value)
+        if self._exports_to_global:
+            runtime.reflect.set(runtime.global_object, key, value)
+        SageDict.__setitem__(self, key, value)
+
+    set = __setitem__
+
+    def __delitem__(self, key: Any) -> None:
+        self._refresh()
+        if not SageDict.__contains__(self, key):
+            raise KeyError(key)
+        descriptor = runtime.object.getOwnPropertyDescriptor(
+            self._scope, key)
+        if (
+            descriptor is not runtime.undefined
+            and runtime.strict_equal(
+                runtime.jstype(
+                    runtime.reflect.get(descriptor, 'set')),
+                'function',
+            )
+        ):
+            runtime.reflect.set(
+                self._scope, key, runtime.undefined)
+        else:
+            runtime.reflect.deleteProperty(self._scope, key)
+        if self._exports_to_global:
+            runtime.reflect.deleteProperty(
+                runtime.global_object, key)
+        SageDict.__delitem__(self, key)
+
+    def clear(self) -> None:
+        for key in list(self.keys()):
+            self.__delitem__(key)
+
+    def copy(self) -> SageDict:
+        self._refresh()
+        return SageDict.copy(self)
+
+    def keys(self) -> Any:
+        self._refresh()
+        return SageDict.keys(self)
+
+    def values(self) -> Any:
+        self._refresh()
+        return SageDict.values(self)
+
+    def items(self) -> Any:
+        self._refresh()
+        return SageDict.items(self)
+
+    entries = items
+
+    def get(
+        self,
+        key: Any,
+        default_value: Any = runtime.undefined,
+    ) -> Any:
+        self._refresh()
+        return SageDict.get(self, key, default_value)
+
+    def setdefault(
+        self,
+        key: Any,
+        default_value: Any = None,
+    ) -> Any:
+        self._refresh()
+        if SageDict.__contains__(self, key):
+            return SageDict.__getitem__(self, key)
+        self.__setitem__(key, default_value)
+        return default_value
+
+    def pop(
+        self,
+        key: Any,
+        default_value: Any = runtime.undefined,
+    ) -> Any:
+        self._refresh()
+        if not SageDict.__contains__(self, key):
+            if default_value is runtime.undefined:
+                raise KeyError(key)
+            return default_value
+        answer = SageDict.__getitem__(self, key)
+        self.__delitem__(key)
+        return answer
+
+    def popitem(self) -> Any:
+        self._refresh()
+        result = self.jsmap.entries().next()
+        if result.done:
+            raise KeyError('dict is empty')
+        key = self.keymap.get(result.value[0])
+        value = result.value[1]
+        self.__delitem__(key)
+        return runtime.math_tuple([key, value])
+
+    def __repr__(self) -> str:
+        self._refresh()
+        return SageDict.__repr__(self)
+
+    __str__ = __repr__
+    toString = __repr__
+    inspect = __repr__
+
+    def __eq__(self, other: object) -> bool:
+        self._refresh()
+        return SageDict.__eq__(self, other)
+
+    def as_object(self) -> Any:
+        self._refresh()
+        return SageDict.as_object(self)
+
+
 def ρσ_dict(
     iterable: Any = runtime.undefined,
     **keywords: Any,
@@ -1284,6 +1445,20 @@ def ρσ_scope_dict(values: Any) -> SageDict:
     for key in runtime.object.keys(values):
         if values[key] is not runtime.undefined:
             answer.__setitem__(key, values[key])
+    return answer
+
+
+def ρσ_live_scope_dict(scope: Any) -> SageDict:
+    cache_name = '__sagejs_live_scope_dict__'
+    cached = runtime.reflect.get(scope, cache_name)
+    if cached is not runtime.undefined:
+        return cached
+    answer = _LiveScopeDict(scope)
+    runtime.object.defineProperty(
+        scope,
+        cache_name,
+        {'value': answer},
+    )
     return answer
 
 

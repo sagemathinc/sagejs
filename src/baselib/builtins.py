@@ -2813,7 +2813,9 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         if _builtins_member_is_function(member, '__set_name__'):
             _builtins_call_member(
                 member, '__set_name__', [value, name])
-    runtime.reflect.set(value, name, member)
+    if not runtime.reflect.set(value, name, member):
+        raise AttributeError(
+            "object attribute '" + name + "' is read-only")
 
 
 def ρσ_delattr(value: Any, name: _Str) -> None:

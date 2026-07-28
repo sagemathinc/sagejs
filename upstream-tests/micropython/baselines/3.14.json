@@ -325,7 +325,7 @@
     "fun_defargs2.py": "pass",
     "fun_error.py": "pass",
     "fun_error2.py": "pass",
-    "fun_globals.py": "output-mismatch",
+    "fun_globals.py": "pass",
     "fun_kwargs.py": "pass",
     "fun_kwonly.py": "pass",
     "fun_kwonlydef.py": "pass",

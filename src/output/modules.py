@@ -171,13 +171,14 @@ def bind_module_namespace(module, output):
     output.end_statement()
 
     output.indent()
+    output.print('Object.defineProperty(')
     if module_id.indexOf('.') is -1:
         output.print('ρσ_modules.' + module_id)
     else:
         output.print('ρσ_modules["' + module_id + '"]')
-    output.print('.__repr__ = function(){return ')
+    output.print(',"__repr__",{value:function(){return ')
     output.print(JSON.stringify("<module '" + module_id + "'>"))
-    output.print('}')
+    output.print('}})')
     output.end_statement()
 
 
