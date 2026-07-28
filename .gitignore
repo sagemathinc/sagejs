@@ -4,6 +4,7 @@ dist
 *.tsbuildinfo
 *.term
 *.term.init
+*.tasks
 *.chat
 *.wasm
 bench/.native-kernel-cache
