@@ -1,5 +1,12 @@
 # globals: exports, console, require, BigInt, ρσ_iterator_symbol, ρσ_kwargs_symbol, ρσ_arraylike, ρσ_list_contains
 
+
+def ρσ_bigint_divexact(numerator, denominator):
+    # JavaScript BigInt division truncates toward zero. Algebra uses this only
+    # for exact quotients and Euclidean-algorithm quotient steps.
+    return v'numerator / denominator'
+
+
 def abs(a):
     if jstype(a) is 'bigint':
         return v'a < 0n ? -a : a'

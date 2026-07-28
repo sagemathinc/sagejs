@@ -171,6 +171,13 @@ def write_smart_equality(self, output):
             ','), output.space(), self.right.print(output), output.print(')')
 
 
+def is_native_typeof(node):
+    return (
+        is_node_type(node, AST_Unary)
+        and node.operator is 'typeof'
+    )
+
+
 comparators = {
     "<": True,
     ">": True,
@@ -241,6 +248,18 @@ def print_binary_op(self, output):
         output.comma()
         self.right.print(output)
         output.print(')')
+    elif (
+        (self.operator is '==' or self.operator is '!=')
+        and (
+            is_native_typeof(self.left)
+            or is_native_typeof(self.right)
+        )
+    ):
+        self.left.print(output)
+        output.space()
+        output.print('===' if self.operator is '==' else '!==')
+        output.space()
+        self.right.print(output)
     elif self.operator is '==' or self.operator is '!=':
         write_smart_equality(self, output)
     elif self.operator is 'instanceof':

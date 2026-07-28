@@ -6,8 +6,9 @@ lowered directly to their corresponding runtime globals.  These assignments
 are the bootstrap implementation used by older checked-in compilers.
 """
 
-# globals: Array, BigInt, Element, Error, Map, Number, Object, QQ
-# globals: ReferenceError, Reflect, RegExp
+# globals: Array, BigInt, Element, Error, Map, Number, Object, PolynomialRing
+# globals: QQ, Rational, ReferenceError, Reflect, RegExp, String
+# globals: ZeroDivisionError, require
 # globals: ρσ_bigint_divexact, ρσ_bigint_gcd
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
@@ -44,6 +45,7 @@ is_exact_integer = ρσ_is_exact_integer
 iterator_symbol = ρσ_iterator_symbol
 kwargs_symbol = ρσ_kwargs_symbol
 lightweight_math_class = ρσ_lightweight_math_class
+map_class = Map
 math_tuple = ρσ_math_tuple
 modular_inverse = ρσ_modular_inverse
 modular_power = ρσ_modular_power
@@ -53,13 +55,18 @@ object = Object
 operator_add_exact = ρσ_operator_add_exact
 operator_mul_exact = ρσ_operator_mul_exact
 operator_pow_exact = ρσ_operator_pow_exact
+polynomial_ring = PolynomialRing
 qq = QQ
+rational_class = Rational
 reflect = Reflect
 reference_error = ReferenceError
 regexp = RegExp
+require_module = require
 repr = ρσ_repr
 sequence_class = ρσ_sequence_class
 set_class_repr = ρσ_set_class_repr
 string_find = ρσ_string_find
+string_class = String
 string = ρσ_string_primitive
 undefined = r"%js undefined"
+zero_division_error = ZeroDivisionError

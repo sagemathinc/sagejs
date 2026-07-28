@@ -4,13 +4,20 @@ _Class = TypeVar("_Class", bound=type[Any])
 
 
 class _Array:
+    prototype: Any
+
     @staticmethod
     def isArray(value: object) -> bool: ...
 
 
 class _Number:
+    MAX_SAFE_INTEGER: int
+    MIN_SAFE_INTEGER: int
+
     @staticmethod
     def isSafeInteger(value: object) -> bool: ...
+
+    def __call__(self, value: object) -> Any: ...
 
 
 class _Object:
@@ -26,7 +33,17 @@ class _Object:
 
 class _Reflect:
     @staticmethod
+    def apply(
+        function: Any,
+        receiver: Any,
+        arguments: list[Any],
+    ) -> Any: ...
+
+    @staticmethod
     def construct(constructor: Any, arguments: list[Any]) -> Any: ...
+
+    @staticmethod
+    def get(target: Any, property_name: str) -> Any: ...
 
 
 class _Element:
@@ -47,12 +64,17 @@ element: type[_Element]
 error: type[_Error]
 number: _Number
 object: _Object
+map_class: Any
+polynomial_ring: Any
 qq: Any
+rational_class: Any
 reflect: _Reflect
 reference_error: type[_Error]
+string_class: Any
 undefined: Any
 coercion_model: Any
 kwargs_symbol: Any
+zero_division_error: Any
 
 
 def bigint(value: object) -> int: ...
@@ -77,6 +99,7 @@ def operator_add_exact(left: Any, right: Any) -> Any: ...
 def operator_mul_exact(left: Any, right: Any) -> Any: ...
 def operator_pow_exact(left: Any, right: Any) -> Any: ...
 def regexp(pattern: str, flags: str | None = ...) -> Any: ...
+def require_module(name: str) -> Any: ...
 def repr(value: object) -> str: ...
 def sequence_class(cls: _Class) -> _Class: ...
 def set_class_repr(cls: type[Any], text: str) -> None: ...

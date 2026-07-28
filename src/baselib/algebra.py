@@ -1,413 +1,634 @@
 # A deliberately small mathematical parent and coercion kernel.
 #
 # The semantics are adapted from SageMath's parent/coercion model, but this is
-# a new, explicit implementation for the JavaScript runtime.  In particular,
-# binary arithmetic resolves both operands to a common parent rather than
-# relying on Python's __add__/__radd__ fallback protocol.
+# a new, explicit implementation for the JavaScript runtime. Binary arithmetic
+# resolves both operands to a common parent instead of relying on reflected
+# Python operators.
 #
 # Copyright (C) 2026 Sage.js contributors
 # License: GPL-3.0-only
 
-# The v-string below is emitted as literal JavaScript.  This low-level runtime
-# kernel intentionally uses the same function/prototype representation as the
-# existing Parent, Element, and compiler-generated Python class machinery.
-# Higher-level mathematical library code should normally be written in
-# Sage.js/Python syntax rather than added here as raw JavaScript.
-v"""
-function ρσ_is_exact_integer(value) {
-    return typeof value === "bigint" ||
-        (typeof value === "number" && Number.isSafeInteger(value));
-}
+from __future__ import annotations
 
-function ρσ_normalize_integer(value) {
-    if (!ρσ_is_exact_integer(value)) {
-        throw new TypeError("expected an exact integer");
-    }
-    if (typeof value === "number") {
-        return value;
-    }
-    if (value <= BigInt(Number.MAX_SAFE_INTEGER) &&
-            value >= BigInt(Number.MIN_SAFE_INTEGER)) {
-        return Number(value);
-    }
-    return value;
-}
+from typing import Any, Callable
 
-function ρσ_integer_bigint(value) {
-    if (!ρσ_is_exact_integer(value)) {
-        throw new TypeError("expected an exact integer");
-    }
-    return BigInt(value);
-}
+import sagejs.runtime as runtime
 
-function ρσ_new_map() {
-    return new Map();
-}
 
-function ρσ_string_primitive(value) {
-    return String(value);
-}
+def is_exact_integer(value: object) -> bool:
+    return (
+        runtime.jstype(value) == 'bigint'
+        or (
+            runtime.jstype(value) == 'number'
+            and runtime.number.isSafeInteger(value)
+        )
+    )
 
-function ρσ_string_find(value, needle) {
-    return value.indexOf(needle);
-}
 
-function ρσ_bigint_gcd(a, b) {
-    if (a < 0n) a = -a;
-    if (b < 0n) b = -b;
-    while (b !== 0n) {
-        const remainder = a % b;
-        a = b;
-        b = remainder;
-    }
-    return a;
-}
+def normalize_integer(value: Any) -> Any:
+    if not is_exact_integer(value):
+        raise TypeError('expected an exact integer')
+    if runtime.jstype(value) == 'number':
+        return value
+    if (
+        value <= runtime.bigint(runtime.number.MAX_SAFE_INTEGER)
+        and value >= runtime.bigint(runtime.number.MIN_SAFE_INTEGER)
+    ):
+        return runtime.number(value)
+    return value
 
-function ρσ_bigint_divexact(numerator, denominator) {
-    return numerator / denominator;
-}
 
-function Parent(name) {
-    this._name = name;
-}
+def integer_bigint(value: object) -> int:
+    if not is_exact_integer(value):
+        raise TypeError('expected an exact integer')
+    return runtime.bigint(value)
 
-Parent.prototype.__repr__ = function() {
-    return this._name;
-};
-Parent.prototype.__str__ = Parent.prototype.__repr__;
-Parent.prototype.toString = Parent.prototype.__repr__;
-Parent.prototype.__getitem__ = function(variable) {
-    return PolynomialRing(this, variable);
-};
-Object.defineProperty(Parent, "__repr__", {
-    value: function() { return "<class 'Parent'>"; }
-});
 
-function Element(parent) {
-    this._parent = parent;
-}
+def new_map() -> Any:
+    return runtime.reflect.construct(runtime.map_class, [])
 
-Element.prototype.parent = function() {
-    return this._parent;
-};
-Object.defineProperty(Element, "__repr__", {
-    value: function() { return "<class 'Element'>"; }
-});
 
-function ρσ_make_parent(name, elementConstructor) {
-    function callableParent() {
-        return elementConstructor.apply(callableParent, arguments);
-    }
-    Object.setPrototypeOf(callableParent, Parent.prototype);
-    Parent.call(callableParent, name);
-    return callableParent;
-}
+def string_primitive(value: object) -> str:
+    return runtime.reflect.apply(
+        runtime.string_class, runtime.undefined, [value])
 
-var ZZ = ρσ_make_parent("Integer Ring", function(value) {
-    return ρσ_normalize_integer(value);
-});
 
-Object.defineProperty(ZZ, "_kind", {value: "ZZ"});
+def string_find(value: str, needle: str) -> int:
+    return runtime.reflect.apply(
+        runtime.string_class.prototype.indexOf,
+        value,
+        [needle],
+    )
 
-var QQ = ρσ_make_parent("Rational Field", function(numerator, denominator) {
-    if (numerator instanceof Rational && denominator === undefined) {
-        return numerator;
-    }
-    return new Rational(numerator, denominator);
-});
-Object.defineProperty(QQ, "_kind", {value: "QQ"});
 
-function CoercionModel() {
-    this._maps = new Map();
-    this._planCache = new Map();
-}
+def bigint_gcd(left: int, right: int) -> int:
+    if left < 0:
+        left = -left
+    if right < 0:
+        right = -right
+    while right != 0:
+        left, right = right, left % right
+    return left
 
-CoercionModel.prototype.register = function(source, target, map) {
-    let targets = this._maps.get(source);
-    if (targets === undefined) {
-        targets = new Map();
-        this._maps.set(source, targets);
-    }
-    targets.set(target, map);
-    this._planCache.clear();
-};
 
-CoercionModel.prototype._map = function(source, target) {
-    const targets = this._maps.get(source);
-    return targets === undefined ? undefined : targets.get(target);
-};
+class Parent:
 
-CoercionModel.prototype._cache = function(left, right, plan) {
-    let rights = this._planCache.get(left);
-    if (rights === undefined) {
-        rights = new Map();
-        this._planCache.set(left, rights);
-    }
-    rights.set(right, plan);
-    return plan;
-};
+    def __init__(self, name: str) -> None:
+        self._name = name
+        self._construction = runtime.undefined
+        self._kind = runtime.undefined
 
-CoercionModel.prototype.resolveParents = function(left, right) {
-    let rights = this._planCache.get(left);
-    if (rights !== undefined && rights.has(right)) return rights.get(right);
+    def __repr__(self) -> str:
+        return self._name
 
-    const identity = function(value) { return value; };
-    if (left === right) {
-        return this._cache(left, right, {
-            parent: left, leftMap: identity, rightMap: identity
-        });
-    }
+    __str__ = __repr__
+    toString = __repr__
 
-    const leftToRight = this._map(left, right);
-    const rightToLeft = this._map(right, left);
-    if (leftToRight !== undefined && rightToLeft === undefined) {
-        return this._cache(left, right, {
-            parent: right, leftMap: leftToRight, rightMap: identity
-        });
-    }
-    if (rightToLeft !== undefined && leftToRight === undefined) {
-        return this._cache(left, right, {
-            parent: left, leftMap: identity, rightMap: rightToLeft
-        });
-    }
+    def __getitem__(self, variable: str) -> Any:
+        return runtime.polynomial_ring(self, variable)
 
-    const leftTargets = this._maps.get(left);
-    const rightTargets = this._maps.get(right);
-    if (leftTargets !== undefined && rightTargets !== undefined) {
-        const common = [];
-        for (const target of leftTargets.keys()) {
-            if (rightTargets.has(target)) common.push(target);
-        }
-        if (common.length > 0) {
-            common.sort(function(a, b) {
-                const ap = a._precision === undefined ? -1 : a._precision;
-                const bp = b._precision === undefined ? -1 : b._precision;
-                return bp - ap;
-            });
-            const target = common[0];
-            if (common.length === 1 ||
-                    (target._kind === common[1]._kind &&
-                     target._precision !== common[1]._precision)) {
-                return this._cache(left, right, {
-                    parent: target,
-                    leftMap: leftTargets.get(target),
-                    rightMap: rightTargets.get(target)
-                });
-            }
-        }
-    }
 
-    const leftConstruction = left._construction;
-    const rightConstruction = right._construction;
-    if (leftConstruction !== undefined &&
-            leftConstruction.kind === "polynomial") {
-        if (rightConstruction !== undefined &&
-                rightConstruction.kind === "polynomial") {
-            if (leftConstruction.variable !== rightConstruction.variable) {
-                throw new TypeError(
-                    "no canonical coercion between polynomial rings in " +
-                    leftConstruction.variable + " and " +
-                    rightConstruction.variable);
-            }
-            const basePlan = this.resolveParents(
-                leftConstruction.base, rightConstruction.base);
-            const target = PolynomialRing(
-                basePlan.parent, leftConstruction.variable);
-            return this._cache(left, right, {
-                parent: target,
-                leftMap: function(value) {
-                    return target._coercePolynomial(value);
-                },
-                rightMap: function(value) {
-                    return target._coercePolynomial(value);
-                }
-            });
-        }
+class Element:
 
-        const basePlan = this.resolveParents(leftConstruction.base, right);
-        const target = PolynomialRing(
-            basePlan.parent, leftConstruction.variable);
-        return this._cache(left, right, {
-            parent: target,
-            leftMap: function(value) {
-                return target._coercePolynomial(value);
-            },
-            rightMap: function(value) {
-                return target._constant(basePlan.rightMap(value));
-            }
-        });
-    }
+    def __init__(self, parent: Parent) -> None:
+        self._parent = parent
 
-    if (rightConstruction !== undefined &&
-            rightConstruction.kind === "polynomial") {
-        const basePlan = this.resolveParents(
-            left, rightConstruction.base);
-        const target = PolynomialRing(
-            basePlan.parent, rightConstruction.variable);
-        return this._cache(left, right, {
-            parent: target,
-            leftMap: function(value) {
-                return target._constant(basePlan.leftMap(value));
-            },
-            rightMap: function(value) {
-                return target._coercePolynomial(value);
-            }
-        });
-    }
+    def parent(self) -> Parent:
+        return self._parent
 
-    if (leftToRight !== undefined && rightToLeft !== undefined) {
-        throw new TypeError(
-            "ambiguous canonical coercion between " + left + " and " + right);
-    }
-    throw new TypeError(
-        "no canonical coercion between " + left + " and " + right);
-};
 
-CoercionModel.prototype.parentOf = function(value) {
-    if (ρσ_is_exact_integer(value)) return ZZ;
-    if (value !== null && typeof value === "object" &&
-            value._parent !== undefined) {
-        return value._parent;
-    }
-    throw new TypeError("value has no mathematical parent");
-};
+@runtime.callable_instance_class
+class IntegerRing(Parent):
 
-CoercionModel.prototype.coercePair = function(left, right) {
-    const plan = this.resolveParents(
-        this.parentOf(left), this.parentOf(right));
-    return {
-        parent: plan.parent,
-        left: plan.leftMap(left),
-        right: plan.rightMap(right)
-    };
-};
+    def __call__(self, value: object) -> Any:
+        return normalize_integer(value)
 
-CoercionModel.prototype.binOp = function(operator, left, right) {
-    if (left !== null && right !== null &&
-            typeof left === "object" && typeof right === "object" &&
-            left._parent !== undefined &&
-            left._parent === right._parent) {
-        const direct = left["_" + operator + "_"];
-        if (typeof direct !== "function") {
-            throw new TypeError(
-                "operation " + operator + " is not defined in " +
-                left._parent);
-        }
-        return direct.call(left, right);
-    }
-    const operands = this.coercePair(left, right);
-    const method = operands.left["_" + operator + "_"];
-    if (typeof method !== "function") {
-        throw new TypeError(
-            "operation " + operator + " is not defined in " + operands.parent);
-    }
-    return method.call(operands.left, operands.right);
-};
 
-CoercionModel.prototype.equals = function(left, right) {
-    try {
-        if (left !== null && right !== null &&
-                typeof left === "object" && typeof right === "object" &&
-                left._parent !== undefined &&
-                left._parent === right._parent) {
-            const direct = left._eq_;
-            return typeof direct === "function"
-                ? direct.call(left, right)
-                : left === right;
-        }
-        const operands = this.coercePair(left, right);
-        const method = operands.left._eq_;
-        return typeof method === "function"
-            ? method.call(operands.left, operands.right)
-            : operands.left === operands.right;
-    } catch (_) {
-        return false;
-    }
-};
+@runtime.callable_instance_class
+class RationalField(Parent):
 
-var ρσ_coercion_model = new CoercionModel();
-ρσ_coercion_model.register(ZZ, QQ, function(value) {
-    return new Rational(value, 1);
-});
+    def __call__(
+        self,
+        numerator: Any,
+        denominator: Any = runtime.undefined,
+    ) -> Any:
+        if (
+            denominator is runtime.undefined
+            and runtime.jstype(numerator) == 'object'
+            and hasattr(numerator, '_parent')
+            and numerator._parent is self
+        ):
+            return numerator
+        return runtime.rational_class(numerator, denominator)
 
-function ρσ_modular_inverse(value, modulus) {
-    let oldR = value;
-    let r = modulus;
-    let oldS = 1n;
-    let s = 0n;
-    while (r !== 0n) {
-        const quotient = oldR / r;
-        const nextR = oldR - quotient * r;
-        const nextS = oldS - quotient * s;
-        oldR = r;
-        r = nextR;
-        oldS = s;
-        s = nextS;
-    }
-    if (oldR !== 1n) {
-        throw new ZeroDivisionError(
-            "inverse of Mod(0, " + modulus + ") does not exist");
-    }
-    oldS %= modulus;
-    return oldS < 0n ? oldS + modulus : oldS;
-}
 
-function ρσ_modular_power(value, exponent, modulus) {
-    let result = 1n;
-    while (exponent > 0n) {
-        if ((exponent & 1n) !== 0n) {
-            result = (result * value) % modulus;
-        }
-        exponent >>= 1n;
-        if (exponent !== 0n) value = (value * value) % modulus;
-    }
-    return result;
-}
+ZZ = IntegerRing('Integer Ring')
+ZZ._kind = 'ZZ'
+QQ = RationalField('Rational Field')
+QQ._kind = 'QQ'
 
-function ρσ_math_tuple(values) {
-    function tupleRepr() {
-        const entries = this.map(function(value) {
-            return ρσ_repr(value);
-        }).join(", ");
-        return "(" + entries + (this.length === 1 ? "," : "") + ")";
-    }
-    Object.defineProperties(values, {
-        "__repr__": {value: tupleRepr},
-        "__str__": {value: tupleRepr},
-        "toString": {value: tupleRepr}
-    });
-    return Object.freeze(values);
-}
 
-var QuotientFunctor = Object.freeze({
-    "__repr__": function() { return "QuotientFunctor"; },
-    "__str__": function() { return "QuotientFunctor"; },
-    "toString": function() { return "QuotientFunctor"; }
-});
+def _identity(value: Any) -> Any:
+    return value
 
-var AlgebraicExtensionFunctor = Object.freeze({
-    "__repr__": function() { return "AlgebraicExtensionFunctor"; },
-    "__str__": function() { return "AlgebraicExtensionFunctor"; },
-    "toString": function() { return "AlgebraicExtensionFunctor"; }
-});
 
-function ρσ_is_math_element(value) {
-    return value !== null && typeof value === "object" &&
-        value._parent !== undefined;
-}
+def _add(left: Any, right: Any) -> Any:
+    return left._add_(right)
 
-function ρσ_parent(value) {
-    return ρσ_coercion_model.parentOf(value);
-}
 
-var ρσ_flint_state = {backend: null};
-function ρσ_flint_backend() {
-    if (ρσ_flint_state.backend === null) {
-        ρσ_flint_state.backend = require("@sagemath/sagejs-flint");
-    }
-    return ρσ_flint_state.backend;
-}
+def _sub(left: Any, right: Any) -> Any:
+    return left._sub_(right)
 
-"""
 
-parent = ρσ_parent
+def _mul(left: Any, right: Any) -> Any:
+    return left._mul_(right)
+
+
+def _truediv(left: Any, right: Any) -> Any:
+    return left._truediv_(right)
+
+
+class CoercionPlan:
+
+    def __init__(
+        self,
+        parent: Parent,
+        left_map: Callable[[Any], Any],
+        right_map: Callable[[Any], Any],
+    ) -> None:
+        self.parent = parent
+        self.leftMap = left_map
+        self.rightMap = right_map
+
+
+class CoercedPair:
+
+    def __init__(
+        self, parent: Parent, left: Any, right: Any,
+    ) -> None:
+        self.parent = parent
+        self.left = left
+        self.right = right
+
+
+class CoercionModel:
+
+    def __init__(self) -> None:
+        self._maps = new_map()
+        self._planCache = new_map()
+        self._operations = new_map()
+        self._operations.set('add', _add)
+        self._operations.set('sub', _sub)
+        self._operations.set('mul', _mul)
+        self._operations.set('truediv', _truediv)
+
+    def register(
+        self,
+        source: Parent,
+        target: Parent,
+        conversion: Callable[[Any], Any],
+    ) -> None:
+        targets = self._maps.get(source)
+        if targets is runtime.undefined:
+            targets = new_map()
+            self._maps.set(source, targets)
+        targets.set(target, conversion)
+        self._planCache.clear()
+
+    def _map(self, source: Parent, target: Parent) -> Any:
+        targets = self._maps.get(source)
+        if targets is runtime.undefined:
+            return runtime.undefined
+        return targets.get(target)
+
+    def _cache(
+        self,
+        left: Parent,
+        right: Parent,
+        plan: CoercionPlan,
+    ) -> CoercionPlan:
+        rights = self._planCache.get(left)
+        if rights is runtime.undefined:
+            rights = new_map()
+            self._planCache.set(left, rights)
+        rights.set(right, plan)
+        return plan
+
+    def resolveParents(
+        self, left: Parent, right: Parent,
+    ) -> CoercionPlan:
+        rights = self._planCache.get(left)
+        if (
+            rights is not runtime.undefined
+            and rights.has(right)
+        ):
+            return rights.get(right)
+
+        if left is right:
+            return self._cache(
+                left, right,
+                CoercionPlan(left, _identity, _identity),
+            )
+
+        left_to_right = self._map(left, right)
+        right_to_left = self._map(right, left)
+        if (
+            left_to_right is not runtime.undefined
+            and right_to_left is runtime.undefined
+        ):
+            return self._cache(
+                left, right,
+                CoercionPlan(right, left_to_right, _identity),
+            )
+        if (
+            right_to_left is not runtime.undefined
+            and left_to_right is runtime.undefined
+        ):
+            return self._cache(
+                left, right,
+                CoercionPlan(left, _identity, right_to_left),
+            )
+
+        left_targets = self._maps.get(left)
+        right_targets = self._maps.get(right)
+        if (
+            left_targets is not runtime.undefined
+            and right_targets is not runtime.undefined
+        ):
+            common = []
+            for target in left_targets.keys():
+                if right_targets.has(target):
+                    common.append(target)
+            if common:
+                target = common[0]
+                second = None
+                target_precision = getattr(target, '_precision', -1)
+                second_precision = -1
+                for candidate in common[1:]:
+                    precision = getattr(candidate, '_precision', -1)
+                    if precision > target_precision:
+                        second = target
+                        second_precision = target_precision
+                        target = candidate
+                        target_precision = precision
+                    elif precision > second_precision:
+                        second = candidate
+                        second_precision = precision
+                if (
+                    second is None
+                    or (
+                        target._kind == second._kind
+                        and target_precision != second_precision
+                    )
+                ):
+                    return self._cache(
+                        left, right,
+                        CoercionPlan(
+                            target,
+                            left_targets.get(target),
+                            right_targets.get(target),
+                        ),
+                    )
+
+        left_construction = left._construction
+        right_construction = right._construction
+        if (
+            left_construction is not runtime.undefined
+            and left_construction['kind'] == 'polynomial'
+        ):
+            if (
+                right_construction is not runtime.undefined
+                and right_construction['kind'] == 'polynomial'
+            ):
+                if (
+                    left_construction['variable']
+                    != right_construction['variable']
+                ):
+                    raise TypeError(
+                        'no canonical coercion between polynomial rings in '
+                        + left_construction['variable'] + ' and '
+                        + right_construction['variable']
+                    )
+                base_plan = self.resolveParents(
+                    left_construction['base'],
+                    right_construction['base'],
+                )
+                polynomial_parent = runtime.polynomial_ring(
+                    base_plan.parent,
+                    left_construction['variable'],
+                )
+
+                def coerce_left_polynomial(value: Any) -> Any:
+                    return polynomial_parent._coercePolynomial(value)
+
+                def coerce_right_polynomial(value: Any) -> Any:
+                    return polynomial_parent._coercePolynomial(value)
+
+                return self._cache(
+                    left, right,
+                    CoercionPlan(
+                        polynomial_parent,
+                        coerce_left_polynomial,
+                        coerce_right_polynomial,
+                    ),
+                )
+
+            base_plan = self.resolveParents(
+                left_construction['base'], right)
+            polynomial_parent = runtime.polynomial_ring(
+                base_plan.parent,
+                left_construction['variable'],
+            )
+
+            def coerce_left_polynomial(value: Any) -> Any:
+                return polynomial_parent._coercePolynomial(value)
+
+            def coerce_right_constant(value: Any) -> Any:
+                return polynomial_parent._constant(
+                    base_plan.rightMap(value))
+
+            return self._cache(
+                left, right,
+                CoercionPlan(
+                    polynomial_parent,
+                    coerce_left_polynomial,
+                    coerce_right_constant,
+                ),
+            )
+
+        if (
+            right_construction is not runtime.undefined
+            and right_construction['kind'] == 'polynomial'
+        ):
+            base_plan = self.resolveParents(
+                left, right_construction['base'])
+            polynomial_parent = runtime.polynomial_ring(
+                base_plan.parent,
+                right_construction['variable'],
+            )
+
+            def coerce_left_constant(value: Any) -> Any:
+                return polynomial_parent._constant(
+                    base_plan.leftMap(value))
+
+            def coerce_right_polynomial(value: Any) -> Any:
+                return polynomial_parent._coercePolynomial(value)
+
+            return self._cache(
+                left, right,
+                CoercionPlan(
+                    polynomial_parent,
+                    coerce_left_constant,
+                    coerce_right_polynomial,
+                ),
+            )
+
+        if (
+            left_to_right is not runtime.undefined
+            and right_to_left is not runtime.undefined
+        ):
+            raise TypeError(
+                'ambiguous canonical coercion between '
+                + str(left) + ' and ' + str(right)
+            )
+        raise TypeError(
+            'no canonical coercion between '
+            + str(left) + ' and ' + str(right)
+        )
+
+    def parentOf(self, value: Any) -> Parent:
+        if is_exact_integer(value):
+            return ZZ
+        if (
+            value is not None
+            and runtime.jstype(value) == 'object'
+            and runtime.reflect.get(
+                value, '_parent') is not runtime.undefined
+        ):
+            return value._parent
+        raise TypeError('value has no mathematical parent')
+
+    def coercePair(self, left: Any, right: Any) -> CoercedPair:
+        plan = self.resolveParents(
+            self.parentOf(left), self.parentOf(right))
+        return CoercedPair(
+            plan.parent,
+            plan.leftMap(left),
+            plan.rightMap(right),
+        )
+
+    def _apply(
+        self,
+        operator: str,
+        left: Any,
+        right: Any,
+        parent: Parent,
+    ) -> Any:
+        operation = self._operations.get(operator)
+        if operation is runtime.undefined:
+            raise TypeError(
+                'operation ' + operator
+                + ' is not defined in ' + str(parent)
+            )
+        return operation(left, right)
+
+    def binOp(
+        self, operator: str, left: Any, right: Any,
+    ) -> Any:
+        left_parent = runtime.undefined
+        right_parent = runtime.undefined
+        if (
+            left is not None
+            and runtime.jstype(left) == 'object'
+        ):
+            left_parent = runtime.reflect.get(
+                left, '_parent')
+        if (
+            right is not None
+            and runtime.jstype(right) == 'object'
+        ):
+            right_parent = runtime.reflect.get(
+                right, '_parent')
+        if (
+            left_parent is not runtime.undefined
+            and left_parent is right_parent
+        ):
+            return self._apply(
+                operator, left, right, left_parent)
+        operands = self.coercePair(left, right)
+        return self._apply(
+            operator,
+            operands.left,
+            operands.right,
+            operands.parent,
+        )
+
+    def equals(self, left: Any, right: Any) -> bool:
+        try:
+            left_parent = runtime.undefined
+            right_parent = runtime.undefined
+            if (
+                left is not None
+                and runtime.jstype(left) == 'object'
+            ):
+                left_parent = runtime.reflect.get(
+                    left, '_parent')
+            if (
+                right is not None
+                and runtime.jstype(right) == 'object'
+            ):
+                right_parent = runtime.reflect.get(
+                    right, '_parent')
+            if (
+                left_parent is not runtime.undefined
+                and left_parent is right_parent
+            ):
+                method = runtime.reflect.get(left, '_eq_')
+                if runtime.jstype(method) == 'function':
+                    return method.call(left, right)
+                return left is right
+            operands = self.coercePair(left, right)
+            method = runtime.reflect.get(
+                operands.left, '_eq_')
+            if runtime.jstype(method) == 'function':
+                return method.call(
+                    operands.left, operands.right)
+            return operands.left is operands.right
+        except Exception:
+            return False
+
+
+coercion_model = CoercionModel()
+
+
+def _integer_to_rational(value: Any) -> Any:
+    return runtime.rational_class(value, runtime.bigint(1))
+
+
+coercion_model.register(ZZ, QQ, _integer_to_rational)
+
+
+def modular_inverse(value: int, modulus: int) -> int:
+    old_remainder = value
+    remainder = modulus
+    old_coefficient = runtime.bigint(1)
+    coefficient = runtime.bigint(0)
+    while remainder != 0:
+        quotient = runtime.bigint_divexact(
+            old_remainder, remainder)
+        next_remainder = (
+            old_remainder - quotient * remainder)
+        next_coefficient = (
+            old_coefficient - quotient * coefficient)
+        old_remainder = remainder
+        remainder = next_remainder
+        old_coefficient = coefficient
+        coefficient = next_coefficient
+    if old_remainder != 1:
+        raise runtime.zero_division_error(
+            'inverse of Mod(0, ' + str(modulus)
+            + ') does not exist'
+        )
+    old_coefficient %= modulus
+    if old_coefficient < 0:
+        return old_coefficient + modulus
+    return old_coefficient
+
+
+def modular_power(
+    value: int, exponent: int, modulus: int,
+) -> int:
+    result = runtime.bigint(1)
+    while exponent > 0:
+        if exponent & runtime.bigint(1):
+            result = (result * value) % modulus
+        exponent >>= runtime.bigint(1)
+        if exponent != 0:
+            value = (value * value) % modulus
+    return result
+
+
+def math_tuple(values: list[Any]) -> Any:
+    def tuple_repr() -> str:
+        entries = [runtime.repr(value) for value in values]
+        suffix = ',' if len(values) == 1 else ''
+        entries_text = runtime.reflect.apply(
+            runtime.array.prototype.join,
+            entries,
+            [', '],
+        )
+        return '(' + entries_text + suffix + ')'
+
+    runtime.object.defineProperties(values, {
+        '__repr__': {'value': tuple_repr},
+        '__str__': {'value': tuple_repr},
+        'toString': {'value': tuple_repr},
+    })
+    runtime.object.freeze(values)
+    return values
+
+
+class _ConstructionFunctor:
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def __repr__(self) -> str:
+        return self._name
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+QuotientFunctor = _ConstructionFunctor('QuotientFunctor')
+runtime.object.freeze(QuotientFunctor)
+AlgebraicExtensionFunctor = _ConstructionFunctor(
+    'AlgebraicExtensionFunctor')
+runtime.object.freeze(AlgebraicExtensionFunctor)
+
+
+def is_math_element(value: Any) -> bool:
+    return (
+        value is not None
+        and runtime.jstype(value) == 'object'
+        and runtime.reflect.get(
+            value, '_parent') is not runtime.undefined
+    )
+
+
+def parent_of(value: Any) -> Parent:
+    return coercion_model.parentOf(value)
+
+
+_flint_state = {'backend': None}
+
+
+def flint_backend() -> Any:
+    if _flint_state['backend'] is None:
+        _flint_state['backend'] = runtime.require_module(
+            '@sagemath/sagejs-flint')
+    return _flint_state['backend']
+
+
+# Stable generated-runtime names used by the compiler and by older baselib
+# modules which have not yet moved to ``sagejs.runtime``.
+ρσ_is_exact_integer = is_exact_integer
+ρσ_normalize_integer = normalize_integer
+ρσ_integer_bigint = integer_bigint
+ρσ_new_map = new_map
+ρσ_string_primitive = string_primitive
+ρσ_string_find = string_find
+ρσ_bigint_gcd = bigint_gcd
+ρσ_coercion_model = coercion_model
+ρσ_modular_inverse = modular_inverse
+ρσ_modular_power = modular_power
+ρσ_math_tuple = math_tuple
+ρσ_is_math_element = is_math_element
+ρσ_parent = parent_of
+ρσ_flint_backend = flint_backend
+
+parent = parent_of
+
+
+runtime.set_class_repr(Parent, "<class 'Parent'>")
+runtime.set_class_repr(Element, "<class 'Element'>")
