@@ -1140,7 +1140,11 @@ _BUILTINS_MIN_SAFE_INTEGER = runtime.bigint(
 
 
 def ρσ_integer_literal(text: _Str) -> Any:
-    text = text.replace('_', '')
+    text = runtime.reflect.apply(
+        runtime.string_class.prototype.replace,
+        text,
+        [runtime.regexp('_', 'g'), ''],
+    )
     value = runtime.bigint(text)
     if _BUILTINS_MIN_SAFE_INTEGER <= value <= _BUILTINS_MAX_SAFE_INTEGER:
         return runtime.number(value)

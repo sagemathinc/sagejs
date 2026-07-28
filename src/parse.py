@@ -78,7 +78,7 @@ NATIVE_CLASSES = {
             ' freeze isFrozen')
     },
     'String': {
-        'static': static_predicate("fromCharCode")
+        'static': static_predicate("fromCharCode fromCodePoint")
     },
     'Array': {
         'static': static_predicate("isArray from of")

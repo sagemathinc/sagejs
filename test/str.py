@@ -65,6 +65,15 @@ test('1', '{0[a][b]}', {'a':{'b':1}})
 test('x', '{}', def (): return 'x';)
 test('11', '{:b}', 3)
 test('0b11', '{:#b}', 3)
+test('   0', '{:4c}', 48)
+test('                   0', '{:20}', False)
+test('#######123', '{:{}}', 123, '#>10')
+test(
+    '123,456,789,012,345,678,901,234,567',
+    '{:,}',
+    BigInt('123456789012345678901234567'),
+)
+test('0_0000', '{:05_x}', 0)
 test((30000).toLocaleString(), '{:,d}', 30000)
 # in e.g. the indian number system, this is 3,00,000
 test((300000).toLocaleString(), '{:,d}', 300000)
@@ -96,6 +105,8 @@ test_throws(KeyError, '{a}', b=1)
 test_throws(IndexError, '{} {}', 1)
 test_throws(IndexError, '{1} {2}', 1)
 test_throws(ValueError, '{1')
+test_throws(ValueError, '{0:=}', 'text')
+test_throws(ValueError, '}')
 test_interpolation()
 
 # Test miscellaneous services

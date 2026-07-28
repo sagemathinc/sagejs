@@ -203,15 +203,6 @@ def _js_options(**values: Any) -> Any:
     return answer
 
 
-def _grouped(value: Any, separator: _Str) -> _Str:
-    answer = value.toLocaleString(
-        runtime.undefined, _js_options(useGrouping=True))
-    if separator == ',':
-        return answer
-    locale_separator = runtime.number(1234).toLocaleString()[1]
-    return _native_replace(answer, locale_separator, separator)
-
-
 def _fixed(value: Any, precision: int, separator: _Str) -> _Str:
     if not separator:
         return value.toFixed(precision)
@@ -231,35 +222,65 @@ def _repeat(text: _Str, count: int) -> _Str:
     return _string_call(text, 'repeat', count)
 
 
-def _resolve_format_spec(specification: _Str, keywords: Any) -> _Str:
-    pattern = runtime.regexp(r'[{]([a-zA-Z0-9_]+)[}]', 'g')
+def _group_digits(
+    digits: _Str,
+    separator: _Str,
+    group_size: int,
+) -> _Str:
+    if not separator:
+        return digits
+    answer = ''
+    end = len(digits)
+    while end > group_size:
+        start = end - group_size
+        answer = separator + digits[start:end] + answer
+        end = start
+    return digits[:end] + answer
 
-    def replace(_match: _Str, key: _Str) -> _Str:
-        if not runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            keywords,
-            [key],
-        ):
-            return ''
-        return _native_string(keywords[key])
 
-    return _native_replace(specification, pattern, replace)
+def _integer_parts(
+    original: Any,
+    format_type: _Str,
+    alternate: bool,
+) -> list[_Str]:
+    lower_type = _lower(format_type)
+    base = 10
+    if lower_type == 'b':
+        base = 2
+    elif lower_type == 'o':
+        base = 8
+    elif lower_type == 'x':
+        base = 16
+    rendered = _integer_format(
+        original, base, format_type == 'X')
+    sign = ''
+    if rendered and rendered[0] == '-':
+        sign = '-'
+        rendered = rendered[1:]
+    prefix = ''
+    if alternate:
+        if lower_type == 'b':
+            prefix = '0b'
+        elif lower_type == 'o':
+            prefix = '0o'
+        elif format_type == 'x':
+            prefix = '0x'
+        elif format_type == 'X':
+            prefix = '0X'
+    return [sign, prefix, rendered]
 
 
 def _apply_formatting(
     original: Any,
     specification: _Str,
-    keywords: Any,
 ) -> _Str:
-    if _index_of(specification, '{') != -1:
-        specification = _resolve_format_spec(specification, keywords)
     pattern = runtime.regexp(
-        r'([^{}](?=[<>=^]))?([<>=^])?([-+ ])?(#)?(0)?'
-        r'(\d+)?([,_])?(?:\.(\d+))?([bcdeEfFgGnosxX%])?'
+        r'^([^{}](?=[<>=^]))?([<>=^])?([-+ ])?(#)?(0)?'
+        r'(\d+)?([,_])?(?:\.(\d+))?([bcdeEfFgGnosxX%])?$'
     )
     match = _string_call(specification, 'match', pattern)
     if match is None:
-        return _native_string(original)
+        raise ValueError('Invalid format specifier')
     (
         fill,
         align,
@@ -278,43 +299,56 @@ def _apply_formatting(
     else:
         fill = fill or ' '
 
+    original_type = runtime.jstype(original)
+    integer_value = (
+        original is True
+        or original is False
+        or original_type == 'bigint'
+        or (
+            original_type == 'number'
+            and runtime.number.isInteger(original)
+        )
+    )
     numeric_value = runtime.number(original)
-    is_numeric = not runtime.is_nan(numeric_value)
+    is_numeric = integer_value or not runtime.is_nan(numeric_value)
     precision = runtime.parse_int(precision_text, 10)
     lower_type = _lower(format_type or '')
     value = original
+    integer_sign = ''
+    integer_prefix = ''
+    integer_digits = ''
 
     if format_type == 'n':
         if grouping:
             raise ValueError("Cannot specify ',' with 'n'")
-        value = numeric_value.toLocaleString()
+        if integer_value:
+            parts = _integer_parts(original, 'd', False)
+            integer_sign, integer_prefix, integer_digits = parts
+            value = integer_sign + integer_digits
+        else:
+            value = numeric_value.toLocaleString()
         is_numeric = True
     elif lower_type in ('b', 'c', 'd', 'o', 'x'):
-        value = runtime.parse_int(original, 10)
         is_numeric = True
-        if lower_type == 'b':
-            value = value.toString(2)
-            if alternate:
-                value = '0b' + value
-        elif lower_type == 'c':
-            value = runtime.string_class.fromCodePoint(value)
-        elif lower_type == 'd':
-            if grouping:
-                value = _grouped(value, grouping)
-            else:
-                value = value.toString(10)
-        elif lower_type == 'o':
-            value = value.toString(8)
-            if alternate:
-                value = '0o' + value
+        if not integer_value:
+            raise ValueError(
+                "Unknown format code '" + format_type + "'")
+        if lower_type == 'c':
+            if sign or alternate or grouping:
+                raise ValueError('Invalid format specifier for c')
+            value = chr(int(original))
+            is_numeric = True
         else:
-            value = value.toString(16)
-            if format_type == 'x':
-                value = value.toLowerCase()
-            else:
-                value = value.toUpperCase()
-            if alternate:
-                value = '0x' + value
+            if grouping == ',' and lower_type != 'd':
+                raise ValueError(
+                    "Cannot specify ',' with '" + format_type + "'")
+            parts = _integer_parts(
+                original, format_type, bool(alternate))
+            integer_sign, integer_prefix, integer_digits = parts
+            group_size = 3 if lower_type == 'd' else 4
+            integer_digits = _group_digits(
+                integer_digits, grouping or '', group_size)
+            value = integer_sign + integer_prefix + integer_digits
     elif lower_type in ('e', 'f', 'g', '%'):
         is_numeric = True
         value = runtime.parse_float(original)
@@ -354,23 +388,39 @@ def _apply_formatting(
                 value = _upper(value)
     else:
         if lower_type == 's':
+            if not _value_type_is(original, 'string'):
+                raise ValueError(
+                    "Unknown format code 's' for object")
+            if sign or alternate or grouping or zero_pad:
+                raise ValueError('Invalid format specifier for str')
             is_numeric = False
-        if grouping:
-            value = runtime.parse_int(value, 10)
-            if runtime.is_nan(value):
+        elif not format_type and integer_value:
+            parts = _integer_parts(original, 'd', False)
+            integer_sign, integer_prefix, integer_digits = parts
+            integer_digits = _group_digits(
+                integer_digits, grouping or '', 3)
+            value = integer_sign + integer_digits
+            is_numeric = True
+        else:
+            if grouping:
                 raise ValueError('Must use numbers with , or _')
-            value = _grouped(value, grouping)
+            value = ρσ_str(value)
+            is_numeric = False
+        if (
+            _value_type_is(original, 'string')
+            and align == '='
+        ):
+            raise ValueError(
+                "'=' alignment not allowed in string format specifier")
         value = _native_string(value)
         if not runtime.is_nan(precision):
             value = value[:precision]
 
     align = align or ('>' if is_numeric else '<')
     value = _native_string(value)
-    if is_numeric and sign:
-        number_value = runtime.number(value)
-        if not runtime.is_nan(number_value) and number_value >= 0:
-            if sign in (' ', '+'):
-                value = sign + value
+    if is_numeric and sign and value[0] != '-':
+        if sign in (' ', '+'):
+            value = sign + value
 
     if is_numeric and width_text and width_text[0] == '0':
         width_text = width_text[1:]
@@ -380,6 +430,31 @@ def _apply_formatting(
         raise ValueError(
             'Invalid width specification: ' + width_text)
 
+    if (
+        is_numeric
+        and fill == '0'
+        and align == '='
+        and grouping
+        and integer_digits
+    ):
+        leading = integer_sign
+        if not leading and sign in (' ', '+'):
+            leading = sign
+        group_size = 3 if lower_type in ('', 'd') else 4
+        digits = _integer_parts(
+            original, format_type or 'd', bool(alternate))[2]
+        while (
+            len(
+                leading
+                + integer_prefix
+                + _group_digits(digits, grouping, group_size)
+            ) < width
+        ):
+            digits = '0' + digits
+        value = (
+            leading + integer_prefix
+            + _group_digits(digits, grouping, group_size)
+        )
     if fill and len(value) < width:
         padding = width - len(value)
         if align == '<':
@@ -394,12 +469,18 @@ def _apply_formatting(
                 + _repeat(fill, padding - left)
             )
         elif align == '=':
-            if value[0] in '+- ':
-                value = (
-                    value[0] + _repeat(fill, padding) + value[1:]
-                )
-            else:
-                value = _repeat(fill, padding) + value
+            prefix_length = 0
+            if value and value[0] in '+- ':
+                prefix_length = 1
+            if value[prefix_length:prefix_length + 2] in (
+                '0b', '0o', '0x', '0X'
+            ):
+                prefix_length += 2
+            value = (
+                value[:prefix_length]
+                + _repeat(fill, padding)
+                + value[prefix_length:]
+            )
         else:
             raise ValueError('Unrecognized alignment: ' + align)
     return value
@@ -471,14 +552,9 @@ def string_format(
             root_end += 1
         root = key[:root_end]
         if root:
-            manual = True
-            if automatic:
-                raise ValueError(
-                    'cannot switch from automatic field numbering '
-                    'to manual field specification'
-                )
-            index = runtime.parse_int(root, 10)
-            if runtime.is_nan(index):
+            numeric_root = _string_call(
+                root, 'match', runtime.regexp(r'^\d+$'))
+            if numeric_root is None:
                 if not runtime.reflect.apply(
                     runtime.object.prototype.hasOwnProperty,
                     keywords,
@@ -487,6 +563,13 @@ def string_format(
                     raise KeyError(root)
                 value = keywords[root]
             else:
+                index = runtime.parse_int(root, 10)
+                manual = True
+                if automatic:
+                    raise ValueError(
+                        'cannot switch from automatic field numbering '
+                        'to manual field specification'
+                    )
                 if index >= len(format_args):
                     raise IndexError(root)
                 value = format_args[index]
@@ -508,14 +591,39 @@ def string_format(
         if _value_type_is(value, 'function'):
             value = value()
         if conversion == 'r':
-            answer = ρσ_repr(value)
+            formatted_value = ρσ_repr(value)
         elif conversion == 's':
-            answer = ρσ_str(value)
+            formatted_value = ρσ_str(value)
+        elif conversion == 'a':
+            formatted_value = ρσ_repr(value)
         else:
-            answer = ρσ_str(value)
+            formatted_value = value
         if specification:
+            resolved_specification = ''
+            spec_position = 0
+            while spec_position < len(specification):
+                if specification[spec_position] != '{':
+                    resolved_specification += specification[spec_position]
+                    spec_position += 1
+                    continue
+                spec_end = spec_position + 1
+                spec_depth = 1
+                while spec_end < len(specification) and spec_depth:
+                    if specification[spec_end] == '{':
+                        spec_depth += 1
+                    elif specification[spec_end] == '}':
+                        spec_depth -= 1
+                    spec_end += 1
+                if spec_depth:
+                    raise ValueError(
+                        "expected '}' before end of string")
+                resolved_specification += render(
+                    specification[spec_position + 1:spec_end - 1])
+                spec_position = spec_end
             answer = _apply_formatting(
-                answer, specification, keywords)
+                formatted_value, resolved_specification)
+        else:
+            answer = ρσ_str(formatted_value)
         if show_key:
             answer = key + '=' + answer
         return answer
@@ -553,6 +661,8 @@ def string_format(
             answer += '}'
             position += 2
             continue
+        if character == '}':
+            raise ValueError("Single '}' encountered in format string")
         answer += character
         position += 1
     return answer
@@ -1058,8 +1168,12 @@ def _integer_format(value: Any, base: int, uppercase: bool) -> _Str:
 
 def _str_percent_format(format_string: Any, operands: Any) -> _Str:
     format_string = _native_string(format_string)
-    values = operands if runtime.array.isArray(operands) else [operands]
+    tuple_operands = isinstance(operands, tuple)
+    mapping_operands = isinstance(operands, dict)
+    values = operands if tuple_operands else [operands]
     value_index = 0
+    used_mapping = False
+    conversions = 0
     answer = ''
     position = 0
     while position < len(format_string):
@@ -1072,6 +1186,25 @@ def _str_percent_format(format_string: Any, operands: Any) -> _Str:
             answer += '%'
             position += 1
             continue
+        mapping_key = ''
+        if (
+            position < len(format_string)
+            and format_string[position] == '('
+        ):
+            if not mapping_operands:
+                raise TypeError('format requires a mapping')
+            used_mapping = True
+            position += 1
+            key_start = position
+            while (
+                position < len(format_string)
+                and format_string[position] != ')'
+            ):
+                position += 1
+            if position >= len(format_string):
+                raise ValueError('incomplete format key')
+            mapping_key = format_string[key_start:position]
+            position += 1
         flags = ''
         while (
             position < len(format_string)
@@ -1080,31 +1213,80 @@ def _str_percent_format(format_string: Any, operands: Any) -> _Str:
             flags += format_string[position]
             position += 1
         width_text = ''
-        while (
+        width_from_argument = False
+        if (
             position < len(format_string)
-            and '0' <= format_string[position] <= '9'
+            and format_string[position] == '*'
         ):
-            width_text += format_string[position]
+            width_from_argument = True
             position += 1
-        precision = runtime.undefined
-        if position < len(format_string) and format_string[position] == '.':
-            position += 1
-            precision_text = ''
+        else:
             while (
                 position < len(format_string)
                 and '0' <= format_string[position] <= '9'
             ):
-                precision_text += format_string[position]
+                width_text += format_string[position]
                 position += 1
-            precision = int(precision_text or '0')
+        if width_from_argument:
+            if mapping_key:
+                raise TypeError('* wants int')
+            if value_index >= len(values):
+                raise TypeError(
+                    'not enough arguments for format string')
+            width = int(values[value_index])
+            value_index += 1
+            if width < 0:
+                width = -width
+                if '-' not in flags:
+                    flags += '-'
+        else:
+            width = int(width_text or '0')
+        precision = runtime.undefined
+        if position < len(format_string) and format_string[position] == '.':
+            position += 1
+            if (
+                position < len(format_string)
+                and format_string[position] == '*'
+            ):
+                if mapping_key:
+                    raise TypeError('* wants int')
+                if value_index >= len(values):
+                    raise TypeError(
+                        'not enough arguments for format string')
+                precision = int(values[value_index])
+                value_index += 1
+                position += 1
+                if precision < 0:
+                    precision = runtime.undefined
+            else:
+                precision_text = ''
+                while (
+                    position < len(format_string)
+                    and '0' <= format_string[position] <= '9'
+                ):
+                    precision_text += format_string[position]
+                    position += 1
+                precision = int(precision_text or '0')
         if position >= len(format_string):
             raise ValueError('incomplete format')
         conversion = format_string[position]
         position += 1
-        if value_index >= len(values):
-            raise TypeError('not enough arguments for format string')
-        value = values[value_index]
-        value_index += 1
+        if mapping_key:
+            value = runtime.reflect.apply(
+                runtime.reflect.get(operands, '__getitem__'),
+                operands,
+                [mapping_key],
+            )
+        else:
+            if used_mapping and mapping_operands and value_index == 0:
+                raise TypeError(
+                    'not enough arguments for format string')
+            if value_index >= len(values):
+                raise TypeError(
+                    'not enough arguments for format string')
+            value = values[value_index]
+            value_index += 1
+        conversions += 1
         prefix = ''
         if conversion in 'diuoxX':
             base = 10
@@ -1152,17 +1334,23 @@ def _str_percent_format(format_string: Any, operands: Any) -> _Str:
         else:
             raise ValueError(
                 'unsupported format character ' + conversion)
-        width = int(width_text or '0')
         padding = max(0, width - len(prefix) - len(replacement))
         if '-' in flags:
             replacement = prefix + replacement + _repeat(' ', padding)
-        elif '0' in flags and precision is runtime.undefined:
+        elif '0' in flags:
             replacement = prefix + _repeat('0', padding) + replacement
         else:
             replacement = _repeat(' ', padding) + prefix + replacement
         answer += replacement
-    if value_index != len(values):
+    if tuple_operands and value_index != len(values):
         raise TypeError('not all arguments converted during string formatting')
+    if (
+        not tuple_operands
+        and not mapping_operands
+        and conversions == 0
+    ):
+        raise TypeError(
+            'not all arguments converted during string formatting')
     return answer
 
 
