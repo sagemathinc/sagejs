@@ -40,6 +40,14 @@ def _internal_is_native_map(value: Any) -> bool:
     )
 
 
+def ρσ_check_unbound(value: Any, name: str) -> Any:
+    if value is runtime.undefined:
+        raise NameError(
+            "local variable '" + name +
+            "' referenced before assignment")
+    return value
+
+
 def ρσ_eslice(
     array: Any,
     step: int,

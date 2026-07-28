@@ -8,7 +8,8 @@ from utils import noop
 from parse import PRECEDENCE
 from tokenizer import RESERVED_WORDS
 from ast_types import (
-    AST_Array, AST_Assign, AST_BaseCall, AST_Binary, AST_BlockStatement,
+    AST_AnnotatedAssignment, AST_Array, AST_Assign, AST_BaseCall, AST_Binary,
+    AST_BlockStatement,
     AST_Break, AST_Class, AST_Conditional, AST_Constant, AST_Continue,
     AST_Debugger, AST_Definitions, AST_Directive, AST_Do, AST_Dot,
     is_node_type, AST_EllipsesRange, AST_EmptyStatement, AST_Exit,
@@ -18,7 +19,8 @@ from ast_types import (
     AST_ObjectKeyVal, AST_ObjectProperty, AST_PropAccess, AST_RegExp,
     AST_Return, AST_Set, AST_Seq, AST_SimpleStatement, AST_Splice,
     AST_Statement, AST_StatementWithBody, AST_String, AST_Sub, AST_ItemAccess,
-    AST_Symbol, AST_This, AST_Throw, AST_Toplevel, AST_Try, AST_Unary,
+    AST_Scope, AST_Symbol, AST_SymbolRef, AST_This, AST_Throw, AST_Toplevel,
+    AST_Try, AST_Unary,
     AST_UnaryPrefix, AST_Undefined, AST_Var, AST_VarDef, AST_Assert,
     AST_Verbatim, AST_While, AST_With, AST_Yield, TreeWalker, AST_Existential)
 from output.exceptions import print_try
@@ -231,6 +233,18 @@ def generate_code():
              lambda self, output: print_bracketed(self, output))
 
     DEFPRINT(AST_EmptyStatement, lambda self, output: None)
+
+    def print_annotated_assignment(self, output):
+        if self.value:
+            assignment = AST_Assign({
+                'left': self.target,
+                'operator': '=',
+                'right': self.value,
+            })
+            assignment.print(output)
+            output.semicolon()
+
+    DEFPRINT(AST_AnnotatedAssignment, print_annotated_assignment)
 
     DEFPRINT(AST_Do, print_do_loop)
 
@@ -497,7 +511,50 @@ def generate_code():
             name = def_.mangled_name or def_.name
         if RESERVED_WORDS[name] and name is not 'this':
             name = 'ρσ_py_' + name
+
+        def is_assignment_target():
+            stack = output.stack()
+            for index in range(stack.length - 2, -1, -1):
+                ancestor = stack[index]
+                child = stack[index + 1]
+                if is_node_type(ancestor, AST_Assign):
+                    if ancestor.left is child:
+                        return True
+                    if is_node_type(ancestor.left, AST_Array):
+                        return ancestor.left.flatten().indexOf(self) is not -1
+                    if is_node_type(ancestor.left, AST_Seq):
+                        return ancestor.left.to_array().indexOf(self) is not -1
+                    return False
+                if is_node_type(ancestor, AST_AnnotatedAssignment):
+                    return ancestor.target is child
+                if is_node_type(ancestor, AST_ForIn):
+                    if ancestor.init is child:
+                        return True
+                    if is_node_type(ancestor.init, AST_Array):
+                        return ancestor.init.flatten().indexOf(self) is not -1
+                    return False
+                if is_node_type(ancestor, AST_Scope):
+                    break
+            return False
+
+        check_unbound = False
+        if is_node_type(self, AST_SymbolRef) and not is_assignment_target():
+            stack = output.stack()
+            for index in range(stack.length - 2, -1, -1):
+                scope = stack[index]
+                if is_node_type(scope, AST_Scope):
+                    check_unbound = (
+                        scope.annotated_locals
+                        and scope.annotated_locals.indexOf(self.name) is not -1
+                    )
+                    break
+        if check_unbound:
+            output.print('ρσ_check_unbound(')
         output.print_name(name)
+        if check_unbound:
+            output.comma()
+            output.print(JSON.stringify(self.name))
+            output.print(')')
 
     DEFPRINT(AST_Undefined, lambda self, output: output.print("void 0"))
     DEFPRINT(AST_Hole, noop)

@@ -224,6 +224,24 @@ class AST_EmptyStatement(AST_Statement):
         return visitor._visit(self)
 
 
+class AST_AnnotatedAssignment(AST_Statement):
+    "A PEP 526 variable or attribute annotation."
+    properties = {
+        'target': "[AST_Node] the annotated assignment target",
+        'annotation': "[AST_Node] the annotation expression",
+        'value': "[AST_Node?] optional assigned value",
+    }
+
+    def _walk(self, visitor):
+        def f_annotation():
+            self.target._walk(visitor)
+            self.annotation._walk(visitor)
+            if self.value:
+                self.value._walk(visitor)
+
+        return visitor._visit(self, f_annotation)
+
+
 class AST_StatementWithBody(AST_Statement):
     "Base class for all statements that contain one nested body: `For`, `ForIn`, `Do`, `While`, `With`"
     properties = {
@@ -410,6 +428,8 @@ class AST_Scope(AST_Block):
     "Base class for all statements introducing a lexical scope"
     properties = {
         'localvars': "[SymbolDef*] list of variables local to this scope",
+        'annotated_locals':
+        "[string*] names requiring an unbound-value check on reads",
         'docstrings': "[AST_String*] list of docstrings for this scope",
     }
 

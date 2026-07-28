@@ -36,7 +36,7 @@ OPERATORS = make_predicate([
     "in", "instanceof", "typeof", "new", "void", "del", "+", "-", "not", "~",
     "&", "|", "^^", "^", "**", "*", "//", "/", "%", ">>", "<<", ">>>", "<",
     ">", "<=", ">=", "==", "is", "!=", "=", "+=", "-=", "//=", "/=", "*=", "**=",
-    "%=", ">>=", "<<=", ">>>=", "|=", "^=", "&=", "@=", "and", "or", "@", "->"
+    "%=", ">>=", "<<=", ">>>=", "|=", "^=", "&=", "@=", ":=", "and", "or", "@", "->"
 ])
 
 OP_MAP = {
@@ -745,6 +745,9 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
 
         if is_digit(code):
             return read_num()
+
+        if ch is ':' and charAt(S['text'], S['pos'] + 1) is '=':
+            return read_operator(next())
 
         if PUNC_CHARS[ch]:
             return token("punc", next())

@@ -850,6 +850,14 @@ def ρσ_dict(
     return SageDict(iterable, **keywords)
 
 
+def ρσ_scope_dict(values: Any) -> SageDict:
+    answer = SageDict()
+    for key in runtime.object.keys(values):
+        if values[key] is not runtime.undefined:
+            answer.__setitem__(key, values[key])
+    return answer
+
+
 runtime.reflect.set(ρσ_dict, 'fromkeys', SageDict.fromkeys)
 
 

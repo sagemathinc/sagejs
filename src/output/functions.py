@@ -451,6 +451,11 @@ def print_function_call(self, output):
         elif scope:
             for symbol in scope.localvars:
                 add_name(symbol.name)
+            if want_globals:
+                for name in scope.nonlocalvars or []:
+                    add_name(name.name if name.name else name)
+                for symbol in scope.exports or []:
+                    add_name(symbol.name)
             if is_node_type(scope, AST_Lambda):
                 for argument in scope.argnames:
                     add_name(argument.name)
@@ -458,7 +463,7 @@ def print_function_call(self, output):
             add_name('__name__')
             add_name('__file__')
 
-        output.print('{')
+        output.print('ρσ_scope_dict({')
         for index, name in enumerate(names):
             if index:
                 output.comma()
@@ -469,7 +474,7 @@ def print_function_call(self, output):
                 output.print('.prototype[' + JSON.stringify(name) + ']')
             else:
                 output.print_name(name)
-        output.print('}')
+        output.print('})')
         return
 
     if self.pooled_numeric_name:

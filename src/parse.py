@@ -6,7 +6,8 @@ from __python__ import hash_literals  # type: ignore
 from utils import make_predicate, array_to_hash, defaults, has_prop, cache_file_name
 from errors import SyntaxError, ImportError
 from ast_types import (
-    AST_Array, AST_Assign, AST_Binary, AST_BlockStatement, AST_Break, AST_Call,
+    AST_AnnotatedAssignment, AST_Array, AST_Assign, AST_Binary,
+    AST_BlockStatement, AST_Break, AST_Call,
     AST_Catch, AST_Class, AST_ClassCall, AST_Conditional, AST_Constant,
     AST_Continue, AST_DWLoop, AST_Debugger, AST_Decorator, AST_Definitions,
     AST_DictComprehension, AST_Directive, AST_Do, AST_Dot, AST_EllipsesRange,
@@ -150,7 +151,7 @@ FORBIDDEN_CLASS_VARS = 'prototype constructor'.split(' ')
 UNARY_PREFIX = make_predicate('typeof void delete ~ - + ! @ *')
 
 ASSIGNMENT = make_predicate(
-    '= += -= /= //= *= **= @= %= >>= <<= >>>= |= ^= &=')
+    '= := += -= /= //= *= **= @= %= >>= <<= >>>= |= ^= &=')
 
 
 def operator_to_precedence(a):
@@ -612,6 +613,11 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 # skip inner scopes
                 if is_node_type(stmt, AST_Scope):
                     continue
+                if (
+                    is_node_type(stmt, AST_AnnotatedAssignment)
+                    and is_node_type(stmt.target, AST_SymbolRef)
+                ):
+                    push(stmt.target.name)
 
                 # recursive descent into conditional, loop and exception bodies
                 for option in ('body', 'alternative', 'bcatch', 'condition'):
@@ -633,6 +639,24 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     for clause in stmt.clauses:
                         if clause.alias:
                             push(clause.alias.name)
+
+            # Assignment expressions can be nested arbitrarily deeply inside
+            # calls and comprehensions, but they bind in this containing
+            # Python scope.  Do not descend into an actual nested scope.
+            def collect_walrus(node, _descend):
+                if is_node_type(node, AST_Scope):
+                    return True
+                if (
+                    is_node_type(node, AST_Assign)
+                    and node.is_walrus
+                ):
+                    add_assign_lhs(node.left)
+                return False
+
+            walrus_walker = TreeWalker(collect_walrus)
+            for stmt in body:
+                if not is_node_type(stmt, AST_Scope):
+                    stmt.walk(walrus_walker)
 
         elif body.body:
             # recursive descent into wrapper statements that contain body blocks
@@ -661,6 +685,35 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             add_for_in(body)
 
         return localvars
+
+    def scan_for_annotated_names(body):
+        names = []
+
+        def add(name):
+            if names.indexOf(name) is -1:
+                names.push(name)
+
+        if Array.isArray(body):
+            for stmt in body:
+                if is_node_type(stmt, AST_Scope):
+                    continue
+                if (
+                    is_node_type(stmt, AST_AnnotatedAssignment)
+                    and is_node_type(stmt.target, AST_SymbolRef)
+                ):
+                    add(stmt.target.name)
+                for option in ('body', 'alternative'):
+                    nested = stmt[option]
+                    if nested:
+                        for name in scan_for_annotated_names(nested):
+                            add(name)
+        elif body and body.body:
+            for name in scan_for_annotated_names(body.body):
+                add(name)
+            if body.alternative:
+                for name in scan_for_annotated_names(body.alternative):
+                    add(name)
+        return names
 
     def disable_builtin_range_optimization(body):
         def disable(node):
@@ -824,8 +877,6 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             else:
                 unexpected()
         elif tmp_ is "name":
-            if is_token(peek(), 'punc', ':'):
-                token_error(peek(), 'invalid syntax, colon not allowed here')
             if (options.jsage and is_token(peek_n(0), 'punc', '.')
                     and is_token(peek_n(1), 'operator', '<')):
                 return sage_generator_assignment()
@@ -859,7 +910,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 })
             elif tmp_ is "while":
                 while_cond = expression(True)
-                if is_node_type(while_cond, AST_Assign):
+                if (
+                    is_node_type(while_cond, AST_Assign)
+                    and not while_cond.is_walrus
+                ):
                     croak(
                         'Assignments in while loop conditions are not allowed')
                 if not is_('punc', ':'):
@@ -990,6 +1044,24 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
 
     def simple_statement(tmp):
         tmp = expression(True)
+        if is_('punc', ':'):
+            if not (
+                is_node_type(tmp, AST_SymbolRef)
+                or is_node_type(tmp, AST_PropAccess)
+            ):
+                croak('illegal target for annotation')
+            next()
+            annotation = maybe_conditional(False)
+            value = None
+            if is_('operator', '='):
+                next()
+                value = expression(True)
+            semicolon()
+            return AST_AnnotatedAssignment({
+                'target': tmp,
+                'annotation': annotation,
+                'value': value,
+            })
         semicolon()
         return AST_SimpleStatement({'body': tmp})
 
@@ -1900,6 +1972,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         }
         definition = js_new(ctor, args)
         definition.return_annotation = return_annotation
+        definition.annotated_locals = scan_for_annotated_names(
+            definition.body)
         definition.is_generator = is_generator[0]
         if is_node_type(definition, AST_Method):
             definition.static = staticmethod
@@ -2355,7 +2429,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             tmp = []
             tmp.kwargs = []
             for arg in a:
-                if is_node_type(arg, AST_Assign):
+                if (
+                    is_node_type(arg, AST_Assign)
+                    and not arg.is_walrus
+                ):
                     tmp.kwargs.push([arg.left, arg.right])
                 else:
                     tmp.push(arg)
@@ -2392,7 +2469,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 a.starargs = True
             else:
                 arg = expression(False)
-                if is_node_type(arg, AST_Assign):
+                if (
+                    is_node_type(arg, AST_Assign)
+                    and not arg.is_walrus
+                ):
                     a.kwargs.push([arg.left, arg.right])
                 else:
                     if is_('keyword', 'for'):
@@ -3258,14 +3338,22 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             if only_plain_assignment and val is not '=':
                 croak('Invalid assignment operator for chained assignment: ' +
                       val)
+            if (
+                val is ':='
+                and not is_node_type(left, AST_SymbolRef)
+            ):
+                croak(
+                    'assignment expression target must be an identifier')
             next()
-            return create_assign({
+            assignment = create_assign({
                 'start': start,
                 'left': left,
-                'operator': val,
+                'operator': '=' if val is ':=' else val,
                 'right': maybe_assign(no_in, True),
                 'end': prev()
             })
+            assignment.is_walrus = val is ':='
+            return assignment
         return left
 
     def expression(commas, no_in):
@@ -3307,6 +3395,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     if (
                         left.length > 1
                         and is_node_type(left[-1], AST_Assign)
+                        and not left[-1].is_walrus
                     ):
                         assignment = left[-1]
                         left[-1] = assignment.left
@@ -3338,7 +3427,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'right': expression(True, no_in),
                         'end': peek(),
                     })
-                if is_node_type(expr, AST_Assign):
+                if (
+                    is_node_type(expr, AST_Assign)
+                    and not expr.is_walrus
+                ):
                     left[-1] = left[-1].left
                     return create_assign({
                         'start':
@@ -3360,7 +3452,11 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 left.push(expr)
 
             # if last one was an assignment, fix it
-            if left.length > 1 and is_node_type(left[-1], AST_Assign):
+            if (
+                left.length > 1
+                and is_node_type(left[-1], AST_Assign)
+                and not left[-1].is_walrus
+            ):
                 left[-1] = left[-1].left
                 return create_assign({
                     'start': start,
@@ -3417,6 +3513,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
 
         toplevel.nonlocalvars = scan_for_nonlocal_defs(toplevel.body).concat(
             S.globals)
+        toplevel.annotated_locals = scan_for_annotated_names(toplevel.body)
         toplevel.localvars = []
         toplevel.exports = []
         seen_exports = {}
