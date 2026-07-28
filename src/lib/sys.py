@@ -1,4 +1,22 @@
-# Placeholder for now -- nothing implemented
+__name__ = 'sys'
+
+
+class _Implementation:
+    def __init__(self):
+        self.name = 'cpython'
+        self.version = (3, 14, 4)
+
+    def __repr__(self):
+        return (
+            "namespace(name='cpython', version="
+            + repr(self.version)
+            + ')'
+        )
+
+    __str__ = __repr__
+
+
+implementation = _Implementation()
 
 def exit(status=None):
     if status is None:
@@ -18,6 +36,12 @@ maxsize = int('9223372036854775807')
 # generally use ``sys.version_info`` for feature checks, but ``version`` is a
 # standard public attribute and must at least be a string.
 version = 'Sage.js'
+
+
+def intern(value):
+    if not isinstance(value, str):
+        raise TypeError('intern() argument must be str')
+    return value
 
 
 def getsizeof(value):
