@@ -1,10 +1,7 @@
 # vim:fileencoding=utf-8
-# globals: ρσ_iterator_symbol, ρσ_set_polyfill, ρσ_dict_polyfill, assrt
+# globals: ρσ_iterator_symbol, assrt
 # globals: ρσ_operator_add_exact, ρσ_operator_sub_exact,
 # globals: ρσ_operator_mul_exact, ρσ_operator_pow_exact
-nonlocal ρσ_set_implementation, ρσ_dict_implementation
-
-
 class CustomIterable:
     def __init__(self, items):
         self.items = items
@@ -346,9 +343,6 @@ def test_sets():
 
 
 test_sets()
-ρσ_set_implementation = ρσ_set_polyfill  # noqa:undef
-test_sets()
-ρσ_set_implementation = Set
 
 
 def test_dicts():
@@ -404,9 +398,6 @@ def test_dicts():
 
 
 test_dicts()
-ρσ_dict_implementation = ρσ_dict_polyfill  # noqa:undef
-test_dicts()
-ρσ_dict_implementation = Map
 
 a = {1: 1}
 b = None

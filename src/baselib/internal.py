@@ -74,6 +74,19 @@ def ρσ_extends(child, parent):
     child.prototype.constructor = child
 
 
+def ρσ_native_method(target_function):
+    """Adapt an ordinary ``(self, *args)`` function to a JS object method."""
+    def method():
+        args = Array.prototype.slice.call(arguments)
+        args.unshift(this)
+        return target_function.apply(undefined, args)
+    return method
+
+
+def ρσ_strict_equal(left, right):
+    return left is right
+
+
 def ρσ_sequence_proxy(instance):
     def get_item(target, property_name, receiver):
         if (jstype(property_name) is 'string'

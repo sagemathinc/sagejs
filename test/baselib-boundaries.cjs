@@ -19,11 +19,13 @@ for (const relativePath of mathematicalModules) {
     verbatimExpression,
     `${relativePath} must not contain verbatim JavaScript`,
   );
-  assert.match(
-    source,
-    /^import sagejs\.runtime as runtime$/m,
-    `${relativePath} must use the readable runtime namespace`,
-  );
+  if (source.includes("runtime.")) {
+    assert.match(
+      source,
+      /^import sagejs\.runtime as runtime$/m,
+      `${relativePath} must use the readable runtime namespace`,
+    );
+  }
 }
 
 const generated = readFileSync(

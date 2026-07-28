@@ -1,739 +1,736 @@
-# vim:fileencoding=utf-8
-# License: BSD
-# Copyright: 2015, Kovid Goyal <kovid at kovidgoyal.net>
+"""Python container behavior implemented on modern JavaScript primitives.
 
-# globals:ρσ_iterator_symbol, ρσ_kwargs_symbol, ρσ_arraylike, ρσ_repr, Number, BigInt
+Lists remain decorated JavaScript arrays because generated Sage.js code relies
+on their native indexing and performance. Sets and dictionaries are small
+Python classes backed by the native JavaScript ``Set`` and ``Map`` types.
+"""
 
-def ρσ_equals(a, b):
-    if a is b:
+from __future__ import annotations
+
+from typing import Any, Callable
+
+import sagejs.runtime as runtime
+
+
+def _new_array(length: Any = runtime.undefined) -> Any:
+    constructor_args = [] if length is runtime.undefined else [length]
+    return runtime.reflect.construct(runtime.array, constructor_args)
+
+
+def _new_map() -> Any:
+    return runtime.reflect.construct(runtime.map_class, [])
+
+
+def _new_set() -> Any:
+    return runtime.reflect.construct(runtime.set_class, [])
+
+
+def _has_own(value: Any, key: Any) -> bool:
+    return runtime.reflect.apply(
+        runtime.object.prototype.hasOwnProperty,
+        value,
+        [key],
+    )
+
+
+def _type_is(actual: str, expected: str) -> bool:
+    return runtime.strict_equal(actual, expected)
+
+
+def _get_member(value: Any, name: str) -> Any:
+    if value is None or value is runtime.undefined:
+        return runtime.undefined
+    if (
+        _type_is(runtime.jstype(value), 'object')
+        or _type_is(runtime.jstype(value), 'function')
+    ):
+        return runtime.reflect.get(value, name)
+    boxed = runtime.reflect.apply(
+        runtime.object, runtime.undefined, [value])
+    return runtime.reflect.get(boxed, name)
+
+
+def equals(left: Any, right: Any) -> bool:
+    if left is right:
         return True
-    type_a = jstype(a)
-    type_b = jstype(b)
-    if ((type_a is 'bigint' and type_b is 'number'
-         and Number.isSafeInteger(b))
-            or (type_b is 'bigint' and type_a is 'number'
-                and Number.isSafeInteger(a))):
-        return v'BigInt(a) === BigInt(b)'
-    # WARNING: We have to use "is" here to avoid recursive call to ρσ_equals by getting "===".
-    # However, in genuine Python is comparison with a constant is a WARNING/Error.
-    if type_a is type_b and (type_a is 'number' or type_a is 'string'
-                             or type_a is 'boolean'):
-        return a is b
-    if a and jstype(a.__eq__) is 'function':
-        return a.__eq__(b)
-    if b and jstype(b.__eq__) is 'function':
-        return b.__eq__(a)
-    if ρσ_arraylike(a) and ρσ_arraylike(b):
-        if a.length != b.length:
+
+    left_type = runtime.jstype(left)
+    right_type = runtime.jstype(right)
+    if (
+        (
+            _type_is(left_type, 'bigint')
+            and _type_is(right_type, 'number')
+            and runtime.number.isSafeInteger(right)
+        )
+        or (
+            _type_is(right_type, 'bigint')
+            and _type_is(left_type, 'number')
+            and runtime.number.isSafeInteger(left)
+        )
+    ):
+        return runtime.bigint(left) is runtime.bigint(right)
+
+    if (
+        runtime.strict_equal(left_type, right_type)
+        and (
+            _type_is(left_type, 'number')
+            or _type_is(left_type, 'string')
+            or _type_is(left_type, 'boolean')
+        )
+    ):
+        return left is right
+
+    if (
+        left is not None
+        and _type_is(
+            runtime.jstype(_get_member(left, '__eq__')),
+            'function',
+        )
+    ):
+        return left.__eq__(right)
+    if (
+        right is not None
+        and _type_is(
+            runtime.jstype(_get_member(right, '__eq__')),
+            'function',
+        )
+    ):
+        return right.__eq__(left)
+
+    if left is None or right is None:
+        return False
+
+    if runtime.arraylike(left) and runtime.arraylike(right):
+        if left.length != right.length:
             return False
-        for i in range(len(a)):
-            if not (a[i] == b[i]):
+        for index in range(left.length):
+            if not equals(left[index], right[index]):
                 return False
         return True
-    if jstype(a) is 'object' and jstype(
-            b) is 'object' and a is not None and b is not None and (
-                (a.constructor is Object or Object.getPrototypeOf(a) is None)
-                and
-                (b.constructor is Object or Object.getPrototypeOf(b) is None)):
-        # Do a dict like comparison as this is most likely either a JS has
-        # (Object.create(null) or a JS object used as a hash (v"{}"))
-        akeys, bkeys = Object.keys(a), Object.keys(b)
-        if akeys.length is not bkeys.length:
+
+    if (
+        left is not None
+        and right is not None
+        and _type_is(left_type, 'object')
+        and _type_is(right_type, 'object')
+        and (
+            runtime.reflect.get(left, 'constructor') is runtime.object
+            or runtime.object.getPrototypeOf(left) is None
+        )
+        and (
+            runtime.reflect.get(right, 'constructor') is runtime.object
+            or runtime.object.getPrototypeOf(right) is None
+        )
+    ):
+        left_keys = runtime.object.keys(left)
+        right_keys = runtime.object.keys(right)
+        if left_keys.length != right_keys.length:
             return False
-        for j in range(len(akeys)):
-            key = akeys[j]
-            if not (a[key] == b[key]):
+        for key in left_keys:
+            if not _has_own(right, key):
+                return False
+            if not equals(left[key], right[key]):
                 return False
         return True
     return False
 
-def ρσ_not_equals(a, b):
-    if a is b:
+
+def not_equals(left: Any, right: Any) -> bool:
+    if left is right:
         return False
-    if a and jstype(a.__ne__) is 'function':
-        return a.__ne__(b)
-    if b and jstype(b.__ne__) is 'function':
-        return b.__ne__(a)
-    return not ρσ_equals(a, b)
+    if (
+        left is not None
+        and _type_is(
+            runtime.jstype(_get_member(left, '__ne__')),
+            'function',
+        )
+    ):
+        return left.__ne__(right)
+    if (
+        right is not None
+        and _type_is(
+            runtime.jstype(_get_member(right, '__ne__')),
+            'function',
+        )
+    ):
+        return right.__ne__(left)
+    return not equals(left, right)
 
-v'var equals = ρσ_equals'
 
-# list {{{
-
-def ρσ_list_extend(iterable):
-    if Array.isArray(iterable) or jstype(iterable) is 'string':
-        # Allocate all new memory in one operation
-        start = this.length
-        this.length += iterable.length
-        for v'var i = 0; i < iterable.length; i++':
-            this[start + i] = iterable[i]  # noqa:undef
-    else:
-        iterator = iterable.keys() if jstype(Map) is 'function' and v'iterable instanceof Map' else iterable[ρσ_iterator_symbol]()
-        result = iterator.next()
-        while not result.done:
-            this.push(result.value)
-            result = iterator.next()
-
-def ρσ_list_index(val, start, stop):
-    start = start or 0
-    if start < 0:
-        start = this.length + start
-    if start < 0:
-        raise ValueError(val + ' is not in list')
-    if stop is undefined:
-        idx = this.indexOf(val, start)
-        if idx is -1:
-            raise ValueError(val + ' is not in list')
-        return idx
-    if stop < 0:
-        stop = this.length + stop
-    for v'var i = start; i < stop; i++':
-        if this[i] == val:
-            return i  # noqa:undef
-    raise ValueError(val + ' is not in list')
-
-def ρσ_list_pop(index):
-    if this.length is 0:
-        raise IndexError('list is empty')
-    if index is undefined:
-        index = -1
-    ans = this.splice(index, 1)
-    if not ans.length:
-        raise IndexError('pop index out of range')
-    return ans[0]
-
-def ρσ_list_remove(value):
-    idx = this.indexOf(value)
-    if idx is -1:
-        raise ValueError(value + ' not in list')
-    this.splice(idx, 1)
-
-def ρσ_list_to_string():
-    return '[' + this.join(', ') + ']'
-
-def ρσ_list_insert(index, val):
-    if index < 0:
-        index += this.length
-    index = min(this.length, max(index, 0))
-    if index is 0:
-        this.unshift(val)
+@runtime.native_method
+def _list_extend(self: Any, iterable: Any) -> None:
+    if (
+        runtime.array.isArray(iterable)
+        or _type_is(runtime.jstype(iterable), 'string')
+    ):
+        start = self.length
+        self.length += iterable.length
+        for index in range(iterable.length):
+            self[start + index] = iterable[index]
         return
-    for v'var i = this.length; i > index; i--':
-        this[i] = this[i - 1]  # noqa:undef
-    this[index] = val
+    for value in iterable:
+        self.push(value)
 
-def ρσ_list_copy():
-    return ρσ_list_constructor(this)
 
-def ρσ_list_clear():
-    this.length = 0
+@runtime.native_method
+def _list_index(
+    self: Any,
+    value: Any,
+    start: int = 0,
+    stop: Any = runtime.undefined,
+) -> int:
+    if start < 0:
+        start = max(0, self.length + start)
+    if stop is runtime.undefined:
+        stop = self.length
+    elif stop < 0:
+        stop = self.length + stop
+    for index in range(start, min(stop, self.length)):
+        if equals(self[index], value):
+            return index
+    raise ValueError(runtime.string(value) + ' is not in list')
 
-def ρσ_list_as_array():
-    return Array.prototype.slice.call(this)
 
-def ρσ_list_count(value):
-    return this.reduce(def(n, val): return n + (val is value);, 0)
+@runtime.native_method
+def _list_pop(self: Any, index: Any = runtime.undefined) -> Any:
+    if self.length == 0:
+        raise IndexError('pop from empty list')
+    if index is runtime.undefined:
+        index = -1
+    answer = self.splice(index, 1)
+    if answer.length == 0:
+        raise IndexError('pop index out of range')
+    return answer[0]
 
-def ρσ_list_sort_key(value):
-    t = jstype(value)
-    if t is 'string' or t is 'number':
+
+@runtime.native_method
+def _list_remove(self: Any, value: Any) -> None:
+    index = runtime.reflect.apply(_list_index, self, [value])
+    self.splice(index, 1)
+
+
+@runtime.native_method
+def _list_to_string(self: Any) -> str:
+    return '[' + self.join(', ') + ']'
+
+
+@runtime.native_method
+def _list_insert(self: Any, index: int, value: Any) -> None:
+    if index < 0:
+        index += self.length
+    index = min(self.length, max(index, 0))
+    self.splice(index, 0, value)
+
+
+@runtime.native_method
+def _list_copy(self: Any) -> Any:
+    return list_constructor(self)
+
+
+@runtime.native_method
+def _list_clear(self: Any) -> None:
+    self.length = 0
+
+
+@runtime.native_method
+def _list_as_array(self: Any) -> Any:
+    return runtime.reflect.apply(
+        runtime.array.prototype.slice, self, [])
+
+
+@runtime.native_method
+def _list_count(self: Any, value: Any) -> int:
+    answer = 0
+    for item in self:
+        if equals(item, value):
+            answer += 1
+    return answer
+
+
+def _list_sort_key(value: Any) -> Any:
+    value_type = runtime.jstype(value)
+    if (
+        _type_is(value_type, 'string')
+        or _type_is(value_type, 'number')
+        or _type_is(value_type, 'bigint')
+    ):
         return value
     return value.toString()
 
-def ρσ_list_sort_cmp(a, b, ap, bp):
-    if a < b:
-        return -1
-    if a > b:
-        return 1
-    return ap - bp
 
-def ρσ_list_sort(key=None, reverse=False):
-    key = key or ρσ_list_sort_key
-    mult = -1 if reverse else 1
-    keymap = dict()
-    posmap = dict()
-    for v'var i=0; i < this.length; i++':
-        k = this[i]  # noqa:undef
-        keymap.set(k, key(k))
-        posmap.set(k, i)
-    this.sort(def (a, b): return mult * ρσ_list_sort_cmp(keymap.get(a), keymap.get(b), posmap.get(a), posmap.get(b));)
+@runtime.native_method
+def _list_sort(
+    self: Any,
+    key: Callable[[Any], Any] | None = None,
+    reverse: bool = False,
+) -> None:
+    key_function = key or _list_sort_key
+    decorated = _new_array(self.length)
+    for index in range(self.length):
+        decorated[index] = [key_function(self[index]), index, self[index]]
 
-def ρσ_list_concat():  # ensure concat() returns an object of type list
-    ans = Array.prototype.concat.apply(this, arguments)
-    ρσ_list_decorate(ans)
-    return ans
+    multiplier = -1 if reverse else 1
 
-def ρσ_list_slice():  # ensure slice() returns an object of type list
-    ans = Array.prototype.slice.apply(this, arguments)
-    ρσ_list_decorate(ans)
-    return ans
+    def compare(left: Any, right: Any) -> int:
+        if left[0] < right[0]:
+            return -multiplier
+        if left[0] > right[0]:
+            return multiplier
+        return multiplier * (left[1] - right[1])
 
-def ρσ_list_iterator(value):
-    self = this
-    return {
-        '_i':-1,
-        '_list':self,
-        'next':def():
-            this._i += 1
-            if this._i >= this._list.length:
-                return {'done':True}
-            return {'done':False, 'value':this._list[this._i]}
-        ,
-    }
+    decorated.sort(compare)
+    for index in range(self.length):
+        self[index] = decorated[index][2]
 
-def ρσ_list_len():
-    return this.length
 
-def ρσ_list_contains(val):
-    for v'var i = 0; i < this.length; i++':
-        if this[i] == val:
+@runtime.native_method
+def _list_concat(self: Any, *others: Any) -> Any:
+    answer = runtime.reflect.apply(
+        runtime.array.prototype.concat, self, others)
+    return list_decorate(answer)
+
+
+@runtime.native_method
+def _list_slice(self: Any, *slice_args: Any) -> Any:
+    answer = runtime.reflect.apply(
+        runtime.array.prototype.slice, self, slice_args)
+    return list_decorate(answer)
+
+
+@runtime.native_method
+def _list_len(self: Any) -> int:
+    return self.length
+
+
+@runtime.native_method
+def _list_contains(self: Any, value: Any) -> bool:
+    for item in self:
+        if equals(item, value):
             return True
     return False
 
-def ρσ_list_eq(other):
-    if not ρσ_arraylike(other):
+
+@runtime.native_method
+def _list_eq(self: Any, other: Any) -> bool:
+    if not runtime.arraylike(other):
         return False
-    if this.length != other.length:
+    if self.length != other.length:
         return False
-    for v'var i = 0; i < this.length; i++':
-        if not (this[i] == other[i]):
+    for index in range(self.length):
+        if not equals(self[index], other[index]):
             return False
     return True
 
-def ρσ_list_mul(other):
-    # In Javascript it seems that the fastest way
-    # is to directly assign using a for loop. Everything
-    # else seems much slower.  This is something that
-    # Python is just much faster at, perhaps because Javascript
-    # doesn't really have arrays (they are really hash maps).
-    ans = []
-    k = int(other)
-    n = this.length
-    r"%js let s=0; for(let i=0; i<k; i++) { for(let j=0; j<n; j++) {ans[s++]=this[j];}}"
-    return ans
 
-def ρσ_list_decorate(ans):
-    ans.append = Array.prototype.push
-    ans.toString = ρσ_list_to_string
-    ans.inspect = ρσ_list_to_string
-    ans.extend = ρσ_list_extend
-    ans.index = ρσ_list_index
-    ans.pypop = ρσ_list_pop
-    ans.remove = ρσ_list_remove
-    ans.insert = ρσ_list_insert
-    ans.copy = ρσ_list_copy
-    ans.clear = ρσ_list_clear
-    ans.count = ρσ_list_count
-    ans.concat = ρσ_list_concat
-    ans.pysort = ρσ_list_sort
-    ans.slice = ρσ_list_slice
-    ans.as_array = ρσ_list_as_array
-    ans.__len__ = ρσ_list_len
-    ans.__contains__ = ρσ_list_contains
-    ans.__eq__ = ρσ_list_eq
-    ans.__mul__ = ρσ_list_mul
-    ans.constructor = ρσ_list_constructor
-    if jstype(ans[ρσ_iterator_symbol]) is not 'function':
-        # Happens on ES 5 runtimes
-        ans[ρσ_iterator_symbol] = ρσ_list_iterator
-    return ans
+@runtime.native_method
+def _list_mul(self: Any, other: Any) -> Any:
+    answer = list_constructor()
+    count = int(other)
+    for _ in range(count):
+        for value in self:
+            answer.push(value)
+    return answer
 
-def ρσ_list_constructor(iterable):
-    if iterable is undefined:
-        ans = v'[]'
-    elif ρσ_arraylike(iterable):
-        ans = new Array(iterable.length)
-        for v'var i = 0; i < iterable.length; i++':
-            ans[i] = iterable[i]  # noqa:undef
-    elif jstype(iterable[ρσ_iterator_symbol]) is 'function':
-        ans = Array.from(iterable)
-    elif jstype(iterable) is 'number':
-        # non-pythonic optimization to allocate all needed memory in a single operation
-        ans = new Array(iterable)
+
+def ρσ_list_decorate(answer: Any) -> Any:
+    answer.append = runtime.array.prototype.push
+    answer.toString = _list_to_string
+    answer.inspect = _list_to_string
+    answer.extend = _list_extend
+    answer.index = _list_index
+    answer.pypop = _list_pop
+    answer.remove = _list_remove
+    answer.insert = _list_insert
+    answer.copy = _list_copy
+    answer.clear = _list_clear
+    answer.count = _list_count
+    answer.concat = _list_concat
+    answer.pysort = _list_sort
+    answer.slice = _list_slice
+    answer.as_array = _list_as_array
+    answer.__len__ = _list_len
+    answer.__contains__ = _list_contains
+    answer.__eq__ = _list_eq
+    answer.__mul__ = _list_mul
+    answer.constructor = list_constructor
+    return answer
+
+
+def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
+    if iterable is runtime.undefined:
+        answer = _new_array()
+    elif runtime.arraylike(iterable):
+        answer = runtime.reflect.apply(
+            runtime.array.prototype.slice, iterable, [])
+    elif _type_is(runtime.jstype(iterable), 'number'):
+        answer = _new_array(iterable)
     else:
-        ans = Object.keys(iterable)
-    return ρσ_list_decorate(ans)
-ρσ_list_constructor.__name__ = 'list'
+        answer = _new_array()
+        for value in iterable:
+            answer.push(value)
+    return list_decorate(answer)
 
-v'var list = ρσ_list_constructor, list_wrap = ρσ_list_decorate'
 
-def sorted(iterable, key=None, reverse=False):
-    ans = ρσ_list_constructor(iterable)
-    ans.pysort(key, reverse)
-    return ans
-# }}}
+def sorted(
+    iterable: Any,
+    key: Callable[[Any], Any] | None = None,
+    reverse: bool = False,
+) -> Any:
+    answer = list_constructor(iterable)
+    answer.pysort(key, reverse)
+    return answer
 
-# set {{{
-v'var ρσ_global_object_id = 0, ρσ_set_implementation'
 
-def ρσ_set_keyfor(x):
-    t = jstype(x)
-    if t is 'string' or t is 'number' or t is 'boolean':
-        return '_' + t[0] + x
-    if v'x === null': # also matches undefined
-        return "__!@#$0"
-    ans = x.ρσ_hash_key_prop
-    if ans is undefined:
-        v'ans = "_!@#$" + (++ρσ_global_object_id)'
-        Object.defineProperty(x, 'ρσ_hash_key_prop', { 'value': ans })
-    return ans
+class SageSet:
 
-def ρσ_set_polyfill():
-    this._store = {}
-    this.size = 0
+    def __init__(self, iterable: Any = runtime.undefined) -> None:
+        self.jsset = _new_set()
+        if iterable is not runtime.undefined:
+            self.update(iterable)
 
-ρσ_set_polyfill.prototype.add = def(x):
-    key = ρσ_set_keyfor(x)
-    if not Object.prototype.hasOwnProperty.call(this._store, key):
-        this.size += 1
-        this._store[key] = x
-    return this
+    @property
+    def length(self) -> int:
+        return self.jsset.size
 
-ρσ_set_polyfill.prototype.clear = def(x):
-    this._store = {}
-    this.size = 0
+    @property
+    def size(self) -> int:
+        return self.jsset.size
 
-ρσ_set_polyfill.prototype.delete = def(x):
-    key = ρσ_set_keyfor(x)
-    if Object.prototype.hasOwnProperty.call(this._store, key):
-        this.size -= 1
-        v'delete this._store[key]'
+    def __len__(self) -> int:
+        return self.jsset.size
+
+    def __contains__(self, value: Any) -> bool:
+        return self.jsset.has(value)
+
+    has = __contains__
+
+    def __iter__(self) -> Any:
+        return self.jsset.values()
+
+    def add(self, value: Any) -> None:
+        self.jsset.add(value)
+
+    def clear(self) -> None:
+        self.jsset.clear()
+
+    def copy(self) -> SageSet:
+        return SageSet(self)
+
+    def discard(self, value: Any) -> None:
+        self.jsset.delete(value)
+
+    def difference(self, *others: Any) -> SageSet:
+        answer = SageSet()
+        for value in self:
+            if not any(other.has(value) for other in others):
+                answer.jsset.add(value)
+        return answer
+
+    def difference_update(self, *others: Any) -> None:
+        for value in list_constructor(self):
+            if any(other.has(value) for other in others):
+                self.jsset.delete(value)
+
+    def intersection(self, *others: Any) -> SageSet:
+        answer = SageSet()
+        for value in self:
+            if all(other.has(value) for other in others):
+                answer.jsset.add(value)
+        return answer
+
+    def intersection_update(self, *others: Any) -> None:
+        for value in list_constructor(self):
+            if not all(other.has(value) for other in others):
+                self.jsset.delete(value)
+
+    def isdisjoint(self, other: Any) -> bool:
+        for value in self:
+            if other.has(value):
+                return False
         return True
-    return False
 
-ρσ_set_polyfill.prototype.has = def(x):
-    return Object.prototype.hasOwnProperty.call(this._store, ρσ_set_keyfor(x))
-
-ρσ_set_polyfill.prototype.values = def(x):
-    ans = v"{'_keys': Object.keys(this._store), '_i':-1, '_s':this._store}"
-    ans[ρσ_iterator_symbol] = def():
-        return this
-    ans['next'] = def():
-        this._i += 1
-        if this._i >= this._keys.length:
-            return v"{'done': true}"
-        return v"{'done':false, 'value':this._s[this._keys[this._i]]}"
-    return ans
-
-if jstype(Set) is not 'function' or jstype(Set.prototype.delete) is not 'function':
-    v'ρσ_set_implementation = ρσ_set_polyfill'
-else:
-    v'ρσ_set_implementation = Set'
-
-def ρσ_set(iterable):
-    if v'this instanceof ρσ_set':
-        this.jsset = new ρσ_set_implementation()  # noqa:undef
-        ans = this
-        if iterable is undefined:
-            return ans
-        s = ans.jsset
-        if ρσ_arraylike(iterable):
-            for v'var i = 0; i < iterable.length; i++':
-                s.add(iterable[i])
-        elif jstype(iterable[ρσ_iterator_symbol]) is 'function':
-            iterator = iterable.keys() if jstype(Map) is 'function' and v'iterable instanceof Map' else iterable[ρσ_iterator_symbol]()
-            result = iterator.next()
-            while not result.done:
-                s.add(result.value)
-                result = iterator.next()
-        else:
-            keys = Object.keys(iterable)
-            for v'var j=0; j < keys.length; j++':
-                s.add(keys[j])
-        return ans
-    else:
-        return new ρσ_set(iterable)
-ρσ_set.prototype.__name__ = 'set'
-
-# These are for JavaScript users' convenience
-Object.defineProperties(ρσ_set.prototype, {
-    'length': { 'get': def(): return this.jsset.size; },
-    'size': { 'get': def(): return this.jsset.size; },
-})
-
-ρσ_set.prototype.__len__ = def(): return this.jsset.size
-ρσ_set.prototype.has = ρσ_set.prototype.__contains__ = def(x): return this.jsset.has(x)
-ρσ_set.prototype.add = def(x): this.jsset.add(x)
-ρσ_set.prototype.clear = def(): this.jsset.clear()
-ρσ_set.prototype.copy = def(): return ρσ_set(this)
-ρσ_set.prototype.discard = def(x): this.jsset.delete(x)
-ρσ_set.prototype[ρσ_iterator_symbol] = def(): return this.jsset.values()
-
-ρσ_set.prototype.difference = def():
-    ans = new ρσ_set()
-    s = ans.jsset
-    iterator = this.jsset.values()
-    r = iterator.next()
-    while not r.done:
-        x = r.value
-        has = False
-        for v'var i = 0; i < arguments.length; i++':
-            if arguments[i].has(x):  # noqa:undef
-                has = True
-                break
-        if not has:
-            s.add(x)
-        r = iterator.next()
-    return ans
-
-ρσ_set.prototype.difference_update = def():
-    s = this.jsset
-    remove = v'[]'
-    iterator = s.values()
-    r = iterator.next()
-    while not r.done:
-        x = r.value
-        for v'var i = 0; i < arguments.length; i++':
-            if arguments[i].has(x):  # noqa:undef
-                remove.push(x)
-                break
-        r = iterator.next()
-    for v'var j = 0; j < remove.length; j++':
-        s.delete(remove[j])  # noqa:undef
-
-ρσ_set.prototype.intersection = def():
-    ans = new ρσ_set()
-    s = ans.jsset
-    iterator = this.jsset.values()
-    r = iterator.next()
-    while not r.done:
-        x = r.value
-        has = True
-        for v'var i = 0; i < arguments.length; i++':
-            if not arguments[i].has(x):  # noqa:undef
-                has = False
-                break
-        if has:
-            s.add(x)
-        r = iterator.next()
-    return ans
-
-ρσ_set.prototype.intersection_update = def():
-    s = this.jsset
-    remove = v'[]'
-    iterator = s.values()
-    r = iterator.next()
-    while not r.done:
-        x = r.value
-        for v'var i = 0; i < arguments.length; i++':
-            if not arguments[i].has(x):  # noqa:undef
-                remove.push(x)
-                break
-        r = iterator.next()
-    for v'var j = 0; j < remove.length; j++':
-        s.delete(remove[j])  # noqa:undef
-
-ρσ_set.prototype.isdisjoint = def(other):
-    iterator = this.jsset.values()
-    r = iterator.next()
-    while not r.done:
-        x = r.value
-        if other.has(x):
-            return False
-        r = iterator.next()
-    return True
-
-ρσ_set.prototype.issubset = def(other):
-    iterator = this.jsset.values()
-    r = iterator.next()
-    while not r.done:
-        x = r.value
-        if not other.has(x):
-            return False
-        r = iterator.next()
-    return True
-
-ρσ_set.prototype.issuperset = def(other):
-    s = this.jsset
-    iterator = other.jsset.values()
-    r = iterator.next()
-    while not r.done:
-        x = r.value
-        if not s.has(x):
-            return False
-        r = iterator.next()
-    return True
-
-ρσ_set.prototype.pop = def():
-    iterator = this.jsset.values()
-    r = iterator.next()
-    if r.done:
-        raise KeyError('pop from an empty set')
-    this.jsset.delete(r.value)
-    return r.value
-
-ρσ_set.prototype.remove = def(x):
-    if not this.jsset.delete(x):
-        raise KeyError(x.toString())
-
-ρσ_set.prototype.symmetric_difference = def(other):
-    return this.union(other).difference(this.intersection(other))
-
-ρσ_set.prototype.symmetric_difference_update = def(other):
-    common = this.intersection(other)
-    this.update(other)
-    this.difference_update(common)
-
-ρσ_set.prototype.union = def():
-    ans = ρσ_set(this)
-    ans.update.apply(ans, arguments)
-    return ans
-
-ρσ_set.prototype.update = def():
-    s = this.jsset
-    for v'var i=0; i < arguments.length; i++':
-        iterator = arguments[i][ρσ_iterator_symbol]()  # noqa:undef
-        r = iterator.next()
-        while not r.done:
-            s.add(r.value)
-            r = iterator.next()
-
-ρσ_set.prototype.toString = ρσ_set.prototype.__repr__ = ρσ_set.prototype.__str__ = ρσ_set.prototype.inspect = def():
-    return '{' + list(this).join(', ') + '}'
-
-ρσ_set.prototype.__eq__ = def(other):
-    if not v'other instanceof this.constructor':
-        return False
-    if other.size is not this.size:
-        return False
-    if other.size is 0:
+    def issubset(self, other: Any) -> bool:
+        for value in self:
+            if not other.has(value):
+                return False
         return True
-    iterator = other[ρσ_iterator_symbol]()
-    r = iterator.next()
-    while not r.done:
-        if not this.has(r.value):
+
+    def issuperset(self, other: Any) -> bool:
+        return other.issubset(self)
+
+    def pop(self) -> Any:
+        result = self.jsset.values().next()
+        if result.done:
+            raise KeyError('pop from an empty set')
+        self.jsset.delete(result.value)
+        return result.value
+
+    def remove(self, value: Any) -> None:
+        if not self.jsset.delete(value):
+            raise KeyError(runtime.string(value))
+
+    def symmetric_difference(self, other: Any) -> SageSet:
+        return self.union(other).difference(self.intersection(other))
+
+    def symmetric_difference_update(self, other: Any) -> None:
+        common = self.intersection(other)
+        self.update(other)
+        self.difference_update(common)
+
+    def union(self, *others: Any) -> SageSet:
+        answer = self.copy()
+        answer.update(*others)
+        return answer
+
+    def update(self, *others: Any) -> None:
+        for other in others:
+            for value in other:
+                self.jsset.add(value)
+
+    def __repr__(self) -> str:
+        entries = list_constructor()
+        for value in self:
+            entries.push(runtime.repr(value))
+        return '{' + entries.join(', ') + '}'
+
+    __str__ = __repr__
+    toString = __repr__
+    inspect = __repr__
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SageSet):
             return False
-        r = iterator.next()
-    return True
-
-def ρσ_set_wrap(x):
-    ans = new ρσ_set()
-    ans.jsset = x
-    return ans
-
-v'var set = ρσ_set, set_wrap = ρσ_set_wrap'
-# }}}
-
-# dict {{{
-v'var ρσ_dict_implementation'
-
-def ρσ_dict_polyfill():
-    this._store = {}
-    this.size = 0
-
-ρσ_dict_polyfill.prototype.set = def(x, value):
-    key = ρσ_set_keyfor(x)
-    if not Object.prototype.hasOwnProperty.call(this._store, key):
-        this.size += 1
-    this._store[key] = v'[x, value]'
-    return this
-
-ρσ_dict_polyfill.prototype.clear = def(x):
-    this._store = {}
-    this.size = 0
-
-ρσ_dict_polyfill.prototype.delete = def(x):
-    key = ρσ_set_keyfor(x)
-    if Object.prototype.hasOwnProperty.call(this._store, key):
-        this.size -= 1
-        v'delete this._store[key]'
-        return True
-    return False
-
-ρσ_dict_polyfill.prototype.has = def(x):
-    return Object.prototype.hasOwnProperty.call(this._store, ρσ_set_keyfor(x))
-
-ρσ_dict_polyfill.prototype.get = def(x):
-    try:
-        return this._store[ρσ_set_keyfor(x)][1]
-    except TypeError:  # Key is not present
-        return undefined
-
-ρσ_dict_polyfill.prototype.values = def(x):
-    ans = v"{'_keys': Object.keys(this._store), '_i':-1, '_s':this._store}"
-    ans[ρσ_iterator_symbol] = def():
-        return this
-    ans['next'] = def():
-        this._i += 1
-        if this._i >= this._keys.length:
-            return v"{'done': true}"
-        return v"{'done':false, 'value':this._s[this._keys[this._i]][1]}"
-    return ans
-
-ρσ_dict_polyfill.prototype.keys = def(x):
-    ans = v"{'_keys': Object.keys(this._store), '_i':-1, '_s':this._store}"
-    ans[ρσ_iterator_symbol] = def():
-        return this
-    ans['next'] = def():
-        this._i += 1
-        if this._i >= this._keys.length:
-            return v"{'done': true}"
-        return v"{'done':false, 'value':this._s[this._keys[this._i]][0]}"
-    return ans
-
-ρσ_dict_polyfill.prototype.entries = def(x):
-    ans = v"{'_keys': Object.keys(this._store), '_i':-1, '_s':this._store}"
-    ans[ρσ_iterator_symbol] = def():
-        return this
-    ans['next'] = def():
-        this._i += 1
-        if this._i >= this._keys.length:
-            return v"{'done': true}"
-        return v"{'done':false, 'value':this._s[this._keys[this._i]]}"
-    return ans
-
-if jstype(Map) is not 'function' or jstype(Map.prototype.delete) is not 'function':
-    v'ρσ_dict_implementation = ρσ_dict_polyfill'
-else:
-    v'ρσ_dict_implementation = Map'
-
-def ρσ_dict(iterable, **kw):
-    if v'this instanceof ρσ_dict':
-        # TODO: this is really for copying dicts.
-        this.jsmap = new ρσ_dict_implementation()  # noqa:undef
-        if iterable is not undefined:
-            this.update(iterable)
-        this.update(kw)
-        return this
-    else:
-        return new ρσ_dict(iterable, **kw)
-ρσ_dict.prototype.__name__ = 'dict'
-
-
-# These are for JavaScript users' convenience
-Object.defineProperties(ρσ_dict.prototype, {
-    'length': { 'get': def(): return this.jsmap.size; },
-    'size': { 'get': def(): return this.jsmap.size; },
-})
-
-ρσ_dict.prototype.__len__ = def(): return this.jsmap.size
-ρσ_dict.prototype.has = ρσ_dict.prototype.__contains__ = def(x): return this.jsmap.has(x)
-ρσ_dict.prototype.set = ρσ_dict.prototype.__setitem__ = def(key, value): this.jsmap.set(key, value)
-ρσ_dict.prototype.__delitem__ = def (key): this.jsmap.delete(key)
-ρσ_dict.prototype.clear = def(): this.jsmap.clear()
-ρσ_dict.prototype.copy = def(): return ρσ_dict(this)
-ρσ_dict.prototype.keys = def(): return this.jsmap.keys()
-ρσ_dict.prototype.values = def(): return this.jsmap.values()
-ρσ_dict.prototype.items = ρσ_dict.prototype.entries = def(): return this.jsmap.entries()
-ρσ_dict.prototype[ρσ_iterator_symbol] = def(): return this.jsmap.keys()
-
-ρσ_dict.prototype.__getitem__ = def (key):
-    ans = this.jsmap.get(key)
-    if ans is undefined and not this.jsmap.has(key):
-        raise KeyError(key + '')
-    return ans
-
-ρσ_dict.prototype.get = def (key, defval):
-    ans = this.jsmap.get(key)
-    if ans is undefined and not this.jsmap.has(key):
-        return None if defval is undefined else defval
-    return ans
-
-ρσ_dict.prototype.set_default = def (key, defval):
-    j = this.jsmap
-    if not j.has(key):
-        j.set(key, defval)
-        return defval
-    return j.get(key)
-
-ρσ_dict.fromkeys = ρσ_dict.prototype.fromkeys = def (iterable, value=None):
-    ans = ρσ_dict()
-    iterator = iter(iterable)
-    r = iterator.next()
-    while not r.done:
-        ans.set(r.value, value)
-        r = iterator.next()
-    return ans
-
-ρσ_dict.prototype.pop = def (key, defval):
-    ans = this.jsmap.get(key)
-    if ans is undefined and not this.jsmap.has(key):
-        if defval is undefined:
-            raise KeyError(key)
-        return defval
-    this.jsmap.delete(key)
-    return ans
-
-ρσ_dict.prototype.popitem = def ():
-    r = this.jsmap.entries().next()
-    if r.done:
-        raise KeyError('dict is empty')
-    this.jsmap.delete(r.value[0])
-    return r.value
-
-ρσ_dict.prototype.update = def ():
-    if arguments.length is 0:
-        return
-    m = this.jsmap
-    iterable = arguments[0]
-    if Array.isArray(iterable):
-        for v'var i = 0; i < iterable.length; i++':
-            m.set(iterable[i][0], iterable[i][1])
-    elif v'iterable instanceof ρσ_dict':
-        iterator = iterable.items()
-        result = iterator.next()
-        while not result.done:
-            m.set(result.value[0], result.value[1])
-            result = iterator.next()
-    elif jstype(Map) is 'function' and v'iterable instanceof Map':
-        iterator = iterable.entries()
-        result = iterator.next()
-        while not result.done:
-            m.set(result.value[0], result.value[1])
-            result = iterator.next()
-    elif jstype(iterable[ρσ_iterator_symbol]) is 'function':
-        iterator = iterable[ρσ_iterator_symbol]()
-        result = iterator.next()
-        while not result.done:
-            m.set(result.value[0], result.value[1])
-            result = iterator.next()
-    else:
-        keys = Object.keys(iterable)
-        for v'var j=0; j < keys.length; j++':
-            if keys[j] is not ρσ_iterator_symbol:
-                m.set(keys[j], iterable[keys[j]])
-    if arguments.length > 1:
-        ρσ_dict.prototype.update.call(this, arguments[1])
-
-ρσ_dict.prototype.toString = ρσ_dict.prototype.inspect = ρσ_dict.prototype.__str__ = ρσ_dict.prototype.__repr__ = def():
-    entries = v'[]'
-    iterator = this.jsmap.entries()
-    r = iterator.next()
-    while not r.done:
-        entries.push(ρσ_repr(r.value[0]) + ': ' + ρσ_repr(r.value[1]))
-        r = iterator.next()
-    return '{' + entries.join(', ') + '}'
-
-ρσ_dict.prototype.__eq__ = def(other):
-    if not v'(other instanceof this.constructor)':
-        return False
-    if other.size is not this.size:
-        return False
-    if other.size is 0:
-        return True
-    iterator = other.items()
-    r = iterator.next()
-    while not r.done:
-        x = this.jsmap.get(r.value[0])
-        if (x is undefined and not this.jsmap.has(r.value[0])) or x is not r.value[1]:
+        if self.size != other.size:
             return False
-        r = iterator.next()
-    return True
+        return self.issubset(other)
 
-ρσ_dict.prototype.as_object = def(other):
-    ans = {}
-    iterator = this.jsmap.entries()
-    r = iterator.next()
-    while not r.done:
-        ans[r.value[0]] = r.value[1]
-        r = iterator.next()
-    return ans
 
-def ρσ_dict_wrap(x):
-    ans = new ρσ_dict()
-    ans.jsmap = x
-    return ans
+def ρσ_set(iterable: Any = runtime.undefined) -> SageSet:
+    return SageSet(iterable)
 
-v'var dict = ρσ_dict, dict_wrap = ρσ_dict_wrap'
 
-# }}}
+def set_wrap(native_set: Any) -> SageSet:
+    answer = SageSet()
+    answer.jsset = native_set
+    return answer
+
+
+class SageDict:
+
+    def __init__(
+        self,
+        iterable: Any = runtime.undefined,
+        **keywords: Any,
+    ) -> None:
+        self.jsmap = _new_map()
+        if iterable is not runtime.undefined:
+            self.update(iterable)
+        if runtime.object.keys(keywords).length:
+            self.update(keywords)
+
+    @property
+    def length(self) -> int:
+        return self.jsmap.size
+
+    @property
+    def size(self) -> int:
+        return self.jsmap.size
+
+    def __len__(self) -> int:
+        return self.jsmap.size
+
+    def __contains__(self, key: Any) -> bool:
+        return self.jsmap.has(key)
+
+    has = __contains__
+
+    def __iter__(self) -> Any:
+        return self.jsmap.keys()
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        self.jsmap.set(key, value)
+
+    set = __setitem__
+
+    def __delitem__(self, key: Any) -> None:
+        self.jsmap.delete(key)
+
+    def __getitem__(self, key: Any) -> Any:
+        answer = self.jsmap.get(key)
+        if answer is runtime.undefined and not self.jsmap.has(key):
+            raise KeyError(runtime.string(key))
+        return answer
+
+    def clear(self) -> None:
+        self.jsmap.clear()
+
+    def copy(self) -> SageDict:
+        return SageDict(self)
+
+    def keys(self) -> Any:
+        return self.jsmap.keys()
+
+    def values(self) -> Any:
+        return self.jsmap.values()
+
+    def items(self) -> Any:
+        return self.jsmap.entries()
+
+    entries = items
+
+    def get(
+        self,
+        key: Any,
+        default_value: Any = runtime.undefined,
+    ) -> Any:
+        answer = self.jsmap.get(key)
+        if answer is runtime.undefined and not self.jsmap.has(key):
+            return (
+                None
+                if default_value is runtime.undefined
+                else default_value
+            )
+        return answer
+
+    def set_default(self, key: Any, default_value: Any) -> Any:
+        if not self.jsmap.has(key):
+            self.jsmap.set(key, default_value)
+            return default_value
+        return self.jsmap.get(key)
+
+    @staticmethod
+    def fromkeys(
+        iterable: Any,
+        value: Any = None,
+    ) -> SageDict:
+        answer = SageDict()
+        for key in iterable:
+            answer.jsmap.set(key, value)
+        return answer
+
+    def pop(
+        self,
+        key: Any,
+        default_value: Any = runtime.undefined,
+    ) -> Any:
+        answer = self.jsmap.get(key)
+        if answer is runtime.undefined and not self.jsmap.has(key):
+            if default_value is runtime.undefined:
+                raise KeyError(runtime.string(key))
+            return default_value
+        self.jsmap.delete(key)
+        return answer
+
+    def popitem(self) -> Any:
+        result = self.jsmap.entries().next()
+        if result.done:
+            raise KeyError('dict is empty')
+        self.jsmap.delete(result.value[0])
+        return list_decorate(result.value)
+
+    def update(
+        self,
+        iterable: Any = runtime.undefined,
+        **keywords: Any,
+    ) -> None:
+        if iterable is not runtime.undefined:
+            if isinstance(iterable, SageDict):
+                source = iterable.items()
+                for pair in source:
+                    self.jsmap.set(pair[0], pair[1])
+            elif isinstance(iterable, runtime.map_class):
+                for pair in iterable.entries():
+                    self.jsmap.set(pair[0], pair[1])
+            elif runtime.array.isArray(iterable):
+                for pair in iterable:
+                    self.jsmap.set(pair[0], pair[1])
+            elif (
+                _type_is(
+                    runtime.jstype(
+                        runtime.reflect.get(
+                            iterable, runtime.iterator_symbol
+                        )
+                    ),
+                    'function',
+                )
+            ):
+                for pair in iterable:
+                    self.jsmap.set(pair[0], pair[1])
+            else:
+                for key in runtime.object.keys(iterable):
+                    self.jsmap.set(key, iterable[key])
+        for key in runtime.object.keys(keywords):
+            self.jsmap.set(key, keywords[key])
+
+    def __repr__(self) -> str:
+        entries = list_constructor()
+        for pair in self.jsmap.entries():
+            entries.push(
+                runtime.repr(pair[0])
+                + ': ' + runtime.repr(pair[1])
+            )
+        return '{' + entries.join(', ') + '}'
+
+    __str__ = __repr__
+    toString = __repr__
+    inspect = __repr__
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SageDict):
+            return False
+        if self.size != other.size:
+            return False
+        for pair in other.items():
+            if not self.jsmap.has(pair[0]):
+                return False
+            if not equals(self.jsmap.get(pair[0]), pair[1]):
+                return False
+        return True
+
+    def as_object(self) -> Any:
+        answer = runtime.object.create(None)
+        for pair in self.jsmap.entries():
+            answer[pair[0]] = pair[1]
+        return answer
+
+
+def ρσ_dict(
+    iterable: Any = runtime.undefined,
+    **keywords: Any,
+) -> SageDict:
+    return SageDict(iterable, **keywords)
+
+
+runtime.reflect.set(ρσ_dict, 'fromkeys', SageDict.fromkeys)
+
+
+def dict_wrap(native_map: Any) -> SageDict:
+    answer = SageDict()
+    answer.jsmap = native_map
+    return answer
+
+
+# Stable generated-runtime names used by the compiler.
+ρσ_equals = equals
+ρσ_not_equals = not_equals
+ρσ_list_contains = _list_contains
+ρσ_set_wrap = set_wrap
+ρσ_dict_wrap = dict_wrap
+
+runtime.reflect.set(
+    ρσ_set,
+    'prototype',
+    runtime.reflect.get(SageSet, 'prototype'),
+)
+runtime.reflect.set(
+    ρσ_dict,
+    'prototype',
+    runtime.reflect.get(SageDict, 'prototype'),
+)
+
+list_constructor = ρσ_list_constructor
+list_decorate = ρσ_list_decorate
+list = ρσ_list_constructor
+list_wrap = ρσ_list_decorate
+set = ρσ_set
+dict = ρσ_dict

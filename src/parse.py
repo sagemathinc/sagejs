@@ -188,6 +188,7 @@ DIRECT_CALL_TYPES = {
 # same names while bootstrapping with an older checked-in compiler.
 SAGEJS_RUNTIME_INTRINSICS = {
     'array': 'Array',
+    'arraylike': 'ρσ_arraylike',
     'bigint': 'BigInt',
     'bigint_divexact': 'ρσ_bigint_divexact',
     'bigint_gcd': 'ρσ_bigint_gcd',
@@ -210,6 +211,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'math_tuple': 'ρσ_math_tuple',
     'modular_inverse': 'ρσ_modular_inverse',
     'modular_power': 'ρσ_modular_power',
+    'native_method': 'ρσ_native_method',
     'normalize_integer': 'ρσ_normalize_integer',
     'number': 'Number',
     'object': 'Object',
@@ -225,7 +227,9 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'require_module': 'require',
     'repr': 'ρσ_repr',
     'sequence_class': 'ρσ_sequence_class',
+    'set_class': 'Set',
     'set_class_repr': 'ρσ_set_class_repr',
+    'strict_equal': 'ρσ_strict_equal',
     'string_find': 'ρσ_string_find',
     'string_class': 'String',
     'string': 'ρσ_string_primitive',

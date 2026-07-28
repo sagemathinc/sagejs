@@ -7,18 +7,22 @@ are the bootstrap implementation used by older checked-in compilers.
 """
 
 # globals: Array, BigInt, Element, Error, Map, Number, Object, PolynomialRing
+# globals: Set
 # globals: QQ, Rational, ReferenceError, Reflect, RegExp, String
 # globals: ZeroDivisionError, require
 # globals: ρσ_bigint_divexact, ρσ_bigint_gcd
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
+# globals: ρσ_arraylike
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer
 # globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power
+# globals: ρσ_native_method
 # globals: ρσ_normalize_integer, ρσ_operator_add_exact, ρσ_operator_mul_exact
 # globals: ρσ_operator_pow_exact, ρσ_repr
 # globals: ρσ_set_class_repr, ρσ_string_find, ρσ_string_primitive
+# globals: ρσ_strict_equal
 
 def jstype(value):
     return r"%js typeof value"
@@ -29,6 +33,7 @@ def map():
 
 
 array = Array
+arraylike = ρσ_arraylike
 bigint = BigInt
 bigint_divexact = ρσ_bigint_divexact
 bigint_gcd = ρσ_bigint_gcd
@@ -49,6 +54,7 @@ map_class = Map
 math_tuple = ρσ_math_tuple
 modular_inverse = ρσ_modular_inverse
 modular_power = ρσ_modular_power
+native_method = ρσ_native_method
 normalize_integer = ρσ_normalize_integer
 number = Number
 object = Object
@@ -64,7 +70,9 @@ regexp = RegExp
 require_module = require
 repr = ρσ_repr
 sequence_class = ρσ_sequence_class
+set_class = Set
 set_class_repr = ρσ_set_class_repr
+strict_equal = ρσ_strict_equal
 string_find = ρσ_string_find
 string_class = String
 string = ρσ_string_primitive
