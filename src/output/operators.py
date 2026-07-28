@@ -502,6 +502,21 @@ def print_assignment(self, output):
 
     flattened = False
     left = self.left
+    if (
+        output.options.python_attributes
+        and self.operator is '='
+        and is_node_type(left, AST_Dot)
+        and not left.property.startswith('ρσ_')
+        and '.' not in left.property
+    ):
+        output.print('ρσ_setattr(')
+        left.expression.print(output)
+        output.comma()
+        output.print(JSON.stringify(left.property))
+        output.comma()
+        self.right.print(output)
+        output.print(')')
+        return
     if is_node_type(left, AST_Seq):
         left = AST_Array({'elements': left.to_array()})
     if is_node_type(left, AST_Array):

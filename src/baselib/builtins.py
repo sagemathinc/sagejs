@@ -1541,6 +1541,20 @@ def ρσ_callable(value: Any) -> _Bool:
     return runtime.strict_equal(runtime.jstype(value), 'function')
 
 
+def ρσ_classmethod(target: Any) -> Any:
+    descriptor = runtime.object.create(None)
+    descriptor.__func__ = target
+    descriptor.__classmethod__ = True
+    return descriptor
+
+
+def ρσ_staticmethod(target: Any) -> Any:
+    descriptor = runtime.object.create(None)
+    descriptor.__func__ = target
+    descriptor.__staticmethod__ = True
+    return descriptor
+
+
 def _builtins_integer_string(
     value: Any,
     radix: _Int,
@@ -1577,8 +1591,69 @@ def ρσ_hash(value: Any) -> Any:
         if answer == -1:
             answer = runtime.bigint(-2)
         return runtime.normalize_integer(answer)
+    constructor = _builtins_get_member(value, 'constructor')
+    prototype = _builtins_get_member(constructor, 'prototype')
+    if (
+        prototype is not runtime.undefined
+        and runtime.reflect.apply(
+            runtime.object.prototype.hasOwnProperty,
+            prototype,
+            ['__eq__'],
+        )
+        and not runtime.reflect.apply(
+            runtime.object.prototype.hasOwnProperty,
+            prototype,
+            ['__hash__'],
+        )
+    ):
+        raise TypeError('unhashable type')
     if _builtins_member_is_function(value, '__hash__'):
-        return ρσ_hash(_builtins_call_member(value, '__hash__', []))
+        answer = _builtins_call_member(value, '__hash__', [])
+        if answer is True:
+            return 1
+        if answer is False:
+            return 0
+        if not _builtins_exact_integer_primitive(answer):
+            raise TypeError('__hash__ method should return an integer')
+        return ρσ_hash(answer)
+    sequence = _builtins_sequence_values(value)
+    if (
+        sequence is not runtime.undefined
+        and _builtins_sequence_is_tuple(value)
+    ):
+        modulus = runtime.bigint('2305843009213693951')
+        answer = runtime.bigint(0x345678)
+        multiplier = runtime.bigint(1000003)
+        for item in sequence:
+            item_hash = runtime.bigint(ρσ_hash(item))
+            answer = runtime.native_mod(
+                runtime.native_mul(
+                    runtime.native_bitxor(answer, item_hash),
+                    multiplier,
+                ),
+                modulus,
+            )
+            multiplier = runtime.native_add(
+                multiplier,
+                runtime.bigint(82520 + len(sequence) + len(sequence)),
+            )
+        answer = runtime.native_add(
+            answer, runtime.bigint(97531))
+        if answer == -1:
+            answer = runtime.bigint(-2)
+        return runtime.normalize_integer(answer)
+    if runtime.array.isArray(value):
+        raise TypeError("unhashable type: 'list'")
+    if _builtins_member_is_function(value, '__eq__'):
+        raise TypeError('unhashable type')
+    value_type = runtime.jstype(value)
+    if (
+        runtime.strict_equal(value_type, 'string')
+        or runtime.strict_equal(value_type, 'number')
+        or runtime.strict_equal(value_type, 'object')
+        or runtime.strict_equal(value_type, 'function')
+    ):
+        return ρσ_id(value)
     raise TypeError('unhashable type')
 
 
@@ -2123,6 +2198,25 @@ def ρσ_getattr(
                 python_string_member,
                 [value],
             )
+    if runtime.strict_equal(runtime.jstype(value), 'function'):
+        class_prototype = _builtins_get_member(value, 'prototype')
+        if (
+            not _builtins_has_member(value, name)
+            and
+            class_prototype is not runtime.undefined
+            and _builtins_has_member(class_prototype, name)
+        ):
+            class_member = _builtins_get_member(
+                class_prototype, name)
+            if _builtins_has_member(
+                class_member, '__classmethod__'
+            ):
+                return runtime.reflect.apply(
+                    runtime.reflect.get(class_member, 'bind'),
+                    class_member,
+                    [value],
+                )
+            return class_member
     if _builtins_has_member(value, name):
         member = _builtins_get_member(value, name)
         if _builtins_has_member(member, '__staticmethod__'):
@@ -2173,6 +2267,12 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
     ):
         raise TypeError(
             "cannot set attributes of built-in/extension type")
+    if (
+        runtime.strict_equal(runtime.jstype(value), 'function')
+        and _builtins_has_member(value, '__self__')
+    ):
+        raise AttributeError(
+            "'method' object has no attribute '" + name + "'")
     runtime.reflect.set(value, name, member)
 
 
@@ -2599,9 +2699,13 @@ class SageObject:
 
     def __repr__(self) -> _Str:
         constructor = runtime.reflect.get(self, 'constructor')
+        name = (
+            'object'
+            if constructor is SageObject
+            else runtime.reflect.get(constructor, '__name__')
+        )
         return (
-            '<' + runtime.reflect.get(constructor, '__name__')
-            + ' object at ' + str(id(self)) + '>'
+            '<' + name + ' object at ' + str(id(self)) + '>'
         )
 
     def __hash__(self) -> _Int:
@@ -2628,6 +2732,8 @@ hex = ρσ_hex
 oct = ρσ_oct
 hash = ρσ_hash
 callable = ρσ_callable
+classmethod = ρσ_classmethod
+staticmethod = ρσ_staticmethod
 enumerate = ρσ_enumerate
 tuple = ρσ_tuple
 slice = SageSlice

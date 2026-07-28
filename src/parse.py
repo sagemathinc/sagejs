@@ -54,6 +54,7 @@ def static_predicate(names):
 
 
 NATIVE_CLASSES = {
+    'object': {},
     'Rational': {},
     'slice': {},
     'Image': {},

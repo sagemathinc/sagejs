@@ -1031,6 +1031,10 @@ runtime.reflect.set(
     ρσ_set,
 )
 list_constructor = ρσ_list_constructor
+runtime.reflect.set(
+    list_constructor, 'prototype', _list_prototype())
+runtime.reflect.set(
+    _list_prototype(), '__python_type__', list_constructor)
 runtime.set_class_repr(ρσ_dict, "<class 'dict'>")
 runtime.set_class_repr(ρσ_set, "<class 'set'>")
 list_decorate = ρσ_list_decorate
