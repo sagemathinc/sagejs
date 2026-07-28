@@ -154,16 +154,14 @@ def write_smart_equality(self, output):
     if is_ok(self.left) and is_ok(self.right):
         if self.operator is '==':
             output.print('(')
-            output.spaced(self.left, '===', self.right, '||', 'typeof',
-                          self.left, '===', '"object"', '&&', 'ρσ_equals(')
+            output.spaced(self.left, '===', self.right, '||', 'ρσ_equals(')
             self.left.print(output), output.print(','), output.space(
             ), self.right.print(output), output.print('))')
         else:
             output.print('(')
-            output.spaced(self.left, '!==', self.right, '&&', '(typeof',
-                          self.left, '!==', '"object"', '||', 'ρσ_not_equals(')
+            output.spaced(self.left, '!==', self.right, '&&', 'ρσ_not_equals(')
             self.left.print(output), output.print(','), output.space(
-            ), self.right.print(output), output.print(')))')
+            ), self.right.print(output), output.print('))')
     else:
         output.print('ρσ_' +
                      ('equals(' if self.operator is '==' else 'not_equals('))

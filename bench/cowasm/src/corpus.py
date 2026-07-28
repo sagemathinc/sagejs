@@ -23,21 +23,55 @@ import mypyc_micro
 import parse_int
 
 from bench import registered_benchmarks
+from sys import argv
 from time import time
 
 
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 
 
-def run_corpus():
-    benchmarks = registered_benchmarks()
-    print("SAGEJS_COWASM_CORPUS", FORMAT_VERSION)
+def integer_option(name, fallback):
+    for index, argument in enumerate(argv):
+        if argument == name and index + 1 < len(argv):
+            return int(argv[index + 1])
+    return fallback
+
+
+def string_option(name, fallback):
+    for index, argument in enumerate(argv):
+        if argument == name and index + 1 < len(argv):
+            return argv[index + 1]
+    return fallback
+
+
+def run_pass(kind, sample, benchmarks):
     for index, (name, benchmark) in enumerate(benchmarks):
         started = time()
         benchmark()
         elapsed_us = int((time() - started) * 1000000)
-        print("RESULT", index, name, elapsed_us, sep="\t")
-    print("COMPLETE", len(benchmarks), sep="\t")
+        print(kind, sample, index, name, elapsed_us, sep="\t")
+
+
+def run_corpus():
+    warmups = integer_option("--warmups", 0)
+    samples = integer_option("--samples", 1)
+    if warmups < 0 or samples < 1:
+        raise ValueError("warmups must be nonnegative and samples positive")
+    benchmarks = registered_benchmarks()
+    selected = string_option("--only", None)
+    if selected is not None:
+        benchmarks = [
+            benchmark for benchmark in benchmarks
+            if benchmark[0] == selected
+        ]
+        if len(benchmarks) != 1:
+            raise ValueError("unknown benchmark: " + selected)
+    print("SAGEJS_COWASM_CORPUS", FORMAT_VERSION)
+    for sample in range(warmups):
+        run_pass("WARMUP", sample, benchmarks)
+    for sample in range(samples):
+        run_pass("RESULT", sample, benchmarks)
+    print("COMPLETE", warmups, samples, len(benchmarks), sep="\t")
 
 
 if __name__ == "__main__":

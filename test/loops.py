@@ -7,6 +7,46 @@ for val in a:
 for i in range(len(a)):
 	assrt.ok(a[i] in a)
 
+endpoint_calls = 0
+
+
+def endpoint():
+    global endpoint_calls
+    endpoint_calls += 1
+    return 3
+
+
+seen = []
+for i in range(endpoint()):
+    seen.append(i)
+assrt.deepEqual(seen, [0, 1, 2])
+assrt.equal(endpoint_calls, 1)
+
+
+def fake_range(_stop):
+    return [10, 20]
+
+
+def use_supplied_range(range):
+    answer = []
+    for value in range(2):
+        answer.append(value)
+    return answer
+
+
+assrt.deepEqual(use_supplied_range(fake_range), [10, 20])
+
+
+def use_supplied_len(len):
+    return len("not the builtin")
+
+
+def fake_len(_value):
+    return 123
+
+
+assrt.equal(use_supplied_len(fake_len), 123)
+
 for i, val in enumerate(a): # testing that comments are allowed here
 	assrt.equal(a[i], val)
 

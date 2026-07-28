@@ -31,6 +31,7 @@ assrt.ok(i2 not in b)
 assrt.ok(b == b.copy())
 assrt.ok([1] in [[1], [2]])
 assrt.ok([3] not in [[1], [2]])
+assrt.ok("a" != ord("a"))
 
 if jstype(Symbol) is 'function':
     ss = Symbol('s')

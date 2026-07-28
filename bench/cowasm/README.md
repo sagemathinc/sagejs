@@ -31,19 +31,33 @@ From the Sage.js repository root:
 ```sh
 pnpm test:cowasm
 pnpm bench:cowasm
+pnpm bench:cowasm:ceilings
 ```
 
 The compatibility command runs all registered workloads under Sage.js and
 requires every benchmark assertion and import to succeed. The performance
-command runs the identical source in fresh Sage.js and CPython processes,
-checks that both report the same benchmark names, and prints median timings
-and ratios. Process startup is intentionally outside the reported per-case
-times.
+command compiles once, then runs the identical source in one Sage.js process
+and one CPython process. Warmup and measured corpus passes happen inside those
+processes, so V8 optimization survives into the measured samples. Process
+startup and Sage.js compilation are intentionally outside the per-case times.
+
+The report separately shows the first in-process pass and warm medians. It
+also reports the median and geometric mean of the per-benchmark ratios. The
+historical benchmark iteration counts differ greatly, so the sum-of-medians
+ratio is useful for tracking this exact workload but is not a neutral overall
+language score.
 
 Use `--samples N` or `--warmups N` after `--` to change the defaults:
 
 ```sh
 pnpm bench:cowasm -- --samples 5 --warmups 2
+```
+
+Use `--only` with an exact benchmark name for focused profiling without
+changing the common corpus:
+
+```sh
+pnpm bench:cowasm -- --only ord_builtin --samples 7 --warmups 3
 ```
 
 Set `SAGEJS_COWASM_PYTHON` to select another Python executable. Pass an
@@ -58,3 +72,8 @@ domain-specific mathematical benchmarks. Its value is that compatibility and
 performance are measured with the same readable Python programs, and that
 newly supported workloads can move into the corpus without creating a
 separate synthetic test.
+
+`bench:cowasm:ceilings` runs hand-written JavaScript translations of a few
+hot paths. They are deliberately not compatibility tests or a competing
+score: they answer the narrower question “is V8 the limit here, or is the
+generated/runtime machinery the limit?”

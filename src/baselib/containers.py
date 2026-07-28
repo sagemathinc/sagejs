@@ -33,16 +33,12 @@ def _has_own(value: Any, key: Any) -> bool:
     )
 
 
-def _type_is(actual: str, expected: str) -> bool:
-    return runtime.strict_equal(actual, expected)
-
-
 def _get_member(value: Any, name: str) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
     if (
-        _type_is(runtime.jstype(value), 'object')
-        or _type_is(runtime.jstype(value), 'function')
+        runtime.strict_equal(runtime.jstype(value), 'object')
+        or runtime.strict_equal(runtime.jstype(value), 'function')
     ):
         return runtime.reflect.get(value, name)
     boxed = runtime.reflect.apply(
@@ -58,31 +54,34 @@ def equals(left: Any, right: Any) -> bool:
     right_type = runtime.jstype(right)
     if (
         (
-            _type_is(left_type, 'bigint')
-            and _type_is(right_type, 'number')
+            runtime.strict_equal(left_type, 'bigint')
+            and runtime.strict_equal(right_type, 'number')
             and runtime.number.isSafeInteger(right)
         )
         or (
-            _type_is(right_type, 'bigint')
-            and _type_is(left_type, 'number')
+            runtime.strict_equal(right_type, 'bigint')
+            and runtime.strict_equal(left_type, 'number')
             and runtime.number.isSafeInteger(left)
         )
     ):
         return runtime.bigint(left) is runtime.bigint(right)
 
-    if (
-        runtime.strict_equal(left_type, right_type)
-        and (
-            _type_is(left_type, 'number')
-            or _type_is(left_type, 'string')
-            or _type_is(left_type, 'boolean')
-        )
-    ):
-        return left is right
+    left_is_primitive = (
+        not runtime.strict_equal(left_type, 'object')
+        and not runtime.strict_equal(left_type, 'function')
+    )
+    right_is_primitive = (
+        not runtime.strict_equal(right_type, 'object')
+        and not runtime.strict_equal(right_type, 'function')
+    )
+    if left_is_primitive and right_is_primitive:
+        if runtime.strict_equal(left_type, right_type):
+            return left is right
+        return False
 
     if (
         left is not None
-        and _type_is(
+        and runtime.strict_equal(
             runtime.jstype(_get_member(left, '__eq__')),
             'function',
         )
@@ -90,7 +89,7 @@ def equals(left: Any, right: Any) -> bool:
         return left.__eq__(right)
     if (
         right is not None
-        and _type_is(
+        and runtime.strict_equal(
             runtime.jstype(_get_member(right, '__eq__')),
             'function',
         )
@@ -111,8 +110,8 @@ def equals(left: Any, right: Any) -> bool:
     if (
         left is not None
         and right is not None
-        and _type_is(left_type, 'object')
-        and _type_is(right_type, 'object')
+        and runtime.strict_equal(left_type, 'object')
+        and runtime.strict_equal(right_type, 'object')
         and (
             runtime.reflect.get(left, 'constructor') is runtime.object
             or runtime.object.getPrototypeOf(left) is None
@@ -140,7 +139,7 @@ def not_equals(left: Any, right: Any) -> bool:
         return False
     if (
         left is not None
-        and _type_is(
+        and runtime.strict_equal(
             runtime.jstype(_get_member(left, '__ne__')),
             'function',
         )
@@ -148,7 +147,7 @@ def not_equals(left: Any, right: Any) -> bool:
         return left.__ne__(right)
     if (
         right is not None
-        and _type_is(
+        and runtime.strict_equal(
             runtime.jstype(_get_member(right, '__ne__')),
             'function',
         )
@@ -161,7 +160,7 @@ def not_equals(left: Any, right: Any) -> bool:
 def _list_extend(self: Any, iterable: Any) -> None:
     if (
         runtime.array.isArray(iterable)
-        or _type_is(runtime.jstype(iterable), 'string')
+        or runtime.strict_equal(runtime.jstype(iterable), 'string')
     ):
         start = self.length
         self.length += iterable.length
@@ -250,9 +249,9 @@ def _list_count(self: Any, value: Any) -> int:
 def _list_sort_key(value: Any) -> Any:
     value_type = runtime.jstype(value)
     if (
-        _type_is(value_type, 'string')
-        or _type_is(value_type, 'number')
-        or _type_is(value_type, 'bigint')
+        runtime.strict_equal(value_type, 'string')
+        or runtime.strict_equal(value_type, 'number')
+        or runtime.strict_equal(value_type, 'bigint')
     ):
         return value
     return value.toString()
@@ -324,35 +323,51 @@ def _list_eq(self: Any, other: Any) -> bool:
 
 @runtime.native_method
 def _list_mul(self: Any, other: Any) -> Any:
-    answer = list_constructor()
     count = int(other)
-    for _ in range(count):
-        for value in self:
-            answer.push(value)
-    return answer
+    if count <= 0 or self.length == 0:
+        return list_constructor()
+    result_length = runtime.native_mul(self.length, count)
+    answer = _new_array(result_length)
+    for repeat in range(count):
+        offset = runtime.native_mul(repeat, self.length)
+        for index in range(self.length):
+            answer[offset + index] = self[index]
+    return list_decorate(answer)
+
+
+_list_prototype_cache = runtime.undefined
+
+
+def _list_prototype() -> Any:
+    global _list_prototype_cache
+    if _list_prototype_cache is runtime.undefined:
+        prototype = runtime.object.create(runtime.array.prototype)
+        prototype.append = runtime.array.prototype.push
+        prototype.toString = _list_to_string
+        prototype.inspect = _list_to_string
+        prototype.extend = _list_extend
+        prototype.index = _list_index
+        prototype.pypop = _list_pop
+        prototype.remove = _list_remove
+        prototype.insert = _list_insert
+        prototype.copy = _list_copy
+        prototype.clear = _list_clear
+        prototype.count = _list_count
+        prototype.concat = _list_concat
+        prototype.pysort = _list_sort
+        prototype.slice = _list_slice
+        prototype.as_array = _list_as_array
+        prototype.__len__ = _list_len
+        prototype.__contains__ = _list_contains
+        prototype.__eq__ = _list_eq
+        prototype.__mul__ = _list_mul
+        prototype.constructor = list_constructor
+        _list_prototype_cache = prototype
+    return _list_prototype_cache
 
 
 def ρσ_list_decorate(answer: Any) -> Any:
-    answer.append = runtime.array.prototype.push
-    answer.toString = _list_to_string
-    answer.inspect = _list_to_string
-    answer.extend = _list_extend
-    answer.index = _list_index
-    answer.pypop = _list_pop
-    answer.remove = _list_remove
-    answer.insert = _list_insert
-    answer.copy = _list_copy
-    answer.clear = _list_clear
-    answer.count = _list_count
-    answer.concat = _list_concat
-    answer.pysort = _list_sort
-    answer.slice = _list_slice
-    answer.as_array = _list_as_array
-    answer.__len__ = _list_len
-    answer.__contains__ = _list_contains
-    answer.__eq__ = _list_eq
-    answer.__mul__ = _list_mul
-    answer.constructor = list_constructor
+    runtime.object.setPrototypeOf(answer, _list_prototype())
     return answer
 
 
@@ -362,12 +377,14 @@ def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
     elif runtime.arraylike(iterable):
         answer = runtime.reflect.apply(
             runtime.array.prototype.slice, iterable, [])
-    elif _type_is(runtime.jstype(iterable), 'number'):
+    elif runtime.strict_equal(runtime.jstype(iterable), 'number'):
         answer = _new_array(iterable)
     else:
-        answer = _new_array()
-        for value in iterable:
-            answer.push(value)
+        answer = runtime.reflect.apply(
+            runtime.reflect.get(runtime.array, 'from'),
+            runtime.array,
+            [iterable],
+        )
     return list_decorate(answer)
 
 
@@ -414,7 +431,11 @@ class SageSet:
         self.jsset.clear()
 
     def copy(self) -> SageSet:
-        return SageSet(self)
+        answer = runtime.object.create(
+            runtime.object.getPrototypeOf(self))
+        answer.jsset = runtime.reflect.construct(
+            runtime.set_class, [self.jsset])
+        return answer
 
     def discard(self, value: Any) -> None:
         self.jsset.delete(value)
@@ -565,7 +586,11 @@ class SageDict:
         self.jsmap.clear()
 
     def copy(self) -> SageDict:
-        return SageDict(self)
+        answer = runtime.object.create(
+            runtime.object.getPrototypeOf(self))
+        answer.jsmap = runtime.reflect.construct(
+            runtime.map_class, [self.jsmap])
+        return answer
 
     def keys(self) -> Any:
         return self.jsmap.keys()
@@ -645,7 +670,7 @@ class SageDict:
                 for pair in iterable:
                     self.jsmap.set(pair[0], pair[1])
             elif (
-                _type_is(
+                runtime.strict_equal(
                     runtime.jstype(
                         runtime.reflect.get(
                             iterable, runtime.iterator_symbol

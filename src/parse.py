@@ -22,6 +22,7 @@ from ast_types import (
     AST_This, AST_Throw, AST_Toplevel, AST_True, AST_Try, AST_UnaryPrefix,
     AST_Undefined, AST_Var, AST_VarDef, AST_Verbatim, AST_While, AST_With,
     AST_WithClause, AST_Yield, AST_Assert, AST_Existential, is_node_type)
+from ast_types import TreeWalker
 from tokenizer import tokenizer, is_token, RESERVED_WORDS
 from js import js_new
 
@@ -179,6 +180,17 @@ DIRECT_CALL_TYPES = {
     'ρσ_bigint_divexact': 'bigint',
     'ρσ_bigint_gcd': 'bigint',
     'ρσ_integer_bigint': 'bigint',
+}
+
+DIRECT_BUILTIN_CALLS = {
+    'divmod': 'ρσ_divmod',
+    'float': 'ρσ_float',
+    'int': 'ρσ_int',
+    'len': 'ρσ_len',
+    'list': 'ρσ_list_constructor',
+    'ord': 'ρσ_ord',
+    'range': 'ρσ_range',
+    'sum': 'sum',
 }
 
 # Source code refers to compiler/runtime primitives through this ordinary,
@@ -623,6 +635,82 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             add_for_in(body)
 
         return localvars
+
+    def disable_builtin_range_optimization(body):
+        def disable(node):
+            if is_node_type(node, AST_ForIn):
+                node.builtin_range = False
+
+        walker = TreeWalker(disable)
+        if Array.isArray(body):
+            for statement in body:
+                statement.walk(walker)
+        else:
+            body.walk(walker)
+
+    def mark_direct_builtin_calls(body, shadowed):
+        def mark(node):
+            if is_node_type(node, AST_Scope):
+                return True
+            if (
+                is_node_type(node, AST_Call)
+                and is_node_type(node.expression, AST_SymbolRef)
+                and has_prop(DIRECT_BUILTIN_CALLS, node.expression.name)
+                and shadowed.indexOf(node.expression.name) is -1
+            ):
+                node.direct_call = True
+
+        walker = TreeWalker(mark)
+        if Array.isArray(body):
+            for statement in body:
+                statement.walk(walker)
+        else:
+            body.walk(walker)
+
+    def disable_direct_builtin_calls(body, shadowed):
+        def disable(node):
+            if (
+                is_node_type(node, AST_Call)
+                and is_node_type(node.expression, AST_SymbolRef)
+                and shadowed.indexOf(node.expression.name) is not -1
+            ):
+                node.direct_call = False
+
+        walker = TreeWalker(disable)
+        if Array.isArray(body):
+            for statement in body:
+                statement.walk(walker)
+        else:
+            body.walk(walker)
+
+    def has_canonical_builtin_alias(body, name):
+        found = [False]
+        invalid = [False]
+        target = DIRECT_BUILTIN_CALLS[name]
+
+        def inspect(node):
+            if is_node_type(node, AST_Scope):
+                return True
+            if (
+                is_node_type(node, AST_Assign)
+                and is_node_type(node.left, AST_SymbolRef)
+                and node.left.name is name
+            ):
+                if (
+                    is_node_type(node.right, AST_SymbolRef)
+                    and node.right.name is target
+                ):
+                    found[0] = True
+                else:
+                    invalid[0] = True
+
+        walker = TreeWalker(inspect)
+        if Array.isArray(body):
+            for statement in body:
+                statement.walk(walker)
+        else:
+            body.walk(walker)
+        return found[0] and not invalid[0]
 
     def scan_for_nonlocal_defs(body):
         vars = r'%js []'
@@ -1746,6 +1834,18 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
 
         # detect local variables, strip function arguments
         assignments = scan_for_local_vars(definition.body)
+        shadowed_builtins = assignments.filter(
+            lambda name: has_prop(DIRECT_BUILTIN_CALLS, name))
+        for argument in definition.argnames:
+            if (
+                has_prop(DIRECT_BUILTIN_CALLS, argument.name)
+                and shadowed_builtins.indexOf(argument.name) is -1
+            ):
+                shadowed_builtins.push(argument.name)
+        mark_direct_builtin_calls(definition.body, shadowed_builtins)
+        range_is_shadowed = shadowed_builtins.indexOf('range') is not -1
+        if range_is_shadowed:
+            disable_builtin_range_optimization(definition.body)
         for i in range(assignments.length):
             for j in range(definition.argnames.length + 1):
                 if j is definition.argnames.length:
@@ -2629,6 +2729,20 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     })
                     S.in_parenthesized_expr = False
                     return ret
+                elif tmp_ is 'ρσ_strict_equal':
+                    args = func_call_list()
+                    if args.length is not 2:
+                        croak(tmp_ + '() requires exactly two arguments')
+                    ret = AST_Binary({
+                        'start': start,
+                        'left': args[0],
+                        'native_operator': True,
+                        'operator': '===',
+                        'right': args[1],
+                        'end': prev()
+                    })
+                    S.in_parenthesized_expr = False
+                    return ret
                 elif tmp_ in {
                         'ρσ_native_add': '+',
                         'ρσ_native_div': '/',
@@ -2716,6 +2830,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     'start': start,
                     'expression': expr,
                     'args': func_call_list(),
+                    'direct_call': expr.intrinsic_call is True,
                     'end': prev()
                 }), True)
             S.in_parenthesized_expr = False
@@ -2758,6 +2873,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     AST_SymbolRef({
                         'start': expr.start,
                         'name': intrinsics[prop],
+                        'intrinsic_call': True,
                         'end': prev()
                     }), allow_calls)
         c = get_class_in_scope(expr)
@@ -3065,7 +3181,19 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     toplevel.exports.push(symbol)
                     seen_exports[item] = True
 
-        for item in scan_for_local_vars(toplevel.body):
+        assignments = scan_for_local_vars(toplevel.body)
+        shadowed_builtins = assignments.filter(
+            lambda name: (
+                has_prop(DIRECT_BUILTIN_CALLS, name)
+                and not has_canonical_builtin_alias(toplevel.body, name)
+            ))
+        mark_direct_builtin_calls(toplevel.body, shadowed_builtins)
+        disable_direct_builtin_calls(toplevel.body, shadowed_builtins)
+        if (
+            shadowed_builtins.indexOf('range') is not -1
+        ):
+            disable_builtin_range_optimization(toplevel.body)
+        for item in assignments:
             add_item(item, True)
         for item in scan_for_top_level_callables(toplevel.body):
             add_item(item, False)

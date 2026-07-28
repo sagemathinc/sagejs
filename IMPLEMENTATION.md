@@ -130,6 +130,42 @@ This makes generated native performance systematic. Adding a parent or native
 operation improves many algorithms, instead of producing another isolated
 hand-written addon.
 
+## JavaScript-tier performance policy
+
+The JavaScript execution tier must remain independently credible. Native
+kernels are for sustained mathematical algorithms, not an excuse for ordinary
+Python-shaped code to be many times slower than CPython.
+
+Measure three different things rather than blending them:
+
+1. cold process startup and first computation;
+2. warmed, in-process JavaScript after V8 has seen the code;
+3. native kernels which cross Node-API once per algorithm.
+
+The CoWasm corpus is the common compatibility and JavaScript-performance
+workload. Its runner performs warmup and measured passes in one process,
+reports the first pass separately, and gives both workload-weighted totals and
+equal-weight per-benchmark ratios. Focused profiles can select one unchanged
+benchmark, while hand-written JavaScript translations establish whether V8 or
+Sage.js machinery is the current ceiling.
+
+JavaScript fast paths follow these rules:
+
+- test primitive representations before consulting Python protocols;
+- lower compiler-known builtins and `range` loops only when lexical analysis
+  proves that their names are not shadowed;
+- evaluate loop bounds exactly once;
+- keep the generic Python/Sage dispatch path as the fallback;
+- require semantic regression tests for every shortcut;
+- use CPU profiles and direct-JavaScript ceilings before adding speculative
+  complexity.
+
+Python type annotations are valuable documentation and analysis inputs, but
+they are not runtime contracts. The compiler may emit unguarded native
+operations only when it proves the required type, or may use an explicit
+runtime guard with a generic fallback. Merely writing `n: int` must not change
+the behavior of a function called with another Python value.
+
 ## Near-term direction
 
 Native Kernel v0 should grow only through real mathematical library needs.

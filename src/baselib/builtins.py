@@ -16,17 +16,13 @@ _Int = int
 _Str = str
 
 
-def _builtins_type_is(value: Any, expected: _Str) -> _Bool:
-    return runtime.strict_equal(value, expected)
-
-
 def _builtins_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
     value_type = runtime.jstype(value)
     if (
-        _builtins_type_is(value_type, 'object')
-        or _builtins_type_is(value_type, 'function')
+        runtime.strict_equal(value_type, 'object')
+        or runtime.strict_equal(value_type, 'function')
     ):
         return runtime.reflect.get(value, name)
     boxed = runtime.reflect.apply(
@@ -40,8 +36,8 @@ def _builtins_has_member(value: Any, name: Any) -> _Bool:
     value_type = runtime.jstype(value)
     target = value
     if (
-        not _builtins_type_is(value_type, 'object')
-        and not _builtins_type_is(value_type, 'function')
+        not runtime.strict_equal(value_type, 'object')
+        and not runtime.strict_equal(value_type, 'function')
     ):
         target = runtime.reflect.apply(
             runtime.object, runtime.undefined, [value])
@@ -58,7 +54,7 @@ def _builtins_call_member(
 
 
 def _builtins_member_is_function(value: Any, name: Any) -> _Bool:
-    return _builtins_type_is(
+    return runtime.strict_equal(
         runtime.jstype(_builtins_get_member(value, name)),
         'function',
     )
@@ -67,9 +63,9 @@ def _builtins_member_is_function(value: Any, name: Any) -> _Bool:
 def _builtins_exact_integer_primitive(value: Any) -> _Bool:
     value_type = runtime.jstype(value)
     return (
-        _builtins_type_is(value_type, 'bigint')
+        runtime.strict_equal(value_type, 'bigint')
         or (
-            _builtins_type_is(value_type, 'number')
+            runtime.strict_equal(value_type, 'number')
             and runtime.number.isSafeInteger(value)
         )
     )
@@ -81,7 +77,10 @@ def ρσ_bigint_divexact(numerator: Any, denominator: Any) -> Any:
 
 
 def abs(value: Any) -> Any:
-    if _builtins_type_is(runtime.jstype(value), 'bigint'):
+    value_type = runtime.jstype(value)
+    if runtime.strict_equal(value_type, 'number'):
+        return runtime.math.abs(value)
+    if runtime.strict_equal(value_type, 'bigint'):
         return runtime.native_neg(value) if value < 0 else value
     if _builtins_member_is_function(value, '__abs__'):
         return _builtins_call_member(value, '__abs__', [])
@@ -93,9 +92,20 @@ def ρσ_exact_integer_primitive(value: Any) -> _Bool:
 
 
 def ρσ_operator_add(left: Any, right: Any) -> Any:
+    left_type = runtime.jstype(left)
+    right_type = runtime.jstype(right)
+    if (
+        runtime.strict_equal(left_type, right_type)
+        and (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+            or runtime.strict_equal(left_type, 'string')
+        )
+    ):
+        return runtime.native_add(left, right)
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('add', left, right)
-    if _builtins_type_is(runtime.jstype(left), 'object'):
+    if runtime.strict_equal(left_type, 'object'):
         if _builtins_member_is_function(left, '__add__'):
             return _builtins_call_member(left, '__add__', [right])
         if _builtins_member_is_function(left, 'concat'):
@@ -106,15 +116,15 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
 def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('add', left, right)
-    if _builtins_type_is(runtime.jstype(left), 'object'):
+    if runtime.strict_equal(runtime.jstype(left), 'object'):
         if _builtins_member_is_function(left, '__add__'):
             return _builtins_call_member(left, '__add__', [right])
         if _builtins_member_is_function(left, 'concat'):
             return _builtins_call_member(left, 'concat', [right])
         return runtime.native_add(left, right)
     if (
-        _builtins_type_is(runtime.jstype(left), 'bigint')
-        or _builtins_type_is(runtime.jstype(right), 'bigint')
+        runtime.strict_equal(runtime.jstype(left), 'bigint')
+        or runtime.strict_equal(runtime.jstype(right), 'bigint')
     ):
         if (
             _builtins_exact_integer_primitive(left)
@@ -124,8 +134,8 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
                 runtime.bigint(left), runtime.bigint(right))
         return runtime.native_add(left, right)
     if (
-        not _builtins_type_is(runtime.jstype(left), 'number')
-        or not _builtins_type_is(runtime.jstype(right), 'number')
+        not runtime.strict_equal(runtime.jstype(left), 'number')
+        or not runtime.strict_equal(runtime.jstype(right), 'number')
     ):
         return runtime.native_add(left, right)
     result = runtime.native_add(left, right)
@@ -144,12 +154,27 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_neg(value: Any) -> Any:
+    value_type = runtime.jstype(value)
+    if (
+        runtime.strict_equal(value_type, 'number')
+        or runtime.strict_equal(value_type, 'bigint')
+    ):
+        return runtime.native_neg(value)
     if _builtins_member_is_function(value, '__neg__'):
         return _builtins_call_member(value, '__neg__', [])
     return runtime.native_neg(value)
 
 
 def ρσ_operator_sub(left: Any, right: Any) -> Any:
+    left_type = runtime.jstype(left)
+    if (
+        runtime.strict_equal(left_type, runtime.jstype(right))
+        and (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+        )
+    ):
+        return runtime.native_sub(left, right)
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('sub', left, right)
     if _builtins_member_is_function(left, '__sub__'):
@@ -163,8 +188,8 @@ def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
     if _builtins_member_is_function(left, '__sub__'):
         return _builtins_call_member(left, '__sub__', [right])
     if (
-        _builtins_type_is(runtime.jstype(left), 'bigint')
-        or _builtins_type_is(runtime.jstype(right), 'bigint')
+        runtime.strict_equal(runtime.jstype(left), 'bigint')
+        or runtime.strict_equal(runtime.jstype(right), 'bigint')
     ):
         if (
             _builtins_exact_integer_primitive(left)
@@ -174,8 +199,8 @@ def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
                 runtime.bigint(left), runtime.bigint(right))
         return runtime.native_sub(left, right)
     if (
-        not _builtins_type_is(runtime.jstype(left), 'number')
-        or not _builtins_type_is(runtime.jstype(right), 'number')
+        not runtime.strict_equal(runtime.jstype(left), 'number')
+        or not runtime.strict_equal(runtime.jstype(right), 'number')
     ):
         return runtime.native_sub(left, right)
     result = runtime.native_sub(left, right)
@@ -196,22 +221,32 @@ def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
 def _builtins_repeat_string(text: str, count: Any) -> str:
     if count <= 0:
         return ''
-    if _builtins_type_is(runtime.jstype(count), 'bigint'):
+    if runtime.strict_equal(runtime.jstype(count), 'bigint'):
         count = runtime.number(count)
     return runtime.reflect.apply(
         runtime.string_class.prototype.repeat, text, [count])
 
 
 def ρσ_operator_mul(left: Any, right: Any) -> Any:
+    left_type = runtime.jstype(left)
+    right_type = runtime.jstype(right)
+    if (
+        runtime.strict_equal(left_type, right_type)
+        and (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+        )
+    ):
+        return runtime.native_mul(left, right)
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('mul', left, right)
     if (
-        _builtins_type_is(runtime.jstype(left), 'string')
+        runtime.strict_equal(runtime.jstype(left), 'string')
         and _builtins_exact_integer_primitive(right)
     ):
         return _builtins_repeat_string(left, right)
     if (
-        _builtins_type_is(runtime.jstype(right), 'string')
+        runtime.strict_equal(runtime.jstype(right), 'string')
         and _builtins_exact_integer_primitive(left)
     ):
         return _builtins_repeat_string(right, left)
@@ -224,20 +259,20 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('mul', left, right)
     if (
-        _builtins_type_is(runtime.jstype(left), 'string')
+        runtime.strict_equal(runtime.jstype(left), 'string')
         and _builtins_exact_integer_primitive(right)
     ):
         return _builtins_repeat_string(left, right)
     if (
-        _builtins_type_is(runtime.jstype(right), 'string')
+        runtime.strict_equal(runtime.jstype(right), 'string')
         and _builtins_exact_integer_primitive(left)
     ):
         return _builtins_repeat_string(right, left)
     if _builtins_member_is_function(left, '__mul__'):
         return _builtins_call_member(left, '__mul__', [right])
     if (
-        _builtins_type_is(runtime.jstype(left), 'bigint')
-        or _builtins_type_is(runtime.jstype(right), 'bigint')
+        runtime.strict_equal(runtime.jstype(left), 'bigint')
+        or runtime.strict_equal(runtime.jstype(right), 'bigint')
     ):
         if (
             _builtins_exact_integer_primitive(left)
@@ -247,8 +282,8 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
                 runtime.bigint(left), runtime.bigint(right))
         return runtime.native_mul(left, right)
     if (
-        not _builtins_type_is(runtime.jstype(left), 'number')
-        or not _builtins_type_is(runtime.jstype(right), 'number')
+        not runtime.strict_equal(runtime.jstype(left), 'number')
+        or not runtime.strict_equal(runtime.jstype(right), 'number')
     ):
         return runtime.native_mul(left, right)
     result = runtime.native_mul(left, right)
@@ -267,6 +302,11 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_div(left: Any, right: Any) -> Any:
+    if (
+        runtime.strict_equal(runtime.jstype(left), 'number')
+        and runtime.strict_equal(runtime.jstype(right), 'number')
+    ):
+        return runtime.native_div(left, right)
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('truediv', left, right)
     if _builtins_member_is_function(left, '__div__'):
@@ -275,6 +315,15 @@ def ρσ_operator_div(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_pow(left: Any, right: Any) -> Any:
+    left_type = runtime.jstype(left)
+    if (
+        runtime.strict_equal(left_type, runtime.jstype(right))
+        and (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+        )
+    ):
+        return runtime.native_pow(left, right)
     if _builtins_member_is_function(left, '__pow__'):
         return _builtins_call_member(left, '__pow__', [right])
     return runtime.native_pow(left, right)
@@ -285,8 +334,8 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
         return _builtins_call_member(left, '__pow__', [right])
     if (
         (
-            _builtins_type_is(runtime.jstype(left), 'bigint')
-            or _builtins_type_is(runtime.jstype(right), 'bigint')
+            runtime.strict_equal(runtime.jstype(left), 'bigint')
+            or runtime.strict_equal(runtime.jstype(right), 'bigint')
         )
         and _builtins_exact_integer_primitive(left)
         and _builtins_exact_integer_primitive(right)
@@ -297,8 +346,8 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
         return runtime.native_pow(
             runtime.bigint(left), runtime.bigint(right))
     if (
-        not _builtins_type_is(runtime.jstype(left), 'number')
-        or not _builtins_type_is(runtime.jstype(right), 'number')
+        not runtime.strict_equal(runtime.jstype(left), 'number')
+        or not runtime.strict_equal(runtime.jstype(right), 'number')
     ):
         return runtime.native_pow(left, right)
     result = runtime.native_pow(left, right)
@@ -323,28 +372,76 @@ def _builtins_inplace(
     method_name: _Str,
     fallback: Callable[[Any, Any], Any],
 ) -> Any:
+    left_type = runtime.jstype(left)
+    if (
+        not runtime.strict_equal(left_type, 'object')
+        and not runtime.strict_equal(left_type, 'function')
+    ):
+        return fallback(left, right)
     if _builtins_member_is_function(left, method_name):
         return _builtins_call_member(left, method_name, [right])
     return fallback(left, right)
 
 
 def ρσ_operator_iadd(left: Any, right: Any) -> Any:
+    left_type = runtime.jstype(left)
+    if (
+        runtime.strict_equal(left_type, runtime.jstype(right))
+        and (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+            or runtime.strict_equal(left_type, 'string')
+        )
+    ):
+        return runtime.native_add(left, right)
     return _builtins_inplace(left, right, '__iadd__', ρσ_operator_add)
 
 
 def ρσ_operator_isub(left: Any, right: Any) -> Any:
+    left_type = runtime.jstype(left)
+    if (
+        runtime.strict_equal(left_type, runtime.jstype(right))
+        and (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+        )
+    ):
+        return runtime.native_sub(left, right)
     return _builtins_inplace(left, right, '__isub__', ρσ_operator_sub)
 
 
 def ρσ_operator_imul(left: Any, right: Any) -> Any:
+    left_type = runtime.jstype(left)
+    if (
+        runtime.strict_equal(left_type, runtime.jstype(right))
+        and (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+        )
+    ):
+        return runtime.native_mul(left, right)
     return _builtins_inplace(left, right, '__imul__', ρσ_operator_mul)
 
 
 def ρσ_operator_idiv(left: Any, right: Any) -> Any:
+    if (
+        runtime.strict_equal(runtime.jstype(left), 'number')
+        and runtime.strict_equal(runtime.jstype(right), 'number')
+    ):
+        return runtime.native_div(left, right)
     return _builtins_inplace(left, right, '__idiv__', ρσ_operator_div)
 
 
 def ρσ_operator_ipow(left: Any, right: Any) -> Any:
+    left_type = runtime.jstype(left)
+    if (
+        runtime.strict_equal(left_type, runtime.jstype(right))
+        and (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+        )
+    ):
+        return runtime.native_pow(left, right)
     return _builtins_inplace(left, right, '__ipow__', ρσ_operator_pow)
 
 
@@ -374,6 +471,11 @@ def ρσ_operator_idiv_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_truediv(left: Any, right: Any) -> Any:
+    if (
+        runtime.strict_equal(runtime.jstype(left), 'number')
+        and runtime.strict_equal(runtime.jstype(right), 'number')
+    ):
+        return runtime.native_div(left, right)
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('truediv', left, right)
     if _builtins_member_is_function(left, '__truediv__'):
@@ -396,6 +498,11 @@ def ρσ_operator_truediv_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
+    if (
+        runtime.strict_equal(runtime.jstype(left), 'number')
+        and runtime.strict_equal(runtime.jstype(right), 'number')
+    ):
+        return runtime.math.floor(runtime.native_div(left, right))
     if _builtins_member_is_function(left, '__floordiv__'):
         return _builtins_call_member(left, '__floordiv__', [right])
     return runtime.math.floor(runtime.native_div(left, right))
@@ -417,7 +524,7 @@ def ρσ_print(*values: Any) -> None:
 
 
 def ρσ_int(value: Any, base: Any = runtime.undefined) -> Any:
-    if _builtins_type_is(runtime.jstype(value), 'number'):
+    if runtime.strict_equal(runtime.jstype(value), 'number'):
         answer = runtime.math.trunc(value)
     else:
         radix = 10 if base is runtime.undefined else base
@@ -432,8 +539,11 @@ def ρσ_int(value: Any, base: Any = runtime.undefined) -> Any:
 
 
 def ρσ_float(value: Any) -> Any:
-    if _builtins_type_is(runtime.jstype(value), 'number'):
+    value_type = runtime.jstype(value)
+    if runtime.strict_equal(value_type, 'number'):
         answer = value
+    elif runtime.strict_equal(value_type, 'string'):
+        answer = runtime.parse_float(value)
     elif value and _builtins_member_is_function(value, '__float__'):
         answer = _builtins_call_member(value, '__float__', [])
     else:
@@ -484,7 +594,7 @@ _BUILTINS_ARRAYLIKE_TAGS = [
 def ρσ_arraylike(value: Any) -> _Bool:
     if runtime.array.isArray(value):
         return True
-    if _builtins_type_is(runtime.jstype(value), 'string'):
+    if runtime.strict_equal(runtime.jstype(value), 'string'):
         return True
     if value is None or value is runtime.undefined:
         return False
@@ -498,7 +608,7 @@ def options_object(target: Any) -> Any:
         if (
             len(call_args) > 0
             and call_args[-1] is not None
-            and _builtins_type_is(
+            and runtime.strict_equal(
                 runtime.jstype(call_args[-1]), 'object')
         ):
             call_args[-1][runtime.kwargs_symbol] = True
@@ -534,7 +644,7 @@ _BUILTINS_HIDDEN_INTROSPECTION_NAMES = [
 
 def _builtins_visible_introspection_name(name: Any) -> _Bool:
     return (
-        _builtins_type_is(runtime.jstype(name), 'string')
+        runtime.strict_equal(runtime.jstype(name), 'string')
         and runtime.string_find(name, 'ρσ') != 0
         and name not in _BUILTINS_HIDDEN_INTROSPECTION_NAMES
     )
@@ -543,8 +653,8 @@ def _builtins_visible_introspection_name(name: Any) -> _Bool:
 def _builtins_introspection_target(value: Any) -> Any:
     value_type = runtime.jstype(value)
     if (
-        _builtins_type_is(value_type, 'object')
-        or _builtins_type_is(value_type, 'function')
+        runtime.strict_equal(value_type, 'object')
+        or runtime.strict_equal(value_type, 'function')
     ):
         return value
     return runtime.reflect.apply(
@@ -590,7 +700,7 @@ def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
         custom_names = _builtins_call_member(item, '__dir__', [])
         answer = []
         for name in custom_names:
-            if not _builtins_type_is(runtime.jstype(name), 'string'):
+            if not runtime.strict_equal(runtime.jstype(name), 'string'):
                 raise TypeError('__dir__() must return an iterable of strings')
             answer.append(name)
         answer.sort()
@@ -598,7 +708,7 @@ def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
 
     target = _builtins_introspection_target(item)
     answer = []
-    target_is_function = _builtins_type_is(
+    target_is_function = runtime.strict_equal(
         runtime.jstype(target), 'function')
     constructor = _builtins_get_member(target, 'constructor')
     target_is_python_instance = _builtins_is_python_class(constructor)
@@ -641,12 +751,12 @@ def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
 
 def _builtins_callable_name(value: Any) -> _Str:
     name = _builtins_get_member(value, '__name__')
-    if _builtins_type_is(runtime.jstype(name), 'string') and name:
+    if runtime.strict_equal(runtime.jstype(name), 'string') and name:
         if runtime.string_find(name, 'ρσ_') == 0:
             return name[3:]
         return name
     name = _builtins_get_member(value, 'name')
-    if _builtins_type_is(runtime.jstype(name), 'string') and name:
+    if runtime.strict_equal(runtime.jstype(name), 'string') and name:
         if runtime.string_find(name, 'ρσ_') == 0:
             return name[3:]
         return name
@@ -679,17 +789,17 @@ def _builtins_signature(value: Any, name: _Str) -> _Str:
             parts.append(part)
 
     varargs = _builtins_get_member(value, '__varargs__')
-    if _builtins_type_is(runtime.jstype(varargs), 'string'):
+    if runtime.strict_equal(runtime.jstype(varargs), 'string'):
         parts.append('*' + varargs)
     varkw = _builtins_get_member(value, '__varkw__')
-    if _builtins_type_is(runtime.jstype(varkw), 'string'):
+    if runtime.strict_equal(runtime.jstype(varkw), 'string'):
         parts.append('**' + varkw)
     return name + '(' + str.join(', ', parts) + ')'
 
 
 def _builtins_doc(value: Any) -> _Str:
     doc = _builtins_get_member(value, '__doc__')
-    if _builtins_type_is(runtime.jstype(doc), 'string'):
+    if runtime.strict_equal(runtime.jstype(doc), 'string'):
         return doc
     return ''
 
@@ -704,7 +814,7 @@ def _builtins_indent_doc(doc: _Str, prefix: _Str) -> _Str:
 
 
 def _builtins_is_python_class(value: Any) -> _Bool:
-    if not _builtins_type_is(runtime.jstype(value), 'function'):
+    if not runtime.strict_equal(runtime.jstype(value), 'function'):
         return False
     prototype = _builtins_get_member(value, 'prototype')
     return (
@@ -736,7 +846,7 @@ def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
         method = _builtins_get_member(prototype, method_name)
         if (
             runtime.string_find(method_name, '_') != 0
-            and _builtins_type_is(runtime.jstype(method), 'function')
+            and runtime.strict_equal(runtime.jstype(method), 'function')
         ):
             methods.append(method_name)
     if len(methods) > 0:
@@ -765,7 +875,7 @@ def ρσ_help(item: Any = runtime.undefined) -> None:
         constructor = _builtins_get_member(item, 'constructor')
         if _builtins_is_python_class(constructor):
             text = _builtins_class_help(item, True)
-        elif _builtins_type_is(runtime.jstype(item), 'function'):
+        elif runtime.strict_equal(runtime.jstype(item), 'function'):
             name = _builtins_callable_name(item)
             lines = [
                 'Help on function ' + name + ':',
@@ -810,7 +920,7 @@ def ρσ_chr(code: _Int) -> _Str:
 
 
 def ρσ_callable(value: Any) -> _Bool:
-    return _builtins_type_is(runtime.jstype(value), 'function')
+    return runtime.strict_equal(runtime.jstype(value), 'function')
 
 
 def _builtins_integer_string(
@@ -862,7 +972,7 @@ def _builtins_native_map(value: Any) -> _Bool:
 def ρσ_iter(iterable: Any) -> Any:
     iterator_method = _builtins_get_member(
         iterable, runtime.iterator_symbol)
-    if _builtins_type_is(runtime.jstype(iterator_method), 'function'):
+    if runtime.strict_equal(runtime.jstype(iterator_method), 'function'):
         if _builtins_native_map(iterable):
             return _builtins_call_member(iterable, 'keys', [])
         return runtime.reflect.apply(iterator_method, iterable, [])
@@ -1028,7 +1138,7 @@ def ρσ_ellipsis_range(*specification: Any) -> list[Any]:
         last = result[-1]
         if len(result) >= 2:
             step = ρσ_operator_sub_exact(last, result[-2])
-        elif _builtins_type_is(runtime.jstype(last), 'bigint'):
+        elif runtime.strict_equal(runtime.jstype(last), 'bigint'):
             step = runtime.bigint(1)
         else:
             step = 1
@@ -1108,6 +1218,15 @@ def ρσ_type(value: Any) -> Any:
 
 
 def ρσ_divmod(left: Any, right: Any) -> tuple[Any, Any]:
+    if (
+        runtime.strict_equal(runtime.jstype(left), 'number')
+        and runtime.strict_equal(runtime.jstype(right), 'number')
+    ):
+        if runtime.strict_equal(right, 0):
+            raise runtime.zero_division_error(
+                'integer division or modulo by zero')
+        quotient = runtime.math.floor(runtime.native_div(left, right))
+        return quotient, left - quotient * right
     if runtime.equals(right, 0):
         raise runtime.zero_division_error(
             'integer division or modulo by zero')
@@ -1118,14 +1237,14 @@ def ρσ_divmod(left: Any, right: Any) -> tuple[Any, Any]:
 def ρσ_factor(value: Any) -> Any:
     if _builtins_member_is_function(value, 'factor'):
         return _builtins_call_member(value, 'factor', [])
-    if _builtins_type_is(runtime.jstype(value), 'number'):
+    if runtime.strict_equal(runtime.jstype(value), 'number'):
         if not runtime.number.isSafeInteger(value):
             raise TypeError(
                 'factor() requires a safe integer; '
                 'use a BigInt for larger values'
             )
         value = runtime.bigint(value)
-    elif not _builtins_type_is(runtime.jstype(value), 'bigint'):
+    elif not runtime.strict_equal(runtime.jstype(value), 'bigint'):
         raise TypeError('factor() requires an integer')
 
     result = runtime.flint_backend().factor(value)
@@ -1144,12 +1263,12 @@ def ρσ_factor(value: Any) -> Any:
 def ρσ_gcd(left: Any, right: Any) -> Any:
     if (
         (
-            _builtins_type_is(runtime.jstype(left), 'number')
-            or _builtins_type_is(runtime.jstype(left), 'bigint')
+            runtime.strict_equal(runtime.jstype(left), 'number')
+            or runtime.strict_equal(runtime.jstype(left), 'bigint')
         )
         and (
-            _builtins_type_is(runtime.jstype(right), 'number')
-            or _builtins_type_is(runtime.jstype(right), 'bigint')
+            runtime.strict_equal(runtime.jstype(right), 'number')
+            or runtime.strict_equal(runtime.jstype(right), 'bigint')
         )
     ):
         return runtime.normalize_integer(
@@ -1165,11 +1284,11 @@ def ρσ_gcd(left: Any, right: Any) -> Any:
 
 
 def ρσ_next_prime(value: Any) -> Any:
-    if _builtins_type_is(runtime.jstype(value), 'number'):
+    if runtime.strict_equal(runtime.jstype(value), 'number'):
         if not runtime.number.isSafeInteger(value):
             raise TypeError('next_prime() requires an integer')
         value = runtime.bigint(value)
-    elif not _builtins_type_is(runtime.jstype(value), 'bigint'):
+    elif not runtime.strict_equal(runtime.jstype(value), 'bigint'):
         raise TypeError('next_prime() requires an integer')
     return runtime.normalize_integer(
         runtime.flint_backend().nextPrime(value))

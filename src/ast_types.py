@@ -261,7 +261,9 @@ class AST_ForIn(AST_StatementWithBody):
         'init': "[AST_Node] the `for/in` initialization code",
         'name':
         "[AST_SymbolRef?] the loop variable, only if `init` is AST_Var",
-        'object': "[AST_Node] the object that we're looping through"
+        'object': "[AST_Node] the object that we're looping through",
+        'builtin_range':
+        "[bool?] false when range is shadowed in the enclosing scope",
     }
 
     def _walk(self, visitor):
@@ -903,8 +905,10 @@ class AST_Splice(AST_PropAccess):
     def _walk(self, visitor):
         def f_prop_access():
             self.expression._walk(visitor)
-            self.property._walk(visitor)
-            self.property2._walk(visitor)
+            if self.property:
+                self.property._walk(visitor)
+            if self.property2:
+                self.property2._walk(visitor)
 
         return visitor._visit(self, f_prop_access)
 
@@ -1183,7 +1187,9 @@ class AST_SymbolRef(AST_Symbol):
     "Reference to some symbol (not definition/declaration)"
     properties = {
         'parens':
-        "[boolean/S] if true, this variable is wrapped in parentheses"
+        "[boolean/S] if true, this variable is wrapped in parentheses",
+        'intrinsic_call':
+        "[boolean/S] compiler-provided runtime symbols are directly callable",
     }
 
 

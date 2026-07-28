@@ -1,25 +1,32 @@
 "use strict";
 
 const { spawnSync } = require("node:child_process");
-const { readFileSync } = require("node:fs");
+const {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+} = require("node:fs");
+const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 
 const root = join(__dirname, "..", "..");
 const source = join(__dirname, "src", "corpus.py");
 const sagejs = join(root, "bin", "sagejs");
 const expectedPath = join(__dirname, "expected-benchmarks.txt");
-const expectedNames = readFileSync(expectedPath, "utf8")
+const allBenchmarkNames = readFileSync(expectedPath, "utf8")
   .split("\n")
   .map((line) => line.trim())
   .filter(Boolean);
+let benchmarkNames = allBenchmarkNames;
 
 function usage() {
   console.log(`Usage: node bench/cowasm/run.cjs [options]
 
 Options:
   --check                  Run the strict Sage.js compatibility corpus once
-  --samples N              Measured process runs per runtime (default: 3)
-  --warmups N              Unreported warmup process runs (default: 1)
+  --samples N              Measured in-process corpus passes (default: 3)
+  --warmups N              In-process JIT warmup passes (default: 1)
+  --only NAME              Measure one exact benchmark name
   --runtime NAME=PATH      Add a Python-compatible runtime executable
   --help                   Show this help
 
@@ -44,6 +51,7 @@ function parseArguments(argv) {
     check: false,
     samples: 3,
     warmups: 1,
+    only: null,
     runtimes: [],
   };
   for (let index = 0; index < argv.length; index += 1) {
@@ -60,6 +68,8 @@ function parseArguments(argv) {
       );
     } else if (argument === "--warmups") {
       options.warmups = parseNonnegativeInteger("--warmups", argv[++index]);
+    } else if (argument === "--only") {
+      options.only = argv[++index] || "";
     } else if (argument === "--runtime") {
       const specification = argv[++index] || "";
       const separator = specification.indexOf("=");
@@ -89,8 +99,11 @@ function median(values) {
   return (ordered[middle - 1] + ordered[middle]) / 2;
 }
 
-function parseCorpusOutput(label, output) {
-  const results = [];
+function parseCorpusOutput(label, output, expectedWarmups, expectedSamples) {
+  const passes = {
+    WARMUP: Array.from({ length: expectedWarmups }, () => []),
+    RESULT: Array.from({ length: expectedSamples }, () => []),
+  };
   let formatVersion = null;
   let completed = null;
   for (const rawLine of output.split("\n")) {
@@ -99,66 +112,102 @@ function parseCorpusOutput(label, output) {
       formatVersion = Number(line.split(/\s+/)[1]);
       continue;
     }
-    if (line.startsWith("RESULT")) {
-      const match = line.match(/^RESULT\s+(\d+)\s+(.+)\s+(\d+)$/);
+    if (line.startsWith("WARMUP") || line.startsWith("RESULT")) {
+      const match = line.match(
+        /^(WARMUP|RESULT)\s+(\d+)\s+(\d+)\s+(.+)\s+(\d+)$/,
+      );
       if (!match) {
-        throw new Error(`${label} emitted a malformed RESULT line: ${line}`);
+        throw new Error(`${label} emitted a malformed timing line: ${line}`);
       }
-      results.push({
-        index: Number(match[1]),
-        name: match[2],
-        elapsedUs: Number(match[3]),
+      const kind = match[1];
+      const sample = Number(match[2]);
+      if (!passes[kind][sample]) {
+        throw new Error(`${label} emitted unexpected ${kind} pass ${sample}`);
+      }
+      passes[kind][sample].push({
+        index: Number(match[3]),
+        name: match[4],
+        elapsedUs: Number(match[5]),
       });
       continue;
     }
     if (line.startsWith("COMPLETE")) {
-      const match = line.match(/^COMPLETE\s+(\d+)$/);
+      const match = line.match(/^COMPLETE\s+(\d+)\s+(\d+)\s+(\d+)$/);
       if (!match) {
         throw new Error(`${label} emitted a malformed COMPLETE line: ${line}`);
       }
-      completed = Number(match[1]);
+      completed = {
+        warmups: Number(match[1]),
+        samples: Number(match[2]),
+        benchmarks: Number(match[3]),
+      };
     }
   }
-  if (formatVersion !== 1) {
+  if (formatVersion !== 2) {
     throw new Error(`${label} emitted unsupported corpus format ${formatVersion}`);
   }
-  if (completed !== results.length) {
+  if (
+    !completed ||
+    completed.warmups !== expectedWarmups ||
+    completed.samples !== expectedSamples ||
+    completed.benchmarks !== benchmarkNames.length
+  ) {
     throw new Error(
-      `${label} reported COMPLETE ${completed}, but emitted ${results.length} results`,
+      `${label} reported inconsistent COMPLETE metadata`,
     );
   }
-  if (results.length !== expectedNames.length) {
-    throw new Error(
-      `${label} ran ${results.length} benchmarks; expected ${expectedNames.length}`,
-    );
-  }
-  for (let index = 0; index < expectedNames.length; index += 1) {
-    const result = results[index];
-    if (result.index !== index || result.name !== expectedNames[index]) {
-      throw new Error(
-        `${label} benchmark ${index} was ${JSON.stringify(result.name)}; ` +
-          `expected ${JSON.stringify(expectedNames[index])}`,
-      );
+  for (const [kind, samples] of Object.entries(passes)) {
+    for (let sample = 0; sample < samples.length; sample += 1) {
+      const results = samples[sample];
+      if (results.length !== benchmarkNames.length) {
+        throw new Error(
+          `${label} ${kind} pass ${sample} ran ${results.length} benchmarks; ` +
+            `expected ${benchmarkNames.length}`,
+        );
+      }
+      for (let index = 0; index < benchmarkNames.length; index += 1) {
+        const result = results[index];
+        if (result.index !== index || result.name !== benchmarkNames[index]) {
+          throw new Error(
+            `${label} benchmark ${index} was ${JSON.stringify(result.name)}; ` +
+              `expected ${JSON.stringify(benchmarkNames[index])}`,
+          );
+        }
+        if (!Number.isFinite(result.elapsedUs) || result.elapsedUs < 0) {
+          throw new Error(
+            `${label} emitted invalid timing for ${JSON.stringify(result.name)}`,
+          );
+        }
+      }
     }
-    if (!Number.isFinite(result.elapsedUs) || result.elapsedUs < 0) {
-      throw new Error(
-        `${label} emitted invalid timing for ${JSON.stringify(result.name)}`,
-      );
-    }
   }
-  return results;
+  return passes;
 }
 
-function execute(runtime) {
-  const result = spawnSync(runtime.command, runtime.args, {
-    cwd: root,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      PYTHONDONTWRITEBYTECODE: "1",
+function execute(runtime, samples, warmups) {
+  const corpusArguments =
+    runtime.passCorpusOptions === false
+      ? []
+      : [
+          ...(runtime.corpusArguments || []),
+          "--warmups",
+          String(warmups),
+          "--samples",
+          String(samples),
+        ];
+  const result = spawnSync(
+    runtime.command,
+    [...runtime.args, ...corpusArguments],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PYTHONDONTWRITEBYTECODE: "1",
+      },
+      maxBuffer: 32 * 1024 * 1024,
     },
-    maxBuffer: 16 * 1024 * 1024,
-  });
+  );
   if (result.error) {
     throw new Error(`${runtime.label} could not start: ${result.error.message}`);
   }
@@ -167,21 +216,34 @@ function execute(runtime) {
     process.stderr.write(result.stderr);
     throw new Error(`${runtime.label} exited with status ${result.status}`);
   }
-  return parseCorpusOutput(runtime.label, result.stdout);
+  return parseCorpusOutput(runtime.label, result.stdout, warmups, samples);
+}
+
+function passAsMap(results) {
+  return new Map(results.map((result) => [result.name, result.elapsedUs]));
 }
 
 function measure(runtime, samples, warmups) {
-  for (let index = 0; index < warmups; index += 1) execute(runtime);
-  const byName = new Map(expectedNames.map((name) => [name, []]));
-  for (let index = 0; index < samples; index += 1) {
-    const results = execute(runtime);
-    for (const result of results) {
-      byName.get(result.name).push(result.elapsedUs);
-    }
+  const passes = execute(runtime, samples, warmups);
+  const measured = passes.RESULT;
+  const timings = new Map();
+  for (const name of benchmarkNames) {
+    const values = measured.map((pass) => {
+      const result = pass.find((item) => item.name === name);
+      if (!result) {
+        throw new Error(
+          `${runtime.label} omitted ${JSON.stringify(name)} from a sample`,
+        );
+      }
+      return result.elapsedUs;
+    });
+    timings.set(name, median(values));
   }
-  return new Map(
-    [...byName].map(([name, values]) => [name, median(values)]),
-  );
+  const firstPass = warmups > 0 ? passes.WARMUP[0] : passes.RESULT[0];
+  return {
+    timings,
+    firstPass: passAsMap(firstPass),
+  };
 }
 
 function formatMilliseconds(microseconds) {
@@ -193,7 +255,7 @@ function printPerformanceTable(measurements) {
   const runtimeWidth = 14;
   const nameWidth = Math.max(
     24,
-    ...expectedNames.map((name) => name.length),
+    ...benchmarkNames.map((name) => name.length),
   );
   const header = [
     "benchmark".padEnd(nameWidth),
@@ -211,8 +273,9 @@ function printPerformanceTable(measurements) {
   console.log(header.join("  "));
   console.log("-".repeat(header.join("  ").length));
 
-  for (const name of expectedNames) {
-    const values = measurements.map(({ timings }) => timings.get(name));
+  for (const name of benchmarkNames) {
+    const values = measurements.map(({ measurement }) =>
+      measurement.timings.get(name));
     const row = [
       name.padEnd(nameWidth),
       ...values.map((value) =>
@@ -225,8 +288,11 @@ function printPerformanceTable(measurements) {
     console.log(row.join("  "));
   }
 
-  const totals = measurements.map(({ timings }) =>
-    expectedNames.reduce((sum, name) => sum + timings.get(name), 0));
+  const totals = measurements.map(({ measurement }) =>
+    benchmarkNames.reduce(
+      (sum, name) => sum + measurement.timings.get(name),
+      0,
+    ));
   const totalRow = [
     "TOTAL (sum of medians)".padEnd(nameWidth),
     ...totals.map((value) =>
@@ -237,54 +303,129 @@ function printPerformanceTable(measurements) {
   }
   console.log("-".repeat(header.join("  ").length));
   console.log(totalRow.join("  "));
+
+  if (measurements.length >= 2) {
+    const ratios = benchmarkNames.map((name) => {
+      const left = measurements[0].measurement.timings.get(name);
+      const right = measurements[1].measurement.timings.get(name);
+      return Math.max(left, 0.5) / Math.max(right, 0.5);
+    });
+    const geometricMean = Math.exp(
+      ratios.reduce((sum, ratio) => sum + Math.log(ratio), 0) / ratios.length,
+    );
+    const coldTotals = measurements.map(({ measurement }) =>
+      benchmarkNames.reduce(
+        (sum, name) => sum + measurement.firstPass.get(name),
+        0,
+      ));
+    console.log();
+    console.log(
+      `Unweighted per-benchmark ratio: median ${median(ratios).toFixed(2)}x; ` +
+        `geometric mean ${geometricMean.toFixed(2)}x`,
+    );
+    console.log(
+      `First in-process corpus pass: ` +
+        measurements
+          .map(({ runtime }, index) =>
+            `${runtime.label} ${formatMilliseconds(coldTotals[index])}`)
+          .join("; ") +
+        `; ratio ${(coldTotals[0] / coldTotals[1]).toFixed(2)}x`,
+    );
+    console.log(
+      "The TOTAL ratio is workload-weighted by historical iteration counts; " +
+        "the median and geometric mean give every benchmark equal weight.",
+    );
+  }
 }
 
 function main() {
   const options = parseArguments(process.argv.slice(2));
-  const sagejsRuntime = {
-    key: "sagejs",
-    label: "Sage.js",
-    command: process.execPath,
-    args: [sagejs, "--python", source],
-  };
+  if (options.only !== null) {
+    if (!allBenchmarkNames.includes(options.only)) {
+      throw new Error(`unknown benchmark: ${JSON.stringify(options.only)}`);
+    }
+    benchmarkNames = [options.only];
+  }
   if (options.check) {
-    execute(sagejsRuntime);
+    if (options.only !== null) {
+      throw new Error("--only cannot be combined with --check");
+    }
+    const sagejsRuntime = {
+      key: "sagejs",
+      label: "Sage.js",
+      command: process.execPath,
+      args: [sagejs, "--python", source],
+      passCorpusOptions: false,
+    };
+    execute(sagejsRuntime, 1, 0);
     console.log(
-      `CoWasm compatibility: ${expectedNames.length}/${expectedNames.length} benchmarks passed`,
+      `CoWasm compatibility: ${allBenchmarkNames.length}/${allBenchmarkNames.length} benchmarks passed`,
     );
     return;
   }
 
-  const runtimes = [
-    sagejsRuntime,
-    {
-      key: "python",
-      label: "CPython",
-      command: process.env.SAGEJS_COWASM_PYTHON || "python3",
-      args: [source],
-    },
-    ...options.runtimes,
-  ];
-  const keys = new Set();
-  for (const runtime of runtimes) {
-    if (keys.has(runtime.key)) {
-      throw new Error(`duplicate runtime name: ${runtime.key}`);
-    }
-    keys.add(runtime.key);
-  }
-
-  const measurements = [];
-  for (const runtime of runtimes) {
-    console.error(
-      `Measuring ${runtime.label}: ${options.warmups} warmup(s), ` +
-        `${options.samples} sample(s)`,
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-cowasm-"));
+  try {
+    const compiled = join(temporaryDirectory, "corpus.js");
+    const compilation = spawnSync(
+      process.execPath,
+      [sagejs, "compile", "--python", "--output", compiled, source],
+      { cwd: root, encoding: "utf8" },
     );
-    measurements.push({
-      runtime,
-      timings: measure(runtime, options.samples, options.warmups),
-    });
+    if (compilation.error || compilation.status !== 0) {
+      process.stderr.write(compilation.stderr || "");
+      throw new Error(
+        `could not compile Sage.js corpus: ` +
+          (compilation.error?.message || `exit ${compilation.status}`),
+      );
+    }
+
+    const runtimes = [
+      {
+        key: "sagejs",
+        label: "Sage.js",
+        command: process.execPath,
+        args: [compiled],
+        corpusArguments:
+          options.only === null ? [] : ["--only", options.only],
+      },
+      {
+        key: "python",
+        label: "CPython",
+        command: process.env.SAGEJS_COWASM_PYTHON || "python3",
+        args: [source],
+        corpusArguments:
+          options.only === null ? [] : ["--only", options.only],
+      },
+      ...options.runtimes.map((runtime) => ({
+        ...runtime,
+        corpusArguments:
+          options.only === null ? [] : ["--only", options.only],
+      })),
+    ];
+    const keys = new Set();
+    for (const runtime of runtimes) {
+      if (keys.has(runtime.key)) {
+        throw new Error(`duplicate runtime name: ${runtime.key}`);
+      }
+      keys.add(runtime.key);
+    }
+
+    const measurements = [];
+    for (const runtime of runtimes) {
+      console.error(
+        `Measuring ${runtime.label} in one process: ` +
+          `${options.warmups} warmup pass(es), ${options.samples} sample(s)`,
+      );
+      measurements.push({
+        runtime,
+        measurement: measure(runtime, options.samples, options.warmups),
+      });
+    }
+    printPerformanceTable(measurements);
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
   }
-  printPerformanceTable(measurements);
 }
 
 try {

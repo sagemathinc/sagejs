@@ -48,7 +48,8 @@ def is_simple_for_in(self):
 
 def is_simple_for(self):
     # returns true if this loop can be simplified into a basic for(i=n;i<h;i++) loop
-    if (is_node_type(self.object, AST_BaseCall)
+    if (self.builtin_range is not False
+            and is_node_type(self.object, AST_BaseCall)
             and is_node_type(self.object.expression, AST_SymbolRef)
             and self.object.expression.name is "range"
             and not (is_node_type(self.init, AST_Array))):
@@ -57,9 +58,7 @@ def is_simple_for(self):
         if l < 3 or (is_node_type(a[2], AST_Number) or
                      (is_node_type(a[2], AST_Unary) and a[2].operator is '-'
                       and is_node_type(a[2].expression, AST_Number))):
-            if (l is 1 and not has_calls(a[0])) or (l > 1
-                                                    and not has_calls(a[1])):
-                return True
+            return True
     return False
 
 
@@ -134,6 +133,16 @@ def print_for_in(self, output):
 
         self.simple_for_index = idx = 'ρσ_Index' + output.index_counter
         output.index_counter += 1
+        if has_calls(end):
+            end_name = 'ρσ_End' + output.index_counter
+            output.index_counter += 1
+            output.print('var')
+            output.space()
+            output.assign(end_name)
+            end.print(output)
+            output.end_statement()
+            output.indent()
+            end = AST_SymbolRef({'name': end_name})
         output.print("for")
         output.space()
 
