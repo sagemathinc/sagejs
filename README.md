@@ -528,6 +528,14 @@ mathematical object model covers only integers, rationals, and univariate
 polynomials over `ZZ` and `QQ`. The FLINT package is an architectural
 prototype, not yet a supported or published dependency.
 
+Python compatibility is measured systematically using a pinned copy of
+MicroPython's standalone language corpus. Each applicable program must produce
+exactly the same combined output under Sage.js and a reference CPython.
+`pnpm python:conformance` reports all current outcomes, while
+`pnpm test:python:conformance` checks the reviewed baseline for regressions and
+newly passing tests. See
+[`upstream-tests/micropython/README.md`](upstream-tests/micropython/README.md).
+
 ## History and licensing
 
 The language compiler descends from RapydScript-ng, JPython, and PyLang. The

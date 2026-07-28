@@ -26,3 +26,13 @@ Expectations are separate from upstream tests. A `skip` records a deliberately
 out-of-scope dependency and does not execute the example. An `xfail` records a
 known Sage.js compatibility gap and is executed; an unexpected pass fails the
 suite until the obsolete expectation is removed.
+
+## Python language compatibility
+
+The `micropython` directory contains a pinned copy of MicroPython's compact
+language test corpus. Its ordinary programs are differential tests: their
+combined output must exactly match CPython. Sage.js keeps a reviewed baseline of
+all outcomes so regressions and newly passing tests are both visible.
+
+See [`micropython/README.md`](micropython/README.md) for provenance, selection
+rules, and commands.

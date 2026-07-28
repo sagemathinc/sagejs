@@ -1,0 +1,2 @@
+# The vendored parser corpus includes intentional CR-only and CRLF files.
+upstream-tests/micropython/basics/* -text

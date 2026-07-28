@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/micropython/micropython",
+  "revision": "5aaa6d1751ab064a98a762d7d32a2f4071840770",
+  "path": "tests/basics",
+  "license": "MIT",
+  "retrieved": "2026-07-28"
+}
