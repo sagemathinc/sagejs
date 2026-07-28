@@ -354,6 +354,22 @@ def print_binary_op(self, output):
         self.right.print(output)
     elif self.operator is '==' or self.operator is '!=':
         write_smart_equality(self, output)
+    elif (
+        output.options.python_truthiness
+        and self.operator in ('<', '<=', '>', '>=')
+    ):
+        output.print(
+            'ρσ_operator_' + {
+                '<': 'lt',
+                '<=': 'le',
+                '>': 'gt',
+                '>=': 'ge',
+            }[self.operator] + '('
+        )
+        self.left.print(output)
+        output.comma()
+        self.right.print(output)
+        output.print(')')
     elif self.operator is 'instanceof':
         write_instanceof(self.left, self.right, output)
     elif (

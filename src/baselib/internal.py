@@ -620,6 +620,30 @@ def ρσ_mixin(*classes: Any) -> None:
 
     resolved_properties = {}
     target = classes[0].prototype
+
+    def tuple_mixin_initializer(
+        tuple_initializer: Any,
+        original_initializer: Any,
+    ) -> Any:
+        def initialize_tuple_mixin(
+            self: Any,
+            *args: Any,
+        ) -> Any:
+            runtime.reflect.apply(tuple_initializer, self, args)
+            return runtime.reflect.apply(
+                original_initializer, self, args)
+
+        return runtime.native_method(initialize_tuple_mixin)
+
+    for class_index in range(1, len(classes)):
+        if classes[class_index] is not runtime.tuple_builtin:
+            continue
+        tuple_initializer = classes[class_index].prototype.__init__
+        original_initializer = target.__init__
+        target.__init__ = tuple_mixin_initializer(
+            tuple_initializer, original_initializer)
+        break
+
     prototype = target
     while prototype and prototype is not runtime.object.prototype:
         for name in runtime.object.getOwnPropertyNames(prototype):

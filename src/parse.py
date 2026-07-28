@@ -270,6 +270,10 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'native_sub': 'ρσ_native_sub',
     'native_lshift': 'ρσ_native_lshift',
     'native_rshift': 'ρσ_native_rshift',
+    'native_lt': 'ρσ_native_lt',
+    'native_le': 'ρσ_native_le',
+    'native_gt': 'ρσ_native_gt',
+    'native_ge': 'ρσ_native_ge',
     'normalize_integer': 'ρσ_normalize_integer',
     'number': 'Number',
     'object': 'Object',
@@ -435,7 +439,7 @@ def specialize_bigint_class(definition):
 # -----[ Parser ]-----
 def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                       imported_module_ids, imported_modules, importing_modules,
-                      options):
+                      options, native_bitwise):
     def next():
         S.prev = S.token
         if S.peeked.length:
@@ -3013,6 +3017,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'ρσ_native_sub': '-',
                         'ρσ_native_lshift': '<<',
                         'ρσ_native_rshift': '>>',
+                        'ρσ_native_lt': '<',
+                        'ρσ_native_le': '<=',
+                        'ρσ_native_gt': '>',
+                        'ρσ_native_ge': '>=',
                 }:
                     args = func_call_list()
                     if args.length is not 2:
@@ -3033,6 +3041,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                             'ρσ_native_sub': '-',
                             'ρσ_native_lshift': '<<',
                             'ρσ_native_rshift': '>>',
+                            'ρσ_native_lt': '<',
+                            'ρσ_native_le': '<=',
+                            'ρσ_native_gt': '>',
+                            'ρσ_native_ge': '>=',
                         }[tmp_],
                         'right': args[1],
                         'end': prev()
@@ -3513,6 +3525,37 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 'docstrings': docstrings,
             })
 
+        if native_bitwise:
+            bitwise_operators = {
+                '&': True,
+                '|': True,
+                '^': True,
+                '<<': True,
+                '>>': True,
+                '&=': True,
+                '|=': True,
+                '^=': True,
+                '<<=': True,
+                '>>=': True,
+            }
+
+            def mark_native_bitwise(node):
+                if (
+                    (
+                        is_node_type(node, AST_Binary)
+                        or is_node_type(node, AST_Assign)
+                    )
+                    and bitwise_operators[node.operator]
+                ):
+                    node.native_operator = True
+                elif (
+                    is_node_type(node, AST_UnaryPrefix)
+                    and node.operator is '~'
+                ):
+                    node.native_operator = True
+
+            toplevel.walk(TreeWalker(mark_native_bitwise))
+
         toplevel.nonlocalvars = scan_for_nonlocal_defs(toplevel.body).concat(
             S.globals)
         toplevel.annotated_locals = scan_for_annotated_names(toplevel.body)
@@ -3563,6 +3606,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
 
 
 def parse(text, options):
+    native_bitwise = (
+        jstype(text) is 'string'
+        and text.indexOf('# sagejs: native-bitwise') is not -1
+    )
     options = defaults(
         options,
         {
@@ -3678,4 +3725,4 @@ def parse(text, options):
 
     return create_parser_ctx(S, import_dirs, module_id, baselib_items,
                              imported_module_ids, imported_modules,
-                             importing_modules, options)()
+                             importing_modules, options, native_bitwise)()

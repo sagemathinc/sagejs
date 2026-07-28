@@ -106,6 +106,13 @@ def equals(left: Any, right: Any) -> bool:
         return False
 
     if runtime.arraylike(left) and runtime.arraylike(right):
+        if (
+            runtime.array.isArray(left)
+            and runtime.array.isArray(right)
+            and runtime.object.isFrozen(left)
+            is not runtime.object.isFrozen(right)
+        ):
+            return False
         if left.length != right.length:
             return False
         for index in range(left.length):
@@ -152,6 +159,14 @@ def not_equals(left: Any, right: Any) -> bool:
     ):
         return left.__ne__(right)
     if (
+        left is not None
+        and runtime.strict_equal(
+            runtime.jstype(_get_member(left, '__eq__')),
+            'function',
+        )
+    ):
+        return not left.__eq__(right)
+    if (
         right is not None
         and runtime.strict_equal(
             runtime.jstype(_get_member(right, '__ne__')),
@@ -159,6 +174,14 @@ def not_equals(left: Any, right: Any) -> bool:
         )
     ):
         return right.__ne__(left)
+    if (
+        right is not None
+        and runtime.strict_equal(
+            runtime.jstype(_get_member(right, '__eq__')),
+            'function',
+        )
+    ):
+        return not right.__eq__(left)
     return not equals(left, right)
 
 
@@ -318,6 +341,12 @@ def _list_contains(self: Any, value: Any) -> bool:
 @runtime.native_method
 def _list_eq(self: Any, other: Any) -> bool:
     if not runtime.arraylike(other):
+        return False
+    if (
+        runtime.array.isArray(other)
+        and runtime.object.isFrozen(self)
+        is not runtime.object.isFrozen(other)
+    ):
         return False
     if self.length != other.length:
         return False

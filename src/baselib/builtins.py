@@ -105,26 +105,34 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
         return runtime.native_add(left, right)
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('add', left, right)
-    if runtime.strict_equal(left_type, 'object'):
-        if _builtins_member_is_function(left, '__add__'):
-            return _builtins_call_member(left, '__add__', [right])
-        if _builtins_member_is_function(left, 'concat'):
-            return _builtins_call_member(left, 'concat', [right])
-        raise TypeError(
-            'unsupported operand type(s) for +')
+    if _builtins_member_is_function(left, '__add__'):
+        return _builtins_call_member(left, '__add__', [right])
+    if _builtins_member_is_function(right, '__radd__'):
+        return _builtins_call_member(right, '__radd__', [left])
+    if _builtins_member_is_function(left, 'concat'):
+        return _builtins_call_member(left, 'concat', [right])
+    if (
+        runtime.strict_equal(left_type, 'object')
+        or runtime.strict_equal(right_type, 'object')
+    ):
+        raise TypeError('unsupported operand type(s) for +')
     return runtime.native_add(left, right)
 
 
 def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('add', left, right)
-    if runtime.strict_equal(runtime.jstype(left), 'object'):
-        if _builtins_member_is_function(left, '__add__'):
-            return _builtins_call_member(left, '__add__', [right])
-        if _builtins_member_is_function(left, 'concat'):
-            return _builtins_call_member(left, 'concat', [right])
-        raise TypeError(
-            'unsupported operand type(s) for +')
+    if _builtins_member_is_function(left, '__add__'):
+        return _builtins_call_member(left, '__add__', [right])
+    if _builtins_member_is_function(right, '__radd__'):
+        return _builtins_call_member(right, '__radd__', [left])
+    if _builtins_member_is_function(left, 'concat'):
+        return _builtins_call_member(left, 'concat', [right])
+    if (
+        runtime.strict_equal(runtime.jstype(left), 'object')
+        or runtime.strict_equal(runtime.jstype(right), 'object')
+    ):
+        raise TypeError('unsupported operand type(s) for +')
     if (
         runtime.strict_equal(runtime.jstype(left), 'bigint')
         or runtime.strict_equal(runtime.jstype(right), 'bigint')
@@ -197,6 +205,126 @@ def ρσ_operator_invert(value: Any) -> Any:
     if _builtins_member_is_function(value, '__invert__'):
         return _builtins_call_member(value, '__invert__', [])
     raise TypeError("bad operand type for unary ~")
+
+
+def _builtins_sequence_values(value: Any) -> Any:
+    if runtime.array.isArray(value):
+        return value
+    if _builtins_has_member(value, '_tuple_values'):
+        return _builtins_get_member(value, '_tuple_values')
+    return runtime.undefined
+
+
+def _builtins_sequence_is_tuple(value: Any) -> _Bool:
+    return (
+        runtime.array.isArray(value)
+        and runtime.object.isFrozen(value)
+        or runtime.instance_of(value, runtime.tuple_builtin)
+    )
+
+
+def _builtins_rich_compare(
+    left: Any,
+    right: Any,
+    operation: _Str,
+) -> _Bool:
+    left_values = _builtins_sequence_values(left)
+    right_values = _builtins_sequence_values(right)
+    if (
+        left_values is not runtime.undefined
+        and right_values is not runtime.undefined
+    ):
+        if (
+            _builtins_sequence_is_tuple(left)
+            is not _builtins_sequence_is_tuple(right)
+        ):
+            raise TypeError('cannot compare different sequence types')
+        common = min(len(left_values), len(right_values))
+        for index in range(common):
+            if runtime.equals(left_values[index], right_values[index]):
+                continue
+            if operation == 'lt' or operation == 'le':
+                return ρσ_operator_lt(
+                    left_values[index], right_values[index])
+            return ρσ_operator_gt(
+                left_values[index], right_values[index])
+        if operation == 'lt':
+            return runtime.native_lt(
+                len(left_values), len(right_values))
+        if operation == 'le':
+            return runtime.native_le(
+                len(left_values), len(right_values))
+        if operation == 'gt':
+            return runtime.native_gt(
+                len(left_values), len(right_values))
+        return runtime.native_ge(
+            len(left_values), len(right_values))
+
+    left_method = {
+        'lt': '__lt__',
+        'le': '__le__',
+        'gt': '__gt__',
+        'ge': '__ge__',
+    }[operation]
+    right_method = {
+        'lt': '__gt__',
+        'le': '__ge__',
+        'gt': '__lt__',
+        'ge': '__le__',
+    }[operation]
+    if _builtins_member_is_function(left, left_method):
+        return _builtins_call_member(left, left_method, [right])
+    if _builtins_member_is_function(right, right_method):
+        return _builtins_call_member(right, right_method, [left])
+
+    left_type = runtime.jstype(left)
+    right_type = runtime.jstype(right)
+    numeric = (
+        (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+            or runtime.strict_equal(left_type, 'boolean')
+        )
+        and (
+            runtime.strict_equal(right_type, 'number')
+            or runtime.strict_equal(right_type, 'bigint')
+            or runtime.strict_equal(right_type, 'boolean')
+        )
+    )
+    same_primitive = (
+        runtime.strict_equal(left_type, right_type)
+        and (
+            runtime.strict_equal(left_type, 'string')
+            or runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+            or runtime.strict_equal(left_type, 'boolean')
+        )
+    )
+    if not numeric and not same_primitive:
+        raise TypeError('objects are not orderable')
+    if operation == 'lt':
+        return runtime.native_lt(left, right)
+    if operation == 'le':
+        return runtime.native_le(left, right)
+    if operation == 'gt':
+        return runtime.native_gt(left, right)
+    return runtime.native_ge(left, right)
+
+
+def ρσ_operator_lt(left: Any, right: Any) -> _Bool:
+    return _builtins_rich_compare(left, right, 'lt')
+
+
+def ρσ_operator_le(left: Any, right: Any) -> _Bool:
+    return _builtins_rich_compare(left, right, 'le')
+
+
+def ρσ_operator_gt(left: Any, right: Any) -> _Bool:
+    return _builtins_rich_compare(left, right, 'gt')
+
+
+def ρσ_operator_ge(left: Any, right: Any) -> _Bool:
+    return _builtins_rich_compare(left, right, 'ge')
 
 
 def ρσ_operator_sub(left: Any, right: Any) -> Any:
@@ -362,6 +490,8 @@ def ρσ_operator_div(left: Any, right: Any) -> Any:
         return runtime.coercion_model.binOp('truediv', left, right)
     if _builtins_member_is_function(left, '__div__'):
         return _builtins_call_member(left, '__div__', [right])
+    if _builtins_member_is_function(right, '__rdiv__'):
+        return _builtins_call_member(right, '__rdiv__', [left])
     return runtime.native_div(left, right)
 
 
@@ -539,6 +669,8 @@ def ρσ_operator_truediv(left: Any, right: Any) -> Any:
         return runtime.native_div(left, right)
     if _builtins_member_is_function(left, '__truediv__'):
         return _builtins_call_member(left, '__truediv__', [right])
+    if _builtins_member_is_function(right, '__rtruediv__'):
+        return _builtins_call_member(right, '__rtruediv__', [left])
     return runtime.native_div(left, right)
 
 
@@ -553,6 +685,8 @@ def ρσ_operator_truediv_exact(left: Any, right: Any) -> Any:
             runtime.rational_class, [left, right])
     if _builtins_member_is_function(left, '__truediv__'):
         return _builtins_call_member(left, '__truediv__', [right])
+    if _builtins_member_is_function(right, '__rtruediv__'):
+        return _builtins_call_member(right, '__rtruediv__', [left])
     return runtime.native_div(left, right)
 
 
@@ -628,6 +762,9 @@ def ρσ_operator_irshift(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_bitand(left: Any, right: Any) -> Any:
+    if left is True or left is False:
+        if right is True or right is False:
+            return runtime.native_bitand(left, right)
     if (
         _builtins_exact_integer_primitive(left)
         and _builtins_exact_integer_primitive(right)
@@ -635,10 +772,17 @@ def ρσ_operator_bitand(left: Any, right: Any) -> Any:
         return runtime.normalize_integer(
             runtime.native_bitand(
                 runtime.bigint(left), runtime.bigint(right)))
-    return runtime.native_bitand(left, right)
+    if _builtins_member_is_function(left, '__and__'):
+        return _builtins_call_member(left, '__and__', [right])
+    if _builtins_member_is_function(right, '__rand__'):
+        return _builtins_call_member(right, '__rand__', [left])
+    raise TypeError('unsupported operand type(s) for &')
 
 
 def ρσ_operator_bitor(left: Any, right: Any) -> Any:
+    if left is True or left is False:
+        if right is True or right is False:
+            return runtime.native_bitor(left, right)
     if (
         _builtins_exact_integer_primitive(left)
         and _builtins_exact_integer_primitive(right)
@@ -646,10 +790,17 @@ def ρσ_operator_bitor(left: Any, right: Any) -> Any:
         return runtime.normalize_integer(
             runtime.native_bitor(
                 runtime.bigint(left), runtime.bigint(right)))
-    return runtime.native_bitor(left, right)
+    if _builtins_member_is_function(left, '__or__'):
+        return _builtins_call_member(left, '__or__', [right])
+    if _builtins_member_is_function(right, '__ror__'):
+        return _builtins_call_member(right, '__ror__', [left])
+    raise TypeError('unsupported operand type(s) for |')
 
 
 def ρσ_operator_bitxor(left: Any, right: Any) -> Any:
+    if left is True or left is False:
+        if right is True or right is False:
+            return runtime.native_bitxor(left, right)
     if (
         _builtins_exact_integer_primitive(left)
         and _builtins_exact_integer_primitive(right)
@@ -657,7 +808,11 @@ def ρσ_operator_bitxor(left: Any, right: Any) -> Any:
         return runtime.normalize_integer(
             runtime.native_bitxor(
                 runtime.bigint(left), runtime.bigint(right)))
-    return runtime.native_bitxor(left, right)
+    if _builtins_member_is_function(left, '__xor__'):
+        return _builtins_call_member(left, '__xor__', [right])
+    if _builtins_member_is_function(right, '__rxor__'):
+        return _builtins_call_member(right, '__rxor__', [left])
+    raise TypeError('unsupported operand type(s) for ^')
 
 
 def _builtins_shift_operands(left: Any, right: Any) -> list[Any]:
@@ -1367,6 +1522,81 @@ def ρσ_tuple(iterable: Any = runtime.undefined) -> Any:
     ):
         return iterable
     return runtime.math_tuple([value for value in iterable])
+
+
+def _builtins_tuple_subclass_init(
+    self: Any,
+    iterable: Any = runtime.undefined,
+) -> None:
+    self._tuple_values = (
+        []
+        if iterable is runtime.undefined
+        else list(iterable)
+    )
+
+
+def _builtins_tuple_subclass_len(self: Any) -> _Int:
+    return len(self._tuple_values)
+
+
+def _builtins_tuple_subclass_iter(self: Any) -> Any:
+    return iter(self._tuple_values)
+
+
+def _builtins_tuple_subclass_getitem(
+    self: Any,
+    index: _Int,
+) -> Any:
+    return self._tuple_values[index]
+
+
+def _builtins_tuple_subclass_repr(self: Any) -> _Str:
+    return repr(runtime.math_tuple(self._tuple_values))
+
+
+def _builtins_tuple_subclass_eq(
+    self: Any,
+    other: Any,
+) -> _Bool:
+    other_values = _builtins_sequence_values(other)
+    if (
+        other_values is runtime.undefined
+        or not _builtins_sequence_is_tuple(other)
+        or len(self._tuple_values) != len(other_values)
+    ):
+        return False
+    for index in range(len(self._tuple_values)):
+        if not runtime.equals(
+            self._tuple_values[index], other_values[index]
+        ):
+            return False
+    return True
+
+
+def _builtins_tuple_subclass_add(
+    self: Any,
+    other: Any,
+) -> Any:
+    other_values = _builtins_sequence_values(other)
+    if (
+        other_values is runtime.undefined
+        or not _builtins_sequence_is_tuple(other)
+    ):
+        raise TypeError('can only concatenate tuple to tuple')
+    values = list(self._tuple_values)
+    values.extend(other_values)
+    return runtime.math_tuple(values)
+
+
+def _builtins_tuple_subclass_mul(
+    self: Any,
+    count: Any,
+) -> Any:
+    count = int(count)
+    values = []
+    for _repeat in range(max(0, count)):
+        values.extend(self._tuple_values)
+    return runtime.math_tuple(values)
 
 
 def ρσ_reversed(iterable: Any) -> Iterator[Any]:
@@ -2140,18 +2370,12 @@ runtime.reflect.set(
     ),
 )
 runtime.set_class_repr(SageObject, "<class 'object'>")
-_object_bases = runtime.object.freeze(
-    runtime.object.keys(runtime.object.create(None)))
-runtime.reflect.set(
-    SageObject,
-    '__bases__',
-    _object_bases,
-)
-runtime.reflect.set(
+_object_bases = runtime.reflect.get(SageObject, '__bases__')
+runtime.object.freeze(_object_bases)
+runtime.object.freeze(runtime.reflect.get(
     runtime.reflect.get(SageObject, 'prototype'),
     '__bases__',
-    _object_bases,
-)
+))
 runtime.reflect.set(runtime.global_object, 'object', SageObject)
 hex = ρσ_hex
 oct = ρσ_oct
@@ -2159,6 +2383,40 @@ hash = ρσ_hash
 callable = ρσ_callable
 enumerate = ρσ_enumerate
 tuple = ρσ_tuple
+_tuple_prototype = runtime.reflect.get(tuple, 'prototype')
+runtime.reflect.set(
+    _tuple_prototype, '__init__',
+    runtime.native_method(_builtins_tuple_subclass_init))
+runtime.reflect.set(
+    _tuple_prototype, '__len__',
+    runtime.native_method(_builtins_tuple_subclass_len))
+runtime.reflect.set(
+    _tuple_prototype, '__iter__',
+    runtime.native_method(_builtins_tuple_subclass_iter))
+runtime.reflect.set(
+    _tuple_prototype, '__getitem__',
+    runtime.native_method(_builtins_tuple_subclass_getitem))
+runtime.reflect.set(
+    _tuple_prototype, '__repr__',
+    runtime.native_method(_builtins_tuple_subclass_repr))
+runtime.reflect.set(
+    _tuple_prototype, '__str__',
+    runtime.native_method(_builtins_tuple_subclass_repr))
+runtime.reflect.set(
+    _tuple_prototype, 'toString',
+    runtime.native_method(_builtins_tuple_subclass_repr))
+runtime.reflect.set(
+    _tuple_prototype, '__eq__',
+    runtime.native_method(_builtins_tuple_subclass_eq))
+runtime.reflect.set(
+    _tuple_prototype, '__add__',
+    runtime.native_method(_builtins_tuple_subclass_add))
+runtime.reflect.set(
+    _tuple_prototype, '__mul__',
+    runtime.native_method(_builtins_tuple_subclass_mul))
+runtime.reflect.set(
+    _tuple_prototype, '__rmul__',
+    runtime.native_method(_builtins_tuple_subclass_mul))
 issubclass = ρσ_issubclass
 iter = ρσ_iter
 next = ρσ_next

@@ -2,6 +2,7 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 # globals: crypto
+# sagejs: native-bitwise
 
 # Internal API {{{
 
@@ -317,7 +318,8 @@ class GaloisField:  # {{{
         z_i = Uint32Array(4)
         v_i = Uint32Array(y)
         for v'var i = 0; i < 128; ++i':
-            x_i = x[(i / 32) | 0] & (1 << (31 - i % 32))
+            x_i = x[(i / 32) | 0] & (
+                1 << (31 - i % 32))
             if x_i:
                 z_i[0] ^= v_i[0]
                 z_i[1] ^= v_i[1]
@@ -362,7 +364,7 @@ class GaloisField:  # {{{
         ans = Array(size)
         for v'var i =0; i < size; ++i':
             tmp = Uint32Array(4)
-            idx = (i/ per_int) | 0
+            idx = (i / per_int) | 0
             shft = ((per_int - 1 - (i % per_int)) * bits)
             tmp[idx] = (1 << (bits - 1)) << shft
             ans[i] = self.generate_sub_hash_table(self.multiply(tmp, key_as_int32_array))

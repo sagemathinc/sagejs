@@ -561,10 +561,12 @@ def _freeze_tuple(
     extra_properties: Any = None,
 ) -> Any:
     def tuple_add(other: Any) -> Any:
-        if (
-            not runtime.array.isArray(other)
-            or not runtime.object.isFrozen(other)
-        ):
+        if not runtime.array.isArray(other):
+            if isinstance(other, runtime.tuple_builtin):
+                other = other._tuple_values
+            else:
+                raise TypeError('can only concatenate tuple to tuple')
+        elif not runtime.object.isFrozen(other):
             raise TypeError('can only concatenate tuple to tuple')
         combined = runtime.reflect.apply(
             runtime.array.prototype.concat, values, [other])
@@ -578,12 +580,29 @@ def _freeze_tuple(
                 answer.append(value)
         return math_tuple(answer)
 
+    def tuple_eq(other: Any) -> bool:
+        if runtime.array.isArray(other):
+            if not runtime.object.isFrozen(other):
+                return False
+            other_values = other
+        elif isinstance(other, runtime.tuple_builtin):
+            other_values = other._tuple_values
+        else:
+            return False
+        if len(values) != len(other_values):
+            return False
+        for index in range(len(values)):
+            if not runtime.equals(values[index], other_values[index]):
+                return False
+        return True
+
     def tuple_append(_value: Any) -> None:
         raise AttributeError(
             "'tuple' object has no attribute 'append'")
 
     properties = {
         '__add__': {'value': tuple_add},
+        '__eq__': {'value': tuple_eq},
         '__mul__': {'value': tuple_mul},
         '__rmul__': {'value': tuple_mul},
         '__repr__': {'value': tuple_repr},

@@ -261,6 +261,37 @@ class SageBytes:
             return False
         return self._values == other._values
 
+    def _compare(self, other: Any) -> _Int:
+        if isinstance(other, SageMemoryView):
+            other_values = other._values()
+        elif isinstance(other, SageBytes):
+            other_values = other._values
+        else:
+            raise TypeError('bytes values are only orderable with bytes')
+        common = min(len(self._values), len(other_values))
+        for index in range(common):
+            if self._values[index] < other_values[index]:
+                return -1
+            if self._values[index] > other_values[index]:
+                return 1
+        if len(self._values) < len(other_values):
+            return -1
+        if len(self._values) > len(other_values):
+            return 1
+        return 0
+
+    def __lt__(self, other: Any) -> _Bool:
+        return self._compare(other) < 0
+
+    def __le__(self, other: Any) -> _Bool:
+        return self._compare(other) <= 0
+
+    def __gt__(self, other: Any) -> _Bool:
+        return self._compare(other) > 0
+
+    def __ge__(self, other: Any) -> _Bool:
+        return self._compare(other) >= 0
+
     def valueOf(self) -> _Str:
         return self._binary_string()
 

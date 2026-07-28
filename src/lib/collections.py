@@ -194,7 +194,7 @@ def _normalize_field_names(field_names: Any) -> list[str]:
 def namedtuple(type_name: str, field_names: Any) -> Any:
     names = _normalize_field_names(field_names)
 
-    def tuple_class(*args: Any, **keywords: Any) -> Any:
+    def collect_values(args: Any, keywords: Any) -> list[Any]:
         if len(args) > len(names):
             raise TypeError('too many positional arguments')
         values = list(args)
@@ -210,8 +210,28 @@ def namedtuple(type_name: str, field_names: Any) -> Any:
         for name in keyword_names:
             if name not in names:
                 raise TypeError('unexpected or duplicate keyword argument')
+        return values
+
+    def tuple_class(*args: Any, **keywords: Any) -> Any:
+        values = collect_values(args, keywords)
         return runtime.named_tuple(values, type_name, names)
+
+    def tuple_init(
+        self: Any,
+        *args: Any,
+        **keywords: Any,
+    ) -> None:
+        self._tuple_values = collect_values(args, keywords)
 
     tuple_class.__name__ = type_name
     tuple_class._fields = runtime.math_tuple(names)
+    runtime.object.setPrototypeOf(
+        tuple_class.prototype,
+        runtime.tuple_builtin.prototype,
+    )
+    runtime.reflect.set(
+        tuple_class.prototype,
+        '__init__',
+        runtime.native_method(tuple_init),
+    )
     return tuple_class

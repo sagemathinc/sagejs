@@ -90,6 +90,22 @@ def native_rshift(left, right):
     return r"%js left >> right"
 
 
+def native_lt(left, right):
+    return r"%js left < right"
+
+
+def native_le(left, right):
+    return r"%js left <= right"
+
+
+def native_gt(left, right):
+    return r"%js left > right"
+
+
+def native_ge(left, right):
+    return r"%js left >= right"
+
+
 array = Array
 arraylike = ρσ_arraylike
 bigint = BigInt
