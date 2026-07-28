@@ -6,7 +6,8 @@ lowered directly to their corresponding runtime globals.  These assignments
 are the bootstrap implementation used by older checked-in compilers.
 """
 
-# globals: Array, BigInt, Element, Map, Number, Object, QQ, Reflect, RegExp
+# globals: Array, BigInt, Element, Error, Map, Number, Object, QQ
+# globals: ReferenceError, Reflect, RegExp
 # globals: ρσ_bigint_divexact, ρσ_bigint_gcd
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
@@ -35,6 +36,7 @@ callable_instance_class = ρσ_callable_instance_class
 coercion_model = ρσ_coercion_model
 equals = ρσ_equals
 element = Element
+error = Error
 factor_pair = ρσ_factor_pair
 flint_backend = ρσ_flint_backend
 integer_bigint = ρσ_integer_bigint
@@ -53,6 +55,7 @@ operator_mul_exact = ρσ_operator_mul_exact
 operator_pow_exact = ρσ_operator_pow_exact
 qq = QQ
 reflect = Reflect
+reference_error = ReferenceError
 regexp = RegExp
 repr = ρσ_repr
 sequence_class = ρσ_sequence_class

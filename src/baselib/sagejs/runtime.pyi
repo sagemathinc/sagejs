@@ -33,12 +33,23 @@ class _Element:
     _parent: Any
 
 
+class _Error:
+    constructor: Any
+    message: str
+    name: str
+    stack: str
+
+    def __init__(self, message: str = ...) -> None: ...
+
+
 array: _Array
 element: type[_Element]
+error: type[_Error]
 number: _Number
 object: _Object
 qq: Any
 reflect: _Reflect
+reference_error: type[_Error]
 undefined: Any
 coercion_model: Any
 kwargs_symbol: Any

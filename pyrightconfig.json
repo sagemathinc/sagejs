@@ -1,6 +1,7 @@
 {
   "include": [
     "src/baselib/exact_rational.py",
+    "src/baselib/errors.py",
     "src/baselib/factorization.py",
     "src/baselib/finite_fields.py",
     "src/baselib/itertools.py",
