@@ -69,8 +69,8 @@ def print_getattr(self, output, skip_expression):  # AST_Dot
         output.print(JSON.stringify(self.property))
         output.print(')')
         return
+    expr = self.expression
     if not skip_expression:
-        expr = self.expression
         expr.print(output)
     if is_node_type(expr, AST_Number) and expr.value >= 0:
         if not RegExp("[xa-f.]", "i").test(output.last()):

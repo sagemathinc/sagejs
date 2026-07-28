@@ -791,6 +791,117 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 propagate(statement)
         return names
 
+    def scan_for_potentially_unbound(body, local_names):
+        """Find locals whose reads are not dominated by an assignment.
+
+        This deliberately remains a small, conservative data-flow pass.
+        Names proven bound stay on the fast path; only uncertain reads use
+        ``ρσ_check_unbound`` at runtime.
+        """
+        local_set = {}
+        bound = {}
+        potentially_unbound = []
+        for name in local_names:
+            local_set[name] = True
+
+        def add(name):
+            if potentially_unbound.indexOf(name) is -1:
+                potentially_unbound.push(name)
+
+        def snapshot_bound():
+            return Object.assign({}, bound)
+
+        def restore_bound(snapshot):
+            for name in Object.keys(bound):
+                del bound[name]
+            Object.assign(bound, snapshot)
+
+        def intersect_bound(left, right):
+            restore_bound({})
+            for name in Object.keys(left):
+                if right[name]:
+                    bound[name] = True
+
+        def bind_target(target):
+            if is_node_type(target, AST_SymbolRef):
+                bound[target.name] = True
+            elif is_node_type(target, AST_Array):
+                for value in target.flatten():
+                    bind_target(value)
+            elif is_node_type(target, AST_Seq):
+                for value in target.to_array():
+                    bind_target(value)
+
+        walker = None
+
+        def inspect(node, descend):
+            if is_node_type(node, AST_Scope):
+                return True
+            if is_node_type(node, AST_Assign):
+                if node.operator is not '=':
+                    node.left.walk(walker)
+                node.right.walk(walker)
+                bind_target(node.left)
+                return True
+            if is_node_type(node, AST_AnnotatedAssignment):
+                node.annotation.walk(walker)
+                if node.value:
+                    node.value.walk(walker)
+                    bind_target(node.target)
+                return True
+            if is_node_type(node, AST_If):
+                node.condition.walk(walker)
+                before_if = snapshot_bound()
+                node.body.walk(walker)
+                after_consequent = snapshot_bound()
+                restore_bound(before_if)
+                if node.alternative:
+                    node.alternative.walk(walker)
+                    after_alternative = snapshot_bound()
+                else:
+                    after_alternative = before_if
+                intersect_bound(
+                    after_consequent, after_alternative)
+                return True
+            if is_node_type(node, AST_ForIn):
+                node.object.walk(walker)
+                before_loop = snapshot_bound()
+                bind_target(node.init)
+                if node.body:
+                    node.body.walk(walker)
+                restore_bound(before_loop)
+                if node.alternative:
+                    node.alternative.walk(walker)
+                    restore_bound(before_loop)
+                return True
+            if is_node_type(node, AST_While):
+                node.condition.walk(walker)
+                before_loop = snapshot_bound()
+                node.body.walk(walker)
+                restore_bound(before_loop)
+                if node.alternative:
+                    node.alternative.walk(walker)
+                    restore_bound(before_loop)
+                return True
+            if (
+                is_node_type(node, AST_SymbolRef)
+                and local_set[node.name]
+                and not bound[node.name]
+            ):
+                add(node.name)
+            return False
+
+        walker = TreeWalker(inspect)
+        if Array.isArray(body):
+            statements = body
+        elif Array.isArray(body.body):
+            statements = body.body
+        else:
+            statements = [body]
+        for statement in statements:
+            statement.walk(walker)
+        return potentially_unbound
+
     def disable_builtin_range_optimization(body):
         def disable(node):
             if is_node_type(node, AST_ForIn):
@@ -2137,6 +2248,13 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             return not nonlocals.has(v.name)
 
         definition.localvars = definition.localvars.filter(does_not_have)
+        potentially_unbound = scan_for_potentially_unbound(
+            definition.body,
+            [symbol.name for symbol in definition.localvars],
+        )
+        for local_name in potentially_unbound:
+            if definition.annotated_locals.indexOf(local_name) is -1:
+                definition.annotated_locals.push(local_name)
         return definition
 
     def if_():
@@ -3152,6 +3270,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             S.in_parenthesized_expr = False
             return ret
         else:
+            c = None
             if is_node_type(expr, AST_Dot):
                 c = get_class_in_scope(expr.expression)
 
@@ -3692,6 +3811,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         start = S.token = next()
         body = r'%js []'
         docstrings = r'%js []'
+        shebang = None
         first_token = True
         toplevel = options.toplevel
         while not is_("eof"):

@@ -198,3 +198,22 @@ b'''
 
 
 assrt.equal(return_string_with_newline(), 'a\nb')
+
+
+def conditionally_bound(flag):
+    if flag:
+        conditional_value = 10
+    return conditional_value
+
+
+def loop_bound(iterations):
+    while iterations:
+        loop_value = 20
+        iterations -= 1
+    return loop_value
+
+
+assrt.equal(conditionally_bound(True), 10)
+assrt.throws(def(): conditionally_bound(False);, NameError)
+assrt.equal(loop_bound(1), 20)
+assrt.throws(def(): loop_bound(0);, NameError)
