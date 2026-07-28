@@ -314,10 +314,28 @@ def generate_code():
 
     def f_do_print_yield(self, output):
         output.print("((")
-        output.print("yield" + ('*' if self.is_yield_from else ''))
+        if self.is_yield_from:
+            output.print(
+                'yield* (function* () {'
+                'try { '
+                'var ρσ_yield_from_iterator = ρσ_yield_from_impl(')
+        else:
+            output.print('yield')
         if self.value:
             output.space()
             self.value.print(output)
+        if self.is_yield_from:
+            output.print(
+                ');'
+                'ρσ_yield_from_iterator.throw = '
+                'ρσ_yield_from_iterator.__native_throw__;'
+                'return yield* ρσ_yield_from_iterator;'
+                '} catch (ρσ_yield_from_error) {'
+                'if (ρσ_yield_from_error '
+                'instanceof ρσ_yield_from_return) '
+                'return ρσ_yield_from_error.value;'
+                'throw ρσ_yield_from_error;'
+                '} })()')
         output.print(") ?? null)")
 
     DEFPRINT(AST_Yield, f_do_print_yield)

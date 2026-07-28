@@ -18,7 +18,19 @@ def sum(iterable: Iterable[Any], start: Any = 0) -> Any:
     return result
 
 
-def map(
+@runtime.native_method
+def _map_next(self: Any) -> Any:
+    try:
+        return runtime.reflect.apply(
+            self.__map_native_next__, self, [])
+    except StopIteration as error:
+        result = runtime.object.create(None)
+        runtime.reflect.set(result, 'value', error.value)
+        runtime.reflect.set(result, 'done', True)
+        return result
+
+
+def _map_generator(
     func: Any,
     *iterables: Iterable[Any],
 ) -> Iterator[Any]:
@@ -35,8 +47,22 @@ def map(
         if not done:
             try:
                 yield func(*values)
-            except StopIteration:
-                done = True
+            except StopIteration as error:
+                raise error  # noqa: B904
+
+
+def map(
+    func: Any,
+    *iterables: Iterable[Any],
+) -> Iterator[Any]:
+    iterator = _map_generator(func, *iterables)
+    runtime.reflect.set(
+        iterator,
+        '__map_native_next__',
+        runtime.reflect.get(iterator, 'next'),
+    )
+    runtime.reflect.set(iterator, 'next', _map_next)
+    return iterator
 
 
 def filter(

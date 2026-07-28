@@ -67,6 +67,78 @@ def ρσ_python_iterator_next(self: Any) -> Any:
     return result
 
 
+class ρσ_yield_from_return(BaseException):
+
+    def __init__(self, value: Any) -> None:
+        BaseException.__init__(self, value)
+        self.value = value
+
+
+def ρσ_yield_from_impl(iterable: Any) -> Any:
+    """Delegate to a Python iterator using the PEP 380 protocol."""
+    iterator = iter(iterable)
+    send_method = runtime.undefined
+    try:
+        yielded = next(iterator)
+    except StopIteration as error:
+        raise ρσ_yield_from_return(error.value)  # noqa: B904
+
+    while True:
+        try:
+            sent = yield yielded
+        except GeneratorExit as error:
+            close_method = _internal_get_member(iterator, 'close')
+            if _internal_type_is(
+                runtime.jstype(close_method), 'function'
+            ):
+                runtime.reflect.apply(close_method, iterator, [])
+            raise error  # noqa: B904
+        except BaseException as error:
+            throw_method = _internal_get_member(iterator, 'throw')
+            if not _internal_type_is(
+                runtime.jstype(throw_method), 'function'
+            ):
+                if isinstance(error, runtime.non_exception_throw):
+                    raise TypeError(  # noqa: B904
+                        'exceptions must derive from BaseException')
+                raise error  # noqa: B904
+            if isinstance(error, runtime.non_exception_throw):
+                throw_argument = _internal_get_member(error, 'value')
+                throw_arguments = [throw_argument]
+            else:
+                throw_argument = _internal_get_member(
+                    error, '__sagejs_throw_original__')
+                if throw_argument is runtime.undefined:
+                    throw_argument = error
+                throw_arguments = [throw_argument]
+                original_args = _internal_get_member(
+                    error, '__sagejs_throw_args__')
+                if original_args is not runtime.undefined:
+                    throw_arguments.extend(original_args)
+            try:
+                yielded = runtime.reflect.apply(
+                    throw_method, iterator, throw_arguments)
+            except StopIteration as stop:
+                raise ρσ_yield_from_return(  # noqa: B904
+                    stop.value)
+        else:
+            try:
+                if sent is None:
+                    yielded = next(iterator)
+                else:
+                    send_method = _internal_get_member(iterator, 'send')
+                    if not _internal_type_is(
+                        runtime.jstype(send_method), 'function'
+                    ):
+                        raise AttributeError(
+                            "'iterator' object has no attribute 'send'")
+                    yielded = runtime.reflect.apply(
+                        send_method, iterator, [sent])
+            except StopIteration as stop:
+                raise ρσ_yield_from_return(  # noqa: B904
+                    stop.value)
+
+
 @runtime.sequence_class
 class _PythonSequenceIterator:
     """Adapt Python's legacy ``__getitem__`` iteration protocol to ES."""

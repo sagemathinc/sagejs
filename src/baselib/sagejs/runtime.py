@@ -20,6 +20,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
+# globals: ρσ_non_exception_throw
 # globals: ρσ_float, ρσ_int, ρσ_list_constructor, ρσ_list_contains, ρσ_str
 # globals: ρσ_tuple
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
@@ -146,6 +147,7 @@ modular_power = ρσ_modular_power
 modules = ρσ_modules
 native_method = ρσ_native_method
 native_method_adapter = ρσ_native_method_adapter
+non_exception_throw = ρσ_non_exception_throw
 normalize_integer = ρσ_normalize_integer
 number = Number
 object = Object

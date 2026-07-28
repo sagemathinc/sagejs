@@ -2096,8 +2096,21 @@ def ρσ_generator_throw(
     *args: Any,
 ) -> Any:
     if runtime.strict_equal(runtime.jstype(exception), 'function'):
+        original_exception = exception
         exception = runtime.reflect.construct(
             exception, list(args))
+        runtime.object.defineProperty(
+            exception,
+            '__sagejs_throw_original__',
+            {'value': original_exception},
+        )
+        runtime.object.defineProperty(
+            exception,
+            '__sagejs_throw_args__',
+            {'value': list(args)},
+        )
+    elif not runtime.instance_of(exception, runtime.error):
+        exception = runtime.non_exception_throw(exception)
     return _builtins_generator_result(
         iterator.__native_throw__(exception))
 
@@ -2125,7 +2138,16 @@ def ρσ_next(
             raise
     if iterator.__started__ is False:
         iterator.__started__ = True
-    result = iterator.next()
+    try:
+        result = iterator.next()
+    except TypeError as error:
+        if (
+            _builtins_get_member(error, 'message')
+            == 'Generator is already running'
+        ):
+            raise ValueError(  # noqa: B904
+                'generator already executing')
+        raise
     if not result.done:
         return result.value
     if fallback is not _BUILTINS_MISSING:

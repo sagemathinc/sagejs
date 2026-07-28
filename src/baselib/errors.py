@@ -158,6 +158,13 @@ class StopIteration(Exception):
         self.value = args[0] if len(args) > 0 else None
 
 
+class ρσ_non_exception_throw(BaseException):
+
+    def __init__(self, value: object) -> None:
+        BaseException.__init__(self, value)
+        self.value = value
+
+
 for _exception_class in [
     BaseException,
     Exception,
