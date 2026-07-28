@@ -123,3 +123,27 @@ dest = []
 for al in 'a', 'b', 'c':
     dest.push(al)
 assrt.equal(dest.join(''), 'abc')
+
+# Python loop ``else`` suites run only when their own loop does not break.
+loop_events = []
+for outer in range(2):
+    for inner in range(2):
+        loop_events.append((outer, inner))
+        break
+    else:
+        loop_events.append("inner else")
+else:
+    loop_events.append("outer else")
+assrt.deepEqual(loop_events, [[0, 0], [1, 0], "outer else"])
+
+for value in range(3):
+    if value == 1:
+        break
+else:
+    loop_events.append("broken for else")
+
+while False:
+    loop_events.append("while body")
+else:
+    loop_events.append("while else")
+assrt.equal(loop_events[-1], "while else")

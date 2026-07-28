@@ -14,6 +14,7 @@ class _Array:
 class _Number:
     MAX_SAFE_INTEGER: int
     MIN_SAFE_INTEGER: int
+    POSITIVE_INFINITY: float
 
     @staticmethod
     def isInteger(value: object) -> bool: ...

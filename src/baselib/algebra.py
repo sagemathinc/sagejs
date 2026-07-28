@@ -581,12 +581,22 @@ def math_tuple(values: list[Any]) -> Any:
             runtime.array.prototype.concat, values, [other])
         return math_tuple(combined)
 
+    def tuple_mul(other: Any) -> Any:
+        count = int(other)
+        answer = runtime.list_constructor()
+        for _repeat in range(max(0, count)):
+            for value in values:
+                answer.append(value)
+        return math_tuple(answer)
+
     def tuple_append(_value: Any) -> None:
         raise AttributeError(
             "'tuple' object has no attribute 'append'")
 
     runtime.object.defineProperties(values, {
         '__add__': {'value': tuple_add},
+        '__mul__': {'value': tuple_mul},
+        '__rmul__': {'value': tuple_mul},
         '__repr__': {'value': tuple_repr},
         '__str__': {'value': tuple_repr},
         'append': {'value': tuple_append},

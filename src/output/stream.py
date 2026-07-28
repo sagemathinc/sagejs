@@ -83,6 +83,7 @@ class OutputStream:
         self.index_counter = 0
         self.with_counter = 0
         self.try_else_counter = 0
+        self.loop_else_counter = 0
 
     def new_try_else_counter(self):
         self.try_else_counter += 1

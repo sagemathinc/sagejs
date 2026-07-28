@@ -124,22 +124,64 @@ def ρσ_flatten(array: Any) -> list[Any]:
     return answer
 
 
-def ρσ_unpack_asarray(count: int, iterable: Any) -> Any:
+def ρσ_unpack_asarray(count: Any, iterable: Any) -> Any:
     if runtime.arraylike(iterable):
-        return iterable
-    answer = []
-    iterator_method = _internal_get_member(
-        iterable, runtime.iterator_symbol)
-    if _internal_type_is(runtime.jstype(iterator_method), 'function'):
-        if _internal_is_native_map(iterable):
-            iterator = iterable.keys()
-        else:
-            iterator = runtime.reflect.apply(
-                iterator_method, iterable, [])
-        result = iterator.next()
-        while not result.done and len(answer) < count:
-            answer.append(result.value)
+        answer = iterable
+    else:
+        answer = []
+        iterator_method = _internal_get_member(
+            iterable, runtime.iterator_symbol)
+        if _internal_type_is(runtime.jstype(iterator_method), 'function'):
+            if _internal_is_native_map(iterable):
+                iterator = iterable.keys()
+            else:
+                iterator = runtime.reflect.apply(
+                    iterator_method, iterable, [])
             result = iterator.next()
+            while (
+                not result.done
+                and (
+                    count is runtime.number.POSITIVE_INFINITY
+                    or len(answer) <= count
+                )
+            ):
+                answer.append(result.value)
+                result = iterator.next()
+    if (
+        count is not runtime.number.POSITIVE_INFINITY
+        and len(answer) != count
+    ):
+        raise ValueError(
+            'not enough values to unpack'
+            if len(answer) < count
+            else 'too many values to unpack')
+    return answer
+
+
+def ρσ_unpack_starred(
+    leading_count: int,
+    trailing_count: int,
+    iterable: Any,
+) -> Any:
+    answer = ρσ_unpack_asarray(
+        runtime.number.POSITIVE_INFINITY, iterable)
+    if len(answer) < leading_count + trailing_count:
+        raise ValueError('not enough values to unpack')
+    return answer
+
+
+def ρσ_unpack_nested(pattern: Any, iterable: Any) -> list[Any]:
+    values = ρσ_unpack_asarray(len(pattern), iterable)
+    answer = []
+    for index in range(len(pattern)):
+        nested_pattern = pattern[index]
+        if nested_pattern is None:
+            answer.append(values[index])
+        else:
+            for value in ρσ_unpack_nested(
+                nested_pattern, values[index]
+            ):
+                answer.append(value)
     return answer
 
 

@@ -147,10 +147,10 @@ COMMON_STATIC = static_predicate('call apply bind toString')
 FORBIDDEN_CLASS_VARS = 'prototype constructor'.split(' ')
 
 # -----[ Parser (constants) ]-----
-UNARY_PREFIX = make_predicate('typeof void delete ~ - + ! @')
+UNARY_PREFIX = make_predicate('typeof void delete ~ - + ! @ *')
 
 ASSIGNMENT = make_predicate(
-    '= += -= /= //= *= @= %= >>= <<= >>>= |= ^= &=')
+    '= += -= /= //= *= **= @= %= >>= <<= >>>= |= ^= &=')
 
 
 def operator_to_precedence(a):
@@ -864,9 +864,15 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'Assignments in while loop conditions are not allowed')
                 if not is_('punc', ':'):
                     croak('Expected a colon after the while statement')
+                loop_body = in_loop(statement)
+                alternative = None
+                if is_('keyword', 'else'):
+                    next()
+                    alternative = statement()
                 return AST_While({
                     'condition': while_cond,
-                    'body': in_loop(statement)
+                    'body': loop_body,
+                    'alternative': alternative,
                 })
             elif tmp_ is "for":
                 if is_('js'):
@@ -1145,11 +1151,17 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         if list_comp:
             return {'init': init, 'name': lhs, 'object': obj}
 
+        loop_body = in_loop(statement)
+        alternative = None
+        if is_('keyword', 'else'):
+            next()
+            alternative = statement()
         return AST_ForIn({
             'init': init,
             'name': lhs,
             'object': obj,
-            'body': in_loop(statement)
+            'body': loop_body,
+            'alternative': alternative,
         })
 
     # A native JavaScript for loop - for v"var i=0; i<5000; i++":
@@ -2268,6 +2280,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 ex.end = S.token
                 if is_node_type(ex, AST_SymbolRef):
                     ex.parens = True
+                if is_node_type(ex, AST_Seq):
+                    ex.parenthesized = True
                 if not is_node_type(ex, AST_GeneratorComprehension):
                     expect(")")
                 if is_node_type(ex, AST_UnaryPrefix):
@@ -2374,7 +2388,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 a.starargs = True
             elif is_('operator', '**'):
                 next()
-                a.kwarg_items.push(as_symbol(AST_SymbolRef, False))
+                a.kwarg_items.push(expression(False))
                 a.starargs = True
             else:
                 arg = expression(False)
@@ -2564,13 +2578,31 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             baselib_items['yield'] = True
         S.in_comprehension = True
         S.in_parenthesized_expr = False  # in case we are already in a parenthesized expression
-        expect_token('keyword', 'for')
-        forloop = for_(True)
-        obj.init = forloop.init
-        obj.name = forloop.name
-        obj.object = forloop.object
-        obj.condition = None if is_('punc', terminator) else (expect_token(
-            "keyword", "if"), expression(True))
+        clauses = []
+        while True:
+            expect_token('keyword', 'for')
+            forloop = for_(True)
+            conditions = []
+            while is_('keyword', 'if'):
+                next()
+                conditions.push(expression(True))
+            clauses.push({
+                'init': forloop.init,
+                'name': forloop.name,
+                'object': forloop.object,
+                'conditions': conditions,
+            })
+            if not is_('keyword', 'for'):
+                break
+        obj.clauses = clauses
+        obj.init = clauses[0].init
+        obj.name = clauses[0].name
+        obj.object = clauses[0].object
+        obj.condition = (
+            clauses[0].conditions[0]
+            if clauses.length is 1 and clauses[0].conditions.length is 1
+            else None
+        )
         expect(terminator)
         S.in_comprehension = False
         return obj
@@ -2676,7 +2708,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             # slice [n:m:o?]
             next()
             if is_("punc", "]"):
-                unexpected()
+                slice_bounds.push(None)
             else:
                 slice_bounds.push(expression(False))
 
@@ -2709,7 +2741,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     }), allow_calls)
             elif slice_bounds.length is 3:
                 # extended slice (arr[start:end:step])
-                slice_bounds.unshift(slice_bounds.pop())
+                step = slice_bounds.pop() or AST_Number({'value': 1})
+                slice_bounds.unshift(step)
                 if not slice_bounds[-1]:
                     slice_bounds.pop()
                     if not slice_bounds[-1]:
@@ -3261,12 +3294,49 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 # the reliable indication that this is a trailing tuple
                 # comma.  Function arguments and collection items use
                 # ``expression(False)`` and do not reach this branch.
-                if is_("punc", ")"):
+                if (
+                    is_("punc", ")")
+                    or is_("punc", ";")
+                    or is_("punc", "}")
+                    or is_("eof")
+                    or (
+                        S.token.nlb
+                        and S.token.delimiter_depth is 0
+                    )
+                ):
+                    if (
+                        left.length > 1
+                        and is_node_type(left[-1], AST_Assign)
+                    ):
+                        assignment = left[-1]
+                        left[-1] = assignment.left
+                        return create_assign({
+                            'start': start,
+                            'left': AST_Array({'elements': left}),
+                            'operator': assignment.operator,
+                            'right': AST_Array({
+                                'elements': [assignment.right],
+                                'is_tuple': True,
+                            }),
+                            'end': prev(),
+                        })
                     return AST_Array({
                         'start': start,
                         'elements': left,
                         'is_tuple': True,
                         'end': prev(),
+                    })
+                if is_('operator', '='):
+                    next()
+                    return create_assign({
+                        'start': start,
+                        'left': AST_Array({
+                            'elements': left,
+                            'is_tuple': True,
+                        }),
+                        'operator': '=',
+                        'right': expression(True, no_in),
+                        'end': peek(),
                     })
                 if is_node_type(expr, AST_Assign):
                     left[-1] = left[-1].left

@@ -4,6 +4,7 @@ from __python__ import hash_literals
 
 from ast_types import AST_BaseCall, AST_SymbolRef, AST_Array, AST_Unary, AST_Number, has_calls, AST_Seq, AST_ListComprehension, is_node_type
 from output.stream import OutputStream
+from output.statements import force_statement
 
 
 def unpack_tuple(elems, output, in_statement):
@@ -29,11 +30,35 @@ def print_do_loop(self, output):
 
 
 def print_while_loop(self, output):
+    prepare_loop_else(self, output)
     output.print("while")
     output.space()
     output.with_parens(lambda: output.print_truth_test(self.condition))
     output.space()
     self._do_print_body(output)
+    print_loop_else(self, output)
+
+
+def prepare_loop_else(loop, output):
+    if not loop.alternative:
+        return
+    loop.else_flag = 'ρσ_LoopElse' + output.loop_else_counter
+    output.loop_else_counter += 1
+    output.print('var ' + loop.else_flag + ' = true')
+    output.end_statement()
+    output.indent()
+
+
+def print_loop_else(loop, output):
+    if not loop.alternative:
+        return
+    output.newline()
+    output.indent()
+    output.print('if')
+    output.space()
+    output.with_parens(lambda: output.print(loop.else_flag))
+    output.space()
+    force_statement(loop.alternative, output)
 
 
 def is_simple_for_in(self):
@@ -109,6 +134,8 @@ def init_es6_itervar(output, itervar):
 
 
 def print_for_in(self, output):
+    prepare_loop_else(self, output)
+
     def write_object():
         if self.object.constructor is AST_Seq:
             (AST_Array({'elements': self.object.to_array()})).print(output)
@@ -202,6 +229,7 @@ def print_for_in(self, output):
 
     output.space()
     self._do_print_body(output)
+    print_loop_else(self, output)
 
 
 def print_list_comprehension(self, output):
@@ -229,7 +257,10 @@ def print_list_comprehension(self, output):
                     output.space()
 
                     def f_dict0():
-                        if self.value_statement.constructor is AST_Seq:
+                        if (
+                            self.value_statement.constructor is AST_Seq
+                            and not output.options.python_tuples
+                        ):
                             output.with_square(
                                 lambda: self.value_statement.print(output))
                         else:
@@ -251,7 +282,10 @@ def print_list_comprehension(self, output):
                 output.space(), output.print('='), output.space()
 
                 def f_result():
-                    if self.value_statement.constructor is AST_Seq:
+                    if (
+                        self.value_statement.constructor is AST_Seq
+                        and not output.options.python_tuples
+                    ):
                         output.with_square(
                             lambda: self.value_statement.print(output))
                     else:
@@ -272,7 +306,10 @@ def print_list_comprehension(self, output):
             output.print(push_func)
 
             def f_output_statement():
-                if self.statement.constructor is AST_Seq:
+                if (
+                    self.statement.constructor is AST_Seq
+                    and not output.options.python_tuples
+                ):
                     output.with_square(lambda: self.statement.print(output))
                 else:
                     self.statement.print(output)
@@ -289,6 +326,11 @@ def print_list_comprehension(self, output):
 
         def f_body0():
             body_out = output
+            clauses = self.clauses or [{
+                'init': self.init,
+                'object': self.object,
+                'conditions': [self.condition] if self.condition else [],
+            }]
             if is_generator:
                 body_out.indent()
                 body_out.print('function* js_generator()'), body_out.space(
@@ -297,62 +339,80 @@ def print_list_comprehension(self, output):
                 previous_indentation = output.indentation()
                 output.set_indentation(output.next_indent())
             body_out.indent()
-            body_out.assign("var ρσ_Iter")
-            self.object.print(body_out)
-
+            body_out.print("var")
+            body_out.space()
+            body_out.print("ρσ_Result")
             if result_obj:
-                body_out.comma()
-                body_out.assign("ρσ_Result")
+                body_out.space()
+                body_out.assign("")
                 body_out.print(result_obj)
             # make sure to locally scope loop variables
-            if is_node_type(self.init, AST_Array):
-                for i in self.init.elements:
+            for clause in clauses:
+                if is_node_type(clause.init, AST_Array):
+                    for i in clause.init.elements:
+                        body_out.comma()
+                        i.print(body_out)
+                else:
                     body_out.comma()
-                    i.print(body_out)
-            else:
-                body_out.comma()
-                self.init.print(body_out)
+                    clause.init.print(body_out)
             body_out.end_statement()
 
-            init_es6_itervar(body_out, 'ρσ_Iter')
-            body_out.indent()
-            body_out.print("for")
-            body_out.space()
-            body_out.with_parens(
-                lambda: body_out.spaced('var', 'ρσ_Index', 'of', 'ρσ_Iter'))
-            body_out.space()
-
-            def f_body_out():
+            def print_clause(clause_index):
+                clause = clauses[clause_index]
+                iter_name = 'ρσ_Iter' + clause_index
+                index_name = 'ρσ_Index' + clause_index
                 body_out.indent()
-                itervar = 'ρσ_Index'
-                if is_node_type(self.init, AST_Array):
-                    flat = self.init.flatten()
-                    body_out.assign("ρσ_unpack")
-                    if flat.length > self.init.elements.length:
-                        body_out.print('ρσ_flatten(' + itervar + ')')
-                    else:
-                        body_out.print(itervar)
-                    body_out.end_statement()
-                    unpack_tuple(flat, body_out)
-                else:
-                    body_out.assign(self.init)
-                    body_out.print(itervar)
-                    body_out.end_statement()
+                body_out.assign('var ' + iter_name)
+                clause.object.print(body_out)
+                body_out.end_statement()
+                init_es6_itervar(body_out, iter_name)
+                body_out.indent()
+                body_out.print("for")
+                body_out.space()
+                body_out.with_parens(
+                    lambda: body_out.spaced(
+                        'var', index_name, 'of', iter_name))
+                body_out.space()
 
-                if self.condition:
+                def print_clause_body():
                     body_out.indent()
-                    body_out.print("if")
-                    body_out.space()
-                    body_out.with_parens(
-                        lambda: body_out.print_truth_test(self.condition))
-                    body_out.space()
-                    body_out.with_block(lambda: add_to_result(body_out))
-                    body_out.newline()
-                else:
-                    add_to_result(body_out)
+                    if is_node_type(clause.init, AST_Array):
+                        flat = clause.init.flatten()
+                        body_out.assign("ρσ_unpack")
+                        if flat.length > clause.init.elements.length:
+                            body_out.print('ρσ_flatten(' + index_name + ')')
+                        else:
+                            body_out.print(index_name)
+                        body_out.end_statement()
+                        unpack_tuple(flat, body_out)
+                    else:
+                        body_out.assign(clause.init)
+                        body_out.print(index_name)
+                        body_out.end_statement()
 
-            body_out.with_block(f_body_out)
-            body_out.newline()
+                    def print_filtered_body(condition_index):
+                        if condition_index < clause.conditions.length:
+                            body_out.indent()
+                            body_out.print("if")
+                            body_out.space()
+                            body_out.with_parens(
+                                lambda: body_out.print_truth_test(
+                                    clause.conditions[condition_index]))
+                            body_out.space()
+                            body_out.with_block(
+                                lambda: print_filtered_body(
+                                    condition_index + 1))
+                        elif clause_index + 1 < clauses.length:
+                            print_clause(clause_index + 1)
+                        else:
+                            add_to_result(body_out)
+
+                    print_filtered_body(0)
+
+                body_out.with_block(print_clause_body)
+                body_out.newline()
+
+            print_clause(0)
             if self.constructor is AST_ListComprehension:
                 body_out.indent()
                 body_out.spaced('ρσ_Result', '=',

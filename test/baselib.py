@@ -417,7 +417,8 @@ b = None
 assrt.equal(a == b, False)
 assrt.equal(b == a, False)
 
-a, b = range(1111111111)
+# Exact unpacking must reject extra values; use a finite two-item range here.
+a, b = range(2)
 assrt.equal(a, 0)
 assrt.equal(b, 1)
 assrt.equal(len(range(10)), 10)

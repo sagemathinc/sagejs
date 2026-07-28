@@ -424,28 +424,21 @@ function Linter(toplevel, filename, code, options) {
 
   this.handle_for_in = function () {
     var node = this.current_node;
-    if (node.init instanceof PyLang.AST_SymbolRef) {
-      this.add_binding(node.init.name).is_loop = true;
-      node.init.lint_visited = true;
-    } else if (node.init instanceof PyLang.AST_Array) {
-      // destructuring assignment: for a, b in []
-      for (var i = 0; i < node.init.elements.length; i++) {
-        var cnode = node.init.elements[i];
-        if (cnode instanceof PyLang.AST_Seq) cnode = cnode.to_array();
-        if (cnode instanceof PyLang.AST_SymbolRef) cnode = [cnode];
-        if (Array.isArray(cnode)) {
-          for (var j = 0; j < cnode.length; j++) {
-            var elem = cnode[j];
-            if (elem instanceof PyLang.AST_SymbolRef) {
-              this.current_node = elem;
-              elem.lint_visited = true;
-              this.add_binding(elem.name).is_loop = true;
-              this.current_node = node;
-            }
-          }
-        }
+    var bind_target = (target) => {
+      if (target instanceof PyLang.AST_SymbolRef) {
+        this.current_node = target;
+        target.lint_visited = true;
+        this.add_binding(target.name).is_loop = true;
+        this.current_node = node;
+      } else if (target instanceof PyLang.AST_Unary && target.operator === "*") {
+        bind_target(target.expression);
+      } else if (target instanceof PyLang.AST_Seq) {
+        target.to_array().forEach(bind_target);
+      } else if (target instanceof PyLang.AST_Array) {
+        target.elements.forEach(bind_target);
       }
-    }
+    };
+    bind_target(node.init);
   };
 
   this.handle_for_js = function () {

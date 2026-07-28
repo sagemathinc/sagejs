@@ -458,13 +458,75 @@ def print_existential(self, output):
 
 
 def print_assignment(self, output):
+    def print_unpack_pattern(node):
+        if is_node_type(node, AST_Seq):
+            node = AST_Array({'elements': node.to_array()})
+        if is_node_type(node, AST_Array):
+            output.print('[')
+            for index, element in enumerate(node.elements):
+                if index:
+                    output.comma()
+                print_unpack_pattern(element)
+            output.print(']')
+        else:
+            output.print('null')
+
     flattened = False
     left = self.left
     if is_node_type(left, AST_Seq):
-        left = AST_Array({'elements': [left.car, left.cdr]})
+        left = AST_Array({'elements': left.to_array()})
     if is_node_type(left, AST_Array):
         flat = left.flatten()
         flattened = flat.length > left.elements.length
+        star_index = -1
+        for index, element in enumerate(flat):
+            if (
+                is_node_type(element, AST_Unary)
+                and element.operator is '*'
+            ):
+                if star_index is not -1:
+                    raise SyntaxError(
+                        'multiple starred expressions in assignment')
+                star_index = index
+        if star_index is not -1:
+            trailing_count = flat.length - star_index - 1
+            output.assign("ρσ_unpack")
+            output.print("ρσ_unpack_starred(")
+            output.print(star_index)
+            output.comma()
+            output.print(trailing_count)
+            output.comma()
+            self.right.print(output)
+            output.print(")")
+            output.end_statement()
+            for index, element in enumerate(flat):
+                output.indent()
+                target = (
+                    element.expression
+                    if index is star_index
+                    else element
+                )
+                output.assign(target)
+                if index is star_index:
+                    output.print("ρσ_list_constructor(ρσ_unpack.slice(")
+                    output.print(star_index)
+                    output.comma()
+                    output.print(
+                        "ρσ_unpack.length - " + trailing_count)
+                    output.print("))")
+                else:
+                    output.print("ρσ_unpack")
+                    if index < star_index:
+                        output.with_square(lambda: output.print(index))
+                    else:
+                        trailing_index = flat.length - index
+                        output.with_square(
+                            lambda: output.print(
+                                "ρσ_unpack.length - " + trailing_index))
+                if index < flat.length - 1:
+                    output.semicolon()
+                    output.newline()
+            return
         output.print("ρσ_unpack")
     else:
         left.print(output)
@@ -472,19 +534,20 @@ def print_assignment(self, output):
     output.print(self.operator)
     output.space()
     if flattened:
-        output.print('ρσ_flatten')
-        output.with_parens(lambda: self.right.print(output))
+        output.print('ρσ_unpack_nested(')
+        print_unpack_pattern(left)
+        output.comma()
+        self.right.print(output)
+        output.print(')')
     else:
         self.right.print(output)
     if is_node_type(left, AST_Array):
         output.end_statement()
-        if not is_node_type(self.right, AST_Seq) and not is_node_type(
-                self.right, AST_Array):
-            output.assign('ρσ_unpack')
-            output.print('ρσ_unpack_asarray(' +
-                         flat.length), output.comma(), output.print(
-                             'ρσ_unpack)')
-            output.end_statement()
+        output.assign('ρσ_unpack')
+        output.print('ρσ_unpack_asarray(' +
+                     flat.length), output.comma(), output.print(
+                         'ρσ_unpack)')
+        output.end_statement()
         unpack_tuple(flat, output, True)
 
 
@@ -496,17 +559,18 @@ def print_assign(self, output):
         '+=': 'ρσ_operator_iadd',
         '-=': 'ρσ_operator_isub',
         '*=': 'ρσ_operator_imul',
+        '**=': 'ρσ_operator_ipow',
         '/=': 'ρσ_operator_idiv',
     }
     compound_functions = {
-        '//=': 'ρσ_operator_floordiv',
-        '%=': 'ρσ_operator_mod',
-        '@=': 'ρσ_operator_matmul',
-        '&=': 'ρσ_operator_bitand',
-        '|=': 'ρσ_operator_bitor',
-        '^=': 'ρσ_operator_bitxor',
-        '<<=': 'ρσ_operator_lshift',
-        '>>=': 'ρσ_operator_rshift',
+        '//=': 'ρσ_operator_ifloordiv',
+        '%=': 'ρσ_operator_imod',
+        '@=': 'ρσ_operator_imatmul',
+        '&=': 'ρσ_operator_ibitand',
+        '|=': 'ρσ_operator_ibitor',
+        '^=': 'ρσ_operator_ibitxor',
+        '<<=': 'ρσ_operator_ilshift',
+        '>>=': 'ρσ_operator_irshift',
     }
     if (
         is_node_type(self.left, AST_ItemAccess)
@@ -533,6 +597,15 @@ def print_assign(self, output):
         output.comma()
         self.right.print(output)
         output.print('))')
+        output.print(')')
+        return
+    if self.operator in arithmetic_compound_functions:
+        output.assign(self.left)
+        print_arithmetic_call(
+            output, arithmetic_compound_functions[self.operator])
+        self.left.print(output)
+        output.comma()
+        self.right.print(output)
         output.print(')')
         return
     if self.operator in compound_functions:

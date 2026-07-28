@@ -312,6 +312,18 @@ def generate_code():
 
     # -----[ loop control ]-----
     def f_do_print_loop(output, kind):
+        if kind is "break":
+            stack = output.stack()
+            for i in range(stack.length - 2, -1, -1):
+                ancestor = stack[i]
+                if (
+                    is_node_type(ancestor, AST_While)
+                    or is_node_type(ancestor, AST_ForIn)
+                    or is_node_type(ancestor, AST_ForJS)
+                ):
+                    if ancestor.alternative:
+                        output.print(ancestor.else_flag + " = false; ")
+                    break
         output.print(kind)
         if this.label:
             output.space()

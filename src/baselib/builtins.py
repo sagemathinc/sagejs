@@ -322,7 +322,8 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
         not runtime.strict_equal(runtime.jstype(left), 'number')
         or not runtime.strict_equal(runtime.jstype(right), 'number')
     ):
-        return runtime.native_mul(left, right)
+        raise TypeError(
+            'unsupported operand type(s) for multiplication')
     result = runtime.native_mul(left, right)
     if (
         result <= runtime.number.MAX_SAFE_INTEGER
@@ -573,6 +574,44 @@ def ρσ_operator_matmul(left: Any, right: Any) -> Any:
     if _builtins_member_is_function(right, '__rmatmul__'):
         return _builtins_call_member(right, '__rmatmul__', [left])
     raise TypeError("unsupported operand type(s) for @")
+
+
+def ρσ_operator_imatmul(left: Any, right: Any) -> Any:
+    return _builtins_inplace(
+        left, right, '__imatmul__', ρσ_operator_matmul)
+
+
+def ρσ_operator_ifloordiv(left: Any, right: Any) -> Any:
+    return _builtins_inplace(
+        left, right, '__ifloordiv__', ρσ_operator_floordiv)
+
+
+def ρσ_operator_imod(left: Any, right: Any) -> Any:
+    return _builtins_inplace(left, right, '__imod__', ρσ_operator_mod)
+
+
+def ρσ_operator_ibitand(left: Any, right: Any) -> Any:
+    return _builtins_inplace(
+        left, right, '__iand__', ρσ_operator_bitand)
+
+
+def ρσ_operator_ibitor(left: Any, right: Any) -> Any:
+    return _builtins_inplace(left, right, '__ior__', ρσ_operator_bitor)
+
+
+def ρσ_operator_ibitxor(left: Any, right: Any) -> Any:
+    return _builtins_inplace(
+        left, right, '__ixor__', ρσ_operator_bitxor)
+
+
+def ρσ_operator_ilshift(left: Any, right: Any) -> Any:
+    return _builtins_inplace(
+        left, right, '__ilshift__', ρσ_operator_lshift)
+
+
+def ρσ_operator_irshift(left: Any, right: Any) -> Any:
+    return _builtins_inplace(
+        left, right, '__irshift__', ρσ_operator_rshift)
 
 
 def ρσ_operator_bitand(left: Any, right: Any) -> Any:

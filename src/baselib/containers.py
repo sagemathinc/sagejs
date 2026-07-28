@@ -367,6 +367,7 @@ def _list_prototype() -> Any:
         prototype.__contains__ = _list_contains
         prototype.__eq__ = _list_eq
         prototype.__mul__ = _list_mul
+        prototype.__rmul__ = _list_mul
         prototype.constructor = list_constructor
         _list_prototype_cache = prototype
     return _list_prototype_cache

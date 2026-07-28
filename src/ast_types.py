@@ -239,14 +239,19 @@ class AST_DWLoop(AST_StatementWithBody):
     "Base class for do/while statements"
     properties = {
         'condition':
-        "[AST_Node] the loop condition.  Should not be instanceof AST_Statement"
+        "[AST_Node] the loop condition.  Should not be instanceof AST_Statement",
+        'alternative':
+        "[AST_Statement?] the Python loop `else` suite, or null"
     }
 
     def _walk(self, visitor):
-        return visitor._visit(
-            self,
-            lambda: [self.condition._walk(visitor),
-                     self.body._walk(visitor)])
+        def f_loop():
+            self.condition._walk(visitor)
+            self.body._walk(visitor)
+            if self.alternative:
+                self.alternative._walk(visitor)
+
+        return visitor._visit(self, f_loop)
 
 
 class AST_Do(AST_DWLoop):
@@ -266,6 +271,8 @@ class AST_ForIn(AST_StatementWithBody):
         'object': "[AST_Node] the object that we're looping through",
         'builtin_range':
         "[bool?] false when range is shadowed in the enclosing scope",
+        'alternative':
+        "[AST_Statement?] the Python loop `else` suite, or null",
     }
 
     def _walk(self, visitor):
@@ -275,6 +282,8 @@ class AST_ForIn(AST_StatementWithBody):
             self.object._walk(visitor)
             if self.body:
                 self.body._walk(visitor)
+            if self.alternative:
+                self.alternative._walk(visitor)
 
         return visitor._visit(self, f_for_in)
 
@@ -301,6 +310,8 @@ class AST_EllipsesRange(AST_Node):
 class AST_ListComprehension(AST_ForIn):
     "A list comprehension expression"
     properties = {
+        'clauses':
+        "[object*] ordered `for` clauses with their following `if` filters",
         'condition':
         "[AST_Node] the `if` condition",
         'statement':
@@ -309,10 +320,18 @@ class AST_ListComprehension(AST_ForIn):
 
     def _walk(self, visitor):
         def f_list_comprehension():
-            self.init._walk(visitor)
-            self.object._walk(visitor)
+            if self.clauses:
+                for clause in self.clauses:
+                    clause.init._walk(visitor)
+                    clause.object._walk(visitor)
+                    for condition in clause.conditions:
+                        condition._walk(visitor)
+            else:
+                self.init._walk(visitor)
+                self.object._walk(visitor)
             self.statement._walk(visitor)
-            if self.condition: self.condition._walk(visitor)
+            if self.condition:
+                self.condition._walk(visitor)
 
         return visitor._visit(self, f_list_comprehension)
 
@@ -332,11 +351,19 @@ class AST_DictComprehension(AST_ListComprehension):
 
     def _walk(self, visitor):
         def f_dict_comprehension():
-            self.init._walk(visitor)
-            self.object._walk(visitor)
+            if self.clauses:
+                for clause in self.clauses:
+                    clause.init._walk(visitor)
+                    clause.object._walk(visitor)
+                    for condition in clause.conditions:
+                        condition._walk(visitor)
+            else:
+                self.init._walk(visitor)
+                self.object._walk(visitor)
             self.statement._walk(visitor)
             self.value_statement._walk(visitor)
-            if self.condition: self.condition._walk(visitor)
+            if self.condition:
+                self.condition._walk(visitor)
 
         return visitor._visit(self, f_dict_comprehension)
 
@@ -799,7 +826,9 @@ class AST_Seq(AST_Node):
     "A sequence expression (two comma-separated expressions)"
     properties = {
         'car': "[AST_Node] first element in sequence",
-        'cdr': "[AST_Node] second element in sequence"
+        'cdr': "[AST_Node] second element in sequence",
+        'parenthesized':
+        "[bool] this sequence was explicitly nested in parentheses",
     }
 
     def to_array(self):
@@ -807,7 +836,13 @@ class AST_Seq(AST_Node):
         a = []
         while p:
             a.push(p.car)
-            if p.cdr and not (is_node_type(p.cdr, AST_Seq)):
+            if (
+                p.cdr
+                and (
+                    not is_node_type(p.cdr, AST_Seq)
+                    or p.cdr.parenthesized
+                )
+            ):
                 a.push(p.cdr)
                 break
             p = p.cdr
