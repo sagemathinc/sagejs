@@ -74,6 +74,23 @@ def write_imports(module, output):
     output.indent()
     output.print('var ρσ_modules = {};')
     output.newline()
+    if any(module_.module_id == 'builtins' for module_ in imports):
+        output.indent()
+        output.print('ρσ_modules.builtins = {}')
+        output.end_statement()
+        output.indent()
+        output.print(
+            'Object.defineProperties(ρσ_modules.builtins, {'
+            'abs:{enumerable:true,get:function(){return abs},'
+            'set:function(value){abs=value}},'
+            '__build_class__:{enumerable:true,'
+            'get:function(){return __build_class__},'
+            'set:function(value){__build_class__=value}},'
+            '__import__:{enumerable:true,'
+            'get:function(){return __import__},'
+            'set:function(value){__import__=value}}'
+            '})')
+        output.end_statement()
 
     # Declare all variable names exported from the modules as global symbols
     nonlocalvars = {}
@@ -519,8 +536,56 @@ def print_imports(container, output):
 
         output.with_block(copy_star_name)
 
+    def dynamic_import(self):
+        output.print('var ρσ_imported_module = __import__(')
+        output.print_string(self.key)
+        output.print(', null, null, ')
+        if self.argnames:
+            output.print('ρσ_math_tuple([')
+            for index, argname in enumerate(self.argnames):
+                if index:
+                    output.comma()
+                output.print_string(argname.name)
+            output.print('])')
+        elif self.star:
+            output.print('ρσ_math_tuple(["*"])')
+        else:
+            output.print('null')
+        output.comma()
+        output.print(str(self.level or 0))
+        output.print(')')
+        output.end_statement()
+        if self.star:
+            output.indent()
+            output.print('ρσ_modules[')
+            output.print_string(self.key)
+            output.print('] = ρσ_imported_module')
+            output.end_statement()
+            output.indent()
+            import_star(self.key, self.target_module)
+        elif self.argnames:
+            for argname in self.argnames:
+                output.indent()
+                output.print('var ')
+                output.assign(
+                    argname.alias.name if argname.alias else argname.name)
+                output.print('ρσ_getattr(ρσ_imported_module, ')
+                output.print_string(argname.name)
+                output.print(')')
+                output.end_statement()
+        else:
+            output.indent()
+            output.print('var ')
+            output.assign(
+                self.alias.name if self.alias else self.key.split('.')[0])
+            output.print('ρσ_imported_module')
+            output.end_statement()
+
     for self in container.imports:
         if self.intrinsic:
+            continue
+        if self.dynamic and self.key != 'builtins':
+            dynamic_import(self)
             continue
         if self.star:
             import_star(self.key, self.target_module)

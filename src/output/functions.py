@@ -377,6 +377,12 @@ def function_annotation(self, output, strip_first, name):
         output.print(module_name)
         output.print(']),writable:false})')
         output.end_statement()
+        output.assign(fname + '.__code__')
+        output.print('ρσ_function_code(' + fname + ')')
+        output.end_statement()
+        output.assign(fname + '.__python_type__')
+        output.print('ρσ_function_type')
+        output.end_statement()
 
     output.print(
         "undefined"

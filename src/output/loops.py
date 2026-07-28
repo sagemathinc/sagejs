@@ -2,9 +2,9 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 
-from ast_types import AST_Array, AST_BaseCall, AST_GeneratorComprehension, AST_ListComprehension, AST_Number, AST_Seq, AST_SymbolRef, AST_Unary, is_node_type
+from ast_types import AST_Array, AST_AsyncFor, AST_BaseCall, AST_GeneratorComprehension, AST_ListComprehension, AST_Number, AST_Seq, AST_SymbolRef, AST_Unary, is_node_type
 from output.stream import OutputStream
-from output.statements import force_statement
+from output.statements import force_statement, print_await_expression
 
 
 def unpack_tuple(elems, output, in_statement):
@@ -263,6 +263,72 @@ def print_for_in(self, output):
 
     output.space()
     self._do_print_body(output)
+    print_loop_else(self, output)
+
+
+def print_async_for(self, output):
+    prepare_loop_else(self, output)
+    iterator_name = 'ρσ_AsyncIter' + output.index_counter
+    output.index_counter += 1
+    value_name = 'ρσ_AsyncValue' + output.index_counter
+    output.index_counter += 1
+
+    output.print('var ')
+    output.assign(iterator_name)
+    self.object.print(output)
+    output.print('.__aiter__()')
+    output.end_statement()
+    output.indent()
+    output.print('while (true)')
+    output.space()
+
+    def loop_body():
+        output.indent()
+        output.print('var ' + value_name)
+        output.end_statement()
+        output.indent()
+        output.print('try')
+        output.space()
+
+        def next_value():
+            output.indent()
+            output.assign(value_name)
+            print_await_expression(
+                output,
+                lambda: output.print(
+                    iterator_name + '.__anext__()'
+                ),
+            )
+            output.end_statement()
+
+        output.with_block(next_value)
+        output.space()
+        output.print('catch (ρσ_AsyncError)')
+        output.space()
+
+        def stop_or_raise():
+            output.indent()
+            output.print(
+                'if (ρσ_AsyncError instanceof StopAsyncIteration) '
+                'break'
+            )
+            output.end_statement()
+            output.indent()
+            output.print('throw ρσ_AsyncError')
+            output.end_statement()
+
+        output.with_block(stop_or_raise)
+        output.newline()
+        output.indent()
+        output.assign(self.init)
+        output.print(value_name)
+        output.end_statement()
+        for statement in self.body.body:
+            output.indent()
+            statement.print(output)
+            output.newline()
+
+    output.with_block(loop_body)
     print_loop_else(self, output)
 
 

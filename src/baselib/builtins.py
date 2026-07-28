@@ -17,6 +17,45 @@ _Int = int
 _Str = str
 
 
+def _builtins_default_build_class(
+    body: Any,
+    name: str,
+    *bases: Any,
+) -> Any:
+    """Marker used when class statements use Sage.js's native lowering.
+
+    The compiler already lowers ordinary classes directly.  Replacing
+    ``builtins.__build_class__`` switches class statements to the public
+    Python hook instead.
+    """
+    return runtime.undefined
+
+
+runtime.reflect.set(
+    _builtins_default_build_class,
+    '__sagejs_default_build_class__',
+    True,
+)
+__build_class__ = _builtins_default_build_class
+
+
+def _builtins_default_import(
+    name: str,
+    globals: Any = None,
+    locals: Any = None,
+    fromlist: Any = None,
+    level: _Int = 0,
+) -> Any:
+    """Resolve a module already linked into the compiled program."""
+    module = runtime.reflect.get(runtime.modules, name)
+    if module is runtime.undefined:
+        raise ImportError("No module named '" + name + "'")
+    return module
+
+
+__import__ = _builtins_default_import
+
+
 class _BuiltinsMissing:
     pass
 
@@ -2856,6 +2895,84 @@ class _Code:
         self._native_code = native_code
 
 
+class _FunctionCode:
+
+    def __init__(self, source_function: Any) -> None:
+        self.source_function = source_function
+
+
+def ρσ_function_code(source_function: Any) -> _FunctionCode:
+    return _FunctionCode(source_function)
+
+
+def _builtins_function_with_globals(
+    source_function: Any,
+    global_namespace: Any,
+) -> Any:
+    def rebound(*args: Any, **keywords: Any) -> Any:
+        original_globals = _builtins_get_member(
+            source_function, '__globals__')
+        saved = []
+        for pair in global_namespace.items():
+            name = pair[0]
+            existed = name in original_globals
+            if existed:
+                old_value = original_globals.__getitem__(name)
+            else:
+                old_value = None
+            saved.append(
+                runtime.math_tuple([name, existed, old_value]))
+            original_globals.__setitem__(name, pair[1])
+        try:
+            result = source_function(*args, **keywords)
+        finally:
+            for entry in saved:
+                if entry[1]:
+                    original_globals.__setitem__(
+                        entry[0], entry[2])
+                else:
+                    try:
+                        original_globals.__delitem__(entry[0])
+                    except KeyError:
+                        runtime.reflect.deleteProperty(
+                            runtime.global_object, entry[0])
+        if (
+            runtime.strict_equal(
+                runtime.jstype(result), 'function')
+            and _builtins_get_member(
+                result, '__python_descriptor__') is True
+        ):
+            return _builtins_function_with_globals(
+                result, global_namespace)
+        return result
+
+    runtime.reflect.set(
+        rebound, '__python_type__', ρσ_function_type)
+    runtime.reflect.set(
+        rebound, '__python_descriptor__', True)
+    runtime.reflect.set(
+        rebound, '__code__',
+        _builtins_get_member(source_function, '__code__'))
+    runtime.reflect.set(
+        rebound, '__name__',
+        _builtins_get_member(source_function, '__name__'))
+    return rebound
+
+
+def ρσ_function_type(
+    code: Any,
+    global_namespace: Any,
+) -> Any:
+    if not isinstance(code, _FunctionCode):
+        raise TypeError(
+            'function() argument 1 must be a code object')
+    if not isinstance(global_namespace, dict):
+        raise TypeError(
+            'function() argument 2 must be a dict')
+    return _builtins_function_with_globals(
+        code.source_function, global_namespace)
+
+
 def _builtins_dynamic_code_helper() -> Any:
     global _dynamic_code_helper_cache
     if _dynamic_code_helper_cache is runtime.undefined:
@@ -3785,3 +3902,4 @@ next_prime = ρσ_next_prime
 compile = ρσ_compile
 exec = ρσ_exec
 runtime.set_class_repr(_Code, "<class 'code'>")
+runtime.set_class_repr(ρσ_function_type, "<class 'function'>")

@@ -7,12 +7,12 @@ are the bootstrap implementation used by older checked-in compilers.
 """
 
 # globals: Array, BigInt, console, Element, Error, Function
-# globals: IntegerFactorization, Map, Math
+# globals: FinalizationRegistry, IntegerFactorization, Map, Math
 # globals: Number, Object, PolynomialRing, Proxy
 # globals: JSON, Set, create_real_literal, globalThis, isNaN, parseFloat
 # globals: parseInt
 # globals: QQ, Rational, ReferenceError, Reflect, RegExp, String, SyntaxError
-# globals: TypeError
+# globals: TypeError, WeakRef
 # globals: ZeroDivisionError, require
 # globals: ρσ_bigint_divexact, ρσ_bigint_gcd
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
@@ -133,11 +133,13 @@ bigint_fields = ρσ_bigint_fields
 callable_instance_class = ρσ_callable_instance_class
 console_object = console
 coercion_model = ρσ_coercion_model
+dynamic_eval = ρσ_dynamic_eval
 equals = ρσ_equals
 element = Element
 error = Error
 function_class = Function
 factor_pair = ρσ_factor_pair
+finalization_registry_class = FinalizationRegistry
 float_builtin = ρσ_float
 flint_backend = ρσ_flint_backend
 global_object = globalThis
@@ -165,7 +167,7 @@ native_method_adapter = ρσ_native_method_adapter
 non_exception_throw = ρσ_non_exception_throw
 normalize_integer = ρσ_normalize_integer
 native_number_class = Number
-number = native_number_class
+number = Number
 object = Object
 operator_add_exact = ρσ_operator_add_exact
 operator_mul_exact = ρσ_operator_mul_exact
@@ -196,5 +198,5 @@ syntax_error = SyntaxError
 type_error = TypeError
 tuple_builtin = ρσ_tuple
 undefined = r"%js undefined"
+weak_ref_class = WeakRef
 zero_division_error = ZeroDivisionError
-dynamic_eval = ρσ_dynamic_eval

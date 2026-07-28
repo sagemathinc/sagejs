@@ -100,6 +100,32 @@ class _Reflect:
     ) -> bool: ...
 
 
+class _WeakRef:
+    def deref(self) -> Any: ...
+
+
+class _WeakRefClass:
+    def __call__(self, target: object) -> _WeakRef: ...
+
+
+class _FinalizationRegistry:
+    def register(
+        self,
+        target: object,
+        held_value: object,
+        unregister_token: object = ...,
+    ) -> None: ...
+
+    def unregister(self, unregister_token: object) -> bool: ...
+
+
+class _FinalizationRegistryClass:
+    def __call__(
+        self,
+        callback: Callable[[object], None],
+    ) -> _FinalizationRegistry: ...
+
+
 class _Element:
     _parent: Any
 
@@ -117,6 +143,7 @@ array: _Array
 console_object: Any
 element: type[_Element]
 error: type[_Error]
+finalization_registry_class: _FinalizationRegistryClass
 function_class: Any
 float_builtin: Any
 global_object: Any
@@ -143,6 +170,7 @@ string_class: Any
 string_builtin: Any
 tuple_builtin: Any
 undefined: Any
+weak_ref_class: _WeakRefClass
 coercion_model: Any
 kwargs_symbol: Any
 iterator_symbol: Any

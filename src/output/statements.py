@@ -186,6 +186,27 @@ def print_bracketed(node, output, complex, function_preamble, before, after):
             output.print("{}")
 
 
+def print_await_expression(output, print_expression):
+    """Emit generator-based ``await`` around an expression."""
+    output.print(
+        '(yield* (function* () {'
+        'try { '
+        'var ρσ_await_iterator = ρσ_yield_from_impl('
+    )
+    print_expression()
+    output.print(
+        ');'
+        'ρσ_await_iterator.throw = '
+        'ρσ_await_iterator.__native_throw__;'
+        'return yield* ρσ_await_iterator;'
+        '} catch (ρσ_await_error) {'
+        'if (ρσ_await_error instanceof ρσ_yield_from_return) '
+        'return ρσ_await_error.value;'
+        'throw ρσ_await_error;'
+        '} })())'
+    )
+
+
 def print_with(self, output):
     exits = []
     output.assign('ρσ_with_exception'), output.print(
@@ -200,7 +221,16 @@ def print_with(self, output):
         output.indent()
         if clause.alias:
             output.assign(clause.alias.name)
-        output.print(clause_name + '.__enter__()')
+        method_name = '__aenter__' if self.is_async else '__enter__'
+        if self.is_async:
+            print_await_expression(
+                output,
+                lambda: output.print(
+                    clause_name + '.' + method_name + '()'
+                ),
+            )
+        else:
+            output.print(clause_name + '.' + method_name + '()')
         output.end_statement()
     output.indent(), output.print('try'), output.space()
 
@@ -223,18 +253,44 @@ def print_with(self, output):
 
     def f_exit():
         for clause in reversed(exits):
-            output.indent(), output.print(
-                clause + '.__exit__(null, null, null)'), output.end_statement()
+            output.indent()
+            if self.is_async:
+                print_await_expression(
+                    output,
+                    lambda: output.print(
+                        clause + '.__aexit__(null, null, null)'
+                    ),
+                )
+            else:
+                output.print(
+                    clause + '.__exit__(null, null, null)')
+            output.end_statement()
 
     def f_suppress():
         output.indent(), output.assign('ρσ_with_suppress'), output.print(
             'false'), output.end_statement()
         for clause in reversed(exits):
             output.indent()
-            output.spaced(
-                'ρσ_with_suppress', '|=', 'ρσ_bool(' + clause +
-                '.__exit__(ρσ_with_exception.constructor,',
-                'ρσ_with_exception,', 'ρσ_with_exception.stack))')
+            output.print('ρσ_with_suppress |= ρσ_bool(')
+            if self.is_async:
+                print_await_expression(
+                    output,
+                    lambda: output.print(
+                        clause
+                        + '.__aexit__('
+                        + 'ρσ_with_exception.constructor, '
+                        + 'ρσ_with_exception, '
+                        + 'ρσ_with_exception.stack)'
+                    ),
+                )
+            else:
+                output.print(
+                    clause
+                    + '.__exit__(ρσ_with_exception.constructor, '
+                    + 'ρσ_with_exception, '
+                    + 'ρσ_with_exception.stack)'
+                )
+            output.print(')')
             output.end_statement()
         output.indent(), output.spaced(
             'if', '(!ρσ_with_suppress)',

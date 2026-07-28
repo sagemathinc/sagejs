@@ -8,7 +8,8 @@ from utils import noop
 from parse import PRECEDENCE
 from tokenizer import RESERVED_WORDS
 from ast_types import (
-    AST_AnnotatedAssignment, AST_Array, AST_Assign, AST_BaseCall, AST_Binary,
+    AST_AnnotatedAssignment, AST_Array, AST_Assign, AST_AsyncFor,
+    AST_BaseCall, AST_Binary,
     AST_BlockStatement,
     AST_Break, AST_Class, AST_Conditional, AST_Constant, AST_Continue,
     AST_Debugger, AST_Definitions, AST_Directive, AST_Do, AST_Dot,
@@ -26,7 +27,7 @@ from ast_types import (
 from output.exceptions import print_try
 from output.classes import print_class
 from output.literals import print_array, print_obj_literal, print_object, print_set, print_regexp
-from output.loops import print_do_loop, print_while_loop, print_for_loop_body, print_for_in, print_list_comprehension, print_ellipses_range
+from output.loops import print_async_for, print_do_loop, print_while_loop, print_for_loop_body, print_for_in, print_list_comprehension, print_ellipses_range
 from output.modules import print_top_level, print_imports
 from output.comments import print_comments
 from output.operators import (print_getattr, print_getitem, print_rich_getitem,
@@ -253,6 +254,8 @@ def generate_code():
     AST_ForIn.prototype._do_print_body = print_for_loop_body
 
     DEFPRINT(AST_ForIn, print_for_in)
+
+    DEFPRINT(AST_AsyncFor, print_async_for)
 
     def f_do_print_body(output):
         self = this

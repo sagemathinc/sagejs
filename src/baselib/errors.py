@@ -168,6 +168,10 @@ class StopIteration(Exception):
         self.value = args[0] if len(args) > 0 else None
 
 
+class StopAsyncIteration(Exception):
+    pass
+
+
 class ρσ_non_exception_throw(BaseException):
 
     def __init__(self, value: object) -> None:
@@ -199,6 +203,7 @@ for _exception_class in [
     RuntimeError,
     GeneratorExit,
     StopIteration,
+    StopAsyncIteration,
 ]:
     runtime.set_class_repr(
         _exception_class,

@@ -50,12 +50,20 @@ assert.deepEqual(
   runtimeManifest.map(([name]) => name).sort(),
   "the bootstrap runtime exports and compiler manifest must stay synchronized",
 );
-assert.deepEqual(
-  bootstrapAssignments,
-  runtimeManifest.filter(
+const expectedBootstrapAssignments = runtimeManifest
+  .filter(
     ([name]) =>
       name !== "undefined" && !bootstrapFunctions.includes(name),
-  ),
+  )
+  .map(([name, value]) =>
+    // The source bootstrap runs before builtins initializes this stable alias.
+    // The converged compiler uses the alias so a user variable named Number
+    // cannot capture low-level runtime operations.
+    name === "number" ? [name, "Number"] : [name, value],
+  );
+assert.deepEqual(
+  bootstrapAssignments,
+  expectedBootstrapAssignments,
   "ordinary bootstrap aliases must lower to the matching runtime globals",
 );
 

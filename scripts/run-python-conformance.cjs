@@ -18,10 +18,15 @@ const suiteRoot = join(root, "upstream-tests", "micropython");
 const corpusRoot = join(suiteRoot, "basics");
 const baselineRoot = join(suiteRoot, "baselines");
 const sourcePath = join(suiteRoot, "SOURCE.json");
+const intentionalPath = join(
+  suiteRoot,
+  "INTENTIONAL-INCOMPATIBILITIES.json",
+);
 const sagejs = join(root, "bin", "sagejs");
 
 const statusOrder = [
   "pass",
+  "intentional-incompatibility",
   "output-mismatch",
   "compile-error",
   "missing-module",
@@ -31,6 +36,8 @@ const statusOrder = [
   "oracle-error",
   "launch-error",
 ];
+const statusWidth =
+  Math.max(...statusOrder.map((status) => status.length)) + 2;
 
 function usage() {
   console.log(`Usage: node scripts/run-python-conformance.cjs [options]
@@ -259,6 +266,49 @@ function discoverTests() {
   return { selected, excluded };
 }
 
+function loadIntentionalIncompatibilities(selected) {
+  const document = JSON.parse(readFileSync(intentionalPath, "utf8"));
+  if (document.format !== 1 || !document.tests) {
+    throw new Error(
+      "INTENTIONAL-INCOMPATIBILITIES.json must use format 1",
+    );
+  }
+  const candidates = new Set(selected.map((test) => test.name));
+  for (const [name, entry] of Object.entries(document.tests)) {
+    if (!candidates.has(name)) {
+      throw new Error(
+        `intentional incompatibility ${name} is not a differential candidate`,
+      );
+    }
+    if (
+      !entry ||
+      !statusOrder.includes(entry.expectedStatus) ||
+      entry.expectedStatus === "pass" ||
+      entry.expectedStatus === "intentional-incompatibility" ||
+      typeof entry.reason !== "string" ||
+      !entry.reason
+    ) {
+      throw new Error(
+        `intentional incompatibility ${name} has an invalid review record`,
+      );
+    }
+  }
+  return document.tests;
+}
+
+function applyIntentionalIncompatibilities(results, reviewed) {
+  return results.map((result) => {
+    const entry = reviewed[result.name];
+    if (!entry || result.status !== entry.expectedStatus) return result;
+    return {
+      ...result,
+      rawStatus: result.status,
+      status: "intentional-incompatibility",
+      detail: `${entry.reason} (observed ${result.status})`,
+    };
+  });
+}
+
 async function inspectReference(options, environment) {
   const result = await execute(
     options.python,
@@ -375,7 +425,10 @@ function printSummary(results, excluded, reference, elapsedMs) {
   );
   for (const status of statusOrder) {
     if (counts[status]) {
-      console.log(`  ${status.padEnd(17)} ${String(counts[status]).padStart(4)}`);
+      console.log(
+        `  ${status.padEnd(statusWidth)} ` +
+          `${String(counts[status]).padStart(4)}`,
+      );
     }
   }
   console.log(
@@ -391,7 +444,10 @@ function printSummary(results, excluded, reference, elapsedMs) {
 function printDiagnostics(results) {
   for (const result of results) {
     if (result.status !== "pass") {
-      console.log(`${result.status.padEnd(17)} ${result.name}: ${result.detail}`);
+      console.log(
+        `${result.status.padEnd(statusWidth)} ` +
+          `${result.name}: ${result.detail}`,
+      );
     }
   }
 }
@@ -485,6 +541,7 @@ async function main() {
   };
   const reference = await inspectReference(options, environment);
   const { selected, excluded } = discoverTests();
+  const intentional = loadIntentionalIncompatibilities(selected);
   const tests = options.only
     ? selected.filter((test) => options.only.test(test.name))
     : selected;
@@ -493,8 +550,12 @@ async function main() {
   }
 
   const started = Date.now();
-  const results = await mapConcurrent(tests, options.jobs, (test) =>
+  const rawResults = await mapConcurrent(tests, options.jobs, (test) =>
     runOne(test, options, environment),
+  );
+  const results = applyIntentionalIncompatibilities(
+    rawResults,
+    intentional,
   );
   printSummary(results, excluded, reference, Date.now() - started);
   if (options.verbose) printDiagnostics(results);

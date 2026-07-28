@@ -306,6 +306,10 @@ class AST_ForIn(AST_StatementWithBody):
         return visitor._visit(self, f_for_in)
 
 
+class AST_AsyncFor(AST_ForIn):
+    "An ``async for`` statement lowered to the generator protocol"
+
+
 class AST_ForJS(AST_StatementWithBody):
     "A `for ... in` statement"
     properties = {'condition': "[AST_Verbatim] raw JavaScript conditional"}
@@ -393,7 +397,8 @@ class AST_GeneratorComprehension(AST_ListComprehension):
 class AST_With(AST_StatementWithBody):
     "A `with` statement"
     properties = {
-        'clauses': "[AST_WithClause*] the `with` clauses (comma separated)"
+        'clauses': "[AST_WithClause*] the `with` clauses (comma separated)",
+        'is_async': "[boolean] whether this is an async-with statement",
     }
 
     def _walk(self, visitor):
@@ -476,6 +481,8 @@ class AST_Import(AST_Statement):
         "[boolean] True for a compiler-only import which emits no module binding",
         'dynamic':
         "[boolean] resolve this module from sys.modules at runtime",
+        'level':
+        "[number] number of leading dots in a relative from-import",
         'star':
         "[boolean] import every public name from the module",
         'target_module':
@@ -532,6 +539,8 @@ class AST_Lambda(AST_Scope):
         "[bool*] True iff this function should have annotations set",
         'is_generator':
         "[bool*] True iff this function is a generator",
+        'is_coroutine':
+        "[bool*] True iff this function was declared with async def",
         'is_lambda':
         "[bool*] True iff this function is a Python lambda function",
         'is_expression':
@@ -584,6 +593,8 @@ class AST_Class(AST_Scope):
         "[AST_Symbol?] parent class this class inherits from",
         'bases':
         "[AST_Symbol*] list of base classes this class inherits from",
+        'implicit_object_base':
+        "[boolean] object was inserted as an implementation default",
         "static":
         "[dict] A hash whose keys are names of static methods for this class",
         "classmethods":

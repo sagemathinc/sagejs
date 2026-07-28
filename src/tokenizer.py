@@ -57,7 +57,7 @@ PUNC_BEFORE_EXPRESSION = make_predicate(characters("[{(,.;:"))
 
 PUNC_CHARS = make_predicate(characters("[]{}(),;:?"))
 
-keywords = "as assert break class continue def del do elif else except finally for from global if import in is lambda new nonlocal pass raise return yield try while with or and not"
+keywords = "as assert async await break class continue def del do elif else except finally for from global if import in is lambda new nonlocal pass raise return yield try while with or and not"
 
 keywords_atom = "False None True __debug__"
 
@@ -68,7 +68,7 @@ reserved_words = (
     " while with yield enum implements static private package let public protected interface await null true false"
 )
 
-keyword_before_expression = "return yield new del raise elif else if"
+keyword_before_expression = "return yield await new del raise elif else if"
 
 ALL_KEYWORDS = keywords + " " + keywords_atom
 

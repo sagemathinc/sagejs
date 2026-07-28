@@ -671,6 +671,29 @@ def print_class(output):
         output.print(')')
         output.end_statement()
 
+    # Python deliberately exposes class creation through a mutable builtin.
+    # Keep the optimized native lowering for the default hook, but honor a
+    # replacement hook when user code installs one through ``builtins``.
+    if not compiling_baselib:
+        output.indent()
+        output.print(
+            'if (typeof __build_class__ === "function" && '
+            '!__build_class__.__sagejs_default_build_class__)')
+
+        def call_build_class_hook():
+            output.indent()
+            output.assign(self.name)
+            output.print('__build_class__(function(){}, ')
+            output.print_string(self.name.name)
+            if not self.implicit_object_base:
+                for base in self.bases:
+                    output.comma()
+                    base.print(output)
+            output.print(')')
+            output.end_statement()
+
+        output.with_block(call_build_class_hook)
+
     # Definitions should not display their implementation object merely
     # because the class is the final statement entered in the REPL.
     output.indent()

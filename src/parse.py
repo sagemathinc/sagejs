@@ -6,7 +6,7 @@ from __python__ import hash_literals  # type: ignore
 from utils import make_predicate, array_to_hash, defaults, has_prop, cache_file_name
 from errors import SyntaxError, ImportError
 from ast_types import (
-    AST_AnnotatedAssignment, AST_Array, AST_Assign, AST_Binary,
+    AST_AnnotatedAssignment, AST_Array, AST_Assign, AST_AsyncFor, AST_Binary,
     AST_BlockStatement, AST_Break, AST_Call,
     AST_Catch, AST_Class, AST_ClassCall, AST_Conditional, AST_Constant,
     AST_Continue, AST_DWLoop, AST_Debugger, AST_Decorator, AST_Definitions,
@@ -143,6 +143,7 @@ ERROR_CLASSES = {
     'ZeroDivisionError': {},
     'OverflowError': {},
     'StopIteration': {},
+    'StopAsyncIteration': {},
     'RuntimeError': {},
     'GeneratorExit': {},
 }
@@ -235,6 +236,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'error': 'Error',
     'function_class': 'Function',
     'factor_pair': 'ρσ_factor_pair',
+    'finalization_registry_class': 'FinalizationRegistry',
     'float_builtin': 'ρσ_float',
     'flint_backend': 'ρσ_flint_backend',
     'global_object': 'globalThis',
@@ -312,6 +314,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'type_error': 'TypeError',
     'tuple_builtin': 'ρσ_tuple',
     'undefined': 'undefined',
+    'weak_ref_class': 'WeakRef',
     'zero_division_error': 'ZeroDivisionError',
 }
 
@@ -682,7 +685,13 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     push(stmt.target.name)
 
                 # recursive descent into conditional, loop and exception bodies
-                for option in ('body', 'alternative', 'bcatch', 'condition'):
+                for option in (
+                    'body',
+                    'alternative',
+                    'bcatch',
+                    'bfinally',
+                    'condition'
+                ):
                     opt = stmt[option]
                     if opt:
                         extend(scan_for_local_vars(opt))
@@ -1173,6 +1182,31 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 if is_('js'):
                     return for_js()
                 return for_()
+            elif tmp_ is "async":
+                if is_('keyword', 'def'):
+                    next()
+                    start = prev()
+                    func = function_(
+                        S.in_class[-1],
+                        False,
+                        False,
+                        True,
+                    )
+                    func.start = start
+                    func.end = prev()
+                    return func
+                if not S.functions[-1].is_coroutine:
+                    croak(
+                        "'async for' and 'async with' require "
+                        "an async function"
+                    )
+                if is_('keyword', 'for'):
+                    next()
+                    return for_(False, True)
+                if is_('keyword', 'with'):
+                    next()
+                    return with_(True)
+                croak("expected 'def', 'for', or 'with' after async")
             elif tmp_ is "from":
                 return import_(True)
             elif tmp_ is "import":
@@ -1258,7 +1292,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             else:
                 unexpected()
 
-    def with_():
+    def with_(is_async=False):
         clauses = r'%js []'
         start = S.token
         while True:
@@ -1281,7 +1315,11 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             token_error(start, 'with statement must have at least one clause')
         body = statement()
 
-        return AST_With({'clauses': clauses, 'body': body})
+        return AST_With({
+            'clauses': clauses,
+            'body': body,
+            'is_async': is_async,
+        })
 
     def simple_statement(tmp):
         tmp = expression(True)
@@ -1428,7 +1466,19 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             next()
         return AST_Yield({'is_yield_from': is_yield_from, 'value': return_()})
 
-    def for_(list_comp):
+    def await_():
+        if (
+            S.in_function is 0
+            or not S.functions[-1].is_coroutine
+        ):
+            croak("'await' outside async function")
+        S.functions[-1].is_generator = True
+        return AST_Yield({
+            'is_yield_from': True,
+            'value': expr_atom(True),
+        })
+
+    def for_(list_comp=False, is_async=False):
         #        expect("(")
         init = None
         if not is_("punc", ";"):
@@ -1453,11 +1503,11 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         "Only one variable declaration allowed in for..in loop"
                     )
                 next()
-                return for_in(init, list_comp)
+                return for_in(init, list_comp, is_async)
 
         unexpected()
 
-    def for_in(init, list_comp):
+    def for_in(init, list_comp, is_async=False):
         lhs = init.definitions[0].name if is_node_type(init, AST_Var) else None
         obj = expression(True)
         #        expect(")")
@@ -1469,7 +1519,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         if is_('keyword', 'else'):
             next()
             alternative = statement()
-        return AST_ForIn({
+        ctor = AST_AsyncFor if is_async else AST_ForIn
+        return js_new(ctor, {
             'init': init,
             'name': lhs,
             'object': obj,
@@ -1707,7 +1758,17 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
     def import_(from_import):
         ans = AST_Imports({'imports': []})
         while True:
+            level = 0
+            relative_start = None
+            if from_import:
+                while is_('punc', '.') or is_('punc', '..'):
+                    if relative_start is None:
+                        relative_start = S.token
+                    level += len(S.token.value)
+                    next()
             tok = tmp = name = last_tok = expression(False)
+            if relative_start is not None:
+                tok = relative_start
             key = ''
             while is_node_type(tmp, AST_Dot):
                 key = "." + tmp.property + key
@@ -1755,6 +1816,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 'body': body,
                 'intrinsic': bool(intrinsic),
                 'dynamic': False,
+                'level': level,
                 'star': False,
                 'target_module': module_id,
             })
@@ -1866,6 +1928,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         }
         bases = r'%js []'
         class_parent = None
+        implicit_object_base = False
 
         # read the bases of the class, if any
         if is_("punc", "("):
@@ -1889,6 +1952,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         ):
             class_parent = AST_SymbolRef({'name': 'object'})
             bases.push(class_parent)
+            implicit_object_base = True
         parent_details = None
         if class_parent is not None:
             parent_details = get_class_in_scope(class_parent)
@@ -1935,6 +1999,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'dynamic_properties': Object.create(None),
             'parent': class_parent,
             'bases': bases,
+            'implicit_object_base': implicit_object_base,
             'localvars': [],
             'classvars': class_details.classvars,
             'nonlocal_names': [],
@@ -2010,7 +2075,12 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         specialize_bigint_class(definition)
         return definition
 
-    def function_(in_class, is_expression, is_lambda):
+    def function_(
+        in_class,
+        is_expression,
+        is_lambda,
+        is_coroutine=False,
+    ):
         if is_lambda:
             if in_class or not is_expression:
                 # Note: is_lambda implies is_expression and not in_class.
@@ -2243,7 +2313,11 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             S.classes.push({})
             S.scoped_flags.push()
             S.in_function += 1
-            function_context = {'class_name': in_class}
+            function_context = {
+                'class_name': in_class,
+                'is_coroutine': is_coroutine,
+                'is_generator': is_coroutine,
+            }
             if parsed_argnames and parsed_argnames.length:
                 function_context['self_name'] = parsed_argnames[0].name
             S.functions.push(function_context)
@@ -2280,6 +2354,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'body': body(S.in_loop, S.labels)
         }
         definition = js_new(ctor, args)
+        definition.is_coroutine = is_coroutine
         definition.return_annotation = return_annotation
         definition.annotated_locals = scan_for_annotated_names(
             definition.body)
@@ -2781,6 +2856,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             func.start = start
             func.end = prev()
             return subscripts(func, allow_calls)
+
+        if is_('keyword', 'await'):
+            next()
+            return await_()
 
         if is_('keyword', 'yield'):
             next()
@@ -3912,14 +3991,14 @@ return {completion:completion,namespace:ρσ_modules[module_id]};
         left = maybe_conditional(no_in)
         val = S.token.value
         if is_("operator") and ASSIGNMENT[val]:
-            if not valid_assignment_target(left, val is '='):
-                croak('invalid assignment target')
             if is_node_type(left, AST_Call):
                 if options.jsage and val is '=':
                     croak(
                         "symbolic function assignment f(x)=... requires the future symbolic-expression runtime; use def or lambda for ordinary functions"
                     )
                 croak("cannot assign to a function call")
+            if not valid_assignment_target(left, val is '='):
+                croak('invalid assignment target')
             if only_plain_assignment and val is not '=':
                 croak('Invalid assignment operator for chained assignment: ' +
                       val)

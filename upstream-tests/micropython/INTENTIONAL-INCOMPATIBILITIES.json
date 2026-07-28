@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "tests": {
+    "weakref_finalize_collect.py": {
+      "expectedStatus": "output-mismatch",
+      "reason": "V8 finalizers are deliberately asynchronous and nondeterministic; gc.collect() cannot force a FinalizationRegistry callback"
+    },
+    "weakref_ref_collect.py": {
+      "expectedStatus": "output-mismatch",
+      "reason": "V8 collection is deliberately nondeterministic; gc.collect() cannot synchronously make a native WeakRef go dead"
+    }
+  }
+}

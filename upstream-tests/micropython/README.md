@@ -39,16 +39,38 @@ reference interpreter. The runner selects a baseline by CPython major/minor
 version, allowing Sage.js to track multiple language versions concurrently.
 Use `--only REGEXP` and `--verbose` in report mode for focused diagnosis.
 
+For a cold-process performance comparison against a locally installed
+MicroPython, run:
+
+```sh
+MICROPYTHON=/path/to/micropython pnpm bench:micropython
+```
+
+This intentionally starts a fresh interpreter for every sample and therefore
+measures startup, parsing/compilation, and execution together. It reports
+per-test ratio distributions because summing this correctness corpus gives
+arbitrary weight to its chosen iteration counts. Use `--json PATH` to retain a
+machine-readable report, `--sagejs-mode precompiled` to remove Sage.js compiler
+time while retaining cold Node startup, and `--help` for sampling controls.
+
+Reviewed differences which should not be emulated are recorded separately in
+`INTENTIONAL-INCOMPATIBILITIES.json`. A record applies only while the test has
+the exact reviewed raw status; a new compiler error, runtime error, or exact
+pass remains visible and changes the baseline. In particular, Sage.js exposes
+native JavaScript weak references and deterministic explicit `finalize`
+operations, but does not pretend that `gc.collect()` can synchronously control
+V8 collection or `FinalizationRegistry` scheduling.
+
 The original MicroPython test-suite documentation is preserved as
 `UPSTREAM-TESTS-README.md`.
 
-## Initial baseline
+## Compatibility baseline
 
 At adoption, 508 of the 576 programs are CPython-differential candidates.
-Against both CPython 3.14.4 and 3.15.0b3, Sage.js already produces exact output
-for 70 tests and runs another 103 to completion with differing output. The
-remaining outcomes identify concrete compiler, runtime, builtin, and module
-gaps.
+The initial run produced exact output for 70 tests. Sage.js now matches CPython
+exactly on 506 of them. The remaining two are the reviewed weak-reference
+collection-timing differences described above, so every differential candidate
+is either an exact pass or has an explicit semantic decision.
 
 The 3.15 baseline also records one `oracle-error`:
 `string_format_modulo.py` expects an exception class that changed in CPython
