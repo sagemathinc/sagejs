@@ -1049,6 +1049,13 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
         and runtime.strict_equal(runtime.jstype(right), 'number')
     ):
         return runtime.math.floor(runtime.native_div(left, right))
+    if (
+        runtime.strict_equal(runtime.jstype(left), 'object')
+        or runtime.strict_equal(runtime.jstype(left), 'function')
+        or runtime.strict_equal(runtime.jstype(right), 'object')
+        or runtime.strict_equal(runtime.jstype(right), 'function')
+    ):
+        raise TypeError('unsupported operand type(s) for //')
     return runtime.math.floor(runtime.native_div(left, right))
 
 

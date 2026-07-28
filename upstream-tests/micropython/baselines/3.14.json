@@ -449,7 +449,7 @@
     "object_dict.py": "output-mismatch",
     "object_new.py": "output-mismatch",
     "op_error.py": "runtime-error",
-    "op_error_bytearray.py": "output-mismatch",
+    "op_error_bytearray.py": "pass",
     "op_error_intbig.py": "pass",
     "op_error_memoryview.py": "runtime-error",
     "op_precedence.py": "pass",
