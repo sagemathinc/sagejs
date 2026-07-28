@@ -123,6 +123,11 @@ def function_preamble(node, output, offset):
                       'true)', a.starargs.name)
         output.print('.pop()')
         output.end_statement()
+        if output.options.python_tuples:
+            output.indent()
+            output.assign(a.starargs.name)
+            output.print('ρσ_math_tuple(' + a.starargs.name + ')')
+            output.end_statement()
 
 
 def has_annotations(self):
@@ -315,7 +320,20 @@ def function_definition(self, output, strip_first, as_expression):
         output.with_block(output_generator)
     else:
         function_args(self.argnames, output, strip_first)
-        print_bracketed(self, output, True, function_preamble)
+        def python_implicit_return(output):
+            if output.options.python_truthiness:
+                output.indent()
+                output.spaced('return', 'null')
+                output.end_statement()
+
+        print_bracketed(
+            self,
+            output,
+            True,
+            function_preamble,
+            None,
+            python_implicit_return,
+        )
 
     if as_expression:
         output.end_statement()

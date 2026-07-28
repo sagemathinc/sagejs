@@ -290,6 +290,9 @@ def generate_code():
                 output.print(")")
             else:
                 self.value.print(output)
+        elif kind is 'return' and output.options.python_truthiness:
+            output.space()
+            output.print('null')
 
         output.semicolon()
 

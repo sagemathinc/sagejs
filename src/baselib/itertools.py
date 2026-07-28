@@ -48,7 +48,7 @@ def filter(
             yield value
 
 
-def zip(*iterables: Iterable[Any]) -> Iterator[list[Any]]:
+def zip(*iterables: Iterable[Any]) -> Iterator[Any]:
     iterators = [iter(iterable) for iterable in iterables]
     done = len(iterators) == 0
     while not done:
@@ -60,7 +60,7 @@ def zip(*iterables: Iterable[Any]) -> Iterator[list[Any]]:
                 done = True
                 break
         if not done:
-            yield values
+            yield runtime.math_tuple(values)
 
 
 def any(iterable: Iterable[Any]) -> bool:

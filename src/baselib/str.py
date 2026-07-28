@@ -74,7 +74,7 @@ def ρσ_repr(value: Any) -> _Str:
     if value is None:
         return 'None'
     if value is runtime.undefined:
-        return 'undefined'
+        return 'None'
     representation = value
     repr_method = runtime.reflect.get(
         runtime.reflect.apply(
@@ -143,7 +143,7 @@ def ρσ_str(
     if value is None:
         return 'None'
     if value is runtime.undefined:
-        return 'undefined'
+        return 'None'
     boxed = runtime.reflect.apply(
         runtime.object, runtime.undefined, [value])
     str_method = runtime.reflect.get(boxed, '__str__')
@@ -724,18 +724,34 @@ def _str_strip(string: Any, characters: Any = runtime.undefined) -> _Str:
 
 def _str_partition(string: Any, separator: _Str) -> Any:
     string = _native_string(string)
+    if not _value_type_is(separator, 'string'):
+        raise TypeError('partition() argument must be str')
+    if separator == '':
+        raise ValueError('empty separator')
     position = string.indexOf(separator)
     if position == -1:
-        return string, '', ''
-    return string[:position], separator, string[position + len(separator):]
+        return runtime.math_tuple([string, '', ''])
+    return runtime.math_tuple([
+        string[:position],
+        separator,
+        string[position + len(separator):],
+    ])
 
 
 def _str_rpartition(string: Any, separator: _Str) -> Any:
     string = _native_string(string)
+    if not _value_type_is(separator, 'string'):
+        raise TypeError('rpartition() argument must be str')
+    if separator == '':
+        raise ValueError('empty separator')
     position = string.lastIndexOf(separator)
     if position == -1:
-        return '', '', string
-    return string[:position], separator, string[position + len(separator):]
+        return runtime.math_tuple(['', '', string])
+    return runtime.math_tuple([
+        string[:position],
+        separator,
+        string[position + len(separator):],
+    ])
 
 
 def _str_replace(

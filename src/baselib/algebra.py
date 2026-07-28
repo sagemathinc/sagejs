@@ -556,6 +556,11 @@ def modular_power(
 
 
 def math_tuple(values: list[Any]) -> Any:
+    # Tuple literals with two or more entries historically arrive as a raw
+    # JavaScript array, whereas one-entry literals arrive as a decorated
+    # Python list.  Normalize both representations before freezing.
+    values = runtime.list_constructor(values)
+
     def tuple_repr() -> str:
         entries = [runtime.repr(value) for value in values]
         suffix = ',' if len(values) == 1 else ''
@@ -576,10 +581,15 @@ def math_tuple(values: list[Any]) -> Any:
             runtime.array.prototype.concat, values, [other])
         return math_tuple(combined)
 
+    def tuple_append(_value: Any) -> None:
+        raise AttributeError(
+            "'tuple' object has no attribute 'append'")
+
     runtime.object.defineProperties(values, {
         '__add__': {'value': tuple_add},
         '__repr__': {'value': tuple_repr},
         '__str__': {'value': tuple_repr},
+        'append': {'value': tuple_append},
         'toString': {'value': tuple_repr},
     })
     runtime.object.freeze(values)

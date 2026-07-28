@@ -695,7 +695,10 @@ def ρσ_round(value: Any) -> Any:
 
 
 def ρσ_print(*values: Any) -> None:
-    parts = [str(value) for value in values]
+    parts = [
+        'None' if value is runtime.undefined else str(value)
+        for value in values
+    ]
     runtime.console_object.log(str.join(' ', parts))
 
 
@@ -1293,11 +1296,25 @@ def ρσ_hash(value: Any) -> Any:
     raise TypeError('unhashable type')
 
 
-def ρσ_enumerate(iterable: Any) -> Iterator[list[Any]]:
-    index = 0
+def ρσ_enumerate(
+    iterable: Any,
+    start: _Int = 0,
+) -> Iterator[Any]:
+    index = start
     for value in iterable:
-        yield [index, value]
+        yield runtime.math_tuple([index, value])
         index += 1
+
+
+def ρσ_tuple(iterable: Any = runtime.undefined) -> Any:
+    if iterable is runtime.undefined:
+        return runtime.math_tuple([])
+    if (
+        runtime.array.isArray(iterable)
+        and runtime.object.isFrozen(iterable)
+    ):
+        return iterable
+    return runtime.math_tuple([value for value in iterable])
 
 
 def ρσ_reversed(iterable: Any) -> Iterator[Any]:
@@ -1777,7 +1794,7 @@ def ρσ_type(value: Any) -> Any:
     return _builtins_get_member(value, 'constructor')
 
 
-def ρσ_divmod(left: Any, right: Any) -> tuple[Any, Any]:
+def ρσ_divmod(left: Any, right: Any) -> Any:
     if runtime.equals(right, 0):
         raise runtime.zero_division_error(
             'integer division or modulo by zero')
@@ -1951,6 +1968,7 @@ oct = ρσ_oct
 hash = ρσ_hash
 callable = ρσ_callable
 enumerate = ρσ_enumerate
+tuple = ρσ_tuple
 iter = ρσ_iter
 next = ρσ_next
 reversed = ρσ_reversed
