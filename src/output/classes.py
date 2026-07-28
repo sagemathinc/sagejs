@@ -10,6 +10,11 @@ def print_class(output):
     self = this
     if self.external:
         return
+    compiling_baselib = (
+        output.options.omit_baselib
+        and not output.options.private_scope
+        and not output.options.write_name
+    )
     native_storage_parent = None
     if (
         is_node_type(self.parent, AST_SymbolRef)
@@ -211,10 +216,19 @@ def print_class(output):
                     ".prototype.__bind_methods__.call(this)")
                 output.end_statement()
             output.indent()
+            output.print('var ρσ_init_result = ')
             self.name.print(output)
             output.print(".prototype.__init__.apply(this"), output.comma(
             ), output.print('arguments)')
             output.end_statement()
+            if not compiling_baselib:
+                output.indent()
+                output.print(
+                    'if (ρσ_init_result !== undefined'
+                    ' && ρσ_init_result !== null) '
+                    'throw new TypeError('
+                    '"__init__() should return None")')
+                output.end_statement()
 
         output.with_block(f_constructor)
 
@@ -571,7 +585,7 @@ def print_class(output):
         output.print(')')
         output.end_statement()
 
-    if self.callable_instance_class:
+    if self.callable_instance_class or defined_methods['__call__']:
         output.indent()
         output.assign(self.name)
         output.print('ρσ_callable_instance_class_adapter(')

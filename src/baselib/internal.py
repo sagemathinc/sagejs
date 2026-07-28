@@ -449,6 +449,15 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
 
         runtime.object.setPrototypeOf(
             callable_instance, target_class.prototype)
+        for function_member in ['apply', 'bind', 'call']:
+            runtime.reflect.set(
+                callable_instance,
+                function_member,
+                runtime.reflect.get(
+                    runtime.function_class.prototype,
+                    function_member,
+                ),
+            )
         runtime.reflect.apply(
             target_class, callable_instance, call_args)
         return callable_instance
@@ -483,10 +492,12 @@ def ρσ_in(value: Any, container: Any) -> bool:
     if _internal_type_is(runtime.jstype(container), 'string'):
         return container.indexOf(value) != -1
     if _internal_member_is_function(container, '__contains__'):
-        return runtime.reflect.apply(
-            _internal_get_member(container, '__contains__'),
-            container,
-            [value],
+        return bool(
+            runtime.reflect.apply(
+                _internal_get_member(container, '__contains__'),
+                container,
+                [value],
+            )
         )
     if (
         runtime.instance_of(container, runtime.map_class)
@@ -773,6 +784,10 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
         ):
             return runtime.math_tuple(answer)
         return answer
+    if _internal_get_member(
+        value, 'ρσ_object_id'
+    ) is not runtime.undefined and not runtime.arraylike(value):
+        raise TypeError('object is not subscriptable')
     if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
         key += value.length
     return value[key]

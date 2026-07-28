@@ -1299,7 +1299,7 @@ def _construct_bytes(
     if encoding is not runtime.undefined or errors is not runtime.undefined:
         raise TypeError('encoding without a string argument')
     values = []
-    for value in source:
+    for value in iter(source):
         byte = _coerce_index(value)
         if byte < 0 or byte > 255:
             raise ValueError('bytes must be in range(0, 256)')

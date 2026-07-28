@@ -61,6 +61,25 @@ def _builtins_call_member(
     return runtime.reflect.apply(method, value, call_args)
 
 
+def _builtins_bind_python_function(
+    target: Any,
+    receiver: Any,
+) -> Any:
+    bound = runtime.reflect.apply(
+        runtime.reflect.get(target, 'bind'),
+        target,
+        [runtime.undefined, receiver],
+    )
+    runtime.object.assign(bound, target)
+    runtime.reflect.set(bound, '__func__', target)
+    runtime.reflect.set(bound, '__self__', receiver)
+    runtime.reflect.set(
+        bound, '__name__',
+        _builtins_get_member(target, '__name__'),
+    )
+    return bound
+
+
 def _builtins_member_is_function(value: Any, name: Any) -> _Bool:
     return runtime.strict_equal(
         runtime.jstype(_builtins_get_member(value, name)),
@@ -2586,6 +2605,11 @@ def ρσ_getattr(
                 [name],
             )
         ):
+            if _builtins_has_member(
+                member, '__python_descriptor__'
+            ):
+                return _builtins_bind_python_function(
+                    member, value)
             receiver = value
             if _builtins_has_member(member, '__classmethod__'):
                 if _builtins_is_python_class(value):
@@ -2909,9 +2933,15 @@ def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
             runtime.jstype(candidates), 'function')
     ):
         raise TypeError('issubclass() arg 1 must be a class')
+    if cls is candidates:
+        return True
+    bases = _builtins_get_member(cls, '__bases__')
+    if runtime.array.isArray(bases):
+        for base in bases:
+            if ρσ_issubclass(base, candidates):
+                return True
     return (
-        cls is candidates
-        or runtime.instance_of(
+        runtime.instance_of(
             runtime.reflect.get(cls, 'prototype'),
             candidates,
         )

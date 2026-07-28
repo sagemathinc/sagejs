@@ -248,6 +248,18 @@ def function_annotation(self, output, strip_first, name):
 
     props.__name__ = python_name
 
+    compiling_baselib = (
+        output.options.omit_baselib
+        and not output.options.private_scope
+        and not output.options.write_name
+    )
+    if not compiling_baselib and not strip_first:
+
+        def python_descriptor():
+            output.print('true')
+
+        props.__python_descriptor__ = python_descriptor
+
     # Create __annotations__
     # TODO: These are completely disabled, since to really using
     # them the typings module has to be properly implemented...

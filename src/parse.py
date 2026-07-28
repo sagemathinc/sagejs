@@ -3148,7 +3148,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             if is_node_type(expr, AST_Dot):
                 c = get_class_in_scope(expr.expression)
 
-            if c:
+            if (
+                c
+                and not expr.property.startswith('prototype.')
+            ):
                 # generate class call
                 funcname = expr
 
