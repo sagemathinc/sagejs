@@ -1,4 +1,4 @@
-# globals: assrt, ρσ_last_exception
+# globals: assrt, outerRealmError, ρσ_last_exception
 
 import traceback
 
@@ -288,6 +288,12 @@ except Exception:
     # Test that we can catch JS errors and that local variables in the except block are declared
     xxlocalvar = 1
     assrt.equal(xxlocalvar, 1)
+
+try:
+    raise outerRealmError
+except Exception as e:
+    # Node-API addons can throw errors created outside the test VM's realm.
+    assrt.ok(e is outerRealmError)
 
 
 def errf():

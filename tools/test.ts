@@ -99,6 +99,7 @@ export default function (
           compiler_dir: compilerDir,
           test_path: testPath,
           Buffer,
+          outerRealmError: new RangeError("outside the test VM"),
         },
         { filename: jsfile }
       );

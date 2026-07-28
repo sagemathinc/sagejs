@@ -60,13 +60,23 @@ def print_catch(self, output):
                             output.print("||")
                             output.space()
 
-                        output.print("ρσ_Exception")
-                        output.space()
-                        output.print("instanceof")
-                        output.space()
                         if err.name is 'Exception':
+                            output.print("ρσ_Exception")
+                            output.space()
+                            output.print("instanceof")
+                            output.space()
                             output.print('Error')
+                            output.space()
+                            output.print("||")
+                            output.space()
+                            output.print(
+                                'Object.prototype.toString.call('
+                                'ρσ_Exception) === "[object Error]"')
                         else:
+                            output.print("ρσ_Exception")
+                            output.space()
+                            output.print("instanceof")
+                            output.space()
                             err.print(output)
 
                 output.with_parens(f_errors)

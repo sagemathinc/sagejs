@@ -15,7 +15,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power
 # globals: ρσ_normalize_integer, ρσ_operator_mul_exact
-# globals: ρσ_operator_pow_exact, ρσ_polynomial_from_coefficients, ρσ_repr
+# globals: ρσ_operator_pow_exact, ρσ_repr
 # globals: ρσ_set_class_repr, ρσ_string_find, ρσ_string_primitive
 
 def jstype(value):
@@ -50,7 +50,6 @@ number = Number
 object = Object
 operator_mul_exact = ρσ_operator_mul_exact
 operator_pow_exact = ρσ_operator_pow_exact
-polynomial_from_coefficients = ρσ_polynomial_from_coefficients
 qq = QQ
 reflect = Reflect
 regexp = RegExp

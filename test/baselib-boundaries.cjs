@@ -44,6 +44,22 @@ assert.match(
   generated,
   /PolynomialRingParent = ρσ_callable_instance_class_adapter\(PolynomialRingParent\)/,
 );
+assert.match(
+  generated,
+  /FiniteField_prime_modn = ρσ_callable_instance_class_adapter\(FiniteField_prime_modn\)/,
+);
+assert.match(
+  generated,
+  /FiniteField_givaro = ρσ_callable_instance_class_adapter\(FiniteField_givaro\)/,
+);
+assert.match(
+  generated,
+  /FiniteField_ntl_gf2e = ρσ_callable_instance_class_adapter\(FiniteField_ntl_gf2e\)/,
+);
+assert.match(
+  generated,
+  /FiniteField_pari_ffelt = ρσ_callable_instance_class_adapter\(FiniteField_pari_ffelt\)/,
+);
 assert.doesNotMatch(generated, /ρσ_modules\["sagejs\.runtime"\]/);
 assert.doesNotMatch(generated, /\bruntime\.(?:flint_backend|coercion_model)/);
 
@@ -57,5 +73,9 @@ assert.doesNotMatch(algebraSource, /function RealNumberElement/);
 assert.doesNotMatch(algebraSource, /function ComplexNumberElement/);
 assert.doesNotMatch(algebraSource, /function RealField/);
 assert.doesNotMatch(algebraSource, /function ComplexField/);
+assert.doesNotMatch(algebraSource, /function GF/);
+assert.doesNotMatch(algebraSource, /ρσ_make_extension_field/);
+assert.doesNotMatch(algebraSource, /ρσ_finite_field_name/);
+assert.doesNotMatch(algebraSource, /ρσ_polynomial_from_coefficients/);
 
 console.log("Mathematical baselib source boundaries passed.");

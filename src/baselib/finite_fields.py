@@ -1,8 +1,7 @@
 # Sage-compatible finite-field parents and elements.
 #
-# The callable-parent adapter and native FLINT handles live in the low-level
-# algebra runtime.  Mathematical behavior belongs here, in ordinary Sage.js
-# source, so it remains readable and can eventually track upstream Sage code.
+# Native FLINT handles remain behind ``sagejs.runtime``. Parents, elements,
+# factories, caches, and coercion maps live together here in ordinary Python.
 #
 # Copyright (C) 2026 Sage.js contributors
 # License: GPL-3.0-only
@@ -92,7 +91,7 @@ class FiniteFieldElement(sage.Element):
     def _truediv_(
         self, other: FiniteFieldElement,
     ) -> FiniteFieldElement:
-        return ρσ_new_prime_field_element(
+        return _new_prime_field_element(
             self._parent,
             self._value * runtime.modular_inverse(
                 other._value, self._parent._modulus))
@@ -124,7 +123,7 @@ class FiniteFieldElement(sage.Element):
         if exponent < 0:
             value = runtime.modular_inverse(value, self._parent._modulus)
             exponent = -exponent
-        return ρσ_new_prime_field_element(
+        return _new_prime_field_element(
             self._parent,
             runtime.modular_power(value, exponent, self._parent._modulus))
 
@@ -146,7 +145,7 @@ class FiniteFieldElement(sage.Element):
     toString = __repr__
 
 
-def ρσ_new_prime_field_element(
+def _new_prime_field_element(
     parent: Any, value: Any,
 ) -> FiniteFieldElement:
     if isinstance(value, FiniteFieldElement) and value._parent is parent:
@@ -163,7 +162,7 @@ class FiniteFieldExtensionElement(sage.Element):
         runtime.object.freeze(self)
 
     def _new(self, native_value: Any) -> FiniteFieldExtensionElement:
-        return ρσ_new_extension_field_element(self._parent, native_value)
+        return _new_extension_field_element(self._parent, native_value)
 
     def _add_(
         self, other: FiniteFieldExtensionElement,
@@ -237,18 +236,26 @@ class FiniteFieldExtensionElement(sage.Element):
     toString = __repr__
 
 
-def ρσ_new_extension_field_element(
+def _new_extension_field_element(
     parent: Any, native_value: Any,
 ) -> FiniteFieldExtensionElement:
     return runtime.reflect.construct(
         parent._elementType, [parent, native_value])
 
 
+@runtime.callable_instance_class
 class FiniteField_prime_modn(sage.Parent):
-    # GF() creates these callable parent objects in the low-level runtime, then
-    # installs these immutable fields before exposing the object.
-    _order = runtime.undefined
-    _generator = runtime.undefined
+
+    def __init__(self, order: int, generator: int) -> None:
+        self._name = (
+            'Finite Field of size ' + runtime.string(order))
+        self._kind = 'GF'
+        self._modulus = order
+        self._order = order
+        self._generator = generator
+
+    def __call__(self, value: Any = 0) -> FiniteFieldElement:
+        return _new_prime_field_element(self, value)
 
     def order(self) -> int:
         return runtime.normalize_integer(self._order)
@@ -269,16 +276,16 @@ class FiniteField_prime_modn(sage.Parent):
         return True
 
     def zero(self) -> FiniteFieldElement:
-        return ρσ_new_prime_field_element(self, runtime.bigint(0))
+        return _new_prime_field_element(self, runtime.bigint(0))
 
     def one(self) -> FiniteFieldElement:
-        return ρσ_new_prime_field_element(self, runtime.bigint(1))
+        return _new_prime_field_element(self, runtime.bigint(1))
 
     def gen(self, index: int = 0) -> FiniteFieldElement:
         index = runtime.integer_bigint(index)
         if index != runtime.bigint(0):
             raise IndexError('only one generator')
-        return ρσ_new_prime_field_element(self, self._generator)
+        return _new_prime_field_element(self, self._generator)
 
     def _first_ngens(self, count: int) -> list[FiniteFieldElement]:
         count = runtime.integer_bigint(count)
@@ -301,7 +308,7 @@ class FiniteField_prime_modn(sage.Parent):
     def __iter__(self) -> Iterator[FiniteFieldElement]:
         value = runtime.bigint(0)
         while value < self._order:
-            yield ρσ_new_prime_field_element(self, value)
+            yield _new_prime_field_element(self, value)
             value += runtime.bigint(1)
 
     def prime_subfield(self) -> FiniteField_prime_modn:
@@ -309,15 +316,56 @@ class FiniteField_prime_modn(sage.Parent):
 
 
 class FiniteFieldExtensionParent(sage.Parent):
-    # The low-level finite-field factory initializes these native-backed
-    # fields before an extension parent becomes observable.
-    _order = runtime.undefined
-    _prime = runtime.undefined
-    _degree = runtime.undefined
-    _nativeContext = runtime.undefined
-    _variable = runtime.undefined
-    _primeSubfield = runtime.undefined
-    _modulusCoefficients = runtime.undefined
+
+    def __init__(
+        self,
+        order: int,
+        prime: int,
+        degree: int,
+        variable: str,
+        native_context: Any,
+        modulus_coefficients: list[Any],
+        prime_subfield: FiniteField_prime_modn,
+        element_type: type[FiniteFieldExtensionElement],
+    ) -> None:
+        self._name = (
+            'Finite Field in ' + variable + ' of size '
+            + runtime.string(prime) + '^' + runtime.string(degree)
+        )
+        self._kind = 'GF_EXTENSION'
+        self._elementType = element_type
+        self._nativeContext = native_context
+        runtime.object.freeze(modulus_coefficients)
+        self._modulusCoefficients = modulus_coefficients
+        self._primeSubfield = prime_subfield
+        self._order = order
+        self._prime = prime
+        self._degree = degree
+        self._variable = variable
+
+    def __call__(
+        self, value: Any = 0,
+    ) -> FiniteFieldExtensionElement:
+        if isinstance(value, FiniteFieldExtensionElement):
+            if value._parent is not self:
+                raise TypeError(
+                    'cannot convert between incompatible finite fields')
+            return value
+        if isinstance(value, FiniteFieldElement):
+            if value._parent is not self._primeSubfield:
+                raise TypeError(
+                    'finite-field characteristics do not match')
+            value = value.lift()
+        if isinstance(value, sage.Rational):
+            numerator = self(value._numerator)
+            denominator = self(value._denominator)
+            return numerator._truediv_(denominator)
+        value = runtime.integer_bigint(value)
+        return _new_extension_field_element(
+            self,
+            runtime.flint_backend().fqFromBigInt(
+                self._nativeContext, value),
+        )
 
     def order(self) -> int:
         return runtime.normalize_integer(self._order)
@@ -349,7 +397,7 @@ class FiniteFieldExtensionParent(sage.Parent):
         index = runtime.integer_bigint(index)
         if index != runtime.bigint(0):
             raise IndexError('only one generator')
-        return ρσ_new_extension_field_element(
+        return _new_extension_field_element(
             self, runtime.flint_backend().fqGen(self._nativeContext))
 
     def _first_ngens(
@@ -370,11 +418,11 @@ class FiniteFieldExtensionParent(sage.Parent):
         return self._primeSubfield
 
     def modulus(self) -> Any:
-        return runtime.polynomial_from_coefficients(
+        return _polynomial_from_coefficients(
             self._primeSubfield, 'x', self._modulusCoefficients)
 
     def polynomial(self) -> Any:
-        return runtime.polynomial_from_coefficients(
+        return _polynomial_from_coefficients(
             self._primeSubfield, self._variable,
             self._modulusCoefficients)
 
@@ -393,6 +441,7 @@ class FiniteFieldExtensionParent(sage.Parent):
             index += runtime.bigint(1)
 
 
+@runtime.callable_instance_class
 class FiniteField_givaro(FiniteFieldExtensionParent):
     pass
 
@@ -402,6 +451,7 @@ class FiniteField_givaroElement(FiniteFieldExtensionElement):
     pass
 
 
+@runtime.callable_instance_class
 class FiniteField_ntl_gf2e(FiniteFieldExtensionParent):
     pass
 
@@ -411,6 +461,7 @@ class FiniteField_ntl_gf2eElement(FiniteFieldExtensionElement):
     pass
 
 
+@runtime.callable_instance_class
 class FiniteField_pari_ffelt(FiniteFieldExtensionParent):
     pass
 
@@ -418,6 +469,181 @@ class FiniteField_pari_ffelt(FiniteFieldExtensionParent):
 @runtime.lightweight_math_class
 class FiniteFieldElement_pari_ffelt(FiniteFieldExtensionElement):
     pass
+
+
+def _polynomial_from_coefficients(
+    base: Any,
+    variable: str,
+    coefficients: list[Any],
+) -> Any:
+    ring = sage.PolynomialRing(base, variable)
+    generator = ring.gen()
+    result = ring(0)
+    index = len(coefficients) - 1
+    while index >= 0:
+        result = result._mul_(generator)._add_(
+            ring(base(coefficients[index])))
+        index -= 1
+    return result
+
+
+def _finite_field_name(
+    name: Any,
+    names: Any,
+    degree: int,
+) -> str:
+    variable = names if names is not runtime.undefined and names is not None \
+        else name
+    if isinstance(variable, list):
+        if len(variable) != 1:
+            raise TypeError(
+                'a finite-field extension needs exactly one generator name')
+        variable = variable[0]
+    if variable is runtime.undefined or variable is None:
+        variable = 'z' + runtime.string(degree)
+    if (
+        not isinstance(variable, str)
+        or not runtime.regexp(
+            r'^[A-Za-z_][A-Za-z0-9_]*$'
+        ).test(variable)
+    ):
+        raise TypeError(
+            'the finite-field generator must be a valid identifier')
+    return variable
+
+
+def _field_coercion(field: Any) -> Callable[[Any], Any]:
+    def convert(value: Any) -> Any:
+        return field(value)
+
+    return convert
+
+
+_prime_fields = runtime.map()
+_extension_fields = runtime.map()
+
+
+def _make_extension_field(
+    order: int,
+    prime: int,
+    degree: int,
+    name: Any,
+    names: Any,
+    modulus: Any,
+) -> FiniteFieldExtensionParent:
+    if modulus is not runtime.undefined and modulus is not None:
+        raise NotImplementedError(
+            'explicit extension-field moduli are not implemented yet')
+    variable = _finite_field_name(name, names, degree)
+    key = runtime.string(order) + '|' + variable
+    field = _extension_fields.get(key)
+    if field is not runtime.undefined:
+        return field
+
+    backend = runtime.flint_backend()
+    context = runtime.undefined
+    missing_conway = False
+    try:
+        context = backend.fqContext(prime, degree, variable)
+    except Exception as error:
+        message = getattr(error, 'message', '')
+        if (
+            runtime.jstype(message) == 'string'
+            and runtime.regexp('Conway polynomial').test(message)
+        ):
+            missing_conway = True
+        else:
+            raise
+    if missing_conway:
+        raise NotImplementedError(
+            'Sage-compatible pseudo-Conway polynomials are not ' +
+            'implemented for this finite field')
+
+    modulus_coefficients = backend.fqContextModulus(context)
+    prime_field = GF(prime)
+    if order < runtime.bigint(65536):
+        parent_type = FiniteField_givaro
+        element_type = FiniteField_givaroElement
+    elif prime == runtime.bigint(2):
+        parent_type = FiniteField_ntl_gf2e
+        element_type = FiniteField_ntl_gf2eElement
+    else:
+        parent_type = FiniteField_pari_ffelt
+        element_type = FiniteFieldElement_pari_ffelt
+
+    field = parent_type(
+        order,
+        prime,
+        degree,
+        variable,
+        context,
+        modulus_coefficients,
+        prime_field,
+        element_type,
+    )
+    _extension_fields.set(key, field)
+    conversion = _field_coercion(field)
+    runtime.coercion_model.register(sage.ZZ, field, conversion)
+    runtime.coercion_model.register(prime_field, field, conversion)
+    return field
+
+
+def GF(
+    order: Any,
+    name: Any = runtime.undefined,
+    modulus: Any = runtime.undefined,
+    names: Any = runtime.undefined,
+) -> Any:
+    order = runtime.integer_bigint(order)
+    if order < runtime.bigint(2):
+        raise ValueError(
+            'the order of a finite field must be at least 2')
+    primitive = modulus == 'primitive'
+    if (
+        modulus is not runtime.undefined
+        and modulus is not None
+        and not primitive
+    ):
+        raise NotImplementedError(
+            'explicit finite-field moduli are not implemented yet')
+
+    key = runtime.string(order)
+    if primitive:
+        key = key + '|primitive'
+    field = _prime_fields.get(key)
+    if field is not runtime.undefined:
+        return field
+
+    backend = runtime.flint_backend()
+    if not backend.isPrime(order):
+        decomposition = backend.factor(order)
+        if len(decomposition.factors) != 1:
+            raise ValueError(
+                'the order of a finite field must be a prime power')
+        prime_power = decomposition.factors[0]
+        if prime_power[1] < 2:
+            raise ValueError(
+                'the order of a finite field must be a prime power')
+        return _make_extension_field(
+            order,
+            prime_power[0],
+            prime_power[1],
+            name,
+            names,
+            modulus,
+        )
+
+    generator = runtime.bigint(1)
+    if primitive:
+        generator = backend.wordPrimitiveRootPrime(order)
+    field = FiniteField_prime_modn(order, generator)
+    _prime_fields.set(key, field)
+    runtime.coercion_model.register(
+        sage.ZZ, field, _field_coercion(field))
+    return field
+
+
+FiniteField = GF
 
 
 runtime.set_class_repr(
