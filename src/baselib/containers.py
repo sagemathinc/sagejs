@@ -47,9 +47,6 @@ def _get_member(value: Any, name: str) -> Any:
 
 
 def equals(left: Any, right: Any) -> bool:
-    if left is right:
-        return True
-
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
     if runtime.strict_equal(left_type, 'boolean'):
@@ -102,6 +99,9 @@ def equals(left: Any, right: Any) -> bool:
     ):
         return right.__eq__(left)
 
+    if left is right:
+        return True
+
     if left is None or right is None:
         return False
 
@@ -148,8 +148,6 @@ def equals(left: Any, right: Any) -> bool:
 
 
 def not_equals(left: Any, right: Any) -> bool:
-    if left is right:
-        return False
     if (
         left is not None
         and runtime.strict_equal(

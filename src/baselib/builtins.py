@@ -716,6 +716,10 @@ def ρσ_operator_idiv_exact(left: Any, right: Any) -> Any:
 def ρσ_operator_truediv(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('truediv', left, right)
+    if _builtins_member_is_function(left, '__truediv__'):
+        return _builtins_call_member(left, '__truediv__', [right])
+    if _builtins_member_is_function(right, '__rtruediv__'):
+        return _builtins_call_member(right, '__rtruediv__', [left])
     if runtime.equals(right, 0):
         raise runtime.zero_division_error('division by zero')
     if (
@@ -729,10 +733,6 @@ def ρσ_operator_truediv(left: Any, right: Any) -> Any:
         and runtime.strict_equal(runtime.jstype(right), 'number')
     ):
         return runtime.native_div(left, right)
-    if _builtins_member_is_function(left, '__truediv__'):
-        return _builtins_call_member(left, '__truediv__', [right])
-    if _builtins_member_is_function(right, '__rtruediv__'):
-        return _builtins_call_member(right, '__rtruediv__', [left])
     return runtime.native_div(left, right)
 
 
@@ -890,18 +890,30 @@ def _builtins_shift_operands(left: Any, right: Any) -> list[Any]:
 
 
 def ρσ_operator_lshift(left: Any, right: Any) -> Any:
+    if _builtins_member_is_function(left, '__lshift__'):
+        return _builtins_call_member(left, '__lshift__', [right])
+    if _builtins_member_is_function(right, '__rlshift__'):
+        return _builtins_call_member(right, '__rlshift__', [left])
     operands = _builtins_shift_operands(left, right)
     return runtime.normalize_integer(
         runtime.native_lshift(operands[0], operands[1]))
 
 
 def ρσ_operator_rshift(left: Any, right: Any) -> Any:
+    if _builtins_member_is_function(left, '__rshift__'):
+        return _builtins_call_member(left, '__rshift__', [right])
+    if _builtins_member_is_function(right, '__rrshift__'):
+        return _builtins_call_member(right, '__rrshift__', [left])
     operands = _builtins_shift_operands(left, right)
     return runtime.normalize_integer(
         runtime.native_rshift(operands[0], operands[1]))
 
 
 def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
+    if _builtins_member_is_function(left, '__floordiv__'):
+        return _builtins_call_member(left, '__floordiv__', [right])
+    if _builtins_member_is_function(right, '__rfloordiv__'):
+        return _builtins_call_member(right, '__rfloordiv__', [left])
     if runtime.equals(right, 0):
         raise runtime.zero_division_error(
             'integer division or modulo by zero')
@@ -931,8 +943,6 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
         and runtime.strict_equal(runtime.jstype(right), 'number')
     ):
         return runtime.math.floor(runtime.native_div(left, right))
-    if _builtins_member_is_function(left, '__floordiv__'):
-        return _builtins_call_member(left, '__floordiv__', [right])
     return runtime.math.floor(runtime.native_div(left, right))
 
 
@@ -1208,6 +1218,10 @@ def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
         if base is not runtime.undefined:
             raise TypeError("int() can't convert non-string with explicit base")
         answer = _builtins_call_member(value, '__int__', [])
+        if not _builtins_exact_integer_primitive(answer):
+            raise TypeError('__int__ returned non-int')
+        if runtime.strict_equal(runtime.jstype(answer), 'bigint'):
+            return answer
     else:
         raise TypeError(
             "int() argument must be a string, a bytes-like object "
