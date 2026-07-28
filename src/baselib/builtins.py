@@ -110,6 +110,8 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
             return _builtins_call_member(left, '__add__', [right])
         if _builtins_member_is_function(left, 'concat'):
             return _builtins_call_member(left, 'concat', [right])
+        raise TypeError(
+            'unsupported operand type(s) for +')
     return runtime.native_add(left, right)
 
 
@@ -121,7 +123,8 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
             return _builtins_call_member(left, '__add__', [right])
         if _builtins_member_is_function(left, 'concat'):
             return _builtins_call_member(left, 'concat', [right])
-        return runtime.native_add(left, right)
+        raise TypeError(
+            'unsupported operand type(s) for +')
     if (
         runtime.strict_equal(runtime.jstype(left), 'bigint')
         or runtime.strict_equal(runtime.jstype(right), 'bigint')
@@ -176,7 +179,7 @@ def ρσ_operator_pos(value: Any) -> Any:
         return value
     if _builtins_member_is_function(value, '__pos__'):
         return _builtins_call_member(value, '__pos__', [])
-    return value
+    raise TypeError("bad operand type for unary +")
 
 
 def ρσ_operator_sub(left: Any, right: Any) -> Any:
@@ -1294,13 +1297,30 @@ def ρσ_enumerate(iterable: Any) -> Iterator[list[Any]]:
 
 
 def ρσ_reversed(iterable: Any) -> Iterator[Any]:
-    if not ρσ_arraylike(iterable):
-        raise TypeError(
-            'reversed() can only be called on arrays or strings')
-    index = iterable.length - 1
-    while index >= 0:
-        yield iterable[index]
-        index -= 1
+    if _builtins_member_is_function(iterable, '__reversed__'):
+        for value in _builtins_call_member(
+            iterable, '__reversed__', []
+        ):
+            yield value
+    else:
+        if ρσ_arraylike(iterable):
+            length = iterable.length
+        elif (
+            _builtins_member_is_function(iterable, '__len__')
+            and _builtins_member_is_function(iterable, '__getitem__')
+        ):
+            length = _builtins_call_member(iterable, '__len__', [])
+        else:
+            raise TypeError(
+                "'object' is not reversible")
+        index = length - 1
+        while index >= 0:
+            if ρσ_arraylike(iterable):
+                yield iterable[index]
+            else:
+                yield _builtins_call_member(
+                    iterable, '__getitem__', [index])
+            index -= 1
 
 
 def _builtins_native_map(value: Any) -> _Bool:
@@ -1593,6 +1613,18 @@ def ρσ_pow(
 
 
 def ρσ_type(value: Any) -> Any:
+    value_type = runtime.jstype(value)
+    if (
+        runtime.strict_equal(value_type, 'number')
+        or runtime.strict_equal(value_type, 'bigint')
+    ):
+        return ρσ_int
+    if runtime.strict_equal(value_type, 'boolean'):
+        return ρσ_bool
+    if runtime.strict_equal(value_type, 'string'):
+        return runtime.string_builtin
+    if _builtins_is_python_class(value):
+        return ρσ_type
     return _builtins_get_member(value, 'constructor')
 
 
@@ -1731,6 +1763,12 @@ help = ρσ_help
 ord = ρσ_ord
 chr = ρσ_chr
 bin = ρσ_bin
+
+runtime.set_class_repr(ρσ_int, "<class 'int'>")
+runtime.set_class_repr(ρσ_bool, "<class 'bool'>")
+runtime.set_class_repr(ρσ_float, "<class 'float'>")
+runtime.set_class_repr(ρσ_type, "<class 'type'>")
+runtime.set_class_repr(runtime.string_builtin, "<class 'str'>")
 hex = ρσ_hex
 oct = ρσ_oct
 hash = ρσ_hash

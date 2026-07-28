@@ -332,7 +332,11 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       source = source.slice(5).trimLeft();
     }
     const classes = toplevel?.classes;
-    const scoped_flags = toplevel?.scoped_flags ?? { dict_literals: true };
+    const scoped_flags = toplevel?.scoped_flags ?? {
+      dict_literals: true,
+      overload_getitem: true,
+      bound_methods: true,
+    };
     try {
       toplevel = PyLang.parse(source, {
         filename: runOptions.filename ?? "<repl>",

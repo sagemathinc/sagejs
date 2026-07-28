@@ -163,6 +163,24 @@ def print_class(output):
                                                           bname +
                                                           '.bind(this)')
                     output.end_statement()
+                    output.indent(), output.print(
+                        'Object.assign(this.' + bname + ', ')
+                    self.name.print(output), output.print(
+                        '.prototype.' + bname + ')')
+                    output.end_statement()
+                    output.indent(), output.assign(
+                        'this.' + bname + '.__func__')
+                    self.name.print(output), output.print(
+                        '.prototype.' + bname)
+                    output.end_statement()
+                    output.indent(), output.assign(
+                        'this.' + bname + '.__self__')
+                    output.print('this')
+                    output.end_statement()
+                    output.indent(), output.assign(
+                        'this.' + bname + '.__name__')
+                    output.print(JSON.stringify(bname))
+                    output.end_statement()
 
             output.with_block(f_bases)
 

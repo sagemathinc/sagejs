@@ -28,6 +28,9 @@ function compile_baselib(PyLang, src_path) {
       ast = PyLang.parse(raw, {
         filename: fname,
         basedir: path.join(src_path, "baselib"),
+        // Baselib classes implement Python objects, so extracting a method
+        // from an instance must retain that instance as ``self``.
+        scoped_flags: { bound_methods: true },
       });
     } catch (e) {
       if (!(e instanceof PyLang.SyntaxError)) throw e;

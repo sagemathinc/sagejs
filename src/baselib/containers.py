@@ -536,6 +536,74 @@ def set_wrap(native_set: Any) -> SageSet:
     return answer
 
 
+def _dict_normalize_key(key: Any) -> Any:
+    if key is True:
+        return 1
+    if key is False:
+        return 0
+    if runtime.is_exact_integer(key):
+        return runtime.normalize_integer(runtime.bigint(key))
+    return key
+
+
+class _DictView:
+
+    def __init__(self, dictionary: SageDict, kind: str) -> None:
+        self._dictionary = dictionary
+        self._kind = kind
+
+    def _snapshot(self) -> Any:
+        answer = list_constructor()
+        for normalized_key in self._dictionary.jsmap.keys():
+            key = self._dictionary.keymap.get(normalized_key)
+            if self._kind == 'keys':
+                answer.push(key)
+            elif self._kind == 'values':
+                answer.push(
+                    self._dictionary.jsmap.get(normalized_key))
+            else:
+                answer.push(runtime.math_tuple([
+                    key,
+                    self._dictionary.jsmap.get(normalized_key),
+                ]))
+        return answer
+
+    def __len__(self) -> int:
+        return len(self._dictionary)
+
+    def __iter__(self) -> Any:
+        return iter(self._snapshot())
+
+    def __contains__(self, value: Any) -> bool:
+        if self._kind == 'keys':
+            return value in self._dictionary
+        for item in self._snapshot():
+            if equals(item, value):
+                return True
+        return False
+
+    def __add__(self, _other: Any) -> Any:
+        raise TypeError(
+            "unsupported operand type(s) for +: 'dict_" +
+            self._kind + "'")
+
+    def __hash__(self) -> int:
+        if self._kind != 'values':
+            raise TypeError(
+                "unhashable type: 'dict_" + self._kind + "'")
+        return id(self)
+
+    def __repr__(self) -> str:
+        return (
+            'dict_' + self._kind + '(' +
+            runtime.repr(self._snapshot()) + ')'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+    inspect = __repr__
+
+
 class SageDict:
 
     def __init__(
@@ -544,6 +612,7 @@ class SageDict:
         **keywords: Any,
     ) -> None:
         self.jsmap = _new_map()
+        self.keymap = _new_map()
         if iterable is not runtime.undefined:
             self.update(iterable)
         if runtime.object.keys(keywords).length:
@@ -561,45 +630,59 @@ class SageDict:
         return self.jsmap.size
 
     def __contains__(self, key: Any) -> bool:
-        return self.jsmap.has(key)
+        return self.jsmap.has(_dict_normalize_key(key))
 
     has = __contains__
 
     def __iter__(self) -> Any:
-        return self.jsmap.keys()
+        return iter(self.keys())
 
     def __setitem__(self, key: Any, value: Any) -> None:
-        self.jsmap.set(key, value)
+        normalized_key = _dict_normalize_key(key)
+        if not self.jsmap.has(normalized_key):
+            self.keymap.set(normalized_key, key)
+        self.jsmap.set(normalized_key, value)
 
     set = __setitem__
 
     def __delitem__(self, key: Any) -> None:
-        self.jsmap.delete(key)
+        normalized_key = _dict_normalize_key(key)
+        if not self.jsmap.has(normalized_key):
+            raise KeyError(key)
+        self.jsmap.delete(normalized_key)
+        self.keymap.delete(normalized_key)
 
     def __getitem__(self, key: Any) -> Any:
-        answer = self.jsmap.get(key)
-        if answer is runtime.undefined and not self.jsmap.has(key):
-            raise KeyError(runtime.string(key))
+        normalized_key = _dict_normalize_key(key)
+        answer = self.jsmap.get(normalized_key)
+        if (
+            answer is runtime.undefined
+            and not self.jsmap.has(normalized_key)
+        ):
+            raise KeyError(key)
         return answer
 
     def clear(self) -> None:
         self.jsmap.clear()
+        self.keymap.clear()
 
     def copy(self) -> SageDict:
         answer = runtime.object.create(
             runtime.object.getPrototypeOf(self))
         answer.jsmap = runtime.reflect.construct(
             runtime.map_class, [self.jsmap])
+        answer.keymap = runtime.reflect.construct(
+            runtime.map_class, [self.keymap])
         return answer
 
     def keys(self) -> Any:
-        return self.jsmap.keys()
+        return _DictView(self, 'keys')
 
     def values(self) -> Any:
-        return self.jsmap.values()
+        return _DictView(self, 'values')
 
     def items(self) -> Any:
-        return self.jsmap.entries()
+        return _DictView(self, 'items')
 
     entries = items
 
@@ -608,8 +691,12 @@ class SageDict:
         key: Any,
         default_value: Any = runtime.undefined,
     ) -> Any:
-        answer = self.jsmap.get(key)
-        if answer is runtime.undefined and not self.jsmap.has(key):
+        normalized_key = _dict_normalize_key(key)
+        answer = self.jsmap.get(normalized_key)
+        if (
+            answer is runtime.undefined
+            and not self.jsmap.has(normalized_key)
+        ):
             return (
                 None
                 if default_value is runtime.undefined
@@ -617,11 +704,20 @@ class SageDict:
             )
         return answer
 
-    def set_default(self, key: Any, default_value: Any) -> Any:
-        if not self.jsmap.has(key):
-            self.jsmap.set(key, default_value)
+    def setdefault(
+        self,
+        key: Any,
+        default_value: Any = None,
+    ) -> Any:
+        normalized_key = _dict_normalize_key(key)
+        if not self.jsmap.has(normalized_key):
+            self.keymap.set(normalized_key, key)
+            self.jsmap.set(normalized_key, default_value)
             return default_value
-        return self.jsmap.get(key)
+        return self.jsmap.get(normalized_key)
+
+    # Historical Sage.js spelling retained for compatibility.
+    set_default = setdefault
 
     @staticmethod
     def fromkeys(
@@ -630,7 +726,7 @@ class SageDict:
     ) -> SageDict:
         answer = SageDict()
         for key in iterable:
-            answer.jsmap.set(key, value)
+            answer.__setitem__(key, value)
         return answer
 
     def pop(
@@ -638,12 +734,17 @@ class SageDict:
         key: Any,
         default_value: Any = runtime.undefined,
     ) -> Any:
-        answer = self.jsmap.get(key)
-        if answer is runtime.undefined and not self.jsmap.has(key):
+        normalized_key = _dict_normalize_key(key)
+        answer = self.jsmap.get(normalized_key)
+        if (
+            answer is runtime.undefined
+            and not self.jsmap.has(normalized_key)
+        ):
             if default_value is runtime.undefined:
-                raise KeyError(runtime.string(key))
+                raise KeyError(key)
             return default_value
-        self.jsmap.delete(key)
+        self.jsmap.delete(normalized_key)
+        self.keymap.delete(normalized_key)
         return answer
 
     def popitem(self) -> Any:
@@ -651,7 +752,9 @@ class SageDict:
         if result.done:
             raise KeyError('dict is empty')
         self.jsmap.delete(result.value[0])
-        return list_decorate(result.value)
+        key = self.keymap.get(result.value[0])
+        self.keymap.delete(result.value[0])
+        return runtime.math_tuple([key, result.value[1]])
 
     def update(
         self,
@@ -662,13 +765,17 @@ class SageDict:
             if isinstance(iterable, SageDict):
                 source = iterable.items()
                 for pair in source:
-                    self.jsmap.set(pair[0], pair[1])
+                    self.__setitem__(pair[0], pair[1])
             elif isinstance(iterable, runtime.map_class):
                 for pair in iterable.entries():
-                    self.jsmap.set(pair[0], pair[1])
+                    self.__setitem__(pair[0], pair[1])
             elif runtime.array.isArray(iterable):
                 for pair in iterable:
-                    self.jsmap.set(pair[0], pair[1])
+                    if len(pair) != 2:
+                        raise ValueError(
+                            'dictionary update sequence element has '
+                            'length ' + str(len(pair)) + '; 2 is required')
+                    self.__setitem__(pair[0], pair[1])
             elif (
                 runtime.strict_equal(
                     runtime.jstype(
@@ -680,19 +787,24 @@ class SageDict:
                 )
             ):
                 for pair in iterable:
-                    self.jsmap.set(pair[0], pair[1])
+                    if len(pair) != 2:
+                        raise ValueError(
+                            'dictionary update sequence element has '
+                            'length ' + str(len(pair)) + '; 2 is required')
+                    self.__setitem__(pair[0], pair[1])
             else:
                 for key in runtime.object.keys(iterable):
-                    self.jsmap.set(key, iterable[key])
+                    self.__setitem__(key, iterable[key])
         for key in runtime.object.keys(keywords):
-            self.jsmap.set(key, keywords[key])
+            self.__setitem__(key, keywords[key])
 
     def __repr__(self) -> str:
         entries = list_constructor()
-        for pair in self.jsmap.entries():
+        for normalized_key in self.jsmap.keys():
             entries.push(
-                runtime.repr(pair[0])
-                + ': ' + runtime.repr(pair[1])
+                runtime.repr(self.keymap.get(normalized_key))
+                + ': ' + runtime.repr(
+                    self.jsmap.get(normalized_key))
             )
         return '{' + entries.join(', ') + '}'
 
@@ -706,16 +818,21 @@ class SageDict:
         if self.size != other.size:
             return False
         for pair in other.items():
-            if not self.jsmap.has(pair[0]):
+            normalized_key = _dict_normalize_key(pair[0])
+            if not self.jsmap.has(normalized_key):
                 return False
-            if not equals(self.jsmap.get(pair[0]), pair[1]):
+            if not equals(
+                self.jsmap.get(normalized_key), pair[1]
+            ):
                 return False
         return True
 
     def as_object(self) -> Any:
         answer = runtime.object.create(None)
-        for pair in self.jsmap.entries():
-            answer[pair[0]] = pair[1]
+        for normalized_key in self.jsmap.keys():
+            answer[self.keymap.get(normalized_key)] = (
+                self.jsmap.get(normalized_key)
+            )
         return answer
 
 
@@ -731,7 +848,8 @@ runtime.reflect.set(ρσ_dict, 'fromkeys', SageDict.fromkeys)
 
 def dict_wrap(native_map: Any) -> SageDict:
     answer = SageDict()
-    answer.jsmap = native_map
+    for pair in native_map.entries():
+        answer.__setitem__(pair[0], pair[1])
     return answer
 
 

@@ -13,7 +13,14 @@ NameError = runtime.reference_error
 
 class Exception(runtime.error):
 
-    def __init__(self, message: str = '') -> None:
+    def __init__(self, *args: object) -> None:
+        self.args = runtime.math_tuple(list(args))
+        if len(args) == 0:
+            message = ''
+        elif len(args) == 1:
+            message = runtime.string(args[0])
+        else:
+            message = runtime.repr(self.args)
         self.message = message
         self.name = self.constructor.name
         error = runtime.error(message)
@@ -36,7 +43,11 @@ class IndexError(Exception):
 
 
 class KeyError(Exception):
-    pass
+
+    def __str__(self) -> str:
+        if len(self.args) == 1:
+            return runtime.repr(self.args[0])
+        return Exception.__str__(self)
 
 
 class ValueError(Exception):
