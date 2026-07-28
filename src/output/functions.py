@@ -520,13 +520,18 @@ def print_this(expression, output):
 def print_function_call(self, output):
     if (
         is_node_type(self.expression, AST_SymbolRef)
-        and self.expression.name in ('locals', 'globals')
+        and self.expression.name in ('dir', 'locals', 'globals')
+        and (
+            self.expression.name is not 'dir'
+            or output.options.python_attributes
+        )
         and self.args.length == 0
         and not self.args.starargs
         and not self.args.kwargs.length
         and not self.args.kwarg_items.length
     ):
         want_globals = self.expression.name is 'globals'
+        want_dir = self.expression.name is 'dir'
         scope = None
         stack = output.stack()
         for index in range(stack.length - 1, -1, -1):
@@ -554,7 +559,9 @@ def print_function_call(self, output):
         elif scope:
             for symbol in scope.localvars:
                 add_name(symbol.name)
-            if want_globals:
+            if want_globals or (
+                want_dir and is_node_type(scope, AST_Toplevel)
+            ):
                 for name in scope.nonlocalvars or []:
                     add_name(name.name if name.name else name)
                 for symbol in scope.exports or []:
@@ -562,9 +569,23 @@ def print_function_call(self, output):
             if is_node_type(scope, AST_Lambda):
                 for argument in scope.argnames:
                     add_name(argument.name)
-        if want_globals:
+        if want_globals or (
+            want_dir and is_node_type(scope, AST_Toplevel)
+        ):
             add_name('__name__')
             add_name('__file__')
+        if want_dir:
+            # Sage.js exposes its interactive helpers as global names.
+            add_name('help')
+
+        if want_dir:
+            output.print('ρσ_list_decorate([')
+            for index, name in enumerate(names):
+                if index:
+                    output.comma()
+                output.print(JSON.stringify(name))
+            output.print('])')
+            return
 
         output.print('ρσ_scope_dict({')
         for index, name in enumerate(names):

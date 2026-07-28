@@ -282,6 +282,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'operator_add_exact': 'ρσ_operator_add_exact',
     'operator_mul_exact': 'ρσ_operator_mul_exact',
     'operator_pow_exact': 'ρσ_operator_pow_exact',
+    'output_write': 'ρσ_output_write',
     'parse_float': 'parseFloat',
     'parse_int': 'parseInt',
     'polynomial_ring': 'PolynomialRing',

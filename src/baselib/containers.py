@@ -432,11 +432,53 @@ def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
     return list_decorate(answer)
 
 
+def _container_pop_keyword(
+    keywords: Any,
+    name: str,
+    default_value: Any,
+) -> Any:
+    pop_method = _get_member(keywords, 'pop')
+    if runtime.strict_equal(runtime.jstype(pop_method), 'function'):
+        get_method = _get_member(keywords, 'get')
+        contains_method = _get_member(keywords, '__contains__')
+        if runtime.strict_equal(
+            runtime.jstype(contains_method), 'function'
+        ):
+            contains = runtime.reflect.apply(
+                contains_method, keywords, [name])
+        else:
+            contains = _has_own(keywords, name)
+        answer = runtime.reflect.apply(
+            get_method, keywords, [name, default_value])
+        if contains:
+            runtime.reflect.apply(pop_method, keywords, [name])
+        return answer
+    if _has_own(keywords, name):
+        answer = runtime.reflect.get(keywords, name)
+        runtime.reflect.deleteProperty(keywords, name)
+        return answer
+    return default_value
+
+
 def sorted(
     iterable: Any,
-    key: Callable[[Any], Any] | None = None,
-    reverse: bool = False,
+    *positional: Any,
+    **keywords: Any,
 ) -> Any:
+    if len(positional):
+        raise TypeError('sorted() takes 1 positional argument')
+    key = _container_pop_keyword(keywords, 'key', None)
+    reverse = _container_pop_keyword(keywords, 'reverse', False)
+    if runtime.strict_equal(
+        runtime.jstype(_get_member(keywords, 'keys')),
+        'function',
+    ):
+        remaining = list(keywords.keys())
+    else:
+        remaining = runtime.object.keys(keywords)
+    if len(remaining):
+        raise TypeError(
+            "unexpected keyword argument '" + remaining[0] + "'")
     answer = list_constructor(iterable)
     answer.pysort(key, reverse)
     return answer

@@ -70,6 +70,8 @@ def _builtins_member_is_function(value: Any, name: Any) -> _Bool:
 
 def _builtins_get_special_member(value: Any, name: Any) -> Any:
     """Look up an implicit special method on the type, not the instance."""
+    if value is None or value is runtime.undefined:
+        return runtime.undefined
     value_type = runtime.jstype(value)
     if (
         not runtime.strict_equal(value_type, 'object')
@@ -157,7 +159,13 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
         return _builtins_call_member(left, '__add__', [right])
     if _builtins_member_is_function(right, '__radd__'):
         return _builtins_call_member(right, '__radd__', [left])
-    if _builtins_member_is_function(left, 'concat'):
+    if (
+        _builtins_member_is_function(left, 'concat')
+        and (
+            not runtime.array.isArray(left)
+            or runtime.arraylike(right)
+        )
+    ):
         return _builtins_call_member(left, 'concat', [right])
     if (
         runtime.strict_equal(left_type, 'object')
@@ -174,7 +182,13 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
         return _builtins_call_special(left, '__add__', [right])
     if _builtins_special_is_function(right, '__radd__'):
         return _builtins_call_special(right, '__radd__', [left])
-    if _builtins_member_is_function(left, 'concat'):
+    if (
+        _builtins_member_is_function(left, 'concat')
+        and (
+            not runtime.array.isArray(left)
+            or runtime.arraylike(right)
+        )
+    ):
         return _builtins_call_member(left, 'concat', [right])
     if (
         runtime.strict_equal(runtime.jstype(left), 'object')
@@ -1005,12 +1019,63 @@ def ρσ_round(
     )
 
 
-def ρσ_print(*values: Any) -> None:
+def _builtins_pop_keyword(
+    keywords: Any,
+    name: _Str,
+    default_value: Any,
+) -> Any:
+    if _builtins_member_is_function(keywords, '__getitem__'):
+        if name in keywords:
+            return keywords.pop(name)
+        return default_value
+    if runtime.reflect.apply(
+        runtime.object.prototype.hasOwnProperty,
+        keywords,
+        [name],
+    ):
+        value = runtime.reflect.get(keywords, name)
+        runtime.reflect.deleteProperty(keywords, name)
+        return value
+    return default_value
+
+
+def ρσ_print(
+    *values: Any,
+    **keywords: Any,
+) -> None:
+    sep = _builtins_pop_keyword(keywords, 'sep', ' ')
+    end = _builtins_pop_keyword(keywords, 'end', '\n')
+    file = _builtins_pop_keyword(keywords, 'file', None)
+    flush = _builtins_pop_keyword(keywords, 'flush', False)
+    if _builtins_member_is_function(keywords, '__iter__'):
+        remaining = list(keywords)
+    else:
+        remaining = runtime.object.keys(keywords)
+    if len(remaining):
+        unexpected = remaining[0]
+        raise TypeError(
+            "'"
+            + unexpected
+            + "' is an invalid keyword argument for print()")
+    if sep is None:
+        sep = ' '
+    if end is None:
+        end = '\n'
+    if not isinstance(sep, str):
+        raise TypeError('sep must be None or a string')
+    if not isinstance(end, str):
+        raise TypeError('end must be None or a string')
     parts = [
         'None' if value is runtime.undefined else str(value)
         for value in values
     ]
-    runtime.console_object.log(str.join(' ', parts))
+    text = str.join(sep, parts) + end
+    if file is None:
+        runtime.output_write(text)
+    else:
+        file.write(text)
+        if flush:
+            file.flush()
 
 
 def _builtins_digit_value(character: _Str) -> _Int:
@@ -1360,7 +1425,7 @@ def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
         prototype = _builtins_get_member(target, 'prototype')
         if (
             prototype is not runtime.undefined
-            and _builtins_has_member(prototype, '__bases__')
+            and prototype is not None
         ):
             _builtins_append_dir_names(prototype, answer)
     if target_is_python_instance and target_is_function:
@@ -1578,7 +1643,10 @@ def ρσ_chr(code: _Int) -> _Str:
 
 
 def ρσ_callable(value: Any) -> _Bool:
-    return runtime.strict_equal(runtime.jstype(value), 'function')
+    return (
+        runtime.strict_equal(runtime.jstype(value), 'function')
+        or _builtins_special_is_function(value, '__call__')
+    )
 
 
 def ρσ_classmethod(target: Any) -> Any:

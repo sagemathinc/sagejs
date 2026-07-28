@@ -23,6 +23,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_tuple
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power, ρσ_modules
+# globals: ρσ_output_write
 # globals: ρσ_named_tuple
 # globals: ρσ_native_method, ρσ_native_method_adapter
 # globals: ρσ_normalize_integer, ρσ_operator_add_exact, ρσ_operator_mul_exact
@@ -149,6 +150,7 @@ object = Object
 operator_add_exact = ρσ_operator_add_exact
 operator_mul_exact = ρσ_operator_mul_exact
 operator_pow_exact = ρσ_operator_pow_exact
+output_write = ρσ_output_write
 parse_float = parseFloat
 parse_int = parseInt
 polynomial_ring = PolynomialRing

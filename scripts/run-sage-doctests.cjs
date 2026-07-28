@@ -69,6 +69,7 @@ class FakeReadline {
 
 async function worker() {
   const request = JSON.parse(readFileSync(0, "utf8"));
+  const stdoutWrite = process.stdout.write.bind(process.stdout);
   const Repl = require("../dist/tools/repl.js").default;
   const readline = new FakeReadline();
   let output = "";
@@ -90,6 +91,13 @@ async function worker() {
     sage: true,
   });
 
+  process.stdout.write = (chunk, encoding, callback) => {
+    output += Buffer.isBuffer(chunk) ? chunk.toString(encoding) : String(chunk);
+    if (typeof encoding === "function") encoding();
+    if (typeof callback === "function") callback();
+    return true;
+  };
+
   const results = [];
   for (const example of request.examples) {
     output = "";
@@ -98,7 +106,7 @@ async function worker() {
     readline.emit("line", "");
     results.push({ id: example.id, actual: output });
   }
-  process.stdout.write(JSON.stringify(results));
+  stdoutWrite(JSON.stringify(results));
 }
 
 function parseArguments(argv) {

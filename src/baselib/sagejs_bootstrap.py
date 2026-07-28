@@ -36,3 +36,13 @@ def ρσ_native_method_adapter(target_function):
             target_function.__handles_kwarg_interpolation__;
         return method;
     })()"""
+
+
+def ρσ_output_write(text):
+    return r"""%js (
+        typeof process !== "undefined"
+        && process.stdout
+        && typeof process.stdout.write === "function"
+        ? process.stdout.write(String(text))
+        : console.log(String(text))
+    )"""
