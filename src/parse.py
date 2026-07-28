@@ -361,6 +361,26 @@ def has_setter_decorator(decorators, name):
     return False
 
 
+def has_deleter_decorator(decorators, name):
+    remove = []
+    for i in range(decorators.length):
+        decorator = decorators[i]
+        if (
+            is_node_type(decorator, AST_Dot)
+            and is_node_type(
+                decorator.expression, AST_SymbolRef)
+            and decorator.expression.name is name
+            and decorator.property is 'deleter'
+        ):
+            remove.push(i)
+    if remove.length:
+        remove.reverse()
+        for index in range(remove.length):
+            decorators.splice(remove[index], 1)
+        return True
+    return False
+
+
 def call_decorator_args(decorators, name):
     for i in range(decorators.length):
         decorator = decorators[i]
@@ -1732,12 +1752,17 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         # find the constructor
         for stmt in definition.body:
             if is_node_type(stmt, AST_Method):
-                if stmt.is_getter or stmt.is_setter:
+                if stmt.is_getter or stmt.is_setter or stmt.is_deleter:
                     descriptor = definition.dynamic_properties[stmt.name.name]
                     if not descriptor:
                         descriptor = definition.dynamic_properties[
                             stmt.name.name] = {}
-                    descriptor['getter' if stmt.is_getter else 'setter'] = stmt
+                    if stmt.is_getter:
+                        descriptor['getter'] = stmt
+                    elif stmt.is_setter:
+                        descriptor['setter'] = stmt
+                    else:
+                        descriptor['deleter'] = stmt
                 elif stmt.name.name is "__init__":
                     definition.init = stmt
         # find the class variables
@@ -1797,16 +1822,23 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 croak('Cannot use anonymous function as class methods')
             is_anonymous = not name
 
-        staticmethod = classmethod = property_getter = property_setter = False
+        staticmethod = classmethod = False
+        property_getter = property_setter = property_deleter = False
         if in_class:
             staticloc = has_simple_decorator(S.decorators, 'staticmethod')
             classloc = has_simple_decorator(S.decorators, 'classmethod')
             property_getter = has_simple_decorator(S.decorators, 'property')
             property_setter = has_setter_decorator(S.decorators, name.name)
+            property_deleter = has_deleter_decorator(
+                S.decorators, name.name)
             if staticloc and classloc:
                 croak('A method cannot be both static and a class method')
             if staticloc or classloc:
-                if property_getter or property_setter:
+                if (
+                    property_getter
+                    or property_setter
+                    or property_deleter
+                ):
                     croak(
                         'A method cannot also be a property getter/setter'
                     )
@@ -2050,12 +2082,17 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             definition.classmethod = classmethod
             definition.is_getter = property_getter
             definition.is_setter = property_setter
+            definition.is_deleter = property_deleter
             if definition.name and definition.name.name is '__init__':
                 if definition.is_generator:
                     croak(
                         'The __init__ method of a class cannot be a generator (yield not allowed)'
                     )
-                if property_getter or property_setter:
+                if (
+                    property_getter
+                    or property_setter
+                    or property_deleter
+                ):
                     croak(
                         'The __init__ method of a class cannot be a property getter/setter'
                     )

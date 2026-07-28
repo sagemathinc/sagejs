@@ -5,7 +5,8 @@ from ast_types import (AST_Array, AST_Assign, AST_BaseCall, AST_Binary,
                        AST_Conditional, AST_Dot, AST_Existential, AST_ForIn, AST_ItemAccess, AST_Number,
                        AST_Object, AST_Return, AST_Seq, AST_Set,
                        AST_SimpleStatement, AST_Statement, AST_String, AST_Sub,
-                       AST_Symbol, AST_SymbolRef, AST_Unary, is_node_type)
+                       AST_Symbol, AST_SymbolRef, AST_Unary, TreeWalker,
+                       is_node_type)
 from output.loops import unpack_tuple
 
 
@@ -23,10 +24,21 @@ def print_getattr(self, output, skip_expression):  # AST_Dot
         )
 
     assignment_target = False
-    for ancestor in output.stack():
+    stack = output.stack()
+    for index in range(stack.length):
+        ancestor = stack[index]
         if not is_node_type(ancestor, AST_Assign):
             continue
-        if ancestor.left is self:
+        found_target = [False]
+
+        def find_target(node, _descend):
+            if node is self:
+                found_target[0] = True
+                return True
+            return False
+
+        ancestor.left.walk(TreeWalker(find_target))
+        if found_target[0]:
             assignment_target = True
             break
         if ancestor.is_chained():

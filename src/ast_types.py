@@ -621,6 +621,7 @@ class AST_Method(AST_Lambda):
         "classmethod": "[boolean] true if method is a class method",
         "is_getter": "[boolean] true if method is a property getter",
         "is_setter": "[boolean] true if method is a property setter",
+        "is_deleter": "[boolean] true if method is a property deleter",
     }
 
 

@@ -200,33 +200,45 @@ def print_class(output):
                         continue
                     seen_methods[bname] = True
                     is_classmethod = has_prop(self.classmethods, bname)
-                    output.indent(), output.assign('this.' + bname)
-                    self.name.print(output), output.print('.prototype.' +
-                                                          bname +
-                                                          '.bind(')
+
+                    def f_bind_one():
+                        output.indent(), output.assign('this.' + bname)
+                        self.name.print(output)
+                        output.print(
+                            '.prototype.' + bname + '.bind(')
+                        output.print(
+                            'this.constructor'
+                            if is_classmethod else 'this')
+                        output.print(')')
+                        output.end_statement()
+                        output.indent(), output.print(
+                            'Object.assign(this.' + bname + ', ')
+                        self.name.print(output), output.print(
+                            '.prototype.' + bname + ')')
+                        output.end_statement()
+                        output.indent(), output.assign(
+                            'this.' + bname + '.__func__')
+                        self.name.print(output), output.print(
+                            '.prototype.' + bname)
+                        output.end_statement()
+                        output.indent(), output.assign(
+                            'this.' + bname + '.__self__')
+                        output.print(
+                            'this.constructor'
+                            if is_classmethod else 'this')
+                        output.end_statement()
+                        output.indent(), output.assign(
+                            'this.' + bname + '.__name__')
+                        output.print(JSON.stringify(bname))
+                        output.end_statement()
+
+                    output.indent()
+                    output.print('if (typeof ')
+                    self.name.print(output)
                     output.print(
-                        'this.constructor' if is_classmethod else 'this')
-                    output.print(')')
-                    output.end_statement()
-                    output.indent(), output.print(
-                        'Object.assign(this.' + bname + ', ')
-                    self.name.print(output), output.print(
-                        '.prototype.' + bname + ')')
-                    output.end_statement()
-                    output.indent(), output.assign(
-                        'this.' + bname + '.__func__')
-                    self.name.print(output), output.print(
-                        '.prototype.' + bname)
-                    output.end_statement()
-                    output.indent(), output.assign(
-                        'this.' + bname + '.__self__')
-                    output.print(
-                        'this.constructor' if is_classmethod else 'this')
-                    output.end_statement()
-                    output.indent(), output.assign(
-                        'this.' + bname + '.__name__')
-                    output.print(JSON.stringify(bname))
-                    output.end_statement()
+                        '.prototype.' + bname
+                        + ' === "function")')
+                    output.with_block(f_bind_one)
 
             output.with_block(f_bases)
 
@@ -277,6 +289,12 @@ def print_class(output):
 
         output.with_parens(f_props)
         output.end_statement()
+        for name in property_names:
+            prop = self.dynamic_properties[name]
+            if prop.deleter:
+                class_def('ρσ_property_deleter_' + name)
+                define_method(prop.deleter, True)
+                output.end_statement()
 
     # actual methods
     if not self.init:
@@ -302,7 +320,7 @@ def print_class(output):
 
     for stmt in self.body:
         if is_node_type(stmt, AST_Method):
-            if stmt.is_getter or stmt.is_setter:
+            if stmt.is_getter or stmt.is_setter or stmt.is_deleter:
                 continue
             define_method(stmt)
             defined_methods[stmt.name.name] = True
@@ -413,6 +431,23 @@ def print_class(output):
         output.assign('.' + classvar_name)
         self.name.print(output)
         output.print('.prototype.' + classvar_name)
+        output.end_statement()
+    classvar_names = Object.keys(self.classvars)
+    if classvar_names.length:
+        output.indent()
+        output.print('ρσ_call_set_names(')
+        self.name.print(output)
+        output.comma()
+        output.print(JSON.stringify(classvar_names))
+        output.comma()
+        output.print('[')
+        for index in range(classvar_names.length):
+            if index:
+                output.comma()
+            self.name.print(output)
+            output.print(
+                '.prototype.' + classvar_names[index])
+        output.print('])')
         output.end_statement()
     inherited_callable_names = Object.keys(self.static).concat(
         Object.keys(self.classmethods))

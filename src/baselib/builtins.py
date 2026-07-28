@@ -68,6 +68,36 @@ def _builtins_member_is_function(value: Any, name: Any) -> _Bool:
     )
 
 
+def _builtins_class_attribute_descriptor(
+    value: Any,
+    name: Any,
+) -> Any:
+    owner = _builtins_get_member(value, 'constructor')
+    prototype = _builtins_get_member(owner, 'prototype')
+    while prototype is not None and prototype is not runtime.undefined:
+        descriptor = runtime.object.getOwnPropertyDescriptor(
+            prototype, name)
+        if descriptor is not runtime.undefined:
+            return descriptor
+        prototype = runtime.object.getPrototypeOf(prototype)
+    return runtime.undefined
+
+
+def ρσ_call_set_names(
+    owner: Any,
+    names: list[Any],
+    values: list[Any],
+) -> None:
+    """Call descriptor ``__set_name__`` methods from a namespace snapshot."""
+    index = 0
+    while index < _builtins_get_member(names, 'length'):
+        value = values[index]
+        if _builtins_member_is_function(value, '__set_name__'):
+            _builtins_call_member(
+                value, '__set_name__', [owner, names[index]])
+        index += 1
+
+
 def _builtins_get_special_member(value: Any, name: Any) -> Any:
     """Look up an implicit special method on the type, not the instance."""
     if value is None or value is runtime.undefined:
@@ -2300,6 +2330,71 @@ class _EllipsisType:
 Ellipsis = _EllipsisType()
 
 
+class SageProperty:
+
+    def __init__(
+        self,
+        fget: Any = None,
+        fset: Any = None,
+        fdel: Any = None,
+        doc: Any = None,
+    ) -> None:
+        self.fget = fget
+        self.fset = fset
+        self.fdel = fdel
+        self.__doc__ = doc
+
+    def __get__(self, instance: Any, _owner: Any = None) -> Any:
+        if instance is None:
+            return self
+        if self.fget is None:
+            raise AttributeError('property has no getter')
+        if _builtins_get_member(self.fget, 'length') == 0:
+            return runtime.reflect.apply(
+                self.fget, instance, [])
+        return runtime.reflect.apply(
+            self.fget, runtime.undefined, [instance])
+
+    def __set__(self, instance: Any, value: Any) -> None:
+        if self.fset is None:
+            raise AttributeError("can't set attribute")
+        if _builtins_get_member(self.fset, 'length') == 1:
+            runtime.reflect.apply(self.fset, instance, [value])
+        else:
+            runtime.reflect.apply(
+                self.fset, runtime.undefined, [instance, value])
+
+    def __delete__(self, instance: Any) -> None:
+        if self.fdel is None:
+            raise AttributeError("can't delete attribute")
+        if _builtins_get_member(self.fdel, 'length') == 0:
+            runtime.reflect.apply(self.fdel, instance, [])
+        else:
+            runtime.reflect.apply(
+                self.fdel, runtime.undefined, [instance])
+
+    def getter(self, target_function: Any) -> SageProperty:
+        return SageProperty(
+            target_function, self.fset, self.fdel, self.__doc__)
+
+    def setter(self, target_function: Any) -> SageProperty:
+        return SageProperty(
+            self.fget, target_function, self.fdel, self.__doc__)
+
+    def deleter(self, target_function: Any) -> SageProperty:
+        return SageProperty(
+            self.fget, self.fset, target_function, self.__doc__)
+
+
+def ρσ_property(
+    fget: Any = None,
+    fset: Any = None,
+    fdel: Any = None,
+    doc: Any = None,
+) -> SageProperty:
+    return SageProperty(fget, fset, fdel, doc)
+
+
 def ρσ_ellipsis_range(*specification: Any) -> list[Any]:
     result = []
     saw_ellipsis = False
@@ -2375,6 +2470,37 @@ def ρσ_getattr(
             return ρσ_next(value)
 
         return native_next
+    if (
+        name == '__class__'
+        and not runtime.strict_equal(runtime.jstype(value), 'function')
+    ):
+        return _builtins_get_member(value, 'constructor')
+
+    descriptor = runtime.undefined
+    owner = runtime.undefined
+    if (
+        not runtime.strict_equal(runtime.jstype(value), 'function')
+        and value is not None
+        and value is not runtime.undefined
+    ):
+        owner = _builtins_get_member(value, 'constructor')
+        descriptor_info = _builtins_class_attribute_descriptor(
+            value, name)
+        if descriptor_info is not runtime.undefined:
+            descriptor = runtime.reflect.get(
+                descriptor_info, 'value')
+            if (
+                descriptor is not runtime.undefined
+                and
+                _builtins_member_is_function(descriptor, '__get__')
+                and (
+                    _builtins_member_is_function(descriptor, '__set__')
+                    or _builtins_member_is_function(
+                        descriptor, '__delete__')
+                )
+            ):
+                return _builtins_call_member(
+                    descriptor, '__get__', [value, owner])
     if runtime.strict_equal(runtime.jstype(value), 'function'):
         class_prototype = _builtins_get_member(value, 'prototype')
         if (
@@ -2396,6 +2522,31 @@ def ρσ_getattr(
             return class_member
     if _builtins_has_member(value, name):
         member = _builtins_get_member(value, name)
+        member_is_own = runtime.reflect.apply(
+            runtime.object.prototype.hasOwnProperty,
+            value,
+            [name],
+        )
+        if (
+            _builtins_member_is_function(member, '__get__')
+            and (
+                not member_is_own
+                or runtime.strict_equal(
+                    runtime.jstype(value), 'function')
+            )
+        ):
+            instance = (
+                None
+                if runtime.strict_equal(runtime.jstype(value), 'function')
+                else value
+            )
+            member_owner = (
+                value
+                if instance is None
+                else _builtins_get_member(value, 'constructor')
+            )
+            return _builtins_call_member(
+                member, '__get__', [instance, member_owner])
         if _builtins_has_member(member, '__staticmethod__'):
             return member
         if (
@@ -2436,6 +2587,9 @@ def ρσ_getattr(
 def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
+    if _builtins_get_member(value, '__sagejs_super__') is True:
+        runtime.reflect.set(value, name, member)
+        return
     if (
         value is ρσ_int
         or value is ρσ_bool
@@ -2450,12 +2604,72 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
     ):
         raise AttributeError(
             "'method' object has no attribute '" + name + "'")
+    if (
+        not runtime.strict_equal(runtime.jstype(value), 'function')
+        and _builtins_member_is_function(value, '__setattr__')
+    ):
+        return _builtins_call_member(
+            value, '__setattr__', [name, member])
+    descriptor_info = _builtins_class_attribute_descriptor(
+        value, name)
+    if descriptor_info is not runtime.undefined:
+        descriptor = runtime.reflect.get(descriptor_info, 'value')
+        if _builtins_member_is_function(descriptor, '__set__'):
+            return _builtins_call_member(
+                descriptor, '__set__', [value, member])
+    if _builtins_is_python_class(value):
+        runtime.reflect.set(value.prototype, name, member)
+        if _builtins_member_is_function(member, '__set_name__'):
+            _builtins_call_member(
+                member, '__set_name__', [value, name])
     runtime.reflect.set(value, name, member)
 
 
 def ρσ_delattr(value: Any, name: _Str) -> None:
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
+    if _builtins_get_member(value, '__sagejs_super__') is True:
+        runtime.reflect.deleteProperty(value, name)
+        return
+    if _builtins_is_python_class(value):
+        class_has_own = runtime.reflect.apply(
+            runtime.object.prototype.hasOwnProperty,
+            value,
+            [name],
+        )
+        prototype = runtime.reflect.get(value, 'prototype')
+        prototype_has_own = runtime.reflect.apply(
+            runtime.object.prototype.hasOwnProperty,
+            prototype,
+            [name],
+        )
+        if not class_has_own and not prototype_has_own:
+            raise AttributeError(
+                "object has no attribute '" + name + "'")
+        if class_has_own:
+            runtime.reflect.deleteProperty(value, name)
+        if prototype_has_own:
+            runtime.reflect.deleteProperty(prototype, name)
+        return
+    if (
+        not runtime.strict_equal(runtime.jstype(value), 'function')
+        and _builtins_member_is_function(value, '__delattr__')
+    ):
+        return _builtins_call_member(value, '__delattr__', [name])
+    property_deleter = _builtins_get_member(
+        value, 'ρσ_property_deleter_' + name)
+    if runtime.strict_equal(
+        runtime.jstype(property_deleter), 'function'
+    ):
+        runtime.reflect.apply(property_deleter, value, [])
+        return
+    descriptor_info = _builtins_class_attribute_descriptor(
+        value, name)
+    if descriptor_info is not runtime.undefined:
+        descriptor = runtime.reflect.get(descriptor_info, 'value')
+        if _builtins_member_is_function(descriptor, '__delete__'):
+            return _builtins_call_member(
+                descriptor, '__delete__', [value])
     has_own = runtime.reflect.apply(
         runtime.object.prototype.hasOwnProperty,
         value,
@@ -2511,6 +2725,7 @@ def ρσ_py_super(cls: Any, instance: Any) -> Any:
         '__repr__': super_repr,
         '__str__': super_repr,
         'toString': super_repr,
+        '__sagejs_super__': True,
     }
 
     def get_member(
@@ -2862,6 +3077,7 @@ ord = ρσ_ord
 chr = ρσ_chr
 bin = ρσ_bin
 open = ρσ_open
+property = ρσ_property
 
 runtime.set_class_repr(ρσ_int, "<class 'int'>")
 runtime.set_class_repr(ρσ_bool, "<class 'bool'>")
@@ -2874,6 +3090,13 @@ runtime.reflect.set(ρσ_float, '__python_type__', ρσ_type)
 runtime.reflect.set(ρσ_type, '__python_type__', ρσ_type)
 runtime.reflect.set(runtime.function_class, '__python_type__', ρσ_type)
 runtime.set_class_repr(ρσ_tuple, "<class 'tuple'>")
+runtime.set_class_repr(ρσ_property, "<class 'property'>")
+runtime.set_class_repr(SageProperty, "<class 'property'>")
+runtime.reflect.set(
+    runtime.reflect.get(SageProperty, 'prototype'),
+    '__python_type__',
+    ρσ_property,
+)
 runtime.set_class_repr(runtime.list_constructor, "<class 'list'>")
 runtime.set_class_repr(runtime.string_builtin, "<class 'str'>")
 
@@ -2898,6 +3121,81 @@ class SageObject:
         return id(self)
 
 
+@runtime.native_method
+def _builtins_object_setattr(
+    self: Any,
+    name: _Str,
+    value: Any,
+) -> None:
+    if not runtime.strict_equal(runtime.jstype(name), 'string'):
+        raise TypeError('attribute name must be string')
+    descriptor_info = _builtins_class_attribute_descriptor(
+        self, name)
+    if descriptor_info is not runtime.undefined:
+        descriptor = runtime.reflect.get(
+            descriptor_info, 'value')
+        if _builtins_member_is_function(descriptor, '__set__'):
+            _builtins_call_member(
+                descriptor, '__set__', [self, value])
+            return
+    runtime.reflect.set(self, name, value)
+
+
+@runtime.native_method
+def _builtins_object_delattr(self: Any, name: _Str) -> None:
+    if not runtime.strict_equal(runtime.jstype(name), 'string'):
+        raise TypeError('attribute name must be string')
+    property_deleter = _builtins_get_member(
+        self, 'ρσ_property_deleter_' + name)
+    if runtime.strict_equal(
+        runtime.jstype(property_deleter), 'function'
+    ):
+        runtime.reflect.apply(property_deleter, self, [])
+        return
+    descriptor_info = _builtins_class_attribute_descriptor(
+        self, name)
+    if descriptor_info is not runtime.undefined:
+        descriptor = runtime.reflect.get(
+            descriptor_info, 'value')
+        if _builtins_member_is_function(descriptor, '__delete__'):
+            _builtins_call_member(
+                descriptor, '__delete__', [self])
+            return
+    has_own = runtime.reflect.apply(
+        runtime.object.prototype.hasOwnProperty,
+        self,
+        [name],
+    )
+    if (
+        not has_own
+        or not runtime.reflect.deleteProperty(self, name)
+    ):
+        raise AttributeError(
+            "object has no attribute '" + name + "'")
+
+
+runtime.reflect.set(
+    SageObject,
+    '__setattr__',
+    _builtins_object_setattr,
+)
+runtime.reflect.set(
+    SageObject,
+    '__delattr__',
+    _builtins_object_delattr,
+)
+_sage_object_prototype = runtime.reflect.get(
+    SageObject, 'prototype')
+runtime.reflect.set(
+    _sage_object_prototype,
+    '__setattr__',
+    _builtins_object_setattr,
+)
+runtime.reflect.set(
+    _sage_object_prototype,
+    '__delattr__',
+    _builtins_object_delattr,
+)
 runtime.reflect.set(
     SageObject,
     '__init__',
@@ -2966,6 +3264,7 @@ len = ρσ_len
 range = ρσ_range
 getattr = ρσ_getattr
 setattr = ρσ_setattr
+delattr = ρσ_delattr
 hasattr = ρσ_hasattr
 factor = ρσ_factor
 gcd = ρσ_gcd
