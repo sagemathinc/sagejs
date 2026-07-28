@@ -198,6 +198,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'factor_pair': 'ρσ_factor_pair',
     'flint_backend': 'ρσ_flint_backend',
     'integer_bigint': 'ρσ_integer_bigint',
+    'is_exact_integer': 'ρσ_is_exact_integer',
     'iterator_symbol': 'ρσ_iterator_symbol',
     'kwargs_symbol': 'ρσ_kwargs_symbol',
     'jstype': 'jstype',
@@ -218,6 +219,8 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'repr': 'ρσ_repr',
     'sequence_class': 'ρσ_sequence_class',
     'set_class_repr': 'ρσ_set_class_repr',
+    'string_find': 'ρσ_string_find',
+    'string': 'ρσ_string_primitive',
     'undefined': 'undefined',
 }
 

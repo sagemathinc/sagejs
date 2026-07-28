@@ -137,6 +137,7 @@ def ρσ_callable_instance_class_adapter(target):
     target.prototype.constructor = wrapper
     if Object.getOwnPropertyDescriptor(wrapper, '__repr__') is undefined:
         Object.defineProperty(wrapper, '__repr__', {
+            'configurable': True,
             'value': def():
                 return "<class '" + target.name + "'>"
         })

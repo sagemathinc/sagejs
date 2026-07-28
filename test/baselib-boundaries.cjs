@@ -53,5 +53,9 @@ const algebraSource = readFileSync(
 );
 assert.doesNotMatch(algebraSource, /function PolynomialElement/);
 assert.doesNotMatch(algebraSource, /function PolynomialRingParent/);
+assert.doesNotMatch(algebraSource, /function RealNumberElement/);
+assert.doesNotMatch(algebraSource, /function ComplexNumberElement/);
+assert.doesNotMatch(algebraSource, /function RealField/);
+assert.doesNotMatch(algebraSource, /function ComplexField/);
 
 console.log("Mathematical baselib source boundaries passed.");

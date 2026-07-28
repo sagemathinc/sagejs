@@ -3,7 +3,8 @@
     "src/baselib/exact_rational.py",
     "src/baselib/factorization.py",
     "src/baselib/finite_fields.py",
-    "src/baselib/polynomial.py"
+    "src/baselib/polynomial.py",
+    "src/baselib/real_complex.py"
   ],
   "extraPaths": [
     "src/baselib"

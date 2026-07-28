@@ -261,6 +261,13 @@ assrt.equal(parent((ZZx.gen() + 1) + F5(1)), F5x)
 # These are the MPFR/MPC parents and display semantics used by SageMath.
 assrt.ok(RealField(53) is RR)
 assrt.ok(ComplexField(53) is CC)
+assrt.equal(
+    repr(type(RR)),
+    "<class 'sage.rings.real_mpfr.RealField_class'>")
+assrt.equal(
+    repr(type(CC)),
+    "<class 'sage.rings.complex_mpfr." +
+    "ComplexField_class_with_category'>")
 assrt.equal(repr(RR), 'Real Field with 53 bits of precision')
 assrt.equal(repr(CC), 'Complex Field with 53 bits of precision')
 assrt.equal(RR.precision(), 53)

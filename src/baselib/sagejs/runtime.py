@@ -10,12 +10,13 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_bigint_divexact, ρσ_bigint_gcd
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
-# globals: ρσ_integer_bigint, ρσ_iterator_symbol, ρσ_kwargs_symbol
+# globals: ρσ_integer_bigint, ρσ_is_exact_integer
+# globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power
 # globals: ρσ_normalize_integer, ρσ_operator_mul_exact
 # globals: ρσ_operator_pow_exact, ρσ_polynomial_from_coefficients, ρσ_repr
-# globals: ρσ_set_class_repr
+# globals: ρσ_set_class_repr, ρσ_string_find, ρσ_string_primitive
 
 def jstype(value):
     return r"%js typeof value"
@@ -37,6 +38,7 @@ element = Element
 factor_pair = ρσ_factor_pair
 flint_backend = ρσ_flint_backend
 integer_bigint = ρσ_integer_bigint
+is_exact_integer = ρσ_is_exact_integer
 iterator_symbol = ρσ_iterator_symbol
 kwargs_symbol = ρσ_kwargs_symbol
 lightweight_math_class = ρσ_lightweight_math_class
@@ -55,4 +57,6 @@ regexp = RegExp
 repr = ρσ_repr
 sequence_class = ρσ_sequence_class
 set_class_repr = ρσ_set_class_repr
+string_find = ρσ_string_find
+string = ρσ_string_primitive
 undefined = r"%js undefined"

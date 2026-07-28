@@ -258,6 +258,11 @@ sage: RealField(100)(1/3)
 0.33333333333333333333333333333
 ```
 
+The real and complex parents, elements, literal handling, and coercion maps
+are implemented in ordinary annotated Sage.js/Python source. Only the opaque
+MPFR/MPC operations and a few JavaScript bootstrap primitives cross the
+explicit `sagejs.runtime` boundary.
+
 `RealField(p)` and `ComplexField(p)` are interned by precision. Their canonical
 maps follow Sage, including the intentionally information-losing maps from a
 higher-precision field to a lower-precision field. Consequently the common

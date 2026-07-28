@@ -21,6 +21,7 @@ The modules listed in `pyrightconfig.json` form the initial strict baselib:
 - `factorization.py`
 - `finite_fields.py`
 - `polynomial.py`
+- `real_complex.py`
 
 Each listed module must:
 

@@ -17,6 +17,10 @@ const rationalSource = readFileSync(
   join(root, "src/baselib/exact_rational.py"),
   "utf8",
 );
+const realComplexSource = readFileSync(
+  join(root, "src/baselib/real_complex.py"),
+  "utf8",
+);
 
 function methodBody(className, methodName) {
   const marker = `${className}.prototype.${methodName} = `;
@@ -91,6 +95,19 @@ assert.doesNotMatch(rationalConstructor, /ρσ_object_id/);
 for (const body of [rationalAdd, rationalSubtract, rationalMultiply]) {
   assert.match(body, /ρσ_bigint_divexact/);
   assert.doesNotMatch(body, /ρσ_operator_(?:add|sub|mul|floordiv)/);
+}
+
+assert.doesNotMatch(
+  realComplexSource,
+  /\bv(?:'[^']*'|"[^"]*"|"""[\s\S]*?""")/,
+);
+const realAdd = methodBody("RealNumberElement", "_add_");
+const realMultiply = methodBody("RealNumberElement", "_mul_");
+const complexAdd = methodBody("ComplexNumberElement", "_add_");
+const complexMultiply = methodBody("ComplexNumberElement", "_mul_");
+for (const body of [realAdd, realMultiply, complexAdd, complexMultiply]) {
+  assert.doesNotMatch(body, /ρσ_operator_(?:add|mul)/);
+  assert.doesNotMatch(body, /\bruntime\./);
 }
 
 console.log("Typed mathematical class lowering passed.");

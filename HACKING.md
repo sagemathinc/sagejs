@@ -51,7 +51,8 @@ pnpm bench:arithmetic
 and JavaScript/native adapters. Keep its raw JavaScript escape block small.
 Mathematical parents, elements, and algorithms should normally be ordinary
 Sage.js source. Exact rationals, finite fields, polynomial rings, and
-factorizations are now complete strict-source examples.
+factorizations, along with MPFR real and MPC complex fields, are now complete
+strict-source examples.
 The coercion resolver is responsible for both operand maps and may construct a
 common parent such as `QQ[x]`; do not reintroduce asymmetric `__radd__`
 dispatch for mathematical elements.
@@ -64,6 +65,11 @@ list only when it has a clean zero-error baseline. See
 [`TYPING.md`](TYPING.md) for the annotation policy. Types describe useful
 program structure, but should not attempt to statically encode value-dependent
 parents or Sage's runtime coercion graph.
+
+Run `pnpm baselib:status` to inventory every top-level baselib module. It
+reports strict coverage, verbatim JavaScript escape counts and line coverage,
+and remaining implicit-global declarations. Use it to choose coherent
+migration slices and to verify that the overall boundary is shrinking.
 
 `@ρσ_lightweight_math_class` is an internal compile-time annotation for hot,
 immutable element classes. It omits the generic eagerly allocated object

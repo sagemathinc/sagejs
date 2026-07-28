@@ -54,6 +54,7 @@
   },
   "scripts": {
     "build": "node scripts/build.cjs",
+    "baselib:status": "node scripts/baselib-status.cjs",
     "clean": "node scripts/clean.cjs",
     "start": "node bin/sagejs",
     "test": "pnpm run build && pnpm run test:baselib:strict && pnpm run test:compiler && pnpm run test:cli && pnpm run test:upstream:run",
