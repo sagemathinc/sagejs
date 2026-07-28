@@ -6,6 +6,7 @@ from __python__ import hash_literals
 
 from utils import noop
 from parse import PRECEDENCE
+from tokenizer import RESERVED_WORDS
 from ast_types import (
     AST_Array, AST_Assign, AST_BaseCall, AST_Binary, AST_BlockStatement,
     AST_Break, AST_Class, AST_Conditional, AST_Constant, AST_Continue,
@@ -473,8 +474,12 @@ def generate_code():
 
     def f_print_symbol(self, output):
         def_ = self.definition()
-        output.print_name((
-            def_.mangled_name or def_.name) if def_ else self.name)
+        name = self.name
+        if def_:
+            name = def_.mangled_name or def_.name
+        if RESERVED_WORDS[name] and name is not 'this':
+            name = 'ρσ_py_' + name
+        output.print_name(name)
 
     DEFPRINT(AST_Undefined, lambda self, output: output.print("void 0"))
     DEFPRINT(AST_Hole, noop)

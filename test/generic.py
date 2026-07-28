@@ -99,9 +99,17 @@ assrt.deepEqual([a, b, c], [[1, 2], 1, 2])
 throw_test('a += b += 1')
 throw_test('a += 1, 2 += b')
 throw_test('a += [1, 2] += b')
-throw_test('function = 1')
-throw_test('def function():\n pass')
-throw_test('class function:\n pass')
+# Python identifiers are mangled when they collide with JavaScript reserved
+# words; they remain valid Python source.
+PyLang.parse('function = 1', {'filename': 'reserved variable'}).body[0]
+PyLang.parse(
+    'def function():\n pass',
+    {'filename': 'reserved function'},
+).body[0]
+PyLang.parse(
+    'class function:\n pass',
+    {'filename': 'reserved class'},
+).body[0]
 throw_test('while 1:\npass')
 throw_test('def f():\n while 1:\n pass')
 throw_test('1 1')

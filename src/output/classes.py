@@ -104,7 +104,7 @@ def print_class(output):
         output.with_block(f_constructor)
 
     decorators = self.decorators or []
-    if decorators.length:
+    if decorators.length or self.sequential_definition:
         output.print('var ')
         output.assign(self.name)
         write_constructor()

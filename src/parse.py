@@ -23,7 +23,7 @@ from ast_types import (
     AST_Undefined, AST_Var, AST_VarDef, AST_Verbatim, AST_While, AST_With,
     AST_WithClause, AST_Yield, AST_Assert, AST_Existential, is_node_type)
 from ast_types import TreeWalker
-from tokenizer import tokenizer, is_token, RESERVED_WORDS
+from tokenizer import tokenizer, is_token
 from js import js_new
 
 COMPILER_VERSION = '__COMPILER_VERSION__'
@@ -1498,6 +1498,12 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 if is_('punc', ','):
                     next()
                     continue
+        if (
+            class_parent is None
+            and S.scoped_flags.get('sequential_definitions')
+        ):
+            class_parent = AST_SymbolRef({'name': 'object'})
+            bases.push(class_parent)
 
         docstrings = r'%js []'
 
@@ -1530,6 +1536,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'name': name,
             'docstrings': docstrings,
             'module_id': module_id,
+            'sequential_definition':
+            bool(S.scoped_flags.get('sequential_definitions')),
             'dynamic_properties': Object.create(None),
             'parent': class_parent,
             'bases': bases,
@@ -1639,8 +1647,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         return_annotation = None
         is_generator = r'%js []'
         docstrings = r'%js []'
+        parsed_argnames = None
 
         def argnames():
+            nonlocal parsed_argnames
             a = r'%js []'
             defaults = {}
             first = True
@@ -1771,6 +1781,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 S.in_parenthesized_expr = False
             a.defaults = defaults
             a.is_simple_func = not a.starargs and not a.kwargs and not a.has_defaults
+            parsed_argnames = a
             return a
 
         def decorators():
@@ -1785,7 +1796,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             S.classes.push({})
             S.scoped_flags.push()
             S.in_function += 1
-            S.functions.push({})
+            function_context = {'class_name': in_class}
+            if parsed_argnames and parsed_argnames.length:
+                function_context['self_name'] = parsed_argnames[0].name
+            S.functions.push(function_context)
             S.in_loop = 0
             S.labels = []
             if is_lambda:
@@ -2534,8 +2548,6 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
 
     def token_as_symbol(tok, ttype):
         name = tok.value
-        if RESERVED_WORDS[name] and name is not 'this':
-            croak(name + ' is a reserved word')
         args = {'name': r"%js String(tok.value)", 'start': tok, 'end': tok}
         if name is 'this':
             return AST_This(args)
@@ -2728,6 +2740,33 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         start = expr.start
         S.in_parenthesized_expr = True
         next()
+        if (
+            is_node_type(expr, AST_SymbolRef)
+            and expr.name is 'super'
+        ):
+            super_args = func_call_list()
+            if (
+                super_args.length is 0
+                and S.functions.length
+                and S.functions[-1].class_name
+            ):
+                super_args = [
+                    AST_SymbolRef({
+                        'name': S.functions[-1].class_name,
+                    }),
+                    AST_SymbolRef({
+                        'name': S.functions[-1].self_name,
+                    }),
+                ]
+            ret = subscripts(
+                AST_Call({
+                    'start': start,
+                    'expression': expr,
+                    'args': super_args,
+                    'end': prev(),
+                }), True)
+            S.in_parenthesized_expr = False
+            return ret
         if not expr.parens and get_class_in_scope(expr):
             # this is an object being created using a class
             ret = subscripts(

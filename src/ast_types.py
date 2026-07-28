@@ -543,6 +543,8 @@ class AST_Class(AST_Scope):
         "[AST_Decorator*] function decorators, if any",
         'module_id':
         "[string] The id of the module this class is defined in",
+        'sequential_definition':
+        "[boolean] assign this class when its statement executes",
         'statements':
         "[AST_Node*] list of statements in the class scope (excluding method definitions)",
         'dynamic_properties':

@@ -1579,19 +1579,117 @@ def ρσ_getattr(
     name: _Str,
     default_value: Any = _BUILTINS_MISSING,
 ) -> Any:
+    if not runtime.strict_equal(runtime.jstype(name), 'string'):
+        raise TypeError('attribute name must be string')
     if _builtins_has_member(value, name):
         return _builtins_get_member(value, name)
+    if _builtins_member_is_function(value, '__getattr__'):
+        try:
+            return _builtins_call_member(
+                value, '__getattr__', [name])
+        except AttributeError:
+            if default_value is not _BUILTINS_MISSING:
+                return default_value
+            raise
     if default_value is not _BUILTINS_MISSING:
         return default_value
     raise AttributeError('The attribute ' + name + ' is not present')
 
 
 def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
+    if not runtime.strict_equal(runtime.jstype(name), 'string'):
+        raise TypeError('attribute name must be string')
+    if (
+        value is ρσ_int
+        or value is ρσ_bool
+        or value is ρσ_float
+        or value is runtime.string_builtin
+    ):
+        raise TypeError(
+            "cannot set attributes of built-in/extension type")
     runtime.reflect.set(value, name, member)
 
 
 def ρσ_hasattr(value: Any, name: _Str) -> _Bool:
-    return _builtins_has_member(value, name)
+    if not runtime.strict_equal(runtime.jstype(name), 'string'):
+        raise TypeError('attribute name must be string')
+    try:
+        ρσ_getattr(value, name)
+        return True
+    except AttributeError:
+        return False
+
+
+def ρσ_py_super(cls: Any, instance: Any) -> Any:
+    if (
+        not runtime.strict_equal(runtime.jstype(cls), 'function')
+        or not runtime.instance_of(instance, cls)
+    ):
+        raise TypeError(
+            'super(type, obj): obj must be an instance or subtype of type')
+
+    prototype = runtime.object.getPrototypeOf(cls.prototype)
+
+    def super_repr() -> _Str:
+        return (
+            "<super: <class '" + _builtins_callable_name(cls)
+            + "'>, <" + _builtins_callable_name(instance.constructor)
+            + " object>>"
+        )
+
+    target = {
+        '__repr__': super_repr,
+        '__str__': super_repr,
+        'toString': super_repr,
+    }
+
+    def get_member(
+        proxy_target: Any,
+        name: Any,
+        _receiver: Any,
+    ) -> Any:
+        if runtime.reflect.has(proxy_target, name):
+            return runtime.reflect.get(proxy_target, name)
+        member = runtime.reflect.get(prototype, name)
+        if runtime.strict_equal(runtime.jstype(member), 'function'):
+            return runtime.reflect.apply(
+                runtime.reflect.get(member, 'bind'),
+                member,
+                [instance],
+            )
+        return member
+
+    def has_member(proxy_target: Any, name: Any) -> _Bool:
+        return (
+            runtime.reflect.has(proxy_target, name)
+            or runtime.reflect.has(prototype, name)
+        )
+
+    def reject_assignment(
+        _target: Any,
+        _name: Any,
+        _value: Any,
+        _receiver: Any,
+    ) -> _Bool:
+        raise AttributeError(
+            "'super' object has no writable attributes")
+
+    def reject_deletion(_target: Any, _name: Any) -> _Bool:
+        raise AttributeError(
+            "'super' object has no writable attributes")
+
+    return runtime.reflect.construct(
+        runtime.proxy_class,
+        [
+            target,
+            {
+                'get': get_member,
+                'has': has_member,
+                'set': reject_assignment,
+                'deleteProperty': reject_deletion,
+            },
+        ],
+    )
 
 
 def ρσ_len(value: Any) -> _Int:
@@ -1816,6 +1914,34 @@ runtime.set_class_repr(ρσ_bool, "<class 'bool'>")
 runtime.set_class_repr(ρσ_float, "<class 'float'>")
 runtime.set_class_repr(ρσ_type, "<class 'type'>")
 runtime.set_class_repr(runtime.string_builtin, "<class 'str'>")
+
+
+class SageObject:
+
+    def __init__(self) -> None:
+        pass
+
+    def __repr__(self) -> _Str:
+        constructor = runtime.reflect.get(self, 'constructor')
+        return (
+            '<' + runtime.reflect.get(constructor, '__name__')
+            + ' object at ' + str(id(self)) + '>'
+        )
+
+    def __hash__(self) -> _Int:
+        return id(self)
+
+
+runtime.reflect.set(
+    SageObject,
+    '__init__',
+    runtime.reflect.get(
+        runtime.reflect.get(SageObject, 'prototype'),
+        '__init__',
+    ),
+)
+runtime.set_class_repr(SageObject, "<class 'object'>")
+runtime.reflect.set(runtime.global_object, 'object', SageObject)
 hex = ρσ_hex
 oct = ρσ_oct
 hash = ρσ_hash
