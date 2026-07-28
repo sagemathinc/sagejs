@@ -514,9 +514,13 @@ def ρσ_interpolate_kwargs(
             'function takes no keyword arguments')
     argnames = _internal_get_member(
         target_function, '__argnames__')
-    if not argnames:
+    keyword_only = _internal_get_member(
+        target_function, '__kwonly__')
+    if not argnames and not keyword_only:
         return runtime.reflect.apply(
             target_function, receiver, supplied_args)
+    if not argnames:
+        argnames = runtime.reflect.construct(runtime.array, [0])
 
     keyword_object = supplied_args.pop()
     if _internal_get_member(
@@ -543,13 +547,15 @@ def ρσ_interpolate_kwargs(
                     call_args[index] = supplied_args[index]
             else:
                 call_args[index] = supplied_args[index]
-        if (
-            not _internal_get_member(target_function, '__varkw__')
-            and runtime.object.keys(keyword_object).length
-        ):
-            unexpected = runtime.object.keys(keyword_object)[0]
-            raise TypeError(
-                "unexpected keyword argument '" + unexpected + "'")
+        if not _internal_get_member(target_function, '__varkw__'):
+            for unexpected in runtime.object.keys(keyword_object):
+                if (
+                    not keyword_only
+                    or keyword_only.indexOf(unexpected) == -1
+                ):
+                    raise TypeError(
+                        "unexpected keyword argument '"
+                        + unexpected + "'")
         return runtime.reflect.apply(
             target_function, receiver, call_args)
 
@@ -563,10 +569,13 @@ def ρσ_interpolate_kwargs(
             supplied_args[index] = keyword_object[property_name]
             runtime.reflect.deleteProperty(
                 keyword_object, property_name)
-    if runtime.object.keys(keyword_object).length:
-        unexpected = runtime.object.keys(keyword_object)[0]
-        raise TypeError(
-            "unexpected keyword argument '" + unexpected + "'")
+    for unexpected in runtime.object.keys(keyword_object):
+        if (
+            not keyword_only
+            or keyword_only.indexOf(unexpected) == -1
+        ):
+            raise TypeError(
+                "unexpected keyword argument '" + unexpected + "'")
     return runtime.reflect.apply(
         target_function, receiver, supplied_args)
 

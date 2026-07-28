@@ -80,6 +80,18 @@ def function_preamble(node, output, offset, javascript_name):
                     'throw new TypeError("missing required argument: '
                     + argument.name + '")')
                 output.end_statement()
+        for argument in a.kwonly:
+            if not Object.prototype.hasOwnProperty.call(
+                a.defaults, argument.name
+            ):
+                output.indent()
+                output.print('if (typeof ')
+                argument.print(output)
+                output.print(' === "undefined") ')
+                output.print(
+                    'throw new TypeError("missing required keyword-only '
+                    + 'argument: ' + argument.name + '")')
+                output.end_statement()
 
     if a.is_simple_func:
         validate_arguments()
@@ -113,7 +125,7 @@ def function_preamble(node, output, offset, javascript_name):
                               '===', 'true)', '?', 'undefined', ':', '')
             output.print('arguments[' + i + ']')
             output.end_statement()
-    if a.kwargs or a.has_defaults:
+    if a.kwargs or a.has_defaults or a.kwonly.length:
         # Look for an options object
         kw = a.kwargs.name if a.kwargs else 'ρσ_kwargs_obj'
         output.indent()
@@ -128,6 +140,13 @@ def function_preamble(node, output, offset, javascript_name):
         # Read values from the kwargs object for any formal parameters
         if a.has_defaults:
             for dname in Object.keys(a.defaults):
+                is_keyword_only = False
+                for keyword_argument in a.kwonly:
+                    if keyword_argument.name is dname:
+                        is_keyword_only = True
+                        break
+                if is_keyword_only:
+                    continue
                 output.indent()
                 output.spaced(
                     'if', '(Object.prototype.hasOwnProperty.call(' + kw + ',',
@@ -144,6 +163,39 @@ def function_preamble(node, output, offset, javascript_name):
 
                 output.with_block(f)
                 output.newline()
+
+        for argument in a.kwonly:
+            output.indent()
+            output.print('var ')
+            output.assign(argument)
+            if Object.prototype.hasOwnProperty.call(
+                a.defaults, argument.name
+            ):
+                output.print(
+                    fname + '.__defaults__.' + argument.name)
+            else:
+                output.print('undefined')
+            output.end_statement()
+            output.indent()
+            output.print(
+                'if (Object.prototype.hasOwnProperty.call('
+                + kw + ', ' + JSON.stringify(argument.name) + '))')
+
+            def assign_keyword_only():
+                output.indent()
+                output.assign(argument)
+                output.print(kw + '[' + JSON.stringify(
+                    argument.name) + ']')
+                output.end_statement()
+                if a.kwargs:
+                    output.indent()
+                    output.print(
+                        'delete ' + kw + '['
+                        + JSON.stringify(argument.name) + ']')
+                    output.end_statement()
+
+            output.with_block(assign_keyword_only)
+            output.newline()
 
     if a.starargs is not undefined:
         # Define the *args parameter, putting in whatever is left after assigning the formal parameters and the options object
@@ -273,6 +325,18 @@ def function_annotation(self, output, strip_first, name):
             output.print(JSON.stringify(self.argnames.kwargs.name))
 
         props.__varkw__ = varkw
+
+    if self.argnames.kwonly.length:
+
+        def kwonly():
+            output.print('[')
+            for index, argument in enumerate(self.argnames.kwonly):
+                if index:
+                    output.comma()
+                output.print(JSON.stringify(argument.name))
+            output.print(']')
+
+        props.__kwonly__ = kwonly
 
     # Create __doc__
     if output.options.keep_docstrings and self.docstrings and self.docstrings.length:

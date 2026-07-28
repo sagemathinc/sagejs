@@ -1798,8 +1798,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         def argnames():
             nonlocal parsed_argnames
             a = r'%js []'
+            a.kwonly = r'%js []'
             defaults = {}
             first = True
+            keyword_only = False
             seen_names = {}
             def_line = S.input.context().tokline
             current_arg_name = None
@@ -1880,7 +1882,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 elif is_('operator', '*'):
                     # *args
                     next()
-                    if a.starargs:
+                    if keyword_only:
                         token_error(
                             name_token,
                             "Can't define multiple *args in function definition"
@@ -1890,14 +1892,25 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                             name_token,
                             "Can't define *args after **kwargs in function definition"
                         )
-                    a.starargs = get_arg()
+                    keyword_only = True
+                    if (
+                        is_('punc', ',')
+                        or is_('punc', end_punctuation)
+                    ):
+                        a.bare_star = True
+                    else:
+                        a.starargs = get_arg()
                 else:
-                    if a.starargs or a.kwargs:
+                    if a.kwargs:
                         token_error(
                             name_token,
-                            "Can't define a formal parameter after *args or **kwargs"
+                            "Can't define a formal parameter after **kwargs"
                         )
-                    a.push(get_arg())
+                    argument = get_arg()
+                    if keyword_only:
+                        a.kwonly.push(argument)
+                    else:
+                        a.push(argument)
                     if is_("operator", "="):
                         if a.kwargs:
                             token_error(
@@ -1908,13 +1921,17 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         defaults[current_arg_name] = expression(False)
                         a.has_defaults = True
                     else:
-                        if a.has_defaults:
+                        if a.has_defaults and not keyword_only:
                             token_error(
                                 name_token,
                                 "Can't define required formal parameters after optional formal parameters"
                             )
 
             next()
+            if a.bare_star and not a.kwonly.length:
+                token_error(
+                    name_token,
+                    "Named arguments must follow bare *")
 
             # Check if we have a return type annotation.
             # Note: lambda does not allow for type annotation:
@@ -1926,7 +1943,12 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             if not is_lambda:
                 S.in_parenthesized_expr = False
             a.defaults = defaults
-            a.is_simple_func = not a.starargs and not a.kwargs and not a.has_defaults
+            a.is_simple_func = (
+                not a.starargs
+                and not a.kwargs
+                and not a.kwonly.length
+                and not a.has_defaults
+            )
             parsed_argnames = a
             return a
 

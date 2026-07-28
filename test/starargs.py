@@ -9,12 +9,16 @@ def get(obj, name):
 
 # Test the parsing of function definitions {{{
 
-def basic_test(code, arglen, starargs, kwargs, defaults):
+def basic_test(code, arglen, starargs, kwargs, defaults, kwonly=None):
     func = PyLang.parse('def func(' + code + '): pass\n', {'filename':code}).body[0]
     eq(func.argnames.length, arglen)
     eq(get(func.argnames.starargs, 'name'), starargs)
     eq(get(func.argnames.kwargs, 'name'), kwargs)
-    eq(func.argnames.is_simple_func, bool(not starargs and not kwargs and not defaults))
+    de([arg.name for arg in func.argnames.kwonly], kwonly or [])
+    eq(
+        func.argnames.is_simple_func,
+        bool(not starargs and not kwargs and not defaults and not kwonly),
+    )
     if defaults:
         fd = {}
         for key in Object.keys(func.argnames.defaults):
@@ -30,7 +34,8 @@ def throw_test(code):
 basic_test('a, b, c', 3)
 basic_test('*args', 0, 'args')
 basic_test('a, b, *args', 2, 'args')
-throw_test('*args, a')
+basic_test('*args, a', 0, 'args', None, None, ['a'])
+basic_test('*, a', 0, None, None, None, ['a'])
 throw_test('*args, *a')
 basic_test('**kwargs', 0, undefined, 'kwargs')
 basic_test('*args, **kwargs', 0, 'args', 'kwargs')
