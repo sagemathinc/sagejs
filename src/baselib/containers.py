@@ -7,9 +7,11 @@ Python classes backed by the native JavaScript ``Set`` and ``Map`` types.
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any
 
 import sagejs.runtime as runtime
+
+_CONTAINERS_MISSING = runtime.object.create(None)
 
 
 def _new_array(length: Any = runtime.undefined) -> Any:
@@ -304,6 +306,20 @@ def _list_clear(self: Any) -> None:
 
 
 @runtime.native_method
+def _list_append(
+    self: Any,
+    value: Any = _CONTAINERS_MISSING,
+    *extra: Any,
+) -> None:
+    if value is _CONTAINERS_MISSING:
+        raise TypeError('append expected 1 argument')
+    if len(extra) != 0:
+        raise TypeError('append expected 1 argument')
+    runtime.reflect.apply(
+        runtime.array.prototype.push, self, [value])
+
+
+@runtime.native_method
 def _list_as_array(self: Any) -> Any:
     return runtime.reflect.apply(
         runtime.array.prototype.slice, self, [])
@@ -328,7 +344,7 @@ def _list_less_than(left: Any, right: Any) -> bool:
 @runtime.native_method
 def _list_sort(
     self: Any,
-    key: Callable[[Any], Any] | None = None,
+    key: Any = None,
     reverse: bool = False,
 ) -> None:
     decorated = _new_array(self.length)
@@ -348,6 +364,27 @@ def _list_sort(
     decorated.sort(compare)
     for index in range(self.length):
         self[index] = decorated[index][2]
+
+
+@runtime.native_method
+def _list_python_sort(
+    self: Any,
+    *positional_values: Any,
+    **keywords: Any,
+) -> None:
+    if len(positional_values) != 0:
+        raise TypeError('sort takes no positional arguments')
+    key = None
+    reverse = False
+    for name in runtime.object.keys(keywords):
+        if name == 'key':
+            key = runtime.reflect.get(keywords, name)
+        elif name == 'reverse':
+            reverse = bool(runtime.reflect.get(keywords, name))
+        else:
+            raise TypeError(
+                'sort got an unexpected keyword argument')
+    runtime.reflect.apply(_list_sort, self, [key, reverse])
 
 
 @runtime.native_method
@@ -422,7 +459,7 @@ def _list_prototype() -> Any:
     global _list_prototype_cache
     if _list_prototype_cache is runtime.undefined:
         prototype = runtime.object.create(runtime.array.prototype)
-        prototype.append = runtime.array.prototype.push
+        prototype.append = _list_append
         prototype.toString = _list_to_string
         prototype.inspect = _list_to_string
         prototype.__init__ = _list_init
@@ -437,7 +474,8 @@ def _list_prototype() -> Any:
         prototype.count = _list_count
         prototype.concat = _list_concat
         prototype.pysort = _list_sort
-        prototype.sort = _list_sort
+        prototype.pythonsort = _list_python_sort
+        prototype.sort = runtime.array.prototype.sort
         prototype.slice = _list_slice
         prototype.as_array = _list_as_array
         prototype.__len__ = _list_len

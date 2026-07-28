@@ -1074,9 +1074,14 @@ def ρσ_bool(value: Any) -> _Bool:
 
 
 def ρσ_round(
-    value: Any,
+    value: Any = _BUILTINS_MISSING,
     ndigits: Any = runtime.undefined,
+    *extra: Any,
 ) -> Any:
+    if value is _BUILTINS_MISSING:
+        raise TypeError('round expected at least 1 argument')
+    if len(extra) != 0:
+        raise TypeError('round expected at most 2 arguments')
     if _builtins_exact_integer_primitive(value):
         if ndigits is runtime.undefined or ndigits is None:
             return runtime.normalize_integer(runtime.bigint(value))
@@ -1886,13 +1891,22 @@ def ρσ_hash(value: Any) -> Any:
 
 
 def ρσ_enumerate(
-    iterable: Any,
+    iterable: Any = _BUILTINS_MISSING,
     start: _Int = 0,
+    *extra: Any,
 ) -> Iterator[Any]:
-    index = start
-    for value in iterable:
-        yield runtime.math_tuple([index, value])
-        index += 1
+    if iterable is _BUILTINS_MISSING:
+        raise TypeError('enumerate expected at least 1 argument')
+    if len(extra) != 0:
+        raise TypeError('enumerate expected at most 2 arguments')
+
+    def generate() -> Iterator[Any]:
+        index = start
+        for value in iterable:
+            yield runtime.math_tuple([index, value])
+            index += 1
+
+    return generate()
 
 
 def ρσ_tuple(iterable: Any = runtime.undefined) -> Any:
@@ -2549,6 +2563,17 @@ def ρσ_getattr(
 ) -> Any:
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
+    if (
+        name == 'sort'
+        and runtime.array.isArray(value)
+        and _builtins_member_is_function(value, 'pythonsort')
+    ):
+        python_sort = _builtins_get_member(value, 'pythonsort')
+        return runtime.reflect.apply(
+            runtime.reflect.get(python_sort, 'bind'),
+            python_sort,
+            [value],
+        )
     if runtime.strict_equal(runtime.jstype(value), 'string'):
         python_string_member = runtime.reflect.get(
             runtime.reflect.get(

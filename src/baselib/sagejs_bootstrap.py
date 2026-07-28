@@ -32,8 +32,16 @@ def ρσ_native_method_adapter(target_function):
         if (target_function.__argnames__) {
             method.__argnames__ = target_function.__argnames__.slice(1);
         }
-        method.__handles_kwarg_interpolation__ =
-            target_function.__handles_kwarg_interpolation__;
+        for (const name of [
+            "__defaults__",
+            "__handles_kwarg_interpolation__",
+            "__kwonly__",
+            "__positional_only__",
+            "__varargs__",
+            "__varkw__",
+        ]) {
+            method[name] = target_function[name];
+        }
         return method;
     })()"""
 
