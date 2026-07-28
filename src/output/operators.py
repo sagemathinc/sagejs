@@ -301,6 +301,10 @@ def print_binary_op(self, output):
         print_arithmetic_call(output, 'ρσ_operator_truediv')
         self.left.print(output), output.comma(), self.right.print(
             output), output.print(')')
+    elif self.operator is '%':
+        output.print('ρσ_operator_mod('), self.left.print(
+            output), output.comma(), self.right.print(output), output.print(
+                ')')
     elif self.operator is '//':
         output.print('ρσ_operator_floordiv('), self.left.print(
             output), output.comma(), self.right.print(output), output.print(

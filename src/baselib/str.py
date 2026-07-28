@@ -117,7 +117,24 @@ def ρσ_repr(value: Any) -> _Str:
     return _native_string(representation)
 
 
-def ρσ_str(value: Any) -> _Str:
+def ρσ_str(
+    value: Any = '',
+    encoding: Any = runtime.undefined,
+    errors: Any = runtime.undefined,
+    *extra: Any,
+) -> _Str:
+    if len(extra):
+        raise TypeError('str() takes at most 3 arguments')
+    if encoding is not runtime.undefined:
+        decoder = runtime.reflect.get(value, 'decode')
+        if not _value_type_is(decoder, 'function'):
+            raise TypeError('decoding to str requires a bytes-like object')
+        call_args = [encoding]
+        if errors is not runtime.undefined:
+            call_args.append(errors)
+        return runtime.reflect.apply(decoder, value, call_args)
+    if errors is not runtime.undefined:
+        raise TypeError('errors without a string argument')
     if value is None:
         return 'None'
     if value is runtime.undefined:

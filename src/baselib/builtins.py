@@ -252,6 +252,8 @@ def ρσ_operator_mul(left: Any, right: Any) -> Any:
         return _builtins_repeat_string(right, left)
     if _builtins_member_is_function(left, '__mul__'):
         return _builtins_call_member(left, '__mul__', [right])
+    if _builtins_member_is_function(right, '__rmul__'):
+        return _builtins_call_member(right, '__rmul__', [left])
     return runtime.native_mul(left, right)
 
 
@@ -270,6 +272,8 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
         return _builtins_repeat_string(right, left)
     if _builtins_member_is_function(left, '__mul__'):
         return _builtins_call_member(left, '__mul__', [right])
+    if _builtins_member_is_function(right, '__rmul__'):
+        return _builtins_call_member(right, '__rmul__', [left])
     if (
         runtime.strict_equal(runtime.jstype(left), 'bigint')
         or runtime.strict_equal(runtime.jstype(right), 'bigint')
@@ -495,6 +499,12 @@ def ρσ_operator_truediv_exact(left: Any, right: Any) -> Any:
     if _builtins_member_is_function(left, '__truediv__'):
         return _builtins_call_member(left, '__truediv__', [right])
     return runtime.native_div(left, right)
+
+
+def ρσ_operator_mod(left: Any, right: Any) -> Any:
+    if _builtins_member_is_function(left, '__mod__'):
+        return _builtins_call_member(left, '__mod__', [right])
+    return runtime.native_mod(left, right)
 
 
 def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
@@ -897,6 +907,21 @@ def ρσ_help(item: Any = runtime.undefined) -> None:
 
 
 def ρσ_ord(value: Any) -> _Int:
+    if (
+        runtime.strict_equal(runtime.jstype(value), 'object')
+        and _builtins_has_member(value, 'length')
+    ):
+        if value.length != 1:
+            raise TypeError(
+                'ord() expected a character, but string of length '
+                + str(value.length) + ' found'
+        )
+        return value[0]
+    if value.length < 1 or value.length > 2:
+        raise TypeError(
+            'ord() expected a character, but string of length '
+            + str(value.length) + ' found'
+        )
     answer = value.charCodeAt(0)
     if 0xD800 <= answer <= 0xDBFF:
         second = value.charCodeAt(1)
@@ -906,6 +931,11 @@ def ρσ_ord(value: Any) -> _Int:
                 + second - 0xDC00 + 0x10000
             )
         raise TypeError('string is missing the low surrogate char')
+    if value.length != 1:
+        raise TypeError(
+            'ord() expected a character, but string of length '
+            + str(value.length) + ' found'
+        )
     return answer
 
 

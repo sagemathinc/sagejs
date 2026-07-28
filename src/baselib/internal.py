@@ -466,6 +466,13 @@ def ρσ_splice(
         end = array.length
     if end < 0:
         end += array.length
+    if _internal_member_is_function(array, '__setslice__'):
+        runtime.reflect.apply(
+            _internal_get_member(array, '__setslice__'),
+            array,
+            [start, end, values],
+        )
+        return
     call_args = [start, end - start]
     for value in values:
         call_args.append(value)

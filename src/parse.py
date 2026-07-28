@@ -167,7 +167,7 @@ PRECEDENCE = operator_to_precedence([
 STATEMENTS_WITH_LABELS = array_to_hash(["for", "do", "while", "switch"])
 
 ATOMIC_START_TOKEN = array_to_hash(
-    ["atom", "num", "string", "regexp", "name", "js"])
+    ["atom", "bytes", "num", "string", "regexp", "name", "js"])
 
 compile_time_decorators = [
     'staticmethod', 'external', 'property', 'ρσ_lightweight_math_class',
@@ -240,6 +240,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'native_method_adapter': 'ρσ_native_method_adapter',
     'native_add': 'ρσ_native_add',
     'native_div': 'ρσ_native_div',
+    'native_mod': 'ρσ_native_mod',
     'native_mul': 'ρσ_native_mul',
     'native_neg': 'ρσ_native_neg',
     'native_pow': 'ρσ_native_pow',
@@ -770,7 +771,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         if p and not S.token.nlb and ATOMIC_START_TOKEN[p.type] and not is_(
                 'punc', ':') and not is_('punc', ';'):
             unexpected()
-        if tmp_ is "string":
+        if tmp_ is "bytes" or tmp_ is "string":
             return simple_statement()
         elif tmp_ is "shebang":
             tmp_ = S.token.value
@@ -2035,6 +2036,27 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'value': strings.join('')
         })
 
+    def bytes_():
+        strings = []
+        start = S.token
+        while True:
+            strings.push(S.token.value)
+            if peek().type is not 'bytes':
+                break
+            next()
+        return AST_Call({
+            'start': start,
+            'end': S.token,
+            'expression': AST_SymbolRef({
+                'name': 'ρσ_bytes_literal',
+            }),
+            'args': [AST_String({
+                'start': start,
+                'end': S.token,
+                'value': strings.join(''),
+            })],
+        })
+
     def token_as_atom_node():
         tok = S.token
         tmp_ = tok.type
@@ -2077,6 +2099,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             })
         elif tmp_ is "string":
             return string_()
+        elif tmp_ is "bytes":
+            return bytes_()
         elif tmp_ is "regexp":
             return AST_RegExp({'start': tok, 'end': tok, 'value': tok.value})
         elif tmp_ is "atom":
@@ -2746,6 +2770,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 elif tmp_ in {
                         'ρσ_native_add': '+',
                         'ρσ_native_div': '/',
+                        'ρσ_native_mod': '%',
                         'ρσ_native_mul': '*',
                         'ρσ_native_pow': '**',
                         'ρσ_native_sub': '-',
@@ -2760,6 +2785,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'operator': {
                             'ρσ_native_add': '+',
                             'ρσ_native_div': '/',
+                            'ρσ_native_mod': '%',
                             'ρσ_native_mul': '*',
                             'ρσ_native_pow': '**',
                             'ρσ_native_sub': '-',

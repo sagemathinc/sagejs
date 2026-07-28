@@ -82,7 +82,7 @@ IDENTIFIER_PAT = RegExp(r"^[a-z_$][_a-z0-9$]*$", "i")
 # https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
 def is_string_modifier(val: str) -> bool:
     for ch in val:
-        if ch not in 'vrufVRUF':
+        if ch not in 'bvrufBVRUF':
             return False
     return True
 
@@ -123,6 +123,8 @@ def is_identifier_start(code: int) -> bool:
 
 
 def is_identifier_char(ch: str) -> bool:
+    if not ch:
+        return False
     code = ord(ch)
     return is_identifier_start(code) or is_digit(
         code) or code is 8204 or code is 8205 or is_unicode_combining_mark(
@@ -770,6 +772,8 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
                     return handle_interpolated_string(stok.value, tok)
                 tok.value = stok.value
                 tok.type = stok.type
+                if mods.indexOf('b') is not -1:
+                    tok.type = 'bytes'
             return tok
 
         parse_error("Unexpected character '" + ch + "'")

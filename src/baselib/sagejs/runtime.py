@@ -51,6 +51,10 @@ def native_mul(left, right):
     return r"%js left * right"
 
 
+def native_mod(left, right):
+    return r"%js left % right"
+
+
 def native_neg(value):
     return r"%js -value"
 
