@@ -561,14 +561,20 @@ class SageSet:
         _set_delete_value(self.jsset, value)
 
     @staticmethod
-    def _from_iterable(other: Any) -> SageSet:
-        if isinstance(other, SageSet):
+    def _from_iterable(other: Any) -> Any:
+        if (
+            isinstance(other, SageSet)
+            or isinstance(other, SageFrozenSet)
+        ):
             return other
         return SageSet(other)
 
     @staticmethod
-    def _require_set(other: Any) -> SageSet:
-        if not isinstance(other, SageSet):
+    def _require_set(other: Any) -> Any:
+        if (
+            not isinstance(other, SageSet)
+            and not isinstance(other, SageFrozenSet)
+        ):
             raise TypeError('set operands must be sets')
         return other
 
@@ -687,7 +693,10 @@ class SageSet:
     inspect = __repr__
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, SageSet):
+        if (
+            not isinstance(other, SageSet)
+            and not isinstance(other, SageFrozenSet)
+        ):
             return False
         if self.size != other.size:
             return False
@@ -708,8 +717,158 @@ class SageSet:
         return self.size > converted.size and self.issuperset(converted)
 
 
+class SageFrozenSet:
+
+    def __init__(self, iterable: Any = runtime.undefined) -> None:
+        mutable = SageSet(iterable)
+        self.jsset = mutable.jsset
+
+    @property
+    def length(self) -> int:
+        return self.jsset.size
+
+    @property
+    def size(self) -> int:
+        return self.jsset.size
+
+    def __len__(self) -> int:
+        return self.jsset.size
+
+    def __contains__(self, value: Any) -> bool:
+        return _set_has_value(self.jsset, value)
+
+    has = __contains__
+
+    def __iter__(self) -> Any:
+        return self.jsset.values()
+
+    def copy(self) -> SageFrozenSet:
+        return self
+
+    @staticmethod
+    def _from_iterable(other: Any) -> Any:
+        if (
+            isinstance(other, SageSet)
+            or isinstance(other, SageFrozenSet)
+        ):
+            return other
+        return SageSet(other)
+
+    @staticmethod
+    def _require_set(other: Any) -> Any:
+        if (
+            not isinstance(other, SageSet)
+            and not isinstance(other, SageFrozenSet)
+        ):
+            raise TypeError('frozenset operands must be sets')
+        return other
+
+    def difference(self, *others: Any) -> SageFrozenSet:
+        converted = [self._from_iterable(other) for other in others]
+        values = [
+            value for value in self
+            if not any(other.has(value) for other in converted)
+        ]
+        return SageFrozenSet(values)
+
+    def intersection(self, *others: Any) -> SageFrozenSet:
+        converted = [self._from_iterable(other) for other in others]
+        values = [
+            value for value in self
+            if all(other.has(value) for other in converted)
+        ]
+        return SageFrozenSet(values)
+
+    def isdisjoint(self, other: Any) -> bool:
+        converted = self._from_iterable(other)
+        for value in self:
+            if converted.has(value):
+                return False
+        return True
+
+    def issubset(self, other: Any) -> bool:
+        converted = self._from_iterable(other)
+        for value in self:
+            if not converted.has(value):
+                return False
+        return True
+
+    def issuperset(self, other: Any) -> bool:
+        return self._from_iterable(other).issubset(self)
+
+    def symmetric_difference(self, other: Any) -> SageFrozenSet:
+        converted = self._from_iterable(other)
+        values = [
+            value for value in self
+            if not converted.has(value)
+        ]
+        for value in converted:
+            if not self.has(value):
+                values.append(value)
+        return SageFrozenSet(values)
+
+    def union(self, *others: Any) -> SageFrozenSet:
+        mutable = SageSet(self)
+        mutable.update(*others)
+        return SageFrozenSet(mutable)
+
+    def __or__(self, other: Any) -> SageFrozenSet:
+        return self.union(self._require_set(other))
+
+    def __and__(self, other: Any) -> SageFrozenSet:
+        return self.intersection(self._require_set(other))
+
+    def __xor__(self, other: Any) -> SageFrozenSet:
+        return self.symmetric_difference(self._require_set(other))
+
+    def __sub__(self, other: Any) -> SageFrozenSet:
+        return self.difference(self._require_set(other))
+
+    def __repr__(self) -> str:
+        if self.size == 0:
+            return 'frozenset()'
+        entries = list_constructor()
+        for value in self:
+            entries.push(runtime.repr(value))
+        return 'frozenset({' + entries.join(', ') + '})'
+
+    __str__ = __repr__
+    toString = __repr__
+    inspect = __repr__
+
+    def __eq__(self, other: object) -> bool:
+        if (
+            not isinstance(other, SageSet)
+            and not isinstance(other, SageFrozenSet)
+        ):
+            return False
+        return self.size == other.size and self.issubset(other)
+
+    def __le__(self, other: Any) -> bool:
+        return self.issubset(self._require_set(other))
+
+    def __lt__(self, other: Any) -> bool:
+        converted = self._require_set(other)
+        return self.size < converted.size and self.issubset(converted)
+
+    def __ge__(self, other: Any) -> bool:
+        return self.issuperset(self._require_set(other))
+
+    def __gt__(self, other: Any) -> bool:
+        converted = self._require_set(other)
+        return self.size > converted.size and self.issuperset(converted)
+
+
 def ρσ_set(iterable: Any = runtime.undefined) -> SageSet:
     return SageSet(iterable)
+
+
+def ρσ_frozenset(
+    iterable: Any = runtime.undefined,
+) -> SageFrozenSet:
+    if isinstance(iterable, SageFrozenSet):
+        return iterable
+    return SageFrozenSet(iterable)
 
 
 def set_wrap(native_set: Any) -> SageSet:
@@ -1058,6 +1217,11 @@ runtime.reflect.set(
     runtime.reflect.get(SageSet, 'prototype'),
 )
 runtime.reflect.set(
+    ρσ_frozenset,
+    'prototype',
+    runtime.reflect.get(SageFrozenSet, 'prototype'),
+)
+runtime.reflect.set(
     ρσ_dict,
     'prototype',
     runtime.reflect.get(SageDict, 'prototype'),
@@ -1072,6 +1236,11 @@ runtime.reflect.set(
     '__python_type__',
     ρσ_set,
 )
+runtime.reflect.set(
+    runtime.reflect.get(SageFrozenSet, 'prototype'),
+    '__python_type__',
+    ρσ_frozenset,
+)
 list_constructor = ρσ_list_constructor
 runtime.reflect.set(
     list_constructor, 'prototype', _list_prototype())
@@ -1079,8 +1248,10 @@ runtime.reflect.set(
     _list_prototype(), '__python_type__', list_constructor)
 runtime.set_class_repr(ρσ_dict, "<class 'dict'>")
 runtime.set_class_repr(ρσ_set, "<class 'set'>")
+runtime.set_class_repr(ρσ_frozenset, "<class 'frozenset'>")
 list_decorate = ρσ_list_decorate
 list = ρσ_list_constructor
 list_wrap = ρσ_list_decorate
 set = ρσ_set
+frozenset = ρσ_frozenset
 dict = ρσ_dict
