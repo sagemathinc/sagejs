@@ -1,5 +1,7 @@
 __name__ = 'sys'
 
+import sagejs.runtime as runtime
+
 
 class _Implementation:
     def __init__(self):
@@ -52,6 +54,7 @@ maxsize = int('9223372036854775807')
 # generally use ``sys.version_info`` for feature checks, but ``version`` is a
 # standard public attribute and must at least be a string.
 version = 'Sage.js'
+modules = runtime.modules
 
 
 def intern(value):

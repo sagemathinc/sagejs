@@ -62,12 +62,10 @@ eq(b, this)
 # Test global symbol declared in other module
 eq(GLOBAL_SYMBOL, 'i am global')
 
-# Import errors happen during parsing, so we cannot test them directly as they would
-# prevent this file from being parsed.
-
-assrt.throws(def():
-    PyLang.parse('from _import_one import not_exported', {'basedir':test_path}).body[0]
-, /not exported/)
-assrt.throws(def():
-    PyLang.parse('import xxxx', {'basedir':test_path}).body[0]
-, /doesn't exist/)
+# Imports are resolved at runtime, as in Python.  Parsing therefore succeeds
+# even when the requested module or exported name is not currently available.
+PyLang.parse(
+    'from _import_one import not_exported',
+    {'basedir': test_path},
+).body[0]
+PyLang.parse('import xxxx', {'basedir': test_path}).body[0]

@@ -71,10 +71,9 @@ def write_imports(module, output):
         imports.push(module.imports[import_id])
 
     imports.sort(lambda entry: entry.import_order)
-    if imports.length > 1:
-        output.indent()
-        output.print('var ρσ_modules = {};')
-        output.newline()
+    output.indent()
+    output.print('var ρσ_modules = {};')
+    output.newline()
 
     # Declare all variable names exported from the modules as global symbols
     nonlocalvars = {}
@@ -91,19 +90,19 @@ def write_imports(module, output):
     # Create the module objects
     for module_ in imports:
         module_id = module_.module_id
-        if module_id is not '__main__':
-            output.indent()
-            if module_id.indexOf('.') is -1:
-                output.print('ρσ_modules.' + module_id)
-            else:
-                output.print('ρσ_modules["' + module_id + '"]')
-            output.space(), output.print('='), output.space(), output.print(
-                '{}')
-            output.end_statement()
+        if module_.dynamic:
+            continue
+        output.indent()
+        if module_id.indexOf('.') is -1:
+            output.print('ρσ_modules.' + module_id)
+        else:
+            output.print('ρσ_modules["' + module_id + '"]')
+        output.space(), output.print('='), output.space(), output.print('{}')
+        output.end_statement()
 
     # Output module code
     for module_ in imports:
-        if module_.module_id is not '__main__':
+        if module_.module_id is not '__main__' and not module_.dynamic:
             print_module(module_, output)
 
 
@@ -120,6 +119,66 @@ def write_main_name(output, filename=None):
             output.semicolon()
         output.newline()
         output.newline()
+
+
+def bind_module_namespace(module, output):
+    """Expose module locals through a live Python module object."""
+    module_id = module.module_id
+    names = []
+    seen = {}
+    for symbol in module.localvars:
+        if not seen[symbol.name]:
+            seen[symbol.name] = True
+            names.push(symbol.name)
+    for nonlocal_name in module.nonlocalvars or []:
+        name = (
+            nonlocal_name.name
+            if nonlocal_name.name
+            else nonlocal_name
+        )
+        if name and not seen[name]:
+            seen[name] = True
+            names.push(name)
+    magic_names = []
+    if output.options.write_name:
+        magic_names.push('__name__')
+        if module_id is '__main__' and module.filename:
+            magic_names.push('__file__')
+    for name in magic_names:
+        if not seen[name]:
+            seen[name] = True
+            names.push(name)
+
+    output.indent()
+    output.print('Object.defineProperties(')
+    if module_id.indexOf('.') is -1:
+        output.print('ρσ_modules.' + module_id)
+    else:
+        output.print('ρσ_modules["' + module_id + '"]')
+    output.comma()
+    output.print('{')
+    for index, name in enumerate(names):
+        if index:
+            output.comma()
+        output.print_string(name)
+        output.colon()
+        output.print('{enumerable:true,get:function(){return ')
+        output.print_name(name)
+        output.print('},set:function(value){')
+        output.print_name(name)
+        output.print('=value}}')
+    output.print('})')
+    output.end_statement()
+
+    output.indent()
+    if module_id.indexOf('.') is -1:
+        output.print('ρσ_modules.' + module_id)
+    else:
+        output.print('ρσ_modules["' + module_id + '"]')
+    output.print('.__repr__ = function(){return ')
+    output.print(JSON.stringify("<module '" + module_id + "'>"))
+    output.print('}')
+    output.end_statement()
 
 
 def declare_exports(module_id, exports, output, docstrings):
@@ -222,6 +281,7 @@ def print_top_level(self, output):
                         output.newline()
                         write_numeric_literal_pool(numeric_literal_pool, output)
                         declare_vars(self.localvars, output)
+                        bind_module_namespace(self, output)
                         display_body(self.body, True, output)
                         output.newline()
                         write_docstrings()
@@ -250,6 +310,7 @@ def print_top_level(self, output):
 
         write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)
+        bind_module_namespace(self, output)
         display_body(self.body, True, output)
         if self.comments_after and self.comments_after.length:
             output_comments(self.comments_after, output)
@@ -263,6 +324,7 @@ def print_module(self, output):
     def output_module(output):
         write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)
+        bind_module_namespace(self, output)
         display_body(self.body, True, output)
         declare_exports(self.module_id, self.exports, output, self.docstrings)
 
@@ -364,6 +426,26 @@ def print_imports(container, output):
             is_first_aname = False
         else:
             output.indent()
+        output.print(
+            'if (!Object.prototype.hasOwnProperty.call('
+            'ρσ_modules, ')
+        output.print_string(key)
+        output.print(')) throw new ImportError(')
+        output.print_string("No module named '" + key + "'")
+        output.print(')')
+        output.end_statement()
+        output.indent()
+        if from_import:
+            output.print('if (!Reflect.has(ρσ_modules[')
+            output.print_string(key)
+            output.print('], ')
+            output.print_string(from_import)
+            output.print(')) throw new ImportError(')
+            output.print_string(
+                "cannot import name '" + from_import + "'")
+            output.print(')')
+            output.end_statement()
+            output.indent()
         output.print('var ')
         output.assign(aname)
         if key.indexOf('.') is -1:
@@ -375,8 +457,68 @@ def print_imports(container, output):
             output.print(from_import)
         output.end_statement()
 
+    def import_star(key, target_module):
+        output.print(
+            'if (!Object.prototype.hasOwnProperty.call('
+            'ρσ_modules, ')
+        output.print_string(key)
+        output.print(')) throw new ImportError(')
+        output.print_string("No module named '" + key + "'")
+        output.print(')')
+        output.end_statement()
+        output.indent()
+        output.print('var ρσ_star_source = ρσ_modules[')
+        output.print_string(key)
+        output.print(']')
+        output.end_statement()
+        output.indent()
+        output.print(
+            'if (ρσ_star_source === null || '
+            '(typeof ρσ_star_source !== "object" && '
+            'typeof ρσ_star_source !== "function")) '
+            'throw new ImportError("from-import target has no namespace")')
+        output.end_statement()
+        output.indent()
+        output.print(
+            'var ρσ_star_has_all = '
+            'ρσ_hasattr(ρσ_star_source, "__all__")')
+        output.end_statement()
+        output.indent()
+        output.print(
+            'var ρσ_star_names = ρσ_star_has_all ? '
+            'ρσ_getattr(ρσ_star_source, "__all__") : '
+            'ρσ_dir(ρσ_star_source)')
+        output.end_statement()
+        output.indent()
+        output.print(
+            'for (var ρσ_star_name of ρσ_star_names)')
+
+        def copy_star_name():
+            output.indent()
+            output.print(
+                'if (!ρσ_star_has_all && '
+                'ρσ_star_name[0] === "_") continue')
+            output.end_statement()
+            output.indent()
+            output.print('ρσ_modules[')
+            output.print_string(target_module)
+            output.print(
+                '][ρσ_star_name] = '
+                'ρσ_getattr(ρσ_star_source, ρσ_star_name)')
+            output.end_statement()
+            output.indent()
+            output.print('globalThis[ρσ_star_name] = ρσ_modules[')
+            output.print_string(target_module)
+            output.print('][ρσ_star_name]')
+            output.end_statement()
+
+        output.with_block(copy_star_name)
+
     for self in container.imports:
         if self.intrinsic:
+            continue
+        if self.star:
+            import_star(self.key, self.target_module)
             continue
         if self.argnames:
             # A from import

@@ -1,6 +1,6 @@
 from __python__ import hash_literals
 
-from ast_types import AST_Class, AST_Method, AST_SymbolRef, is_node_type
+from ast_types import AST_Class, AST_Method, AST_SymbolNonlocal, AST_SymbolRef, AST_Var, is_node_type
 from output.functions import decorate, function_definition, function_annotation
 from output.utils import create_doctring
 from utils import has_prop
@@ -467,6 +467,20 @@ def print_class(output):
         if is_node_type(stmt, AST_Method):
             if stmt.is_getter or stmt.is_setter or stmt.is_deleter:
                 continue
+            if stmt.name.name in self.nonlocal_names:
+                output.indent()
+                output.assign(stmt.name.name)
+                function_definition(
+                    stmt,
+                    output,
+                    False,
+                    False,
+                    stmt.name.name,
+                )
+                output.end_statement()
+                function_annotation(
+                    stmt, output, False, stmt.name.name)
+                continue
             define_method(stmt)
             defined_methods[stmt.name.name] = True
             sname = stmt.name.name
@@ -569,8 +583,22 @@ def print_class(output):
     # Other statements in the class context
     for stmt in self.statements:
         if not is_node_type(stmt, AST_Method):
+            if (
+                is_node_type(stmt, AST_Var)
+                and all(
+                    is_node_type(
+                        definition.name, AST_SymbolNonlocal)
+                    for definition in stmt.definitions
+                )
+            ):
+                continue
             output.indent()
-            stmt.print(output)
+            previous_class_body = output.in_class_body
+            output.in_class_body = True
+            try:
+                stmt.print(output)
+            finally:
+                output.in_class_body = previous_class_body
             output.newline()
     for classvar_name in Object.keys(self.classvars):
         output.indent()

@@ -13,8 +13,18 @@ NameError = runtime.reference_error
 
 def ρσ_exception_value(value: object) -> object:
     if runtime.strict_equal(runtime.jstype(value), 'function'):
-        return runtime.reflect.construct(value, [])
-    return value
+        value = runtime.reflect.construct(value, [])
+    error_tag = runtime.reflect.apply(
+        runtime.object.prototype.toString,
+        value,
+        [],
+    )
+    if (
+        runtime.instance_of(value, runtime.error)
+        or runtime.string(error_tag).endswith('Error]')
+    ):
+        return value
+    raise TypeError('exceptions must derive from BaseException')
 
 
 class BaseException(runtime.error):

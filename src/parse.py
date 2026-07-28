@@ -1472,6 +1472,18 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
     def do_import(key):
         if has_prop(imported_modules, key):
             return
+        if key == '__main__' and module_id == '__main__':
+            imported_modules[key] = {
+                'is_cached': True,
+                'classes': {},
+                'module_id': key,
+                'exports': [],
+                'nonlocalvars': [],
+                'baselib': {},
+                'outputs': {},
+                'discard_asserts': options.discard_asserts,
+            }
+            return
         if has_prop(importing_modules, key) and importing_modules[key]:
             import_error('Detected a recursive import of: ' + key +
                          ' while importing: ' + module_id)
@@ -1514,10 +1526,20 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     src_code = data
                     break
         if src_code is None:
-            import_error(
-                "Failed Import: '" + key +
-                "' module doesn't exist in any of the import directories: " +
-                import_dirs.join(':'))
+            imported_modules[key] = {
+                'is_cached': True,
+                'dynamic': True,
+                'classes': {},
+                'module_id': key,
+                'import_order': Object.keys(imported_modules).length,
+                'exports': [],
+                'nonlocalvars': [],
+                'baselib': {},
+                'outputs': {},
+                'discard_asserts': options.discard_asserts,
+                'imported_module_ids': [],
+            }
+            return
 
         try:
             cached = JSON.parse(
@@ -1679,6 +1701,9 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 'argnames': None,
                 'body': body,
                 'intrinsic': bool(intrinsic),
+                'dynamic': False,
+                'star': False,
+                'target_module': module_id,
             })
             aimp.start, aimp.end = tok.start, last_tok.end
             ans.imports.push(aimp)
@@ -1695,11 +1720,16 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     INTRINSIC_MODULES[imp.key]
                 continue
             do_import(imp.key)
+            imp.dynamic = bool(imported_modules[imp.key].dynamic)
             if imported_module_ids.indexOf(imp.key) is -1:
                 imported_module_ids.push(imp.key)
             classes = imported_modules[imp.key].classes
             if from_import:
                 expect_token("keyword", "import")
+                if is_('operator', '*'):
+                    imp.star = True
+                    next()
+                    break
                 imp.argnames = argnames = []
                 bracketed = is_('punc', '(')
                 if bracketed:
@@ -1709,11 +1739,6 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     exports[symdef.name] = True
                 while True:
                     aname = as_symbol(AST_ImportedVar)
-                    if not options.for_linting and not has_prop(
-                            exports, aname.name):
-                        import_error('The symbol "' + aname.name +
-                                     '" is not exported from the module: ' +
-                                     key)
                     if is_('keyword', 'as'):
                         next()
                         aname.alias = as_symbol(AST_SymbolAlias)
@@ -1859,6 +1884,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'bases': bases,
             'localvars': [],
             'classvars': class_details.classvars,
+            'nonlocal_names': [],
             'static': class_details.static,
             'classmethods': class_details.classmethods,
             'external': externaldecorator,
@@ -1873,6 +1899,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'body': body(S.in_loop, S.labels)
         })
         class_details.processing = False
+        definition.nonlocal_names = scan_for_nonlocal_defs(
+            definition.body)
         # find the constructor
         for stmt in definition.body:
             if is_node_type(stmt, AST_Method):

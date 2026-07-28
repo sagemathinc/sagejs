@@ -576,6 +576,7 @@ def generate_code():
             return False
 
         check_unbound = False
+        class_namespace = None
         if (
             is_node_type(self, AST_SymbolRef)
             and not output.assignment_target
@@ -585,11 +586,33 @@ def generate_code():
             for index in range(stack.length - 2, -1, -1):
                 scope = stack[index]
                 if is_node_type(scope, AST_Scope):
+                    if (
+                        is_node_type(scope, AST_Class)
+                        and output.in_class_body
+                        and self.name in scope.classvars
+                        and name == self.name
+                    ):
+                        class_namespace = scope
                     check_unbound = (
                         scope.annotated_locals
                         and scope.annotated_locals.indexOf(self.name) is not -1
                     )
                     break
+        if class_namespace:
+            output.print('(')
+            class_namespace.name.print(output)
+            output.print('.prototype.hasOwnProperty(')
+            output.print(JSON.stringify(self.name))
+            output.print(') ? ')
+            class_namespace.name.print(output)
+            output.print('.prototype[')
+            output.print(JSON.stringify(self.name))
+            output.print('] : ρσ_modules[')
+            output.print(JSON.stringify(class_namespace.module_id))
+            output.print('][')
+            output.print(JSON.stringify(self.name))
+            output.print('])')
+            return
         if check_unbound:
             output.print('ρσ_check_unbound(')
         output.print_name(name)
