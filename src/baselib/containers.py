@@ -207,12 +207,15 @@ def _list_index(
     start: int = 0,
     stop: Any = runtime.undefined,
 ) -> int:
+    start = int(start)
     if start < 0:
         start = max(0, self.length + start)
     if stop is runtime.undefined:
         stop = self.length
-    elif stop < 0:
-        stop = self.length + stop
+    else:
+        stop = int(stop)
+        if stop < 0:
+            stop = self.length + stop
     for index in range(start, min(stop, self.length)):
         if equals(self[index], value):
             return index
@@ -275,15 +278,11 @@ def _list_count(self: Any, value: Any) -> int:
     return answer
 
 
-def _list_sort_key(value: Any) -> Any:
-    value_type = runtime.jstype(value)
-    if (
-        runtime.strict_equal(value_type, 'string')
-        or runtime.strict_equal(value_type, 'number')
-        or runtime.strict_equal(value_type, 'bigint')
-    ):
-        return value
-    return value.toString()
+def _list_less_than(left: Any, right: Any) -> bool:
+    method = _get_member(left, '__lt__')
+    if runtime.strict_equal(runtime.jstype(method), 'function'):
+        return runtime.reflect.apply(method, left, [right])
+    return runtime.native_lt(left, right)
 
 
 @runtime.native_method
@@ -292,19 +291,19 @@ def _list_sort(
     key: Callable[[Any], Any] | None = None,
     reverse: bool = False,
 ) -> None:
-    key_function = key or _list_sort_key
     decorated = _new_array(self.length)
     for index in range(self.length):
-        decorated[index] = [key_function(self[index]), index, self[index]]
+        sort_key = self[index] if key is None else key(self[index])
+        decorated[index] = [sort_key, index, self[index]]
 
     multiplier = -1 if reverse else 1
 
     def compare(left: Any, right: Any) -> int:
-        if left[0] < right[0]:
+        if _list_less_than(left[0], right[0]):
             return -multiplier
-        if left[0] > right[0]:
+        if _list_less_than(right[0], left[0]):
             return multiplier
-        return multiplier * (left[1] - right[1])
+        return left[1] - right[1]
 
     decorated.sort(compare)
     for index in range(self.length):
@@ -370,6 +369,12 @@ def _list_mul(self: Any, other: Any) -> Any:
     return list_decorate(answer)
 
 
+@runtime.native_method
+def _list_iadd(self: Any, other: Any) -> Any:
+    runtime.reflect.apply(_list_extend, self, [other])
+    return self
+
+
 _list_prototype_cache = runtime.undefined
 
 
@@ -382,6 +387,7 @@ def _list_prototype() -> Any:
         prototype.inspect = _list_to_string
         prototype.extend = _list_extend
         prototype.index = _list_index
+        prototype.pop = _list_pop
         prototype.pypop = _list_pop
         prototype.remove = _list_remove
         prototype.insert = _list_insert
@@ -390,6 +396,7 @@ def _list_prototype() -> Any:
         prototype.count = _list_count
         prototype.concat = _list_concat
         prototype.pysort = _list_sort
+        prototype.sort = _list_sort
         prototype.slice = _list_slice
         prototype.as_array = _list_as_array
         prototype.__len__ = _list_len
@@ -397,6 +404,7 @@ def _list_prototype() -> Any:
         prototype.__eq__ = _list_eq
         prototype.__mul__ = _list_mul
         prototype.__rmul__ = _list_mul
+        prototype.__iadd__ = _list_iadd
         prototype.constructor = list_constructor
         _list_prototype_cache = prototype
     return _list_prototype_cache

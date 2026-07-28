@@ -70,11 +70,7 @@ def write_imports(module, output):
     for import_id in Object.keys(module.imports):
         imports.push(module.imports[import_id])
 
-    def compare(a, b):
-        a, b = a.import_order, b.import_order
-        return -1 if a < b else (1 if a > b else 0)
-
-    imports.sort(compare)
+    imports.sort(lambda entry: entry.import_order)
     if imports.length > 1:
         output.indent()
         output.print('var ρσ_modules = {};')

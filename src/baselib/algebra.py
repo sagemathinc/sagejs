@@ -602,6 +602,7 @@ def _freeze_tuple(
 
     properties = {
         '__add__': {'value': tuple_add},
+        '__iadd__': {'value': tuple_add},
         '__eq__': {'value': tuple_eq},
         '__mul__': {'value': tuple_mul},
         '__rmul__': {'value': tuple_mul},

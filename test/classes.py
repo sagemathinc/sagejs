@@ -124,7 +124,9 @@ bound = angela.get_bound_method()
 assrt.equal(bound(), angela.how_long())
 
 # function methods
-assrt.deepEqual(dir(angela).sort(), [
+angela_names = dir(angela)
+angela_names.sort()
+assrt.deepEqual(angela_names, [
     'HAIRS',
     "__init__",
     '__repr__',
