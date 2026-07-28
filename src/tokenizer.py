@@ -568,8 +568,36 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
             raise SyntaxError(err, filename, start_tok.line, start_tok.col,
                               start_tok.pos, False)
 
-        S['text'] = S['text'][:S['pos']] + '(' + interpolate(
-            string, raise_error) + ')' + S['text'][S['pos']:]
+        following_position = S['pos']
+        saw_newline = False
+        while WHITESPACE_CHARS[
+            charAt(S['text'], following_position)
+        ]:
+            if charAt(S['text'], following_position) is '\n':
+                saw_newline = True
+            following_position += 1
+
+        prefix_end = following_position
+        while 'bvrufBVRUF'.includes(
+            charAt(S['text'], prefix_end)
+        ):
+            prefix_end += 1
+        following_quote = charAt(S['text'], prefix_end)
+        adjacent_string = (
+            (not saw_newline or S['delimiter_depth'] > 0)
+            and (
+                following_quote is '"'
+                or following_quote is "'"
+            )
+        )
+
+        replacement = '(' + interpolate(string, raise_error) + ')'
+        if adjacent_string:
+            replacement += '+'
+        S['text'] = (
+            S['text'][:S['pos']] + replacement
+            + S['text'][S['pos']:]
+        )
         return token('punc', next())
 
     def read_line_comment(shebang):

@@ -247,7 +247,6 @@ def _apply_formatting(
         align = align or '='
     else:
         fill = fill or ' '
-        align = align or '>'
 
     numeric_value = runtime.number(original)
     is_numeric = not runtime.is_nan(numeric_value)
@@ -324,6 +323,8 @@ def _apply_formatting(
             if format_type == 'G':
                 value = _upper(value)
     else:
+        if lower_type == 's':
+            is_numeric = False
         if grouping:
             value = runtime.parse_int(value, 10)
             if runtime.is_nan(value):
@@ -333,6 +334,7 @@ def _apply_formatting(
         if not runtime.is_nan(precision):
             value = value[:precision]
 
+    align = align or ('>' if is_numeric else '<')
     value = _native_string(value)
     if is_numeric and sign:
         number_value = runtime.number(value)
@@ -475,14 +477,15 @@ def string_format(
             next_index += 1
         if _value_type_is(value, 'function'):
             value = value()
-        answer = ρσ_str(value)
-        if specification:
-            answer = _apply_formatting(
-                value, specification, keywords)
         if conversion == 'r':
             answer = ρσ_repr(value)
         elif conversion == 's':
             answer = ρσ_str(value)
+        else:
+            answer = ρσ_str(value)
+        if specification:
+            answer = _apply_formatting(
+                answer, specification, keywords)
         if show_key:
             answer = key + '=' + answer
         return answer

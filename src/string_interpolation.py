@@ -6,11 +6,74 @@ def quoted_string(x):
         RegExp('"', 'g'), r'\"').replace(RegExp('\n', 'g'), '\\n') + '"'
 
 
+def render_format_string(prefix, fmtspec):
+    if fmtspec.indexOf('{') is -1:
+        return quoted_string(prefix + '{' + fmtspec + '}')
+
+    parts = [quoted_string(prefix + '{')]
+    literal = ''
+    pos = 0
+    while pos < fmtspec.length:
+        ch = fmtspec[pos]
+        if ch is not '{':
+            literal += ch
+            pos += 1
+            continue
+        if literal:
+            parts.push(quoted_string(literal))
+            literal = ''
+        depth = 1
+        end = pos + 1
+        expression = ''
+        while end < fmtspec.length and depth:
+            nested = fmtspec[end]
+            if nested is '{':
+                depth += 1
+            elif nested is '}':
+                depth -= 1
+                if depth is 0:
+                    break
+            if depth:
+                expression += nested
+            end += 1
+        parts.push('ρσ_str((' + expression + '))')
+        pos = end + 1
+    if literal:
+        parts.push(quoted_string(literal))
+    parts.push(quoted_string('}'))
+    return parts.join('+')
+
+
 def render_markup(markup):
     pos, key = 0, ''
+    depth = 0
+    quote = ''
+    escaped = False
     while pos < markup.length:
         ch = markup[pos]
-        if ch is '!' or ch is ':':
+        if quote:
+            key += ch
+            if escaped:
+                escaped = False
+            elif ch is '\\':
+                escaped = True
+            elif ch is quote:
+                quote = ''
+            pos += 1
+            continue
+        if ch is '"' or ch is "'":
+            quote = ch
+        elif ch is '(' or ch is '[' or ch is '{':
+            depth += 1
+        elif ch is ')' or ch is ']' or ch is '}':
+            depth -= 1
+        elif (
+            depth is 0
+            and (
+                ch is ':'
+                or ch is '!' and markup[pos + 1] is not '='
+            )
+        ):
             break
         key += ch
         pos += 1
@@ -19,17 +82,33 @@ def render_markup(markup):
     if key.endsWith('='):
         prefix = key
         key = key[:-1]
-    return 'ρσ_str.format("' + prefix + '{' + fmtspec + '}", ' + key + ')'
+    return (
+        'ρσ_str.format(' + render_format_string(prefix, fmtspec)
+        + ', (' + key + '))'
+    )
 
 
 def interpolate(template, raise_error):
     pos = in_brace = 0
     markup = ''
     ans = [""]
+    quote = ''
+    escaped = False
     while pos < template.length:
         ch = template[pos]
         if in_brace:
-            if ch is '{':
+            if quote:
+                markup += ch
+                if escaped:
+                    escaped = False
+                elif ch is '\\':
+                    escaped = True
+                elif ch is quote:
+                    quote = ''
+            elif ch is '"' or ch is "'":
+                quote = ch
+                markup += ch
+            elif ch is '{':
                 in_brace += 1
                 markup += '{'
             elif ch is '}':
