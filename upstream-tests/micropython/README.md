@@ -49,9 +49,13 @@ MICROPYTHON=/path/to/micropython pnpm bench:micropython
 This intentionally starts a fresh interpreter for every sample and therefore
 measures startup, parsing/compilation, and execution together. It reports
 per-test ratio distributions because summing this correctness corpus gives
-arbitrary weight to its chosen iteration counts. Use `--json PATH` to retain a
-machine-readable report, `--sagejs-mode precompiled` to remove Sage.js compiler
-time while retaining cold Node startup, and `--help` for sampling controls.
+arbitrary weight to its chosen iteration counts. Before timing, an unrecorded
+behavior probe compares each runtime's exit status and output. Tests unsupported
+by an older packaged MicroPython, or otherwise doing different work, are listed
+and excluded instead of aborting or distorting the benchmark. Use `--json PATH`
+to retain a machine-readable report, `--sagejs-mode precompiled` to remove
+Sage.js compiler time while retaining cold Node startup, and `--help` for
+sampling controls.
 
 Reviewed differences which should not be emulated are recorded separately in
 `INTENTIONAL-INCOMPATIBILITIES.json`. A record applies only while the test has

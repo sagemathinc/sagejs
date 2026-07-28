@@ -28,6 +28,7 @@ function usage() {
 Compare isolated-process execution of the adopted MicroPython compatibility
 corpus under Sage.js and MicroPython. Each sample includes process startup,
 parsing/compilation, and execution; a fresh process means V8 is cold each time.
+An unrecorded probe first excludes tests whose output or exit status differs.
 
 Options:
   --micropython PATH   MicroPython executable (default: $MICROPYTHON or
@@ -157,6 +158,120 @@ function runTimed(command, args, timeout) {
   return milliseconds;
 }
 
+function normalizeOutput(output) {
+  return output.replace(/\r\n/g, "\n");
+}
+
+function runObserved(command, args, timeout) {
+  const result = spawnSync(command, args, {
+    cwd: corpusRoot,
+    encoding: "utf8",
+    timeout,
+  });
+  if (result.error && result.error.code !== "ETIMEDOUT") {
+    throw new Error(`${command} could not run: ${result.error.message}`);
+  }
+  return {
+    output: normalizeOutput(`${result.stdout || ""}${result.stderr || ""}`),
+    status: result.status,
+    signal: result.signal,
+    timedOut: result.error?.code === "ETIMEDOUT",
+  };
+}
+
+function invocation(engine, name, options, precompiled) {
+  const file = join(corpusRoot, name);
+  if (engine === "sagejs") {
+    return options.sagejsMode === "precompiled"
+      ? {
+          command: process.execPath,
+          args: [precompiled.outputs[name]],
+        }
+      : {
+          command: process.execPath,
+          args: [sagejs, "--python", file],
+        };
+  }
+  return {
+    command: options.micropython,
+    args: [file],
+  };
+}
+
+function firstOutputDifference(left, right) {
+  const leftLines = left.split("\n");
+  const rightLines = right.split("\n");
+  const count = Math.max(leftLines.length, rightLines.length);
+  for (let index = 0; index < count; index += 1) {
+    if (leftLines[index] !== rightLines[index]) {
+      return (
+        `line ${index + 1}: Sage.js ${JSON.stringify(leftLines[index])}, ` +
+        `MicroPython ${JSON.stringify(rightLines[index])}`
+      );
+    }
+  }
+  return "output differs";
+}
+
+function compatibilityReason(sagejsResult, micropythonResult) {
+  if (sagejsResult.timedOut) return "Sage.js probe timed out";
+  if (micropythonResult.timedOut) return "MicroPython probe timed out";
+  if (sagejsResult.status !== 0) {
+    return (
+      `Sage.js probe exited ${sagejsResult.status ?? sagejsResult.signal}`
+    );
+  }
+  if (micropythonResult.status !== 0) {
+    return (
+      `MicroPython probe exited ` +
+      `${micropythonResult.status ?? micropythonResult.signal}`
+    );
+  }
+  if (sagejsResult.output !== micropythonResult.output) {
+    return firstOutputDifference(
+      sagejsResult.output,
+      micropythonResult.output,
+    );
+  }
+  return null;
+}
+
+function probeCompatibility(tests, options, precompiled) {
+  const compatible = [];
+  const excluded = [];
+  for (const name of tests) {
+    const sagejsInvocation = invocation(
+      "sagejs",
+      name,
+      options,
+      precompiled,
+    );
+    const micropythonInvocation = invocation(
+      "micropython",
+      name,
+      options,
+      precompiled,
+    );
+    const sagejsResult = runObserved(
+      sagejsInvocation.command,
+      sagejsInvocation.args,
+      options.timeout,
+    );
+    const micropythonResult = runObserved(
+      micropythonInvocation.command,
+      micropythonInvocation.args,
+      options.timeout,
+    );
+    const reason = compatibilityReason(sagejsResult, micropythonResult);
+    if (reason) {
+      excluded.push({ name, reason });
+    } else {
+      compatible.push(name);
+    }
+  }
+  return { compatible, excluded };
+}
+
 function precompileTests(tests, timeout) {
   // Dynamic eval/exec resolves its compiler helper relative to the generated
   // JavaScript file, so keep temporary outputs beside dist/tools/dynamic-code.
@@ -230,8 +345,8 @@ function formatMilliseconds(value) {
 }
 
 function benchmark(options) {
-  const tests = discoverTests(options.only);
-  if (tests.length === 0) throw new Error("no tests matched");
+  const discoveredTests = discoverTests(options.only);
+  if (discoveredTests.length === 0) throw new Error("no tests matched");
 
   const micropythonVersion = identify(options.micropython, ["--version"]);
   const git = spawnSync("git", ["rev-parse", "--short", "HEAD"], {
@@ -257,7 +372,7 @@ function benchmark(options) {
   };
 
   console.log(
-    `Benchmarking ${tests.length} differential tests, ` +
+    `Inspecting ${discoveredTests.length} differential tests, then ` +
       `${options.repetitions} recorded + ${options.warmups} warmup rounds`,
   );
   console.log(`Sage.js ${revision}, Node ${process.version}`);
@@ -269,44 +384,51 @@ function benchmark(options) {
 
   const precompiled =
     options.sagejsMode === "precompiled"
-      ? precompileTests(tests, options.timeout)
+      ? precompileTests(discoveredTests, options.timeout)
       : null;
-  const samples = Object.fromEntries(
-    tests.map((name) => [
-      name,
-      { sagejs: [], micropython: [] },
-    ]),
-  );
-  const rounds = options.warmups + options.repetitions;
+  let compatibility;
   try {
+    compatibility = probeCompatibility(
+      discoveredTests,
+      options,
+      precompiled,
+    );
+    const tests = compatibility.compatible;
+    console.log(
+      `Behavior probe: ${tests.length} comparable, ` +
+        `${compatibility.excluded.length} excluded`,
+    );
+    if (compatibility.excluded.length > 0) {
+      for (const exclusion of compatibility.excluded) {
+        console.log(`  exclude ${exclusion.name}: ${exclusion.reason}`);
+      }
+    }
+    if (tests.length === 0) {
+      throw new Error("no behaviorally comparable tests remain");
+    }
+
+    const samples = Object.fromEntries(
+      tests.map((name) => [
+        name,
+        { sagejs: [], micropython: [] },
+      ]),
+    );
+    const rounds = options.warmups + options.repetitions;
     for (let round = 0; round < rounds; round += 1) {
       const recorded = round >= options.warmups;
       for (let index = 0; index < tests.length; index += 1) {
         const name = tests[index];
-        const file = join(corpusRoot, name);
         const engines =
           (round + index) % 2 === 0
             ? ["sagejs", "micropython"]
             : ["micropython", "sagejs"];
         for (const engine of engines) {
-          const elapsed =
-            engine === "sagejs"
-              ? options.sagejsMode === "precompiled"
-                ? runTimed(
-                    process.execPath,
-                    [precompiled.outputs[name]],
-                    options.timeout,
-                  )
-                : runTimed(
-                    process.execPath,
-                    [sagejs, "--python", file],
-                    options.timeout,
-                  )
-              : runTimed(
-                  options.micropython,
-                  [file],
-                  options.timeout,
-                );
+          const command = invocation(engine, name, options, precompiled);
+          const elapsed = runTimed(
+            command.command,
+            command.args,
+            options.timeout,
+          );
           if (recorded) samples[name][engine].push(elapsed);
         }
       }
@@ -315,116 +437,120 @@ function benchmark(options) {
           `${round + 1}/${rounds} complete`,
       );
     }
+    const results = tests.map((name) => {
+      const sagejsMedian = quantile(samples[name].sagejs, 0.5);
+      const micropythonMedian = quantile(
+        samples[name].micropython,
+        0.5,
+      );
+      return {
+        name,
+        sagejsMilliseconds: sagejsMedian,
+        micropythonMilliseconds: micropythonMedian,
+        ratio: sagejsMedian / micropythonMedian,
+        samples: samples[name],
+      };
+    });
+    const ratios = results.map((result) => result.ratio);
+    const sagejsTimes = results.map(
+      (result) => result.sagejsMilliseconds,
+    );
+    const micropythonTimes = results.map(
+      (result) => result.micropythonMilliseconds,
+    );
+
+    console.log("\nPer-test cold-process medians:");
+    console.log(
+      `  Sage.js median             ${formatMilliseconds(quantile(sagejsTimes, 0.5))}`,
+    );
+    console.log(
+      `  MicroPython median         ${formatMilliseconds(quantile(micropythonTimes, 0.5))}`,
+    );
+    console.log(
+      `  ratio geometric mean       ${geometricMean(ratios).toFixed(2)}x`,
+    );
+    console.log(
+      `  ratio p10 / p50 / p90      ` +
+        `${quantile(ratios, 0.1).toFixed(2)}x / ` +
+        `${quantile(ratios, 0.5).toFixed(2)}x / ` +
+        `${quantile(ratios, 0.9).toFixed(2)}x`,
+    );
+    console.log(
+      `  sum of per-test medians    ` +
+        `${(sagejsTimes.reduce((a, b) => a + b, 0) / 1000).toFixed(2)} s / ` +
+        `${(micropythonTimes.reduce((a, b) => a + b, 0) / 1000).toFixed(2)} s`,
+    );
+    console.log(
+      "  (ratio > 1 means Sage.js is slower; sums reflect this corpus's " +
+        "arbitrary test weighting)",
+    );
+
+    const slowest = [...results]
+      .sort((left, right) => right.ratio - left.ratio)
+      .slice(0, Math.min(10, results.length));
+    console.log("\nLargest Sage.js/MicroPython ratios:");
+    for (const result of slowest) {
+      console.log(
+        `  ${result.ratio.toFixed(2).padStart(7)}x  ` +
+          `${result.name.padEnd(34)} ` +
+          `${formatMilliseconds(result.sagejsMilliseconds).padStart(10)} / ` +
+          `${formatMilliseconds(result.micropythonMilliseconds)}`,
+      );
+    }
+
+    const report = {
+      format: 2,
+      measurement:
+        options.sagejsMode === "precompiled"
+          ? "isolated process: startup + execute precompiled JavaScript"
+          : "isolated process: startup + parse/compile + execute",
+      source,
+      sagejs: {
+        revision,
+        node: process.version,
+      },
+      micropython: {
+        command: options.micropython,
+        version: micropythonVersion,
+      },
+      options: {
+        repetitions: options.repetitions,
+        warmups: options.warmups,
+        sagejsMode: options.sagejsMode,
+        timeout: options.timeout,
+        only: options.only?.source || null,
+      },
+      host: {
+        ...host,
+        loadAverageEnd: loadavg(),
+      },
+      compatibility: {
+        inspected: discoveredTests.length,
+        comparable: tests.length,
+        excluded: compatibility.excluded,
+      },
+      summary: {
+        tests: results.length,
+        sagejsMedianMilliseconds: quantile(sagejsTimes, 0.5),
+        micropythonMedianMilliseconds: quantile(
+          micropythonTimes,
+          0.5,
+        ),
+        ratioGeometricMean: geometricMean(ratios),
+        ratioP10: quantile(ratios, 0.1),
+        ratioP50: quantile(ratios, 0.5),
+        ratioP90: quantile(ratios, 0.9),
+      },
+      results,
+    };
+    if (options.json) {
+      writeFileSync(options.json, `${JSON.stringify(report, null, 2)}\n`);
+      console.log(`\nWrote ${options.json}`);
+    }
   } finally {
     if (precompiled) {
       precompiled.cleanup();
     }
-  }
-
-  const results = tests.map((name) => {
-    const sagejsMedian = quantile(samples[name].sagejs, 0.5);
-    const micropythonMedian = quantile(
-      samples[name].micropython,
-      0.5,
-    );
-    return {
-      name,
-      sagejsMilliseconds: sagejsMedian,
-      micropythonMilliseconds: micropythonMedian,
-      ratio: sagejsMedian / micropythonMedian,
-      samples: samples[name],
-    };
-  });
-  const ratios = results.map((result) => result.ratio);
-  const sagejsTimes = results.map(
-    (result) => result.sagejsMilliseconds,
-  );
-  const micropythonTimes = results.map(
-    (result) => result.micropythonMilliseconds,
-  );
-
-  console.log("\nPer-test cold-process medians:");
-  console.log(
-    `  Sage.js median             ${formatMilliseconds(quantile(sagejsTimes, 0.5))}`,
-  );
-  console.log(
-    `  MicroPython median         ${formatMilliseconds(quantile(micropythonTimes, 0.5))}`,
-  );
-  console.log(
-    `  ratio geometric mean       ${geometricMean(ratios).toFixed(2)}x`,
-  );
-  console.log(
-    `  ratio p10 / p50 / p90      ` +
-      `${quantile(ratios, 0.1).toFixed(2)}x / ` +
-      `${quantile(ratios, 0.5).toFixed(2)}x / ` +
-      `${quantile(ratios, 0.9).toFixed(2)}x`,
-  );
-  console.log(
-    `  sum of per-test medians    ` +
-      `${(sagejsTimes.reduce((a, b) => a + b, 0) / 1000).toFixed(2)} s / ` +
-      `${(micropythonTimes.reduce((a, b) => a + b, 0) / 1000).toFixed(2)} s`,
-  );
-  console.log(
-    "  (ratio > 1 means Sage.js is slower; sums reflect this corpus's " +
-      "arbitrary test weighting)",
-  );
-
-  const slowest = [...results]
-    .sort((left, right) => right.ratio - left.ratio)
-    .slice(0, Math.min(10, results.length));
-  console.log("\nLargest Sage.js/MicroPython ratios:");
-  for (const result of slowest) {
-    console.log(
-      `  ${result.ratio.toFixed(2).padStart(7)}x  ` +
-        `${result.name.padEnd(34)} ` +
-        `${formatMilliseconds(result.sagejsMilliseconds).padStart(10)} / ` +
-        `${formatMilliseconds(result.micropythonMilliseconds)}`,
-    );
-  }
-
-  const report = {
-    format: 1,
-    measurement:
-      options.sagejsMode === "precompiled"
-        ? "isolated process: startup + execute precompiled JavaScript"
-        : "isolated process: startup + parse/compile + execute",
-    source,
-    sagejs: {
-      revision,
-      node: process.version,
-    },
-    micropython: {
-      command: options.micropython,
-      version: micropythonVersion,
-    },
-    options: {
-      repetitions: options.repetitions,
-      warmups: options.warmups,
-      sagejsMode: options.sagejsMode,
-      timeout: options.timeout,
-      only: options.only?.source || null,
-    },
-    host: {
-      ...host,
-      loadAverageEnd: loadavg(),
-    },
-    summary: {
-      tests: results.length,
-      sagejsMedianMilliseconds: quantile(sagejsTimes, 0.5),
-      micropythonMedianMilliseconds: quantile(
-        micropythonTimes,
-        0.5,
-      ),
-      ratioGeometricMean: geometricMean(ratios),
-      ratioP10: quantile(ratios, 0.1),
-      ratioP50: quantile(ratios, 0.5),
-      ratioP90: quantile(ratios, 0.9),
-    },
-    results,
-  };
-  if (options.json) {
-    writeFileSync(options.json, `${JSON.stringify(report, null, 2)}\n`);
-    console.log(`\nWrote ${options.json}`);
   }
 }
 
