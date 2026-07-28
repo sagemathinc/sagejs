@@ -2104,6 +2104,21 @@ def ρσ_getattr(
 ) -> Any:
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
+    if runtime.strict_equal(runtime.jstype(value), 'string'):
+        python_string_member = runtime.reflect.get(
+            runtime.reflect.get(
+                runtime.string_builtin, 'prototype'),
+            name,
+        )
+        if runtime.strict_equal(
+            runtime.jstype(python_string_member), 'function'
+        ):
+            return runtime.reflect.apply(
+                runtime.reflect.get(
+                    python_string_member, 'bind'),
+                python_string_member,
+                [value],
+            )
     if _builtins_has_member(value, name):
         member = _builtins_get_member(value, name)
         if _builtins_has_member(member, '__staticmethod__'):

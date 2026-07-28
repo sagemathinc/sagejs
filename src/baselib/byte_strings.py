@@ -627,6 +627,32 @@ class SageBytes:
         parts.append(self.slice(index))
         return parts
 
+    def splitlines(self, keepends: Any = False) -> list[SageBytes]:
+        answer = []
+        start = 0
+        position = 0
+        while position < len(self._values):
+            value = self._values[position]
+            if value != 10 and value != 13:
+                position += 1
+                continue
+            newline_end = position + 1
+            if (
+                value == 13
+                and newline_end < len(self._values)
+                and self._values[newline_end] == 10
+            ):
+                newline_end += 1
+            end = newline_end if keepends else position
+            answer.append(_new_bytes_like(
+                self, self._values[start:end]))
+            start = newline_end
+            position = newline_end
+        if start < len(self._values):
+            answer.append(_new_bytes_like(
+                self, self._values[start:]))
+        return answer
+
     def rsplit(
         self,
         separator: Any = runtime.undefined,

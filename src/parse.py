@@ -2207,7 +2207,14 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         start = S.token
         while True:
             strings.push(S.token.value)
-            if peek().type is not 'string':
+            next_token = peek()
+            if (
+                next_token.type is not 'string'
+                or (
+                    next_token.nlb
+                    and not S.in_parenthesized_expr
+                )
+            ):
                 break
             next()
         return AST_String({
@@ -2221,7 +2228,14 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         start = S.token
         while True:
             strings.push(S.token.value)
-            if peek().type is not 'bytes':
+            next_token = peek()
+            if (
+                next_token.type is not 'bytes'
+                or (
+                    next_token.nlb
+                    and not S.in_parenthesized_expr
+                )
+            ):
                 break
             next()
         return AST_Call({

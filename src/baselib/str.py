@@ -70,6 +70,36 @@ def _repr_js_builtin(value: Any, as_array: bool = False) -> _Str:
     return brackets[0] + _str_join(', ', entries) + brackets[1]
 
 
+def _repr_python_string(value: _Str) -> _Str:
+    quote = "'"
+    if "'" in value and '"' not in value:
+        quote = '"'
+    answer = quote
+    digits = '0123456789abcdef'
+    for character in value:
+        if character == '\\' or character == quote:
+            answer += '\\' + character
+            continue
+        if character == '\t':
+            answer += r'\t'
+            continue
+        if character == '\n':
+            answer += r'\n'
+            continue
+        if character == '\r':
+            answer += r'\r'
+            continue
+        code = _string_call(character, 'charCodeAt', 0)
+        if code < 32 or code == 127:
+            answer += (
+                r'\x' + digits[(code >> 4) & 15]
+                + digits[code & 15]
+            )
+        else:
+            answer += character
+    return answer + quote
+
+
 def ρσ_repr(value: Any) -> _Str:
     if value is None:
         return 'None'
@@ -89,7 +119,7 @@ def ρσ_repr(value: Any) -> _Str:
     elif runtime.array.isArray(value):
         representation = _repr_js_builtin(value, True)
     elif _value_type_is(value, 'string'):
-        representation = "'" + value + "'"
+        representation = _repr_python_string(value)
     elif _value_type_is(value, 'function'):
         representation = value.toString()
     elif _value_type_is(value, 'object'):
@@ -542,6 +572,37 @@ def _str_center(string: Any, width: int, fill: _Str = ' ') -> _Str:
     return _repeat(fill, left) + string + _repeat(fill, padding - left)
 
 
+def _str_bounds(
+    string: _Str,
+    start: Any,
+    end: Any,
+) -> list[int]:
+    if start is runtime.undefined or start is None:
+        normalized_start = 0
+    else:
+        normalized_start = int(start)
+        if normalized_start < 0:
+            normalized_start = max(
+                0, len(string) + normalized_start)
+    if end is runtime.undefined or end is None:
+        normalized_end = len(string)
+    else:
+        normalized_end = int(end)
+        if normalized_end < 0:
+            normalized_end = max(
+                0, len(string) + normalized_end)
+        else:
+            normalized_end = min(len(string), normalized_end)
+    return [normalized_start, normalized_end]
+
+
+def _str_require_string(value: Any, method_name: _Str) -> _Str:
+    if not _value_type_is(value, 'string'):
+        raise TypeError(
+            method_name + '() argument must be str')
+    return value
+
+
 def _str_count(
     string: Any,
     needle: _Str,
@@ -549,12 +610,12 @@ def _str_count(
     end: Any = runtime.undefined,
 ) -> int:
     string = _native_string(string)
-    stop = len(string) if end is runtime.undefined else end
-    if start < 0 or stop < 0:
-        string = string[start:stop]
-        start, stop = 0, len(string)
-    if not needle:
+    needle = _str_require_string(needle, 'count')
+    start, stop = _str_bounds(string, start, end)
+    if start > len(string) or stop < start:
         return 0
+    if not needle:
+        return stop - start + 1
     answer = 0
     position = start
     while position != -1:
@@ -576,9 +637,16 @@ def _str_startswith(
     string = _native_string(string)
     if _value_type_is(prefixes, 'string'):
         prefixes = [prefixes]
-    stop = len(string) if end is runtime.undefined else end
+    elif not runtime.array.isArray(prefixes):
+        raise TypeError(
+            'startswith first arg must be str or a tuple of str')
+    start, stop = _str_bounds(string, start, end)
+    if start > len(string):
+        return False
+    candidate = string.slice(start, stop)
     for prefix in prefixes:
-        if string.slice(start, stop).indexOf(prefix) == 0:
+        prefix = _str_require_string(prefix, 'startswith')
+        if candidate.indexOf(prefix) == 0:
             return True
     return False
 
@@ -592,9 +660,15 @@ def _str_endswith(
     string = _native_string(string)
     if _value_type_is(suffixes, 'string'):
         suffixes = [suffixes]
-    stop = len(string) if end is runtime.undefined else end
+    elif not runtime.array.isArray(suffixes):
+        raise TypeError(
+            'endswith first arg must be str or a tuple of str')
+    start, stop = _str_bounds(string, start, end)
+    if start > len(string):
+        return False
     candidate = string.slice(start, stop)
     for suffix in suffixes:
+        suffix = _str_require_string(suffix, 'endswith')
         if (
             len(suffix) <= len(candidate)
             and candidate.lastIndexOf(suffix)
@@ -611,15 +685,12 @@ def _str_find(
     end: Any = runtime.undefined,
 ) -> int:
     string = _native_string(string)
-    while start < 0:
-        start += len(string)
-    answer = string.indexOf(needle, start)
-    stop = len(string) if end is runtime.undefined else end
-    while stop < 0:
-        stop += len(string)
-    if answer != -1 and answer + len(needle) > stop:
+    needle = _str_require_string(needle, 'find')
+    start, stop = _str_bounds(string, start, end)
+    if start > len(string) or stop < start:
         return -1
-    return answer
+    answer = string.slice(start, stop).indexOf(needle)
+    return -1 if answer == -1 else start + answer
 
 
 def _str_rfind(
@@ -629,13 +700,12 @@ def _str_rfind(
     end: Any = runtime.undefined,
 ) -> int:
     string = _native_string(string)
-    stop = len(string) if end is runtime.undefined else end
-    while stop < 0:
-        stop += len(string)
-    answer = string.lastIndexOf(needle, stop - 1)
-    while start < 0:
-        start += len(string)
-    return answer if answer >= start else -1
+    needle = _str_require_string(needle, 'rfind')
+    start, stop = _str_bounds(string, start, end)
+    if start > len(string) or stop < start:
+        return -1
+    answer = string.slice(start, stop).lastIndexOf(needle)
+    return -1 if answer == -1 else start + answer
 
 
 def _str_index(string: Any, needle: _Str, start: int = 0, end: Any = runtime.undefined) -> int:
@@ -654,12 +724,18 @@ def _str_rindex(string: Any, needle: _Str, start: int = 0, end: Any = runtime.un
 
 def _str_islower(string: Any) -> bool:
     string = _native_string(string)
-    return bool(string) and _lower(string) == string
+    return (
+        runtime.regexp(r'[a-z]').test(string)
+        and not runtime.regexp(r'[A-Z]').test(string)
+    )
 
 
 def _str_isupper(string: Any) -> bool:
     string = _native_string(string)
-    return bool(string) and _upper(string) == string
+    return (
+        runtime.regexp(r'[A-Z]').test(string)
+        and not runtime.regexp(r'[a-z]').test(string)
+    )
 
 
 def _str_isspace(string: Any) -> bool:
@@ -667,14 +743,25 @@ def _str_isspace(string: Any) -> bool:
     return bool(string) and runtime.regexp(r'^\s+$').test(string)
 
 
+def _str_isalpha(string: Any) -> bool:
+    return runtime.regexp(r'^[A-Za-z]+$').test(
+        _native_string(string))
+
+
+def _str_isdigit(string: Any) -> bool:
+    return runtime.regexp(r'^[0-9]+$').test(
+        _native_string(string))
+
+
 def _str_join(separator: Any, iterable: Any) -> _Str:
+    separator = _str_require_string(separator, 'join')
     values = []
     for value in iterable:
-        values.append(_native_string(value))
+        values.append(_str_require_string(value, 'join'))
     return runtime.reflect.apply(
         runtime.array.prototype.join,
         values,
-        [_native_string(separator)],
+        [separator],
     )
 
 
@@ -698,7 +785,10 @@ def _str_upper(string: Any) -> _Str:
 
 def _str_lstrip(string: Any, characters: Any = runtime.undefined) -> _Str:
     string = _native_string(string)
-    chars = WHITESPACE if characters is runtime.undefined else characters
+    if characters is runtime.undefined or characters is None:
+        chars = WHITESPACE
+    else:
+        chars = _str_require_string(characters, 'lstrip')
     position = 0
     while (
         position < len(string)
@@ -710,7 +800,10 @@ def _str_lstrip(string: Any, characters: Any = runtime.undefined) -> _Str:
 
 def _str_rstrip(string: Any, characters: Any = runtime.undefined) -> _Str:
     string = _native_string(string)
-    chars = WHITESPACE if characters is runtime.undefined else characters
+    if characters is runtime.undefined or characters is None:
+        chars = WHITESPACE
+    else:
+        chars = _str_require_string(characters, 'rstrip')
     position = len(string) - 1
     while (
         position >= 0
@@ -764,12 +857,28 @@ def _str_replace(
     replacement_count: Any = runtime.undefined,
 ) -> _Str:
     string = _native_string(string)
+    old = _str_require_string(old, 'replace')
+    replacement = _str_require_string(
+        replacement, 'replace')
     if replacement_count is runtime.undefined:
         remaining = runtime.number.MAX_SAFE_INTEGER
     else:
-        remaining = replacement_count
-    if remaining < 1:
+        remaining = int(replacement_count)
+        if remaining < 0:
+            remaining = runtime.number.MAX_SAFE_INTEGER
+    if remaining == 0:
         return string
+    if old == '':
+        pieces = []
+        position = 0
+        while position <= len(string):
+            if remaining > 0:
+                pieces.append(replacement)
+                remaining -= 1
+            if position < len(string):
+                pieces.append(string[position])
+            position += 1
+        return _str_join('', pieces)
     position = 0
     while remaining > 0:
         found = string.indexOf(old, position)
@@ -790,49 +899,45 @@ def _str_split(
     maxsplit: int = -1,
 ) -> Any:
     string = _native_string(string)
-    if maxsplit == 0:
-        return [string]
+    maxsplit = int(maxsplit)
     if separator is runtime.undefined or separator is None:
-        stripped = _str_strip(string)
-        if not stripped:
-            return []
-        if maxsplit > 0:
-            parts = []
-            position = 0
+        parts = []
+        position = 0
+        while position < len(string):
             while (
                 position < len(string)
                 and _index_of(WHITESPACE, string[position]) != -1
             ):
                 position += 1
-            while len(parts) < maxsplit:
-                end = position
-                while (
-                    end < len(string)
-                    and _index_of(WHITESPACE, string[end]) == -1
-                ):
-                    end += 1
-                parts.append(string[position:end])
-                position = end
-                while (
-                    position < len(string)
-                    and _index_of(
-                        WHITESPACE, string[position]) != -1
-                ):
-                    position += 1
-                if position >= len(string):
-                    return parts
-            parts.append(_str_rstrip(string[position:]))
-            return parts
-        parts = list(_native_split(stripped, runtime.regexp(r'\s+')))
-        separator = ' '
-    else:
-        if separator == '':
-            raise ValueError('empty separator')
-        parts = list(_native_split(string, separator))
-    if maxsplit > 0 and len(parts) > maxsplit + 1:
-        tail = _str_join(separator, parts[maxsplit:])
-        parts = parts[:maxsplit]
-        parts.append(tail)
+            if position >= len(string):
+                break
+            if maxsplit >= 0 and len(parts) >= maxsplit:
+                parts.append(string[position:])
+                break
+            end = position
+            while (
+                end < len(string)
+                and _index_of(WHITESPACE, string[end]) == -1
+            ):
+                end += 1
+            parts.append(string[position:end])
+            position = end
+        return parts
+
+    separator = _str_require_string(separator, 'split')
+    if separator == '':
+        raise ValueError('empty separator')
+    if maxsplit == 0:
+        return [string]
+    parts = []
+    position = 0
+    while maxsplit < 0 or len(parts) < maxsplit:
+        found = string.indexOf(separator, position)
+        if found == -1:
+            break
+        parts.append(string[position:found])
+        position = found + len(separator)
+    parts.append(string[position:])
     return parts
 
 
@@ -842,6 +947,7 @@ def _str_rsplit(
     maxsplit: int = -1,
 ) -> Any:
     string = _native_string(string)
+    maxsplit = int(maxsplit)
     if maxsplit < 0:
         return _str_split(string, separator)
     if separator is runtime.undefined or separator is None:
@@ -869,6 +975,7 @@ def _str_rsplit(
             parts.insert(0, string[:position + 1])
         return parts
     else:
+        separator = _str_require_string(separator, 'rsplit')
         if separator == '':
             raise ValueError('empty separator')
         parts = list(_native_split(string, separator))
@@ -880,18 +987,27 @@ def _str_rsplit(
 
 def _str_splitlines(string: Any, keepends: bool = False) -> Any:
     string = _native_string(string)
-    if keepends:
-        parts = list(_native_split(
-            string, runtime.regexp(r'((?:\r?\n)|\r)')))
-        answer = []
-        for position in range(0, len(parts), 2):
-            line = parts[position]
-            if position + 1 < len(parts):
-                line += parts[position + 1]
-            answer.append(line)
-        return answer
-    return list(_native_split(
-        string, runtime.regexp(r'(?:\r?\n)|\r')))
+    answer = []
+    start = 0
+    position = 0
+    while position < len(string):
+        if string[position] != '\n' and string[position] != '\r':
+            position += 1
+            continue
+        newline_end = position + 1
+        if (
+            string[position] == '\r'
+            and newline_end < len(string)
+            and string[newline_end] == '\n'
+        ):
+            newline_end += 1
+        end = newline_end if keepends else position
+        answer.append(string[start:end])
+        start = newline_end
+        position = newline_end
+    if start < len(string):
+        answer.append(string[start:])
+    return answer
 
 
 def _str_swapcase(string: Any) -> _Str:
@@ -1086,6 +1202,8 @@ _define_string_method('rindex', _str_rindex)
 _define_string_method('islower', _str_islower)
 _define_string_method('isupper', _str_isupper)
 _define_string_method('isspace', _str_isspace)
+_define_string_method('isalpha', _str_isalpha)
+_define_string_method('isdigit', _str_isdigit)
 _define_string_method('join', _str_join)
 _define_string_method('ljust', _str_ljust)
 _define_string_method('rjust', _str_rjust)
