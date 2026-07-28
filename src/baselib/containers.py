@@ -434,6 +434,36 @@ def sorted(
     return answer
 
 
+def _set_normalize_value(value: Any) -> Any:
+    if value is True or value is False:
+        return int(value)
+    if runtime.is_exact_integer(value):
+        return runtime.normalize_integer(runtime.bigint(value))
+    return value
+
+
+def _set_has_value(native_set: Any, value: Any) -> bool:
+    normalized = _set_normalize_value(value)
+    if native_set.has(normalized):
+        return True
+    if runtime.strict_equal(normalized, 0):
+        return native_set.has(False)
+    if runtime.strict_equal(normalized, 1):
+        return native_set.has(True)
+    return False
+
+
+def _set_delete_value(native_set: Any, value: Any) -> bool:
+    normalized = _set_normalize_value(value)
+    if native_set.delete(normalized):
+        return True
+    if runtime.strict_equal(normalized, 0):
+        return native_set.delete(False)
+    if runtime.strict_equal(normalized, 1):
+        return native_set.delete(True)
+    return False
+
+
 class SageSet:
 
     def __init__(self, iterable: Any = runtime.undefined) -> None:
@@ -453,7 +483,7 @@ class SageSet:
         return self.jsset.size
 
     def __contains__(self, value: Any) -> bool:
-        return self.jsset.has(value)
+        return _set_has_value(self.jsset, value)
 
     has = __contains__
 
@@ -461,7 +491,11 @@ class SageSet:
         return self.jsset.values()
 
     def add(self, value: Any) -> None:
-        self.jsset.add(value)
+        if not self.has(value):
+            if value is True or value is False:
+                self.jsset.add(value)
+            else:
+                self.jsset.add(_set_normalize_value(value))
 
     def clear(self) -> None:
         self.jsset.clear()
@@ -474,46 +508,64 @@ class SageSet:
         return answer
 
     def discard(self, value: Any) -> None:
-        self.jsset.delete(value)
+        _set_delete_value(self.jsset, value)
+
+    @staticmethod
+    def _from_iterable(other: Any) -> SageSet:
+        if isinstance(other, SageSet):
+            return other
+        return SageSet(other)
+
+    @staticmethod
+    def _require_set(other: Any) -> SageSet:
+        if not isinstance(other, SageSet):
+            raise TypeError('set operands must be sets')
+        return other
 
     def difference(self, *others: Any) -> SageSet:
+        converted = [self._from_iterable(other) for other in others]
         answer = SageSet()
         for value in self:
-            if not any(other.has(value) for other in others):
+            if not any(other.has(value) for other in converted):
                 answer.jsset.add(value)
         return answer
 
     def difference_update(self, *others: Any) -> None:
+        converted = [self._from_iterable(other) for other in others]
         for value in list_constructor(self):
-            if any(other.has(value) for other in others):
+            if any(other.has(value) for other in converted):
                 self.jsset.delete(value)
 
     def intersection(self, *others: Any) -> SageSet:
+        converted = [self._from_iterable(other) for other in others]
         answer = SageSet()
         for value in self:
-            if all(other.has(value) for other in others):
+            if all(other.has(value) for other in converted):
                 answer.jsset.add(value)
         return answer
 
     def intersection_update(self, *others: Any) -> None:
+        converted = [self._from_iterable(other) for other in others]
         for value in list_constructor(self):
-            if not all(other.has(value) for other in others):
+            if not all(other.has(value) for other in converted):
                 self.jsset.delete(value)
 
     def isdisjoint(self, other: Any) -> bool:
+        converted = self._from_iterable(other)
         for value in self:
-            if other.has(value):
+            if converted.has(value):
                 return False
         return True
 
     def issubset(self, other: Any) -> bool:
+        converted = self._from_iterable(other)
         for value in self:
-            if not other.has(value):
+            if not converted.has(value):
                 return False
         return True
 
     def issuperset(self, other: Any) -> bool:
-        return other.issubset(self)
+        return self._from_iterable(other).issubset(self)
 
     def pop(self) -> Any:
         result = self.jsset.values().next()
@@ -523,7 +575,7 @@ class SageSet:
         return result.value
 
     def remove(self, value: Any) -> None:
-        if not self.jsset.delete(value):
+        if not _set_delete_value(self.jsset, value):
             raise KeyError(runtime.string(value))
 
     def symmetric_difference(self, other: Any) -> SageSet:
@@ -542,9 +594,39 @@ class SageSet:
     def update(self, *others: Any) -> None:
         for other in others:
             for value in other:
-                self.jsset.add(value)
+                self.add(value)
+
+    def __or__(self, other: Any) -> SageSet:
+        return self.union(self._require_set(other))
+
+    def __and__(self, other: Any) -> SageSet:
+        return self.intersection(self._require_set(other))
+
+    def __xor__(self, other: Any) -> SageSet:
+        return self.symmetric_difference(self._require_set(other))
+
+    def __sub__(self, other: Any) -> SageSet:
+        return self.difference(self._require_set(other))
+
+    def __ior__(self, other: Any) -> SageSet:
+        self.update(self._require_set(other))
+        return self
+
+    def __iand__(self, other: Any) -> SageSet:
+        self.intersection_update(self._require_set(other))
+        return self
+
+    def __ixor__(self, other: Any) -> SageSet:
+        self.symmetric_difference_update(self._require_set(other))
+        return self
+
+    def __isub__(self, other: Any) -> SageSet:
+        self.difference_update(self._require_set(other))
+        return self
 
     def __repr__(self) -> str:
+        if self.size == 0:
+            return 'set()'
         entries = list_constructor()
         for value in self:
             entries.push(runtime.repr(value))
@@ -561,6 +643,20 @@ class SageSet:
             return False
         return self.issubset(other)
 
+    def __le__(self, other: Any) -> bool:
+        return self.issubset(self._require_set(other))
+
+    def __lt__(self, other: Any) -> bool:
+        converted = self._require_set(other)
+        return self.size < converted.size and self.issubset(converted)
+
+    def __ge__(self, other: Any) -> bool:
+        return self.issuperset(self._require_set(other))
+
+    def __gt__(self, other: Any) -> bool:
+        converted = self._require_set(other)
+        return self.size > converted.size and self.issuperset(converted)
+
 
 def ρσ_set(iterable: Any = runtime.undefined) -> SageSet:
     return SageSet(iterable)
@@ -573,6 +669,8 @@ def set_wrap(native_set: Any) -> SageSet:
 
 
 def _dict_normalize_key(key: Any) -> Any:
+    if isinstance(key, SageSet):
+        raise TypeError("unhashable type: 'set'")
     if key is True:
         return 1
     if key is False:

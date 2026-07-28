@@ -116,26 +116,15 @@ def print_set(self, output):
         output.print('ρσ_set()')
         return
 
-    def f_print_set():
-        output.print('function()')
+    output.print('ρσ_set')
 
-        def f_print_set0():
-            output.indent()
-            output.spaced.apply(output, 'var s = ρσ_set()'.split(' '))
-            output.end_statement()
-            for item in self.items:
-                output.indent()
-                output.print('s.jsset.add')
-                output.with_parens(lambda: item.value.print(output))
-                output.end_statement()
-            output.indent()
-            output.spaced('return', 's')
-            output.end_statement()
+    def print_items():
+        for index, item in enumerate(self.items):
+            if index:
+                output.comma()
+            item.value.print(output)
 
-        output.with_block(f_print_set0)
-
-    output.with_parens(f_print_set)
-    output.print('()')
+    output.with_parens(lambda: output.with_square(print_items))
 
 
 def print_regexp(self, output):
