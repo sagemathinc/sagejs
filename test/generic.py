@@ -39,6 +39,13 @@ assrt.equal(-1 < 0 == 1 < 0, False)
 
 # Empty tuple
 assrt.deepEqual((), [])
+assrt.deepEqual((1,), [1])
+assrt.deepEqual((1, 2,), [1, 2])
+a = (
+    1,
+    2,
+)
+assrt.deepEqual(a, [1, 2])
 
 # Conditional operators
 assrt.equal(1 if True else 2, 1)

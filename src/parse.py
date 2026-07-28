@@ -3089,6 +3089,17 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             left = r'%js [ expr ]'
             while is_("punc", ","):
                 next()
+                # A nested call clears the parser's historical boolean
+                # ``in_parenthesized_expr`` flag, so the closing delimiter is
+                # the reliable indication that this is a trailing tuple
+                # comma.  Function arguments and collection items use
+                # ``expression(False)`` and do not reach this branch.
+                if is_("punc", ")"):
+                    return AST_Array({
+                        'start': start,
+                        'elements': left,
+                        'end': prev(),
+                    })
                 if is_node_type(expr, AST_Assign):
                     left[-1] = left[-1].left
                     return create_assign({
