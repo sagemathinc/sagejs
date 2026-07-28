@@ -903,10 +903,66 @@ def ρσ_bool(value: Any) -> _Bool:
     return not not value
 
 
-def ρσ_round(value: Any) -> Any:
-    # This retains the historical Sage.js behavior; Python's tie-to-even
-    # semantics are a separate compatibility task.
-    return runtime.math.round(value)
+def ρσ_round(
+    value: Any,
+    ndigits: Any = runtime.undefined,
+) -> Any:
+    if _builtins_exact_integer_primitive(value):
+        if ndigits is runtime.undefined or ndigits is None:
+            return runtime.normalize_integer(runtime.bigint(value))
+        digits = int(ndigits)
+        if digits >= 0:
+            return runtime.normalize_integer(runtime.bigint(value))
+
+        magnitude = runtime.bigint(value)
+        negative = magnitude < 0
+        if negative:
+            magnitude = -magnitude
+        factor = runtime.native_pow(
+            runtime.bigint(10), runtime.bigint(-digits))
+        quotient = runtime.native_div(magnitude, factor)
+        remainder = runtime.native_mod(magnitude, factor)
+        doubled = runtime.native_mul(
+            remainder, runtime.bigint(2))
+        if (
+            doubled > factor
+            or (
+                doubled == factor
+                and runtime.native_mod(
+                    quotient, runtime.bigint(2)) != 0
+            )
+        ):
+            quotient += runtime.bigint(1)
+        answer = runtime.native_mul(quotient, factor)
+        if negative:
+            answer = -answer
+        return runtime.normalize_integer(answer)
+
+    if _builtins_member_is_function(value, '__round__'):
+        call_args = []
+        if ndigits is not runtime.undefined:
+            call_args = [ndigits]
+        return _builtins_call_member(
+            value, '__round__', call_args)
+
+    if ndigits is runtime.undefined or ndigits is None:
+        floor_value = runtime.math.floor(value)
+        fraction = runtime.native_sub(value, floor_value)
+        if fraction < 0.5:
+            return floor_value
+        if fraction > 0.5:
+            return floor_value + 1
+        return (
+            floor_value
+            if runtime.native_mod(floor_value, 2) == 0
+            else floor_value + 1
+        )
+
+    scale = runtime.math.pow(10, int(ndigits))
+    return runtime.native_div(
+        ρσ_round(runtime.native_mul(value, scale)),
+        scale,
+    )
 
 
 def ρσ_print(*values: Any) -> None:
@@ -1140,8 +1196,19 @@ def options_object(target: Any) -> Any:
     return wrapped
 
 
-def ρσ_id(value: Any) -> Any:
-    return value.ρσ_object_id
+_BUILTINS_ID_MAP = runtime.reflect.construct(runtime.map_class, [])
+_builtins_next_id = 1
+
+
+def ρσ_id(value: Any) -> _Int:
+    global _builtins_next_id
+    existing = _BUILTINS_ID_MAP.get(value)
+    if existing is not runtime.undefined:
+        return existing
+    answer = _builtins_next_id
+    _builtins_next_id += 1
+    _BUILTINS_ID_MAP.set(value, answer)
+    return answer
 
 
 _BUILTINS_HIDDEN_INTROSPECTION_NAMES = [
@@ -1689,31 +1756,32 @@ def _builtins_tuple_subclass_mul(
     return runtime.math_tuple(values)
 
 
-def ρσ_reversed(iterable: Any) -> Iterator[Any]:
-    if _builtins_member_is_function(iterable, '__reversed__'):
-        for value in _builtins_call_member(
-            iterable, '__reversed__', []
-        ):
-            yield value
+def _builtins_reverse_iterator(iterable: Any) -> Iterator[Any]:
+    if ρσ_arraylike(iterable):
+        length = iterable.length
+    elif (
+        _builtins_member_is_function(iterable, '__len__')
+        and _builtins_member_is_function(iterable, '__getitem__')
+    ):
+        length = _builtins_call_member(iterable, '__len__', [])
     else:
+        raise TypeError(
+            "'object' is not reversible")
+    index = length - 1
+    while index >= 0:
         if ρσ_arraylike(iterable):
-            length = iterable.length
-        elif (
-            _builtins_member_is_function(iterable, '__len__')
-            and _builtins_member_is_function(iterable, '__getitem__')
-        ):
-            length = _builtins_call_member(iterable, '__len__', [])
+            yield iterable[index]
         else:
-            raise TypeError(
-                "'object' is not reversible")
-        index = length - 1
-        while index >= 0:
-            if ρσ_arraylike(iterable):
-                yield iterable[index]
-            else:
-                yield _builtins_call_member(
-                    iterable, '__getitem__', [index])
-            index -= 1
+            yield _builtins_call_member(
+                iterable, '__getitem__', [index])
+        index -= 1
+
+
+def ρσ_reversed(iterable: Any) -> Any:
+    if _builtins_member_is_function(iterable, '__reversed__'):
+        return _builtins_call_member(
+            iterable, '__reversed__', [])
+    return _builtins_reverse_iterator(iterable)
 
 
 def _builtins_native_map(value: Any) -> _Bool:
@@ -1788,6 +1856,13 @@ def ρσ_next(
     iterator: Any,
     fallback: Any = _BUILTINS_MISSING,
 ) -> Any:
+    if _builtins_member_is_function(iterator, '__next__'):
+        try:
+            return _builtins_call_member(iterator, '__next__', [])
+        except StopIteration:
+            if fallback is not _BUILTINS_MISSING:
+                return fallback
+            raise
     if iterator.__started__ is False:
         iterator.__started__ = True
     result = iterator.next()
@@ -1800,6 +1875,8 @@ def ρσ_next(
 
 @runtime.sequence_class
 class _Range:
+    __sagejs_range__ = True
+
     def __init__(
         self,
         start: _Int,
@@ -1808,15 +1885,49 @@ class _Range:
     ) -> None:
         if step == 0:
             raise ValueError('range() arg 3 must not be zero')
-        self.start = start
-        self.stop = stop
-        self.step = step
-        self._length = max(
-            runtime.math.ceil(
-                runtime.native_div(stop - start, step)
-            ),
-            0,
-        )
+        self._start = start
+        self._stop = stop
+        self._step = step
+        one = 1
+        if runtime.strict_equal(runtime.jstype(start), 'bigint'):
+            one = runtime.bigint(1)
+        if step > 0:
+            if start >= stop:
+                self._length = 0
+            else:
+                self._length = (stop - start - one) // step + one
+        else:
+            if start <= stop:
+                self._length = 0
+            else:
+                self._length = (start - stop - one) // (-step) + one
+
+    @property
+    def start(self) -> _Int:
+        return self._start
+
+    @start.setter
+    def start(self, _value: Any) -> None:
+        raise AttributeError(
+            "readonly attribute 'start'")
+
+    @property
+    def stop(self) -> _Int:
+        return self._stop
+
+    @stop.setter
+    def stop(self, _value: Any) -> None:
+        raise AttributeError(
+            "readonly attribute 'stop'")
+
+    @property
+    def step(self) -> _Int:
+        return self._step
+
+    @step.setter
+    def step(self, _value: Any) -> None:
+        raise AttributeError(
+            "readonly attribute 'step'")
 
     def __iter__(self) -> Iterator[_Int]:
         value = self.start
@@ -1827,12 +1938,45 @@ class _Range:
     def __len__(self) -> _Int:
         return self._length
 
-    def __getitem__(self, index: _Int) -> _Int:
+    def __getitem__(self, index: Any) -> Any:
+        if hasattr(index, '__sagejs_slice__'):
+            start, stop, step = index.indices(self._length)
+            return ρσ_range(
+                self.start + start * self.step,
+                self.start + stop * self.step,
+                self.step * step,
+            )
+        index = int(index)
+        if runtime.strict_equal(runtime.jstype(self.start), 'bigint'):
+            index = runtime.bigint(index)
         if index < 0:
             index += self._length
         if index < 0 or index >= self._length:
             raise IndexError('range object index out of range')
         return self.start + index * self.step
+
+    def __setitem__(self, _index: Any, _value: Any) -> None:
+        raise TypeError("'range' object does not support item assignment")
+
+    def __neg__(self) -> Any:
+        raise TypeError("bad operand type for unary -: 'range'")
+
+    def __eq__(self, other: Any) -> _Bool:
+        if not _builtins_get_member(other, '__sagejs_range__'):
+            return False
+        if self._length != other._length:
+            return False
+        if self._length == 0:
+            return True
+        if self.start != other.start:
+            return False
+        if self._length == 1:
+            return True
+        return self.step == other.step
+
+    def __add__(self, _other: Any) -> Any:
+        raise TypeError(
+            "unsupported operand type(s) for +: 'range'")
 
     def count(self, value: Any) -> _Int:
         for item in self:
@@ -1853,31 +1997,14 @@ class _Range:
     ) -> Any:
         if new_start is runtime.undefined and new_stop is runtime.undefined:
             return self
-        if self.step < 0:
-            values = list(self)
-            if new_start is runtime.undefined:
-                return values[:new_stop]
-            if new_stop is runtime.undefined:
-                return values[new_start:]
-            return values[new_start:new_stop]
-
-        start_index = 0 if new_start is runtime.undefined else new_start
+        start_index = new_start
+        if new_start is runtime.undefined:
+            start_index = None
+        stop_index = new_stop
         if new_stop is runtime.undefined:
-            stop_index = self._length
-        else:
-            stop_index = new_stop
-        if start_index < 0:
-            start_index += self._length
-        if stop_index < 0:
-            stop_index += self._length
-        start_index = min(self._length, max(0, start_index))
-        stop_index = min(self._length, max(0, stop_index))
-        stop_index = max(start_index, stop_index)
-        return ρσ_range(
-            self.start + start_index * self.step,
-            self.start + stop_index * self.step,
-            self.step,
-        )
+            stop_index = None
+        return self.__getitem__(
+            SageSlice(start_index, stop_index))
 
     def __repr__(self) -> _Str:
         if self.step == 1:
@@ -1901,6 +2028,14 @@ def ρσ_range(
         start = 0
     if step is runtime.undefined:
         step = 1
+    if (
+        runtime.strict_equal(runtime.jstype(start), 'bigint')
+        or runtime.strict_equal(runtime.jstype(stop), 'bigint')
+        or runtime.strict_equal(runtime.jstype(step), 'bigint')
+    ):
+        start = runtime.bigint(start)
+        stop = runtime.bigint(stop)
+        step = runtime.bigint(step)
     return _Range(start, stop, step)
 
 
@@ -1910,6 +2045,9 @@ class _EllipsisType:
 
     def __str__(self) -> _Str:
         return 'Ellipsis'
+
+    def __hash__(self) -> _Int:
+        return id(self)
 
 
 Ellipsis = _EllipsisType()
@@ -2155,7 +2293,7 @@ def ρσ_pow(
     right: Any,
     modulus: Any = runtime.undefined,
 ) -> Any:
-    if modulus is runtime.undefined:
+    if modulus is runtime.undefined or modulus is None:
         if (
             _builtins_exact_integer_primitive(left)
             and _builtins_exact_integer_primitive(right)
@@ -2313,12 +2451,18 @@ def _builtins_extreme(
     keywords: Any,
     find_maximum: _Bool,
 ) -> Any:
-    default_value = runtime.reflect.get(keywords, 'defval')
+    # ``default`` is reserved in JavaScript, so the compiler's keyword
+    # desugaring uses this stable internal property spelling.
+    default_value = runtime.reflect.get(keywords, 'ρσ_py_default')
     key = runtime.reflect.get(keywords, 'key')
     if len(positional) == 0:
         if default_value is not runtime.undefined:
             return default_value
         raise TypeError('expected at least one argument')
+    if len(positional) > 1 and default_value is not runtime.undefined:
+        raise TypeError(
+            'Cannot specify a default for min() or max() with multiple '
+            'positional arguments')
 
     values = positional[0] if len(positional) == 1 else positional
     iterator = iter(values)
@@ -2326,16 +2470,18 @@ def _builtins_extreme(
     if answer is _BUILTINS_EMPTY:
         if default_value is not runtime.undefined:
             return default_value
-        raise TypeError('expected at least one argument')
+        raise ValueError('arg is an empty sequence')
 
-    if key is not runtime.undefined:
-        answer = key(answer)
+    if key is not runtime.undefined and key is not None:
+        answer_key = key(answer)
         for value in iterator:
             candidate = key(value)
-            if find_maximum and candidate > answer:
-                answer = candidate
-            elif not find_maximum and candidate < answer:
-                answer = candidate
+            if find_maximum and candidate > answer_key:
+                answer = value
+                answer_key = candidate
+            elif not find_maximum and candidate < answer_key:
+                answer = value
+                answer_key = candidate
         return answer
 
     for value in iterator:

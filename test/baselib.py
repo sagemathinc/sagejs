@@ -457,8 +457,8 @@ def maxnone():
 
 
 assrt.throws(maxnone, TypeError)
-assrt.equal(9, max(defval=9))
-assrt.equal(9, max([], defval=9))
+assrt.equal(9, max(default=9))
+assrt.equal(9, max([], default=9))
 
 
 class CustomDirectory:
@@ -473,7 +473,7 @@ def key(x):
     return x.k
 
 
-assrt.equal(1, max([{'k': 0}, {'k': 1}], key=key))
+assrt.equal(1, max([{'k': 0}, {'k': 1}], key=key).k)
 
 # Slicing ranges
 assrt.equal(str(range(10)[:]), 'range(0, 10)')
@@ -483,8 +483,7 @@ assrt.equal(str(range(10)[5:]), 'range(5, 10)')
 assrt.equal(str(range(3, 15, 3)[3:]), 'range(12, 15, 3)')
 assrt.equal(str(range(3, 15, 3)[-3:]), 'range(6, 15, 3)')
 assrt.equal(str(range(3, 15, 3)[-3:-1]), 'range(6, 12, 3)')
-# lazy implementation for negative step
-assrt.equal(str(range(15, 3, -3)[1:]), '[12, 9, 6]')
+assrt.equal(str(range(15, 3, -3)[1:]), 'range(12, 3, -3)')
 
 # Adding lists
 assrt.equal(str([1, 2, 3] + ['a', 'b', 'c']), str([1, 2, 3, 'a', 'b', 'c']))
