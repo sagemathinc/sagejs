@@ -190,11 +190,15 @@ class SageBytes:
         return SageBytes(self._values[first:last])
 
     def __contains__(self, needle: Any) -> _Bool:
+        if hasattr(needle, '_bytes_values'):
+            needle = SageBytes(needle._bytes_values())
         if isinstance(needle, SageBytes):
             return self.find(needle) >= 0
         return _coerce_index(needle) in self._values
 
     def __add__(self, other: Any) -> SageBytes:
+        if hasattr(other, '_bytes_values'):
+            other = SageBytes(other._bytes_values())
         if not isinstance(other, SageBytes):
             raise TypeError("can't concat bytes to this value")
         return SageBytes(self._values + other._values)
@@ -251,6 +255,8 @@ class SageBytes:
         return SageBytes(answer)
 
     def __eq__(self, other: object) -> _Bool:
+        if isinstance(other, SageMemoryView):
+            return self._values == other._values()
         if not isinstance(other, SageBytes):
             return False
         return self._values == other._values
@@ -263,6 +269,39 @@ class SageBytes:
         for value in self._values:
             answer += chr(value)
         return answer
+
+    def hex(
+        self,
+        separator: Any = runtime.undefined,
+        bytes_per_separator: Any = 1,
+    ) -> _Str:
+        digits = '0123456789abcdef'
+        groups = []
+        for value in self._values:
+            groups.append(digits[value >> 4] + digits[value & 15])
+        if separator is runtime.undefined:
+            return str.join('', groups)
+        if (
+            not runtime.strict_equal(runtime.jstype(separator), 'string')
+            or len(separator) != 1
+        ):
+            raise TypeError('sep must be length 1')
+        width = _coerce_index(bytes_per_separator)
+        if width == 0:
+            raise ValueError('bytes_per_sep must not be zero')
+        if width < 0:
+            width = -width
+            answer = []
+            for index in range(0, len(groups), width):
+                answer.append(str.join('', groups[index:index + width]))
+            return str.join(separator, answer)
+        first_width = len(groups) % width
+        if first_width == 0:
+            first_width = width
+        answer = [str.join('', groups[:first_width])]
+        for index in range(first_width, len(groups), width):
+            answer.append(str.join('', groups[index:index + width]))
+        return str.join(separator, answer)
 
     def __repr__(self) -> _Str:
         quote = 34 if 39 in self._values and 34 not in self._values else 39
@@ -847,6 +886,232 @@ class SageByteArray(SageBytes):
         return runtime.math_tuple(answer)
 
 
+def _memoryview_index_getter(
+    view: SageMemoryView,
+    index: _Int,
+) -> Any:
+    def get_value() -> _Int:
+        return view.__getitem__(index)
+
+    return get_value
+
+
+def _memoryview_index_setter(
+    view: SageMemoryView,
+    index: _Int,
+) -> Any:
+    def set_value(value: Any) -> None:
+        view.__setitem__(index, value)
+
+    return set_value
+
+
+@runtime.sequence_class
+class SageMemoryView:
+
+    def __init__(
+        self,
+        source: Any,
+        start: _Int = 0,
+        length: Any = runtime.undefined,
+    ) -> None:
+        self._source: Any = source
+        if isinstance(source, SageMemoryView):
+            self._source = source._source
+            self._offset = source._offset + start
+            available = source._length - start
+            self._readonly = source._readonly
+        elif isinstance(source, SageBytes):
+            self._source = source
+            self._offset = start
+            available = len(source) - start
+            self._readonly = not isinstance(source, SageByteArray)
+            self._itemsize = 1
+            self._format = 'B'
+        elif (
+            hasattr(source, '_values')
+            and hasattr(source, 'itemsize')
+            and hasattr(source, 'typecode')
+        ):
+            self._source = source
+            self._offset = start
+            available = len(source) - start
+            self._readonly = False
+            self._itemsize = source.itemsize
+            self._format = source.typecode
+        else:
+            raise TypeError(
+                'memoryview: a bytes-like object is required, not '
+                + runtime.jstype(source)
+            )
+        if isinstance(source, SageMemoryView):
+            self._itemsize = source._itemsize
+            self._format = source._format
+        self._length = (
+            available if length is runtime.undefined else _coerce_index(length)
+        )
+        if self._length < 0 or self._length > available:
+            raise ValueError('memoryview length is out of range')
+        for index in range(self._length):
+            runtime.object.defineProperty(
+                self,
+                str(index),
+                {
+                    'get': _memoryview_index_getter(self, index),
+                    'set': _memoryview_index_setter(self, index),
+                    'enumerable': True,
+                },
+            )
+
+    @property
+    def length(self) -> _Int:
+        return self._length
+
+    @property
+    def itemsize(self) -> _Int:
+        return self._itemsize
+
+    @property
+    def readonly(self) -> _Bool:
+        return self._readonly
+
+    @property
+    def format(self) -> _Str:
+        return self._format
+
+    def _values(self) -> list[_Int]:
+        return self._source._values[
+            self._offset:self._offset + self._length
+        ]
+
+    def _binary_string(self) -> _Str:
+        answer = ''
+        for value in self:
+            answer += chr(value)
+        return answer
+
+    def __len__(self) -> _Int:
+        return self._length
+
+    def __iter__(self) -> Iterator[_Int]:
+        return iter(self._values())
+
+    def __getitem__(self, index: Any) -> _Int:
+        index = _coerce_index(index)
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError('index out of bounds on dimension 1')
+        return self._source._values[self._offset + index]
+
+    def __setitem__(self, index: Any, value: Any) -> None:
+        if self._readonly:
+            raise TypeError('cannot modify read-only memory')
+        index = _coerce_index(index)
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError('index out of bounds on dimension 1')
+        if isinstance(self._source, SageByteArray):
+            value = _coerce_index(value)
+            if value < 0 or value > 255:
+                raise ValueError('memoryview: invalid value for format B')
+        self._source.__setitem__(self._offset + index, value)
+
+    def __setslice__(self, start: Any, end: Any, values: Any) -> None:
+        if self._readonly:
+            raise TypeError('cannot modify read-only memory')
+        first = _normalise_bound(start, 0, self._length)
+        last = _normalise_bound(end, self._length, self._length)
+        replacement = []
+        if (
+            isinstance(values, SageMemoryView)
+            and (
+                values.itemsize != self.itemsize
+                or values.format != self.format
+            )
+        ):
+            raise ValueError(
+                'memoryview assignment: lvalue and rvalue have different '
+                'structures'
+            )
+        for value in values:
+            if isinstance(self._source, SageByteArray):
+                byte = _coerce_index(value)
+                if byte < 0 or byte > 255:
+                    raise ValueError(
+                        'memoryview: invalid value for format B')
+                replacement.append(byte)
+            else:
+                replacement.append(value)
+        if len(replacement) != last - first:
+            raise ValueError(
+                'memoryview assignment: lvalue and rvalue have different '
+                'structures'
+            )
+        replacement = replacement[:]
+        for index, value in enumerate(replacement):
+            self._source.__setitem__(
+                self._offset + first + index, value)
+
+    def slice(
+        self,
+        start: Any = runtime.undefined,
+        end: Any = runtime.undefined,
+    ) -> SageMemoryView:
+        first = _normalise_bound(start, 0, self._length)
+        last = _normalise_bound(end, self._length, self._length)
+        if last < first:
+            last = first
+        return SageMemoryView(self, first, last - first)
+
+    def __eq__(self, other: object) -> _Bool:
+        if isinstance(other, SageMemoryView):
+            return self._values() == other._values()
+        if isinstance(other, SageBytes):
+            return self._values() == other._values
+        return False
+
+    def __add__(self, _other: Any) -> Any:
+        raise TypeError(
+            "unsupported operand type(s) for +: 'memoryview'")
+
+    def __iadd__(self, _other: Any) -> Any:
+        raise TypeError(
+            "unsupported operand type(s) for +=: 'memoryview'")
+
+    def decode(
+        self,
+        encoding: Any = runtime.undefined,
+        errors: Any = runtime.undefined,
+    ) -> _Str:
+        return SageBytes(self._values()).decode(encoding, errors)
+
+    def hex(
+        self,
+        separator: Any = runtime.undefined,
+        bytes_per_separator: Any = 1,
+    ) -> _Str:
+        return SageBytes(self._bytes_values()).hex(
+            separator, bytes_per_separator)
+
+    def _bytes_values(self) -> list[_Int]:
+        if hasattr(self._source, '_bytes_values'):
+            return self._source._bytes_values(
+                self._offset, self._length)
+        return self._values()
+
+    def __repr__(self) -> _Str:
+        return '<memory at 0x0>'
+
+    def __getattr__(self, name: _Str) -> Any:
+        raise AttributeError(
+            "'memoryview' object has no attribute '" + name + "'")
+
+    toString = __repr__
+    inspect = __repr__
+
+
 def _new_bytes_like(source: SageBytes, values: list[_Int]) -> SageBytes:
     if isinstance(source, SageByteArray):
         return SageByteArray(values)
@@ -866,6 +1131,14 @@ def _construct_bytes(
         if encoding is not runtime.undefined or errors is not runtime.undefined:
             raise TypeError('encoding without a string argument')
         return SageBytes(source._values[:])
+    if isinstance(source, SageMemoryView):
+        if encoding is not runtime.undefined or errors is not runtime.undefined:
+            raise TypeError('encoding without a string argument')
+        return SageBytes(source._values())
+    if hasattr(source, '_bytes_values'):
+        if encoding is not runtime.undefined or errors is not runtime.undefined:
+            raise TypeError('encoding without a string argument')
+        return SageBytes(source._bytes_values())
     if isinstance(source, SageBytes):
         if encoding is not runtime.undefined or errors is not runtime.undefined:
             raise TypeError('encoding without a string argument')
@@ -927,6 +1200,54 @@ def ρσ_bytearray(
     return SageByteArray(immutable._values[:])
 
 
+def ρσ_memoryview(source: Any, *extra: Any) -> SageMemoryView:
+    if len(extra):
+        raise TypeError('memoryview() takes exactly one argument')
+    return SageMemoryView(source)
+
+
+def _hex_digit_value(character: _Str) -> _Int:
+    code = ord(character)
+    if 48 <= code <= 57:
+        return code - 48
+    if 65 <= code <= 70:
+        return code - 55
+    if 97 <= code <= 102:
+        return code - 87
+    return -1
+
+
+def _bytes_fromhex(text: Any) -> SageBytes:
+    if not runtime.strict_equal(runtime.jstype(text), 'string'):
+        raise TypeError('fromhex() argument must be str')
+    whitespace = ' \t\n\r\x0b\x0c'
+    values = []
+    index = 0
+    while index < len(text):
+        while index < len(text) and text[index] in whitespace:
+            index += 1
+        if index >= len(text):
+            break
+        if index + 1 >= len(text):
+            raise ValueError('non-hexadecimal number found in fromhex()')
+        high = _hex_digit_value(text[index])
+        low = _hex_digit_value(text[index + 1])
+        if high < 0 or low < 0:
+            raise ValueError('non-hexadecimal number found in fromhex()')
+        values.append(high * 16 + low)
+        index += 2
+        if index < len(text) and text[index] not in whitespace:
+            high = _hex_digit_value(text[index])
+            if high >= 0:
+                continue
+            raise ValueError('non-hexadecimal number found in fromhex()')
+    return SageBytes(values)
+
+
+def _bytearray_fromhex(text: Any) -> SageByteArray:
+    return SageByteArray(_bytes_fromhex(text)._values)
+
+
 def _int_to_bytes(
     self: Any,
     length: Any = 1,
@@ -978,7 +1299,13 @@ def _int_from_bytes(
 ) -> Any:
     if byteorder != 'little' and byteorder != 'big':
         raise ValueError("byteorder must be either 'little' or 'big'")
-    if isinstance(source, SageBytes) or isinstance(source, SageByteArray):
+    if (
+        isinstance(source, SageBytes)
+        or isinstance(source, SageByteArray)
+        or isinstance(source, SageMemoryView)
+        or hasattr(source, '_bytes_values')
+    ):
+        source = _construct_bytes(source)
         values = source._values[:]
     else:
         values = []
@@ -1029,6 +1356,7 @@ for _method_name in [
 
 bytes = ρσ_bytes
 bytearray = ρσ_bytearray
+memoryview = ρσ_memoryview
 
 _int_to_bytes_native = runtime.native_method(_int_to_bytes)
 runtime.reflect.set(
@@ -1045,6 +1373,7 @@ runtime.reflect.set(runtime.int_builtin, 'from_bytes', _int_from_bytes)
 
 runtime.set_class_repr(SageBytes, "<class 'bytes'>")
 runtime.set_class_repr(SageByteArray, "<class 'bytearray'>")
+runtime.set_class_repr(SageMemoryView, "<class 'memoryview'>")
 
 runtime.reflect.set(
     ρσ_bytearray,
@@ -1063,3 +1392,11 @@ for _bytearray_method_name in [
         _bytearray_method_name,
         runtime.reflect.get(SageByteArray, _bytearray_method_name),
     )
+
+runtime.reflect.set(ρσ_bytes, 'fromhex', _bytes_fromhex)
+runtime.reflect.set(ρσ_bytearray, 'fromhex', _bytearray_fromhex)
+runtime.reflect.set(
+    ρσ_memoryview,
+    'prototype',
+    runtime.reflect.get(SageMemoryView, 'prototype'),
+)

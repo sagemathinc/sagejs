@@ -1030,11 +1030,21 @@ def _define_string_method(
     name: _Str,
     implementation: Any,
 ) -> None:
+    native_method = runtime.native_method(implementation)
     runtime.reflect.set(
         runtime.reflect.get(ρσ_str, 'prototype'),
         name,
-        runtime.native_method(implementation),
+        native_method,
     )
+    if (
+        runtime.reflect.get(runtime.string_class.prototype, name)
+        is runtime.undefined
+    ):
+        runtime.reflect.set(
+            runtime.string_class.prototype,
+            name,
+            native_method,
+        )
     runtime.reflect.set(ρσ_str, name, implementation)
 
 
@@ -1068,18 +1078,6 @@ _define_string_method('rsplit', _str_rsplit)
 _define_string_method('splitlines', _str_splitlines)
 _define_string_method('swapcase', _str_swapcase)
 _define_string_method('zfill', _str_zfill)
-
-runtime.reflect.set(
-    runtime.string_class.prototype,
-    'format',
-    runtime.native_method(string_format),
-)
-runtime.reflect.set(
-    runtime.string_class.prototype,
-    '__mod__',
-    runtime.native_method(_str_percent_format),
-)
-
 
 runtime.reflect.set(ρσ_str, 'ascii_lowercase', 'abcdefghijklmnopqrstuvwxyz')
 runtime.reflect.set(ρσ_str, 'ascii_uppercase', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')

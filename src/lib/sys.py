@@ -9,6 +9,7 @@ def exit(status=None):
     process.exit(status)
 
 argv = process.argv
+byteorder = 'little'
 
 # Node.js targets supported by Sage.js are 64-bit platforms.  Keep this exact
 # even when this module is compiled by a bootstrap compiler whose own numeric

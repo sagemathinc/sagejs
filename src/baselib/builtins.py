@@ -661,6 +661,23 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
 
 
 def ρσ_bool(value: Any) -> _Bool:
+    if value is None or value is runtime.undefined:
+        return False
+    value_type = runtime.jstype(value)
+    if (
+        runtime.strict_equal(value_type, 'object')
+        or runtime.strict_equal(value_type, 'function')
+    ):
+        if _builtins_member_is_function(value, '__bool__'):
+            answer = _builtins_call_member(value, '__bool__', [])
+            if answer is not True and answer is not False:
+                raise TypeError('__bool__ should return bool')
+            return answer
+        if _builtins_member_is_function(value, '__len__'):
+            length = _builtins_call_member(value, '__len__', [])
+            if length < 0:
+                raise ValueError('__len__() should return >= 0')
+            return length != 0
     return not not value
 
 

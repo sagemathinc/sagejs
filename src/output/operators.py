@@ -2,10 +2,10 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 from ast_types import (AST_Array, AST_Assign, AST_BaseCall, AST_Binary,
-                       AST_Conditional, AST_ItemAccess, AST_Number, AST_Object,
-                       AST_Return, AST_Seq, AST_Set, AST_SimpleStatement,
-                       AST_Statement, AST_String, AST_Sub, AST_Symbol,
-                       AST_SymbolRef, AST_Unary, is_node_type)
+                       AST_Conditional, AST_ForIn, AST_ItemAccess, AST_Number,
+                       AST_Object, AST_Return, AST_Seq, AST_Set,
+                       AST_SimpleStatement, AST_Statement, AST_String, AST_Sub,
+                       AST_Symbol, AST_SymbolRef, AST_Unary, is_node_type)
 from output.loops import unpack_tuple
 
 
@@ -514,7 +514,11 @@ def print_seq(output):
     # this will effectively convert tuples to arrays
     if (is_node_type(p, AST_Binary) or is_node_type(p, AST_Return)
             or is_node_type(p, AST_Array) or is_node_type(p, AST_BaseCall)
-            or is_node_type(p, AST_SimpleStatement)):
+            or is_node_type(p, AST_SimpleStatement)
+            or (
+                is_node_type(p, AST_ForIn)
+                and p.object is self
+            )):
         if output.options.python_tuples:
             output.print('ρσ_math_tuple(')
         output.with_square(print_seq0)

@@ -173,7 +173,20 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
             return target.__getitem__(runtime.number(property_name))
         if runtime.strict_equal(property_name, 'length'):
             return target.__len__()
-        return runtime.reflect.get(target, property_name, receiver)
+        value = runtime.reflect.get(target, property_name, receiver)
+        if (
+            value is runtime.undefined
+            and _internal_type_is(
+                runtime.jstype(property_name), 'string')
+            and runtime.string_find(property_name, '__') != 0
+        ):
+            getattr_method = runtime.reflect.get(target, '__getattr__')
+            if _internal_type_is(
+                runtime.jstype(getattr_method), 'function'
+            ):
+                return runtime.reflect.apply(
+                    getattr_method, target, [property_name])
+        return value
 
     def set_item(
         target: Any,
