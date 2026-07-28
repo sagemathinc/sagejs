@@ -127,6 +127,8 @@ ERROR_CLASSES = {
     'ZeroDivisionError': {},
     'OverflowError': {},
     'StopIteration': {},
+    'RuntimeError': {},
+    'GeneratorExit': {},
 }
 COMMON_STATIC = static_predicate('call apply bind toString')
 FORBIDDEN_CLASS_VARS = 'prototype constructor'.split(' ')
@@ -899,13 +901,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             elif tmp_ is "return":
                 if S.in_function is 0:
                     croak("'return' outside of function")
-                if S.functions[-1].is_generator:
-                    croak("'return' not allowed in a function with yield")
-                S.functions[-1].is_generator = False
 
                 return AST_Return({'value': return_()})
             elif tmp_ is "yield":
-                return yield_()
+                return AST_SimpleStatement({'body': yield_()})
             elif tmp_ is "raise":
                 if S.token.nlb:
                     return AST_Throw(
@@ -1075,8 +1074,6 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
     def yield_():
         if S.in_function is 0:
             croak("'yield' outside of function")
-        if S.functions[-1].is_generator is False:
-            croak("'yield' not allowed in a function with return")
         S.functions[-1].is_generator = True
         is_yield_from = is_('keyword', 'from')
         if is_yield_from:
@@ -1809,6 +1806,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'is_lambda': is_lambda,
             'is_expression': is_expression,
             'is_anonymous': is_anonymous,
+            'sequential_definition':
+            bool(
+                not in_class
+                and S.scoped_flags.get('sequential_definitions')),
             'annotations':
             S.scoped_flags.get('annotations'),  # whether or not to annotate
             'argnames': argnames(),

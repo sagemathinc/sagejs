@@ -276,7 +276,37 @@ def function_definition(self, output, strip_first, as_expression):
             output.end_statement()
             # Python's generator objects use a separate method to send data to the generator
             output.indent()
-            output.spaced('result.send', '=', 'result.next')
+            output.spaced(
+                'result.send', '=',
+                'ρσ_generator_send.bind(null, result)')
+            output.end_statement()
+            output.indent()
+            output.assign('result.__started__')
+            output.print('false')
+            output.end_statement()
+            output.indent()
+            output.assign('result.__native_throw__')
+            output.print('result.throw.bind(result)')
+            output.end_statement()
+            output.indent()
+            output.spaced(
+                'result.throw', '=',
+                'ρσ_generator_throw.bind(null, result)')
+            output.end_statement()
+            output.indent()
+            output.spaced(
+                'result.close', '=',
+                'ρσ_generator_close.bind(null, result)')
+            output.end_statement()
+            generator_name = (
+                self.name.name if self.name else '<lambda>')
+            output.indent()
+            output.assign('result.__name__')
+            output.print(JSON.stringify(generator_name))
+            output.end_statement()
+            output.indent()
+            output.assign('result.__qualname__')
+            output.print(JSON.stringify(generator_name))
             output.end_statement()
             output.indent()
             output.spaced('return', 'result')
@@ -310,6 +340,14 @@ def print_function(output):
         decorate(self.decorators, output, output_function_definition)
         output.end_statement()
     else:
+        if (
+            self.sequential_definition
+            and not self.is_expression
+            and not self.is_anonymous
+        ):
+            output.print("var")
+            output.space()
+            output.assign(self.name.name)
         function_definition(self, output, False)
         if not self.is_expression and not self.is_anonymous:
             output.end_statement()

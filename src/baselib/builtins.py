@@ -1354,16 +1354,63 @@ _BUILTINS_MISSING = _BuiltinsMissing()
 _BUILTINS_EMPTY = _BuiltinsMissing()
 
 
+def _builtins_generator_result(result: Any) -> Any:
+    if not result.done:
+        return result.value
+    if (
+        result.value is not runtime.undefined
+        and result.value is not None
+    ):
+        raise StopIteration(result.value)
+    raise StopIteration()
+
+
+def ρσ_generator_send(
+    iterator: Any,
+    value: Any = None,
+) -> Any:
+    if iterator.__started__ is False:
+        if value is not None:
+            raise TypeError(
+                "can't send non-None value to a just-started generator")
+        iterator.__started__ = True
+    return _builtins_generator_result(iterator.next(value))
+
+
+def ρσ_generator_throw(
+    iterator: Any,
+    exception: Any,
+    *args: Any,
+) -> Any:
+    if runtime.strict_equal(runtime.jstype(exception), 'function'):
+        exception = runtime.reflect.construct(
+            exception, list(args))
+    return _builtins_generator_result(
+        iterator.__native_throw__(exception))
+
+
+def ρσ_generator_close(iterator: Any) -> None:
+    try:
+        result = iterator.__native_throw__(GeneratorExit())
+    except GeneratorExit:
+        return None
+    if result.done:
+        return None
+    raise RuntimeError('generator ignored GeneratorExit')
+
+
 def ρσ_next(
     iterator: Any,
     fallback: Any = _BUILTINS_MISSING,
 ) -> Any:
+    if iterator.__started__ is False:
+        iterator.__started__ = True
     result = iterator.next()
     if not result.done:
         return result.value
     if fallback is not _BUILTINS_MISSING:
         return fallback
-    raise StopIteration()
+    return _builtins_generator_result(result)
 
 
 @runtime.sequence_class

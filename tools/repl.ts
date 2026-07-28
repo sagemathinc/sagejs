@@ -336,6 +336,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       dict_literals: true,
       overload_getitem: true,
       bound_methods: true,
+      sequential_definitions: true,
     };
     try {
       toplevel = PyLang.parse(source, {

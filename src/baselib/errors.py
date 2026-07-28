@@ -11,6 +11,12 @@ import sagejs.runtime as runtime
 NameError = runtime.reference_error
 
 
+def ρσ_exception_value(value: object) -> object:
+    if runtime.strict_equal(runtime.jstype(value), 'function'):
+        return runtime.reflect.construct(value, [])
+    return value
+
+
 class Exception(runtime.error):
 
     def __init__(self, *args: object) -> None:
@@ -28,7 +34,7 @@ class Exception(runtime.error):
         self.stack = error.stack
 
     def __repr__(self) -> str:
-        return self.name + ': ' + self.message
+        return self.name + runtime.repr(self.args)
 
     def __str__(self) -> str:
         return self.message
@@ -74,5 +80,37 @@ class OverflowError(Exception):
     pass
 
 
-class StopIteration(Exception):
+class RuntimeError(Exception):
     pass
+
+
+class GeneratorExit(Exception):
+    pass
+
+
+class StopIteration(Exception):
+
+    def __init__(self, *args: object) -> None:
+        Exception.__init__(self, *args)
+        self.value = args[0] if len(args) > 0 else None
+
+
+for _exception_class in [
+    Exception,
+    AttributeError,
+    IndexError,
+    KeyError,
+    ValueError,
+    NotImplementedError,
+    UnicodeDecodeError,
+    AssertionError,
+    ZeroDivisionError,
+    OverflowError,
+    RuntimeError,
+    GeneratorExit,
+    StopIteration,
+]:
+    runtime.set_class_repr(
+        _exception_class,
+        "<class '" + _exception_class.__name__ + "'>",
+    )

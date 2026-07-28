@@ -44,6 +44,13 @@ def print_class(output):
                 fname = self.name.name + ('.' if is_static else
                                           '.prototype.') + name
                 function_annotation(stmt, output, strip_first, fname)
+                if not is_static and not name.startswith('__'):
+                    output.indent()
+                    self.name.print(output)
+                    output.assign('.' + name)
+                    self.name.print(output)
+                    output.print('.prototype.' + name)
+                    output.end_statement()
 
     def define_default_method(name, body):
         class_def(name)

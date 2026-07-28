@@ -485,6 +485,8 @@ class AST_Lambda(AST_Scope):
         "[bool*] True iff this function is a function expression",
         'is_anonymous':
         "[bool*] True iff this function is an anonymous function",
+        'sequential_definition':
+        "[bool*] assign this definition when its statement executes",
         "return_annotation":
         "[AST_Node?] The return type annotation provided (if any)",
     }

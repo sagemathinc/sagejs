@@ -113,6 +113,7 @@ export default async function Compile({
         dict_literals: true,
         overload_getitem: true,
         bound_methods: true,
+        sequential_definitions: true,
       },
     });
   }

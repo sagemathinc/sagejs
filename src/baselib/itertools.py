@@ -33,7 +33,10 @@ def map(
                 done = True
                 break
         if not done:
-            yield func(*values)
+            try:
+                yield func(*values)
+            except StopIteration:
+                done = True
 
 
 def filter(
@@ -47,7 +50,7 @@ def filter(
 
 def zip(*iterables: Iterable[Any]) -> Iterator[list[Any]]:
     iterators = [iter(iterable) for iterable in iterables]
-    done = False
+    done = len(iterators) == 0
     while not done:
         values = []
         for iterator in iterators:

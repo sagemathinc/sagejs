@@ -97,6 +97,11 @@ def ρσ_repr(value: Any) -> _Str:
             representation = _repr_js_builtin(value)
         else:
             name = _string_tag(value)
+            if name == 'Generator':
+                generator_name = runtime.reflect.get(value, '__qualname__')
+                if not _value_type_is(generator_name, 'string'):
+                    generator_name = '<anonymous>'
+                return '<generator object ' + generator_name + '>'
             typed_arrays = (
                 'Int8Array Uint8Array Uint8ClampedArray '
                 'Int16Array Uint16Array Int32Array Uint32Array '

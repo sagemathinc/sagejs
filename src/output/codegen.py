@@ -281,15 +281,26 @@ def generate_code():
         output.print(kind)
         if self.value:
             output.space()
-            self.value.print(output)
+            if kind is "throw":
+                output.print("ρσ_exception_value(")
+                self.value.print(output)
+                output.print(")")
+            else:
+                self.value.print(output)
 
         output.semicolon()
 
     AST_Exit.prototype._do_print = f_do_print_exit
 
-    DEFPRINT(
-        AST_Yield, lambda self, output: self._do_print(
-            output, "yield" + ('*' if self.is_yield_from else '')))
+    def f_do_print_yield(self, output):
+        output.print("((")
+        output.print("yield" + ('*' if self.is_yield_from else ''))
+        if self.value:
+            output.space()
+            self.value.print(output)
+        output.print(") ?? null)")
+
+    DEFPRINT(AST_Yield, f_do_print_yield)
     DEFPRINT(AST_Return, lambda self, output: self._do_print(output, "return"))
     DEFPRINT(AST_Throw, lambda self, output: self._do_print(output, "throw"))
 
