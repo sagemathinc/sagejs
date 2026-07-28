@@ -202,6 +202,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'factor_pair': 'ρσ_factor_pair',
     'float_builtin': 'ρσ_float',
     'flint_backend': 'ρσ_flint_backend',
+    'global_object': 'globalThis',
     'int_builtin': 'ρσ_int',
     'integer_bigint': 'ρσ_integer_bigint',
     'integer_factorization': 'IntegerFactorization',

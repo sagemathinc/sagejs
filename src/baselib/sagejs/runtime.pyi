@@ -113,6 +113,7 @@ console_object: Any
 element: type[_Element]
 error: type[_Error]
 float_builtin: Any
+global_object: Any
 number: _Number
 object: _Object
 int_builtin: Any

@@ -447,6 +447,14 @@ assrt.equal(9, max(defval=9))
 assrt.equal(9, max([], defval=9))
 
 
+class CustomDirectory:
+    def __dir__(self):
+        return ['zeta', 'alpha']
+
+
+assrt.deepEqual(dir(CustomDirectory()), ['alpha', 'zeta'])
+
+
 def key(x):
     return x.k
 

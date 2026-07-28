@@ -60,6 +60,14 @@ def print_class(output):
             '{value:',
             ''), proceed(), output.print('})'), output.end_statement()
 
+    def add_hidden_class_property(name, proceed):
+        output.indent(), output.print('Object.defineProperty(')
+        self.name.print(output), output.comma(), output.print(
+            JSON.stringify(name)), output.comma()
+        output.spaced(
+            '{value:',
+            ''), proceed(), output.print('})'), output.end_statement()
+
     # generate constructor
     def write_constructor():
         output.print("function")
@@ -97,6 +105,15 @@ def print_class(output):
     else:
         write_constructor()
     output.newline()
+
+    add_hidden_class_property(
+        '__name__',
+        lambda: output.print(JSON.stringify(self.name.name)))
+    add_hidden_class_property(
+        '__module__',
+        lambda: output.print(
+            '(typeof __name__ === "undefined" ? null : __name__)'))
+
     if decorators.length:
         output.indent()
         self.name.print(output)
@@ -229,7 +246,11 @@ def print_class(output):
             if sname is '__init__':
                 # Copy argument handling data so that kwarg interpolation works when calling the constructor
                 for attr in [
-                        '.__argnames__', '.__handles_kwarg_interpolation__'
+                        '.__argnames__',
+                        '.__defaults__',
+                        '.__handles_kwarg_interpolation__',
+                        '.__varargs__',
+                        '.__varkw__',
                 ]:
                     output.indent(), self.name.print(output), output.assign(
                         attr)
@@ -283,6 +304,7 @@ def print_class(output):
         output.print(']')
 
     add_hidden_property('__bases__', f_basis)
+    add_hidden_class_property('__bases__', f_basis)
 
     if self.bases.length > 1:
         output.indent()
@@ -300,6 +322,7 @@ def print_class(output):
             output.print(JSON.stringify(create_doctring(self.docstrings)))
 
         add_hidden_property('__doc__', f_doc)
+        add_hidden_class_property('__doc__', f_doc)
 
     # Other statements in the class context
     for stmt in self.statements:
@@ -340,3 +363,9 @@ def print_class(output):
         self.name.print(output)
         output.print(')')
         output.end_statement()
+
+    # Definitions should not display their implementation object merely
+    # because the class is the final statement entered in the REPL.
+    output.indent()
+    output.print('undefined')
+    output.end_statement()

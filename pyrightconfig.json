@@ -12,7 +12,8 @@
     "src/baselib/itertools.py",
     "src/baselib/polynomial.py",
     "src/baselib/real_complex.py",
-    "src/baselib/str.py"
+    "src/baselib/str.py",
+    "src/baselib/zz_introspection.py"
   ],
   "extraPaths": [
     "src/baselib"

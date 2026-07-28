@@ -16,7 +16,8 @@ export default function Completer(compiler: Compiler) {
   function globalNames(): string[] {
     try {
       const names: string[] = runInThisContext(
-        "Object.getOwnPropertyNames((() => this)())"
+        "typeof ρσ_dir === 'function' ? " +
+          "ρσ_dir(globalThis) : Object.getOwnPropertyNames(globalThis)"
       );
       return [...new Set(names.concat(allKeywords))].sort();
     } catch (e) {
@@ -27,6 +28,14 @@ export default function Completer(compiler: Compiler) {
 
   function objectNames(obj: any, prefix: string): string[] {
     if (obj == null) return [];
+
+    if (typeof global.ρσ_dir === "function") {
+      try {
+        return global.ρσ_dir(obj).filter((name: string) =>
+          name.startsWith(prefix)
+        );
+      } catch (_err) {}
+    }
 
     const names: string[] = [];
 

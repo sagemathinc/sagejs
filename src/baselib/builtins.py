@@ -482,15 +482,279 @@ def ρσ_id(value: Any) -> Any:
     return value.ρσ_object_id
 
 
-def ρσ_dir(item: Any) -> list[_Str]:
-    answer = []
-    current = item
-    while current is not None:
-        for name in runtime.object.keys(current):
-            if name not in answer:
+_BUILTINS_HIDDEN_INTROSPECTION_NAMES = [
+    '__argnames__',
+    '__bind_methods__',
+    '__handles_kwarg_interpolation__',
+    '__sagejs_baselib_private_names__',
+    '__varargs__',
+    '__varkw__',
+    'apply',
+    'arguments',
+    'bind',
+    'call',
+    'caller',
+    'constructor',
+    'prototype',
+    'pysort',
+    'toLocaleString',
+    'toString',
+    'valueOf',
+]
+
+
+def _builtins_visible_introspection_name(name: Any) -> _Bool:
+    return (
+        _builtins_type_is(runtime.jstype(name), 'string')
+        and runtime.string_find(name, 'ρσ') != 0
+        and name not in _BUILTINS_HIDDEN_INTROSPECTION_NAMES
+    )
+
+
+def _builtins_introspection_target(value: Any) -> Any:
+    value_type = runtime.jstype(value)
+    if (
+        _builtins_type_is(value_type, 'object')
+        or _builtins_type_is(value_type, 'function')
+    ):
+        return value
+    return runtime.reflect.apply(
+        runtime.object, runtime.undefined, [value])
+
+
+def _builtins_append_dir_names(
+    value: Any,
+    answer: list[_Str],
+) -> None:
+    current = value
+    while (
+        current is not None
+        and current is not runtime.undefined
+        and current is not runtime.object.prototype
+    ):
+        for name in runtime.object.getOwnPropertyNames(current):
+            if (
+                _builtins_visible_introspection_name(name)
+                and name not in answer
+            ):
                 answer.append(name)
         current = runtime.object.getPrototypeOf(current)
+
+
+def _builtins_append_own_dir_names(
+    value: Any,
+    answer: list[_Str],
+) -> None:
+    for name in runtime.object.getOwnPropertyNames(value):
+        if (
+            _builtins_visible_introspection_name(name)
+            and name not in answer
+        ):
+            answer.append(name)
+
+
+def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
+    """Return the sorted Python-facing attributes available on ``item``."""
+    if item is runtime.undefined:
+        item = runtime.global_object
+    elif _builtins_member_is_function(item, '__dir__'):
+        custom_names = _builtins_call_member(item, '__dir__', [])
+        answer = []
+        for name in custom_names:
+            if not _builtins_type_is(runtime.jstype(name), 'string'):
+                raise TypeError('__dir__() must return an iterable of strings')
+            answer.append(name)
+        answer.sort()
+        return answer
+
+    target = _builtins_introspection_target(item)
+    answer = []
+    target_is_function = _builtins_type_is(
+        runtime.jstype(target), 'function')
+    constructor = _builtins_get_member(target, 'constructor')
+    target_is_python_instance = _builtins_is_python_class(constructor)
+    if target_is_function and not target_is_python_instance:
+        _builtins_append_own_dir_names(target, answer)
+        for native_function_name in ['length', 'name']:
+            if native_function_name in answer:
+                answer.remove(native_function_name)
+    else:
+        _builtins_append_dir_names(target, answer)
+
+    # Python classes expose their instance methods through the class object.
+    # Sage.js stores those methods on the JavaScript constructor prototype.
+    if target_is_function:
+        prototype = _builtins_get_member(target, 'prototype')
+        if (
+            prototype is not runtime.undefined
+            and _builtins_has_member(prototype, '__bases__')
+        ):
+            _builtins_append_dir_names(prototype, answer)
+    if target_is_python_instance and target_is_function:
+        for class_only_name in [
+            '__bases__', '__module__', '__name__', 'length', 'name'
+        ]:
+            if class_only_name in answer:
+                answer.remove(class_only_name)
+    elif not target_is_function and '__bases__' in answer:
+        answer.remove('__bases__')
+    if target is runtime.global_object:
+        private_names = _builtins_get_member(
+            runtime.global_object, '__sagejs_baselib_private_names__')
+        if private_names is not runtime.undefined:
+            for private_name in private_names:
+                if private_name in answer:
+                    answer.remove(private_name)
+
+    answer.sort()
     return answer
+
+
+def _builtins_callable_name(value: Any) -> _Str:
+    name = _builtins_get_member(value, '__name__')
+    if _builtins_type_is(runtime.jstype(name), 'string') and name:
+        if runtime.string_find(name, 'ρσ_') == 0:
+            return name[3:]
+        return name
+    name = _builtins_get_member(value, 'name')
+    if _builtins_type_is(runtime.jstype(name), 'string') and name:
+        if runtime.string_find(name, 'ρσ_') == 0:
+            return name[3:]
+        return name
+    return '<anonymous>'
+
+
+def _builtins_has_own(value: Any, name: _Str) -> _Bool:
+    if value is None or value is runtime.undefined:
+        return False
+    return runtime.reflect.apply(
+        runtime.object.prototype.hasOwnProperty,
+        value,
+        [name],
+    )
+
+
+def _builtins_signature(value: Any, name: _Str) -> _Str:
+    argument_names = _builtins_get_member(value, '__argnames__')
+    defaults = _builtins_get_member(value, '__defaults__')
+    parts = []
+    if runtime.array.isArray(argument_names):
+        for argument in argument_names:
+            part = argument
+            if _builtins_has_own(defaults, argument):
+                default_value = _builtins_get_member(defaults, argument)
+                if default_value is runtime.undefined:
+                    part += '=None'
+                else:
+                    part += '=' + runtime.repr(default_value)
+            parts.append(part)
+
+    varargs = _builtins_get_member(value, '__varargs__')
+    if _builtins_type_is(runtime.jstype(varargs), 'string'):
+        parts.append('*' + varargs)
+    varkw = _builtins_get_member(value, '__varkw__')
+    if _builtins_type_is(runtime.jstype(varkw), 'string'):
+        parts.append('**' + varkw)
+    return name + '(' + str.join(', ', parts) + ')'
+
+
+def _builtins_doc(value: Any) -> _Str:
+    doc = _builtins_get_member(value, '__doc__')
+    if _builtins_type_is(runtime.jstype(doc), 'string'):
+        return doc
+    return ''
+
+
+def _builtins_indent_doc(doc: _Str, prefix: _Str) -> _Str:
+    if not doc:
+        return ''
+    lines = []
+    for line in doc.split('\n'):
+        lines.append(prefix + line)
+    return str.join('\n', lines)
+
+
+def _builtins_is_python_class(value: Any) -> _Bool:
+    if not _builtins_type_is(runtime.jstype(value), 'function'):
+        return False
+    prototype = _builtins_get_member(value, 'prototype')
+    return (
+        prototype is not runtime.undefined
+        and _builtins_has_member(prototype, '__bases__')
+    )
+
+
+def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
+    cls = value
+    if instance:
+        cls = _builtins_get_member(value, 'constructor')
+    name = _builtins_callable_name(cls)
+    heading = 'Help on class ' + name + ':'
+    if instance:
+        heading = 'Help on ' + name + ' object:'
+    lines = [
+        heading,
+        '',
+        'class ' + _builtins_signature(cls, name),
+    ]
+    doc = _builtins_doc(cls)
+    if doc:
+        lines.extend(['', _builtins_indent_doc(doc, '    ')])
+
+    prototype = _builtins_get_member(cls, 'prototype')
+    methods = []
+    for method_name in ρσ_dir(cls):
+        method = _builtins_get_member(prototype, method_name)
+        if (
+            runtime.string_find(method_name, '_') != 0
+            and _builtins_type_is(runtime.jstype(method), 'function')
+        ):
+            methods.append(method_name)
+    if len(methods) > 0:
+        lines.extend(['', 'Methods:'])
+        for method_name in methods:
+            method = _builtins_get_member(prototype, method_name)
+            lines.append(
+                '    ' + _builtins_signature(method, method_name))
+            method_doc = _builtins_doc(method)
+            if method_doc:
+                lines.append(_builtins_indent_doc(method_doc, '        '))
+    return str.join('\n', lines)
+
+
+def ρσ_help(item: Any = runtime.undefined) -> None:
+    """Print concise Python-style help derived from Sage.js metadata."""
+    if item is runtime.undefined:
+        runtime.console_object.log(
+            'Welcome to Sage.js help.  '
+            + 'Call help(object) for information about an object.')
+        return
+
+    if _builtins_is_python_class(item):
+        text = _builtins_class_help(item, False)
+    else:
+        constructor = _builtins_get_member(item, 'constructor')
+        if _builtins_is_python_class(constructor):
+            text = _builtins_class_help(item, True)
+        elif _builtins_type_is(runtime.jstype(item), 'function'):
+            name = _builtins_callable_name(item)
+            lines = [
+                'Help on function ' + name + ':',
+                '',
+                _builtins_signature(item, name),
+            ]
+            doc = _builtins_doc(item)
+            if doc:
+                lines.extend([
+                    '', _builtins_indent_doc(doc, '    ')])
+            text = str.join('\n', lines)
+        else:
+            type_name = _builtins_callable_name(constructor)
+            text = 'Help on ' + type_name + ' object.'
+            doc = _builtins_doc(item)
+            if doc:
+                text += '\n\n' + _builtins_indent_doc(doc, '    ')
+    runtime.console_object.log(text)
 
 
 def ρσ_ord(value: Any) -> _Int:
@@ -944,6 +1208,7 @@ get_module = ρσ_get_module
 pow = ρσ_pow
 divmod = ρσ_divmod
 dir = ρσ_dir
+help = ρσ_help
 ord = ρσ_ord
 chr = ρσ_chr
 bin = ρσ_bin

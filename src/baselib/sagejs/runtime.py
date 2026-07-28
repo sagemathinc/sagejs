@@ -8,7 +8,8 @@ are the bootstrap implementation used by older checked-in compilers.
 
 # globals: Array, BigInt, console, Element, Error, IntegerFactorization, Map, Math
 # globals: Number, Object, PolynomialRing, Proxy
-# globals: JSON, Set, create_real_literal, isNaN, parseFloat, parseInt
+# globals: JSON, Set, create_real_literal, globalThis, isNaN, parseFloat
+# globals: parseInt
 # globals: QQ, Rational, ReferenceError, Reflect, RegExp, String
 # globals: ZeroDivisionError, require
 # globals: ρσ_bigint_divexact, ρσ_bigint_gcd
@@ -77,6 +78,7 @@ error = Error
 factor_pair = ρσ_factor_pair
 float_builtin = ρσ_float
 flint_backend = ρσ_flint_backend
+global_object = globalThis
 int_builtin = ρσ_int
 integer_bigint = ρσ_integer_bigint
 integer_factorization = IntegerFactorization

@@ -138,6 +138,15 @@ def function_annotation(self, output, strip_first, name):
     fname = name or (self.name.name if self.name else anonfunc)
     props = Object.create(None)
 
+    # Preserve the Python-facing name independently of JavaScript's inferred
+    # Function.name.  Decorators and method adapters may replace the underlying
+    # function, while introspection should continue to see the source name.
+    def python_name():
+        output.print(JSON.stringify(
+            self.name.name if self.name else '<lambda>'))
+
+    props.__name__ = python_name
+
     # Create __annotations__
     # TODO: These are completely disabled, since to really using
     # them the typings module has to be properly implemented...
@@ -201,6 +210,20 @@ def function_annotation(self, output, strip_first, name):
             output.print(']')
 
         props.__argnames__ = argnames
+
+    if self.argnames.starargs is not undefined:
+
+        def varargs():
+            output.print(JSON.stringify(self.argnames.starargs.name))
+
+        props.__varargs__ = varargs
+
+    if self.argnames.kwargs is not undefined:
+
+        def varkw():
+            output.print(JSON.stringify(self.argnames.kwargs.name))
+
+        props.__varkw__ = varkw
 
     # Create __doc__
     if output.options.keep_docstrings and self.docstrings and self.docstrings.length:

@@ -9,6 +9,7 @@ def f():
     pass
 
 assrt.equal(f.__doc__, 'A basic docstring')
+assrt.equal(f.__name__, 'f')
 assrt.equal(_import_one.__doc__, 'Module level ds1\n\nModule level ds2\nline2\n\nModule level ds 3')
 
 def g():
@@ -31,7 +32,10 @@ class D:
         pass
 
 assrt.equal(D().__doc__, 'Docstring for a class')
+assrt.equal(D.__doc__, 'Docstring for a class')
+assrt.equal(D.__name__, 'D')
 assrt.equal(D().method.__doc__, 'ds for a method')
+assrt.equal(D().method.__name__, 'method')
 
 x = def():
     'xxx'

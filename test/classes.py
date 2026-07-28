@@ -129,7 +129,6 @@ assrt.deepEqual(dir(angela).sort(), [
     "__init__",
     '__repr__',
     '__str__',
-    "constructor",
     "duration",
     "get_bound_method",
     "greet",
