@@ -744,7 +744,10 @@ def print_function_call(self, output):
     has_kwarg_items = self.args.kwarg_items and self.args.kwarg_items.length
     has_kwarg_formals = self.args.kwargs and self.args.kwargs.length
     has_kwargs = has_kwarg_items or has_kwarg_formals
-    is_new = is_node_type(self, AST_New)
+    is_new = (
+        is_node_type(self, AST_New)
+        and not self.python_class
+    )
     is_repeatable = True
 
     if is_new and not self.args.length and not has_kwargs and not self.args.starargs:

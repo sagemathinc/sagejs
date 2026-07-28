@@ -1534,6 +1534,36 @@ def _builtins_append_own_dir_names(
             answer.append(name)
 
 
+def _builtins_namespace_dict(value: Any) -> Any:
+    """Return the Python-visible own namespace of an object or class."""
+    namespace = runtime.object.create(None)
+
+    def copy_own_members(source: Any) -> None:
+        if source is None or source is runtime.undefined:
+            return
+        for member_name in runtime.object.getOwnPropertyNames(source):
+            native_function_slot = (
+                source is value
+                and runtime.strict_equal(
+                    runtime.jstype(value), 'function')
+                and member_name in ('length', 'name')
+            )
+            if (
+                not native_function_slot
+                and _builtins_visible_introspection_name(member_name)
+            ):
+                runtime.reflect.set(
+                    namespace,
+                    member_name,
+                    runtime.reflect.get(source, member_name),
+                )
+
+    copy_own_members(value)
+    if _builtins_is_python_class(value):
+        copy_own_members(_builtins_get_member(value, 'prototype'))
+    return runtime.scope_dict(namespace)
+
+
 def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
     """Return the sorted Python-facing attributes available on ``item``."""
     if item is runtime.undefined:
@@ -2582,6 +2612,16 @@ def ρσ_getattr(
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
     if (
+        name == '__dict__'
+        and value is not None
+        and value is not runtime.undefined
+        and (
+            runtime.strict_equal(runtime.jstype(value), 'object')
+            or runtime.strict_equal(runtime.jstype(value), 'function')
+        )
+    ):
+        return _builtins_namespace_dict(value)
+    if (
         name == 'sort'
         and runtime.array.isArray(value)
         and _builtins_member_is_function(value, 'pythonsort')
@@ -2888,6 +2928,8 @@ def ρσ_py_super(cls: Any, instance: Any) -> Any:
             return runtime.reflect.get(proxy_target, name)
         member = runtime.reflect.get(prototype, name)
         if runtime.strict_equal(runtime.jstype(member), 'function'):
+            if _builtins_has_member(member, '__staticmethod__'):
+                return member
             return runtime.reflect.apply(
                 runtime.reflect.get(member, 'bind'),
                 member,
@@ -2994,6 +3036,69 @@ def ρσ_pow(
 
 
 def ρσ_type(*values: Any) -> Any:
+    if len(values) == 3:
+        class_name = values[0]
+        bases = values[1]
+        namespace = values[2]
+        if not runtime.strict_equal(
+            runtime.jstype(class_name), 'string'
+        ):
+            raise TypeError('type() argument 1 must be str')
+        if not runtime.array.isArray(bases):
+            raise TypeError('type() argument 2 must be tuple')
+        if len(bases) == 0:
+            bases = runtime.math_tuple([SageObject])
+        parent = bases[0]
+        if not _builtins_is_python_class(parent):
+            raise TypeError('type() bases must be types')
+        if not _builtins_member_is_function(namespace, 'items'):
+            raise TypeError('type() argument 3 must be dict')
+
+        def dynamic_class(*args: Any, **keywords: Any) -> Any:
+            instance = runtime.object.create(
+                runtime.reflect.get(dynamic_class, 'prototype'))
+            initializer = _builtins_get_member(instance, '__init__')
+            if runtime.strict_equal(
+                runtime.jstype(initializer), 'function'
+            ):
+                if len(keywords) != 0:
+                    raise TypeError(
+                        'dynamic class keyword construction '
+                        'is not implemented')
+                runtime.reflect.apply(initializer, instance, args)
+            return instance
+
+        prototype = runtime.object.create(
+            runtime.reflect.get(parent, 'prototype'))
+        runtime.reflect.set(
+            prototype, 'constructor', dynamic_class)
+        runtime.reflect.set(dynamic_class, 'prototype', prototype)
+        runtime.reflect.set(dynamic_class, '__name__', class_name)
+        runtime.reflect.set(
+            dynamic_class, '__bases__', runtime.math_tuple(list(bases)))
+        runtime.reflect.set(
+            prototype, '__bases__', runtime.math_tuple(list(bases)))
+        for pair in namespace.items():
+            member_name = pair[0]
+            member = pair[1]
+            runtime.reflect.set(prototype, member_name, member)
+            if (
+                runtime.strict_equal(
+                    runtime.jstype(member), 'function')
+                or runtime.string_find(member_name, '__') != 0
+            ):
+                runtime.reflect.set(
+                    dynamic_class, member_name, member)
+            if _builtins_member_is_function(
+                member, '__set_name__'
+            ):
+                _builtins_call_member(
+                    member,
+                    '__set_name__',
+                    [dynamic_class, member_name],
+                )
+        runtime.set_class_repr(dynamic_class, "<class '" + class_name + "'>")
+        return dynamic_class
     if len(values) != 1:
         raise TypeError('type() takes 1 or 3 arguments')
     value = values[0]
@@ -3278,6 +3383,14 @@ class SageObject:
         return id(self)
 
 
+def _builtins_object_new(cls: Any) -> Any:
+    if not _builtins_is_python_class(cls):
+        raise TypeError(
+            'object.__new__() argument 1 must be a type')
+    return runtime.object.create(
+        runtime.reflect.get(cls, 'prototype'))
+
+
 @runtime.native_method
 def _builtins_object_setattr(
     self: Any,
@@ -3333,6 +3446,16 @@ def _builtins_object_delattr(self: Any, name: _Str) -> None:
 
 runtime.reflect.set(
     SageObject,
+    '__new__',
+    _builtins_object_new,
+)
+runtime.reflect.set(
+    _builtins_object_new,
+    '__staticmethod__',
+    True,
+)
+runtime.reflect.set(
+    SageObject,
     '__setattr__',
     _builtins_object_setattr,
 )
@@ -3343,6 +3466,11 @@ runtime.reflect.set(
 )
 _sage_object_prototype = runtime.reflect.get(
     SageObject, 'prototype')
+runtime.reflect.set(
+    _sage_object_prototype,
+    '__new__',
+    _builtins_object_new,
+)
 runtime.reflect.set(
     _sage_object_prototype,
     '__setattr__',

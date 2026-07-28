@@ -124,6 +124,8 @@ def print_class(output):
 
     # generate constructor
     def write_constructor():
+        uses_python_new = has_prop(self.static, '__new__')
+        instance_name = 'ρσ_python_instance' if uses_python_new else 'this'
         output.print("function")
         output.space()
         self.name.print(output)
@@ -134,10 +136,21 @@ def print_class(output):
             output.indent()
             output.print('if (!(this instanceof ')
             self.name.print(output)
-            output.print(')) return Reflect.construct(')
-            self.name.print(output)
-            output.print(', arguments)')
-            output.end_statement()
+            output.print('))')
+
+            def call_without_new():
+                output.indent()
+                output.print('var ρσ_allocated = Object.create(')
+                self.name.print(output)
+                output.print('.prototype)')
+                output.end_statement()
+                output.indent()
+                output.print('return ')
+                self.name.print(output)
+                output.print('.apply(ρσ_allocated, arguments)')
+                output.end_statement()
+
+            output.with_block(call_without_new)
             if native_storage_parent:
                 output.indent()
                 if native_storage_parent in (
@@ -214,21 +227,45 @@ def print_class(output):
                     output.end_statement()
 
                 output.with_block(f_native_storage)
+            if uses_python_new:
+                output.indent()
+                output.print('var ' + instance_name + ' = ')
+                self.name.print(output)
+                output.print(
+                    '.__new__.apply(undefined, [')
+                self.name.print(output)
+                output.print(
+                    '].concat(Array.prototype.slice.call(arguments)))')
+                output.end_statement()
+                output.indent()
+                output.print('if (!(' + instance_name + ' instanceof ')
+                self.name.print(output)
+                output.print(')) return ' + instance_name)
+                output.end_statement()
             if not self.lightweight:
                 output.indent()
-                output.spaced('if', '(this.ρσ_object_id', '===', 'undefined)',
-                              'Object.defineProperty(this,', '"ρσ_object_id",',
-                              '{"value":++ρσ_object_counter})')
+                output.spaced(
+                    'if',
+                    '(' + instance_name + '.ρσ_object_id',
+                    '===',
+                    'undefined)',
+                    'Object.defineProperty(' + instance_name + ',',
+                    '"ρσ_object_id",',
+                    '{"value":++ρσ_object_counter})',
+                )
                 output.end_statement()
             if self.bound.length:
                 output.indent()
                 self.name.print(output), output.print(
-                    ".prototype.__bind_methods__.call(this)")
+                    ".prototype.__bind_methods__.call("
+                    + instance_name + ")")
                 output.end_statement()
             output.indent()
             output.print('var ρσ_init_result = ')
             self.name.print(output)
-            output.print(".prototype.__init__.apply(this"), output.comma(
+            output.print(
+                ".prototype.__init__.apply(" + instance_name
+            ), output.comma(
             ), output.print('arguments)')
             output.end_statement()
             if not compiling_baselib:
@@ -239,6 +276,9 @@ def print_class(output):
                     'throw new TypeError('
                     '"__init__() should return None")')
                 output.end_statement()
+            output.indent()
+            output.print('return ' + instance_name)
+            output.end_statement()
 
         output.with_block(f_constructor)
 

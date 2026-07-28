@@ -26,7 +26,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power, ρσ_modules
 # globals: ρσ_output_write
-# globals: ρσ_named_tuple
+# globals: ρσ_named_tuple, ρσ_scope_dict
 # globals: ρσ_native_method, ρσ_native_method_adapter
 # globals: ρσ_normalize_integer, ρσ_operator_add_exact, ρσ_operator_mul_exact
 # globals: ρσ_operator_pow_exact, ρσ_repr
@@ -167,6 +167,7 @@ regexp = RegExp
 real_literal = create_real_literal
 require_module = require
 repr = ρσ_repr
+scope_dict = ρσ_scope_dict
 sequence_class = ρσ_sequence_class
 set_class = Set
 set_class_repr = ρσ_set_class_repr

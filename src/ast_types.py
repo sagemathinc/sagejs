@@ -578,6 +578,8 @@ class AST_Class(AST_Scope):
         "[dict] A hash whose keys are names of class methods for this class",
         'external':
         "[boolean] true if class is declared elsewhere, but will be within current scope at runtime",
+        'python_class':
+        "[boolean] class calls use Python allocation and __new__ semantics",
         'lightweight':
         "[boolean] true if instances omit the generic Python identity slot",
         'sequence_class':
@@ -841,6 +843,10 @@ class AST_ClassCall(AST_BaseCall):
 
 class AST_New(AST_Call):
     "An object instantiation. Derives from a function call since it has exactly the same properties"
+    properties = {
+        'python_class':
+        '[boolean] this is a Python class call rather than explicit new',
+    }
 
 
 class AST_Seq(AST_Node):

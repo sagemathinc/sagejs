@@ -297,6 +297,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'real_literal': 'create_real_literal',
     'require_module': 'require',
     'repr': 'ρσ_repr',
+    'scope_dict': 'ρσ_scope_dict',
     'sequence_class': 'ρσ_sequence_class',
     'set_class': 'Set',
     'set_class_repr': 'ρσ_set_class_repr',
@@ -1736,7 +1737,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                             "static": obj.static,
                             'classmethods': obj.classmethods,
                             'bound': obj.bound,
-                            'classvars': obj.classvars
+                            'classvars': obj.classvars,
+                            'python_class': obj.python_class,
                         }
             else:
                 for cname in Object.keys(classes):
@@ -1746,7 +1748,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'static': obj.static,
                         'classmethods': obj.classmethods,
                         'bound': obj.bound,
-                        'classvars': obj.classvars
+                        'classvars': obj.classvars,
+                        'python_class': obj.python_class,
                     }
 
         return ans
@@ -1779,6 +1782,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'bound': r'%js []',
             'classvars': {},
             'bigint_fields': bigint_fields,
+            'python_class': not externaldecorator,
             'processing': name.name,
             'provisional_classvars': {},
         }
@@ -1858,6 +1862,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'static': class_details.static,
             'classmethods': class_details.classmethods,
             'external': externaldecorator,
+            'python_class': not externaldecorator,
             'lightweight': lightweightdecorator,
             'sequence_class': sequence_class_decorator,
             'callable_instance_class': callable_instance_class_decorator,
@@ -1946,6 +1951,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         if in_class:
             staticloc = has_simple_decorator(S.decorators, 'staticmethod')
             classloc = has_simple_decorator(S.decorators, 'classmethod')
+            if name.name == '__new__':
+                staticloc = True
             property_getter = has_simple_decorator(S.decorators, 'property')
             property_setter = has_setter_decorator(S.decorators, name.name)
             property_deleter = has_deleter_decorator(
@@ -3258,13 +3265,18 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 }), True)
             S.in_parenthesized_expr = False
             return ret
-        if not expr.parens and get_class_in_scope(expr):
+        class_details = (
+            None if expr.parens else get_class_in_scope(expr)
+        )
+        if class_details:
             # this is an object being created using a class
             ret = subscripts(
                 AST_New({
                     'start': start,
                     'expression': expr,
                     'args': func_call_list(),
+                    'python_class': has_prop(
+                        class_details.static or {}, '__new__'),
                     'end': prev()
                 }), True)
             S.in_parenthesized_expr = False
@@ -3290,7 +3302,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'method':
                         funcname.property,
                         "static":
-                        is_static_method(c, funcname.property),
+                        (
+                            funcname.property == '__new__'
+                            or is_static_method(c, funcname.property)
+                        ),
                         'args':
                         func_call_list(),
                         'end':
