@@ -564,7 +564,7 @@
     "try_continue.py": "pass",
     "try_else.py": "pass",
     "try_else_finally.py": "pass",
-    "try_error.py": "runtime-error",
+    "try_error.py": "pass",
     "try_finally1.py": "pass",
     "try_finally2.py": "pass",
     "try_finally_loops.py": "pass",

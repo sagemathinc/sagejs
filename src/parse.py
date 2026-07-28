@@ -2323,18 +2323,18 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 parenthesized = is_("punc", "(")
                 if parenthesized:
                     next()
-                    exceptions.push(as_symbol(AST_SymbolVar))
+                    exceptions.push(expression(False))
                     while is_("punc", ","):
                         next()
                         if is_("punc", ")"):
                             break
-                        exceptions.push(as_symbol(AST_SymbolVar))
+                        exceptions.push(expression(False))
                     expect(")")
                 else:
-                    exceptions.push(as_symbol(AST_SymbolVar))
+                    exceptions.push(expression(False))
                     while is_("punc", ","):
                         next()
-                        exceptions.push(as_symbol(AST_SymbolVar))
+                        exceptions.push(expression(False))
 
             name = None
             if is_("keyword", "as"):
