@@ -15,7 +15,7 @@
         "<(native_prefix)/lib/libflint.a",
         "<(native_prefix)/lib/libmpc.a",
         "<(native_prefix)/lib/libmpfr.a",
-        "-lgmp",
+        "<(native_prefix)/lib/libgmp.a",
         "-lm",
         "-lpthread"
       ],

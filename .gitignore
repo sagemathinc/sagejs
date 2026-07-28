@@ -9,3 +9,4 @@ dist
 *.wasm
 bench/.native-kernel-cache
 bench/.native-poc
+build/sea

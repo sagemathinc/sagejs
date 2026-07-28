@@ -88,6 +88,14 @@ It can also be tried without a global installation:
 pnpm dlx @sagemath/sagejs
 ```
 
+For portable deployment, Sage.js can produce a single native executable with
+the compiler and standard library embedded. A mathematics variant also embeds
+the FLINT addon and statically linked GMP, MPFR, MPC, and FLINT; on one x86-64
+Linux host it was about 164 MB uncompressed and 34 MB after `xz -9`.
+[`DISTRIBUTION.md`](DISTRIBUTION.md) documents the reproducible SEA builds,
+the smaller FLINT-free `sagepython` artifact, browser/WebWorker plans,
+container deployment, and the evaluated TypeScript-to-native alternatives.
+
 ## Sage mode
 
 The `sagejs` command uses Sage-style syntax by default:

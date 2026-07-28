@@ -6,12 +6,13 @@
  */
 
 import { dirname, join, normalize, resolve } from "path";
-import { mkdirSync, writeFileSync, readFileSync } from "fs";
+import { mkdirSync, writeFileSync } from "fs";
 import { readFile } from "fs/promises";
 import { runInThisContext } from "vm";
 import { getImportDirs, once } from "./utils";
 import createCompiler from "./compiler";
 import { expandSageLoads } from "./sage-source";
+import { readBaselibSource, runtimeRequire } from "./resources";
 
 const PyLang = createCompiler();
 
@@ -138,7 +139,7 @@ export default async function Compile({
     }
     if (argv.execute) {
       // @ts-ignore
-      global.require = require;
+      global.require = runtimeRequire;
       try {
         runInThisContext(output);
       } catch (error) {
@@ -230,9 +231,8 @@ export default async function Compile({
   }
 
   if (!argv.omit_baselib) {
-    outputOptions.baselib_plain = readFileSync(
+    outputOptions.baselib_plain = readBaselibSource(
       join(lib_path, "baselib-plain-pretty.js"),
-      "utf-8"
     );
   }
 

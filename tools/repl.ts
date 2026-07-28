@@ -20,6 +20,10 @@ import { clearLine, createInterface } from "readline";
 import createCompiler from "./compiler";
 import { arch } from "os";
 import { expandSageLoads, parseLoadDirective } from "./sage-source";
+import {
+  readBaselibSource,
+  runtimeRequire,
+} from "./resources";
 
 const DEFAULT_HISTORY_SIZE = 1000;
 const HOME =
@@ -185,7 +189,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       python_truthiness: true,
       python_attributes: true,
       baselib_plain: keepBaselib
-        ? readFileSync(join(libraryPath, "baselib-plain-pretty.js"), "utf-8")
+        ? readBaselibSource(join(libraryPath, "baselib-plain-pretty.js"))
         : undefined,
     });
     ast.print(output);
@@ -194,7 +198,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
 
   async function initContext() {
     // @ts-ignore
-    global.require = require;
+    global.require = runtimeRequire;
 
     // and get all the code and name.
     runInThisContext(printAST(PyLang.parse("(def ():\n yield 1\n)"), true));

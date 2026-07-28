@@ -11,10 +11,17 @@ import { createHash } from "crypto";
 import { EventEmitter } from "events";
 import { promisify } from "util";
 import { normalize, join, dirname } from "path";
+import {
+  compilerDirectory,
+  standardLibraryDirectory,
+} from "./resources";
 
-export const basePath = normalize(join(dirname(module.filename), "..", ".."));
-export const importPath = join(basePath, "src", "lib");
-export const libraryPath = join(basePath, "dist", "compiler");
+const moduleFilename = module.filename ?? process.execPath;
+export const basePath = normalize(join(dirname(moduleFilename), "..", ".."));
+export const importPath = standardLibraryDirectory(join(basePath, "src", "lib"));
+export const libraryPath = compilerDirectory(
+  join(basePath, "dist", "compiler"),
+);
 
 export const comment_contents =
   /\/\*!?(?:\@preserve)?[ \t]*(?:\r\n|\n)([\s\S]*?)(?:\r\n|\n)[ \t]*\*\//;

@@ -6,9 +6,10 @@ the adapter below captures JavaScript's dynamic ``this`` value, which Python
 has no source-level spelling for.
 """
 
-# globals: AlgebraicExtensionFunctor, Element, Factorization
-# globals: FiniteFieldElement, Parent, PolynomialRing, QQ, QuotientFunctor
-# globals: Rational, ZZ, ZeroDivisionError
+# globals: AlgebraicExtensionFunctor, Atomics, Date, Element, Factorization
+# globals: FiniteFieldElement, Int32Array, Number, Parent, PolynomialRing
+# globals: QQ, QuotientFunctor
+# globals: Rational, RuntimeError, SharedArrayBuffer, ZZ, ZeroDivisionError
 
 algebraic_extension_functor = AlgebraicExtensionFunctor
 element_class = Element
@@ -54,3 +55,33 @@ def ρσ_output_write(text):
         ? process.stdout.write(String(text))
         : console.log(String(text))
     )"""
+
+
+def ρσ_wall_time():
+    return r"%js Date.now() / 1000"
+
+
+def ρσ_blocking_sleep(seconds):
+    return r"""%js (() => {
+        if (
+            typeof SharedArrayBuffer !== "function" ||
+            typeof Atomics !== "object" ||
+            typeof Atomics.wait !== "function"
+        ) {
+            throw new RuntimeError(
+                "time.sleep() requires Node.js or an isolated Web Worker"
+            );
+        }
+        try {
+            Atomics.wait(
+                new Int32Array(new SharedArrayBuffer(4)),
+                0,
+                0,
+                Number(seconds) * 1000
+            );
+        } catch (error) {
+            throw new RuntimeError(
+                "time.sleep() cannot block this JavaScript execution context"
+            );
+        }
+    })()"""

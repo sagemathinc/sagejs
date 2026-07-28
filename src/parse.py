@@ -227,6 +227,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'bigint_divexact': 'ρσ_bigint_divexact',
     'bigint_gcd': 'ρσ_bigint_gcd',
     'bigint_fields': 'ρσ_bigint_fields',
+    'blocking_sleep': 'ρσ_blocking_sleep',
     'callable_instance_class': 'ρσ_callable_instance_class',
     'console_object': 'console',
     'coercion_model': 'ρσ_coercion_model',
@@ -314,6 +315,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'type_error': 'TypeError',
     'tuple_builtin': 'ρσ_tuple',
     'undefined': 'undefined',
+    'wall_time': 'ρσ_wall_time',
     'weak_ref_class': 'WeakRef',
     'zero_division_error': 'ZeroDivisionError',
 }

@@ -33,9 +33,15 @@ const sources = join(buildRoot, "sources");
 const jobs = String(
   Math.min(8, availableParallelism?.() || cpus().length || 2)
 );
-const gmpPrefix = resolve(process.env.SAGEJS_GMP_PREFIX || "/usr");
 
 const dependencies = [
+  {
+    name: "gmp",
+    version: "6.3.0",
+    url: "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz",
+    sha256: "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
+    archive: process.env.SAGEJS_GMP_TARBALL,
+  },
   {
     name: "mpfr",
     version: "4.2.2",
@@ -112,6 +118,24 @@ function extract(archive, dependency) {
   return source;
 }
 
+function buildGmp(source) {
+  const configure = [
+    `--prefix=${prefix}`,
+    "--disable-shared",
+    "--enable-static",
+    "--with-pic",
+  ];
+  if (process.arch === "x64") configure.push("--enable-fat");
+  run("./configure", configure, {
+    cwd: source,
+    // GMP 6.3's configure probes use pre-C23 unprototyped functions.
+    env: { CFLAGS: "-O3 -fPIC -std=gnu17" },
+  });
+  run("make", [`-j${jobs}`], { cwd: source });
+  run("make", ["check"], { cwd: source });
+  run("make", ["install"], { cwd: source });
+}
+
 function buildMpfr(source) {
   run(
     "./configure",
@@ -119,7 +143,7 @@ function buildMpfr(source) {
       `--prefix=${prefix}`,
       "--disable-shared",
       "--enable-static",
-      `--with-gmp=${gmpPrefix}`,
+      `--with-gmp=${prefix}`,
     ],
     {
       cwd: source,
@@ -137,7 +161,7 @@ function buildMpc(source) {
       `--prefix=${prefix}`,
       "--disable-shared",
       "--enable-static",
-      `--with-gmp=${gmpPrefix}`,
+      `--with-gmp=${prefix}`,
       `--with-mpfr=${prefix}`,
     ],
     {
@@ -157,7 +181,7 @@ function buildFlint(source) {
       "--enable-static",
       "--disable-shared",
       "--with-pic",
-      `--with-gmp=${gmpPrefix}`,
+      `--with-gmp=${prefix}`,
       `--with-mpfr=${prefix}`,
     ],
     {
@@ -172,12 +196,14 @@ function buildFlint(source) {
 async function main() {
   const stampPath = join(prefix, ".sagejs-flint-dependencies.json");
   const expectedStamp = {
-    flint: dependencies[2].version,
-    mpc: dependencies[1].version,
-    mpfr: dependencies[0].version,
+    flint: dependencies[3].version,
+    gmp: dependencies[0].version,
+    mpc: dependencies[2].version,
+    mpfr: dependencies[1].version,
   };
 
   if (
+    existsSync(join(prefix, "lib", "libgmp.a")) &&
     existsSync(join(prefix, "lib", "libflint.a")) &&
     existsSync(join(prefix, "lib", "libmpc.a")) &&
     existsSync(join(prefix, "lib", "libmpfr.a")) &&
@@ -191,12 +217,14 @@ async function main() {
 
   mkdirSync(prefix, { recursive: true });
   mkdirSync(sources, { recursive: true });
-  const mpfrArchive = await obtainArchive(dependencies[0]);
-  const mpcArchive = await obtainArchive(dependencies[1]);
-  const flintArchive = await obtainArchive(dependencies[2]);
-  buildMpfr(extract(mpfrArchive, dependencies[0]));
-  buildMpc(extract(mpcArchive, dependencies[1]));
-  buildFlint(extract(flintArchive, dependencies[2]));
+  const gmpArchive = await obtainArchive(dependencies[0]);
+  const mpfrArchive = await obtainArchive(dependencies[1]);
+  const mpcArchive = await obtainArchive(dependencies[2]);
+  const flintArchive = await obtainArchive(dependencies[3]);
+  buildGmp(extract(gmpArchive, dependencies[0]));
+  buildMpfr(extract(mpfrArchive, dependencies[1]));
+  buildMpc(extract(mpcArchive, dependencies[2]));
+  buildFlint(extract(flintArchive, dependencies[3]));
   writeFileSync(stampPath, `${JSON.stringify(expectedStamp, null, 2)}\n`);
   process.stdout.write(`Native dependencies installed in ${prefix}\n`);
 }

@@ -3450,8 +3450,11 @@ def ρσ_type(*values: Any) -> Any:
     value_type = runtime.jstype(value)
     if (
         runtime.strict_equal(value_type, 'number')
-        or runtime.strict_equal(value_type, 'bigint')
     ):
+        if runtime.number.isInteger(value):
+            return ρσ_int
+        return ρσ_float
+    if runtime.strict_equal(value_type, 'bigint'):
         return ρσ_int
     if runtime.strict_equal(value_type, 'boolean'):
         return ρσ_bool

@@ -6,8 +6,8 @@ This is a work in progress port that I started from the time module in **Transcr
 No:
 
 - Platform specific functions
-- sleep. In js currently not possible in browsers
-         except via busy loops, we don't do that.
+- sleep on a browser main thread. Sage.js supports it in Node.js and in an
+  isolated Web Worker, where blocking the interpreter does not freeze the UI.
 - struct_time CLASS. we work only via the tuple interface of it.
 - handling of weird stuff.
     e.g.: In Europe/Simferopool (Ukraine) the UTC offset before 1924 was +2.67
@@ -19,6 +19,8 @@ Spec for all below (must have open to read this module):
 
 Jul 2016, Gunther Klessinger, Axiros GmbH
 """
+
+import sagejs.runtime as runtime
 
 try:
     __language = window.navigator.language
@@ -238,7 +240,24 @@ def time():
     since the Epoch.
     Fractions of a second may be present if the system clock provides them.
     """
-    return Date.now() / 1000
+    return runtime.wall_time()
+
+
+def sleep(seconds):
+    """
+    sleep(seconds)
+
+    Delay execution for the given number of seconds. Fractional delays are
+    supported. In browsers, Sage.js should run inside an isolated Web Worker.
+    """
+    seconds = float(seconds)
+    if runtime.number.isNaN(seconds):
+        raise ValueError('Invalid value NaN (not a number)')
+    if not runtime.number.isFinite(seconds):
+        raise OverflowError('timestamp out of range for platform time_t')
+    if seconds < 0:
+        raise ValueError('sleep length must be non-negative')
+    runtime.blocking_sleep(seconds)
 
 
 def asctime(t):

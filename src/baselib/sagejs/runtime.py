@@ -6,9 +6,10 @@ lowered directly to their corresponding runtime globals.  These assignments
 are the bootstrap implementation used by older checked-in compilers.
 """
 
-# globals: Array, BigInt, console, Element, Error, Function
-# globals: FinalizationRegistry, IntegerFactorization, Map, Math
+# globals: Array, Atomics, BigInt, console, Date, Element, Error, Function
+# globals: FinalizationRegistry, Int32Array, IntegerFactorization, Map, Math
 # globals: Number, Object, PolynomialRing, Proxy
+# globals: RuntimeError, SharedArrayBuffer
 # globals: JSON, Set, create_real_literal, globalThis, isNaN, parseFloat
 # globals: parseInt
 # globals: QQ, Rational, ReferenceError, Reflect, RegExp, String, SyntaxError
@@ -107,6 +108,38 @@ def native_gt(left, right):
 
 def native_ge(left, right):
     return r"%js left >= right"
+
+
+def wall_time():
+    """Return Unix time as a native JavaScript floating-point number."""
+    return r"%js Date.now() / 1000"
+
+
+def blocking_sleep(seconds):
+    """Synchronously sleep in Node or an isolated browser worker."""
+    return r"""%js (() => {
+        if (
+            typeof SharedArrayBuffer !== "function" ||
+            typeof Atomics !== "object" ||
+            typeof Atomics.wait !== "function"
+        ) {
+            throw new RuntimeError(
+                "time.sleep() requires Node.js or an isolated Web Worker"
+            );
+        }
+        try {
+            Atomics.wait(
+                new Int32Array(new SharedArrayBuffer(4)),
+                0,
+                0,
+                Number(seconds) * 1000
+            );
+        } catch (error) {
+            throw new RuntimeError(
+                "time.sleep() cannot block this JavaScript execution context"
+            );
+        }
+    })()"""
 
 
 def ρσ_dynamic_eval(
