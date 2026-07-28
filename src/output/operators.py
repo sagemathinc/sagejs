@@ -264,7 +264,13 @@ def print_binary_op(self, output):
         write_smart_equality(self, output)
     elif self.operator is 'instanceof':
         write_instanceof(self.left, self.right, output)
-    elif self.operator is '*' and is_node_type(self.left, AST_String):
+    elif (
+        self.operator is '*'
+        and is_node_type(self.left, AST_String)
+        and is_node_type(self.right, AST_Number)
+        and self.right.value >= 0
+        and self.right.value % 1 == 0
+    ):
         self.left.print(output), output.print('.repeat('), self.right.print(
             output), output.print(')')
     elif self.operator is '===' or self.operator is '!==':

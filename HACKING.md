@@ -12,7 +12,8 @@
 - `dist/tools/` is generated from `tools/` by TypeScript.
 - `test/` contains the language test suite and CLI smoke tests.
 - `packages/flint/` is the optional native FLINT Node-API experiment.
-- `bench/` contains process-startup and Sage/Sagelite arithmetic benchmarks.
+- `bench/` contains process-startup and Sage/Sagelite arithmetic benchmarks,
+  plus the vendored CoWasm compatibility/performance corpus.
 
 ## Build
 

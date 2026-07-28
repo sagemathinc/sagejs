@@ -8,6 +8,9 @@ def toplevel_func(a):
     return a + 'toplevel'
 
 
+increment = lambda value: value + 1
+
+
 '''
 Module level ds2
 line2

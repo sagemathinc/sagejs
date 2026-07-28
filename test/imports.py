@@ -1,5 +1,5 @@
 # globals:test_path, GLOBAL_SYMBOL, assrt
-from _import_one import toplevel_var, toplevel_func as tf, TopLevel, true_var, false_var, test_other
+from _import_one import toplevel_var, toplevel_func as tf, TopLevel, true_var, false_var, test_other, increment
 from _import_two import (toplevel_var2,
                  toplevel_func2, TopLevel2 as TL2)
 
@@ -14,6 +14,7 @@ eq(toplevel_var2, 'foo2')
 eq(toplevel_func2('x'), 'xtoplevel2')
 eq(false_var, undefined)
 eq(test_other, 'other')
+eq(increment(41), 42)
 
 # Test import of top-level vars in a conditional
 eq('true', true_var)

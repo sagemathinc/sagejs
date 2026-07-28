@@ -193,9 +193,28 @@ def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
     return result
 
 
+def _builtins_repeat_string(text: str, count: Any) -> str:
+    if count <= 0:
+        return ''
+    if _builtins_type_is(runtime.jstype(count), 'bigint'):
+        count = runtime.number(count)
+    return runtime.reflect.apply(
+        runtime.string_class.prototype.repeat, text, [count])
+
+
 def ρσ_operator_mul(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('mul', left, right)
+    if (
+        _builtins_type_is(runtime.jstype(left), 'string')
+        and _builtins_exact_integer_primitive(right)
+    ):
+        return _builtins_repeat_string(left, right)
+    if (
+        _builtins_type_is(runtime.jstype(right), 'string')
+        and _builtins_exact_integer_primitive(left)
+    ):
+        return _builtins_repeat_string(right, left)
     if _builtins_member_is_function(left, '__mul__'):
         return _builtins_call_member(left, '__mul__', [right])
     return runtime.native_mul(left, right)
@@ -204,6 +223,16 @@ def ρσ_operator_mul(left: Any, right: Any) -> Any:
 def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('mul', left, right)
+    if (
+        _builtins_type_is(runtime.jstype(left), 'string')
+        and _builtins_exact_integer_primitive(right)
+    ):
+        return _builtins_repeat_string(left, right)
+    if (
+        _builtins_type_is(runtime.jstype(right), 'string')
+        and _builtins_exact_integer_primitive(left)
+    ):
+        return _builtins_repeat_string(right, left)
     if _builtins_member_is_function(left, '__mul__'):
         return _builtins_call_member(left, '__mul__', [right])
     if (

@@ -66,6 +66,11 @@ assrt.equal(s[::2], 'ace')
 assrt.equal(s[::-1], 'edcba')
 assrt.equal(s[4:0:-1], 'edcb')
 assrt.equal(s[4:1:-2], 'ec')
+repeated = 'ab' * 3
+assrt.equal(repeated, 'ababab')
+assrt.equal(repeated[::-1], 'bababa')
+assrt.equal(3 * 'ab', repeated)
+assrt.equal('ab' * -1, '')
 
 # sorting
 a = [2, 1, 3]

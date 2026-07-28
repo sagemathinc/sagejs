@@ -1,0 +1,61 @@
+list_times_number
+list_times_number2
+list_times_number3
+list_to_string
+simple assignment
+augmented_assignment
+augmented_assignment_and_list_append
+simple_assignment_to_float
+big_integers
+build_dictionary
+build_dictionary_2
+set_dictionary_item
+build_set
+build_list
+set_list_item
+list_slice
+integer_addition
+string_addition
+cast_int_to_string
+create_function_without_arguments
+create_function_single_positional_argument
+create_function_complex_arguments
+function_call
+function call, complex arguments
+create simple class
+create class with init
+create instance of simple class
+create instance of simple jsclass
+create instance of class with init
+call_instance_method
+pi(10**5)
+operator_add
+gcd
+xgcd
+bench_inverse_mod
+sum_loop
+sum_range
+sum_reversed
+Pystone
+p1_normalize_many_times
+nbody
+compute_uuids
+recursive fibonacci
+lambda speed test (1)
+lambda speed test (2)
+basic function call
+dunder __call__ function call
+mypyc - generators
+str_slicing
+ord_builtin
+matrix multiplication
+int_to_float
+str_to_float
+float_abs
+int_divmod
+int_list
+int_bitwise_ops
+dict_iteration
+dict_to_list
+dict_copy
+parse_int

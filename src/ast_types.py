@@ -193,6 +193,8 @@ class AST_Assert(AST_Statement):
 def walk_body(node, visitor):
     if is_node_type(node.body, AST_Statement):
         node.body._walk(visitor)
+    elif node.is_lambda:
+        node.body._walk(visitor)
     elif node.body:
         for stat in node.body:
             stat._walk(visitor)

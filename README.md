@@ -436,6 +436,15 @@ unrecorded new pass fails CI. See
 [upstream-tests/README.md](upstream-tests/README.md) for extraction and runner
 commands.
 
+The suite also adopts CoWasm's ordinary-Python runtime benchmarks as a shared
+compatibility and performance corpus. `pnpm test:cowasm` requires all 61
+registered workloads and their assertions to pass in Sage.js Python mode.
+`pnpm bench:cowasm` runs those identical source files under Sage.js and
+CPython and reports per-case median timings; additional Python-compatible
+runtimes such as Sage can be included explicitly. The source revision,
+license, exclusions, and runner options are documented in
+[`bench/cowasm/README.md`](bench/cowasm/README.md).
+
 `pnpm build` compiles the TypeScript tooling and then uses the checked-in
 bootstrap compiler to rebuild the compiler from its Python-like source. The
 build continues until the compiler is compiled with an up-to-date version of
