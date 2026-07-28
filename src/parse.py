@@ -52,6 +52,7 @@ def static_predicate(names):
 
 
 NATIVE_CLASSES = {
+    'Rational': {},
     'Image': {},
     'FileReader': {},
     'RegExp': {},
@@ -174,6 +175,8 @@ compile_time_decorators = [
 
 DIRECT_CALL_TYPES = {
     'BigInt': 'bigint',
+    'ρσ_bigint_divexact': 'bigint',
+    'ρσ_bigint_gcd': 'bigint',
     'ρσ_integer_bigint': 'bigint',
 }
 
@@ -185,10 +188,13 @@ DIRECT_CALL_TYPES = {
 SAGEJS_RUNTIME_INTRINSICS = {
     'array': 'Array',
     'bigint': 'BigInt',
+    'bigint_divexact': 'ρσ_bigint_divexact',
+    'bigint_gcd': 'ρσ_bigint_gcd',
     'bigint_fields': 'ρσ_bigint_fields',
     'callable_instance_class': 'ρσ_callable_instance_class',
     'coercion_model': 'ρσ_coercion_model',
     'equals': 'ρσ_equals',
+    'element': 'Element',
     'factor_pair': 'ρσ_factor_pair',
     'flint_backend': 'ρσ_flint_backend',
     'integer_bigint': 'ρσ_integer_bigint',
@@ -206,6 +212,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'operator_mul_exact': 'ρσ_operator_mul_exact',
     'operator_pow_exact': 'ρσ_operator_pow_exact',
     'polynomial_from_coefficients': 'ρσ_polynomial_from_coefficients',
+    'qq': 'QQ',
     'reflect': 'Reflect',
     'regexp': 'RegExp',
     'repr': 'ρσ_repr',

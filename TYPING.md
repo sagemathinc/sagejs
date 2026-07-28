@@ -17,6 +17,7 @@ Sage's runtime mathematics as a tower of generic types.
 
 The modules listed in `pyrightconfig.json` form the initial strict baselib:
 
+- `exact_rational.py`
 - `factorization.py`
 - `finite_fields.py`
 - `polynomial.py`

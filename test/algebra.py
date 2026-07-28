@@ -17,8 +17,11 @@ assrt.equal(repr(R),
 a = QQ(2, 1)
 assrt.equal(repr(a), '2')
 assrt.equal(repr(type(a)), "<class 'Rational'>")
+assrt.ok(QQ(a) is a)
+assrt.ok(Rational(a) == a)
 assrt.equal(a.numerator(), 2)
 assrt.equal(a.denominator(), 1)
+assrt.equal(float(QQ(1, 4)), 0.25)
 assrt.ok(1 + a == QQ(3))
 assrt.ok(a + 1 == QQ(3))
 assrt.ok(a == 2)
@@ -30,12 +33,23 @@ assrt.ok(QQ(2, 3) / QQ(4, 9) == QQ(3, 2))
 assrt.ok(QQ(2, -4) == QQ(-1, 2))
 assrt.ok(abs(QQ(-2, 3)) == QQ(2, 3))
 assrt.ok(QQ(2, 3) ** -2 == QQ(9, 4))
+large_rational = QQ(
+    BigInt(2) ** BigInt(200),
+    BigInt(2) ** BigInt(100),
+)
+assrt.ok(
+    large_rational == QQ(BigInt(2) ** BigInt(100)),
+)
 
 def zero_denominator():
     return QQ(1, 0)
 
+def divide_by_zero():
+    return QQ(1, 2) / QQ(0)
+
 
 assrt.throws(zero_denominator, ZeroDivisionError)
+assrt.throws(divide_by_zero, ZeroDivisionError)
 
 # Prime finite fields use JavaScript BigInt for cheap scalar arithmetic and
 # FLINT nmod_poly for opaque native polynomial values.

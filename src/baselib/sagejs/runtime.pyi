@@ -29,9 +29,15 @@ class _Reflect:
     def construct(constructor: Any, arguments: list[Any]) -> Any: ...
 
 
+class _Element:
+    _parent: Any
+
+
 array: _Array
+element: type[_Element]
 number: _Number
 object: _Object
+qq: Any
 reflect: _Reflect
 undefined: Any
 coercion_model: Any
@@ -39,6 +45,8 @@ kwargs_symbol: Any
 
 
 def bigint(value: object) -> int: ...
+def bigint_divexact(numerator: int, denominator: int) -> int: ...
+def bigint_gcd(left: int, right: int) -> int: ...
 def bigint_fields(*names: str) -> Callable[[_Class], _Class]: ...
 def callable_instance_class(cls: _Class) -> _Class: ...
 def equals(left: object, right: object) -> bool: ...

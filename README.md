@@ -189,6 +189,11 @@ sage: 1 + a
 5/3
 ```
 
+The `Rational` element, including normalization and arithmetic with
+cross-cancellation, is implemented in ordinary annotated Sage.js/Python
+source. Its BigInt storage and exact-quotient operations are narrow compiler
+contracts rather than embedded JavaScript.
+
 This hybrid remains an intentionally compatible step, not the final Sage.js
 integer representation. Modulo and several bit operations still need explicit
 semantics. The constructor seam allows a future `Integer` element type to
@@ -495,9 +500,9 @@ pnpm bench:arithmetic
 
 The arithmetic benchmark runs identical source through Sage.js and an
 installed Sagelite. On the initial x86-64 development machine, repeated small
-rational operations and degree-64 polynomial additions were about four times
-slower in Sage.js, degree-64 FLINT polynomial multiplication was within about
-15%, and repeated `ZZ[x] + QQ` coercion was about four times faster in
+rational operations and degree-64 polynomial additions were about five to six
+times slower in Sage.js, degree-64 FLINT polynomial multiplication was within
+about 20%, and repeated `ZZ[x] + QQ` coercion was about three times faster in
 Sage.js. These microbenchmarks exclude startup and are directional rather than
 release claims; the scripts are included to keep comparisons reproducible.
 

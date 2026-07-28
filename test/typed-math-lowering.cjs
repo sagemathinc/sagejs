@@ -13,6 +13,10 @@ const source = readFileSync(
   join(root, "src/baselib/finite_fields.py"),
   "utf8",
 );
+const rationalSource = readFileSync(
+  join(root, "src/baselib/exact_rational.py"),
+  "utf8",
+);
 
 function methodBody(className, methodName) {
   const marker = `${className}.prototype.${methodName} = `;
@@ -66,6 +70,27 @@ for (const body of [add, subtract, multiply]) {
     body,
     /ρσ_operator_(?:add|sub|mul)|ρσ_new_prime_field_element/,
   );
+}
+
+const rationalConstructorStart = generated.indexOf("function Rational()");
+const rationalConstructorEnd = generated.indexOf(
+  "ρσ_extends(Rational",
+  rationalConstructorStart,
+);
+const rationalConstructor = generated.slice(
+  rationalConstructorStart,
+  rationalConstructorEnd,
+);
+const rationalAdd = methodBody("Rational", "_add_");
+const rationalSubtract = methodBody("Rational", "_sub_");
+const rationalMultiply = methodBody("Rational", "_mul_");
+
+assert.doesNotMatch(rationalSource, /\bv(?:'[^']*'|"[^"]*"|"""[\s\S]*?""")/);
+assert.doesNotMatch(rationalSource, /\/\//);
+assert.doesNotMatch(rationalConstructor, /ρσ_object_id/);
+for (const body of [rationalAdd, rationalSubtract, rationalMultiply]) {
+  assert.match(body, /ρσ_bigint_divexact/);
+  assert.doesNotMatch(body, /ρσ_operator_(?:add|sub|mul|floordiv)/);
 }
 
 console.log("Typed mathematical class lowering passed.");

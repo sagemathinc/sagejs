@@ -55,6 +55,10 @@ function ρσ_bigint_gcd(a, b) {
     return a;
 }
 
+function ρσ_bigint_divexact(numerator, denominator) {
+    return numerator / denominator;
+}
+
 function Parent(name) {
     this._name = name;
 }
@@ -97,117 +101,10 @@ var ZZ = ρσ_make_parent("Integer Ring", function(value) {
 
 Object.defineProperty(ZZ, "_kind", {value: "ZZ"});
 
-function Rational(numerator, denominator) {
-    if (!(this instanceof Rational)) {
-        return new Rational(numerator, denominator);
-    }
+var QQ = ρσ_make_parent("Rational Field", function(numerator, denominator) {
     if (numerator instanceof Rational && denominator === undefined) {
         return numerator;
     }
-    if (denominator === undefined) denominator = 1;
-    numerator = ρσ_integer_bigint(numerator);
-    denominator = ρσ_integer_bigint(denominator);
-    if (denominator === 0n) {
-        throw new ZeroDivisionError("rational division by zero");
-    }
-    if (denominator < 0n) {
-        numerator = -numerator;
-        denominator = -denominator;
-    }
-    const common = ρσ_bigint_gcd(numerator, denominator);
-    this._numerator = numerator / common;
-    this._denominator = denominator / common;
-    this._parent = QQ;
-    Object.freeze(this);
-}
-
-Rational.prototype = Object.create(Element.prototype);
-Rational.prototype.constructor = Rational;
-Object.defineProperty(Rational, "__repr__", {
-    value: function() { return "<class 'Rational'>"; }
-});
-
-Rational.prototype.numerator = function() {
-    return ρσ_normalize_integer(this._numerator);
-};
-Rational.prototype.denominator = function() {
-    return ρσ_normalize_integer(this._denominator);
-};
-Rational.prototype.__float__ = function() {
-    return Number(this._numerator) / Number(this._denominator);
-};
-Rational.prototype._add_ = function(other) {
-    const a = this._numerator;
-    const b = this._denominator;
-    const c = other._numerator;
-    const d = other._denominator;
-    const g = ρσ_bigint_gcd(b, d);
-    const bg = b / g;
-    const dg = d / g;
-    return new Rational(a * dg + c * bg, bg * d);
-};
-Rational.prototype._sub_ = function(other) {
-    const a = this._numerator;
-    const b = this._denominator;
-    const c = other._numerator;
-    const d = other._denominator;
-    const g = ρσ_bigint_gcd(b, d);
-    const bg = b / g;
-    const dg = d / g;
-    return new Rational(a * dg - c * bg, bg * d);
-};
-Rational.prototype._mul_ = function(other) {
-    const g1 = ρσ_bigint_gcd(this._numerator, other._denominator);
-    const g2 = ρσ_bigint_gcd(other._numerator, this._denominator);
-    return new Rational(
-        (this._numerator / g1) * (other._numerator / g2),
-        (this._denominator / g2) * (other._denominator / g1));
-};
-Rational.prototype._truediv_ = function(other) {
-    if (other._numerator === 0n) {
-        throw new ZeroDivisionError("rational division by zero");
-    }
-    const g1 = ρσ_bigint_gcd(this._numerator, other._numerator);
-    const g2 = ρσ_bigint_gcd(other._denominator, this._denominator);
-    return new Rational(
-        (this._numerator / g1) * (other._denominator / g2),
-        (this._denominator / g2) * (other._numerator / g1));
-};
-Rational.prototype._eq_ = function(other) {
-    return this._numerator === other._numerator &&
-        this._denominator === other._denominator;
-};
-Rational.prototype.__neg__ = function() {
-    return new Rational(-this._numerator, this._denominator);
-};
-Rational.prototype.__abs__ = function() {
-    return this._numerator < 0n
-        ? new Rational(-this._numerator, this._denominator)
-        : this;
-};
-Rational.prototype.__pow__ = function(exponent) {
-    exponent = ρσ_integer_bigint(exponent);
-    if (exponent === 0n) return new Rational(1n, 1n);
-    if (exponent < 0n) {
-        if (this._numerator === 0n) {
-            throw new ZeroDivisionError("rational division by zero");
-        }
-        return new Rational(
-            this._denominator ** (-exponent),
-            this._numerator ** (-exponent));
-    }
-    return new Rational(
-        this._numerator ** exponent,
-        this._denominator ** exponent);
-};
-Rational.prototype.__repr__ = function() {
-    if (this._denominator === 1n) return this._numerator.toString();
-    return this._numerator.toString() + "/" + this._denominator.toString();
-};
-Rational.prototype.__str__ = Rational.prototype.__repr__;
-Rational.prototype.toString = Rational.prototype.__repr__;
-
-var QQ = ρσ_make_parent("Rational Field", function(numerator, denominator) {
     return new Rational(numerator, denominator);
 });
 Object.defineProperty(QQ, "_kind", {value: "QQ"});
@@ -680,22 +577,6 @@ function ρσ_is_math_element(value) {
 function ρσ_parent(value) {
     return ρσ_coercion_model.parentOf(value);
 }
-
-Rational.prototype.__add__ = function(other) {
-    return ρσ_coercion_model.binOp("add", this, other);
-};
-Rational.prototype.__sub__ = function(other) {
-    return ρσ_coercion_model.binOp("sub", this, other);
-};
-Rational.prototype.__mul__ = function(other) {
-    return ρσ_coercion_model.binOp("mul", this, other);
-};
-Rational.prototype.__truediv__ = function(other) {
-    return ρσ_coercion_model.binOp("truediv", this, other);
-};
-Rational.prototype.__eq__ = function(other) {
-    return ρσ_coercion_model.equals(this, other);
-};
 
 var ρσ_flint_state = {backend: null};
 function ρσ_flint_backend() {

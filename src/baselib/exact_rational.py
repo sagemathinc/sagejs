@@ -1,0 +1,172 @@
+# Sage-compatible exact rational elements.
+#
+# Copyright (C) 2026 Sage.js contributors
+# License: GPL-3.0-only
+
+from __future__ import annotations
+
+from typing import Any
+
+import sagejs.runtime as runtime
+
+# Element and QQ come through the runtime namespace because this module defines
+# Rational before the public ``sagejs`` compatibility package can be
+# bootstrapped. The converged compiler lowers both names directly.
+
+
+@runtime.bigint_fields('_numerator', '_denominator')
+@runtime.lightweight_math_class
+class Rational(runtime.element):
+    """An immutable reduced element of the rational field."""
+
+    def __init__(
+        self, numerator: Any, denominator: Any = None,
+    ) -> None:
+        if isinstance(numerator, Rational) and denominator is None:
+            self._numerator = numerator._numerator
+            self._denominator = numerator._denominator
+        else:
+            if denominator is None:
+                denominator = 1
+            numerator = runtime.integer_bigint(numerator)
+            denominator = runtime.integer_bigint(denominator)
+            if denominator == runtime.bigint(0):
+                raise ZeroDivisionError('rational division by zero')
+            if denominator < 0:
+                numerator = -numerator
+                denominator = -denominator
+            common = runtime.bigint_gcd(numerator, denominator)
+            self._numerator = runtime.bigint_divexact(numerator, common)
+            self._denominator = runtime.bigint_divexact(
+                denominator, common)
+
+        self._parent = runtime.qq
+        runtime.object.freeze(self)
+
+    def numerator(self) -> int:
+        return runtime.normalize_integer(self._numerator)
+
+    def denominator(self) -> int:
+        return runtime.normalize_integer(self._denominator)
+
+    def __float__(self) -> float:
+        return float(self._numerator) / float(self._denominator)
+
+    def _add_(self, other: Rational) -> Rational:
+        left_numerator = self._numerator
+        left_denominator = self._denominator
+        right_numerator = other._numerator
+        right_denominator = other._denominator
+        common = runtime.bigint_gcd(
+            left_denominator, right_denominator)
+        left_quotient = runtime.bigint_divexact(
+            left_denominator, common)
+        right_quotient = runtime.bigint_divexact(
+            right_denominator, common)
+        return Rational(
+            left_numerator * right_quotient
+            + right_numerator * left_quotient,
+            left_quotient * right_denominator,
+        )
+
+    def _sub_(self, other: Rational) -> Rational:
+        left_numerator = self._numerator
+        left_denominator = self._denominator
+        right_numerator = other._numerator
+        right_denominator = other._denominator
+        common = runtime.bigint_gcd(
+            left_denominator, right_denominator)
+        left_quotient = runtime.bigint_divexact(
+            left_denominator, common)
+        right_quotient = runtime.bigint_divexact(
+            right_denominator, common)
+        return Rational(
+            left_numerator * right_quotient
+            - right_numerator * left_quotient,
+            left_quotient * right_denominator,
+        )
+
+    def _mul_(self, other: Rational) -> Rational:
+        left_common = runtime.bigint_gcd(
+            self._numerator, other._denominator)
+        right_common = runtime.bigint_gcd(
+            other._numerator, self._denominator)
+        return Rational(
+            runtime.bigint_divexact(self._numerator, left_common)
+            * runtime.bigint_divexact(other._numerator, right_common),
+            runtime.bigint_divexact(self._denominator, right_common)
+            * runtime.bigint_divexact(other._denominator, left_common),
+        )
+
+    def _truediv_(self, other: Rational) -> Rational:
+        if other._numerator == runtime.bigint(0):
+            raise ZeroDivisionError('rational division by zero')
+        numerator_common = runtime.bigint_gcd(
+            self._numerator, other._numerator)
+        denominator_common = runtime.bigint_gcd(
+            other._denominator, self._denominator)
+        return Rational(
+            runtime.bigint_divexact(self._numerator, numerator_common)
+            * runtime.bigint_divexact(
+                other._denominator, denominator_common),
+            runtime.bigint_divexact(
+                self._denominator, denominator_common)
+            * runtime.bigint_divexact(
+                other._numerator, numerator_common),
+        )
+
+    def _eq_(self, other: Rational) -> bool:
+        return (
+            self._numerator == other._numerator
+            and self._denominator == other._denominator
+        )
+
+    def __add__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('add', self, other)
+
+    def __sub__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('sub', self, other)
+
+    def __mul__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('mul', self, other)
+
+    def __truediv__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('truediv', self, other)
+
+    def __eq__(self, other: object) -> bool:
+        return runtime.coercion_model.equals(self, other)
+
+    def __neg__(self) -> Rational:
+        return Rational(-self._numerator, self._denominator)
+
+    def __abs__(self) -> Rational:
+        if self._numerator < 0:
+            return Rational(-self._numerator, self._denominator)
+        return self
+
+    def __pow__(self, exponent: int) -> Rational:
+        exponent = runtime.integer_bigint(exponent)
+        if exponent == runtime.bigint(0):
+            return Rational(1, 1)
+        if exponent < 0:
+            if self._numerator == runtime.bigint(0):
+                raise ZeroDivisionError('rational division by zero')
+            return Rational(
+                self._denominator ** (-exponent),
+                self._numerator ** (-exponent),
+            )
+        return Rational(
+            self._numerator ** exponent,
+            self._denominator ** exponent,
+        )
+
+    def __repr__(self) -> str:
+        if self._denominator == runtime.bigint(1):
+            return str(self._numerator)
+        return str(self._numerator) + '/' + str(self._denominator)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+runtime.set_class_repr(Rational, "<class 'Rational'>")

@@ -6,7 +6,8 @@ lowered directly to their corresponding runtime globals.  These assignments
 are the bootstrap implementation used by older checked-in compilers.
 """
 
-# globals: Array, BigInt, Map, Number, Object, Reflect, RegExp
+# globals: Array, BigInt, Element, Map, Number, Object, QQ, Reflect, RegExp
+# globals: ρσ_bigint_divexact, ρσ_bigint_gcd
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
 # globals: ρσ_integer_bigint, ρσ_iterator_symbol, ρσ_kwargs_symbol
@@ -26,10 +27,13 @@ def map():
 
 array = Array
 bigint = BigInt
+bigint_divexact = ρσ_bigint_divexact
+bigint_gcd = ρσ_bigint_gcd
 bigint_fields = ρσ_bigint_fields
 callable_instance_class = ρσ_callable_instance_class
 coercion_model = ρσ_coercion_model
 equals = ρσ_equals
+element = Element
 factor_pair = ρσ_factor_pair
 flint_backend = ρσ_flint_backend
 integer_bigint = ρσ_integer_bigint
@@ -45,6 +49,7 @@ object = Object
 operator_mul_exact = ρσ_operator_mul_exact
 operator_pow_exact = ρσ_operator_pow_exact
 polynomial_from_coefficients = ρσ_polynomial_from_coefficients
+qq = QQ
 reflect = Reflect
 regexp = RegExp
 repr = ρσ_repr

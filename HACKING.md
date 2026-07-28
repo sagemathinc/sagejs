@@ -50,7 +50,8 @@ pnpm bench:arithmetic
 `src/baselib/algebra.py` contains the small low-level parent/coercion kernel
 and JavaScript/native adapters. Keep its raw JavaScript escape block small.
 Mathematical parents, elements, and algorithms should normally be ordinary
-Sage.js source; `src/baselib/finite_fields.py` is the first complete example.
+Sage.js source. Exact rationals, finite fields, polynomial rings, and
+factorizations are now complete strict-source examples.
 The coercion resolver is responsible for both operand maps and may construct a
 common parent such as `QQ[x]`; do not reintroduce asymmetric `__radd__`
 dispatch for mathematical elements.
