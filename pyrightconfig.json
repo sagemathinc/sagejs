@@ -9,7 +9,8 @@
     "src/baselib/finite_fields.py",
     "src/baselib/itertools.py",
     "src/baselib/polynomial.py",
-    "src/baselib/real_complex.py"
+    "src/baselib/real_complex.py",
+    "src/baselib/str.py"
   ],
   "extraPaths": [
     "src/baselib"

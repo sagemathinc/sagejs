@@ -7,7 +7,7 @@ are the bootstrap implementation used by older checked-in compilers.
 """
 
 # globals: Array, BigInt, Element, Error, Map, Number, Object, PolynomialRing
-# globals: Set
+# globals: JSON, Set, isNaN, parseFloat, parseInt
 # globals: QQ, Rational, ReferenceError, Reflect, RegExp, String
 # globals: ZeroDivisionError, require
 # globals: ρσ_bigint_divexact, ρσ_bigint_gcd
@@ -47,7 +47,9 @@ factor_pair = ρσ_factor_pair
 flint_backend = ρσ_flint_backend
 integer_bigint = ρσ_integer_bigint
 is_exact_integer = ρσ_is_exact_integer
+is_nan = isNaN
 iterator_symbol = ρσ_iterator_symbol
+json = JSON
 kwargs_symbol = ρσ_kwargs_symbol
 lightweight_math_class = ρσ_lightweight_math_class
 map_class = Map
@@ -61,6 +63,8 @@ object = Object
 operator_add_exact = ρσ_operator_add_exact
 operator_mul_exact = ρσ_operator_mul_exact
 operator_pow_exact = ρσ_operator_pow_exact
+parse_float = parseFloat
+parse_int = parseInt
 polynomial_ring = PolynomialRing
 qq = QQ
 rational_class = Rational

@@ -80,6 +80,11 @@ def ρσ_native_method(target_function):
         args = Array.prototype.slice.call(arguments)
         args.unshift(this)
         return target_function.apply(undefined, args)
+    if target_function.__argnames__:
+        method.__argnames__ = target_function.__argnames__.slice(1)
+    method.__handles_kwarg_interpolation__ = (
+        target_function.__handles_kwarg_interpolation__
+    )
     return method
 
 
