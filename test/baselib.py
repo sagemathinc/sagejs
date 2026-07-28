@@ -288,6 +288,13 @@ assrt.ok(1 in C())
 assrt.ok(2 not in C())
 
 
+def non_string_in_string():
+    return 1 in '123'
+
+
+assrt.throws(non_string_in_string, TypeError)
+
+
 # sets
 def test_sets():
     a = set([1, 2, 3])

@@ -2,7 +2,7 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 
-from ast_types import AST_Array, AST_BaseCall, AST_GeneratorComprehension, AST_ListComprehension, AST_Number, AST_Seq, AST_SymbolRef, AST_Unary, has_calls, is_node_type
+from ast_types import AST_Array, AST_BaseCall, AST_GeneratorComprehension, AST_ListComprehension, AST_Number, AST_Seq, AST_SymbolRef, AST_Unary, is_node_type
 from output.stream import OutputStream
 from output.statements import force_statement
 
@@ -173,19 +173,46 @@ def print_for_in(self, output):
             start = args[0]
             end = args[1]
             increment = args[2]
+        negative_increment = is_node_type(increment, AST_Unary)
 
         self.simple_for_index = idx = 'ρσ_Index' + output.index_counter
         output.index_counter += 1
-        if has_calls(end):
-            end_name = 'ρσ_End' + output.index_counter
+
+        # A Python range object captures all of its arguments before the loop
+        # starts.  In particular, rebinding ``stop`` in the body must not
+        # shorten the loop.  Materialize user-supplied arguments in their
+        # left-to-right evaluation order before emitting the optimized loop.
+        if tmp_ >= 2:
+            start_name = 'ρσ_Start' + output.index_counter
             output.index_counter += 1
             output.print('var')
             output.space()
-            output.assign(end_name)
-            end.print(output)
+            output.assign(start_name)
+            start.print(output)
             output.end_statement()
             output.indent()
-            end = AST_SymbolRef({'name': end_name})
+            start = AST_SymbolRef({'name': start_name})
+
+        end_name = 'ρσ_End' + output.index_counter
+        output.index_counter += 1
+        output.print('var')
+        output.space()
+        output.assign(end_name)
+        end.print(output)
+        output.end_statement()
+        output.indent()
+        end = AST_SymbolRef({'name': end_name})
+
+        if tmp_ is 3:
+            increment_name = 'ρσ_Step' + output.index_counter
+            output.index_counter += 1
+            output.print('var')
+            output.space()
+            output.assign(increment_name)
+            increment.print(output)
+            output.end_statement()
+            output.indent()
+            increment = AST_SymbolRef({'name': increment_name})
         output.print("for")
         output.space()
 
@@ -196,26 +223,17 @@ def print_for_in(self, output):
             output.space()
             output.print(idx)
             output.space()
-            output.print(">") if is_node_type(increment,
-                                              AST_Unary) else output.print("<")
+            output.print(">") if negative_increment else output.print("<")
             output.space()
             end.print(output)
             output.semicolon()
             output.space()
             output.print(idx)
-            if increment and (not (is_node_type(increment, AST_Unary))
-                              or increment.expression.value is not "1"):
-                if is_node_type(increment, AST_Unary):
-                    output.print("-=")
-                    increment.expression.print(output)
-                else:
-                    output.print("+=")
-                    increment.print(output)
+            if increment:
+                output.print("+=")
+                increment.print(output)
             else:
-                if is_node_type(increment, AST_Unary):
-                    output.print("--")
-                else:
-                    output.print("++")
+                output.print("++")
 
         output.with_parens(f_simple_for)
 

@@ -22,6 +22,13 @@ for i in range(endpoint()):
 assrt.deepEqual(seen, [0, 1, 2])
 assrt.equal(endpoint_calls, 1)
 
+mutable_stop = 2
+seen = []
+for i in range(mutable_stop):
+    seen.append(i)
+    mutable_stop = 0
+assrt.deepEqual(seen, [0, 1])
+
 
 def fake_range(_stop):
     return [10, 20]

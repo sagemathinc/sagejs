@@ -250,6 +250,16 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
         result = _builtins_call_special(right, '__radd__', [left])
         if result is not NotImplemented:
             return result
+    left_type = runtime.jstype(left)
+    right_type = runtime.jstype(right)
+    if (
+        (
+            runtime.strict_equal(left_type, 'string')
+            or runtime.strict_equal(right_type, 'string')
+        )
+        and not runtime.strict_equal(left_type, right_type)
+    ):
+        raise TypeError('can only concatenate str to str')
     if (
         _builtins_member_is_function(left, 'concat')
         and (
@@ -259,13 +269,13 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
     ):
         return _builtins_call_member(left, 'concat', [right])
     if (
-        runtime.strict_equal(runtime.jstype(left), 'object')
-        or runtime.strict_equal(runtime.jstype(right), 'object')
+        runtime.strict_equal(left_type, 'object')
+        or runtime.strict_equal(right_type, 'object')
     ):
         raise TypeError('unsupported operand type(s) for +')
     if (
-        runtime.strict_equal(runtime.jstype(left), 'bigint')
-        or runtime.strict_equal(runtime.jstype(right), 'bigint')
+        runtime.strict_equal(left_type, 'bigint')
+        or runtime.strict_equal(right_type, 'bigint')
     ):
         if (
             _builtins_exact_integer_primitive(left)
@@ -274,15 +284,15 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
             return runtime.native_add(
                 runtime.bigint(left), runtime.bigint(right))
         if (
-            runtime.strict_equal(runtime.jstype(left), 'number')
-            or runtime.strict_equal(runtime.jstype(right), 'number')
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(right_type, 'number')
         ):
             return runtime.native_add(
                 runtime.number(left), runtime.number(right))
         return runtime.native_add(left, right)
     if (
-        not runtime.strict_equal(runtime.jstype(left), 'number')
-        or not runtime.strict_equal(runtime.jstype(right), 'number')
+        not runtime.strict_equal(left_type, 'number')
+        or not runtime.strict_equal(right_type, 'number')
     ):
         return runtime.native_add(left, right)
     result = runtime.native_add(left, right)

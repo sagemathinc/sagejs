@@ -490,6 +490,9 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
 
 def ρσ_in(value: Any, container: Any) -> bool:
     if _internal_type_is(runtime.jstype(container), 'string'):
+        if not _internal_type_is(runtime.jstype(value), 'string'):
+            raise TypeError(
+                "'in <string>' requires string as left operand")
         return container.indexOf(value) != -1
     if _internal_member_is_function(container, '__contains__'):
         return bool(
@@ -788,6 +791,24 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
         value, 'ρσ_object_id'
     ) is not runtime.undefined and not runtime.arraylike(value):
         raise TypeError('object is not subscriptable')
+    if runtime.arraylike(value):
+        key_type = runtime.jstype(key)
+        if _internal_type_is(key_type, 'boolean'):
+            key = 1 if key else 0
+        elif _internal_type_is(key_type, 'bigint'):
+            if key < -value.length or key >= value.length:
+                raise IndexError('index out of range')
+            key = runtime.number(key)
+        elif (
+            not _internal_type_is(key_type, 'number')
+            or not runtime.number.isInteger(key)
+        ):
+            raise TypeError('sequence indices must be integers or slices')
+        if key < 0:
+            key += value.length
+        if key < 0 or key >= value.length:
+            raise IndexError('index out of range')
+        return value[key]
     if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
         key += value.length
     return value[key]
