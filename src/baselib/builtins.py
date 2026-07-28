@@ -1208,7 +1208,11 @@ def ρσ_print(
     if file is None:
         runtime.output_write(text)
     else:
-        file.write(text)
+        for index in range(len(parts)):
+            if index:
+                file.write(sep)
+            file.write(parts[index])
+        file.write(end)
         if flush:
             file.flush()
 

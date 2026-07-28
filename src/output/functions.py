@@ -655,7 +655,16 @@ def print_function_call(self, output):
                 self.expression.print(output)
                 output.print(')')
             else:
+                parenthesize_constructor = (
+                    is_new
+                    and not is_node_type(
+                        self.expression, AST_SymbolRef)
+                )
+                if parenthesize_constructor:
+                    output.print('(')
                 self.expression.print(output)
+                if parenthesize_constructor:
+                    output.print(')')
 
     def print_kwargs():
         output.print(
