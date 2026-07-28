@@ -139,6 +139,10 @@ def bind_module_namespace(module, output):
         if name and not seen[name]:
             seen[name] = True
             names.push(name)
+    for symbol in module.exports or []:
+        if not seen[symbol.name]:
+            seen[symbol.name] = True
+            names.push(symbol.name)
     magic_names = []
     if output.options.write_name:
         magic_names.push('__name__')

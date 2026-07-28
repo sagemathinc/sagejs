@@ -1357,7 +1357,10 @@ class _LiveScopeDict(SageDict):
 
     def copy(self) -> SageDict:
         self._refresh()
-        return SageDict.copy(self)
+        answer = SageDict()
+        for pair in SageDict.items(self):
+            answer.__setitem__(pair[0], pair[1])
+        return answer
 
     def keys(self) -> Any:
         self._refresh()

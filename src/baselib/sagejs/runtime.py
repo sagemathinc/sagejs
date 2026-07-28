@@ -109,6 +109,21 @@ def native_ge(left, right):
     return r"%js left >= right"
 
 
+def ρσ_dynamic_eval(
+    javascript,
+    input_namespace,
+    module_id,
+):
+    return r"""%js (() => {
+        const ρσ_dynamic_modules = {[module_id]: {}};
+        const ρσ_modules = ρσ_dynamic_modules;
+        const __name__ = module_id;
+        const __sagejs_input_namespace__ = input_namespace;
+        const completion = eval(javascript);
+        return {completion, namespace: ρσ_modules[module_id]};
+    })()"""
+
+
 array = Array
 arraylike = ρσ_arraylike
 bigint = BigInt
@@ -149,7 +164,8 @@ native_method = ρσ_native_method
 native_method_adapter = ρσ_native_method_adapter
 non_exception_throw = ρσ_non_exception_throw
 normalize_integer = ρσ_normalize_integer
-number = Number
+native_number_class = Number
+number = native_number_class
 object = Object
 operator_add_exact = ρσ_operator_add_exact
 operator_mul_exact = ρσ_operator_mul_exact
@@ -181,3 +197,4 @@ type_error = TypeError
 tuple_builtin = ρσ_tuple
 undefined = r"%js undefined"
 zero_division_error = ZeroDivisionError
+dynamic_eval = ρσ_dynamic_eval

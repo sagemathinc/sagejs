@@ -41,9 +41,12 @@ def _map_generator(
         for iterator in iterators:
             try:
                 values.append(next(iterator))
-            except StopIteration:
-                done = True
-                break
+            except StopIteration as error:
+                if len(error.args) == 0:
+                    done = True
+                    break
+                else:
+                    raise error  # noqa: B904
         if not done:
             try:
                 yield func(*values)
@@ -82,9 +85,12 @@ def zip(*iterables: Iterable[Any]) -> Iterator[Any]:
         for iterator in iterators:
             try:
                 values.append(next(iterator))
-            except StopIteration:
-                done = True
-                break
+            except StopIteration as error:
+                if len(error.args) == 0:
+                    done = True
+                    break
+                else:
+                    raise error  # noqa: B904
         if not done:
             yield runtime.math_tuple(values)
 

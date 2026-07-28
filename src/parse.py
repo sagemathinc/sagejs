@@ -14,7 +14,7 @@ from ast_types import (
     AST_Else, AST_EmptyStatement, AST_Except, AST_ExpressiveObject, AST_False,
     AST_Finally, AST_ForIn, AST_ForJS, AST_Function,
     AST_GeneratorComprehension, AST_Hole, AST_If, AST_Import, AST_ImportedVar,
-    AST_Imports, AST_ListComprehension, AST_Method, AST_New, AST_Null,
+    AST_Imports, AST_Lambda, AST_ListComprehension, AST_Method, AST_New, AST_Null,
     AST_Number, AST_Object, AST_ObjectKeyVal, AST_PropAccess, AST_RegExp,
     AST_Return, AST_Scope, AST_Set, AST_SetComprehension, AST_SetItem, AST_Seq,
     AST_SimpleStatement, AST_Splice, AST_String, AST_Sub, AST_ItemAccess,
@@ -229,6 +229,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'callable_instance_class': 'ρσ_callable_instance_class',
     'console_object': 'console',
     'coercion_model': 'ρσ_coercion_model',
+    'dynamic_eval': 'ρσ_dynamic_eval',
     'equals': 'ρσ_equals',
     'element': 'Element',
     'error': 'Error',
@@ -279,7 +280,8 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'native_gt': 'ρσ_native_gt',
     'native_ge': 'ρσ_native_ge',
     'normalize_integer': 'ρσ_normalize_integer',
-    'number': 'Number',
+    'native_number_class': 'Number',
+    'number': '_builtins_number_class',
     'object': 'Object',
     'operator_add_exact': 'ρσ_operator_add_exact',
     'operator_mul_exact': 'ρσ_operator_mul_exact',
@@ -579,6 +581,34 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 ans = ans.concat(scan_for_top_level_callables(
                     body.alternative))
 
+        return ans
+
+    def scan_for_scope_callable_bindings(body):
+        """Find callable names bound here without imposing top-level rules."""
+        ans = r'%js []'
+        if Array.isArray(body):
+            for obj in body:
+                if is_node_type(obj, AST_Function) or is_node_type(
+                        obj, AST_Class):
+                    if obj.name:
+                        ans.push(obj.name.name)
+                    continue
+                if is_node_type(obj, AST_Scope):
+                    continue
+                for option in ('body', 'alternative'):
+                    opt = obj[option]
+                    if opt:
+                        ans = ans.concat(
+                            scan_for_scope_callable_bindings(opt)
+                        )
+        elif body and body.body:
+            ans = ans.concat(
+                scan_for_scope_callable_bindings(body.body)
+            )
+            if body.alternative:
+                ans = ans.concat(
+                    scan_for_scope_callable_bindings(body.alternative)
+                )
         return ans
 
     def scan_for_classes(body):
@@ -979,8 +1009,13 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             body.walk(walker)
         return found[0] and not invalid[0]
 
-    def scan_for_nonlocal_defs(body):
+    def scan_for_nonlocal_defs(body, declaration_kind=None):
         vars = r'%js []'
+
+        def extend(items):
+            for item in items:
+                vars.push(item)
+
         if Array.isArray(body):
             for stmt in body:
                 if is_node_type(stmt, AST_Scope):
@@ -989,18 +1024,36 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 # don't invade nested scopes
                 if is_node_type(stmt, AST_Definitions):
                     for vardef in stmt.definitions:
-                        vars.push(vardef.name.name)
+                        if (
+                            declaration_kind is None
+                            or (
+                                declaration_kind is 'global'
+                                and vardef.is_global
+                            )
+                            or (
+                                declaration_kind is 'nonlocal'
+                                and not vardef.is_global
+                            )
+                        ):
+                            vars.push(vardef.name.name)
 
                 for option in ('body', 'alternative'):
-                    nonlocal vars
                     opt = stmt[option]
                     if opt:
-                        vars = vars.concat(scan_for_nonlocal_defs(opt))
+                        extend(
+                            scan_for_nonlocal_defs(opt, declaration_kind)
+                        )
 
         elif body.body:
-            vars = vars.concat(scan_for_nonlocal_defs(body.body))
+            extend(
+                scan_for_nonlocal_defs(body.body, declaration_kind)
+            )
             if body.alternative:
-                vars = vars.concat(scan_for_nonlocal_defs(body.alternative))
+                extend(
+                    scan_for_nonlocal_defs(
+                        body.alternative, declaration_kind
+                    )
+                )
 
         return vars
 
@@ -2276,6 +2329,55 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         i] is definition.argnames[j].name:
                     break
 
+        declared_globals = {
+            item for item in scan_for_nonlocal_defs(
+                definition.body, 'global'
+            )
+        }
+        declared_nonlocals = {
+            item for item in scan_for_nonlocal_defs(
+                definition.body, 'nonlocal'
+            )
+        }
+        parameter_names = [argument.name for argument in definition.argnames]
+        for argument in definition.argnames.kwonly:
+            parameter_names.push(argument.name)
+        if definition.argnames.starargs:
+            parameter_names.push(definition.argnames.starargs.name)
+        if definition.argnames.kwargs:
+            parameter_names.push(definition.argnames.kwargs.name)
+
+        for parameter_name in parameter_names:
+            if declared_globals.has(parameter_name):
+                croak(
+                    "name '" + parameter_name
+                    + "' is parameter and global"
+                )
+            if declared_nonlocals.has(parameter_name):
+                croak(
+                    "name '" + parameter_name
+                    + "' is parameter and nonlocal"
+                )
+        for declared_name in declared_globals:
+            if declared_nonlocals.has(declared_name):
+                croak(
+                    "name '" + declared_name
+                    + "' is nonlocal and global"
+                )
+
+        definition.declared_globals = Array.from(declared_globals)
+        definition.declared_nonlocals = Array.from(declared_nonlocals)
+        scope_bindings = assignments.concat(
+            scan_for_scope_callable_bindings(definition.body)
+        ).concat(parameter_names)
+        definition.scope_bindings = [
+            binding for binding in {item for item in scope_bindings}
+            if (
+                not declared_globals.has(binding)
+                and not declared_nonlocals.has(binding)
+            )
+        ]
+
         nonlocals = scan_for_nonlocal_defs(definition.body)
         nonlocals = {name for name in nonlocals}
 
@@ -2437,7 +2539,15 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         return a
 
     def nonlocal_(is_global):
+        if (
+            options.strict_python_scopes
+            and not is_global
+            and S.in_function is 0
+        ):
+            croak("nonlocal declaration not allowed at module level")
         defs = vardefs(AST_SymbolNonlocal)
+        for vardef in defs:
+            vardef.is_global = is_global
         if is_global:
             for vardef in defs:
                 S.globals.push(vardef.name.name)
@@ -2565,7 +2675,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             tmp__ = tok.value
             if tmp__ is "False":
                 return AST_False({'start': tok, 'end': tok})
-            elif tmp__ is "True":
+            elif tmp__ is "True" or tmp__ is "__debug__":
                 return AST_True({'start': tok, 'end': tok})
             elif tmp__ is "None":
                 return AST_Null({'start': tok, 'end': tok})
@@ -2728,6 +2838,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
     def func_call_list(empty):
         a = r'%js []'
         first = True
+        saw_keyword_unpack = False
+        saw_keyword_argument = False
         a.kwargs = r'%js []'
         a.kwarg_items = r'%js []'
         a.starargs = False
@@ -2740,6 +2852,13 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 if is_('punc', ')'):
                     break
             if is_('operator', '*'):
+                if (
+                    options.strict_python_scopes
+                    and saw_keyword_unpack
+                ):
+                    croak(
+                        'iterable argument unpacking follows '
+                        'keyword argument unpacking')
                 next()
                 arg = expression(False)
                 arg.is_array = True
@@ -2749,6 +2868,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 next()
                 a.kwarg_items.push(expression(False))
                 a.starargs = True
+                saw_keyword_unpack = True
             else:
                 arg = expression(False)
                 if (
@@ -2756,7 +2876,15 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     and not arg.is_walrus
                 ):
                     a.kwargs.push([arg.left, arg.right])
+                    saw_keyword_argument = True
                 else:
+                    if (
+                        options.strict_python_scopes
+                        and saw_keyword_argument
+                    ):
+                        croak(
+                            'positional argument follows '
+                            'keyword argument')
                     if is_('keyword', 'for'):
                         if not first:
                             croak(
@@ -2802,7 +2930,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             if not is_("punc", "]"):
                 expect(",")
 
-        return AST_Array({'elements': expr.concat(expr_list("]", True, True))})
+        return AST_Array({
+            'elements': expr.concat(
+                expr_list("]", True, False))
+        })
 
     def sage_array():
         expect("[")
@@ -3439,6 +3570,32 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     })
                     S.in_parenthesized_expr = False
                     return ret
+                elif tmp_ is 'ρσ_dynamic_eval':
+                    args = func_call_list()
+                    if args.length is not 3:
+                        croak(tmp_ + '() requires exactly three arguments')
+                    ret = subscripts(
+                        AST_Call({
+                            'start': start,
+                            'expression': AST_Verbatim({
+                                'start': start,
+                                'end': prev(),
+                                'value':
+                                '''(function(javascript,input_namespace,module_id){
+const dynamic_modules = {[module_id]: {}};
+const ρσ_modules = dynamic_modules;
+const __name__ = module_id;
+const __sagejs_input_namespace__ = input_namespace;
+const completion = eval(javascript);
+return {completion:completion,namespace:ρσ_modules[module_id]};
+})'''
+                            }),
+                            'args': args,
+                            'direct_call': True,
+                            'end': prev()
+                        }), True)
+                    S.in_parenthesized_expr = False
+                    return ret
                 elif tmp_ is "isinstance":
                     args = func_call_list()
                     if args.length is not 2:
@@ -3599,6 +3756,11 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             S.in_delete = start.value is 'delete'
             expr = maybe_unary(allow_calls)
             S.in_delete = False
+            if (
+                start.value is 'delete'
+                and not valid_deletion_target(expr)
+            ):
+                croak('invalid deletion target')
             ex = make_unary(AST_UnaryPrefix, start.value, expr,
                             is_parenthesized)
             ex.start = start
@@ -3638,6 +3800,11 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
 
         prec = PRECEDENCE[op] if op is not None else None
         if prec is not None and prec > min_prec:
+            if (
+                is_node_type(left, AST_UnaryPrefix)
+                and left.operator is 'delete'
+            ):
+                croak('invalid deletion target')
             next()
             right = expr_op(maybe_unary(True), prec, no_in)
             ret = AST_Binary({
@@ -3679,6 +3846,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         return expr
 
     def create_assign(data):
+        if not valid_assignment_target(
+            data.left, data.operator is '='
+        ):
+            token_error(data.start, 'invalid assignment target')
         if data.right and is_node_type(data.right, AST_Seq) and (is_node_type(
                 data.right.car, AST_Assign) or is_node_type(
                     data.right.cdr, AST_Assign)) and data.operator is not '=':
@@ -3699,11 +3870,50 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         c.provisional_classvars[ans.left.name] = True
         return ans
 
+    def valid_assignment_target(target, destructuring):
+        if (
+            is_node_type(target, AST_SymbolRef)
+            or is_node_type(target, AST_Dot)
+            or is_node_type(target, AST_Sub)
+            or is_node_type(target, AST_ItemAccess)
+        ):
+            return True
+        if not destructuring:
+            return False
+        if is_node_type(target, AST_Array):
+            return all(
+                valid_assignment_target(element, True)
+                for element in target.elements
+            )
+        if is_node_type(target, AST_Seq):
+            return (
+                valid_assignment_target(target.car, True)
+                and valid_assignment_target(target.cdr, True)
+            )
+        if (
+            is_node_type(target, AST_UnaryPrefix)
+            and target.operator is '*'
+        ):
+            return valid_assignment_target(
+                target.expression, False)
+        return False
+
+    def valid_deletion_target(target):
+        if valid_assignment_target(target, True):
+            return True
+        return (
+            is_node_type(target, AST_Call)
+            and is_node_type(target.expression, AST_SymbolRef)
+            and target.expression.name is 'ρσ_delslice'
+        )
+
     def maybe_assign(no_in, only_plain_assignment):
         start = S.token
         left = maybe_conditional(no_in)
         val = S.token.value
         if is_("operator") and ASSIGNMENT[val]:
+            if not valid_assignment_target(left, val is '='):
+                croak('invalid assignment target')
             if is_node_type(left, AST_Call):
                 if options.jsage and val is '=':
                     croak(
@@ -3887,6 +4097,30 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 'docstrings': docstrings,
             })
 
+        if options.strict_python_scopes:
+            enclosing_function_bindings = r'%js []'
+
+            def validate_nonlocal_bindings(node, descend):
+                if not is_node_type(node, AST_Lambda):
+                    return False
+                for declared_name in node.declared_nonlocals or []:
+                    found = False
+                    for bindings in enclosing_function_bindings:
+                        if bindings.indexOf(declared_name) is not -1:
+                            found = True
+                            break
+                    if not found:
+                        croak(
+                            "no binding for nonlocal '" + declared_name
+                            + "' found"
+                        )
+                enclosing_function_bindings.push(node.scope_bindings or [])
+                descend()
+                enclosing_function_bindings.pop()
+                return True
+
+            toplevel.walk(TreeWalker(validate_nonlocal_bindings))
+
         if native_bitwise:
             bitwise_operators = {
                 '&': True,
@@ -3991,6 +4225,8 @@ def parse(text, options):
             'tokens': False,  # if true, show every token as it is parsed
             'exact_integer_literals':
             False,  # exact Python integers without enabling Sage syntax
+            'strict_python_scopes':
+            False,  # validate CPython global/nonlocal declaration rules
         })
     import_dirs = [x for x in options.import_dirs]
     for location in r'%js [options.libdir, options.basedir]':
@@ -4023,7 +4259,12 @@ def parse(text, options):
     # The internal state of the parser
     S = {
         'input':
-        tokenizer(text, options.filename) \
+        tokenizer(
+            text,
+            options.filename,
+            options.strict_python_scopes,
+            options.jsage,
+        ) \
         if jstype(text) is 'string' else text,
         'token':
         None,

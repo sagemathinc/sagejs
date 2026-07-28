@@ -29,6 +29,10 @@ class ImportError(SyntaxError):
     pass
 
 
+class IndentationError(SyntaxError):
+    pass
+
+
 class EOFError(Error):
     pass
 

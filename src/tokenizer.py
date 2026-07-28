@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional, Union, List, Literal
 from unicode_aliases import ALIAS_MAP  # type: ignore
 from utils import make_predicate, characters, charAt, startswith
 from ast_types import AST_Token
-from errors import EOFError, SyntaxError
+from errors import EOFError, IndentationError, SyntaxError
 from string_interpolation import interpolate  # type: ignore
 
 RE_HEX_NUMBER = RegExp(r"^0x[0-9a-f]+$", "i")
@@ -59,7 +59,7 @@ PUNC_CHARS = make_predicate(characters("[]{}(),;:?"))
 
 keywords = "as assert break class continue def del do elif else except finally for from global if import in is lambda new nonlocal pass raise return yield try while with or and not"
 
-keywords_atom = "False None True"
+keywords_atom = "False None True __debug__"
 
 # see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar
 reserved_words = (
@@ -169,7 +169,12 @@ def is_token(token, type, val) -> bool:
                                    or token.value is val)
 
 
-def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
+def tokenizer(
+    raw_text: str,
+    filename: str,
+    strict_python_scopes: bool = False,
+    jsage: bool = False,
+) -> Callable[[], Any]:
     S = {
         'exponent': # parse ^ as exponent and ^^ as xor
         False,
@@ -344,6 +349,12 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
                 leading_whitespace = ""
             else:
                 leading_whitespace += ch
+        if (
+            strict_python_scopes
+            and S['prev'] is undefined
+            and leading_whitespace
+        ):
+            indentation_error("Unexpected indent")
         if peek() is not "#":
             if not whitespace_exists:
                 leading_whitespace = S['cached_whitespace']
@@ -373,7 +384,7 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
                 return -1
             else:
                 # indent mismatch, inconsistent indentation
-                parse_error("Inconsistent indentation")
+                indentation_error("Inconsistent indentation")
         return 0
 
     def read_while(pred: Callable) -> str:
@@ -389,6 +400,10 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
     def parse_error(err: str, is_eof: bool = False) -> SyntaxError:
         raise SyntaxError(err, filename, S['tokline'], S['tokcol'],
                           S['tokpos'], is_eof)
+
+    def indentation_error(err: str) -> IndentationError:
+        raise IndentationError(
+            err, filename, S['tokline'], S['tokcol'], S['tokpos'], False)
 
     def read_num(prefix: str) -> Optional[AST_Token]:
         source = (prefix or '') + S['text'].slice(S['pos'])
@@ -419,6 +434,17 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
             next()
 
         plain_num = num.replace(RegExp("_", "g"), "")
+        if (
+            strict_python_scopes
+            and not jsage
+            and plain_num.length > 1
+            and plain_num[0] is '0'
+            and RegExp(r'^0[0-9]+$').test(plain_num)
+            and parseInt(plain_num, 10) is not 0
+        ):
+            parse_error(
+                'leading zeros in decimal integer literals '
+                'are not permitted')
         try:
             valid = parse_js_number(plain_num)
         except:
@@ -468,12 +494,14 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
             code = read_hex_digits(2)
             if jstype(code) is 'number':
                 return String.fromCharCode(code)
-            return '\\x' + code
+            parse_error(
+                'truncated \\xXX escape sequence')
         if q is 'u':
             code = read_hex_digits(4)
             if jstype(code) is 'number':
                 return String.fromCharCode(code)
-            return '\\u' + code
+            parse_error(
+                'truncated \\uXXXX escape sequence')
         if q is 'U':
             code = read_hex_digits(8)
             if jstype(code) is 'number':
@@ -482,7 +510,8 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
                 code -= 0x10000
                 return String.fromCharCode(0xD800 + (code >> 10),
                                            0xDC00 + (code & 0x3FF))
-            return '\\U' + code
+            parse_error(
+                'truncated \\UXXXXXXXX escape sequence')
         if q is 'N' and peek() is '{':
             next()
 
@@ -773,6 +802,11 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
 
         if is_digit(code):
             return read_num()
+
+        # ``$`` is a JavaScript identifier character, but it is never valid
+        # in an ordinary Python identifier.
+        if code is 36:
+            return token("operator", next())
 
         if ch is ':' and charAt(S['text'], S['pos'] + 1) is '=':
             return read_operator(next())

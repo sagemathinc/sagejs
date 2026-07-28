@@ -113,6 +113,7 @@ export default async function Compile({
       module_cache_dir,
       jsage: argv.sage,
       exact_integer_literals: true,
+      strict_python_scopes: true,
       scoped_flags: {
         dict_literals: true,
         overload_getitem: true,

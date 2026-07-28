@@ -352,6 +352,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
         scoped_flags,
         jsage: options.sage,
         exact_integer_literals: true,
+        strict_python_scopes: true,
         tokens: options.tokens,
       });
     } catch (err) {

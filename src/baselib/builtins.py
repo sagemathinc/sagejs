@@ -11,6 +11,7 @@ from typing import Any, Callable, Iterator
 
 import sagejs.runtime as runtime
 
+_builtins_number_class = runtime.native_number_class
 _Bool = bool
 _Int = int
 _Str = str
@@ -1950,9 +1951,28 @@ def ρσ_enumerate(
 
     def generate() -> Iterator[Any]:
         index = start
-        for value in iterable:
-            yield runtime.math_tuple([index, value])
-            index += 1
+        iterator = iter(iterable)
+        done = False
+        value = None
+        while not done:
+            result = runtime.reflect.apply(
+                _builtins_get_member(iterator, 'next'),
+                iterator,
+                [],
+            )
+            if result.done:
+                if (
+                    result.value is runtime.undefined
+                    or result.value is None
+                ):
+                    done = True
+                else:
+                    raise StopIteration(result.value)
+            else:
+                value = result.value
+            if not done:
+                yield runtime.math_tuple([index, value])
+                index += 1
 
     return generate()
 
@@ -2818,6 +2838,212 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             "object attribute '" + name + "' is read-only")
 
 
+_dynamic_code_helper_cache = runtime.undefined
+
+
+class _Code:
+
+    def __init__(
+        self,
+        source: _Str,
+        filename: _Str,
+        mode: _Str,
+        native_code: Any,
+    ) -> None:
+        self.source = source
+        self.filename = filename
+        self.mode = mode
+        self._native_code = native_code
+
+
+def _builtins_dynamic_code_helper() -> Any:
+    global _dynamic_code_helper_cache
+    if _dynamic_code_helper_cache is runtime.undefined:
+        module = runtime.require_module('./dynamic-code.js')
+        _dynamic_code_helper_cache = runtime.reflect.get(
+            module, 'default')
+    return _dynamic_code_helper_cache
+
+
+def _builtins_code_source(source: Any) -> _Str:
+    if runtime.strict_equal(runtime.jstype(source), 'string'):
+        return source
+    if _builtins_has_member(source, '_values'):
+        return str(source, 'utf-8')
+    raise TypeError(
+        'source must be a string, bytes, bytearray, or memoryview')
+
+
+def ρσ_compile(
+    source: Any,
+    filename: Any,
+    mode: Any,
+    flags: Any = 0,
+    dont_inherit: Any = False,
+    optimize: Any = -1,
+) -> _Code:
+    del flags, dont_inherit, optimize
+    source = _builtins_code_source(source)
+    filename = str(filename)
+    mode = str(mode)
+    if mode not in ('exec', 'eval', 'single'):
+        raise ValueError(
+            "compile() mode must be 'exec', 'eval' or 'single'")
+    helper = _builtins_dynamic_code_helper()
+    try:
+        native_code = runtime.reflect.apply(
+            runtime.reflect.get(helper, 'compile'),
+            helper,
+            [source, filename, mode],
+        )
+    except SyntaxError as error:
+        if runtime.strict_equal(
+            runtime.reflect.get(error, 'sagejsErrorName'),
+            'IndentationError',
+        ):
+            raise IndentationError(str(error))  # noqa: B904
+        raise
+    return _Code(source, filename, mode, native_code)
+
+
+def _builtins_dynamic_namespaces(
+    global_namespace: Any,
+    local_namespace: Any,
+    caller_globals: Any,
+    caller_locals: Any,
+) -> Any:
+    if global_namespace is runtime.undefined or global_namespace is None:
+        global_namespace = caller_globals
+        default_locals = caller_locals
+    else:
+        default_locals = global_namespace
+    if not isinstance(global_namespace, dict):
+        raise TypeError('globals must be a dict')
+    if local_namespace is runtime.undefined or local_namespace is None:
+        local_namespace = default_locals
+    if not isinstance(local_namespace, dict):
+        raise TypeError('locals must be a mapping')
+    return runtime.math_tuple(
+        [global_namespace, local_namespace])
+
+
+def _builtins_run_dynamic(
+    source: Any,
+    global_namespace: Any,
+    local_namespace: Any,
+    caller_globals: Any,
+    caller_locals: Any,
+) -> Any:
+    namespaces = _builtins_dynamic_namespaces(
+        global_namespace,
+        local_namespace,
+        caller_globals,
+        caller_locals,
+    )
+    global_namespace = namespaces[0]
+    local_namespace = namespaces[1]
+    if isinstance(source, _Code):
+        code = source
+    else:
+        code = ρσ_compile(source, '<string>', 'exec')
+
+    execution_namespace = global_namespace.copy()
+    if local_namespace is not global_namespace:
+        execution_namespace.update(local_namespace)
+    native_namespace = execution_namespace.as_object()
+    live_scope = runtime.reflect.get(global_namespace, '_scope')
+    if live_scope is not runtime.undefined:
+        for key in runtime.object.keys(live_scope):
+            if (
+                runtime.reflect.get(live_scope, key)
+                is runtime.undefined
+                and not runtime.reflect.apply(
+                    runtime.object.prototype.hasOwnProperty,
+                    native_namespace,
+                    [key],
+                )
+            ):
+                # A JavaScript declaration may exist before the corresponding
+                # Python global has ever been bound.  Keep it absent from the
+                # globals dict, but tell the dynamic compiler to emit an
+                # unbound-name check rather than reading the outer JS slot.
+                runtime.reflect.set(
+                    native_namespace, key, runtime.undefined)
+    if global_namespace is not caller_globals:
+        for key in caller_globals.keys():
+            if key not in execution_namespace:
+                runtime.reflect.set(
+                    native_namespace,
+                    key,
+                    runtime.undefined,
+                )
+    helper = _builtins_dynamic_code_helper()
+    prepared = runtime.reflect.apply(
+        runtime.reflect.get(helper, 'run'),
+        helper,
+        [code._native_code, native_namespace],
+    )
+    result = runtime.dynamic_eval(
+        runtime.reflect.get(prepared, 'javascript'),
+        native_namespace,
+        runtime.reflect.get(prepared, 'moduleId'),
+    )
+    resulting_namespace = runtime.reflect.get(
+        result, 'namespace')
+    for key in runtime.object.keys(resulting_namespace):
+        if key == '__sagejs_eval_result__':
+            continue
+        value = runtime.reflect.get(resulting_namespace, key)
+        if value is not runtime.undefined:
+            local_namespace.__setitem__(key, value)
+    return result
+
+
+def ρσ_eval(
+    source: Any,
+    global_namespace: Any = runtime.undefined,
+    local_namespace: Any = runtime.undefined,
+    caller_globals: Any = runtime.undefined,
+    caller_locals: Any = runtime.undefined,
+) -> Any:
+    if not isinstance(source, _Code):
+        source = ρσ_compile(source, '<string>', 'eval')
+    result = _builtins_run_dynamic(
+        source,
+        global_namespace,
+        local_namespace,
+        caller_globals,
+        caller_locals,
+    )
+    return runtime.reflect.get(result, 'completion')
+
+
+def ρσ_exec(
+    source: Any,
+    global_namespace: Any = runtime.undefined,
+    local_namespace: Any = runtime.undefined,
+    caller_globals: Any = runtime.undefined,
+    caller_locals: Any = runtime.undefined,
+) -> None:
+    if not isinstance(source, _Code):
+        source = ρσ_compile(source, '<string>', 'exec')
+    result = _builtins_run_dynamic(
+        source,
+        global_namespace,
+        local_namespace,
+        caller_globals,
+        caller_locals,
+    )
+    if (
+        source.mode == 'single'
+        and runtime.reflect.get(result, 'completion')
+        is not runtime.undefined
+        and runtime.reflect.get(result, 'completion') is not None
+    ):
+        print(runtime.reflect.get(result, 'completion'))
+    return None
+
+
 def ρσ_delattr(value: Any, name: _Str) -> None:
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
@@ -3556,3 +3782,6 @@ hasattr = ρσ_hasattr
 factor = ρσ_factor
 gcd = ρσ_gcd
 next_prime = ρσ_next_prime
+compile = ρσ_compile
+exec = ρσ_exec
+runtime.set_class_repr(_Code, "<class 'code'>")

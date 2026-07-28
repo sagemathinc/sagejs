@@ -540,6 +540,96 @@ def print_this(expression, output):
 
 
 def print_function_call(self, output):
+    def scope_for_namespace(want_globals):
+        stack = output.stack()
+        for index in range(stack.length - 1, -1, -1):
+            candidate = stack[index]
+            if (
+                want_globals and is_node_type(
+                    candidate, AST_Toplevel)
+                or not want_globals and is_node_type(
+                    candidate, AST_Scope)
+            ):
+                return candidate
+
+    def print_namespace(scope, live_globals):
+        if (
+            live_globals
+            or is_node_type(scope, AST_Toplevel)
+        ):
+            output.print('ρσ_live_scope_dict(ρσ_modules[')
+            output.print(JSON.stringify(scope.module_id))
+            output.print('])')
+            return
+
+        names = []
+        seen = {}
+
+        def add_name(name):
+            if name and not seen[name]:
+                seen[name] = True
+                names.push(name)
+
+        if is_node_type(scope, AST_Class):
+            for name in Object.keys(scope.classvars):
+                add_name(name)
+            for statement in scope.body:
+                if is_node_type(statement, AST_Method):
+                    add_name(statement.name.name)
+        elif scope:
+            for symbol in scope.localvars:
+                add_name(symbol.name)
+            if is_node_type(scope, AST_Lambda):
+                for argument in scope.argnames:
+                    add_name(argument.name)
+
+        output.print('ρσ_scope_dict({')
+        for index, name in enumerate(names):
+            if index:
+                output.comma()
+            output.print(JSON.stringify(name))
+            output.colon()
+            if is_node_type(scope, AST_Class):
+                scope.name.print(output)
+                output.print(
+                    '.prototype[' + JSON.stringify(name) + ']')
+            else:
+                output.print_name(name)
+        output.print('})')
+
+    if (
+        is_node_type(self.expression, AST_SymbolRef)
+        and self.expression.name in ('eval', 'exec')
+        and self.args.length >= 1
+        and self.args.length <= 3
+        and not self.args.starargs
+        and not self.args.kwargs.length
+        and not self.args.kwarg_items.length
+    ):
+        output.print(
+            'ρσ_eval'
+            if self.expression.name is 'eval'
+            else 'ρσ_exec'
+        )
+
+        def dynamic_args():
+            for index, argument in enumerate(self.args):
+                if index:
+                    output.comma()
+                argument.print(output)
+            for _index in range(self.args.length, 3):
+                output.comma()
+                output.print('undefined')
+            output.comma()
+            print_namespace(
+                scope_for_namespace(True), True)
+            output.comma()
+            print_namespace(
+                scope_for_namespace(False), False)
+
+        output.with_parens(dynamic_args)
+        return
+
     if (
         is_node_type(self.expression, AST_SymbolRef)
         and self.expression.name in ('dir', 'locals', 'globals')

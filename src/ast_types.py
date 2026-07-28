@@ -542,6 +542,12 @@ class AST_Lambda(AST_Scope):
         "[bool*] assign this definition when its statement executes",
         "return_annotation":
         "[AST_Node?] The return type annotation provided (if any)",
+        "declared_globals":
+        "[string*] names declared global directly in this function",
+        "declared_nonlocals":
+        "[string*] names declared nonlocal directly in this function",
+        "scope_bindings":
+        "[string*] names which can satisfy a nested nonlocal declaration",
     }
 
     def _walk(self, visitor):
@@ -782,7 +788,9 @@ class AST_VarDef(AST_Node):
     "A variable declaration; only appears in a AST_Definitions node"
     properties = {
         'name': "[AST_SymbolVar|AST_SymbolNonlocal] name of the variable",
-        'value': "[AST_Node?] initializer, or null if there's no initializer"
+        'value': "[AST_Node?] initializer, or null if there's no initializer",
+        'is_global':
+        "[boolean?] distinguish global from nonlocal declarations",
     }
 
     def _walk(self, visitor):
