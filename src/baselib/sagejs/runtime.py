@@ -14,7 +14,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power
-# globals: ρσ_normalize_integer, ρσ_operator_mul_exact
+# globals: ρσ_normalize_integer, ρσ_operator_add_exact, ρσ_operator_mul_exact
 # globals: ρσ_operator_pow_exact, ρσ_repr
 # globals: ρσ_set_class_repr, ρσ_string_find, ρσ_string_primitive
 
@@ -48,6 +48,7 @@ modular_power = ρσ_modular_power
 normalize_integer = ρσ_normalize_integer
 number = Number
 object = Object
+operator_add_exact = ρσ_operator_add_exact
 operator_mul_exact = ρσ_operator_mul_exact
 operator_pow_exact = ρσ_operator_pow_exact
 qq = QQ

@@ -1,79 +1,74 @@
-# vim:fileencoding=utf-8
-# License: BSD
-# Copyright: 2015, Kovid Goyal <kovid at kovidgoyal.net>
+# Iterator-oriented builtins implemented as ordinary Python generators.
+#
+# Copyright (C) 2015 Kovid Goyal
+# Copyright (C) 2026 Sage.js contributors
+# License: BSD-3-Clause
 
-# globals: ρσ_iterator_symbol, ρσ_bool, ρσ_operator_add_exact
+from __future__ import annotations
 
-def sum(iterable, start=0):
-    if Array.isArray(iterable):
-        def add(prev, cur):
-            return ρσ_operator_add_exact(prev, cur)
-        return iterable.reduce(add, start)
-    ans = start
-    iterator = iter(iterable)
-    r = iterator.next()
-    while not r.done:
-        ans = ρσ_operator_add_exact(ans, r.value)
-        r = iterator.next()
-    return ans
+from typing import Any, Callable, Iterable, Iterator
 
-def map():
-    iterators = new Array(arguments.length - 1)
-    func = arguments[0]  # noqa: unused-local
-    args = new Array(arguments.length - 1)  # noqa: unused-local
-    for v'var i = 1; i < arguments.length; i++':
-        iterators[i - 1] = iter(arguments[i])  # noqa:undef
-    ans = v"{'_func':func, '_iterators':iterators, '_args':args}"
-    ans[ρσ_iterator_symbol] = def():
-        return this
-    ans['next'] = def():
-        for v'var i = 0; i < this._iterators.length; i++':
-            r = this._iterators[i].next()
-            if r.done:
-                return v"{'done':true}"
-            this._args[i] = r.value  # noqa:undef
-        return v"{'done':false, 'value':this._func.apply(undefined, this._args)}"
-    return ans
+import sagejs.runtime as runtime
 
-def filter(func_or_none, iterable):
-    func = ρσ_bool if func_or_none is None else func_or_none  # noqa: unused-local
-    ans = v"{'_func':func, '_iterator':ρσ_iter(iterable)}"
-    ans[ρσ_iterator_symbol] = def():
-        return this
-    ans['next'] = def():
-        r = this._iterator.next()
-        while not r.done:
-            if this._func(r.value):
-                return r
-            r = this._iterator.next()
-        return v"{'done':true}"
-    return ans
 
-def zip():
-    iterators = new Array(arguments.length)
-    for v'var i = 0; i < arguments.length; i++':
-        iterators[i] = iter(arguments[i])  # noqa:undef
-    ans = v"{'_iterators':iterators}"
-    ans[ρσ_iterator_symbol] = def():
-        return this
-    ans['next'] = def():
-        args = new Array(this._iterators.length)
-        for v'var i = 0; i < this._iterators.length; i++':
-            r = this._iterators[i].next()
-            if r.done:
-                return v"{'done':true}"
-            args[i] = r.value  # noqa:undef
-        return v"{'done':false, 'value':args}"
-    return ans
+def sum(iterable: Iterable[Any], start: Any = 0) -> Any:
+    result = start
+    for value in iterable:
+        result = runtime.operator_add_exact(result, value)
+    return result
 
-def any(iterable):
-    for i in iterable:
-        if i:
+
+def map(
+    func: Any,
+    *iterables: Iterable[Any],
+) -> Iterator[Any]:
+    iterators = [iter(iterable) for iterable in iterables]
+    done = False
+    while not done:
+        values = []
+        for iterator in iterators:
+            try:
+                values.append(next(iterator))
+            except StopIteration:
+                done = True
+                break
+        if not done:
+            yield func(*values)
+
+
+def filter(
+    func: Callable[[Any], Any] | None,
+    iterable: Iterable[Any],
+) -> Iterator[Any]:
+    for value in iterable:
+        if value if func is None else func(value):
+            yield value
+
+
+def zip(*iterables: Iterable[Any]) -> Iterator[list[Any]]:
+    iterators = [iter(iterable) for iterable in iterables]
+    done = False
+    while not done:
+        values = []
+        for iterator in iterators:
+            try:
+                values.append(next(iterator))
+            except StopIteration:
+                done = True
+                break
+        if not done:
+            yield values
+
+
+def any(iterable: Iterable[Any]) -> bool:
+    for value in iterable:
+        if value:
             return True
     return False
 
-def all(iterable):
-    for i in iterable:
-        if not i:
+
+def all(iterable: Iterable[Any]) -> bool:
+    for value in iterable:
+        if not value:
             return False
     return True

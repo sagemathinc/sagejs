@@ -110,6 +110,9 @@ assrt.equal(sum(['a', 'b'], 'x'), 'xab')
 assrt.equal(sum([BigInt(2), BigInt(3)], BigInt(0)), 5)
 assrt.equal(sum(range(1, 101)), 5050)
 assrt.equal(sum(['x', 'y', 'z'], ''), 'xyz')
+assrt.equal(
+    sum([9007199254740991, 1]),
+    BigInt('9007199254740992'))
 
 # Exact integer arithmetic promotes mixed and overflowing Number values.
 assrt.equal(ρσ_operator_add_exact(BigInt(5), 1), BigInt(6))
@@ -139,13 +142,23 @@ assrt.deepEqual(list(map(double, [1, 2])), [2, 4])
 assrt.deepEqual(list(map(double, iter([1, 2]))), [2, 4])
 
 
+def add(a, b):
+    return a + b
+
+
+assrt.deepEqual(list(map(add, [1, 2], [10, 20])), [11, 22])
+assrt.deepEqual(list(map(add, [1, 2, 3], [10])), [11])
+
+
 def gt1(a):
     return a > 1
 
 
 assrt.deepEqual(list(filter(gt1, [1, 2])), [2])
 assrt.deepEqual(list(filter(gt1, iter([1, 2]))), [2])
+assrt.deepEqual(list(filter(None, [0, 1, '', 'x'])), [1, 'x'])
 assrt.deepEqual(list(zip([1, 2], [3, 4])), [[1, 3], [2, 4]])
+assrt.deepEqual(list(zip([1, 2, 3], [4])), [[1, 4]])
 
 # lists
 a = [1, 2]

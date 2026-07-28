@@ -211,6 +211,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'normalize_integer': 'ρσ_normalize_integer',
     'number': 'Number',
     'object': 'Object',
+    'operator_add_exact': 'ρσ_operator_add_exact',
     'operator_mul_exact': 'ρσ_operator_mul_exact',
     'operator_pow_exact': 'ρσ_operator_pow_exact',
     'qq': 'QQ',
