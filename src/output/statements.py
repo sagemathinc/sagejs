@@ -221,23 +221,15 @@ def print_with(self, output):
 
     output.with_block(f_with)
 
-    output.newline(), output.indent(), output.spaced('if',
-                                                     '(ρσ_with_exception',
-                                                     '===', 'undefined)')
-
     def f_exit():
-        for clause in exits:
+        for clause in reversed(exits):
             output.indent(), output.print(
                 clause + '.__exit__(null, null, null)'), output.end_statement()
-
-    output.with_block(f_exit)
-
-    output.space(), output.print('else'), output.space()
 
     def f_suppress():
         output.indent(), output.assign('ρσ_with_suppress'), output.print(
             'false'), output.end_statement()
-        for clause in exits:
+        for clause in reversed(exits):
             output.indent()
             output.spaced(
                 'ρσ_with_suppress', '|=', 'ρσ_bool(' + clause +
@@ -248,7 +240,15 @@ def print_with(self, output):
             'if', '(!ρσ_with_suppress)',
             'throw ρσ_with_exception'), output.end_statement()
 
-    output.with_block(f_suppress)
+    def f_cleanup():
+        output.indent(), output.spaced(
+            'if', '(ρσ_with_exception', '===', 'undefined)')
+        output.with_block(f_exit)
+        output.space(), output.print('else'), output.space()
+        output.with_block(f_suppress)
+
+    output.newline(), output.indent(), output.print('finally'), output.space()
+    output.with_block(f_cleanup)
 
 
 def print_assert(self, output):

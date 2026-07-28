@@ -592,9 +592,9 @@
     "while_cond.py": "pass",
     "while_nest_exc.py": "pass",
     "with1.py": "pass",
-    "with_break.py": "output-mismatch",
-    "with_continue.py": "output-mismatch",
+    "with_break.py": "pass",
+    "with_continue.py": "pass",
     "with_raise.py": "pass",
-    "with_return.py": "output-mismatch"
+    "with_return.py": "pass"
   }
 }
