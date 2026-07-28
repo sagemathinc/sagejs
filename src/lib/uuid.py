@@ -8,12 +8,12 @@ from encodings import hexlify, urlsafe_b64decode, urlsafe_b64encode
 RFC_4122 = 1
 
 if jstype(crypto) is 'object' and crypto.getRandomValues:
-    random_bytes = def (num):
+    random_bytes = def (num=None):
         ans = Uint8Array(num or 16)
         crypto.getRandomValues(ans)
         return ans
 else:
-    random_bytes = def (num):
+    random_bytes = def (num=None):
         ans = Uint8Array(num or 16)
         for i in range(ans.length):
             ans[i] = Math.floor(Math.random() * 256)

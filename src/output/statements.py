@@ -123,7 +123,15 @@ def display_lambda_body(node, output, function_preamble):
         function_preamble(node, output, 0)
     output.indent()
     output.print("return ")
-    node.body.print(output)
+    if (
+        output.options.python_tuples
+        and is_node_type(node.body, AST_Seq)
+    ):
+        output.print('ρσ_math_tuple([')
+        node.body.print(output)
+        output.print('])')
+    else:
+        node.body.print(output)
     output.print(";")
 
 
@@ -200,7 +208,7 @@ def print_with(self, output):
     def f_exit():
         for clause in exits:
             output.indent(), output.print(
-                clause + '.__exit__()'), output.end_statement()
+                clause + '.__exit__(null, null, null)'), output.end_statement()
 
     output.with_block(f_exit)
 

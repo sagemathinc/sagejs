@@ -757,7 +757,7 @@ class SageDict:
         self.keymap = _new_map()
         if iterable is not runtime.undefined:
             self.update(iterable)
-        if runtime.object.keys(keywords).length:
+        if len(keywords):
             self.update(keywords)
 
     @property
@@ -937,7 +937,7 @@ class SageDict:
             else:
                 for key in runtime.object.keys(iterable):
                     self.__setitem__(key, iterable[key])
-        for key in runtime.object.keys(keywords):
+        for key in keywords:
             self.__setitem__(key, keywords[key])
 
     def __repr__(self) -> str:

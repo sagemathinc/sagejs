@@ -51,7 +51,38 @@ def function_args(argnames, output, strip_first):
 
 def function_preamble(node, output, offset, javascript_name):
     a = node.argnames
-    if not a or a.is_simple_func:
+    if not a:
+        return
+
+    def validate_arguments():
+        if not output.options.python_attributes:
+            return
+        if a.starargs is undefined:
+            output.indent()
+            output.print('if (arguments.length > ' + str(
+                a.length - offset))
+            output.print(' && !(arguments[arguments.length - 1] ')
+            output.print('&& arguments[arguments.length - 1]')
+            output.print('[ρσ_kwargs_symbol] === true)) ')
+            output.print('throw new TypeError("too many positional arguments")')
+            output.end_statement()
+        for index, argument in enumerate(a):
+            if index < offset:
+                continue
+            if not Object.prototype.hasOwnProperty.call(
+                a.defaults, argument.name
+            ):
+                output.indent()
+                output.print('if (typeof ')
+                argument.print(output)
+                output.print(' === "undefined") ')
+                output.print(
+                    'throw new TypeError("missing required argument: '
+                    + argument.name + '")')
+                output.end_statement()
+
+    if a.is_simple_func:
+        validate_arguments()
         return
     # If this function has optional parameters/*args/**kwargs declare it differently
     fname = (
@@ -133,6 +164,14 @@ def function_preamble(node, output, offset, javascript_name):
             output.assign(a.starargs.name)
             output.print('ρσ_math_tuple(' + a.starargs.name + ')')
             output.end_statement()
+
+    if a.kwargs is not undefined and output.options.python_attributes:
+        output.indent()
+        output.assign(a.kwargs.name)
+        output.print('ρσ_dict(' + a.kwargs.name + ')')
+        output.end_statement()
+
+    validate_arguments()
 
 
 def has_annotations(self):
@@ -522,7 +561,11 @@ def print_function_call(self, output):
                 self.expression.print(output)
 
     def print_kwargs():
-        output.print('ρσ_desugar_kwargs([')
+        output.print(
+            'ρσ_desugar_kwargs(['
+            if output.options.python_attributes
+            else 'ρσ_desugar_kwargs_legacy(['
+        )
         if has_kwarg_items:
             for i, kwname in enumerate(self.args.kwarg_items):
                 if i > 0:
@@ -545,7 +588,11 @@ def print_function_call(self, output):
         output.print('])')
 
     def print_new(apply):
-        output.print('ρσ_interpolate_kwargs_constructor(')
+        output.print(
+            'ρσ_interpolate_kwargs_constructor('
+            if output.options.python_attributes
+            else 'ρσ_interpolate_kwargs_constructor_legacy('
+        )
         output.print('Object.create('), self.expression.print(
             output), output.print('.prototype)')
         output.comma()
@@ -568,7 +615,12 @@ def print_function_call(self, output):
             if not is_first:
                 output.print('.concat(')
             if expr.is_array:
-                expr.print(output)
+                if output.options.python_attributes:
+                    output.print('Array.from(ρσ_Iterable(')
+                    expr.print(output)
+                    output.print('))')
+                else:
+                    expr.print(output)
                 i += 1
             else:
                 output.print('[')
@@ -617,7 +669,11 @@ def print_function_call(self, output):
         if is_new:
             print_new(False)
         else:
-            output.print('ρσ_interpolate_kwargs(')
+            output.print(
+                'ρσ_interpolate_kwargs('
+                if output.options.python_attributes
+                else 'ρσ_interpolate_kwargs_legacy('
+            )
             do_print_this()
         print_function_name(True)
         output.comma()

@@ -198,7 +198,7 @@ def namedtuple(type_name: str, field_names: Any) -> Any:
         if len(args) > len(names):
             raise TypeError('too many positional arguments')
         values = list(args)
-        keyword_names = runtime.object.keys(keywords)
+        keyword_names = list(keywords)
         for index in range(len(args)):
             if names[index] in keyword_names:
                 raise TypeError('unexpected or duplicate keyword argument')
@@ -206,7 +206,7 @@ def namedtuple(type_name: str, field_names: Any) -> Any:
             name = names[index]
             if name not in keyword_names:
                 raise TypeError('missing required argument: ' + name)
-            values.append(keywords[name])
+            values.append(keywords.__getitem__(name))
         for name in keyword_names:
             if name not in names:
                 raise TypeError('unexpected or duplicate keyword argument')

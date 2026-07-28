@@ -458,6 +458,35 @@ def ρσ_desugar_kwargs(sources: Any) -> Any:
     answer = runtime.object.create(None)
     answer[runtime.kwargs_symbol] = True
     for source in sources:
+        if _internal_member_is_function(source, 'keys'):
+            keys = runtime.reflect.apply(
+                _internal_get_member(source, 'keys'), source, [])
+        elif _internal_is_plain_object(source):
+            keys = runtime.object.keys(source)
+        else:
+            raise TypeError('argument after ** must be a mapping')
+        for key in keys:
+            if not _internal_type_is(runtime.jstype(key), 'string'):
+                raise TypeError('keywords must be strings')
+            if _internal_has_own(answer, key):
+                raise TypeError(
+                    "multiple values for keyword argument '" + key + "'")
+            if _internal_member_is_function(source, '__getitem__'):
+                answer[key] = runtime.reflect.apply(
+                    _internal_get_member(source, '__getitem__'),
+                    source,
+                    [key],
+                )
+            else:
+                answer[key] = source[key]
+    return answer
+
+
+def ρσ_desugar_kwargs_legacy(sources: Any) -> Any:
+    """Retain the historical permissive keyword merge in Sage mode."""
+    answer = runtime.object.create(None)
+    answer[runtime.kwargs_symbol] = True
+    for source in sources:
         runtime.object.assign(answer, source)
     return answer
 
@@ -483,6 +512,71 @@ def ρσ_interpolate_kwargs(
     ):
         raise TypeError(
             'function takes no keyword arguments')
+    argnames = _internal_get_member(
+        target_function, '__argnames__')
+    if not argnames:
+        return runtime.reflect.apply(
+            target_function, receiver, supplied_args)
+
+    keyword_object = supplied_args.pop()
+    if _internal_get_member(
+        target_function, '__handles_kwarg_interpolation__'
+    ):
+        argument_count = max(supplied_args.length, argnames.length)
+        call_args = runtime.reflect.construct(
+            runtime.array, [argument_count + 1])
+        call_args[-1] = keyword_object
+        for index in range(argument_count):
+            if index < argnames.length:
+                property_name = argnames[index]
+                if _internal_has_own(
+                    keyword_object, property_name
+                ):
+                    if index < supplied_args.length:
+                        raise TypeError(
+                            "multiple values for argument '"
+                            + property_name + "'")
+                    call_args[index] = keyword_object[property_name]
+                    runtime.reflect.deleteProperty(
+                        keyword_object, property_name)
+                elif index < supplied_args.length:
+                    call_args[index] = supplied_args[index]
+            else:
+                call_args[index] = supplied_args[index]
+        if (
+            not _internal_get_member(target_function, '__varkw__')
+            and runtime.object.keys(keyword_object).length
+        ):
+            unexpected = runtime.object.keys(keyword_object)[0]
+            raise TypeError(
+                "unexpected keyword argument '" + unexpected + "'")
+        return runtime.reflect.apply(
+            target_function, receiver, call_args)
+
+    for index in range(argnames.length):
+        property_name = argnames[index]
+        if _internal_has_own(keyword_object, property_name):
+            if index < supplied_args.length:
+                raise TypeError(
+                    "multiple values for argument '"
+                    + property_name + "'")
+            supplied_args[index] = keyword_object[property_name]
+            runtime.reflect.deleteProperty(
+                keyword_object, property_name)
+    if runtime.object.keys(keyword_object).length:
+        unexpected = runtime.object.keys(keyword_object)[0]
+        raise TypeError(
+            "unexpected keyword argument '" + unexpected + "'")
+    return runtime.reflect.apply(
+        target_function, receiver, supplied_args)
+
+
+def ρσ_interpolate_kwargs_legacy(
+    receiver: Any,
+    target_function: Any,
+    supplied_args: Any,
+) -> Any:
+    keyword_object = supplied_args[-1]
     argnames = _internal_get_member(
         target_function, '__argnames__')
     if not argnames:
@@ -532,6 +626,21 @@ def ρσ_interpolate_kwargs_constructor(
             target_function, receiver, supplied_args)
     else:
         ρσ_interpolate_kwargs(
+            receiver, target_function, supplied_args)
+    return receiver
+
+
+def ρσ_interpolate_kwargs_constructor_legacy(
+    receiver: Any,
+    use_apply: bool,
+    target_function: Any,
+    supplied_args: Any,
+) -> Any:
+    if use_apply:
+        runtime.reflect.apply(
+            target_function, receiver, supplied_args)
+    else:
+        ρσ_interpolate_kwargs_legacy(
             receiver, target_function, supplied_args)
     return receiver
 

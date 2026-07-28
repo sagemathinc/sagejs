@@ -68,6 +68,46 @@ def _builtins_member_is_function(value: Any, name: Any) -> _Bool:
     )
 
 
+def _builtins_get_special_member(value: Any, name: Any) -> Any:
+    """Look up an implicit special method on the type, not the instance."""
+    value_type = runtime.jstype(value)
+    if (
+        not runtime.strict_equal(value_type, 'object')
+        and not runtime.strict_equal(value_type, 'function')
+    ):
+        value = runtime.reflect.apply(
+            runtime.object, runtime.undefined, [value])
+    constructor = _builtins_get_member(value, 'constructor')
+    if not _builtins_is_python_class(constructor):
+        return runtime.reflect.get(value, name)
+    if not runtime.reflect.apply(
+        runtime.object.prototype.hasOwnProperty,
+        value,
+        [name],
+    ):
+        return runtime.reflect.get(value, name)
+    prototype = runtime.object.getPrototypeOf(value)
+    if prototype is None:
+        return runtime.undefined
+    return runtime.reflect.get(prototype, name)
+
+
+def _builtins_call_special(
+    value: Any,
+    name: Any,
+    call_args: list[Any],
+) -> Any:
+    method = _builtins_get_special_member(value, name)
+    return runtime.reflect.apply(method, value, call_args)
+
+
+def _builtins_special_is_function(value: Any, name: Any) -> _Bool:
+    return runtime.strict_equal(
+        runtime.jstype(_builtins_get_special_member(value, name)),
+        'function',
+    )
+
+
 def _builtins_exact_integer_primitive(value: Any) -> _Bool:
     value_type = runtime.jstype(value)
     return (
@@ -130,10 +170,10 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
 def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('add', left, right)
-    if _builtins_member_is_function(left, '__add__'):
-        return _builtins_call_member(left, '__add__', [right])
-    if _builtins_member_is_function(right, '__radd__'):
-        return _builtins_call_member(right, '__radd__', [left])
+    if _builtins_special_is_function(left, '__add__'):
+        return _builtins_call_special(left, '__add__', [right])
+    if _builtins_special_is_function(right, '__radd__'):
+        return _builtins_call_special(right, '__radd__', [left])
     if _builtins_member_is_function(left, 'concat'):
         return _builtins_call_member(left, 'concat', [right])
     if (

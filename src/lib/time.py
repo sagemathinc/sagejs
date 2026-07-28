@@ -141,7 +141,7 @@ def _day_of_year(jd, local):
 def _is_leap(year):
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
-def __jan_jun_tz(t, func):
+def __jan_jun_tz(t, func=None):
     """ information about local jan and jun month of a t's year
     default is to deliver timezone offset, but a function can be handed to us,
     which we'll run on those two months
