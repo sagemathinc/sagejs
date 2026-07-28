@@ -244,7 +244,7 @@
     "class_setname_hazard_rand.py": "pass",
     "class_staticclassmethod.py": "pass",
     "class_store.py": "pass",
-    "class_store_class.py": "runtime-error",
+    "class_store_class.py": "pass",
     "class_str.py": "pass",
     "class_super.py": "pass",
     "class_super_aslocal.py": "pass",

@@ -1935,6 +1935,11 @@ def _builtins_tuple_subclass_getitem(
             self._tuple_values[position]
             for position in range(start, stop, step)
         ])
+    index = int(index)
+    if index < 0:
+        index += len(self._tuple_values)
+    if index < 0 or index >= len(self._tuple_values):
+        raise IndexError('tuple index out of range')
     return self._tuple_values[index]
 
 

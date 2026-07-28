@@ -1361,6 +1361,14 @@ def _str_percent_format(format_string: Any, operands: Any) -> _Str:
     return answer
 
 
+def _str_encode(
+    value: _Str,
+    encoding: _Str = 'utf-8',
+    errors: _Str = 'strict',
+) -> Any:
+    return bytes(_native_string(value), encoding, errors)
+
+
 def _define_string_method(
     name: _Str,
     implementation: Any,
@@ -1388,6 +1396,7 @@ _define_string_method('__mod__', _str_percent_format)
 _define_string_method('capitalize', _str_capitalize)
 _define_string_method('center', _str_center)
 _define_string_method('count', _str_count)
+_define_string_method('encode', _str_encode)
 _define_string_method('endswith', _str_endswith)
 _define_string_method('startswith', _str_startswith)
 _define_string_method('find', _str_find)

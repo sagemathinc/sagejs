@@ -118,6 +118,13 @@ def print_class(output):
         output.space()
 
         def f_constructor():
+            output.indent()
+            output.print('if (!(this instanceof ')
+            self.name.print(output)
+            output.print(')) return Reflect.construct(')
+            self.name.print(output)
+            output.print(', arguments)')
+            output.end_statement()
             if not self.lightweight:
                 output.indent()
                 output.spaced('if', '(this.ρσ_object_id', '===', 'undefined)',
