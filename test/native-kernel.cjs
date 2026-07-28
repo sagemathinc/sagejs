@@ -18,17 +18,7 @@ const mpc = require("../packages/flint");
 const root = join(__dirname, "..");
 const sourcePath = join(root, "bench", "native-kernel-input.sage");
 const source = readFileSync(sourcePath, "utf8");
-const signatures = {
-  multiply_loop: {
-    arguments: ["ComplexField", "uint64"],
-    returns: "ComplexNumber",
-  },
-  real_multiply_loop: {
-    arguments: ["RealField", "uint64"],
-    returns: "RealNumber",
-  },
-};
-const ir = lowerSource(source, sourcePath, signatures);
+const ir = lowerSource(source, sourcePath);
 const complexFunction = ir.functions.find(
   (fn) => fn.name === "multiply_loop",
 );
@@ -70,16 +60,20 @@ assert.match(
 assert.throws(
   () =>
     lowerSource(
-      "def f(field, n):\n    return field(\"1\", \"0\")\n",
+      "def f(field: ComplexField, n: uint64) -> ComplexNumber:\n" +
+        "    return field(\"1\", \"0\")\n",
       "invalid.sage",
-      {
-        f: {
-          arguments: ["ComplexField", "uint64"],
-          returns: "ComplexNumber",
-        },
-      },
     ),
   /native function must return a ComplexNumber local/,
+);
+assert.throws(
+  () =>
+    lowerSource(
+      "def f(field, n: uint64) -> ComplexNumber:\n" +
+        "    return field(\"1\", \"0\")\n",
+      "missing-annotation.sage",
+    ),
+  /native argument f\.field annotation is missing/,
 );
 
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-native-kernel-"));
@@ -136,7 +130,6 @@ try {
   const options = {
     sourcePath,
     cacheRoot: join(temporary, "cache"),
-    signatures,
   };
   const first = compileKernel(options);
   const second = compileKernel(options);

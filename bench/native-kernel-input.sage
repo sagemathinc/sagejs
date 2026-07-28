@@ -1,4 +1,6 @@
-def multiply_loop(field, iterations):
+def multiply_loop(
+    field: ComplexField, iterations: uint64
+) -> ComplexNumber:
     value = field("1.25", "-0.75")
     step = field("1.0000000000000002", "0.0000000000000001")
     for _ in range(iterations):
@@ -6,7 +8,9 @@ def multiply_loop(field, iterations):
     return value
 
 
-def real_multiply_loop(field, iterations):
+def real_multiply_loop(
+    field: RealField, iterations: uint64
+) -> RealNumber:
     value = field("1.25")
     step = field("1.0000000000000002")
     for _ in range(iterations):

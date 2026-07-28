@@ -4,30 +4,38 @@
 # Copyright (C) 2005-2026 William Stein and SageMath contributors
 # Copyright (C) 2026 Sage.js contributors
 # License: GPL-3.0-only
-#
-# globals: BigInt, Number, Object
+
+from __future__ import annotations
+
+from typing import Any, Callable, Iterator, Optional, Sequence
 
 import sagejs.runtime as runtime
 
 
-def ρσ_sequence_class(cls):
+def ρσ_sequence_class(cls: type[Any]) -> type[Any]:
     # Identity fallback for bootstrap compilers which predate sequence-class
     # lowering. The converged compiler consumes this decorator.
     return cls
 
 
-def ρσ_factor_pair(prime, exponent):
+def ρσ_factor_pair(prime: Any, exponent: int) -> list[Any]:
     pair = [prime, exponent]
-    pair_repr = def():
-        return '(' + runtime.repr(this[0]) + ', ' + runtime.repr(this[1]) + ')'
-    Object.defineProperties(pair, {
+
+    def pair_repr() -> str:
+        return (
+            '(' + runtime.repr(pair[0]) + ', ' +
+            runtime.repr(pair[1]) + ')'
+        )
+
+    runtime.object.defineProperties(pair, {
         '__repr__': {'value': pair_repr},
         '__str__': {'value': pair_repr},
     })
-    return Object.freeze(pair)
+    runtime.object.freeze(pair)
+    return pair
 
 
-@ρσ_sequence_class
+@runtime.sequence_class
 class Factorization:
     """
     A formal product represented by factor-exponent pairs and a unit.
@@ -36,16 +44,26 @@ class Factorization:
     interface. Mathematical parent/coercion support can be layered on later.
     """
 
-    def __init__(self, factors, unit=None, cr=False, sort=True, simplify=True):
+    def __init__(
+        self,
+        factors: Sequence[Sequence[Any]],
+        unit: Any = None,
+        cr: bool = False,
+        sort: bool = True,
+        simplify: bool = True,
+    ) -> None:
         self._factors = []
         for pair in factors:
-            if pair.length is not 2:
+            if len(pair) != 2:
                 raise TypeError('each factor must be a pair')
             exponent = pair[1]
-            if jstype(exponent) is not 'number' or not Number.isSafeInteger(exponent):
+            if (
+                runtime.jstype(exponent) != 'number'
+                or not runtime.number.isSafeInteger(exponent)
+            ):
                 raise TypeError('factor exponents must be safe integers')
-            if exponent is not 0:
-                self._factors.push(runtime.factor_pair(pair[0], exponent))
+            if exponent != 0:
+                self._factors.append(runtime.factor_pair(pair[0], exponent))
 
         self._unit = 1 if unit is None else unit
         self._cr_value = bool(cr)
@@ -54,65 +72,71 @@ class Factorization:
         if simplify:
             self.simplify()
 
-    def __len__(self):
-        return self._factors.length
+    def __len__(self) -> int:
+        return len(self._factors)
 
-    def __iter__(self):
-        return self._factors[runtime.iterator_symbol]()
+    def __iter__(self) -> Iterator[list[Any]]:
+        return iter(self._factors)
 
-    def __getitem__(self, index):
-        if jstype(index) is 'bigint':
-            index = Number(index)
-        if jstype(index) is not 'number' or not Number.isSafeInteger(index):
+    def __getitem__(self, index: int) -> list[Any]:
+        if runtime.jstype(index) == 'bigint':
+            index = int(index)
+        if (
+            runtime.jstype(index) != 'number'
+            or not runtime.number.isSafeInteger(index)
+        ):
             raise TypeError('factorization indices must be integers')
         if index < 0:
-            index += self._factors.length
-        if index < 0 or index >= self._factors.length:
+            index += len(self._factors)
+        if index < 0 or index >= len(self._factors):
             raise IndexError('factorization index out of range')
         return self._factors[index]
 
-    def __setitem__(self, index, value):
+    def __setitem__(self, index: int, value: object) -> None:
         raise TypeError("'Factorization' object does not support item assignment")
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, Factorization):
             return False
         if not runtime.equals(self._unit, other._unit):
             return False
-        if self._factors.length is not other._factors.length:
+        if len(self._factors) != len(other._factors):
             return False
-        for i in range(self._factors.length):
+        for i in range(len(self._factors)):
             if not runtime.equals(self._factors[i], other._factors[i]):
                 return False
         return True
 
-    def __contains__(self, value):
+    def __contains__(self, value: object) -> bool:
         for pair in self._factors:
             if runtime.equals(pair, value):
                 return True
         return False
 
-    def __neg__(self):
-        return self.constructor(
+    def __neg__(self) -> Factorization:
+        return type(self)(
             self._factors, -self._unit, self._cr_value, False, False)
 
-    def __mul__(self, other):
+    def __mul__(self, other: Any) -> Factorization:
         if not isinstance(other, Factorization):
             return Factorization(
-                self._factors.concat([[other, 1]]),
+                self._factors + [[other, 1]],
                 self._unit, self._cr_value)
 
-        constructor = self.constructor
+        constructor = type(self)
         if not isinstance(other, constructor):
             constructor = Factorization
         unit = runtime.operator_mul_exact(self._unit, other._unit)
         return constructor(
-            self._factors.concat(other._factors), unit, self._cr_value)
+            self._factors + other._factors, unit, self._cr_value)
 
-    def __pow__(self, exponent):
-        if jstype(exponent) is 'bigint':
-            exponent = Number(exponent)
-        if jstype(exponent) is not 'number' or not Number.isSafeInteger(exponent):
+    def __pow__(self, exponent: int) -> Factorization:
+        if runtime.jstype(exponent) == 'bigint':
+            exponent = int(exponent)
+        if (
+            runtime.jstype(exponent) != 'number'
+            or not runtime.number.isSafeInteger(exponent)
+        ):
             raise TypeError('factorization exponents must be integers')
         if exponent < 0:
             raise ValueError(
@@ -120,132 +144,144 @@ class Factorization:
 
         factors = []
         for pair in self._factors:
-            if pair[1] * exponent is not 0:
-                factors.push([pair[0], pair[1] * exponent])
-        unit_exponent = BigInt(exponent) if jstype(self._unit) is 'bigint' else exponent
+            if pair[1] * exponent != 0:
+                factors.append([pair[0], pair[1] * exponent])
+        unit_exponent = runtime.bigint(exponent) \
+            if runtime.jstype(self._unit) == 'bigint' else exponent
         unit = runtime.operator_pow_exact(self._unit, unit_exponent)
-        return self.constructor(
+        return type(self)(
             factors, unit, self._cr_value, False, False)
 
-    def __repr__(self):
-        if self._factors.length is 0:
+    def __repr__(self) -> str:
+        if len(self._factors) == 0:
             return runtime.repr(self._unit)
 
         separator = ' *\n' if self._cr_value else ' * '
         terms = []
         for pair in self._factors:
-            if (jstype(pair[0]) is 'object'
-                    and pair[0]._factorization_repr is not undefined):
+            if (
+                runtime.jstype(pair[0]) == 'object'
+                and hasattr(pair[0], '_factorization_repr')
+            ):
                 prime = pair[0]._factorization_repr()
             else:
                 prime = runtime.repr(pair[0])
             exponent = pair[1]
-            if exponent is not 1:
-                prime += '^' + exponent
-            terms.push(prime)
+            if exponent != 1:
+                prime += '^' + str(exponent)
+            terms.append(prime)
 
-        one = BigInt(1) if jstype(self._unit) is 'bigint' else 1
+        one = runtime.bigint(1) \
+            if runtime.jstype(self._unit) == 'bigint' else 1
         if not runtime.equals(self._unit, one):
-            terms.unshift(runtime.repr(self._unit))
-        return terms.join(separator)
+            terms.insert(0, runtime.repr(self._unit))
+        return str.join(separator, terms)
 
-    def unit(self):
+    def unit(self) -> Any:
         return self._unit
 
-    def _cr(self):
+    def _cr(self) -> bool:
         return self._cr_value
 
-    def _set_cr(self, cr):
+    def _set_cr(self, cr: bool) -> None:
         self._cr_value = bool(cr)
 
-    def sort(self, key=None):
-        if key is not None:
-            self._factors.sort(def(a, b):
-                left, right = key(a), key(b)
-                return -1 if left < right else (1 if left > right else 0)
-            )
-            return
-        self._factors.sort(def(a, b):
-            return -1 if a[0] < b[0] else (1 if a[0] > b[0] else 0)
-        )
+    def sort(
+        self,
+        key: Optional[Callable[[list[Any]], Any]] = None,
+    ) -> None:
+        if key is None:
+            def factor_key(pair: list[Any]) -> Any:
+                return pair[0]
 
-    def simplify(self):
+            key = factor_key
+        self._factors = sorted(self._factors, key=key)
+
+    def simplify(self) -> None:
         simplified = []
         for pair in self._factors:
             found = -1
-            for i in range(simplified.length):
+            for i in range(len(simplified)):
                 if runtime.equals(simplified[i][0], pair[0]):
                     found = i
                     break
-            if found is -1:
-                simplified.push(pair)
+            if found == -1:
+                simplified.append(pair)
             else:
                 exponent = simplified[found][1] + pair[1]
-                if exponent is 0:
-                    simplified.splice(found, 1)
+                if exponent == 0:
+                    del simplified[found]
                 else:
                     simplified[found] = runtime.factor_pair(pair[0], exponent)
         self._factors = simplified
 
-    def value(self):
+    def value(self) -> Any:
         value = self._unit
         for pair in self._factors:
             prime, exponent = pair
-            if jstype(prime) is 'bigint':
-                exponent = BigInt(exponent)
+            if runtime.jstype(prime) == 'bigint':
+                exponent = runtime.bigint(exponent)
             value = runtime.operator_mul_exact(
                 value, runtime.operator_pow_exact(prime, exponent))
         return value
 
-    def expand(self):
+    def expand(self) -> Any:
         return self.value()
 
-    def prod(self):
+    def prod(self) -> Any:
         return self.value()
 
-    def is_integral(self):
+    def is_integral(self) -> bool:
         for pair in self._factors:
             if pair[1] < 0:
                 return False
         return True
 
-    def radical(self):
+    def radical(self) -> Factorization:
         factors = []
         for pair in self._factors:
             if pair[1] <= 0:
                 raise ValueError(
                     'all exponents in the factorization must be positive')
-            factors.push([pair[0], 1])
-        one = BigInt(1) if jstype(self._unit) is 'bigint' else 1
-        return self.constructor(factors, one, self._cr_value, False, False)
+            factors.append([pair[0], 1])
+        one = runtime.bigint(1) \
+            if runtime.jstype(self._unit) == 'bigint' else 1
+        return type(self)(factors, one, self._cr_value, False, False)
 
-    def radical_value(self):
+    def radical_value(self) -> Any:
         return self.radical().value()
 
 
-@ρσ_sequence_class
+@runtime.sequence_class
 class IntegerFactorization(Factorization):
     """A factorization whose factors and unit are exact integers."""
 
-    def __init__(self, factors, unit=None, cr=False, sort=True, simplify=True):
+    def __init__(
+        self,
+        factors: Sequence[Sequence[Any]],
+        unit: Any = None,
+        cr: bool = False,
+        sort: bool = True,
+        simplify: bool = True,
+    ) -> None:
         converted = []
         for pair in factors:
             prime = pair[0]
-            if jstype(prime) is 'number':
-                if not Number.isSafeInteger(prime):
+            if runtime.jstype(prime) == 'number':
+                if not runtime.number.isSafeInteger(prime):
                     raise TypeError('integer factors must be exact')
-                prime = BigInt(prime)
-            if jstype(prime) is not 'bigint':
+                prime = runtime.bigint(prime)
+            if runtime.jstype(prime) != 'bigint':
                 raise TypeError('integer factors must be integers')
-            converted.push([prime, pair[1]])
+            converted.append([prime, pair[1]])
 
         if unit is None:
-            unit = BigInt(1)
-        elif jstype(unit) is 'number':
-            if not Number.isSafeInteger(unit):
+            unit = runtime.bigint(1)
+        elif runtime.jstype(unit) == 'number':
+            if not runtime.number.isSafeInteger(unit):
                 raise TypeError('the unit must be an exact integer')
-            unit = BigInt(unit)
-        if jstype(unit) is not 'bigint':
+            unit = runtime.bigint(unit)
+        if runtime.jstype(unit) != 'bigint':
             raise TypeError('the unit must be an integer')
 
         Factorization.__init__(

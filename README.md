@@ -42,7 +42,8 @@ See MISSION.md for the complete project charter, guiding
 principles, non-goals, and decision criteria. See
 IMPLEMENTATION.md for the empirically motivated division
 between maintainable Sage.js library source, typed native lowering, and
-hand-written native code.
+hand-written native code. [`TYPING.md`](TYPING.md) defines the ordinary-Python
+source and static-checking contract for mathematical library modules.
 
 ## Relationship to SageMath and OSCAR
 
@@ -364,9 +365,11 @@ The first structured native compiler path parses selected Sage.js functions
 through the ordinary frontend, lowers them to an explicitly typed
 intermediate representation, and generates both a JavaScript fallback and a
 C/MPFR/MPC Node addon. It currently accepts deliberately narrow `RealField`
-and `ComplexField` loop subsets. A content-addressed cache incorporates the
-source, signature, typed IR, compiler implementation, native ABI, Node ABI,
-platform, and mathematical-library versions.
+and `ComplexField` loop subsets. Argument and return annotations in the source
+are the native signature; no parallel JavaScript type table is required. A
+content-addressed cache incorporates the source, typed IR, compiler
+implementation, native ABI, Node ABI, platform, and mathematical-library
+versions.
 
 Generated native kernels cross Node-API once for the whole algorithm and
 return the same opaque native values used by the standard Sage.js

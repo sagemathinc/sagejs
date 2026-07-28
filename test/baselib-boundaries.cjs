@@ -5,11 +5,10 @@ const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 
 const root = join(__dirname, "..");
-const mathematicalModules = [
-  "src/baselib/factorization.py",
-  "src/baselib/finite_fields.py",
-  "src/baselib/polynomial.py",
-];
+const pyrightConfig = JSON.parse(
+  readFileSync(join(root, "pyrightconfig.json"), "utf8"),
+);
+const mathematicalModules = pyrightConfig.include;
 const verbatimExpression =
   /\bv(?:'[^']*'|"[^"]*"|'''[\s\S]*?'''|"""[\s\S]*?""")/;
 

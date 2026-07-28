@@ -1,0 +1,19 @@
+{
+  "include": [
+    "src/baselib/factorization.py",
+    "src/baselib/finite_fields.py",
+    "src/baselib/polynomial.py"
+  ],
+  "extraPaths": [
+    "src/baselib"
+  ],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "strict",
+  "reportMissingTypeStubs": false,
+  "reportPrivateUsage": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownVariableType": false,
+  "reportUnnecessaryComparison": false,
+  "reportUnnecessaryIsInstance": false
+}

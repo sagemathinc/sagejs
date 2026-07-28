@@ -8,12 +8,18 @@ importers:
 
   .:
     devDependencies:
+      '@astral-sh/ruff-wasm-nodejs':
+        specifier: 0.16.0
+        version: 0.16.0
       '@sagemath/sagejs-flint':
         specifier: workspace:*
         version: link:packages/flint
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
+      pyright:
+        specifier: 1.1.411
+        version: 1.1.411
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -25,6 +31,9 @@ importers:
         version: 13.0.1
 
 packages:
+
+  '@astral-sh/ruff-wasm-nodejs@0.16.0':
+    resolution: {integrity: sha512-5T8Z+TzM1BARJs86tsATsdAE9OQqVOnAjThCjdfLpbUqaP6hsbanhLLTWutrvLzllViYxi2qxGftF7o0rAJaIw==}
 
   '@isaacs/fs-minipass@4.0.1':
     resolution: {integrity: sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==}
@@ -177,6 +186,11 @@ packages:
       picomatch:
         optional: true
 
+  fsevents@2.3.3:
+    resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
+    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+    os: [darwin]
+
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
 
@@ -209,6 +223,11 @@ packages:
   proc-log@7.0.0:
     resolution: {integrity: sha512-FYgfaA69XZ93zaXLoMNQ+ViDXGGBgR8aLh03txzcFhV+9xOXx7+8DLCULrKKpR9+GsH9ZfHm82aSUPpozX0Ztg==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
+
+  pyright@1.1.411:
+    resolution: {integrity: sha512-03S/vmS5lF1S/tVbKc2WNXCMq8JWCwta/qIYjj1jvqbQhoy+N3NgBzHTSmUlbYD6DJwqQ5XHf108QujoqeURvw==}
+    engines: {node: '>=14.0.0'}
+    hasBin: true
 
   semver@7.8.5:
     resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
@@ -245,6 +264,8 @@ packages:
     engines: {node: '>=18'}
 
 snapshots:
+
+  '@astral-sh/ruff-wasm-nodejs@0.16.0': {}
 
   '@isaacs/fs-minipass@4.0.1':
     dependencies:
@@ -326,6 +347,9 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.5
 
+  fsevents@2.3.3:
+    optional: true
+
   graceful-fs@4.2.11: {}
 
   isexe@4.0.0: {}
@@ -356,6 +380,10 @@ snapshots:
   picomatch@4.0.5: {}
 
   proc-log@7.0.0: {}
+
+  pyright@1.1.411:
+    optionalDependencies:
+      fsevents: 2.3.3
 
   semver@7.8.5: {}
 

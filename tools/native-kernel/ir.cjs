@@ -115,23 +115,28 @@ function lowerBinary(statement, localTypes, elementType) {
   };
 }
 
-function lowerFunction(fn, signature) {
+function annotationName(annotation, description) {
+  expect(annotation !== undefined && annotation !== null, `${description} is missing`);
+  if (
+    nodeType(annotation) === "AST_SymbolRef" ||
+    nodeType(annotation) === "AST_String"
+  ) {
+    return annotation.name ?? annotation.value;
+  }
+  fail(`${description} must be a simple type name`);
+}
+
+function lowerFunction(fn) {
   expect(
     isCIdentifier(fn.name.name),
     "native function names must also be C identifiers",
   );
-  expect(signature !== undefined, `missing signature for ${fn.name.name}`);
-  expect(
-    Array.isArray(signature.arguments),
-    `signature for ${fn.name.name} needs an arguments array`,
-  );
   const args = array(fn.argnames);
-  expect(
-    args.length === signature.arguments.length,
-    `${fn.name.name} signature has the wrong number of arguments`,
-  );
-  const params = args.map((arg, index) => {
-    const type = signature.arguments[index];
+  const params = args.map((arg) => {
+    const type = annotationName(
+      arg.annotation,
+      `native argument ${fn.name.name}.${arg.name} annotation`,
+    );
     expect(
       isCIdentifier(arg.name),
       `native argument ${arg.name} must also be a C identifier`,
@@ -152,8 +157,12 @@ function lowerFunction(fn, signature) {
   );
   const parent = parentParams[0];
   const elementType = PARENT_ELEMENT_TYPES.get(parent.type);
+  const returnType = annotationName(
+    fn.return_annotation,
+    `native function ${fn.name.name} return annotation`,
+  );
   expect(
-    signature.returns === elementType,
+    returnType === elementType,
     `${fn.name.name} with ${parent.type} must return ${elementType}`,
   );
   const parentName = parent.name;
@@ -270,27 +279,20 @@ function lowerFunction(fn, signature) {
   };
 }
 
-function lowerSource(source, filename, signatures) {
+function lowerSource(source, filename) {
   const compiler = createCompiler();
   const toplevel = compiler.parse(source, {
     filename,
     jsage: true,
   });
-  const functionsByName = new Map();
-  for (const statement of array(toplevel.body)) {
+  const functions = array(toplevel.body).map((statement) => {
     expect(
       nodeType(statement) === "AST_Function",
       "native kernel source may only contain function definitions",
     );
-    functionsByName.set(statement.name.name, statement);
-  }
-  const requested = Object.keys(signatures || {});
-  expect(requested.length > 0, "at least one native signature is required");
-  const functions = requested.map((name) => {
-    const fn = functionsByName.get(name);
-    expect(fn !== undefined, `source does not define ${name}`);
-    return lowerFunction(fn, signatures[name]);
+    return lowerFunction(statement);
   });
+  expect(functions.length > 0, "native kernel source defines no functions");
   return {
     version: IR_VERSION,
     functions,

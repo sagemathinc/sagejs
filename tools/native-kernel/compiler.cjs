@@ -64,11 +64,9 @@ function bindingGyp() {
 function compileKernel(options) {
   const sourcePath = resolve(options.sourcePath);
   const source = readFileSync(sourcePath, "utf8");
-  const signatures = options.signatures || {};
-  const ir = lowerSource(source, sourcePath, signatures);
+  const ir = lowerSource(source, sourcePath);
   const identity = {
     source,
-    signatures,
     ir,
     nativeAbi: NATIVE_ABI_VERSION,
     backend: backendFingerprint(),
@@ -130,7 +128,6 @@ function compileKernel(options) {
         cacheKey,
         nativeAbi: NATIVE_ABI_VERSION,
         sourcePath,
-        signatures,
         ir,
       },
       null,

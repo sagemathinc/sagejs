@@ -183,6 +183,10 @@ DIRECT_CALL_TYPES = {
 # property lookup in generated JavaScript.  A small source module provides the
 # same names while bootstrapping with an older checked-in compiler.
 SAGEJS_RUNTIME_INTRINSICS = {
+    'array': 'Array',
+    'bigint': 'BigInt',
+    'bigint_fields': 'ρσ_bigint_fields',
+    'callable_instance_class': 'ρσ_callable_instance_class',
     'coercion_model': 'ρσ_coercion_model',
     'equals': 'ρσ_equals',
     'factor_pair': 'ρσ_factor_pair',
@@ -190,18 +194,42 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'integer_bigint': 'ρσ_integer_bigint',
     'iterator_symbol': 'ρσ_iterator_symbol',
     'kwargs_symbol': 'ρσ_kwargs_symbol',
+    'jstype': 'jstype',
+    'lightweight_math_class': 'ρσ_lightweight_math_class',
+    'map': 'ρσ_new_map',
     'math_tuple': 'ρσ_math_tuple',
     'modular_inverse': 'ρσ_modular_inverse',
     'modular_power': 'ρσ_modular_power',
     'normalize_integer': 'ρσ_normalize_integer',
+    'number': 'Number',
+    'object': 'Object',
     'operator_mul_exact': 'ρσ_operator_mul_exact',
     'operator_pow_exact': 'ρσ_operator_pow_exact',
     'polynomial_from_coefficients': 'ρσ_polynomial_from_coefficients',
+    'reflect': 'Reflect',
+    'regexp': 'RegExp',
     'repr': 'ρσ_repr',
+    'sequence_class': 'ρσ_sequence_class',
     'set_class_repr': 'ρσ_set_class_repr',
+    'undefined': 'undefined',
+}
+
+SAGEJS_PUBLIC_INTRINSICS = {
+    'AlgebraicExtensionFunctor': 'AlgebraicExtensionFunctor',
+    'Element': 'Element',
+    'Factorization': 'Factorization',
+    'FiniteFieldElement': 'FiniteFieldElement',
+    'Parent': 'Parent',
+    'PolynomialRing': 'PolynomialRing',
+    'QQ': 'QQ',
+    'QuotientFunctor': 'QuotientFunctor',
+    'Rational': 'Rational',
+    'ZZ': 'ZZ',
+    'ZeroDivisionError': 'ZeroDivisionError',
 }
 
 INTRINSIC_MODULES = {
+    'sagejs': SAGEJS_PUBLIC_INTRINSICS,
     'sagejs.runtime': SAGEJS_RUNTIME_INTRINSICS,
 }
 
@@ -1170,6 +1198,18 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             key = tmp.name + key
             if from_import and key is '__python__':
                 return read_python_flags()
+            if from_import and key is '__future__':
+                expect_token("keyword", "import")
+                if not is_('name', 'annotations'):
+                    croak(
+                        'Sage.js currently supports only '
+                        'from __future__ import annotations')
+                next()
+                return AST_EmptyStatement({
+                    'stype': 'future_annotations',
+                    'start': tok.start,
+                    'end': prev()
+                })
             if from_import and key is 'typing':
                 return mock_typing_module()
             alias = None

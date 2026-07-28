@@ -14,22 +14,48 @@ const runtimeSource = readFileSync(
   join(root, "src", "baselib", "sagejs", "runtime.py"),
   "utf8",
 );
-const manifestBlock = parserSource.match(
+const runtimeManifestBlock = parserSource.match(
   /SAGEJS_RUNTIME_INTRINSICS = \{([\s\S]*?)\n\}/,
 );
-assert.notEqual(manifestBlock, null);
-const manifest = Array.from(
-  manifestBlock[1].matchAll(/^\s*'([^']+)': '(ρσ_[^']+)',?$/gm),
+const publicManifestBlock = parserSource.match(
+  /SAGEJS_PUBLIC_INTRINSICS = \{([\s\S]*?)\n\}/,
+);
+assert.notEqual(runtimeManifestBlock, null);
+assert.notEqual(publicManifestBlock, null);
+
+function parseManifest(block) {
+  return Array.from(
+    block[1].matchAll(/^\s*'([^']+)': '([^']+)',?$/gm),
+    (match) => [match[1], match[2]],
+  );
+}
+
+const runtimeManifest = parseManifest(runtimeManifestBlock);
+const publicManifest = parseManifest(publicManifestBlock);
+const bootstrapFunctions = Array.from(
+  runtimeSource.matchAll(/^def ([a-z_]+)\(/gm),
+  (match) => match[1],
+);
+const bootstrapAssignments = Array.from(
+  runtimeSource.matchAll(/^([a-z_]+) = ([A-Za-z0-9_ρσ]+)$/gm),
   (match) => [match[1], match[2]],
 );
-const bootstrapAliases = Array.from(
-  runtimeSource.matchAll(/^([a-z_]+) = (ρσ_[A-Za-z0-9_]+)$/gm),
-  (match) => [match[1], match[2]],
+const bootstrapNames = [
+  ...bootstrapFunctions,
+  ...bootstrapAssignments.map(([name]) => name),
+  "undefined",
+].sort();
+assert.deepEqual(
+  bootstrapNames,
+  runtimeManifest.map(([name]) => name).sort(),
+  "the bootstrap runtime exports and compiler manifest must stay synchronized",
 );
 assert.deepEqual(
-  bootstrapAliases,
-  manifest,
-  "the bootstrap runtime module and compiler manifest must stay synchronized",
+  bootstrapAssignments,
+  runtimeManifest.filter(
+    ([name]) => !["jstype", "map", "undefined"].includes(name),
+  ),
+  "ordinary bootstrap aliases must lower to the matching runtime globals",
 );
 
 function compile(source) {
@@ -59,12 +85,30 @@ assert.doesNotMatch(generated, /sagejs\.runtime/);
 assert.doesNotMatch(generated, /ρσ_modules\["sagejs\.runtime"\]/);
 assert.doesNotMatch(generated, /\bruntime\b/);
 
-for (const [name, lowered] of manifest) {
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+for (const [name, lowered] of runtimeManifest) {
   const oneAttribute = compile(
     `import sagejs.runtime as runtime\nvalue = runtime.${name}\n`,
   );
-  assert.match(oneAttribute, new RegExp(`value = ${lowered}`));
+  assert.match(
+    oneAttribute,
+    new RegExp(`value = ${escapeRegExp(lowered)}`),
+  );
   assert.doesNotMatch(oneAttribute, /\bruntime\b/);
+}
+
+for (const [name, lowered] of publicManifest) {
+  const oneAttribute = compile(
+    `import sagejs as sage\nvalue = sage.${name}\n`,
+  );
+  assert.match(
+    oneAttribute,
+    new RegExp(`value = ${escapeRegExp(lowered)}`),
+  );
+  assert.doesNotMatch(oneAttribute, /\bsage\b/);
 }
 
 assert.throws(

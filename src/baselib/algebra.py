@@ -40,6 +40,10 @@ function ρσ_integer_bigint(value) {
     return BigInt(value);
 }
 
+function ρσ_new_map() {
+    return new Map();
+}
+
 function ρσ_bigint_gcd(a, b) {
     if (a < 0n) a = -a;
     if (b < 0n) b = -b;

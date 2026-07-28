@@ -119,7 +119,7 @@ Agents should work primarily on mathematical source and explicit compiler
 contracts, not repetitive FFI code. A good vertical slice contains:
 
 - readable Sage.js implementing a meaningful algorithm;
-- a small type signature or inferred parent plan;
+- ordinary source annotations or an inferred parent plan;
 - reusable IR operations rather than syntax-specific C templates;
 - declarative native-library bindings;
 - differential tests against Sage and the JavaScript fallback;

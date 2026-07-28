@@ -8,7 +8,9 @@ single-function code-generation proof.
 The input is ordinary Sage.js source:
 
 ```python
-def multiply_loop(field, iterations):
+def multiply_loop(
+    field: ComplexField, iterations: uint64
+) -> ComplexNumber:
     value = field("1.25", "-0.75")
     step = field("1.0000000000000002", "0.0000000000000001")
     for _ in range(iterations):
@@ -16,22 +18,13 @@ def multiply_loop(field, iterations):
     return value
 ```
 
-Types are currently declared in a build configuration:
+The annotations are the native signature. The build configuration only names
+the source and cache:
 
 ```js
 module.exports = {
   sourcePath: "native-kernel-input.sage",
   cacheRoot: ".native-kernel-cache",
-  signatures: {
-    multiply_loop: {
-      arguments: ["ComplexField", "uint64"],
-      returns: "ComplexNumber",
-    },
-    real_multiply_loop: {
-      arguments: ["RealField", "uint64"],
-      returns: "RealNumber",
-    },
-  },
 };
 ```
 
@@ -44,8 +37,8 @@ node tools/native-kernel.cjs bench/native-kernel.config.cjs
 
 The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
-signatures, typed IR, all backend source, the shared native header, native ABI,
-Node module ABI, operating system, architecture, and MPFR/MPC versions.
+typed IR, all backend source, the shared native header, native ABI, Node module
+ABI, operating system, architecture, and MPFR/MPC versions.
 Native Kernel v0 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
@@ -60,7 +53,7 @@ lowers the selected functions to typed IR. Native Kernel v0 supports:
   strings;
 - `for ... in range(iterations)`;
 - local real or complex addition, subtraction, multiplication, and division;
-- return of a local matching the supplied field.
+- return of a local matching the annotated field.
 
 Unsupported syntax and missing types are rejected during lowering. The IR
 marks the returned local separately from non-escaping temporaries: the C

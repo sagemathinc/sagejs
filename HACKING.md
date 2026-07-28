@@ -55,6 +55,15 @@ The coercion resolver is responsible for both operand maps and may construct a
 common parent such as `QQ[x]`; do not reintroduce asymmetric `__radd__`
 dispatch for mathematical elements.
 
+The modules in `pyrightconfig.json` are the strict mathematical baselib. They
+must parse as ordinary Python, contain no verbatim JavaScript or implicit
+global declarations, and pass pinned Ruff and Pyright checks. Run
+`pnpm test:baselib:strict`; add a migrated module to the config's `include`
+list only when it has a clean zero-error baseline. See
+[`TYPING.md`](TYPING.md) for the annotation policy. Types describe useful
+program structure, but should not attempt to statically encode value-dependent
+parents or Sage's runtime coercion graph.
+
 `@ρσ_lightweight_math_class` is an internal compile-time annotation for hot,
 immutable element classes. It omits the generic eagerly allocated object
 identity slot; use it only when profiling demonstrates construction overhead
@@ -117,7 +126,9 @@ restricted Sage.js AST to typed IR; independent JavaScript and C/MPC backends
 consume that IR. Generated addons and `packages/flint` share the native
 MPFR/MPC element ABI in `packages/flint/include/sagejs/native.h`. Keep ABI
 changes explicit and versioned, and preserve a JavaScript fallback for every
-supported kernel.
+supported kernel. Native argument and result types come from the function's
+ordinary annotations; do not add a second signature table to build
+configuration.
 
 ## Modes
 
