@@ -511,6 +511,20 @@ def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
     return list_decorate(answer)
 
 
+def _list_type_append(
+    self: Any,
+    value: Any = _CONTAINERS_MISSING,
+    *extra: Any,
+) -> None:
+    if not runtime.array.isArray(self):
+        raise TypeError(
+            "descriptor 'append' for 'list' objects "
+            "doesn't apply to this object")
+    if value is _CONTAINERS_MISSING or len(extra) != 0:
+        raise TypeError('append expected 1 argument')
+    runtime.reflect.apply(_list_append, self, [value])
+
+
 def _container_pop_keyword(
     keywords: Any,
     name: str,
@@ -1323,6 +1337,8 @@ runtime.reflect.set(
 list_constructor = ρσ_list_constructor
 runtime.reflect.set(
     list_constructor, 'prototype', _list_prototype())
+runtime.reflect.set(
+    list_constructor, 'append', _list_type_append)
 runtime.reflect.set(
     _list_prototype(), '__python_type__', list_constructor)
 runtime.set_class_repr(ρσ_dict, "<class 'dict'>")

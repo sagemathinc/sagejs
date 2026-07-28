@@ -459,7 +459,7 @@
     "scope.py": "pass",
     "scope_class.py": "output-mismatch",
     "scope_implicit.py": "pass",
-    "self_type_check.py": "runtime-error",
+    "self_type_check.py": "pass",
     "seq_unpack.py": "pass",
     "set_add.py": "pass",
     "set_basic.py": "pass",
