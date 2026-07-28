@@ -116,6 +116,7 @@ array: _Array
 console_object: Any
 element: type[_Element]
 error: type[_Error]
+function_class: Any
 float_builtin: Any
 global_object: Any
 number: _Number

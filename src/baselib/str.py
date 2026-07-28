@@ -121,7 +121,12 @@ def ρσ_repr(value: Any) -> _Str:
     elif _value_type_is(value, 'string'):
         representation = _repr_python_string(value)
     elif _value_type_is(value, 'function'):
-        representation = value.toString()
+        name = runtime.reflect.get(value, '__name__')
+        if not _value_type_is(name, 'string'):
+            name = runtime.reflect.get(value, 'name')
+        if not _value_type_is(name, 'string') or not name:
+            name = '<anonymous>'
+        representation = '<function ' + name + '>'
     elif _value_type_is(value, 'object'):
         if runtime.reflect.get(value, 'toString') is runtime.undefined:
             representation = _repr_js_builtin(value)
@@ -186,6 +191,8 @@ def ρσ_str(
         answer = 'True' if value else 'False'
     elif runtime.array.isArray(value):
         answer = _repr_js_builtin(value, True)
+    elif _value_type_is(value, 'function'):
+        answer = ρσ_repr(value)
     elif runtime.reflect.get(boxed, 'toString') is not runtime.undefined:
         answer = runtime.reflect.apply(
             runtime.reflect.get(boxed, 'toString'), value, [])

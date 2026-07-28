@@ -232,6 +232,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'equals': 'ρσ_equals',
     'element': 'Element',
     'error': 'Error',
+    'function_class': 'Function',
     'factor_pair': 'ρσ_factor_pair',
     'float_builtin': 'ρσ_float',
     'flint_backend': 'ρσ_flint_backend',

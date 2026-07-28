@@ -2627,7 +2627,10 @@ def ρσ_pow(
     return runtime.normalize_integer(answer)
 
 
-def ρσ_type(value: Any) -> Any:
+def ρσ_type(*values: Any) -> Any:
+    if len(values) != 1:
+        raise TypeError('type() takes 1 or 3 arguments')
+    value = values[0]
     value_type = runtime.jstype(value)
     if (
         runtime.strict_equal(value_type, 'number')
@@ -2864,6 +2867,12 @@ runtime.set_class_repr(ρσ_int, "<class 'int'>")
 runtime.set_class_repr(ρσ_bool, "<class 'bool'>")
 runtime.set_class_repr(ρσ_float, "<class 'float'>")
 runtime.set_class_repr(ρσ_type, "<class 'type'>")
+runtime.set_class_repr(runtime.function_class, "<class 'function'>")
+runtime.reflect.set(ρσ_int, '__python_type__', ρσ_type)
+runtime.reflect.set(ρσ_bool, '__python_type__', ρσ_type)
+runtime.reflect.set(ρσ_float, '__python_type__', ρσ_type)
+runtime.reflect.set(ρσ_type, '__python_type__', ρσ_type)
+runtime.reflect.set(runtime.function_class, '__python_type__', ρσ_type)
 runtime.set_class_repr(ρσ_tuple, "<class 'tuple'>")
 runtime.set_class_repr(runtime.list_constructor, "<class 'list'>")
 runtime.set_class_repr(runtime.string_builtin, "<class 'str'>")

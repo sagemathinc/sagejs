@@ -6,7 +6,8 @@ lowered directly to their corresponding runtime globals.  These assignments
 are the bootstrap implementation used by older checked-in compilers.
 """
 
-# globals: Array, BigInt, console, Element, Error, IntegerFactorization, Map, Math
+# globals: Array, BigInt, console, Element, Error, Function
+# globals: IntegerFactorization, Map, Math
 # globals: Number, Object, PolynomialRing, Proxy
 # globals: JSON, Set, create_real_literal, globalThis, isNaN, parseFloat
 # globals: parseInt
@@ -119,6 +120,7 @@ coercion_model = ρσ_coercion_model
 equals = ρσ_equals
 element = Element
 error = Error
+function_class = Function
 factor_pair = ρσ_factor_pair
 float_builtin = ρσ_float
 flint_backend = ρσ_flint_backend
