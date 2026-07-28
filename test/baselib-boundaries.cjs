@@ -1,23 +1,43 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
+const { readFileSync, readdirSync } = require("node:fs");
 const { join } = require("node:path");
 
 const root = join(__dirname, "..");
 const pyrightConfig = JSON.parse(
   readFileSync(join(root, "pyrightconfig.json"), "utf8"),
 );
-const mathematicalModules = pyrightConfig.include;
+const strictModules = pyrightConfig.include;
 const verbatimExpression =
   /\bv(?:'[^']*'|"[^"]*"|'''[\s\S]*?'''|"""[\s\S]*?""")/;
+const topLevelModules = readdirSync(join(root, "src", "baselib"))
+  .filter((name) => name.endsWith(".py"))
+  .map((name) => `src/baselib/${name}`)
+  .sort();
+const bootstrapBoundary = "src/baselib/sagejs_bootstrap.py";
 
-for (const relativePath of mathematicalModules) {
+assert.deepEqual(
+  [...strictModules].sort(),
+  topLevelModules.filter((path) => path !== bootstrapBoundary),
+  "every top-level baselib module except the bootstrap boundary must be strict",
+);
+
+for (const relativePath of strictModules) {
   const source = readFileSync(join(root, relativePath), "utf8");
   assert.doesNotMatch(
     source,
     verbatimExpression,
     `${relativePath} must not contain verbatim JavaScript`,
+  );
+  assert.ok(
+    !source.includes("%js"),
+    `${relativePath} must not contain raw JavaScript expressions`,
+  );
+  assert.doesNotMatch(
+    source,
+    /^#\s*globals:/m,
+    `${relativePath} must not declare implicit globals`,
   );
   if (source.includes("runtime.")) {
     assert.match(
@@ -27,6 +47,13 @@ for (const relativePath of mathematicalModules) {
     );
   }
 }
+
+const bootstrapSource = readFileSync(
+  join(root, bootstrapBoundary),
+  "utf8",
+);
+assert.match(bootstrapSource, /def ρσ_native_method_adapter/);
+assert.match(bootstrapSource, /%js/);
 
 const generated = readFileSync(
   join(root, "dist/compiler/baselib-plain-pretty.js"),
@@ -80,4 +107,4 @@ assert.doesNotMatch(algebraSource, /ρσ_make_extension_field/);
 assert.doesNotMatch(algebraSource, /ρσ_finite_field_name/);
 assert.doesNotMatch(algebraSource, /ρσ_polynomial_from_coefficients/);
 
-console.log("Mathematical baselib source boundaries passed.");
+console.log("Baselib source boundaries passed.");

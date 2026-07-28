@@ -200,9 +200,12 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'element': 'Element',
     'error': 'Error',
     'factor_pair': 'ρσ_factor_pair',
+    'float_builtin': 'ρσ_float',
     'flint_backend': 'ρσ_flint_backend',
+    'int_builtin': 'ρσ_int',
     'integer_bigint': 'ρσ_integer_bigint',
     'integer_factorization': 'IntegerFactorization',
+    'instance_of': 'ρσ_native_instanceof',
     'is_exact_integer': 'ρσ_is_exact_integer',
     'is_math_element': 'ρσ_is_math_element',
     'is_nan': 'isNaN',
@@ -211,6 +214,8 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'kwargs_symbol': 'ρσ_kwargs_symbol',
     'jstype': 'jstype',
     'lightweight_math_class': 'ρσ_lightweight_math_class',
+    'list_constructor': 'ρσ_list_constructor',
+    'list_contains': 'ρσ_list_contains',
     'map': 'ρσ_new_map',
     'map_class': 'Map',
     'math': 'Math',
@@ -219,6 +224,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'modular_power': 'ρσ_modular_power',
     'modules': 'ρσ_modules',
     'native_method': 'ρσ_native_method',
+    'native_method_adapter': 'ρσ_native_method_adapter',
     'native_add': 'ρσ_native_add',
     'native_div': 'ρσ_native_div',
     'native_mul': 'ρσ_native_mul',
@@ -234,6 +240,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'parse_float': 'parseFloat',
     'parse_int': 'parseInt',
     'polynomial_ring': 'PolynomialRing',
+    'proxy_class': 'Proxy',
     'qq': 'QQ',
     'rational_class': 'Rational',
     'reflect': 'Reflect',
@@ -248,6 +255,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'strict_equal': 'ρσ_strict_equal',
     'string_find': 'ρσ_string_find',
     'string_class': 'String',
+    'string_builtin': 'ρσ_str',
     'string': 'ρσ_string_primitive',
     'undefined': 'undefined',
     'zero_division_error': 'ZeroDivisionError',
@@ -2655,6 +2663,20 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'native_operator': True,
                         'operator': '-',
                         'expression': args[0],
+                        'end': prev()
+                    })
+                    S.in_parenthesized_expr = False
+                    return ret
+                elif tmp_ is 'ρσ_native_instanceof':
+                    args = func_call_list()
+                    if args.length is not 2:
+                        croak(tmp_ + '() requires exactly two arguments')
+                    ret = AST_Binary({
+                        'start': start,
+                        'left': args[0],
+                        'native_operator': True,
+                        'operator': 'instanceof',
+                        'right': args[1],
                         'end': prev()
                     })
                     S.in_parenthesized_expr = False

@@ -1,368 +1,620 @@
-# vim:fileencoding=utf-8
-# License: BSD
+"""Compiler/runtime ABI helpers implemented as ordinary Python source."""
 
-# globals: exports, console, ρσ_iterator_symbol, ρσ_kwargs_symbol, ρσ_arraylike, ρσ_list_contains, ρσ_list_constructor, ρσ_str, ρσ_int, ρσ_float
-# globals: Proxy, Reflect, RegExp, Number, Object
+from __future__ import annotations
 
-def ρσ_eslice(arr, step, start, end):
-    if jstype(arr) is 'string' or v'arr instanceof String':
-        is_string = True
-        arr = arr.split('')
+from typing import Any
+
+import sagejs.runtime as runtime
+
+
+def _internal_type_is(actual: Any, expected: str) -> bool:
+    return runtime.strict_equal(actual, expected)
+
+
+def _internal_get_member(value: Any, name: Any) -> Any:
+    if value is None or value is runtime.undefined:
+        return runtime.undefined
+    value_type = runtime.jstype(value)
+    if (
+        _internal_type_is(value_type, 'object')
+        or _internal_type_is(value_type, 'function')
+    ):
+        return runtime.reflect.get(value, name)
+    boxed = runtime.reflect.apply(
+        runtime.object, runtime.undefined, [value])
+    return runtime.reflect.get(boxed, name)
+
+
+def _internal_member_is_function(value: Any, name: Any) -> bool:
+    return _internal_type_is(
+        runtime.jstype(_internal_get_member(value, name)),
+        'function',
+    )
+
+
+def _internal_is_native_map(value: Any) -> bool:
+    return (
+        value is not None
+        and _internal_get_member(value, 'constructor')
+        is runtime.map_class
+    )
+
+
+def ρσ_eslice(
+    array: Any,
+    step: int,
+    start: Any,
+    end: Any,
+) -> Any:
+    is_string = (
+        _internal_type_is(runtime.jstype(array), 'string')
+        or runtime.instance_of(array, runtime.string_class)
+    )
+    if is_string:
+        array = array.split('')
 
     if step < 0:
         step = -step
-        arr = arr.slice().reverse()
-        if jstype(start) is not "undefined": start = arr.length - start - 1
-        if jstype(end) is not "undefined": end = arr.length - end - 1
-    if jstype(start) is "undefined": start = 0
-    if jstype(end) is "undefined": end = arr.length
+        array = array.slice().reverse()
+        if start is not runtime.undefined:
+            start = array.length - start - 1
+        if end is not runtime.undefined:
+            end = array.length - end - 1
+    if start is runtime.undefined:
+        start = 0
+    if end is runtime.undefined:
+        end = array.length
 
-    arr = arr.slice(start, end).filter(def(e, i): return i % step is 0;)
+    answer = []
+    index = 0
+    for value in array.slice(start, end):
+        if index % step == 0:
+            answer.append(value)
+        index += 1
     if is_string:
-        arr = arr.join('')
-    return arr
+        return str.join('', answer)
+    return answer
 
-def ρσ_delslice(arr, step, start, end):
-    if jstype(arr) is 'string' or v'arr instanceof String':
-        is_string = True
-        arr = arr.split('')
+
+def ρσ_delslice(
+    array: Any,
+    step: int,
+    start: Any,
+    end: Any,
+) -> Any:
+    is_string = (
+        _internal_type_is(runtime.jstype(array), 'string')
+        or runtime.instance_of(array, runtime.string_class)
+    )
+    if is_string:
+        array = array.split('')
     if step < 0:
-        if jstype(start) is "undefined": start = arr.length
-        if jstype(end) is "undefined": end = 0
+        if start is runtime.undefined:
+            start = array.length
+        if end is runtime.undefined:
+            end = 0
         start, end, step = end, start, -step
-    if jstype(start) is "undefined": start = 0
-    if jstype(end) is "undefined": end = arr.length
+    if start is runtime.undefined:
+        start = 0
+    if end is runtime.undefined:
+        end = array.length
 
-    if step is 1:
-        arr.splice(start, end - start)
-    else:
-        if end > start:
-            indices = v'[]'
-            for v'var i = start; i < end; i += step':
-                indices.push(i)
-            for v'var i = indices.length - 1; i >= 0; i--':
-                arr.splice(indices[i], 1)
+    if step == 1:
+        array.splice(start, end - start)
+    elif end > start:
+        indices = []
+        for index in range(start, end, step):
+            indices.append(index)
+        for position in range(len(indices) - 1, -1, -1):
+            array.splice(indices[position], 1)
 
     if is_string:
-        arr = arr.join('')
-    return arr
+        return array.join('')
+    return array
 
-def ρσ_flatten(arr):
-    ans = []
-    for v'var i=0; i < arr.length; i++':
-        value = arr[i]  # noqa:undef
-        if Array.isArray(value):
-            ans = ans.concat(ρσ_flatten(value))
+
+def ρσ_flatten(array: Any) -> list[Any]:
+    answer = []
+    for value in array:
+        if runtime.array.isArray(value):
+            for item in ρσ_flatten(value):
+                answer.append(item)
         else:
-            ans.push(value)
-    return ans
+            answer.append(value)
+    return answer
 
-def ρσ_unpack_asarray(num, iterable):
-    if ρσ_arraylike(iterable):
+
+def ρσ_unpack_asarray(count: int, iterable: Any) -> Any:
+    if runtime.arraylike(iterable):
         return iterable
-    ans = v'[]'
-    if jstype(iterable[ρσ_iterator_symbol]) is 'function':
-        iterator = iterable.keys() if jstype(Map) is 'function' and v'iterable instanceof Map' else iterable[ρσ_iterator_symbol]()
+    answer = []
+    iterator_method = _internal_get_member(
+        iterable, runtime.iterator_symbol)
+    if _internal_type_is(runtime.jstype(iterator_method), 'function'):
+        if _internal_is_native_map(iterable):
+            iterator = iterable.keys()
+        else:
+            iterator = runtime.reflect.apply(
+                iterator_method, iterable, [])
         result = iterator.next()
-        while not result.done and ans.length < num:
-            ans.push(result.value)
+        while not result.done and len(answer) < count:
+            answer.append(result.value)
             result = iterator.next()
-    return ans
+    return answer
 
-def ρσ_extends(child, parent):
-    child.prototype = Object.create(parent.prototype)
+
+def ρσ_extends(child: Any, parent: Any) -> None:
+    child.prototype = runtime.object.create(parent.prototype)
     child.prototype.constructor = child
 
 
-def ρσ_native_method(target_function):
+def ρσ_native_method(target_function: Any) -> Any:
     """Adapt an ordinary ``(self, *args)`` function to a JS object method."""
-    def method():
-        args = Array.prototype.slice.call(arguments)
-        args.unshift(this)
-        return target_function.apply(undefined, args)
-    if target_function.__argnames__:
-        method.__argnames__ = target_function.__argnames__.slice(1)
-    method.__handles_kwarg_interpolation__ = (
-        target_function.__handles_kwarg_interpolation__
-    )
-    return method
+    return runtime.native_method_adapter(target_function)
 
 
-def ρσ_strict_equal(left, right):
+def ρσ_strict_equal(left: Any, right: Any) -> bool:
     return left is right
 
 
-def ρσ_sequence_proxy(instance):
-    def get_item(target, property_name, receiver):
-        if (jstype(property_name) is 'string'
-                and RegExp(r'^-?[0-9]+$').test(property_name)):
-            return target.__getitem__(Number(property_name))
-        if property_name is 'length':
+def ρσ_sequence_proxy(instance: Any) -> Any:
+    integer_property = runtime.regexp(r'^-?[0-9]+$')
+
+    def get_item(
+        target: Any,
+        property_name: Any,
+        receiver: Any,
+    ) -> Any:
+        if (
+            _internal_type_is(
+                runtime.jstype(property_name), 'string')
+            and integer_property.test(property_name)
+        ):
+            return target.__getitem__(runtime.number(property_name))
+        if runtime.strict_equal(property_name, 'length'):
             return target.__len__()
-        return Reflect.get(target, property_name, receiver)
+        return runtime.reflect.get(target, property_name, receiver)
 
-    def set_item(target, property_name, value, receiver):
-        if (jstype(property_name) is 'string'
-                and RegExp(r'^-?[0-9]+$').test(property_name)):
-            target.__setitem__(Number(property_name), value)
+    def set_item(
+        target: Any,
+        property_name: Any,
+        value: Any,
+        receiver: Any,
+    ) -> bool:
+        if (
+            _internal_type_is(
+                runtime.jstype(property_name), 'string')
+            and integer_property.test(property_name)
+        ):
+            target.__setitem__(runtime.number(property_name), value)
             return True
-        return Reflect.set(target, property_name, value, receiver)
+        return runtime.reflect.set(
+            target, property_name, value, receiver)
 
-    return Proxy(instance, {'get': get_item, 'set': set_item})
+    return runtime.reflect.construct(
+        runtime.proxy_class,
+        [instance, {'get': get_item, 'set': set_item}],
+    )
 
 
-def ρσ_callable_sequence_class(target):
-    def call_class(target, this_arg, args):
-        return ρσ_sequence_proxy(Reflect.construct(target, args))
+def _internal_set_class_repr(wrapper: Any, target: Any) -> None:
+    if (
+        runtime.object.getOwnPropertyDescriptor(
+            wrapper, '__repr__')
+        is not runtime.undefined
+    ):
+        return
 
-    def construct_class(target, args, new_target):
+    def class_repr() -> str:
+        return "<class '" + target.name + "'>"
+
+    runtime.object.defineProperty(
+        wrapper,
+        '__repr__',
+        {'configurable': True, 'value': class_repr},
+    )
+
+
+def ρσ_callable_sequence_class(target: Any) -> Any:
+    def call_class(
+        target_class: Any,
+        _this_argument: Any,
+        call_args: Any,
+    ) -> Any:
         return ρσ_sequence_proxy(
-            Reflect.construct(target, args, new_target))
+            runtime.reflect.construct(target_class, call_args))
 
-    wrapper = Proxy(target, {
-        'apply': call_class,
-        'construct': construct_class,
-    })
+    def construct_class(
+        target_class: Any,
+        call_args: Any,
+        new_target: Any,
+    ) -> Any:
+        return ρσ_sequence_proxy(
+            runtime.reflect.construct(
+                target_class, call_args, new_target)
+        )
+
+    wrapper = runtime.reflect.construct(
+        runtime.proxy_class,
+        [
+            target,
+            {'apply': call_class, 'construct': construct_class},
+        ],
+    )
     target.prototype.constructor = wrapper
-    if Object.getOwnPropertyDescriptor(wrapper, '__repr__') is undefined:
-        Object.defineProperty(wrapper, '__repr__', {
-            'value': def():
-                return "<class '" + target.name + "'>"
-        })
+    _internal_set_class_repr(wrapper, target)
     return wrapper
 
 
-def ρσ_callable_instance_class_adapter(target):
-    def make_instance(target, args):
-        def callable_instance():
-            return callable_instance.__call__.apply(
-                callable_instance, arguments)
+def ρσ_callable_instance_class_adapter(target: Any) -> Any:
+    def make_instance(target_class: Any, call_args: Any) -> Any:
+        def callable_instance(*instance_args: Any) -> Any:
+            method = _internal_get_member(
+                callable_instance, '__call__')
+            return runtime.reflect.apply(
+                method, callable_instance, instance_args)
 
-        Object.setPrototypeOf(callable_instance, target.prototype)
-        target.apply(callable_instance, args)
+        runtime.object.setPrototypeOf(
+            callable_instance, target_class.prototype)
+        runtime.reflect.apply(
+            target_class, callable_instance, call_args)
         return callable_instance
 
-    def call_class(target, this_arg, args):
-        return make_instance(target, args)
+    def call_class(
+        target_class: Any,
+        _this_argument: Any,
+        call_args: Any,
+    ) -> Any:
+        return make_instance(target_class, call_args)
 
-    def construct_class(target, args, new_target):
-        return make_instance(target, args)
+    def construct_class(
+        target_class: Any,
+        call_args: Any,
+        _new_target: Any,
+    ) -> Any:
+        return make_instance(target_class, call_args)
 
-    wrapper = Proxy(target, {
-        'apply': call_class,
-        'construct': construct_class,
-    })
+    wrapper = runtime.reflect.construct(
+        runtime.proxy_class,
+        [
+            target,
+            {'apply': call_class, 'construct': construct_class},
+        ],
+    )
     target.prototype.constructor = wrapper
-    if Object.getOwnPropertyDescriptor(wrapper, '__repr__') is undefined:
-        Object.defineProperty(wrapper, '__repr__', {
-            'configurable': True,
-            'value': def():
-                return "<class '" + target.name + "'>"
-        })
+    _internal_set_class_repr(wrapper, target)
     return wrapper
 
 
-ρσ_in = (def ():
-    if jstype(Map) is 'function' and jstype(Set) is 'function':
-        return def(val, arr):
-            if jstype(arr) is 'string':
-                return arr.indexOf(val) is not -1
-            if jstype(arr.__contains__) is 'function':
-                return arr.__contains__(val)
-            if v'arr instanceof Map || arr instanceof Set':
-                return arr.has(val)
-            if ρσ_arraylike(arr):
-                return ρσ_list_contains.call(arr, val)
-            return Object.prototype.hasOwnProperty.call(arr, val)
-    return def(val, arr):
-        if jstype(arr) is 'string':
-            return arr.indexOf(val) is not -1
-        if jstype(arr.__contains__) is 'function':
-            return arr.__contains__(val)
-        if ρσ_arraylike(arr):
-            return ρσ_list_contains.call(arr, val)
-        return Object.prototype.hasOwnProperty.call(arr, val)
-)()
+def ρσ_in(value: Any, container: Any) -> bool:
+    if _internal_type_is(runtime.jstype(container), 'string'):
+        return container.indexOf(value) != -1
+    if _internal_member_is_function(container, '__contains__'):
+        return runtime.reflect.apply(
+            _internal_get_member(container, '__contains__'),
+            container,
+            [value],
+        )
+    if (
+        runtime.instance_of(container, runtime.map_class)
+        or runtime.instance_of(container, runtime.set_class)
+    ):
+        return container.has(value)
+    if runtime.arraylike(container):
+        return runtime.reflect.apply(
+            runtime.list_contains, container, [value])
+    return runtime.reflect.apply(
+        runtime.object.prototype.hasOwnProperty,
+        container,
+        [value],
+    )
 
-def ρσ_Iterable(iterable):
-    # Once ES6 is mature, change AST_ForIn to use the iterator protocol and get
-    # rid of this function entirely
-    if ρσ_arraylike(iterable):
+
+def ρσ_Iterable(iterable: Any) -> Any:
+    """Return the eager iterable used by generated ``for`` loops."""
+    if runtime.arraylike(iterable):
         return iterable
-    if jstype(iterable[ρσ_iterator_symbol]) is 'function':
-        iterator = iterable.keys() if jstype(Map) is 'function' and v'iterable instanceof Map' else iterable[ρσ_iterator_symbol]()
-        ans = []
+    iterator_method = _internal_get_member(
+        iterable, runtime.iterator_symbol)
+    if _internal_type_is(runtime.jstype(iterator_method), 'function'):
+        if _internal_is_native_map(iterable):
+            iterator = iterable.keys()
+        else:
+            iterator = runtime.reflect.apply(
+                iterator_method, iterable, [])
+        answer = []
         result = iterator.next()
         while not result.done:
-            ans.push(result.value)
+            answer.append(result.value)
             result = iterator.next()
-        return ans
-    # so we can use 'for ... in' syntax with objects, as we would with dicts in python
-    return Object.keys(iterable)
+        return answer
+    return runtime.object.keys(iterable)
 
-ρσ_desugar_kwargs = (def ():
-    if jstype(Object.assign) is 'function':
-        return def():
-            ans = Object.create(None)
-            ans[ρσ_kwargs_symbol] = True
-            for v'var i = 0; i < arguments.length; i++':
-                Object.assign(ans, arguments[i])
-            return ans
-    return def():
-        ans = Object.create(None)
-        ans[ρσ_kwargs_symbol] = True
-        for v'var i = 0; i < arguments.length; i++':
-            keys = Object.keys(arguments[i])
-            for v'var j = 0; j < keys.length; j++':
-                ans[keys[j]] = arguments[i][keys[j]]
-        return ans
-)()
 
-def ρσ_interpolate_kwargs(f, supplied_args):
-    if not f.__argnames__:
-        return f.apply(this, supplied_args)
-    has_prop = Object.prototype.hasOwnProperty
-    kwobj = supplied_args.pop()
-    if f.__handles_kwarg_interpolation__:
-        args = Array(Math.max(supplied_args.length, f.__argnames__.length) + 1)
-        args[-1] = kwobj
-        for v'var i = 0; i < args.length - 1; i++':
-            if i < f.__argnames__.length:
-                prop = f.__argnames__[i]
-                if has_prop.call(kwobj, prop):
-                    args[i] = kwobj[prop]
-                    v'delete kwobj[prop]'
-                elif i < supplied_args.length:
-                    args[i] = supplied_args[i]
+def ρσ_desugar_kwargs(sources: Any) -> Any:
+    answer = runtime.object.create(None)
+    answer[runtime.kwargs_symbol] = True
+    for source in sources:
+        runtime.object.assign(answer, source)
+    return answer
+
+
+def _internal_has_own(value: Any, name: Any) -> bool:
+    return runtime.reflect.apply(
+        runtime.object.prototype.hasOwnProperty,
+        value,
+        [name],
+    )
+
+
+def ρσ_interpolate_kwargs(
+    receiver: Any,
+    target_function: Any,
+    supplied_args: Any,
+) -> Any:
+    argnames = _internal_get_member(
+        target_function, '__argnames__')
+    if not argnames:
+        return runtime.reflect.apply(
+            target_function, receiver, supplied_args)
+
+    keyword_object = supplied_args.pop()
+    if _internal_get_member(
+        target_function, '__handles_kwarg_interpolation__'
+    ):
+        argument_count = max(supplied_args.length, argnames.length)
+        call_args = runtime.reflect.construct(
+            runtime.array, [argument_count + 1])
+        call_args[-1] = keyword_object
+        for index in range(argument_count):
+            if index < argnames.length:
+                property_name = argnames[index]
+                if _internal_has_own(
+                    keyword_object, property_name
+                ):
+                    call_args[index] = keyword_object[property_name]
+                    runtime.reflect.deleteProperty(
+                        keyword_object, property_name)
+                elif index < supplied_args.length:
+                    call_args[index] = supplied_args[index]
             else:
-                args[i] = supplied_args[i]
-        return f.apply(this, args)
+                call_args[index] = supplied_args[index]
+        return runtime.reflect.apply(
+            target_function, receiver, call_args)
 
-    for v'var i = 0; i < f.__argnames__.length; i++':
-        prop = f.__argnames__[i]
-        if has_prop.call(kwobj, prop):
-            supplied_args[i] = kwobj[prop]
-    return f.apply(this, supplied_args)
+    for index in range(argnames.length):
+        property_name = argnames[index]
+        if _internal_has_own(keyword_object, property_name):
+            supplied_args[index] = keyword_object[property_name]
+    return runtime.reflect.apply(
+        target_function, receiver, supplied_args)
 
-def ρσ_interpolate_kwargs_constructor(apply, f, supplied_args):
-    if apply:
-        f.apply(this, supplied_args)
+
+def ρσ_interpolate_kwargs_constructor(
+    receiver: Any,
+    use_apply: bool,
+    target_function: Any,
+    supplied_args: Any,
+) -> Any:
+    if use_apply:
+        runtime.reflect.apply(
+            target_function, receiver, supplied_args)
     else:
-        ρσ_interpolate_kwargs.call(this, f, supplied_args)
-    return this
+        ρσ_interpolate_kwargs(
+            receiver, target_function, supplied_args)
+    return receiver
 
-def ρσ_getitem(obj, key):
-    if obj.__getitem__:
-        return obj.__getitem__(key)
-    if jstype(key) is 'number' and key < 0:
-        key += obj.length
-    return obj[key]
 
-def ρσ_setitem(obj, key, val):
-    if obj.__setitem__:
-        obj.__setitem__(key, val)
-    else:
-        if jstype(key) is 'number' and key < 0:
-            key += obj.length
-        obj[key] = val
+def ρσ_getitem(value: Any, key: Any) -> Any:
+    if _internal_member_is_function(value, '__getitem__'):
+        return runtime.reflect.apply(
+            _internal_get_member(value, '__getitem__'),
+            value,
+            [key],
+        )
+    if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
+        key += value.length
+    return value[key]
 
-def ρσ_delitem(obj, key):
-    if obj.__delitem__:
-        obj.__delitem__(key)
-    elif jstype(obj.splice) is 'function':
-        obj.splice(key, 1)
-    else:
-        if jstype(key) is 'number' and key < 0:
-            key += obj.length
-        v'delete obj[key]'
 
-def ρσ_bound_index(idx, arr):
-    if jstype(idx) is 'number' and idx < 0:
-        idx += arr.length
-    return idx
+def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
+    if _internal_member_is_function(value, '__setitem__'):
+        runtime.reflect.apply(
+            _internal_get_member(value, '__setitem__'),
+            value,
+            [key, member],
+        )
+        return
+    if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
+        key += value.length
+    value[key] = member
 
-def ρσ_splice(arr, val, start, end):
-    start = start or 0
+
+def ρσ_delitem(value: Any, key: Any) -> None:
+    if _internal_member_is_function(value, '__delitem__'):
+        runtime.reflect.apply(
+            _internal_get_member(value, '__delitem__'),
+            value,
+            [key],
+        )
+        return
+    if _internal_member_is_function(value, 'splice'):
+        value.splice(key, 1)
+        return
+    if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
+        key += value.length
+    runtime.reflect.deleteProperty(value, key)
+
+
+def ρσ_bound_index(index: Any, array: Any) -> Any:
+    if _internal_type_is(runtime.jstype(index), 'number') and index < 0:
+        index += array.length
+    return index
+
+
+def ρσ_splice(
+    array: Any,
+    values: Any,
+    start: Any,
+    end: Any,
+) -> None:
+    if not start:
+        start = 0
     if start < 0:
-        start += arr.length
-    if end is undefined:
-        end = arr.length
+        start += array.length
+    if end is runtime.undefined:
+        end = array.length
     if end < 0:
-        end += arr.length
-    Array.prototype.splice.apply(arr, v'[start, end - start].concat(val)')
+        end += array.length
+    call_args = [start, end - start]
+    for value in values:
+        call_args.append(value)
+    runtime.reflect.apply(
+        runtime.array.prototype.splice, array, call_args)
+
+
+def _internal_exists_not_null(expression: Any) -> bool:
+    return expression is not runtime.undefined and expression is not None
+
+
+def _internal_exists_default_object(expression: Any) -> Any:
+    if expression is runtime.undefined or expression is None:
+        return runtime.object.create(None)
+    return expression
+
+
+def _internal_exists_callable(expression: Any) -> Any:
+    if _internal_type_is(runtime.jstype(expression), 'function'):
+        return expression
+
+    def undefined_function() -> Any:
+        return runtime.undefined
+
+    return undefined_function
+
+
+def _internal_exists_getitem(expression: Any) -> Any:
+    if (
+        expression is not runtime.undefined
+        and expression is not None
+        and _internal_member_is_function(expression, '__getitem__')
+    ):
+        return expression
+
+    def undefined_getitem(_key: Any) -> Any:
+        return runtime.undefined
+
+    return {'__getitem__': undefined_getitem}
+
+
+def _internal_exists_alternative(
+    expression: Any,
+    alternative: Any,
+) -> Any:
+    if expression is runtime.undefined or expression is None:
+        return alternative
+    return expression
+
 
 ρσ_exists = {
-     'n': def(expr):
-        return expr is not undefined and expr is not None
-    ,'d': def(expr):
-        if expr is undefined or expr is None:
-            return Object.create(None)
-        return expr
-    ,'c': def(expr):
-        if jstype(expr) is 'function':
-            return expr
-        return def():
-            return undefined
-    ,'g': def(expr):
-        if expr is undefined or expr is None or jstype(expr.__getitem__) is not 'function':
-            return {'__getitem__': def(): return undefined;}
-    ,'e': def(expr, alt):
-        return alt if expr is undefined or expr is None else expr
+    'n': _internal_exists_not_null,
+    'd': _internal_exists_default_object,
+    'c': _internal_exists_callable,
+    'g': _internal_exists_getitem,
+    'e': _internal_exists_alternative,
 }
 
-def ρσ_mixin():
-    # Implement a depth-first left-to-right method resolution order This is not
-    # the same as python's MRO, but I really dont feel like implementing the C3
-    # linearization right now, if that is even possible with prototypical
-    # inheritance.
-    seen = Object.create(None)
-    # Ensure the following special properties are never copied
-    seen.__argnames__ = seen.__handles_kwarg_interpolation__ = seen.__init__ = seen.__annotations__ = seen.__doc__ = seen.__bind_methods__ = seen.__bases__ = seen.constructor = seen.__class__ = True
-    resolved_props = {}
-    p = target = arguments[0].prototype
-    while p and p is not Object.prototype:
-        props = Object.getOwnPropertyNames(p)
-        for v'var i = 0; i < props.length; i++':
-            seen[props[i]] = True
-        p = Object.getPrototypeOf(p)
-    for v'var c = 1; c < arguments.length; c++':
-        p = arguments[c].prototype
-        while p and p is not Object.prototype:
-            props = Object.getOwnPropertyNames(p)
-            for v'var i = 0; i < props.length; i++':
-                name = props[i]
+
+def ρσ_mixin(*classes: Any) -> None:
+    """Copy missing prototype members using the legacy Sage.js MRO."""
+    seen = runtime.object.create(None)
+    skipped = [
+        '__argnames__',
+        '__handles_kwarg_interpolation__',
+        '__init__',
+        '__annotations__',
+        '__doc__',
+        '__bind_methods__',
+        '__bases__',
+        'constructor',
+        '__class__',
+    ]
+    for name in skipped:
+        seen[name] = True
+
+    resolved_properties = {}
+    target = classes[0].prototype
+    prototype = target
+    while prototype and prototype is not runtime.object.prototype:
+        for name in runtime.object.getOwnPropertyNames(prototype):
+            seen[name] = True
+        prototype = runtime.object.getPrototypeOf(prototype)
+
+    for class_index in range(1, len(classes)):
+        prototype = classes[class_index].prototype
+        while prototype and prototype is not runtime.object.prototype:
+            for name in runtime.object.getOwnPropertyNames(prototype):
                 if seen[name]:
                     continue
                 seen[name] = True
-                resolved_props[name] = Object.getOwnPropertyDescriptor(p, name)
-            p = Object.getPrototypeOf(p)
-    Object.defineProperties(target, resolved_props)
+                resolved_properties[name] = (
+                    runtime.object.getOwnPropertyDescriptor(
+                        prototype, name)
+                )
+            prototype = runtime.object.getPrototypeOf(prototype)
+    runtime.object.defineProperties(target, resolved_properties)
 
-def ρσ_instanceof():
-    obj = arguments[0]
-    bases = ''
-    if obj and obj.constructor and obj.constructor.prototype:
-        bases = obj.constructor.prototype.__bases__ or ''
-    for v'var i = 1; i < arguments.length; i++':
-        q = arguments[i]
-        if v'obj instanceof q':
+
+def ρσ_instanceof(value: Any, *candidates: Any) -> bool:
+    bases = []
+    constructor = _internal_get_member(value, 'constructor')
+    prototype = _internal_get_member(constructor, 'prototype')
+    if prototype is not runtime.undefined:
+        candidate_bases = _internal_get_member(
+            prototype, '__bases__')
+        if candidate_bases:
+            bases = candidate_bases
+
+    for candidate in candidates:
+        if runtime.instance_of(value, candidate):
             return True
-        if (q is Array or q is ρσ_list_constructor) and Array.isArray(obj):
+        if (
+            (
+                candidate is runtime.array
+                or candidate is runtime.list_constructor
+            )
+            and runtime.array.isArray(value)
+        ):
             return True
-        if q is ρσ_str and (jstype(obj) is 'string' or v'obj instanceof String'):
+        if (
+            candidate is runtime.string_builtin
+            and (
+                _internal_type_is(runtime.jstype(value), 'string')
+                or runtime.instance_of(
+                    value, runtime.string_class)
+            )
+        ):
             return True
-        if q is ρσ_int and (jstype(obj) is 'number' and Number.isInteger(obj)):
+        if (
+            candidate is runtime.int_builtin
+            and _internal_type_is(runtime.jstype(value), 'number')
+            and runtime.number.isInteger(value)
+        ):
             return True
-        if q is ρσ_float and (jstype(obj) is 'number' and not Number.isInteger(obj)):
+        if (
+            candidate is runtime.float_builtin
+            and _internal_type_is(runtime.jstype(value), 'number')
+            and not runtime.number.isInteger(value)
+        ):
             return True
-        if bases.length > 1:
-            for v'var c = 1; c < bases.length; c++':
-                cls = bases[c]
-                while cls:
-                    if q is cls:
-                        return True
-                    p = Object.getPrototypeOf(cls.prototype)
-                    if not p:
-                        break
-                    cls = p.constructor
+        for base_index in range(1, len(bases)):
+            base = bases[base_index]
+            while base:
+                if candidate is base:
+                    return True
+                base_prototype = runtime.object.getPrototypeOf(
+                    base.prototype)
+                if not base_prototype:
+                    break
+                base = base_prototype.constructor
     return False

@@ -15,13 +15,9 @@ Sage's runtime mathematics as a tower of generic types.
 
 ## Strict baselib
 
-The modules listed in `pyrightconfig.json` form the initial strict baselib:
-
-- `exact_rational.py`
-- `factorization.py`
-- `finite_fields.py`
-- `polynomial.py`
-- `real_complex.py`
+The modules listed in `pyrightconfig.json` form the strict baselib. Every
+top-level module under `src/baselib` is strict except
+`sagejs_bootstrap.py`, the deliberately tiny bootstrap boundary.
 
 Each listed module must:
 
@@ -69,6 +65,12 @@ package.
 Do not hide a new escape inside mathematical source merely to silence a tool
 or win a microbenchmark. Add a small named runtime intrinsic or a documented
 compiler contract, test its lowering, and give it an honest stub.
+
+`sagejs_bootstrap.py` is the sole top-level exception. It breaks import cycles
+while an older checked-in compiler builds the current compiler and contains
+the one irreducible adapter for JavaScript's dynamic `this` value. Boundary
+tests ensure that no other top-level baselib module quietly leaves strict
+Python.
 
 ## Compiler-bearing annotations
 

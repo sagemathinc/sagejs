@@ -7,7 +7,7 @@ are the bootstrap implementation used by older checked-in compilers.
 """
 
 # globals: Array, BigInt, console, Element, Error, IntegerFactorization, Map, Math
-# globals: Number, Object, PolynomialRing
+# globals: Number, Object, PolynomialRing, Proxy
 # globals: JSON, Set, create_real_literal, isNaN, parseFloat, parseInt
 # globals: QQ, Rational, ReferenceError, Reflect, RegExp, String
 # globals: ZeroDivisionError, require
@@ -17,9 +17,10 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
+# globals: ρσ_float, ρσ_int, ρσ_list_constructor, ρσ_list_contains, ρσ_str
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power, ρσ_modules
-# globals: ρσ_native_method
+# globals: ρσ_native_method, ρσ_native_method_adapter
 # globals: ρσ_normalize_integer, ρσ_operator_add_exact, ρσ_operator_mul_exact
 # globals: ρσ_operator_pow_exact, ρσ_repr
 # globals: ρσ_set_class_repr, ρσ_string_find, ρσ_string_primitive
@@ -31,6 +32,10 @@ def jstype(value):
 
 def map():
     return r"%js new Map()"
+
+
+def instance_of(value, constructor):
+    return r"%js value instanceof constructor"
 
 
 def native_add(left, right):
@@ -70,7 +75,9 @@ equals = ρσ_equals
 element = Element
 error = Error
 factor_pair = ρσ_factor_pair
+float_builtin = ρσ_float
 flint_backend = ρσ_flint_backend
+int_builtin = ρσ_int
 integer_bigint = ρσ_integer_bigint
 integer_factorization = IntegerFactorization
 is_exact_integer = ρσ_is_exact_integer
@@ -80,6 +87,8 @@ iterator_symbol = ρσ_iterator_symbol
 json = JSON
 kwargs_symbol = ρσ_kwargs_symbol
 lightweight_math_class = ρσ_lightweight_math_class
+list_constructor = ρσ_list_constructor
+list_contains = ρσ_list_contains
 map_class = Map
 math = Math
 math_tuple = ρσ_math_tuple
@@ -87,6 +96,7 @@ modular_inverse = ρσ_modular_inverse
 modular_power = ρσ_modular_power
 modules = ρσ_modules
 native_method = ρσ_native_method
+native_method_adapter = ρσ_native_method_adapter
 normalize_integer = ρσ_normalize_integer
 number = Number
 object = Object
@@ -96,6 +106,7 @@ operator_pow_exact = ρσ_operator_pow_exact
 parse_float = parseFloat
 parse_int = parseInt
 polynomial_ring = PolynomialRing
+proxy_class = Proxy
 qq = QQ
 rational_class = Rational
 reflect = Reflect
@@ -110,6 +121,7 @@ set_class_repr = ρσ_set_class_repr
 strict_equal = ρσ_strict_equal
 string_find = ρσ_string_find
 string_class = String
+string_builtin = ρσ_str
 string = ρσ_string_primitive
 undefined = r"%js undefined"
 zero_division_error = ZeroDivisionError

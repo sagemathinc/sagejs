@@ -16,6 +16,9 @@ class _Number:
     MIN_SAFE_INTEGER: int
 
     @staticmethod
+    def isInteger(value: object) -> bool: ...
+
+    @staticmethod
     def isSafeInteger(value: object) -> bool: ...
 
     def __call__(self, value: object) -> Any: ...
@@ -23,6 +26,9 @@ class _Number:
 
 class _Object:
     prototype: Any
+
+    @staticmethod
+    def assign(target: Any, *sources: Any) -> Any: ...
 
     @staticmethod
     def create(prototype: Any) -> Any: ...
@@ -37,10 +43,19 @@ class _Object:
     def freeze(value: object) -> object: ...
 
     @staticmethod
+    def getOwnPropertyDescriptor(value: object, name: Any) -> Any: ...
+
+    @staticmethod
+    def getOwnPropertyNames(value: object) -> Any: ...
+
+    @staticmethod
     def getPrototypeOf(value: object) -> Any: ...
 
     @staticmethod
     def keys(value: object) -> Any: ...
+
+    @staticmethod
+    def setPrototypeOf(value: object, prototype: Any) -> Any: ...
 
 
 class _Reflect:
@@ -55,16 +70,29 @@ class _Reflect:
     def construct(
         constructor: Any,
         arguments: Sequence[Any],
+        new_target: Any = ...,
     ) -> Any: ...
 
     @staticmethod
-    def get(target: Any, property_name: Any) -> Any: ...
+    def deleteProperty(target: Any, property_name: Any) -> bool: ...
+
+    @staticmethod
+    def get(
+        target: Any,
+        property_name: Any,
+        receiver: Any = ...,
+    ) -> Any: ...
 
     @staticmethod
     def has(target: Any, property_name: Any) -> bool: ...
 
     @staticmethod
-    def set(target: Any, property_name: Any, value: Any) -> bool: ...
+    def set(
+        target: Any,
+        property_name: Any,
+        value: Any,
+        receiver: Any = ...,
+    ) -> bool: ...
 
 
 class _Element:
@@ -84,19 +112,25 @@ array: _Array
 console_object: Any
 element: type[_Element]
 error: type[_Error]
+float_builtin: Any
 number: _Number
 object: _Object
+int_builtin: Any
+list_constructor: Any
+list_contains: Any
 map_class: Any
 math: Any
 modules: Any
 integer_factorization: Any
 set_class: Any
 polynomial_ring: Any
+proxy_class: Any
 qq: Any
 rational_class: Any
 reflect: _Reflect
 reference_error: type[_Error]
 string_class: Any
+string_builtin: Any
 undefined: Any
 coercion_model: Any
 kwargs_symbol: Any
@@ -115,6 +149,7 @@ def equals(left: object, right: object) -> bool: ...
 def factor_pair(factor: Any, exponent: int) -> list[Any]: ...
 def flint_backend() -> Any: ...
 def integer_bigint(value: object) -> int: ...
+def instance_of(value: object, constructor: Any) -> bool: ...
 def is_exact_integer(value: object) -> bool: ...
 def is_math_element(value: object) -> bool: ...
 def is_nan(value: Any) -> bool: ...
@@ -127,6 +162,7 @@ def modular_power(value: int, exponent: int, modulus: int) -> int: ...
 def native_add(left: Any, right: Any) -> Any: ...
 def native_div(left: Any, right: Any) -> Any: ...
 def native_method(method: _Callable) -> _Callable: ...
+def native_method_adapter(method: _Callable) -> _Callable: ...
 def native_mul(left: Any, right: Any) -> Any: ...
 def native_neg(value: Any) -> Any: ...
 def native_pow(left: Any, right: Any) -> Any: ...

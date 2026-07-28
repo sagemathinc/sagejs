@@ -354,7 +354,7 @@ def print_function_call(self, output):
                 self.expression.print(output)
 
     def print_kwargs():
-        output.print('ρσ_desugar_kwargs(')
+        output.print('ρσ_desugar_kwargs([')
         if has_kwarg_items:
             for i, kwname in enumerate(self.args.kwarg_items):
                 if i > 0:
@@ -374,10 +374,10 @@ def print_function_call(self, output):
                 output.space()
                 pair[1].print(output)
             output.print('}')
-        output.print(')')
+        output.print('])')
 
     def print_new(apply):
-        output.print('ρσ_interpolate_kwargs_constructor.call(')
+        output.print('ρσ_interpolate_kwargs_constructor(')
         output.print('Object.create('), self.expression.print(
             output), output.print('.prototype)')
         output.comma()
@@ -449,7 +449,7 @@ def print_function_call(self, output):
         if is_new:
             print_new(False)
         else:
-            output.print('ρσ_interpolate_kwargs.call(')
+            output.print('ρσ_interpolate_kwargs(')
             do_print_this()
         print_function_name(True)
         output.comma()

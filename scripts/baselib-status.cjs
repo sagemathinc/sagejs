@@ -12,7 +12,7 @@ const strictFiles = new Set(
   pyrightConfig.include.map((path) => basename(path)),
 );
 const verbatimExpression =
-  /\bv(?:'''[\s\S]*?'''|"""[\s\S]*?"""|'[^']*'|"[^"]*")/g;
+  /(?:\bv(?:'''[\s\S]*?'''|"""[\s\S]*?"""|'[^']*'|"[^"]*")|r(?:'''%js[\s\S]*?'''|"""%js[\s\S]*?"""|'%js[^']*'|"%js[^"]*"))/g;
 
 const rows = readdirSync(baselib)
   .filter((name) => name.endsWith(".py"))
