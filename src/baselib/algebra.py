@@ -710,8 +710,7 @@ def is_math_element(value: Any) -> bool:
     return (
         value is not None
         and runtime.jstype(value) == 'object'
-        and runtime.reflect.get(
-            value, '_parent') is not runtime.undefined
+        and runtime.reflect.has(value, '_parent')
     )
 
 

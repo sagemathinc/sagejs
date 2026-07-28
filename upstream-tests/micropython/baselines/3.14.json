@@ -451,7 +451,7 @@
     "op_error.py": "runtime-error",
     "op_error_bytearray.py": "pass",
     "op_error_intbig.py": "pass",
-    "op_error_memoryview.py": "runtime-error",
+    "op_error_memoryview.py": "pass",
     "op_precedence.py": "pass",
     "ordereddict1.py": "pass",
     "python36.py": "pass",
