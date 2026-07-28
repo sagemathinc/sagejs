@@ -114,6 +114,26 @@ def display_complex_body(node, is_toplevel, output, function_preamble):
             output.print("ρσ_Exception")
             output.semicolon()
             output.newline()
+            output.indent()
+            output.print('try')
+            output.space()
+
+            def handler_body():
+                display_body(node.body, is_toplevel, output)
+
+            output.with_block(handler_body)
+            output.space()
+            output.print('finally')
+            output.space()
+
+            def clear_exception_target():
+                output.indent()
+                output.assign(node.argname)
+                output.print('void 0')
+                output.end_statement()
+
+            output.with_block(clear_exception_target)
+            return
 
     display_body(node.body, is_toplevel, output)
 

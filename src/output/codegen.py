@@ -576,7 +576,11 @@ def generate_code():
             return False
 
         check_unbound = False
-        if is_node_type(self, AST_SymbolRef) and not is_assignment_target():
+        if (
+            is_node_type(self, AST_SymbolRef)
+            and not output.assignment_target
+            and not is_assignment_target()
+        ):
             stack = output.stack()
             for index in range(stack.length - 2, -1, -1):
                 scope = stack[index]

@@ -297,6 +297,26 @@ except MyException as e:
     assrt.ok(r'%js e instanceof MyException')
     assrt.ok(r'%js e instanceof Error')
 
+
+def cleared_exception_target():
+    try:
+        raise ValueError('cleared')
+    except ValueError as error:
+        assrt.equal(error.message, 'cleared')
+    return error
+
+
+def returned_exception_value():
+    try:
+        raise ValueError('returned')
+    except ValueError as error:
+        return error
+
+
+assrt.throws(cleared_exception_target, NameError)
+assrt.equal(returned_exception_value().message, 'returned')
+
+
 try:
     raise Error('eee')
 except Exception:

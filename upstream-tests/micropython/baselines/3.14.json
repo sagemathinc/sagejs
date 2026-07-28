@@ -560,7 +560,7 @@
     "try2.py": "pass",
     "try3.py": "pass",
     "try4.py": "pass",
-    "try_as_var.py": "output-mismatch",
+    "try_as_var.py": "pass",
     "try_continue.py": "pass",
     "try_else.py": "pass",
     "try_else_finally.py": "pass",

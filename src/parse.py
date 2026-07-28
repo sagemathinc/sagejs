@@ -753,6 +753,13 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 and node.operator is 'delete'
             ):
                 add_deleted_target(node.expression)
+            elif (
+                is_node_type(node, AST_Except)
+                and node.argname
+            ):
+                # Python clears an exception target when its handler exits.
+                # Reads after the handler therefore require an unbound check.
+                add(node.argname.name)
 
         walker = TreeWalker(inspect)
         if Array.isArray(body):

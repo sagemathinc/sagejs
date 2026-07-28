@@ -84,6 +84,7 @@ class OutputStream:
         self.with_counter = 0
         self.try_else_counter = 0
         self.loop_else_counter = 0
+        self.assignment_target = False
 
     def new_try_else_counter(self):
         self.try_else_counter += 1
@@ -280,7 +281,10 @@ class OutputStream:
         if jstype(name) is "string":
             self.print(name)
         else:
+            previous_assignment_target = self.assignment_target
+            self.assignment_target = True
             name.print(self)
+            self.assignment_target = previous_assignment_target
         self.space()
         self.print("=")
         self.space()
