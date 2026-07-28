@@ -2180,8 +2180,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 next()
                 if is_('punc', ')'):
                     next()
-                    # since we don't have tuples in pylang (yet?)...
-                    return AST_Array({'elements': []})
+                    return AST_Array({
+                        'elements': [],
+                        'is_tuple': True,
+                    })
                 ex = expression(True)
                 if is_('punc', '..'):
                     if not S.scoped_flags.get('ellipses'):

@@ -52,6 +52,12 @@ def equals(left: Any, right: Any) -> bool:
 
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
+    if runtime.strict_equal(left_type, 'boolean'):
+        left = 1 if left else 0
+        left_type = 'number'
+    if runtime.strict_equal(right_type, 'boolean'):
+        right = 1 if right else 0
+        right_type = 'number'
     if (
         (
             runtime.strict_equal(left_type, 'bigint')

@@ -126,8 +126,8 @@ throw_test('for a in [1]\n   pass')
 # strict equality
 assrt.ok(1 == 1)  # number vs number: ok
 assrt.ok(True == True)  # boolean vs boolean: ok
-assrt.ok(not (1 == True))  # number vs boolean: NEVER equal
-assrt.ok(1 != True)  # number vs boolean: NEVER equal
+assrt.ok(1 == True)  # bool is a subclass of int in Python
+assrt.ok(not (1 != True))
 assrt.ok(not ("" == False))  # string vs boolean: NEVER equal
 assrt.ok(not ("0" == 0))  # string vs integer: NEVER equal
 assrt.ok(not ("" == 0))  # string vs integer: NEVER equal

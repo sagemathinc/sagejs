@@ -175,6 +175,10 @@ def ρσ_operator_neg(value: Any) -> Any:
 
 
 def ρσ_operator_pos(value: Any) -> Any:
+    if value is True:
+        return 1
+    if value is False:
+        return 0
     if _builtins_exact_integer_primitive(value):
         return value
     if _builtins_member_is_function(value, '__pos__'):

@@ -24,14 +24,14 @@ def print_do_loop(self, output):
     output.space()
     output.print("while")
     output.space()
-    output.with_parens(lambda: self.condition.print(output))
+    output.with_parens(lambda: output.print_truth_test(self.condition))
     output.semicolon()
 
 
 def print_while_loop(self, output):
     output.print("while")
     output.space()
-    output.with_parens(lambda: self.condition.print(output))
+    output.with_parens(lambda: output.print_truth_test(self.condition))
     output.space()
     self._do_print_body(output)
 
@@ -344,7 +344,7 @@ def print_list_comprehension(self, output):
                     body_out.print("if")
                     body_out.space()
                     body_out.with_parens(
-                        lambda: self.condition.print(body_out))
+                        lambda: body_out.print_truth_test(self.condition))
                     body_out.space()
                     body_out.with_block(lambda: add_to_result(body_out))
                     body_out.newline()

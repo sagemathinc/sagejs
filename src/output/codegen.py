@@ -256,6 +256,8 @@ def generate_code():
     def f_for_js(self, output):
         output.print("for")
         output.space()
+        # AST_ForJS stores the complete native ``init; test; update`` header
+        # in ``condition``; it is not a Python truth-value expression.
         output.with_parens(lambda: self.condition.print(output))
         output.space()
         self._do_print_body(output)
@@ -363,7 +365,8 @@ def generate_code():
     def f_if(self, output):
         output.print("if")
         output.space()
-        output.with_parens(lambda: self.condition.print(output))
+        output.with_parens(
+            lambda: output.print_truth_test(self.condition))
         output.space()
         if self.alternative:
             make_then(self, output)

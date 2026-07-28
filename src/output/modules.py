@@ -324,7 +324,9 @@ def print_module(self, output):
                                 'write_name':
                                 False,
                                 'discard_asserts':
-                                output.options.discard_asserts
+                                output.options.discard_asserts,
+                                'python_truthiness':
+                                output.options.python_truthiness
                             })
                             co.with_indent(output.indentation(),
                                            lambda: output_module(co))

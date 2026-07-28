@@ -52,6 +52,7 @@ interface OutputOptions {
   sage?: boolean; // sage-style preparsing
   exact_integers?: boolean;
   python_tuples?: boolean;
+  python_truthiness?: boolean;
   pool_numeric_literals?: boolean;
 }
 
@@ -92,6 +93,7 @@ export default async function Compile({
     exact_integers: true,
     rational_division: !!argv.sage,
     python_tuples: true,
+    python_truthiness: true,
     pool_numeric_literals: !!argv.sage,
   } as OutputOptions;
 

@@ -62,6 +62,7 @@ output_stream_defaults = {
     'exact_integers': False,
     'rational_division': False,
     'python_tuples': False,
+    'python_truthiness': False,
     'pool_numeric_literals': False,
 }
 
@@ -85,6 +86,14 @@ class OutputStream:
     def new_try_else_counter(self):
         self.try_else_counter += 1
         return 'ρσ_try_else_' + self.try_else_counter
+
+    def print_truth_test(self, expression):
+        if self.options.python_truthiness:
+            self.print('ρσ_bool(')
+            expression.print(self)
+            self.print(')')
+        else:
+            expression.print(self)
 
     def make_name(self, name):
         name = name.toString()

@@ -69,6 +69,7 @@ export default function (
       baselib_plain: baselib,
       beautify: true,
       keep_docstrings: true,
+      python_truthiness: true,
     });
     toplevel.print(output);
 

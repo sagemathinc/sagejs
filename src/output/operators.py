@@ -110,6 +110,10 @@ def print_unary_prefix(self, output):
     op = self.operator
     if op is 'delete':
         return print_delete(self.expression, output)
+    if op is '!' and output.options.python_truthiness:
+        output.print('!')
+        output.print_truth_test(self.expression)
+        return
     if (op is '-' or op is '+') and not self.native_operator:
         output.print(
             "ρσ_operator_neg(" if op is '-' else "ρσ_operator_pos(")
@@ -197,6 +201,26 @@ def print_arithmetic_call(output, name):
 def print_binary_op(self, output):
     if self.native_operator:
         output.spaced(self.left, self.operator, self.right)
+    elif (
+        output.options.python_truthiness
+        and (self.operator is '&&' or self.operator is '||')
+    ):
+        output.print('(ρσ_cond_temp = ')
+        self.left.print(output)
+        output.print(', ')
+        output.print_truth_test(
+            AST_SymbolRef({'name': 'ρσ_cond_temp'}))
+        output.print(' ? ')
+        if self.operator is '&&':
+            self.right.print(output)
+        else:
+            output.print('ρσ_cond_temp')
+        output.print(' : ')
+        if self.operator is '&&':
+            output.print('ρσ_cond_temp')
+        else:
+            self.right.print(output)
+        output.print(')')
     elif function_ops[self.operator]:
         output.print(function_ops[self.operator])
 
@@ -488,7 +512,7 @@ def print_assign(self, output):
 
 def print_conditional(self, output, condition, consequent, alternative):
     condition, consequent, alternative = self.condition, self.consequent, self.alternative
-    output.with_parens(lambda: condition.print(output))
+    output.with_parens(lambda: output.print_truth_test(condition))
     output.space()
     output.print("?")
     output.space()
@@ -515,6 +539,22 @@ def print_seq(output):
     if (is_node_type(p, AST_Binary) or is_node_type(p, AST_Return)
             or is_node_type(p, AST_Array) or is_node_type(p, AST_BaseCall)
             or is_node_type(p, AST_SimpleStatement)
+            or (
+                output.options.python_tuples
+                and p
+                and (
+                    p.constructor.name is 'AST_If'
+                    or p.constructor.name is 'AST_Conditional'
+                    or p.constructor.name is 'AST_While'
+                    or p.constructor.name is 'AST_Do'
+                    or p.constructor.name is 'AST_UnaryPrefix'
+                    or p.constructor.name is 'AST_Assert'
+                    or p.constructor.name is 'AST_ListComprehension'
+                    or p.constructor.name is 'AST_DictComprehension'
+                    or p.constructor.name is 'AST_SetComprehension'
+                    or p.constructor.name is 'AST_GeneratorComprehension'
+                )
+            )
             or (
                 is_node_type(p, AST_ForIn)
                 and p.object is self
