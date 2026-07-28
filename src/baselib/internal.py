@@ -658,8 +658,13 @@ def ρσ_instanceof(value: Any, *candidates: Any) -> bool:
             (
                 candidate is runtime.array
                 or candidate is runtime.list_constructor
+                or candidate is runtime.tuple_builtin
             )
             and runtime.array.isArray(value)
+            and (
+                candidate is not runtime.tuple_builtin
+                or runtime.object.isFrozen(value)
+            )
         ):
             return True
         if (

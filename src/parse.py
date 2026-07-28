@@ -252,6 +252,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'map_class': 'Map',
     'math': 'Math',
     'math_tuple': 'ρσ_math_tuple',
+    'named_tuple': 'ρσ_named_tuple',
     'modular_inverse': 'ρσ_modular_inverse',
     'modular_power': 'ρσ_modular_power',
     'modules': 'ρσ_modules',
@@ -297,6 +298,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'string': 'ρσ_string_primitive',
     'syntax_error': 'SyntaxError',
     'type_error': 'TypeError',
+    'tuple_builtin': 'ρσ_tuple',
     'undefined': 'undefined',
     'zero_division_error': 'ZeroDivisionError',
 }

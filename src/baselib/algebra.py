@@ -555,22 +555,11 @@ def modular_power(
     return result
 
 
-def math_tuple(values: list[Any]) -> Any:
-    # Tuple literals with two or more entries historically arrive as a raw
-    # JavaScript array, whereas one-entry literals arrive as a decorated
-    # Python list.  Normalize both representations before freezing.
-    values = runtime.list_constructor(values)
-
-    def tuple_repr() -> str:
-        entries = [runtime.repr(value) for value in values]
-        suffix = ',' if len(values) == 1 else ''
-        entries_text = runtime.reflect.apply(
-            runtime.array.prototype.join,
-            entries,
-            [', '],
-        )
-        return '(' + entries_text + suffix + ')'
-
+def _freeze_tuple(
+    values: list[Any],
+    tuple_repr: Any,
+    extra_properties: Any = None,
+) -> Any:
     def tuple_add(other: Any) -> Any:
         if (
             not runtime.array.isArray(other)
@@ -593,7 +582,7 @@ def math_tuple(values: list[Any]) -> Any:
         raise AttributeError(
             "'tuple' object has no attribute 'append'")
 
-    runtime.object.defineProperties(values, {
+    properties = {
         '__add__': {'value': tuple_add},
         '__mul__': {'value': tuple_mul},
         '__rmul__': {'value': tuple_mul},
@@ -601,9 +590,81 @@ def math_tuple(values: list[Any]) -> Any:
         '__str__': {'value': tuple_repr},
         'append': {'value': tuple_append},
         'toString': {'value': tuple_repr},
-    })
+    }
+    if extra_properties is not None:
+        runtime.object.assign(properties, extra_properties)
+    runtime.object.defineProperties(values, properties)
     runtime.object.freeze(values)
     return values
+
+
+def math_tuple(values: list[Any]) -> Any:
+    # Tuple literals with two or more entries historically arrive as a raw
+    # JavaScript array, whereas one-entry literals arrive as a decorated
+    # Python list.  Normalize both representations before freezing.
+    values = runtime.list_constructor(values)
+
+    def tuple_repr() -> str:
+        entries = [runtime.repr(value) for value in values]
+        suffix = ',' if len(values) == 1 else ''
+        entries_text = runtime.reflect.apply(
+            runtime.array.prototype.join,
+            entries,
+            [', '],
+        )
+        return '(' + entries_text + suffix + ')'
+
+    return _freeze_tuple(values, tuple_repr)
+
+
+def named_tuple(
+    values: list[Any],
+    type_name: str,
+    field_names: list[str],
+) -> Any:
+    """Construct an immutable tuple with named fields."""
+    values = runtime.list_constructor(values)
+    names = runtime.list_constructor(field_names)
+
+    def tuple_repr() -> str:
+        entries = []
+        for index in range(len(names)):
+            entries.append(
+                names[index] + '=' + runtime.repr(values[index]))
+        entries_text = runtime.reflect.apply(
+            runtime.array.prototype.join,
+            entries,
+            [', '],
+        )
+        return type_name + '(' + entries_text + ')'
+
+    def asdict() -> Any:
+        answer = dict()
+        for index in range(len(names)):
+            answer.__setitem__(names[index], values[index])
+        return answer
+
+    properties = {
+        '_fields': {'value': math_tuple(names)},
+        '_asdict': {'value': asdict},
+    }
+
+    def make_field_getter(position: int) -> Any:
+        def field_getter() -> Any:
+            return values[position]
+
+        return field_getter
+
+    def immutable_field(_value: Any) -> None:
+        raise AttributeError("can't set attribute")
+
+    for index in range(len(names)):
+        properties[names[index]] = {
+            'enumerable': True,
+            'get': make_field_getter(index),
+            'set': immutable_field,
+        }
+    return _freeze_tuple(values, tuple_repr, properties)
 
 
 class _ConstructionFunctor:
@@ -661,6 +722,7 @@ def flint_backend() -> Any:
 ρσ_modular_inverse = modular_inverse
 ρσ_modular_power = modular_power
 ρσ_math_tuple = math_tuple
+ρσ_named_tuple = named_tuple
 ρσ_is_math_element = is_math_element
 ρσ_parent = parent_of
 ρσ_flint_backend = flint_backend

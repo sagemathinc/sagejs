@@ -20,8 +20,10 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
 # globals: ρσ_float, ρσ_int, ρσ_list_constructor, ρσ_list_contains, ρσ_str
+# globals: ρσ_tuple
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power, ρσ_modules
+# globals: ρσ_named_tuple
 # globals: ρσ_native_method, ρσ_native_method_adapter
 # globals: ρσ_normalize_integer, ρσ_operator_add_exact, ρσ_operator_mul_exact
 # globals: ρσ_operator_pow_exact, ρσ_repr
@@ -119,6 +121,7 @@ list_contains = ρσ_list_contains
 map_class = Map
 math = Math
 math_tuple = ρσ_math_tuple
+named_tuple = ρσ_named_tuple
 modular_inverse = ρσ_modular_inverse
 modular_power = ρσ_modular_power
 modules = ρσ_modules
@@ -152,5 +155,6 @@ string_builtin = ρσ_str
 string = ρσ_string_primitive
 syntax_error = SyntaxError
 type_error = TypeError
+tuple_builtin = ρσ_tuple
 undefined = r"%js undefined"
 zero_division_error = ZeroDivisionError

@@ -18,3 +18,16 @@ maxsize = int('9223372036854775807')
 # generally use ``sys.version_info`` for feature checks, but ``version`` is a
 # standard public attribute and must at least be a string.
 version = 'Sage.js'
+
+
+def getsizeof(value):
+    """Return a stable positive size estimate.
+
+    Sage.js does not expose V8's object allocation size.  Python code uses
+    this API primarily for relative accounting, so report sequence and mapping
+    lengths when available and one unit for other live objects.
+    """
+    try:
+        return max(8, len(value))
+    except TypeError:
+        return 8

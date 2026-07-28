@@ -170,9 +170,19 @@ def print_unary_prefix(self, output):
         output.print('!')
         output.print_truth_test(self.expression)
         return
-    if (op is '-' or op is '+') and not self.native_operator:
+    if (
+        (op is '-' or op is '+' or op is '~')
+        and not self.native_operator
+    ):
         output.print(
-            "ρσ_operator_neg(" if op is '-' else "ρσ_operator_pos(")
+            "ρσ_operator_neg("
+            if op is '-'
+            else (
+                "ρσ_operator_pos("
+                if op is '+'
+                else "ρσ_operator_invert("
+            )
+        )
     else:
         output.print(op)
     if RegExp("^[a-z]", "i").test(op):
@@ -181,7 +191,10 @@ def print_unary_prefix(self, output):
         output.with_parens(lambda: self.expression.print(output))
     else:
         self.expression.print(output)
-    if (op is '-' or op is '+') and not self.native_operator:
+    if (
+        (op is '-' or op is '+' or op is '~')
+        and not self.native_operator
+    ):
         output.print(")")
 
 def write_instanceof(left, right, output):

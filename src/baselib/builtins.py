@@ -186,6 +186,19 @@ def ρσ_operator_pos(value: Any) -> Any:
     raise TypeError("bad operand type for unary +")
 
 
+def ρσ_operator_invert(value: Any) -> Any:
+    if _builtins_exact_integer_primitive(value):
+        return runtime.normalize_integer(
+            runtime.native_sub(
+                runtime.native_neg(runtime.bigint(value)),
+                runtime.bigint(1),
+            )
+        )
+    if _builtins_member_is_function(value, '__invert__'):
+        return _builtins_call_member(value, '__invert__', [])
+    raise TypeError("bad operand type for unary ~")
+
+
 def ρσ_operator_sub(left: Any, right: Any) -> Any:
     left_type = runtime.jstype(left)
     if (
