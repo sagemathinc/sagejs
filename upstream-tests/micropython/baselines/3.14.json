@@ -121,7 +121,7 @@
     "builtin_bin.py": "pass",
     "builtin_bin_intbig.py": "runtime-error",
     "builtin_callable.py": "output-mismatch",
-    "builtin_chr.py": "output-mismatch",
+    "builtin_chr.py": "pass",
     "builtin_compile.py": "missing-name",
     "builtin_delattr.py": "missing-name",
     "builtin_dir.py": "runtime-error",

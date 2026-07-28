@@ -37,6 +37,19 @@ assrt.deepEqual(s, {1, 2})
 
 assrt.equal(chr(ord('a')), 'a')
 assrt.equal(chr(ord('🐱')), '🐱')
+assrt.equal(ord(chr(0x10FFFF)), 0x10FFFF)
+
+
+def chr_negative():
+    chr(-1)
+
+
+def chr_too_large():
+    chr(0x110000)
+
+
+assrt.throws(chr_negative, ValueError)
+assrt.throws(chr_too_large, ValueError)
 assrt.equal(bin(3), '0b11')
 assrt.equal(bin(-3), '-0b11')
 assrt.equal(hex(10), '0xa')

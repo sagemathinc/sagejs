@@ -910,6 +910,10 @@ def ρσ_ord(value: Any) -> _Int:
 
 
 def ρσ_chr(code: _Int) -> _Str:
+    if code < 0 or code > 0x10FFFF:
+        raise ValueError('chr() arg not in range(0x110000)')
+    if runtime.strict_equal(runtime.jstype(code), 'bigint'):
+        code = runtime.number(code)
     if code <= 0xFFFF:
         return runtime.string_class.fromCharCode(code)
     code -= 0x10000
