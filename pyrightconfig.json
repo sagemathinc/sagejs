@@ -2,6 +2,7 @@
   "include": [
     "src/baselib/__future__.py",
     "src/baselib/algebra.py",
+    "src/baselib/builtins.py",
     "src/baselib/containers.py",
     "src/baselib/exact_rational.py",
     "src/baselib/errors.py",

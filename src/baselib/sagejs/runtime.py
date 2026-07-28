@@ -6,18 +6,19 @@ lowered directly to their corresponding runtime globals.  These assignments
 are the bootstrap implementation used by older checked-in compilers.
 """
 
-# globals: Array, BigInt, Element, Error, Map, Number, Object, PolynomialRing
-# globals: JSON, Set, isNaN, parseFloat, parseInt
+# globals: Array, BigInt, console, Element, Error, IntegerFactorization, Map, Math
+# globals: Number, Object, PolynomialRing
+# globals: JSON, Set, create_real_literal, isNaN, parseFloat, parseInt
 # globals: QQ, Rational, ReferenceError, Reflect, RegExp, String
 # globals: ZeroDivisionError, require
 # globals: ρσ_bigint_divexact, ρσ_bigint_gcd
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
 # globals: ρσ_arraylike
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
-# globals: ρσ_integer_bigint, ρσ_is_exact_integer
+# globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
-# globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power
+# globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power, ρσ_modules
 # globals: ρσ_native_method
 # globals: ρσ_normalize_integer, ρσ_operator_add_exact, ρσ_operator_mul_exact
 # globals: ρσ_operator_pow_exact, ρσ_repr
@@ -32,6 +33,30 @@ def map():
     return r"%js new Map()"
 
 
+def native_add(left, right):
+    return r"%js left + right"
+
+
+def native_div(left, right):
+    return r"%js left / right"
+
+
+def native_mul(left, right):
+    return r"%js left * right"
+
+
+def native_neg(value):
+    return r"%js -value"
+
+
+def native_pow(left, right):
+    return r"%js left ** right"
+
+
+def native_sub(left, right):
+    return r"%js left - right"
+
+
 array = Array
 arraylike = ρσ_arraylike
 bigint = BigInt
@@ -39,6 +64,7 @@ bigint_divexact = ρσ_bigint_divexact
 bigint_gcd = ρσ_bigint_gcd
 bigint_fields = ρσ_bigint_fields
 callable_instance_class = ρσ_callable_instance_class
+console_object = console
 coercion_model = ρσ_coercion_model
 equals = ρσ_equals
 element = Element
@@ -46,16 +72,20 @@ error = Error
 factor_pair = ρσ_factor_pair
 flint_backend = ρσ_flint_backend
 integer_bigint = ρσ_integer_bigint
+integer_factorization = IntegerFactorization
 is_exact_integer = ρσ_is_exact_integer
+is_math_element = ρσ_is_math_element
 is_nan = isNaN
 iterator_symbol = ρσ_iterator_symbol
 json = JSON
 kwargs_symbol = ρσ_kwargs_symbol
 lightweight_math_class = ρσ_lightweight_math_class
 map_class = Map
+math = Math
 math_tuple = ρσ_math_tuple
 modular_inverse = ρσ_modular_inverse
 modular_power = ρσ_modular_power
+modules = ρσ_modules
 native_method = ρσ_native_method
 normalize_integer = ρσ_normalize_integer
 number = Number
@@ -71,6 +101,7 @@ rational_class = Rational
 reflect = Reflect
 reference_error = ReferenceError
 regexp = RegExp
+real_literal = create_real_literal
 require_module = require
 repr = ρσ_repr
 sequence_class = ρσ_sequence_class

@@ -194,6 +194,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'bigint_gcd': 'ρσ_bigint_gcd',
     'bigint_fields': 'ρσ_bigint_fields',
     'callable_instance_class': 'ρσ_callable_instance_class',
+    'console_object': 'console',
     'coercion_model': 'ρσ_coercion_model',
     'equals': 'ρσ_equals',
     'element': 'Element',
@@ -201,7 +202,9 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'factor_pair': 'ρσ_factor_pair',
     'flint_backend': 'ρσ_flint_backend',
     'integer_bigint': 'ρσ_integer_bigint',
+    'integer_factorization': 'IntegerFactorization',
     'is_exact_integer': 'ρσ_is_exact_integer',
+    'is_math_element': 'ρσ_is_math_element',
     'is_nan': 'isNaN',
     'iterator_symbol': 'ρσ_iterator_symbol',
     'json': 'JSON',
@@ -210,10 +213,18 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'lightweight_math_class': 'ρσ_lightweight_math_class',
     'map': 'ρσ_new_map',
     'map_class': 'Map',
+    'math': 'Math',
     'math_tuple': 'ρσ_math_tuple',
     'modular_inverse': 'ρσ_modular_inverse',
     'modular_power': 'ρσ_modular_power',
+    'modules': 'ρσ_modules',
     'native_method': 'ρσ_native_method',
+    'native_add': 'ρσ_native_add',
+    'native_div': 'ρσ_native_div',
+    'native_mul': 'ρσ_native_mul',
+    'native_neg': 'ρσ_native_neg',
+    'native_pow': 'ρσ_native_pow',
+    'native_sub': 'ρσ_native_sub',
     'normalize_integer': 'ρσ_normalize_integer',
     'number': 'Number',
     'object': 'Object',
@@ -228,6 +239,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'reflect': 'Reflect',
     'reference_error': 'ReferenceError',
     'regexp': 'RegExp',
+    'real_literal': 'create_real_literal',
     'require_module': 'require',
     'repr': 'ρσ_repr',
     'sequence_class': 'ρσ_sequence_class',
@@ -2604,6 +2616,45 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'start': start,
                         'operator': "typeof",
                         'expression': func_call_list()[0],
+                        'end': prev()
+                    })
+                    S.in_parenthesized_expr = False
+                    return ret
+                elif tmp_ in {
+                        'ρσ_native_add': '+',
+                        'ρσ_native_div': '/',
+                        'ρσ_native_mul': '*',
+                        'ρσ_native_pow': '**',
+                        'ρσ_native_sub': '-',
+                }:
+                    args = func_call_list()
+                    if args.length is not 2:
+                        croak(tmp_ + '() requires exactly two arguments')
+                    ret = AST_Binary({
+                        'start': start,
+                        'left': args[0],
+                        'native_operator': True,
+                        'operator': {
+                            'ρσ_native_add': '+',
+                            'ρσ_native_div': '/',
+                            'ρσ_native_mul': '*',
+                            'ρσ_native_pow': '**',
+                            'ρσ_native_sub': '-',
+                        }[tmp_],
+                        'right': args[1],
+                        'end': prev()
+                    })
+                    S.in_parenthesized_expr = False
+                    return ret
+                elif tmp_ is 'ρσ_native_neg':
+                    args = func_call_list()
+                    if args.length is not 1:
+                        croak(tmp_ + '() requires exactly one argument')
+                    ret = AST_UnaryPrefix({
+                        'start': start,
+                        'native_operator': True,
+                        'operator': '-',
+                        'expression': args[0],
                         'end': prev()
                     })
                     S.in_parenthesized_expr = False

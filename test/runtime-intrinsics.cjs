@@ -53,7 +53,8 @@ assert.deepEqual(
 assert.deepEqual(
   bootstrapAssignments,
   runtimeManifest.filter(
-    ([name]) => !["jstype", "map", "undefined"].includes(name),
+    ([name]) =>
+      name !== "undefined" && !bootstrapFunctions.includes(name),
   ),
   "ordinary bootstrap aliases must lower to the matching runtime globals",
 );
