@@ -2,11 +2,8 @@
 
 def exit(status=None):
     if status is None:
-        status = 0
-    elif not isinstance(status, int):
-        print(status)
-        status = 1
-    process.exit(status)
+        raise SystemExit
+    raise SystemExit(status)
 
 argv = process.argv
 byteorder = 'little'
@@ -15,3 +12,8 @@ byteorder = 'little'
 # even when this module is compiled by a bootstrap compiler whose own numeric
 # literals are JavaScript Numbers.
 maxsize = int('9223372036854775807')
+
+# CPython exposes a descriptive implementation version here.  Code should
+# generally use ``sys.version_info`` for feature checks, but ``version`` is a
+# standard public attribute and must at least be a string.
+version = 'Sage.js'

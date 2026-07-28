@@ -2,7 +2,7 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 from ast_types import (AST_Array, AST_Assign, AST_BaseCall, AST_Binary,
-                       AST_Conditional, AST_ForIn, AST_ItemAccess, AST_Number,
+                       AST_Conditional, AST_Dot, AST_Existential, AST_ForIn, AST_ItemAccess, AST_Number,
                        AST_Object, AST_Return, AST_Seq, AST_Set,
                        AST_SimpleStatement, AST_Statement, AST_String, AST_Sub,
                        AST_Symbol, AST_SymbolRef, AST_Unary, is_node_type)
@@ -10,6 +10,53 @@ from output.loops import unpack_tuple
 
 
 def print_getattr(self, output, skip_expression):  # AST_Dot
+    def is_native_attribute_chain(expression):
+        while is_node_type(expression, AST_Dot):
+            expression = expression.expression
+        return (
+            is_node_type(expression, AST_SymbolRef)
+            and expression.name in (
+                'Array', 'BigInt', 'JSON', 'Map', 'Math', 'Number',
+                'Object', 'Proxy', 'PyLang', 'Reflect', 'RegExp',
+                'Set', 'String', 'Symbol', 'console'
+            )
+        )
+
+    assignment_target = False
+    for ancestor in output.stack():
+        if not is_node_type(ancestor, AST_Assign):
+            continue
+        if ancestor.left is self:
+            assignment_target = True
+            break
+        if ancestor.is_chained():
+            left_hand_sides, _rhs = ancestor.traverse_chain()
+            for lhs in left_hand_sides:
+                if lhs is self:
+                    assignment_target = True
+                    break
+            if assignment_target:
+                break
+    if (
+        output.options.python_attributes
+        and not skip_expression
+        and not assignment_target
+        # Sage.js's legacy existential access ``value?.name`` is lowered to
+        # a conditional expression whose fallback deliberately has no
+        # attributes.  It must retain JavaScript's optional-access result
+        # instead of raising Python's AttributeError.
+        and not is_node_type(self.expression, AST_Existential)
+        and not self.property.startswith('ρσ_')
+        and '.' not in self.property
+        and self.property not in ('apply', 'bind', 'call', 'prototype')
+        and not is_native_attribute_chain(self)
+    ):
+        output.print('ρσ_getattr(')
+        self.expression.print(output)
+        output.comma()
+        output.print(JSON.stringify(self.property))
+        output.print(')')
+        return
     if not skip_expression:
         expr = self.expression
         expr.print(output)
@@ -81,6 +128,15 @@ def print_splice_assignment(self, output):  # AST_Splice
 def print_delete(self, output):
     if is_node_type(self, AST_Symbol):
         output.assign(self), output.print('undefined')
+    elif (
+        is_node_type(self, AST_Dot)
+        and output.options.python_attributes
+    ):
+        output.print('ρσ_delattr(')
+        self.expression.print(output)
+        output.comma()
+        output.print(JSON.stringify(self.property))
+        output.print(')')
     elif is_node_type(self, AST_Sub) or is_node_type(self, AST_ItemAccess):
         output.print('ρσ_delitem('), self.expression.print(
             output), output.comma(), self.property.print(output), output.print(

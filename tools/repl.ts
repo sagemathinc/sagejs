@@ -183,6 +183,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       rational_division: !!options.sage,
       python_tuples: true,
       python_truthiness: true,
+      python_attributes: true,
       baselib_plain: keepBaselib
         ? readFileSync(join(libraryPath, "baselib-plain-pretty.js"), "utf-8")
         : undefined,

@@ -63,6 +63,7 @@ output_stream_defaults = {
     'rational_division': False,
     'python_tuples': False,
     'python_truthiness': False,
+    'python_attributes': False,
     'pool_numeric_literals': False,
 }
 

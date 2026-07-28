@@ -53,6 +53,7 @@ interface OutputOptions {
   exact_integers?: boolean;
   python_tuples?: boolean;
   python_truthiness?: boolean;
+  python_attributes?: boolean;
   pool_numeric_literals?: boolean;
 }
 
@@ -94,6 +95,7 @@ export default async function Compile({
     rational_division: !!argv.sage,
     python_tuples: true,
     python_truthiness: true,
+    python_attributes: true,
     pool_numeric_literals: !!argv.sage,
   } as OutputOptions;
 
@@ -136,7 +138,22 @@ export default async function Compile({
     if (argv.execute) {
       // @ts-ignore
       global.require = require;
-      runInThisContext(output);
+      try {
+        runInThisContext(output);
+      } catch (error) {
+        const pythonError = error as {
+          name?: string;
+          code?: unknown;
+        };
+        if (pythonError?.name !== "SystemExit") throw error;
+        const code = pythonError.code;
+        if (code === undefined || code === null) process.exit(0);
+        if (typeof code === "number" || typeof code === "bigint") {
+          process.exit(Number(code));
+        }
+        console.error(String(code));
+        process.exit(1);
+      }
     }
   }
 

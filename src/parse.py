@@ -116,7 +116,10 @@ NATIVE_CLASSES = {
     'Blob': {},
 }
 ERROR_CLASSES = {
+    'BaseException': {},
     'Exception': {},
+    'SystemExit': {},
+    'KeyboardInterrupt': {},
     'AttributeError': {},
     'IndexError': {},
     'KeyError': {},

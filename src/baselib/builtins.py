@@ -1603,7 +1603,23 @@ def ρσ_getattr(
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
     if _builtins_has_member(value, name):
-        return _builtins_get_member(value, name)
+        member = _builtins_get_member(value, name)
+        if (
+            runtime.strict_equal(runtime.jstype(member), 'function')
+            and not _builtins_is_python_class(member)
+            and not _builtins_has_member(member, '__self__')
+            and not runtime.reflect.apply(
+                runtime.object.prototype.hasOwnProperty,
+                value,
+                [name],
+            )
+        ):
+            return runtime.reflect.apply(
+                runtime.reflect.get(member, 'bind'),
+                member,
+                [value],
+            )
+        return member
     if _builtins_member_is_function(value, '__getattr__'):
         try:
             return _builtins_call_member(
@@ -1629,6 +1645,22 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
         raise TypeError(
             "cannot set attributes of built-in/extension type")
     runtime.reflect.set(value, name, member)
+
+
+def ρσ_delattr(value: Any, name: _Str) -> None:
+    if not runtime.strict_equal(runtime.jstype(name), 'string'):
+        raise TypeError('attribute name must be string')
+    has_own = runtime.reflect.apply(
+        runtime.object.prototype.hasOwnProperty,
+        value,
+        [name],
+    )
+    if not has_own:
+        raise AttributeError(
+            "object has no attribute '" + name + "'")
+    if not runtime.reflect.deleteProperty(value, name):
+        raise AttributeError(
+            "object attribute '" + name + "' cannot be deleted")
 
 
 def ρσ_hasattr(value: Any, name: _Str) -> _Bool:

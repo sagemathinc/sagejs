@@ -17,7 +17,7 @@ def ρσ_exception_value(value: object) -> object:
     return value
 
 
-class Exception(runtime.error):
+class BaseException(runtime.error):
 
     def __init__(self, *args: object) -> None:
         self.args = runtime.math_tuple(list(args))
@@ -38,6 +38,21 @@ class Exception(runtime.error):
 
     def __str__(self) -> str:
         return self.message
+
+
+class Exception(BaseException):
+    pass
+
+
+class SystemExit(BaseException):
+
+    def __init__(self, *args: object) -> None:
+        BaseException.__init__(self, *args)
+        self.code = args[0] if len(args) > 0 else None
+
+
+class KeyboardInterrupt(BaseException):
+    pass
 
 
 class AttributeError(Exception):
@@ -84,7 +99,7 @@ class RuntimeError(Exception):
     pass
 
 
-class GeneratorExit(Exception):
+class GeneratorExit(BaseException):
     pass
 
 
@@ -96,7 +111,10 @@ class StopIteration(Exception):
 
 
 for _exception_class in [
+    BaseException,
     Exception,
+    SystemExit,
+    KeyboardInterrupt,
     AttributeError,
     IndexError,
     KeyError,
