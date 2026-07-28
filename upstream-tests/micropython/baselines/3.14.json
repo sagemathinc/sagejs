@@ -334,7 +334,7 @@
     "fun_name.py": "pass",
     "fun_str.py": "pass",
     "fun_varargs.py": "pass",
-    "gc1.py": "output-mismatch",
+    "gc1.py": "pass",
     "gen_yield_from.py": "pass",
     "gen_yield_from_close.py": "pass",
     "gen_yield_from_ducktype.py": "pass",
