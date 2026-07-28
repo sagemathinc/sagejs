@@ -429,7 +429,7 @@ class AST_Scope(AST_Block):
     properties = {
         'localvars': "[SymbolDef*] list of variables local to this scope",
         'annotated_locals':
-        "[string*] names requiring an unbound-value check on reads",
+        "[string*] annotated or deleted names requiring unbound checks",
         'docstrings': "[AST_String*] list of docstrings for this scope",
     }
 

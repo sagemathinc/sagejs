@@ -126,8 +126,24 @@ def print_splice_assignment(self, output):  # AST_Splice
 
 
 def print_delete(self, output):
-    if is_node_type(self, AST_Symbol):
-        output.assign(self), output.print('undefined')
+    if is_node_type(self, AST_Seq) or is_node_type(self, AST_Array):
+        values = self.to_array() if is_node_type(
+            self, AST_Seq) else self.flatten()
+
+        def print_values():
+            for index, value in enumerate(values):
+                print_delete(value, output)
+                if index + 1 < len(values):
+                    output.comma()
+
+        output.with_parens(print_values)
+    elif is_node_type(self, AST_Symbol):
+        output.assign(self)
+        output.print('ρσ_delete_name(')
+        self.print(output)
+        output.comma()
+        output.print(JSON.stringify(self.name))
+        output.print(')')
     elif (
         is_node_type(self, AST_Dot)
         and output.options.python_attributes

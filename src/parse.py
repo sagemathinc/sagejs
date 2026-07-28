@@ -702,26 +702,64 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             if names.indexOf(name) is -1:
                 names.push(name)
 
+        def add_deleted_target(target):
+            if is_node_type(target, AST_SymbolRef):
+                add(target.name)
+            elif is_node_type(target, AST_Seq):
+                for value in target.to_array():
+                    add_deleted_target(value)
+            elif is_node_type(target, AST_Array):
+                for value in target.flatten():
+                    add_deleted_target(value)
+
+        def inspect(node):
+            if is_node_type(node, AST_Scope):
+                local_names = [
+                    symbol.name for symbol in (node.localvars or [])
+                ]
+                for name in node.annotated_locals or []:
+                    if local_names.indexOf(name) is -1:
+                        add(name)
+                return True
+            if (
+                is_node_type(node, AST_AnnotatedAssignment)
+                and is_node_type(node.target, AST_SymbolRef)
+            ):
+                add(node.target.name)
+            elif (
+                is_node_type(node, AST_UnaryPrefix)
+                and node.operator is 'delete'
+            ):
+                add_deleted_target(node.expression)
+
+        walker = TreeWalker(inspect)
         if Array.isArray(body):
-            for stmt in body:
-                if is_node_type(stmt, AST_Scope):
-                    continue
+            for statement in body:
+                if is_node_type(statement, AST_Scope):
+                    inspect(statement)
+                else:
+                    statement.walk(walker)
+        elif body and not is_node_type(body, AST_Scope):
+            body.walk(walker)
+
+        def propagate(node):
+            if not is_node_type(node, AST_Scope):
+                return
+            local_names = [
+                symbol.name for symbol in (node.localvars or [])
+            ]
+            annotated = node.annotated_locals or []
+            node.annotated_locals = annotated
+            for name in names:
                 if (
-                    is_node_type(stmt, AST_AnnotatedAssignment)
-                    and is_node_type(stmt.target, AST_SymbolRef)
+                    local_names.indexOf(name) is -1
+                    and annotated.indexOf(name) is -1
                 ):
-                    add(stmt.target.name)
-                for option in ('body', 'alternative'):
-                    nested = stmt[option]
-                    if nested:
-                        for name in scan_for_annotated_names(nested):
-                            add(name)
-        elif body and body.body:
-            for name in scan_for_annotated_names(body.body):
-                add(name)
-            if body.alternative:
-                for name in scan_for_annotated_names(body.alternative):
-                    add(name)
+                    annotated.push(name)
+
+        if Array.isArray(body):
+            for statement in body:
+                propagate(statement)
         return names
 
     def disable_builtin_range_optimization(body):

@@ -101,6 +101,11 @@ def ρσ_check_unbound(value: Any, name: str) -> Any:
     return value
 
 
+def ρσ_delete_name(value: Any, name: str) -> Any:
+    ρσ_check_unbound(value, name)
+    return runtime.undefined
+
+
 def ρσ_eslice(
     array: Any,
     step: int,

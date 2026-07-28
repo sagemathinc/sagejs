@@ -512,6 +512,19 @@ def generate_code():
         if RESERVED_WORDS[name] and name is not 'this':
             name = 'ρσ_py_' + name
 
+        def contains_delete_target(target):
+            if target is self:
+                return True
+            if is_node_type(target, AST_Array):
+                for value in target.flatten():
+                    if contains_delete_target(value):
+                        return True
+            elif is_node_type(target, AST_Seq):
+                for value in target.to_array():
+                    if contains_delete_target(value):
+                        return True
+            return False
+
         def is_assignment_target():
             stack = output.stack()
             for index in range(stack.length - 2, -1, -1):
@@ -533,6 +546,13 @@ def generate_code():
                     if is_node_type(ancestor.init, AST_Array):
                         return ancestor.init.flatten().indexOf(self) is not -1
                     return False
+                if (
+                    is_node_type(ancestor, AST_UnaryPrefix)
+                    and ancestor.operator is 'delete'
+                ):
+                    target = ancestor.expression
+                    if contains_delete_target(target):
+                        return True
                 if is_node_type(ancestor, AST_Scope):
                     break
             return False
