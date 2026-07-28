@@ -133,6 +133,8 @@ qq: Any
 rational_class: Any
 reflect: _Reflect
 reference_error: type[_Error]
+syntax_error: type[_Error]
+type_error: type[_Error]
 string_class: Any
 string_builtin: Any
 undefined: Any

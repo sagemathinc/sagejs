@@ -492,6 +492,12 @@ def print_assign(self, output):
     if self.native_operator:
         output.spaced(self.left, self.operator, self.right)
         return
+    arithmetic_compound_functions = {
+        '+=': 'ρσ_operator_iadd',
+        '-=': 'ρσ_operator_isub',
+        '*=': 'ρσ_operator_imul',
+        '/=': 'ρσ_operator_idiv',
+    }
     compound_functions = {
         '//=': 'ρσ_operator_floordiv',
         '%=': 'ρσ_operator_mod',
@@ -502,6 +508,33 @@ def print_assign(self, output):
         '<<=': 'ρσ_operator_lshift',
         '>>=': 'ρσ_operator_rshift',
     }
+    if (
+        is_node_type(self.left, AST_ItemAccess)
+        and (
+            self.operator in arithmetic_compound_functions
+            or self.operator in compound_functions
+        )
+    ):
+        output.print('(')
+        output.assign('ρσ_expr_temp')
+        self.left.expression.print(output)
+        output.comma()
+        output.assign('ρσ_prop_temp')
+        self.left.property.print(output)
+        output.comma()
+        output.print('ρσ_setitem(ρσ_expr_temp, ρσ_prop_temp, ')
+        if self.operator in arithmetic_compound_functions:
+            function_name = arithmetic_compound_functions[self.operator]
+            print_arithmetic_call(output, function_name)
+        else:
+            function_name = compound_functions[self.operator]
+            output.print(function_name + '(')
+        output.print('ρσ_getitem(ρσ_expr_temp, ρσ_prop_temp)')
+        output.comma()
+        self.right.print(output)
+        output.print('))')
+        output.print(')')
+        return
     if self.operator in compound_functions:
         output.assign(self.left)
         output.print(compound_functions[self.operator] + '(')

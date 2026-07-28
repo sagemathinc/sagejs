@@ -2,7 +2,9 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 
-from ast_types import AST_ClassCall, AST_New, has_calls, AST_Dot, AST_PropAccess, AST_SymbolRef, is_node_type
+from ast_types import (AST_Class, AST_ClassCall, AST_Dot, AST_Lambda,
+                       AST_Method, AST_New, AST_PropAccess, AST_Scope,
+                       AST_SymbolRef, AST_Toplevel, has_calls, is_node_type)
 from output.stream import OutputStream
 from output.statements import print_bracketed
 from output.utils import create_doctring
@@ -413,6 +415,63 @@ def print_this(expression, output):
 
 
 def print_function_call(self, output):
+    if (
+        is_node_type(self.expression, AST_SymbolRef)
+        and self.expression.name in ('locals', 'globals')
+        and self.args.length == 0
+        and not self.args.starargs
+        and not self.args.kwargs.length
+        and not self.args.kwarg_items.length
+    ):
+        want_globals = self.expression.name is 'globals'
+        scope = None
+        stack = output.stack()
+        for index in range(stack.length - 1, -1, -1):
+            candidate = stack[index]
+            if (
+                want_globals and is_node_type(candidate, AST_Toplevel)
+                or not want_globals and is_node_type(candidate, AST_Scope)
+            ):
+                scope = candidate
+                break
+        names = []
+        seen = {}
+
+        def add_name(name):
+            if name and not seen[name]:
+                seen[name] = True
+                names.push(name)
+
+        if is_node_type(scope, AST_Class):
+            for name in Object.keys(scope.classvars):
+                add_name(name)
+            for statement in scope.body:
+                if is_node_type(statement, AST_Method):
+                    add_name(statement.name.name)
+        elif scope:
+            for symbol in scope.localvars:
+                add_name(symbol.name)
+            if is_node_type(scope, AST_Lambda):
+                for argument in scope.argnames:
+                    add_name(argument.name)
+        if want_globals:
+            add_name('__name__')
+            add_name('__file__')
+
+        output.print('{')
+        for index, name in enumerate(names):
+            if index:
+                output.comma()
+            output.print(JSON.stringify(name))
+            output.colon()
+            if is_node_type(scope, AST_Class):
+                scope.name.print(output)
+                output.print('.prototype[' + JSON.stringify(name) + ']')
+            else:
+                output.print_name(name)
+        output.print('}')
+        return
+
     if self.pooled_numeric_name:
         output.print(self.pooled_numeric_name)
         return

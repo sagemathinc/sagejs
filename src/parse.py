@@ -121,9 +121,19 @@ ERROR_CLASSES = {
     'SystemExit': {},
     'KeyboardInterrupt': {},
     'AttributeError': {},
+    'ArithmeticError': {},
+    'LookupError': {},
     'IndexError': {},
     'KeyError': {},
     'ValueError': {},
+    'EOFError': {},
+    'ImportError': {},
+    'MemoryError': {},
+    'OSError': {},
+    'IndentationError': {},
+    'SyntaxError': {},
+    'TypeError': {},
+    'NameError': {},
     'NotImplementedError': {},
     'UnicodeDecodeError': {},
     'AssertionError': {},
@@ -177,7 +187,8 @@ ATOMIC_START_TOKEN = array_to_hash(
     ["atom", "bytes", "num", "string", "regexp", "name", "js"])
 
 compile_time_decorators = [
-    'staticmethod', 'external', 'property', 'ρσ_lightweight_math_class',
+    'staticmethod', 'classmethod', 'external', 'property',
+    'ρσ_lightweight_math_class',
     'ρσ_bigint_fields', 'ρσ_sequence_class',
     'ρσ_callable_instance_class'
 ]
@@ -283,6 +294,8 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'string_class': 'String',
     'string_builtin': 'ρσ_str',
     'string': 'ρσ_string_primitive',
+    'syntax_error': 'SyntaxError',
+    'type_error': 'TypeError',
     'undefined': 'undefined',
     'zero_division_error': 'ZeroDivisionError',
 }
@@ -910,8 +923,21 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 return AST_SimpleStatement({'body': yield_()})
             elif tmp_ is "raise":
                 if S.token.nlb:
-                    return AST_Throw(
-                        {'value': AST_SymbolCatch({'name': "ρσ_Exception"})})
+                    if S.except_function_depths.indexOf(
+                            S.in_function) != -1:
+                        value = AST_SymbolCatch({'name': "ρσ_Exception"})
+                    else:
+                        value = AST_New({
+                            'expression':
+                            AST_SymbolRef({'name': 'RuntimeError'}),
+                            'args': [
+                                AST_String({
+                                    'value':
+                                    'No active exception to reraise'
+                                })
+                            ],
+                        })
+                    return AST_Throw({'value': value})
 
                 tmp = expression(True)
                 semicolon()
@@ -1437,6 +1463,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         key = argvar.alias.name if argvar.alias else argvar.name
                         S.classes[-1][key] = {
                             "static": obj.static,
+                            'classmethods': obj.classmethods,
                             'bound': obj.bound,
                             'classvars': obj.classvars
                         }
@@ -1446,6 +1473,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     key = imp.alias.name if imp.alias else imp.key
                     S.classes[-1][key + '.' + obj.name.name] = {
                         'static': obj.static,
+                        'classmethods': obj.classmethods,
                         'bound': obj.bound,
                         'classvars': obj.classvars
                     }
@@ -1476,6 +1504,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
 
         class_details = {
             "static": {},
+            'classmethods': {},
             'bound': r'%js []',
             'classvars': {},
             'bigint_fields': bigint_fields,
@@ -1507,6 +1536,15 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         ):
             class_parent = AST_SymbolRef({'name': 'object'})
             bases.push(class_parent)
+        parent_details = None
+        if class_parent is not None:
+            parent_details = get_class_in_scope(class_parent)
+        if parent_details:
+            for method_name in Object.keys(parent_details.static or {}):
+                class_details.static[method_name] = True
+            for method_name in Object.keys(
+                    parent_details.classmethods or {}):
+                class_details.classmethods[method_name] = True
 
         docstrings = r'%js []'
 
@@ -1547,6 +1585,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             'localvars': [],
             'classvars': class_details.classvars,
             'static': class_details.static,
+            'classmethods': class_details.classmethods,
             'external': externaldecorator,
             'lightweight': lightweightdecorator,
             'sequence_class': sequence_class_decorator,
@@ -1626,21 +1665,33 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 croak('Cannot use anonymous function as class methods')
             is_anonymous = not name
 
-        staticmethod = property_getter = property_setter = False
+        staticmethod = classmethod = property_getter = property_setter = False
         if in_class:
             staticloc = has_simple_decorator(S.decorators, 'staticmethod')
+            classloc = has_simple_decorator(S.decorators, 'classmethod')
             property_getter = has_simple_decorator(S.decorators, 'property')
             property_setter = has_setter_decorator(S.decorators, name.name)
-            if staticloc:
+            if staticloc and classloc:
+                croak('A method cannot be both static and a class method')
+            if staticloc or classloc:
                 if property_getter or property_setter:
                     croak(
-                        'A method cannot be both static and a property getter/setter'
+                        'A method cannot also be a property getter/setter'
                     )
-                S.classes[S.classes.length -
-                          2][in_class].static[name.name] = True
-                staticmethod = True
-            elif name.name is not "__init__" and S.scoped_flags.get(
-                    'bound_methods'):
+                if staticloc:
+                    S.classes[S.classes.length -
+                              2][in_class].static[name.name] = True
+                    staticmethod = True
+                else:
+                    S.classes[S.classes.length -
+                              2][in_class].classmethods[name.name] = True
+                    classmethod = True
+            if (
+                not staticmethod
+                and name.name is not "__init__"
+                and S.scoped_flags.get(
+                    'bound_methods')
+            ):
                 S.classes[S.classes.length - 2][in_class].bound.push(name.name)
 
         if not is_lambda:
@@ -1840,6 +1891,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         definition.is_generator = is_generator[0]
         if is_node_type(definition, AST_Method):
             definition.static = staticmethod
+            definition.classmethod = classmethod
             definition.is_getter = property_getter
             definition.is_setter = property_setter
             if definition.name and definition.name.name is '__init__':
@@ -1970,12 +2022,15 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 next()
                 name = as_symbol(AST_SymbolCatch)
 
+            S.except_function_depths.push(S.in_function)
+            except_body = block_()
+            S.except_function_depths.pop()
             bcatch.push(
                 AST_Except({
                     'start': start,
                     'argname': name,
                     'errors': exceptions,
-                    'body': block_(),
+                    'body': except_body,
                     'end': prev()
                 }))
 
@@ -2575,7 +2630,9 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
 
     def is_static_method(cls, method):
         if has_prop(COMMON_STATIC,
-                    method) or (cls.static and has_prop(cls.static, method)):
+                    method) or (cls.static and has_prop(cls.static, method)
+                                ) or (cls.classmethods and has_prop(
+                                    cls.classmethods, method)):
             return True
         else:
             return False
@@ -3405,6 +3462,7 @@ def parse(text, options):
         False,
         'in_delete':
         False,
+        'except_function_depths': [],
         'sage_empty_bracket_names':
         None,
         'in_loop':
@@ -3444,6 +3502,7 @@ def parse(text, options):
             obj = options.classes[cname]
             S.classes[0][cname] = {
                 'static': obj.static,
+                'classmethods': obj.classmethods,
                 'bound': obj.bound,
                 'classvars': obj.classvars
             }

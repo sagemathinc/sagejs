@@ -6,6 +6,7 @@ def exit(status=None):
     raise SystemExit(status)
 
 argv = process.argv
+path = [process.cwd()]
 byteorder = 'little'
 
 # Node.js targets supported by Sage.js are 64-bit platforms.  Keep this exact

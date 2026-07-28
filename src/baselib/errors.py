@@ -44,6 +44,23 @@ class Exception(BaseException):
     pass
 
 
+# Native JavaScript failures participate in Python's Exception hierarchy.
+# Keeping their native constructors means errors raised by the runtime itself
+# are caught by the corresponding Python ``except`` clauses.
+runtime.object.setPrototypeOf(
+    runtime.reflect.get(runtime.type_error, 'prototype'),
+    runtime.reflect.get(Exception, 'prototype'),
+)
+runtime.object.setPrototypeOf(
+    runtime.reflect.get(runtime.reference_error, 'prototype'),
+    runtime.reflect.get(Exception, 'prototype'),
+)
+runtime.object.setPrototypeOf(
+    runtime.reflect.get(runtime.syntax_error, 'prototype'),
+    runtime.reflect.get(Exception, 'prototype'),
+)
+
+
 class SystemExit(BaseException):
 
     def __init__(self, *args: object) -> None:
@@ -59,11 +76,19 @@ class AttributeError(Exception):
     pass
 
 
-class IndexError(Exception):
+class ArithmeticError(Exception):
     pass
 
 
-class KeyError(Exception):
+class LookupError(Exception):
+    pass
+
+
+class IndexError(LookupError):
+    pass
+
+
+class KeyError(LookupError):
 
     def __str__(self) -> str:
         if len(self.args) == 1:
@@ -75,7 +100,34 @@ class ValueError(Exception):
     pass
 
 
-class NotImplementedError(Exception):
+class EOFError(Exception):
+    pass
+
+
+class ImportError(Exception):
+    pass
+
+
+class MemoryError(Exception):
+    pass
+
+
+class OSError(Exception):
+
+    def __init__(self, *args: object) -> None:
+        Exception.__init__(self, *args)
+        self.errno = args[0] if len(args) > 0 else None
+
+
+class IndentationError(runtime.syntax_error):
+    pass
+
+
+class RuntimeError(Exception):
+    pass
+
+
+class NotImplementedError(RuntimeError):
     pass
 
 
@@ -87,15 +139,11 @@ class AssertionError(Exception):
     pass
 
 
-class ZeroDivisionError(Exception):
+class ZeroDivisionError(ArithmeticError):
     pass
 
 
-class OverflowError(Exception):
-    pass
-
-
-class RuntimeError(Exception):
+class OverflowError(ArithmeticError):
     pass
 
 
@@ -116,9 +164,16 @@ for _exception_class in [
     SystemExit,
     KeyboardInterrupt,
     AttributeError,
+    ArithmeticError,
+    LookupError,
     IndexError,
     KeyError,
     ValueError,
+    EOFError,
+    ImportError,
+    MemoryError,
+    OSError,
+    IndentationError,
     NotImplementedError,
     UnicodeDecodeError,
     AssertionError,

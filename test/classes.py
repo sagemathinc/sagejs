@@ -130,11 +130,13 @@ assrt.deepEqual(dir(angela).sort(), [
     '__repr__',
     '__str__',
     "duration",
+    "getTypicalWeight",
     "get_bound_method",
     "greet",
     "how_long",
     "name",
     "nickname",
+    "with_arg",
 ])
 
 # test that binding works in relation to the actual class, not the parent

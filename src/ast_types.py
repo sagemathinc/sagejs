@@ -527,6 +527,8 @@ class AST_Class(AST_Scope):
         "[AST_Symbol*] list of base classes this class inherits from",
         "static":
         "[dict] A hash whose keys are names of static methods for this class",
+        "classmethods":
+        "[dict] A hash whose keys are names of class methods for this class",
         'external':
         "[boolean] true if class is declared elsewhere, but will be within current scope at runtime",
         'lightweight':
@@ -569,6 +571,7 @@ class AST_Method(AST_Lambda):
     "A class method definition"
     properties = {
         "static": "[boolean] true if method is static",
+        "classmethod": "[boolean] true if method is a class method",
         "is_getter": "[boolean] true if method is a property getter",
         "is_setter": "[boolean] true if method is a property setter",
     }

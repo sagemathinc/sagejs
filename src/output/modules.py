@@ -111,12 +111,17 @@ def write_imports(module, output):
             print_module(module_, output)
 
 
-def write_main_name(output):
+def write_main_name(output, filename=None):
     if output.options.write_name:
         output.newline()
         output.indent()
         output.print('var __name__ = "__main__"')
         output.semicolon()
+        if filename:
+            output.newline()
+            output.indent()
+            output.print('var __file__ = ' + JSON.stringify(filename))
+            output.semicolon()
         output.newline()
         output.newline()
 
@@ -161,7 +166,7 @@ def prologue(module, output):
         .split(' '))))
     output.end_statement()
     output.indent(), output.spaced(
-        'var', 'ρσ_cond_temp,', 'ρσ_expr_temp,',
+        'var', 'ρσ_cond_temp,', 'ρσ_expr_temp,', 'ρσ_prop_temp,',
         'ρσ_last_exception'), output.end_statement()
     output.indent(), output.spaced('var', 'ρσ_object_counter', '=',
                                    '0'), output.end_statement()
@@ -217,7 +222,7 @@ def print_top_level(self, output):
                     output.print("function()")
 
                     def f_body():
-                        write_main_name(output)
+                        write_main_name(output, self.filename)
                         output.newline()
                         write_numeric_literal_pool(numeric_literal_pool, output)
                         declare_vars(self.localvars, output)
@@ -245,7 +250,7 @@ def print_top_level(self, output):
         if is_main:
             prologue(self, output)
             write_imports(self, output)
-            write_main_name(output)
+            write_main_name(output, self.filename)
 
         write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)

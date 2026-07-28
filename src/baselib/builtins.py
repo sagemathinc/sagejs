@@ -1604,6 +1604,8 @@ def ρσ_getattr(
         raise TypeError('attribute name must be string')
     if _builtins_has_member(value, name):
         member = _builtins_get_member(value, name)
+        if _builtins_has_member(member, '__staticmethod__'):
+            return member
         if (
             runtime.strict_equal(runtime.jstype(member), 'function')
             and not _builtins_is_python_class(member)
@@ -1614,10 +1616,16 @@ def ρσ_getattr(
                 [name],
             )
         ):
+            receiver = value
+            if _builtins_has_member(member, '__classmethod__'):
+                if _builtins_is_python_class(value):
+                    receiver = value
+                else:
+                    receiver = _builtins_get_member(value, 'constructor')
             return runtime.reflect.apply(
                 runtime.reflect.get(member, 'bind'),
                 member,
-                [value],
+                [receiver],
             )
         return member
     if _builtins_member_is_function(value, '__getattr__'):
@@ -1674,9 +1682,20 @@ def ρσ_hasattr(value: Any, name: _Str) -> _Bool:
 
 
 def ρσ_py_super(cls: Any, instance: Any) -> Any:
+    class_subtype = (
+        _builtins_is_python_class(instance)
+        and (
+            instance is cls
+            or runtime.instance_of(
+                runtime.reflect.get(instance, 'prototype'), cls)
+        )
+    )
     if (
         not runtime.strict_equal(runtime.jstype(cls), 'function')
-        or not runtime.instance_of(instance, cls)
+        or (
+            not runtime.instance_of(instance, cls)
+            and not class_subtype
+        )
     ):
         raise TypeError(
             'super(type, obj): obj must be an instance or subtype of type')
@@ -1971,6 +1990,48 @@ def ρσ_min(*positional: Any, **keywords: Any) -> Any:
     return _builtins_extreme(positional, keywords, False)
 
 
+class _BuiltinTextFile:
+
+    def __init__(self, filename: _Str) -> None:
+        filesystem = runtime.require_module('fs')
+        self._data = runtime.string(
+            filesystem.readFileSync(filename, 'utf8'))
+        self._position = 0
+
+    def __enter__(self) -> _BuiltinTextFile:
+        return self
+
+    def __exit__(self, *_args: Any) -> _Bool:
+        return False
+
+    def close(self) -> None:
+        pass
+
+    def readline(self) -> _Str:
+        if self._position >= len(self._data):
+            return ''
+        newline = self._data.find('\n', self._position)
+        if newline == -1:
+            answer = self._data[self._position:]
+            self._position = len(self._data)
+            return answer
+        answer = self._data[self._position:newline + 1]
+        self._position = newline + 1
+        return answer
+
+
+def ρσ_open(
+    filename: _Str,
+    mode: _Str = 'r',
+    *_args: Any,
+    **_kwargs: Any,
+) -> _BuiltinTextFile:
+    if mode not in ('r', 'rt'):
+        raise NotImplementedError(
+            'open() currently supports text reading only')
+    return _BuiltinTextFile(filename)
+
+
 round = ρσ_round
 max = ρσ_max
 min = ρσ_min
@@ -1991,6 +2052,7 @@ help = ρσ_help
 ord = ρσ_ord
 chr = ρσ_chr
 bin = ρσ_bin
+open = ρσ_open
 
 runtime.set_class_repr(ρσ_int, "<class 'int'>")
 runtime.set_class_repr(ρσ_bool, "<class 'bool'>")

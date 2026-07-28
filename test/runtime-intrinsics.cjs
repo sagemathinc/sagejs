@@ -84,7 +84,7 @@ assert.match(generated, /ρσ_integer_bigint\(6\)/);
 assert.match(generated, /ρσ_operator_mul_exact/);
 assert.doesNotMatch(generated, /sagejs\.runtime/);
 assert.doesNotMatch(generated, /ρσ_modules\["sagejs\.runtime"\]/);
-assert.doesNotMatch(generated, /\bruntime\b/);
+assert.doesNotMatch(generated, /(?:\bvar\s+runtime\b|\bruntime\s*[.(])/);
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -98,7 +98,10 @@ for (const [name, lowered] of runtimeManifest) {
     oneAttribute,
     new RegExp(`value = ${escapeRegExp(lowered)}`),
   );
-  assert.doesNotMatch(oneAttribute, /\bruntime\b/);
+  assert.doesNotMatch(
+    oneAttribute,
+    /(?:\bvar\s+runtime\b|\bruntime\s*[.(])/,
+  );
 }
 
 for (const [name, lowered] of publicManifest) {

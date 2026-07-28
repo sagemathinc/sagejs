@@ -30,6 +30,7 @@ def print_class(output):
             class_def(name)
         # only strip first argument if the method is static
         is_static = has_prop(self.static, name)
+        is_classmethod = has_prop(self.classmethods, name)
         strip_first = not is_static
 
         # decorate the method
@@ -57,7 +58,27 @@ def print_class(output):
                 fname = self.name.name + ('.' if is_static else
                                           '.prototype.') + name
                 function_annotation(stmt, output, strip_first, fname)
-                if not is_static and not name.startswith('__'):
+                if is_static:
+                    output.indent()
+                    self.name.print(output)
+                    output.assign('.prototype.' + name)
+                    self.name.print(output)
+                    output.print('.' + name)
+                    output.end_statement()
+                    output.indent()
+                    self.name.print(output)
+                    output.print('.' + name + '.__staticmethod__ = true')
+                    output.end_statement()
+                elif is_classmethod:
+                    output.indent()
+                    self.name.print(output)
+                    output.print(
+                        '.prototype.' + name + '.__classmethod__ = true')
+                    output.end_statement()
+                if (
+                    is_classmethod
+                    or not is_static and not name.startswith('__')
+                ):
                     output.indent()
                     self.name.print(output)
                     output.assign('.' + name)
@@ -178,10 +199,14 @@ def print_class(output):
                     if seen_methods[bname] or self.dynamic_properties[bname]:
                         continue
                     seen_methods[bname] = True
+                    is_classmethod = has_prop(self.classmethods, bname)
                     output.indent(), output.assign('this.' + bname)
                     self.name.print(output), output.print('.prototype.' +
                                                           bname +
-                                                          '.bind(this)')
+                                                          '.bind(')
+                    output.print(
+                        'this.constructor' if is_classmethod else 'this')
+                    output.print(')')
                     output.end_statement()
                     output.indent(), output.print(
                         'Object.assign(this.' + bname + ', ')
@@ -195,7 +220,8 @@ def print_class(output):
                     output.end_statement()
                     output.indent(), output.assign(
                         'this.' + bname + '.__self__')
-                    output.print('this')
+                    output.print(
+                        'this.constructor' if is_classmethod else 'this')
                     output.end_statement()
                     output.indent(), output.assign(
                         'this.' + bname + '.__name__')
@@ -372,6 +398,26 @@ def print_class(output):
             output.indent()
             stmt.print(output)
             output.newline()
+    for classvar_name in Object.keys(self.classvars):
+        output.indent()
+        output.print('if (typeof ')
+        self.name.print(output)
+        output.print('.prototype.' + classvar_name)
+        output.print(' !== "function") ')
+        self.name.print(output)
+        output.assign('.' + classvar_name)
+        self.name.print(output)
+        output.print('.prototype.' + classvar_name)
+        output.end_statement()
+    inherited_callable_names = Object.keys(self.static).concat(
+        Object.keys(self.classmethods))
+    for method_name in inherited_callable_names:
+        output.indent()
+        self.name.print(output)
+        output.assign('.' + method_name)
+        self.name.print(output)
+        output.print('.prototype.' + method_name)
+        output.end_statement()
 
     if decorators.length:
         output.indent()

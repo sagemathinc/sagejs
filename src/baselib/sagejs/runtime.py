@@ -10,7 +10,8 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: Number, Object, PolynomialRing, Proxy
 # globals: JSON, Set, create_real_literal, globalThis, isNaN, parseFloat
 # globals: parseInt
-# globals: QQ, Rational, ReferenceError, Reflect, RegExp, String
+# globals: QQ, Rational, ReferenceError, Reflect, RegExp, String, SyntaxError
+# globals: TypeError
 # globals: ZeroDivisionError, require
 # globals: ρσ_bigint_divexact, ρσ_bigint_gcd
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
@@ -149,5 +150,7 @@ string_find = ρσ_string_find
 string_class = String
 string_builtin = ρσ_str
 string = ρσ_string_primitive
+syntax_error = SyntaxError
+type_error = TypeError
 undefined = r"%js undefined"
 zero_division_error = ZeroDivisionError
