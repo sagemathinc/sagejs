@@ -166,7 +166,14 @@ class SageBytes:
     def __iter__(self) -> Iterator[_Int]:
         return iter(self._values)
 
-    def __getitem__(self, index: _Int) -> _Int:
+    def __getitem__(self, index: Any) -> Any:
+        if hasattr(index, '__sagejs_slice__'):
+            start, stop, step = index.indices(len(self._values))
+            values = [
+                self._values[position]
+                for position in range(start, stop, step)
+            ]
+            return runtime.reflect.construct(type(self), [values])
         index = _coerce_index(index)
         if index < 0:
             index += len(self._values)
@@ -803,6 +810,29 @@ class SageByteArray(SageBytes):
         return SageByteArray(self._values[first:last])
 
     def __setitem__(self, index: Any, value: Any) -> None:
+        if hasattr(index, '__sagejs_slice__'):
+            start, stop, step = index.indices(len(self._values))
+            if step == 1:
+                self.__setslice__(start, stop, value)
+                return
+            if not isinstance(value, SageBytes):
+                value = ρσ_bytes(value)
+            positions = [
+                position
+                for position in range(start, stop, step)
+            ]
+            if len(positions) != len(value):
+                raise ValueError(
+                    'attempt to assign bytes of size '
+                    + str(len(value))
+                    + ' to extended slice of size '
+                    + str(len(positions))
+                )
+            for position_index in range(len(positions)):
+                self._values[positions[position_index]] = (
+                    value._values[position_index]
+                )
+            return
         index = _coerce_index(index)
         value = _coerce_index(value)
         if value < 0 or value > 255:
@@ -814,6 +844,21 @@ class SageByteArray(SageBytes):
         self._values[index] = value
 
     def __delitem__(self, index: Any) -> None:
+        if hasattr(index, '__sagejs_slice__'):
+            start, stop, step = index.indices(len(self._values))
+            positions = [
+                position
+                for position in range(start, stop, step)
+            ]
+            positions.sort()
+            positions.reverse()
+            for position in positions:
+                runtime.reflect.apply(
+                    runtime.array.prototype.splice,
+                    self._values,
+                    [position, 1],
+                )
+            return
         index = _coerce_index(index)
         if index < 0:
             index += len(self._values)
@@ -1027,7 +1072,17 @@ class SageMemoryView:
     def __iter__(self) -> Iterator[_Int]:
         return iter(self._values())
 
-    def __getitem__(self, index: Any) -> _Int:
+    def __getitem__(self, index: Any) -> Any:
+        if hasattr(index, '__sagejs_slice__'):
+            start, stop, step = index.indices(self._length)
+            if step == 1:
+                return SageMemoryView(self, start, stop - start)
+            return SageMemoryView(
+                SageByteArray([
+                    self.__getitem__(position)
+                    for position in range(start, stop, step)
+                ])
+            )
         index = _coerce_index(index)
         if index < 0:
             index += self._length
@@ -1038,6 +1093,26 @@ class SageMemoryView:
     def __setitem__(self, index: Any, value: Any) -> None:
         if self._readonly:
             raise TypeError('cannot modify read-only memory')
+        if hasattr(index, '__sagejs_slice__'):
+            start, stop, step = index.indices(self._length)
+            if step == 1:
+                self.__setslice__(start, stop, value)
+                return
+            replacement = [item for item in value]
+            positions = [
+                position for position in range(start, stop, step)
+            ]
+            if len(replacement) != len(positions):
+                raise ValueError(
+                    'memoryview assignment: lvalue and rvalue have '
+                    'different structures'
+                )
+            for position_index in range(len(positions)):
+                self.__setitem__(
+                    positions[position_index],
+                    replacement[position_index],
+                )
+            return
         index = _coerce_index(index)
         if index < 0:
             index += self._length

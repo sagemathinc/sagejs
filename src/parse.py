@@ -55,6 +55,7 @@ def static_predicate(names):
 
 NATIVE_CLASSES = {
     'Rational': {},
+    'slice': {},
     'Image': {},
     'FileReader': {},
     'RegExp': {},
@@ -2773,6 +2774,79 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             constructor.sage_empty_bracket_constructor = True
             return subscripts(constructor, allow_calls)
         is_py_sub = S.scoped_flags.get('overload_getitem', False)
+        if is_py_sub:
+            def parse_python_subscript():
+                if is_("punc", ":"):
+                    lower = AST_Null()
+                else:
+                    lower = expression(False)
+                    if not is_("punc", ":"):
+                        return lower
+
+                next()
+                if (
+                    is_("punc", ":")
+                    or is_("punc", ",")
+                    or is_("punc", "]")
+                ):
+                    upper = AST_Null()
+                else:
+                    upper = expression(False)
+
+                step = AST_Null()
+                if is_("punc", ":"):
+                    next()
+                    if not is_("punc", ",") and not is_("punc", "]"):
+                        step = expression(False)
+
+                return AST_New({
+                    'start': start,
+                    'expression': AST_SymbolRef({'name': 'slice'}),
+                    'args': [lower, upper, step],
+                    'end': prev(),
+                })
+
+            components = [parse_python_subscript()]
+            is_tuple_subscript = False
+            while is_("punc", ","):
+                is_tuple_subscript = True
+                next()
+                if is_("punc", "]"):
+                    break
+                components.push(parse_python_subscript())
+            expect("]")
+
+            prop = components[0]
+            if is_tuple_subscript:
+                prop = AST_Array({
+                    'start': start,
+                    'elements': components,
+                    'is_tuple': True,
+                    'end': prev(),
+                })
+
+            assignment = None
+            if is_("operator", '='):
+                next()
+                assignment = expression(True)
+                if is_node_type(assignment, AST_Seq):
+                    assignment = AST_Array({
+                        'start': assignment.start,
+                        'elements': assignment.to_array(),
+                        'is_tuple': True,
+                        'end': assignment.end,
+                    })
+            return subscripts(
+                AST_ItemAccess({
+                    'start': start,
+                    'expression': expr,
+                    'property': prop,
+                    'assignment': assignment,
+                    'end': prev(),
+                }),
+                allow_calls,
+            )
+
         slice_bounds = r'%js []'
         is_slice = False
         if is_("punc", ":"):

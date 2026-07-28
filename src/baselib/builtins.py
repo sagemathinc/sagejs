@@ -16,6 +16,14 @@ _Int = int
 _Str = str
 
 
+class _BuiltinsMissing:
+    pass
+
+
+_BUILTINS_MISSING = _BuiltinsMissing()
+_BUILTINS_EMPTY = _BuiltinsMissing()
+
+
 def _builtins_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
@@ -1524,6 +1532,82 @@ def ρσ_tuple(iterable: Any = runtime.undefined) -> Any:
     return runtime.math_tuple([value for value in iterable])
 
 
+class SageSlice:
+    __sagejs_slice__ = True
+
+    def __init__(
+        self,
+        start: Any,
+        stop: Any = _BUILTINS_MISSING,
+        step: Any = None,
+    ) -> None:
+        if stop is _BUILTINS_MISSING:
+            stop = start
+            start = None
+        if step is not None:
+            step = int(step)
+            if step == 0:
+                raise ValueError('slice step cannot be zero')
+        self._start = start
+        self._stop = stop
+        self._step = step
+
+    @property
+    def start(self) -> Any:
+        return self._start
+
+    @property
+    def stop(self) -> Any:
+        return self._stop
+
+    @property
+    def step(self) -> Any:
+        return self._step
+
+    def indices(self, length: Any) -> Any:
+        length = int(length)
+        if length < 0:
+            raise ValueError('length should not be negative')
+
+        step = 1 if self._step is None else int(self._step)
+        if step < 0:
+            lower = -1
+            upper = length - 1
+        else:
+            lower = 0
+            upper = length
+
+        if self._start is None:
+            start = upper if step < 0 else lower
+        else:
+            start = int(self._start)
+            if start < 0:
+                start += length
+                if start < 0:
+                    start = lower
+            elif start >= length:
+                start = upper
+
+        if self._stop is None:
+            stop = lower if step < 0 else upper
+        else:
+            stop = int(self._stop)
+            if stop < 0:
+                stop += length
+                if stop < 0:
+                    stop = lower
+            elif stop >= length:
+                stop = upper
+
+        return runtime.math_tuple([start, stop, step])
+
+    def __repr__(self) -> _Str:
+        return (
+            'slice(' + repr(self._start) + ', '
+            + repr(self._stop) + ', ' + repr(self._step) + ')'
+        )
+
+
 def _builtins_tuple_subclass_init(
     self: Any,
     iterable: Any = runtime.undefined,
@@ -1545,8 +1629,14 @@ def _builtins_tuple_subclass_iter(self: Any) -> Any:
 
 def _builtins_tuple_subclass_getitem(
     self: Any,
-    index: _Int,
+    index: Any,
 ) -> Any:
+    if hasattr(index, '__sagejs_slice__'):
+        start, stop, step = index.indices(len(self._tuple_values))
+        return runtime.math_tuple([
+            self._tuple_values[position]
+            for position in range(start, stop, step)
+        ])
     return self._tuple_values[index]
 
 
@@ -1647,14 +1737,6 @@ def ρσ_iter(iterable: Any) -> Any:
         keys,
         [],
     )
-
-
-class _BuiltinsMissing:
-    pass
-
-
-_BUILTINS_MISSING = _BuiltinsMissing()
-_BUILTINS_EMPTY = _BuiltinsMissing()
 
 
 def _builtins_generator_result(result: Any) -> Any:
@@ -2383,6 +2465,8 @@ hash = ρσ_hash
 callable = ρσ_callable
 enumerate = ρσ_enumerate
 tuple = ρσ_tuple
+slice = SageSlice
+runtime.set_class_repr(SageSlice, "<class 'slice'>")
 _tuple_prototype = runtime.reflect.get(tuple, 'prototype')
 runtime.reflect.set(
     _tuple_prototype, '__init__',

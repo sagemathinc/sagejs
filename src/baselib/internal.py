@@ -481,6 +481,23 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
             value,
             [key],
         )
+    if _internal_get_member(key, '__sagejs_slice__'):
+        indices = runtime.reflect.apply(
+            _internal_get_member(key, 'indices'),
+            key,
+            [value.length],
+        )
+        answer = []
+        for index in range(indices[0], indices[1], indices[2]):
+            answer.append(value[index])
+        if _internal_type_is(runtime.jstype(value), 'string'):
+            return ''.join(answer)
+        if (
+            runtime.array.isArray(value)
+            and runtime.object.isFrozen(value)
+        ):
+            return runtime.math_tuple(answer)
+        return answer
     if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
         key += value.length
     return value[key]
@@ -494,6 +511,50 @@ def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
             [key, member],
         )
         return
+    if _internal_get_member(key, '__sagejs_slice__'):
+        if not _internal_member_is_function(value, 'splice'):
+            raise TypeError('object does not support slice assignment')
+        indices = runtime.reflect.apply(
+            _internal_get_member(key, 'indices'),
+            key,
+            [value.length],
+        )
+        if (
+            not runtime.arraylike(member)
+            and not _internal_member_is_function(
+                member, runtime.iterator_symbol)
+        ):
+            raise TypeError(
+                'can only assign an iterable to a slice')
+        replacement = [item for item in member]
+        if indices[2] == 1:
+            splice_args = [
+                indices[0],
+                indices[1] - indices[0],
+            ]
+            splice_args.extend(replacement)
+            runtime.reflect.apply(
+                _internal_get_member(value, 'splice'),
+                value,
+                splice_args,
+            )
+            return
+        positions = [
+            index for index in range(
+                indices[0], indices[1], indices[2])
+        ]
+        if len(positions) != len(replacement):
+            raise ValueError(
+                'attempt to assign sequence of size '
+                + str(len(replacement))
+                + ' to extended slice of size '
+                + str(len(positions))
+            )
+        for position_index in range(len(positions)):
+            value[positions[position_index]] = (
+                replacement[position_index]
+            )
+        return
     if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
         key += value.length
     value[key] = member
@@ -506,6 +567,23 @@ def ρσ_delitem(value: Any, key: Any) -> None:
             value,
             [key],
         )
+        return
+    if _internal_get_member(key, '__sagejs_slice__'):
+        if not _internal_member_is_function(value, 'splice'):
+            raise TypeError('object does not support slice deletion')
+        indices = runtime.reflect.apply(
+            _internal_get_member(key, 'indices'),
+            key,
+            [value.length],
+        )
+        positions = [
+            index for index in range(
+                indices[0], indices[1], indices[2])
+        ]
+        positions.sort()
+        positions.reverse()
+        for position in positions:
+            value.splice(position, 1)
         return
     if _internal_member_is_function(value, 'splice'):
         value.splice(key, 1)
