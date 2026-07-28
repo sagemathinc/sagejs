@@ -9,3 +9,8 @@ def exit(status=None):
     process.exit(status)
 
 argv = process.argv
+
+# Node.js targets supported by Sage.js are 64-bit platforms.  Keep this exact
+# even when this module is compiled by a bootstrap compiler whose own numeric
+# literals are JavaScript Numbers.
+maxsize = int('9223372036854775807')

@@ -303,6 +303,12 @@ def ρσ_in(value: Any, container: Any) -> bool:
     if runtime.arraylike(container):
         return runtime.reflect.apply(
             runtime.list_contains, container, [value])
+    container_type = runtime.jstype(container)
+    if (
+        not _internal_type_is(container_type, 'object')
+        and not _internal_type_is(container_type, 'function')
+    ):
+        raise TypeError('argument is not iterable')
     return runtime.reflect.apply(
         runtime.object.prototype.hasOwnProperty,
         container,

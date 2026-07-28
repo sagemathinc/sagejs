@@ -17,6 +17,8 @@ def best_of(a):
 
 def make_num(num):
     str_ = num.toString(10)
+    if jstype(num) is 'bigint':
+        return str_ + 'n'
     a = [str_.replace(RegExp(r"^0\."), ".").replace("e+", "e")]
     m = None
 

@@ -110,8 +110,9 @@ def print_unary_prefix(self, output):
     op = self.operator
     if op is 'delete':
         return print_delete(self.expression, output)
-    if op is '-' and not self.native_operator:
-        output.print("ρσ_operator_neg(")
+    if (op is '-' or op is '+') and not self.native_operator:
+        output.print(
+            "ρσ_operator_neg(" if op is '-' else "ρσ_operator_pos(")
     else:
         output.print(op)
     if RegExp("^[a-z]", "i").test(op):
@@ -120,7 +121,7 @@ def print_unary_prefix(self, output):
         output.with_parens(lambda: self.expression.print(output))
     else:
         self.expression.print(output)
-    if op is '-' and not self.native_operator:
+    if (op is '-' or op is '+') and not self.native_operator:
         output.print(")")
 
 def write_instanceof(left, right, output):
@@ -298,13 +299,43 @@ def print_binary_op(self, output):
         self.left.print(output), output.comma(), self.right.print(
             output), output.print(')')
     elif self.operator is '/':
-        print_arithmetic_call(output, 'ρσ_operator_truediv')
+        suffix = (
+            '_exact('
+            if (
+                output.options.exact_integers
+                and output.options.rational_division
+            )
+            else '('
+        )
+        output.print('ρσ_operator_truediv' + suffix)
         self.left.print(output), output.comma(), self.right.print(
             output), output.print(')')
     elif self.operator is '%':
         output.print('ρσ_operator_mod('), self.left.print(
             output), output.comma(), self.right.print(output), output.print(
                 ')')
+    elif self.operator is '@':
+        output.print('ρσ_operator_matmul('), self.left.print(
+            output), output.comma(), self.right.print(output), output.print(
+                ')')
+    elif self.operator in {
+        '&': 'bitand',
+        '|': 'bitor',
+        '^': 'bitxor',
+        '<<': 'lshift',
+        '>>': 'rshift',
+    }:
+        output.print(
+            'ρσ_operator_' + {
+                '&': 'bitand',
+                '|': 'bitor',
+                '^': 'bitxor',
+                '<<': 'lshift',
+                '>>': 'rshift',
+            }[self.operator] + '('
+        )
+        self.left.print(output), output.comma(), self.right.print(
+            output), output.print(')')
     elif self.operator is '//':
         output.print('ρσ_operator_floordiv('), self.left.print(
             output), output.comma(), self.right.print(output), output.print(
@@ -381,18 +412,23 @@ def print_assign(self, output):
     if self.native_operator:
         output.spaced(self.left, self.operator, self.right)
         return
-    if self.operator is '//=':
+    compound_functions = {
+        '//=': 'ρσ_operator_floordiv',
+        '%=': 'ρσ_operator_mod',
+        '@=': 'ρσ_operator_matmul',
+        '&=': 'ρσ_operator_bitand',
+        '|=': 'ρσ_operator_bitor',
+        '^=': 'ρσ_operator_bitxor',
+        '<<=': 'ρσ_operator_lshift',
+        '>>=': 'ρσ_operator_rshift',
+    }
+    if self.operator in compound_functions:
         output.assign(self.left)
-        output.print('Math.floor')
-
-        def f_slash():
-            self.left.print(output)
-            output.space()
-            output.print('/')
-            output.space()
-            self.right.print(output)
-
-        output.with_parens(f_slash)
+        output.print(compound_functions[self.operator] + '(')
+        self.left.print(output)
+        output.comma()
+        self.right.print(output)
+        output.print(')')
         return
     if self.operator is '+=':
         output.assign(self.left)
@@ -479,6 +515,10 @@ def print_seq(output):
     if (is_node_type(p, AST_Binary) or is_node_type(p, AST_Return)
             or is_node_type(p, AST_Array) or is_node_type(p, AST_BaseCall)
             or is_node_type(p, AST_SimpleStatement)):
+        if output.options.python_tuples:
+            output.print('ρσ_math_tuple(')
         output.with_square(print_seq0)
+        if output.options.python_tuples:
+            output.print(')')
     else:
         print_seq0()

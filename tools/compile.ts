@@ -51,6 +51,7 @@ interface OutputOptions {
   baselib_plain?: string;
   sage?: boolean; // sage-style preparsing
   exact_integers?: boolean;
+  python_tuples?: boolean;
   pool_numeric_literals?: boolean;
 }
 
@@ -88,7 +89,9 @@ export default async function Compile({
     keep_docstrings: argv.keep_docstrings,
     discard_asserts: argv.discard_asserts,
     module_cache_dir,
-    exact_integers: !!argv.sage,
+    exact_integers: true,
+    rational_division: !!argv.sage,
+    python_tuples: true,
     pool_numeric_literals: !!argv.sage,
   } as OutputOptions;
 
@@ -105,6 +108,8 @@ export default async function Compile({
       discard_asserts: argv.discard_asserts,
       module_cache_dir,
       jsage: argv.sage,
+      exact_integer_literals: true,
+      scoped_flags: { dict_literals: true },
     });
   }
 

@@ -132,6 +132,12 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
         ):
             return runtime.native_add(
                 runtime.bigint(left), runtime.bigint(right))
+        if (
+            runtime.strict_equal(runtime.jstype(left), 'number')
+            or runtime.strict_equal(runtime.jstype(right), 'number')
+        ):
+            return runtime.native_add(
+                runtime.number(left), runtime.number(right))
         return runtime.native_add(left, right)
     if (
         not runtime.strict_equal(runtime.jstype(left), 'number')
@@ -163,6 +169,14 @@ def ρσ_operator_neg(value: Any) -> Any:
     if _builtins_member_is_function(value, '__neg__'):
         return _builtins_call_member(value, '__neg__', [])
     return runtime.native_neg(value)
+
+
+def ρσ_operator_pos(value: Any) -> Any:
+    if _builtins_exact_integer_primitive(value):
+        return value
+    if _builtins_member_is_function(value, '__pos__'):
+        return _builtins_call_member(value, '__pos__', [])
+    return value
 
 
 def ρσ_operator_sub(left: Any, right: Any) -> Any:
@@ -197,6 +211,12 @@ def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
         ):
             return runtime.native_sub(
                 runtime.bigint(left), runtime.bigint(right))
+        if (
+            runtime.strict_equal(runtime.jstype(left), 'number')
+            or runtime.strict_equal(runtime.jstype(right), 'number')
+        ):
+            return runtime.native_sub(
+                runtime.number(left), runtime.number(right))
         return runtime.native_sub(left, right)
     if (
         not runtime.strict_equal(runtime.jstype(left), 'number')
@@ -284,6 +304,12 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
         ):
             return runtime.native_mul(
                 runtime.bigint(left), runtime.bigint(right))
+        if (
+            runtime.strict_equal(runtime.jstype(left), 'number')
+            or runtime.strict_equal(runtime.jstype(right), 'number')
+        ):
+            return runtime.native_mul(
+                runtime.number(left), runtime.number(right))
         return runtime.native_mul(left, right)
     if (
         not runtime.strict_equal(runtime.jstype(left), 'number')
@@ -475,13 +501,21 @@ def ρσ_operator_idiv_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_truediv(left: Any, right: Any) -> Any:
+    if runtime.is_math_element(left) or runtime.is_math_element(right):
+        return runtime.coercion_model.binOp('truediv', left, right)
+    if runtime.equals(right, 0):
+        raise runtime.zero_division_error('division by zero')
+    if (
+        runtime.strict_equal(runtime.jstype(left), 'bigint')
+        or runtime.strict_equal(runtime.jstype(right), 'bigint')
+    ):
+        return runtime.native_div(
+            runtime.number(left), runtime.number(right))
     if (
         runtime.strict_equal(runtime.jstype(left), 'number')
         and runtime.strict_equal(runtime.jstype(right), 'number')
     ):
         return runtime.native_div(left, right)
-    if runtime.is_math_element(left) or runtime.is_math_element(right):
-        return runtime.coercion_model.binOp('truediv', left, right)
     if _builtins_member_is_function(left, '__truediv__'):
         return _builtins_call_member(left, '__truediv__', [right])
     return runtime.native_div(left, right)
@@ -504,10 +538,118 @@ def ρσ_operator_truediv_exact(left: Any, right: Any) -> Any:
 def ρσ_operator_mod(left: Any, right: Any) -> Any:
     if _builtins_member_is_function(left, '__mod__'):
         return _builtins_call_member(left, '__mod__', [right])
+    if runtime.equals(right, 0):
+        raise runtime.zero_division_error(
+            'integer modulo by zero')
+    if (
+        _builtins_exact_integer_primitive(left)
+        and _builtins_exact_integer_primitive(right)
+    ):
+        left_bigint = runtime.bigint(left)
+        right_bigint = runtime.bigint(right)
+        remainder = runtime.native_mod(left_bigint, right_bigint)
+        if (
+            remainder != 0
+            and (
+                remainder < 0 and right_bigint > 0
+                or remainder > 0 and right_bigint < 0
+            )
+        ):
+            remainder += right_bigint
+        return runtime.normalize_integer(remainder)
     return runtime.native_mod(left, right)
 
 
+def ρσ_operator_matmul(left: Any, right: Any) -> Any:
+    if _builtins_member_is_function(left, '__matmul__'):
+        return _builtins_call_member(left, '__matmul__', [right])
+    if _builtins_member_is_function(right, '__rmatmul__'):
+        return _builtins_call_member(right, '__rmatmul__', [left])
+    raise TypeError("unsupported operand type(s) for @")
+
+
+def ρσ_operator_bitand(left: Any, right: Any) -> Any:
+    if (
+        _builtins_exact_integer_primitive(left)
+        and _builtins_exact_integer_primitive(right)
+    ):
+        return runtime.normalize_integer(
+            runtime.native_bitand(
+                runtime.bigint(left), runtime.bigint(right)))
+    return runtime.native_bitand(left, right)
+
+
+def ρσ_operator_bitor(left: Any, right: Any) -> Any:
+    if (
+        _builtins_exact_integer_primitive(left)
+        and _builtins_exact_integer_primitive(right)
+    ):
+        return runtime.normalize_integer(
+            runtime.native_bitor(
+                runtime.bigint(left), runtime.bigint(right)))
+    return runtime.native_bitor(left, right)
+
+
+def ρσ_operator_bitxor(left: Any, right: Any) -> Any:
+    if (
+        _builtins_exact_integer_primitive(left)
+        and _builtins_exact_integer_primitive(right)
+    ):
+        return runtime.normalize_integer(
+            runtime.native_bitxor(
+                runtime.bigint(left), runtime.bigint(right)))
+    return runtime.native_bitxor(left, right)
+
+
+def _builtins_shift_operands(left: Any, right: Any) -> list[Any]:
+    if (
+        not _builtins_exact_integer_primitive(left)
+        or not _builtins_exact_integer_primitive(right)
+    ):
+        raise TypeError('shift operands must be integers')
+    right_bigint = runtime.bigint(right)
+    if right_bigint < 0:
+        raise ValueError('negative shift count')
+    return [runtime.bigint(left), right_bigint]
+
+
+def ρσ_operator_lshift(left: Any, right: Any) -> Any:
+    operands = _builtins_shift_operands(left, right)
+    return runtime.normalize_integer(
+        runtime.native_lshift(operands[0], operands[1]))
+
+
+def ρσ_operator_rshift(left: Any, right: Any) -> Any:
+    operands = _builtins_shift_operands(left, right)
+    return runtime.normalize_integer(
+        runtime.native_rshift(operands[0], operands[1]))
+
+
 def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
+    if runtime.equals(right, 0):
+        raise runtime.zero_division_error(
+            'integer division or modulo by zero')
+    if (
+        _builtins_exact_integer_primitive(left)
+        and _builtins_exact_integer_primitive(right)
+        and (
+            runtime.strict_equal(runtime.jstype(left), 'bigint')
+            or runtime.strict_equal(runtime.jstype(right), 'bigint')
+        )
+    ):
+        left_bigint = runtime.bigint(left)
+        right_bigint = runtime.bigint(right)
+        quotient = runtime.native_div(left_bigint, right_bigint)
+        remainder = runtime.native_mod(left_bigint, right_bigint)
+        if (
+            remainder != 0
+            and (
+                left_bigint < 0 and right_bigint > 0
+                or left_bigint > 0 and right_bigint < 0
+            )
+        ):
+            quotient -= runtime.bigint(1)
+        return runtime.normalize_integer(quotient)
     if (
         runtime.strict_equal(runtime.jstype(left), 'number')
         and runtime.strict_equal(runtime.jstype(right), 'number')
@@ -533,12 +675,141 @@ def ρσ_print(*values: Any) -> None:
     runtime.console_object.log(str.join(' ', parts))
 
 
-def ρσ_int(value: Any, base: Any = runtime.undefined) -> Any:
+def _builtins_digit_value(character: _Str) -> _Int:
+    code = runtime.reflect.apply(
+        runtime.string_class.prototype.charCodeAt,
+        character,
+        [0],
+    )
+    if 48 <= code <= 57:
+        return code - 48
+    if 65 <= code <= 90:
+        return code - 65 + 10
+    if 97 <= code <= 122:
+        return code - 97 + 10
+    return -1
+
+
+def _builtins_parse_integer(value: _Str, base: Any) -> Any:
+    text = runtime.reflect.apply(
+        runtime.string_class.prototype.trim, value, [])
+    if not text:
+        raise ValueError('invalid literal for int()')
+    sign = runtime.bigint(1)
+    if text[0] == '+' or text[0] == '-':
+        if text[0] == '-':
+            sign = runtime.bigint(-1)
+        text = text[1:]
+    radix = 10 if base is runtime.undefined else _coerce_int_base(base)
+    inferred_base = radix == 0
+    consumed_prefix = False
+    if radix == 0:
+        radix = 10
+        if len(text) >= 2 and text[0] == '0':
+            marker = text[1]
+            if marker == 'x' or marker == 'X':
+                radix = 16
+                text = text[2:]
+                consumed_prefix = True
+            elif marker == 'o' or marker == 'O':
+                radix = 8
+                text = text[2:]
+                consumed_prefix = True
+            elif marker == 'b' or marker == 'B':
+                radix = 2
+                text = text[2:]
+                consumed_prefix = True
+    elif len(text) >= 2 and text[0] == '0':
+        marker = text[1]
+        if (
+            radix == 16 and (marker == 'x' or marker == 'X')
+            or radix == 8 and (marker == 'o' or marker == 'O')
+            or radix == 2 and (marker == 'b' or marker == 'B')
+        ):
+            text = text[2:]
+    if not text:
+        raise ValueError('invalid literal for int()')
+    if (
+        inferred_base
+        and not consumed_prefix
+        and len(text) > 1
+        and text[0] == '0'
+    ):
+        for character in text:
+            if character != '0' and character != '_':
+                raise ValueError(
+                    'leading zeros in decimal integer literals are not permitted'
+                )
+    answer = runtime.bigint(0)
+    previous_was_digit = False
+    saw_digit = False
+    for character in text:
+        if character == '_':
+            if not previous_was_digit:
+                raise ValueError('invalid underscore in integer literal')
+            previous_was_digit = False
+            continue
+        digit = _builtins_digit_value(character)
+        if digit < 0 or digit >= radix:
+            raise ValueError('invalid digit in integer literal')
+        answer = (
+            answer * runtime.bigint(radix)
+            + runtime.bigint(digit)
+        )
+        previous_was_digit = True
+        saw_digit = True
+    if not saw_digit or not previous_was_digit:
+        raise ValueError('invalid literal for int()')
+    return runtime.normalize_integer(sign * answer)
+
+
+def _coerce_int_base(base: Any) -> _Int:
+    if base is True:
+        base = 1
+    elif base is False:
+        base = 0
+    elif runtime.strict_equal(runtime.jstype(base), 'bigint'):
+        base = runtime.number(base)
+    if (
+        not runtime.strict_equal(runtime.jstype(base), 'number')
+        or not runtime.number.isInteger(base)
+        or base != 0 and (base < 2 or base > 36)
+    ):
+        raise ValueError('int() base must be >= 2 and <= 36, or 0')
+    return base
+
+
+def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
+    if value is True:
+        return 1
+    if value is False:
+        return 0
     if runtime.strict_equal(runtime.jstype(value), 'number'):
+        if base is not runtime.undefined:
+            raise TypeError("int() can't convert non-string with explicit base")
         answer = runtime.math.trunc(value)
+    elif runtime.strict_equal(runtime.jstype(value), 'bigint'):
+        if base is not runtime.undefined:
+            raise TypeError("int() can't convert non-string with explicit base")
+        return value
+    elif runtime.strict_equal(runtime.jstype(value), 'string'):
+        return _builtins_parse_integer(value, base)
+    elif (
+        value
+        and _builtins_member_is_function(value, 'decode')
+        and _builtins_member_is_function(value, '__len__')
+    ):
+        return _builtins_parse_integer(
+            _builtins_call_member(value, 'decode', ['ascii']), base)
+    elif value and _builtins_member_is_function(value, '__int__'):
+        if base is not runtime.undefined:
+            raise TypeError("int() can't convert non-string with explicit base")
+        answer = _builtins_call_member(value, '__int__', [])
     else:
-        radix = 10 if base is runtime.undefined else base
-        answer = runtime.parse_int(value, radix)
+        raise TypeError(
+            "int() argument must be a string, a bytes-like object "
+            "or a real number"
+        )
     if runtime.is_nan(answer):
         radix = 10 if base is runtime.undefined else base
         raise ValueError(
@@ -978,6 +1249,26 @@ def ρσ_hex(value: Any) -> _Str:
     return _builtins_integer_string(value, 16, '0x')
 
 
+def ρσ_oct(value: Any) -> _Str:
+    return _builtins_integer_string(value, 8, '0o')
+
+
+def ρσ_hash(value: Any) -> Any:
+    if value is True:
+        return 1
+    if value is False or value is None:
+        return 0
+    if _builtins_exact_integer_primitive(value):
+        modulus = runtime.bigint('2305843009213693951')
+        answer = runtime.native_mod(runtime.bigint(value), modulus)
+        if answer == -1:
+            answer = runtime.bigint(-2)
+        return runtime.normalize_integer(answer)
+    if _builtins_member_is_function(value, '__hash__'):
+        return ρσ_hash(_builtins_call_member(value, '__hash__', []))
+    raise TypeError('unhashable type')
+
+
 def ρσ_enumerate(iterable: Any) -> Iterator[list[Any]]:
     index = 0
     for value in iterable:
@@ -1229,7 +1520,12 @@ def ρσ_len(value: Any) -> _Int:
         or _builtins_get_member(value, 'constructor') is runtime.map_class
     ):
         return value.size
-    return runtime.object.keys(value).length
+    if (
+        runtime.strict_equal(runtime.jstype(value), 'object')
+        or runtime.strict_equal(runtime.jstype(value), 'function')
+    ):
+        return runtime.object.keys(value).length
+    raise TypeError("object has no len()")
 
 
 def ρσ_get_module(name: _Str) -> Any:
@@ -1241,10 +1537,42 @@ def ρσ_pow(
     right: Any,
     modulus: Any = runtime.undefined,
 ) -> Any:
-    answer = runtime.math.pow(left, right)
-    if modulus is not runtime.undefined:
-        answer %= modulus
-    return answer
+    if modulus is runtime.undefined:
+        if (
+            _builtins_exact_integer_primitive(left)
+            and _builtins_exact_integer_primitive(right)
+        ):
+            return runtime.normalize_integer(
+                runtime.native_pow(
+                    runtime.bigint(left), runtime.bigint(right)))
+        return runtime.math.pow(left, right)
+
+    if (
+        not _builtins_exact_integer_primitive(left)
+        or not _builtins_exact_integer_primitive(right)
+        or not _builtins_exact_integer_primitive(modulus)
+    ):
+        raise TypeError(
+            'pow() 3rd argument not allowed unless all arguments are integers')
+    exponent = runtime.bigint(right)
+    modulus_bigint = runtime.bigint(modulus)
+    if modulus_bigint == 0:
+        raise ValueError('pow() 3rd argument cannot be 0')
+    if exponent < 0:
+        raise ValueError('base is not invertible for the given modulus')
+    base = runtime.native_mod(runtime.bigint(left), modulus_bigint)
+    answer = runtime.native_mod(runtime.bigint(1), modulus_bigint)
+    while exponent > 0:
+        if runtime.native_bitand(exponent, runtime.bigint(1)) != 0:
+            answer = runtime.native_mod(answer * base, modulus_bigint)
+        exponent = runtime.native_rshift(exponent, runtime.bigint(1))
+        if exponent > 0:
+            base = runtime.native_mod(base * base, modulus_bigint)
+    if answer < 0 and modulus_bigint > 0:
+        answer += modulus_bigint
+    elif answer > 0 and modulus_bigint < 0:
+        answer += modulus_bigint
+    return runtime.normalize_integer(answer)
 
 
 def ρσ_type(value: Any) -> Any:
@@ -1252,20 +1580,12 @@ def ρσ_type(value: Any) -> Any:
 
 
 def ρσ_divmod(left: Any, right: Any) -> tuple[Any, Any]:
-    if (
-        runtime.strict_equal(runtime.jstype(left), 'number')
-        and runtime.strict_equal(runtime.jstype(right), 'number')
-    ):
-        if runtime.strict_equal(right, 0):
-            raise runtime.zero_division_error(
-                'integer division or modulo by zero')
-        quotient = runtime.math.floor(runtime.native_div(left, right))
-        return quotient, left - quotient * right
     if runtime.equals(right, 0):
         raise runtime.zero_division_error(
             'integer division or modulo by zero')
-    quotient = runtime.math.floor(runtime.native_div(left, right))
-    return quotient, left - quotient * right
+    quotient = ρσ_operator_floordiv(left, right)
+    remainder = ρσ_operator_mod(left, right)
+    return runtime.math_tuple([quotient, remainder])
 
 
 def ρσ_factor(value: Any) -> Any:
@@ -1395,6 +1715,8 @@ ord = ρσ_ord
 chr = ρσ_chr
 bin = ρσ_bin
 hex = ρσ_hex
+oct = ρσ_oct
+hash = ρσ_hash
 callable = ρσ_callable
 enumerate = ρσ_enumerate
 iter = ρσ_iter

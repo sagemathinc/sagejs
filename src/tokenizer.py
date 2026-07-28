@@ -36,7 +36,7 @@ OPERATORS = make_predicate([
     "in", "instanceof", "typeof", "new", "void", "del", "+", "-", "not", "~",
     "&", "|", "^^", "^", "**", "*", "//", "/", "%", ">>", "<<", ">>>", "<",
     ">", "<=", ">=", "==", "is", "!=", "=", "+=", "-=", "//=", "/=", "*=",
-    "%=", ">>=", "<<=", ">>>=", "|=", "^=", "&=", "and", "or", "@", "->"
+    "%=", ">>=", "<<=", ">>>=", "|=", "^=", "&=", "@=", "and", "or", "@", "->"
 ])
 
 OP_MAP = {
@@ -204,6 +204,8 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
         False,
         'indentation_matters':
         r'%js [ true ]',
+        'delimiter_depth':
+        0,
         'cached_whitespace':
         "",
         'prev':
@@ -284,6 +286,7 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
             'pos': S['tokpos'],
             'endpos': S['pos'],
             'nlb': S['newline_before'],
+            'delimiter_depth': S['delimiter_depth'],
             'file': filename,
             'leading_whitespace': S['whitespace_before'][-1] or '',
         }
@@ -306,6 +309,7 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
                 S['indentation_matters'].push(True)
 
             if value is "[":
+                S['delimiter_depth'] += 1
                 if S['prev'] and (S['prev'].type is "name" or
                                   (S['prev'].type is 'punc'
                                    and S['prev'].value in ')]')):
@@ -314,11 +318,16 @@ def tokenizer(raw_text: str, filename: str) -> Callable[[], Any]:
                     S['index_or_slice'].push(False)
                 S['indentation_matters'].push(False)
             elif value is "{" or value is "(":
+                S['delimiter_depth'] += 1
                 S['indentation_matters'].push(False)
             elif value is "]":
+                if S['delimiter_depth'] > 0:
+                    S['delimiter_depth'] -= 1
                 S['index_or_slice'].pop()
                 S['indentation_matters'].pop()
             elif value is "}" or value is ")":
+                if S['delimiter_depth'] > 0:
+                    S['delimiter_depth'] -= 1
                 S['indentation_matters'].pop()
         S['prev'] = AST_Token(ret)
         return S['prev']

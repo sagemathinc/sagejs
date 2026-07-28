@@ -52,20 +52,28 @@ class FiniteFieldElement(sage.Element):
             value = value._value
 
         if isinstance(value, sage.Rational):
-            numerator = value._numerator % parent._modulus
-            denominator = value._denominator % parent._modulus
+            numerator = runtime.native_mod(
+                value._numerator, parent._modulus)
+            denominator = runtime.native_mod(
+                value._denominator, parent._modulus)
             if numerator < 0:
-                numerator += parent._modulus
+                numerator = runtime.native_add(
+                    numerator, parent._modulus)
             if denominator < 0:
-                denominator += parent._modulus
-            residue = numerator * runtime.modular_inverse(
-                denominator, parent._modulus)
+                denominator = runtime.native_add(
+                    denominator, parent._modulus)
+            residue = runtime.native_mul(
+                numerator,
+                runtime.modular_inverse(
+                    denominator, parent._modulus),
+            )
         else:
             residue = runtime.integer_bigint(value)
 
-        residue %= parent._modulus
+        residue = runtime.native_mod(residue, parent._modulus)
         if residue < 0:
-            residue += parent._modulus
+            residue = runtime.native_add(
+                residue, parent._modulus)
         self._parent = parent
         self._value = residue
         runtime.object.freeze(self)
@@ -74,27 +82,37 @@ class FiniteFieldElement(sage.Element):
         self, other: FiniteFieldElement,
     ) -> FiniteFieldElement:
         return FiniteFieldElement(
-            self._parent, self._value + other._value)
+            self._parent,
+            runtime.native_add(self._value, other._value),
+        )
 
     def _sub_(
         self, other: FiniteFieldElement,
     ) -> FiniteFieldElement:
         return FiniteFieldElement(
-            self._parent, self._value - other._value)
+            self._parent,
+            runtime.native_sub(self._value, other._value),
+        )
 
     def _mul_(
         self, other: FiniteFieldElement,
     ) -> FiniteFieldElement:
         return FiniteFieldElement(
-            self._parent, self._value * other._value)
+            self._parent,
+            runtime.native_mul(self._value, other._value),
+        )
 
     def _truediv_(
         self, other: FiniteFieldElement,
     ) -> FiniteFieldElement:
         return _new_prime_field_element(
             self._parent,
-            self._value * runtime.modular_inverse(
-                other._value, self._parent._modulus))
+            runtime.native_mul(
+                self._value,
+                runtime.modular_inverse(
+                    other._value, self._parent._modulus),
+            ),
+        )
 
     def _eq_(self, other: FiniteFieldElement) -> bool:
         return self._value == other._value

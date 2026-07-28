@@ -179,7 +179,9 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       private_scope: false,
       beautify: true,
       keep_docstrings: true,
-      exact_integers: !!options.sage,
+      exact_integers: true,
+      rational_division: !!options.sage,
+      python_tuples: true,
       baselib_plain: keepBaselib
         ? readFileSync(join(libraryPath, "baselib-plain-pretty.js"), "utf-8")
         : undefined,
@@ -330,7 +332,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       source = source.slice(5).trimLeft();
     }
     const classes = toplevel?.classes;
-    const scoped_flags = toplevel?.scoped_flags;
+    const scoped_flags = toplevel?.scoped_flags ?? { dict_literals: true };
     try {
       toplevel = PyLang.parse(source, {
         filename: runOptions.filename ?? "<repl>",
@@ -342,6 +344,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
         classes,
         scoped_flags,
         jsage: options.sage,
+        exact_integer_literals: true,
         tokens: options.tokens,
       });
     } catch (err) {

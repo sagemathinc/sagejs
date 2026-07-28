@@ -23,6 +23,9 @@ class Exception(runtime.error):
     def __repr__(self) -> str:
         return self.name + ': ' + self.message
 
+    def __str__(self) -> str:
+        return self.message
+
 
 class AttributeError(Exception):
     pass
@@ -53,6 +56,10 @@ class AssertionError(Exception):
 
 
 class ZeroDivisionError(Exception):
+    pass
+
+
+class OverflowError(Exception):
     pass
 
 

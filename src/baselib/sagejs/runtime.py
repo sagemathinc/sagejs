@@ -43,6 +43,18 @@ def native_add(left, right):
     return r"%js left + right"
 
 
+def native_bitand(left, right):
+    return r"%js left & right"
+
+
+def native_bitor(left, right):
+    return r"%js left | right"
+
+
+def native_bitxor(left, right):
+    return r"%js left ^ right"
+
+
 def native_div(left, right):
     return r"%js left / right"
 
@@ -65,6 +77,14 @@ def native_pow(left, right):
 
 def native_sub(left, right):
     return r"%js left - right"
+
+
+def native_lshift(left, right):
+    return r"%js left << right"
+
+
+def native_rshift(left, right):
+    return r"%js left >> right"
 
 
 array = Array

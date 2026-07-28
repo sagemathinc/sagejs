@@ -92,6 +92,29 @@ assert.equal(
 assert.match(run(["--python"], "print(2^3)\nprint(2**3)\n"), /1\s+8\s*$/);
 assert.equal(
   run(
+    ["--python"],
+    [
+      "n = 923098402834028349082348209384",
+      "print(n + 1)",
+      "print(-5 // 2, -5 % 2)",
+      "print(pow(555557, 1000002, 1000003))",
+      "print(int.from_bytes((258).to_bytes(2, 'big'), 'big'))",
+      "print((1, 2) + (3,))",
+      "print({2**70: 1})",
+      "",
+    ].join("\n"),
+  ).trim(),
+  [
+    "923098402834028349082348209385",
+    "-3 1",
+    "1",
+    "258",
+    "(1, 2, 3)",
+    "{1180591620717411303424: 1}",
+  ].join("\n"),
+);
+assert.equal(
+  run(
     [],
     [
       "sage: print(2^3)",

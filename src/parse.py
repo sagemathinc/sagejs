@@ -125,6 +125,7 @@ ERROR_CLASSES = {
     'UnicodeDecodeError': {},
     'AssertionError': {},
     'ZeroDivisionError': {},
+    'OverflowError': {},
     'StopIteration': {},
 }
 COMMON_STATIC = static_predicate('call apply bind toString')
@@ -133,7 +134,8 @@ FORBIDDEN_CLASS_VARS = 'prototype constructor'.split(' ')
 # -----[ Parser (constants) ]-----
 UNARY_PREFIX = make_predicate('typeof void delete ~ - + ! @')
 
-ASSIGNMENT = make_predicate('= += -= /= //= *= %= >>= <<= >>>= |= ^= &=')
+ASSIGNMENT = make_predicate(
+    '= += -= /= //= *= @= %= >>= <<= >>>= |= ^= &=')
 
 
 def operator_to_precedence(a):
@@ -152,14 +154,14 @@ PRECEDENCE = operator_to_precedence([
     # lowest precedence
     ["||"],
     ["&&"],
+    ["==", "===", "!=", "!==", "<", ">", "<=", ">=", "in", "nin",
+     "instanceof"],
     ["|"],
     ["^"],
     ["&"],
-    ["==", "===", "!=", "!=="],
-    ["<", ">", "<=", ">=", "in", "nin", "instanceof"],
     [">>", "<<", ">>>"],
     ["+", "-"],
-    ["*", "/", "//", "%"],
+    ["*", "@", "/", "//", "%"],
     ["**"]
     # highest precedence
 ])
@@ -239,12 +241,17 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'native_method': 'ρσ_native_method',
     'native_method_adapter': 'ρσ_native_method_adapter',
     'native_add': 'ρσ_native_add',
+    'native_bitand': 'ρσ_native_bitand',
+    'native_bitor': 'ρσ_native_bitor',
+    'native_bitxor': 'ρσ_native_bitxor',
     'native_div': 'ρσ_native_div',
     'native_mod': 'ρσ_native_mod',
     'native_mul': 'ρσ_native_mul',
     'native_neg': 'ρσ_native_neg',
     'native_pow': 'ρσ_native_pow',
     'native_sub': 'ρσ_native_sub',
+    'native_lshift': 'ρσ_native_lshift',
+    'native_rshift': 'ρσ_native_rshift',
     'normalize_integer': 'ρσ_normalize_integer',
     'number': 'Number',
     'object': 'Object',
@@ -2077,13 +2084,16 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         })
                     ]
                 })
-            if not S.scoped_flags.get('numbers'):
+            if (
+                not S.scoped_flags.get('numbers')
+                and not options.exact_integer_literals
+            ):
                 return AST_Number({
                     'start': tok,
                     'end': tok,
                     'value': tok.value
                 })
-            constructor = 'Number'
+            constructor = 'Integer' if tok.is_integer else 'Number'
             if options.jsage:
                 constructor = 'Integer' if tok.is_integer else 'RealNumber'
             return AST_Call({
@@ -2769,11 +2779,16 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     return ret
                 elif tmp_ in {
                         'ρσ_native_add': '+',
+                        'ρσ_native_bitand': '&',
+                        'ρσ_native_bitor': '|',
+                        'ρσ_native_bitxor': '^',
                         'ρσ_native_div': '/',
                         'ρσ_native_mod': '%',
                         'ρσ_native_mul': '*',
                         'ρσ_native_pow': '**',
                         'ρσ_native_sub': '-',
+                        'ρσ_native_lshift': '<<',
+                        'ρσ_native_rshift': '>>',
                 }:
                     args = func_call_list()
                     if args.length is not 2:
@@ -2784,11 +2799,16 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'native_operator': True,
                         'operator': {
                             'ρσ_native_add': '+',
+                            'ρσ_native_bitand': '&',
+                            'ρσ_native_bitor': '|',
+                            'ρσ_native_bitxor': '^',
                             'ρσ_native_div': '/',
                             'ρσ_native_mod': '%',
                             'ρσ_native_mul': '*',
                             'ρσ_native_pow': '**',
                             'ρσ_native_sub': '-',
+                            'ρσ_native_lshift': '<<',
+                            'ρσ_native_rshift': '>>',
                         }[tmp_],
                         'right': args[1],
                         'end': prev()
@@ -2999,7 +3019,19 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         })
 
     def expr_op(left, min_prec, no_in):
+        if (
+            is_node_type(left, AST_EmptyStatement)
+            and left.stype is '@'
+        ):
+            return left
         op = S.token.value if is_('operator') else None
+        if (
+            S.token.nlb
+            and S.token.delimiter_depth is 0
+        ):
+            op = None
+        if S.parsing_decorator and op is '@':
+            op = None
         if op is "!" and peek().type is "operator" and peek().value is "in":
             next()
             S.token.value = op = 'nin'
@@ -3124,6 +3156,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     return AST_Array({
                         'start': start,
                         'elements': left,
+                        'is_tuple': True,
                         'end': prev(),
                     })
                 if is_node_type(expr, AST_Assign):
@@ -3269,6 +3302,8 @@ def parse(text, options):
             'jsage':
             False,  # if true, do some of what the Sage preparser does, e.g., ^ --> **.
             'tokens': False,  # if true, show every token as it is parsed
+            'exact_integer_literals':
+            False,  # exact Python integers without enabling Sage syntax
         })
     import_dirs = [x for x in options.import_dirs]
     for location in r'%js [options.libdir, options.basedir]':

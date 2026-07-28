@@ -470,7 +470,7 @@ def string_format(
             next_index += 1
         if _value_type_is(value, 'function'):
             value = value()
-        answer = _native_string(value)
+        answer = ρσ_str(value)
         if specification:
             answer = _apply_formatting(
                 value, specification, keywords)
@@ -887,6 +887,145 @@ def _str_zfill(string: Any, width: int) -> _Str:
     return _repeat('0', max(0, width - len(string))) + string
 
 
+def _integer_format(value: Any, base: int, uppercase: bool) -> _Str:
+    if value is True:
+        value = 1
+    elif value is False:
+        value = 0
+    if not (
+        _value_type_is(value, 'number')
+        or _value_type_is(value, 'bigint')
+    ):
+        int_method = runtime.reflect.get(value, '__int__')
+        if not _value_type_is(int_method, 'function'):
+            raise TypeError('%d format: a real number is required')
+        value = runtime.reflect.apply(int_method, value, [])
+    negative = value < 0
+    integer = runtime.bigint(value)
+    if negative:
+        integer = -integer
+    boxed_integer = runtime.reflect.apply(
+        runtime.object, runtime.undefined, [integer])
+    digits = runtime.reflect.apply(
+        runtime.reflect.get(boxed_integer, 'toString'),
+        integer,
+        [base],
+    )
+    if uppercase:
+        digits = _upper(digits)
+    return ('-' if negative else '') + digits
+
+
+def _str_percent_format(format_string: Any, operands: Any) -> _Str:
+    format_string = _native_string(format_string)
+    values = operands if runtime.array.isArray(operands) else [operands]
+    value_index = 0
+    answer = ''
+    position = 0
+    while position < len(format_string):
+        if format_string[position] != '%':
+            answer += format_string[position]
+            position += 1
+            continue
+        position += 1
+        if position < len(format_string) and format_string[position] == '%':
+            answer += '%'
+            position += 1
+            continue
+        flags = ''
+        while (
+            position < len(format_string)
+            and format_string[position] in '#0-+ '
+        ):
+            flags += format_string[position]
+            position += 1
+        width_text = ''
+        while (
+            position < len(format_string)
+            and '0' <= format_string[position] <= '9'
+        ):
+            width_text += format_string[position]
+            position += 1
+        precision = runtime.undefined
+        if position < len(format_string) and format_string[position] == '.':
+            position += 1
+            precision_text = ''
+            while (
+                position < len(format_string)
+                and '0' <= format_string[position] <= '9'
+            ):
+                precision_text += format_string[position]
+                position += 1
+            precision = int(precision_text or '0')
+        if position >= len(format_string):
+            raise ValueError('incomplete format')
+        conversion = format_string[position]
+        position += 1
+        if value_index >= len(values):
+            raise TypeError('not enough arguments for format string')
+        value = values[value_index]
+        value_index += 1
+        prefix = ''
+        if conversion in 'diuoxX':
+            base = 10
+            if conversion in 'xX':
+                base = 16
+            elif conversion == 'o':
+                base = 8
+            replacement = _integer_format(
+                value, base, conversion == 'X')
+            negative = replacement[0] == '-'
+            if negative:
+                replacement = replacement[1:]
+                prefix = '-'
+            elif '+' in flags:
+                prefix = '+'
+            elif ' ' in flags:
+                prefix = ' '
+            if '#' in flags:
+                if conversion == 'x':
+                    prefix += '0x'
+                elif conversion == 'X':
+                    prefix += '0X'
+                elif conversion == 'o':
+                    prefix += '0o'
+            if precision is not runtime.undefined:
+                replacement = _repeat(
+                    '0', max(0, precision - len(replacement))
+                ) + replacement
+        elif conversion == 's':
+            replacement = str(value)
+            if precision is not runtime.undefined:
+                replacement = replacement[:precision]
+        elif conversion == 'r':
+            replacement = repr(value)
+            if precision is not runtime.undefined:
+                replacement = replacement[:precision]
+        elif conversion == 'c':
+            replacement = (
+                value
+                if _value_type_is(value, 'string')
+                else chr(value)
+            )
+            if len(replacement) != 1:
+                raise TypeError('%c requires int or char')
+        else:
+            raise ValueError(
+                'unsupported format character ' + conversion)
+        width = int(width_text or '0')
+        padding = max(0, width - len(prefix) - len(replacement))
+        if '-' in flags:
+            replacement = prefix + replacement + _repeat(' ', padding)
+        elif '0' in flags and precision is runtime.undefined:
+            replacement = prefix + _repeat('0', padding) + replacement
+        else:
+            replacement = _repeat(' ', padding) + prefix + replacement
+        answer += replacement
+    if value_index != len(values):
+        raise TypeError('not all arguments converted during string formatting')
+    return answer
+
+
 def _define_string_method(
     name: _Str,
     implementation: Any,
@@ -900,6 +1039,7 @@ def _define_string_method(
 
 
 _define_string_method('format', string_format)
+_define_string_method('__mod__', _str_percent_format)
 _define_string_method('capitalize', _str_capitalize)
 _define_string_method('center', _str_center)
 _define_string_method('count', _str_count)
@@ -928,6 +1068,17 @@ _define_string_method('rsplit', _str_rsplit)
 _define_string_method('splitlines', _str_splitlines)
 _define_string_method('swapcase', _str_swapcase)
 _define_string_method('zfill', _str_zfill)
+
+runtime.reflect.set(
+    runtime.string_class.prototype,
+    'format',
+    runtime.native_method(string_format),
+)
+runtime.reflect.set(
+    runtime.string_class.prototype,
+    '__mod__',
+    runtime.native_method(_str_percent_format),
+)
 
 
 runtime.reflect.set(ρσ_str, 'ascii_lowercase', 'abcdefghijklmnopqrstuvwxyz')

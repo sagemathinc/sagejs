@@ -6,6 +6,8 @@ from ast_types import AST_Binary, AST_Number, AST_String, is_node_type
 
 
 def print_array(self, output):
+    if output.options.python_tuples and self.is_tuple:
+        output.print('ρσ_math_tuple(')
     output.print('ρσ_list_decorate')
 
     def f_list_decorate():
@@ -24,6 +26,8 @@ def print_array(self, output):
         output.with_square(f_list_decorate0)
 
     output.with_parens(f_list_decorate)
+    if output.options.python_tuples and self.is_tuple:
+        output.print(')')
 
 
 def print_obj_literal_slow(self, output):

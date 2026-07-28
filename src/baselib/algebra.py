@@ -67,7 +67,7 @@ def bigint_gcd(left: int, right: int) -> int:
     if right < 0:
         right = -right
     while right != 0:
-        left, right = right, left % right
+        left, right = right, runtime.native_mod(left, right)
     return left
 
 
@@ -509,6 +509,8 @@ coercion_model.register(ZZ, QQ, _integer_to_rational)
 
 
 def modular_inverse(value: int, modulus: int) -> int:
+    value = runtime.bigint(value)
+    modulus = runtime.bigint(modulus)
     old_remainder = value
     remainder = modulus
     old_coefficient = runtime.bigint(1)
@@ -529,22 +531,27 @@ def modular_inverse(value: int, modulus: int) -> int:
             'inverse of Mod(0, ' + str(modulus)
             + ') does not exist'
         )
-    old_coefficient %= modulus
+    old_coefficient = runtime.native_mod(old_coefficient, modulus)
     if old_coefficient < 0:
-        return old_coefficient + modulus
+        return runtime.native_add(old_coefficient, modulus)
     return old_coefficient
 
 
 def modular_power(
     value: int, exponent: int, modulus: int,
 ) -> int:
+    value = runtime.bigint(value)
+    exponent = runtime.bigint(exponent)
+    modulus = runtime.bigint(modulus)
     result = runtime.bigint(1)
     while exponent > 0:
-        if exponent & runtime.bigint(1):
-            result = (result * value) % modulus
-        exponent >>= runtime.bigint(1)
+        if runtime.native_bitand(exponent, runtime.bigint(1)):
+            result = runtime.native_mod(
+                runtime.native_mul(result, value), modulus)
+        exponent = runtime.native_rshift(exponent, runtime.bigint(1))
         if exponent != 0:
-            value = (value * value) % modulus
+            value = runtime.native_mod(
+                runtime.native_mul(value, value), modulus)
     return result
 
 
@@ -559,7 +566,18 @@ def math_tuple(values: list[Any]) -> Any:
         )
         return '(' + entries_text + suffix + ')'
 
+    def tuple_add(other: Any) -> Any:
+        if (
+            not runtime.array.isArray(other)
+            or not runtime.object.isFrozen(other)
+        ):
+            raise TypeError('can only concatenate tuple to tuple')
+        combined = runtime.reflect.apply(
+            runtime.array.prototype.concat, values, [other])
+        return math_tuple(combined)
+
     runtime.object.defineProperties(values, {
+        '__add__': {'value': tuple_add},
         '__repr__': {'value': tuple_repr},
         '__str__': {'value': tuple_repr},
         'toString': {'value': tuple_repr},

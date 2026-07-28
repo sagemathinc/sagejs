@@ -55,6 +55,8 @@ class AST_Token(AST):
         '',
         'nlb':
         'True iff there was a newline before this token',
+        'delimiter_depth':
+        'Number of open (), [], or {} delimiters before this token',
         'comments_before':
         'True iff there were comments before this token',
         'file':
@@ -1038,7 +1040,10 @@ class AST_Assign(AST_Binary):
 
 class AST_Array(AST_Node):
     "An array literal"
-    properties = {'elements': "[AST_Node*] array of elements"}
+    properties = {
+        'elements': "[AST_Node*] array of elements",
+        'is_tuple': "[boolean] whether this array represents a tuple literal",
+    }
 
     def _walk(self, visitor):
         def f_array():

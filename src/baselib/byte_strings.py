@@ -114,6 +114,8 @@ def _coerce_index(value: Any) -> _Int:
     if value is False:
         return 0
     if runtime.strict_equal(runtime.jstype(value), 'bigint'):
+        if value > 9007199254740991 or value < -9007199254740991:
+            raise OverflowError('Python int too large to convert to C ssize_t')
         value = runtime.number(value)
     if (
         not runtime.strict_equal(runtime.jstype(value), 'number')
@@ -925,6 +927,88 @@ def ρσ_bytearray(
     return SageByteArray(immutable._values[:])
 
 
+def _int_to_bytes(
+    self: Any,
+    length: Any = 1,
+    byteorder: _Str = 'big',
+    signed: _Bool = False,
+) -> SageBytes:
+    byte_count = _coerce_index(length)
+    if byte_count < 0:
+        raise ValueError('length argument must be non-negative')
+    if byteorder != 'little' and byteorder != 'big':
+        raise ValueError("byteorder must be either 'little' or 'big'")
+
+    value = runtime.bigint(self)
+    bit_count = runtime.bigint(byte_count * 8)
+    modulus = runtime.native_lshift(runtime.bigint(1), bit_count)
+    if signed:
+        if byte_count == 0:
+            minimum = runtime.bigint(0)
+            maximum = runtime.bigint(0)
+        else:
+            sign_limit = runtime.native_lshift(
+                runtime.bigint(1),
+                runtime.native_sub(bit_count, runtime.bigint(1)),
+            )
+            minimum = runtime.native_neg(sign_limit)
+            maximum = runtime.native_sub(sign_limit, runtime.bigint(1))
+    else:
+        minimum = runtime.bigint(0)
+        maximum = runtime.native_sub(modulus, runtime.bigint(1))
+    if value < minimum or value > maximum:
+        raise OverflowError('int too big to convert')
+    if value < 0:
+        value = runtime.native_add(value, modulus)
+
+    values = []
+    for _unused in range(byte_count):
+        values.append(runtime.number(
+            runtime.native_bitand(value, runtime.bigint(255))))
+        value = runtime.native_rshift(value, runtime.bigint(8))
+    if byteorder == 'big':
+        values.reverse()
+    return SageBytes(values)
+
+
+def _int_from_bytes(
+    source: Any,
+    byteorder: _Str = 'big',
+    signed: _Bool = False,
+) -> Any:
+    if byteorder != 'little' and byteorder != 'big':
+        raise ValueError("byteorder must be either 'little' or 'big'")
+    if isinstance(source, SageBytes) or isinstance(source, SageByteArray):
+        values = source._values[:]
+    else:
+        values = []
+        for item in source:
+            byte = _coerce_index(item)
+            if byte < 0 or byte > 255:
+                raise ValueError('bytes must be in range(0, 256)')
+            values.append(byte)
+    ordered = values[:] if byteorder == 'big' else values[::-1]
+    answer = runtime.bigint(0)
+    for byte in ordered:
+        answer = runtime.native_add(
+            runtime.native_lshift(answer, runtime.bigint(8)),
+            runtime.bigint(byte),
+        )
+    if (
+        signed
+        and len(ordered) > 0
+        and ordered[0] & 128
+    ):
+        answer = runtime.native_sub(
+            answer,
+            runtime.native_lshift(
+                runtime.bigint(1),
+                runtime.bigint(len(ordered) * 8),
+            ),
+        )
+    return runtime.normalize_integer(answer)
+
+
 runtime.reflect.set(
     ρσ_bytes,
     'prototype',
@@ -945,6 +1029,19 @@ for _method_name in [
 
 bytes = ρσ_bytes
 bytearray = ρσ_bytearray
+
+_int_to_bytes_native = runtime.native_method(_int_to_bytes)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.number, 'prototype'),
+    'to_bytes',
+    _int_to_bytes_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.bigint, 'prototype'),
+    'to_bytes',
+    _int_to_bytes_native,
+)
+runtime.reflect.set(runtime.int_builtin, 'from_bytes', _int_from_bytes)
 
 runtime.set_class_repr(SageBytes, "<class 'bytes'>")
 runtime.set_class_repr(SageByteArray, "<class 'bytearray'>")

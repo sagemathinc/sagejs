@@ -60,6 +60,8 @@ output_stream_defaults = {
     'module_cache_dir': '',
     'write_name': True,
     'exact_integers': False,
+    'rational_division': False,
+    'python_tuples': False,
     'pool_numeric_literals': False,
 }
 
