@@ -296,6 +296,34 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
+    # Primitive values cannot override Python's arithmetic methods. Handle
+    # them before the general parent/coercion and special-method machinery;
+    # overflowing safe integers still promote to BigInt below.
+    left_type = runtime.jstype(left)
+    right_type = runtime.jstype(right)
+    if (
+        runtime.strict_equal(left_type, right_type)
+        and (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+            or runtime.strict_equal(left_type, 'string')
+        )
+    ):
+        result = runtime.native_add(left, right)
+        if not runtime.strict_equal(left_type, 'number'):
+            return result
+        if (
+            result <= runtime.number.MAX_SAFE_INTEGER
+            and result >= runtime.number.MIN_SAFE_INTEGER
+        ):
+            return result
+        if (
+            runtime.number.isSafeInteger(left)
+            and runtime.number.isSafeInteger(right)
+        ):
+            return runtime.native_add(
+                runtime.bigint(left), runtime.bigint(right))
+        return result
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('add', left, right)
     if _builtins_special_is_function(left, '__add__'):
@@ -306,8 +334,6 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
         result = _builtins_call_special(right, '__radd__', [left])
         if result is not NotImplemented:
             return result
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
     if (
         (
             runtime.strict_equal(left_type, 'string')

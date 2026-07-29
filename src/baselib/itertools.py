@@ -11,7 +11,38 @@ from typing import Any, Callable, Iterable, Iterator
 import sagejs.runtime as runtime
 
 
+def _sum_exact_integer_range(iterable: Any, start: Any) -> Any:
+    """Sum an integer range exactly without materializing or iterating it."""
+    length = iterable._length
+    if length == 0:
+        return start
+    first = iterable.start
+    step = iterable.step
+    last = runtime.operator_add_exact(
+        first,
+        runtime.operator_mul_exact(length - 1, step),
+    )
+    pair = runtime.operator_add_exact(first, last)
+    if length % 2 == 0:
+        total = runtime.operator_mul_exact(pair, length // 2)
+    else:
+        total = runtime.operator_mul_exact(pair // 2, length)
+    return runtime.operator_add_exact(start, total)
+
+
 def sum(iterable: Iterable[Any], start: Any = 0) -> Any:
+    start_type = runtime.jstype(start)
+    if (
+        getattr(iterable, '__sagejs_range__', False)
+        and (
+            start_type == 'bigint'
+            or (
+                start_type == 'number'
+                and runtime.number.isSafeInteger(start)
+            )
+        )
+    ):
+        return _sum_exact_integer_range(iterable, start)
     result = start
     for value in iterable:
         result = runtime.operator_add_exact(result, value)

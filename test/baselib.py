@@ -119,10 +119,33 @@ assrt.equal(sum([BigInt(2), BigInt(3)], BigInt(2)), 7)
 assrt.equal(sum(['a', 'b'], 'x'), 'xab')
 assrt.equal(sum([BigInt(2), BigInt(3)], BigInt(0)), 5)
 assrt.equal(sum(range(1, 101)), 5050)
+assrt.equal(sum(range(10, 0, -2)), 30)
+assrt.equal(sum(range(-5, 8, 3)), 5)
+assrt.equal(sum(range(10), 7), 52)
+assrt.equal(sum(range(10), 0.5), 45.5)
+assrt.equal(
+    sum(range(
+        BigInt('9007199254740989'),
+        BigInt('9007199254740992'),
+    )),
+    BigInt('27021597764222970'))
 assrt.equal(sum(['x', 'y', 'z'], ''), 'xyz')
 assrt.equal(
     sum([9007199254740991, 1]),
     BigInt('9007199254740992'))
+
+
+class RangeAccumulator:
+    def __init__(self):
+        self.values = []
+
+    def __add__(self, value):
+        self.values.append(value)
+        return self
+
+
+range_accumulator = sum(range(4), RangeAccumulator())
+assrt.deepEqual(range_accumulator.values, [0, 1, 2, 3])
 
 # Exact integer arithmetic promotes mixed and overflowing Number values.
 assrt.equal(ρσ_operator_add_exact(BigInt(5), 1), BigInt(6))
