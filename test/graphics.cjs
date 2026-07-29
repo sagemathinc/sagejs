@@ -34,6 +34,10 @@ async function main() {
     assert.equal(composed.display?.data.data[1].marker.color, "black");
     assert.equal(composed.display?.data.layout.showlegend, true);
     assert.equal((await session.evaluate("len(g)")).repr, "2");
+    assert.equal((await session.evaluate("g.xmin()")).repr, "0");
+    assert.equal((await session.evaluate("g.xmax()")).repr, "1");
+    assert.equal((await session.evaluate("g.ymin()")).repr, "0");
+    assert.equal((await session.evaluate("g.ymax()")).repr, "1");
     assert.equal(
       (await session.evaluate("g[0]")).repr,
       "Line defined by 2 points",
@@ -60,7 +64,12 @@ async function main() {
     assert.deepEqual(listed.display?.data.data[0].y, [1, 4, 9]);
 
     const labels = await session.evaluate(
-      "graphics_array([[text('A', (0, 1)), text('B', (1, 0))]])",
+      [
+        "labels = graphics_array([[",
+        "    text('A', (0, 1)), text('B', (1, 0))",
+        "]])",
+        "labels",
+      ].join("\n"),
     );
     assert.equal(
       labels.repr,
@@ -70,11 +79,51 @@ async function main() {
     assert.equal(labels.display?.data.data[0].mode, "text");
     assert.equal(labels.display?.data.data[0].text[0], "A");
     assert.equal(labels.display?.data.data[1].xaxis, "x2");
+    assert.equal((await session.evaluate("len(list(labels))")).repr, "2");
+    assert.equal(
+      (await session.evaluate("labels[-1]")).repr,
+      "Graphics object consisting of 1 graphics primitive",
+    );
+
+    const polygonPlot = await session.evaluate(
+      "polygon([(0, 0), (1, 0), (0, 1)], color='green')",
+    );
+    assert.equal(polygonPlot.display?.data.data[0].fill, "toself");
+    assert.equal(polygonPlot.display?.data.data[0].fillcolor, "green");
+
+    const barPlot = await session.evaluate(
+      "bar_chart([1, 3, 2], color='purple')",
+    );
+    assert.equal(barPlot.display?.data.data[0].type, "bar");
+    assert.deepEqual(barPlot.display?.data.data[0].y, [1, 3, 2]);
+
+    const arrowPlot = await session.evaluate(
+      "arrow((0, 0), (2, 1), color='orange')",
+    );
+    assert.equal(arrowPlot.display?.data.data[0].mode, "lines+markers");
+    assert.deepEqual(
+      arrowPlot.display?.data.data[0].marker.symbol,
+      ["circle", "arrow"],
+    );
+
+    const splinePlot = await session.evaluate(
+      [
+        "S = spline([(0, 0), (1, 1), (2, 0)])",
+        "plot(S, (0, 2), plot_points=3,",
+        "     adaptive_recursion=0, randomize=False)",
+      ].join("\n"),
+    );
+    assert.deepEqual(splinePlot.display?.data.data[0].y, [0, 1, 0]);
 
     const timeSeries = await session.evaluate(
       "finance.TimeSeries([1, -1, 2]).sums().plot()",
     );
     assert.deepEqual(timeSeries.display?.data.data[0].y, [1, 0, 2]);
+    const histogram = await session.evaluate(
+      "finance.TimeSeries([1, 1, 2, 3]).plot_histogram(bins=2)",
+    );
+    assert.equal(histogram.display?.data.data[0].type, "histogram");
+    assert.deepEqual(histogram.display?.data.data[0].x, [1, 1, 2, 3]);
 
     const plain = await session.evaluate("factor(12)");
     assert.equal(plain.display, undefined);

@@ -48,6 +48,14 @@ export function createSymbolicBackend() {
       return boxed(["D", expression, variable]).evaluate().json;
     },
 
+    integrate(expression, variable, lower, upper) {
+      const range =
+        lower === undefined
+          ? variable
+          : ["Tuple", variable, lower, upper];
+      return boxed(["Integrate", expression, range]).evaluate().json;
+    },
+
     simplify(expression) {
       return boxed(expression).simplify().json;
     },
@@ -72,8 +80,12 @@ export function createSymbolicBackend() {
       const result = checkedCompilation(expression, variables);
       // Cortex's run() proxy is intentionally general. Reconstructing its
       // emitted lambda gives hot numeric loops the same shape as handwritten
-      // JavaScript, which matters for adaptive plotting.
-      return Function(`"use strict"; return (${result.code});`)();
+      // JavaScript, which matters for adaptive plotting. Some expressions
+      // (notably noninteger powers) use Cortex's generated runtime helpers.
+      return Function(
+        "_SYS",
+        `"use strict"; return (${result.code});`,
+      )(result.run.SYS);
     },
   });
 }

@@ -154,6 +154,11 @@ def _format_expression(value: Any, surrounding: int = 0) -> str:
 def _expression_tree(value: Any) -> Any:
     if isinstance(value, Expression):
         return value._tree
+    if runtime.jstype(value) in ("object", "function"):
+        value_parent = runtime.reflect.get(value, "_parent")
+        parent_kind = runtime.reflect.get(value_parent, "_kind")
+        if parent_kind in ("RealField", "RDF"):
+            return float(value)
     if isinstance(value, sage.Rational):
         return [
             "Rational",
@@ -246,6 +251,27 @@ class Expression(sage.Element):
     __str__ = __repr__
     toString = __repr__
 
+    def __call__(self, *values: Any, **substitutions: Any) -> Expression:
+        """Substitute variables using Sage's expression-call shorthand."""
+        variables = self.variables()
+        if len(values) > len(variables):
+            raise TypeError('too many positional substitutions')
+        replacements = runtime.object.create(None)
+        for index in range(len(values)):
+            runtime.reflect.set(
+                replacements,
+                _symbol_name(variables[index]),
+                _expression_tree(values[index]),
+            )
+        for key in runtime.object.keys(substitutions):
+            runtime.reflect.set(
+                replacements,
+                key,
+                _expression_tree(runtime.reflect.get(substitutions, key)),
+            )
+        return Expression(
+            _call_backend("substitute", [self._tree, replacements]))
+
     def subs(self, *mappings: Any, **substitutions: Any) -> Expression:
         replacements = runtime.object.create(None)
         if len(mappings) > 1:
@@ -280,6 +306,90 @@ class Expression(sage.Element):
         return result
 
     diff = derivative
+
+    def integrate(
+        self,
+        variable: Any,
+        lower: Any = runtime.undefined,
+        upper: Any = runtime.undefined,
+    ) -> Expression:
+        name = _symbol_name(variable)
+        if (lower is runtime.undefined) != (upper is runtime.undefined):
+            raise TypeError(
+                'integrate() requires both lower and upper bounds')
+        lower_tree = (
+            runtime.undefined
+            if lower is runtime.undefined
+            else _expression_tree(lower)
+        )
+        upper_tree = (
+            runtime.undefined
+            if upper is runtime.undefined
+            else _expression_tree(upper)
+        )
+        return Expression(
+            _call_backend(
+                'integrate',
+                [self._tree, name, lower_tree, upper_tree],
+            ))
+
+    def find_root(
+        self,
+        lower: Any,
+        upper: Any,
+        maxiter: int = 100,
+        xtol: float = 1e-12,
+    ) -> float:
+        variables = self.variables()
+        if len(variables) != 1:
+            raise ValueError(
+                'find_root() requires an expression in one variable')
+        evaluator = fast_callable(self, vars=variables)
+        left = float(lower)
+        right = float(upper)
+        left_value = float(evaluator(left))
+        right_value = float(evaluator(right))
+        if left_value == 0:
+            return left
+        if right_value == 0:
+            return right
+        if left_value * right_value > 0:
+            raise RuntimeError(
+                'f appears to have no zero on the interval')
+        for _index in range(int(maxiter)):
+            middle = (left + right) / 2.0
+            middle_value = float(evaluator(middle))
+            if (
+                middle_value == 0
+                or abs(right - left) <= float(xtol)
+            ):
+                return middle
+            if left_value * middle_value <= 0:
+                right = middle
+                right_value = middle_value
+            else:
+                left = middle
+                left_value = middle_value
+        return (left + right) / 2.0
+
+    def _relation(self, head: str, other: Any) -> Expression:
+        return Expression(
+            _call_backend(
+                'canonical',
+                [[head, self._tree, _expression_tree(other)]],
+            ))
+
+    def __lt__(self, other: Any) -> Expression:
+        return self._relation('Less', other)
+
+    def __le__(self, other: Any) -> Expression:
+        return self._relation('LessEqual', other)
+
+    def __gt__(self, other: Any) -> Expression:
+        return self._relation('Greater', other)
+
+    def __ge__(self, other: Any) -> Expression:
+        return self._relation('GreaterEqual', other)
 
     def simplify(self) -> Expression:
         return Expression(_call_backend("simplify", [self._tree]))
@@ -320,6 +430,16 @@ def _to_symbolic(value: Any) -> Expression:
 
 runtime.coercion_model.register(sage.ZZ, SR, _to_symbolic)
 runtime.coercion_model.register(sage.QQ, SR, _to_symbolic)
+runtime.coercion_model.register(
+    runtime.reflect.get(runtime.global_object, "RDF"),
+    SR,
+    _to_symbolic,
+)
+runtime.coercion_model.register(
+    runtime.reflect.get(runtime.global_object, "RR"),
+    SR,
+    _to_symbolic,
+)
 
 
 def _symbol_name(value: Any) -> str:
@@ -339,7 +459,9 @@ def symbolic_variable(names: str) -> Any:
     variables = []
     for name in split_names:
         if name:
-            variables.append(Expression(name))
+            variable = Expression(name)
+            runtime.reflect.set(runtime.global_object, name, variable)
+            variables.append(variable)
     if len(variables) == 0:
         raise ValueError("at least one variable name is required")
     if len(variables) == 1:
@@ -411,6 +533,16 @@ def fast_callable(
 
 pi = Expression("Pi")
 e = Expression("ExponentialE")
+
+
+def assume(*conditions: Any) -> None:
+    """Accept symbolic assumptions for Sage source compatibility.
+
+    Cortex currently evaluates the RH expressions without an assumption
+    context.  Retaining the call as an explicit no-op is preferable to
+    silently rewriting the pinned source.
+    """
+    return None
 
 
 def _initialize_sage_symbolic_globals() -> None:

@@ -159,7 +159,7 @@ assrt.equal(ρσ_operator_mul_exact(3037000500, 3037000500),
             BigInt('9223372037000250000'))
 assrt.equal(ρσ_operator_pow_exact(2, 100),
             BigInt('1267650600228229401496703205376'))
-assrt.equal(ρσ_operator_pow_exact(2, -1), 0.5)
+assrt.equal(str(ρσ_operator_pow_exact(2, -1)), '1/2')
 assrt.equal(ρσ_operator_add_exact(1.5, 2), 3.5)
 assrt.ok(BigInt(1) == 1)
 assrt.equal(abs(-BigInt('923098402834028349082348209384')),

@@ -73,7 +73,14 @@ def write_imports(module, output):
 
     imports.sort(lambda entry: entry.import_order)
     output.indent()
-    output.print('var ρσ_modules = {};')
+    if output.options.module_registry:
+        output.print('var ρσ_modules = globalThis[')
+        output.print_string(output.options.module_registry)
+        output.print('] || (globalThis[')
+        output.print_string(output.options.module_registry)
+        output.print('] = {});')
+    else:
+        output.print('var ρσ_modules = {};')
     output.newline()
     if any(module_.module_id == 'builtins' for module_ in imports):
         output.indent()

@@ -126,9 +126,17 @@ def _dash_value(linestyle: str) -> str:
 
 
 def _point_pair(point_value: Any) -> tuple[float, float]:
-    if not isinstance(point_value, (list, tuple)) or len(point_value) != 2:
-        raise ValueError('points must have exactly two coordinates')
-    return float(point_value[0]), float(point_value[1])
+    if isinstance(point_value, (list, tuple)):
+        if len(point_value) != 2:
+            raise ValueError('points must have exactly two coordinates')
+        return float(point_value[0]), float(point_value[1])
+    if hasattr(point_value, '__getitem__'):
+        try:
+            get_item = point_value.__getitem__
+            return float(get_item(0)), float(get_item(1))
+        except Exception:
+            pass
+    raise ValueError('points must have exactly two coordinates')
 
 
 def _normalize_points(points: Any) -> list[tuple[float, float]]:
@@ -222,6 +230,34 @@ class Line(GraphicPrimitive):
 
 
 @runtime.sequence_class
+class Arrow(Line):
+    """A directed line segment between two points."""
+
+    def __repr__(self) -> str:
+        return 'Arrow from ' + str(self[0]) + ' to ' + str(self[1])
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_trace(self) -> Any:
+        trace = Line._plotly_trace(self)
+        width = float(_option_get(self._options, 'width', 2))
+        runtime.reflect.set(trace, 'mode', 'lines+markers')
+        runtime.reflect.set(
+            trace,
+            'marker',
+            _native_record(
+                color=_color_value(
+                    _option_get(self._options, 'rgbcolor', [0, 0, 1])),
+                size=[0, max(6, width * 4)],
+                symbol=['circle', 'arrow'],
+                angleref='previous',
+            ),
+        )
+        return trace
+
+
+@runtime.sequence_class
 class Point(GraphicPrimitive):
     """A set of two-dimensional points."""
 
@@ -281,6 +317,121 @@ class Point(GraphicPrimitive):
         )
         if legend_label is not None:
             runtime.reflect.set(trace, 'name', str(legend_label))
+        return trace
+
+
+@runtime.sequence_class
+class Polygon(Line):
+    """A filled polygon through a sequence of two-dimensional points."""
+
+    def __repr__(self) -> str:
+        return 'Polygon defined by ' + str(len(self.xdata)) + ' points'
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_trace(self) -> Any:
+        trace = Line._plotly_trace(self)
+        options = self._options
+        color = _option_get(
+            options, 'rgbcolor', _option_get(options, 'color', [0, 0, 1]))
+        runtime.reflect.set(trace, 'fill', 'toself')
+        runtime.reflect.set(trace, 'fillcolor', _color_value(color))
+        return trace
+
+
+@runtime.sequence_class
+class Bar(GraphicPrimitive):
+    """A vertical bar chart."""
+
+    def __init__(
+        self,
+        values: Sequence[float],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive.__init__(self, options)
+        self.xdata = list(range(len(values)))
+        self.ydata = list(values)
+
+    def __len__(self) -> int:
+        return len(self.ydata)
+
+    def __getitem__(self, index: int) -> tuple[float, float]:
+        return runtime.math_tuple(
+            [self.xdata[index], self.ydata[index]])
+
+    def __repr__(self) -> str:
+        return 'Bar chart defined by ' + str(len(self.ydata)) + ' values'
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_trace(self) -> Any:
+        options = self._options
+        color = _option_get(
+            options, 'rgbcolor', _option_get(options, 'color', [0, 0, 1]))
+        return _native_record(
+            type='bar',
+            x=self.xdata,
+            y=self.ydata,
+            marker=_native_record(color=_color_value(color)),
+            opacity=float(_option_get(options, 'alpha', 1)),
+            width=float(_option_get(options, 'width', 0.8)),
+            showlegend=False,
+        )
+
+
+@runtime.sequence_class
+class Histogram(GraphicPrimitive):
+    """A Plotly-backed histogram of numeric samples."""
+
+    def __init__(
+        self,
+        values: Sequence[float],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive.__init__(self, options)
+        self.values = list(values)
+
+    def __len__(self) -> int:
+        return len(self.values)
+
+    def __getitem__(self, index: int) -> float:
+        return self.values[index]
+
+    def __repr__(self) -> str:
+        return 'Histogram defined by ' + str(len(self.values)) + ' values'
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_trace(self) -> Any:
+        options = self._options
+        color = _option_get(
+            options, 'rgbcolor', _option_get(options, 'color', [0, 0, 1]))
+        trace = _native_record(
+            type='histogram',
+            x=self.values,
+            marker=_native_record(color=_color_value(color)),
+            opacity=float(_option_get(options, 'alpha', 1)),
+            showlegend=False,
+        )
+        bins = int(_option_get(options, 'bins', 0))
+        if bins > 0 and len(self.values):
+            minimum = min(self.values)
+            maximum = max(self.values)
+            if maximum > minimum:
+                runtime.reflect.set(
+                    trace,
+                    'xbins',
+                    _native_record(
+                        start=minimum,
+                        end=maximum,
+                        size=(maximum - minimum) / bins,
+                    ),
+                )
+        if _option_get(options, 'normalize', False):
+            runtime.reflect.set(trace, 'histnorm', 'probability density')
         return trace
 
 
@@ -395,7 +546,55 @@ class Graphics:
         return _option_get(
             self._extra_kwds, 'aspect_ratio', 'automatic')
 
+    def axes(self, show: Any = runtime.undefined) -> bool:
+        if show is runtime.undefined:
+            return bool(_option_get(self._extra_kwds, 'axes', True))
+        self._extra_kwds['axes'] = bool(show)
+        return bool(show)
+
+    def _axis_bound(self, name: str, value: Any) -> Any:
+        if value is not runtime.undefined:
+            self._extra_kwds[name] = float(value)
+            return float(value)
+        if _option_has(self._extra_kwds, name):
+            return _option_get(self._extra_kwds, name)
+        axis = 'xdata' if name[0] == 'x' else 'ydata'
+        values = []
+        for primitive in self._objects:
+            data = getattr(primitive, axis, runtime.undefined)
+            if data is not runtime.undefined:
+                values.extend(data)
+            elif isinstance(primitive, Text):
+                values.append(
+                    primitive.position[0 if name[0] == 'x' else 1])
+        if len(values) == 0:
+            return 0.0
+        answer = values[0]
+        if name[1:] == 'min':
+            for candidate in values[1:]:
+                if candidate < answer:
+                    answer = candidate
+        else:
+            for candidate in values[1:]:
+                if candidate > answer:
+                    answer = candidate
+        return answer
+
+    def xmin(self, value: Any = runtime.undefined) -> Any:
+        return self._axis_bound('xmin', value)
+
+    def xmax(self, value: Any = runtime.undefined) -> Any:
+        return self._axis_bound('xmax', value)
+
+    def ymin(self, value: Any = runtime.undefined) -> Any:
+        return self._axis_bound('ymin', value)
+
+    def ymax(self, value: Any = runtime.undefined) -> Any:
+        return self._axis_bound('ymax', value)
+
     def __add__(self, other: object) -> Graphics:
+        if other == 0:
+            return self
         if not isinstance(other, Graphics):
             raise TypeError('can only add Graphics to Graphics')
         answer = Graphics()
@@ -507,6 +706,24 @@ class Graphics:
         )
         return _native_record(mime=_PLOTLY_MIME, data=figure)
 
+    def save(
+        self,
+        filename: Any,
+        **options: Any,
+    ) -> Graphics:
+        """Save through the host graphics hook when one is installed."""
+        hook = runtime.reflect.get(
+            runtime.global_object, '__sagejs_graphics_save_hook__')
+        if hook is runtime.undefined:
+            raise NotImplementedError(
+                'graphics file export is not available in this host')
+        runtime.reflect.apply(
+            hook,
+            runtime.undefined,
+            [self, filename, options],
+        )
+        return self
+
 
 def _graphics_options(options: dict[str, Any]) -> dict[str, Any]:
     answer = {}
@@ -543,6 +760,38 @@ def line(points: Any, **options: Any) -> Graphics:
     return graphic
 
 
+def arrow(
+    tailpoint: Any,
+    headpoint: Any,
+    **options: Any,
+) -> Graphics:
+    """Return a directed line segment from ``tailpoint`` to ``headpoint``."""
+    options = _copy_options(options)
+    tail = _point_pair(tailpoint)
+    head = _point_pair(headpoint)
+    defaults = {
+        'alpha': 1,
+        'rgbcolor': [0, 0, 1],
+        'thickness': 1,
+        'width': 2,
+        'linestyle': '-',
+    }
+    if _option_has(options, 'color') and not _option_has(options, 'rgbcolor'):
+        options['rgbcolor'] = _option_pop(options, 'color')
+    _option_update(defaults, options)
+    graphics_options = _graphics_options(defaults)
+    graphic = Graphics()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(
+        Arrow(
+            [tail[0], head[0]],
+            [tail[1], head[1]],
+            defaults,
+        )
+    )
+    return graphic
+
+
 def point(points: Any, **options: Any) -> Graphics:
     """Return a graphics object containing one or more points."""
     options = _copy_options(options)
@@ -556,6 +805,8 @@ def point(points: Any, **options: Any) -> Graphics:
     }
     if _option_has(options, 'color') and not _option_has(options, 'rgbcolor'):
         options['rgbcolor'] = _option_pop(options, 'color')
+    if _option_has(options, 'pointsize') and not _option_has(options, 'size'):
+        options['size'] = _option_pop(options, 'pointsize')
     _option_update(defaults, options)
     graphics_options = _graphics_options(defaults)
     graphic = Graphics()
@@ -571,6 +822,61 @@ def point(points: Any, **options: Any) -> Graphics:
 
 
 points = point
+
+
+def bar_chart(values: Any, **options: Any) -> Graphics:
+    """Return a graphics object containing a vertical bar chart."""
+    options = _copy_options(options)
+    defaults = {
+        'alpha': 1,
+        'rgbcolor': [0, 0, 1],
+        'width': 0.8,
+    }
+    if _option_has(options, 'color') and not _option_has(options, 'rgbcolor'):
+        options['rgbcolor'] = _option_pop(options, 'color')
+    _option_update(defaults, options)
+    graphics_options = _graphics_options(defaults)
+    graphic = Graphics()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(
+        Bar([float(value) for value in values], defaults))
+    return graphic
+
+
+def polygon(points: Any, **options: Any) -> Graphics:
+    """Return a filled polygon through ``points``."""
+    options = _copy_options(options)
+    normalized = _normalize_points(points)
+    defaults = {
+        'alpha': 1,
+        'rgbcolor': [0, 0, 1],
+        'thickness': 1,
+        'legend_label': None,
+        'linestyle': '-',
+    }
+    if _option_has(options, 'color') and not _option_has(options, 'rgbcolor'):
+        options['rgbcolor'] = _option_pop(options, 'color')
+    if _option_has(options, 'hue') and not _option_has(options, 'rgbcolor'):
+        hue = float(_option_pop(options, 'hue'))
+        options['rgbcolor'] = [
+            0.5 + 0.5 * runtime.math.cos(6.283185307179586 * hue),
+            0.5 + 0.5 * runtime.math.cos(
+                6.283185307179586 * (hue - 1.0 / 3.0)),
+            0.5 + 0.5 * runtime.math.cos(
+                6.283185307179586 * (hue + 1.0 / 3.0)),
+        ]
+    _option_update(defaults, options)
+    graphics_options = _graphics_options(defaults)
+    graphic = Graphics()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(
+        Polygon(
+            [value[0] for value in normalized],
+            [value[1] for value in normalized],
+            defaults,
+        )
+    )
+    return graphic
 
 
 def text(
@@ -620,7 +926,16 @@ class GraphicsArray:
     def __len__(self) -> int:
         return sum(len(row) for row in self._rows)
 
+    def __iter__(self) -> Iterator[Graphics]:
+        for row in self._rows:
+            for graphic in row:
+                yield graphic
+
     def __getitem__(self, index: int) -> Graphics:
+        if index < 0:
+            index += len(self)
+        if index < 0 or index >= len(self):
+            raise IndexError('graphics array index out of range')
         row = index // self._columns
         column = index % self._columns
         return self._rows[row][column]
@@ -667,6 +982,24 @@ class GraphicsArray:
         )
         return _native_record(mime=_PLOTLY_MIME, data=figure)
 
+    def save(
+        self,
+        filename: Any,
+        **options: Any,
+    ) -> GraphicsArray:
+        """Save through the host graphics hook when one is installed."""
+        hook = runtime.reflect.get(
+            runtime.global_object, '__sagejs_graphics_save_hook__')
+        if hook is runtime.undefined:
+            raise NotImplementedError(
+                'graphics file export is not available in this host')
+        runtime.reflect.apply(
+            hook,
+            runtime.undefined,
+            [self, filename, options],
+        )
+        return self
+
 
 def graphics_array(
     graphics: Any,
@@ -695,6 +1028,38 @@ def graphics_array(
 
 
 @runtime.sequence_class
+class NumericVector:
+    """A minimal dense vector used by the Sage time-series API."""
+
+    def __init__(self, values: Any) -> None:
+        self._values = [float(value) for value in values]
+
+    def __len__(self) -> int:
+        return len(self._values)
+
+    def __getitem__(self, index: int) -> float:
+        return self._values[index]
+
+    def __add__(self, other: Any) -> NumericVector:
+        if other == 0:
+            return NumericVector(self._values)
+        values = list(other)
+        if len(values) != len(self._values):
+            raise ValueError('vector dimensions do not agree')
+        return NumericVector([
+            self._values[index] + float(values[index])
+            for index in range(len(self._values))
+        ])
+
+    __radd__ = __add__
+
+    def __truediv__(self, scalar: Any) -> NumericVector:
+        divisor = float(scalar)
+        return NumericVector([
+            value / divisor for value in self._values])
+
+
+@runtime.sequence_class
 class TimeSeries:
     """A compact numeric time series with Sage-compatible plotting."""
 
@@ -707,6 +1072,9 @@ class TimeSeries:
     def __getitem__(self, index: int) -> float:
         return self._values[index]
 
+    def __setitem__(self, index: int, value: Any) -> None:
+        self._values[index] = float(value)
+
     def sums(self) -> TimeSeries:
         total = 0.0
         values = []
@@ -715,9 +1083,132 @@ class TimeSeries:
             values.append(total)
         return TimeSeries(values)
 
+    def diffs(self) -> TimeSeries:
+        return TimeSeries([
+            self._values[index] - self._values[index - 1]
+            for index in range(1, len(self._values))
+        ])
+
+    def abs(self) -> TimeSeries:
+        return TimeSeries([abs(value) for value in self._values])
+
+    __abs__ = abs
+
+    def vector(self) -> NumericVector:
+        return NumericVector(self._values)
+
+    def clip_remove(
+        self,
+        minimum: Any = None,
+        maximum: Any = None,
+        **options: Any,
+    ) -> TimeSeries:
+        if _option_has(options, 'min'):
+            minimum = _option_get(options, 'min')
+        if _option_has(options, 'max'):
+            maximum = _option_get(options, 'max')
+        lower = (
+            None if minimum is None else float(minimum))
+        upper = (
+            None if maximum is None else float(maximum))
+        return TimeSeries([
+            value for value in self._values
+            if (lower is None or value >= lower)
+            and (upper is None or value <= upper)
+        ])
+
     def plot(self, **options: Any) -> Graphics:
         return list_plot(
             self._values, plotjoined=True, **options)
+
+    def plot_histogram(self, **options: Any) -> Graphics:
+        options = _copy_options(options)
+        graphic = Graphics()
+        graphic.set_extra_kwds(_graphics_options(options))
+        graphic.add_primitive(Histogram(self._values, options))
+        return graphic
+
+
+class Spline:
+    """A natural cubic spline through a sequence of planar points."""
+
+    def __init__(self, points: Any) -> None:
+        normalized = _normalize_points(points)
+        if len(normalized) < 2:
+            raise ValueError('spline requires at least two points')
+        normalized.sort()
+        self._x = [point_value[0] for point_value in normalized]
+        self._a = [point_value[1] for point_value in normalized]
+        count = len(normalized)
+        h = [
+            self._x[index + 1] - self._x[index]
+            for index in range(count - 1)
+        ]
+        for width in h:
+            if width <= 0:
+                raise ValueError('spline x-coordinates must be distinct')
+        alpha = [0.0] * count
+        for index in range(1, count - 1):
+            alpha[index] = (
+                3.0 / h[index]
+                * (self._a[index + 1] - self._a[index])
+                - 3.0 / h[index - 1]
+                * (self._a[index] - self._a[index - 1])
+            )
+        lower = [1.0] * count
+        diagonal = [0.0] * count
+        solution = [0.0] * count
+        for index in range(1, count - 1):
+            lower[index] = (
+                2.0 * (self._x[index + 1] - self._x[index - 1])
+                - h[index - 1] * diagonal[index - 1]
+            )
+            diagonal[index] = h[index] / lower[index]
+            solution[index] = (
+                alpha[index]
+                - h[index - 1] * solution[index - 1]
+            ) / lower[index]
+        self._b = [0.0] * (count - 1)
+        self._c = [0.0] * count
+        self._d = [0.0] * (count - 1)
+        for index in range(count - 2, -1, -1):
+            self._c[index] = (
+                solution[index]
+                - diagonal[index] * self._c[index + 1]
+            )
+            self._b[index] = (
+                (self._a[index + 1] - self._a[index]) / h[index]
+                - h[index]
+                * (self._c[index + 1] + 2.0 * self._c[index])
+                / 3.0
+            )
+            self._d[index] = (
+                self._c[index + 1] - self._c[index]
+            ) / (3.0 * h[index])
+
+    def __call__(self, value: Any) -> float:
+        x_value = float(value)
+        if x_value < self._x[0] or x_value > self._x[-1]:
+            raise ValueError('spline value is outside the interpolation range')
+        left = 0
+        right = len(self._x) - 1
+        while left + 1 < right:
+            middle = (left + right) // 2
+            if self._x[middle] <= x_value:
+                left = middle
+            else:
+                right = middle
+        offset = x_value - self._x[left]
+        return (
+            self._a[left]
+            + self._b[left] * offset
+            + self._c[left] * offset * offset
+            + self._d[left] * offset * offset * offset
+        )
+
+
+def spline(points: Any) -> Spline:
+    return Spline(points)
 
 
 finance = _native_object()
@@ -914,8 +1405,7 @@ def plot(
     for index in range(len(functions)):
         current = functions[index]
         if (
-            not callable(current)
-            and hasattr(current, '_plot_fast_callable')
+            hasattr(current, '_plot_fast_callable')
         ):
             if plot_variable is None:
                 variables = current.variables()

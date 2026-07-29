@@ -10,6 +10,11 @@
 #include <mpc.h>
 #include <mpfr.h>
 
+#include <flint/acb.h>
+#include <flint/acb_dirichlet.h>
+#include <flint/acb_hypgeom.h>
+#include <flint/arb.h>
+#include <flint/fmpz.h>
 #include <sagejs/native.h>
 
 #define check_napi sagejs_native_check_napi
@@ -460,6 +465,21 @@ napi_value sagejs_real_to_string(napi_env env, napi_callback_info info)
     return result;
 }
 
+napi_value sagejs_real_to_double(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_real *real;
+
+    if (!require_arguments(env, info, 1, args) ||
+        (real = unwrap_real(env, args[0])) == NULL)
+        return NULL;
+    if (!check_napi(env, napi_create_double(
+        env, mpfr_get_d(real->value, MPFR_RNDN), &result)))
+        return NULL;
+    return result;
+}
+
 napi_value sagejs_real_precision(napi_env env, napi_callback_info info)
 {
     napi_value args[1];
@@ -693,5 +713,168 @@ napi_value sagejs_complex_precision(napi_env env, napi_callback_info info)
     if (!check_napi(env, napi_create_int64(
         env, (int64_t) mpc_get_prec(complex->value), &result)))
         return NULL;
+    return result;
+}
+
+napi_value sagejs_complex_real(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    sagejs_complex *source;
+    sagejs_real *result;
+
+    if (!require_arguments(env, info, 1, args) ||
+        (source = unwrap_complex(env, args[0])) == NULL)
+        return NULL;
+    result = new_real(env, mpc_get_prec(source->value));
+    if (result == NULL)
+        return NULL;
+    mpfr_set(result->value, mpc_realref(source->value), MPFR_RNDN);
+    return wrap_real(env, result);
+}
+
+napi_value sagejs_complex_imag(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    sagejs_complex *source;
+    sagejs_real *result;
+
+    if (!require_arguments(env, info, 1, args) ||
+        (source = unwrap_complex(env, args[0])) == NULL)
+        return NULL;
+    result = new_real(env, mpc_get_prec(source->value));
+    if (result == NULL)
+        return NULL;
+    mpfr_set(result->value, mpc_imagref(source->value), MPFR_RNDN);
+    return wrap_real(env, result);
+}
+
+napi_value sagejs_complex_real_double(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_complex *source;
+
+    if (!require_arguments(env, info, 1, args) ||
+        (source = unwrap_complex(env, args[0])) == NULL)
+        return NULL;
+    if (!check_napi(env, napi_create_double(
+        env,
+        mpfr_get_d(mpc_realref(source->value), MPFR_RNDN),
+        &result)))
+        return NULL;
+    return result;
+}
+
+napi_value sagejs_complex_imag_double(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_complex *source;
+
+    if (!require_arguments(env, info, 1, args) ||
+        (source = unwrap_complex(env, args[0])) == NULL)
+        return NULL;
+    if (!check_napi(env, napi_create_double(
+        env,
+        mpfr_get_d(mpc_imagref(source->value), MPFR_RNDN),
+        &result)))
+        return NULL;
+    return result;
+}
+
+napi_value sagejs_complex_ei(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    sagejs_complex *source;
+    sagejs_complex *result;
+    mpfr_prec_t precision;
+    acb_t input;
+    acb_t output;
+
+    if (!require_arguments(env, info, 1, args) ||
+        (source = unwrap_complex(env, args[0])) == NULL)
+        return NULL;
+    precision = mpc_get_prec(source->value);
+    result = new_complex(env, precision);
+    if (result == NULL)
+        return NULL;
+
+    acb_init(input);
+    acb_init(output);
+    arb_set_interval_mpfr(
+        acb_realref(input),
+        mpc_realref(source->value),
+        mpc_realref(source->value),
+        precision);
+    arb_set_interval_mpfr(
+        acb_imagref(input),
+        mpc_imagref(source->value),
+        mpc_imagref(source->value),
+        precision);
+    acb_hypgeom_ei(output, input, precision);
+    arf_get_mpfr(
+        mpc_realref(result->value),
+        arb_midref(acb_realref(output)),
+        MPFR_RNDN);
+    arf_get_mpfr(
+        mpc_imagref(result->value),
+        arb_midref(acb_imagref(output)),
+        MPFR_RNDN);
+    acb_clear(output);
+    acb_clear(input);
+    return wrap_complex(env, result);
+}
+
+napi_value sagejs_zeta_zeros(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result;
+    napi_value zero;
+    int64_t count_value;
+    mpfr_prec_t precision;
+    slong count;
+    slong index;
+    fmpz_t start;
+    arb_ptr zeros;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !check_napi(env,
+            napi_get_value_int64(env, args[0], &count_value)) ||
+        !get_precision(env, args[1], &precision))
+        return NULL;
+    if (count_value < 0 || count_value > WORD_MAX)
+    {
+        napi_throw_range_error(env, NULL, "invalid zeta-zero count");
+        return NULL;
+    }
+    count = (slong) count_value;
+    zeros = _arb_vec_init(count);
+    fmpz_init(start);
+    fmpz_one(start);
+    acb_dirichlet_hardy_z_zeros(zeros, start, count, precision);
+    fmpz_clear(start);
+
+    if (!check_napi(env,
+        napi_create_array_with_length(env, (size_t) count, &result)))
+    {
+        _arb_vec_clear(zeros, count);
+        return NULL;
+    }
+    for (index = 0; index < count; index++)
+    {
+        double approximation = arf_get_d(
+            arb_midref(zeros + index), ARF_RND_NEAR);
+        if (!check_napi(env,
+                napi_create_double(env, approximation, &zero)) ||
+            !check_napi(env,
+                napi_set_element(env, result, (uint32_t) index, zero)))
+        {
+            _arb_vec_clear(zeros, count);
+            return NULL;
+        }
+    }
+    _arb_vec_clear(zeros, count);
     return result;
 }

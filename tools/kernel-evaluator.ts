@@ -89,6 +89,9 @@ export function createKernelEvaluator({
       pool_numeric_literals: true,
       numeric_literal_pool_prefix:
         `ρσ_kernel_${numericLiteralPoolCounter++}_`,
+      module_registry: includeBaselib
+        ? ""
+        : "__sagejs_kernel_modules__",
       baselib_plain: includeBaselib
         ? readBaselibSource(join(libraryPath, "baselib-plain-pretty.js"))
         : undefined,
@@ -109,6 +112,7 @@ export function createKernelEvaluator({
     basedir: process.cwd(),
   });
   runInThisContext(outputJavaScript(initialization, true));
+  global.__sagejs_kernel_modules__ = global.ρσ_modules;
   delete global.__sagejs_sage_mode__;
   runInThisContext('var __name__ = "__embedded__"; show_js = false;');
 
@@ -165,6 +169,7 @@ export function createKernelEvaluator({
 
     close(): void {
       delete global.__sagejs_output_write__;
+      delete global.__sagejs_kernel_modules__;
     },
   };
 }

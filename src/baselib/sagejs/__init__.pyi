@@ -29,6 +29,10 @@ class FiniteFieldElement(Element):
     _value: int
 
 
+class RealNumberElement(Element):
+    def __float__(self) -> float: ...
+
+
 class Factorization:
     def __init__(
         self,
@@ -51,6 +55,8 @@ AlgebraicExtensionFunctor: _Functor
 QuotientFunctor: _Functor
 ZZ: Parent
 QQ: Parent
+RDF: Parent
+RR: Parent
 
 
 def PolynomialRing(

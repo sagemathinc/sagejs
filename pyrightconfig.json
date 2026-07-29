@@ -13,10 +13,12 @@
     "src/baselib/graphics3d.py",
     "src/baselib/internal.py",
     "src/baselib/itertools.py",
+    "src/baselib/number_fields.py",
     "src/baselib/polynomial.py",
     "src/baselib/real_complex.py",
     "src/baselib/str.py",
     "src/baselib/symbolic.py",
+    "src/baselib/zeta_data.py",
     "src/baselib/zz_introspection.py",
     "src/lib/numpy.py"
   ],

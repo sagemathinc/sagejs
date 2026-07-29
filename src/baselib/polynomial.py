@@ -11,6 +11,10 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
+def _untyped(value: Any) -> Any:
+    return value
+
+
 def ρσ_callable_instance_class(cls: type[Any]) -> type[Any]:
     # Identity fallback for bootstrap compilers which predate callable-instance
     # lowering. The converged compiler consumes this decorator.
@@ -91,7 +95,7 @@ class PolynomialElement(sage.Element):
     def is_irreducible(self) -> bool:
         if self._parent.base_ring()._kind == 'GF':
             return runtime.flint_backend().nmodPolyIsIrreducible(self._native)
-        factors: Any = self.factor()
+        factors = _untyped(self.factor())
         return (
             len(factors) == 1
             and factors[0][1] == 1
@@ -118,7 +122,7 @@ class PolynomialElement(sage.Element):
 
     def divisors(self) -> list[PolynomialElement]:
         answer = [self._parent(1)]
-        factors: Any = self.factor()
+        factors = _untyped(self.factor())
         for factor_value, exponent in factors:
             previous = answer
             answer = []

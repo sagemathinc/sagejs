@@ -15,6 +15,7 @@ napi_value sagejs_real_neg(napi_env env, napi_callback_info info);
 napi_value sagejs_real_pow_int(napi_env env, napi_callback_info info);
 napi_value sagejs_real_equal(napi_env env, napi_callback_info info);
 napi_value sagejs_real_to_string(napi_env env, napi_callback_info info);
+napi_value sagejs_real_to_double(napi_env env, napi_callback_info info);
 napi_value sagejs_real_precision(napi_env env, napi_callback_info info);
 
 napi_value sagejs_complex_from_reals(napi_env env, napi_callback_info info);
@@ -28,5 +29,11 @@ napi_value sagejs_complex_pow_int(napi_env env, napi_callback_info info);
 napi_value sagejs_complex_equal(napi_env env, napi_callback_info info);
 napi_value sagejs_complex_to_string(napi_env env, napi_callback_info info);
 napi_value sagejs_complex_precision(napi_env env, napi_callback_info info);
+napi_value sagejs_complex_real(napi_env env, napi_callback_info info);
+napi_value sagejs_complex_imag(napi_env env, napi_callback_info info);
+napi_value sagejs_complex_real_double(napi_env env, napi_callback_info info);
+napi_value sagejs_complex_imag_double(napi_env env, napi_callback_info info);
+napi_value sagejs_complex_ei(napi_env env, napi_callback_info info);
+napi_value sagejs_zeta_zeros(napi_env env, napi_callback_info info);
 
 #endif

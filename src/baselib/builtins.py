@@ -13,6 +13,7 @@ import sagejs.runtime as runtime
 
 _builtins_number_class = runtime.native_number_class
 _Bool = bool
+_Float = float
 _Int = int
 _Str = str
 
@@ -898,8 +899,23 @@ def ρσ_operator_pow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
+    if isinstance(right, runtime.rational_class):
+        if right._denominator != 1:
+            symbolic_ring = runtime.reflect.get(
+                runtime.global_object, 'SR')
+            if symbolic_ring is not runtime.undefined:
+                return symbolic_ring(left).__pow__(right)
+        right = runtime.normalize_integer(right._numerator)
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
+    if (
+        _builtins_exact_integer_primitive(left)
+        and _builtins_exact_integer_primitive(right)
+        and right < 0
+    ):
+        denominator = runtime.native_pow(
+            runtime.bigint(left), -runtime.bigint(right))
+        return runtime.rational_class(1, denominator)
     if (
         runtime.strict_equal(left_type, right_type)
         and (
@@ -1880,7 +1896,12 @@ def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
                 if private_name in answer:
                     answer.remove(private_name)
 
-    answer.sort()
+    for left_index in range(len(answer)):
+        for right_index in range(left_index + 1, len(answer)):
+            if answer[right_index] < answer[left_index]:
+                temporary = answer[left_index]
+                answer[left_index] = answer[right_index]
+                answer[right_index] = temporary
     return answer
 
 
@@ -3870,12 +3891,52 @@ def prod(values: Any, start: Any = 1) -> Any:
     return answer
 
 
+def latex(value: Any) -> str:
+    """Return a compact LaTeX representation of ``value``."""
+    if _builtins_member_is_function(value, '_latex_'):
+        return str(_builtins_call_member(value, '_latex_', []))
+    return str(value)
+
+
+_prime_pi_primes = None
+_prime_pi_checked_through = 1
+
+
 def prime_pi(value: Any) -> Any:
+    global _prime_pi_checked_through, _prime_pi_primes
+    if _prime_pi_primes is None:
+        _prime_pi_primes = []
     if not runtime.is_exact_integer(value):
         value = runtime.math.floor(value)
     if value < 2:
         return 0
-    return len(ρσ_prime_range(2, value + 1))
+    upper = runtime.integer_bigint(value)
+    if upper > _prime_pi_checked_through:
+        candidate = runtime.flint_backend().nextPrime(
+            runtime.bigint(_prime_pi_checked_through))
+        while candidate <= upper:
+            _prime_pi_primes.append(
+                runtime.normalize_integer(candidate))
+            candidate = runtime.flint_backend().nextPrime(candidate)
+        _prime_pi_checked_through = runtime.normalize_integer(upper)
+
+    left = 0
+    right = len(_prime_pi_primes)
+    while left < right:
+        middle = (left + right) // 2
+        if _prime_pi_primes[middle] <= value:
+            left = middle + 1
+        else:
+            right = middle
+    return left
+
+
+def _prime_pi_plot(start: Any, stop: Any, **options: Any) -> Any:
+    plot_function = runtime.reflect.get(runtime.global_object, 'plot')
+    return plot_function(prime_pi, start, stop, **options)
+
+
+runtime.reflect.set(prime_pi, 'plot', _prime_pi_plot)
 
 
 def numerator(value: Any) -> Any:
@@ -3910,6 +3971,168 @@ def bernoulli(index: Any) -> Any:
             values[j - 1] = j * (values[j - 1] - values[j])
             j -= 1
     return values[0]
+
+
+def moebius(value: Any) -> Any:
+    if not runtime.is_exact_integer(value):
+        raise TypeError('Möbius function input must be an integer')
+    integer = runtime.integer_bigint(value)
+    if integer == 0:
+        return 0
+    if integer < 0:
+        integer = -integer
+    sign = 1
+    for _prime, exponent in ρσ_factor(integer):
+        if exponent > 1:
+            return 0
+        sign = -sign
+    return sign
+
+
+def _moebius_range(start: Any, stop: Any = None) -> Any:
+    if stop is None:
+        stop = start
+        start = 0
+    return [moebius(value) for value in range(start, stop)]
+
+
+runtime.reflect.set(moebius, 'range', _moebius_range)
+
+
+_ZETA_BERNOULLI = [
+    0.16666666666666666,
+    -0.03333333333333333,
+    0.023809523809523808,
+    -0.03333333333333333,
+    0.07575757575757576,
+    -0.2531135531135531,
+    1.1666666666666667,
+    -7.092156862745098,
+]
+
+
+def zeta(value: Any) -> Any:
+    """Numerically evaluate the Riemann zeta function at an integer > 1."""
+    if not runtime.is_exact_integer(value):
+        raise NotImplementedError(
+            'zeta() is currently implemented for integer arguments')
+    s = runtime.number(value)
+    if s <= 1:
+        raise NotImplementedError(
+            'zeta() is currently implemented for integers greater than 1')
+
+    cutoff = 16
+    answer = 0.0
+    for n in range(1, cutoff):
+        answer += runtime.math.pow(n, -s)
+    answer += (
+        runtime.math.pow(cutoff, 1 - s) / (s - 1)
+        + 0.5 * runtime.math.pow(cutoff, -s)
+    )
+
+    rising = s
+    factorial = 2.0
+    for index in range(len(_ZETA_BERNOULLI)):
+        if index:
+            rising *= (s + 2 * index - 1) * (s + 2 * index)
+            factorial *= (2 * index + 1) * (2 * index + 2)
+        answer += (
+            _ZETA_BERNOULLI[index]
+            * rising
+            / factorial
+            * runtime.math.pow(cutoff, -(s + 2 * index + 1))
+        )
+    return answer
+
+
+def set_random_seed(seed_value: Any) -> None:
+    random_module = runtime.reflect.get(runtime.modules, 'random')
+    if random_module is runtime.undefined:
+        raise ImportError("No module named 'random'")
+    runtime.reflect.apply(
+        runtime.reflect.get(random_module, 'seed'),
+        random_module,
+        [seed_value],
+    )
+
+
+def random() -> _Float:
+    random_module = runtime.reflect.get(runtime.modules, 'random')
+    if random_module is runtime.undefined:
+        raise ImportError("No module named 'random'")
+    return runtime.reflect.apply(
+        runtime.reflect.get(random_module, 'random'),
+        random_module,
+        [],
+    )
+
+
+def randint(start: Any, stop: Any) -> Any:
+    random_module = runtime.reflect.get(runtime.modules, 'random')
+    if random_module is runtime.undefined:
+        raise ImportError("No module named 'random'")
+    return runtime.reflect.apply(
+        runtime.reflect.get(random_module, 'randint'),
+        random_module,
+        [start, stop],
+    )
+
+
+def primes(stop: Any) -> Any:
+    return ρσ_prime_range(stop)
+
+
+def cartesian_product_iterator(factors: Any) -> Iterator[Any]:
+    values = [list(factor_values) for factor_values in factors]
+
+    def walk(index: _Int, prefix: list[Any]) -> Iterator[Any]:
+        if index == len(values):
+            yield runtime.math_tuple(prefix)
+        else:
+            for value in values[index]:
+                yield from walk(index + 1, prefix + [value])
+
+    yield from walk(0, [])
+
+
+def prime_powers(start: Any, stop: Any = None) -> Any:
+    """Return the prime powers in the requested half-open interval."""
+    if stop is None:
+        stop = start
+        start = 1
+    if not runtime.is_exact_integer(start):
+        raise TypeError('prime_powers() bounds must be integers')
+    if not runtime.is_exact_integer(stop):
+        raise TypeError('prime_powers() bounds must be integers')
+    lower = runtime.integer_bigint(start)
+    upper = runtime.integer_bigint(stop)
+    answer = []
+    if lower <= 1 < upper:
+        answer.append(1)
+    for prime in ρσ_prime_range(2, stop):
+        power = runtime.integer_bigint(prime)
+        while power < upper:
+            if power >= lower:
+                answer.append(runtime.normalize_integer(power))
+            power *= runtime.integer_bigint(prime)
+    for left_index in range(len(answer)):
+        for right_index in range(left_index + 1, len(answer)):
+            if answer[right_index] < answer[left_index]:
+                temporary = answer[left_index]
+                answer[left_index] = answer[right_index]
+                answer[right_index] = temporary
+    return answer
+
+
+def is_prime_power(value: Any) -> _Bool:
+    if not runtime.is_exact_integer(value):
+        return False
+    integer = runtime.integer_bigint(value)
+    if integer == 1:
+        return True
+    if integer < 2:
+        return False
+    return len(ρσ_factor(integer)) == 1
 
 
 def _builtins_integer_is_irreducible(self: Any) -> _Bool:

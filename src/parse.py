@@ -3853,7 +3853,17 @@ return {completion:completion,namespace:ρσ_modules[module_id]};
             next()
             is_parenthesized = is_('punc', '(')
             S.in_delete = start.value is 'delete'
-            expr = maybe_unary(allow_calls)
+            if start.value is '!':
+                # Python's ``not`` binds less tightly than comparisons:
+                # ``not value is None`` means ``not (value is None)``.
+                # It still binds more tightly than ``and`` and ``or``.
+                expr = expr_op(
+                    maybe_unary(allow_calls),
+                    PRECEDENCE['&&'],
+                    False,
+                )
+            else:
+                expr = maybe_unary(allow_calls)
             S.in_delete = False
             if (
                 start.value is 'delete'

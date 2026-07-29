@@ -871,7 +871,10 @@ def _str_isdigit(string: Any) -> bool:
 
 
 def _str_join(separator: Any, iterable: Any) -> _Str:
-    separator = _str_require_string(separator, 'join')
+    # Native methods receive a boxed String as ``self`` on some JavaScript
+    # engines.  It is still a Python str; normalize only the receiver while
+    # continuing to reject non-string iterable entries.
+    separator = _native_string(separator)
     values = []
     for value in iterable:
         values.append(_str_require_string(value, 'join'))

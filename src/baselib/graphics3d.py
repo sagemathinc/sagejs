@@ -223,10 +223,10 @@ def _g3d_component_callable(
     component: Any,
     variables: Sequence[Any],
 ) -> Any:
-    if callable(component):
-        return component
     if hasattr(component, '_plot_fast_callable'):
         return component._plot_fast_callable(list(variables))
+    if callable(component):
+        return component
     numeric = _g3d_finite_value(component)
 
     def constant(*_arguments: Any) -> float:

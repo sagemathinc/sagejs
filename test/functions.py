@@ -241,6 +241,23 @@ assrt.equal(prime_pi(100), 25)
 assrt.equal(Integer(97).is_irreducible(), True)
 assrt.equal(numerator(bernoulli(10)), 5)
 assrt.equal(denominator(bernoulli(10)), 66)
+assrt.deepEqual(
+    [moebius(n) for n in range(10)],
+    [0, 1, -1, -1, 0, -1, 1, -1, 0, 0])
+assrt.deepEqual(
+    moebius.range(3, 8),
+    [-1, 0, -1, 1, -1])
+assrt.ok(abs(zeta(2) - 1.6449340668482264) < 1e-15)
+assrt.deepEqual(
+    prime_powers(30),
+    [1, 2, 3, 4, 5, 7, 8, 9, 11, 13, 16, 17, 19,
+     23, 25, 27, 29])
+assrt.ok(is_prime_power(27))
+assrt.ok(not is_prime_power(12))
+assrt.deepEqual(
+    list(cartesian_product_iterator([[1, 2], ['a', 'b']])),
+    [(1, 'a'), (1, 'b'), (2, 'a'), (2, 'b')])
+assrt.equal(latex(12), '12')
 
 
 def return_string_with_newline():

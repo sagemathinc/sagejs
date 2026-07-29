@@ -9,48 +9,36 @@
 
 # basic implementation of Python's 'random' library
 
-# JavaScript's Math.random() does not allow seeding its random generator.
-# To bypass that, this module implements its own version that can be seeded.
-# I decided on RC4 algorithm for this.
+# JavaScript's Math.random() cannot be seeded.  A 32-bit numerical-recipes
+# linear congruential generator gives this compatibility module deterministic
+# state without the eight Python-level calls per sample used by its historical
+# RC4 implementation.  This is a simulation PRNG, not a cryptographic API.
 
-_seed_state = {'key': [], 'key_i': 0, 'key_j': 0}
-
-
-def _get_random_byte():
-    _seed_state.key_i = (_seed_state.key_i + 1) % 256
-    _seed_state.key_j = (_seed_state.key_j +
-                         _seed_state.key[_seed_state.key_i]) % 256
-    _seed_state.key[_seed_state.key_i], _seed_state.key[_seed_state.key_j] = \
-            _seed_state.key[_seed_state.key_j], _seed_state.key[_seed_state.key_i]
-    return _seed_state.key[(_seed_state.key[_seed_state.key_i] + \
-            _seed_state.key[_seed_state.key_j]) % 256]
+_seed_state = {'value': 1}
 
 
 def seed(x=Date().getTime()):
-    _seed_state.key_i = _seed_state.key_j = 0
     if jstype(x) is 'number':
         x = x.toString()
     elif jstype(x) is not 'string':
         raise TypeError("unhashable type: '" + jstype(x) + "'")
-    for i in range(256):
-        _seed_state.key[i] = i
-    j = 0
-    for i in range(256):
-        j = (j + _seed_state.key[i] + x.charCodeAt(i % x.length)) % 256
-        _seed_state.key[i], _seed_state.key[j] = _seed_state.key[
-            j], _seed_state.key[i]
+    value = 5381
+    for i in range(x.length):
+        value = (value * 33 + x.charCodeAt(i)) % 4294967296
+    if value == 0:
+        value = 1
+    _seed_state.value = value
 
 
 seed()
 
 
 def random():
-    n = 0
-    m = 1
-    for i in range(8):
-        n += _get_random_byte() * m
-        m *= 256
-    return n / 0x10000000000000000
+    value = (
+        1664525 * _seed_state.value + 1013904223
+    ) % 4294967296
+    _seed_state.value = value
+    return value / 4294967296
 
 
 # unlike the python version, this DOES build a range object, feel free to reimplement

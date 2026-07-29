@@ -23,6 +23,20 @@ async function main() {
       (await session.evaluate("fast_callable(f, vars=[x])(2)")).repr,
       "-0.7568024953079282",
     );
+    assert.equal(
+      (await session.evaluate("fast_callable(e^(x/2), vars=[x])(2)")).repr,
+      String(Math.E),
+    );
+    assert.equal(
+      (await session.evaluate("(x^2).integrate(x, 0, 1)")).repr,
+      "1/3",
+    );
+    assert.ok(
+      Math.abs(
+        Number((await session.evaluate("(x^2 - 2).find_root(1, 2)")).repr) -
+          Math.SQRT2,
+      ) < 1e-10,
+    );
     assert.equal((await session.evaluate("x + 1")).repr, "x + 1");
     assert.equal((await session.evaluate("QQ(1, 2)*x")).repr, "1/2*x");
     assert.equal((await session.evaluate("var('x y')")).repr, "(x, y)");

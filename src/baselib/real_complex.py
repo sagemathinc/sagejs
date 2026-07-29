@@ -74,6 +74,18 @@ class RealNumberElement(sage.Element):
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
 
+    def __lt__(self, other: Any) -> bool:
+        return float(self) < float(other)
+
+    def __le__(self, other: Any) -> bool:
+        return float(self) <= float(other)
+
+    def __gt__(self, other: Any) -> bool:
+        return float(self) > float(other)
+
+    def __ge__(self, other: Any) -> bool:
+        return float(self) >= float(other)
+
     def __neg__(self) -> RealNumberElement:
         return self._new(
             runtime.flint_backend().realNeg(self._native))
@@ -89,6 +101,9 @@ class RealNumberElement(sage.Element):
 
     def __repr__(self) -> str:
         return runtime.flint_backend().realToString(self._native)
+
+    def __float__(self) -> float:
+        return runtime.flint_backend().realToDouble(self._native)
 
     __str__ = __repr__
     toString = __repr__
@@ -191,11 +206,44 @@ class ComplexNumberElement(sage.Element):
     def precision(self) -> int:
         return self._parent.precision()
 
+    def real(self) -> Any:
+        if self._parent._kind == 'ComplexDoubleField':
+            return runtime.flint_backend().complexRealDouble(self._native)
+        return RealField(self._parent.precision())._fromNative(
+            runtime.flint_backend().complexReal(self._native))
+
+    def imag(self) -> Any:
+        if self._parent._kind == 'ComplexDoubleField':
+            return runtime.flint_backend().complexImagDouble(self._native)
+        return RealField(self._parent.precision())._fromNative(
+            runtime.flint_backend().complexImag(self._native))
+
     def __repr__(self) -> str:
         return runtime.flint_backend().complexToString(self._native)
 
     __str__ = __repr__
     toString = __repr__
+
+
+@runtime.callable_instance_class
+class RealDoubleField_class(sage.Parent):
+
+    def __init__(self) -> None:
+        self._name = 'Real Double Field'
+        self._kind = 'RDF'
+
+    def __call__(self, value: Any = 0) -> float:
+        if isinstance(value, sage.Rational):
+            return (
+                runtime.number(value._numerator)
+                / runtime.number(value._denominator)
+            )
+        return runtime.number(value)
+
+    def precision(self) -> int:
+        return 53
+
+    prec = precision
 
 
 @runtime.callable_instance_class
@@ -258,8 +306,20 @@ class ComplexField_class(sage.Parent):
     prec = precision
 
 
+@runtime.callable_instance_class
+class ComplexDoubleField_class(ComplexField_class):
+
+    def __init__(self) -> None:
+        self._name = 'Complex Double Field'
+        self._kind = 'ComplexDoubleField'
+        self._precision = 53
+
+
 _real_fields = runtime.map()
 _complex_fields = runtime.map()
+RDF = RealDoubleField_class()
+runtime.coercion_model.register(sage.ZZ, RDF, RDF)
+runtime.coercion_model.register(sage.QQ, RDF, RDF)
 
 
 def _real_from_exact(
@@ -339,6 +399,7 @@ def _register_real_field(field: RealField_class) -> None:
     conversion = _real_coercion(field)
     runtime.coercion_model.register(sage.ZZ, field, conversion)
     runtime.coercion_model.register(sage.QQ, field, conversion)
+    runtime.coercion_model.register(RDF, field, conversion)
     for other in _real_fields.values():
         if other is field:
             continue
@@ -437,6 +498,7 @@ def _register_complex_field(field: ComplexField_class) -> None:
     conversion = _complex_coercion(field)
     runtime.coercion_model.register(sage.ZZ, field, conversion)
     runtime.coercion_model.register(sage.QQ, field, conversion)
+    runtime.coercion_model.register(RDF, field, conversion)
     for real_field in _real_fields.values():
         _register_real_complex_maps(real_field, field)
     for other in _complex_fields.values():
@@ -465,6 +527,54 @@ def ComplexField(
 
 RR = RealField(53)
 CC = ComplexField(53)
+CDF = ComplexDoubleField_class()
+_cdf_conversion = _complex_coercion(CDF)
+runtime.coercion_model.register(sage.ZZ, CDF, _cdf_conversion)
+runtime.coercion_model.register(sage.QQ, CDF, _cdf_conversion)
+runtime.coercion_model.register(RDF, CDF, _cdf_conversion)
+
+_zeta_zero_cache = []
+
+
+def zeta_zeros(
+    count: Any = runtime.undefined,
+) -> list[float]:
+    if count is runtime.undefined:
+        dataset_function = runtime.reflect.get(
+            runtime.global_object, 'odlyzko_zeta_zeros')
+        dataset = runtime.reflect.apply(
+            dataset_function, runtime.undefined, [])
+        return dataset[:]
+    count = runtime.normalize_integer(count)
+    if (
+        runtime.jstype(count) != 'number'
+        or not runtime.number.isSafeInteger(count)
+        or count < 0
+    ):
+        raise ValueError('zeta-zero count must be a nonnegative integer')
+    if count > len(_zeta_zero_cache):
+        values = runtime.flint_backend().zetaZeros(count, 53)
+        _zeta_zero_cache.clear()
+        _zeta_zero_cache.extend(values)
+    return _zeta_zero_cache[:count]
+
+
+def Ei(value: Any) -> ComplexNumberElement:
+    complex_value = (
+        value
+        if isinstance(value, ComplexNumberElement)
+        else CC(value)
+    )
+    return complex_value._parent._fromNative(
+        runtime.flint_backend().complexEi(complex_value._native))
+
+
+def Li(value: Any) -> float:
+    """Numerically evaluate the logarithmic integral ``li(value)``."""
+    real_value = float(value)
+    if real_value <= 0:
+        raise ValueError('Li() currently requires a positive real argument')
+    return Ei(CDF(runtime.math.log(real_value))).real()
 
 
 def ComplexNumber(
@@ -477,9 +587,13 @@ def ComplexNumber(
 runtime.set_class_repr(
     RealNumberElement, "<class 'RealNumber'>")
 runtime.set_class_repr(
+    RealDoubleField_class, "<class 'RealDoubleField_class'>")
+runtime.set_class_repr(
     RealLiteral, "<class 'RealLiteral'>")
 runtime.set_class_repr(
     ComplexNumberElement, "<class 'ComplexNumber'>")
+runtime.set_class_repr(
+    ComplexDoubleField_class, "<class 'ComplexDoubleField_class'>")
 runtime.set_class_repr(
     RealField_class,
     "<class 'sage.rings.real_mpfr.RealField_class'>")

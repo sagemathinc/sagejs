@@ -126,7 +126,9 @@ def expm1(x):
 
 
 def log(x, base=e):
-    return Math.log(x) / Math.log(base)
+    # JavaScript's Math.log rejects BigInt, whereas Python's math.log accepts
+    # arbitrary integers after converting them to a floating-point value.
+    return Math.log(float(x)) / Math.log(float(base))
 
 
 def log1p(x):

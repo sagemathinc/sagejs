@@ -32,6 +32,11 @@ assrt.ok(42 / "x" is NaN)
 assrt.ok(42 is not NaN)
 assrt.ok(NaN is parseInt('asd', 10))
 assrt.ok('NaN' is not 42 / 'x')
+assrt.ok(not 42 is None)
+assrt.ok(not (42 is None))
+assrt.ok(not 1 == 2)
+assrt.ok((not 0) and True)
+assrt.ok(not (1 == 1 and False))
 
 # comparisons
 assrt.ok(3 < 5 < 7)

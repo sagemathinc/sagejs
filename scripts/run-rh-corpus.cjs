@@ -41,7 +41,11 @@ function modernizePinnedSource(source) {
     )
     .replace(
       /^(\s*)([A-Za-z_]\w*)\(([^()\n]*)\)\s*=\s*(.+)$/gm,
-      "$1def $2($3):\n$1    return $4",
+      "$1$2 = $4",
+    )
+    .replace(
+      /\b([A-Za-z_]\w*)\.has_key\(([^()\n]+)\)/g,
+      "($2 in $1)",
     );
 }
 
@@ -77,10 +81,22 @@ function detail(example, actual) {
   ].join("\n");
 }
 
-function matchesRhExpected(actual, wanted) {
+function matchesRhExpected(actual, wanted, approximation) {
   if (matchesExpected(actual, wanted)) return true;
   const collapse = (value) => normalized(value).replace(/\s+/g, " ");
-  return collapse(actual) === collapse(wanted);
+  if (collapse(actual) === collapse(wanted)) return true;
+  if (!approximation) return false;
+  const actualNumber = Number(normalized(actual));
+  const wantedNumber = Number(normalized(wanted));
+  if (!Number.isFinite(actualNumber) || !Number.isFinite(wantedNumber)) {
+    return false;
+  }
+  const absolute = approximation.absolute ?? 0;
+  const relative = approximation.relative ?? 0;
+  return (
+    Math.abs(actualNumber - wantedNumber) <=
+    Math.max(absolute, relative * Math.abs(wantedNumber))
+  );
 }
 
 async function evaluateExample(session, example, timeout) {
@@ -123,9 +139,14 @@ async function main() {
   const ids = new Set(examples.map((example) => example.id));
   const skip = expectations.skip ?? {};
   const xfail = expectations.xfail ?? {};
+  const approx = expectations.approx ?? {};
   const counts = { pass: 0, fail: 0, skip: 0, xfail: 0, xpass: 0 };
 
-  for (const id of [...Object.keys(skip), ...Object.keys(xfail)]) {
+  for (const id of [
+    ...Object.keys(skip),
+    ...Object.keys(xfail),
+    ...Object.keys(approx),
+  ]) {
     if (!options.only && !ids.has(id)) {
       throw new Error(`expectation refers to unknown test: ${id}`);
     }
@@ -146,7 +167,11 @@ async function main() {
         continue;
       }
       const actual = await evaluateExample(session, example, options.timeout);
-      const matches = matchesRhExpected(actual, example.want);
+      const matches = matchesRhExpected(
+        actual,
+        example.want,
+        approx[example.id],
+      );
       if (xfail[example.id]) {
         const status = matches ? "xpass" : "xfail";
         counts[status] += 1;
@@ -186,7 +211,13 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack ?? error}\n`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    process.stderr.write(`${error.stack ?? error}\n`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  modernizePinnedSource,
+};

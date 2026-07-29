@@ -136,6 +136,31 @@ class Rational(runtime.element):
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
 
+    def _compare(self, other: Any) -> int:
+        other_value = (
+            other if isinstance(other, Rational) else runtime.qq(other))
+        difference = (
+            self._numerator * other_value._denominator
+            - other_value._numerator * self._denominator
+        )
+        if difference < 0:
+            return -1
+        if difference > 0:
+            return 1
+        return 0
+
+    def __lt__(self, other: Any) -> bool:
+        return self._compare(other) < 0
+
+    def __le__(self, other: Any) -> bool:
+        return self._compare(other) <= 0
+
+    def __gt__(self, other: Any) -> bool:
+        return self._compare(other) > 0
+
+    def __ge__(self, other: Any) -> bool:
+        return self._compare(other) >= 0
+
     def __neg__(self) -> Rational:
         return Rational(-self._numerator, self._denominator)
 

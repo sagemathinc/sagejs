@@ -89,6 +89,8 @@
     "rh:extract": "node scripts/extract-rh-corpus.cjs",
     "test:rh": "pnpm run build && node scripts/run-rh-corpus.cjs",
     "rh:report": "pnpm run build && node scripts/run-rh-corpus.cjs --allow-failures --verbose",
+    "test:rh:figures": "pnpm run build && node scripts/run-rh-figures.cjs",
+    "rh:figures:report": "pnpm run build && node scripts/run-rh-figures.cjs --allow-failures --verbose",
     "bench:cold": "node bench/cold-start.cjs",
     "bench:arithmetic": "node bench/compare-sagelite.cjs",
     "bench:complex": "node bench/compare-complex.cjs",

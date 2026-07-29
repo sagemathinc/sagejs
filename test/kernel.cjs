@@ -23,6 +23,22 @@ async function main() {
   assert.ok(first.durationMs >= 0);
 
   assert.equal((await session.eval("value^2")).repr, "144");
+  assert.equal((await session.evaluate("len(zeta_zeros())")).repr, "15000");
+  assert.equal(
+    (await session.evaluate("round(zeta_zeros()[-1], 9)")).repr,
+    "14040.459877073",
+  );
+  await session.evaluate(`
+class ImportedMethod:
+    def value(self):
+        from math import log
+        return log(10)
+imported_method = ImportedMethod()
+`);
+  assert.equal(
+    (await session.evaluate("imported_method.value()")).repr,
+    "2.302585092994046",
+  );
 
   const interrupted = session.evaluate("while True:\n    pass");
   setTimeout(() => void session.interrupt(), 50);

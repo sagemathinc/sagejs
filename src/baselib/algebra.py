@@ -399,9 +399,11 @@ class CoercionModel:
     def parentOf(self, value: Any) -> Parent:
         if is_exact_integer(value):
             return ZZ
+        if runtime.jstype(value) == 'number':
+            return runtime.reflect.get(runtime.global_object, 'RDF')
         if (
             value is not None
-            and runtime.jstype(value) == 'object'
+            and runtime.jstype(value) in ('object', 'function')
             and runtime.reflect.get(
                 value, '_parent') is not runtime.undefined
         ):
@@ -424,6 +426,15 @@ class CoercionModel:
         right: Any,
         parent: Parent,
     ) -> Any:
+        if parent._kind == 'RDF':
+            if operator == 'add':
+                return runtime.native_add(left, right)
+            if operator == 'sub':
+                return runtime.native_sub(left, right)
+            if operator == 'mul':
+                return runtime.native_mul(left, right)
+            if operator == 'truediv':
+                return runtime.native_div(left, right)
         operation = self._operations.get(operator)
         if operation is runtime.undefined:
             raise TypeError(
@@ -709,7 +720,7 @@ runtime.object.freeze(AlgebraicExtensionFunctor)
 def is_math_element(value: Any) -> bool:
     return (
         value is not None
-        and runtime.jstype(value) == 'object'
+        and runtime.jstype(value) in ('object', 'function')
         and runtime.reflect.has(value, '_parent')
     )
 

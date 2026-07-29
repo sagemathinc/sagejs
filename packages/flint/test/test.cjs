@@ -250,6 +250,7 @@ const r53 = flint.realFromString("1.2", 53);
 const r100 = flint.realFromRational(1n, 3n, 100);
 assert.equal(flint.realPrecision(r53), 53);
 assert.equal(flint.realToString(r53), "1.20000000000000");
+assert.equal(flint.realToDouble(r53), 1.2);
 assert.equal(
   flint.realToString(r100),
   "0.33333333333333333333333333333",
@@ -273,6 +274,16 @@ const c53 = flint.complexFromReals(
   flint.realFromBigInt(2n, 53),
 );
 assert.equal(flint.complexPrecision(c53), 53);
+assert.equal(flint.complexRealDouble(c53), 1);
+assert.equal(flint.complexImagDouble(c53), 2);
+assert.equal(
+  flint.realToString(flint.complexReal(c53)),
+  "1.00000000000000",
+);
+assert.equal(
+  flint.realToString(flint.complexImag(c53)),
+  "2.00000000000000",
+);
 assert.equal(
   flint.complexToString(c53),
   "1.00000000000000 + 2.00000000000000*I",
@@ -280,6 +291,14 @@ assert.equal(
 assert.equal(
   flint.complexToString(flint.complexPowInt(c53, -2n)),
   "-0.120000000000000 - 0.160000000000000*I",
+);
+assert.equal(
+  flint.complexToString(flint.complexEi(c53)),
+  "1.04216770816494 + 3.70150142593787*I",
+);
+assert.deepEqual(
+  flint.zetaZeros(3, 53).map((value) => value.toFixed(12)),
+  ["14.134725141735", "21.022039638772", "25.010857580146"],
 );
 
 console.log("Native FLINT arithmetic and BigInt conversion passed.");

@@ -58,6 +58,7 @@ output_stream_defaults = {
     'keep_docstrings': False,
     'discard_asserts': False,
     'module_cache_dir': '',
+    'module_registry': '',
     'write_name': True,
     'exact_integers': False,
     'rational_division': False,
