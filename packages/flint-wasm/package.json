@@ -17,6 +17,7 @@
     "compiler-worker.mjs",
     "evaluator.mjs",
     "index.mjs",
+    "portable-polynomial.mjs",
     "README.md"
   ],
   "scripts": {

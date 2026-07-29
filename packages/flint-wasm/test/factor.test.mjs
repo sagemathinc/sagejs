@@ -45,3 +45,45 @@ test("rejects zero and lossy JavaScript numbers", () => {
     /safe integer/,
   );
 });
+
+test("provides exact portable polynomial construction and arithmetic", () => {
+  const x = flint.qqPolyGen();
+  const two = flint.qqPolyConstant(2n, 1n);
+  const one = flint.qqPolyConstant(1n, 1n);
+  const value = flint.polyAdd(
+    flint.polySub(
+      flint.polyPow(x, 2n),
+      flint.polyMul(two, x),
+    ),
+    one,
+  );
+  assert.equal(flint.polyToString(x, "x"), "x");
+  assert.equal(
+    flint.polyToString(value, "x"),
+    "x^2 - 2*x + 1",
+  );
+  assert.equal(
+    flint.polyToString(flint.qqPolyConstant(2n, 3n), "x"),
+    "2/3",
+  );
+  assert.equal(
+    flint.polyToString(
+      flint.zzPolyToQQ(flint.zzPolyConstant(-5n)),
+      "x",
+    ),
+    "-5",
+  );
+  assert.ok(
+    flint.polyEqual(
+      value,
+      flint.polyPow(flint.polySub(x, one), 2n),
+    ),
+  );
+
+  const z = flint.nmodPolyGen(5n);
+  const reduced = flint.polyAdd(
+    flint.polyPow(z, 2n),
+    flint.nmodPolyConstant(6n, 5n),
+  );
+  assert.equal(flint.polyToString(reduced, "z"), "z^2 + 1");
+});

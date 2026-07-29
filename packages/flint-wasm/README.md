@@ -5,7 +5,10 @@ small, browser-compatible Sage.js evaluator. It currently compiles and
 evaluates Sage source and exposes integer factorization through a narrow C
 ABI. The ABI returns the same structured `{ sign, factors }` result as the
 native Node-API add-on, so the ordinary Sage.js baselib constructs and
-displays `IntegerFactorization` objects unchanged.
+displays `IntegerFactorization` objects unchanged. A small exact JavaScript
+backend supplies polynomial construction, arithmetic, powers, equality, and
+representation over `ZZ`, `QQ`, and prime fields; advanced polynomial
+algorithms still require future FLINT WASM bindings.
 
 The JavaScript loader has no host Node.js dependency. Its browser bundle uses
 CoWasm's `wasi-js` with `@cowasm/memfs`, so FLINT can create, seek, reopen, and
@@ -67,9 +70,10 @@ pnpm test:wasm:browser
 
 Set `SAGEJS_CHROMIUM` if Chromium is not installed at a standard Linux path.
 The smoke test can take several minutes: it executes `factor(2026)`, verifies
-persistent definitions and Sage exponentiation across subsequent evaluations,
-and checks streamed output from a loop that factors every integer from 2025
-through 2050. It also runs `factor(n^22 - 1)` over that complete range,
+persistent definitions, `QQ['x'].gen()`, rational polynomial arithmetic, and
+Sage exponentiation across subsequent evaluations. It checks streamed output
+from a loop that factors every integer from 2025 through 2050. It also runs
+`factor(n^22 - 1)` over that complete range,
 exercising FLINT's disk-oriented quadratic-sieve code against the in-memory
 WASI filesystem. It finally starts an infinite Sage loop, interrupts it from
 the page, and verifies that the replacement worker can evaluate another

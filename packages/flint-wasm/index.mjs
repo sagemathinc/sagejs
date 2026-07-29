@@ -1,4 +1,5 @@
 import { createWasiHost } from "./dist/wasi-runtime.mjs";
+import { createPortablePolynomialBackend } from "./portable-polynomial.mjs";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -102,7 +103,10 @@ export async function instantiateFlintFactor(source) {
     };
   }
 
-  return Object.freeze({ factor });
+  return Object.freeze({
+    factor,
+    ...createPortablePolynomialBackend(),
+  });
 }
 
 export function formatFactorization({ sign, factors }) {

@@ -218,6 +218,11 @@ try {
     }
 
     await waitForOutput("2 * 1013");
+    await runSource("QQ['x'].gen()", "x");
+    await runSource(
+      "R.<x> = QQ[]\nx^2 - 2*x + 1",
+      "x^2  -  2*x  +  1",
+    );
     await runSource("a = 12\nfactor(a)", "2^2 * 3");
     await runSource("factor(a^2)", "2^4 * 3^2");
     await runSource(
