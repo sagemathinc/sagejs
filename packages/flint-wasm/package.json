@@ -1,0 +1,21 @@
+{
+  "name": "@sagemath/sagejs-flint-wasm",
+  "version": "0.0.1",
+  "description": "Browser-compatible FLINT WebAssembly proof of concept for Sage.js",
+  "license": "GPL-3.0-only",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "files": [
+    "dist/flint-factor.wasm",
+    "index.mjs",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "pnpm run build && node --test test/factor.test.mjs",
+    "test:browser": "pnpm run build && node test/browser-smoke.mjs"
+  }
+}

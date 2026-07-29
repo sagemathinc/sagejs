@@ -1,0 +1,126 @@
+"use strict";
+
+const fs = require("node:fs");
+const path = require("node:path");
+const { spawnSync } = require("node:child_process");
+
+const packageRoot = path.resolve(__dirname, "..");
+const repositoryRoot = path.resolve(packageRoot, "..", "..");
+const cowasmRoot = path.resolve(
+  process.env.SAGEJS_COWASM_ROOT ||
+    path.join(repositoryRoot, "..", "cowasm"),
+);
+const wasiSdkRoot = path.join(
+  cowasmRoot,
+  "core",
+  "build",
+  "build",
+  "wasi-sdk",
+  "dist",
+  "wasi-sdk-next",
+  "native",
+);
+const clang = path.join(wasiSdkRoot, "bin", "clang");
+const sysroot = path.join(wasiSdkRoot, "share", "wasi-sysroot");
+const wasmStrip = path.join(
+  cowasmRoot,
+  "core",
+  "kernel",
+  "node_modules",
+  ".bin",
+  "wasm-strip",
+);
+const dependencies = ["flint", "mpfr", "gmp"].map((name) => ({
+  name,
+  prefix: path.join(cowasmRoot, "sagemath", name, "dist", "wasi-sdk"),
+}));
+const outputDirectory = path.join(packageRoot, "dist");
+const rawOutput = path.join(outputDirectory, "flint-factor.unstripped.wasm");
+const output = path.join(outputDirectory, "flint-factor.wasm");
+
+function requirePath(description, filename) {
+  if (!fs.existsSync(filename)) {
+    throw new Error(
+      `missing ${description}: ${filename}\n` +
+        "Build the CoWasm FLINT stack first, or set SAGEJS_COWASM_ROOT " +
+        "to an existing CoWasm checkout.",
+    );
+  }
+}
+
+function run(command, args) {
+  const result = spawnSync(command, args, {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    stdio: "inherit",
+  });
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
+}
+
+requirePath("WASI SDK clang", clang);
+requirePath("WASI SDK sysroot", sysroot);
+requirePath("wasm-strip", wasmStrip);
+for (const dependency of dependencies) {
+  requirePath(
+    `${dependency.name} headers`,
+    path.join(dependency.prefix, "include"),
+  );
+  requirePath(
+    `${dependency.name} archive`,
+    path.join(dependency.prefix, "lib", `lib${dependency.name}.a`),
+  );
+}
+
+fs.mkdirSync(outputDirectory, { recursive: true });
+
+const includeArguments = dependencies.flatMap(({ prefix }) => [
+  `-I${path.join(prefix, "include")}`,
+]);
+const libraryArguments = dependencies.flatMap(({ prefix }) => [
+  `-L${path.join(prefix, "lib")}`,
+]);
+const exportNames = [
+  "sagejs_factor_input",
+  "sagejs_factor_input_capacity",
+  "sagejs_factor_output",
+  "sagejs_factor_output_capacity",
+  "sagejs_factor",
+];
+
+run(clang, [
+  "--target=wasm32-wasip1",
+  `--sysroot=${sysroot}`,
+  "-mexec-model=reactor",
+  "-Oz",
+  "-fvisibility=hidden",
+  "-Wall",
+  "-Wextra",
+  "-Werror",
+  ...includeArguments,
+  path.join(packageRoot, "src", "factor.c"),
+  path.join(packageRoot, "src", "wasi-stubs.c"),
+  ...libraryArguments,
+  "-lflint",
+  "-lmpfr",
+  "-lgmp",
+  "-lm",
+  "-lwasi-emulated-signal",
+  ...exportNames.map((name) => `-Wl,--export=${name}`),
+  "-Wl,--export-memory",
+  "-Wl,--gc-sections",
+  "-o",
+  rawOutput,
+]);
+run(wasmStrip, [rawOutput, "-o", output]);
+fs.rmSync(rawOutput);
+
+const bytes = fs.statSync(output).size;
+console.log(
+  `Built ${path.relative(repositoryRoot, output)} ` +
+    `(${(bytes / 1024 / 1024).toFixed(2)} MiB)`,
+);

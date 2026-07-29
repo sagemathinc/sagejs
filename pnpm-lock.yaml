@@ -33,6 +33,8 @@ importers:
         specifier: ^13.0.1
         version: 13.0.1
 
+  packages/flint-wasm: {}
+
 packages:
 
   '@astral-sh/ruff-wasm-nodejs@0.16.0':

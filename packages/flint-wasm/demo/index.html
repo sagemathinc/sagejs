@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sage.js FLINT WebAssembly</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      main {
+        margin: 12vh auto;
+        max-width: 54rem;
+        padding: 2rem;
+      }
+      input {
+        box-sizing: border-box;
+        font: inherit;
+        padding: 0.7rem;
+        width: 100%;
+      }
+      button {
+        font: inherit;
+        margin-top: 1rem;
+        padding: 0.6rem 1rem;
+      }
+      output {
+        display: block;
+        margin-top: 2rem;
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>FLINT in a Web Worker</h1>
+      <p>
+        This factors an arbitrary-precision integer locally using the same
+        FLINT library as Sage.js. Interrupting terminates and replaces the
+        worker.
+      </p>
+      <label for="integer">Integer</label>
+      <input
+        id="integer"
+        value="923098402834028349082348209385"
+        spellcheck="false"
+      />
+      <button id="factor">Factor</button>
+      <button id="interrupt" disabled>Interrupt</button>
+      <output id="output">Ready.</output>
+    </main>
+    <script type="module" src="./main.mjs"></script>
+  </body>
+</html>
