@@ -40,6 +40,10 @@ def print_catch(self, output):
 
     def f_exception():
         output.indent()
+        output.assign("ρσ_Exception")
+        output.print("ρσ_normalize_exception(ρσ_Exception)")
+        output.end_statement()
+        output.indent()
         output.spaced('ρσ_last_exception', '=',
                       'ρσ_Exception'), output.end_statement()
         output.indent()

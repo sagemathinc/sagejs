@@ -65,6 +65,34 @@ def ρσ_wall_time():
     return r"%js Date.now() / 1000"
 
 
+ρσ_interrupt_counter = 0
+
+
+def ρσ_check_interrupt():
+    return r"""%js (() => {
+        const state = globalThis.__sagejs_interrupt_state__;
+        if (
+            state !== undefined
+            && Atomics.exchange(state, 0, 0) !== 0
+        ) {
+            throw ρσ_exception_value(new KeyboardInterrupt());
+        }
+    })()"""
+
+
+def ρσ_normalize_exception(error):
+    return r"""%js (() => {
+        if (error?.code !== "ERR_SCRIPT_EXECUTION_INTERRUPTED") {
+            return error;
+        }
+        const state = globalThis.__sagejs_interrupt_state__;
+        if (state !== undefined) {
+            Atomics.store(state, 0, 0);
+        }
+        return ρσ_exception_value(new KeyboardInterrupt());
+    })()"""
+
+
 def ρσ_blocking_sleep(seconds):
     return r"""%js (() => {
         if (
@@ -77,13 +105,27 @@ def ρσ_blocking_sleep(seconds):
             );
         }
         try {
+            const state = (
+                globalThis.__sagejs_interrupt_state__
+                ?? new Int32Array(new SharedArrayBuffer(4))
+            );
             Atomics.wait(
-                new Int32Array(new SharedArrayBuffer(4)),
+                state,
                 0,
                 0,
                 Number(seconds) * 1000
             );
+            ρσ_check_interrupt();
         } catch (error) {
+            if (error?.code === "ERR_SCRIPT_EXECUTION_INTERRUPTED") {
+                throw ρσ_normalize_exception(error);
+            }
+            if (
+                error instanceof KeyboardInterrupt
+                || error?.name === "KeyboardInterrupt"
+            ) {
+                throw error;
+            }
             throw new RuntimeError(
                 "time.sleep() cannot block this JavaScript execution context"
             );

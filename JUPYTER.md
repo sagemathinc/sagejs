@@ -74,11 +74,14 @@ plot(sin(x^2), (x, 0, 2*pi), color='navy')
 plot3d(sin(x*y), (x, -pi, pi), (y, -pi, pi))
 ```
 
-Interrupting arbitrary synchronous JavaScript or native mathematics is made
-reliable by terminating and replacing the evaluator worker. Consequently, an
-interrupt stops the computation without killing the Jupyter kernel process,
-but definitions from the interrupted session are reset. This is the same
-explicit isolation contract documented in [`EMBEDDING.md`](EMBEDDING.md).
+On Node, evaluations run in an interruptible VM context. Tight generated loops
+and `time.sleep()` therefore respond by raising `KeyboardInterrupt`, ordinary
+notebook definitions survive, and user code can catch the exception. An
+uncooperative native call which does not return to the VM within the short
+grace period is stopped by replacing the evaluator worker; only that fallback
+loses the session namespace. This is the same explicit isolation contract
+documented in
+[`EMBEDDING.md`](EMBEDDING.md).
 
 The first kernel version deliberately does not implement stdin prompts, widget
 comms, debugger messages, or persistent history. Unsupported shell and control

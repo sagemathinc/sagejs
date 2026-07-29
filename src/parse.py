@@ -228,6 +228,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'bigint_gcd': 'ρσ_bigint_gcd',
     'bigint_fields': 'ρσ_bigint_fields',
     'blocking_sleep': 'ρσ_blocking_sleep',
+    'check_interrupt': 'ρσ_check_interrupt',
     'callable_instance_class': 'ρσ_callable_instance_class',
     'console_object': 'console',
     'coercion_model': 'ρσ_coercion_model',

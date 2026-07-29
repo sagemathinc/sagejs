@@ -2,7 +2,7 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 
-from ast_types import AST_Array, AST_AsyncFor, AST_BaseCall, AST_GeneratorComprehension, AST_ListComprehension, AST_Number, AST_Seq, AST_SymbolRef, AST_Unary, is_node_type
+from ast_types import AST_Array, AST_AsyncFor, AST_BaseCall, AST_GeneratorComprehension, AST_ListComprehension, AST_Number, AST_Seq, AST_SymbolRef, AST_Try, AST_Unary, is_node_type
 from output.stream import OutputStream
 from output.statements import force_statement, print_await_expression
 
@@ -18,10 +18,44 @@ def unpack_tuple(elems, output, in_statement):
             output.newline()
 
 
+def loop_can_catch_interrupt(output):
+    stack = output.stack()
+    for i in range(stack.length - 2, -1, -1):
+        ancestor = stack[i]
+        if is_node_type(ancestor, AST_Try) and ancestor.bcatch:
+            return True
+    return False
+
+
+def print_interrupt_check(output):
+    output.indent()
+    output.print(
+        "if ((++ρσ_interrupt_counter & 255) === 0) "
+        "ρσ_check_interrupt()"
+    )
+    output.end_statement()
+    output.newline()
+
+
+def print_loop_body(loop, output):
+    if not loop_can_catch_interrupt(output):
+        loop._do_print_body(output)
+        return
+
+    def body():
+        print_interrupt_check(output)
+        for statement in loop.body.body:
+            output.indent()
+            statement.print(output)
+            output.newline()
+
+    output.with_block(body)
+
+
 def print_do_loop(self, output):
     output.print("do")
     output.space()
-    self._do_print_body(output)
+    print_loop_body(self, output)
     output.space()
     output.print("while")
     output.space()
@@ -35,7 +69,7 @@ def print_while_loop(self, output):
     output.space()
     output.with_parens(lambda: output.print_truth_test(self.condition))
     output.space()
-    self._do_print_body(output)
+    print_loop_body(self, output)
     print_loop_else(self, output)
 
 
@@ -128,6 +162,8 @@ def print_for_loop_body(output):
             output.print(self.simple_for_index)
             output.end_statement()
 
+        if loop_can_catch_interrupt(output):
+            print_interrupt_check(output)
         for stmt in self.body.body:
             output.indent()
             stmt.print(output)
@@ -283,6 +319,8 @@ def print_async_for(self, output):
     output.space()
 
     def loop_body():
+        if loop_can_catch_interrupt(output):
+            print_interrupt_check(output)
         output.indent()
         output.print('var ' + value_name)
         output.end_statement()

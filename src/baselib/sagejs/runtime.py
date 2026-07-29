@@ -115,6 +115,11 @@ def wall_time():
     return r"%js Date.now() / 1000"
 
 
+def check_interrupt():
+    """Raise KeyboardInterrupt when the embedding host requests it."""
+    return r"%js ρσ_check_interrupt()"
+
+
 def blocking_sleep(seconds):
     """Synchronously sleep in Node or an isolated browser worker."""
     return r"""%js (() => {
@@ -128,13 +133,27 @@ def blocking_sleep(seconds):
             );
         }
         try {
+            const state = (
+                globalThis.__sagejs_interrupt_state__
+                ?? new Int32Array(new SharedArrayBuffer(4))
+            );
             Atomics.wait(
-                new Int32Array(new SharedArrayBuffer(4)),
+                state,
                 0,
                 0,
                 Number(seconds) * 1000
             );
+            ρσ_check_interrupt();
         } catch (error) {
+            if (error?.code === "ERR_SCRIPT_EXECUTION_INTERRUPTED") {
+                throw ρσ_normalize_exception(error);
+            }
+            if (
+                error instanceof KeyboardInterrupt
+                || error?.name === "KeyboardInterrupt"
+            ) {
+                throw error;
+            }
             throw new RuntimeError(
                 "time.sleep() cannot block this JavaScript execution context"
             );

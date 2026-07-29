@@ -66,6 +66,7 @@ imported_method = ImportedMethod()
   const interrupted = session.evaluate("while True:\n    pass");
   setTimeout(() => void session.interrupt(), 50);
   await assert.rejects(interrupted, SageSessionInterruptedError);
+  assert.equal((await session.evaluate("value")).repr, "12");
   assert.equal((await session.evaluate("2^10")).repr, "1024");
 
   await assert.rejects(
@@ -73,6 +74,29 @@ imported_method = ImportedMethod()
     SageSessionTimeoutError,
   );
   assert.equal((await session.evaluate("factor(30)")).repr, "2 * 3 * 5");
+
+  await session.evaluate("preserved = 41");
+  const sleeping = session.evaluate(
+    "from time import sleep\nfor i in range(100):\n    print(i)\n    sleep(1)",
+  );
+  setTimeout(() => void session.interrupt(), 50);
+  await assert.rejects(sleeping, SageSessionInterruptedError);
+  assert.equal((await session.evaluate("preserved")).repr, "41");
+
+  const caught = session.evaluate(
+    [
+      "caught = False",
+      "try:",
+      "    while True:",
+      "        pass",
+      "except KeyboardInterrupt:",
+      "    caught = True",
+      "caught",
+    ].join("\n"),
+  );
+  setTimeout(() => void session.interrupt(), 50);
+  assert.equal((await caught).repr, "True");
+  assert.equal((await session.evaluate("preserved")).repr, "41");
 
   await session.reset();
   await assert.rejects(session.evaluate("value"), /value is not defined/);

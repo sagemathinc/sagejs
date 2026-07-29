@@ -50,6 +50,7 @@ export interface KernelEvaluator {
 interface EvaluatorOptions {
   mode: SageLanguageMode;
   onOutput(text: string): void;
+  interruptState?: Int32Array;
 }
 
 function richDisplay(value: unknown): SageDisplayData | undefined {
@@ -85,6 +86,7 @@ function richDisplay(value: unknown): SageDisplayData | undefined {
 export function createKernelEvaluator({
   mode,
   onOutput,
+  interruptState,
 }: EvaluatorOptions): KernelEvaluator {
   const compiler = createCompiler();
   const precompiledModuleCacheDir = standardLibraryCacheDirectory(
@@ -148,6 +150,7 @@ export function createKernelEvaluator({
   global.__sagejs_output_write__ = (text: unknown) => {
     onOutput(String(text));
   };
+  global.__sagejs_interrupt_state__ = interruptState;
   global.__sagejs_sage_mode__ = sage;
 
   const initialization = compiler.parse("", {
@@ -302,9 +305,18 @@ export function createKernelEvaluator({
       { filename = "<embedded>" }: { filename?: string } = {},
     ): KernelEvaluation {
       const started = performance.now();
-      const value = runInThisContext(compile(source, filename), {
-        filename,
-      });
+      const javascript = compile(source, filename);
+      if (interruptState) Atomics.store(interruptState, 1, 1);
+      let value: unknown;
+      try {
+        global.ρσ_check_interrupt();
+        value = runInThisContext(javascript, {
+          filename,
+          breakOnSigint: true,
+        });
+      } finally {
+        if (interruptState) Atomics.store(interruptState, 1, 0);
+      }
       const repr =
         value === undefined ? "" : String(global.ρσ_repr(value));
       return {
@@ -386,6 +398,7 @@ export function createKernelEvaluator({
 
     close(): void {
       delete global.__sagejs_output_write__;
+      delete global.__sagejs_interrupt_state__;
       delete global.__sagejs_graphics_save_hook__;
       delete global.__sagejs_kernel_modules__;
     },

@@ -39,6 +39,8 @@ interface PendingRequest {
   onOutput?: (text: string) => void;
   resolve(result: unknown): void;
   reject(error: Error): void;
+  settled: Promise<void>;
+  settle(): void;
   timer?: NodeJS.Timeout;
 }
 
@@ -64,6 +66,13 @@ export class SageSessionClosedError extends Error {
 }
 
 function deserializeError(serialized): Error {
+  if (serialized.name === "KeyboardInterrupt") {
+    const interrupted = new SageSessionInterruptedError(
+      serialized.message || undefined,
+    );
+    if (serialized.stack) interrupted.stack = serialized.stack;
+    return interrupted;
+  }
   const error = new Error(serialized.message);
   error.name = serialized.name;
   if (serialized.stack) error.stack = serialized.stack;
@@ -73,9 +82,9 @@ function deserializeError(serialized): Error {
 /**
  * An interruptible, persistent Sage.js execution session.
  *
- * Every session owns a worker. Interrupt and reset replace that worker, which
- * is the only reliable way to stop arbitrary synchronous JavaScript or native
- * mathematics without compromising the embedding process.
+ * Every session owns a worker. Node's VM interrupt bridge and blocking waits
+ * preserve session state on normal interruption. Uncooperative native code
+ * falls back to replacing the worker.
  */
 export class SageSession extends EventEmitter {
   readonly mode: SageLanguageMode;
@@ -85,6 +94,8 @@ export class SageSession extends EventEmitter {
   private readyResolve!: () => void;
   private readyReject!: (error: Error) => void;
   private pending = new Map<number, PendingRequest>();
+  private interruptState?: Int32Array;
+  private interruptPromise?: Promise<void>;
   private nextId = 0;
   private closed = false;
 
@@ -107,8 +118,15 @@ export class SageSession extends EventEmitter {
 
   private spawnWorker(readyPromisePrepared = false): void {
     if (!readyPromisePrepared) this.prepareReadyPromise();
+    const interruptState = new Int32Array(
+      new SharedArrayBuffer(2 * Int32Array.BYTES_PER_ELEMENT),
+    );
+    this.interruptState = interruptState;
     const worker = new Worker(join(__dirname, "kernel-worker.js"), {
-      workerData: { mode: this.mode },
+      workerData: {
+        mode: this.mode,
+        interruptBuffer: interruptState.buffer,
+      },
     });
     this.worker = worker;
 
@@ -138,6 +156,7 @@ export class SageSession extends EventEmitter {
 
       this.pending.delete(message.id);
       if (pending.timer) clearTimeout(pending.timer);
+      pending.settle();
       if (message.ok) {
         pending.resolve(
           pending.kind === "evaluate"
@@ -180,6 +199,7 @@ export class SageSession extends EventEmitter {
     for (const pending of this.pending.values()) {
       if (pending.timer) clearTimeout(pending.timer);
       pending.reject(error);
+      pending.settle();
     }
     this.pending.clear();
   }
@@ -214,12 +234,18 @@ export class SageSession extends EventEmitter {
     const id = ++this.nextId;
 
     return new Promise((resolve, reject) => {
+      let settle!: () => void;
+      const settled = new Promise<void>((done) => {
+        settle = done;
+      });
       const pending: PendingRequest = {
         kind: "evaluate",
         output: "",
         onOutput,
         resolve,
         reject,
+        settled,
+        settle,
       };
       if (timeout !== undefined) {
         pending.timer = setTimeout(() => {
@@ -262,11 +288,17 @@ export class SageSession extends EventEmitter {
     if (!worker) throw new SageSessionClosedError();
     const id = ++this.nextId;
     return new Promise<T>((resolve, reject) => {
+      let settle!: () => void;
+      const settled = new Promise<void>((done) => {
+        settle = done;
+      });
       this.pending.set(id, {
         kind: "request",
         output: "",
         resolve,
         reject,
+        settled,
+        settle,
       });
       worker.postMessage({ type, id, source, ...extra });
     });
@@ -288,6 +320,7 @@ export class SageSession extends EventEmitter {
     if (this.closed) throw new SageSessionClosedError();
     const worker = this.worker;
     this.worker = undefined;
+    this.interruptState = undefined;
     // Publish the replacement's readiness before rejecting the interrupted
     // evaluation. Its caller may immediately submit another evaluation.
     this.prepareReadyPromise();
@@ -298,8 +331,61 @@ export class SageSession extends EventEmitter {
     await this.readyPromise;
   }
 
+  private async performInterrupt(): Promise<void> {
+    if (this.closed) throw new SageSessionClosedError();
+    await this.ready();
+    const active = [...this.pending.entries()].filter(
+      ([, pending]) => pending.kind === "evaluate",
+    );
+    const state = this.interruptState;
+    if (!state || active.length === 0) {
+      if (state) Atomics.store(state, 0, 0);
+      return;
+    }
+
+    Atomics.store(state, 0, 1);
+    Atomics.notify(state, 0);
+
+    const cooperative = Promise.all(
+      active.map(([, pending]) => pending.settled),
+    ).then(() => true);
+    const waitForSettlement = async (milliseconds: number): Promise<boolean> => {
+      let timer: NodeJS.Timeout | undefined;
+      const graceExpired = new Promise<false>((resolve) => {
+        timer = setTimeout(() => resolve(false), milliseconds);
+      });
+      const settled = await Promise.race([cooperative, graceExpired]);
+      if (timer) clearTimeout(timer);
+      return settled;
+    };
+
+    // Give interrupt-aware waits and loops inside a Python try/except a brief
+    // opportunity to raise a catchable KeyboardInterrupt.
+    if (await waitForSettlement(25)) return;
+    if (Atomics.load(state, 0) === 0) return;
+
+    // runInThisContext({ breakOnSigint: true }) turns SIGINT into an
+    // exception in the worker currently evaluating Python. If the worker is
+    // still compiling, it observes the shared request before entering the VM.
+    if (Atomics.load(state, 1) !== 0) {
+      process.kill(process.pid, "SIGINT");
+    }
+    if (await waitForSettlement(225)) return;
+
+    const stillActive = active.some(
+      ([id, pending]) => this.pending.get(id) === pending,
+    );
+    if (stillActive) {
+      await this.replaceWorker(new SageSessionInterruptedError());
+    }
+  }
+
   interrupt(): Promise<void> {
-    return this.replaceWorker(new SageSessionInterruptedError());
+    if (this.interruptPromise) return this.interruptPromise;
+    this.interruptPromise = this.performInterrupt().finally(() => {
+      this.interruptPromise = undefined;
+    });
+    return this.interruptPromise;
   }
 
   reset(): Promise<void> {
@@ -315,6 +401,7 @@ export class SageSession extends EventEmitter {
     this.readyReject(error);
     const worker = this.worker;
     this.worker = undefined;
+    this.interruptState = undefined;
     this.rejectPending(error);
     if (worker) await worker.terminate();
     this.removeAllListeners();

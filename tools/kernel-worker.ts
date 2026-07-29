@@ -11,20 +11,28 @@ if (!parentPort) {
 
 function serializeError(error: unknown) {
   const value = error as {
+    code?: string;
     name?: string;
     message?: string;
     stack?: string;
   };
+  const interrupted = value?.code === "ERR_SCRIPT_EXECUTION_INTERRUPTED";
   return {
-    name: value?.name ?? "Error",
-    message: value?.message ?? String(error),
+    name: interrupted ? "KeyboardInterrupt" : (value?.name ?? "Error"),
+    message: interrupted
+      ? "Sage.js evaluation interrupted"
+      : (value?.message ?? String(error)),
     stack: value?.stack,
   };
 }
 
 let evaluationId: number | undefined;
+const interruptState = new Int32Array(
+  workerData.interruptBuffer as SharedArrayBuffer,
+);
 const evaluator = createKernelEvaluator({
   mode: workerData.mode as SageLanguageMode,
+  interruptState,
   onOutput(text) {
     parentPort.postMessage({
       type: "stdout",
@@ -62,6 +70,12 @@ parentPort.on("message", (message) => {
         result,
       });
     } catch (error) {
+      if (
+        (error as { code?: string })?.code ===
+        "ERR_SCRIPT_EXECUTION_INTERRUPTED"
+      ) {
+        Atomics.store(interruptState, 0, 0);
+      }
       parentPort.postMessage({
         type: "result",
         id: message.id,

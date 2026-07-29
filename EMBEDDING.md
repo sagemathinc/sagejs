@@ -153,10 +153,17 @@ await sage.evaluate("factor(2^521 - 1)", {
 await sage.reset();
 ```
 
-JavaScript cannot safely inject an exception into arbitrary synchronous or
-native code. Consequently, interruption and timeout replace the worker. This
-reliably stops computation, but definitions from the interrupted session are
-discarded. `reset()` deliberately provides the same clean-state transition.
+On Node, evaluations run in an interruptible VM context. Normal interruption
+therefore raises `KeyboardInterrupt` inside the evaluator and preserves
+definitions, just as an interactive Python user expects. This applies to tight
+generated loops and `time.sleep()`, and user code may catch the exception.
+
+An uncooperative native call may not return control to the VM promptly. If a
+computation does not respond during the short interruption grace period,
+Sage.js terminates and replaces the worker as a last resort. That reliably
+stops the computation, but definitions from that session are then discarded.
+Evaluation timeouts and `reset()` deliberately retain the clean-state
+replacement behavior.
 
 Call `close()` when the embedding is finished. Evaluations submitted after
 closing reject with `SageSessionClosedError`.
@@ -168,7 +175,8 @@ Embeddable Kernel v1 establishes these invariants:
 - evaluations in one session are ordered and share a namespace;
 - separate sessions are isolated;
 - output is associated with its evaluation;
-- interruption cannot freeze the embedding application;
+- VM interruption preserves state, with worker replacement as a reliable
+  fallback;
 - Node and browser sessions expose the same lifecycle, text, and rich-result
   shape;
 - worker-owned mathematical objects never cross the transport accidentally.
