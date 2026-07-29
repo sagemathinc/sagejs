@@ -195,6 +195,28 @@ try {
       await waitForOutput(expected);
     }
 
+    async function waitForIdle(timeout = 360_000) {
+      const deadline = Date.now() + timeout;
+      let state = { output: "", running: true };
+      while (Date.now() < deadline) {
+        const evaluation = await command("Runtime.evaluate", {
+          expression: `({
+            output: document.querySelector('#output')?.textContent ?? '',
+            running: document.querySelector('#run')?.disabled ?? true
+          })`,
+          returnByValue: true,
+        });
+        state = evaluation.result.value;
+        if (!state.running) {
+          return state.output;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error(
+        `browser evaluator did not finish; current output:\n${state.output}`,
+      );
+    }
+
     await waitForOutput("2 * 1013");
     await runSource("a = 12\nfactor(a)", "2^2 * 3");
     await runSource("factor(a^2)", "2^4 * 3^2");
@@ -202,6 +224,14 @@ try {
       "for n in [2025..2050]:\n    print(factor(n))",
       factorLoopOutput,
     );
+    await startSource(
+      "for n in [2025..2050]:\n    print(n, factor(n^22-1))",
+    );
+    const poweredFactorOutput = await waitForIdle();
+    assert.doesNotMatch(poweredFactorOutput, /Error:/);
+    assert.equal(poweredFactorOutput.trim().split("\n").length, 26);
+    assert.match(poweredFactorOutput, /^2025 /);
+    assert.match(poweredFactorOutput, /\n2050 /);
     await startSource("while True:\n    pass");
     await waitForOutput("Running…");
     await new Promise((resolve) => setTimeout(resolve, 250));

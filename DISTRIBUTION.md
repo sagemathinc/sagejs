@@ -95,10 +95,14 @@ There is strong evidence that the native library stack is portable:
 
 The implemented direct C ABI links the CoWasm FLINT, MPFR, and GMP archives
 into a 4.7 MiB stripped module, about 2 MiB with gzip. The compiler and baselib
-add about 0.45 MiB with gzip. A real Chromium smoke test evaluates
+add about 0.45 MiB with gzip. CoWasm's `wasi-js` and `@cowasm/memfs` provide a
+browser-safe temporary filesystem for FLINT algorithms such as quadratic
+sieve, without granting access to a host filesystem. A real Chromium smoke
+test evaluates
 `factor(2026)` through the Sage parser, generated JavaScript, ordinary
 `IntegerFactorization`, and FLINT WASM layers. It also verifies persistent
-definitions across evaluations.
+definitions across evaluations and factors every `n^22 - 1` for
+`2025 <= n <= 2050`.
 
 This establishes a worker-hosted WASM backend without making the browser the
 primary high-performance research target or forcing native deployment through
@@ -146,7 +150,7 @@ confused with packaging the complete dynamic runtime.
 | npm package | Working | Node + V8 + native Node-API addon |
 | Native single file | Working proof of concept | Node SEA + embedded static-math addon |
 | FLINT-free single file | Working proof of concept | Node SEA, JavaScript language runtime only |
-| Browser demo | Feasible; next proof of concept | Web Worker + WASM mathematical backend |
+| Browser demo | Working proof of concept | Web Worker + WASM mathematical backend |
 | Hosted service | Straightforward later | SEA in an OCI/Cloudflare Container |
 | General Porffor binary | Not currently viable | Loses V8 and expands the whole dynamic runtime |
 

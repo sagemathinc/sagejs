@@ -3,6 +3,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const esbuild = require("esbuild");
 
 const packageRoot = path.resolve(__dirname, "..");
 const repositoryRoot = path.resolve(packageRoot, "..", "..");
@@ -39,6 +40,7 @@ const rawOutput = path.join(outputDirectory, "flint-factor.unstripped.wasm");
 const output = path.join(outputDirectory, "flint-factor.wasm");
 const compilerOutput = path.join(outputDirectory, "compiler.js");
 const baselibOutput = path.join(outputDirectory, "baselib.js");
+const wasiRuntimeOutput = path.join(outputDirectory, "wasi-runtime.mjs");
 const compilerSource = path.join(
   repositoryRoot,
   "dist",
@@ -140,6 +142,24 @@ run(clang, [
 ]);
 run(wasmStrip, [rawOutput, "-o", output]);
 fs.rmSync(rawOutput);
+esbuild.buildSync({
+  entryPoints: [path.join(packageRoot, "src", "wasi-runtime.mjs")],
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: ["es2022"],
+  outfile: wasiRuntimeOutput,
+  inject: [path.join(packageRoot, "src", "node-globals.mjs")],
+  alias: {
+    assert: "assert",
+    buffer: "buffer",
+    events: "events",
+    path: "path-browserify",
+    process: "process",
+    stream: "stream-browserify",
+    util: "util",
+  },
+});
 fs.copyFileSync(compilerSource, compilerOutput);
 fs.copyFileSync(baselibSource, baselibOutput);
 

@@ -7,8 +7,11 @@ ABI. The ABI returns the same structured `{ sign, factors }` result as the
 native Node-API add-on, so the ordinary Sage.js baselib constructs and
 displays `IntegerFactorization` objects unchanged.
 
-The JavaScript loader has no Node.js dependencies. The demo uses two isolated
-realms:
+The JavaScript loader has no host Node.js dependency. Its browser bundle uses
+CoWasm's `wasi-js` with `@cowasm/memfs`, so FLINT can create, seek, reopen, and
+unlink temporary files entirely in memory. This matters for algorithms such as
+the quadratic sieve; no browser filesystem access is required. The demo uses
+two isolated realms:
 
 1. An outer evaluator Web Worker owns the Sage runtime and all mathematical
    objects.
@@ -43,6 +46,7 @@ The build uses CoWasm's WASI SDK and static `libflint`, `libmpfr`, and `libgmp`
 archives. The resulting `dist/flint-factor.wasm` is about 4.7 MiB before HTTP
 compression and about 2 MiB with gzip in the current build. The self-hosted
 compiler and baselib add about 3.8 MiB uncompressed or 0.45 MiB with gzip.
+The bundled WASI and in-memory filesystem host is about 0.55 MiB uncompressed.
 
 ## Browser demo
 
@@ -62,11 +66,14 @@ pnpm test:wasm:browser
 ```
 
 Set `SAGEJS_CHROMIUM` if Chromium is not installed at a standard Linux path.
-The smoke test executes `factor(2026)`, verifies persistent definitions and
-Sage exponentiation across subsequent evaluations, and checks streamed output
-from a loop that factors every integer from 2025 through 2050. It finally
-starts an infinite Sage loop, interrupts it from the page, and verifies that
-the replacement worker can evaluate another factorization.
+The smoke test can take several minutes: it executes `factor(2026)`, verifies
+persistent definitions and Sage exponentiation across subsequent evaluations,
+and checks streamed output from a loop that factors every integer from 2025
+through 2050. It also runs `factor(n^22 - 1)` over that complete range,
+exercising FLINT's disk-oriented quadratic-sieve code against the in-memory
+WASI filesystem. It finally starts an infinite Sage loop, interrupts it from
+the page, and verifies that the replacement worker can evaluate another
+factorization.
 
 The current proof of concept evaluates generated JavaScript in the isolated
 worker and therefore requires a Content Security Policy that permits dynamic

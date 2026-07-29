@@ -1,9 +1,7 @@
+import { createWasiHost } from "./dist/wasi-runtime.mjs";
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
-
-const WASI_SUCCESS = 0;
-const WASI_BADF = 8;
-const WASI_NOSYS = 52;
 
 async function compile(source) {
   if (source instanceof WebAssembly.Module) {
@@ -19,50 +17,6 @@ async function compile(source) {
     return WebAssembly.compileStreaming(fetch(source));
   }
   return WebAssembly.compile(source);
-}
-
-function makeWasiImports(getMemory) {
-  function view() {
-    return new DataView(getMemory().buffer);
-  }
-
-  const implemented = {
-    clock_time_get(_clockId, _precision, resultPointer) {
-      const nanoseconds = BigInt(Date.now()) * 1_000_000n;
-      view().setBigUint64(resultPointer, nanoseconds, true);
-      return WASI_SUCCESS;
-    },
-
-    fd_write(fileDescriptor, iovPointer, iovCount, writtenPointer) {
-      if (fileDescriptor !== 1 && fileDescriptor !== 2) {
-        return WASI_BADF;
-      }
-      const memory = getMemory();
-      const data = view();
-      const chunks = [];
-      let bytesWritten = 0;
-      for (let index = 0; index < iovCount; index += 1) {
-        const pointer = data.getUint32(iovPointer + index * 8, true);
-        const length = data.getUint32(iovPointer + index * 8 + 4, true);
-        chunks.push(new Uint8Array(memory.buffer, pointer, length));
-        bytesWritten += length;
-      }
-      const output = chunks.map((chunk) => decoder.decode(chunk)).join("");
-      (fileDescriptor === 2 ? console.error : console.log)(output);
-      data.setUint32(writtenPointer, bytesWritten, true);
-      return WASI_SUCCESS;
-    },
-
-    proc_exit(status) {
-      throw new Error(`FLINT WASM requested process exit ${status}`);
-    },
-  };
-
-  return new Proxy(implemented, {
-    get(target, property) {
-      return target[property] ?? (() => WASI_NOSYS);
-    },
-  });
 }
 
 function readCString(memory, pointer, capacity) {
@@ -82,13 +36,12 @@ function readCString(memory, pointer, capacity) {
  */
 export async function instantiateFlintFactor(source) {
   const module = await compile(source);
-  let memory;
-  const wasi = makeWasiImports(() => memory);
+  const wasi = createWasiHost();
   const instance = await WebAssembly.instantiate(module, {
-    wasi_snapshot_preview1: wasi,
+    wasi_snapshot_preview1: wasi.imports,
   });
-  memory = instance.exports.memory;
-  instance.exports._initialize?.();
+  const memory = instance.exports.memory;
+  wasi.initialize(instance);
 
   const inputPointer = Number(instance.exports.sagejs_factor_input());
   const inputCapacity = Number(

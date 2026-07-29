@@ -30,6 +30,14 @@ test("preserves signs, exponents, units, and arbitrary precision", () => {
   );
 });
 
+test("supports FLINT quadratic-sieve temporary files through WASI", () => {
+  assert.equal(
+    formatFactorization(flint.factor(2027n ** 22n - 1n)),
+    "2^3 * 3 * 13^2 * 23 * 947 * 1013 * 8009 * 524701 * " +
+      "102509021429236628338837 * 146131886639829984132902603887",
+  );
+});
+
 test("rejects zero and lossy JavaScript numbers", () => {
   assert.throws(() => flint.factor(0), /cannot factor zero/);
   assert.throws(
