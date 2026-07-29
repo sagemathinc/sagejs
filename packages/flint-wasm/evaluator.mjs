@@ -80,6 +80,7 @@ export async function instantiateSageEvaluator({
     throw error;
   }
   const globalEvaluate = globalThis.eval;
+  let outputHandler = (text) => console.log(text);
 
   globalThis.require = (name) => {
     if (name === "@sagemath/sagejs-flint") {
@@ -87,19 +88,41 @@ export async function instantiateSageEvaluator({
     }
     throw new Error(`module ${JSON.stringify(name)} is unavailable in browser`);
   };
+  globalThis.__sagejs_output_write__ = (text) => {
+    outputHandler(String(text));
+  };
   globalEvaluate(initialization);
   globalEvaluate('var __name__ = "__repl__";');
 
-  async function evaluate(source, { filename = "<browser>" } = {}) {
+  async function evaluateNow(
+    source,
+    {
+      filename = "<browser>",
+      onOutput = (text) => console.log(text),
+    } = {},
+  ) {
     const javascript = await language.request("compile", {
       source,
       filename,
     });
-    const value = globalEvaluate(javascript);
-    return {
-      value,
-      repr: value === undefined ? "" : globalThis.ρσ_repr(value),
-    };
+    const previousOutputHandler = outputHandler;
+    outputHandler = onOutput;
+    try {
+      const value = globalEvaluate(javascript);
+      return {
+        value,
+        repr: value === undefined ? "" : globalThis.ρσ_repr(value),
+      };
+    } finally {
+      outputHandler = previousOutputHandler;
+    }
+  }
+
+  let evaluationTail = Promise.resolve();
+  function evaluate(source, options) {
+    const result = evaluationTail.then(() => evaluateNow(source, options));
+    evaluationTail = result.catch(() => {});
+    return result;
   }
 
   function terminate() {

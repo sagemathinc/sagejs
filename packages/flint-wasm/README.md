@@ -19,6 +19,9 @@ This mirrors the separate VM context used by the Node REPL and prevents the
 compiler's compatibility runtime from colliding with the evaluated program.
 The main page stays responsive and can interrupt either compilation or
 mathematics reliably by terminating and replacing the outer worker.
+Python `print()` output is streamed back to the page as it is produced, with
+its exact `sep` and `end` text preserved independently of the final expression
+representation.
 
 ## Build
 
@@ -59,10 +62,11 @@ pnpm test:wasm:browser
 ```
 
 Set `SAGEJS_CHROMIUM` if Chromium is not installed at a standard Linux path.
-The smoke test executes `factor(2026)`, then verifies persistent definitions
-and Sage exponentiation across subsequent evaluations. It finally starts an
-infinite Sage loop, interrupts it from the page, and verifies that the
-replacement worker can evaluate another factorization.
+The smoke test executes `factor(2026)`, verifies persistent definitions and
+Sage exponentiation across subsequent evaluations, and checks streamed output
+from a loop that factors every integer from 2025 through 2050. It finally
+starts an infinite Sage loop, interrupts it from the page, and verifies that
+the replacement worker can evaluate another factorization.
 
 The current proof of concept evaluates generated JavaScript in the isolated
 worker and therefore requires a Content Security Policy that permits dynamic

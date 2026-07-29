@@ -5,6 +5,7 @@ const output = document.querySelector("#output");
 
 let requestId = 0;
 let worker;
+let outputBuffer = "";
 
 function startWorker() {
   worker = new Worker(new URL("./worker.mjs", import.meta.url), {
@@ -14,7 +15,20 @@ function startWorker() {
     if (data.id !== requestId) {
       return;
     }
-    output.textContent = data.ok ? data.result : `Error: ${data.error}`;
+    if (data.type === "output") {
+      outputBuffer += data.text;
+      output.textContent = outputBuffer;
+      return;
+    }
+    if (data.ok) {
+      outputBuffer += data.result;
+    } else {
+      if (outputBuffer && !outputBuffer.endsWith("\n")) {
+        outputBuffer += "\n";
+      }
+      outputBuffer += `Error: ${data.error}`;
+    }
+    output.textContent = outputBuffer;
     runButton.disabled = false;
     interruptButton.disabled = true;
   };
@@ -24,6 +38,7 @@ function interrupt() {
   worker?.terminate();
   requestId += 1;
   startWorker();
+  outputBuffer = "";
   output.textContent = "Interrupted.";
   runButton.disabled = false;
   interruptButton.disabled = true;
@@ -31,6 +46,7 @@ function interrupt() {
 
 runButton.addEventListener("click", () => {
   requestId += 1;
+  outputBuffer = "";
   output.textContent = "Running…";
   runButton.disabled = true;
   interruptButton.disabled = false;

@@ -29,6 +29,35 @@ const contentTypes = new Map([
   [".mjs", "text/javascript; charset=utf-8"],
   [".wasm", "application/wasm"],
 ]);
+const factorLoopOutput = [
+  "3^4 * 5^2",
+  "2 * 1013",
+  "2027",
+  "2^2 * 3 * 13^2",
+  "2029",
+  "2 * 5 * 7 * 29",
+  "3 * 677",
+  "2^4 * 127",
+  "19 * 107",
+  "2 * 3^2 * 113",
+  "5 * 11 * 37",
+  "2^2 * 509",
+  "3 * 7 * 97",
+  "2 * 1019",
+  "2039",
+  "2^3 * 3 * 5 * 17",
+  "13 * 157",
+  "2 * 1021",
+  "3^2 * 227",
+  "2^2 * 7 * 73",
+  "5 * 409",
+  "2 * 3 * 11 * 31",
+  "23 * 89",
+  "2^11",
+  "3 * 683",
+  "2 * 5^2 * 41",
+  "",
+].join("\n");
 
 const server = http.createServer((request, response) => {
   const pathname = decodeURIComponent(new URL(request.url, "http://x").pathname);
@@ -169,6 +198,10 @@ try {
     await waitForOutput("2 * 1013");
     await runSource("a = 12\nfactor(a)", "2^2 * 3");
     await runSource("factor(a^2)", "2^4 * 3^2");
+    await runSource(
+      "for n in [2025..2050]:\n    print(factor(n))",
+      factorLoopOutput,
+    );
     await startSource("while True:\n    pass");
     await waitForOutput("Running…");
     await new Promise((resolve) => setTimeout(resolve, 250));

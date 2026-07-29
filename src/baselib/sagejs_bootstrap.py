@@ -49,11 +49,15 @@ def ρσ_native_method_adapter(target_function):
 
 def ρσ_output_write(text):
     return r"""%js (
-        typeof process !== "undefined"
-        && process.stdout
-        && typeof process.stdout.write === "function"
-        ? process.stdout.write(String(text))
-        : console.log(String(text))
+        typeof globalThis.__sagejs_output_write__ === "function"
+        ? globalThis.__sagejs_output_write__(String(text))
+        : (
+            typeof process !== "undefined"
+            && process.stdout
+            && typeof process.stdout.write === "function"
+            ? process.stdout.write(String(text))
+            : console.log(String(text))
+        )
     )"""
 
 

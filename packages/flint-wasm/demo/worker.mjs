@@ -12,15 +12,25 @@ self.onmessage = async ({ data }) => {
   }
   try {
     const evaluator = await evaluatorPromise;
-    const result = await evaluator.evaluate(data.source);
+    const result = await evaluator.evaluate(data.source, {
+      onOutput(text) {
+        self.postMessage({
+          id: data.id,
+          type: "output",
+          text,
+        });
+      },
+    });
     self.postMessage({
       id: data.id,
+      type: "result",
       ok: true,
       result: result.repr,
     });
   } catch (error) {
     self.postMessage({
       id: data.id,
+      type: "result",
       ok: false,
       error: error instanceof Error ? error.message : String(error),
     });
