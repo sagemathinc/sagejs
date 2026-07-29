@@ -6,7 +6,8 @@
 from utils import DefaultsError, string_template
 from errors import ImportError, SyntaxError
 from tokenizer import ALL_KEYWORDS, IDENTIFIER_PAT, tokenizer
-from parse import parse, NATIVE_CLASSES, compile_time_decorators
+from parse import (
+    parse, NATIVE_CLASSES, compile_time_decorators, get_compiler_version)
 from output.stream import OutputStream
 from output.codegen import generate_code
 
@@ -17,6 +18,7 @@ generate_code()  # create the print methods on the AST nodes
 if jstype(exports) is 'object':
     exports.DefaultsError = DefaultsError
     exports.parse = parse
+    exports.get_compiler_version = get_compiler_version
     exports.compile_time_decorators = compile_time_decorators
     exports.OutputStream = OutputStream
     exports.string_template = string_template  # noqa:undef

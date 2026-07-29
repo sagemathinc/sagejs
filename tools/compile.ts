@@ -12,7 +12,11 @@ import { runInThisContext } from "vm";
 import { getImportDirs, once } from "./utils";
 import createCompiler from "./compiler";
 import { expandSageLoads } from "./sage-source";
-import { readBaselibSource, runtimeRequire } from "./resources";
+import {
+  readBaselibSource,
+  runtimeRequire,
+  standardLibraryCacheDirectory,
+} from "./resources";
 
 const PyLang = createCompiler();
 
@@ -112,6 +116,9 @@ export default async function Compile({
       import_dirs: getImportDirs(argv.import_path),
       discard_asserts: argv.discard_asserts,
       module_cache_dir,
+      precompiled_module_cache_dir: standardLibraryCacheDirectory(
+        join(__dirname, "..", "module-cache"),
+      ),
       jsage: argv.sage,
       exact_integer_literals: true,
       strict_python_scopes: true,

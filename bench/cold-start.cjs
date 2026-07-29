@@ -14,7 +14,7 @@ function measure(label, args, input) {
     const result = spawnSync(process.execPath, args, {
       cwd: root,
       input,
-      stdio: "ignore",
+      stdio: ["pipe", "ignore", "ignore"],
     });
     times.push(performance.now() - start);
     if (result.status !== 0) {
@@ -34,6 +34,7 @@ measure("bare Node", ["-e", ""]);
 measure("load Sage.js compiler", ["-e", "require('.')"]);
 measure("sagejs --version", ["bin/sagejs", "--version"]);
 measure("sagejs evaluate 2^100", ["bin/sagejs"], "print(2^100)\n");
+measure("sagejs import numpy", ["bin/sagejs"], "import numpy\n");
 measure("load native FLINT", ["-e", "require('./packages/flint')"]);
 measure("FLINT factorial(100000)", [
   "-e",

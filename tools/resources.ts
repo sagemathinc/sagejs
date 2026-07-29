@@ -49,6 +49,10 @@ export function standardLibraryDirectory(fallback: string): string {
   return isSea() ? join(VIRTUAL_ROOT, "lib") : fallback;
 }
 
+export function standardLibraryCacheDirectory(fallback: string): string {
+  return isSea() ? join(VIRTUAL_ROOT, "module-cache") : fallback;
+}
+
 export function readResourceText(filename: string): string {
   if (isSea()) {
     const key = assetKeyForVirtualPath(filename);
@@ -91,6 +95,9 @@ function loadEmbeddedFlint(): unknown {
 export function runtimeRequire(name: string): unknown {
   if (isSea() && name === "@sagemath/sagejs-flint") {
     return loadEmbeddedFlint();
+  }
+  if (name === "numpy-ts") {
+    return require("../vendor/numpy-ts.cjs");
   }
   return require(name);
 }

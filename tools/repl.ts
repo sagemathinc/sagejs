@@ -23,6 +23,7 @@ import { expandSageLoads, parseLoadDirective } from "./sage-source";
 import {
   readBaselibSource,
   runtimeRequire,
+  standardLibraryCacheDirectory,
 } from "./resources";
 
 const DEFAULT_HISTORY_SIZE = 1000;
@@ -50,6 +51,7 @@ export interface Options {
   mockReadline?: Function; // for mocking readline (for testing only)
   sage?: boolean; // Sage-style mathematical syntax
   tokens?: boolean; // show very verbose tokens as parsed
+  moduleCacheDir?: string | false;
 }
 
 function replDefaults(options: Partial<Options>): Options {
@@ -137,6 +139,22 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   const PyLang = createCompiler({
     console: options.console,
   });
+  const moduleCacheDir =
+    options.moduleCacheDir === false
+      ? ""
+      : (options.moduleCacheDir ??
+        join(
+          CACHEDIR,
+          "sagejs",
+          "modules",
+          PyLang.get_compiler_version(),
+        ));
+  if (moduleCacheDir && !pathExists(moduleCacheDir)) {
+    mkdirSync(moduleCacheDir, { recursive: true });
+  }
+  const precompiledModuleCacheDir = standardLibraryCacheDirectory(
+    join(__dirname, "..", "module-cache"),
+  );
   const readline = createReadlineInterface(options, PyLang);
   const colorize = options.mockReadline
     ? (string, _color?, _bold?) => string
@@ -188,6 +206,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       python_tuples: true,
       python_truthiness: true,
       python_attributes: true,
+      module_cache_dir: moduleCacheDir,
       baselib_plain: keepBaselib
         ? readBaselibSource(join(libraryPath, "baselib-plain-pretty.js"))
         : undefined,
@@ -357,6 +376,8 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
         jsage: options.sage,
         exact_integer_literals: true,
         strict_python_scopes: true,
+        module_cache_dir: moduleCacheDir,
+        precompiled_module_cache_dir: precompiledModuleCacheDir,
         tokens: options.tokens,
       });
     } catch (err) {

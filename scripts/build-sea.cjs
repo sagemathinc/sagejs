@@ -52,6 +52,16 @@ function collectStandardLibraryAssets() {
   return assets;
 }
 
+function collectStandardLibraryCacheAssets() {
+  const directory = join(root, "dist", "module-cache");
+  const assets = {};
+  for (const filename of readdirSync(directory)) {
+    if (!filename.endsWith(".json")) continue;
+    assets[`module-cache/${filename}`] = join(directory, filename);
+  }
+  return assets;
+}
+
 function buildExecutable(name, withFlint) {
   if (withFlint && !existsSync(flintAddon)) {
     throw new Error(
@@ -69,6 +79,7 @@ function buildExecutable(name, withFlint) {
       "baselib-plain-pretty.js",
     ),
     ...collectStandardLibraryAssets(),
+    ...collectStandardLibraryCacheAssets(),
   };
   if (withFlint) assets["native/sagejs_flint.node"] = flintAddon;
 

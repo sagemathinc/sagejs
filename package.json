@@ -65,7 +65,7 @@
     "test": "pnpm run build && pnpm run test:baselib:strict && pnpm run test:compiler && pnpm run test:cli && pnpm run test:upstream:run && pnpm run test:cowasm:run",
     "test:baselib:strict": "node scripts/check-strict-baselib.cjs",
     "test:compiler": "node bin/sagejs test",
-    "test:cli": "node test/cli-smoke.cjs && node test/completer.cjs && node test/time-module.cjs && node test/numpy-module.cjs && node test/typed-math-lowering.cjs && node test/runtime-intrinsics.cjs && node test/baselib-boundaries.cjs",
+    "test:cli": "node test/cli-smoke.cjs && node test/completer.cjs && node test/module-cache.cjs && node test/time-module.cjs && node test/numpy-module.cjs && node test/typed-math-lowering.cjs && node test/runtime-intrinsics.cjs && node test/baselib-boundaries.cjs",
     "test:upstream": "pnpm run build && pnpm run test:upstream:run",
     "test:upstream:run": "node test/upstream-doctest-tools.cjs && node scripts/run-sage-doctests.cjs upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.doctests.json --expectations upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.expectations.json",
     "test:cowasm": "pnpm run build && pnpm run test:cowasm:run",

@@ -1647,15 +1647,31 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             }
             return
 
-        try:
-            cached = JSON.parse(
-                readfile(cache_file_name(filename, options.module_cache_dir),
-                         'utf-8'))
-        except:
-            cached = None
-
         srchash = sha1sum(src_code)  # noqa:undef
-        if cached and cached.version is COMPILER_VERSION and cached.signature is srchash and cached.discard_asserts is r'%js !!options.discard_asserts':
+        cached = None
+        cache_names = [
+            cache_file_name(filename, options.module_cache_dir),
+        ]
+        if options.precompiled_module_cache_dir:
+            cache_names.push(
+                options.precompiled_module_cache_dir + '/' +
+                key.replace(r'%js /\./g', '-') + '.json')
+        for cache_name in cache_names:
+            if cached or not cache_name:
+                continue
+            try:
+                candidate = JSON.parse(readfile(cache_name, 'utf-8'))
+                if (
+                    candidate.version is COMPILER_VERSION
+                    and candidate.signature is srchash
+                    and candidate.discard_asserts is
+                    r'%js !!options.discard_asserts'
+                ):
+                    cached = candidate
+            except:
+                pass
+
+        if cached:
             for ikey in cached.imported_module_ids:
                 do_import(
                     ikey
@@ -1684,7 +1700,9 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     'imported_modules': imported_modules,
                     'importing_modules': importing_modules,
                     'discard_asserts': options.discard_asserts,
-                    'module_cache_dir': options.module_cache_dir
+                    'module_cache_dir': options.module_cache_dir,
+                    'precompiled_module_cache_dir':
+                    options.precompiled_module_cache_dir
                 }
             )  # This function will add the module to imported_modules itself
 
@@ -4301,6 +4319,7 @@ def parse(text, options):
             'scoped_flags': {},  # Global scoped flags (used by the REPL)
             'discard_asserts': False,
             'module_cache_dir': '',
+            'precompiled_module_cache_dir': '',
             'jsage':
             False,  # if true, do some of what the Sage preparser does, e.g., ^ --> **.
             'tokens': False,  # if true, show every token as it is parsed

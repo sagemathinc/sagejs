@@ -205,15 +205,19 @@ def bind_module_namespace(module, output):
 
 def declare_exports(module_id, exports, output, docstrings):
     seen = {}
+    exported_symbols = list(exports)
     if output.options.keep_docstrings and docstrings and docstrings.length:
-        exports.push({'name': '__doc__', 'refname': 'ρσ_module_doc__'})
+        exported_symbols.append({
+            'name': '__doc__',
+            'refname': 'ρσ_module_doc__',
+        })
         output.newline(), output.indent()
         v = 'var'
         output.assign(v + ' ρσ_module_doc__'), output.print(
             JSON.stringify(create_doctring(docstrings)))
         output.end_statement()
     output.newline()
-    for symbol in exports:
+    for symbol in exported_symbols:
         if not Object.prototype.hasOwnProperty.call(seen, symbol.name):
             output.indent()
             if module_id.indexOf('.') is -1:
@@ -341,7 +345,11 @@ def print_top_level(self, output):
 
 def print_module(self, output):
     set_module_name(self.module_id)
-    numeric_literal_pool = prepare_numeric_literal_pool(self, output)
+    # Cached modules contain rendered output and lightweight symbol metadata,
+    # not a live AST. Their rendered variants already include the numeric
+    # literal pool produced on the cache-writing pass.
+    numeric_literal_pool = (
+        [] if self.is_cached else prepare_numeric_literal_pool(self, output))
 
     def output_module(output):
         write_numeric_literal_pool(numeric_literal_pool, output)

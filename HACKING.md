@@ -24,7 +24,17 @@ pnpm build
 
 The build removes `dist/`, copies the bootstrap compiler into it, compiles the
 tooling, and then repeatedly recompiles the compiler until its source and
-compiler signatures agree.
+compiler signatures agree. It also precompiles every `src/lib` module into
+`dist/module-cache` and bundles the NumPy backend into one loadable file.
+These generated artifacts are the Sage.js analogue of CPython's `.pyc` files:
+the cache records the compiler version and source hash, so stale entries are
+ignored rather than trusted.
+
+The REPL first consults the shipped standard-library cache, then keeps a
+versioned writable cache under
+`$XDG_CACHE_HOME/sagejs/modules` (normally
+`~/.cache/sagejs/modules`) for user-imported modules. Set `XDG_CACHE_HOME` to
+an isolated directory when testing cache behavior.
 
 Run every check with:
 

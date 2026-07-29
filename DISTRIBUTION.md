@@ -40,6 +40,10 @@ resulting executable does not require Node, pnpm, the Sage.js checkout, or
 separately installed mathematical libraries on the target computer. It is
 still specific to an operating system and CPU architecture. Normal Sage.js
 development and npm use continue to support Node 22.22.2 or newer.
+The standard-library sources and their validated precompiled module caches are
+embedded as SEA assets. The bundled `numpy-ts` backend is part of the
+JavaScript payload, so `import numpy` does not require an adjacent
+`node_modules` tree.
 Linux artifacts also inherit the libc and compiler-runtime baseline of the
 Node executable used to build them; release binaries should therefore be
 built in the oldest Linux environment which Sage.js intends to support.
