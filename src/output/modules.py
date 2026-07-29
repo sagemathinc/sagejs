@@ -19,6 +19,7 @@ def prepare_numeric_literal_pool(module, output):
         return []
     entries = []
     by_key = {}
+    prefix = output.options.numeric_literal_pool_prefix or ''
 
     def collect(node, descend):
         if (is_node_type(node, AST_Call)
@@ -31,7 +32,7 @@ def prepare_numeric_literal_pool(module, output):
             key = constructor + ':' + source
             name = by_key[key]
             if not name:
-                name = 'ρσ_const_' + entries.length
+                name = prefix + 'ρσ_const_' + entries.length
                 by_key[key] = name
                 entries.push({
                     'name': name,

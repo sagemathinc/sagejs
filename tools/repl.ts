@@ -161,6 +161,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     : colored;
   const ps1 = colorize(options.ps1, "blue");
   const ps2 = colorize(options.ps2, "green");
+  let numericLiteralPoolCounter = 0;
 
   // We capture input *during* initialization, so it
   // doesn't get lost, since initContext is async.
@@ -206,6 +207,9 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       python_tuples: true,
       python_truthiness: true,
       python_attributes: true,
+      pool_numeric_literals: true,
+      numeric_literal_pool_prefix:
+        `ρσ_repl_${numericLiteralPoolCounter++}_`,
       module_cache_dir: moduleCacheDir,
       baselib_plain: keepBaselib
         ? readBaselibSource(join(libraryPath, "baselib-plain-pretty.js"))

@@ -65,6 +65,7 @@ output_stream_defaults = {
     'python_truthiness': False,
     'python_attributes': False,
     'pool_numeric_literals': False,
+    'numeric_literal_pool_prefix': '',
 }
 
 

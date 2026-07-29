@@ -72,6 +72,7 @@ export function createKernelEvaluator({
   );
   const sage = mode === "sage";
   let toplevel;
+  let numericLiteralPoolCounter = 0;
 
   function outputJavaScript(ast, includeBaselib = false): string {
     const output = new compiler.OutputStream({
@@ -85,7 +86,9 @@ export function createKernelEvaluator({
       python_tuples: true,
       python_truthiness: true,
       python_attributes: true,
-      pool_numeric_literals: sage,
+      pool_numeric_literals: true,
+      numeric_literal_pool_prefix:
+        `ρσ_kernel_${numericLiteralPoolCounter++}_`,
       baselib_plain: includeBaselib
         ? readBaselibSource(join(libraryPath, "baselib-plain-pretty.js"))
         : undefined,

@@ -183,6 +183,8 @@ export function runDynamic(
       python_tuples: true,
       python_truthiness: true,
       python_attributes: true,
+      pool_numeric_literals: true,
+      numeric_literal_pool_prefix: `${moduleId}_`,
     });
     ast.print(output);
     javascript = output.get();

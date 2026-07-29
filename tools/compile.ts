@@ -60,6 +60,7 @@ interface OutputOptions {
   python_truthiness?: boolean;
   python_attributes?: boolean;
   pool_numeric_literals?: boolean;
+  numeric_literal_pool_prefix?: string;
 }
 
 export default async function Compile({
@@ -104,7 +105,7 @@ export default async function Compile({
     python_tuples: true,
     python_truthiness: true,
     python_attributes: true,
-    pool_numeric_literals: !!argv.sage,
+    pool_numeric_literals: true,
   } as OutputOptions;
 
   const files: string[] = argv.files.slice();

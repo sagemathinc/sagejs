@@ -44,6 +44,10 @@ async function main() {
   const python = await createSage({ mode: "python" });
   assert.equal((await python.evaluate("2^3")).repr, "1");
   assert.equal((await python.evaluate("2**3")).repr, "8");
+  await python.evaluate("def pooled_constant():\n    return 2\n");
+  assert.equal((await python.evaluate("pooled_constant()")).repr, "2");
+  assert.equal((await python.evaluate("3")).repr, "3");
+  assert.equal((await python.evaluate("pooled_constant()")).repr, "2");
   await python.close();
 
   console.log("Embeddable kernel tests passed");

@@ -94,6 +94,20 @@ assert.equal(
   run(
     ["--python"],
     [
+      "def pooled_constant(): return 2",
+      "",
+      "print(pooled_constant())",
+      "3",
+      "print(pooled_constant())",
+      "",
+    ].join("\n"),
+  ).trim(),
+  "2\n3\n2",
+);
+assert.equal(
+  run(
+    ["--python"],
+    [
       "n = 923098402834028349082348209384",
       "print(n + 1)",
       "print(-5 // 2, -5 % 2)",
@@ -412,6 +426,10 @@ try {
   assert.equal(run([loadingFile]).trim(), "49");
   assert.match(
     run(["compile", "--omit-baselib", sageFile]),
+    /var ρσ_const_0 = Integer\("2"\),\s+ρσ_const_1 = Integer\("5"\)/,
+  );
+  assert.match(
+    run(["compile", "--python", "--omit-baselib", pythonFile]),
     /var ρσ_const_0 = Integer\("2"\),\s+ρσ_const_1 = Integer\("5"\)/,
   );
   assert.equal(
