@@ -3,3 +3,5 @@ packages:
 allowBuilds:
   esbuild: true
   wasi-js: false
+minimumReleaseAgeExclude:
+  - '@cortex-js/compute-engine@0.98.0'

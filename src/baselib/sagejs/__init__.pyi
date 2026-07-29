@@ -21,6 +21,9 @@ class Rational(Element):
     _numerator: int
     _denominator: int
 
+    def numerator(self) -> int: ...
+    def denominator(self) -> int: ...
+
 
 class FiniteFieldElement(Element):
     _value: int

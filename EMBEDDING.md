@@ -100,8 +100,7 @@ import {
 } from "@sagemath/sagejs-flint-wasm/plotly-renderer";
 
 const result = await sage.evaluate(`
-import math
-plot(lambda x: math.sin(x), (-math.pi, math.pi))
+plot(sin(x^2), (x, 0, 2*pi))
 `);
 
 if (result.display) {

@@ -76,12 +76,19 @@ try {
       "print(factor(2026))",
       "R = RealField(100)",
       "print(R('1.25') * R('2.5'))",
+      "print(x)",
+      "print(sin(x^2).derivative(x))",
+      "print(fast_callable(sin(x^2), vars=[x])(2))",
       "",
     ].join("\n"),
   );
   assert.equal(
     run(mathExecutable, mathProgram),
-    "2 * 1013\n3.1250000000000000000000000000",
+    "2 * 1013\n" +
+      "3.1250000000000000000000000000\n" +
+      "x\n" +
+      "2*x*cos(x^2)\n" +
+      "-0.7568024953079282",
   );
 } finally {
   rmSync(temporaryDirectory, { recursive: true, force: true });

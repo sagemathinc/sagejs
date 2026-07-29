@@ -54,10 +54,9 @@
       <label for="source">
         Sage source (press Shift+Enter or Ctrl+Enter to run)
       </label>
-      <textarea id="source" spellcheck="false">import math
-plot(lambda x: math.sin(x), (-math.pi, math.pi),
+      <textarea id="source" spellcheck="false">plot(sin(x^2), (x, 0, 2*pi),
      color='red', thickness=2, legend_label='sin(x)',
-     title='Sage.js Plotting v0', axes_labels=['x', 'y'])</textarea>
+     title='Sage.js Symbolic Plotting', axes_labels=['x', 'y'])</textarea>
       <button id="run">Run</button>
       <button id="interrupt" disabled>Interrupt</button>
       <output id="output">Ready.</output>

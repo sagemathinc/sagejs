@@ -218,9 +218,13 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   async function initContext() {
     // @ts-ignore
     global.require = runtimeRequire;
+    // @ts-ignore
+    global.__sagejs_sage_mode__ = !!options.sage;
 
     // and get all the code and name.
     runInThisContext(printAST(PyLang.parse("(def ():\n yield 1\n)"), true));
+    // @ts-ignore
+    delete global.__sagejs_sage_mode__;
     runInThisContext('var __name__ = "__repl__"; show_js=false;');
   }
 

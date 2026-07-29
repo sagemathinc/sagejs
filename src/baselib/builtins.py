@@ -253,6 +253,22 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
         )
     ):
         return runtime.native_add(left, right)
+    if (
+        runtime.strict_equal(left_type, 'bigint')
+        or runtime.strict_equal(right_type, 'bigint')
+    ):
+        if (
+            _builtins_exact_integer_primitive(left)
+            and _builtins_exact_integer_primitive(right)
+        ):
+            return runtime.native_add(
+                runtime.bigint(left), runtime.bigint(right))
+        if (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(right_type, 'number')
+        ):
+            return runtime.native_add(
+                runtime.number(left), runtime.number(right))
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('add', left, right)
     if _builtins_member_is_function(left, '__add__'):
@@ -515,14 +531,31 @@ def ρσ_operator_ge(left: Any, right: Any) -> _Bool:
 
 def ρσ_operator_sub(left: Any, right: Any) -> Any:
     left_type = runtime.jstype(left)
+    right_type = runtime.jstype(right)
     if (
-        runtime.strict_equal(left_type, runtime.jstype(right))
+        runtime.strict_equal(left_type, right_type)
         and (
             runtime.strict_equal(left_type, 'number')
             or runtime.strict_equal(left_type, 'bigint')
         )
     ):
         return runtime.native_sub(left, right)
+    if (
+        runtime.strict_equal(left_type, 'bigint')
+        or runtime.strict_equal(right_type, 'bigint')
+    ):
+        if (
+            _builtins_exact_integer_primitive(left)
+            and _builtins_exact_integer_primitive(right)
+        ):
+            return runtime.native_sub(
+                runtime.bigint(left), runtime.bigint(right))
+        if (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(right_type, 'number')
+        ):
+            return runtime.native_sub(
+                runtime.number(left), runtime.number(right))
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('sub', left, right)
     if _builtins_member_is_function(left, '__sub__'):

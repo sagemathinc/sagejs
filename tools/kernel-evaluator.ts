@@ -99,12 +99,14 @@ export function createKernelEvaluator({
   global.__sagejs_output_write__ = (text: unknown) => {
     onOutput(String(text));
   };
+  global.__sagejs_sage_mode__ = sage;
 
   const initialization = compiler.parse("", {
     filename: "<kernel-init>",
     basedir: process.cwd(),
   });
   runInThisContext(outputJavaScript(initialization, true));
+  delete global.__sagejs_sage_mode__;
   runInThisContext('var __name__ = "__embedded__"; show_js = false;');
 
   function compile(source: string, filename: string): string {

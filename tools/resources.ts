@@ -99,6 +99,9 @@ export function runtimeRequire(name: string): unknown {
   if (name === "numpy-ts") {
     return require("../vendor/numpy-ts.cjs");
   }
+  if (name === "@sagemath/sagejs-symbolic") {
+    return require("../vendor/symbolic-backend.cjs");
+  }
   return require(name);
 }
 

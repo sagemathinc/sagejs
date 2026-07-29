@@ -39,6 +39,7 @@ export class SageSession {
     baselib = new URL("./dist/baselib.js", import.meta.url),
     standardLibrary = new URL("./dist/stdlib.json", import.meta.url),
     flint = new URL("./dist/flint-factor.wasm", import.meta.url),
+    symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
     compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
   } = {}) {
     this.resources = {
@@ -47,6 +48,7 @@ export class SageSession {
       baselib: String(baselib),
       standardLibrary: String(standardLibrary),
       flint: String(flint),
+      symbolic: String(symbolic),
       compilerWorker: String(compilerWorker),
     };
     this.listeners = new Map();
@@ -150,6 +152,7 @@ export class SageSession {
       baselib: this.resources.baselib,
       standardLibrary: this.resources.standardLibrary,
       flint: this.resources.flint,
+      symbolic: this.resources.symbolic,
       compilerWorker: this.resources.compilerWorker,
     });
   }

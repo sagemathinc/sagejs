@@ -127,7 +127,7 @@ Sage-compatible `plot()`, `line()`, `point()`, and `list_plot()` now produce
 composable `Graphics` objects. Browser embeddings receive an optional Plotly
 figure through the same clone-safe kernel result protocol. See
 [`PLOTTING.md`](PLOTTING.md) for examples, supported options, renderer
-integration, and the planned symbolic-expression compiler.
+integration, and symbolic-expression sampling.
 
 ## Sage mode
 
@@ -144,6 +144,13 @@ sage: 7^^3
 4
 sage: factor(2026)
 2 * 1013
+sage: x
+x
+sage: f = sin(x^2)
+sage: f.derivative(x)
+2*x*cos(x^2)
+sage: f.subs(x=2)
+sin(4)
 ```
 
 In Sage mode:
@@ -166,6 +173,23 @@ without losing the original numeric text. Real literals construct elements of
 
 These features are implemented in the parser and compiler, not by textual
 preprocessing.
+
+Sage.js also provides an initial symbolic ring backed by the
+[Cortex Compute Engine](https://cortexjs.io/compute-engine/). The Sage-owned
+Python layer defines `SR`, `Expression`, coercion, representations, constants
+`pi` and `e`, the predefined variable `x`, elementary functions, substitution,
+differentiation, numerical approximation, and `fast_callable()`. Cortex sits
+behind a narrow MathJSON adapter, so backend objects do not leak into the
+public API.
+
+```py
+sage: plot(sin(x^2), (x, 0, 2*pi))
+Graphics object consisting of 1 graphics primitive
+```
+
+The Node backend is loaded lazily on first symbolic computation. Browser
+builds bundle it into the evaluator worker, where compiled numerical functions
+and plots run without blocking the UI thread.
 
 The interactive CLI accepts pasted Sage and Python prompts, so transcript
 examples can be pasted directly:

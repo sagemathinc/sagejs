@@ -89,19 +89,22 @@ export async function instantiateSageEvaluator({
   baselib,
   standardLibrary,
   flint,
+  symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
   compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
 }) {
   const language = new CompilerWorker(compilerWorker);
   let initialization;
   let flintBackend;
+  let symbolicBackendModule;
   try {
-    [initialization, flintBackend] = await Promise.all([
+    [initialization, flintBackend, symbolicBackendModule] = await Promise.all([
       language.request("initialize", {
         compiler: String(compiler),
         baselib: String(baselib),
         standardLibrary: String(standardLibrary),
       }),
       instantiateFlintFactor(flint),
+      import(String(symbolic)),
     ]);
   } catch (error) {
     language.terminate();
@@ -114,12 +117,17 @@ export async function instantiateSageEvaluator({
     if (name === "@sagemath/sagejs-flint") {
       return flintBackend;
     }
+    if (name === "@sagemath/sagejs-symbolic") {
+      return symbolicBackendModule;
+    }
     throw new Error(`module ${JSON.stringify(name)} is unavailable in browser`);
   };
   globalThis.__sagejs_output_write__ = (text) => {
     outputHandler(String(text));
   };
+  globalThis.__sagejs_sage_mode__ = true;
   globalEvaluate(initialization);
+  delete globalThis.__sagejs_sage_mode__;
   globalEvaluate('var __name__ = "__repl__";');
 
   async function evaluateNow(

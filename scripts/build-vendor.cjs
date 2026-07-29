@@ -19,4 +19,15 @@ buildSync({
   minify: false,
 });
 
-console.log("Bundled NumPy backend");
+buildSync({
+  entryPoints: [join(root, "src", "runtime", "symbolic-backend.mjs")],
+  outfile: join(outputDirectory, "symbolic-backend.cjs"),
+  bundle: true,
+  platform: "node",
+  format: "cjs",
+  target: "node22",
+  sourcemap: false,
+  minify: false,
+});
+
+console.log("Bundled NumPy and symbolic backends");

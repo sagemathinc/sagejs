@@ -660,6 +660,16 @@ def _plot_range(range_args: Sequence[Any]) -> tuple[float, float]:
     raise TypeError('invalid plot range')
 
 
+def _plot_variable(range_args: Sequence[Any]) -> Any:
+    if len(range_args) == 1:
+        values = list(range_args[0])
+        if len(values) == 3:
+            return values[0]
+    if len(range_args) == 3:
+        return range_args[0]
+    return None
+
+
 def plot(
     funcs: Any,
     *range_args: Any,
@@ -668,6 +678,7 @@ def plot(
     """Plot a callable, or a list of callables, over a real interval."""
     options = _copy_options(options)
     xmin, xmax = _plot_range(range_args)
+    plot_variable = _plot_variable(range_args)
     plot_points = int(_option_pop(options, 'plot_points', 200))
     adaptive_tolerance = float(
         _option_pop(options, 'adaptive_tolerance', 0.01))
@@ -696,6 +707,17 @@ def plot(
 
     for index in range(len(functions)):
         current = functions[index]
+        if (
+            not callable(current)
+            and hasattr(current, '_plot_fast_callable')
+        ):
+            if plot_variable is None:
+                variables = current.variables()
+                if len(variables) != 1:
+                    raise ValueError(
+                        'plot() needs a variable for this symbolic expression')
+                plot_variable = variables[0]
+            current = current._plot_fast_callable(plot_variable)
         if not callable(current):
             raise TypeError('plot() requires a callable function')
         points = generate_plot_points(

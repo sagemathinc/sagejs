@@ -20,6 +20,7 @@ async function initialize(message) {
     baselib: message.baselib,
     standardLibrary: message.standardLibrary,
     flint: message.flint,
+    symbolic: message.symbolic,
     compilerWorker: message.compilerWorker,
   });
   await evaluatorPromise;

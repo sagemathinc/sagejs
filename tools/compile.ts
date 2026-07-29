@@ -93,7 +93,10 @@ export default async function Compile({
     beautify: true,
     private_scope: !argv.bare,
     omit_baselib: argv.omit_baselib,
-    keep_docstrings: argv.keep_docstrings,
+    // Cached module variants are keyed by booleans.  Normalize the CLI's
+    // optional flag so portable builds select an existing precompiled variant
+    // instead of trying to render the cache's intentionally lightweight AST.
+    keep_docstrings: !!argv.keep_docstrings,
     discard_asserts: argv.discard_asserts,
     module_cache_dir,
     exact_integers: true,
@@ -238,9 +241,12 @@ export default async function Compile({
   }
 
   if (!argv.omit_baselib) {
-    outputOptions.baselib_plain = readBaselibSource(
+    const baselib = readBaselibSource(
       join(lib_path, "baselib-plain-pretty.js"),
     );
+    outputOptions.baselib_plain = argv.sage
+      ? "globalThis.__sagejs_sage_mode__ = true;\n" + baselib
+      : baselib;
   }
 
   if (files.filter((el) => el == "-").length > 1) {

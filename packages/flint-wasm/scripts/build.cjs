@@ -42,6 +42,10 @@ const compilerOutput = path.join(outputDirectory, "compiler.js");
 const baselibOutput = path.join(outputDirectory, "baselib.js");
 const standardLibraryOutput = path.join(outputDirectory, "stdlib.json");
 const wasiRuntimeOutput = path.join(outputDirectory, "wasi-runtime.mjs");
+const symbolicBackendOutput = path.join(
+  outputDirectory,
+  "symbolic-backend.mjs",
+);
 const plotlyOutput = path.join(outputDirectory, "plotly.min.js");
 const compilerSource = path.join(
   repositoryRoot,
@@ -167,6 +171,17 @@ esbuild.buildSync({
     stream: "stream-browserify",
     util: "util",
   },
+});
+esbuild.buildSync({
+  entryPoints: [
+    path.join(repositoryRoot, "src", "runtime", "symbolic-backend.mjs"),
+  ],
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: ["es2022"],
+  outfile: symbolicBackendOutput,
+  minify: true,
 });
 fs.copyFileSync(compilerSource, compilerOutput);
 fs.copyFileSync(baselibSource, baselibOutput);

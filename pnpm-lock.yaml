@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@cortex-js/compute-engine':
+        specifier: 0.98.0
+        version: 0.98.0
       numpy-ts:
         specifier: 1.6.0
         version: 1.6.0
@@ -73,8 +76,16 @@ importers:
 
 packages:
 
+  '@arnog/colors@0.5.0':
+    resolution: {integrity: sha512-NB7yqrO7qvInsqJdqz6C6mDU+2oiKmbBbk3czMS0E7KkGxLRy538tEHCsB5TKqmaxxXpi6/U120TnGl8NsDePg==}
+
   '@astral-sh/ruff-wasm-nodejs@0.16.0':
     resolution: {integrity: sha512-5T8Z+TzM1BARJs86tsATsdAE9OQqVOnAjThCjdfLpbUqaP6hsbanhLLTWutrvLzllViYxi2qxGftF7o0rAJaIw==}
+
+  '@cortex-js/compute-engine@0.98.0':
+    resolution: {integrity: sha512-f6vTHSycBdNPbF6R5eT8j8vGgM10Lk6VVGzvkb0cABWy7I/CfUvYbmdO1ZFAcn67hYGOyULWQftwtUOYPkthCA==}
+    engines: {node: '>=21.7.3', npm: '>=10.5.0'}
+    hasBin: true
 
   '@cowasm/memfs@3.5.1':
     resolution: {integrity: sha512-TSz00K+BdLxAYFQvwHmKgM/eAK6h9OYSQhPTcv/9XSyOF0Q90EtMkJvtwirwAXunfTsZw8R9YMu1UU213ooVKw==}
@@ -399,6 +410,10 @@ packages:
     resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
     engines: {node: '>=18'}
 
+  complex-esm@2.1.1-esm1:
+    resolution: {integrity: sha512-IShBEWHILB9s7MnfyevqNGxV0A1cfcSnewL/4uPFiSxkcQL4Mm3FxJ0pXMtCXuWLjYz3lRRyk6OfkeDZcjD6nw==}
+    engines: {node: '>=16.14.2', npm: '>=8.5.0'}
+
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
     engines: {node: '>=6.0'}
@@ -691,7 +706,14 @@ packages:
 
 snapshots:
 
+  '@arnog/colors@0.5.0': {}
+
   '@astral-sh/ruff-wasm-nodejs@0.16.0': {}
+
+  '@cortex-js/compute-engine@0.98.0':
+    dependencies:
+      '@arnog/colors': 0.5.0
+      complex-esm: 2.1.1-esm1
 
   '@cowasm/memfs@3.5.1':
     dependencies:
@@ -886,6 +908,8 @@ snapshots:
       get-intrinsic: 1.3.0
 
   chownr@3.0.0: {}
+
+  complex-esm@2.1.1-esm1: {}
 
   debug@4.4.3:
     dependencies:
