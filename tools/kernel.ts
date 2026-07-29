@@ -4,10 +4,18 @@ import { Worker } from "worker_threads";
 
 import { SageLanguageMode } from "./kernel-evaluator";
 
+export interface SageDisplayData {
+  /** MIME type understood by an embedding renderer. */
+  mime: string;
+  /** Structured-clone-safe renderer payload. */
+  data: unknown;
+}
+
 export interface SageEvaluationResult {
   repr: string;
   stdout: string;
   durationMs: number;
+  display?: SageDisplayData;
 }
 
 export interface SageEvaluationOptions {

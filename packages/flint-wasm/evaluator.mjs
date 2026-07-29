@@ -9,6 +9,32 @@ function deserializeError(serialized) {
   return error;
 }
 
+function richDisplay(value) {
+  if (
+    value === null ||
+    (typeof value !== "object" && typeof value !== "function")
+  ) {
+    return undefined;
+  }
+  const method = Reflect.get(value, "_rich_repr_");
+  if (typeof method !== "function") {
+    return undefined;
+  }
+  const display = Reflect.apply(method, value, []);
+  if (
+    display === null ||
+    typeof display !== "object" ||
+    typeof Reflect.get(display, "mime") !== "string" ||
+    !Reflect.has(display, "data")
+  ) {
+    throw new TypeError("_rich_repr_() must return { mime, data }");
+  }
+  return {
+    mime: Reflect.get(display, "mime"),
+    data: Reflect.get(display, "data"),
+  };
+}
+
 class CompilerWorker {
   constructor(url) {
     this.worker = new Worker(url, { type: "module" });
@@ -112,6 +138,7 @@ export async function instantiateSageEvaluator({
       return {
         value,
         repr: value === undefined ? "" : globalThis.ρσ_repr(value),
+        display: richDisplay(value),
       };
     } finally {
       outputHandler = previousOutputHandler;

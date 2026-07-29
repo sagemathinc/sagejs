@@ -11,9 +11,15 @@ import { getImportDirs, importPath, libraryPath } from "./utils";
 
 export type SageLanguageMode = "sage" | "python";
 
+export interface SageDisplayData {
+  mime: string;
+  data: unknown;
+}
+
 export interface KernelEvaluation {
   repr: string;
   durationMs: number;
+  display?: SageDisplayData;
 }
 
 export interface KernelEvaluator {
@@ -24,6 +30,30 @@ export interface KernelEvaluator {
 interface EvaluatorOptions {
   mode: SageLanguageMode;
   onOutput(text: string): void;
+}
+
+function richDisplay(value: unknown): SageDisplayData | undefined {
+  if (
+    value === null ||
+    (typeof value !== "object" && typeof value !== "function")
+  ) {
+    return undefined;
+  }
+  const method = Reflect.get(value, "_rich_repr_");
+  if (typeof method !== "function") return undefined;
+  const display = Reflect.apply(method, value, []);
+  if (
+    display === null ||
+    typeof display !== "object" ||
+    typeof Reflect.get(display, "mime") !== "string" ||
+    !Reflect.has(display, "data")
+  ) {
+    throw new TypeError("_rich_repr_() must return { mime, data }");
+  }
+  return {
+    mime: Reflect.get(display, "mime"),
+    data: Reflect.get(display, "data"),
+  };
 }
 
 /**
@@ -124,6 +154,7 @@ export function createKernelEvaluator({
       return {
         repr,
         durationMs: performance.now() - started,
+        display: richDisplay(value),
       };
     },
 

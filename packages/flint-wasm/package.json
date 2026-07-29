@@ -12,12 +12,18 @@
       "types": "./kernel.d.ts",
       "import": "./kernel.mjs",
       "default": "./kernel.mjs"
+    },
+    "./plotly-renderer": {
+      "types": "./plotly-renderer.d.ts",
+      "import": "./plotly-renderer.mjs",
+      "default": "./plotly-renderer.mjs"
     }
   },
   "files": [
     "dist/flint-factor.wasm",
     "dist/compiler.js",
     "dist/baselib.js",
+    "dist/plotly.min.js",
     "dist/wasi-runtime.mjs",
     "compiler-worker.mjs",
     "evaluator.mjs",
@@ -25,6 +31,8 @@
     "kernel.d.ts",
     "kernel-worker.mjs",
     "kernel.mjs",
+    "plotly-renderer.d.ts",
+    "plotly-renderer.mjs",
     "portable-polynomial.mjs",
     "README.md"
   ],
@@ -43,5 +51,8 @@
     "stream-browserify": "3.0.0",
     "util": "0.12.5",
     "wasi-js": "1.7.3"
+  },
+  "devDependencies": {
+    "plotly.js-dist-min": "3.7.0"
   }
 }

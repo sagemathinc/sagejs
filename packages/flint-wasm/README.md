@@ -27,7 +27,9 @@ The main page stays responsive and can interrupt either compilation or
 mathematics reliably by terminating and replacing the outer worker.
 Python `print()` output is streamed back to the page as it is produced, with
 its exact `sep` and `end` text preserved independently of the final expression
-representation.
+representation. Sage-compatible graphics cross the same boundary as a
+structured Plotly figure; the worker-owned `Graphics` object itself remains
+inside the evaluator.
 
 The public `@sagemath/sagejs-flint-wasm/kernel` entry point packages this
 architecture as an embeddable session:
@@ -40,6 +42,26 @@ sage.on("stdout", (text) => appendOutput(text));
 const result = await sage.evaluate("factor(2026)");
 await sage.close();
 ```
+
+Rich graphics can be rendered with the separate adapter:
+
+```js
+import {
+  renderSageDisplay,
+} from "@sagemath/sagejs-flint-wasm/plotly-renderer";
+
+const result = await sage.evaluate(
+  "plot(lambda x: x*x, (-2, 2), title='Squares')",
+);
+if (result.display) {
+  await renderSageDisplay(element, result.display, Plotly);
+}
+```
+
+The adapter accepts an injected Plotly implementation, so applications may
+choose the complete distribution or a smaller custom bundle. Plotly is not
+loaded in the worker or mathematical runtime. The included demo copies a
+local full bundle during its build and does not require a plotting CDN.
 
 Definitions persist across evaluations. `interrupt()`, `reset()`, and
 per-evaluation timeouts terminate and replace the outer worker, so even
@@ -94,7 +116,8 @@ from a loop that factors every integer from 2025 through 2050. It also runs
 exercising FLINT's disk-oriented quadratic-sieve code against the in-memory
 WASI filesystem. It finally starts an infinite Sage loop, interrupts it from
 the page, and verifies that the replacement worker can evaluate another
-factorization.
+factorization. The test also renders a sampled `plot()` result through local
+Plotly and verifies its trace data in Chromium.
 
 The current proof of concept evaluates generated JavaScript in the isolated
 worker and therefore requires a Content Security Policy that permits dynamic

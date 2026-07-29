@@ -65,6 +65,10 @@ interface SageEvaluationResult {
   repr: string;
   stdout: string;
   durationMs: number;
+  display?: {
+    mime: string;
+    data: unknown;
+  };
 }
 ```
 
@@ -80,11 +84,30 @@ const result = await sage.evaluate(source, {
 });
 ```
 
-The session also emits `stdout` and `stderr` events. The textual representation
-is intentionally the first stable result boundary. Native and WebAssembly
-mathematical objects remain opaque and worker-owned; later structured result
-types can add transferable arrays, mathematical serialization, and rich MIME
-bundles for plots without exposing unsafe realm-local handles.
+The session also emits `stdout` and `stderr` events. Native and WebAssembly
+mathematical objects remain opaque and worker-owned. Values with a
+`_rich_repr_()` method may additionally return clone-safe structured display
+data. Plotting v0 uses `application/vnd.plotly.v1+json`:
+
+```js
+import {
+  renderSageDisplay,
+} from "@sagemath/sagejs-flint-wasm/plotly-renderer";
+
+const result = await sage.evaluate(`
+import math
+plot(lambda x: math.sin(x), (-math.pi, math.pi))
+`);
+
+if (result.display) {
+  await renderSageDisplay(container, result.display, Plotly);
+}
+```
+
+The renderer is separate from the kernel and receives Plotly explicitly. A
+Node application can preserve or transform the same figure payload without
+loading a browser plotting library. See [`PLOTTING.md`](PLOTTING.md) for the
+supported Sage API and current limits.
 
 ## Interruption, timeouts, and reset
 
@@ -114,8 +137,9 @@ Embeddable Kernel v1 establishes these invariants:
 - separate sessions are isolated;
 - output is associated with its evaluation;
 - interruption cannot freeze the embedding application;
-- Node and browser sessions expose the same lifecycle and result shape;
+- Node and browser sessions expose the same lifecycle, text, and rich-result
+  shape;
 - worker-owned mathematical objects never cross the transport accidentally.
 
 This API is the common foundation for the browser demo, calculator widgets,
-notebook kernels, agent tools, and future visualization output.
+notebook kernels, agent tools, and visualization output.

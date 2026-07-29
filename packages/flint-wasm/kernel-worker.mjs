@@ -47,6 +47,7 @@ async function evaluate(message) {
     ok: true,
     result: {
       repr: result.repr,
+      display: result.display,
       durationMs: performance.now() - started,
     },
   });

@@ -123,6 +123,12 @@ worker. The browser/WASM backend exposes the same lifecycle and result shape.
 See [`EMBEDDING.md`](EMBEDDING.md) for the complete Node and browser API,
 output streaming, error behavior, and isolation contract.
 
+Sage-compatible `plot()`, `line()`, `point()`, and `list_plot()` now produce
+composable `Graphics` objects. Browser embeddings receive an optional Plotly
+figure through the same clone-safe kernel result protocol. See
+[`PLOTTING.md`](PLOTTING.md) for examples, supported options, renderer
+integration, and the planned symbolic-expression compiler.
+
 ## Sage mode
 
 The `sagejs` command uses Sage-style syntax by default:

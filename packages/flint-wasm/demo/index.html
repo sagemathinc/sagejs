@@ -32,6 +32,15 @@
         margin-top: 2rem;
         overflow-wrap: anywhere;
       }
+      #display {
+        background: white;
+        color: black;
+        margin-top: 1rem;
+        min-height: 0;
+      }
+      #display:not(:empty) {
+        min-height: 24rem;
+      }
     </style>
   </head>
   <body>
@@ -43,12 +52,16 @@
         Interrupting terminates and replaces the worker.
       </p>
       <label for="source">Sage source</label>
-      <textarea id="source" spellcheck="false">for n in [2025..2050]:
-    print(factor(n))</textarea>
+      <textarea id="source" spellcheck="false">import math
+plot(lambda x: math.sin(x), (-math.pi, math.pi),
+     color='red', thickness=2, legend_label='sin(x)',
+     title='Sage.js Plotting v0', axes_labels=['x', 'y'])</textarea>
       <button id="run">Run</button>
       <button id="interrupt" disabled>Interrupt</button>
       <output id="output">Ready.</output>
+      <div id="display" aria-live="polite"></div>
     </main>
+    <script src="../dist/plotly.min.js"></script>
     <script type="module" src="./main.mjs"></script>
   </body>
 </html>

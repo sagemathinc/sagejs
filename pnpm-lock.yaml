@@ -66,6 +66,10 @@ importers:
       wasi-js:
         specifier: 1.7.3
         version: 1.7.3
+    devDependencies:
+      plotly.js-dist-min:
+        specifier: 3.7.0
+        version: 3.7.0
 
 packages:
 
@@ -587,6 +591,9 @@ packages:
     resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
     engines: {node: '>=12'}
 
+  plotly.js-dist-min@3.7.0:
+    resolution: {integrity: sha512-IRWNnBJZmKss3URDnicBK2nvt/VTSi/MD1GnUscAYFjwSuN6g/CTde5R1UC0RYtblehj8rkT4BL8r05e/c8j5Q==}
+
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
@@ -1085,6 +1092,8 @@ snapshots:
   path-browserify@1.0.1: {}
 
   picomatch@4.0.5: {}
+
+  plotly.js-dist-min@3.7.0: {}
 
   possible-typed-array-names@1.1.0: {}
 

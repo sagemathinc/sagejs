@@ -2,11 +2,16 @@ import {
   createSage,
   SageSessionInterruptedError,
 } from "../kernel.mjs";
+import {
+  clearSageDisplay,
+  renderSageDisplay,
+} from "../plotly-renderer.mjs";
 
 const input = document.querySelector("#source");
 const runButton = document.querySelector("#run");
 const interruptButton = document.querySelector("#interrupt");
 const output = document.querySelector("#output");
+const display = document.querySelector("#display");
 
 let session;
 let runId = 0;
@@ -25,6 +30,7 @@ async function interrupt() {
   runId += 1;
   outputBuffer = "";
   output.textContent = "Interrupted.";
+  clearSageDisplay(display);
   runButton.disabled = false;
   interruptButton.disabled = true;
   await session?.interrupt();
@@ -34,6 +40,7 @@ runButton.addEventListener("click", async () => {
   const currentRun = ++runId;
   outputBuffer = "";
   output.textContent = "Running…";
+  clearSageDisplay(display);
   runButton.disabled = true;
   interruptButton.disabled = false;
   try {
@@ -43,6 +50,9 @@ runButton.addEventListener("click", async () => {
     if (currentRun !== runId) return;
     outputBuffer += result.repr;
     output.textContent = outputBuffer;
+    if (result.display) {
+      await renderSageDisplay(display, result.display);
+    }
   } catch (error) {
     if (currentRun !== runId || error instanceof SageSessionInterruptedError) {
       return;

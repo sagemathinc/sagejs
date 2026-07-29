@@ -41,6 +41,7 @@ const output = path.join(outputDirectory, "flint-factor.wasm");
 const compilerOutput = path.join(outputDirectory, "compiler.js");
 const baselibOutput = path.join(outputDirectory, "baselib.js");
 const wasiRuntimeOutput = path.join(outputDirectory, "wasi-runtime.mjs");
+const plotlyOutput = path.join(outputDirectory, "plotly.min.js");
 const compilerSource = path.join(
   repositoryRoot,
   "dist",
@@ -162,6 +163,10 @@ esbuild.buildSync({
 });
 fs.copyFileSync(compilerSource, compilerOutput);
 fs.copyFileSync(baselibSource, baselibOutput);
+fs.copyFileSync(
+  require.resolve("plotly.js-dist-min/plotly.min.js"),
+  plotlyOutput,
+);
 
 const bytes = fs.statSync(output).size;
 console.log(

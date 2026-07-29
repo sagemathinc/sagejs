@@ -2,6 +2,13 @@ import { EventEmitter } from "events";
 
 export type SageLanguageMode = "sage" | "python";
 
+export interface SageDisplayData {
+  /** MIME type understood by an embedding renderer. */
+  mime: string;
+  /** Structured-clone-safe renderer payload. */
+  data: unknown;
+}
+
 export interface SageEvaluationResult {
   /** Python/Sage representation of the final expression, or empty text. */
   repr: string;
@@ -9,6 +16,8 @@ export interface SageEvaluationResult {
   stdout: string;
   /** Time spent compiling and evaluating inside the worker. */
   durationMs: number;
+  /** Optional rich representation of the final value. */
+  display?: SageDisplayData;
 }
 
 export interface SageEvaluationOptions {

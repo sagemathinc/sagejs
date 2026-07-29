@@ -26,6 +26,7 @@ assert.ok(
 
 const contentTypes = new Map([
   [".html", "text/html; charset=utf-8"],
+  [".js", "text/javascript; charset=utf-8"],
   [".mjs", "text/javascript; charset=utf-8"],
   [".wasm", "application/wasm"],
 ]);
@@ -245,6 +246,25 @@ try {
     });
     await waitForOutput("Interrupted.");
     await runSource("factor(30)", "2 * 3 * 5");
+    await startSource(
+      "plot(lambda x: x*x, (0, 2), plot_points=3, " +
+        "adaptive_recursion=0, randomize=False)",
+    );
+    assert.equal(
+      await waitForIdle(),
+      "Graphics object consisting of 1 graphics primitive",
+    );
+    const plotState = await command("Runtime.evaluate", {
+      expression: `({
+        traces: document.querySelector('#display')?.data?.length ?? 0,
+        points: document.querySelector('#display')?.data?.[0]?.x ?? []
+      })`,
+      returnByValue: true,
+    });
+    assert.deepEqual(plotState.result.value, {
+      traces: 1,
+      points: [0, 1, 2],
+    });
     socket.close();
   } finally {
     chrome.kill();
