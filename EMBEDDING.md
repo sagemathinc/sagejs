@@ -56,6 +56,11 @@ mathematical objects and the FLINT WebAssembly instance; a nested worker owns
 the self-hosted compiler. The browser main thread only receives structured,
 clone-safe evaluation results and output events.
 
+The browser distribution includes the same precompiled standard-library
+modules used by Node, loaded into the compiler worker from a versioned
+manifest. Ordinary imports such as `import math` therefore work without a
+browser filesystem.
+
 ## Output and results
 
 `evaluate()` and its `eval()` alias return:

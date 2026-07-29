@@ -40,6 +40,7 @@ const rawOutput = path.join(outputDirectory, "flint-factor.unstripped.wasm");
 const output = path.join(outputDirectory, "flint-factor.wasm");
 const compilerOutput = path.join(outputDirectory, "compiler.js");
 const baselibOutput = path.join(outputDirectory, "baselib.js");
+const standardLibraryOutput = path.join(outputDirectory, "stdlib.json");
 const wasiRuntimeOutput = path.join(outputDirectory, "wasi-runtime.mjs");
 const plotlyOutput = path.join(outputDirectory, "plotly.min.js");
 const compilerSource = path.join(
@@ -53,6 +54,12 @@ const baselibSource = path.join(
   "dist",
   "compiler",
   "baselib-plain-pretty.js",
+);
+const standardLibrarySourceDirectory = path.join(repositoryRoot, "src", "lib");
+const standardLibraryCacheDirectory = path.join(
+  repositoryRoot,
+  "dist",
+  "module-cache",
 );
 
 function requirePath(description, filename) {
@@ -163,6 +170,29 @@ esbuild.buildSync({
 });
 fs.copyFileSync(compilerSource, compilerOutput);
 fs.copyFileSync(baselibSource, baselibOutput);
+const standardLibraryModules = {};
+for (const filename of fs.readdirSync(standardLibrarySourceDirectory).sort()) {
+  if (!filename.endsWith(".py")) {
+    continue;
+  }
+  const name = filename.slice(0, -3);
+  standardLibraryModules[name] = {
+    source: fs.readFileSync(
+      path.join(standardLibrarySourceDirectory, filename),
+      "utf8",
+    ),
+    cache: JSON.parse(
+      fs.readFileSync(
+        path.join(standardLibraryCacheDirectory, `${name}.json`),
+        "utf8",
+      ),
+    ),
+  };
+}
+fs.writeFileSync(
+  standardLibraryOutput,
+  JSON.stringify({ modules: standardLibraryModules }),
+);
 fs.copyFileSync(
   require.resolve("plotly.js-dist-min/plotly.min.js"),
   plotlyOutput,

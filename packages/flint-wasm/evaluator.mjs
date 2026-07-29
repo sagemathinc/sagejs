@@ -87,6 +87,7 @@ class CompilerWorker {
 export async function instantiateSageEvaluator({
   compiler,
   baselib,
+  standardLibrary,
   flint,
   compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
 }) {
@@ -98,6 +99,7 @@ export async function instantiateSageEvaluator({
       language.request("initialize", {
         compiler: String(compiler),
         baselib: String(baselib),
+        standardLibrary: String(standardLibrary),
       }),
       instantiateFlintFactor(flint),
     ]);

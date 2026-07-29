@@ -1,7 +1,30 @@
-function createCompiler(compilerSource) {
+function createCompiler(compilerSource, standardLibrary) {
   const compiler = {};
   const unavailable = (operation) => () => {
     throw new Error(`${operation} is unavailable in the browser compiler`);
+  };
+  const files = new Map();
+  const signatures = new Map();
+  for (const [name, module] of Object.entries(standardLibrary.modules)) {
+    files.set(`__stdlib__/${name}.py`, module.source);
+    files.set(
+      `__module_cache__/${name}.json`,
+      JSON.stringify(module.cache),
+    );
+    signatures.set(module.source, module.cache.signature);
+  }
+  const readfile = (filename) => {
+    if (files.has(filename)) {
+      return files.get(filename);
+    }
+    throw new Error(`browser compiler file not found: ${filename}`);
+  };
+  const sha1sum = (source) => {
+    const signature = signatures.get(source);
+    if (signature) {
+      return signature;
+    }
+    throw new Error("browser compiler cannot hash an unknown source");
   };
   const loadCompiler = new Function(
     "exports",
@@ -15,9 +38,9 @@ function createCompiler(compilerSource) {
   loadCompiler(
     compiler,
     console,
-    unavailable("compiler file reads"),
+    readfile,
     unavailable("compiler file writes"),
-    unavailable("compiler hashing"),
+    sha1sum,
     unavailable("compiler module loading"),
   );
   return compiler;
@@ -72,6 +95,9 @@ function compile(source, filename) {
   toplevel = compiler.parse(source, {
     filename,
     basedir: "__stdlib__",
+    libdir: "__stdlib__",
+    import_dirs: ["__stdlib__"],
+    precompiled_module_cache_dir: "__module_cache__",
     classes,
     scoped_flags: scopedFlags,
     jsage: true,
@@ -95,11 +121,16 @@ self.onmessage = async ({ data }) => {
   try {
     let result;
     if (data.type === "initialize") {
-      const [compilerSource, baselibSource] = await Promise.all([
+      const [
+        compilerSource,
+        baselibSource,
+        standardLibrary,
+      ] = await Promise.all([
         fetchText(data.compiler),
         fetchText(data.baselib),
+        fetchText(data.standardLibrary).then((source) => JSON.parse(source)),
       ]);
-      compiler = createCompiler(compilerSource);
+      compiler = createCompiler(compilerSource, standardLibrary);
       baselib = baselibSource;
       const initialization = compiler.parse("", {
         filename: "<browser-init>",

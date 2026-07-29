@@ -18,6 +18,7 @@ async function initialize(message) {
   evaluatorPromise = instantiateSageEvaluator({
     compiler: message.compiler,
     baselib: message.baselib,
+    standardLibrary: message.standardLibrary,
     flint: message.flint,
     compilerWorker: message.compilerWorker,
   });

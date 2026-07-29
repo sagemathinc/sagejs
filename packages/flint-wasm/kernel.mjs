@@ -37,6 +37,7 @@ export class SageSession {
     worker = new URL("./kernel-worker.mjs", import.meta.url),
     compiler = new URL("./dist/compiler.js", import.meta.url),
     baselib = new URL("./dist/baselib.js", import.meta.url),
+    standardLibrary = new URL("./dist/stdlib.json", import.meta.url),
     flint = new URL("./dist/flint-factor.wasm", import.meta.url),
     compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
   } = {}) {
@@ -44,6 +45,7 @@ export class SageSession {
       worker: String(worker),
       compiler: String(compiler),
       baselib: String(baselib),
+      standardLibrary: String(standardLibrary),
       flint: String(flint),
       compilerWorker: String(compilerWorker),
     };
@@ -146,6 +148,7 @@ export class SageSession {
       type: "initialize",
       compiler: this.resources.compiler,
       baselib: this.resources.baselib,
+      standardLibrary: this.resources.standardLibrary,
       flint: this.resources.flint,
       compilerWorker: this.resources.compilerWorker,
     });

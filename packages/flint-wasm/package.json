@@ -24,6 +24,7 @@
     "dist/compiler.js",
     "dist/baselib.js",
     "dist/plotly.min.js",
+    "dist/stdlib.json",
     "dist/wasi-runtime.mjs",
     "compiler-worker.mjs",
     "evaluator.mjs",

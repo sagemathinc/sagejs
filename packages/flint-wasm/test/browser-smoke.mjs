@@ -219,6 +219,7 @@ try {
     }
 
     await waitForOutput("2 * 1013");
+    await runSource("import math\nmath.sin(math.pi/2)", "1");
     await runSource("QQ['x'].gen()", "x");
     await runSource(
       "R.<x> = QQ[]\nx^2 - 2*x + 1",
@@ -247,8 +248,9 @@ try {
     await waitForOutput("Interrupted.");
     await runSource("factor(30)", "2 * 3 * 5");
     await startSource(
-      "plot(lambda x: x*x, (0, 2), plot_points=3, " +
-        "adaptive_recursion=0, randomize=False)",
+      "import math\n" +
+        "plot(lambda x: math.sin(x), (-math.pi, math.pi), " +
+        "plot_points=3, adaptive_recursion=0, randomize=False)",
     );
     assert.equal(
       await waitForIdle(),
@@ -263,7 +265,7 @@ try {
     });
     assert.deepEqual(plotState.result.value, {
       traces: 1,
-      points: [0, 1, 2],
+      points: [-Math.PI, 0, Math.PI],
     });
     socket.close();
   } finally {

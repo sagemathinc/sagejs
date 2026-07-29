@@ -31,6 +31,11 @@ representation. Sage-compatible graphics cross the same boundary as a
 structured Plotly figure; the worker-owned `Graphics` object itself remains
 inside the evaluator.
 
+The build also packages Sage.js's precompiled Python standard library into a
+browser manifest. Imports such as `import math` therefore use the same
+compiler-version and source-signature-checked module cache as Node rather than
+requiring filesystem access or recompiling library source in the browser.
+
 The public `@sagemath/sagejs-flint-wasm/kernel` entry point packages this
 architecture as an embeddable session:
 
@@ -89,6 +94,10 @@ archives. The resulting `dist/flint-factor.wasm` is about 4.7 MiB before HTTP
 compression and about 2 MiB with gzip in the current build. The self-hosted
 compiler and baselib add about 3.8 MiB uncompressed or 0.45 MiB with gzip.
 The bundled WASI and in-memory filesystem host is about 0.55 MiB uncompressed.
+The 23-module standard-library manifest is about 3.3 MiB uncompressed and
+0.4 MiB with gzip. It includes both source signatures and precompiled output,
+allowing the synchronous compiler import machinery to operate entirely from
+worker memory.
 
 ## Browser demo
 
@@ -110,9 +119,9 @@ pnpm test:wasm:browser
 Set `SAGEJS_CHROMIUM` if Chromium is not installed at a standard Linux path.
 The smoke test can take several minutes: it executes `factor(2026)`, verifies
 persistent definitions, `QQ['x'].gen()`, rational polynomial arithmetic, and
-Sage exponentiation across subsequent evaluations. It checks streamed output
-from a loop that factors every integer from 2025 through 2050. It also runs
-`factor(n^22 - 1)` over that complete range,
+Sage exponentiation across subsequent evaluations. It verifies a cached
+`import math`, then checks streamed output from a loop that factors every
+integer from 2025 through 2050. It also runs `factor(n^22 - 1)` over that range,
 exercising FLINT's disk-oriented quadratic-sieve code against the in-memory
 WASI filesystem. It finally starts an infinite Sage loop, interrupts it from
 the page, and verifies that the replacement worker can evaluate another

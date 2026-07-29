@@ -26,6 +26,7 @@ export interface BrowserSageSessionOptions {
   worker?: string | URL;
   compiler?: string | URL;
   baselib?: string | URL;
+  standardLibrary?: string | URL;
   flint?: string | URL;
   compilerWorker?: string | URL;
 }
