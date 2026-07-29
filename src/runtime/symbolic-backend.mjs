@@ -36,6 +36,10 @@ function checkedCompilation(expression, variables) {
 
 export function createSymbolicBackend() {
   return Object.freeze({
+    parse(expression) {
+      return engine().parse(expression).json;
+    },
+
     canonical(expression) {
       return boxed(expression).json;
     },

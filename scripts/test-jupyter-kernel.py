@@ -130,7 +130,13 @@ def main() -> None:
                 "status"
             ] == "ok"
 
-            plot_id = client.execute("plot(sin(x), (x, 0, 2*pi))")
+            polynomial_id = client.execute("R.<x> = QQ[]")
+            iopub_until_idle(client, polynomial_id)
+            assert matching_message(client, "shell", polynomial_id)["content"][
+                "status"
+            ] == "ok"
+
+            plot_id = client.execute("plot(sin(x), (x, 0, 4*pi))")
             messages = iopub_until_idle(client, plot_id)
             plot_data = message_of_type(messages, "execute_result")["content"][
                 "data"
@@ -211,6 +217,18 @@ def main() -> None:
                 == "2 * 3 * 5"
             )
             assert matching_message(client, "shell", recovered_id)["content"][
+                "status"
+            ] == "ok"
+
+            preserved_id = client.execute("value")
+            preserved_messages = iopub_until_idle(client, preserved_id)
+            assert (
+                message_of_type(preserved_messages, "execute_result")["content"][
+                    "data"
+                ]["text/plain"]
+                == "12"
+            )
+            assert matching_message(client, "shell", preserved_id)["content"][
                 "status"
             ] == "ok"
 

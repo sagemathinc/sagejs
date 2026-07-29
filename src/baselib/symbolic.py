@@ -159,6 +159,14 @@ def _expression_tree(value: Any) -> Any:
         parent_kind = runtime.reflect.get(value_parent, "_kind")
         if parent_kind in ("RealField", "RDF"):
             return float(value)
+        construction = runtime.reflect.get(value_parent, "_construction")
+        if (
+            runtime.jstype(construction) == "object"
+            and runtime.reflect.get(construction, "kind") == "polynomial"
+        ):
+            base_ring = runtime.reflect.get(value_parent, "_base")
+            if base_ring is sage.ZZ or base_ring is sage.QQ:
+                return _call_backend("parse", [str(value)])
     if isinstance(value, sage.Rational):
         return [
             "Rational",

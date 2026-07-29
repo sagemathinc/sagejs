@@ -66,6 +66,31 @@ async function main() {
       Math.sin(Math.PI ** 2),
       Math.sin((2 * Math.PI) ** 2),
     ]);
+
+    await session.evaluate("R.<x> = QQ[]");
+    assert.equal(
+      (await session.evaluate("sin(x)")).repr,
+      "sin(x)",
+    );
+    assert.equal(
+      (await session.evaluate("SR((x + 1)^2)")).repr,
+      "x^2 + 2*x + 1",
+    );
+    const polynomialVariablePlot = await session.evaluate(
+      [
+        "plot(sin(x), (x, 0, 4*pi),",
+        "     plot_points=3, adaptive_recursion=0, randomize=False)",
+      ].join("\n"),
+    );
+    assert.equal(
+      polynomialVariablePlot.display?.mime,
+      "application/vnd.plotly.v1+json",
+    );
+    assert.deepEqual(polynomialVariablePlot.display?.data.data[0].x, [
+      0,
+      2 * Math.PI,
+      4 * Math.PI,
+    ]);
   } finally {
     await session.close();
   }
