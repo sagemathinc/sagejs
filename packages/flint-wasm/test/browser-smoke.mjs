@@ -196,6 +196,19 @@ try {
       await waitForOutput(expected);
     }
 
+    async function runSourceWithShortcut(source, modifier, expected) {
+      assert.match(modifier, /^(shift|ctrl)$/);
+      await command("Runtime.evaluate", {
+        expression:
+          `document.querySelector('#source').value = ${JSON.stringify(source)}; ` +
+          `document.querySelector('#source').dispatchEvent(` +
+          `new KeyboardEvent('keydown', {` +
+          `key: 'Enter', ${modifier}Key: true, bubbles: true, cancelable: true` +
+          `}))`,
+      });
+      await waitForOutput(expected);
+    }
+
     async function waitForIdle(timeout = 360_000) {
       const deadline = Date.now() + timeout;
       let state = { output: "", running: true };
@@ -219,6 +232,8 @@ try {
     }
 
     await waitForOutput("2 * 1013");
+    await runSourceWithShortcut("factor(42)", "shift", "2 * 3 * 7");
+    await runSourceWithShortcut("factor(66)", "ctrl", "2 * 3 * 11");
     await runSource("import math\nmath.sin(math.pi/2)", "1");
     await runSource("QQ['x'].gen()", "x");
     await runSource(

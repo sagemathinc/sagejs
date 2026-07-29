@@ -71,6 +71,18 @@ runButton.addEventListener("click", async () => {
     }
   }
 });
+
+input.addEventListener("keydown", (event) => {
+  if (
+    event.key === "Enter" &&
+    (event.shiftKey || event.ctrlKey) &&
+    !runButton.disabled
+  ) {
+    event.preventDefault();
+    runButton.click();
+  }
+});
+
 interruptButton.addEventListener("click", interrupt);
 
 const automaticInput = new URLSearchParams(location.search).get("run");
