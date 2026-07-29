@@ -34,6 +34,7 @@
   },
   "bin": {
     "sagejs": "bin/sagejs",
+    "sagejs-jupyter": "bin/sagejs-jupyter",
     "sagepython": "bin/sagejs"
   },
   "files": [
@@ -50,6 +51,7 @@
     "EMBEDDING.md",
     "HACKING.md",
     "IMPLEMENTATION.md",
+    "JUPYTER.md",
     "MISSION.md",
     "PLOTTING.md",
     "pyrightconfig.json",
@@ -72,6 +74,7 @@
     "test:baselib:strict": "node scripts/check-strict-baselib.cjs",
     "test:compiler": "node bin/sagejs test",
     "test:cli": "node test/cli-smoke.cjs && node test/completer.cjs && node test/module-cache.cjs && node test/time-module.cjs && node test/numpy-module.cjs && node test/kernel.cjs && node test/graphics.cjs && node test/graphics3d.cjs && node test/graphics-export.cjs && node test/symbolic.cjs && node test/typed-math-lowering.cjs && node test/runtime-intrinsics.cjs && node test/baselib-boundaries.cjs",
+    "test:jupyter": "pnpm run build && python3 scripts/test-jupyter-kernel.py",
     "test:upstream": "pnpm run build && pnpm run test:upstream:run",
     "test:upstream:run": "node test/upstream-doctest-tools.cjs && node scripts/run-sage-doctests.cjs upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.doctests.json --expectations upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.expectations.json",
     "test:cowasm": "pnpm run build && pnpm run test:cowasm:run",
@@ -91,6 +94,8 @@
     "rh:report": "pnpm run build && node scripts/run-rh-corpus.cjs --allow-failures --verbose",
     "test:rh:figures": "pnpm run build && node scripts/run-rh-figures.cjs",
     "rh:figures:report": "pnpm run build && node scripts/run-rh-figures.cjs --allow-failures --verbose",
+    "jupyter:install": "pnpm run build && node bin/sagejs-jupyter --install --user",
+    "jupyter:install:python": "pnpm run build && node bin/sagejs-jupyter --install --mode python --user",
     "bench:cold": "node bench/cold-start.cjs",
     "bench:arithmetic": "node bench/compare-sagelite.cjs",
     "bench:complex": "node bench/compare-complex.cjs",
@@ -120,5 +125,8 @@
     "numpy-ts": "1.6.0",
     "playwright-core": "1.62.0",
     "plotly.js-dist-min": "3.7.0"
+  },
+  "optionalDependencies": {
+    "zeromq": "6.5.0"
   }
 }

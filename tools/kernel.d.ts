@@ -30,6 +30,22 @@ export interface SageSessionOptions {
   mode?: SageLanguageMode;
 }
 
+export interface SageCompletion {
+  matches: string[];
+  cursorStart: number;
+  cursorEnd: number;
+}
+
+export interface SageInspection {
+  found: boolean;
+  text: string;
+}
+
+export interface SageCompleteness {
+  status: "complete" | "incomplete" | "invalid";
+  indent?: string;
+}
+
 export class SageSessionInterruptedError extends Error {}
 export class SageSessionTimeoutError extends Error {}
 export class SageSessionClosedError extends Error {}
@@ -46,6 +62,9 @@ export class SageSession extends EventEmitter {
     source: string,
     options?: SageEvaluationOptions,
   ): Promise<SageEvaluationResult>;
+  complete(source: string, cursorPosition: number): Promise<SageCompletion>;
+  inspect(source: string, cursorPosition: number): Promise<SageInspection>;
+  isComplete(source: string): Promise<SageCompleteness>;
   interrupt(): Promise<void>;
   reset(): Promise<void>;
   close(): Promise<void>;

@@ -3,6 +3,11 @@ import { join } from "path";
 import { Worker } from "worker_threads";
 
 import { SageLanguageMode } from "./kernel-evaluator";
+import {
+  KernelCompletion,
+  KernelCompleteness,
+  KernelInspection,
+} from "./kernel-evaluator";
 
 export interface SageDisplayData {
   /** MIME type understood by an embedding renderer. */
@@ -28,10 +33,11 @@ export interface SageSessionOptions {
   mode?: SageLanguageMode;
 }
 
-interface PendingEvaluation {
+interface PendingRequest {
+  kind: "evaluate" | "request";
   output: string;
   onOutput?: (text: string) => void;
-  resolve(result: SageEvaluationResult): void;
+  resolve(result: unknown): void;
   reject(error: Error): void;
   timer?: NodeJS.Timeout;
 }
@@ -78,7 +84,7 @@ export class SageSession extends EventEmitter {
   private readyPromise: Promise<void>;
   private readyResolve!: () => void;
   private readyReject!: (error: Error) => void;
-  private pending = new Map<number, PendingEvaluation>();
+  private pending = new Map<number, PendingRequest>();
   private nextId = 0;
   private closed = false;
 
@@ -133,10 +139,14 @@ export class SageSession extends EventEmitter {
       this.pending.delete(message.id);
       if (pending.timer) clearTimeout(pending.timer);
       if (message.ok) {
-        pending.resolve({
-          ...message.result,
-          stdout: pending.output,
-        });
+        pending.resolve(
+          pending.kind === "evaluate"
+            ? {
+                ...message.result,
+                stdout: pending.output,
+              }
+            : message.result,
+        );
       } else {
         const error = deserializeError(message.error);
         pending.reject(error);
@@ -204,7 +214,8 @@ export class SageSession extends EventEmitter {
     const id = ++this.nextId;
 
     return new Promise((resolve, reject) => {
-      const pending: PendingEvaluation = {
+      const pending: PendingRequest = {
+        kind: "evaluate",
         output: "",
         onOutput,
         resolve,
@@ -235,6 +246,42 @@ export class SageSession extends EventEmitter {
     options?: SageEvaluationOptions,
   ): Promise<SageEvaluationResult> {
     return this.evaluate(source, options);
+  }
+
+  private async request<T>(
+    type: "complete" | "inspect" | "isComplete",
+    source: string,
+    extra: Record<string, unknown> = {},
+  ): Promise<T> {
+    if (this.closed) throw new SageSessionClosedError();
+    if (typeof source !== "string") {
+      throw new TypeError("Sage.js source must be a string");
+    }
+    await this.ready();
+    const worker = this.worker;
+    if (!worker) throw new SageSessionClosedError();
+    const id = ++this.nextId;
+    return new Promise<T>((resolve, reject) => {
+      this.pending.set(id, {
+        kind: "request",
+        output: "",
+        resolve,
+        reject,
+      });
+      worker.postMessage({ type, id, source, ...extra });
+    });
+  }
+
+  complete(source: string, cursorPosition: number): Promise<KernelCompletion> {
+    return this.request("complete", source, { cursorPosition });
+  }
+
+  inspect(source: string, cursorPosition: number): Promise<KernelInspection> {
+    return this.request("inspect", source, { cursorPosition });
+  }
+
+  isComplete(source: string): Promise<KernelCompleteness> {
+    return this.request("isComplete", source);
   }
 
   private async replaceWorker(error: Error): Promise<void> {

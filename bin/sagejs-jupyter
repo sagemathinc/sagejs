@@ -1,0 +1,9 @@
+#!/usr/bin/env node
+"use strict";
+
+require("../dist/tools/jupyter-kernel.js")
+  .main()
+  .catch((error) => {
+    console.error(error?.stack ?? error);
+    process.exitCode = 1;
+  });

@@ -23,6 +23,29 @@ async function main() {
   assert.ok(first.durationMs >= 0);
 
   assert.equal((await session.eval("value^2")).repr, "144");
+  assert.ok(
+    (await session.complete("prime_p", 7)).matches.includes("prime_pi"),
+  );
+  await session.evaluate("graphics = plot(x, (x, 0, 1))");
+  assert.ok(
+    (await session.complete("graphics.sa", 11)).matches.includes("save"),
+  );
+  assert.ok(
+    (await session.complete("QQ['x'].g", 9)).matches.includes("gen"),
+  );
+  const inspection = await session.inspect("prime_pi", 8);
+  assert.equal(inspection.found, true);
+  assert.match(inspection.text, /prime_pi/);
+  assert.deepEqual(await session.isComplete("for n in range(3):"), {
+    status: "incomplete",
+    indent: "    ",
+  });
+  assert.deepEqual(await session.isComplete("2 + 2"), {
+    status: "complete",
+  });
+  assert.deepEqual(await session.isComplete("def f(:\n    pass"), {
+    status: "invalid",
+  });
   assert.equal((await session.evaluate("len(zeta_zeros())")).repr, "15000");
   assert.equal(
     (await session.evaluate("round(zeta_zeros()[-1], 9)")).repr,

@@ -123,6 +123,12 @@ worker. The browser/WASM backend exposes the same lifecycle and result shape.
 See [`EMBEDDING.md`](EMBEDDING.md) for the complete Node and browser API,
 output streaming, error behavior, and isolation contract.
 
+Sage.js also runs as a Jupyter kernel with persistent state, streamed output,
+completion, inspection, reliable interruption, and native Plotly display for
+2D and 3D graphics. Run `pnpm jupyter:install`, then select **Sage.js** in
+JupyterLab or Notebook. See [`JUPYTER.md`](JUPYTER.md) for installation,
+Python-mode, behavior, and testing details.
+
 Sage-compatible `plot()`, `line()`, `point()`, and `list_plot()` now produce
 composable `Graphics` objects. Browser embeddings receive an optional Plotly
 figure through the same clone-safe kernel result protocol. See
