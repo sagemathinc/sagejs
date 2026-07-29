@@ -79,6 +79,8 @@ try {
       "print(x)",
       "print(sin(x^2).derivative(x))",
       "print(fast_callable(sin(x^2), vars=[x])(2))",
+      "u, v = var('u v')",
+      "print(plot3d(u^2-v^2, (u,-1,1), (v,-1,1), plot_points=2))",
       "",
     ].join("\n"),
   );
@@ -88,7 +90,8 @@ try {
       "3.1250000000000000000000000000\n" +
       "x\n" +
       "2*x*cos(x^2)\n" +
-      "-0.7568024953079282",
+      "-0.7568024953079282\n" +
+      "Graphics3d Object",
   );
 } finally {
   rmSync(temporaryDirectory, { recursive: true, force: true });

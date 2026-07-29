@@ -1,9 +1,9 @@
 # Plotting in Sage.js
 
-Sage.js implements a small Sage-compatible semantic graphics layer and renders
-it with Plotly.js in browser embeddings. The mathematical API is not a Plotly
-wrapper: `plot()`, `line()`, `point()`, and `list_plot()` return composable
-`Graphics` objects whose primitives retain their numerical data and options.
+Sage.js implements a Sage-compatible semantic graphics layer and renders it
+with Plotly.js in browser embeddings. The mathematical API is not a Plotly
+wrapper: plotting functions return composable `Graphics` or `Graphics3d`
+objects whose primitives retain their numerical data and options.
 
 ```py
 p = plot(
@@ -25,6 +25,26 @@ The terminal representation follows Sage:
 Graphics object consisting of 2 graphics primitives
 ```
 
+Three-dimensional plots use Sage's familiar API and compose the same way:
+
+```py
+u, v = var('u v')
+wave = plot3d(
+    sin(pi*(u^2 + v^2))/2,
+    (u, -1, 1),
+    (v, -1, 1),
+    color=['navy', 'cyan', 'yellow'],
+    opacity=0.85,
+    mesh=True,
+    frame=False,
+)
+wave + sphere((0, 0, 0.35), size=0.18, color='red', opacity=0.8)
+```
+
+This displays as an interactive Plotly surface and sphere, with orbit controls,
+zooming, and camera rotation, while its terminal representation is Sage's
+`Graphics3d Object`.
+
 An embeddable kernel additionally returns an
 `application/vnd.plotly.v1+json` display payload. Mathematical objects and
 their implementation details remain inside the evaluator worker; only
@@ -43,6 +63,16 @@ Plotting v0 includes:
 - Sage's uniform sampling followed by recursive adaptive refinement;
 - colors, opacity, line thickness and style, markers, legends, titles, axes
   labels and ranges, linear/log scales, gridlines, and aspect ratios.
+
+Three-dimensional plotting includes:
+
+- composable `Graphics3d`, `Surface3d`, `Line3d`, and `Point3d` objects;
+- `plot3d()` over symbolic expressions, numerical callables, or constants;
+- `parametric_plot3d()` for space curves and parametric surfaces;
+- `sphere()`, `line3d()`, and `point3d()`;
+- rectangular or parametric grids with configurable `plot_points`;
+- solid or gradient colors, opacity, mesh contours, sample dots, legends,
+  titles, axes labels, frames, figure sizes, and aspect ratios.
 
 Callable plots default to 200 initial points, adaptive tolerance `0.01`, and
 five refinement levels, matching Sage's public defaults. Pass
@@ -78,12 +108,18 @@ bundle, or another renderer for the same semantic graphics objects.
 Symbolic plots compile their expression once with `fast_callable()`. Cortex
 Compute Engine emits the numerical JavaScript lambda and Sage.js installs it
 directly, so adaptive sampling does not pay Python operator-dispatch or
-general symbolic-evaluation overhead for every point.
+general symbolic-evaluation overhead for every point. Symbolic 3D plots use
+the same path with a compiled function of two variables.
 
 ## Deliberate current limits
 
-Additional primitives such as parametric, polar, implicit, contour, polygon,
-text, matrix, and complex plots can be ported incrementally without changing
-the `Graphics` or rich-display boundary. Symbolic assumptions, equation
-solving, integration, and full Sage expression compatibility are also outside
-this first symbolic slice.
+Three-dimensional surfaces currently use deterministic rectangular sampling.
+Adaptive surface triangulation and coordinate transformations raise an
+explicit `NotImplementedError`. Implicit surfaces, volume plots, polyhedra,
+3D text, and additional solid primitives can be ported incrementally without
+changing `Graphics3d` or the rich-display boundary.
+
+Additional two-dimensional primitives such as polar, implicit, contour,
+polygon, text, matrix, and complex plots remain to be ported. Symbolic
+assumptions, equation solving, integration, and full Sage expression
+compatibility are also outside the current symbolic slice.

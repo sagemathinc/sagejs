@@ -285,11 +285,40 @@ try {
       traces: 1,
       points: [0, Math.PI, 2 * Math.PI],
     });
+    await startSource(
+      "u, v = var('u v')\n" +
+        "wave = plot3d(u^2-v^2, (u,-1,1), (v,-1,1), " +
+        "plot_points=(3,3), color='purple', frame=False)\n" +
+        "wave + sphere((0,0,1), size=1/5, color='red', " +
+        "plot_points=(5,3))",
+    );
+    assert.equal(await waitForIdle(), "Graphics3d Object");
+    const plot3dState = await command("Runtime.evaluate", {
+      expression: `({
+        types: Array.from(
+          document.querySelector('#display')?.data ?? [],
+          (trace) => trace.type
+        ),
+        z: document.querySelector('#display')?.data?.[0]?.z ?? [],
+        aspect: document.querySelector('#display')?.layout?.scene
+          ?.aspectratio ?? null
+      })`,
+      returnByValue: true,
+    });
+    assert.deepEqual(plot3dState.result.value, {
+      types: ["surface", "surface"],
+      z: [
+        [0, -1, 0],
+        [1, 0, 1],
+        [0, -1, 0],
+      ],
+      aspect: { x: 1, y: 1, z: 1 },
+    });
     socket.close();
   } finally {
     chrome.kill();
   }
-  console.log("Chromium Web Worker factorization smoke test passed");
+  console.log("Chromium Web Worker mathematics and plotting smoke test passed");
 } finally {
   server.close();
 }

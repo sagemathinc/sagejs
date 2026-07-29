@@ -10,6 +10,7 @@
     "src/baselib/factorization.py",
     "src/baselib/finite_fields.py",
     "src/baselib/graphics.py",
+    "src/baselib/graphics3d.py",
     "src/baselib/internal.py",
     "src/baselib/itertools.py",
     "src/baselib/polynomial.py",

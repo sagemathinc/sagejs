@@ -303,8 +303,12 @@ class Expression(sage.Element):
             raise TypeError("symbolic expression does not have a real value")
         return value
 
-    def _plot_fast_callable(self, variable: Any) -> Callable[[float], Any]:
-        return fast_callable(self, vars=[variable])
+    def _plot_fast_callable(self, variable: Any) -> Any:
+        if isinstance(variable, (list, tuple)):
+            variables = list(variable)
+        else:
+            variables = [variable]
+        return fast_callable(self, vars=variables)
 
 
 SR = SymbolicRing()

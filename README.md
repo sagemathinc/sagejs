@@ -129,6 +129,11 @@ figure through the same clone-safe kernel result protocol. See
 [`PLOTTING.md`](PLOTTING.md) for examples, supported options, renderer
 integration, and symbolic-expression sampling.
 
+Sage-compatible `plot3d()`, `parametric_plot3d()`, `sphere()`, `line3d()`, and
+`point3d()` similarly produce composable `Graphics3d` objects. Symbolic
+surfaces compile their two-variable expression once inside the evaluator
+worker and render as interactive Plotly surfaces in the frontend.
+
 ## Sage mode
 
 The `sagejs` command uses Sage-style syntax by default:

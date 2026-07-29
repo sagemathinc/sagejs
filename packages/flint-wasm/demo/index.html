@@ -54,9 +54,14 @@
       <label for="source">
         Sage source (press Shift+Enter or Ctrl+Enter to run)
       </label>
-      <textarea id="source" spellcheck="false">plot(sin(x^2), (x, 0, 2*pi),
-     color='red', thickness=2, legend_label='sin(x)',
-     title='Sage.js Symbolic Plotting', axes_labels=['x', 'y'])</textarea>
+      <textarea id="source" spellcheck="false">u, v = var('u v')
+wave = plot3d(sin(pi*(u^2 + v^2))/2,
+              (u, -1, 1), (v, -1, 1),
+              color=['navy', 'cyan', 'yellow'],
+              opacity=17/20, mesh=True, frame=False,
+              title='Sage.js Symbolic 3D Plotting')
+wave + sphere((0, 0, 7/20), size=9/50,
+              color='red', opacity=4/5)</textarea>
       <button id="run">Run</button>
       <button id="interrupt" disabled>Interrupt</button>
       <output id="output">Ready.</output>
