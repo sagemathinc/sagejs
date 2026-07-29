@@ -14,10 +14,12 @@
         max-width: 54rem;
         padding: 2rem;
       }
-      input {
+      textarea {
         box-sizing: border-box;
         font: inherit;
+        min-height: 8rem;
         padding: 0.7rem;
+        resize: vertical;
         width: 100%;
       }
       button {
@@ -34,19 +36,15 @@
   </head>
   <body>
     <main>
-      <h1>FLINT in a Web Worker</h1>
+      <h1>Sage.js in a Web Worker</h1>
       <p>
-        This factors an arbitrary-precision integer locally using the same
-        FLINT library as Sage.js. Interrupting terminates and replaces the
-        worker.
+        This compiles and evaluates Sage code locally, with
+        arbitrary-precision factorization provided by FLINT WebAssembly.
+        Interrupting terminates and replaces the worker.
       </p>
-      <label for="integer">Integer</label>
-      <input
-        id="integer"
-        value="923098402834028349082348209385"
-        spellcheck="false"
-      />
-      <button id="factor">Factor</button>
+      <label for="source">Sage source</label>
+      <textarea id="source" spellcheck="false">factor(923098402834028349082348209385)</textarea>
+      <button id="run">Run</button>
       <button id="interrupt" disabled>Interrupt</button>
       <output id="output">Ready.</output>
     </main>

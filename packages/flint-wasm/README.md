@@ -1,13 +1,24 @@
-# FLINT WebAssembly proof of concept
+# Sage.js WebAssembly proof of concept
 
 This package links CoWasm's WebAssembly builds of FLINT, GMP, and MPFR into a
-small, browser-compatible Sage.js kernel. It currently exposes integer
-factorization through a narrow C ABI and returns the same structured
-`{ sign, factors }` result as the native Node-API add-on.
+small, browser-compatible Sage.js evaluator. It currently compiles and
+evaluates Sage source and exposes integer factorization through a narrow C
+ABI. The ABI returns the same structured `{ sign, factors }` result as the
+native Node-API add-on, so the ordinary Sage.js baselib constructs and
+displays `IntegerFactorization` objects unchanged.
 
-The JavaScript loader has no Node.js dependencies. The demo runs the kernel in
-a Web Worker, so the main page remains responsive and can interrupt an
-expensive factorization by terminating and replacing the worker.
+The JavaScript loader has no Node.js dependencies. The demo uses two isolated
+realms:
+
+1. An outer evaluator Web Worker owns the Sage runtime and all mathematical
+   objects.
+2. A nested compiler worker runs the self-hosted Sage.js compiler and returns
+   generated JavaScript.
+
+This mirrors the separate VM context used by the Node REPL and prevents the
+compiler's compatibility runtime from colliding with the evaluated program.
+The main page stays responsive and can interrupt either compilation or
+mathematics reliably by terminating and replacing the outer worker.
 
 ## Build
 
@@ -27,7 +38,8 @@ For a checkout outside the sibling path, build with
 
 The build uses CoWasm's WASI SDK and static `libflint`, `libmpfr`, and `libgmp`
 archives. The resulting `dist/flint-factor.wasm` is about 4.7 MiB before HTTP
-compression and about 2 MiB with gzip in the current build.
+compression and about 2 MiB with gzip in the current build. The self-hosted
+compiler and baselib add about 3.8 MiB uncompressed or 0.45 MiB with gzip.
 
 ## Browser demo
 
@@ -47,6 +59,15 @@ pnpm test:wasm:browser
 ```
 
 Set `SAGEJS_CHROMIUM` if Chromium is not installed at a standard Linux path.
+The smoke test executes `factor(2026)`, then verifies persistent definitions
+and Sage exponentiation across subsequent evaluations. It finally starts an
+infinite Sage loop, interrupts it from the page, and verifies that the
+replacement worker can evaluate another factorization.
+
+The current proof of concept evaluates generated JavaScript in the isolated
+worker and therefore requires a Content Security Policy that permits dynamic
+code generation there. Removing that restriction will require a different
+generated-module/runtime boundary; it is not a WASM or FLINT limitation.
 
 This direct ABI is intentionally a baseline. A Node-API compatibility layer
 such as `napi-wasm` or `emnapi` could potentially reuse more of the existing

@@ -1,5 +1,5 @@
-const input = document.querySelector("#integer");
-const factorButton = document.querySelector("#factor");
+const input = document.querySelector("#source");
+const runButton = document.querySelector("#run");
 const interruptButton = document.querySelector("#interrupt");
 const output = document.querySelector("#output");
 
@@ -15,7 +15,7 @@ function startWorker() {
       return;
     }
     output.textContent = data.ok ? data.result : `Error: ${data.error}`;
-    factorButton.disabled = false;
+    runButton.disabled = false;
     interruptButton.disabled = true;
   };
 }
@@ -25,19 +25,19 @@ function interrupt() {
   requestId += 1;
   startWorker();
   output.textContent = "Interrupted.";
-  factorButton.disabled = false;
+  runButton.disabled = false;
   interruptButton.disabled = true;
 }
 
-factorButton.addEventListener("click", () => {
+runButton.addEventListener("click", () => {
   requestId += 1;
-  output.textContent = "Factoring…";
-  factorButton.disabled = true;
+  output.textContent = "Running…";
+  runButton.disabled = true;
   interruptButton.disabled = false;
   worker.postMessage({
-    type: "factor",
+    type: "evaluate",
     id: requestId,
-    value: input.value,
+    source: input.value,
   });
 });
 interruptButton.addEventListener("click", interrupt);
@@ -47,5 +47,5 @@ startWorker();
 const automaticInput = new URLSearchParams(location.search).get("run");
 if (automaticInput !== null) {
   input.value = automaticInput;
-  factorButton.click();
+  runButton.click();
 }

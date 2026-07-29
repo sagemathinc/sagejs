@@ -126,29 +126,58 @@ try {
     await command("Runtime.enable");
     await command("Page.enable");
     await command("Page.navigate", {
-      url: `http://127.0.0.1:${port}/demo/?run=2026`,
+      url:
+        `http://127.0.0.1:${port}/demo/?` +
+        new URLSearchParams({ run: "factor(2026)" }),
     });
 
-    const deadline = Date.now() + 15_000;
-    let text = "";
-    while (Date.now() < deadline) {
-      const evaluation = await command("Runtime.evaluate", {
-        expression: "document.querySelector('#output')?.textContent ?? ''",
-        returnByValue: true,
-      });
-      text = evaluation.result.value;
-      if (text === "2 * 1013" || text.startsWith("Error:")) {
-        break;
+    async function waitForOutput(expected) {
+      const deadline = Date.now() + 15_000;
+      let text = "";
+      while (Date.now() < deadline) {
+        const evaluation = await command("Runtime.evaluate", {
+          expression: "document.querySelector('#output')?.textContent ?? ''",
+          returnByValue: true,
+        });
+        text = evaluation.result.value;
+        if (text === expected || text.startsWith("Error:")) {
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      assert.equal(
+        text,
+        expected,
+        `browser evaluator failed (${text || "no output"}):\n` +
+          `${browserErrors.join("\n")}\n${chromeErrors}`,
+      );
     }
+
+    async function startSource(source) {
+      await command("Runtime.evaluate", {
+        expression:
+          `document.querySelector('#source').value = ` +
+          `${JSON.stringify(source)}; document.querySelector('#run').click()`,
+      });
+    }
+
+    async function runSource(source, expected) {
+      await startSource(source);
+      await waitForOutput(expected);
+    }
+
+    await waitForOutput("2 * 1013");
+    await runSource("a = 12\nfactor(a)", "2^2 * 3");
+    await runSource("factor(a^2)", "2^4 * 3^2");
+    await startSource("while True:\n    pass");
+    await waitForOutput("Running…");
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await command("Runtime.evaluate", {
+      expression: "document.querySelector('#interrupt').click()",
+    });
+    await waitForOutput("Interrupted.");
+    await runSource("factor(30)", "2 * 3 * 5");
     socket.close();
-    assert.equal(
-      text,
-      "2 * 1013",
-      `browser worker failed (${text || "no output"}):\n` +
-        `${browserErrors.join("\n")}\n${chromeErrors}`,
-    );
   } finally {
     chrome.kill();
   }

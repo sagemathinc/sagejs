@@ -76,11 +76,12 @@ silently changing its semantics.
 
 ## Browser and WebAssembly
 
-A browser build should execute the compiler and mathematics runtime inside a
-Web Worker. Long computations then cannot freeze the page, and the first
-reliable interruption mechanism can simply terminate and recreate the
-worker. Native or WebAssembly mathematical objects remain opaque handles
-owned by that worker.
+The browser proof of concept executes the mathematics runtime inside a Web
+Worker. A nested worker runs the self-hosted compiler in a separate realm,
+matching the VM isolation used by the Node REPL. Long computations cannot
+freeze the page, and the first reliable interruption mechanism simply
+terminates and recreates the outer worker. WebAssembly mathematical objects
+remain opaque handles owned by that worker.
 
 There is strong evidence that the native library stack is portable:
 
@@ -92,9 +93,18 @@ There is strong evidence that the native library stack is portable:
 - [napi-wasm](https://github.com/devongovett/napi-wasm) offers a possible
   compatibility layer for compiling a Node-API-shaped addon to WebAssembly.
 
-This makes a worker-hosted WASM backend the next browser proof of concept.
-It does not make a browser the primary high-performance research target, and
-it does not require forcing all native deployment through WebAssembly.
+The implemented direct C ABI links the CoWasm FLINT, MPFR, and GMP archives
+into a 4.7 MiB stripped module, about 2 MiB with gzip. The compiler and baselib
+add about 0.45 MiB with gzip. A real Chromium smoke test evaluates
+`factor(2026)` through the Sage parser, generated JavaScript, ordinary
+`IntegerFactorization`, and FLINT WASM layers. It also verifies persistent
+definitions across evaluations.
+
+This establishes a worker-hosted WASM backend without making the browser the
+primary high-performance research target or forcing native deployment through
+WebAssembly. The current evaluator uses dynamic JavaScript evaluation inside
+the isolated worker, so restrictive Content Security Policies remain a
+separate deployment issue.
 
 Synchronous `time.sleep()` follows the same architecture. It uses
 `Atomics.wait` in Node and can block an isolated worker, but it refuses to

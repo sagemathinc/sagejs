@@ -95,9 +95,10 @@ Linux host it was about 164 MB uncompressed and 34 MB after `xz -9`.
 [`DISTRIBUTION.md`](DISTRIBUTION.md) documents the reproducible SEA builds,
 the smaller FLINT-free `sagepython` artifact, browser/WebWorker plans,
 container deployment, and the evaluated TypeScript-to-native alternatives.
-A [`flint-wasm`](packages/flint-wasm/README.md) proof of concept also links
-CoWasm's FLINT, GMP, and MPFR archives into a 4.7 MiB browser module and runs
-arbitrary-precision factorization in an interruptible Web Worker.
+A [`flint-wasm`](packages/flint-wasm/README.md) proof of concept links
+CoWasm's FLINT, GMP, and MPFR archives into a 4.7 MiB browser module. The real
+Sage.js evaluator compiles source in a nested worker and runs
+arbitrary-precision factorization in an interruptible outer worker.
 
 ## Sage mode
 

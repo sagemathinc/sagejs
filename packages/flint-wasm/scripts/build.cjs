@@ -37,6 +37,20 @@ const dependencies = ["flint", "mpfr", "gmp"].map((name) => ({
 const outputDirectory = path.join(packageRoot, "dist");
 const rawOutput = path.join(outputDirectory, "flint-factor.unstripped.wasm");
 const output = path.join(outputDirectory, "flint-factor.wasm");
+const compilerOutput = path.join(outputDirectory, "compiler.js");
+const baselibOutput = path.join(outputDirectory, "baselib.js");
+const compilerSource = path.join(
+  repositoryRoot,
+  "dist",
+  "compiler",
+  "compiler.js",
+);
+const baselibSource = path.join(
+  repositoryRoot,
+  "dist",
+  "compiler",
+  "baselib-plain-pretty.js",
+);
 
 function requirePath(description, filename) {
   if (!fs.existsSync(filename)) {
@@ -65,6 +79,14 @@ function run(command, args) {
 requirePath("WASI SDK clang", clang);
 requirePath("WASI SDK sysroot", sysroot);
 requirePath("wasm-strip", wasmStrip);
+requirePath(
+  "built Sage.js compiler (run `pnpm build` first)",
+  compilerSource,
+);
+requirePath(
+  "built Sage.js baselib (run `pnpm build` first)",
+  baselibSource,
+);
 for (const dependency of dependencies) {
   requirePath(
     `${dependency.name} headers`,
@@ -118,9 +140,15 @@ run(clang, [
 ]);
 run(wasmStrip, [rawOutput, "-o", output]);
 fs.rmSync(rawOutput);
+fs.copyFileSync(compilerSource, compilerOutput);
+fs.copyFileSync(baselibSource, baselibOutput);
 
 const bytes = fs.statSync(output).size;
 console.log(
   `Built ${path.relative(repositoryRoot, output)} ` +
     `(${(bytes / 1024 / 1024).toFixed(2)} MiB)`,
+);
+console.log(
+  `Copied browser evaluator assets to ` +
+    `${path.relative(repositoryRoot, outputDirectory)}`,
 );

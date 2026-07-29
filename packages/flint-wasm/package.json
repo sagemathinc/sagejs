@@ -6,10 +6,15 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./index.mjs"
+    ".": "./index.mjs",
+    "./evaluator": "./evaluator.mjs"
   },
   "files": [
     "dist/flint-factor.wasm",
+    "dist/compiler.js",
+    "dist/baselib.js",
+    "compiler-worker.mjs",
+    "evaluator.mjs",
     "index.mjs",
     "README.md"
   ],

@@ -1,23 +1,22 @@
-import {
-  formatFactorization,
-  instantiateFlintFactor,
-} from "../index.mjs";
+import { instantiateSageEvaluator } from "../evaluator.mjs";
 
-const flintPromise = instantiateFlintFactor(
-  new URL("../dist/flint-factor.wasm", import.meta.url),
-);
+const evaluatorPromise = instantiateSageEvaluator({
+  compiler: new URL("../dist/compiler.js", import.meta.url),
+  baselib: new URL("../dist/baselib.js", import.meta.url),
+  flint: new URL("../dist/flint-factor.wasm", import.meta.url),
+});
 
 self.onmessage = async ({ data }) => {
-  if (data.type !== "factor") {
+  if (data.type !== "evaluate") {
     return;
   }
   try {
-    const flint = await flintPromise;
-    const result = flint.factor(data.value);
+    const evaluator = await evaluatorPromise;
+    const result = await evaluator.evaluate(data.source);
     self.postMessage({
       id: data.id,
       ok: true,
-      result: formatFactorization(result),
+      result: result.repr,
     });
   } catch (error) {
     self.postMessage({
