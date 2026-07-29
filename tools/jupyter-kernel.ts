@@ -21,6 +21,8 @@ import { SageLanguageMode } from "./kernel-evaluator";
 
 const DELIMITER = Buffer.from("<IDS|MSG>");
 const PROTOCOL_VERSION = "5.4";
+const PLOTLY_MIME = "application/vnd.plotly.v1+json";
+const PLOTLY_CDN = "https://cdn.plot.ly/plotly-3.7.0.min.js";
 
 interface ConnectionInfo {
   transport: string;
@@ -83,6 +85,52 @@ function packageVersion(): string {
   } catch (_error) {
     return "unknown";
   }
+}
+
+function htmlJson(value: unknown): string {
+  return JSON.stringify(value, (_key, item) => {
+    if (typeof item !== "bigint") return item;
+    const numeric = Number(item);
+    return Number.isSafeInteger(numeric) ? numeric : item.toString();
+  })
+    .replaceAll("<", "\\u003c")
+    .replaceAll("\u2028", "\\u2028")
+    .replaceAll("\u2029", "\\u2029");
+}
+
+function plotlyHtmlFallback(figure: unknown): string {
+  const id = `sagejs-plotly-${randomUUID()}`;
+  const figureJson = htmlJson(figure);
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+html,body{width:100%;margin:0}
+#${id}{width:100%;min-height:450px}
+</style>
+<script src="${PLOTLY_CDN}" charset="utf-8"
+  onerror="document.getElementById('${id}').textContent='Plotly.js could not be loaded from the CDN.'"></script>
+</head>
+<body>
+<div id="${id}">Loading Plotly.js…</div>
+<script>
+{
+  const figure = ${figureJson};
+  const target = document.getElementById(${JSON.stringify(id)});
+  if (globalThis.Plotly) {
+    target.textContent = "";
+    Plotly.newPlot(
+      target,
+      figure.data || [],
+      figure.layout || {},
+      figure.config || {}
+    );
+  }
+}
+</script>
+</body>
+</html>`;
 }
 
 function socketAddress(
@@ -351,7 +399,12 @@ export class SageJupyterKernel {
       if (!silent && (result.repr || result.display)) {
         const data: Record<string, unknown> = {};
         if (result.repr) data["text/plain"] = result.repr;
-        if (result.display) data[result.display.mime] = result.display.data;
+        if (result.display) {
+          data[result.display.mime] = result.display.data;
+          if (result.display.mime === PLOTLY_MIME) {
+            data["text/html"] = plotlyHtmlFallback(result.display.data);
+          }
+        }
         await this.publish("execute_result", request, {
           execution_count: executionCount,
           data,

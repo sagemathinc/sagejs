@@ -74,6 +74,14 @@ plot(sin(x^2), (x, 0, 2*pi), color='navy')
 plot3d(sin(x*y), (x, -pi, pi), (y, -pi, pi))
 ```
 
+Plot results include both Plotly's structured
+`application/vnd.plotly.v1+json` MIME type and a `text/html` fallback. A
+frontend with a Plotly MIME extension uses the structured payload directly.
+Other trusted notebook frontends load the pinned Plotly.js renderer from its
+CDN and render the HTML fallback, so a separate JupyterLab extension is not
+required. The browser must be online the first time it fetches that renderer;
+normal browser caching applies afterward.
+
 On Node, evaluations run in an interruptible VM context. Tight generated loops
 and `time.sleep()` therefore respond by raising `KeyboardInterrupt`, ordinary
 notebook definitions survive, and user code can catch the exception. An

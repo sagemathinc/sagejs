@@ -49,6 +49,10 @@ An embeddable kernel additionally returns an
 `application/vnd.plotly.v1+json` display payload. Mathematical objects and
 their implementation details remain inside the evaluator worker; only
 structured-clone-safe traces, layout, and configuration cross the boundary.
+The Jupyter kernel publishes this payload together with a `text/html` fallback
+which loads the pinned Plotly.js version from its CDN. This makes plots work in
+trusted Jupyter frontends without installing a Plotly MIME extension while
+preserving the structured representation for frontends that provide one.
 
 ## Supported API
 

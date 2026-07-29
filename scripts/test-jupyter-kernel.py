@@ -143,6 +143,11 @@ def main() -> None:
             ]
             assert "text/plain" in plot_data
             assert "application/vnd.plotly.v1+json" in plot_data
+            assert "text/html" in plot_data
+            assert "https://cdn.plot.ly/plotly-3.7.0.min.js" in (
+                plot_data["text/html"]
+            )
+            assert "Plotly.newPlot" in plot_data["text/html"]
             assert matching_message(client, "shell", plot_id)["content"][
                 "status"
             ] == "ok"
