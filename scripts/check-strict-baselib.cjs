@@ -16,7 +16,7 @@ const files = pyrightConfig.include;
 
 assert.ok(Array.isArray(files) && files.length > 0);
 for (const file of files) {
-  assert.match(file, /^src\/baselib\/[^/]+\.py$/);
+  assert.match(file, /^src\/(?:baselib|lib)\/[^/]+\.py$/);
 }
 
 const pythonSyntax = spawnSync(
@@ -76,6 +76,6 @@ process.stderr.write(pyright.stderr);
 if (pyright.status !== 0) process.exit(pyright.status);
 
 console.log(
-  `Strict baselib passed CPython syntax, Ruff ${Workspace.version()}, ` +
+  `Strict Python library passed CPython syntax, Ruff ${Workspace.version()}, ` +
     `and Pyright checks (${files.length} modules).`,
 );

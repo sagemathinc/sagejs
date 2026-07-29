@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      numpy-ts:
+        specifier: 1.6.0
+        version: 1.6.0
     devDependencies:
       '@astral-sh/ruff-wasm-nodejs':
         specifier: 0.16.0
@@ -560,6 +564,10 @@ packages:
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
     hasBin: true
 
+  numpy-ts@1.6.0:
+    resolution: {integrity: sha512-Cugxudyp9PKtQU64qfcdrh9hPCUfZSILtgZasg4AIK1D7hHCG4rVyOk3OYMYB4IUvAVW02tomsErmkFPRTNTgw==}
+    engines: {node: '>=22'}
+
   object-is@1.1.6:
     resolution: {integrity: sha512-F8cZ+KfGlSGi09lJT7/Nd6KJZ9ygtvYC0/UYYLI9nmQKLMnydpB9yvbv9K1uSkEu7FU9vYPmVwLg328tX+ot3Q==}
     engines: {node: '>= 0.4'}
@@ -1055,6 +1063,8 @@ snapshots:
   nopt@10.0.1:
     dependencies:
       abbrev: 5.0.0
+
+  numpy-ts@1.6.0: {}
 
   object-is@1.1.6:
     dependencies:

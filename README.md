@@ -363,6 +363,36 @@ Python language or standard library. Programs can directly load JavaScript
 packages with `require(...)`, and compiled code runs as JavaScript rather than
 through CPython or WebAssembly.
 
+### Experimental NumPy facade
+
+Sage.js includes an initial Python-facing `numpy` module backed by
+[`numpy-ts`](https://www.npmjs.com/package/numpy-ts). The facade, rather than
+the backend, owns the compatibility contract: raw JavaScript arrays do not
+escape, Python slicing creates shared-storage views, and Python-visible dtype,
+scalar, mutation, operator, and representation behavior can be corrected
+independently of `numpy-ts`.
+
+The first vertical slice supports dense array construction, dtypes, reshape,
+basic slicing and mutation, element-wise operators, reductions, matrix
+multiplication, and `numpy.linalg.det`:
+
+```py
+import numpy as np
+
+a = np.arange(6, dtype=np.int32).reshape(2, 3)
+view = a[:, 1:]
+view[0, 0] = 99
+print(a)
+print(a.sum(axis=0))
+print(np.linalg.det(np.array([[1.5, 2.0], [3.0, 4.5]])))
+```
+
+This is a compatibility experiment, not yet a claim to implement NumPy. The
+same ordinary `.py` fixture runs under Sage.js and CPython/NumPy, and
+`test/numpy-module.cjs` requires their output to agree when NumPy is available.
+That differential corpus is intended to grow into selected upstream NumPy
+tests without making CPython's extension ABI a Sage.js goal.
+
 ## JavaScript API
 
 The compiler can also be loaded from Node:

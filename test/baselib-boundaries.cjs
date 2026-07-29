@@ -9,6 +9,9 @@ const pyrightConfig = JSON.parse(
   readFileSync(join(root, "pyrightconfig.json"), "utf8"),
 );
 const strictModules = pyrightConfig.include;
+const strictBaselibModules = strictModules.filter((path) =>
+  path.startsWith("src/baselib/"),
+);
 const verbatimExpression =
   /\bv(?:'[^']*'|"[^"]*"|'''[\s\S]*?'''|"""[\s\S]*?""")/;
 const topLevelModules = readdirSync(join(root, "src", "baselib"))
@@ -18,7 +21,7 @@ const topLevelModules = readdirSync(join(root, "src", "baselib"))
 const bootstrapBoundary = "src/baselib/sagejs_bootstrap.py";
 
 assert.deepEqual(
-  [...strictModules].sort(),
+  [...strictBaselibModules].sort(),
   topLevelModules.filter((path) => path !== bootstrapBoundary),
   "every top-level baselib module except the bootstrap boundary must be strict",
 );
