@@ -9,7 +9,24 @@ export interface PlotlyRenderer {
     layout: object,
     config: object,
   ): Promise<unknown>;
+  toImage(
+    element: Element,
+    options: {
+      format: "png" | "jpeg" | "webp" | "svg";
+      width?: number;
+      height?: number;
+      scale?: number;
+    },
+  ): Promise<string>;
   purge?(element: Element): void;
+}
+
+export interface PlotlyImageOptions {
+  filename?: string;
+  format?: "png" | "jpeg" | "jpg" | "webp" | "svg";
+  width?: number;
+  height?: number;
+  scale?: number;
 }
 
 export function renderSageDisplay(
@@ -22,3 +39,16 @@ export function clearSageDisplay(
   element: Element,
   plotly?: PlotlyRenderer,
 ): void;
+
+export function sageDisplayToImage(
+  display: SageDisplayData,
+  options?: PlotlyImageOptions,
+  plotly?: PlotlyRenderer,
+): Promise<string>;
+
+export function downloadSageDisplay(
+  display: SageDisplayData,
+  filename: string,
+  options?: PlotlyImageOptions,
+  plotly?: PlotlyRenderer,
+): Promise<string>;

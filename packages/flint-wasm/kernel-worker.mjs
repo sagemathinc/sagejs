@@ -50,6 +50,7 @@ async function evaluate(message) {
     result: {
       repr: result.repr,
       display: result.display,
+      saveRequests: result.saveRequests,
       durationMs: performance.now() - started,
     },
   });

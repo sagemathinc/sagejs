@@ -41,6 +41,7 @@ export class SageSession {
     flint = new URL("./dist/flint-factor.wasm", import.meta.url),
     symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
     compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
+    onGraphicsSave,
   } = {}) {
     this.resources = {
       worker: String(worker),
@@ -51,6 +52,7 @@ export class SageSession {
       symbolic: String(symbolic),
       compilerWorker: String(compilerWorker),
     };
+    this.onGraphicsSave = onGraphicsSave;
     this.listeners = new Map();
     this.pending = new Map();
     this.nextId = 0;
@@ -125,10 +127,21 @@ export class SageSession {
       this.pending.delete(data.id);
       if (pending.timer) clearTimeout(pending.timer);
       if (data.ok) {
-        pending.resolve({
-          ...data.result,
-          stdout: pending.output,
-        });
+        const { saveRequests = [], ...result } = data.result;
+        void (async () => {
+          if (saveRequests.length && !this.onGraphicsSave) {
+            throw new Error(
+              "graphics file export is not available in this browser host",
+            );
+          }
+          for (const request of saveRequests) {
+            await this.onGraphicsSave(request);
+          }
+          return {
+            ...result,
+            stdout: pending.output,
+          };
+        })().then(pending.resolve, pending.reject);
       } else {
         const error = deserializeError(data.error);
         pending.reject(error);

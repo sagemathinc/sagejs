@@ -30,6 +30,19 @@ export interface BrowserSageSessionOptions {
   flint?: string | URL;
   symbolic?: string | URL;
   compilerWorker?: string | URL;
+  onGraphicsSave?: (request: SageGraphicsSaveRequest) => void | Promise<void>;
+}
+
+export interface SageGraphicsSaveRequest {
+  display: SageDisplayData;
+  filename: string;
+  options: {
+    format?: string;
+    width?: number;
+    height?: number;
+    scale?: number;
+    [name: string]: unknown;
+  };
 }
 
 export class SageSessionInterruptedError extends Error {}

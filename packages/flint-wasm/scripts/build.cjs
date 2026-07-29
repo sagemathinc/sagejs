@@ -126,6 +126,8 @@ const exportNames = [
   "sagejs_factor_output",
   "sagejs_factor_output_capacity",
   "sagejs_factor",
+  "sagejs_is_prime",
+  "sagejs_next_prime",
 ];
 
 run(clang, [

@@ -142,16 +142,31 @@ export async function instantiateSageEvaluator({
       filename,
     });
     const previousOutputHandler = outputHandler;
+    const saveRequests = [];
     outputHandler = onOutput;
+    globalThis.__sagejs_graphics_save_hook__ = (
+      graphic,
+      filename,
+      options,
+    ) => {
+      saveRequests.push({
+        display: richDisplay(graphic),
+        filename: String(filename),
+        options: { ...(options ?? {}) },
+      });
+      return graphic;
+    };
     try {
       const value = globalEvaluate(javascript);
       return {
         value,
         repr: value === undefined ? "" : globalThis.ρσ_repr(value),
         display: richDisplay(value),
+        saveRequests,
       };
     } finally {
       outputHandler = previousOutputHandler;
+      delete globalThis.__sagejs_graphics_save_hook__;
     }
   }
 

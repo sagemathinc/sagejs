@@ -633,11 +633,12 @@ class Graphics3d:
             runtime.reflect.set(layout, 'height', int(float(figsize[1]) * 80))
         return layout
 
-    def _rich_repr_(self) -> Any:
+    def plotly(self) -> Any:
+        """Return the renderer-neutral Plotly figure description."""
         traces = []
         for primitive in self._objects:
             traces += primitive._plotly_traces()
-        figure = _g3d_native_record(
+        return _g3d_native_record(
             data=traces,
             layout=self._plotly_layout(),
             config=_g3d_native_record(
@@ -645,10 +646,30 @@ class Graphics3d:
                 responsive=True,
             ),
         )
+
+    def _rich_repr_(self) -> Any:
         return _g3d_native_record(
             mime=_GRAPHICS3D_PLOTLY_MIME,
-            data=figure,
+            data=self.plotly(),
         )
+
+    def save(
+        self,
+        filename: Any,
+        **options: Any,
+    ) -> Graphics3d:
+        """Save through the host graphics hook when one is installed."""
+        hook = runtime.reflect.get(
+            runtime.global_object, '__sagejs_graphics_save_hook__')
+        if hook is runtime.undefined:
+            raise NotImplementedError(
+                'graphics file export is not available in this host')
+        runtime.reflect.apply(
+            hook,
+            runtime.undefined,
+            [self, filename, options],
+        )
+        return self
 
 
 def line3d(points: Any, **options: Any) -> Graphics3d:

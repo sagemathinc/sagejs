@@ -80,6 +80,9 @@ function buildExecutable(name, withFlint) {
     ),
     ...collectStandardLibraryAssets(),
     ...collectStandardLibraryCacheAssets(),
+    "vendor/plotly.min.js": require.resolve(
+      "plotly.js-dist-min/plotly.min.js",
+    ),
   };
   if (withFlint) assets["native/sagejs_flint.node"] = flintAddon;
 
@@ -119,6 +122,7 @@ buildSync({
   target: "node22",
   sourcemap: false,
   minify: false,
+  external: ["plotly.js-dist-min/plotly.min.js"],
 });
 
 if (buildPython) buildExecutable("sagepython", false);

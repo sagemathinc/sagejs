@@ -62,9 +62,9 @@ wave = plot3d(sin(pi*(u^2 + v^2))/2,
               title='Sage.js Symbolic 3D Plotting')
 wave + sphere((0, 0, 7/20), size=9/50,
               color='red', opacity=4/5)</textarea>
-      <button id="run">Run</button>
+      <button id="run" disabled>Run</button>
       <button id="interrupt" disabled>Interrupt</button>
-      <output id="output">Ready.</output>
+      <output id="output">Loading Sage.js…</output>
       <div id="display" aria-live="polite"></div>
     </main>
     <script src="../dist/plotly.min.js"></script>

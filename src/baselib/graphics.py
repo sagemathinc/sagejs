@@ -691,12 +691,13 @@ class Graphics:
             runtime.reflect.set(yaxis, 'scaleratio', float(ratio))
         return layout
 
-    def _rich_repr_(self) -> Any:
+    def plotly(self) -> Any:
+        """Return the renderer-neutral Plotly figure description."""
         traces = [
             primitive._plotly_trace()
             for primitive in self._objects
         ]
-        figure = _native_record(
+        return _native_record(
             data=traces,
             layout=self._plotly_layout(),
             config=_native_record(
@@ -704,7 +705,9 @@ class Graphics:
                 responsive=True,
             ),
         )
-        return _native_record(mime=_PLOTLY_MIME, data=figure)
+
+    def _rich_repr_(self) -> Any:
+        return _native_record(mime=_PLOTLY_MIME, data=self.plotly())
 
     def save(
         self,
@@ -949,7 +952,8 @@ class GraphicsArray:
     __str__ = __repr__
     toString = __repr__
 
-    def _rich_repr_(self) -> Any:
+    def plotly(self) -> Any:
+        """Return the renderer-neutral Plotly subplot description."""
         traces = []
         subplot = 0
         for row in self._rows:
@@ -972,7 +976,7 @@ class GraphicsArray:
                 pattern='independent',
             ),
         )
-        figure = _native_record(
+        return _native_record(
             data=traces,
             layout=layout,
             config=_native_record(
@@ -980,7 +984,9 @@ class GraphicsArray:
                 responsive=True,
             ),
         )
-        return _native_record(mime=_PLOTLY_MIME, data=figure)
+
+    def _rich_repr_(self) -> Any:
+        return _native_record(mime=_PLOTLY_MIME, data=self.plotly())
 
     def save(
         self,

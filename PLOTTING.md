@@ -111,6 +111,53 @@ directly, so adaptive sampling does not pay Python operator-dispatch or
 general symbolic-evaluation overhead for every point. Symbolic 3D plots use
 the same path with a compiled function of two variables.
 
+## File export
+
+Two-dimensional graphics, graphics arrays, and three-dimensional graphics
+share one host-neutral Plotly figure representation:
+
+```py
+g = plot(prime_pi, 1, 100)
+figure = g.plotly()
+g.save('prime-counting.png', width=800, height=500, scale=2)
+```
+
+The Node host supports:
+
+- `png`, `jpeg`, `webp`, and `svg` static images;
+- self-contained interactive `html`;
+- renderer-neutral Plotly `json`.
+
+Static image export uses an installed Chrome or Chromium through
+`playwright-core`. Set `SAGEJS_CHROMIUM_PATH` when the browser is not on the
+usual executable path. HTML and JSON export do not require a browser. Image
+rendering runs in an isolated helper process so Sage's synchronous `save()`
+contract does not leak asynchronous JavaScript into mathematical code.
+Single-executable builds embed the Plotly bundle for HTML output; their static
+PNG/SVG helper is not bundled yet, so use HTML/JSON or the npm distribution
+when running an SEA artifact.
+
+Browser embeddings can provide `onGraphicsSave` when creating their session.
+The bundled demo uses this callback and `downloadSageDisplay()` to turn
+`g.save('plot.png')` into a browser download:
+
+```js
+const sage = await createSage({
+  onGraphicsSave(request) {
+    return downloadSageDisplay(
+      request.display,
+      request.filename,
+      request.options,
+      Plotly,
+    );
+  },
+});
+```
+
+Plotly renders 3D graphics with WebGL. Raster export preserves the complete
+plot; an SVG containing a 3D scene necessarily embeds the WebGL portion as a
+raster image.
+
 ## Deliberate current limits
 
 Three-dimensional surfaces currently use deterministic rectangular sampling.

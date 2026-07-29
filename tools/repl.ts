@@ -25,6 +25,7 @@ import {
   runtimeRequire,
   standardLibraryCacheDirectory,
 } from "./resources";
+import { installNodeGraphicsSaveHook } from "./graphics-export";
 
 const DEFAULT_HISTORY_SIZE = 1000;
 const HOME =
@@ -222,6 +223,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   async function initContext() {
     // @ts-ignore
     global.require = runtimeRequire;
+    installNodeGraphicsSaveHook();
     // @ts-ignore
     global.__sagejs_sage_mode__ = !!options.sage;
 

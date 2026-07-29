@@ -2,8 +2,9 @@
 
 This package links CoWasm's WebAssembly builds of FLINT, GMP, and MPFR into a
 small, browser-compatible Sage.js evaluator. It currently compiles and
-evaluates Sage source and exposes integer factorization through a narrow C
-ABI. The ABI returns the same structured `{ sign, factors }` result as the
+evaluates Sage source and exposes integer factorization, primality testing,
+and proven next-prime searches through a narrow C ABI. The factorization ABI
+returns the same structured `{ sign, factors }` result as the
 native Node-API add-on, so the ordinary Sage.js baselib constructs and
 displays `IntegerFactorization` objects unchanged. A small exact JavaScript
 backend supplies polynomial construction, arithmetic, powers, equality, and

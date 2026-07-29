@@ -8,6 +8,7 @@ import {
   standardLibraryCacheDirectory,
 } from "./resources";
 import { getImportDirs, importPath, libraryPath } from "./utils";
+import { installNodeGraphicsSaveHook } from "./graphics-export";
 
 export type SageLanguageMode = "sage" | "python";
 
@@ -102,6 +103,7 @@ export function createKernelEvaluator({
 
   // These hooks are consulted dynamically by the generated baselib.
   global.require = runtimeRequire as NodeJS.Require;
+  installNodeGraphicsSaveHook();
   global.__sagejs_output_write__ = (text: unknown) => {
     onOutput(String(text));
   };
@@ -169,6 +171,7 @@ export function createKernelEvaluator({
 
     close(): void {
       delete global.__sagejs_output_write__;
+      delete global.__sagejs_graphics_save_hook__;
       delete global.__sagejs_kernel_modules__;
     },
   };

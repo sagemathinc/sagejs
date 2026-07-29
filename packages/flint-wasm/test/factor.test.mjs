@@ -46,6 +46,17 @@ test("rejects zero and lossy JavaScript numbers", () => {
   );
 });
 
+test("tests primality and finds proven next primes", () => {
+  assert.equal(flint.isPrime(2n), true);
+  assert.equal(flint.isPrime(15n), false);
+  assert.equal(flint.isPrime(-7n), false);
+  assert.equal(flint.nextPrime(1000n), 1009n);
+  assert.equal(
+    flint.nextPrime(2n ** 128n),
+    340282366920938463463374607431768211507n,
+  );
+});
+
 test("provides exact portable polynomial construction and arithmetic", () => {
   const x = flint.qqPolyGen();
   const two = flint.qqPolyConstant(2n, 1n);

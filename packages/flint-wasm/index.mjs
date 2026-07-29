@@ -53,7 +53,7 @@ export async function instantiateFlintFactor(source) {
     instance.exports.sagejs_factor_output_capacity(),
   );
 
-  function factor(value) {
+  function writeInteger(value, operation) {
     if (typeof value === "number" && !Number.isSafeInteger(value)) {
       throw new RangeError("number input must be a safe integer; use bigint");
     }
@@ -61,12 +61,12 @@ export async function instantiateFlintFactor(source) {
     try {
       input = BigInt(value).toString();
     } catch {
-      throw new TypeError("factor input must be an integer");
+      throw new TypeError(`${operation} input must be an integer`);
     }
     const bytes = encoder.encode(input);
     if (bytes.length + 1 > inputCapacity) {
       throw new RangeError(
-        `factor input exceeds the ${inputCapacity - 1}-byte WASM limit`,
+        `${operation} input exceeds the ${inputCapacity - 1}-byte WASM limit`,
       );
     }
 
@@ -77,7 +77,10 @@ export async function instantiateFlintFactor(source) {
     );
     destination.set(bytes);
     destination[bytes.length] = 0;
+  }
 
+  function factor(value) {
+    writeInteger(value, "factor");
     const status = instance.exports.sagejs_factor();
     if (status === 1) {
       throw new TypeError("FLINT rejected the integer input");
@@ -103,8 +106,34 @@ export async function instantiateFlintFactor(source) {
     };
   }
 
+  function isPrime(value) {
+    writeInteger(value, "isPrime");
+    const result = instance.exports.sagejs_is_prime();
+    if (result < 0) {
+      throw new TypeError("FLINT rejected the integer input");
+    }
+    return result === 1;
+  }
+
+  function nextPrime(value) {
+    writeInteger(value, "nextPrime");
+    const status = instance.exports.sagejs_next_prime();
+    if (status === 1) {
+      throw new TypeError("FLINT rejected the integer input");
+    }
+    if (status === 2) {
+      throw new RangeError("FLINT prime output buffer is too small");
+    }
+    if (status !== 0) {
+      throw new Error(`FLINT next-prime search failed with status ${status}`);
+    }
+    return BigInt(readCString(memory, outputPointer, outputCapacity));
+  }
+
   return Object.freeze({
     factor,
+    isPrime,
+    nextPrime,
     ...createPortablePolynomialBackend(),
   });
 }

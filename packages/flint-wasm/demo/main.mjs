@@ -4,6 +4,7 @@ import {
 } from "../kernel.mjs";
 import {
   clearSageDisplay,
+  downloadSageDisplay,
   renderSageDisplay,
 } from "../plotly-renderer.mjs";
 
@@ -14,11 +15,20 @@ const output = document.querySelector("#output");
 const display = document.querySelector("#display");
 
 let session;
+let sessionPromise;
 let runId = 0;
 let outputBuffer = "";
 
 async function startSession() {
-  const value = await createSage();
+  const value = await createSage({
+    async onGraphicsSave(request) {
+      await downloadSageDisplay(
+        request.display,
+        request.filename,
+        request.options,
+      );
+    },
+  });
   value.on("stdout", (text) => {
     outputBuffer += text;
     output.textContent = outputBuffer;
@@ -44,7 +54,7 @@ runButton.addEventListener("click", async () => {
   runButton.disabled = true;
   interruptButton.disabled = false;
   try {
-    session ??= await startSession();
+    session ??= await sessionPromise;
     if (currentRun !== runId) return;
     const result = await session.evaluate(input.value);
     if (currentRun !== runId) return;
@@ -86,7 +96,22 @@ input.addEventListener("keydown", (event) => {
 interruptButton.addEventListener("click", interrupt);
 
 const automaticInput = new URLSearchParams(location.search).get("run");
-if (automaticInput !== null) {
-  input.value = automaticInput;
-  runButton.click();
-}
+runButton.disabled = true;
+output.textContent = "Loading Sage.js…";
+sessionPromise = startSession();
+void sessionPromise.then(
+  (value) => {
+    session = value;
+    output.textContent = "Ready.";
+    runButton.disabled = false;
+    if (automaticInput !== null) {
+      input.value = automaticInput;
+      runButton.click();
+    }
+  },
+  (error) => {
+    output.textContent = `Error loading Sage.js: ${
+      error instanceof Error ? error.message : String(error)
+    }`;
+  },
+);

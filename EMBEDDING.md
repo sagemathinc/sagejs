@@ -113,6 +113,34 @@ Node application can preserve or transform the same figure payload without
 loading a browser plotting library. See [`PLOTTING.md`](PLOTTING.md) for the
 supported Sage API and current limits.
 
+Browser hosts can also implement Sage's `Graphics.save()` operation:
+
+```js
+import {
+  downloadSageDisplay,
+} from "@sagemath/sagejs-flint-wasm/plotly-renderer";
+
+const sage = await createSage({
+  onGraphicsSave(request) {
+    return downloadSageDisplay(
+      request.display,
+      request.filename,
+      request.options,
+      Plotly,
+    );
+  },
+});
+
+await sage.evaluate(`
+g = plot(prime_pi, 1, 100)
+g.save('prime-counting.png')
+`);
+```
+
+The evaluator waits for `onGraphicsSave` before resolving `evaluate()`. A
+browser embedding which does not install this capability receives an explicit
+export error instead of silently discarding the requested file.
+
 ## Interruption, timeouts, and reset
 
 ```js

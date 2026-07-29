@@ -18,6 +18,7 @@ const VIRTUAL_ROOT = normalize("/__sagejs_sea__");
 const COMPILER_ASSET = "compiler/compiler.js";
 const BASELIB_ASSET = "compiler/baselib-plain-pretty.js";
 const FLINT_ASSET = "native/sagejs_flint.node";
+const PLOTLY_ASSET = "vendor/plotly.min.js";
 
 let flintModule: unknown;
 let nativeTemporaryDirectory: string | undefined;
@@ -67,6 +68,10 @@ export function readCompilerSource(fallbackFilename: string): string {
 
 export function readBaselibSource(fallbackFilename: string): string {
   return isSea() ? assetText(BASELIB_ASSET) : readResourceText(fallbackFilename);
+}
+
+export function readPlotlySource(fallbackFilename: string): string {
+  return isSea() ? assetText(PLOTLY_ASSET) : readResourceText(fallbackFilename);
 }
 
 function loadEmbeddedFlint(): unknown {

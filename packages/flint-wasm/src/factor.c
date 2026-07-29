@@ -96,6 +96,77 @@ size_t sagejs_factor_output_capacity(void)
     return SAGEJS_FACTOR_OUTPUT_CAPACITY;
 }
 
+static int read_integer(fmpz_t value)
+{
+    factor_input[SAGEJS_FACTOR_INPUT_CAPACITY - 1] = '\0';
+    return fmpz_set_str(value, factor_input, 10) == 0;
+}
+
+static int write_integer(const fmpz_t value)
+{
+    char *text;
+    size_t position = 0;
+    int success;
+
+    factor_output[0] = '\0';
+    text = fmpz_get_str(NULL, 10, value);
+    if (text == NULL)
+        return 0;
+    success = append_text(&position, text);
+    flint_free(text);
+    return success;
+}
+
+/*
+ * Return 1 when the input is prime, 0 when composite, and -1 for invalid
+ * decimal input.
+ */
+__attribute__((visibility("default")))
+int sagejs_is_prime(void)
+{
+    fmpz_t value;
+    int result;
+
+    fmpz_init(value);
+    if (!read_integer(value))
+    {
+        fmpz_clear(value);
+        return -1;
+    }
+    result = fmpz_cmp_ui(value, 2) >= 0 && fmpz_is_prime(value);
+    fmpz_clear(value);
+    return result;
+}
+
+/*
+ * Write the first proven prime strictly greater than the input to the shared
+ * output buffer. Return 0 on success, 1 for invalid input, and 2 when the
+ * output buffer is too small.
+ */
+__attribute__((visibility("default")))
+int sagejs_next_prime(void)
+{
+    fmpz_t value;
+    fmpz_t answer;
+    int status = 0;
+
+    fmpz_init(value);
+    fmpz_init(answer);
+    if (!read_integer(value))
+    {
+        status = 1;
+        goto cleanup;
+    }
+    fmpz_nextprime(answer, value, 1);
+    if (!write_integer(answer))
+        status = 2;
+
+cleanup:
+    fmpz_clear(value);
+    fmpz_clear(answer);
+    return status;
+}
+
 /*
  * Factor the NUL-terminated decimal integer in factor_input.
  *
@@ -120,11 +191,10 @@ int sagejs_factor(void)
     int status = 0;
 
     factor_output[0] = '\0';
-    factor_input[SAGEJS_FACTOR_INPUT_CAPACITY - 1] = '\0';
     fmpz_init(value);
     fmpz_factor_init(factors);
 
-    if (fmpz_set_str(value, factor_input, 10) != 0)
+    if (!read_integer(value))
     {
         status = 1;
         goto cleanup;

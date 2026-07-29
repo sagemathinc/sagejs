@@ -235,6 +235,7 @@ try {
     await runSourceWithShortcut("factor(42)", "shift", "2 * 3 * 7");
     await runSourceWithShortcut("factor(66)", "ctrl", "2 * 3 * 11");
     await runSource("import math\nmath.sin(math.pi/2)", "1");
+    await runSource("prime_pi(10)", "4");
     await runSource(
       "x = var('x')\nf = sin(x^2)\nf.derivative(x)",
       "2*x*cos(x^2)",
@@ -242,7 +243,7 @@ try {
     await runSource("QQ['x'].gen()", "x");
     await runSource(
       "R.<x> = QQ[]\nx^2 - 2*x + 1",
-      "x^2  -  2*x  +  1",
+      "x^2 - 2*x + 1",
     );
     await runSource("a = 12\nfactor(a)", "2^2 * 3");
     await runSource("factor(a^2)", "2^4 * 3^2");
@@ -285,6 +286,10 @@ try {
       traces: 1,
       points: [0, Math.PI, 2 * Math.PI],
     });
+    await runSource(
+      "g = plot(prime_pi, 1, 100)\ng.save('prime-pi.png')",
+      "Graphics object consisting of 1 graphics primitive",
+    );
     await startSource(
       "u, v = var('u v')\n" +
         "wave = plot3d(u^2-v^2, (u,-1,1), (v,-1,1), " +
