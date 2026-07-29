@@ -7,7 +7,12 @@
   "type": "module",
   "exports": {
     ".": "./index.mjs",
-    "./evaluator": "./evaluator.mjs"
+    "./evaluator": "./evaluator.mjs",
+    "./kernel": {
+      "types": "./kernel.d.ts",
+      "import": "./kernel.mjs",
+      "default": "./kernel.mjs"
+    }
   },
   "files": [
     "dist/flint-factor.wasm",
@@ -17,6 +22,9 @@
     "compiler-worker.mjs",
     "evaluator.mjs",
     "index.mjs",
+    "kernel.d.ts",
+    "kernel-worker.mjs",
+    "kernel.mjs",
     "portable-polynomial.mjs",
     "README.md"
   ],

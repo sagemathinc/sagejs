@@ -29,6 +29,23 @@ Python `print()` output is streamed back to the page as it is produced, with
 its exact `sep` and `end` text preserved independently of the final expression
 representation.
 
+The public `@sagemath/sagejs-flint-wasm/kernel` entry point packages this
+architecture as an embeddable session:
+
+```js
+import { createSage } from "@sagemath/sagejs-flint-wasm/kernel";
+
+const sage = await createSage();
+sage.on("stdout", (text) => appendOutput(text));
+const result = await sage.evaluate("factor(2026)");
+await sage.close();
+```
+
+Definitions persist across evaluations. `interrupt()`, `reset()`, and
+per-evaluation timeouts terminate and replace the outer worker, so even
+arbitrary synchronous loops cannot freeze the embedding page. The demo is a
+thin client of this API rather than a separate worker protocol.
+
 ## Build
 
 First build the FLINT stack in a sibling

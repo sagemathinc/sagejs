@@ -100,6 +100,29 @@ CoWasm's FLINT, GMP, and MPFR archives into a 4.7 MiB browser module. The real
 Sage.js evaluator compiles source in a nested worker and runs
 arbitrary-precision factorization in an interruptible outer worker.
 
+## Embed Sage.js
+
+Applications can create a persistent, interruptible Sage session with a small
+public API:
+
+```js
+const { createSage } = require("@sagemath/sagejs/kernel");
+
+const sage = await createSage();
+sage.on("stdout", (text) => process.stdout.write(text));
+
+const result = await sage.evaluate("factor(2^127 - 1)");
+console.log(result.repr);
+
+await sage.close();
+```
+
+Each session runs in an isolated worker. Definitions persist between
+evaluations, while interruption, timeouts, and reset reliably replace the
+worker. The browser/WASM backend exposes the same lifecycle and result shape.
+See [`EMBEDDING.md`](EMBEDDING.md) for the complete Node and browser API,
+output streaming, error behavior, and isolation contract.
+
 ## Sage mode
 
 The `sagejs` command uses Sage-style syntax by default:

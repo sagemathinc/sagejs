@@ -1,64 +1,67 @@
+import {
+  createSage,
+  SageSessionInterruptedError,
+} from "../kernel.mjs";
+
 const input = document.querySelector("#source");
 const runButton = document.querySelector("#run");
 const interruptButton = document.querySelector("#interrupt");
 const output = document.querySelector("#output");
 
-let requestId = 0;
-let worker;
+let session;
+let runId = 0;
 let outputBuffer = "";
 
-function startWorker() {
-  worker = new Worker(new URL("./worker.mjs", import.meta.url), {
-    type: "module",
-  });
-  worker.onmessage = ({ data }) => {
-    if (data.id !== requestId) {
-      return;
-    }
-    if (data.type === "output") {
-      outputBuffer += data.text;
-      output.textContent = outputBuffer;
-      return;
-    }
-    if (data.ok) {
-      outputBuffer += data.result;
-    } else {
-      if (outputBuffer && !outputBuffer.endsWith("\n")) {
-        outputBuffer += "\n";
-      }
-      outputBuffer += `Error: ${data.error}`;
-    }
+async function startSession() {
+  const value = await createSage();
+  value.on("stdout", (text) => {
+    outputBuffer += text;
     output.textContent = outputBuffer;
-    runButton.disabled = false;
-    interruptButton.disabled = true;
-  };
+  });
+  return value;
 }
 
-function interrupt() {
-  worker?.terminate();
-  requestId += 1;
-  startWorker();
+async function interrupt() {
+  runId += 1;
   outputBuffer = "";
   output.textContent = "Interrupted.";
   runButton.disabled = false;
   interruptButton.disabled = true;
+  await session?.interrupt();
 }
 
-runButton.addEventListener("click", () => {
-  requestId += 1;
+runButton.addEventListener("click", async () => {
+  const currentRun = ++runId;
   outputBuffer = "";
   output.textContent = "Running…";
   runButton.disabled = true;
   interruptButton.disabled = false;
-  worker.postMessage({
-    type: "evaluate",
-    id: requestId,
-    source: input.value,
-  });
+  try {
+    session ??= await startSession();
+    if (currentRun !== runId) return;
+    const result = await session.evaluate(input.value);
+    if (currentRun !== runId) return;
+    outputBuffer += result.repr;
+    output.textContent = outputBuffer;
+  } catch (error) {
+    if (currentRun !== runId || error instanceof SageSessionInterruptedError) {
+      return;
+    }
+    if (outputBuffer && !outputBuffer.endsWith("\n")) {
+      outputBuffer += "\n";
+    }
+    outputBuffer += `Error: ${
+      error instanceof Error ? error.message : String(error)
+    }`;
+    output.textContent = outputBuffer;
+  } finally {
+    if (currentRun === runId) {
+      runButton.disabled = false;
+      interruptButton.disabled = true;
+    }
+  }
 });
 interruptButton.addEventListener("click", interrupt);
-
-startWorker();
 
 const automaticInput = new URLSearchParams(location.search).get("run");
 if (automaticInput !== null) {
