@@ -1,0 +1,51 @@
+{
+  "schema": "sagejs.rh-book-session/v1",
+  "generatedBy": "scripts/extract-rh-corpus.cjs",
+  "source": {
+    "repository": "https://github.com/williamstein/rh.git",
+    "revision": "fcae1dbb3d6847373e15129162c3c5eef7c6e6ac",
+    "path": "rh/rh.tex",
+    "sha256": "b980ba143ff0c9341756584064b419586ae8ce2f7eca553c65872b6cc20e931a",
+    "license": "NOASSERTION"
+  },
+  "summary": {
+    "examples": 5
+  },
+  "examples": [
+    {
+      "id": "rh/rh.tex:733",
+      "line": 733,
+      "source": "p90 = 149474329044343594528784250333645983079497454292838248852612270757617561057674257880592603",
+      "want": "",
+      "tags": []
+    },
+    {
+      "id": "rh/rh.tex:735",
+      "line": 735,
+      "source": "p115 = 2309888494878522213154166450313710367329236616136192088115975953987911840431532723141985023484762629703896050377709",
+      "want": "",
+      "tags": []
+    },
+    {
+      "id": "rh/rh.tex:737",
+      "line": 737,
+      "source": "c204 = p90 * p115",
+      "want": "",
+      "tags": []
+    },
+    {
+      "id": "rh/rh.tex:738",
+      "line": 738,
+      "source": "389 * 691 * 5370056528687 * c204 == -numerator(bernoulli(200))",
+      "want": "True\n",
+      "tags": []
+    },
+    {
+      "id": "rh/rh.tex:740",
+      "line": 740,
+      "source": "is_prime(p90), is_prime(p115), is_prime(c204)",
+      "want": "(True, True, False)\n",
+      "tags": []
+    }
+  ]
+}

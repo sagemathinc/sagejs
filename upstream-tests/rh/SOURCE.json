@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/williamstein/rh.git",
+  "revision": "fcae1dbb3d6847373e15129162c3c5eef7c6e6ac",
+  "retrieved": "2026-07-29",
+  "license": "NOASSERTION",
+  "canonicalSources": [
+    "rh/code/code.sage",
+    "rh/rh.tex"
+  ]
+}

@@ -61,6 +61,15 @@ class PolynomialElement(sage.Element):
         return self._new(
             runtime.flint_backend().polyPow(self._native, exponent))
 
+    def __floordiv__(self, other: object) -> PolynomialElement:
+        operands = runtime.coercion_model.coercePair(self, other)
+        if not isinstance(operands.left, PolynomialElement):
+            raise TypeError('polynomial division requires polynomials')
+        return PolynomialElement(
+            operands.parent,
+            runtime.flint_backend().polyDivExact(
+                operands.left._native, operands.right._native))
+
     def _eq_(self, other: PolynomialElement) -> bool:
         return runtime.flint_backend().polyEqual(
             self._native, other._native)
@@ -80,26 +89,45 @@ class PolynomialElement(sage.Element):
                 operands.left._native, operands.right._native))
 
     def is_irreducible(self) -> bool:
-        if self._parent.base_ring()._kind != 'GF':
-            raise TypeError(
-                'irreducibility testing is currently implemented ' +
-                'over finite fields')
-        return runtime.flint_backend().nmodPolyIsIrreducible(self._native)
+        if self._parent.base_ring()._kind == 'GF':
+            return runtime.flint_backend().nmodPolyIsIrreducible(self._native)
+        factors: Any = self.factor()
+        return (
+            len(factors) == 1
+            and factors[0][1] == 1
+            and factors[0][0] * factors.unit() == self
+        )
 
     def factor(self) -> sage.Factorization:
-        if self._parent.base_ring()._kind != 'GF':
-            raise TypeError(
-                'polynomial factorization is currently implemented ' +
-                'over finite fields')
-        result = runtime.flint_backend().nmodPolyFactor(self._native)
+        result = runtime.flint_backend().polyFactor(self._native)
         parent = self._parent
 
         def make_factor(pair: list[Any]) -> list[Any]:
             return [PolynomialElement(parent, pair[0]), pair[1]]
 
         factors = result.factors.map(make_factor)
+        if parent.base_ring()._kind == 'GF':
+            unit = parent.base_ring()(result.unit)
+        elif parent.base_ring() is sage.ZZ:
+            unit = parent.base_ring()(result.unitNumerator)
+        else:
+            unit = parent.base_ring()(
+                result.unitNumerator, result.unitDenominator)
         return sage.Factorization(
-            factors, parent.base_ring()(result.unit), False, True, False)
+            factors, unit, False, True, False)
+
+    def divisors(self) -> list[PolynomialElement]:
+        answer = [self._parent(1)]
+        factors: Any = self.factor()
+        for factor_value, exponent in factors:
+            previous = answer
+            answer = []
+            power = self._parent(1)
+            for _ in range(exponent + 1):
+                for divisor in previous:
+                    answer.append(divisor * power)
+                power = power * factor_value
+        return answer
 
     def roots(self, multiplicities: bool = True) -> list[Any]:
         if self._parent.base_ring()._kind != 'GF':
@@ -117,8 +145,11 @@ class PolynomialElement(sage.Element):
     def __repr__(self) -> str:
         raw = runtime.flint_backend().polyToString(
             self._native, self._parent.variable_name())
-        return raw.replace(runtime.regexp(r'\+', 'g'), ' + ').replace(
+        raw = raw.replace(runtime.regexp(r'\s+', 'g'), '')
+        raw = raw.replace(runtime.regexp(r'\+', 'g'), ' + ').replace(
             runtime.regexp(r'([^-])-+', 'g'), '$1 - ')
+        return raw.replace(
+            runtime.regexp(r'(^|[+-] )1\*', 'g'), '$1')
 
     __str__ = __repr__
     toString = __repr__

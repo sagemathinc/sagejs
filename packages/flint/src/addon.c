@@ -9,6 +9,7 @@
 #include <flint/fmpz.h>
 #include <flint/fmpz_factor.h>
 #include <flint/fmpz_poly.h>
+#include <flint/fmpz_poly_factor.h>
 #include <flint/fmpq.h>
 #include <flint/fmpq_poly.h>
 #include <flint/nmod_poly.h>
@@ -984,6 +985,155 @@ static napi_value nmod_poly_factor_value(
     return result;
 }
 
+static napi_value fmpz_factorization_result(
+    napi_env env,
+    const fmpz_poly_factor_t decomposition,
+    sagejs_poly_kind kind,
+    const fmpz_t denominator)
+{
+    napi_value result;
+    napi_value factors;
+    napi_value unit_numerator;
+    napi_value unit_denominator;
+    slong index;
+
+    unit_numerator = fmpz_to_bigint(env, &decomposition->c);
+    unit_denominator = fmpz_to_bigint(env, denominator);
+    if (unit_numerator == NULL || unit_denominator == NULL ||
+        !check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env, napi_set_named_property(
+            env, result, "unitNumerator", unit_numerator)) ||
+        !check_napi(env, napi_set_named_property(
+            env, result, "unitDenominator", unit_denominator)) ||
+        !check_napi(env, napi_create_array_with_length(
+            env, (size_t) decomposition->num, &factors)))
+        return NULL;
+
+    for (index = 0; index < decomposition->num; index++)
+    {
+        napi_value pair;
+        napi_value polynomial;
+        napi_value exponent;
+        sagejs_poly *target;
+
+        if (!check_napi(env, napi_create_array_with_length(env, 2, &pair)))
+            return NULL;
+        polynomial = create_poly(env, kind, 0);
+        if (polynomial == NULL)
+            return NULL;
+        target = unwrap_poly(env, polynomial, kind);
+        if (target == NULL)
+            return NULL;
+        if (kind == SAGEJS_POLY_ZZ)
+            fmpz_poly_set(target->integer, decomposition->p + index);
+        else
+            fmpq_poly_set_fmpz_poly(
+                target->rational, decomposition->p + index);
+        if (!check_napi(env, napi_create_double(
+                env, (double) decomposition->exp[index], &exponent)) ||
+            !check_napi(env, napi_set_element(env, pair, 0, polynomial)) ||
+            !check_napi(env, napi_set_element(env, pair, 1, exponent)) ||
+            !check_napi(env, napi_set_element(
+                env, factors, (uint32_t) index, pair)))
+            return NULL;
+    }
+    if (!check_napi(env, napi_set_named_property(
+        env, result, "factors", factors)))
+        return NULL;
+    return result;
+}
+
+static napi_value poly_factor_value(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_poly *poly;
+    fmpz_poly_factor_t decomposition;
+    fmpz_poly_t numerator;
+    fmpz_t denominator;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    poly = unwrap_poly(env, args[0], 0);
+    if (poly == NULL)
+        return NULL;
+    if (poly->kind == SAGEJS_POLY_NMOD)
+        return nmod_poly_factor_value(env, info);
+    if ((poly->kind == SAGEJS_POLY_ZZ &&
+            fmpz_poly_is_zero(poly->integer)) ||
+        (poly->kind == SAGEJS_POLY_QQ &&
+            fmpq_poly_is_zero(poly->rational)))
+    {
+        napi_throw_range_error(env, NULL, "factorization of 0 is not defined");
+        return NULL;
+    }
+
+    fmpz_poly_factor_init(decomposition);
+    fmpz_poly_init(numerator);
+    fmpz_init(denominator);
+    if (poly->kind == SAGEJS_POLY_ZZ)
+    {
+        fmpz_poly_set(numerator, poly->integer);
+        fmpz_one(denominator);
+    }
+    else
+    {
+        fmpq_poly_get_numerator(numerator, poly->rational);
+        fmpq_poly_get_denominator(denominator, poly->rational);
+    }
+    fmpz_poly_factor(decomposition, numerator);
+    result = fmpz_factorization_result(
+        env, decomposition, poly->kind, denominator);
+    fmpz_clear(denominator);
+    fmpz_poly_clear(numerator);
+    fmpz_poly_factor_clear(decomposition);
+    return result;
+}
+
+static napi_value poly_divexact_value(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result;
+    sagejs_poly *left;
+    sagejs_poly *right;
+    sagejs_poly *answer;
+    int divides = 0;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    left = unwrap_same_kind(env, args[0], args[1], &right);
+    if (left == NULL)
+        return NULL;
+    result = create_poly(
+        env,
+        left->kind,
+        left->kind == SAGEJS_POLY_NMOD ? left->modular->mod.n : 0);
+    if (result == NULL)
+        return NULL;
+    answer = unwrap_poly(env, result, left->kind);
+    if (answer == NULL)
+        return NULL;
+    if (left->kind == SAGEJS_POLY_ZZ)
+        divides = fmpz_poly_divides(
+            answer->integer, left->integer, right->integer);
+    else if (left->kind == SAGEJS_POLY_QQ)
+        divides = fmpq_poly_divides(
+            answer->rational, left->rational, right->rational);
+    else
+        divides = nmod_poly_divides(
+            answer->modular, left->modular, right->modular);
+    if (!divides)
+    {
+        napi_throw_range_error(env, NULL, "polynomial division is not exact");
+        return NULL;
+    }
+    return result;
+}
+
 static napi_value nmod_poly_roots_value(
     napi_env env,
     napi_callback_info info)
@@ -1340,6 +1490,10 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"polyNeg", NULL, poly_neg, NULL, NULL, NULL, napi_default, NULL},
         {"polyPow", NULL, poly_pow, NULL, NULL, NULL, napi_default, NULL},
         {"polyEqual", NULL, poly_equal, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"polyDivExact", NULL, poly_divexact_value, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"polyFactor", NULL, poly_factor_value, NULL, NULL, NULL,
             napi_default, NULL},
         {"polyToString", NULL, poly_to_string, NULL, NULL, NULL,
             napi_default, NULL},

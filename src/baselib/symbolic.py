@@ -374,8 +374,24 @@ def exp(value: Any) -> Any:
     return _symbolic_function("Exp", value, runtime.math.exp)
 
 
-def log(value: Any) -> Any:
-    return _symbolic_function("Ln", value, runtime.math.log)
+def log(value: Any, base: Any = None) -> Any:
+    natural = _symbolic_function("Ln", value, runtime.math.log)
+    if base is None:
+        return natural
+    denominator = _symbolic_function("Ln", base, runtime.math.log)
+    return natural / denominator
+
+
+def floor(value: Any) -> Any:
+    if runtime.jstype(value) == "number":
+        return runtime.math.floor(value)
+    return _symbolic_function("Floor", value, runtime.math.floor)
+
+
+def ceil(value: Any) -> Any:
+    if runtime.jstype(value) == "number":
+        return runtime.math.ceil(value)
+    return _symbolic_function("Ceil", value, runtime.math.ceil)
 
 
 def sqrt(value: Any) -> Any:

@@ -1,0 +1,360 @@
+{
+  "schema": "sagejs.rh-compatibility-manifest/v1",
+  "generatedBy": "scripts/extract-rh-corpus.cjs",
+  "source": {
+    "repository": "https://github.com/williamstein/rh.git",
+    "revision": "fcae1dbb3d6847373e15129162c3c5eef7c6e6ac",
+    "license": "NOASSERTION"
+  },
+  "canonical": {
+    "doctests": {
+      "fixture": "code.doctests.json",
+      "examples": 29,
+      "groups": 15
+    },
+    "bookSession": {
+      "fixture": "book-session.json",
+      "examples": 5
+    },
+    "figureGenerators": [
+      {
+        "id": "rh/code/code.sage:28",
+        "name": "fig_factor_tree",
+        "line": 28,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:232",
+        "name": "fig_questions",
+        "line": 232,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:248",
+        "name": "fig_erat",
+        "line": 248,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:339",
+        "name": "fig_simrates",
+        "line": 339,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:370",
+        "name": "fig_log",
+        "line": 370,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:374",
+        "name": "fig_proportion_primes",
+        "line": 374,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:466",
+        "name": "fig_primegapdist",
+        "line": 466,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:506",
+        "name": "fig_primegap_race",
+        "line": 506,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:556",
+        "name": "fig_multpar",
+        "line": 556,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:636",
+        "name": "fig_logXoverX",
+        "line": 636,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:648",
+        "name": "fig_prime_pi_aspect1",
+        "line": 648,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:656",
+        "name": "fig_prime_pi",
+        "line": 656,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:667",
+        "name": "fig_prime_pi_nofill",
+        "line": 667,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:684",
+        "name": "fig_pi_Li",
+        "line": 684,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:693",
+        "name": "fig_sieves",
+        "line": 693,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:817",
+        "name": "fig_inverse_of_log",
+        "line": 817,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:825",
+        "name": "fig_li_pi_loginv",
+        "line": 825,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:840",
+        "name": "fig_primes_line",
+        "line": 840,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:868",
+        "name": "fig_psi",
+        "line": 868,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:881",
+        "name": "fig_Psi",
+        "line": 881,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:887",
+        "name": "fig_Psiprime",
+        "line": 887,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:907",
+        "name": "fig_Phi",
+        "line": 907,
+        "parameters": "dir=0, ext=0"
+      },
+      {
+        "id": "rh/code/code.sage:939",
+        "name": "fig_waves",
+        "line": 939,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:988",
+        "name": "fig_sawtooth",
+        "line": 988,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1009",
+        "name": "fig_pure_tone",
+        "line": 1009,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1019",
+        "name": "fig_mixed_tone",
+        "line": 1019,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1028",
+        "name": "fig_even_function",
+        "line": 1028,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1036",
+        "name": "fig_even_pi",
+        "line": 1036,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1043",
+        "name": "fig_oo_integral",
+        "line": 1043,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1057",
+        "name": "fig_fourier_machine",
+        "line": 1057,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1072",
+        "name": "fig_simple_staircase",
+        "line": 1072,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1082",
+        "name": "fig_mini_phihat_even",
+        "line": 1082,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1086",
+        "name": "fig_phihat_even",
+        "line": 1086,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1092",
+        "name": "fig_phihat_even_all",
+        "line": 1092,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1125",
+        "name": "fig_aplusone",
+        "line": 1125,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1130",
+        "name": "fig_calculus",
+        "line": 1130,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1147",
+        "name": "fig_jump",
+        "line": 1147,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1186",
+        "name": "fig_dirac",
+        "line": 1186,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1193",
+        "name": "fig_two_delta",
+        "line": 1193,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1207",
+        "name": "fig_phi",
+        "line": 1207,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1271",
+        "name": "fig_psi_waves",
+        "line": 1271,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1292",
+        "name": "fig_moebius",
+        "line": 1292,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1318",
+        "name": "fig_pi_riemann_gauss",
+        "line": 1318,
+        "parameters": "dir,ext"
+      },
+      {
+        "id": "rh/code/code.sage:1462",
+        "name": "fig_Rk",
+        "line": 1462,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1490",
+        "name": "fig_gaussian_primes",
+        "line": 1490,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1520",
+        "name": "fig_random_walks",
+        "line": 1520,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1554",
+        "name": "fig_theta_C",
+        "line": 1554,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1565",
+        "name": "fig_theta_C_intro",
+        "line": 1565,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1588",
+        "name": "fig_cesaro",
+        "line": 1588,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1609",
+        "name": "fig_zero_spacing",
+        "line": 1609,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1629",
+        "name": "fig_staircase_riemann_spectrum",
+        "line": 1629,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1652",
+        "name": "fig_riemann_spectrum_gaps",
+        "line": 1652,
+        "parameters": "dir, ext"
+      },
+      {
+        "id": "rh/code/code.sage:1690",
+        "name": "fig_li_minus_pi",
+        "line": 1690,
+        "parameters": "dir, ext"
+      }
+    ]
+  },
+  "excludedInventories": [
+    {
+      "path": "rh/code/code.sagews",
+      "count": 67,
+      "classification": "historical-development-transcript",
+      "reason": "Exploratory worksheet cells include UI commands, timing output, repeated loads, and recorded failures; canonical behavior is promoted into explicit fixtures instead."
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "rh/code/code.sage",
+      "sha256": "6b8b032d31b3e6e8bdbc40465687c7bcd7144e096cfde67c0aa7fc770219f011",
+      "lines": 1702
+    },
+    {
+      "path": "rh/rh.tex",
+      "sha256": "b980ba143ff0c9341756584064b419586ae8ce2f7eca553c65872b6cc20e931a",
+      "lines": 4524
+    }
+  ]
+}

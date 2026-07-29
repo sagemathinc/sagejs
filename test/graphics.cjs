@@ -59,6 +59,23 @@ async function main() {
     assert.deepEqual(listed.display?.data.data[0].x, [0, 1, 2]);
     assert.deepEqual(listed.display?.data.data[0].y, [1, 4, 9]);
 
+    const labels = await session.evaluate(
+      "graphics_array([[text('A', (0, 1)), text('B', (1, 0))]])",
+    );
+    assert.equal(
+      labels.repr,
+      "Graphics Array of size 1 x 2",
+    );
+    assert.equal(labels.display?.data.layout.grid.columns, 2);
+    assert.equal(labels.display?.data.data[0].mode, "text");
+    assert.equal(labels.display?.data.data[0].text[0], "A");
+    assert.equal(labels.display?.data.data[1].xaxis, "x2");
+
+    const timeSeries = await session.evaluate(
+      "finance.TimeSeries([1, -1, 2]).sums().plot()",
+    );
+    assert.deepEqual(timeSeries.display?.data.data[0].y, [1, 0, 2]);
+
     const plain = await session.evaluate("factor(12)");
     assert.equal(plain.display, undefined);
   } finally {

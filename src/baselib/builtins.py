@@ -64,6 +64,48 @@ _BUILTINS_MISSING = _BuiltinsMissing()
 _BUILTINS_EMPTY = _BuiltinsMissing()
 
 
+def cached_function(
+    func: Any,
+) -> Any:
+    """Cache calls to ``func`` by their positional and keyword arguments.
+
+    This intentionally uses equality comparisons instead of JavaScript object
+    identity.  Sage functions commonly receive freshly constructed exact
+    integers and tuples which are equal without being the same JS object.
+    """
+    cache = []
+
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        for entry in cache:
+            cached_args = entry[0]
+            cached_kwargs = entry[1]
+            value = entry[2]
+            if args == cached_args and kwargs == cached_kwargs:
+                return value
+        value = func(*args, **kwargs)
+        cache.append(runtime.math_tuple([args, kwargs, value]))
+        return value
+
+    runtime.reflect.set(
+        wrapper,
+        '__name__',
+        runtime.reflect.get(func, '__name__'),
+    )
+    runtime.reflect.set(
+        wrapper,
+        '__doc__',
+        runtime.reflect.get(func, '__doc__'),
+    )
+    runtime.reflect.set(wrapper, 'cache', cache)
+    return wrapper
+
+
+# Including ``self`` in ``cached_function``'s argument key gives methods the
+# expected per-instance behavior.  A dedicated alias also preserves Sage's
+# familiar public decorator name.
+cached_method = cached_function
+
+
 def _builtins_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
@@ -3751,6 +3793,131 @@ def ρσ_next_prime(value: Any) -> Any:
         runtime.flint_backend().nextPrime(value))
 
 
+def ρσ_is_prime(value: Any) -> _Bool:
+    if runtime.strict_equal(runtime.jstype(value), 'number'):
+        if not runtime.number.isSafeInteger(value):
+            return False
+        value = runtime.bigint(value)
+    elif not runtime.strict_equal(runtime.jstype(value), 'bigint'):
+        raise TypeError('is_prime() requires an integer')
+    if runtime.native_lt(value, runtime.bigint(2)):
+        return False
+    return runtime.flint_backend().isPrime(value)
+
+
+def ρσ_prime_range(
+    start: Any,
+    stop: Any = None,
+) -> Any:
+    if stop is None:
+        stop = start
+        start = 2
+    if not runtime.is_exact_integer(start):
+        raise TypeError('prime_range() bounds must be integers')
+    if not runtime.is_exact_integer(stop):
+        raise TypeError('prime_range() bounds must be integers')
+    lower = runtime.bigint(start)
+    upper = runtime.bigint(stop)
+    answer = []
+    if runtime.native_le(upper, runtime.bigint(2)):
+        return answer
+    candidate = runtime.flint_backend().nextPrime(
+        runtime.native_sub(lower, runtime.bigint(1)))
+    while runtime.native_lt(candidate, upper):
+        answer.append(runtime.normalize_integer(candidate))
+        candidate = runtime.flint_backend().nextPrime(candidate)
+    return answer
+
+
+def ρσ_prime_divisors(value: Any) -> Any:
+    return [pair[0] for pair in ρσ_factor(value)]
+
+
+def ρσ_divisors(value: Any) -> Any:
+    if _builtins_member_is_function(value, 'divisors'):
+        return _builtins_call_member(value, 'divisors', [])
+    if not runtime.is_exact_integer(value):
+        raise TypeError('divisors() requires an integer')
+    integer = runtime.integer_bigint(value)
+    if runtime.strict_equal(integer, runtime.bigint(0)):
+        raise ValueError('divisors() is not defined for 0')
+    if runtime.native_lt(integer, runtime.bigint(0)):
+        integer = runtime.native_neg(integer)
+    answer = [1]
+    for prime, exponent in ρσ_factor(integer):
+        previous = answer
+        answer = []
+        power = 1
+        for _ in range(exponent + 1):
+            for divisor in previous:
+                answer.append(
+                    ρσ_operator_mul_exact(divisor, power))
+            power = ρσ_operator_mul_exact(power, prime)
+
+    for left_index in range(len(answer)):
+        for right_index in range(left_index + 1, len(answer)):
+            if answer[right_index] < answer[left_index]:
+                temporary = answer[left_index]
+                answer[left_index] = answer[right_index]
+                answer[right_index] = temporary
+    return answer
+
+
+def prod(values: Any, start: Any = 1) -> Any:
+    answer = start
+    for value in values:
+        answer = ρσ_operator_mul_exact(answer, value)
+    return answer
+
+
+def prime_pi(value: Any) -> Any:
+    if not runtime.is_exact_integer(value):
+        value = runtime.math.floor(value)
+    if value < 2:
+        return 0
+    return len(ρσ_prime_range(2, value + 1))
+
+
+def numerator(value: Any) -> Any:
+    if runtime.is_exact_integer(value):
+        return value
+    if _builtins_member_is_function(value, 'numerator'):
+        return _builtins_call_member(value, 'numerator', [])
+    raise TypeError('numerator() is not defined for this value')
+
+
+def denominator(value: Any) -> Any:
+    if runtime.is_exact_integer(value):
+        return 1
+    if _builtins_member_is_function(value, 'denominator'):
+        return _builtins_call_member(value, 'denominator', [])
+    raise TypeError('denominator() is not defined for this value')
+
+
+def bernoulli(index: Any) -> Any:
+    if not runtime.is_exact_integer(index):
+        raise TypeError('Bernoulli number index must be an integer')
+    n = runtime.number(index)
+    if n < 0:
+        raise ValueError('Bernoulli number index must be nonnegative')
+    if n > 1 and n % 2 == 1:
+        return 0
+    values = []
+    for m in range(n + 1):
+        values.append(runtime.rational_class(1, m + 1))
+        j = m
+        while j >= 1:
+            values[j - 1] = j * (values[j - 1] - values[j])
+            j -= 1
+    return values[0]
+
+
+def _builtins_integer_is_irreducible(self: Any) -> _Bool:
+    value = runtime.bigint(self)
+    return ρσ_is_prime(
+        runtime.native_neg(value) if value < 0 else value)
+
+
 def _builtins_extreme(
     positional: Any,
     keywords: Any,
@@ -4083,7 +4250,23 @@ hasattr = ρσ_hasattr
 factor = ρσ_factor
 gcd = ρσ_gcd
 next_prime = ρσ_next_prime
+is_prime = ρσ_is_prime
+prime_range = ρσ_prime_range
+prime_divisors = ρσ_prime_divisors
+divisors = ρσ_divisors
 compile = ρσ_compile
 exec = ρσ_exec
+_integer_is_irreducible_native = runtime.native_method(
+    _builtins_integer_is_irreducible)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.number, 'prototype'),
+    'is_irreducible',
+    _integer_is_irreducible_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.bigint, 'prototype'),
+    'is_irreducible',
+    _integer_is_irreducible_native,
+)
 runtime.set_class_repr(_Code, "<class 'code'>")
 runtime.set_class_repr(ρσ_function_type, "<class 'function'>")

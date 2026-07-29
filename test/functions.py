@@ -192,6 +192,57 @@ assrt.equal(trailing_comma(
 ), 3)
 
 
+def tuple_default(value=(1, 2)):
+    return value
+
+
+assrt.deepEqual(tuple_default(), (1, 2))
+assrt.deepEqual(tuple_default((3, 4)), (3, 4))
+
+
+cached_calls = 0
+
+
+@cached_function
+def cached_add(left, right=0):
+    nonlocal cached_calls
+    cached_calls += 1
+    return left + right
+
+
+assrt.equal(cached_add(2, right=3), 5)
+assrt.equal(cached_add(2, right=3), 5)
+assrt.equal(cached_calls, 1)
+
+
+class CachedCounter:
+    def __init__(self):
+        self.calls = 0
+
+    @cached_method
+    def twice(self, value):
+        self.calls += 1
+        return 2 * value
+
+
+cached_counter = CachedCounter()
+assrt.equal(cached_counter.twice(4), 8)
+assrt.equal(cached_counter.twice(4), 8)
+assrt.equal(cached_counter.calls, 1)
+
+assrt.equal(is_prime(97), True)
+assrt.equal(is_prime(1), False)
+assrt.deepEqual(prime_range(10), [2, 3, 5, 7])
+assrt.deepEqual(prime_range(10, 20), [11, 13, 17, 19])
+assrt.deepEqual(prime_divisors(360), [2, 3, 5])
+assrt.deepEqual(divisors(12), [1, 2, 3, 4, 6, 12])
+assrt.equal(prod([2, 3, 5]), 30)
+assrt.equal(prime_pi(100), 25)
+assrt.equal(Integer(97).is_irreducible(), True)
+assrt.equal(numerator(bernoulli(10)), 5)
+assrt.equal(denominator(bernoulli(10)), 66)
+
+
 def return_string_with_newline():
     return '''a
 b'''

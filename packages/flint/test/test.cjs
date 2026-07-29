@@ -182,6 +182,70 @@ assert.throws(
 );
 assert.throws(() => flint.nmodPolyGen(4n), /modulus must be prime/);
 
+const zzx = flint.zzPolyGen();
+const zzone = flint.zzPolyConstant(1n);
+const zzfive = flint.zzPolyConstant(5n);
+const zzpolynomial = flint.polyMul(
+  flint.polySub(flint.polyPow(zzx, 2n), zzone),
+  flint.polyMul(
+    flint.polyAdd(flint.polyPow(zzx, 3n), flint.zzPolyConstant(2n)),
+    flint.polySub(zzx, zzfive),
+  ),
+);
+const zzfactorization = flint.polyFactor(zzpolynomial);
+assert.equal(zzfactorization.unitNumerator, 1n);
+assert.equal(zzfactorization.unitDenominator, 1n);
+assert.deepEqual(
+  zzfactorization.factors.map(([factor, exponent]) => [
+    flint.polyToString(factor, "x"),
+    exponent,
+  ]),
+  [
+    ["x-1", 1],
+    ["x+1", 1],
+    ["x-5", 1],
+    ["x^3+2", 1],
+  ],
+);
+assert.ok(
+  flint.polyEqual(
+    flint.polyDivExact(zzpolynomial, flint.polySub(zzx, zzfive)),
+    flint.polyMul(
+      flint.polySub(flint.polyPow(zzx, 2n), zzone),
+      flint.polyAdd(flint.polyPow(zzx, 3n), flint.zzPolyConstant(2n)),
+    ),
+  ),
+);
+assert.throws(
+  () => flint.polyDivExact(zzpolynomial, flint.polyAdd(zzx, zzfive)),
+  /not exact/,
+);
+
+const qqx = flint.qqPolyGen();
+const qqpolynomial = flint.polyMul(
+  flint.qqPolyConstant(3n, 10n),
+  flint.polyMul(
+    flint.polyPow(
+      flint.polySub(qqx, flint.qqPolyConstant(1n, 1n)),
+      2n,
+    ),
+    flint.polyAdd(qqx, flint.qqPolyConstant(2n, 1n)),
+  ),
+);
+const qqfactorization = flint.polyFactor(qqpolynomial);
+assert.equal(qqfactorization.unitNumerator, 3n);
+assert.equal(qqfactorization.unitDenominator, 10n);
+assert.deepEqual(
+  qqfactorization.factors.map(([factor, exponent]) => [
+    flint.polyToString(factor, "x"),
+    exponent,
+  ]),
+  [
+    ["x+2", 1],
+    ["x-1", 2],
+  ],
+);
+
 const r53 = flint.realFromString("1.2", 53);
 const r100 = flint.realFromRational(1n, 3n, 100);
 assert.equal(flint.realPrecision(r53), 53);

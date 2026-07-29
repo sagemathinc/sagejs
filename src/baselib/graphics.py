@@ -285,6 +285,56 @@ class Point(GraphicPrimitive):
 
 
 @runtime.sequence_class
+class Text(GraphicPrimitive):
+    """A text label positioned in two-dimensional coordinates."""
+
+    def __init__(
+        self,
+        string: str,
+        position: tuple[float, float],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive.__init__(self, options)
+        self.string = string
+        self.position = position
+
+    def __len__(self) -> int:
+        return 1
+
+    def __getitem__(self, index: int) -> tuple[float, float]:
+        if index != 0:
+            raise IndexError('text index out of range')
+        return self.position
+
+    def __repr__(self) -> str:
+        return "Text '" + self.string + "'"
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_trace(self) -> Any:
+        options = self._options
+        color = _option_get(
+            options, 'rgbcolor', _option_get(options, 'color', 'black'))
+        return _native_record(
+            type='scatter',
+            mode='text',
+            x=[self.position[0]],
+            y=[self.position[1]],
+            text=[self.string],
+            textfont=_native_record(
+                color=_color_value(color),
+                size=float(_option_get(options, 'fontsize', 12)),
+            ),
+            textposition=str(
+                _option_get(options, 'textposition', 'middle center')),
+            opacity=float(_option_get(options, 'alpha', 1)),
+            showlegend=False,
+            hoverinfo='skip',
+        )
+
+
+@runtime.sequence_class
 class Graphics:
     """A composable collection of semantic graphics primitives."""
 
@@ -518,6 +568,162 @@ def point(points: Any, **options: Any) -> Graphics:
         )
     )
     return graphic
+
+
+points = point
+
+
+def text(
+    string: Any,
+    position: Any,
+    **options: Any,
+) -> Graphics:
+    """Return a graphics object containing a positioned text label."""
+    options = _copy_options(options)
+    normalized_position = _point_pair(position)
+    defaults = {
+        'alpha': 1,
+        'rgbcolor': 'black',
+        'fontsize': 12,
+        'textposition': 'middle center',
+    }
+    if _option_has(options, 'color') and not _option_has(options, 'rgbcolor'):
+        options['rgbcolor'] = _option_pop(options, 'color')
+    _option_update(defaults, options)
+    graphics_options = _graphics_options(defaults)
+    graphic = Graphics()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(
+        Text(str(string), normalized_position, defaults))
+    return graphic
+
+
+@runtime.sequence_class
+class GraphicsArray:
+    """A rectangular array of independently rendered graphics objects."""
+
+    def __init__(self, rows: Any) -> None:
+        self._rows = [list(row) for row in rows]
+        if len(self._rows) == 0:
+            self._columns = 0
+        else:
+            self._columns = len(self._rows[0])
+            for row in self._rows:
+                if len(row) != self._columns:
+                    raise ValueError(
+                        'every graphics-array row must have equal length')
+                for graphic in row:
+                    if not isinstance(graphic, Graphics):
+                        raise TypeError(
+                            'graphics_array entries must be Graphics')
+
+    def __len__(self) -> int:
+        return sum(len(row) for row in self._rows)
+
+    def __getitem__(self, index: int) -> Graphics:
+        row = index // self._columns
+        column = index % self._columns
+        return self._rows[row][column]
+
+    def __repr__(self) -> str:
+        return (
+            'Graphics Array of size ' + str(len(self._rows)) +
+            ' x ' + str(self._columns)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _rich_repr_(self) -> Any:
+        traces = []
+        subplot = 0
+        for row in self._rows:
+            for graphic in row:
+                subplot += 1
+                axis_suffix = '' if subplot == 1 else str(subplot)
+                for primitive in graphic:
+                    trace = primitive._plotly_trace()
+                    runtime.reflect.set(
+                        trace, 'xaxis', 'x' + axis_suffix)
+                    runtime.reflect.set(
+                        trace, 'yaxis', 'y' + axis_suffix)
+                    traces.append(trace)
+        layout = _native_record(
+            autosize=True,
+            showlegend=False,
+            grid=_native_record(
+                rows=len(self._rows),
+                columns=self._columns,
+                pattern='independent',
+            ),
+        )
+        figure = _native_record(
+            data=traces,
+            layout=layout,
+            config=_native_record(
+                displaylogo=False,
+                responsive=True,
+            ),
+        )
+        return _native_record(mime=_PLOTLY_MIME, data=figure)
+
+
+def graphics_array(
+    graphics: Any,
+    rows: Any = None,
+    columns: Any = None,
+) -> GraphicsArray:
+    values = list(graphics)
+    if len(values) and isinstance(values[0], (list, tuple)):
+        return GraphicsArray(values)
+    if rows is None and columns is None:
+        rows = 1
+        columns = len(values)
+    elif rows is None:
+        rows = (len(values) + int(columns) - 1) // int(columns)
+    elif columns is None:
+        columns = (len(values) + int(rows) - 1) // int(rows)
+    row_count = int(rows)
+    column_count = int(columns)
+    if row_count * column_count != len(values):
+        raise ValueError('graphics array dimensions do not match entries')
+    nested = []
+    for row_index in range(row_count):
+        start = row_index * column_count
+        nested.append(values[start:start + column_count])
+    return GraphicsArray(nested)
+
+
+@runtime.sequence_class
+class TimeSeries:
+    """A compact numeric time series with Sage-compatible plotting."""
+
+    def __init__(self, values: Any) -> None:
+        self._values = [float(value) for value in values]
+
+    def __len__(self) -> int:
+        return len(self._values)
+
+    def __getitem__(self, index: int) -> float:
+        return self._values[index]
+
+    def sums(self) -> TimeSeries:
+        total = 0.0
+        values = []
+        for value in self._values:
+            total += value
+            values.append(total)
+        return TimeSeries(values)
+
+    def plot(self, **options: Any) -> Graphics:
+        return list_plot(
+            self._values, plotjoined=True, **options)
+
+
+finance = _native_object()
+runtime.reflect.set(finance, 'TimeSeries', TimeSeries)
+stats = _native_object()
+runtime.reflect.set(stats, 'TimeSeries', TimeSeries)
 
 
 def _finite_value(value: Any) -> float:

@@ -4,7 +4,8 @@ from __python__ import hash_literals
 
 from ast_types import (AST_Class, AST_ClassCall, AST_Dot, AST_Lambda,
                        AST_Method, AST_New, AST_PropAccess, AST_Scope,
-                       AST_SymbolRef, AST_Toplevel, has_calls, is_node_type)
+                       AST_Seq, AST_SymbolRef, AST_Toplevel, has_calls,
+                       is_node_type)
 from output.stream import OutputStream
 from output.statements import print_bracketed
 from output.utils import create_doctring
@@ -294,7 +295,20 @@ def function_annotation(self, output, strip_first, name):
         def __defaults__():
             output.print('{')
             for i, k in enumerate(dkeys):
-                output.print(k + ':'), defaults[k].print(output)
+                output.print(k + ':')
+                default_value = defaults[k]
+                if is_node_type(default_value, AST_Seq):
+                    if output.options.python_tuples:
+                        output.print('ρσ_math_tuple([')
+                    else:
+                        output.print('[')
+                    default_value.print(output)
+                    if output.options.python_tuples:
+                        output.print('])')
+                    else:
+                        output.print(']')
+                else:
+                    default_value.print(output)
                 if i is not dkeys.length - 1:
                     output.comma()
             output.print('}')

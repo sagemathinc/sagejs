@@ -1,0 +1,3 @@
+[submodule "upstream-tests/rh/source"]
+	path = upstream-tests/rh/source
+	url = https://github.com/williamstein/rh.git

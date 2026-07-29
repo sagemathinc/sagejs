@@ -257,6 +257,30 @@ assrt.equal(repr(fg.roots(multiplicities=False)), '[3, 1]')
 ZZx = PolynomialRing(ZZ, 'x')
 assrt.equal(repr(F5x(ZZx.gen() + 7)), 'x + 2')
 assrt.equal(parent((ZZx.gen() + 1) + F5(1)), F5x)
+zx = ZZx.gen()
+integer_polynomial = (zx ** 2 - 1) * (zx ** 3 + 2) * (zx - 5)
+assrt.equal(
+    repr(integer_polynomial),
+    'x^6 - 5*x^5 - x^4 + 7*x^3 - 10*x^2 - 2*x + 10')
+assrt.equal(
+    repr(integer_polynomial.factor()),
+    '(x + 1) * (x - 1) * (x - 5) * (x^3 + 2)')
+assrt.ok((zx ** 3 + 2).is_irreducible())
+assrt.ok(not integer_polynomial.is_irreducible())
+assrt.ok(integer_polynomial // (zx - 5) == (
+    (zx ** 2 - 1) * (zx ** 3 + 2)))
+assrt.equal(len(integer_polynomial.divisors()), 16)
+assrt.ok((zx - 5) in integer_polynomial.divisors())
+
+QQx = PolynomialRing(QQ, 'q')
+qx = QQx.gen()
+rational_polynomial = QQ(3, 10) * (qx - 1) ** 2 * (qx + 2)
+assrt.equal(
+    repr(rational_polynomial.factor()),
+    '3/10 * (q + 2) * (q - 1)^2')
+assrt.ok(rational_polynomial.factor().value() == rational_polynomial)
+assrt.ok(rational_polynomial // (qx - 1) == (
+    QQ(3, 10) * (qx - 1) * (qx + 2)))
 
 # These are the MPFR/MPC parents and display semantics used by SageMath.
 assrt.ok(RealField(53) is RR)

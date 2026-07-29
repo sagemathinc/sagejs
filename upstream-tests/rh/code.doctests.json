@@ -1,0 +1,325 @@
+{
+  "schema": "sagejs.sage-doctests/v1",
+  "generatedBy": "scripts/extract-sage-doctests.cjs",
+  "source": {
+    "repository": "https://github.com/williamstein/rh.git",
+    "revision": "fcae1dbb3d6847373e15129162c3c5eef7c6e6ac",
+    "path": "rh/code/code.sage",
+    "sha256": "6b8b032d31b3e6e8bdbc40465687c7bcd7144e096cfde67c0aa7fc770219f011",
+    "license": "NOASSERTION"
+  },
+  "summary": {
+    "groups": 15,
+    "examples": 29
+  },
+  "groups": [
+    {
+      "id": "rh/code/code.sage#FactorTree@50",
+      "owner": "FactorTree",
+      "line": 50,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:55",
+          "line": 55,
+          "source": "FactorTree(100)",
+          "want": "Factorization trees of 100\n",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:57",
+          "line": 57,
+          "source": "R.<x> = QQ[]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:58",
+          "line": 58,
+          "source": "FactorTree(x^3-1)",
+          "want": "Factorization trees of x^3 - 1\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#FactorTree.value@70",
+      "owner": "FactorTree.value",
+      "line": 70,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:75",
+          "line": 75,
+          "source": "FactorTree(100).value()",
+          "want": "100\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#FactorTree.__repr__@81",
+      "owner": "FactorTree.__repr__",
+      "line": 81,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:84",
+          "line": 84,
+          "source": "FactorTree(100).__repr__()",
+          "want": "'Factorization trees of 100'\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#FactorTree.plot@90",
+      "owner": "FactorTree.plot",
+      "line": 90,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:105",
+          "line": 105,
+          "source": "FactorTree(2009).plot(labels={'fontsize':30},sort=True)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:109",
+          "line": 109,
+          "source": "R.<x> = QQ[]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:110",
+          "line": 110,
+          "source": "F = FactorTree((x^2-1)*(x^3+2)*(x-5)); F",
+          "want": "Factorization trees of x^6 - 5*x^5 - x^4 + 7*x^3 - 10*x^2 - 2*x + 10\n",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:112",
+          "line": 112,
+          "source": "F.plot(labels={'fontsize':15},sort=True)",
+          "want": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#FactorTree._ftree@125",
+      "owner": "FactorTree._ftree",
+      "line": 125,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:140",
+          "line": 140,
+          "source": "F = FactorTree(100)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:141",
+          "line": 141,
+          "source": "rows = []; v = [(100,None,0)]; F._ftree(rows, v, True)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:142",
+          "line": 142,
+          "source": "rows",
+          "want": "[[(100, None, 0)],\n [(2, 100, 0), (50, 100, 0)],\n [(None, None, None), (2, 50, 1), (25, 50, 1)],\n [(None, None, None), (None, None, None), (5, 25, 2), (5, 25, 2)]]\n",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:147",
+          "line": 147,
+          "source": "v",
+          "want": "[(100, None, 0)]\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#FactorTree._plot_ftree@175",
+      "owner": "FactorTree._plot_ftree",
+      "line": 175,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:188",
+          "line": 188,
+          "source": "F = FactorTree(100)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:189",
+          "line": 189,
+          "source": "rows = []; v = [(100,None,0)]; F._ftree(rows, v, True)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:190",
+          "line": 190,
+          "source": "F._plot_ftree(rows, {}, {})",
+          "want": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#bag_of_primes@213",
+      "owner": "bag_of_primes",
+      "line": 213,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:219",
+          "line": 219,
+          "source": "bag_of_primes(5)",
+          "want": "[2, 3, 7, 43, 13, 139, 3263443]\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#similar_rates@345",
+      "owner": "similar_rates",
+      "line": 345,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:350",
+          "line": 350,
+          "source": "similar_rates()",
+          "want": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#plot_step_function@380",
+      "owner": "plot_step_function",
+      "line": 380,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:390",
+          "line": 390,
+          "source": "plot_step_function([(i,sin(i)) for i in range(5,20)])",
+          "want": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#proportion_of_primes@408",
+      "owner": "proportion_of_primes",
+      "line": 408,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:420",
+          "line": 420,
+          "source": "proportion_of_primes(100)",
+          "want": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#prime_gaps@437",
+      "owner": "prime_gaps",
+      "line": 437,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:442",
+          "line": 442,
+          "source": "prime_gaps(100)",
+          "want": "[1, 2, 2, 4, 2, 4, 2, 4, 6, 2, 6, 4, 2, 4, 6, 6, 2, 6, 4, 2, 6, 4, 6, 8]\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#prime_gap_distribution@450",
+      "owner": "prime_gap_distribution",
+      "line": 450,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:456",
+          "line": 456,
+          "source": "prime_gap_distribution(100)",
+          "want": "[0, 1, 8, 0, 7, 0, 7, 0, 1]\n",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:458",
+          "line": 458,
+          "source": "prime_gap_distribution(1000)",
+          "want": "[0, 1, 35, 0, 40, 0, 44, 0, 15, 0, 16, 0, 7, 0, 7, 0, 0, 0, 1, 0, 1]\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#mult_even_odd_count@529",
+      "owner": "mult_even_odd_count",
+      "line": 529,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:542",
+          "line": 542,
+          "source": "mult_even_odd_count(17)",
+          "want": "[(0, 0), (1, 0), (1, 1), (1, 2), (2, 2), (2, 3), (3, 3), (3, 4), (3, 5), (4, 5), (5, 5), (5, 6), (5, 7), (5, 8), (6, 8), (7, 8), (8, 8)]\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#race_mult_parity@567",
+      "owner": "race_mult_parity",
+      "line": 567,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:575",
+          "line": 575,
+          "source": "race_mult_parity(10^5,time_series=True)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:576",
+          "line": 576,
+          "source": "race_mult_parity(10^5)",
+          "want": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "rh/code/code.sage#RiemannPiApproximation@1327",
+      "owner": "RiemannPiApproximation",
+      "line": 1327,
+      "examples": [
+        {
+          "id": "rh/code/code.sage:1334",
+          "line": 1334,
+          "source": "R = RiemannPiApproximation(10, 100); R",
+          "want": "Riemann explicit formula for pi(x) for x <= 100 using R_k for k <= 10\n",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:1336",
+          "line": 1336,
+          "source": "R.Rk(100, 10)",
+          "want": "25.3364299527\n",
+          "tags": []
+        },
+        {
+          "id": "rh/code/code.sage:1338",
+          "line": 1338,
+          "source": "prime_pi(100)",
+          "want": "25\n",
+          "tags": []
+        }
+      ]
+    }
+  ]
+}
