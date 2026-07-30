@@ -8,7 +8,10 @@ const {
   SageSessionInterruptedError,
   SageSessionTimeoutError,
 } = require("../dist/tools/kernel.js");
-const { parsePolyglotCell } = require("../dist/tools/polyglot.js");
+const {
+  parsePolyglotCell,
+  prepareSubmittedPolyglotCell,
+} = require("../dist/tools/polyglot.js");
 
 async function main() {
   const session = await createSage();
@@ -33,6 +36,29 @@ async function main() {
   assert.equal(
     parsePolyglotCell("%%mathematica\nRange[3]").language,
     "wolfram",
+  );
+  assert.deepEqual(
+    prepareSubmittedPolyglotCell(
+      parsePolyglotCell("%%magma\nFactorization(2026)"),
+    ),
+    {
+      language: "magma",
+      source: "\nFactorization(2026)\n;",
+      cursorOffset: 7,
+      hasMagic: true,
+    },
+  );
+  assert.equal(
+    prepareSubmittedPolyglotCell(
+      parsePolyglotCell("%%maple\n2 + 2:"),
+    ).source,
+    "\n2 + 2:",
+  );
+  assert.equal(
+    prepareSubmittedPolyglotCell(
+      parsePolyglotCell("%%wolfram\n2 + 2"),
+    ).source,
+    "\n2 + 2",
   );
   assert.throws(
     () => parsePolyglotCell("%%fortran\n1 + 1"),

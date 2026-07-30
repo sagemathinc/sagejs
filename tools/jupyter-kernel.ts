@@ -18,7 +18,10 @@ import {
   SageSessionInterruptedError,
 } from "./kernel";
 import { SageLanguageMode } from "./kernel-evaluator";
-import { parsePolyglotCell } from "./polyglot";
+import {
+  parsePolyglotCell,
+  prepareSubmittedPolyglotCell,
+} from "./polyglot";
 
 const DELIMITER = Buffer.from("<IDS|MSG>");
 const PROTOCOL_VERSION = "5.4";
@@ -384,9 +387,11 @@ export class SageJupyterKernel {
 
     let outputTail = Promise.resolve();
     try {
-      const cell = parsePolyglotCell(
-        String(content.code ?? ""),
-        this.mode,
+      const cell = prepareSubmittedPolyglotCell(
+        parsePolyglotCell(
+          String(content.code ?? ""),
+          this.mode,
+        ),
       );
       const result = await this.session!.evaluate(cell.source, {
         filename: `<jupyter-input-${executionCount}>`,
@@ -525,9 +530,11 @@ export class SageJupyterKernel {
           break;
         }
         case "is_complete_request": {
-          const cell = parsePolyglotCell(
-            String(request.content.code ?? ""),
-            this.mode,
+          const cell = prepareSubmittedPolyglotCell(
+            parsePolyglotCell(
+              String(request.content.code ?? ""),
+              this.mode,
+            ),
           );
           const completeness = await this.session!.isComplete(cell.source, {
             language: cell.language,

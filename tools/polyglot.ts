@@ -67,3 +67,29 @@ export function parsePolyglotCell(
     hasMagic: true,
   };
 }
+
+/**
+ * Treat a submitted notebook cell as a complete source unit.
+ *
+ * Magma and Maple require statement terminators in source files, but a user
+ * has already terminated the input by submitting the cell. Add a final
+ * semicolon on their behalf while preserving an explicit semicolon or Maple
+ * colon (which carries output-suppression semantics).
+ */
+export function prepareSubmittedPolyglotCell(
+  cell: PolyglotCell,
+): PolyglotCell {
+  if (cell.language !== "magma" && cell.language !== "maple") return cell;
+  const source = cell.source.trimEnd();
+  if (
+    !source ||
+    source.endsWith(";") ||
+    (cell.language === "maple" && source.endsWith(":"))
+  ) {
+    return cell;
+  }
+  return {
+    ...cell,
+    source: `${cell.source}\n;`,
+  };
+}

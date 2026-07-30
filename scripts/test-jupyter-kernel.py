@@ -165,8 +165,8 @@ def main() -> None:
             )["content"]["status"] == "ok"
 
             for language, source in (
-                ("magma", "A;"),
-                ("maple", "A;"),
+                ("magma", "A"),
+                ("maple", "A"),
                 ("wolfram", "A"),
             ):
                 foreign_id = client.execute(f"%%{language}\n{source}")
@@ -177,6 +177,14 @@ def main() -> None:
                 assert matching_message(
                     client, "shell", foreign_id
                 )["content"]["status"] == "ok"
+
+            magma_complete_id = client.is_complete(
+                "%%magma\nFactorization(2026)"
+            )
+            magma_complete = matching_message(
+                client, "shell", magma_complete_id
+            )["content"]
+            assert magma_complete == {"status": "complete"}
 
             python_id = client.execute("%%python\n2^3")
             messages = iopub_until_idle(client, python_id)

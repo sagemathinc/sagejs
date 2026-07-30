@@ -99,6 +99,11 @@ The available magics are `%%sage`, `%%python`, `%%magma`, `%%matlab`,
 `%%maple`, and `%%wolfram`; `%%mathematica` is an alias for `%%wolfram`.
 Without a magic, the kernelspec's default language is used.
 
+Submitting a Magma or Maple cell also terminates its final statement, so the
+last semicolon may be omitted in a notebook. Explicit Magma semicolons and
+Maple `;` or `:` terminators retain their normal behavior; in particular, a
+Maple colon still suppresses output.
+
 These are not separate subprocesses or Jupyter subkernels. Each frontend
 lowers its source into the same persistent Sage.js evaluator, so `A` above is
 one NumPy-backed object throughout the notebook. Switching languages neither
