@@ -5,7 +5,8 @@ A = matrix(ZZ, 2, 2, [1, 2, 3, 4])
 assert str(A) == '[1 2]\n[3 4]'
 assert A.parent() is MatrixSpace(ZZ, 2)
 assert A.base_ring() is ZZ
-assert A.dimensions() == (2, 2)
+assert isinstance(A.dimensions(), tuple)
+assert list(A.dimensions()) == [2, 2]
 assert A.list() == [1, 2, 3, 4]
 assert A[0, 1] == 2
 assert A[-1, -1] == 4

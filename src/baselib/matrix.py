@@ -544,7 +544,8 @@ class Matrix(sage.Element):
         return self._parent.ncols()
 
     def dimensions(self) -> tuple[int, int]:
-        return (self.nrows(), self.ncols())
+        return runtime.math_tuple([
+            self.nrows(), self.ncols()])
 
     def is_square(self) -> bool:
         return self.nrows() == self.ncols()
