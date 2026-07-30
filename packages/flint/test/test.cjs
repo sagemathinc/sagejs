@@ -451,4 +451,48 @@ assert.equal(
   0,
 );
 
+const residueMatrix = flint.zmodMatrix(
+  2, 2, [2n, 3n, 3n, 2n], 36n);
+assert.equal(flint.matrixDet(residueMatrix), 31n);
+assert.deepEqual(
+  flint.matrixCharpoly(residueMatrix), [31n, 32n, 1n]);
+const residueInverse = flint.matrixInverse(residueMatrix);
+assert.equal(
+  flint.matrixEqual(
+    flint.matrixMul(residueMatrix, residueInverse),
+    flint.zmodMatrix(2, 2, [1n, 0n, 0n, 1n], 36n),
+  ),
+  true,
+);
+const residueHowellSource = flint.zmodMatrix(
+  3,
+  4,
+  [1n, 2n, 3n, 4n, 0n, 5n, 5n, 6n, 0n, 0n, 0n, 25n],
+  625n,
+);
+const residueHowell = flint.matrixHowell(residueHowellSource);
+assert.equal(flint.matrixRank(residueHowellSource), 1);
+assert.deepEqual(
+  [0, 1, 2, 3].map((row) =>
+    [0, 1, 2, 3].map((col) =>
+      flint.matrixEntry(residueHowell, row, col))),
+  [
+    [1n, 2n, 3n, 4n],
+    [0n, 5n, 5n, 6n],
+    [0n, 0n, 0n, 25n],
+    [0n, 0n, 0n, 0n],
+  ],
+);
+const residueKernel = flint.matrixRightKernel(residueHowellSource);
+assert.equal(
+  flint.matrixEqual(
+    flint.matrixMul(
+      residueHowellSource,
+      flint.matrixTranspose(residueKernel),
+    ),
+    flint.zmodMatrix(3, 3, Array(9).fill(0n), 625n),
+  ),
+  true,
+);
+
 console.log("Native FLINT arithmetic and BigInt conversion passed.");

@@ -102,3 +102,41 @@ test("provides exact portable polynomial construction and arithmetic", () => {
   );
   assert.equal(flint.polyToString(reduced, "z"), "z^2 + 1");
 });
+
+test("provides portable exact matrices over composite residue rings", () => {
+  const matrix = flint.zmodMatrix(
+    2, 2, [2n, 3n, 3n, 2n], 36n);
+  assert.equal(flint.matrixDet(matrix), 31n);
+  assert.deepEqual(
+    flint.matrixCharpoly(matrix), [31n, 32n, 1n]);
+  const inverse = flint.matrixInverse(matrix);
+  assert.ok(flint.matrixEqual(
+    flint.matrixMul(matrix, inverse),
+    flint.zmodMatrix(2, 2, [1n, 0n, 0n, 1n], 36n),
+  ));
+
+  const source = flint.zmodMatrix(
+    3,
+    4,
+    [1n, 2n, 3n, 4n, 0n, 5n, 5n, 6n, 0n, 0n, 0n, 25n],
+    625n,
+  );
+  assert.equal(flint.matrixRank(source), 1);
+  const howell = flint.matrixHowell(source);
+  assert.deepEqual(
+    Array.from({ length: 4 }, (_, row) =>
+      Array.from({ length: 4 }, (_, col) =>
+        flint.matrixEntry(howell, row, col))),
+    [
+      [1n, 2n, 3n, 4n],
+      [0n, 5n, 5n, 6n],
+      [0n, 0n, 0n, 25n],
+      [0n, 0n, 0n, 0n],
+    ],
+  );
+  const kernel = flint.matrixRightKernel(source);
+  assert.ok(flint.matrixEqual(
+    flint.matrixMul(source, flint.matrixTranspose(kernel)),
+    flint.zmodMatrix(3, 3, Array(9).fill(0n), 625n),
+  ));
+});

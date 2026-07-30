@@ -13,6 +13,7 @@
 #include <flint/fmpz_poly.h>
 #include <flint/nmod_mat.h>
 #include <flint/nmod_poly.h>
+#include <flint/ulong_extras.h>
 
 #include "matrix.h"
 
@@ -20,7 +21,8 @@ typedef enum
 {
     SAGEJS_MATRIX_ZZ = 1,
     SAGEJS_MATRIX_QQ = 2,
-    SAGEJS_MATRIX_NMOD = 3
+    SAGEJS_MATRIX_NMOD = 3,
+    SAGEJS_MATRIX_ZMOD = 4
 } sagejs_matrix_kind;
 
 typedef struct
@@ -251,9 +253,16 @@ static slong matrix_ncols(const sagejs_matrix *matrix)
 
 static ulong matrix_modulus(const sagejs_matrix *matrix)
 {
-    return matrix->kind == SAGEJS_MATRIX_NMOD
+    return (matrix->kind == SAGEJS_MATRIX_NMOD ||
+            matrix->kind == SAGEJS_MATRIX_ZMOD)
         ? matrix->modular->mod.n
         : 0;
+}
+
+static int matrix_is_modular(const sagejs_matrix *matrix)
+{
+    return matrix->kind == SAGEJS_MATRIX_NMOD ||
+        matrix->kind == SAGEJS_MATRIX_ZMOD;
 }
 
 static void finalize_matrix(napi_env env, void *data, void *hint)
@@ -305,6 +314,7 @@ static sagejs_matrix *new_matrix(
 
 static sagejs_matrix *new_nmod_matrix(
     napi_env env,
+    sagejs_matrix_kind kind,
     slong rows,
     slong cols,
     ulong modulus)
@@ -314,7 +324,7 @@ static sagejs_matrix *new_nmod_matrix(
     if (modulus < 2)
     {
         napi_throw_range_error(env, NULL,
-            "prime-field matrix modulus must be at least 2");
+            "modular matrix modulus must be at least 2");
         return NULL;
     }
     matrix = calloc(1, sizeof(*matrix));
@@ -324,7 +334,7 @@ static sagejs_matrix *new_nmod_matrix(
         return NULL;
     }
     matrix->magic = SAGEJS_MATRIX_MAGIC;
-    matrix->kind = SAGEJS_MATRIX_NMOD;
+    matrix->kind = kind;
     nmod_mat_init(matrix->modular, rows, cols, modulus);
     return matrix;
 }
@@ -335,9 +345,9 @@ static sagejs_matrix *new_matrix_like(
     slong rows,
     slong cols)
 {
-    if (source->kind == SAGEJS_MATRIX_NMOD)
+    if (matrix_is_modular(source))
         return new_nmod_matrix(
-            env, rows, cols, matrix_modulus(source));
+            env, source->kind, rows, cols, matrix_modulus(source));
     return new_matrix(env, source->kind, rows, cols);
 }
 
@@ -534,7 +544,10 @@ napi_value sagejs_qq_matrix(napi_env env, napi_callback_info info)
     return matrix_from_entries(env, info, SAGEJS_MATRIX_QQ);
 }
 
-napi_value sagejs_nmod_matrix(napi_env env, napi_callback_info info)
+static napi_value modular_matrix_from_entries(
+    napi_env env,
+    napi_callback_info info,
+    sagejs_matrix_kind kind)
 {
     napi_value args[4];
     sagejs_matrix *matrix;
@@ -569,7 +582,7 @@ napi_value sagejs_nmod_matrix(napi_env env, napi_callback_info info)
             "matrix entry count does not match its dimensions");
         return NULL;
     }
-    matrix = new_nmod_matrix(env, rows, cols, modulus);
+    matrix = new_nmod_matrix(env, kind, rows, cols, modulus);
     if (matrix == NULL)
         return NULL;
     for (row = 0; row < rows; row++)
@@ -589,6 +602,18 @@ napi_value sagejs_nmod_matrix(napi_env env, napi_callback_info info)
         }
     }
     return wrap_matrix(env, matrix);
+}
+
+napi_value sagejs_nmod_matrix(napi_env env, napi_callback_info info)
+{
+    return modular_matrix_from_entries(
+        env, info, SAGEJS_MATRIX_NMOD);
+}
+
+napi_value sagejs_zmod_matrix(napi_env env, napi_callback_info info)
+{
+    return modular_matrix_from_entries(
+        env, info, SAGEJS_MATRIX_ZMOD);
 }
 
 napi_value sagejs_zz_matrix_to_qq(napi_env env, napi_callback_info info)
@@ -646,7 +671,7 @@ static napi_value matrix_binary(
         napi_throw_type_error(env, NULL, "matrix base rings differ");
         return NULL;
     }
-    if (left->kind == SAGEJS_MATRIX_NMOD &&
+    if (matrix_is_modular(left) &&
         matrix_modulus(left) != matrix_modulus(right))
     {
         napi_throw_type_error(env, NULL, "matrix base rings differ");
@@ -888,7 +913,7 @@ napi_value sagejs_matrix_entry(napi_env env, napi_callback_info info)
     if (matrix->kind == SAGEJS_MATRIX_ZZ)
         return fmpz_to_bigint(
             env, fmpz_mat_entry(matrix->integer, row, col));
-    if (matrix->kind == SAGEJS_MATRIX_NMOD)
+    if (matrix_is_modular(matrix))
         return ulong_to_bigint(
             env, nmod_mat_entry(matrix->modular, row, col));
     entry = fmpq_mat_entry(matrix->rational, row, col);
@@ -923,7 +948,7 @@ napi_value sagejs_matrix_det(napi_env env, napi_callback_info info)
         fmpz_clear(integer);
         return result;
     }
-    if (matrix->kind == SAGEJS_MATRIX_NMOD)
+    if (matrix_is_modular(matrix))
         return ulong_to_bigint(env, nmod_mat_det(matrix->modular));
     fmpq_init(rational);
     fmpq_mat_det(rational, matrix->rational);
@@ -956,9 +981,49 @@ napi_value sagejs_matrix_rank(napi_env env, napi_callback_info info)
         rank = fmpq_mat_rref(copy, copy);
         fmpq_mat_clear(copy);
     }
-    else
+    else if (matrix->kind == SAGEJS_MATRIX_NMOD)
     {
         rank = nmod_mat_rank(matrix->modular);
+    }
+    else
+    {
+        sagejs_matrix *howell;
+        slong row;
+        slong col;
+        slong howell_rows = matrix_nrows(matrix) > matrix_ncols(matrix)
+            ? matrix_nrows(matrix)
+            : matrix_ncols(matrix);
+
+        howell = new_nmod_matrix(
+            env, matrix->kind, howell_rows, matrix_ncols(matrix),
+            matrix_modulus(matrix));
+        if (howell == NULL)
+            return NULL;
+        for (row = 0; row < matrix_nrows(matrix); row++)
+        {
+            for (col = 0; col < matrix_ncols(matrix); col++)
+            {
+                nmod_mat_entry(howell->modular, row, col) =
+                    nmod_mat_entry(matrix->modular, row, col);
+            }
+        }
+        nmod_mat_howell_form(howell->modular);
+        rank = 0;
+        for (row = 0; row < howell_rows; row++)
+        {
+            for (col = 0; col < matrix_ncols(matrix); col++)
+            {
+                ulong value = nmod_mat_entry(
+                    howell->modular, row, col);
+                if (value != 0)
+                {
+                    if (value == 1)
+                        rank++;
+                    break;
+                }
+            }
+        }
+        finalize_matrix(env, howell, NULL);
     }
     if (!check_napi(env, napi_create_int64(env, rank, &result)))
         return NULL;
@@ -978,6 +1043,12 @@ napi_value sagejs_matrix_rref(napi_env env, napi_callback_info info)
     source = unwrap_matrix(env, args[0]);
     if (source == NULL)
         return NULL;
+    if (source->kind == SAGEJS_MATRIX_ZMOD)
+    {
+        napi_throw_type_error(env, NULL,
+            "RREF over a residue ring requires Howell reduction");
+        return NULL;
+    }
     if (source->kind == SAGEJS_MATRIX_NMOD)
     {
         answer = new_matrix_like(
@@ -1033,6 +1104,46 @@ napi_value sagejs_matrix_hermite(napi_env env, napi_callback_info info)
     if (answer == NULL)
         return NULL;
     fmpz_mat_hnf(answer->integer, source->integer);
+    return wrap_matrix(env, answer);
+}
+
+napi_value sagejs_matrix_howell(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    sagejs_matrix *source;
+    sagejs_matrix *answer;
+    slong rows;
+    slong row;
+    slong col;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    if (source->kind != SAGEJS_MATRIX_ZMOD)
+    {
+        napi_throw_type_error(env, NULL,
+            "Howell form requires a residue-ring matrix");
+        return NULL;
+    }
+    rows = matrix_nrows(source) > matrix_ncols(source)
+        ? matrix_nrows(source)
+        : matrix_ncols(source);
+    answer = new_nmod_matrix(
+        env, source->kind, rows, matrix_ncols(source),
+        matrix_modulus(source));
+    if (answer == NULL)
+        return NULL;
+    for (row = 0; row < matrix_nrows(source); row++)
+    {
+        for (col = 0; col < matrix_ncols(source); col++)
+        {
+            nmod_mat_entry(answer->modular, row, col) =
+                nmod_mat_entry(source->modular, row, col);
+        }
+    }
+    nmod_mat_howell_form(answer->modular);
     return wrap_matrix(env, answer);
 }
 
@@ -1185,6 +1296,150 @@ napi_value sagejs_matrix_right_kernel(
     rows = matrix_nrows(source);
     cols = matrix_ncols(source);
 
+    if (source->kind == SAGEJS_MATRIX_ZMOD)
+    {
+        sagejs_matrix *howell;
+        slong howell_rows = rows > cols ? rows : cols;
+        slong *pivots;
+        int *unit_pivots;
+        slong pivot_count = 0;
+        slong unit_rank = 0;
+        slong current_row = 0;
+        slong pivot_index = 0;
+        slong index;
+        slong position;
+        ulong modulus = matrix_modulus(source);
+        ulong modulus_inverse = n_preinvert_limb(modulus);
+
+        howell = new_nmod_matrix(
+            env, source->kind, howell_rows, cols, modulus);
+        if (howell == NULL)
+            return NULL;
+        for (row = 0; row < rows; row++)
+        {
+            for (col = 0; col < cols; col++)
+            {
+                nmod_mat_entry(howell->modular, row, col) =
+                    nmod_mat_entry(source->modular, row, col);
+            }
+        }
+        nmod_mat_howell_form(howell->modular);
+        pivots = cols == 0 ? NULL : malloc(cols * sizeof(slong));
+        unit_pivots = cols == 0 ? NULL : malloc(cols * sizeof(int));
+        if (cols != 0 && (pivots == NULL || unit_pivots == NULL))
+        {
+            free(pivots);
+            free(unit_pivots);
+            finalize_matrix(env, howell, NULL);
+            napi_throw_error(env, NULL,
+                "unable to allocate residue-ring kernel pivots");
+            return NULL;
+        }
+        for (row = 0; row < howell_rows; row++)
+        {
+            for (col = 0; col < cols; col++)
+            {
+                ulong value = nmod_mat_entry(
+                    howell->modular, row, col);
+                if (value != 0)
+                {
+                    pivots[pivot_count] = col;
+                    unit_pivots[pivot_count] = value == 1;
+                    if (value == 1)
+                        unit_rank++;
+                    pivot_count++;
+                    break;
+                }
+            }
+        }
+        answer = new_nmod_matrix(
+            env, source->kind, cols - unit_rank, cols, modulus);
+        if (answer == NULL)
+        {
+            free(pivots);
+            free(unit_pivots);
+            finalize_matrix(env, howell, NULL);
+            return NULL;
+        }
+        for (col = 0; col < cols; col++)
+        {
+            int is_pivot =
+                pivot_index < pivot_count &&
+                pivots[pivot_index] == col;
+            if (is_pivot && unit_pivots[pivot_index])
+            {
+                pivot_index++;
+                continue;
+            }
+            index = pivot_index;
+            if (is_pivot)
+            {
+                ulong pivot = nmod_mat_entry(
+                    howell->modular, index, col);
+                pivot_index++;
+                nmod_mat_entry(
+                    answer->modular, current_row, col) =
+                    modulus / pivot;
+            }
+            else
+            {
+                nmod_mat_entry(
+                    answer->modular, current_row, col) = 1;
+            }
+            for (position = index; position-- > 0;)
+            {
+                slong pivot_col = pivots[position];
+                ulong pivot = nmod_mat_entry(
+                    howell->modular, position, pivot_col);
+                ulong sum = 0;
+                ulong scale;
+                slong inner;
+
+                for (inner = pivot_col + 1; inner <= col; inner++)
+                {
+                    ulong product = n_mulmod2_preinv(
+                        nmod_mat_entry(
+                            answer->modular, current_row, inner),
+                        nmod_mat_entry(
+                            howell->modular, position, inner),
+                        modulus,
+                        modulus_inverse);
+                    sum = n_addmod(sum, product, modulus);
+                }
+                if (sum % pivot != 0)
+                {
+                    scale = pivot / n_gcd(sum, pivot);
+                    sum = n_mulmod2_preinv(
+                        sum, scale, modulus, modulus_inverse);
+                    for (
+                        inner = pivot_col + 1;
+                        inner <= col;
+                        inner++
+                    )
+                    {
+                        nmod_mat_entry(
+                            answer->modular, current_row, inner) =
+                            n_mulmod2_preinv(
+                                nmod_mat_entry(
+                                    answer->modular,
+                                    current_row,
+                                    inner),
+                                scale,
+                                modulus,
+                                modulus_inverse);
+                    }
+                }
+                nmod_mat_entry(
+                    answer->modular, current_row, pivot_col) =
+                    (sum == 0 ? 0 : modulus - sum) / pivot;
+            }
+            current_row++;
+        }
+        free(pivots);
+        free(unit_pivots);
+        finalize_matrix(env, howell, NULL);
+        return wrap_matrix(env, answer);
+    }
     if (source->kind == SAGEJS_MATRIX_NMOD)
     {
         nmod_mat_t basis_columns;
@@ -1192,7 +1447,7 @@ napi_value sagejs_matrix_right_kernel(
         rank = nmod_mat_rank(source->modular);
         nullity = cols - rank;
         answer = new_nmod_matrix(
-            env, nullity, cols, matrix_modulus(source));
+            env, source->kind, nullity, cols, matrix_modulus(source));
         if (answer == NULL)
             return NULL;
         nmod_mat_init(
@@ -1424,6 +1679,66 @@ static void matrix_to_rational(
         fmpq_mat_set(answer, source->rational);
 }
 
+static int zmod_matrix_inverse(
+    sagejs_matrix *answer,
+    const sagejs_matrix *source)
+{
+    fmpz_mat_t lifted;
+    fmpz_mat_t numerator;
+    fmpz_t denominator;
+    fmpz_t modulus;
+    fmpz_t inverse_denominator;
+    fmpz_t entry;
+    slong row;
+    slong col;
+    int inverted;
+
+    fmpz_mat_init(
+        lifted, matrix_nrows(source), matrix_ncols(source));
+    fmpz_mat_init(
+        numerator, matrix_nrows(source), matrix_ncols(source));
+    fmpz_init(denominator);
+    fmpz_init(modulus);
+    fmpz_init(inverse_denominator);
+    fmpz_init(entry);
+    fmpz_set_ui(modulus, matrix_modulus(source));
+    for (row = 0; row < matrix_nrows(source); row++)
+    {
+        for (col = 0; col < matrix_ncols(source); col++)
+        {
+            fmpz_set_ui(
+                fmpz_mat_entry(lifted, row, col),
+                nmod_mat_entry(source->modular, row, col));
+        }
+    }
+    inverted = fmpz_mat_inv(numerator, denominator, lifted);
+    if (inverted)
+        inverted = fmpz_invmod(
+            inverse_denominator, denominator, modulus);
+    if (inverted)
+    {
+        for (row = 0; row < matrix_nrows(source); row++)
+        {
+            for (col = 0; col < matrix_ncols(source); col++)
+            {
+                fmpz_mul(
+                    entry,
+                    fmpz_mat_entry(numerator, row, col),
+                    inverse_denominator);
+                nmod_mat_entry(answer->modular, row, col) =
+                    fmpz_fdiv_ui(entry, matrix_modulus(source));
+            }
+        }
+    }
+    fmpz_mat_clear(lifted);
+    fmpz_mat_clear(numerator);
+    fmpz_clear(denominator);
+    fmpz_clear(modulus);
+    fmpz_clear(inverse_denominator);
+    fmpz_clear(entry);
+    return inverted;
+}
+
 napi_value sagejs_matrix_solve(napi_env env, napi_callback_info info)
 {
     napi_value args[2];
@@ -1440,13 +1755,14 @@ napi_value sagejs_matrix_solve(napi_env env, napi_callback_info info)
     right = unwrap_matrix(env, args[1]);
     if (left == NULL || right == NULL)
         return NULL;
-    if (left->kind == SAGEJS_MATRIX_NMOD ||
-        right->kind == SAGEJS_MATRIX_NMOD)
+    if (matrix_is_modular(left) || matrix_is_modular(right))
     {
         int solved;
+        sagejs_matrix *inverse;
 
-        if (left->kind != SAGEJS_MATRIX_NMOD ||
-            right->kind != SAGEJS_MATRIX_NMOD ||
+        if (!matrix_is_modular(left) ||
+            !matrix_is_modular(right) ||
+            left->kind != right->kind ||
             matrix_modulus(left) != matrix_modulus(right))
         {
             napi_throw_type_error(env, NULL, "matrix base rings differ");
@@ -1460,12 +1776,34 @@ napi_value sagejs_matrix_solve(napi_env env, napi_callback_info info)
             return NULL;
         }
         answer = new_nmod_matrix(
-            env, matrix_ncols(left), matrix_ncols(right),
+            env, left->kind, matrix_ncols(left), matrix_ncols(right),
             matrix_modulus(left));
         if (answer == NULL)
             return NULL;
-        solved = nmod_mat_solve(
-            answer->modular, left->modular, right->modular);
+        if (left->kind == SAGEJS_MATRIX_NMOD)
+        {
+            solved = nmod_mat_solve(
+                answer->modular, left->modular, right->modular);
+        }
+        else
+        {
+            inverse = new_nmod_matrix(
+                env, left->kind,
+                matrix_nrows(left), matrix_ncols(left),
+                matrix_modulus(left));
+            if (inverse == NULL)
+            {
+                finalize_matrix(env, answer, NULL);
+                return NULL;
+            }
+            solved = zmod_matrix_inverse(inverse, left);
+            if (solved)
+                nmod_mat_mul(
+                    answer->modular,
+                    inverse->modular,
+                    right->modular);
+            finalize_matrix(env, inverse, NULL);
+        }
         if (!solved)
         {
             finalize_matrix(env, answer, NULL);
@@ -1524,14 +1862,19 @@ napi_value sagejs_matrix_inverse(napi_env env, napi_callback_info info)
             "inverse requires a square matrix");
         return NULL;
     }
-    if (source->kind == SAGEJS_MATRIX_NMOD)
+    if (matrix_is_modular(source))
     {
         answer = new_nmod_matrix(
-            env, matrix_nrows(source), matrix_ncols(source),
+            env, source->kind,
+            matrix_nrows(source), matrix_ncols(source),
             matrix_modulus(source));
         if (answer == NULL)
             return NULL;
-        inverted = nmod_mat_inv(answer->modular, source->modular);
+        if (source->kind == SAGEJS_MATRIX_NMOD)
+            inverted = nmod_mat_inv(
+                answer->modular, source->modular);
+        else
+            inverted = zmod_matrix_inverse(answer, source);
         if (!inverted)
         {
             finalize_matrix(env, answer, NULL);

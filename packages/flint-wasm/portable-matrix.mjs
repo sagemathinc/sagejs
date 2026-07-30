@@ -98,6 +98,10 @@ function modularInverse(value, modulus) {
   return modular(oldCoefficient, modulus);
 }
 
+function isModularKind(kind) {
+  return kind === "GF" || kind === "ZMOD";
+}
+
 function dimensions(rows, cols) {
   if (
     !Number.isSafeInteger(rows) ||
@@ -114,10 +118,10 @@ function make(kind, rows, cols, entries, modulus = undefined) {
   if (entries.length !== rows * cols) {
     throw new RangeError("matrix entry count does not match its dimensions");
   }
-  if (kind === "GF") {
+  if (isModularKind(kind)) {
     modulus = BigInt(modulus);
     if (modulus < 2n) {
-      throw new RangeError("prime-field matrix modulus must be at least 2");
+      throw new RangeError("modular matrix modulus must be at least 2");
     }
   }
   return Object.freeze({
@@ -126,7 +130,7 @@ function make(kind, rows, cols, entries, modulus = undefined) {
     rows,
     cols,
     entries: Object.freeze(entries),
-    ...(kind === "GF" ? { modulus } : {}),
+    ...(isModularKind(kind) ? { modulus } : {}),
   });
 }
 
@@ -143,7 +147,7 @@ function requireSameKind(left, right) {
   if (left.kind !== right.kind) {
     throw new TypeError("matrix base rings differ");
   }
-  if (left.kind === "GF" && left.modulus !== right.modulus) {
+  if (isModularKind(left.kind) && left.modulus !== right.modulus) {
     throw new TypeError("matrix base rings differ");
   }
   return [left, right];
@@ -458,6 +462,42 @@ function integerHermite(matrix) {
   return integerHermiteData(matrix).matrix;
 }
 
+function residueHowell(matrix) {
+  const modulus = matrix.modulus;
+  const lifted = matrix.entries.slice();
+  for (let row = 0; row < matrix.cols; row += 1) {
+    for (let col = 0; col < matrix.cols; col += 1) {
+      lifted.push(row === col ? modulus : 0n);
+    }
+  }
+  const hermite = integerHermite(
+    make(
+      "ZZ",
+      matrix.rows + matrix.cols,
+      matrix.cols,
+      lifted,
+    ),
+  );
+  const rows = Math.max(matrix.rows, matrix.cols);
+  const entries = [];
+  for (let row = 0; row < hermite.rows; row += 1) {
+    const reduced = hermite.entries
+      .slice(row * matrix.cols, (row + 1) * matrix.cols)
+      .map((entry) => modular(entry, modulus));
+    if (reduced.some((entry) => entry !== 0n)) {
+      entries.push(...reduced);
+    }
+  }
+  while (entries.length < rows * matrix.cols) entries.push(0n);
+  return make(
+    "ZMOD",
+    rows,
+    matrix.cols,
+    entries,
+    modulus,
+  );
+}
+
 function integerRows(matrix) {
   const rows = [];
   for (let row = 0; row < matrix.rows; row += 1) {
@@ -707,6 +747,17 @@ export function createPortableMatrixBackend() {
     );
   }
 
+  function zmodMatrix(rows, cols, entries, modulus) {
+    modulus = BigInt(modulus);
+    return make(
+      "ZMOD",
+      rows,
+      cols,
+      entries.map((entry) => modular(entry, modulus)),
+      modulus,
+    );
+  }
+
   function zzMatrixToQQ(matrix) {
     matrix = requireMatrix(matrix);
     if (matrix.kind !== "ZZ") {
@@ -721,7 +772,7 @@ export function createPortableMatrixBackend() {
   }
 
   function matrixAdd(left, right) {
-    if (left.kind === "GF") {
+    if (isModularKind(left.kind)) {
       return binary(
         left,
         right,
@@ -738,7 +789,7 @@ export function createPortableMatrixBackend() {
   }
 
   function matrixSub(left, right) {
-    if (left.kind === "GF") {
+    if (isModularKind(left.kind)) {
       return binary(
         left,
         right,
@@ -894,6 +945,14 @@ export function createPortableMatrixBackend() {
       }
       return modular(answer, matrix.modulus);
     }
+    if (matrix.kind === "ZMOD") {
+      return modular(
+        integerDeterminant(
+          make("ZZ", matrix.rows, matrix.cols, matrix.entries),
+        ),
+        matrix.modulus,
+      );
+    }
     const values = asRationalRows(matrix);
     let answer = rational(1n);
     let sign = 1n;
@@ -923,6 +982,20 @@ export function createPortableMatrixBackend() {
 
   function matrixRank(matrix) {
     matrix = requireMatrix(matrix);
+    if (matrix.kind === "ZMOD") {
+      const howell = residueHowell(matrix);
+      let rank = 0;
+      for (let row = 0; row < howell.rows; row += 1) {
+        for (let col = 0; col < howell.cols; col += 1) {
+          const value = howell.entries[row * howell.cols + col];
+          if (value !== 0n) {
+            if (value === 1n) rank += 1;
+            break;
+          }
+        }
+      }
+      return rank;
+    }
     if (matrix.kind === "GF") {
       return modularEchelon(matrix).rank;
     }
@@ -931,6 +1004,10 @@ export function createPortableMatrixBackend() {
 
   function matrixRref(matrix) {
     matrix = requireMatrix(matrix);
+    if (matrix.kind === "ZMOD") {
+      throw new TypeError(
+        "RREF over a residue ring requires Howell reduction");
+    }
     if (matrix.kind === "GF") {
       const reduced = modularEchelon(matrix);
       return make(
@@ -954,6 +1031,15 @@ export function createPortableMatrixBackend() {
     return integerHermite(requireMatrix(matrix));
   }
 
+  function matrixHowell(matrix) {
+    matrix = requireMatrix(matrix);
+    if (matrix.kind !== "ZMOD") {
+      throw new TypeError(
+        "Howell form requires a residue-ring matrix");
+    }
+    return residueHowell(matrix);
+  }
+
   function matrixHermiteTransform(matrix) {
     matrix = requireMatrix(matrix);
     const data = integerHermiteData(matrix, true);
@@ -969,6 +1055,76 @@ export function createPortableMatrixBackend() {
 
   function matrixRightKernel(matrix) {
     matrix = requireMatrix(matrix);
+    if (matrix.kind === "ZMOD") {
+      const howell = residueHowell(matrix);
+      const pivots = [];
+      const unitPivots = [];
+      let unitRank = 0;
+      for (let row = 0; row < howell.rows; row += 1) {
+        for (let col = 0; col < howell.cols; col += 1) {
+          const value = howell.entries[row * howell.cols + col];
+          if (value !== 0n) {
+            pivots.push(col);
+            unitPivots.push(value === 1n);
+            if (value === 1n) unitRank += 1;
+            break;
+          }
+        }
+      }
+      const rows = [];
+      let pivotIndex = 0;
+      for (let col = 0; col < matrix.cols; col += 1) {
+        const isPivot =
+          pivotIndex < pivots.length && pivots[pivotIndex] === col;
+        if (isPivot && unitPivots[pivotIndex]) {
+          pivotIndex += 1;
+          continue;
+        }
+        const row = Array.from(
+          { length: matrix.cols }, () => 0n);
+        const index = pivotIndex;
+        if (isPivot) {
+          const pivot =
+            howell.entries[index * howell.cols + col];
+          pivotIndex += 1;
+          row[col] = matrix.modulus / pivot;
+        } else {
+          row[col] = 1n;
+        }
+        for (let position = index - 1; position >= 0; position -= 1) {
+          const pivotCol = pivots[position];
+          const pivot =
+            howell.entries[position * howell.cols + pivotCol];
+          let sum = 0n;
+          for (let inner = pivotCol + 1; inner <= col; inner += 1) {
+            sum = modular(
+              sum +
+                row[inner] *
+                  howell.entries[position * howell.cols + inner],
+              matrix.modulus,
+            );
+          }
+          if (sum % pivot !== 0n) {
+            const scale = pivot / gcd(sum, pivot);
+            sum = modular(sum * scale, matrix.modulus);
+            for (let inner = pivotCol + 1; inner <= col; inner += 1) {
+              row[inner] = modular(
+                row[inner] * scale, matrix.modulus);
+            }
+          }
+          row[pivotCol] =
+            (sum === 0n ? 0n : matrix.modulus - sum) / pivot;
+        }
+        rows.push(row);
+      }
+      return make(
+        "ZMOD",
+        matrix.cols - unitRank,
+        matrix.cols,
+        rows.flat(),
+        matrix.modulus,
+      );
+    }
     if (matrix.kind === "ZZ") {
       const transpose = matrixTranspose(matrix);
       const data = integerHermiteData(transpose, true);
@@ -1031,7 +1187,7 @@ export function createPortableMatrixBackend() {
       );
     }
     const degree = matrix.rows;
-    if (matrix.kind === "GF") {
+    if (isModularKind(matrix.kind)) {
       return modularCharpoly(matrix);
     }
     const exact = matrix.kind === "QQ"
@@ -1085,6 +1241,13 @@ export function createPortableMatrixBackend() {
     right = requireMatrix(right);
     if (left.rows !== left.cols || right.rows !== left.rows) {
       throw new RangeError("solve requires a square matrix and compatible right side");
+    }
+    if (left.kind === "ZMOD" || right.kind === "ZMOD") {
+      [left, right] = requireSameKind(left, right);
+      if (left.kind !== "ZMOD") {
+        throw new TypeError("matrix base rings differ");
+      }
+      return matrixMul(matrixInverse(left), right);
     }
     if (
       left.kind === "GF" ||
@@ -1156,6 +1319,45 @@ export function createPortableMatrixBackend() {
     if (matrix.rows !== matrix.cols) {
       throw new RangeError("inverse requires a square matrix");
     }
+    if (matrix.kind === "ZMOD") {
+      const lifted = make(
+        "ZZ", matrix.rows, matrix.cols, matrix.entries);
+      const determinant = integerDeterminant(lifted);
+      const inverseDeterminant = modularInverse(
+        determinant, matrix.modulus);
+      const entries = [];
+      for (let row = 0; row < matrix.rows; row += 1) {
+        for (let col = 0; col < matrix.cols; col += 1) {
+          const minorEntries = [];
+          for (let sourceRow = 0; sourceRow < matrix.rows; sourceRow += 1) {
+            if (sourceRow === col) continue;
+            for (
+              let sourceCol = 0;
+              sourceCol < matrix.cols;
+              sourceCol += 1
+            ) {
+              if (sourceCol === row) continue;
+              minorEntries.push(
+                matrix.entries[sourceRow * matrix.cols + sourceCol],
+              );
+            }
+          }
+          let cofactor = integerDeterminant(
+            make(
+              "ZZ",
+              matrix.rows - 1,
+              matrix.cols - 1,
+              minorEntries,
+            ),
+          );
+          if ((row + col) % 2 !== 0) cofactor = -cofactor;
+          entries.push(modular(
+            cofactor * inverseDeterminant, matrix.modulus));
+        }
+      }
+      return zmodMatrix(
+        matrix.rows, matrix.cols, entries, matrix.modulus);
+    }
     const entries = [];
     for (let row = 0; row < matrix.rows; row += 1) {
       for (let col = 0; col < matrix.cols; col += 1) {
@@ -1173,6 +1375,7 @@ export function createPortableMatrixBackend() {
     zzMatrix,
     qqMatrix,
     nmodMatrix,
+    zmodMatrix,
     zzMatrixToQQ,
     matrixAdd,
     matrixSub,
@@ -1186,6 +1389,7 @@ export function createPortableMatrixBackend() {
     matrixRank,
     matrixRref,
     matrixHermite,
+    matrixHowell,
     matrixHermiteTransform,
     matrixSmith,
     matrixRightKernel,

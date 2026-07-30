@@ -104,6 +104,9 @@ class PolynomialElement(sage.Element):
         )
 
     def factor(self) -> sage.Factorization:
+        if self._parent.base_ring()._kind == 'ZMOD':
+            raise NotImplementedError(
+                'polynomial factorization over Zmod is not implemented')
         result = runtime.flint_backend().polyFactor(self._native)
         parent = self._parent
 
@@ -226,6 +229,9 @@ class PolynomialRingParent(sage.Parent):
             native_value = backend.zzPolyGen()
         elif self._base is sage.QQ:
             native_value = backend.qqPolyGen()
+        elif self._base._kind == 'ZMOD':
+            native_value = backend.zmodPolyGen(
+                self._base._modulus)
         else:
             native_value = backend.nmodPolyGen(self._base._modulus)
         return PolynomialElement(self, native_value)
@@ -246,9 +252,14 @@ class PolynomialRingParent(sage.Parent):
                 self,
                 backend.qqPolyConstant(
                     value._numerator, value._denominator))
-        if (self._base._kind == 'GF'
+        if (self._base._kind in ['GF', 'ZMOD']
                 and isinstance(value, sage.FiniteFieldElement)
                 and value._parent is self._base):
+            if self._base._kind == 'ZMOD':
+                return PolynomialElement(
+                    self,
+                    backend.zmodPolyConstant(
+                        value._value, self._base._modulus))
             return PolynomialElement(
                 self,
                 backend.nmodPolyConstant(
@@ -268,7 +279,15 @@ class PolynomialRingParent(sage.Parent):
         if source.base_ring() is sage.ZZ and self._base is sage.QQ:
             return PolynomialElement(
                 self, runtime.flint_backend().zzPolyToQQ(value._native))
-        if source.base_ring() is sage.ZZ and self._base._kind == 'GF':
+        if (
+            source.base_ring() is sage.ZZ
+            and self._base._kind in ['GF', 'ZMOD']
+        ):
+            if self._base._kind == 'ZMOD':
+                return PolynomialElement(
+                    self,
+                    runtime.flint_backend().zzPolyToZmod(
+                        value._native, self._base._modulus))
             return PolynomialElement(
                 self,
                 runtime.flint_backend().zzPolyToNmod(
@@ -309,11 +328,11 @@ def PolynomialRing(
     if (
         base is not sage.ZZ
         and base is not sage.QQ
-        and base._kind != 'GF'
+        and base._kind not in ['GF', 'ZMOD']
     ):
         raise TypeError(
             'the prototype currently supports polynomial rings over ' +
-            'ZZ, QQ, and prime finite fields')
+            'ZZ, QQ, prime finite fields, and Zmod')
     if (
         not isinstance(variable, str)
         or not runtime.regexp(

@@ -381,10 +381,16 @@ True
 ## Parents, coercion, and native polynomials
 
 The mathematical object model implements singleton `ZZ` and `QQ` parents,
-interned prime finite fields, immutable scalar elements, canonical maps,
-interned polynomial parents, and symmetric binary coercion. It does not depend on
-`__add__`/`__radd__` fallback. A coercion plan contains a common parent and a
-map for each operand.
+interned prime finite fields and `Zmod(n)` residue rings, immutable scalar
+elements, canonical maps, interned polynomial parents, and symmetric binary
+coercion. It does not depend on `__add__`/`__radd__` fallback. A coercion plan
+contains a common parent and a map for each operand.
+
+Dense matrices over composite `Zmod(n)` use ring semantics rather than field
+Gaussian elimination. FLINT supplies determinant, characteristic polynomial,
+and canonical Howell reduction; matrix rank follows Sage by counting unit
+pivots, unit inverses are reduced from exact integer adjugates, and kernels
+retain zero-divisor torsion generators.
 
 Common parents may be constructed rather than equal to either input parent:
 

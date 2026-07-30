@@ -1,4 +1,4 @@
-# Dense exact matrices and vectors over ZZ, QQ, and prime finite fields.
+# Dense exact matrices and vectors over ZZ, QQ, finite fields, and Zmod.
 #
 # The Python-visible object model follows SageMath. Native hosts keep matrix
 # entries in FLINT fmpz_mat/fmpq_mat objects; browser hosts use the matching
@@ -15,13 +15,17 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
+def _is_modular_base(value: object) -> bool:
+    return getattr(value, '_kind', None) in ['GF', 'ZMOD']
+
+
 def _is_base_ring(value: object) -> bool:
     return (
         value is sage.ZZ
         or value is sage.QQ
         or getattr(value, '_kind', None) == 'ZZ'
         or getattr(value, '_kind', None) == 'QQ'
-        or getattr(value, '_kind', None) == 'GF'
+        or _is_modular_base(value)
     )
 
 
@@ -38,7 +42,7 @@ def _base_for_values(values: list[Any]) -> sage.Parent:
         if isinstance(value, sage.Rational):
             return sage.QQ
         parent = getattr(value, '_parent', None)
-        if getattr(parent, '_kind', None) == 'GF':
+        if _is_modular_base(parent):
             return _canonical_base(
                 runtime.reflect.get(value, '_parent'))
     return sage.ZZ
@@ -75,14 +79,17 @@ def _native_matrix(
                 rational._denominator,
             ])
         return backend.qqMatrix(rows, cols, entries)
-    if getattr(base, '_kind', None) == 'GF':
+    if _is_modular_base(base):
         entries = []
         for value in values:
             entries.append(base(value)._value)
+        if getattr(base, '_kind', None) == 'ZMOD':
+            return backend.zmodMatrix(
+                rows, cols, entries, base._modulus)
         return backend.nmodMatrix(
             rows, cols, entries, base._modulus)
     raise TypeError(
-        'exact matrices currently require ZZ, QQ, or a prime field')
+        'exact matrices currently require ZZ, QQ, GF, or Zmod')
 
 
 def _rational_result(value: Any) -> sage.Rational:
@@ -95,7 +102,7 @@ def _rational_result(value: Any) -> sage.Rational:
 def _entry_from_native(base: sage.Parent, value: Any) -> Any:
     if base is sage.ZZ:
         return runtime.normalize_integer(value)
-    if getattr(base, '_kind', None) == 'GF':
+    if _is_modular_base(base):
         return base(value)
     return _rational_result(value)
 
@@ -111,12 +118,12 @@ def _common_base(
         or (left is sage.QQ and right is sage.ZZ)
     ):
         return sage.QQ
-    if getattr(left, '_kind', None) == 'GF':
+    if _is_modular_base(left):
         if right is sage.ZZ:
             return left
-        if getattr(right, '_kind', None) == 'GF' and left is right:
+        if _is_modular_base(right) and left is right:
             return left
-    if getattr(right, '_kind', None) == 'GF' and left is sage.ZZ:
+    if _is_modular_base(right) and left is sage.ZZ:
         return right
     raise TypeError(
         'no canonical coercion between matrix base rings ' +
@@ -148,7 +155,7 @@ def _matrix_scalar_parts(
     base: sage.Parent,
     value: Any,
 ) -> tuple[sage.Parent, int, int]:
-    if getattr(base, '_kind', None) == 'GF':
+    if _is_modular_base(base):
         scalar = base(value)
         return (
             base,
@@ -333,7 +340,7 @@ class Vector(sage.Element):
             self.base_ring() is sage.ZZ
             and (
                 base is sage.QQ
-                or getattr(base, '_kind', None) == 'GF'
+                or _is_modular_base(base)
             )
         ):
             return VectorSpace(base, len(self))(
@@ -459,7 +466,12 @@ class VectorSubspaceParent(sage.Parent):
         self._left_kernel = left_kernel
         degree = ambient.degree()
         dimension = self._basis_matrix.nrows()
-        if ambient.base_ring() is sage.ZZ:
+        if (
+            ambient.base_ring() is sage.ZZ
+            or getattr(
+                ambient.base_ring(), '_kind', None
+            ) == 'ZMOD'
+        ):
             self._name = (
                 'Free module of degree ' + str(degree) +
                 ' and rank ' + str(dimension) +
@@ -637,6 +649,7 @@ class Matrix(sage.Element):
         self._inverse_cache = runtime.undefined
         self._rref_cache = runtime.undefined
         self._hermite_cache = runtime.undefined
+        self._howell_cache = runtime.undefined
         self._hermite_transform_cache = runtime.undefined
         self._smith_cache = runtime.undefined
         self._right_kernel_cache = runtime.undefined
@@ -754,7 +767,7 @@ class Matrix(sage.Element):
             )
         if (
             self.base_ring() is sage.ZZ
-            and getattr(base, '_kind', None) == 'GF'
+            and _is_modular_base(base)
         ):
             return matrix(
                 base, self.nrows(), self.ncols(), self.list())
@@ -855,7 +868,7 @@ class Matrix(sage.Element):
             'operation ' + operator + ' is not defined for matrices')
 
     def __truediv__(self, scalar: object) -> Matrix:
-        if getattr(self.base_ring(), '_kind', None) == 'GF':
+        if _is_modular_base(self.base_ring()):
             value = self.base_ring()(scalar)
             if value.is_zero():
                 raise ZeroDivisionError('matrix division by zero')
@@ -942,6 +955,7 @@ class Matrix(sage.Element):
         self._inverse_cache = runtime.undefined
         self._rref_cache = runtime.undefined
         self._hermite_cache = runtime.undefined
+        self._howell_cache = runtime.undefined
         self._hermite_transform_cache = runtime.undefined
         self._smith_cache = runtime.undefined
         self._right_kernel_cache = runtime.undefined
@@ -1059,6 +1073,19 @@ class Matrix(sage.Element):
             ])
         return self._smith_cache
 
+    def howell_form(self) -> Matrix:
+        if getattr(self.base_ring(), '_kind', None) != 'ZMOD':
+            raise TypeError(
+                'Howell form requires a residue-ring matrix')
+        if self._howell_cache is runtime.undefined:
+            rows = max(self.nrows(), self.ncols())
+            self._howell_cache = Matrix(
+                MatrixSpace(
+                    self.base_ring(), rows, self.ncols()),
+                runtime.flint_backend().matrixHowell(self._native),
+            )
+        return self._howell_cache
+
     def elementary_divisors(self, algorithm: Any = None) -> list[Any]:
         diagonal = self.smith_form()[0].diagonal()
         while len(diagonal) < self.nrows():
@@ -1077,6 +1104,11 @@ class Matrix(sage.Element):
                 include_zero_rows,
                 transformation,
             )
+        if getattr(self.base_ring(), '_kind', None) == 'ZMOD':
+            if transformation:
+                raise NotImplementedError(
+                    'Howell transformations are not available yet')
+            return self.howell_form()
         if transformation:
             raise NotImplementedError(
                 'rational echelon transformations are not available')
@@ -1090,8 +1122,15 @@ class Matrix(sage.Element):
         echelon = self.echelon_form()
         for row in range(echelon.nrows()):
             for col in range(echelon.ncols()):
-                if echelon._entry(row, col) != 0:
-                    answer.append(col)
+                value = echelon._entry(row, col)
+                if value != 0:
+                    if (
+                        getattr(
+                            self.base_ring(), '_kind', None
+                        ) != 'ZMOD'
+                        or value == 1
+                    ):
+                        answer.append(col)
                     break
         return runtime.math_tuple(answer)
 
@@ -1271,7 +1310,7 @@ class Matrix(sage.Element):
         if native_value is runtime.undefined:
             raise ZeroDivisionError('matrix must be nonsingular')
         inverse_base = sage.QQ
-        if getattr(self.base_ring(), '_kind', None) == 'GF':
+        if _is_modular_base(self.base_ring()):
             inverse_base = self.base_ring()
         self._inverse_cache = Matrix(
             MatrixSpace(
@@ -1323,7 +1362,7 @@ class Matrix(sage.Element):
         if native_value is runtime.undefined:
             raise ValueError('matrix equation has no solutions')
         result_base = sage.QQ
-        if getattr(base, '_kind', None) == 'GF':
+        if _is_modular_base(base):
             result_base = base
         result = Matrix(
             MatrixSpace(
@@ -1550,10 +1589,10 @@ def MatrixSpace(
     if (
         base is not sage.ZZ
         and base is not sage.QQ
-        and getattr(base, '_kind', None) != 'GF'
+        and not _is_modular_base(base)
     ):
         raise TypeError(
-            'exact matrices currently require ZZ, QQ, or a prime field')
+            'exact matrices currently require ZZ, QQ, GF, or Zmod')
     rows = int(rows)
     cols = rows if cols is None else int(cols)
     if rows < 0 or cols < 0:
@@ -1578,10 +1617,10 @@ def VectorSpace(
     if (
         base is not sage.ZZ
         and base is not sage.QQ
-        and getattr(base, '_kind', None) != 'GF'
+        and not _is_modular_base(base)
     ):
         raise TypeError(
-            'exact vectors currently require ZZ, QQ, or a prime field')
+            'exact vectors currently require ZZ, QQ, GF, or Zmod')
     degree = int(degree)
     if degree < 0:
         raise ValueError('vector dimension must be nonnegative')
@@ -1750,12 +1789,27 @@ def _random_float() -> float:
 
 
 def _random_int(start: int, stop: int) -> int:
-    return int(
-        runtime.math.floor(
-            _random_float() * (stop - start + 1)
-        )
-        + start
-    )
+    start = runtime.integer_bigint(start)
+    stop = runtime.integer_bigint(stop)
+    width = stop - start + runtime.bigint(1)
+    if width <= 0:
+        raise ValueError('empty random integer range')
+    word_base = runtime.bigint(4294967296)
+    span = runtime.bigint(1)
+    words = 0
+    while span < width:
+        span *= word_base
+        words += 1
+    while True:
+        value = runtime.bigint(0)
+        for _index in range(words):
+            word = runtime.integer_bigint(
+                runtime.math.floor(
+                    _random_float() * 4294967296))
+            value = value * word_base + word
+        limit = span - span % width
+        if value < limit:
+            return start + value % width
 
 
 def _random_integer(
@@ -1805,10 +1859,10 @@ def random_matrix(
         return fallback if value is runtime.undefined else value
 
     base = _canonical_base(base)
-    finite_field = getattr(base, '_kind', None) == 'GF'
-    if base is not sage.ZZ and base is not sage.QQ and not finite_field:
+    modular_ring = _is_modular_base(base)
+    if base is not sage.ZZ and base is not sage.QQ and not modular_ring:
         raise TypeError(
-            'random_matrix currently requires ZZ, QQ, or a prime field')
+            'random_matrix currently requires ZZ, QQ, GF, or Zmod')
     if algorithm != 'randomize':
         raise NotImplementedError(
             "random_matrix algorithm '" + algorithm +
@@ -1854,7 +1908,7 @@ def random_matrix(
     values = [0 for _ in range(rows * cols)]
     if density == 1:
         for index in range(len(values)):
-            if finite_field and lower is None:
+            if modular_ring and lower is None:
                 value = _random_int(
                     0,
                     runtime.normalize_integer(
@@ -1869,7 +1923,7 @@ def random_matrix(
         for row in range(rows):
             for _ in range(choices_per_row):
                 column = _random_int(0, cols - 1)
-                if finite_field and lower is None:
+                if modular_ring and lower is None:
                     value = _random_int(
                         1,
                         runtime.normalize_integer(

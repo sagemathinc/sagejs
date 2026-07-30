@@ -207,6 +207,21 @@ static int bigint_to_prime_modulus(
     return 1;
 }
 
+static int bigint_to_modulus(
+    napi_env env,
+    napi_value value,
+    ulong *result)
+{
+    if (!bigint_to_ulong(env, value, result))
+        return 0;
+    if (*result < 2)
+    {
+        napi_throw_range_error(env, NULL, "modulus must be at least 2");
+        return 0;
+    }
+    return 1;
+}
+
 typedef enum
 {
     SAGEJS_POLY_ZZ = 1,
@@ -627,6 +642,95 @@ static napi_value zz_poly_to_nmod(napi_env env, napi_callback_info info)
     if (target == NULL)
         return NULL;
 
+    fmpz_init(coefficient);
+    length = fmpz_poly_length(source->integer);
+    for (index = 0; index < length; index++)
+    {
+        fmpz_poly_get_coeff_fmpz(coefficient, source->integer, index);
+        nmod_poly_set_coeff_ui(
+            target->modular,
+            index,
+            fmpz_fdiv_ui(coefficient, modulus));
+    }
+    fmpz_clear(coefficient);
+    return result;
+}
+
+static napi_value zmod_poly_constant(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result;
+    sagejs_poly *poly;
+    fmpz_t value;
+    ulong modulus;
+    ulong residue;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !bigint_to_modulus(env, args[1], &modulus))
+        return NULL;
+    fmpz_init(value);
+    if (!bigint_to_fmpz(env, args[0], value))
+    {
+        fmpz_clear(value);
+        return NULL;
+    }
+    residue = fmpz_fdiv_ui(value, modulus);
+    fmpz_clear(value);
+    result = create_poly(env, SAGEJS_POLY_NMOD, modulus);
+    if (result == NULL)
+        return NULL;
+    poly = unwrap_poly(env, result, SAGEJS_POLY_NMOD);
+    if (poly == NULL)
+        return NULL;
+    nmod_poly_set_coeff_ui(poly->modular, 0, residue);
+    return result;
+}
+
+static napi_value zmod_poly_gen_value(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_poly *poly;
+    ulong modulus;
+
+    if (!require_arguments(env, info, 1, args) ||
+        !bigint_to_modulus(env, args[0], &modulus))
+        return NULL;
+    result = create_poly(env, SAGEJS_POLY_NMOD, modulus);
+    if (result == NULL)
+        return NULL;
+    poly = unwrap_poly(env, result, SAGEJS_POLY_NMOD);
+    if (poly == NULL)
+        return NULL;
+    nmod_poly_set_coeff_ui(poly->modular, 1, 1);
+    return result;
+}
+
+static napi_value zz_poly_to_zmod(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result;
+    sagejs_poly *source;
+    sagejs_poly *target;
+    fmpz_t coefficient;
+    ulong modulus;
+    slong index;
+    slong length;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !bigint_to_modulus(env, args[1], &modulus))
+        return NULL;
+    source = unwrap_poly(env, args[0], SAGEJS_POLY_ZZ);
+    if (source == NULL)
+        return NULL;
+    result = create_poly(env, SAGEJS_POLY_NMOD, modulus);
+    if (result == NULL)
+        return NULL;
+    target = unwrap_poly(env, result, SAGEJS_POLY_NMOD);
+    if (target == NULL)
+        return NULL;
     fmpz_init(coefficient);
     length = fmpz_poly_length(source->integer);
     for (index = 0; index < length; index++)
@@ -1511,6 +1615,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"nmodMatrix", NULL, sagejs_nmod_matrix, NULL, NULL, NULL,
             napi_default, NULL},
+        {"zmodMatrix", NULL, sagejs_zmod_matrix, NULL, NULL, NULL,
+            napi_default, NULL},
         {"zzMatrixToQQ", NULL, sagejs_zz_matrix_to_qq, NULL, NULL, NULL,
             napi_default, NULL},
         {"matrixAdd", NULL, sagejs_matrix_add, NULL, NULL, NULL,
@@ -1536,6 +1642,8 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"matrixRref", NULL, sagejs_matrix_rref, NULL, NULL, NULL,
             napi_default, NULL},
         {"matrixHermite", NULL, sagejs_matrix_hermite, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"matrixHowell", NULL, sagejs_matrix_howell, NULL, NULL, NULL,
             napi_default, NULL},
         {"matrixHermiteTransform", NULL, sagejs_matrix_hermite_transform,
             NULL, NULL, NULL, napi_default, NULL},
@@ -1600,6 +1708,12 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"nmodPolyGen", NULL, nmod_poly_gen_value, NULL, NULL, NULL,
             napi_default, NULL},
         {"zzPolyToNmod", NULL, zz_poly_to_nmod, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"zmodPolyConstant", NULL, zmod_poly_constant, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"zmodPolyGen", NULL, zmod_poly_gen_value, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"zzPolyToZmod", NULL, zz_poly_to_zmod, NULL, NULL, NULL,
             napi_default, NULL},
         {"polyAdd", NULL, poly_add, NULL, NULL, NULL, napi_default, NULL},
         {"polySub", NULL, poly_sub, NULL, NULL, NULL, napi_default, NULL},

@@ -369,6 +369,8 @@ function nmodPolyGen(modulus) {
   return polynomial("nmod", [0n, mod(1n, modulus)], modulus);
 }
 
+const zmodPolyGen = nmodPolyGen;
+
 function zzPolyConstant(value) {
   return polynomial("ZZ", [BigInt(value)]);
 }
@@ -381,6 +383,8 @@ function nmodPolyConstant(value, modulus) {
   modulus = BigInt(modulus);
   return polynomial("nmod", [mod(value, modulus)], modulus);
 }
+
+const zmodPolyConstant = nmodPolyConstant;
 
 function zzPolyToQQ(value) {
   value = assertPolynomial(value);
@@ -406,10 +410,14 @@ function zzPolyToNmod(value, modulus) {
   );
 }
 
+const zzPolyToZmod = zzPolyToNmod;
+
 export function createPortablePolynomialBackend() {
   return Object.freeze({
     nmodPolyConstant,
     nmodPolyGen,
+    zmodPolyConstant,
+    zmodPolyGen,
     polyAdd,
     polyCoefficients,
     polyEqual,
@@ -423,6 +431,7 @@ export function createPortablePolynomialBackend() {
     zzPolyConstant,
     zzPolyGen,
     zzPolyToNmod,
+    zzPolyToZmod,
     zzPolyToQQ,
   });
 }

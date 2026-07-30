@@ -310,6 +310,61 @@ assert all(
     value == F5(value.lift())
     for value in random_finite.list())
 
+R36 = Zmod(36)
+residue_matrix = matrix(R36, [[2, 3], [3, 2]])
+assert residue_matrix.base_ring() is R36
+assert residue_matrix.det() == R36(31)
+assert residue_matrix.is_invertible()
+assert residue_matrix.inverse() == matrix(
+    R36, [[14, 15], [15, 14]])
+assert residue_matrix * residue_matrix.inverse() == (
+    identity_matrix(R36, 2)
+)
+assert residue_matrix.solve_right(
+    vector(R36, [1, 0])) == vector(R36, [14, 15])
+assert str(residue_matrix.charpoly()) == 'x^2 + 32*x + 31'
+assert residue_matrix.charpoly()(residue_matrix) == (
+    zero_matrix(R36, 2)
+)
+
+R625 = Zmod(625)
+howell_source = matrix(
+    R625,
+    3,
+    4,
+    [1, 2, 3, 4, 0, 5, 5, 6, 0, 0, 0, 25],
+)
+assert howell_source.howell_form() == matrix(
+    R625,
+    [
+        [1, 2, 3, 4],
+        [0, 5, 5, 6],
+        [0, 0, 0, 25],
+        [0, 0, 0, 0],
+    ],
+)
+assert howell_source.echelon_form() == howell_source.howell_form()
+assert howell_source.rank() == 1
+assert list(howell_source.pivots()) == [0]
+residue_kernel = howell_source.right_kernel()
+assert residue_kernel.base_ring() is R625
+assert residue_kernel.degree() == 4
+assert residue_kernel.rank() == 3
+assert howell_source * residue_kernel.basis_matrix().T == (
+    zero_matrix(R625, 3, 3)
+)
+assert howell_source.left_kernel().rank() == 1
+assert howell_source.left_kernel().basis_matrix() * howell_source == (
+    zero_matrix(R625, 1, 4)
+)
+assert howell_source.kernel() == howell_source.left_kernel()
+
+set_random_seed(2026)
+random_residue = random_matrix(R36, 4, 6)
+set_random_seed(2026)
+assert random_matrix(R36, 4, 6) == random_residue
+assert all(value.parent() is R36 for value in random_residue.list())
+
 try:
     matrix(ZZ, [[1, 2], [3]])
     assert False

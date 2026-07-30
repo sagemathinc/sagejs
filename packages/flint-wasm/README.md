@@ -8,13 +8,13 @@ returns the same structured `{ sign, factors }` result as the
 native Node-API add-on, so the ordinary Sage.js baselib constructs and
 displays `IntegerFactorization` objects unchanged. A small exact JavaScript
 backend supplies polynomial construction, arithmetic, powers, equality, and
-representation over `ZZ`, `QQ`, and prime fields; advanced polynomial
-algorithms still require future FLINT WASM bindings. The same portable backend
-provides dense exact `ZZ` and `QQ` matrices with addition, multiplication,
-determinant, rank, rational RREF, integer Hermite form, inverse, and linear
-solving. It also computes canonical exact kernel bases and characteristic
-polynomials, retaining the same subspace and polynomial objects at the
-Sage-facing layer. Its public contract matches
+representation over `ZZ`, `QQ`, prime fields, and composite residue rings;
+advanced polynomial algorithms still require future FLINT WASM bindings. The
+same portable backend provides dense exact `ZZ`, `QQ`, `GF(p)`, and `Zmod(n)`
+matrices with addition, multiplication, determinant, characteristic
+polynomial, inverse, and linear solving. It computes rational RREF, integer
+Hermite form, and composite-ring Howell forms and module kernels. Its public
+contract matches
 the native FLINT matrix backend, so Sage-facing matrix code and serialized
 results do not depend on the host.
 

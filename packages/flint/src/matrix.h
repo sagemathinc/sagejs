@@ -6,6 +6,7 @@
 napi_value sagejs_zz_matrix(napi_env env, napi_callback_info info);
 napi_value sagejs_qq_matrix(napi_env env, napi_callback_info info);
 napi_value sagejs_nmod_matrix(napi_env env, napi_callback_info info);
+napi_value sagejs_zmod_matrix(napi_env env, napi_callback_info info);
 napi_value sagejs_zz_matrix_to_qq(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_add(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_sub(napi_env env, napi_callback_info info);
@@ -19,6 +20,7 @@ napi_value sagejs_matrix_det(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_rank(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_rref(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_hermite(napi_env env, napi_callback_info info);
+napi_value sagejs_matrix_howell(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_hermite_transform(
     napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_smith(napi_env env, napi_callback_info info);

@@ -17,6 +17,10 @@ is required.
 Characteristic polynomials and canonical saturated integer or rational kernel
 bases also execute in FLINT; Sage.js wraps each kernel basis as a genuine
 free-submodule or vector-subspace parent.
+Composite residue-ring matrices use distinct `Zmod` handles over the same
+FLINT `nmod_mat` storage. They expose ring-correct determinant and
+characteristic polynomial, Howell form and unit-pivot rank, inversion of
+matrix units, and kernels that preserve zero-divisor torsion.
 Integer conversion uses Node-API's
 little-endian 64-bit word arrays and FLINT's `fmpz_set_ui_array` /
 `fmpz_get_ui_array` functions, so crossing the integer boundary requires one

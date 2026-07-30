@@ -41,6 +41,9 @@ const initialize = methodBody("FiniteFieldElement", "__init__");
 const add = methodBody("FiniteFieldElement", "_add_");
 const subtract = methodBody("FiniteFieldElement", "_sub_");
 const multiply = methodBody("FiniteFieldElement", "_mul_");
+const residueAdd = methodBody("IntegerModElement", "_add_");
+const residueSubtract = methodBody("IntegerModElement", "_sub_");
+const residueMultiply = methodBody("IntegerModElement", "_mul_");
 
 assert.doesNotMatch(
   source,
@@ -70,6 +73,24 @@ assert.match(
   /new FiniteFieldElement\(self\._parent, self\._value \* other\._value\)/,
 );
 for (const body of [add, subtract, multiply]) {
+  assert.doesNotMatch(
+    body,
+    /ρσ_operator_(?:add|sub|mul)|ρσ_new_prime_field_element/,
+  );
+}
+assert.match(
+  residueAdd,
+  /new IntegerModElement\(self\._parent, self\._value \+ other\._value\)/,
+);
+assert.match(
+  residueSubtract,
+  /new IntegerModElement\(self\._parent, self\._value - other\._value\)/,
+);
+assert.match(
+  residueMultiply,
+  /new IntegerModElement\(self\._parent, self\._value \* other\._value\)/,
+);
+for (const body of [residueAdd, residueSubtract, residueMultiply]) {
   assert.doesNotMatch(
     body,
     /ρσ_operator_(?:add|sub|mul)|ρσ_new_prime_field_element/,
