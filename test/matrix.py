@@ -237,6 +237,67 @@ assert all(-2 <= value <= 2 for value in uniform.list())
 assert uniform.density() <= 0.6
 assert not uniform.is_sparse()
 
+F5 = GF(5)
+finite = matrix(F5, [[1, 2], [3, 4]])
+assert Matrix(F5, [[1, 2], [3, 4]]) == finite
+assert finite.base_ring() is F5
+assert finite.list() == [F5(1), F5(2), F5(3), F5(4)]
+assert finite + finite == matrix(F5, [[2, 4], [1, 3]])
+assert finite - finite == zero_matrix(F5, 2)
+assert -finite == matrix(F5, [[4, 3], [2, 1]])
+assert 3 * finite == matrix(F5, [[3, 1], [4, 2]])
+assert finite / 2 == matrix(F5, [[3, 1], [4, 2]])
+assert finite * finite == matrix(F5, [[2, 0], [0, 2]])
+assert finite.det() == F5(3)
+assert finite.rank() == 2
+assert finite.rref() == identity_matrix(F5, 2)
+assert finite.rref().base_ring() is F5
+finite_inverse = finite.inverse()
+assert finite_inverse.base_ring() is F5
+assert finite_inverse == matrix(F5, [[3, 1], [4, 2]])
+assert finite * finite_inverse == identity_matrix(F5, 2)
+assert finite.solve_right(
+    vector(F5, [1, 0])) == vector(F5, [3, 4])
+assert finite.solve_right(
+    identity_matrix(F5, 2)) == finite_inverse
+assert str(finite.charpoly()) == 'x^2 + 3'
+assert finite.charpoly()(finite) == zero_matrix(F5, 2)
+assert finite.minpoly()(finite) == zero_matrix(F5, 2)
+
+F2 = GF(2)
+binary_fibonacci = matrix(F2, [[1, 1], [1, 0]])
+assert str(binary_fibonacci.charpoly()) == 'x^2 + x + 1'
+assert binary_fibonacci.charpoly()(binary_fibonacci) == (
+    zero_matrix(F2, 2)
+)
+
+finite_singular = matrix(
+    F5, [[1, 2, 3], [2, 4, 1]])
+assert finite_singular.rank() == 1
+assert finite_singular.right_nullity() == 2
+assert finite_singular.rref() == matrix(
+    F5, [[1, 2, 3], [0, 0, 0]])
+finite_kernel = finite_singular.right_kernel()
+assert finite_kernel.base_ring() is F5
+assert finite_kernel.dimension() == 2
+assert finite_singular * finite_kernel.basis_matrix().T == (
+    zero_matrix(F5, 2, 2)
+)
+assert finite_singular.left_kernel().dimension() == 1
+assert vector(F5, [3, 1]) in finite_singular.left_kernel()
+assert matrix(ZZ, [[1, 2], [3, 4]]).change_ring(F5) == finite
+assert finite + matrix(ZZ, [[1, 1], [1, 1]]) == matrix(
+    F5, [[2, 3], [4, 0]])
+
+set_random_seed(2026)
+random_finite = random_matrix(F5, 4, 6)
+set_random_seed(2026)
+assert random_matrix(F5, 4, 6) == random_finite
+assert random_finite.base_ring() is F5
+assert all(
+    value == F5(value.lift())
+    for value in random_finite.list())
+
 try:
     matrix(ZZ, [[1, 2], [3]])
     assert False

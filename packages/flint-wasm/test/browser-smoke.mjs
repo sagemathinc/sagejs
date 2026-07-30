@@ -257,7 +257,22 @@ try {
       "-2 2\n[1 0]\n[0 1]\n[1 0]\n[0 2]\n" +
         "x^2 - 5*x - 2\n" +
         "Free module of degree 3 and rank 2 over Integer Ring\n" +
-        "Echelon basis matrix:\n[1 1 -1]\n[0 3 -2]\nTrue",
+        "Echelon basis matrix:\n[ 1  1 -1]\n[ 0  3 -2]\nTrue",
+    );
+    await runSource(
+      "F = GF(5)\nA = matrix(F, [[1,2],[3,4]])\n" +
+        "print(A.det(), A.rank())\n" +
+        "print(A.rref())\n" +
+        "print(A.inverse())\n" +
+        "print(A.charpoly())\n" +
+        "K = matrix(F, [[1,2,3],[2,4,1]]).right_kernel()\n" +
+        "print(K)\n" +
+        "matrix(F, [[1,2,3],[2,4,1]]) * K.basis_matrix().T",
+      "3 2\n[1 0]\n[0 1]\n[3 1]\n[4 2]\n" +
+        "x^2 + 3\n" +
+        "Vector space of degree 3 and dimension 2 over " +
+        "Finite Field of size 5\nBasis matrix:\n" +
+        "[1 0 3]\n[0 1 1]\n[0 0]\n[0 0]",
     );
     await runSource("a = 12\nfactor(a)", "2^2 * 3");
     await runSource("factor(a^2)", "2^4 * 3^2");

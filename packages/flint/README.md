@@ -8,10 +8,12 @@ loading the language must not initialize native mathematics libraries.
 The API exposes JavaScript `BigInt` round trips, GCD, factorial,
 Fibonacci numbers, binomial coefficients, primorials, integer factorization,
 word-prime testing, opaque `fmpz_poly`/`fmpq_poly`/`nmod_poly` values, and
-opaque `fmpz_mat`/`fmpq_mat` matrices and MPFR/MPC real and complex values.
+opaque `fmpz_mat`/`fmpq_mat`/`nmod_mat` matrices and MPFR/MPC real and
+complex values.
 Exact matrices support native addition, multiplication, determinant, rank,
-rational RREF, integer Hermite form, inverse, and linear solving; integer
-systems canonically produce rational answers when division is required.
+rational and prime-field RREF, integer Hermite form, inverse, and linear
+solving; integer systems canonically produce rational answers when division
+is required.
 Characteristic polynomials and canonical saturated integer or rational kernel
 bases also execute in FLINT; Sage.js wraps each kernel basis as a genuine
 free-submodule or vector-subspace parent.

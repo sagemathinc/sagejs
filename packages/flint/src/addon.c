@@ -1509,6 +1509,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"qqMatrix", NULL, sagejs_qq_matrix, NULL, NULL, NULL,
             napi_default, NULL},
+        {"nmodMatrix", NULL, sagejs_nmod_matrix, NULL, NULL, NULL,
+            napi_default, NULL},
         {"zzMatrixToQQ", NULL, sagejs_zz_matrix_to_qq, NULL, NULL, NULL,
             napi_default, NULL},
         {"matrixAdd", NULL, sagejs_matrix_add, NULL, NULL, NULL,

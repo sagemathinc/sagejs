@@ -1,4 +1,4 @@
-# Dense exact matrices and vectors over ZZ and QQ.
+# Dense exact matrices and vectors over ZZ, QQ, and prime finite fields.
 #
 # The Python-visible object model follows SageMath. Native hosts keep matrix
 # entries in FLINT fmpz_mat/fmpq_mat objects; browser hosts use the matching
@@ -21,6 +21,7 @@ def _is_base_ring(value: object) -> bool:
         or value is sage.QQ
         or getattr(value, '_kind', None) == 'ZZ'
         or getattr(value, '_kind', None) == 'QQ'
+        or getattr(value, '_kind', None) == 'GF'
     )
 
 
@@ -36,6 +37,10 @@ def _base_for_values(values: list[Any]) -> sage.Parent:
     for value in values:
         if isinstance(value, sage.Rational):
             return sage.QQ
+        parent = getattr(value, '_parent', None)
+        if getattr(parent, '_kind', None) == 'GF':
+            return _canonical_base(
+                runtime.reflect.get(value, '_parent'))
     return sage.ZZ
 
 
@@ -70,7 +75,14 @@ def _native_matrix(
                 rational._denominator,
             ])
         return backend.qqMatrix(rows, cols, entries)
-    raise TypeError('exact matrices currently require ZZ or QQ')
+    if getattr(base, '_kind', None) == 'GF':
+        entries = []
+        for value in values:
+            entries.append(base(value)._value)
+        return backend.nmodMatrix(
+            rows, cols, entries, base._modulus)
+    raise TypeError(
+        'exact matrices currently require ZZ, QQ, or a prime field')
 
 
 def _rational_result(value: Any) -> sage.Rational:
@@ -83,6 +95,8 @@ def _rational_result(value: Any) -> sage.Rational:
 def _entry_from_native(base: sage.Parent, value: Any) -> Any:
     if base is sage.ZZ:
         return runtime.normalize_integer(value)
+    if getattr(base, '_kind', None) == 'GF':
+        return base(value)
     return _rational_result(value)
 
 
@@ -97,6 +111,13 @@ def _common_base(
         or (left is sage.QQ and right is sage.ZZ)
     ):
         return sage.QQ
+    if getattr(left, '_kind', None) == 'GF':
+        if right is sage.ZZ:
+            return left
+        if getattr(right, '_kind', None) == 'GF' and left is right:
+            return left
+    if getattr(right, '_kind', None) == 'GF' and left is sage.ZZ:
+        return right
     raise TypeError(
         'no canonical coercion between matrix base rings ' +
         str(left) + ' and ' + str(right))
@@ -121,6 +142,20 @@ def _scalar_parts(value: Any) -> tuple[sage.Parent, int, int]:
         rational._numerator,
         rational._denominator
     )
+
+
+def _matrix_scalar_parts(
+    base: sage.Parent,
+    value: Any,
+) -> tuple[sage.Parent, int, int]:
+    if getattr(base, '_kind', None) == 'GF':
+        scalar = base(value)
+        return (
+            base,
+            scalar._value,
+            runtime.bigint(1)
+        )
+    return _scalar_parts(value)
 
 
 def _normalize_index(index: int, length: int) -> int:
@@ -291,13 +326,22 @@ class Vector(sage.Element):
         return list(self._entries)
 
     def change_ring(self, base: sage.Parent) -> Vector:
+        base = _canonical_base(base)
         if base is self.base_ring():
             return self
+        if (
+            self.base_ring() is sage.ZZ
+            and (
+                base is sage.QQ
+                or getattr(base, '_kind', None) == 'GF'
+            )
+        ):
+            return VectorSpace(base, len(self))(
+                _coerce_values(base, self._entries))
         if base is not sage.QQ or self.base_ring() is not sage.ZZ:
             raise TypeError(
                 'unsupported vector base-ring conversion')
-        return VectorSpace(base, len(self))(
-            _coerce_values(base, self._entries))
+        raise TypeError('unsupported vector base-ring conversion')
 
     def _pair(self, other: object) -> tuple[Vector, Vector]:
         if not isinstance(other, Vector) or len(self) != len(other):
@@ -339,7 +383,9 @@ class Vector(sage.Element):
                     'vector and matrix dimensions are incompatible')
             result = self.row() * other
             return result.row(0)
-        scalar_base, _numerator, _denominator = _scalar_parts(other)
+        scalar_base, _numerator, _denominator = (
+            _matrix_scalar_parts(self.base_ring(), other)
+        )
         base = _common_base(self.base_ring(), scalar_base)
         source = self.change_ring(base)
         scalar = base(other)
@@ -698,6 +744,7 @@ class Matrix(sage.Element):
         ]
 
     def change_ring(self, base: sage.Parent) -> Matrix:
+        base = _canonical_base(base)
         if base is self.base_ring():
             return self
         if base is sage.QQ and self.base_ring() is sage.ZZ:
@@ -705,6 +752,12 @@ class Matrix(sage.Element):
                 MatrixSpace(base, self.nrows(), self.ncols()),
                 runtime.flint_backend().zzMatrixToQQ(self._native),
             )
+        if (
+            self.base_ring() is sage.ZZ
+            and getattr(base, '_kind', None) == 'GF'
+        ):
+            return matrix(
+                base, self.nrows(), self.ncols(), self.list())
         raise TypeError('unsupported matrix base-ring conversion')
 
     def _pair(self, other: object) -> tuple[Matrix, Matrix]:
@@ -739,7 +792,8 @@ class Matrix(sage.Element):
         )
 
     def _scalar_mul(self, scalar: object) -> Matrix:
-        scalar_base, numerator, denominator = _scalar_parts(scalar)
+        scalar_base, numerator, denominator = _matrix_scalar_parts(
+            self.base_ring(), scalar)
         base = _common_base(self.base_ring(), scalar_base)
         source = self.change_ring(base)
         return Matrix(
@@ -801,6 +855,12 @@ class Matrix(sage.Element):
             'operation ' + operator + ' is not defined for matrices')
 
     def __truediv__(self, scalar: object) -> Matrix:
+        if getattr(self.base_ring(), '_kind', None) == 'GF':
+            value = self.base_ring()(scalar)
+            if value.is_zero():
+                raise ZeroDivisionError('matrix division by zero')
+            return self._scalar_mul(
+                value ** runtime.bigint(-1))
         _base, numerator, denominator = _scalar_parts(scalar)
         if numerator == 0:
             raise ZeroDivisionError('matrix division by zero')
@@ -917,8 +977,11 @@ class Matrix(sage.Element):
 
     def rref(self) -> Matrix:
         if self._rref_cache is runtime.undefined:
+            base = sage.QQ
+            if getattr(self.base_ring(), '_kind', None) == 'GF':
+                base = self.base_ring()
             self._rref_cache = Matrix(
-                MatrixSpace(sage.QQ, self.nrows(), self.ncols()),
+                MatrixSpace(base, self.nrows(), self.ncols()),
                 runtime.flint_backend().matrixRref(self._native),
             )
         return self._rref_cache
@@ -1138,13 +1201,21 @@ class Matrix(sage.Element):
                     for coefficient in relation
                 ]
                 base = sage.ZZ
+                finite_coefficients = (
+                    getattr(
+                        self.base_ring(), '_kind', None) == 'GF'
+                )
+                if finite_coefficients:
+                    base = self.base_ring()
                 integer_coefficients = []
-                for coefficient in coefficients:
-                    try:
-                        integer_coefficients.append(sage.ZZ(coefficient))
-                    except Exception:
-                        base = sage.QQ
-                        break
+                if not finite_coefficients:
+                    for coefficient in coefficients:
+                        try:
+                            integer_coefficients.append(
+                                sage.ZZ(coefficient))
+                        except Exception:
+                            base = sage.QQ
+                            break
                 if base is sage.ZZ:
                     coefficients = integer_coefficients
                 ring = sage.PolynomialRing(base, variable)
@@ -1175,8 +1246,15 @@ class Matrix(sage.Element):
             pass
         if native_value is runtime.undefined:
             raise ZeroDivisionError('matrix must be nonsingular')
+        inverse_base = sage.QQ
+        if getattr(self.base_ring(), '_kind', None) == 'GF':
+            inverse_base = self.base_ring()
         self._inverse_cache = Matrix(
-            MatrixSpace(sage.QQ, self.nrows(), self.ncols()),
+            MatrixSpace(
+                inverse_base,
+                self.nrows(),
+                self.ncols(),
+            ),
             native_value,
         )
         return self._inverse_cache
@@ -1196,17 +1274,27 @@ class Matrix(sage.Element):
             vector_result = True
         if right_matrix.nrows() != self.nrows():
             raise ValueError('matrix and right side dimensions disagree')
+        base = _common_base(
+            self.base_ring(), right_matrix.base_ring())
+        left_matrix = self.change_ring(base)
+        right_matrix = right_matrix.change_ring(base)
         native_value = runtime.undefined
         try:
             native_value = runtime.flint_backend().matrixSolve(
-                self._native, right_matrix._native)
+                left_matrix._native, right_matrix._native)
         except Exception:
             pass
         if native_value is runtime.undefined:
             raise ValueError('matrix equation has no solutions')
+        result_base = sage.QQ
+        if getattr(base, '_kind', None) == 'GF':
+            result_base = base
         result = Matrix(
             MatrixSpace(
-                sage.QQ, self.ncols(), right_matrix.ncols()),
+                result_base,
+                self.ncols(),
+                right_matrix.ncols(),
+            ),
             native_value,
         )
         return result.column(0) if vector_result else result
@@ -1423,9 +1511,13 @@ def MatrixSpace(
     cols: Any = None,
 ) -> MatrixSpaceParent:
     base = _canonical_base(base)
-    if base is not sage.ZZ and base is not sage.QQ:
+    if (
+        base is not sage.ZZ
+        and base is not sage.QQ
+        and getattr(base, '_kind', None) != 'GF'
+    ):
         raise TypeError(
-            'exact matrices currently require ZZ or QQ')
+            'exact matrices currently require ZZ, QQ, or a prime field')
     rows = int(rows)
     cols = rows if cols is None else int(cols)
     if rows < 0 or cols < 0:
@@ -1447,9 +1539,13 @@ def VectorSpace(
     degree: int,
 ) -> VectorSpaceParent:
     base = _canonical_base(base)
-    if base is not sage.ZZ and base is not sage.QQ:
+    if (
+        base is not sage.ZZ
+        and base is not sage.QQ
+        and getattr(base, '_kind', None) != 'GF'
+    ):
         raise TypeError(
-            'exact vectors currently require ZZ or QQ')
+            'exact vectors currently require ZZ, QQ, or a prime field')
     degree = int(degree)
     if degree < 0:
         raise ValueError('vector dimension must be nonnegative')
@@ -1672,9 +1768,11 @@ def random_matrix(
         value = runtime.reflect.get(kwds, name)
         return fallback if value is runtime.undefined else value
 
-    if base is not sage.ZZ and base is not sage.QQ:
+    base = _canonical_base(base)
+    finite_field = getattr(base, '_kind', None) == 'GF'
+    if base is not sage.ZZ and base is not sage.QQ and not finite_field:
         raise TypeError(
-            'random_matrix currently requires ZZ or QQ')
+            'random_matrix currently requires ZZ, QQ, or a prime field')
     if algorithm != 'randomize':
         raise NotImplementedError(
             "random_matrix algorithm '" + algorithm +
@@ -1720,16 +1818,31 @@ def random_matrix(
     values = [0 for _ in range(rows * cols)]
     if density == 1:
         for index in range(len(values)):
-            value = _random_integer(
-                distribution, lower, upper, False)
+            if finite_field and lower is None:
+                value = _random_int(
+                    0,
+                    runtime.normalize_integer(
+                        runtime.reflect.get(base, '_modulus')) - 1,
+                )
+            else:
+                value = _random_integer(
+                    distribution, lower, upper, False)
             values[index] = base(value)
     else:
         choices_per_row = int(density * cols)
         for row in range(rows):
             for _ in range(choices_per_row):
                 column = _random_int(0, cols - 1)
-                value = _random_integer(
-                    distribution, lower, upper, True)
+                if finite_field and lower is None:
+                    value = _random_int(
+                        1,
+                        runtime.normalize_integer(
+                            runtime.reflect.get(
+                                base, '_modulus')) - 1,
+                    )
+                else:
+                    value = _random_integer(
+                        distribution, lower, upper, True)
                 values[row * cols + column] = base(value)
     return matrix(base, rows, cols, values)
 

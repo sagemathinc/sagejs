@@ -413,4 +413,42 @@ assert.throws(
   /singular/,
 );
 
+const finiteMatrix = flint.nmodMatrix(
+  2, 2, [1n, 2n, 3n, 4n], 5n);
+assert.equal(flint.matrixEntry(finiteMatrix, 1, 0), 3n);
+assert.equal(flint.matrixDet(finiteMatrix), 3n);
+assert.equal(flint.matrixRank(finiteMatrix), 2);
+assert.deepEqual(flint.matrixCharpoly(finiteMatrix), [3n, 0n, 1n]);
+const finiteInverse = flint.matrixInverse(finiteMatrix);
+assert.deepEqual(
+  [0, 1, 2, 3].map((index) =>
+    flint.matrixEntry(
+      finiteInverse,
+      Math.floor(index / 2),
+      index % 2,
+    ),
+  ),
+  [3n, 1n, 4n, 2n],
+);
+assert.equal(
+  flint.matrixEqual(
+    flint.matrixMul(finiteMatrix, finiteInverse),
+    flint.nmodMatrix(2, 2, [1n, 0n, 0n, 1n], 5n),
+  ),
+  true,
+);
+const finiteDependent = flint.nmodMatrix(
+  2, 3, [1n, 2n, 3n, 2n, 4n, 1n], 5n);
+const finiteKernel = flint.matrixRightKernel(finiteDependent);
+assert.equal(flint.matrixRank(finiteKernel), 2);
+assert.equal(
+  flint.matrixRank(
+    flint.matrixMul(
+      finiteDependent,
+      flint.matrixTranspose(finiteKernel),
+    ),
+  ),
+  0,
+);
+
 console.log("Native FLINT arithmetic and BigInt conversion passed.");

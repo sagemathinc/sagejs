@@ -70,6 +70,34 @@ function isZero(value) {
   return value.numerator === 0n;
 }
 
+function modular(value, modulus) {
+  value = BigInt(value) % modulus;
+  return value < 0n ? value + modulus : value;
+}
+
+function modularInverse(value, modulus) {
+  value = modular(value, modulus);
+  let oldRemainder = value;
+  let remainder = modulus;
+  let oldCoefficient = 1n;
+  let coefficient = 0n;
+  while (remainder !== 0n) {
+    const quotient = oldRemainder / remainder;
+    [oldRemainder, remainder] = [
+      remainder,
+      oldRemainder - quotient * remainder,
+    ];
+    [oldCoefficient, coefficient] = [
+      coefficient,
+      oldCoefficient - quotient * coefficient,
+    ];
+  }
+  if (oldRemainder !== 1n) {
+    throw new RangeError("matrix is singular");
+  }
+  return modular(oldCoefficient, modulus);
+}
+
 function dimensions(rows, cols) {
   if (
     !Number.isSafeInteger(rows) ||
@@ -81,10 +109,16 @@ function dimensions(rows, cols) {
   }
 }
 
-function make(kind, rows, cols, entries) {
+function make(kind, rows, cols, entries, modulus = undefined) {
   dimensions(rows, cols);
   if (entries.length !== rows * cols) {
     throw new RangeError("matrix entry count does not match its dimensions");
+  }
+  if (kind === "GF") {
+    modulus = BigInt(modulus);
+    if (modulus < 2n) {
+      throw new RangeError("prime-field matrix modulus must be at least 2");
+    }
   }
   return Object.freeze({
     [MATRIX]: true,
@@ -92,6 +126,7 @@ function make(kind, rows, cols, entries) {
     rows,
     cols,
     entries: Object.freeze(entries),
+    ...(kind === "GF" ? { modulus } : {}),
   });
 }
 
@@ -106,6 +141,9 @@ function requireSameKind(left, right) {
   left = requireMatrix(left);
   right = requireMatrix(right);
   if (left.kind !== right.kind) {
+    throw new TypeError("matrix base rings differ");
+  }
+  if (left.kind === "GF" && left.modulus !== right.modulus) {
     throw new TypeError("matrix base rings differ");
   }
   return [left, right];
@@ -139,7 +177,109 @@ function binary(left, right, operation) {
     left.rows,
     left.cols,
     left.entries.map((entry, index) => operation(entry, right.entries[index])),
+    left.modulus,
   );
+}
+
+function modularRows(matrix) {
+  const rows = [];
+  for (let row = 0; row < matrix.rows; row += 1) {
+    rows.push(
+      matrix.entries.slice(row * matrix.cols, (row + 1) * matrix.cols),
+    );
+  }
+  return rows;
+}
+
+function modularEchelon(matrix, augmentedColumns = 0) {
+  const values = modularRows(matrix);
+  const coefficientColumns = matrix.cols - augmentedColumns;
+  let pivotRow = 0;
+  for (
+    let pivotColumn = 0;
+    pivotColumn < coefficientColumns && pivotRow < matrix.rows;
+    pivotColumn += 1
+  ) {
+    let candidate = pivotRow;
+    while (
+      candidate < matrix.rows &&
+      values[candidate][pivotColumn] === 0n
+    ) {
+      candidate += 1;
+    }
+    if (candidate === matrix.rows) continue;
+    if (candidate !== pivotRow) {
+      [values[candidate], values[pivotRow]] = [
+        values[pivotRow],
+        values[candidate],
+      ];
+    }
+    const inverse = modularInverse(
+      values[pivotRow][pivotColumn], matrix.modulus);
+    for (let col = pivotColumn; col < matrix.cols; col += 1) {
+      values[pivotRow][col] = modular(
+        values[pivotRow][col] * inverse, matrix.modulus);
+    }
+    for (let row = 0; row < matrix.rows; row += 1) {
+      if (row === pivotRow || values[row][pivotColumn] === 0n) continue;
+      const multiple = values[row][pivotColumn];
+      for (let col = pivotColumn; col < matrix.cols; col += 1) {
+        values[row][col] = modular(
+          values[row][col] - multiple * values[pivotRow][col],
+          matrix.modulus,
+        );
+      }
+    }
+    pivotRow += 1;
+  }
+  return { values, rank: pivotRow };
+}
+
+function modularCharpoly(matrix) {
+  const modulus = matrix.modulus;
+
+  function recurse(values) {
+    const size = values.length;
+    if (size === 0) return [1n];
+    const lower = values.slice(1).map((row) => row.slice(1));
+    const previous = recurse(lower);
+    const answer = Array(size + 1).fill(0n);
+    answer[0] = 1n;
+    const firstRow = values[0].slice(1);
+    let vector = values.slice(1).map((row) => row[0]);
+    const moments = [];
+    for (let power = 0; power <= size - 2; power += 1) {
+      let moment = 0n;
+      for (let index = 0; index < firstRow.length; index += 1) {
+        moment = modular(
+          moment + firstRow[index] * vector[index], modulus);
+      }
+      moments.push(moment);
+      if (power < size - 2) {
+        const next = Array(vector.length).fill(0n);
+        for (let row = 0; row < lower.length; row += 1) {
+          for (let col = 0; col < lower.length; col += 1) {
+            next[row] = modular(
+              next[row] + lower[row][col] * vector[col], modulus);
+          }
+        }
+        vector = next;
+      }
+    }
+    for (let degree = 1; degree <= size; degree += 1) {
+      let coefficient =
+        degree < previous.length ? previous[degree] : 0n;
+      coefficient -= values[0][0] * previous[degree - 1];
+      for (let offset = 0; offset <= degree - 2; offset += 1) {
+        coefficient -=
+          moments[offset] * previous[degree - 2 - offset];
+      }
+      answer[degree] = modular(coefficient, modulus);
+    }
+    return answer;
+  }
+
+  return recurse(modularRows(matrix)).reverse();
 }
 
 function integerDeterminant(matrix) {
@@ -556,6 +696,17 @@ export function createPortableMatrixBackend() {
     );
   }
 
+  function nmodMatrix(rows, cols, entries, modulus) {
+    modulus = BigInt(modulus);
+    return make(
+      "GF",
+      rows,
+      cols,
+      entries.map((entry) => modular(entry, modulus)),
+      modulus,
+    );
+  }
+
   function zzMatrixToQQ(matrix) {
     matrix = requireMatrix(matrix);
     if (matrix.kind !== "ZZ") {
@@ -570,6 +721,13 @@ export function createPortableMatrixBackend() {
   }
 
   function matrixAdd(left, right) {
+    if (left.kind === "GF") {
+      return binary(
+        left,
+        right,
+        (a, b) => modular(a + b, left.modulus),
+      );
+    }
     return binary(
       left,
       right,
@@ -580,6 +738,13 @@ export function createPortableMatrixBackend() {
   }
 
   function matrixSub(left, right) {
+    if (left.kind === "GF") {
+      return binary(
+        left,
+        right,
+        (a, b) => modular(a - b, left.modulus),
+      );
+    }
     return binary(
       left,
       right,
@@ -594,7 +759,7 @@ export function createPortableMatrixBackend() {
     if (left.cols !== right.rows) {
       throw new RangeError("matrix dimensions are incompatible for multiplication");
     }
-    const zero = left.kind === "ZZ" ? 0n : rational(0n);
+    const zero = left.kind === "QQ" ? rational(0n) : 0n;
     const entries = [];
     for (let row = 0; row < left.rows; row += 1) {
       for (let col = 0; col < right.cols; col += 1) {
@@ -602,15 +767,19 @@ export function createPortableMatrixBackend() {
         for (let inner = 0; inner < left.cols; inner += 1) {
           const a = left.entries[row * left.cols + inner];
           const b = right.entries[inner * right.cols + col];
-          total =
-            left.kind === "ZZ"
-              ? total + a * b
-              : add(total, mul(a, b));
+          if (left.kind === "ZZ") {
+            total += a * b;
+          } else if (left.kind === "QQ") {
+            total = add(total, mul(a, b));
+          } else {
+            total = modular(total + a * b, left.modulus);
+          }
         }
         entries.push(total);
       }
     }
-    return make(left.kind, left.rows, right.cols, entries);
+    return make(
+      left.kind, left.rows, right.cols, entries, left.modulus);
   }
 
   function matrixNeg(matrix) {
@@ -619,27 +788,32 @@ export function createPortableMatrixBackend() {
       matrix.kind,
       matrix.rows,
       matrix.cols,
-      matrix.entries.map((entry) =>
-        matrix.kind === "ZZ" ? -entry : neg(entry),
-      ),
+      matrix.entries.map((entry) => {
+        if (matrix.kind === "ZZ") return -entry;
+        if (matrix.kind === "QQ") return neg(entry);
+        return modular(-entry, matrix.modulus);
+      }),
+      matrix.modulus,
     );
   }
 
   function matrixScalarMul(matrix, numerator, denominator) {
     matrix = requireMatrix(matrix);
     const scalar = rational(numerator, denominator);
-    if (matrix.kind === "ZZ" && scalar.denominator !== 1n) {
-      throw new TypeError("integer matrices require an integer scalar");
+    if (matrix.kind !== "QQ" && scalar.denominator !== 1n) {
+      throw new TypeError(
+        "integer and prime-field matrices require an integer scalar");
     }
     return make(
       matrix.kind,
       matrix.rows,
       matrix.cols,
-      matrix.entries.map((entry) =>
-        matrix.kind === "ZZ"
-          ? entry * scalar.numerator
-          : mul(entry, scalar),
-      ),
+      matrix.entries.map((entry) => {
+        if (matrix.kind === "ZZ") return entry * scalar.numerator;
+        if (matrix.kind === "QQ") return mul(entry, scalar);
+        return modular(entry * scalar.numerator, matrix.modulus);
+      }),
+      matrix.modulus,
     );
   }
 
@@ -651,7 +825,8 @@ export function createPortableMatrixBackend() {
         entries.push(matrix.entries[col * matrix.cols + row]);
       }
     }
-    return make(matrix.kind, matrix.cols, matrix.rows, entries);
+    return make(
+      matrix.kind, matrix.cols, matrix.rows, entries, matrix.modulus);
   }
 
   function matrixEqual(left, right) {
@@ -659,7 +834,7 @@ export function createPortableMatrixBackend() {
     if (left.rows !== right.rows || left.cols !== right.cols) return false;
     return left.entries.every((entry, index) => {
       const other = right.entries[index];
-      return left.kind === "ZZ"
+      return left.kind !== "QQ"
         ? entry === other
         : entry.numerator === other.numerator &&
             entry.denominator === other.denominator;
@@ -686,6 +861,38 @@ export function createPortableMatrixBackend() {
     if (matrix.kind === "ZZ") return integerDeterminant(matrix);
     if (matrix.rows !== matrix.cols) {
       throw new RangeError("determinant requires a square matrix");
+    }
+    if (matrix.kind === "GF") {
+      const values = modularRows(matrix);
+      let answer = 1n;
+      for (let col = 0; col < matrix.cols; col += 1) {
+        let pivot = col;
+        while (
+          pivot < matrix.rows && values[pivot][col] === 0n
+        ) {
+          pivot += 1;
+        }
+        if (pivot === matrix.rows) return 0n;
+        if (pivot !== col) {
+          [values[pivot], values[col]] = [values[col], values[pivot]];
+          answer = -answer;
+        }
+        const pivotValue = values[col][col];
+        answer = modular(answer * pivotValue, matrix.modulus);
+        const inverse = modularInverse(pivotValue, matrix.modulus);
+        for (let row = col + 1; row < matrix.rows; row += 1) {
+          const multiple = modular(
+            values[row][col] * inverse, matrix.modulus);
+          for (let inner = col; inner < matrix.cols; inner += 1) {
+            values[row][inner] = modular(
+              values[row][inner] -
+                multiple * values[col][inner],
+              matrix.modulus,
+            );
+          }
+        }
+      }
+      return modular(answer, matrix.modulus);
     }
     const values = asRationalRows(matrix);
     let answer = rational(1n);
@@ -716,11 +923,24 @@ export function createPortableMatrixBackend() {
 
   function matrixRank(matrix) {
     matrix = requireMatrix(matrix);
+    if (matrix.kind === "GF") {
+      return modularEchelon(matrix).rank;
+    }
     return echelon(matrix).rank;
   }
 
   function matrixRref(matrix) {
     matrix = requireMatrix(matrix);
+    if (matrix.kind === "GF") {
+      const reduced = modularEchelon(matrix);
+      return make(
+        "GF",
+        matrix.rows,
+        matrix.cols,
+        reduced.values.flat(),
+        matrix.modulus,
+      );
+    }
     const reduced = echelon(matrix);
     return make(
       "QQ",
@@ -760,13 +980,17 @@ export function createPortableMatrixBackend() {
         make("ZZ", nullity, matrix.cols, rows.flat()),
       );
     }
-    const reduced = echelon(matrix);
+    const reduced = matrix.kind === "GF"
+      ? modularEchelon(matrix)
+      : echelon(matrix);
     const pivots = [];
     let pivotColumn = 0;
     for (let row = 0; row < reduced.rank; row += 1) {
       while (
         pivotColumn < matrix.cols &&
-        isZero(reduced.values[row][pivotColumn])
+        (matrix.kind === "GF"
+          ? reduced.values[row][pivotColumn] === 0n
+          : isZero(reduced.values[row][pivotColumn]))
       ) {
         pivotColumn += 1;
       }
@@ -778,21 +1002,23 @@ export function createPortableMatrixBackend() {
       if (pivots.includes(freeColumn)) continue;
       const row = Array.from(
         { length: matrix.cols },
-        () => rational(0n),
+        () => matrix.kind === "GF" ? 0n : rational(0n),
       );
-      row[freeColumn] = rational(1n);
+      row[freeColumn] = matrix.kind === "GF" ? 1n : rational(1n);
       for (let index = 0; index < pivots.length; index += 1) {
-        row[pivots[index]] = neg(
-          reduced.values[index][freeColumn],
-        );
+        row[pivots[index]] = matrix.kind === "GF"
+          ? modular(
+              -reduced.values[index][freeColumn], matrix.modulus)
+          : neg(reduced.values[index][freeColumn]);
       }
       rows.push(row);
     }
     const raw = make(
-      "QQ",
+      matrix.kind,
       rows.length,
       matrix.cols,
       rows.flat(),
+      matrix.modulus,
     );
     return matrixRref(raw);
   }
@@ -805,6 +1031,9 @@ export function createPortableMatrixBackend() {
       );
     }
     const degree = matrix.rows;
+    if (matrix.kind === "GF") {
+      return modularCharpoly(matrix);
+    }
     const exact = matrix.kind === "QQ"
       ? matrix
       : zzMatrixToQQ(matrix);
@@ -857,6 +1086,42 @@ export function createPortableMatrixBackend() {
     if (left.rows !== left.cols || right.rows !== left.rows) {
       throw new RangeError("solve requires a square matrix and compatible right side");
     }
+    if (
+      left.kind === "GF" ||
+      right.kind === "GF"
+    ) {
+      [left, right] = requireSameKind(left, right);
+      if (left.kind !== "GF") {
+        throw new TypeError("matrix base rings differ");
+      }
+      const entries = [];
+      for (let row = 0; row < left.rows; row += 1) {
+        entries.push(
+          ...left.entries.slice(
+            row * left.cols, (row + 1) * left.cols),
+          ...right.entries.slice(
+            row * right.cols, (row + 1) * right.cols),
+        );
+      }
+      const augmented = make(
+        "GF",
+        left.rows,
+        left.cols + right.cols,
+        entries,
+        left.modulus,
+      );
+      const reduced = modularEchelon(augmented, right.cols);
+      if (reduced.rank !== left.rows) {
+        throw new RangeError("matrix is singular");
+      }
+      const solution = [];
+      for (let row = 0; row < left.rows; row += 1) {
+        solution.push(
+          ...reduced.values[row].slice(left.cols));
+      }
+      return make(
+        "GF", left.rows, right.cols, solution, left.modulus);
+    }
     const rows = left.rows;
     const cols = right.cols;
     const entries = [];
@@ -897,12 +1162,17 @@ export function createPortableMatrixBackend() {
         entries.push(row === col ? 1n : 0n);
       }
     }
-    return matrixSolve(matrix, zzMatrix(matrix.rows, matrix.cols, entries));
+    const identity = matrix.kind === "GF"
+      ? nmodMatrix(
+          matrix.rows, matrix.cols, entries, matrix.modulus)
+      : zzMatrix(matrix.rows, matrix.cols, entries);
+    return matrixSolve(matrix, identity);
   }
 
   return Object.freeze({
     zzMatrix,
     qqMatrix,
+    nmodMatrix,
     zzMatrixToQQ,
     matrixAdd,
     matrixSub,
