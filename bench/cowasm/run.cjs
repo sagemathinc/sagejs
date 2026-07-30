@@ -1,23 +1,37 @@
 "use strict";
 
 const { spawnSync } = require("node:child_process");
+const { createHash } = require("node:crypto");
 const {
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmSync,
+  writeFileSync,
 } = require("node:fs");
-const { tmpdir } = require("node:os");
+const {
+  arch,
+  cpus,
+  freemem,
+  loadavg,
+  platform,
+  release,
+  totalmem,
+  tmpdir,
+} = require("node:os");
 const { join } = require("node:path");
 
 const root = join(__dirname, "..", "..");
 const source = join(__dirname, "src", "corpus.py");
 const sagejs = join(root, "bin", "sagejs");
 const expectedPath = join(__dirname, "expected-benchmarks.txt");
+const suitesPath = join(__dirname, "performance-suites.json");
 const allBenchmarkNames = readFileSync(expectedPath, "utf8")
   .split("\n")
   .map((line) => line.trim())
   .filter(Boolean);
 let benchmarkNames = allBenchmarkNames;
+const performanceSuites = JSON.parse(readFileSync(suitesPath, "utf8"));
 
 function usage() {
   console.log(`Usage: node bench/cowasm/run.cjs [options]
@@ -26,12 +40,16 @@ Options:
   --check                  Run the strict Sage.js compatibility corpus once
   --samples N              Measured in-process corpus passes (default: 3)
   --warmups N              In-process JIT warmup passes (default: 1)
-  --only NAME              Measure one exact benchmark name
+  --only NAME              Measure an exact benchmark (repeatable)
+  --suite NAME             Measure a named benchmark suite
   --runtime NAME=PATH      Add a Python-compatible runtime executable
+  --json PATH              Write samples and environment metadata as JSON
+  --budget PATH            Check relative performance budgets from JSON
   --help                   Show this help
 
 Sage.js always runs in Python mode. Performance mode compares Sage.js with
-SAGEJS_COWASM_PYTHON (default: python3), plus any --runtime entries.`);
+SAGEJS_COWASM_PYTHON (default: python3), plus any --runtime entries.
+For example, add SageLite with --runtime sagelite=/path/to/sagelite.`);
 }
 
 function parseNonnegativeInteger(flag, text, { positive = false } = {}) {
@@ -51,8 +69,11 @@ function parseArguments(argv) {
     check: false,
     samples: 3,
     warmups: 1,
-    only: null,
+    only: [],
+    suite: null,
     runtimes: [],
+    jsonPath: null,
+    budgetPath: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -69,7 +90,9 @@ function parseArguments(argv) {
     } else if (argument === "--warmups") {
       options.warmups = parseNonnegativeInteger("--warmups", argv[++index]);
     } else if (argument === "--only") {
-      options.only = argv[++index] || "";
+      options.only.push(argv[++index] || "");
+    } else if (argument === "--suite") {
+      options.suite = argv[++index] || "";
     } else if (argument === "--runtime") {
       const specification = argv[++index] || "";
       const separator = specification.indexOf("=");
@@ -82,6 +105,10 @@ function parseArguments(argv) {
         command: specification.slice(separator + 1),
         args: [source],
       });
+    } else if (argument === "--json") {
+      options.jsonPath = argv[++index] || "";
+    } else if (argument === "--budget") {
+      options.budgetPath = argv[++index] || "";
     } else if (argument === "--help" || argument === "-h") {
       usage();
       process.exit(0);
@@ -243,6 +270,7 @@ function measure(runtime, samples, warmups) {
   return {
     timings,
     firstPass: passAsMap(firstPass),
+    samples: measured.map(passAsMap),
   };
 }
 
@@ -338,17 +366,215 @@ function printPerformanceTable(measurements) {
   }
 }
 
+function commandOutput(command, args) {
+  const result = spawnSync(command, args, {
+    cwd: root,
+    encoding: "utf8",
+  });
+  if (result.error || result.status !== 0) return null;
+  return `${result.stdout || ""}${result.stderr || ""}`.trim() || null;
+}
+
+function gitMetadata() {
+  return {
+    revision: commandOutput("git", ["rev-parse", "HEAD"]),
+    dirty: Boolean(commandOutput("git", ["status", "--porcelain"])),
+  };
+}
+
+function runtimeMetadata(runtime) {
+  let version;
+  if (runtime.key === "sagejs") {
+    version = `Sage.js ${require(join(root, "package.json")).version}; ${process.version}`;
+  } else {
+    version = commandOutput(runtime.command, ["--version"]);
+  }
+  return {
+    key: runtime.key,
+    label: runtime.label,
+    command: runtime.command,
+    version,
+  };
+}
+
+function corpusSourceHash() {
+  const digest = createHash("sha256");
+  const directory = join(__dirname, "src");
+  for (const name of readdirSync(directory).sort()) {
+    if (!name.endsWith(".py")) continue;
+    digest.update(name);
+    digest.update("\0");
+    digest.update(readFileSync(join(directory, name)));
+    digest.update("\0");
+  }
+  return digest.digest("hex");
+}
+
+function ratioSummary(ratios) {
+  if (ratios.length === 0) return null;
+  return {
+    median: median(ratios),
+    geometricMean: Math.exp(
+      ratios.reduce((sum, ratio) => sum + Math.log(ratio), 0) /
+        ratios.length,
+    ),
+  };
+}
+
+function createReport(options, measurements) {
+  const reference = measurements.find(
+    ({ runtime }) => runtime.key === "python",
+  );
+  const benchmarks = {};
+  for (const name of benchmarkNames) {
+    const runtimes = {};
+    for (const { runtime, measurement } of measurements) {
+      const medianUs = measurement.timings.get(name);
+      runtimes[runtime.key] = {
+        firstPassUs: measurement.firstPass.get(name),
+        samplesUs: measurement.samples.map((sample) => sample.get(name)),
+        medianUs,
+        ratioToPython:
+          runtime.key === "python"
+            ? 1
+            : Math.max(medianUs, 0.5) /
+              Math.max(reference.measurement.timings.get(name), 0.5),
+      };
+    }
+    benchmarks[name] = { runtimes };
+  }
+
+  const summaries = {};
+  for (const { runtime, measurement } of measurements) {
+    const ratios = benchmarkNames.map(
+      (name) =>
+        Math.max(measurement.timings.get(name), 0.5) /
+        Math.max(reference.measurement.timings.get(name), 0.5),
+    );
+    summaries[runtime.key] = {
+      ...ratioSummary(ratios),
+      sumOfMediansUs: benchmarkNames.reduce(
+        (sum, name) => sum + measurement.timings.get(name),
+        0,
+      ),
+    };
+  }
+
+  const cpuList = cpus();
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    corpus: {
+      name: "cowasm-python-benchmarks",
+      formatVersion: 2,
+      source: "bench/cowasm/src/corpus.py",
+      sourceTreeSha256: corpusSourceHash(),
+      suite: options.suite,
+      benchmarks: benchmarkNames,
+      warmups: options.warmups,
+      samples: options.samples,
+    },
+    repository: gitMetadata(),
+    host: {
+      platform: platform(),
+      release: release(),
+      architecture: arch(),
+      cpuModel: cpuList[0]?.model || null,
+      logicalCpuCount: cpuList.length,
+      totalMemoryBytes: totalmem(),
+      freeMemoryBytes: freemem(),
+      loadAverage: loadavg(),
+    },
+    runtimes: measurements.map(({ runtime }) => runtimeMetadata(runtime)),
+    benchmarks,
+    summaries,
+  };
+}
+
+function readBudget(path) {
+  const budget = JSON.parse(readFileSync(path, "utf8"));
+  if (
+    budget.schemaVersion !== 1 ||
+    budget.referenceRuntime !== "python" ||
+    budget.runtime !== "sagejs" ||
+    !budget.benchmarks ||
+    typeof budget.benchmarks !== "object"
+  ) {
+    throw new Error(`unsupported performance budget format in ${path}`);
+  }
+  return budget;
+}
+
+function checkBudget(budget, report) {
+  const failures = [];
+  const targetMisses = [];
+  let evaluated = 0;
+  for (const [name, envelope] of Object.entries(budget.benchmarks)) {
+    const benchmark = report.benchmarks[name];
+    if (!benchmark) continue;
+    evaluated += 1;
+    const ratio = benchmark.runtimes.sagejs.ratioToPython;
+    if (envelope.targetRatio && ratio > envelope.targetRatio) {
+      targetMisses.push(
+        `${name}: ${ratio.toFixed(2)}x (target ${envelope.targetRatio.toFixed(2)}x)`,
+      );
+    }
+    if (!Number.isFinite(envelope.maxRatio) || envelope.maxRatio <= 0) {
+      throw new Error(`invalid maxRatio budget for ${JSON.stringify(name)}`);
+    }
+    if (ratio > envelope.maxRatio) {
+      failures.push(
+        `${name}: ${ratio.toFixed(2)}x exceeds ${envelope.maxRatio.toFixed(2)}x`,
+      );
+    }
+  }
+  if (targetMisses.length > 0) {
+    console.log();
+    console.log("Performance targets still open:");
+    for (const message of targetMisses) console.log(`  ${message}`);
+  }
+  if (failures.length > 0) {
+    throw new Error(`performance budget failed:\n  ${failures.join("\n  ")}`);
+  }
+  console.log(
+    `Performance budget: ${evaluated} envelope(s) passed`,
+  );
+}
+
 function main() {
   const options = parseArguments(process.argv.slice(2));
-  if (options.only !== null) {
-    if (!allBenchmarkNames.includes(options.only)) {
-      throw new Error(`unknown benchmark: ${JSON.stringify(options.only)}`);
-    }
-    benchmarkNames = [options.only];
+  if (options.suite !== null && options.only.length > 0) {
+    throw new Error("--suite cannot be combined with --only");
   }
+  if (options.suite !== null) {
+    const suite = performanceSuites.suites[options.suite];
+    if (!suite) {
+      throw new Error(`unknown benchmark suite: ${JSON.stringify(options.suite)}`);
+    }
+    benchmarkNames = suite.benchmarks;
+  } else if (options.only.length > 0) {
+    benchmarkNames = [...new Set(options.only)];
+  } else if (options.budgetPath !== null) {
+    benchmarkNames = Object.keys(readBudget(options.budgetPath).benchmarks);
+  }
+  for (const name of benchmarkNames) {
+    if (!allBenchmarkNames.includes(name)) {
+      throw new Error(`unknown benchmark: ${JSON.stringify(name)}`);
+    }
+  }
+  const selectedBenchmarks = new Set(benchmarkNames);
+  benchmarkNames = allBenchmarkNames.filter((name) =>
+    selectedBenchmarks.has(name));
   if (options.check) {
-    if (options.only !== null) {
-      throw new Error("--only cannot be combined with --check");
+    if (
+      options.only.length > 0 ||
+      options.suite !== null ||
+      options.jsonPath !== null ||
+      options.budgetPath !== null
+    ) {
+      throw new Error(
+        "--check cannot be combined with performance selection or reporting options",
+      );
     }
     const sagejsRuntime = {
       key: "sagejs",
@@ -387,7 +613,9 @@ function main() {
         command: process.execPath,
         args: [compiled],
         corpusArguments:
-          options.only === null ? [] : ["--only", options.only],
+          benchmarkNames.length === allBenchmarkNames.length
+            ? []
+            : benchmarkNames.flatMap((name) => ["--only", name]),
       },
       {
         key: "python",
@@ -395,12 +623,16 @@ function main() {
         command: process.env.SAGEJS_COWASM_PYTHON || "python3",
         args: [source],
         corpusArguments:
-          options.only === null ? [] : ["--only", options.only],
+          benchmarkNames.length === allBenchmarkNames.length
+            ? []
+            : benchmarkNames.flatMap((name) => ["--only", name]),
       },
       ...options.runtimes.map((runtime) => ({
         ...runtime,
         corpusArguments:
-          options.only === null ? [] : ["--only", options.only],
+          benchmarkNames.length === allBenchmarkNames.length
+            ? []
+            : benchmarkNames.flatMap((name) => ["--only", name]),
       })),
     ];
     const keys = new Set();
@@ -423,6 +655,14 @@ function main() {
       });
     }
     printPerformanceTable(measurements);
+    const report = createReport(options, measurements);
+    if (options.jsonPath !== null) {
+      writeFileSync(options.jsonPath, `${JSON.stringify(report, null, 2)}\n`);
+      console.log(`Wrote benchmark report to ${options.jsonPath}`);
+    }
+    if (options.budgetPath !== null) {
+      checkBudget(readBudget(options.budgetPath), report);
+    }
   } finally {
     rmSync(temporaryDirectory, { recursive: true, force: true });
   }

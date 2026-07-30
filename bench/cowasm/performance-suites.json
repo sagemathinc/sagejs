@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "suites": {
+    "numbers": {
+      "description": "Exact-integer arithmetic from CoWasm's numbers.py",
+      "benchmarks": [
+        "pi(10**5)",
+        "operator_add",
+        "gcd",
+        "xgcd",
+        "bench_inverse_mod",
+        "sum_loop",
+        "sum_range",
+        "sum_reversed"
+      ]
+    }
+  }
+}

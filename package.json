@@ -105,6 +105,8 @@
     "bench:complex": "node bench/compare-complex.cjs",
     "bench:finite-fields": "node bench/compare-finite-fields.cjs",
     "bench:cowasm": "node bench/cowasm/run.cjs",
+    "bench:numbers": "node bench/cowasm/run.cjs --suite numbers",
+    "bench:numbers:check": "node bench/cowasm/run.cjs --budget bench/cowasm/numbers-budget.json",
     "bench:micropython": "node bench/micropython-conformance.cjs",
     "bench:cowasm:ceilings": "node bench/cowasm/direct-ceilings.cjs",
     "bench:native": "node bench/compare-native-compiler.cjs",

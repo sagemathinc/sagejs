@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "referenceRuntime": "python",
+  "runtime": "sagejs",
+  "description": "Noise-tolerant regression ceilings and improvement targets for CoWasm numbers.py",
+  "benchmarks": {
+    "pi(10**5)": {
+      "targetRatio": 2.0,
+      "maxRatio": 4.0
+    },
+    "operator_add": {
+      "targetRatio": 5.0,
+      "maxRatio": 45.0
+    },
+    "gcd": {
+      "targetRatio": 1.25,
+      "maxRatio": 2.0
+    },
+    "xgcd": {
+      "targetRatio": 3.0,
+      "maxRatio": 9.0
+    },
+    "bench_inverse_mod": {
+      "targetRatio": 3.0,
+      "maxRatio": 10.0
+    },
+    "sum_loop": {
+      "targetRatio": 1.0,
+      "maxRatio": 2.0
+    },
+    "sum_range": {
+      "targetRatio": 0.1,
+      "maxRatio": 1.0
+    },
+    "sum_reversed": {
+      "targetRatio": 3.0,
+      "maxRatio": 12.0
+    }
+  }
+}

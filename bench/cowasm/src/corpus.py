@@ -37,11 +37,12 @@ def integer_option(name, fallback):
     return fallback
 
 
-def string_option(name, fallback):
+def string_options(name):
+    values = []
     for index, argument in enumerate(argv):
         if argument == name and index + 1 < len(argv):
-            return argv[index + 1]
-    return fallback
+            values.append(argv[index + 1])
+    return values
 
 
 def run_pass(kind, sample, benchmarks):
@@ -58,14 +59,14 @@ def run_corpus():
     if warmups < 0 or samples < 1:
         raise ValueError("warmups must be nonnegative and samples positive")
     benchmarks = registered_benchmarks()
-    selected = string_option("--only", None)
-    if selected is not None:
+    selected = string_options("--only")
+    if selected:
         benchmarks = [
             benchmark for benchmark in benchmarks
-            if benchmark[0] == selected
+            if benchmark[0] in selected
         ]
-        if len(benchmarks) != 1:
-            raise ValueError("unknown benchmark: " + selected)
+        if len(benchmarks) != len(set(selected)):
+            raise ValueError("unknown or duplicate benchmark selection")
     print("SAGEJS_COWASM_CORPUS", FORMAT_VERSION)
     for sample in range(warmups):
         run_pass("WARMUP", sample, benchmarks)

@@ -31,6 +31,8 @@ From the Sage.js repository root:
 ```sh
 pnpm test:cowasm
 pnpm bench:cowasm
+pnpm bench:numbers
+pnpm bench:numbers:check
 pnpm bench:cowasm:ceilings
 ```
 
@@ -54,18 +56,47 @@ pnpm bench:cowasm -- --samples 5 --warmups 2
 ```
 
 Use `--only` with an exact benchmark name for focused profiling without
-changing the common corpus:
+changing the common corpus. Repeat the option to select several cases:
 
 ```sh
-pnpm bench:cowasm -- --only ord_builtin --samples 7 --warmups 3
+pnpm bench:cowasm -- --only gcd --only xgcd --samples 7 --warmups 3
 ```
 
 Set `SAGEJS_COWASM_PYTHON` to select another Python executable. Pass an
-additional runtime explicitly to include Sage:
+additional runtime explicitly to include SageLite or another compatible
+interpreter:
 
 ```sh
-pnpm bench:cowasm -- --runtime sage=/path/to/sage
+pnpm bench:numbers -- --runtime sagelite=/path/to/sagelite
 ```
+
+`bench:numbers` is the first named performance suite. It covers the eight
+integer workloads in upstream `numbers.py` and keeps them in one persistent
+process per runtime. Named suites live in `performance-suites.json`; they are
+selections from the unchanged compatibility corpus, not rewritten benchmark
+implementations.
+
+Write a machine-readable report when comparing revisions or machines:
+
+```sh
+pnpm bench:numbers -- --samples 7 --warmups 3 --json /tmp/numbers.json
+```
+
+The versioned JSON contains every sample, first-pass and warm medians, ratios
+to CPython, runtime versions, the complete corpus source-tree hash, Git state,
+and host CPU/load/memory metadata. Generated reports are observations, so they
+are not committed as source.
+
+`bench:numbers:check` applies `numbers-budget.json`. Each workload has two
+relative-to-CPython thresholds:
+
+- `targetRatio` is an improvement goal and is reported without failing.
+- `maxRatio` is a deliberately loose regression ceiling and fails the command.
+
+Relative ceilings remove most differences between fast and slow machines, but
+they cannot eliminate scheduler noise. Use several warmed samples on a quiet
+host before tightening a ceiling. Absolute timings and workload-weighted totals
+remain diagnostic data rather than pass/fail criteria.
 
 This is a historical language-runtime corpus, not a substitute for
 domain-specific mathematical benchmarks. Its value is that compatibility and
