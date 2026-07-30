@@ -119,6 +119,21 @@ assert.equal(
   run(
     ["--python"],
     [
+      "z = complex(3, 4)",
+      "print(type(z), z.real, z.imag, abs(z))",
+      "print(z * z, z + 2, 2 - z, z.conjugate())",
+      "",
+    ].join("\n"),
+  ).trim(),
+  [
+    "<class 'complex'> 3 4 5",
+    "(-7+24j) (5+4j) (-1-4j) (3-4j)",
+  ].join("\n"),
+);
+assert.equal(
+  run(
+    ["--python"],
+    [
       "def pooled_constant(): return 2",
       "",
       "print(pooled_constant())",

@@ -7,6 +7,8 @@ dist
 *.tasks
 *.chat
 *.wasm
+__pycache__/
+*.pyc
 bench/.native-kernel-cache
 bench/.native-poc
 build/sea

@@ -584,6 +584,173 @@ def ComplexNumber(
     return CC(real, imag)
 
 
+def _python_complex_parts(value: Any) -> tuple[float, float]:
+    if isinstance(value, PythonComplex):
+        return value._real, value._imag
+    if isinstance(value, RealNumberElement):
+        return float(value), 0.0
+    if isinstance(value, sage.Rational):
+        return (
+            runtime.number(value._numerator)
+            / runtime.number(value._denominator),
+            0.0
+        )
+    if runtime.is_exact_integer(value):
+        return runtime.number(value), 0.0
+    if runtime.jstype(value) == 'number':
+        return value, 0.0
+    raise TypeError('complex() argument must be a number')
+
+
+@runtime.lightweight_math_class
+class PythonComplex:
+    """The ordinary Python double-precision ``complex`` builtin."""
+
+    from __python__ import no_bound_methods  # type: ignore
+
+    def __init__(self, real: Any = 0, imag: Any = 0) -> None:
+        real_part = _python_complex_parts(real)
+        imag_part = _python_complex_parts(imag)
+        self._real = real_part[0] - imag_part[1]
+        self._imag = real_part[1] + imag_part[0]
+        runtime.object.freeze(self)
+
+    @property
+    def real(self) -> float:
+        return self._real
+
+    @property
+    def imag(self) -> float:
+        return self._imag
+
+    def __add__(self, other: Any) -> Any:
+        try:
+            parts = _python_complex_parts(other)
+        except TypeError:
+            return NotImplemented
+        return PythonComplex(
+            self._real + parts[0],
+            self._imag + parts[1],
+        )
+
+    __radd__ = __add__
+
+    def __sub__(self, other: Any) -> Any:
+        try:
+            parts = _python_complex_parts(other)
+        except TypeError:
+            return NotImplemented
+        return PythonComplex(
+            self._real - parts[0],
+            self._imag - parts[1],
+        )
+
+    def __rsub__(self, other: Any) -> Any:
+        try:
+            parts = _python_complex_parts(other)
+        except TypeError:
+            return NotImplemented
+        return PythonComplex(
+            parts[0] - self._real,
+            parts[1] - self._imag,
+        )
+
+    def __mul__(self, other: Any) -> Any:
+        try:
+            parts = _python_complex_parts(other)
+        except TypeError:
+            return NotImplemented
+        return PythonComplex(
+            self._real * parts[0] - self._imag * parts[1],
+            self._real * parts[1] + self._imag * parts[0],
+        )
+
+    __rmul__ = __mul__
+
+    def __truediv__(self, other: Any) -> Any:
+        try:
+            parts = _python_complex_parts(other)
+        except TypeError:
+            return NotImplemented
+        denominator = parts[0] * parts[0] + parts[1] * parts[1]
+        if denominator == 0:
+            raise ZeroDivisionError('complex division by zero')
+        return PythonComplex(
+            (
+                self._real * parts[0]
+                + self._imag * parts[1]
+            ) / denominator,
+            (
+                self._imag * parts[0]
+                - self._real * parts[1]
+            ) / denominator,
+        )
+
+    def __rtruediv__(self, other: Any) -> Any:
+        try:
+            parts = _python_complex_parts(other)
+        except TypeError:
+            return NotImplemented
+        denominator = (
+            self._real * self._real
+            + self._imag * self._imag
+        )
+        if denominator == 0:
+            raise ZeroDivisionError('complex division by zero')
+        return PythonComplex(
+            (
+                parts[0] * self._real
+                + parts[1] * self._imag
+            ) / denominator,
+            (
+                parts[1] * self._real
+                - parts[0] * self._imag
+            ) / denominator,
+        )
+
+    def __neg__(self) -> PythonComplex:
+        return PythonComplex(-self._real, -self._imag)
+
+    def __pos__(self) -> PythonComplex:
+        return self
+
+    def __abs__(self) -> float:
+        return runtime.math.hypot(self._real, self._imag)
+
+    def __bool__(self) -> bool:
+        return self._real != 0 or self._imag != 0
+
+    def __eq__(self, other: object) -> bool:
+        try:
+            parts = _python_complex_parts(other)
+        except TypeError:
+            return False
+        return (
+            self._real == parts[0]
+            and self._imag == parts[1]
+        )
+
+    def conjugate(self) -> PythonComplex:
+        return PythonComplex(self._real, -self._imag)
+
+    def __repr__(self) -> str:
+        real_text = str(self._real)
+        imag_text = str(abs(self._imag))
+        sign = '-' if self._imag < 0 else '+'
+        if self._real == 0:
+            return (
+                '-' if self._imag < 0 else ''
+            ) + imag_text + 'j'
+        return '(' + real_text + sign + imag_text + 'j)'
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+complex = PythonComplex
+runtime.set_class_repr(PythonComplex, "<class 'complex'>")
+
+
 runtime.set_class_repr(
     RealNumberElement, "<class 'RealNumber'>")
 runtime.set_class_repr(

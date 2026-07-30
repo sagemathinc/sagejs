@@ -443,6 +443,11 @@ sagepython program.py
 sagepython
 ```
 
+Python mode provides the ordinary double-precision `complex` builtin,
+including mixed real arithmetic, division, absolute value, conjugation, and
+Python-style representation. This is distinct from Sage mode's
+arbitrary-precision `CC` parent.
+
 This is a **Python-like language**, not an implementation of the complete
 Python language or standard library. Programs can directly load JavaScript
 packages with `require(...)`, and compiled code runs as JavaScript rather than
