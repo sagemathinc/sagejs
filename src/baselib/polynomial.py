@@ -1,4 +1,4 @@
-# Univariate polynomial parents and elements backed by FLINT.
+# Univariate and multivariate polynomial parents and elements backed by FLINT.
 #
 # Copyright (C) 2026 Sage.js contributors
 # License: GPL-3.0-only
@@ -463,6 +463,311 @@ class PolynomialRingParent(sage.Parent):
 
 
 @runtime.callable_instance_class
+@runtime.lightweight_math_class
+class MultivariatePolynomialElement(sage.Element):
+
+    def __init__(
+        self, parent: MultivariatePolynomialRingParent, native_value: Any,
+    ) -> None:
+        self._parent = parent
+        self._native = native_value
+        runtime.object.freeze(self)
+
+    def _new(self, native_value: Any) -> MultivariatePolynomialElement:
+        return MultivariatePolynomialElement(self._parent, native_value)
+
+    def _add_(
+        self, other: MultivariatePolynomialElement,
+    ) -> MultivariatePolynomialElement:
+        return self._new(runtime.flint_backend().mpolyAdd(
+            self._native, other._native))
+
+    def _sub_(
+        self, other: MultivariatePolynomialElement,
+    ) -> MultivariatePolynomialElement:
+        return self._new(runtime.flint_backend().mpolySub(
+            self._native, other._native))
+
+    def _mul_(
+        self, other: MultivariatePolynomialElement,
+    ) -> MultivariatePolynomialElement:
+        return self._new(runtime.flint_backend().mpolyMul(
+            self._native, other._native))
+
+    def __add__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('add', self, other)
+
+    def __sub__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('sub', self, other)
+
+    def __mul__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('mul', self, other)
+
+    def __neg__(self) -> MultivariatePolynomialElement:
+        return self._new(runtime.flint_backend().mpolyNeg(self._native))
+
+    def __pow__(self, exponent: int) -> MultivariatePolynomialElement:
+        exponent = runtime.integer_bigint(exponent)
+        if exponent < 0:
+            raise ValueError('negative polynomial exponent')
+        return self._new(runtime.flint_backend().mpolyPow(
+            self._native, runtime.number(exponent)))
+
+    def __floordiv__(
+        self, other: object,
+    ) -> MultivariatePolynomialElement:
+        operands = runtime.coercion_model.coercePair(self, other)
+        if not isinstance(
+            operands.left, MultivariatePolynomialElement,
+        ):
+            raise TypeError('polynomial division requires polynomials')
+        return MultivariatePolynomialElement(
+            operands.parent,
+            runtime.flint_backend().mpolyDivExact(
+                operands.left._native, operands.right._native),
+        )
+
+    def _eq_(self, other: MultivariatePolynomialElement) -> bool:
+        return runtime.flint_backend().mpolyEqual(
+            self._native, other._native)
+
+    def __eq__(self, other: object) -> bool:
+        return runtime.coercion_model.equals(self, other)
+
+    def gcd(self, other: object) -> MultivariatePolynomialElement:
+        operands = runtime.coercion_model.coercePair(self, other)
+        if not isinstance(
+            operands.left, MultivariatePolynomialElement,
+        ):
+            raise TypeError('polynomial gcd requires polynomials')
+        return MultivariatePolynomialElement(
+            operands.parent,
+            runtime.flint_backend().mpolyGcd(
+                operands.left._native, operands.right._native),
+        )
+
+    def degree(self, variable: Any = None) -> int:
+        if variable is None:
+            return runtime.flint_backend().mpolyTotalDegree(self._native)
+        index = self._parent._generator_index(variable)
+        return runtime.flint_backend().mpolyDegree(self._native, index)
+
+    def total_degree(self) -> int:
+        return runtime.flint_backend().mpolyTotalDegree(self._native)
+
+    def number_of_terms(self) -> int:
+        return runtime.flint_backend().mpolyLength(self._native)
+
+    def __repr__(self) -> str:
+        raw = runtime.flint_backend().mpolyToString(
+            self._native, self._parent.variable_names())
+        raw = raw.replace(runtime.regexp(r'\s+', 'g'), '')
+        raw = raw.replace(runtime.regexp(r'\+', 'g'), ' + ').replace(
+            runtime.regexp(r'([^-])-+', 'g'), '$1 - ')
+        return raw.replace(
+            runtime.regexp(r'(^|[+-] )1\*', 'g'), '$1')
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class MultivariatePolynomialRingParent(sage.Parent):
+
+    def __init__(
+        self,
+        base: sage.Parent,
+        variables: list[str],
+        order: str = 'degrevlex',
+    ) -> None:
+        self._base = base
+        self._variables = runtime.math_tuple(variables)
+        self._order = order
+        self._name = (
+            'Multivariate Polynomial Ring in '
+            + ', '.join(variables)
+            + ' over ' + str(base)
+        )
+        self._construction = {
+            'kind': 'multivariate_polynomial',
+            'base': base,
+            'variables': self._variables,
+            'order': order,
+        }
+        if base._kind == 'ZZ':
+            kind = 'zz'
+            modulus = runtime.bigint(0)
+        elif base._kind == 'QQ':
+            kind = 'qq'
+            modulus = runtime.bigint(0)
+        elif base._kind in ['GF', 'ZMOD']:
+            kind = 'nmod'
+            modulus = base._modulus
+        else:
+            raise TypeError(
+                'multivariate FLINT polynomials currently support '
+                + 'ZZ, QQ, GF(p), and Zmod(n)')
+        self._nativeContext = runtime.flint_backend().mpolyContext(
+            kind, len(variables), order, modulus)
+
+    def base_ring(self) -> sage.Parent:
+        return self._base
+
+    def variable_names(self) -> Any:
+        return self._variables
+
+    def ngens(self) -> int:
+        return len(self._variables)
+
+    def gen(self, index: int = 0) -> MultivariatePolynomialElement:
+        if not runtime.is_exact_integer(index):
+            raise TypeError('generator index must be an integer')
+        index = int(index)
+        if index < 0 or index >= len(self._variables):
+            raise IndexError('generator index out of range')
+        return MultivariatePolynomialElement(
+            self,
+            runtime.flint_backend().mpolyGen(
+                self._nativeContext, index),
+        )
+
+    def gens(self) -> Any:
+        answer = []
+        for index in range(len(self._variables)):
+            answer.append(self.gen(index))
+        return runtime.math_tuple(answer)
+
+    def objgens(self) -> tuple[Any, Any]:
+        return runtime.math_tuple([self, self.gens()])
+
+    def _first_ngens(
+        self, count: int,
+    ) -> list[MultivariatePolynomialElement]:
+        if count > len(self._variables):
+            raise ValueError('not enough polynomial generators')
+        answer = []
+        for index in range(count):
+            answer.append(self.gen(index))
+        return answer
+
+    def _generator_index(self, variable: Any) -> int:
+        if isinstance(variable, str):
+            for index in range(len(self._variables)):
+                if self._variables[index] == variable:
+                    return index
+        elif (
+            isinstance(variable, MultivariatePolynomialElement)
+            and variable._parent is self
+        ):
+            for index in range(len(self._variables)):
+                if variable == self.gen(index):
+                    return index
+        raise ValueError('not a generator of this polynomial ring')
+
+    def _constant(
+        self, value: Any,
+    ) -> MultivariatePolynomialElement:
+        if self._base._kind == 'ZZ':
+            numerator = runtime.integer_bigint(value)
+            denominator = runtime.bigint(1)
+        elif self._base._kind == 'QQ':
+            rational = self._base(value)
+            numerator = rational._numerator
+            denominator = rational._denominator
+        elif self._base._kind in ['GF', 'ZMOD']:
+            residue = self._base(value)
+            numerator = residue._value
+            denominator = runtime.bigint(1)
+        else:
+            raise TypeError('unsupported coefficient parent')
+        return MultivariatePolynomialElement(
+            self,
+            runtime.flint_backend().mpolyConstant(
+                self._nativeContext, numerator, denominator),
+        )
+
+    def _coercePolynomial(
+        self, value: object,
+    ) -> MultivariatePolynomialElement:
+        if not isinstance(value, MultivariatePolynomialElement):
+            raise TypeError('expected a multivariate polynomial')
+        if value._parent is self:
+            return value
+        source = value._parent
+        if (
+            source._construction is runtime.undefined
+            or source._construction.kind != 'multivariate_polynomial'
+            or source.base_ring()._kind != self._base._kind
+            or source.ngens() != self.ngens()
+            or source._order != self._order
+        ):
+            raise TypeError('incompatible multivariate polynomial rings')
+        if (
+            self._base._kind in ['GF', 'ZMOD']
+            and source.base_ring()._modulus != self._base._modulus
+        ):
+            raise TypeError('incompatible multivariate coefficient rings')
+        mapping = []
+        canonical = self.has_coerce_map_from(source)
+        for source_index in range(source.ngens()):
+            if canonical:
+                source_name = source._variables[source_index]
+                target_index = self._variables.index(source_name)
+                mapping.append(target_index)
+            else:
+                mapping.append(source_index)
+        return MultivariatePolynomialElement(
+            self,
+            runtime.flint_backend().mpolyComposeGen(
+                value._native, self._nativeContext, mapping),
+        )
+
+    def has_coerce_map_from(self, source: Any) -> bool:
+        if source is self:
+            return True
+        if not isinstance(source, MultivariatePolynomialRingParent):
+            return False
+        if (
+            source.base_ring()._kind != self._base._kind
+            or source.ngens() != self.ngens()
+            or source._order != self._order
+        ):
+            return False
+        if (
+            self._base._kind in ['GF', 'ZMOD']
+            and source.base_ring()._modulus != self._base._modulus
+        ):
+            return False
+        for name in source._variables:
+            if name not in self._variables:
+                return False
+        return True
+
+    def coerce(self, value: Any) -> MultivariatePolynomialElement:
+        if (
+            isinstance(value, MultivariatePolynomialElement)
+            and not self.has_coerce_map_from(value._parent)
+        ):
+            raise TypeError(
+                'no canonical coercion\nfrom ' + str(value._parent)
+                + '\nto ' + str(self))
+        return self(value)
+
+    def __call__(
+        self, value: Any = 0,
+    ) -> MultivariatePolynomialElement:
+        if isinstance(value, MultivariatePolynomialElement):
+            return self._coercePolynomial(value)
+        return self._constant(value)
+
+    def __contains__(self, value: object) -> bool:
+        return (
+            isinstance(value, MultivariatePolynomialElement)
+            and value._parent is self
+        )
+
+
+@runtime.callable_instance_class
 class RationalFunctionFieldParent(sage.Parent):
 
     def __init__(self, polynomial_ring: PolynomialRingParent) -> None:
@@ -587,24 +892,98 @@ class RationalFunctionElement(sage.Element):
 ρσ_polynomial_ring_cache = runtime.map()
 
 
+def _polynomial_variable_names(count: Any, names: Any) -> list[str]:
+    if runtime.is_exact_integer(names):
+        count = int(names)
+        names = 'x'
+    if isinstance(names, (list, tuple)):
+        answer = list(names)
+    elif isinstance(names, str):
+        if ',' in names:
+            answer = []
+            for part in names.split(','):
+                answer.append(part.strip())
+        elif count is not runtime.undefined and int(count) > 1:
+            number = int(count)
+            if len(names) == number and number > 1:
+                answer = list(names)
+            else:
+                answer = []
+                for index in range(number):
+                    answer.append(names + str(index))
+        else:
+            answer = [names]
+    else:
+        raise TypeError(
+            'polynomial variable names must be a string or a sequence')
+    if count is not runtime.undefined and len(answer) != int(count):
+        raise ValueError('incorrect number of polynomial variable names')
+    if len(answer) == 0:
+        raise ValueError('a polynomial ring needs at least one variable')
+    seen = runtime.map()
+    for name in answer:
+        if (
+            not isinstance(name, str)
+            or not runtime.regexp(
+                r'^[A-Za-z_][A-Za-z0-9_]*$'
+            ).test(name)
+        ):
+            raise TypeError(
+                'polynomial variables must be valid identifiers')
+        if seen.has(name):
+            raise ValueError('polynomial variable names must be distinct')
+        seen.set(name, True)
+    return answer
+
+
+def _multivariate_polynomial_ring(
+    base: sage.Parent,
+    variables: list[str],
+    order: str,
+) -> MultivariatePolynomialRingParent:
+    if (
+        base._kind not in ['ZZ', 'QQ']
+        and base._kind not in ['GF', 'ZMOD']
+    ):
+        raise TypeError(
+            'FLINT multivariate polynomial rings currently support '
+            + 'ZZ, QQ, GF(p), and Zmod(n)')
+    by_variable = ρσ_polynomial_ring_cache.get(base)
+    if by_variable is runtime.undefined:
+        by_variable = runtime.map()
+        ρσ_polynomial_ring_cache.set(base, by_variable)
+    cache_key = ','.join(variables) + '|multivariate|' + order
+    parent = by_variable.get(cache_key)
+    if parent is runtime.undefined:
+        parent = MultivariatePolynomialRingParent(
+            base, variables, order)
+        by_variable.set(cache_key, parent)
+    return parent
+
+
 def PolynomialRing(
     base: sage.Parent,
     variable: Any = None,
     names: Any = None,
     sparse: bool = False,
     implementation: Any = None,
-) -> PolynomialRingParent:
+    order: str = 'degrevlex',
+) -> Any:
     if (variable is not None and runtime.jstype(variable) == 'object'
             and variable[runtime.kwargs_symbol]):
         names = variable.names
         variable = None
     if names is not None:
-        variable = names
-    if isinstance(variable, list):
-        if len(variable) != 1:
-            raise TypeError(
-                'multivariate polynomial rings are not implemented yet')
-        variable = variable[0]
+        if runtime.is_exact_integer(variable):
+            variable = _polynomial_variable_names(
+                int(_untyped(variable)), names)
+        else:
+            variable = names
+    variable_names = _polynomial_variable_names(runtime.undefined, variable)
+    if len(variable_names) > 1:
+        return _multivariate_polynomial_ring(
+            base, variable_names, order)
+    variable = variable_names[0]
     if (
         base is not sage.ZZ
         and base is not sage.QQ

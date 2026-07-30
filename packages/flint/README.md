@@ -42,6 +42,13 @@ coercion operate directly on C-owned values. JavaScript receives only an
 opaque object with a native finalizer; coefficients are converted back only
 when formatting is explicitly requested.
 
+Multivariate `fmpz_mpoly`, `fmpq_mpoly`, and `nmod_mpoly` values follow the
+same ownership model. A retained native context records the number of
+variables, term order, and modulus. The narrow API provides constants,
+generators, arithmetic, powers, exact division, GCD, degrees, term counts,
+and generator composition for Sage-compatible conversions between parents;
+only pretty-printing crosses polynomial data back into JavaScript.
+
 The `nmod_poly` API additionally provides GCD, irreducibility testing,
 factorization, and roots over word-sized prime fields. Factorization returns
 opaque native factors and a separate scalar unit. Sage.js wraps these as

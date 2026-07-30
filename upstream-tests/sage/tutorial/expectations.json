@@ -42,7 +42,7 @@
     {
       "reason": "requires a multivariate polynomial and algebraic-geometry subsystem",
       "file": "src/doc/en/tutorial/tour_advanced.rst",
-      "lines": [15, 16, 17, 19, 22, 35, 36, 56, 57, 58, 62, 71]
+      "lines": [15, 16, 17, 19, 22, 35, 36, 57, 58, 62, 71]
     },
     {
       "reason": "requires an elliptic-curve subsystem, algebraic closures, and database integration",
@@ -95,9 +95,9 @@
       "lines": [91, 94]
     },
     {
-      "reason": "requires the multivariate polynomial element model",
+      "reason": "requires multivariate polynomials over extension fields",
       "file": "src/doc/en/tutorial/tour_coercion.rst",
-      "lines": [43, 44, 45]
+      "lines": [44, 45]
     },
     {
       "reason": "Sage concrete polynomial element classes and selectable NTL implementation identities are not part of the portable FLINT object model",
@@ -123,11 +123,6 @@
       "reason": "Sage.js intentionally interns optimized small JavaScript integers instead of allocating Sage Integer wrappers",
       "file": "src/doc/en/tutorial/tour_coercion.rst",
       "lines": [172, 174]
-    },
-    {
-      "reason": "requires multivariate polynomial coercion maps and generator-by-position conversion semantics",
-      "file": "src/doc/en/tutorial/tour_coercion.rst",
-      "lines": [275, 276, 277, 279, 281, 283, 294, 295, 297, 299, 301, 344, 346, 348]
     },
     {
       "reason": "symbolic functions are native compiled callables rather than Sage's Function_sin wrapper class",
@@ -160,9 +155,9 @@
       "lines": [154, 156, 196, 198, 199, 201, 203, 211]
     },
     {
-      "reason": "requires multivariate polynomial rings and a Singular-class ideal/Groebner backend",
+      "reason": "requires a Singular-class ideal/Groebner backend",
       "file": "src/doc/en/tutorial/tour_polynomial.rst",
-      "lines": [223, 231, 233, 241, 248, 249, 251, 259, 260, 263, 275, 276, 277, 278, 289, 292, 306, 308, 322, 325]
+      "lines": [289, 292, 306, 308, 322, 325]
     },
     {
       "reason": "requires approximate-coefficient polynomial arithmetic and numerical root factorization",

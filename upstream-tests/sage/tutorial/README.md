@@ -10,7 +10,7 @@ directive remains skipped. Sage.js-specific exclusions and known compatibility
 gaps live separately in `expectations.json`; stale expected failures are test
 failures.
 
-The current pinned gate has 410 passing examples, 6 upstream skips, and 246
+The current pinned gate has 440 passing examples, 6 upstream skips, and 216
 location-specific expected failures. See `BOUNDARIES.md` for the point at which
 remaining work requires major subsystem choices rather than low-hanging
 compatibility additions.

@@ -343,6 +343,55 @@ class CoercionModel:
             )
         if (
             left_construction is not runtime.undefined
+            and left_construction['kind'] == 'multivariate_polynomial'
+        ):
+            if (
+                right_construction is not runtime.undefined
+                and right_construction['kind']
+                    == 'multivariate_polynomial'
+            ):
+                if left is not right:
+                    raise TypeError(
+                        'no canonical coercion between these '
+                        + 'multivariate polynomial rings')
+                return self._cache(
+                    left, right,
+                    CoercionPlan(left, _identity, _identity),
+                )
+            def coerce_left_mpolynomial(value: Any) -> Any:
+                return _untyped(left)._coercePolynomial(value)
+
+            def coerce_right_mconstant(value: Any) -> Any:
+                return _untyped(left)._constant(value)
+
+            return self._cache(
+                left, right,
+                CoercionPlan(
+                    left,
+                    coerce_left_mpolynomial,
+                    coerce_right_mconstant,
+                ),
+            )
+        if (
+            right_construction is not runtime.undefined
+            and right_construction['kind'] == 'multivariate_polynomial'
+        ):
+            def coerce_left_mconstant(value: Any) -> Any:
+                return _untyped(right)._constant(value)
+
+            def coerce_right_mpolynomial(value: Any) -> Any:
+                return _untyped(right)._coercePolynomial(value)
+
+            return self._cache(
+                left, right,
+                CoercionPlan(
+                    right,
+                    coerce_left_mconstant,
+                    coerce_right_mpolynomial,
+                ),
+            )
+        if (
+            left_construction is not runtime.undefined
             and left_construction['kind'] == 'polynomial'
         ):
             if (

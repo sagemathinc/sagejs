@@ -9,7 +9,8 @@
         "src/addon.c",
         "src/extension_field.c",
         "src/floating.c",
-        "src/matrix.c"
+        "src/matrix.c",
+        "src/multivariate.c"
       ],
       "include_dirs": ["<(native_prefix)/include", "include"],
       "libraries": [

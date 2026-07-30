@@ -81,6 +81,64 @@ assert.throws(
 );
 assert.throws(() => flint.qqPolyConstant(1n, 0n), /denominator is zero/);
 
+for (const [kind, modulus, expected] of [
+  ["zz", 0n, "x^2+2*y"],
+  ["qq", 0n, "x^2 + 2*y"],
+  ["nmod", 5n, "x^2+2*y"],
+]) {
+  const context = flint.mpolyContext(kind, 3, "degrevlex", modulus);
+  const x = flint.mpolyGen(context, 0);
+  const y = flint.mpolyGen(context, 1);
+  const two = flint.mpolyConstant(context, 2n, 1n);
+  const polynomial = flint.mpolyAdd(
+    flint.mpolyPow(x, 2),
+    flint.mpolyMul(two, y),
+  );
+  assert.equal(
+    flint.mpolyToString(polynomial, ["x", "y", "z"]),
+    expected,
+  );
+  assert.equal(flint.mpolyLength(polynomial), 2);
+  assert.equal(flint.mpolyDegree(polynomial, 0), 2);
+  assert.equal(flint.mpolyTotalDegree(polynomial), 2);
+  const multiple = flint.mpolyMul(polynomial, x);
+  assert.equal(
+    flint.mpolyEqual(flint.mpolyDivExact(multiple, polynomial), x),
+    true,
+  );
+  assert.equal(
+    flint.mpolyEqual(
+      flint.mpolyGcd(
+        multiple,
+        flint.mpolyMul(polynomial, y),
+      ),
+      polynomial,
+    ),
+    true,
+  );
+  const reorderedContext = flint.mpolyContext(
+    kind,
+    3,
+    "degrevlex",
+    modulus,
+  );
+  assert.equal(
+    flint.mpolyToString(
+      flint.mpolyComposeGen(
+        polynomial,
+        reorderedContext,
+        [1, 0, 2],
+      ),
+      ["y", "x", "z"],
+    ),
+    expected,
+  );
+}
+assert.throws(
+  () => flint.mpolyContext("zz", 2, "unknown", 0n),
+  /term order/,
+);
+
 assert.equal(flint.wordIsPrime(2n), true);
 assert.equal(flint.wordIsPrime(18446744073709551557n), true);
 assert.equal(flint.wordIsPrime(15n), false);

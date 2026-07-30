@@ -354,9 +354,17 @@ assert.match(
   run(["--python"], "f(x) = x**2\n"),
   /cannot assign to a function call/,
 );
-assert.match(
-  runError([], "R.<x, y> = ZZ[]\n"),
-  /multivariate polynomial rings are not implemented yet/,
+assert.deepEqual(
+  run(
+    [],
+    "R.<x, y> = ZZ[]\nprint(R)\nprint((x + y)^2)\n",
+  )
+    .trim()
+    .split("\n"),
+  [
+    "Multivariate Polynomial Ring in x, y over Integer Ring",
+    "x^2 + 2*x*y + y^2",
+  ],
 );
 
 assert.equal(

@@ -20,6 +20,7 @@
 #include "extension_field.h"
 #include "floating.h"
 #include "matrix.h"
+#include "multivariate.h"
 
 #if ULONG_MAX != UINT64_MAX
 #error "The initial Sage.js FLINT bridge requires 64-bit FLINT limbs"
@@ -1657,6 +1658,38 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"matrixInverse", NULL, sagejs_matrix_inverse, NULL, NULL, NULL,
             napi_default, NULL},
+        {"mpolyContext", NULL, sagejs_mpoly_context, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyConstant", NULL, sagejs_mpoly_constant, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyGen", NULL, sagejs_mpoly_gen, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyAdd", NULL, sagejs_mpoly_add, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolySub", NULL, sagejs_mpoly_sub, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyMul", NULL, sagejs_mpoly_mul, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyNeg", NULL, sagejs_mpoly_neg, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyPow", NULL, sagejs_mpoly_pow, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyEqual", NULL, sagejs_mpoly_equal, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyDivExact", NULL, sagejs_mpoly_divexact, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyGcd", NULL, sagejs_mpoly_gcd, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyComposeGen", NULL, sagejs_mpoly_compose_gen,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"mpolyToString", NULL, sagejs_mpoly_to_string, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyLength", NULL, sagejs_mpoly_length, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyDegree", NULL, sagejs_mpoly_degree, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"mpolyTotalDegree", NULL, sagejs_mpoly_total_degree,
+            NULL, NULL, NULL, napi_default, NULL},
         {"zzPolyConstant", NULL, zz_poly_constant, NULL, NULL, NULL,
             napi_default, NULL},
         {"qqPolyConstant", NULL, qq_poly_constant, NULL, NULL, NULL,

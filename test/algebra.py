@@ -368,6 +368,50 @@ assrt.ok(fraction + 1 == (
     (qx ** 3 + qx ** 2 - 16) / (qx ** 2 - 17)))
 assrt.ok(1 / (qx - 1) == QQx.fraction_field()(1, qx - 1))
 
+M = PolynomialRing(QQ, 3, 'xyz')
+x, y, z = M.gens()
+assrt.equal(
+    repr(M),
+    'Multivariate Polynomial Ring in x, y, z over Rational Field')
+assrt.ok(M is PolynomialRing(QQ, 3, 'xyz'))
+assrt.deepEqual(M.variable_names(), ('x', 'y', 'z'))
+assrt.equal(M.ngens(), 3)
+f = (x + y) ** 3 - z
+assrt.equal(
+    repr(f),
+    'x^3 + 3*x^2*y + 3*x*y^2 + y^3 - z')
+assrt.equal(f.degree(x), 3)
+assrt.equal(f.degree('z'), 1)
+assrt.equal(f.total_degree(), 3)
+assrt.equal(f.number_of_terms(), 5)
+assrt.ok((f * x).gcd(f * y) == f)
+assrt.ok((f * x) // f == x)
+assrt.ok(f + QQ(1, 2) == QQ(1, 2) + f)
+M2 = PolynomialRing(QQ, ['y', 'x', 'z'])
+assrt.ok(M2.has_coerce_map_from(M))
+assrt.equal(repr(M2(x)), 'x')
+M3 = PolynomialRing(QQ, ['a', 'b', 'c'])
+assrt.ok(not M3.has_coerce_map_from(M))
+assrt.equal(repr(M3(x + y)), 'a + b')
+assrt.throws(lambda: M3.coerce(x), TypeError)
+fresh_QQ_ring = PolynomialRing(RationalField(), 2, 'uv')
+u, v = fresh_QQ_ring.gens()
+assrt.equal(repr((u + 2 * v) ** 2), 'u^2 + 4*u*v + 4*v^2')
+
+F5xyz = PolynomialRing(GF(5), ['z0', 'z1', 'z2'])
+z0, z1, z2 = F5xyz.gens()
+assrt.equal(
+    repr((z0 + 2 * z1) ** 2),
+    'z0^2 + 4*z0*z1 + 4*z1^2')
+assrt.equal(
+    repr(PolynomialRing(GF(5), 3, 'xyz')),
+    'Multivariate Polynomial Ring in x, y, z over Finite Field of size 5')
+assrt.ok(not PolynomialRing(
+    GF(7), ['z0', 'z1', 'z2']).has_coerce_map_from(F5xyz))
+assrt.equal(
+    repr(PolynomialRing(ZZ, ['y', 'x'])),
+    'Multivariate Polynomial Ring in y, x over Integer Ring')
+
 assrt.ok(GF(5)(GF(2)(1)) == GF(5)(1))
 assrt.ok(GF(2)(GF(5)(2)) == GF(2)(0))
 
