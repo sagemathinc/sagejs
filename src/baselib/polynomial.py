@@ -36,14 +36,26 @@ class PolynomialElement(sage.Element):
         return PolynomialElement(self._parent, native_value)
 
     def _add_(self, other: PolynomialElement) -> PolynomialElement:
+        if self._parent.base_ring()._kind == 'GF_EXTENSION':
+            return self._new(
+                runtime.flint_backend().fqPolyAdd(
+                    self._native, other._native))
         return self._new(
             runtime.flint_backend().polyAdd(self._native, other._native))
 
     def _sub_(self, other: PolynomialElement) -> PolynomialElement:
+        if self._parent.base_ring()._kind == 'GF_EXTENSION':
+            return self._new(
+                runtime.flint_backend().fqPolySub(
+                    self._native, other._native))
         return self._new(
             runtime.flint_backend().polySub(self._native, other._native))
 
     def _mul_(self, other: PolynomialElement) -> PolynomialElement:
+        if self._parent.base_ring()._kind == 'GF_EXTENSION':
+            return self._new(
+                runtime.flint_backend().fqPolyMul(
+                    self._native, other._native))
         return self._new(
             runtime.flint_backend().polyMul(self._native, other._native))
 
@@ -57,12 +69,19 @@ class PolynomialElement(sage.Element):
         return runtime.coercion_model.binOp('mul', self, other)
 
     def __neg__(self) -> PolynomialElement:
+        if self._parent.base_ring()._kind == 'GF_EXTENSION':
+            return self._new(
+                runtime.flint_backend().fqPolyNeg(self._native))
         return self._new(runtime.flint_backend().polyNeg(self._native))
 
     def __pow__(self, exponent: int) -> PolynomialElement:
         exponent = runtime.integer_bigint(exponent)
         if exponent < 0:
             raise ValueError('negative polynomial exponent')
+        if self._parent.base_ring()._kind == 'GF_EXTENSION':
+            return self._new(
+                runtime.flint_backend().fqPolyPow(
+                    self._native, exponent))
         return self._new(
             runtime.flint_backend().polyPow(self._native, exponent))
 
@@ -70,12 +89,18 @@ class PolynomialElement(sage.Element):
         operands = runtime.coercion_model.coercePair(self, other)
         if not isinstance(operands.left, PolynomialElement):
             raise TypeError('polynomial division requires polynomials')
-        return PolynomialElement(
-            operands.parent,
-            runtime.flint_backend().polyDivExact(
-                operands.left._native, operands.right._native))
+        if operands.parent.base_ring()._kind == 'GF_EXTENSION':
+            native_value = runtime.flint_backend().fqPolyDivExact(
+                operands.left._native, operands.right._native)
+        else:
+            native_value = runtime.flint_backend().polyDivExact(
+                operands.left._native, operands.right._native)
+        return PolynomialElement(operands.parent, native_value)
 
     def _eq_(self, other: PolynomialElement) -> bool:
+        if self._parent.base_ring()._kind == 'GF_EXTENSION':
+            return runtime.flint_backend().fqPolyEqual(
+                self._native, other._native)
         return runtime.flint_backend().polyEqual(
             self._native, other._native)
 
@@ -84,16 +109,26 @@ class PolynomialElement(sage.Element):
 
     def gcd(self, other: object) -> PolynomialElement:
         operands = runtime.coercion_model.coercePair(self, other)
-        if (not isinstance(operands.left, PolynomialElement)
-                or operands.parent.base_ring()._kind != 'GF'):
+        if (
+            not isinstance(operands.left, PolynomialElement)
+            or operands.parent.base_ring()._kind
+                not in ['GF', 'GF_EXTENSION']
+        ):
             raise TypeError(
                 'polynomial gcd is currently implemented over finite fields')
+        if operands.parent.base_ring()._kind == 'GF_EXTENSION':
+            native_value = runtime.flint_backend().fqPolyGcd(
+                operands.left._native, operands.right._native)
+        else:
+            native_value = runtime.flint_backend().nmodPolyGcd(
+                operands.left._native, operands.right._native)
         return PolynomialElement(
-            operands.parent,
-            runtime.flint_backend().nmodPolyGcd(
-                operands.left._native, operands.right._native))
+            operands.parent, native_value)
 
     def is_irreducible(self) -> bool:
+        if self._parent.base_ring()._kind == 'GF_EXTENSION':
+            return runtime.flint_backend().fqPolyIsIrreducible(
+                self._native)
         if self._parent.base_ring()._kind == 'GF':
             return runtime.flint_backend().nmodPolyIsIrreducible(self._native)
         factors = _untyped(self.factor())
@@ -107,19 +142,25 @@ class PolynomialElement(sage.Element):
         if self._parent.base_ring()._kind == 'ZMOD':
             raise NotImplementedError(
                 'polynomial factorization over Zmod is not implemented')
-        result = runtime.flint_backend().polyFactor(self._native)
         parent = self._parent
+        base = parent.base_ring()
+        if base._kind == 'GF_EXTENSION':
+            result = runtime.flint_backend().fqPolyFactor(self._native)
+        else:
+            result = runtime.flint_backend().polyFactor(self._native)
 
         def make_factor(pair: list[Any]) -> list[Any]:
             return [PolynomialElement(parent, pair[0]), pair[1]]
 
         factors = result.factors.map(make_factor)
-        if parent.base_ring()._kind == 'GF':
-            unit = parent.base_ring()(result.unit)
-        elif parent.base_ring() is sage.ZZ:
-            unit = parent.base_ring()(result.unitNumerator)
+        if base._kind == 'GF_EXTENSION':
+            unit = base._from_native(result.unit)
+        elif base._kind == 'GF':
+            unit = base(result.unit)
+        elif base is sage.ZZ:
+            unit = base(result.unitNumerator)
         else:
-            unit = parent.base_ring()(
+            unit = base(
                 result.unitNumerator, result.unitDenominator)
         return sage.Factorization(
             factors, unit, False, True, False)
@@ -138,21 +179,34 @@ class PolynomialElement(sage.Element):
         return answer
 
     def roots(self, multiplicities: bool = True) -> list[Any]:
-        if self._parent.base_ring()._kind != 'GF':
+        if (
+            self._parent.base_ring()._kind
+            not in ['GF', 'GF_EXTENSION']
+        ):
             raise TypeError(
                 'polynomial roots are currently implemented over ' +
                 'finite fields')
         field = self._parent.base_ring()
+        if field._kind == 'GF_EXTENSION':
+            raw_roots = runtime.flint_backend().fqPolyRoots(self._native)
+        else:
+            raw_roots = runtime.flint_backend().nmodPolyRoots(self._native)
 
         def make_root(pair: list[Any]) -> Any:
-            root = field(pair[0])
+            if field._kind == 'GF_EXTENSION':
+                root = field._from_native(pair[0])
+            else:
+                root = field(pair[0])
             return runtime.factor_pair(root, pair[1]) if multiplicities else root
 
-        return runtime.flint_backend().nmodPolyRoots(self._native).map(make_root)
+        return raw_roots.map(make_root)
 
     def coefficients(self) -> list[Any]:
-        raw = runtime.flint_backend().polyCoefficients(self._native)
         base = self._parent.base_ring()
+        if base._kind == 'GF_EXTENSION':
+            raw = runtime.flint_backend().fqPolyCoefficients(self._native)
+        else:
+            raw = runtime.flint_backend().polyCoefficients(self._native)
         answer = []
         for coefficient in raw:
             if base is sage.ZZ:
@@ -162,6 +216,8 @@ class PolynomialElement(sage.Element):
                     runtime.reflect.get(coefficient, 'numerator'),
                     runtime.reflect.get(coefficient, 'denominator'),
                 ))
+            elif base._kind == 'GF_EXTENSION':
+                answer.append(base._from_native(coefficient))
             else:
                 answer.append(base(coefficient))
         return answer
@@ -184,11 +240,20 @@ class PolynomialElement(sage.Element):
         return answer
 
     def __repr__(self) -> str:
-        raw = runtime.flint_backend().polyToString(
-            self._native, self._parent.variable_name())
+        if self._parent.base_ring()._kind == 'GF_EXTENSION':
+            raw = runtime.flint_backend().fqPolyToString(
+                self._native, self._parent.variable_name())
+        else:
+            raw = runtime.flint_backend().polyToString(
+                self._native, self._parent.variable_name())
         raw = raw.replace(runtime.regexp(r'\s+', 'g'), '')
         raw = raw.replace(runtime.regexp(r'\+', 'g'), ' + ').replace(
             runtime.regexp(r'([^-])-+', 'g'), '$1 - ')
+        if self._parent.base_ring()._kind == 'GF_EXTENSION':
+            raw = raw.replace(
+                runtime.regexp(r'\+ \(([^()]*)\)$'),
+                '+ $1',
+            )
         return raw.replace(
             runtime.regexp(r'(^|[+-] )1\*', 'g'), '$1')
 
@@ -223,6 +288,9 @@ class PolynomialRingParent(sage.Parent):
     def variable_name(self) -> str:
         return self._variable
 
+    def _from_native(self, native_value: Any) -> PolynomialElement:
+        return PolynomialElement(self, native_value)
+
     def gen(self) -> PolynomialElement:
         backend = runtime.flint_backend()
         if self._base is sage.ZZ:
@@ -232,6 +300,9 @@ class PolynomialRingParent(sage.Parent):
         elif self._base._kind == 'ZMOD':
             native_value = backend.zmodPolyGen(
                 self._base._modulus)
+        elif self._base._kind == 'GF_EXTENSION':
+            native_value = backend.fqPolyGen(
+                runtime.reflect.get(self._base, '_nativeContext'))
         else:
             native_value = backend.nmodPolyGen(self._base._modulus)
         return PolynomialElement(self, native_value)
@@ -264,6 +335,18 @@ class PolynomialRingParent(sage.Parent):
                 self,
                 backend.nmodPolyConstant(
                     value._value, self._base._modulus))
+        if (
+            self._base._kind == 'GF_EXTENSION'
+            and isinstance(value, sage.Element)
+            and runtime.reflect.get(value, '_parent') is self._base
+            and runtime.reflect.has(value, '_native')
+        ):
+            return PolynomialElement(
+                self,
+                backend.fqPolyConstant(
+                    runtime.reflect.get(self._base, '_nativeContext'),
+                    runtime.reflect.get(value, '_native'),
+                ))
         raise TypeError('unsupported polynomial coefficient parent')
 
     def _coercePolynomial(self, value: object) -> PolynomialElement:
@@ -281,8 +364,18 @@ class PolynomialRingParent(sage.Parent):
                 self, runtime.flint_backend().zzPolyToQQ(value._native))
         if (
             source.base_ring() is sage.ZZ
-            and self._base._kind in ['GF', 'ZMOD']
+            and self._base._kind in ['GF', 'GF_EXTENSION', 'ZMOD']
         ):
+            if self._base._kind == 'GF_EXTENSION':
+                result = self(0)
+                generator = self.gen()
+                coefficients = value.coefficients()
+                index = len(coefficients) - 1
+                while index >= 0:
+                    result = result._mul_(generator)._add_(
+                        self(self._base(coefficients[index])))
+                    index -= 1
+                return result
             if self._base._kind == 'ZMOD':
                 return PolynomialElement(
                     self,
@@ -328,11 +421,11 @@ def PolynomialRing(
     if (
         base is not sage.ZZ
         and base is not sage.QQ
-        and base._kind not in ['GF', 'ZMOD']
+        and base._kind not in ['GF', 'GF_EXTENSION', 'ZMOD']
     ):
         raise TypeError(
             'the prototype currently supports polynomial rings over ' +
-            'ZZ, QQ, prime finite fields, and Zmod')
+            'ZZ, QQ, finite fields, and Zmod')
     if (
         not isinstance(variable, str)
         or not runtime.regexp(

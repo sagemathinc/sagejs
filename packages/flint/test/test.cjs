@@ -127,6 +127,157 @@ assert.throws(
 assert.throws(() => flint.fqContext(3n, 1, "a"), /degree/);
 assert.throws(() => flint.fqContext(65537n, 2, "a"), /Conway polynomial/);
 
+const fq9x = flint.fqPolyGen(fq9);
+const fq9a = flint.fqPolyConstant(fq9, fq9gen);
+const fq9onePolynomial = flint.fqPolyConstant(fq9, fq9one);
+const fq9xPlusA = flint.fqPolyAdd(fq9x, fq9a);
+const fq9polynomial = flint.fqPolyMul(
+  fq9xPlusA,
+  flint.fqPolyAdd(fq9xPlusA, fq9onePolynomial),
+);
+assert.equal(
+  flint.fqPolyToString(fq9polynomial, "x"),
+  "x^2+(2*a+1)*x+(2*a+1)",
+);
+assert.deepEqual(
+  flint.fqPolyCoefficients(fq9polynomial).map((value) =>
+    flint.fqToString(value),
+  ),
+  ["2*a+1", "2*a+1", "1"],
+);
+assert.equal(
+  flint.fqPolyToString(
+    flint.fqPolyGcd(
+      fq9polynomial,
+      flint.fqPolySub(flint.fqPolyPow(fq9x, 9n), fq9x),
+    ),
+    "x",
+  ),
+  "x^2+(2*a+1)*x+(2*a+1)",
+);
+assert.equal(
+  flint.fqPolyToString(
+    flint.fqPolyDivExact(fq9polynomial, fq9xPlusA),
+    "x",
+  ),
+  "x+(a+1)",
+);
+assert.equal(flint.fqPolyEqual(fq9polynomial, fq9polynomial), true);
+assert.equal(flint.fqPolyIsIrreducible(fq9polynomial), false);
+const fq9factorization = flint.fqPolyFactor(fq9polynomial);
+assert.equal(flint.fqToString(fq9factorization.unit), "1");
+assert.deepEqual(
+  fq9factorization.factors.map(([factorValue, exponent]) => [
+    flint.fqPolyToString(factorValue, "x"),
+    exponent,
+  ]),
+  [
+    ["x+(a+1)", 1],
+    ["x+(a)", 1],
+  ],
+);
+assert.deepEqual(
+  flint.fqPolyRoots(fq9polynomial).map(([root, exponent]) => [
+    flint.fqToString(root),
+    exponent,
+  ]),
+  [
+    ["2*a", 1],
+    ["2*a+2", 1],
+  ],
+);
+assert.throws(
+  () => flint.fqPolyDivExact(fq9x, fq9polynomial),
+  /not exact/,
+);
+assert.throws(
+  () =>
+    flint.fqPolyAdd(
+      fq9x,
+      flint.fqPolyGen(flint.fqContext(3n, 2, "b")),
+    ),
+  /different base fields/,
+);
+
+const fq9zero = flint.fqFromBigInt(fq9, 0n);
+const fq9matrix = flint.fqMatrix(fq9, 2, 2, [
+  fq9gen,
+  fq9one,
+  fq9one,
+  fq9zero,
+]);
+const fqMatrixRows = (matrix, rows, cols) =>
+  Array.from({ length: rows }, (_, row) =>
+    Array.from({ length: cols }, (_, col) =>
+      flint.fqToString(flint.fqMatrixEntry(matrix, row, col)),
+    ),
+  );
+assert.deepEqual(fqMatrixRows(fq9matrix, 2, 2), [
+  ["a", "1"],
+  ["1", "0"],
+]);
+assert.equal(flint.fqToString(flint.fqMatrixDet(fq9matrix)), "2");
+assert.equal(flint.fqMatrixRank(fq9matrix), 2);
+assert.deepEqual(
+  fqMatrixRows(flint.fqMatrixRref(fq9matrix), 2, 2),
+  [
+    ["1", "0"],
+    ["0", "1"],
+  ],
+);
+const fq9inverse = flint.fqMatrixInverse(fq9matrix);
+assert.deepEqual(fqMatrixRows(fq9inverse, 2, 2), [
+  ["0", "1"],
+  ["1", "2*a"],
+]);
+assert.deepEqual(
+  fqMatrixRows(flint.fqMatrixMul(fq9matrix, fq9inverse), 2, 2),
+  [
+    ["1", "0"],
+    ["0", "1"],
+  ],
+);
+assert.equal(
+  flint.fqPolyToString(flint.fqMatrixCharpoly(fq9matrix), "x"),
+  "x^2+(2*a)*x+(2)",
+);
+const fq9row = flint.fqMatrix(fq9, 1, 3, [
+  fq9one,
+  fq9gen,
+  flint.fqAdd(fq9gen, fq9one),
+]);
+const fq9kernel = flint.fqMatrixRightKernel(fq9row);
+assert.deepEqual(fqMatrixRows(fq9kernel, 2, 3), [
+  ["1", "0", "a+1"],
+  ["0", "1", "2*a+1"],
+]);
+assert.deepEqual(
+  fqMatrixRows(
+    flint.fqMatrixMul(
+      fq9row,
+      flint.fqMatrixTranspose(fq9kernel),
+    ),
+    1,
+    2,
+  ),
+  [["0", "0"]],
+);
+assert.deepEqual(
+  fqMatrixRows(
+    flint.fqMatrixSolve(
+      fq9matrix,
+      flint.fqMatrix(fq9, 2, 1, [fq9gen, fq9one]),
+    ),
+    2,
+    1,
+  ),
+  [["1"], ["0"]],
+);
+assert.throws(
+  () => flint.fqMatrixInverse(fq9row),
+  /square matrix/,
+);
+
 const nmod5x = flint.nmodPolyGen(5n);
 const nmod5one = flint.nmodPolyConstant(1n, 5n);
 const nmod5f = flint.polySub(flint.polyPow(nmod5x, 4n), nmod5one);

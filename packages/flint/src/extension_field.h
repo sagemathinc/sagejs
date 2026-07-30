@@ -17,5 +17,42 @@ napi_value sagejs_fq_equal(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_is_zero(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_is_one(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_to_string(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_constant(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_gen(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_add(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_sub(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_mul(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_neg(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_pow(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_equal(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_divexact(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_gcd(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_is_irreducible(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_to_string(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_coefficients(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_factor(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_poly_roots(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_add(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_sub(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_mul(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_neg(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_scalar_mul(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_transpose(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_equal(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_entry(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_det(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_rank(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_rref(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_right_kernel(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_solve(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_inverse(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_matrix_charpoly(
+    napi_env env, napi_callback_info info);
 
 #endif

@@ -561,6 +561,11 @@ class FiniteFieldExtensionParent(sage.Parent):
                 self._nativeContext, value),
         )
 
+    def _from_native(
+        self, native_value: Any,
+    ) -> FiniteFieldExtensionElement:
+        return _new_extension_field_element(self, native_value)
+
     def order(self) -> int:
         return runtime.normalize_integer(self._order)
 

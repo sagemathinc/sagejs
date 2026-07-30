@@ -281,8 +281,42 @@ assrt.ok(scaled_factorization.value() == 2 * (fx + 1) ** 2)
 assrt.equal(repr(fg.roots()), '[(3, 1), (1, 2)]')
 assrt.equal(repr(fg.roots(multiplicities=False)), '[3, 1]')
 
+F9x = F9.__getitem__('x')
+assrt.ok(F9x is PolynomialRing(F9, 'x'))
+assrt.equal(
+    repr(F9x),
+    'Univariate Polynomial Ring in x over ' +
+    'Finite Field in a of size 3^2')
+f9x = F9x.gen()
+f9_polynomial = (f9x + a9) * (f9x + a9 + 1)
+assrt.equal(
+    repr(f9_polynomial),
+    'x^2 + (2*a + 1)*x + 2*a + 1')
+assrt.equal(
+    repr(f9_polynomial.coefficients()),
+    '[2*a + 1, 2*a + 1, 1]')
+assrt.ok(
+    f9_polynomial // (f9x + a9)
+    == f9x + a9 + 1)
+assrt.ok(
+    f9_polynomial.gcd(f9x ** 9 - f9x)
+    == f9_polynomial)
+assrt.ok(not f9_polynomial.is_irreducible())
+assrt.equal(
+    repr(f9_polynomial.factor()),
+    '(x + a) * (x + a + 1)')
+assrt.ok(f9_polynomial.factor().unit() == F9(1))
+assrt.ok(f9_polynomial.factor().value() == f9_polynomial)
+assrt.equal(
+    repr(f9_polynomial.roots()),
+    '[(2*a, 1), (2*a + 2, 1)]')
+assrt.equal(
+    repr(f9_polynomial.roots(multiplicities=False)),
+    '[2*a, 2*a + 2]')
+
 ZZx = PolynomialRing(ZZ, 'x')
 assrt.equal(repr(F5x(ZZx.gen() + 7)), 'x + 2')
+assrt.equal(repr(F9x(ZZx.gen() ** 2 + 4)), 'x^2 + 1')
 assrt.equal(parent((ZZx.gen() + 1) + F5(1)), F5x)
 zx = ZZx.gen()
 integer_polynomial = (zx ** 2 - 1) * (zx ** 3 + 2) * (zx - 5)

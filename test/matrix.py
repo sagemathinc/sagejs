@@ -310,6 +310,65 @@ assert all(
     value == F5(value.lift())
     for value in random_finite.list())
 
+F9 = GF(9, 'a')
+a = F9.gen()
+extension_matrix = matrix(F9, [[a, 1], [1, 0]])
+assert Matrix(F9, [[a, 1], [1, 0]]) == extension_matrix
+assert extension_matrix.base_ring() is F9
+assert extension_matrix.list() == [a, F9(1), F9(1), F9(0)]
+assert extension_matrix + extension_matrix == matrix(
+    F9, [[2 * a, 2], [2, 0]])
+assert extension_matrix - extension_matrix == zero_matrix(F9, 2)
+assert -extension_matrix == matrix(
+    F9, [[2 * a, 2], [2, 0]])
+assert a * extension_matrix == matrix(
+    F9, [[a * a, a], [a, 0]])
+assert extension_matrix / a == extension_matrix * (a ** -1)
+assert extension_matrix.det() == F9(2)
+assert extension_matrix.rank() == 2
+assert extension_matrix.rref() == identity_matrix(F9, 2)
+extension_inverse = extension_matrix.inverse()
+assert extension_inverse == matrix(F9, [[0, 1], [1, 2 * a]])
+assert extension_matrix * extension_inverse == identity_matrix(F9, 2)
+assert extension_matrix.solve_right(
+    vector(F9, [a, 1])) == vector(F9, [1, 0])
+assert str(extension_matrix.charpoly()) == 'x^2 + (2*a)*x + 2'
+assert extension_matrix.charpoly()(extension_matrix) == (
+    zero_matrix(F9, 2)
+)
+assert extension_matrix.minpoly()(extension_matrix) == (
+    zero_matrix(F9, 2)
+)
+
+extension_row = matrix(F9, [[1, a, a + 1]])
+extension_kernel = extension_row.right_kernel()
+assert extension_kernel.base_ring() is F9
+assert extension_kernel.dimension() == 2
+assert extension_kernel.basis_matrix() == matrix(
+    F9,
+    [
+        [1, 0, a + 1],
+        [0, 1, 2 * a + 1],
+    ],
+)
+assert extension_row * extension_kernel.basis_matrix().T == (
+    zero_matrix(F9, 1, 2)
+)
+assert extension_row.left_kernel().dimension() == 0
+assert matrix(
+    F9, [[1], [a], [a + 1]]).kernel().dimension() == 2
+assert matrix(ZZ, [[1, 2], [3, 4]]).change_ring(F9) == matrix(
+    F9, [[1, 2], [0, 1]])
+
+set_random_seed(2026)
+random_extension = random_matrix(F9, 4, 6)
+set_random_seed(2026)
+assert random_matrix(F9, 4, 6) == random_extension
+assert random_extension.base_ring() is F9
+assert all(value.parent() is F9 for value in random_extension.list())
+assert any(value not in [F9(0), F9(1), F9(2)]
+           for value in random_extension.list())
+
 R36 = Zmod(36)
 residue_matrix = matrix(R36, [[2, 3], [3, 2]])
 assert residue_matrix.base_ring() is R36

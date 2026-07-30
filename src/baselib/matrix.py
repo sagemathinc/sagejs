@@ -15,8 +15,16 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
+def _untyped(value: Any) -> Any:
+    return value
+
+
 def _is_modular_base(value: object) -> bool:
     return getattr(value, '_kind', None) in ['GF', 'ZMOD']
+
+
+def _is_extension_field_base(value: object) -> bool:
+    return getattr(value, '_kind', None) == 'GF_EXTENSION'
 
 
 def _is_base_ring(value: object) -> bool:
@@ -26,6 +34,7 @@ def _is_base_ring(value: object) -> bool:
         or getattr(value, '_kind', None) == 'ZZ'
         or getattr(value, '_kind', None) == 'QQ'
         or _is_modular_base(value)
+        or _is_extension_field_base(value)
     )
 
 
@@ -42,7 +51,10 @@ def _base_for_values(values: list[Any]) -> sage.Parent:
         if isinstance(value, sage.Rational):
             return sage.QQ
         parent = getattr(value, '_parent', None)
-        if _is_modular_base(parent):
+        if (
+            _is_modular_base(parent)
+            or _is_extension_field_base(parent)
+        ):
             return _canonical_base(
                 runtime.reflect.get(value, '_parent'))
     return sage.ZZ
@@ -79,6 +91,17 @@ def _native_matrix(
                 rational._denominator,
             ])
         return backend.qqMatrix(rows, cols, entries)
+    if _is_extension_field_base(base):
+        entries = []
+        for value in values:
+            entries.append(runtime.reflect.get(
+                base(value), '_native'))
+        return backend.fqMatrix(
+            runtime.reflect.get(base, '_nativeContext'),
+            rows,
+            cols,
+            entries,
+        )
     if _is_modular_base(base):
         entries = []
         for value in values:
@@ -102,6 +125,8 @@ def _rational_result(value: Any) -> sage.Rational:
 def _entry_from_native(base: sage.Parent, value: Any) -> Any:
     if base is sage.ZZ:
         return runtime.normalize_integer(value)
+    if _is_extension_field_base(base):
+        return _untyped(base)._from_native(value)
     if _is_modular_base(base):
         return base(value)
     return _rational_result(value)
@@ -124,6 +149,13 @@ def _common_base(
         if _is_modular_base(right) and left is right:
             return left
     if _is_modular_base(right) and left is sage.ZZ:
+        return right
+    if _is_extension_field_base(left):
+        if right is sage.ZZ:
+            return left
+        if _is_extension_field_base(right) and left is right:
+            return left
+    if _is_extension_field_base(right) and left is sage.ZZ:
         return right
     raise TypeError(
         'no canonical coercion between matrix base rings ' +
@@ -161,6 +193,15 @@ def _matrix_scalar_parts(
             base,
             scalar._value,
             runtime.bigint(1)
+        )
+    if _is_extension_field_base(base):
+        return (base, 0, 1)
+    parent = getattr(value, '_parent', None)
+    if _is_extension_field_base(parent):
+        return (
+            runtime.reflect.get(value, '_parent'),
+            0,
+            1
         )
     return _scalar_parts(value)
 
@@ -341,6 +382,7 @@ class Vector(sage.Element):
             and (
                 base is sage.QQ
                 or _is_modular_base(base)
+                or _is_extension_field_base(base)
             )
         ):
             return VectorSpace(base, len(self))(
@@ -390,6 +432,10 @@ class Vector(sage.Element):
                     'vector and matrix dimensions are incompatible')
             result = self.row() * other
             return result.row(0)
+        if _is_extension_field_base(self.base_ring()):
+            scalar = self.base_ring()(other)
+            return VectorSpace(self.base_ring(), len(self))(
+                [value * scalar for value in self])
         scalar_base, _numerator, _denominator = (
             _matrix_scalar_parts(self.base_ring(), other)
         )
@@ -698,10 +744,16 @@ class Matrix(sage.Element):
     def _entry(self, row: int, col: int) -> Any:
         row = _normalize_index(row, self.nrows())
         col = _normalize_index(col, self.ncols())
+        backend = runtime.flint_backend()
+        if _is_extension_field_base(self.base_ring()):
+            native_value = backend.fqMatrixEntry(
+                self._native, row, col)
+        else:
+            native_value = backend.matrixEntry(
+                self._native, row, col)
         return _entry_from_native(
             self.base_ring(),
-            runtime.flint_backend().matrixEntry(
-                self._native, row, col),
+            native_value,
         )
 
     def __getitem__(self, index: Any) -> Any:
@@ -767,7 +819,10 @@ class Matrix(sage.Element):
             )
         if (
             self.base_ring() is sage.ZZ
-            and _is_modular_base(base)
+            and (
+                _is_modular_base(base)
+                or _is_extension_field_base(base)
+            )
         ):
             return matrix(
                 base, self.nrows(), self.ncols(), self.list())
@@ -784,27 +839,49 @@ class Matrix(sage.Element):
 
     def __add__(self, other: object) -> Matrix:
         left, right = self._pair(other)
+        backend = runtime.flint_backend()
+        if _is_extension_field_base(left.base_ring()):
+            native_value = backend.fqMatrixAdd(
+                left._native, right._native)
+        else:
+            native_value = backend.matrixAdd(
+                left._native, right._native)
         return Matrix(
             left._parent,
-            runtime.flint_backend().matrixAdd(
-                left._native, right._native),
+            native_value,
         )
 
     def __sub__(self, other: object) -> Matrix:
         left, right = self._pair(other)
+        backend = runtime.flint_backend()
+        if _is_extension_field_base(left.base_ring()):
+            native_value = backend.fqMatrixSub(
+                left._native, right._native)
+        else:
+            native_value = backend.matrixSub(
+                left._native, right._native)
         return Matrix(
             left._parent,
-            runtime.flint_backend().matrixSub(
-                left._native, right._native),
+            native_value,
         )
 
     def __neg__(self) -> Matrix:
+        backend = runtime.flint_backend()
+        if _is_extension_field_base(self.base_ring()):
+            native_value = backend.fqMatrixNeg(self._native)
+        else:
+            native_value = backend.matrixNeg(self._native)
         return Matrix(
             self._parent,
-            runtime.flint_backend().matrixNeg(self._native),
+            native_value,
         )
 
     def _scalar_mul(self, scalar: object) -> Matrix:
+        if _is_extension_field_base(self.base_ring()):
+            value = self.base_ring()(scalar)
+            native_value = runtime.flint_backend().fqMatrixScalarMul(
+                self._native, runtime.reflect.get(value, '_native'))
+            return Matrix(self._parent, native_value)
         scalar_base, numerator, denominator = _matrix_scalar_parts(
             self.base_ring(), scalar)
         base = _common_base(self.base_ring(), scalar_base)
@@ -834,11 +911,17 @@ class Matrix(sage.Element):
                 self.base_ring(), other.base_ring())
             left = self.change_ring(base)
             right = other.change_ring(base)
+            backend = runtime.flint_backend()
+            if _is_extension_field_base(base):
+                native_value = backend.fqMatrixMul(
+                    left._native, right._native)
+            else:
+                native_value = backend.matrixMul(
+                    left._native, right._native)
             return Matrix(
                 MatrixSpace(
                     base, left.nrows(), right.ncols()),
-                runtime.flint_backend().matrixMul(
-                    left._native, right._native),
+                native_value,
             )
         return self._scalar_mul(other)
 
@@ -868,7 +951,10 @@ class Matrix(sage.Element):
             'operation ' + operator + ' is not defined for matrices')
 
     def __truediv__(self, scalar: object) -> Matrix:
-        if _is_modular_base(self.base_ring()):
+        if (
+            _is_modular_base(self.base_ring())
+            or _is_extension_field_base(self.base_ring())
+        ):
             value = self.base_ring()(scalar)
             if value.is_zero():
                 raise ZeroDivisionError('matrix division by zero')
@@ -910,10 +996,15 @@ class Matrix(sage.Element):
             'the given exponent is not supported')
 
     def transpose(self) -> Matrix:
+        backend = runtime.flint_backend()
+        if _is_extension_field_base(self.base_ring()):
+            native_value = backend.fqMatrixTranspose(self._native)
+        else:
+            native_value = backend.matrixTranspose(self._native)
         answer = Matrix(
             MatrixSpace(
                 self.base_ring(), self.ncols(), self.nrows()),
-            runtime.flint_backend().matrixTranspose(self._native),
+            native_value,
         )
         answer._row_subdivisions = list(self._col_subdivisions)
         answer._col_subdivisions = list(self._row_subdivisions)
@@ -942,7 +1033,11 @@ class Matrix(sage.Element):
             raise ValueError('unknown determinant algorithm')
         if self._determinant_cache is not runtime.undefined:
             return self._determinant_cache
-        value = runtime.flint_backend().matrixDet(self._native)
+        backend = runtime.flint_backend()
+        if _is_extension_field_base(self.base_ring()):
+            value = backend.fqMatrixDet(self._native)
+        else:
+            value = backend.matrixDet(self._native)
         self._determinant_cache = _entry_from_native(
             self.base_ring(), value)
         return self._determinant_cache
@@ -968,8 +1063,13 @@ class Matrix(sage.Element):
             raise ValueError(
                 "algorithm must be one of 'modp', 'flint' or 'linbox'")
         if self._rank_cache is runtime.undefined:
-            self._rank_cache = runtime.flint_backend().matrixRank(
-                self._native)
+            backend = runtime.flint_backend()
+            if _is_extension_field_base(self.base_ring()):
+                self._rank_cache = backend.fqMatrixRank(
+                    self._native)
+            else:
+                self._rank_cache = backend.matrixRank(
+                    self._native)
         return self._rank_cache
 
     def nullity(self) -> int:
@@ -993,11 +1093,18 @@ class Matrix(sage.Element):
     def rref(self) -> Matrix:
         if self._rref_cache is runtime.undefined:
             base = sage.QQ
-            if getattr(self.base_ring(), '_kind', None) == 'GF':
+            if getattr(
+                self.base_ring(), '_kind', None
+            ) in ['GF', 'GF_EXTENSION']:
                 base = self.base_ring()
+            backend = runtime.flint_backend()
+            if _is_extension_field_base(self.base_ring()):
+                native_value = backend.fqMatrixRref(self._native)
+            else:
+                native_value = backend.matrixRref(self._native)
             self._rref_cache = Matrix(
                 MatrixSpace(base, self.nrows(), self.ncols()),
-                runtime.flint_backend().matrixRref(self._native),
+                native_value,
             )
         return self._rref_cache
 
@@ -1154,11 +1261,17 @@ class Matrix(sage.Element):
     def right_kernel(self) -> VectorSubspaceParent:
         if self._right_kernel_cache is runtime.undefined:
             nullity = self.ncols() - self.rank()
+            backend = runtime.flint_backend()
+            if _is_extension_field_base(self.base_ring()):
+                native_value = backend.fqMatrixRightKernel(
+                    self._native)
+            else:
+                native_value = backend.matrixRightKernel(
+                    self._native)
             basis = Matrix(
                 MatrixSpace(
                     self.base_ring(), nullity, self.ncols()),
-                runtime.flint_backend().matrixRightKernel(
-                    self._native),
+                native_value,
             )
             self._right_kernel_cache = VectorSubspaceParent(
                 VectorSpace(self.base_ring(), self.ncols()),
@@ -1214,11 +1327,16 @@ class Matrix(sage.Element):
         if cached is not runtime.undefined:
             return cached
         ring = sage.PolynomialRing(self.base_ring(), variable)
+        backend = runtime.flint_backend()
+        if _is_extension_field_base(self.base_ring()):
+            answer = ring._from_native(
+                backend.fqMatrixCharpoly(self._native))
+            self._charpoly_cache.set(variable, answer)
+            return answer
         generator = ring.gen()
         power = ring(1)
         answer = ring(0)
-        coefficients = runtime.flint_backend().matrixCharpoly(
-            self._native)
+        coefficients = backend.matrixCharpoly(self._native)
         for raw_coefficient in coefficients:
             coefficient = _entry_from_native(
                 self.base_ring(), raw_coefficient)
@@ -1266,7 +1384,8 @@ class Matrix(sage.Element):
                 base = sage.ZZ
                 finite_coefficients = (
                     getattr(
-                        self.base_ring(), '_kind', None) == 'GF'
+                        self.base_ring(), '_kind', None
+                    ) in ['GF', 'GF_EXTENSION']
                 )
                 if finite_coefficients:
                     base = self.base_ring()
@@ -1303,14 +1422,20 @@ class Matrix(sage.Element):
             return self._inverse_cache
         native_value = runtime.undefined
         try:
-            native_value = runtime.flint_backend().matrixInverse(
-                self._native)
+            backend = runtime.flint_backend()
+            if _is_extension_field_base(self.base_ring()):
+                native_value = backend.fqMatrixInverse(self._native)
+            else:
+                native_value = backend.matrixInverse(self._native)
         except Exception:
             pass
         if native_value is runtime.undefined:
             raise ZeroDivisionError('matrix must be nonsingular')
         inverse_base = sage.QQ
-        if _is_modular_base(self.base_ring()):
+        if (
+            _is_modular_base(self.base_ring())
+            or _is_extension_field_base(self.base_ring())
+        ):
             inverse_base = self.base_ring()
         self._inverse_cache = Matrix(
             MatrixSpace(
@@ -1355,14 +1480,22 @@ class Matrix(sage.Element):
         right_matrix = right_matrix.change_ring(base)
         native_value = runtime.undefined
         try:
-            native_value = runtime.flint_backend().matrixSolve(
-                left_matrix._native, right_matrix._native)
+            backend = runtime.flint_backend()
+            if _is_extension_field_base(base):
+                native_value = backend.fqMatrixSolve(
+                    left_matrix._native, right_matrix._native)
+            else:
+                native_value = backend.matrixSolve(
+                    left_matrix._native, right_matrix._native)
         except Exception:
             pass
         if native_value is runtime.undefined:
             raise ValueError('matrix equation has no solutions')
         result_base = sage.QQ
-        if _is_modular_base(base):
+        if (
+            _is_modular_base(base)
+            or _is_extension_field_base(base)
+        ):
             result_base = base
         result = Matrix(
             MatrixSpace(
@@ -1512,8 +1645,11 @@ class Matrix(sage.Element):
             return False
         left = self.change_ring(base)
         right = other.change_ring(base)
-        return runtime.flint_backend().matrixEqual(
-            left._native, right._native)
+        backend = runtime.flint_backend()
+        if _is_extension_field_base(base):
+            return backend.fqMatrixEqual(
+                left._native, right._native)
+        return backend.matrixEqual(left._native, right._native)
 
     def __copy__(self) -> Matrix:
         answer = matrix(
@@ -1590,6 +1726,7 @@ def MatrixSpace(
         base is not sage.ZZ
         and base is not sage.QQ
         and not _is_modular_base(base)
+        and not _is_extension_field_base(base)
     ):
         raise TypeError(
             'exact matrices currently require ZZ, QQ, GF, or Zmod')
@@ -1618,6 +1755,7 @@ def VectorSpace(
         base is not sage.ZZ
         and base is not sage.QQ
         and not _is_modular_base(base)
+        and not _is_extension_field_base(base)
     ):
         raise TypeError(
             'exact vectors currently require ZZ, QQ, GF, or Zmod')
@@ -1845,6 +1983,25 @@ def _random_integer(
             return value
 
 
+def _random_extension_field_element(
+    base: sage.Parent,
+    nonzero: bool,
+) -> Any:
+    while True:
+        value = base(0)
+        power = base(1)
+        degree = _untyped(base).degree()
+        characteristic = _untyped(base).characteristic()
+        generator = _untyped(base).gen()
+        for _index in range(degree):
+            coefficient = _random_int(
+                0, characteristic - 1)
+            value += base(coefficient) * power
+            power *= generator
+        if not nonzero or not value.is_zero():
+            return value
+
+
 def random_matrix(
     base: sage.Parent,
     nrows: int,
@@ -1860,7 +2017,13 @@ def random_matrix(
 
     base = _canonical_base(base)
     modular_ring = _is_modular_base(base)
-    if base is not sage.ZZ and base is not sage.QQ and not modular_ring:
+    extension_field = _is_extension_field_base(base)
+    if (
+        base is not sage.ZZ
+        and base is not sage.QQ
+        and not modular_ring
+        and not extension_field
+    ):
         raise TypeError(
             'random_matrix currently requires ZZ, QQ, GF, or Zmod')
     if algorithm != 'randomize':
@@ -1908,6 +2071,10 @@ def random_matrix(
     values = [0 for _ in range(rows * cols)]
     if density == 1:
         for index in range(len(values)):
+            if extension_field and lower is None:
+                values[index] = _random_extension_field_element(
+                    base, False)
+                continue
             if modular_ring and lower is None:
                 value = _random_int(
                     0,
@@ -1927,9 +2094,14 @@ def random_matrix(
                     value = _random_int(
                         1,
                         runtime.normalize_integer(
-                            runtime.reflect.get(
+                        runtime.reflect.get(
                                 base, '_modulus')) - 1,
                     )
+                elif extension_field and lower is None:
+                    values[row * cols + column] = (
+                        _random_extension_field_element(
+                            base, True))
+                    continue
                 else:
                     value = _random_integer(
                         distribution, lower, upper, True)
