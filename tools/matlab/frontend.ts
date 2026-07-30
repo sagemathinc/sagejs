@@ -204,6 +204,11 @@ class AstBuilder {
           span: sourceSpan(node),
         };
       }
+      case "spread_operator":
+        return {
+          kind: "all",
+          span: sourceSpan(node),
+        };
       case "binary_operator":
       case "boolean_operator":
       case "comparison_operator":
@@ -257,9 +262,30 @@ class SageLowerer {
 
   private statement(statement: MatlabStatement): string {
     if (statement.kind === "assignment") {
+      if (statement.target.kind === "call") {
+        if (statement.target.callee.kind !== "name") {
+          throw new MatlabSyntaxError(
+            "indexed assignment currently requires a named array",
+            statement.span,
+          );
+        }
+        const name = statement.target.callee.name;
+        const assignment = `_matlab.set_index(${name}, ${
+          this.expression(statement.value)
+        }${
+          statement.target.arguments.length ? ", " : ""
+        }${
+          statement.target.arguments.map((argument) =>
+            this.expression(argument)
+          ).join(", ")
+        })`;
+        return statement.suppressOutput
+          ? assignment
+          : `${assignment}\nprint(${name})`;
+      }
       if (statement.target.kind !== "name") {
         throw new MatlabSyntaxError(
-          "the initial MATLAB frontend only assigns to identifiers",
+          "assignment currently requires a name or indexed array",
           statement.span,
         );
       }
@@ -372,6 +398,8 @@ class SageLowerer {
         return `_np.array(_matlab.colon(${this.expression(expression.start)}, ${
           this.expression(expression.stop)
         }${expression.step ? `, ${this.expression(expression.step)}` : ""}))`;
+      case "all":
+        return "_matlab.ALL";
       case "unary": {
         const operators: Record<string, string> = {
           "+": "+",

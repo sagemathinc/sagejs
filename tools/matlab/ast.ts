@@ -33,6 +33,10 @@ export interface RangeExpression extends NodeBase {
   step?: MatlabExpression;
 }
 
+export interface AllExpression extends NodeBase {
+  kind: "all";
+}
+
 export interface UnaryExpression extends NodeBase {
   kind: "unary";
   operator: string;
@@ -52,6 +56,7 @@ export type MatlabExpression =
   | MatrixExpression
   | CallExpression
   | RangeExpression
+  | AllExpression
   | UnaryExpression
   | BinaryExpression;
 

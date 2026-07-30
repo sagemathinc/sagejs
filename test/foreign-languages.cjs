@@ -80,6 +80,13 @@ function run(language, filename, alias = language) {
       "x",
       "sin(x)",
       "sum(x)",
+      "A(1,1)",
+      "A(2,1)",
+      "A(3)",
+      "A(:,2)",
+      "A(1:2,2)",
+      "A(2,2) = 99;",
+      "A",
       "",
     ].join("\n");
     const matlabFilename = join(temporaryDirectory, "sample.matlab");
@@ -94,7 +101,15 @@ function run(language, filename, alias = language) {
     assert.match(matlabExecution.stdout, /\[\[\s*7 10\]\s*\[\s*15 22\]\]/);
     assert.match(matlabExecution.stdout, /\[1 3 5 7\]/);
     assert.match(matlabExecution.stdout, /0\.84147098/);
-    assert.match(matlabExecution.stdout, /\n16(?:\.0)?\s*$/);
+    assert.match(matlabExecution.stdout, /\n16(?:\.0)?\n/);
+    assert.match(
+      matlabExecution.stdout,
+      /\n1\n3\n2\n\[2, 4\]\n\[2, 4\]\n/,
+    );
+    assert.match(
+      matlabExecution.stdout,
+      /\[\[\s*1\s+2\]\s*\[\s*3\s+99\]\]\s*$/,
+    );
 
     const mapleSource = [
       "f := x -> x^2 + 1:",
