@@ -37,10 +37,16 @@ all outcomes so regressions and newly passing tests are both visible.
 See [`micropython/README.md`](micropython/README.md) for provenance, selection
 rules, and commands.
 
-## Magma parser
+## Foreign-language parsers
 
 The `tree-sitter-magma` submodule pins the MIT-licensed parser grammar used by
-the experimental Magma frontend. Initialize submodules before building:
+the experimental Magma frontend. The official MIT-licensed
+`tree-sitter-wolfram` grammar and the MIT-licensed `tree-sitter-matlab`
+grammar are pinned for the Wolfram Language and MATLAB frontends. Maple's
+focused initial grammar is maintained in-tree because the available external
+grammar did not yet parse representative Maple iterator syntax.
+
+Initialize submodules before building:
 
 ```sh
 git submodule update --init --recursive

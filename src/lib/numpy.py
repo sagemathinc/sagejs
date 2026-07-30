@@ -49,14 +49,22 @@ def _is_native_array(value: Any) -> bool:
     return runtime.instance_of(value, _native_ndarray)
 
 
+def _is_ndarray_wrapper(value: Any) -> bool:
+    return isinstance(value, ndarray) or (
+        hasattr(value, '_value')
+        and hasattr(value, 'shape')
+        and hasattr(value, 'ndim')
+    )
+
+
 def _native(value: Any) -> Any:
-    if isinstance(value, ndarray):
+    if _is_ndarray_wrapper(value):
         return value._value
     return value
 
 
 def _native_array(value: Any) -> Any:
-    if isinstance(value, ndarray):
+    if _is_ndarray_wrapper(value):
         return value._value
     if _is_native_array(value):
         return value
@@ -592,6 +600,49 @@ def ones(
         raise NotImplementedError('the like argument is not implemented')
     return _wrap(
         _call('ones', [_shape_list(shape), _dtype_name(dtype)]))
+
+
+def linspace(
+    start: Any,
+    stop: Any,
+    num: int = 50,
+    endpoint: bool = True,
+) -> ndarray:
+    if not endpoint and num > 0:
+        stop = start + (stop - start) * (num - 1) / num
+    return _wrap(_call('linspace', [
+        runtime.number(start),
+        runtime.number(stop),
+        runtime.number(num),
+    ]))
+
+
+def _unary_ufunc(name: str, value: Any) -> Any:
+    return _wrap(_call(name, [_native_array(value)]))
+
+
+def sin(value: Any) -> Any:
+    return _unary_ufunc('sin', value)
+
+
+def cos(value: Any) -> Any:
+    return _unary_ufunc('cos', value)
+
+
+def tan(value: Any) -> Any:
+    return _unary_ufunc('tan', value)
+
+
+def exp(value: Any) -> Any:
+    return _unary_ufunc('exp', value)
+
+
+def log(value: Any) -> Any:
+    return _unary_ufunc('log', value)
+
+
+def sqrt(value: Any) -> Any:
+    return _unary_ufunc('sqrt', value)
 
 
 def reshape(

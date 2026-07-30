@@ -19,6 +19,10 @@ interface SeaArguments {
   execute: boolean;
   sage: boolean;
   magma: boolean;
+  maple: boolean;
+  matlab: boolean;
+  wolfram: boolean;
+  mathematica: boolean;
   emit_sage: boolean;
   no_js: boolean;
   tokens: boolean;
@@ -33,7 +37,11 @@ Options:
   --python        use Python syntax and division
   --sage          use mathematics-friendly Sage syntax
   --magma         use the experimental Magma language frontend
-  --emit-sage     print Sage source generated from Magma input
+  --maple         use the experimental Maple language frontend
+  --matlab        use the experimental MATLAB language frontend
+  --wolfram       use the experimental Wolfram Language frontend
+  --mathematica   alias for --wolfram
+  --emit-sage     print Sage source generated from foreign-language input
   --no-js         hide generated JavaScript in the REPL (default)
   --tokens        display parser tokens
   -h, --help      show this help
@@ -48,6 +56,10 @@ function parseArguments(): SeaArguments {
     execute: false,
     sage: executable !== "sagepython",
     magma: false,
+    maple: false,
+    matlab: false,
+    wolfram: false,
+    mathematica: false,
     emit_sage: false,
     no_js: true,
     tokens: false,
@@ -63,6 +75,18 @@ function parseArguments(): SeaArguments {
     } else if (!optionsEnded && argument === "--magma") {
       args.sage = true;
       args.magma = true;
+    } else if (!optionsEnded && argument === "--maple") {
+      args.sage = true;
+      args.maple = true;
+    } else if (!optionsEnded && argument === "--matlab") {
+      args.sage = true;
+      args.matlab = true;
+    } else if (!optionsEnded && argument === "--wolfram") {
+      args.sage = true;
+      args.wolfram = true;
+    } else if (!optionsEnded && argument === "--mathematica") {
+      args.sage = true;
+      args.mathematica = true;
     } else if (!optionsEnded && argument === "--emit-sage") {
       args.emit_sage = true;
     } else if (!optionsEnded && argument === "--no-js") {
@@ -104,6 +128,10 @@ async function main(): Promise<void> {
       show_js: !argv.no_js,
       sage: sageMode,
       magma: argv.magma,
+      maple: argv.maple,
+      matlab: argv.matlab,
+      wolfram: argv.wolfram,
+      mathematica: argv.mathematica,
       emitSage: argv.emit_sage,
       tokens: argv.tokens,
     });

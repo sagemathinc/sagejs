@@ -1,0 +1,24 @@
+{
+  "grammars": [
+    {
+      "name": "maple",
+      "camelcase": "Maple",
+      "scope": "source.maple",
+      "path": ".",
+      "file-types": ["mpl", "maple"]
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "GPL-3.0-or-later",
+    "description": "Focused Maple grammar for the Sage.js compatibility frontend",
+    "authors": [
+      {
+        "name": "Sage.js contributors"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/sagemathinc/sagejs"
+    }
+  }
+}

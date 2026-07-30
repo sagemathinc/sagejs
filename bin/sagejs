@@ -15,7 +15,10 @@ const executable = path.basename(process.argv[1]);
 let sageMode = executable !== "sagepython";
 if (argv.python) sageMode = false;
 if (argv.sage) sageMode = true;
-if (argv.magma) sageMode = true;
+if (
+  argv.magma || argv.maple || argv.matlab ||
+  argv.wolfram || argv.mathematica
+) sageMode = true;
 argv.sage = sageMode;
 
 const basePath = path.resolve(
@@ -52,6 +55,10 @@ if (argv.mode === "self") {
     show_js: !argv.no_js,
     sage: sageMode,
     magma: !!argv.magma,
+    maple: !!argv.maple,
+    matlab: !!argv.matlab,
+    wolfram: !!argv.wolfram,
+    mathematica: !!argv.mathematica,
     emitSage: !!argv.emit_sage,
     tokens: argv.tokens,
   });

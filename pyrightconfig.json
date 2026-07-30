@@ -21,7 +21,10 @@
     "src/baselib/zeta_data.py",
     "src/baselib/zz_introspection.py",
     "src/lib/magma.py",
-    "src/lib/numpy.py"
+    "src/lib/maple.py",
+    "src/lib/matlab.py",
+    "src/lib/numpy.py",
+    "src/lib/wolfram.py"
   ],
   "extraPaths": [
     "src/baselib"

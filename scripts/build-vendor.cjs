@@ -36,16 +36,23 @@ copyFileSync(
   join(outputDirectory, "web-tree-sitter.wasm"),
 );
 
-execFileSync(
-  join(root, "node_modules", ".bin", "tree-sitter"),
-  [
-    "build",
-    "--wasm",
-    "--output",
-    join(outputDirectory, "tree-sitter-magma.wasm"),
-    join(root, "upstream-tests", "tree-sitter-magma"),
-  ],
-  { cwd: root, stdio: "inherit" },
-);
+function buildParser(name, sourceDirectory) {
+  execFileSync(
+    join(root, "node_modules", ".bin", "tree-sitter"),
+    [
+      "build",
+      "--wasm",
+      "--output",
+      join(outputDirectory, `tree-sitter-${name}.wasm`),
+      sourceDirectory,
+    ],
+    { cwd: root, stdio: "inherit" },
+  );
+}
 
-console.log("Bundled NumPy, symbolic, and Magma parser backends");
+buildParser("magma", join(root, "upstream-tests", "tree-sitter-magma"));
+buildParser("wolfram", join(root, "upstream-tests", "tree-sitter-wolfram"));
+buildParser("matlab", join(root, "upstream-tests", "tree-sitter-matlab"));
+buildParser("maple", join(root, "tools", "maple"));
+
+console.log("Bundled NumPy, symbolic, and foreign-language parser backends");

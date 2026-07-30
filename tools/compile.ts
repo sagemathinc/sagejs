@@ -18,10 +18,11 @@ import {
   standardLibraryCacheDirectory,
 } from "./resources";
 import {
-  createMagmaFrontend,
-  MagmaFrontend,
-  MagmaSyntaxError,
-} from "./magma/frontend";
+  createForeignFrontend,
+  ForeignFrontend,
+  isForeignSyntaxError,
+  selectedForeignLanguage,
+} from "./foreign";
 
 const PyLang = createCompiler();
 
@@ -88,13 +89,18 @@ export default async function Compile({
     comments?: string;
     sage?: boolean;
     magma?: boolean;
+    maple?: boolean;
+    matlab?: boolean;
+    wolfram?: boolean;
+    mathematica?: boolean;
     emit_sage?: boolean;
   };
   src_path: string;
   lib_path: string;
 }): Promise<void> {
-  const magmaFrontend: MagmaFrontend | undefined = argv.magma
-    ? await createMagmaFrontend()
+  const foreignLanguage = selectedForeignLanguage(argv);
+  const foreignFrontend: ForeignFrontend | undefined = foreignLanguage
+    ? await createForeignFrontend(foreignLanguage)
     : undefined;
   // configure settings for the output
   const module_cache_dir = argv.cache_dir
@@ -201,11 +207,11 @@ export default async function Compile({
     timeIt("parse", () => {
       const filename =
         sourceFilename || argv.filename_for_stdin || "<stdin>";
-      if (magmaFrontend) {
+      if (foreignFrontend) {
         try {
-          code = magmaFrontend.lower(code, { filename }).source;
+          code = foreignFrontend.lower(code, { filename }).source;
         } catch (err) {
-          if (err instanceof MagmaSyntaxError) {
+          if (isForeignSyntaxError(err)) {
             console.error(err.toString());
             process.exitCode = 1;
             return;
@@ -217,7 +223,7 @@ export default async function Compile({
           if (!argv.execute) return;
         }
       }
-      if (argv.sage && !magmaFrontend && filename !== "<stdin>") {
+      if (argv.sage && !foreignFrontend && filename !== "<stdin>") {
         code = expandSageLoads(code, filename);
       }
       try {

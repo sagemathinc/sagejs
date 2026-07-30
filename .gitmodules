@@ -4,3 +4,9 @@
 [submodule "upstream-tests/tree-sitter-magma"]
 	path = upstream-tests/tree-sitter-magma
 	url = https://github.com/edgarcosta/tree-sitter-magma.git
+[submodule "upstream-tests/tree-sitter-wolfram"]
+	path = upstream-tests/tree-sitter-wolfram
+	url = https://github.com/WolframResearch/tree-sitter-wolfram.git
+[submodule "upstream-tests/tree-sitter-matlab"]
+	path = upstream-tests/tree-sitter-matlab
+	url = https://github.com/acristoffers/tree-sitter-matlab.git

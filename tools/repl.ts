@@ -27,10 +27,13 @@ import {
 } from "./resources";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
 import {
-  createMagmaFrontend,
-  MagmaFrontend,
-  MagmaSyntaxError,
-} from "./magma/frontend";
+  createForeignFrontend,
+  ForeignFrontend,
+  ForeignLanguage,
+  foreignPrompt,
+  isForeignSyntaxError,
+  selectedForeignLanguage,
+} from "./foreign";
 
 const DEFAULT_HISTORY_SIZE = 1000;
 const HOME =
@@ -57,12 +60,17 @@ export interface Options {
   mockReadline?: Function; // for mocking readline (for testing only)
   sage?: boolean; // Sage-style mathematical syntax
   magma?: boolean;
+  maple?: boolean;
+  matlab?: boolean;
+  wolfram?: boolean;
+  mathematica?: boolean;
   emitSage?: boolean;
   tokens?: boolean; // show very verbose tokens as parsed
   moduleCacheDir?: string | false;
 }
 
 function replDefaults(options: Partial<Options>): Options {
+  const foreignLanguage = selectedForeignLanguage(options);
   if (!options.input) {
     options.input = process.stdin;
   }
@@ -73,8 +81,10 @@ function replDefaults(options: Partial<Options>): Options {
     options.show_js = true;
   }
   if (!options.ps1) {
-    if (options.magma) {
-      options.ps1 = process.stdin.isTTY ? "magma> " : "";
+    if (foreignLanguage) {
+      options.ps1 = process.stdin.isTTY
+        ? foreignPrompt(foreignLanguage)
+        : "";
     } else if (options.sage) {
       options.ps1 = process.stdin.isTTY ? "sage: " : "";
     } else {
@@ -146,11 +156,12 @@ function createReadlineInterface(options: Options, PyLang) {
 
 export default async function Repl(options0: Partial<Options>): Promise<void> {
   const options = replDefaults(options0);
+  const foreignLanguage = selectedForeignLanguage(options);
   const PyLang = createCompiler({
     console: options.console,
   });
-  const magmaFrontendPromise = options.magma
-    ? createMagmaFrontend()
+  const foreignFrontendPromise = foreignLanguage
+    ? createForeignFrontend(foreignLanguage)
     : undefined;
   const moduleCacheDir =
     options.moduleCacheDir === false
@@ -183,8 +194,8 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     initLines.push(line);
   }
   readline.on("line", duringInit);
-  const magmaFrontend: MagmaFrontend | undefined =
-    await magmaFrontendPromise;
+  const foreignFrontend: ForeignFrontend | undefined =
+    await foreignFrontendPromise;
   await initContext();
   readline.off("line", duringInit);
 
@@ -202,8 +213,8 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     options.console.log(
       colorize(
         `Welcome to Sage.js${
-          options.magma
-            ? " (Magma mode)"
+          foreignLanguage
+            ? ` (${foreignDisplayName(foreignLanguage)} mode)`
             : options.sage ? "" : " (Python mode)"
         } [Node.js ${
           process.version
@@ -314,9 +325,11 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   }
 
   function stripCopiedPrompt(line: string): string {
-    if (options.magma) {
-      const magmaPrompt = line.match(/^(?:magma>)\s?/);
-      if (magmaPrompt) return line.slice(magmaPrompt[0].length);
+    if (foreignLanguage) {
+      const copiedPrompt = foreignPrompt(foreignLanguage).trim();
+      if (line.startsWith(copiedPrompt)) {
+        return line.slice(copiedPrompt.length).replace(/^\s?/, "");
+      }
     }
     if (options.sage) {
       const sagePrompt = line.match(/^sage:\s?/);
@@ -338,7 +351,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   function loadFile(filename: string, attach: boolean): void {
     try {
       const rawContents = readFileSync(filename, "utf-8");
-      const contents = magmaFrontend
+      const contents = foreignFrontend
         ? rawContents
         : expandSageLoads(rawContents, filename);
       if (attach) {
@@ -377,7 +390,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       allowLoadDirective?: boolean;
     } = {},
   ): boolean {
-    if (!magmaFrontend && runOptions.allowLoadDirective !== false) {
+    if (!foreignFrontend && runOptions.allowLoadDirective !== false) {
       const directive = parseLoadDirective(source);
       if (directive) {
         loadFile(directive.filename, directive.attach);
@@ -389,18 +402,18 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       time = 0;
       source = source.slice(5).trimLeft();
     }
-    if (magmaFrontend) {
+    if (foreignFrontend) {
       try {
-        const lowering = magmaFrontend.lower(source, {
+        const lowering = foreignFrontend.lower(source, {
           filename: runOptions.filename,
         });
         source = lowering.source;
-        for (const filename of lowering.attachedFiles) {
+        for (const filename of lowering.attachedFiles ?? []) {
           attachedFiles.set(filename, statSync(filename).mtimeMs);
         }
       } catch (err) {
         if (
-          err instanceof MagmaSyntaxError &&
+          isForeignSyntaxError(err) &&
           err.incomplete &&
           !runOptions.filename
         ) {
@@ -469,7 +482,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       finalStatement.body instanceof PyLang.AST_Assign;
     const noPrint =
       !!runOptions.noPrint ||
-      !!magmaFrontend ||
+      !!foreignFrontend ||
       source.trimRight().endsWith(";") ||
       finalStatementIsAssignment;
     if (time != null) {
@@ -513,8 +526,8 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     line = stripCopiedPrompt(line);
     if (more) {
       // We are in a block
-      if (options.magma) {
-        // Magma has explicit ``end ...;`` terminators.  Ask the real parser
+      if (foreignFrontend) {
+        // Foreign languages use explicit terminators. Ask their real parser
         // after every line instead of requiring Python's blank-line gesture.
         more = push(line);
         prompt();
@@ -567,4 +580,17 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   readline.on("SIGCONT", prompt);
 
   prompt();
+}
+
+function foreignDisplayName(language: ForeignLanguage): string {
+  switch (language) {
+    case "wolfram":
+      return "Wolfram";
+    case "matlab":
+      return "MATLAB";
+    case "maple":
+      return "Maple";
+    case "magma":
+      return "Magma";
+  }
 }

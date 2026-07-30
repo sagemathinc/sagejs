@@ -105,3 +105,17 @@ Wasm runtime. This avoids making the Magma frontend depend on a
 platform-specific Node native addon, works in single-executable
 distributions, and keeps the parser backend suitable for future browser
 integration.
+
+## Next compatibility inputs
+
+Two closely related upstream projects are useful when this proof of concept
+grows beyond its initial executable examples:
+
+- [`havarddj/lava`](https://github.com/havarddj/lava) provides realistic
+  Magma-language material that can inform a pinned compatibility corpus.
+- Edgar Costa's
+  [`magma_kernel` x-protocol branch](https://github.com/edgarcosta/magma_kernel/tree/feat/x-protocol)
+  explores a richer Magma/Jupyter protocol and should be reviewed before
+  Sage.js invents additional language-specific kernel messages.
+
+These are recorded as design and test inputs, not vendored dependencies.

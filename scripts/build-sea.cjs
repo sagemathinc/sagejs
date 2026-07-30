@@ -95,6 +95,24 @@ function buildExecutable(name, withFlint) {
       "vendor",
       "tree-sitter-magma.wasm",
     ),
+    "vendor/tree-sitter-maple.wasm": join(
+      root,
+      "dist",
+      "vendor",
+      "tree-sitter-maple.wasm",
+    ),
+    "vendor/tree-sitter-matlab.wasm": join(
+      root,
+      "dist",
+      "vendor",
+      "tree-sitter-matlab.wasm",
+    ),
+    "vendor/tree-sitter-wolfram.wasm": join(
+      root,
+      "dist",
+      "vendor",
+      "tree-sitter-wolfram.wasm",
+    ),
   };
   if (withFlint) assets["native/sagejs_flint.node"] = flintAddon;
 

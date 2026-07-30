@@ -1,16 +1,13 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
+import { Node as SyntaxNode, Tree } from "web-tree-sitter";
 import {
-  Language,
-  Node as SyntaxNode,
-  Parser,
-  Tree,
-} from "web-tree-sitter";
-import {
-  readResourceBytes,
-  vendorResourcePath,
-} from "../resources";
+  createTreeSitterParser,
+  firstSyntaxError,
+  sourceSpan,
+} from "../foreign/tree-sitter";
+import { ForeignFrontend } from "../foreign/types";
 import {
   AggregateExpression,
   BinaryExpression,
@@ -31,7 +28,6 @@ import {
   WhileStatement,
 } from "./ast";
 
-const CORE_WASM = "web-tree-sitter.wasm";
 const MAGMA_WASM = "tree-sitter-magma.wasm";
 
 export class MagmaSyntaxError extends SyntaxError {
@@ -67,33 +63,13 @@ export interface MagmaLowerOptions {
   filename?: string;
 }
 
-export interface MagmaFrontend {
+export interface MagmaFrontend extends ForeignFrontend {
+  readonly language: "magma";
   parse(source: string): MagmaProgram;
   lower(source: string, options?: MagmaLowerOptions): MagmaLowering;
 }
 
-function span(node: SyntaxNode): SourceSpan {
-  return {
-    start: {
-      line: node.startPosition.row + 1,
-      column: node.startPosition.column + 1,
-      offset: node.startIndex,
-    },
-    end: {
-      line: node.endPosition.row + 1,
-      column: node.endPosition.column + 1,
-      offset: node.endIndex,
-    },
-  };
-}
-
-function firstError(node: SyntaxNode): SyntaxNode | undefined {
-  if (node.isError || node.isMissing) return node;
-  for (const child of node.children) {
-    const found = firstError(child);
-    if (found) return found;
-  }
-}
+const span = sourceSpan;
 
 function requiredField(node: SyntaxNode, name: string): SyntaxNode {
   const child = node.childForFieldName(name);
@@ -746,13 +722,7 @@ let frontendPromise: Promise<MagmaFrontend> | undefined;
 export function createMagmaFrontend(): Promise<MagmaFrontend> {
   if (frontendPromise) return frontendPromise;
   frontendPromise = (async () => {
-    const core = readResourceBytes(vendorResourcePath(CORE_WASM));
-    await Parser.init({ wasmBinary: core });
-    const language = await Language.load(
-      readResourceBytes(vendorResourcePath(MAGMA_WASM)),
-    );
-    const parser = new Parser();
-    parser.setLanguage(language);
+    const parser = await createTreeSitterParser(MAGMA_WASM);
 
     function parse(source: string): MagmaProgram {
       const tree = parser.parse(source);
@@ -761,7 +731,7 @@ export function createMagmaFrontend(): Promise<MagmaFrontend> {
       }
       try {
         if (tree.rootNode.hasError) {
-          const error = firstError(tree.rootNode) ?? tree.rootNode;
+          const error = firstSyntaxError(tree.rootNode) ?? tree.rootNode;
           const errorSpan = span(error);
           const incomplete =
             error.isMissing ||
@@ -879,6 +849,7 @@ export function createMagmaFrontend(): Promise<MagmaFrontend> {
     }
 
     return {
+      language: "magma",
       parse,
       lower(
         source: string,

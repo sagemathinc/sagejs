@@ -1,13 +1,6 @@
-export interface SourcePosition {
-  line: number;
-  column: number;
-  offset: number;
-}
+import { SourceSpan } from "../foreign/tree-sitter";
 
-export interface SourceSpan {
-  start: SourcePosition;
-  end: SourcePosition;
-}
+export type { SourceSpan } from "../foreign/tree-sitter";
 
 interface NodeBase {
   span: SourceSpan;

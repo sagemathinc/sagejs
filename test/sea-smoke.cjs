@@ -85,6 +85,30 @@ try {
     "42",
   );
 
+  const wolframProgram = join(temporaryDirectory, "portable.wl");
+  writeFileSync(wolframProgram, "Range[2, 8, 2]\n");
+  assert.equal(
+    run(pythonExecutable, wolframProgram, ["--wolfram"]),
+    "[2, 4, 6, 8]",
+  );
+
+  const matlabProgram = join(temporaryDirectory, "portable.matlab");
+  writeFileSync(
+    matlabProgram,
+    ["values = 1:2:7;", "sum(values)", ""].join("\n"),
+  );
+  assert.equal(
+    run(pythonExecutable, matlabProgram, ["--matlab"]),
+    "16",
+  );
+
+  const mapleProgram = join(temporaryDirectory, "portable.mpl");
+  writeFileSync(mapleProgram, "seq(n^2, n=1..4);\n");
+  assert.equal(
+    run(pythonExecutable, mapleProgram, ["--maple"]),
+    "[1, 4, 9, 16]",
+  );
+
   const mathProgram = join(temporaryDirectory, "portable.sage");
   writeFileSync(
     mathProgram,
