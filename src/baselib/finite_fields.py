@@ -78,39 +78,53 @@ class FiniteFieldElement(sage.Element):
         self._value = residue
         runtime.object.freeze(self)
 
+    def _new_reduced(self, value: int) -> FiniteFieldElement:
+        answer = runtime.object.create(
+            _finite_field_element_prototype)
+        answer._parent = self._parent
+        answer._value = value
+        runtime.object.freeze(answer)
+        return answer
+
     def _add_(
         self, other: FiniteFieldElement,
     ) -> FiniteFieldElement:
-        return FiniteFieldElement(
-            self._parent,
-            runtime.native_add(self._value, other._value),
-        )
+        value = runtime.native_add(self._value, other._value)
+        if value >= self._parent._modulus:
+            value = runtime.native_sub(
+                value, self._parent._modulus)
+        return self._new_reduced(value)
 
     def _sub_(
         self, other: FiniteFieldElement,
     ) -> FiniteFieldElement:
-        return FiniteFieldElement(
-            self._parent,
-            runtime.native_sub(self._value, other._value),
-        )
+        value = runtime.native_sub(self._value, other._value)
+        if value < 0:
+            value = runtime.native_add(
+                value, self._parent._modulus)
+        return self._new_reduced(value)
 
     def _mul_(
         self, other: FiniteFieldElement,
     ) -> FiniteFieldElement:
-        return FiniteFieldElement(
-            self._parent,
-            runtime.native_mul(self._value, other._value),
+        return self._new_reduced(
+            runtime.native_mod(
+                runtime.native_mul(self._value, other._value),
+                self._parent._modulus,
+            ),
         )
 
     def _truediv_(
         self, other: FiniteFieldElement,
     ) -> FiniteFieldElement:
-        return _new_prime_field_element(
-            self._parent,
-            runtime.native_mul(
-                self._value,
-                runtime.modular_inverse(
-                    other._value, self._parent._modulus),
+        return self._new_reduced(
+            runtime.native_mod(
+                runtime.native_mul(
+                    self._value,
+                    runtime.modular_inverse(
+                        other._value, self._parent._modulus),
+                ),
+                self._parent._modulus,
             ),
         )
 
@@ -133,7 +147,12 @@ class FiniteFieldElement(sage.Element):
         return runtime.coercion_model.equals(self, other)
 
     def __neg__(self) -> FiniteFieldElement:
-        return FiniteFieldElement(self._parent, -self._value)
+        if self._value == runtime.bigint(0):
+            return self
+        return self._new_reduced(
+            runtime.native_sub(
+                self._parent._modulus, self._value),
+        )
 
     def __pow__(self, exponent: int) -> FiniteFieldElement:
         exponent = runtime.integer_bigint(exponent)
@@ -141,8 +160,7 @@ class FiniteFieldElement(sage.Element):
         if exponent < 0:
             value = runtime.modular_inverse(value, self._parent._modulus)
             exponent = -exponent
-        return _new_prime_field_element(
-            self._parent,
+        return self._new_reduced(
             runtime.modular_power(value, exponent, self._parent._modulus))
 
     def lift(self) -> int:
@@ -164,8 +182,7 @@ class FiniteFieldElement(sage.Element):
     def inverse_of_unit(self) -> FiniteFieldElement:
         if not self.is_unit():
             raise ArithmeticError('element is not a unit')
-        return _new_prime_field_element(
-            self._parent,
+        return self._new_reduced(
             runtime.modular_inverse(
                 self._value, self._parent._modulus),
         )
@@ -180,6 +197,10 @@ class FiniteFieldElement(sage.Element):
     toString = __repr__
 
 
+_finite_field_element_prototype = runtime.reflect.get(
+    FiniteFieldElement, 'prototype')
+
+
 def _new_prime_field_element(
     parent: Any, value: Any,
 ) -> FiniteFieldElement:
@@ -192,44 +213,63 @@ def _new_prime_field_element(
 @runtime.lightweight_math_class
 class IntegerModElement(FiniteFieldElement):
 
+    def _new_reduced(self, value: int) -> IntegerModElement:
+        answer = runtime.object.create(
+            _integer_mod_element_prototype)
+        answer._parent = self._parent
+        answer._value = value
+        runtime.object.freeze(answer)
+        return answer
+
     def _add_(
         self, other: FiniteFieldElement,
     ) -> IntegerModElement:
-        return IntegerModElement(
-            self._parent,
-            runtime.native_add(self._value, other._value),
-        )
+        value = runtime.native_add(self._value, other._value)
+        if value >= self._parent._modulus:
+            value = runtime.native_sub(
+                value, self._parent._modulus)
+        return self._new_reduced(value)
 
     def _sub_(
         self, other: FiniteFieldElement,
     ) -> IntegerModElement:
-        return IntegerModElement(
-            self._parent,
-            runtime.native_sub(self._value, other._value),
-        )
+        value = runtime.native_sub(self._value, other._value)
+        if value < 0:
+            value = runtime.native_add(
+                value, self._parent._modulus)
+        return self._new_reduced(value)
 
     def _mul_(
         self, other: FiniteFieldElement,
     ) -> IntegerModElement:
-        return IntegerModElement(
-            self._parent,
-            runtime.native_mul(self._value, other._value),
+        return self._new_reduced(
+            runtime.native_mod(
+                runtime.native_mul(self._value, other._value),
+                self._parent._modulus,
+            ),
         )
 
     def _truediv_(
         self, other: FiniteFieldElement,
     ) -> IntegerModElement:
-        return IntegerModElement(
-            self._parent,
-            runtime.native_mul(
-                self._value,
-                runtime.modular_inverse(
-                    other._value, self._parent._modulus),
+        return self._new_reduced(
+            runtime.native_mod(
+                runtime.native_mul(
+                    self._value,
+                    runtime.modular_inverse(
+                        other._value, self._parent._modulus),
+                ),
+                self._parent._modulus,
             ),
         )
 
     def __neg__(self) -> IntegerModElement:
-        return IntegerModElement(self._parent, -self._value)
+        if self._value == runtime.bigint(0):
+            return self
+        return self._new_reduced(
+            runtime.native_sub(
+                self._parent._modulus, self._value),
+        )
 
     def __pow__(self, exponent: int) -> IntegerModElement:
         exponent = runtime.integer_bigint(exponent)
@@ -238,8 +278,7 @@ class IntegerModElement(FiniteFieldElement):
             value = runtime.modular_inverse(
                 value, self._parent._modulus)
             exponent = -exponent
-        return IntegerModElement(
-            self._parent,
+        return self._new_reduced(
             runtime.modular_power(
                 value, exponent, self._parent._modulus),
         )
@@ -247,11 +286,14 @@ class IntegerModElement(FiniteFieldElement):
     def inverse_of_unit(self) -> IntegerModElement:
         if not self.is_unit():
             raise ArithmeticError('element is not a unit')
-        return IntegerModElement(
-            self._parent,
+        return self._new_reduced(
             runtime.modular_inverse(
                 self._value, self._parent._modulus),
         )
+
+
+_integer_mod_element_prototype = runtime.reflect.get(
+    IntegerModElement, 'prototype')
 
 
 @runtime.lightweight_math_class

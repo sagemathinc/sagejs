@@ -38,9 +38,11 @@ const constructorEnd = generated.indexOf(
 );
 const constructor = generated.slice(constructorStart, constructorEnd);
 const initialize = methodBody("FiniteFieldElement", "__init__");
+const newReduced = methodBody("FiniteFieldElement", "_new_reduced");
 const add = methodBody("FiniteFieldElement", "_add_");
 const subtract = methodBody("FiniteFieldElement", "_sub_");
 const multiply = methodBody("FiniteFieldElement", "_mul_");
+const residueNewReduced = methodBody("IntegerModElement", "_new_reduced");
 const residueAdd = methodBody("IntegerModElement", "_add_");
 const residueSubtract = methodBody("IntegerModElement", "_sub_");
 const residueMultiply = methodBody("IntegerModElement", "_mul_");
@@ -60,40 +62,37 @@ assert.doesNotMatch(
   /ρσ_integer_bigint\?\.__call__|ρσ_integer_bigint\?\./,
 );
 
-assert.match(
-  add,
-  /new FiniteFieldElement\(self\._parent, self\._value \+ other\._value\)/,
-);
-assert.match(
-  subtract,
-  /new FiniteFieldElement\(self\._parent, self\._value - other\._value\)/,
-);
+assert.match(newReduced, /Object\.create\(_finite_field_element_prototype\)/);
+assert.match(newReduced, /answer\._parent = self\._parent/);
+assert.match(newReduced, /answer\._value = value/);
+assert.match(newReduced, /Object\.freeze\(answer\)/);
+assert.match(add, /return self\._new_reduced\(value\)/);
+assert.match(subtract, /return self\._new_reduced\(value\)/);
 assert.match(
   multiply,
-  /new FiniteFieldElement\(self\._parent, self\._value \* other\._value\)/,
+  /return self\._new_reduced\(self\._value \* other\._value % self\._parent\._modulus\)/,
 );
 for (const body of [add, subtract, multiply]) {
   assert.doesNotMatch(
     body,
-    /ρσ_operator_(?:add|sub|mul)|ρσ_new_prime_field_element/,
+    /ρσ_operator_(?:add|sub|mul)|ρσ_new_prime_field_element|new FiniteFieldElement/,
   );
 }
 assert.match(
-  residueAdd,
-  /new IntegerModElement\(self\._parent, self\._value \+ other\._value\)/,
+  residueNewReduced,
+  /Object\.create\(_integer_mod_element_prototype\)/,
 );
-assert.match(
-  residueSubtract,
-  /new IntegerModElement\(self\._parent, self\._value - other\._value\)/,
-);
+assert.match(residueNewReduced, /Object\.freeze\(answer\)/);
+assert.match(residueAdd, /return self\._new_reduced\(value\)/);
+assert.match(residueSubtract, /return self\._new_reduced\(value\)/);
 assert.match(
   residueMultiply,
-  /new IntegerModElement\(self\._parent, self\._value \* other\._value\)/,
+  /return self\._new_reduced\(self\._value \* other\._value % self\._parent\._modulus\)/,
 );
 for (const body of [residueAdd, residueSubtract, residueMultiply]) {
   assert.doesNotMatch(
     body,
-    /ρσ_operator_(?:add|sub|mul)|ρσ_new_prime_field_element/,
+    /ρσ_operator_(?:add|sub|mul)|ρσ_new_prime_field_element|new IntegerModElement/,
   );
 }
 

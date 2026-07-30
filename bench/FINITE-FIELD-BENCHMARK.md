@@ -19,16 +19,16 @@ Construction and process startup are excluded. Each case is warmed up and
 then measured seven times. The table reports the median divided by the number
 of operations.
 
-On the initial x86-64 machine (Node 26.5.0, SageMath 10.9.post1, Sage.js
+On the initial x86-64 machine (Node 26.5.1, SageMath 10.9.post1, Sage.js
 FLINT 3.5.0), the results were:
 
 | Operation | Sage.js | SageMath | Sage.js / SageMath |
 |---|---:|---:|---:|
-| scalar multiply-add | 1.77 us | 128 ns | 13.83x |
-| polynomial multiply | 9.60 us | 2.83 us | 3.40x |
+| scalar multiply-add | 224 ns | 130 ns | 1.72x |
+| polynomial multiply | 9.00 us | 2.83 us | 3.18x |
 | polynomial GCD | 43.0 us | 51.1 us | 0.84x |
-| polynomial factorization | 0.90 ms | 1.20 ms | 0.75x |
-| residue-list sum | 45.7 ms | 37.7 ms | 1.21x |
+| polynomial factorization | 0.90 ms | 1.19 ms | 0.75x |
+| residue-list sum | 27.3 ms | 37.5 ms | 0.73x |
 
 The residue-list case is also a guard against language-runtime overhead:
 enumerating the ring creates 100,000 exact modular elements before summing
@@ -36,12 +36,14 @@ them. It therefore catches accidental per-instance costs that native FLINT
 benchmarks cannot expose.
 
 These are measurements of the complete language-level operations, not merely
-the underlying C calls. Scalar arithmetic remains a clear optimization target:
-each operation currently traverses the dynamic coercion model. The small
-polynomial product is also sensitive to one Node-API crossing and wrapper
-allocation per operation. GCD and factorization do enough native work per
-crossing that the boundary is no longer dominant; on this workload the current
-Sage.js/FLINT path is already competitive.
+the underlying C calls. Same-parent finite scalar operations use a guarded
+closed-parent path, then construct an immutable element whose value is already
+reduced. This retains the general coercion model for mixed-parent operations
+while avoiding it in the hot scalar loop. The small polynomial product is
+still sensitive to one Node-API crossing and wrapper allocation per operation.
+GCD and factorization do enough native work per crossing that the boundary is
+no longer dominant; on this workload the current Sage.js/FLINT path is already
+competitive.
 
 Library build choices, CPU, and polynomial shape all matter. The conclusion is
 not that one runtime universally wins, but that the architecture crosses the

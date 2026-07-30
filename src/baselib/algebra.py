@@ -88,6 +88,7 @@ class Parent:
         return runtime.polynomial_ring(self, variable)
 
 
+@runtime.lightweight_math_class
 class Element:
 
     def __init__(self, parent: Parent) -> None:
@@ -434,14 +435,14 @@ class CoercionModel:
         right: Any,
         parent: Parent,
     ) -> Any:
-        if parent._kind == 'RDF':
-            if operator == 'add':
+        if runtime.strict_equal(parent._kind, 'RDF'):
+            if runtime.strict_equal(operator, 'add'):
                 return runtime.native_add(left, right)
-            if operator == 'sub':
+            if runtime.strict_equal(operator, 'sub'):
                 return runtime.native_sub(left, right)
-            if operator == 'mul':
+            if runtime.strict_equal(operator, 'mul'):
                 return runtime.native_mul(left, right)
-            if operator == 'truediv':
+            if runtime.strict_equal(operator, 'truediv'):
                 return runtime.native_div(left, right)
         operation = self._operations.get(operator)
         if operation is runtime.undefined:
@@ -454,6 +455,43 @@ class CoercionModel:
     def binOp(
         self, operator: str, left: Any, right: Any,
     ) -> Any:
+        left_parent = runtime.undefined
+        right_parent = runtime.undefined
+        if (
+            left is not None
+            and runtime.jstype(left) == 'object'
+        ):
+            left_parent = runtime.reflect.get(left, '_parent')
+        if (
+            right is not None
+            and runtime.jstype(right) == 'object'
+        ):
+            right_parent = runtime.reflect.get(right, '_parent')
+
+        # Prime fields, extension fields, and residue rings are closed scalar
+        # parents.  Same-parent operands need neither structured-action
+        # probing nor a general coercion-plan lookup.
+        if (
+            left is not None
+            and right is not None
+            and left_parent is not runtime.undefined
+            and left_parent is right_parent
+        ):
+            parent_kind = runtime.reflect.get(left_parent, '_kind')
+            if (
+                runtime.strict_equal(parent_kind, 'GF')
+                or runtime.strict_equal(parent_kind, 'GF_EXTENSION')
+                or runtime.strict_equal(parent_kind, 'ZMOD')
+            ):
+                if runtime.strict_equal(operator, 'add'):
+                    return left._add_(right)
+                if runtime.strict_equal(operator, 'sub'):
+                    return left._sub_(right)
+                if runtime.strict_equal(operator, 'mul'):
+                    return left._mul_(right)
+                if runtime.strict_equal(operator, 'truediv'):
+                    return left._truediv_(right)
+
         # Structured parents such as rectangular matrix spaces and vector
         # spaces are not closed under every operation: a 2x3 matrix times a
         # 3x4 matrix lives in a third parent. Let those elements describe the
@@ -479,20 +517,6 @@ class CoercionModel:
             return runtime.reflect.apply(
                 right_action, right, [operator, left, True])
 
-        left_parent = runtime.undefined
-        right_parent = runtime.undefined
-        if (
-            left is not None
-            and runtime.jstype(left) == 'object'
-        ):
-            left_parent = runtime.reflect.get(
-                left, '_parent')
-        if (
-            right is not None
-            and runtime.jstype(right) == 'object'
-        ):
-            right_parent = runtime.reflect.get(
-                right, '_parent')
         if (
             left_parent is not runtime.undefined
             and left_parent is right_parent
@@ -786,9 +810,13 @@ runtime.object.freeze(AlgebraicExtensionFunctor)
 
 
 def is_math_element(value: Any) -> bool:
+    value_type = runtime.jstype(value)
     return (
         value is not None
-        and runtime.jstype(value) in ('object', 'function')
+        and (
+            runtime.strict_equal(value_type, 'object')
+            or runtime.strict_equal(value_type, 'function')
+        )
         and runtime.reflect.has(value, '_parent')
     )
 
