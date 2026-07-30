@@ -8,6 +8,7 @@ const {
   SageSessionInterruptedError,
   SageSessionTimeoutError,
 } = require("../dist/tools/kernel.js");
+const { parsePolyglotCell } = require("../dist/tools/polyglot.js");
 
 async function main() {
   const session = await createSage();
@@ -23,6 +24,51 @@ async function main() {
   assert.ok(first.durationMs >= 0);
 
   assert.equal((await session.eval("value^2")).repr, "144");
+  assert.deepEqual(parsePolyglotCell("%%matlab\nA = [1 2; 3 4]"), {
+    language: "matlab",
+    source: "\nA = [1 2; 3 4]",
+    cursorOffset: 8,
+    hasMagic: true,
+  });
+  assert.equal(
+    parsePolyglotCell("%%mathematica\nRange[3]").language,
+    "wolfram",
+  );
+  assert.throws(
+    () => parsePolyglotCell("%%fortran\n1 + 1"),
+    /unknown Sage\.js cell language %%fortran/,
+  );
+
+  const matlabCreation = await session.evaluate(
+    "A = [1 2; 3 4];",
+    { language: "matlab" },
+  );
+  assert.equal(matlabCreation.repr, "");
+  assert.equal(
+    (await session.evaluate("A.tolist()", { language: "sage" })).repr,
+    "[[1, 2], [3, 4]]",
+  );
+  await session.evaluate("A[0, 0] = 9", { language: "sage" });
+  assert.equal(
+    (await session.evaluate("A(1,1)", { language: "matlab" })).stdout,
+    "9\n",
+  );
+  for (const language of ["magma", "maple", "wolfram"]) {
+    const source = language === "wolfram" ? "A" : "A;";
+    assert.match(
+      (await session.evaluate(source, { language })).stdout,
+      /\[\[9 2\]\s+\[3 4\]\]/,
+    );
+  }
+  assert.equal(
+    (await session.evaluate("2^3", { language: "python" })).repr,
+    "1",
+  );
+  assert.equal(
+    (await session.evaluate("2^3", { language: "sage" })).repr,
+    "8",
+  );
+
   assert.ok(
     (await session.complete("prime_p", 7)).matches.includes("prime_pi"),
   );

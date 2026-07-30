@@ -130,6 +130,66 @@ def main() -> None:
                 "status"
             ] == "ok"
 
+            matlab_create_id = client.execute(
+                "%%matlab\nA = [1 2; 3 4];"
+            )
+            iopub_until_idle(client, matlab_create_id)
+            assert matching_message(
+                client, "shell", matlab_create_id
+            )["content"]["status"] == "ok"
+
+            shared_read_id = client.execute("%%sage\nA.tolist()")
+            messages = iopub_until_idle(client, shared_read_id)
+            shared_result = message_of_type(messages, "execute_result")
+            assert shared_result["content"]["data"]["text/plain"] == (
+                "[[1, 2], [3, 4]]"
+            )
+            assert shared_result["metadata"]["sagejs"]["language"] == "sage"
+            assert matching_message(
+                client, "shell", shared_read_id
+            )["content"]["status"] == "ok"
+
+            mutate_id = client.execute("A[0, 0] = 9")
+            iopub_until_idle(client, mutate_id)
+            assert matching_message(client, "shell", mutate_id)["content"][
+                "status"
+            ] == "ok"
+
+            matlab_read_id = client.execute("%%matlab\nA(1,1)")
+            messages = iopub_until_idle(client, matlab_read_id)
+            assert message_of_type(messages, "stream")["content"]["text"] == (
+                "9\n"
+            )
+            assert matching_message(
+                client, "shell", matlab_read_id
+            )["content"]["status"] == "ok"
+
+            for language, source in (
+                ("magma", "A;"),
+                ("maple", "A;"),
+                ("wolfram", "A"),
+            ):
+                foreign_id = client.execute(f"%%{language}\n{source}")
+                messages = iopub_until_idle(client, foreign_id)
+                output = message_of_type(messages, "stream")["content"]["text"]
+                assert "[[9 2]" in output
+                assert "[3 4]]" in output
+                assert matching_message(
+                    client, "shell", foreign_id
+                )["content"]["status"] == "ok"
+
+            python_id = client.execute("%%python\n2^3")
+            messages = iopub_until_idle(client, python_id)
+            assert (
+                message_of_type(messages, "execute_result")["content"]["data"][
+                    "text/plain"
+                ]
+                == "1"
+            )
+            assert matching_message(client, "shell", python_id)["content"][
+                "status"
+            ] == "ok"
+
             polynomial_id = client.execute("R.<x> = QQ[]")
             iopub_until_idle(client, polynomial_id)
             assert matching_message(client, "shell", polynomial_id)["content"][
@@ -159,6 +219,21 @@ def main() -> None:
             assert completion["cursor_start"] == 0
             assert completion["cursor_end"] == 7
 
+            magic_completion_source = "%%sage\nprime_p"
+            magic_complete_id = client.complete(
+                magic_completion_source,
+                len(magic_completion_source),
+            )
+            magic_completion = matching_message(
+                client, "shell", magic_complete_id
+            )["content"]
+            assert magic_completion["status"] == "ok"
+            assert "prime_pi" in magic_completion["matches"]
+            assert magic_completion["cursor_start"] == len("%%sage\n")
+            assert magic_completion["cursor_end"] == len(
+                magic_completion_source
+            )
+
             attribute_id = client.complete("QQ['x'].g", 9)
             attribute = matching_message(client, "shell", attribute_id)["content"]
             assert attribute["status"] == "ok"
@@ -177,6 +252,14 @@ def main() -> None:
                 client, "shell", completeness_id
             )["content"]
             assert completeness == {"status": "incomplete", "indent": "    "}
+
+            matlab_completeness_id = client.is_complete(
+                "%%matlab\nA = [1 2"
+            )
+            matlab_completeness = matching_message(
+                client, "shell", matlab_completeness_id
+            )["content"]
+            assert matlab_completeness == {"status": "incomplete"}
 
             error_id = client.execute("1/0")
             messages = iopub_until_idle(client, error_id)

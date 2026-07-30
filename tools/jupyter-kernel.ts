@@ -18,6 +18,7 @@ import {
   SageSessionInterruptedError,
 } from "./kernel";
 import { SageLanguageMode } from "./kernel-evaluator";
+import { parsePolyglotCell } from "./polyglot";
 
 const DELIMITER = Buffer.from("<IDS|MSG>");
 const PROTOCOL_VERSION = "5.4";
@@ -352,7 +353,7 @@ export class SageJupyterKernel {
       },
       banner:
         this.mode === "sage"
-          ? "Sage.js — open research mathematics, native to JavaScript"
+          ? "Sage.js Polyglot — shared Sage, Python, Magma, MATLAB, Maple, and Wolfram cells"
           : "Sage.js Python mode",
       help_links: [
         {
@@ -383,8 +384,13 @@ export class SageJupyterKernel {
 
     let outputTail = Promise.resolve();
     try {
-      const result = await this.session!.evaluate(String(content.code ?? ""), {
+      const cell = parsePolyglotCell(
+        String(content.code ?? ""),
+        this.mode,
+      );
+      const result = await this.session!.evaluate(cell.source, {
         filename: `<jupyter-input-${executionCount}>`,
+        language: cell.language,
         onOutput: (text) => {
           if (silent) return;
           outputTail = outputTail.then(() =>
@@ -409,7 +415,7 @@ export class SageJupyterKernel {
           execution_count: executionCount,
           data,
           metadata: {},
-        });
+        }, { sagejs: { language: cell.language } });
       }
       await this.sendRouterReply(
         this.shellQueue,
@@ -459,9 +465,25 @@ export class SageJupyterKernel {
           const cursorPosition = Number(
             request.content.cursor_pos ?? Array.from(source).length,
           );
+          const cell = parsePolyglotCell(source, this.mode);
+          if (cursorPosition < cell.cursorOffset) {
+            await this.sendRouterReply(
+              this.shellQueue,
+              request,
+              "complete_reply",
+              {
+                status: "ok",
+                matches: [],
+                cursor_start: cursorPosition,
+                cursor_end: cursorPosition,
+                metadata: {},
+              },
+            );
+            break;
+          }
           const completion = await this.session!.complete(
-            source,
-            cursorPosition,
+            cell.source,
+            cursorPosition - cell.cursorOffset,
           );
           await this.sendRouterReply(
             this.shellQueue,
@@ -470,8 +492,8 @@ export class SageJupyterKernel {
             {
               status: "ok",
               matches: completion.matches,
-              cursor_start: completion.cursorStart,
-              cursor_end: completion.cursorEnd,
+              cursor_start: completion.cursorStart + cell.cursorOffset,
+              cursor_end: completion.cursorEnd + cell.cursorOffset,
               metadata: {},
             },
           );
@@ -482,9 +504,10 @@ export class SageJupyterKernel {
           const cursorPosition = Number(
             request.content.cursor_pos ?? Array.from(source).length,
           );
+          const cell = parsePolyglotCell(source, this.mode);
           const inspection = await this.session!.inspect(
-            source,
-            cursorPosition,
+            cell.source,
+            Math.max(0, cursorPosition - cell.cursorOffset),
           );
           await this.sendRouterReply(
             this.shellQueue,
@@ -502,9 +525,13 @@ export class SageJupyterKernel {
           break;
         }
         case "is_complete_request": {
-          const completeness = await this.session!.isComplete(
+          const cell = parsePolyglotCell(
             String(request.content.code ?? ""),
+            this.mode,
           );
+          const completeness = await this.session!.isComplete(cell.source, {
+            language: cell.language,
+          });
           await this.sendRouterReply(
             this.shellQueue,
             request,
@@ -723,7 +750,9 @@ function installKernelSpec(
             mode,
           ],
           display_name:
-            mode === "sage" ? "Sage.js" : "Sage.js (Python mode)",
+            mode === "sage"
+              ? "Sage.js Polyglot"
+              : "Sage.js (Python mode)",
           language: mode === "sage" ? "sage" : "python",
           interrupt_mode: "message",
           metadata: {

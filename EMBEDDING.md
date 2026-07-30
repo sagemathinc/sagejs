@@ -37,6 +37,20 @@ Use `{ mode: "python" }` to disable Sage syntax:
 const python = await createSage({ mode: "python" });
 ```
 
+On Node, an individual evaluation can select any bundled language frontend
+without changing sessions:
+
+```js
+await sage.evaluate("A = [1 2; 3 4];", { language: "matlab" });
+await sage.evaluate("A[0, 0] = 9", { language: "sage" });
+const result = await sage.evaluate("A(1,1)", { language: "matlab" });
+```
+
+The supported values are `sage`, `python`, `magma`, `matlab`, `maple`, and
+`wolfram`. Every frontend targets the same evaluator namespace, so compatible
+objects are shared directly rather than serialized between language
+processes.
+
 ## Browser and WebAssembly
 
 Build the WebAssembly package as described in

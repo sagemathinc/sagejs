@@ -1,4 +1,4 @@
-# Sage.js Jupyter kernel
+# Sage.js Polyglot Jupyter kernel
 
 Sage.js includes a real Jupyter wire-protocol kernel. It uses the same
 persistent, interruptible `SageSession` as other embeddings, so the terminal,
@@ -14,7 +14,7 @@ pnpm jupyter:install
 ```
 
 This builds Sage.js and installs a user kernelspec named `sagejs`. Start
-JupyterLab or Notebook normally and select **Sage.js**:
+JupyterLab or Notebook normally and select **Sage.js Polyglot**:
 
 ```sh
 jupyter lab
@@ -51,6 +51,7 @@ jupyter kernelspec uninstall sagejs-python
 The kernel currently supports:
 
 - persistent definitions and Sage syntax;
+- per-cell Sage, Python, Magma, MATLAB, Maple, and Wolfram syntax;
 - incrementally streamed `print()` output;
 - plain-text expression results and errors;
 - Plotly-backed 2D and 3D rich displays;
@@ -73,6 +74,40 @@ plot(sin(x^2), (x, 0, 2*pi), color='navy')
 ```py
 plot3d(sin(x*y), (x, -pi, pi), (y, -pi, pi))
 ```
+
+## Polyglot cells
+
+Put a language magic on the first line to select a parser for one cell:
+
+```matlab
+%%matlab
+A = [1 2; 3 4];
+```
+
+```py
+%%sage
+A[0, 0] = 9
+A.tolist()
+```
+
+```magma
+%%magma
+A;
+```
+
+The available magics are `%%sage`, `%%python`, `%%magma`, `%%matlab`,
+`%%maple`, and `%%wolfram`; `%%mathematica` is an alias for `%%wolfram`.
+Without a magic, the kernelspec's default language is used.
+
+These are not separate subprocesses or Jupyter subkernels. Each frontend
+lowers its source into the same persistent Sage.js evaluator, so `A` above is
+one NumPy-backed object throughout the notebook. Switching languages neither
+serializes values nor copies the namespace. Mutating a compatible object in
+one language makes the mutation immediately visible in every other frontend.
+
+The foreign-language frontends intentionally implement useful initial subsets
+of their source languages; they do not invoke or claim full compatibility with
+the proprietary Magma, MATLAB, Maple, or Wolfram engines.
 
 Plot results include both Plotly's structured
 `application/vnd.plotly.v1+json` MIME type and a `text/html` fallback. A

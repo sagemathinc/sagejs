@@ -40,10 +40,20 @@ export interface KernelCompleteness {
 }
 
 export interface KernelEvaluator {
-  evaluate(source: string, options?: { filename?: string }): KernelEvaluation;
+  evaluate(
+    source: string,
+    options?: {
+      filename?: string;
+      language?: SageLanguageMode;
+      suppressResult?: boolean;
+    },
+  ): KernelEvaluation;
   complete(source: string, cursorPosition: number): KernelCompletion;
   inspect(source: string, cursorPosition: number): KernelInspection;
-  isComplete(source: string): KernelCompleteness;
+  isComplete(
+    source: string,
+    language?: SageLanguageMode,
+  ): KernelCompleteness;
   close(): void;
 }
 
@@ -92,13 +102,21 @@ export function createKernelEvaluator({
   const precompiledModuleCacheDir = standardLibraryCacheDirectory(
     join(__dirname, "..", "module-cache"),
   );
-  const sage = mode === "sage";
+  const defaultSage = mode === "sage";
   let toplevel;
   let numericLiteralPoolCounter = 0;
+  const scopedFlagsByLanguage = new Map<
+    SageLanguageMode,
+    Record<string, boolean>
+  >();
 
-  function parserOptions(filename: string, transient = false) {
+  function parserOptions(
+    filename: string,
+    transient = false,
+    language: SageLanguageMode = mode,
+  ) {
     const classes = toplevel?.classes;
-    const scopedFlags = toplevel?.scoped_flags ?? {
+    const scopedFlags = scopedFlagsByLanguage.get(language) ?? {
       dict_literals: true,
       overload_getitem: true,
       bound_methods: true,
@@ -111,14 +129,18 @@ export function createKernelEvaluator({
       import_dirs: getImportDirs(),
       classes: transient && classes ? { ...classes } : classes,
       scoped_flags: transient ? { ...scopedFlags } : scopedFlags,
-      jsage: sage,
+      jsage: language === "sage",
       exact_integer_literals: true,
       strict_python_scopes: true,
       precompiled_module_cache_dir: precompiledModuleCacheDir,
     };
   }
 
-  function outputJavaScript(ast, includeBaselib = false): string {
+  function outputJavaScript(
+    ast,
+    includeBaselib = false,
+    language: SageLanguageMode = mode,
+  ): string {
     const output = new compiler.OutputStream({
       omit_baselib: !includeBaselib,
       write_name: false,
@@ -126,7 +148,7 @@ export function createKernelEvaluator({
       beautify: true,
       keep_docstrings: true,
       exact_integers: true,
-      rational_division: sage,
+      rational_division: language === "sage",
       python_tuples: true,
       python_truthiness: true,
       python_attributes: true,
@@ -151,7 +173,7 @@ export function createKernelEvaluator({
     onOutput(String(text));
   };
   global.__sagejs_interrupt_state__ = interruptState;
-  global.__sagejs_sage_mode__ = sage;
+  global.__sagejs_sage_mode__ = defaultSage;
 
   const initialization = compiler.parse("", {
     filename: "<kernel-init>",
@@ -162,10 +184,18 @@ export function createKernelEvaluator({
   delete global.__sagejs_sage_mode__;
   runInThisContext('var __name__ = "__embedded__"; show_js = false;');
 
-  function compile(source: string, filename: string): string {
+  function compile(
+    source: string,
+    filename: string,
+    language: SageLanguageMode,
+  ): string {
     const classes = toplevel?.classes;
-    toplevel = compiler.parse(source, parserOptions(filename));
-    const javascript = outputJavaScript(toplevel);
+    toplevel = compiler.parse(
+      source,
+      parserOptions(filename, false, language),
+    );
+    scopedFlagsByLanguage.set(language, { ...toplevel.scoped_flags });
+    const javascript = outputJavaScript(toplevel, false, language);
 
     if (classes) {
       const exported = new Set(toplevel.exports);
@@ -302,10 +332,18 @@ export function createKernelEvaluator({
   return {
     evaluate(
       source: string,
-      { filename = "<embedded>" }: { filename?: string } = {},
+      {
+        filename = "<embedded>",
+        language = mode,
+        suppressResult = false,
+      }: {
+        filename?: string;
+        language?: SageLanguageMode;
+        suppressResult?: boolean;
+      } = {},
     ): KernelEvaluation {
       const started = performance.now();
-      const javascript = compile(source, filename);
+      const javascript = compile(source, filename, language);
       if (interruptState) Atomics.store(interruptState, 1, 1);
       let value: unknown;
       try {
@@ -318,11 +356,13 @@ export function createKernelEvaluator({
         if (interruptState) Atomics.store(interruptState, 1, 0);
       }
       const repr =
-        value === undefined ? "" : String(global.ρσ_repr(value));
+        suppressResult || value === undefined
+          ? ""
+          : String(global.ρσ_repr(value));
       return {
         repr,
         durationMs: performance.now() - started,
-        display: richDisplay(value),
+        display: suppressResult ? undefined : richDisplay(value),
       };
     },
 
@@ -368,12 +408,15 @@ export function createKernelEvaluator({
       }
     },
 
-    isComplete(source: string): KernelCompleteness {
+    isComplete(
+      source: string,
+      language: SageLanguageMode = mode,
+    ): KernelCompleteness {
       if (!source.trim()) return { status: "complete" };
       try {
         compiler.parse(
           source,
-          parserOptions("<kernel-is-complete>", true),
+          parserOptions("<kernel-is-complete>", true, language),
         );
         return { status: "complete" };
       } catch (error) {

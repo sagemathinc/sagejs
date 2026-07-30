@@ -2,12 +2,22 @@ import { EventEmitter } from "events";
 import { join } from "path";
 import { Worker } from "worker_threads";
 
+import {
+  createForeignFrontend,
+  ForeignFrontend,
+  ForeignLanguage,
+  isForeignSyntaxError,
+} from "./foreign";
 import { SageLanguageMode } from "./kernel-evaluator";
 import {
   KernelCompletion,
   KernelCompleteness,
   KernelInspection,
 } from "./kernel-evaluator";
+import {
+  isSageSourceLanguage,
+  SageSourceLanguage,
+} from "./polyglot";
 
 export interface SageDisplayData {
   /** MIME type understood by an embedding renderer. */
@@ -27,10 +37,16 @@ export interface SageEvaluationOptions {
   filename?: string;
   timeout?: number;
   onOutput?: (text: string) => void;
+  /** Parse this evaluation using a supported Sage.js language frontend. */
+  language?: SageSourceLanguage;
 }
 
 export interface SageSessionOptions {
   mode?: SageLanguageMode;
+}
+
+export interface SageLanguageOptions {
+  language?: SageSourceLanguage;
 }
 
 interface PendingRequest {
@@ -96,6 +112,10 @@ export class SageSession extends EventEmitter {
   private pending = new Map<number, PendingRequest>();
   private interruptState?: Int32Array;
   private interruptPromise?: Promise<void>;
+  private readonly foreignFrontends = new Map<
+    ForeignLanguage,
+    Promise<ForeignFrontend>
+  >();
   private nextId = 0;
   private closed = false;
 
@@ -216,6 +236,7 @@ export class SageSession extends EventEmitter {
       filename = "<embedded>",
       timeout,
       onOutput,
+      language = this.mode,
     }: SageEvaluationOptions = {},
   ): Promise<SageEvaluationResult> {
     if (this.closed) throw new SageSessionClosedError();
@@ -228,6 +249,11 @@ export class SageSession extends EventEmitter {
     ) {
       throw new TypeError("Sage.js timeout must be a positive number");
     }
+    const prepared = await this.prepareEvaluation(
+      source,
+      filename,
+      language,
+    );
     await this.ready();
     const worker = this.worker;
     if (!worker) throw new SageSessionClosedError();
@@ -261,8 +287,10 @@ export class SageSession extends EventEmitter {
       worker.postMessage({
         type: "evaluate",
         id,
-        source,
+        source: prepared.source,
         filename,
+        language: prepared.compilerLanguage,
+        suppressResult: prepared.suppressResult,
       });
     });
   }
@@ -312,8 +340,69 @@ export class SageSession extends EventEmitter {
     return this.request("inspect", source, { cursorPosition });
   }
 
-  isComplete(source: string): Promise<KernelCompleteness> {
-    return this.request("isComplete", source);
+  async isComplete(
+    source: string,
+    { language = this.mode }: SageLanguageOptions = {},
+  ): Promise<KernelCompleteness> {
+    if (!isSageSourceLanguage(language)) {
+      throw new TypeError(
+        `unknown Sage.js source language ${JSON.stringify(language)}`,
+      );
+    }
+    if (language === "sage" || language === "python") {
+      return this.request("isComplete", source, { language });
+    }
+    try {
+      const frontend = await this.foreignFrontend(language);
+      frontend.parse(source);
+      return { status: "complete" };
+    } catch (error) {
+      if (!isForeignSyntaxError(error)) throw error;
+      return {
+        status: error.incomplete ? "incomplete" : "invalid",
+      };
+    }
+  }
+
+  private foreignFrontend(
+    language: ForeignLanguage,
+  ): Promise<ForeignFrontend> {
+    let frontend = this.foreignFrontends.get(language);
+    if (!frontend) {
+      frontend = createForeignFrontend(language);
+      this.foreignFrontends.set(language, frontend);
+    }
+    return frontend;
+  }
+
+  private async prepareEvaluation(
+    source: string,
+    filename: string,
+    language: SageSourceLanguage,
+  ): Promise<{
+    source: string;
+    compilerLanguage: SageLanguageMode;
+    suppressResult: boolean;
+  }> {
+    if (!isSageSourceLanguage(language)) {
+      throw new TypeError(
+        `unknown Sage.js source language ${JSON.stringify(language)}`,
+      );
+    }
+    if (language === "sage" || language === "python") {
+      return {
+        source,
+        compilerLanguage: language,
+        suppressResult: false,
+      };
+    }
+    const frontend = await this.foreignFrontend(language);
+    return {
+      source: frontend.lower(source, { filename }).source,
+      compilerLanguage: "sage",
+      // Foreign lowerers emit print calls for unsuppressed statements.
+      suppressResult: true,
+    };
   }
 
   private async replaceWorker(error: Error): Promise<void> {

@@ -55,13 +55,15 @@ parentPort.on("message", (message) => {
       if (message.type === "evaluate") {
         result = evaluator.evaluate(message.source, {
           filename: message.filename,
+          language: message.language,
+          suppressResult: message.suppressResult,
         });
       } else if (message.type === "complete") {
         result = evaluator.complete(message.source, message.cursorPosition);
       } else if (message.type === "inspect") {
         result = evaluator.inspect(message.source, message.cursorPosition);
       } else {
-        result = evaluator.isComplete(message.source);
+        result = evaluator.isComplete(message.source, message.language);
       }
       parentPort.postMessage({
         type: "result",
