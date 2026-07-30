@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
 
@@ -153,10 +154,8 @@ async function main() {
     await session.close();
   }
 
-  console.log("Sage-compatible graphics tests passed");
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+test("Sage-compatible graphics and rich display", {
+  timeout: 30_000,
+}, main);

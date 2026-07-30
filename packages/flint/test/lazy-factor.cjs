@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const test = require("node:test");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
@@ -9,6 +10,7 @@ const sagejs = path.join(root, "bin", "sagejs");
 const observer = path.join(__dirname, "observe-load.cjs");
 const marker = "SAGEJS_FLINT_LOADED";
 
+test("FLINT loads lazily and only once", () => {
 function run(source) {
   const result = spawnSync(
     process.execPath,
@@ -135,4 +137,4 @@ assert.deepEqual(factoring.stdout.trim().split("\n"), [
 ]);
 assert.equal(factoring.stderr.match(new RegExp(marker, "g"))?.length, 1);
 
-console.log("Sage.js factor() loads FLINT once, on first use.");
+});

@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const test = require("node:test");
 
 const {
   createSage,
@@ -185,10 +186,8 @@ imported_method = ImportedMethod()
   assert.equal((await python.evaluate("pooled_constant()")).repr, "2");
   await python.close();
 
-  console.log("Embeddable kernel tests passed");
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+test("embeddable kernel sessions, interrupts, and polyglot state", {
+  timeout: 30_000,
+}, main);

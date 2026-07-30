@@ -15,56 +15,53 @@ import { runInNewContext } from "vm";
 
 const PyLang = createCompiler();
 
-export default function (
-  argv: { files: string[] },
+export interface CompilerTestResult {
+  durationMs: number;
+  skipped: boolean;
+}
+
+export interface CompilerTestHarness {
+  files(requested?: string[]): string[];
+  run(filename: string): CompilerTestResult;
+}
+
+export function createCompilerTestHarness(
   basePath,
   srcPath,
   libPath
-) {
-  // run all tests and exit
-  const failures: string[] = [];
-  let compilerDir = libPath;
+): CompilerTestHarness {
   const testPath = join(basePath, "test");
   const baselib = readFileSync(
     join(libPath, "baselib-plain-pretty.js"),
     "utf-8"
   );
 
-  const files =
-    argv.files.length > 0
-      ? argv.files.map((fname: string) =>
+  function files(requested: string[] = []): string[] {
+    return requested.length > 0
+      ? requested.map((fname: string) =>
           fname.endsWith(".py") ? fname : fname + ".py"
         )
       : readdirSync(testPath)
           .filter((name) => /^[^_].*\.py$/.test(name))
           .map((name) => join(testPath, name));
+  }
 
-  const t_start = new Date().valueOf();
-
-  for (const filename of files) {
+  function run(filename: string): CompilerTestResult {
     const t0 = new Date().valueOf();
-    let failed = false;
-    let toplevel: any = undefined;
-    try {
-      const file = readFileSync(filename, "utf-8");
-      if (file.toString().includes("# DISABLED")) {
-        console.log(`Skipping ${filename}`);
-        continue;
-      }
-      toplevel = PyLang.parse(file, {
-        filename,
-        toplevel: toplevel,
-        basedir: testPath,
-        libdir: join(srcPath, "lib"),
-      });
-    } catch (err) {
-      failures.push(filename);
-      failed = true;
-      console.log(colored(filename, "red") + ": " + err + "\n\n");
-      break;
+    const file = readFileSync(filename, "utf-8");
+    if (file.toString().includes("# DISABLED")) {
+      return {
+        durationMs: new Date().valueOf() - t0,
+        skipped: true,
+      };
     }
+    const toplevel = PyLang.parse(file, {
+      filename,
+      toplevel: undefined,
+      basedir: testPath,
+      libdir: join(srcPath, "lib"),
+    });
 
-    // generate output
     const output = new PyLang.OutputStream({
       baselib_plain: baselib,
       beautify: true,
@@ -87,6 +84,7 @@ export default function (
         console[name] = saveConsole[name];
       }
     };
+    let failure: any = undefined;
     try {
       runInNewContext(
         code,
@@ -97,20 +95,73 @@ export default function (
           fs: require("fs"),
           PyLang,
           console,
-          compiler_dir: compilerDir,
+          compiler_dir: libPath,
           test_path: testPath,
           Buffer,
           outerRealmError: new RangeError("outside the test VM"),
         },
         { filename: jsfile }
       );
-      restoreConsole();
     } catch (err) {
+      failure = err;
+      writeFileSync(jsfile, code);
+    } finally {
       restoreConsole();
+    }
+    if (failure !== undefined) {
+      if (
+        failure !== null
+        && (
+          typeof failure === "object"
+          || typeof failure === "function"
+        )
+      ) {
+        failure.generatedJavaScript = jsfile;
+        throw failure;
+      }
+      const wrapped = new Error(String(failure));
+      (wrapped as any).generatedJavaScript = jsfile;
+      throw wrapped;
+    }
+    return {
+      durationMs: new Date().valueOf() - t0,
+      skipped: false,
+    };
+  }
+
+  return { files, run };
+}
+
+export default function (
+  argv: { files: string[] },
+  basePath,
+  srcPath,
+  libPath
+) {
+  // Preserve the historical `sagejs test` command while exposing the same
+  // isolated file runner to node:test.
+  const failures: string[] = [];
+  const harness = createCompilerTestHarness(
+    basePath, srcPath, libPath);
+  const files = harness.files(argv.files);
+  const t_start = new Date().valueOf();
+
+  for (const filename of files) {
+    const t0 = new Date().valueOf();
+    let failed = false;
+    try {
+      const result = harness.run(filename);
+      if (result.skipped) {
+        console.log(`Skipping ${filename}`);
+        continue;
+      }
+    } catch (err) {
       failures.push(filename);
       failed = true;
-      writeFileSync(jsfile, code);
-      console.error("Failed running: " + colored(jsfile, "red"));
+      const jsfile = err.generatedJavaScript;
+      if (jsfile !== undefined) {
+        console.error("Failed running: " + colored(jsfile, "red"));
+      }
       if (err.stack) {
         console.error(colored(filename, "red") + ":\n" + err.stack + "\n\n");
       } else {

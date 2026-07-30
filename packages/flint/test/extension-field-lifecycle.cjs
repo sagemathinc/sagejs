@@ -1,8 +1,10 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const test = require("node:test");
 const flint = require("..");
 
+test("opaque extension-field values retain their native context", () => {
 function elementsWithoutVisibleContext() {
   const context = flint.fqContext(3n, 2, "a");
   return [flint.fqGen(context), flint.fqFromBigInt(context, 1n)];
@@ -39,6 +41,4 @@ assert.equal(
   "a",
 );
 
-console.log(
-  "Opaque finite-field elements, polynomials, and matrices retain their native context.",
-);
+});
