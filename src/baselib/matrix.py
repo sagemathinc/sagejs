@@ -358,31 +358,32 @@ class VectorSubspaceParent(sage.Parent):
         self,
         ambient: VectorSpaceParent,
         basis: Matrix,
-        defining_matrix: Matrix,
-        left_kernel: bool,
+        defining_matrix: Any = None,
+        left_kernel: bool = True,
     ) -> None:
         self._ambient = ambient
         self._basis_matrix = basis
         self._defining_matrix = defining_matrix
         self._left_kernel = left_kernel
         degree = ambient.degree()
-        dimension = basis.nrows()
+        dimension = self._basis_matrix.nrows()
         if ambient.base_ring() is sage.ZZ:
             self._name = (
                 'Free module of degree ' + str(degree) +
                 ' and rank ' + str(dimension) +
                 ' over ' + str(ambient.base_ring()) +
-                '\nEchelon basis matrix:\n' + str(basis))
+                '\nEchelon basis matrix:\n' +
+                str(self._basis_matrix))
         else:
             self._name = (
                 'Vector space of degree ' + str(degree) +
                 ' and dimension ' + str(dimension) +
                 ' over ' + str(ambient.base_ring()) +
-                '\nBasis matrix:\n' + str(basis))
+                '\nBasis matrix:\n' + str(self._basis_matrix))
         self._construction = {
             'kind': 'vector-subspace',
             'ambient': ambient,
-            'basis': basis,
+            'basis': self._basis_matrix,
         }
 
     def base_ring(self) -> sage.Parent:
@@ -421,14 +422,22 @@ class VectorSubspaceParent(sage.Parent):
             element = self._ambient(value)
         except Exception:
             return False
-        if self._left_kernel:
-            image = element * self._defining_matrix
-        else:
-            image = self._defining_matrix * element
-        for entry in image:
-            if entry != 0:
-                return False
-        return True
+        if self._defining_matrix is not None:
+            if self._left_kernel:
+                image = element * self._defining_matrix
+            else:
+                image = self._defining_matrix * element
+            for entry in image:
+                if entry != 0:
+                    return False
+            return True
+        extended = matrix(
+            self.base_ring(),
+            self.dimension() + 1,
+            self.degree(),
+            self._basis_matrix.list() + element.list(),
+        )
+        return _canonical_row_basis(extended) == self._basis_matrix
 
     def __call__(self, entries: Any = 0) -> Vector:
         element = self._ambient(entries)
@@ -441,6 +450,67 @@ class VectorSubspaceParent(sage.Parent):
             isinstance(other, VectorSubspaceParent)
             and self._ambient is other._ambient
             and self._basis_matrix == other._basis_matrix
+        )
+
+    def _compatible_space(
+        self,
+        other: object,
+    ) -> VectorSubspaceParent:
+        if (
+            not isinstance(other, VectorSubspaceParent)
+            or self._ambient is not other._ambient
+        ):
+            raise TypeError(
+                'vector subspaces must have the same ambient space')
+        return other
+
+    def __add__(self, other: object) -> VectorSubspaceParent:
+        right = self._compatible_space(other)
+        combined = matrix(
+            self.base_ring(),
+            self.dimension() + right.dimension(),
+            self.degree(),
+            self._basis_matrix.list() +
+            right._basis_matrix.list(),
+        )
+        return VectorSubspaceParent(
+            self._ambient,
+            _canonical_row_basis(combined),
+        )
+
+    def intersection(
+        self,
+        other: object,
+    ) -> VectorSubspaceParent:
+        right = self._compatible_space(other)
+        if self.dimension() == 0 or right.dimension() == 0:
+            return VectorSubspaceParent(
+                self._ambient,
+                zero_matrix(self.base_ring(), 0, self.degree()),
+            )
+        relation_entries = self._basis_matrix.list()
+        relation_entries.extend(
+            [-entry for entry in right._basis_matrix.list()])
+        relations = matrix(
+            self.base_ring(),
+            self.dimension() + right.dimension(),
+            self.degree(),
+            relation_entries,
+        ).left_kernel().basis_matrix()
+        coefficient_entries = []
+        for row in range(relations.nrows()):
+            for col in range(self.dimension()):
+                coefficient_entries.append(relations[row, col])
+        left_coefficients = matrix(
+            self.base_ring(),
+            relations.nrows(),
+            self.dimension(),
+            coefficient_entries,
+        )
+        common_vectors = left_coefficients * self._basis_matrix
+        return VectorSubspaceParent(
+            self._ambient,
+            _canonical_row_basis(common_vectors),
         )
 
 
@@ -738,8 +808,6 @@ class Matrix(sage.Element):
             )
         return self._right_kernel_cache
 
-    kernel = right_kernel
-
     def left_kernel(self) -> VectorSubspaceParent:
         if self._left_kernel_cache is runtime.undefined:
             basis = self.transpose().right_kernel().basis_matrix()
@@ -750,6 +818,8 @@ class Matrix(sage.Element):
                 True,
             )
         return self._left_kernel_cache
+
+    kernel = left_kernel
 
     def charpoly(self, variable: str = 'x') -> Any:
         if not self.is_square():
@@ -867,6 +937,23 @@ class Matrix(sage.Element):
 
     __str__ = __repr__
     toString = __repr__
+
+
+def _canonical_row_basis(source: Matrix) -> Matrix:
+    echelon = source.echelon_form()
+    rows = []
+    for row in echelon.rows():
+        if any(entry != 0 for entry in row):
+            rows.append(row)
+    entries = []
+    for row in rows:
+        entries.extend(row)
+    return matrix(
+        source.base_ring(),
+        len(rows),
+        source.ncols(),
+        entries,
+    )
 
 
 _matrix_space_cache = runtime.map()

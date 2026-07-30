@@ -94,9 +94,11 @@ left_kernel = matrix(
 assert left_kernel.degree() == 2
 assert left_kernel.basis_matrix() == matrix(ZZ, [[2, -1]])
 assert vector(ZZ, [2, -1]) in left_kernel
+assert matrix(
+    ZZ, [[1, 2, 3], [2, 4, 6]]).kernel() == left_kernel
 
 rational_kernel = matrix(
-    QQ, [[1, 2, 3], [2, 4, 6]]).kernel()
+    QQ, [[1, 2, 3], [2, 4, 6]]).right_kernel()
 assert rational_kernel.base_ring() is QQ
 assert rational_kernel.basis_matrix() == matrix(
     QQ,
@@ -105,6 +107,33 @@ assert rational_kernel.basis_matrix() == matrix(
         [0, 1, QQ(-2, 3)],
     ],
 )
+
+left_line = matrix(ZZ, [[0], [1]]).kernel()
+slanted_line = matrix(ZZ, [[2], [-1]]).kernel()
+line_sum = left_line + slanted_line
+assert line_sum.basis_matrix() == matrix(
+    ZZ, [[1, 0], [0, 2]])
+assert line_sum.dimension() == 2
+assert vector(ZZ, [0, 1]) not in line_sum
+assert vector(ZZ, [0, 2]) in line_sum
+assert left_line.intersection(slanted_line).dimension() == 0
+vertical_line = matrix(ZZ, [[1], [0]]).kernel()
+other_slanted_line = matrix(ZZ, [[1], [-2]]).kernel()
+other_line_sum = vertical_line + other_slanted_line
+assert other_line_sum.basis_matrix() == matrix(
+    ZZ, [[2, 0], [0, 1]])
+assert line_sum.intersection(other_line_sum).basis_matrix() == matrix(
+    ZZ, [[2, 0], [0, 2]])
+
+rational_plane_x = matrix(QQ, [[1], [0], [0]]).kernel()
+rational_plane_z = matrix(QQ, [[0], [0], [1]]).kernel()
+assert (rational_plane_x + rational_plane_z).basis_matrix() == (
+    identity_matrix(QQ, 3)
+)
+rational_axis = rational_plane_x.intersection(rational_plane_z)
+assert rational_axis.basis_matrix() == matrix(QQ, [[0, 1, 0]])
+assert vector(QQ, [0, 3, 0]) in rational_axis
+assert vector(QQ, [1, 0, 0]) not in rational_axis
 
 assert A.charpoly() == PolynomialRing(ZZ, 'x')(
     PolynomialRing(ZZ, 'x').gen() ** 2
