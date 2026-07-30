@@ -44,6 +44,12 @@ method groups can be adopted without importing the entire implementation
 docstring corpus at once. Both extraction and execution accept
 `--owner-regexp`.
 
+`sage/matrix/matrix_modn_dense_core.doctests.json` pins the characteristic
+polynomial and rank groups from Sage's FLINT modular-matrix implementation at
+the same revision. Its prime-field examples are compatibility requirements;
+examples over composite residue rings are explicitly classified until the
+`Zmod(n)` matrix layer is adopted.
+
 ## Python language compatibility
 
 The `micropython` directory contains a pinned copy of MicroPython's compact

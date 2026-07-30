@@ -256,6 +256,9 @@ finite_inverse = finite.inverse()
 assert finite_inverse.base_ring() is F5
 assert finite_inverse == matrix(F5, [[3, 1], [4, 2]])
 assert finite * finite_inverse == identity_matrix(F5, 2)
+assert finite.inverse_of_unit('flint') == finite_inverse
+assert finite.is_invertible()
+assert finite.is_unit()
 assert finite.solve_right(
     vector(F5, [1, 0])) == vector(F5, [3, 4])
 assert finite.solve_right(
@@ -275,15 +278,24 @@ finite_singular = matrix(
     F5, [[1, 2, 3], [2, 4, 1]])
 assert finite_singular.rank() == 1
 assert finite_singular.right_nullity() == 2
+assert not finite_singular.is_invertible()
 assert finite_singular.rref() == matrix(
     F5, [[1, 2, 3], [0, 0, 0]])
 finite_kernel = finite_singular.right_kernel()
+assert finite_singular.right_kernel_matrix() == (
+    finite_kernel.basis_matrix()
+)
+assert finite_singular.right_kernel_matrix(
+    basis='computed') == finite_kernel.basis_matrix()
 assert finite_kernel.base_ring() is F5
 assert finite_kernel.dimension() == 2
 assert finite_singular * finite_kernel.basis_matrix().T == (
     zero_matrix(F5, 2, 2)
 )
 assert finite_singular.left_kernel().dimension() == 1
+assert finite_singular.left_kernel_matrix() == (
+    finite_singular.left_kernel().basis_matrix()
+)
 assert vector(F5, [3, 1]) in finite_singular.left_kernel()
 assert matrix(ZZ, [[1, 2], [3, 4]]).change_ring(F5) == finite
 assert finite + matrix(ZZ, [[1, 1], [1, 1]]) == matrix(

@@ -1,0 +1,18 @@
+{
+  "schema": "sagejs.sage-doctest-expectations/v1",
+  "fixture": "matrix_modn_dense_core.doctests.json",
+  "skip": {
+    "src/sage/matrix/matrix_modn_dense_flint.pyx:709": "requires matrices over the composite residue ring Z/36Z, which is not part of the prime-field slice",
+    "src/sage/matrix/matrix_modn_dense_flint.pyx:710": "depends on the preceding composite-residue-ring matrix",
+    "src/sage/matrix/matrix_modn_dense_flint.pyx:712": "requires matrices over the prime-power residue ring Z/(43^10)Z",
+    "src/sage/matrix/matrix_modn_dense_flint.pyx:713": "depends on the preceding prime-power residue-ring matrix",
+    "src/sage/matrix/matrix_modn_dense_flint.pyx:716": "compares composite-residue-ring characteristic-polynomial algorithms",
+    "src/sage/matrix/matrix_modn_dense_flint.pyx:725": "requires matrices over the composite residue ring Z/1728Z",
+    "src/sage/matrix/matrix_modn_dense_flint.pyx:726": "depends on the preceding composite-residue-ring matrix",
+    "src/sage/matrix/matrix_modn_dense_flint.pyx:727": "depends on the preceding composite-residue-ring matrix",
+    "src/sage/matrix/matrix_modn_dense_flint.pyx:1287": "requires matrices over the prime-power residue ring Z/625Z",
+    "src/sage/matrix/matrix_modn_dense_flint.pyx:1288": "depends on the preceding prime-power residue-ring matrix",
+    "src/sage/matrix/matrix_modn_dense_flint.pyx:1292": "depends on the preceding prime-power residue-ring matrix"
+  },
+  "xfail": {}
+}

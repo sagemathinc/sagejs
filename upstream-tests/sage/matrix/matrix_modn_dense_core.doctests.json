@@ -1,0 +1,157 @@
+{
+  "schema": "sagejs.sage-doctests/v1",
+  "generatedBy": "scripts/extract-sage-doctests.cjs",
+  "source": {
+    "repository": "https://github.com/sagemath/sage.git",
+    "revision": "09472ff530d280d0c9f44fdc5a9c3e856ed95b37",
+    "path": "src/sage/matrix/matrix_modn_dense_flint.pyx",
+    "sha256": "549289ee288b9970ca5ddef5d3d976db7dc414afc600e9fe7229c5088e28c095",
+    "license": "GPL-2.0-or-later"
+  },
+  "summary": {
+    "groups": 2,
+    "examples": 18
+  },
+  "groups": [
+    {
+      "id": "src/sage/matrix/matrix_modn_dense_flint.pyx#Matrix_modn_dense_flint.charpoly@691",
+      "owner": "Matrix_modn_dense_flint.charpoly",
+      "line": 691,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:709",
+          "line": 709,
+          "source": "A = matrix(Zmod(36), [[28, 32, 19], [25, 24, 2], [15, 11, 30]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:710",
+          "line": 710,
+          "source": "A.charpoly()",
+          "want": "x^3 + 26*x^2 + 9*x + 35\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:712",
+          "line": 712,
+          "source": "A = matrix(Zmod(43^10), 6, [0, 5664461354126771, 12212357361910300, 15947020959157478, 0, 16792952041597449, 14690359073749623, 11237259451999884, 5117434014428142, 15157488677243483, 9004103062307752, 20761679499270441, 4620722392655416, 5445142895231681, 6605357538252496, 7608812697273777, 18542817615638637, 18194689690271501, 0, 20341333098836812, 12117922812876054, 1270149214447437, 0, 10999401748338075, 4620722392655416, 10891113386038365, 956055025271903, 2162842206467093, 18542817615638637, 1143972982339214, 13128267973348003, 15817056104759912, 20531311511260484, 13598045280630823, 7585782589268305, 14053895308766769])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:713",
+          "line": 713,
+          "source": "A.charpoly()",
+          "want": "x^6 + 13124967810747524*x^5 + 20067912494391006*x^4 + 11204731077775359*x^3\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:716",
+          "line": 716,
+          "source": "for N in [5, 625, 36, 2^24, 2^6*3^9, 2^63-1]:\n    for n in [3, 6]:\n        A = random_matrix(Zmod(N), n, n)\n        assert A.charpoly(algorithm='crt') == A.charpoly(algorithm='lift')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:721",
+          "line": 721,
+          "source": "A = random_matrix(GF(73), 6)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:722",
+          "line": 722,
+          "source": "fs = [A.charpoly(algorithm=alg) for alg in ['flint', 'linbox', 'crt', 'lift', 'hessenberg', 'df']]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:723",
+          "line": 723,
+          "source": "len(set(fs))",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:725",
+          "line": 725,
+          "source": "A = random_matrix(Zmod(1728), 6)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:726",
+          "line": 726,
+          "source": "fs = [A.charpoly(algorithm=alg) for alg in ['crt', 'lift', 'df']]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:727",
+          "line": 727,
+          "source": "len(set(fs))",
+          "want": "1\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_modn_dense_flint.pyx#Matrix_modn_dense_flint.rank@1264",
+      "owner": "Matrix_modn_dense_flint.rank",
+      "line": 1264,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:1279",
+          "line": 1279,
+          "source": "entries = [1, 2, 3, 4, 0, 5, 5, 6, 0, 0, 0, 25]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:1280",
+          "line": 1280,
+          "source": "A = matrix(GF(17), 3, 4, entries)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:1281",
+          "line": 1281,
+          "source": "A",
+          "want": "[1 2 3 4]\n[0 5 5 6]\n[0 0 0 8]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:1285",
+          "line": 1285,
+          "source": "A.rank()",
+          "want": "3\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:1287",
+          "line": 1287,
+          "source": "A = matrix(Zmod(625), 3, 4, entries)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:1288",
+          "line": 1288,
+          "source": "A",
+          "want": "[ 1  2  3  4]\n[ 0  5  5  6]\n[ 0  0  0 25]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_modn_dense_flint.pyx:1292",
+          "line": 1292,
+          "source": "A.rank()",
+          "want": "1\n",
+          "tags": []
+        }
+      ]
+    }
+  ]
+}

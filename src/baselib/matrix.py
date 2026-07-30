@@ -924,6 +924,7 @@ class Matrix(sage.Element):
                 'determinant command to use LinBox\'s det algorithm')
         if algorithm not in [
             None, 'flint', 'linbox', 'ntl', 'padic', 'pari',
+            'lift', 'charpoly',
         ]:
             raise ValueError('unknown determinant algorithm')
         if self._determinant_cache is not runtime.undefined:
@@ -1128,6 +1129,16 @@ class Matrix(sage.Element):
             )
         return self._right_kernel_cache
 
+    def right_kernel_matrix(
+        self,
+        *args: Any,
+        **kwds: Any,
+    ) -> Matrix:
+        # Over a field the computed and echelon bases are both represented by
+        # our canonical RREF basis matrix. Integer matrices likewise expose
+        # their canonical saturated kernel basis.
+        return self.right_kernel().basis_matrix()
+
     def left_kernel(self) -> VectorSubspaceParent:
         if self._left_kernel_cache is runtime.undefined:
             basis = self.transpose().right_kernel().basis_matrix()
@@ -1138,6 +1149,13 @@ class Matrix(sage.Element):
                 True,
             )
         return self._left_kernel_cache
+
+    def left_kernel_matrix(
+        self,
+        *args: Any,
+        **kwds: Any,
+    ) -> Matrix:
+        return self.left_kernel().basis_matrix()
 
     kernel = left_kernel
 
@@ -1150,6 +1168,7 @@ class Matrix(sage.Element):
             raise ArithmeticError('only valid for square matrix')
         if algorithm not in [
             None, 'flint', 'generic', 'linbox', 'pari',
+            'crt', 'lift', 'hessenberg', 'df',
         ]:
             raise ValueError('unknown characteristic polynomial algorithm')
         cached = self._charpoly_cache.get(variable)
@@ -1171,7 +1190,12 @@ class Matrix(sage.Element):
 
     characteristic_polynomial = charpoly
 
-    def minpoly(self, variable: str = 'x') -> Any:
+    def minpoly(
+        self,
+        variable: str = 'x',
+        algorithm: Any = None,
+        proof: Any = None,
+    ) -> Any:
         if not self.is_square():
             raise ArithmeticError('only valid for square matrix')
         cached = self._minpoly_cache.get(variable)
@@ -1258,6 +1282,18 @@ class Matrix(sage.Element):
             native_value,
         )
         return self._inverse_cache
+
+    def inverse_of_unit(self, algorithm: Any = None) -> Matrix:
+        if algorithm not in [
+            None, 'flint', 'linbox', 'lift', 'crt',
+        ]:
+            raise ValueError('unknown matrix inverse algorithm')
+        return self.inverse()
+
+    def is_invertible(self) -> bool:
+        return self.is_square() and self.rank() == self.nrows()
+
+    is_unit = is_invertible
 
     def __invert__(self) -> Matrix:
         return self.inverse()

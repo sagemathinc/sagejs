@@ -34,13 +34,13 @@ def inverse_batch(matrices):
     return answer
 
 
-def make_matrices(entries, degree, count, offset):
+def make_matrices(base, entries, degree, count, offset):
     answer = []
     for index in range(count):
         values = list(entries)
         diagonal = ((index + offset) % degree) * (degree + 1)
         values[diagonal] += (index + offset) % 17
-        answer.append(matrix(ZZ, degree, degree, values))
+        answer.append(matrix(base, degree, degree, values))
     return answer
 
 
@@ -61,12 +61,14 @@ def measure_fresh(
     operation_function,
     entries,
     degree,
+    base=ZZ,
 ):
-    operation_function(setup_function(entries, degree, 1, -1))
+    operation_function(
+        setup_function(base, entries, degree, 1, -1))
     answer = 0
     for sample in range(7):
         batch = setup_function(
-            entries, degree, iterations, sample * iterations)
+            base, entries, degree, iterations, sample * iterations)
         start = time.time()
         answer = operation_function(batch)
         elapsed = float(time.time() - start)
@@ -74,9 +76,11 @@ def measure_fresh(
     return answer
 
 
-def make_solve_pairs(entries, degree, count, offset):
-    matrices = make_matrices(entries, degree, count, offset)
-    right = vector(ZZ, [index + 1 for index in range(degree)])
+def make_solve_pairs(base, entries, degree, count, offset):
+    matrices = make_matrices(
+        base, entries, degree, count, offset)
+    right = vector(
+        base, [index + 1 for index in range(degree)])
     return [(value, right) for value in matrices]
 
 
@@ -102,3 +106,19 @@ measure_fresh(
 measure_fresh(
     "fresh-inverse", 10, make_matrices,
     inverse_batch, entries, degree)
+
+field = GF(65537)
+finite_left = left.change_ring(field)
+finite_right = right.change_ring(field)
+measure(
+    "gf-matrix-multiply", 1000,
+    multiply_loop, finite_left, finite_right)
+measure_fresh(
+    "gf-fresh-determinant", 100, make_matrices,
+    determinant_batch, entries, degree, field)
+measure_fresh(
+    "gf-fresh-solve", 25, make_solve_pairs,
+    solve_batch, entries, degree, field)
+measure_fresh(
+    "gf-fresh-inverse", 10, make_matrices,
+    inverse_batch, entries, degree, field)
