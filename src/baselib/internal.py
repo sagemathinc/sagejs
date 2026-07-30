@@ -287,7 +287,7 @@ def ρσ_unpack_asarray(count: Any, iterable: Any) -> Any:
                 result = iterator.next()
     if (
         count is not runtime.number.POSITIVE_INFINITY
-        and len(answer) != count
+        and not runtime.strict_equal(len(answer), count)
     ):
         raise ValueError(
             'not enough values to unpack'

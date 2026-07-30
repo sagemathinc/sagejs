@@ -503,6 +503,38 @@ def _builtins_rich_compare(
     right: Any,
     operation: _Str,
 ) -> _Bool:
+    left_type = runtime.jstype(left)
+    right_type = runtime.jstype(right)
+    numeric = (
+        (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+            or runtime.strict_equal(left_type, 'boolean')
+        )
+        and (
+            runtime.strict_equal(right_type, 'number')
+            or runtime.strict_equal(right_type, 'bigint')
+            or runtime.strict_equal(right_type, 'boolean')
+        )
+    )
+    same_primitive = (
+        runtime.strict_equal(left_type, right_type)
+        and (
+            runtime.strict_equal(left_type, 'string')
+            or runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+            or runtime.strict_equal(left_type, 'boolean')
+        )
+    )
+    if numeric or same_primitive:
+        if operation == 'lt':
+            return runtime.native_lt(left, right)
+        if operation == 'le':
+            return runtime.native_le(left, right)
+        if operation == 'gt':
+            return runtime.native_gt(left, right)
+        return runtime.native_ge(left, right)
+
     left_values = _builtins_sequence_values(left)
     right_values = _builtins_sequence_values(right)
     if (
@@ -558,29 +590,6 @@ def _builtins_rich_compare(
         if result is not NotImplemented:
             return result
 
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
-    numeric = (
-        (
-            runtime.strict_equal(left_type, 'number')
-            or runtime.strict_equal(left_type, 'bigint')
-            or runtime.strict_equal(left_type, 'boolean')
-        )
-        and (
-            runtime.strict_equal(right_type, 'number')
-            or runtime.strict_equal(right_type, 'bigint')
-            or runtime.strict_equal(right_type, 'boolean')
-        )
-    )
-    same_primitive = (
-        runtime.strict_equal(left_type, right_type)
-        and (
-            runtime.strict_equal(left_type, 'string')
-            or runtime.strict_equal(left_type, 'number')
-            or runtime.strict_equal(left_type, 'bigint')
-            or runtime.strict_equal(left_type, 'boolean')
-        )
-    )
     if not numeric and not same_primitive:
         raise TypeError('objects are not orderable')
     if operation == 'lt':
@@ -1074,6 +1083,16 @@ def ρσ_operator_ipow(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_iadd_exact(left: Any, right: Any) -> Any:
+    left_type = runtime.jstype(left)
+    if (
+        runtime.strict_equal(left_type, runtime.jstype(right))
+        and (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+            or runtime.strict_equal(left_type, 'string')
+        )
+    ):
+        return ρσ_operator_add_exact(left, right)
     return _builtins_inplace(
         left, right, '__iadd__', ρσ_operator_add_exact)
 
@@ -1138,6 +1157,26 @@ def ρσ_operator_truediv_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_mod(left: Any, right: Any) -> Any:
+    left_type = runtime.jstype(left)
+    right_type = runtime.jstype(right)
+    if (
+        runtime.strict_equal(left_type, 'number')
+        and runtime.strict_equal(right_type, 'number')
+        and runtime.number.isSafeInteger(left)
+        and runtime.number.isSafeInteger(right)
+    ):
+        if right == 0:
+            raise runtime.zero_division_error(
+                'integer modulo by zero')
+        remainder = runtime.native_mod(left, right)
+        if remainder == 0:
+            return 0
+        if (
+            remainder < 0 and right > 0
+            or remainder > 0 and right < 0
+        ):
+            remainder += right
+        return remainder
     if _builtins_member_is_function(left, '__mod__'):
         return _builtins_call_member(left, '__mod__', [right])
     if runtime.equals(right, 0):
@@ -3746,6 +3785,20 @@ def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
 
 
 def ρσ_divmod(left: Any, right: Any) -> Any:
+    if (
+        runtime.strict_equal(runtime.jstype(left), 'number')
+        and runtime.strict_equal(runtime.jstype(right), 'number')
+        and runtime.number.isSafeInteger(left)
+        and runtime.number.isSafeInteger(right)
+    ):
+        if right == 0:
+            raise runtime.zero_division_error(
+                'integer division or modulo by zero')
+        quotient = runtime.math.floor(
+            runtime.native_div(left, right))
+        remainder = runtime.native_sub(
+            left, runtime.native_mul(quotient, right))
+        return runtime.math_tuple([quotient, remainder])
     if runtime.equals(right, 0):
         raise runtime.zero_division_error(
             'integer division or modulo by zero')

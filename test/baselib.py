@@ -459,6 +459,11 @@ assrt.deepEqual(divmod(7, 3), [2, 1])
 assrt.deepEqual(divmod(-7, 3), [-3, 2])
 assrt.deepEqual(divmod(-7, -3), [2, -1])
 assrt.deepEqual(divmod(7, -3), [-3, -2])
+assrt.equal(7 % 3, 1)
+assrt.equal(-7 % 3, 2)
+assrt.equal(-7 % -3, -1)
+assrt.equal(7 % -3, -2)
+assrt.equal((-6) % 3, 0)
 
 
 def divmodtest():

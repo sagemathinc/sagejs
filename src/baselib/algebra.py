@@ -566,86 +566,121 @@ def modular_power(
     return result
 
 
+@runtime.native_method
+def _tuple_add(self: Any, other: Any) -> Any:
+    if not runtime.array.isArray(other):
+        if isinstance(other, runtime.tuple_builtin):
+            other = other._tuple_values
+        else:
+            raise TypeError('can only concatenate tuple to tuple')
+    elif not runtime.object.isFrozen(other):
+        raise TypeError('can only concatenate tuple to tuple')
+    combined = runtime.reflect.apply(
+        runtime.array.prototype.concat, self, [other])
+    return math_tuple(combined)
+
+
+@runtime.native_method
+def _tuple_mul(self: Any, other: Any) -> Any:
+    count = int(other)
+    answer = runtime.list_constructor()
+    for _repeat in range(max(0, count)):
+        for value in self:
+            answer.append(value)
+    return math_tuple(answer)
+
+
+@runtime.native_method
+def _tuple_eq(self: Any, other: Any) -> bool:
+    if runtime.array.isArray(other):
+        if not runtime.object.isFrozen(other):
+            return False
+        other_values = other
+    elif isinstance(other, runtime.tuple_builtin):
+        other_values = other._tuple_values
+    else:
+        return False
+    if len(self) != len(other_values):
+        return False
+    for index in range(len(self)):
+        if not runtime.equals(self[index], other_values[index]):
+            return False
+    return True
+
+
+@runtime.native_method
+def _tuple_repr(self: Any) -> str:
+    entries = [runtime.repr(value) for value in self]
+    suffix = ',' if len(self) == 1 else ''
+    entries_text = runtime.reflect.apply(
+        runtime.array.prototype.join,
+        entries,
+        [', '],
+    )
+    return '(' + entries_text + suffix + ')'
+
+
+@runtime.native_method
+def _tuple_append(self: Any, _value: Any) -> None:
+    raise AttributeError(
+        "'tuple' object has no attribute 'append'")
+
+
+_tuple_array_prototype_cache = runtime.undefined
+
+
+def _tuple_array_prototype() -> Any:
+    global _tuple_array_prototype_cache
+    if _tuple_array_prototype_cache is runtime.undefined:
+        decorated = runtime.list_constructor()
+        prototype = runtime.object.create(
+            runtime.object.getPrototypeOf(decorated))
+        properties = {
+            '__add__': {'value': _tuple_add},
+            '__iadd__': {'value': _tuple_add},
+            '__eq__': {'value': _tuple_eq},
+            '__mul__': {'value': _tuple_mul},
+            '__rmul__': {'value': _tuple_mul},
+            '__repr__': {'value': _tuple_repr},
+            '__str__': {'value': _tuple_repr},
+            'append': {'value': _tuple_append},
+            'toString': {'value': _tuple_repr},
+        }
+        runtime.object.defineProperties(prototype, properties)
+        _tuple_array_prototype_cache = prototype
+    return _tuple_array_prototype_cache
+
+
 def _freeze_tuple(
     values: list[Any],
-    tuple_repr: Any,
+    tuple_repr: Any = None,
     extra_properties: Any = None,
 ) -> Any:
-    def tuple_add(other: Any) -> Any:
-        if not runtime.array.isArray(other):
-            if isinstance(other, runtime.tuple_builtin):
-                other = other._tuple_values
-            else:
-                raise TypeError('can only concatenate tuple to tuple')
-        elif not runtime.object.isFrozen(other):
-            raise TypeError('can only concatenate tuple to tuple')
-        combined = runtime.reflect.apply(
-            runtime.array.prototype.concat, values, [other])
-        return math_tuple(combined)
-
-    def tuple_mul(other: Any) -> Any:
-        count = int(other)
-        answer = runtime.list_constructor()
-        for _repeat in range(max(0, count)):
-            for value in values:
-                answer.append(value)
-        return math_tuple(answer)
-
-    def tuple_eq(other: Any) -> bool:
-        if runtime.array.isArray(other):
-            if not runtime.object.isFrozen(other):
-                return False
-            other_values = other
-        elif isinstance(other, runtime.tuple_builtin):
-            other_values = other._tuple_values
-        else:
-            return False
-        if len(values) != len(other_values):
-            return False
-        for index in range(len(values)):
-            if not runtime.equals(values[index], other_values[index]):
-                return False
-        return True
-
-    def tuple_append(_value: Any) -> None:
-        raise AttributeError(
-            "'tuple' object has no attribute 'append'")
-
-    properties = {
-        '__add__': {'value': tuple_add},
-        '__iadd__': {'value': tuple_add},
-        '__eq__': {'value': tuple_eq},
-        '__mul__': {'value': tuple_mul},
-        '__rmul__': {'value': tuple_mul},
-        '__repr__': {'value': tuple_repr},
-        '__str__': {'value': tuple_repr},
-        'append': {'value': tuple_append},
-        'toString': {'value': tuple_repr},
-    }
-    if extra_properties is not None:
-        runtime.object.assign(properties, extra_properties)
-    runtime.object.defineProperties(values, properties)
+    if tuple_repr is None and extra_properties is None:
+        runtime.object.setPrototypeOf(
+            values, _tuple_array_prototype())
+    else:
+        runtime.object.setPrototypeOf(
+            values, _tuple_array_prototype())
+        properties = {
+            '__repr__': {'value': tuple_repr},
+            '__str__': {'value': tuple_repr},
+            'toString': {'value': tuple_repr},
+        }
+        if extra_properties is not None:
+            runtime.object.assign(properties, extra_properties)
+        runtime.object.defineProperties(values, properties)
     runtime.object.freeze(values)
     return values
 
 
 def math_tuple(values: list[Any]) -> Any:
-    # Tuple literals with two or more entries historically arrive as a raw
-    # JavaScript array, whereas one-entry literals arrive as a decorated
-    # Python list.  Normalize both representations before freezing.
-    values = runtime.list_constructor(values)
-
-    def tuple_repr() -> str:
-        entries = [runtime.repr(value) for value in values]
-        suffix = ',' if len(values) == 1 else ''
-        entries_text = runtime.reflect.apply(
-            runtime.array.prototype.join,
-            entries,
-            [', '],
-        )
-        return '(' + entries_text + suffix + ')'
-
-    return _freeze_tuple(values, tuple_repr)
+    # Compiler tuple literals and internal callers provide fresh arrays.
+    # Reuse them so hot tuple construction does not copy and decorate a list
+    # before replacing that decoration with immutable tuple behavior.
+    if not runtime.array.isArray(values):
+        values = runtime.list_constructor(values)
+    return _freeze_tuple(values)
 
 
 def named_tuple(

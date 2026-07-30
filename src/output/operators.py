@@ -528,6 +528,25 @@ def print_assignment(self, output):
         else:
             output.print('null')
 
+    def print_unpack_source():
+        sources = None
+        if is_node_type(self.right, AST_Seq):
+            sources = self.right.to_array()
+        elif (
+            is_node_type(self.right, AST_Array)
+            and self.right.is_tuple
+        ):
+            sources = self.right.elements
+        if sources is not None:
+            output.print('[')
+            for source_index, source in enumerate(sources):
+                if source_index:
+                    output.comma()
+                source.print(output)
+            output.print(']')
+        else:
+            self.right.print(output)
+
     flattened = False
     left = self.left
     if (
@@ -568,7 +587,7 @@ def print_assignment(self, output):
             output.comma()
             output.print(trailing_count)
             output.comma()
-            self.right.print(output)
+            print_unpack_source()
             output.print(")")
             output.end_statement()
             for index, element in enumerate(flat):
@@ -609,10 +628,13 @@ def print_assignment(self, output):
         output.print('ρσ_unpack_nested(')
         print_unpack_pattern(left)
         output.comma()
-        self.right.print(output)
+        print_unpack_source()
         output.print(')')
     else:
-        self.right.print(output)
+        if is_node_type(left, AST_Array):
+            print_unpack_source()
+        else:
+            self.right.print(output)
     if is_node_type(left, AST_Array):
         output.end_statement()
         output.assign('ρσ_unpack')

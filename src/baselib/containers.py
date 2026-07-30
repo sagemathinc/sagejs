@@ -182,6 +182,15 @@ def equals(left: Any, right: Any) -> bool:
 
 
 def not_equals(left: Any, right: Any) -> bool:
+    left_type = runtime.jstype(left)
+    right_type = runtime.jstype(right)
+    if (
+        not runtime.strict_equal(left_type, 'object')
+        and not runtime.strict_equal(left_type, 'function')
+        and not runtime.strict_equal(right_type, 'object')
+        and not runtime.strict_equal(right_type, 'function')
+    ):
+        return not equals(left, right)
     if (
         left is not None
         and runtime.strict_equal(
@@ -490,6 +499,9 @@ def _list_prototype() -> Any:
 
 
 def ρσ_list_decorate(answer: Any) -> Any:
+    if runtime.object.isFrozen(answer):
+        answer = runtime.reflect.apply(
+            runtime.array.prototype.slice, answer, [])
     runtime.object.setPrototypeOf(answer, _list_prototype())
     return answer
 
