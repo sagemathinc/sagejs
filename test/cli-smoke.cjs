@@ -5,9 +5,22 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { defaultHistoryFile } = require("../dist/tools/repl.js");
 
 const root = join(__dirname, "..");
 const cli = join(root, "bin", "sagejs");
+
+assert.equal(defaultHistoryFile({ sage: true }, "/cache"), "/cache/sagejs/history");
+assert.equal(
+  defaultHistoryFile({ sage: false }, "/cache"),
+  "/cache/sagejs/history-python",
+);
+for (const language of ["magma", "wolfram", "matlab", "maple"]) {
+  assert.equal(
+    defaultHistoryFile({ [language]: true }, "/cache"),
+    `/cache/sagejs/history-${language}`,
+  );
+}
 
 function run(args, input) {
   const result = spawnSync(process.execPath, [cli, ...args], {

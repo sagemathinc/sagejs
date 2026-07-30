@@ -69,6 +69,16 @@ export interface Options {
   moduleCacheDir?: string | false;
 }
 
+export function defaultHistoryFile(
+  options: Partial<Options>,
+  cacheDirectory = CACHEDIR,
+): string {
+  const foreignLanguage = selectedForeignLanguage(options);
+  const mode = foreignLanguage ?? (options.sage ? "sage" : "python");
+  const filename = mode === "sage" ? "history" : `history-${mode}`;
+  return join(cacheDirectory, "sagejs", filename);
+}
+
 function replDefaults(options: Partial<Options>): Options {
   const foreignLanguage = selectedForeignLanguage(options);
   if (!options.input) {
@@ -101,11 +111,11 @@ function replDefaults(options: Partial<Options>): Options {
     options.terminal = !!options.output?.isTTY;
   }
   if (options.histfile == null) {
-    const CACHE = join(CACHEDIR, "sagejs");
-    if (!pathExists(CACHE)) {
-      mkdirSync(CACHE, { recursive: true });
+    options.histfile = defaultHistoryFile(options);
+    const historyDirectory = dirname(options.histfile);
+    if (!pathExists(historyDirectory)) {
+      mkdirSync(historyDirectory, { recursive: true });
     }
-    options.histfile = join(CACHE, "history");
   }
   options.historySize = options.historySize ?? DEFAULT_HISTORY_SIZE;
   return options as Options;
