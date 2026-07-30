@@ -19,5 +19,7 @@ napi_value sagejs_mpoly_to_string(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_length(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_degree(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_total_degree(napi_env env, napi_callback_info info);
+napi_value sagejs_mpoly_groebner(napi_env env, napi_callback_info info);
+napi_value sagejs_mpoly_reduce(napi_env env, napi_callback_info info);
 
 #endif

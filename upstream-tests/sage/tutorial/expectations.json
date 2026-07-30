@@ -42,7 +42,7 @@
     {
       "reason": "requires a multivariate polynomial and algebraic-geometry subsystem",
       "file": "src/doc/en/tutorial/tour_advanced.rst",
-      "lines": [15, 16, 17, 19, 22, 35, 36, 57, 58, 62, 71]
+      "lines": [15, 16, 17, 19, 22, 35, 36, 58, 62, 71]
     },
     {
       "reason": "requires an elliptic-curve subsystem, algebraic closures, and database integration",
@@ -93,11 +93,6 @@
       "reason": "Sage.js deliberately uses optimized JavaScript integer identity and compact runtime class names",
       "file": "src/doc/en/tutorial/tour_assignment.rst",
       "lines": [91, 94]
-    },
-    {
-      "reason": "requires multivariate polynomials over extension fields",
-      "file": "src/doc/en/tutorial/tour_coercion.rst",
-      "lines": [44, 45]
     },
     {
       "reason": "Sage concrete polynomial element classes and selectable NTL implementation identities are not part of the portable FLINT object model",
@@ -155,9 +150,9 @@
       "lines": [154, 156, 196, 198, 199, 201, 203, 211]
     },
     {
-      "reason": "requires a Singular-class ideal/Groebner backend",
+      "reason": "requires primary decomposition and associated-prime algorithms",
       "file": "src/doc/en/tutorial/tour_polynomial.rst",
-      "lines": [289, 292, 306, 308, 322, 325]
+      "lines": [322, 325]
     },
     {
       "reason": "requires approximate-coefficient polynomial arithmetic and numerical root factorization",

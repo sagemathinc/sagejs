@@ -7,6 +7,7 @@
 #include <node_api.h>
 
 #include <flint/flint.h>
+#include <flint/fq_nmod_mpoly.h>
 #include <flint/fmpq.h>
 #include <flint/fmpq_mpoly.h>
 #include <flint/fmpz.h>
@@ -15,12 +16,14 @@
 #include <flint/ulong_extras.h>
 
 #include "multivariate.h"
+#include "extension_field.h"
 
 typedef enum
 {
     SAGEJS_MPOLY_ZZ,
     SAGEJS_MPOLY_QQ,
-    SAGEJS_MPOLY_NMOD
+    SAGEJS_MPOLY_NMOD,
+    SAGEJS_MPOLY_FQ_NMOD
 } sagejs_mpoly_kind;
 
 typedef struct
@@ -29,11 +32,13 @@ typedef struct
     sagejs_mpoly_kind kind;
     slong nvars;
     size_t references;
+    sagejs_fq_context_value *coefficient_context;
     union
     {
         fmpz_mpoly_ctx_struct zz[1];
         fmpq_mpoly_ctx_struct qq[1];
         nmod_mpoly_ctx_struct nmod[1];
+        fq_nmod_mpoly_ctx_struct fq_nmod[1];
     } value;
 } sagejs_mpoly_context_value;
 
@@ -46,6 +51,7 @@ typedef struct
         fmpz_mpoly_struct zz[1];
         fmpq_mpoly_struct qq[1];
         nmod_mpoly_struct nmod[1];
+        fq_nmod_mpoly_struct fq_nmod[1];
     } value;
 } sagejs_mpoly_value;
 
@@ -206,8 +212,13 @@ static void release_context(sagejs_mpoly_context_value *context)
         fmpz_mpoly_ctx_clear(context->value.zz);
     else if (context->kind == SAGEJS_MPOLY_QQ)
         fmpq_mpoly_ctx_clear(context->value.qq);
-    else
+    else if (context->kind == SAGEJS_MPOLY_NMOD)
         nmod_mpoly_ctx_clear(context->value.nmod);
+    else
+    {
+        fq_nmod_mpoly_ctx_clear(context->value.fq_nmod);
+        sagejs_fq_release_context(context->coefficient_context);
+    }
     context->magic = 0;
     free(context);
 }
@@ -228,8 +239,11 @@ static void finalize_value(napi_env env, void *data, void *hint)
         fmpz_mpoly_clear(poly->value.zz, poly->context->value.zz);
     else if (poly->context->kind == SAGEJS_MPOLY_QQ)
         fmpq_mpoly_clear(poly->value.qq, poly->context->value.qq);
-    else
+    else if (poly->context->kind == SAGEJS_MPOLY_NMOD)
         nmod_mpoly_clear(poly->value.nmod, poly->context->value.nmod);
+    else if (poly->context->kind == SAGEJS_MPOLY_FQ_NMOD)
+        fq_nmod_mpoly_clear(
+            poly->value.fq_nmod, poly->context->value.fq_nmod);
     release_context(poly->context);
     poly->magic = 0;
     free(poly);
@@ -317,8 +331,10 @@ static napi_value create_value(
         fmpz_mpoly_init(poly->value.zz, context->value.zz);
     else if (context->kind == SAGEJS_MPOLY_QQ)
         fmpq_mpoly_init(poly->value.qq, context->value.qq);
-    else
+    else if (context->kind == SAGEJS_MPOLY_NMOD)
         nmod_mpoly_init(poly->value.nmod, context->value.nmod);
+    else
+        fq_nmod_mpoly_init(poly->value.fq_nmod, context->value.fq_nmod);
     if (!check_napi(env, napi_create_object(env, &object)) ||
         !check_napi(env, napi_type_tag_object(env, object, &value_type_tag)) ||
         !check_napi(env,
@@ -396,12 +412,30 @@ napi_value sagejs_mpoly_context(napi_env env, napi_callback_info info)
             context->value.nmod, nvars, order, fmpz_get_ui(modulus));
         fmpz_clear(modulus);
     }
+    else if (strcmp(kind, "fq_nmod") == 0)
+    {
+        fq_nmod_ctx_struct *field_context;
+        context->coefficient_context =
+            sagejs_fq_unwrap_context(env, args[3]);
+        if (context->coefficient_context == NULL ||
+            (field_context = sagejs_fq_nmod_context(
+                env, context->coefficient_context)) == NULL)
+        {
+            free(context);
+            free(kind);
+            return NULL;
+        }
+        context->kind = SAGEJS_MPOLY_FQ_NMOD;
+        sagejs_fq_retain_context(context->coefficient_context);
+        fq_nmod_mpoly_ctx_init(
+            context->value.fq_nmod, nvars, order, field_context);
+    }
     else
     {
         free(context);
         free(kind);
         napi_throw_range_error(env, NULL,
-            "coefficient kind must be 'zz', 'qq', or 'nmod'");
+            "coefficient kind must be 'zz', 'qq', 'nmod', or 'fq_nmod'");
         return NULL;
     }
     free(kind);
@@ -428,6 +462,21 @@ napi_value sagejs_mpoly_constant(napi_env env, napi_callback_info info)
     if (!require_arguments(env, info, 3, args) ||
         (context = unwrap_context(env, args[0])) == NULL)
         return NULL;
+    if (context->kind == SAGEJS_MPOLY_FQ_NMOD)
+    {
+        object = create_value(env, context);
+        if (object == NULL)
+            return NULL;
+        poly = unwrap_value(env, object);
+        if (!sagejs_fq_nmod_mpoly_set_constant(
+                env,
+                args[1],
+                context->coefficient_context,
+                poly->value.fq_nmod,
+                context->value.fq_nmod))
+            return NULL;
+        return object;
+    }
     fmpz_init(numerator);
     fmpz_init(denominator);
     if (!bigint_to_fmpz(env, args[1], numerator) ||
@@ -507,8 +556,11 @@ napi_value sagejs_mpoly_gen(napi_env env, napi_callback_info info)
         fmpz_mpoly_gen(poly->value.zz, index, context->value.zz);
     else if (context->kind == SAGEJS_MPOLY_QQ)
         fmpq_mpoly_gen(poly->value.qq, index, context->value.qq);
-    else
+    else if (context->kind == SAGEJS_MPOLY_NMOD)
         nmod_mpoly_gen(poly->value.nmod, index, context->value.nmod);
+    else
+        fq_nmod_mpoly_gen(
+            poly->value.fq_nmod, index, context->value.fq_nmod);
     return object;
 }
 
@@ -543,7 +595,7 @@ static napi_value binary(napi_env env, napi_callback_info info, binary_op op)
         else fmpq_mpoly_mul(result->value.qq, left->value.qq,
             right->value.qq, left->context->value.qq);
     }
-    else
+    else if (left->context->kind == SAGEJS_MPOLY_NMOD)
     {
         if (op == OP_ADD) nmod_mpoly_add(result->value.nmod, left->value.nmod,
             right->value.nmod, left->context->value.nmod);
@@ -551,6 +603,18 @@ static napi_value binary(napi_env env, napi_callback_info info, binary_op op)
             left->value.nmod, right->value.nmod, left->context->value.nmod);
         else nmod_mpoly_mul(result->value.nmod, left->value.nmod,
             right->value.nmod, left->context->value.nmod);
+    }
+    else
+    {
+        if (op == OP_ADD) fq_nmod_mpoly_add(
+            result->value.fq_nmod, left->value.fq_nmod,
+            right->value.fq_nmod, left->context->value.fq_nmod);
+        else if (op == OP_SUB) fq_nmod_mpoly_sub(
+            result->value.fq_nmod, left->value.fq_nmod,
+            right->value.fq_nmod, left->context->value.fq_nmod);
+        else fq_nmod_mpoly_mul(
+            result->value.fq_nmod, left->value.fq_nmod,
+            right->value.fq_nmod, left->context->value.fq_nmod);
     }
     return object;
 }
@@ -579,9 +643,12 @@ napi_value sagejs_mpoly_neg(napi_env env, napi_callback_info info)
     else if (value->context->kind == SAGEJS_MPOLY_QQ)
         fmpq_mpoly_neg(result->value.qq, value->value.qq,
             value->context->value.qq);
-    else
+    else if (value->context->kind == SAGEJS_MPOLY_NMOD)
         nmod_mpoly_neg(result->value.nmod, value->value.nmod,
             value->context->value.nmod);
+    else
+        fq_nmod_mpoly_neg(result->value.fq_nmod, value->value.fq_nmod,
+            value->context->value.fq_nmod);
     return object;
 }
 
@@ -605,9 +672,12 @@ napi_value sagejs_mpoly_pow(napi_env env, napi_callback_info info)
     else if (value->context->kind == SAGEJS_MPOLY_QQ)
         fmpq_mpoly_pow_ui(result->value.qq, value->value.qq,
             (ulong) exponent, value->context->value.qq);
-    else
+    else if (value->context->kind == SAGEJS_MPOLY_NMOD)
         nmod_mpoly_pow_ui(result->value.nmod, value->value.nmod,
             (ulong) exponent, value->context->value.nmod);
+    else
+        fq_nmod_mpoly_pow_ui(result->value.fq_nmod, value->value.fq_nmod,
+            (ulong) exponent, value->context->value.fq_nmod);
     return object;
 }
 
@@ -625,9 +695,13 @@ napi_value sagejs_mpoly_equal(napi_env env, napi_callback_info info)
     else if (left->context->kind == SAGEJS_MPOLY_QQ)
         equal = fmpq_mpoly_equal(left->value.qq, right->value.qq,
             left->context->value.qq);
-    else
+    else if (left->context->kind == SAGEJS_MPOLY_NMOD)
         equal = nmod_mpoly_equal(left->value.nmod, right->value.nmod,
             left->context->value.nmod);
+    else
+        equal = fq_nmod_mpoly_equal(
+            left->value.fq_nmod, right->value.fq_nmod,
+            left->context->value.fq_nmod);
     if (!check_napi(env, napi_get_boolean(env, equal != 0, &result)))
         return NULL;
     return result;
@@ -658,12 +732,20 @@ static napi_value divides_or_gcd(napi_env env, napi_callback_info info,
                 right->value.qq, left->context->value.qq)
             : fmpq_mpoly_divides(result->value.qq, left->value.qq,
                 right->value.qq, left->context->value.qq);
-    else
+    else if (left->context->kind == SAGEJS_MPOLY_NMOD)
         success = gcd
             ? nmod_mpoly_gcd(result->value.nmod, left->value.nmod,
                 right->value.nmod, left->context->value.nmod)
             : nmod_mpoly_divides(result->value.nmod, left->value.nmod,
                 right->value.nmod, left->context->value.nmod);
+    else
+        success = gcd
+            ? fq_nmod_mpoly_gcd(
+                result->value.fq_nmod, left->value.fq_nmod,
+                right->value.fq_nmod, left->context->value.fq_nmod)
+            : fq_nmod_mpoly_divides(
+                result->value.fq_nmod, left->value.fq_nmod,
+                right->value.fq_nmod, left->context->value.fq_nmod);
     if (!success)
     {
         napi_throw_range_error(env, NULL, gcd
@@ -698,7 +780,10 @@ napi_value sagejs_mpoly_compose_gen(
     if (source->context->kind != target->kind ||
         source->context->nvars != target->nvars ||
         (target->kind == SAGEJS_MPOLY_NMOD &&
-            source->context->value.nmod->mod.n != target->value.nmod->mod.n))
+            source->context->value.nmod->mod.n != target->value.nmod->mod.n) ||
+        (target->kind == SAGEJS_MPOLY_FQ_NMOD &&
+            source->context->coefficient_context
+                != target->coefficient_context))
     {
         napi_throw_type_error(env, NULL,
             "incompatible multivariate polynomial contexts");
@@ -742,10 +827,14 @@ napi_value sagejs_mpoly_compose_gen(
         fmpq_mpoly_compose_fmpq_mpoly_gen(
             result->value.qq, source->value.qq, mapping,
             source->context->value.qq, target->value.qq);
-    else
+    else if (target->kind == SAGEJS_MPOLY_NMOD)
         nmod_mpoly_compose_nmod_mpoly_gen(
             result->value.nmod, source->value.nmod, mapping,
             source->context->value.nmod, target->value.nmod);
+    else
+        fq_nmod_mpoly_compose_fq_nmod_mpoly_gen(
+            result->value.fq_nmod, source->value.fq_nmod, mapping,
+            source->context->value.fq_nmod, target->value.fq_nmod);
     free(mapping);
     return object;
 }
@@ -800,9 +889,12 @@ napi_value sagejs_mpoly_to_string(napi_env env, napi_callback_info info)
     else if (poly->context->kind == SAGEJS_MPOLY_QQ)
         text = fmpq_mpoly_get_str_pretty(poly->value.qq,
             (const char **) names, poly->context->value.qq);
-    else
+    else if (poly->context->kind == SAGEJS_MPOLY_NMOD)
         text = nmod_mpoly_get_str_pretty(poly->value.nmod,
             (const char **) names, poly->context->value.nmod);
+    else
+        text = fq_nmod_mpoly_get_str_pretty(poly->value.fq_nmod,
+            (const char **) names, poly->context->value.fq_nmod);
     for (i = 0; i < poly->context->nvars; i++) free(names[i]);
     free(names);
     if (text == NULL)
@@ -847,13 +939,21 @@ static napi_value integer_property(napi_env env, napi_callback_info info,
                     poly->context->value.qq)
             : fmpq_mpoly_total_degree_si(poly->value.qq,
                     poly->context->value.qq);
-    else
+    else if (poly->context->kind == SAGEJS_MPOLY_NMOD)
         value = property == 0 ? nmod_mpoly_length(poly->value.nmod,
                     poly->context->value.nmod)
             : property == 1 ? nmod_mpoly_degree_si(poly->value.nmod, variable,
                     poly->context->value.nmod)
             : nmod_mpoly_total_degree_si(poly->value.nmod,
                     poly->context->value.nmod);
+    else
+        value = property == 0 ? fq_nmod_mpoly_length(
+                    poly->value.fq_nmod, poly->context->value.fq_nmod)
+            : property == 1 ? fq_nmod_mpoly_degree_si(
+                    poly->value.fq_nmod, variable,
+                    poly->context->value.fq_nmod)
+            : fq_nmod_mpoly_total_degree_si(
+                    poly->value.fq_nmod, poly->context->value.fq_nmod);
     if (!check_napi(env, napi_create_int64(env, value, &result)))
         return NULL;
     return result;
@@ -865,3 +965,190 @@ napi_value sagejs_mpoly_degree(napi_env e, napi_callback_info i)
 { return integer_property(e, i, 1); }
 napi_value sagejs_mpoly_total_degree(napi_env e, napi_callback_info i)
 { return integer_property(e, i, 2); }
+
+static int array_to_fmpz_mpoly_vec(napi_env env, napi_value array,
+    sagejs_mpoly_context_value *context, fmpz_mpoly_vec_t vector)
+{
+    bool is_array;
+    uint32_t length, index;
+    napi_value item;
+    sagejs_mpoly_value *poly;
+    if (!check_napi(env, napi_is_array(env, array, &is_array)) || !is_array)
+    {
+        napi_throw_type_error(env, NULL,
+            "expected an array of multivariate polynomials");
+        return 0;
+    }
+    if (!check_napi(env, napi_get_array_length(env, array, &length)))
+        return 0;
+    fmpz_mpoly_vec_init(vector, 0,
+        context->kind == SAGEJS_MPOLY_ZZ
+            ? context->value.zz : context->value.qq->zctx);
+    for (index = 0; index < length; index++)
+    {
+        if (!check_napi(env, napi_get_element(env, array, index, &item)) ||
+            (poly = unwrap_value(env, item)) == NULL)
+        {
+            fmpz_mpoly_vec_clear(vector,
+                context->kind == SAGEJS_MPOLY_ZZ
+                    ? context->value.zz : context->value.qq->zctx);
+            return 0;
+        }
+        if (poly->context != context)
+        {
+            fmpz_mpoly_vec_clear(vector,
+                context->kind == SAGEJS_MPOLY_ZZ
+                    ? context->value.zz : context->value.qq->zctx);
+            napi_throw_type_error(env, NULL,
+                "multivariate polynomials have different parents");
+            return 0;
+        }
+        fmpz_mpoly_vec_append(vector,
+            context->kind == SAGEJS_MPOLY_ZZ
+                ? poly->value.zz
+                : fmpq_mpoly_zpoly_ref(
+                    poly->value.qq, context->value.qq),
+            context->kind == SAGEJS_MPOLY_ZZ
+                ? context->value.zz : context->value.qq->zctx);
+    }
+    return 1;
+}
+
+static napi_value create_value_from_fmpz(napi_env env,
+    sagejs_mpoly_context_value *context, const fmpz_mpoly_t source,
+    int make_monic)
+{
+    napi_value object = create_value(env, context);
+    sagejs_mpoly_value *result;
+    if (object == NULL || (result = unwrap_value(env, object)) == NULL)
+        return NULL;
+    if (context->kind == SAGEJS_MPOLY_ZZ)
+        fmpz_mpoly_set(result->value.zz, source, context->value.zz);
+    else
+    {
+        fmpz_mpoly_set(
+            fmpq_mpoly_zpoly_ref(result->value.qq, context->value.qq),
+            source, context->value.qq->zctx);
+        fmpq_one(
+            fmpq_mpoly_content_ref(result->value.qq, context->value.qq));
+        fmpq_mpoly_reduce(result->value.qq, context->value.qq);
+        if (make_monic && !fmpq_mpoly_is_zero(
+                result->value.qq, context->value.qq))
+            fmpq_mpoly_make_monic(
+                result->value.qq, result->value.qq, context->value.qq);
+    }
+    return object;
+}
+
+napi_value sagejs_mpoly_groebner(napi_env env, napi_callback_info info)
+{
+    napi_value args[1], first, answer, item;
+    sagejs_mpoly_value *poly;
+    sagejs_mpoly_context_value *context;
+    fmpz_mpoly_vec_t input, basis, reduced;
+    const fmpz_mpoly_ctx_struct *zctx;
+    uint32_t input_length;
+    slong index;
+    int success;
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    {
+        bool is_array;
+        if (!check_napi(env, napi_is_array(env, args[0], &is_array)) ||
+            !is_array ||
+            !check_napi(env,
+                napi_get_array_length(env, args[0], &input_length)))
+            return NULL;
+    }
+    if (input_length == 0)
+    {
+        if (!check_napi(env, napi_create_array(env, &answer)))
+            return NULL;
+        return answer;
+    }
+    if (!check_napi(env, napi_get_element(env, args[0], 0, &first)) ||
+        (poly = unwrap_value(env, first)) == NULL)
+        return NULL;
+    context = poly->context;
+    if (context->kind != SAGEJS_MPOLY_ZZ &&
+        context->kind != SAGEJS_MPOLY_QQ)
+    {
+        napi_throw_error(env, NULL,
+            "bounded FLINT Groebner bases currently support ZZ and QQ");
+        return NULL;
+    }
+    zctx = context->kind == SAGEJS_MPOLY_ZZ
+        ? context->value.zz : context->value.qq->zctx;
+    if (!array_to_fmpz_mpoly_vec(env, args[0], context, input))
+        return NULL;
+    fmpz_mpoly_vec_init(basis, 0, zctx);
+    fmpz_mpoly_vec_init(reduced, 0, zctx);
+    success = fmpz_mpoly_buchberger_naive_with_limits(
+        basis, input, 1000, 100000, 1000000, zctx);
+    fmpz_mpoly_vec_clear(input, zctx);
+    if (!success)
+    {
+        fmpz_mpoly_vec_clear(basis, zctx);
+        fmpz_mpoly_vec_clear(reduced, zctx);
+        napi_throw_range_error(env, NULL,
+            "FLINT Groebner basis exceeded Sage.js resource limits");
+        return NULL;
+    }
+    fmpz_mpoly_vec_autoreduction_groebner(reduced, basis, zctx);
+    fmpz_mpoly_vec_clear(basis, zctx);
+    if (!check_napi(env,
+            napi_create_array_with_length(env, reduced->length, &answer)))
+    {
+        fmpz_mpoly_vec_clear(reduced, zctx);
+        return NULL;
+    }
+    for (index = 0; index < reduced->length; index++)
+    {
+        item = create_value_from_fmpz(
+            env, context, fmpz_mpoly_vec_entry(reduced, index), 1);
+        if (item == NULL ||
+            !check_napi(env, napi_set_element(env, answer, index, item)))
+        {
+            fmpz_mpoly_vec_clear(reduced, zctx);
+            return NULL;
+        }
+    }
+    fmpz_mpoly_vec_clear(reduced, zctx);
+    return answer;
+}
+
+napi_value sagejs_mpoly_reduce(napi_env env, napi_callback_info info)
+{
+    napi_value args[2], object;
+    sagejs_mpoly_value *poly;
+    sagejs_mpoly_context_value *context;
+    fmpz_mpoly_vec_t basis;
+    fmpz_mpoly_t remainder;
+    const fmpz_mpoly_ctx_struct *zctx;
+    if (!require_arguments(env, info, 2, args) ||
+        (poly = unwrap_value(env, args[0])) == NULL)
+        return NULL;
+    context = poly->context;
+    if (context->kind != SAGEJS_MPOLY_ZZ &&
+        context->kind != SAGEJS_MPOLY_QQ)
+    {
+        napi_throw_error(env, NULL,
+            "FLINT ideal reduction currently supports ZZ and QQ");
+        return NULL;
+    }
+    zctx = context->kind == SAGEJS_MPOLY_ZZ
+        ? context->value.zz : context->value.qq->zctx;
+    if (!array_to_fmpz_mpoly_vec(env, args[1], context, basis))
+        return NULL;
+    fmpz_mpoly_init(remainder, zctx);
+    fmpz_mpoly_reduction_primitive_part(
+        remainder,
+        context->kind == SAGEJS_MPOLY_ZZ
+            ? poly->value.zz
+            : fmpq_mpoly_zpoly_ref(poly->value.qq, context->value.qq),
+        basis, zctx);
+    fmpz_mpoly_vec_clear(basis, zctx);
+    object = create_value_from_fmpz(env, context, remainder, 0);
+    fmpz_mpoly_clear(remainder, zctx);
+    return object;
+}

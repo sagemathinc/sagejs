@@ -410,12 +410,32 @@ native FLINT `fmpz_poly`, `fmpq_poly`, and `nmod_poly` values behind opaque
 Node-API objects; polynomial arithmetic does not copy coefficient arrays
 through JavaScript.
 
+Multivariate rings over `ZZ`, `QQ`, prime fields, word-sized residue rings,
+and FLINT word-characteristic extension fields use the corresponding native
+`*_mpoly` contexts. In particular, `GF(4, 'a')['x,y']` is backed directly by
+FLINT `fq_nmod_mpoly`; coefficients and the polynomial context retain the same
+opaque finite-field context rather than translating through strings.
+
+The initial ideal layer over `QQ[x_1,...,x_n]` uses FLINT's bounded
+Buchberger implementation. Rational generators are represented by primitive
+integer polynomials during the computation and normalized to a reduced monic
+basis on return. Ideal membership reduces against that basis. Explicit
+resource limits prevent an unexpectedly difficult basis from monopolizing an
+embedded evaluator.
+
+This is deliberately not presented as a substitute for Singular. FLINT
+provides the compact, high-quality foundation for arithmetic and useful small
+Gröbner computations. Primary decomposition, associated primes, comprehensive
+coefficient-domain support, and the broader algebraic-geometry layer remain
+the boundary at which Sage.js should evaluate a Singular integration instead
+of growing an ad hoc computer-algebra system.
+
 Generator declarations are parsed contextually and lowered to ordinary
 assignment AST nodes. For example, `R.<x> = ZZ[]` constructs
 `PolynomialRing(ZZ, "x")`, assigns it to `R`, and binds the result of
 `R._first_ngens(1)` to `x`. Existing parent expressions support multiple
-bindings through `_first_ngens(n)`; empty-bracket `ZZ[]` and `QQ[]`
-construction is currently restricted to the univariate runtime.
+bindings through `_first_ngens(n)`, including declarations such as
+`R.<x,y> = GF(4, 'a')[]`.
 
 Run a file directly:
 

@@ -3,6 +3,24 @@
 
 #include <node_api.h>
 
+#include <flint/fq_nmod.h>
+#include <flint/fq_nmod_mpoly.h>
+
+typedef struct sagejs_fq_context_value sagejs_fq_context_value;
+
+sagejs_fq_context_value *sagejs_fq_unwrap_context(
+    napi_env env, napi_value object);
+void sagejs_fq_retain_context(sagejs_fq_context_value *context);
+void sagejs_fq_release_context(sagejs_fq_context_value *context);
+fq_nmod_ctx_struct *sagejs_fq_nmod_context(
+    napi_env env, sagejs_fq_context_value *context);
+int sagejs_fq_nmod_mpoly_set_constant(
+    napi_env env,
+    napi_value value,
+    sagejs_fq_context_value *context,
+    fq_nmod_mpoly_t polynomial,
+    const fq_nmod_mpoly_ctx_t polynomial_context);
+
 napi_value sagejs_fq_context(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_context_modulus(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_from_bigint(napi_env env, napi_callback_info info);

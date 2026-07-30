@@ -139,6 +139,84 @@ assert.throws(
   /term order/,
 );
 
+const groebnerContext = flint.mpolyContext("qq", 2, "degrevlex", 0n);
+const groebnerX = flint.mpolyGen(groebnerContext, 0);
+const groebnerY = flint.mpolyGen(groebnerContext, 1);
+const groebnerTwo = flint.mpolyConstant(groebnerContext, 2n, 1n);
+const groebnerF = flint.mpolyPow(
+  flint.mpolyAdd(
+    flint.mpolyPow(groebnerX, 3),
+    flint.mpolyMul(
+      groebnerTwo,
+      flint.mpolyMul(flint.mpolyPow(groebnerY, 2), groebnerX),
+    ),
+  ),
+  2,
+);
+const groebnerG = flint.mpolyMul(
+  flint.mpolyPow(groebnerX, 2),
+  flint.mpolyPow(groebnerY, 2),
+);
+const groebnerBasis = flint.mpolyGroebner([groebnerF, groebnerG]);
+assert.deepEqual(
+  groebnerBasis.map((value) =>
+    flint.mpolyToString(value, ["x", "y"]),
+  ),
+  ["x^6", "x^2*y^2"],
+);
+assert.equal(
+  flint.mpolyToString(
+    flint.mpolyReduce(
+      flint.mpolyPow(groebnerX, 2),
+      groebnerBasis,
+    ),
+    ["x", "y"],
+  ),
+  "x^2",
+);
+assert.equal(
+  flint.mpolyToString(
+    flint.mpolyReduce(groebnerF, groebnerBasis),
+    ["x", "y"],
+  ),
+  "0",
+);
+
+const fq4 = flint.fqContext(2n, 2, "a");
+const fq4a = flint.fqGen(fq4);
+const fq4one = flint.fqFromBigInt(fq4, 1n);
+const fq4xy = flint.mpolyContext("fq_nmod", 2, "degrevlex", fq4);
+const fq4x = flint.mpolyGen(fq4xy, 0);
+const fq4y = flint.mpolyGen(fq4xy, 1);
+const fq4aPlusOne = flint.fqAdd(fq4a, fq4one);
+const fq4polynomial = flint.mpolyAdd(
+  flint.mpolyAdd(flint.mpolyPow(fq4x, 2), fq4y),
+  flint.mpolyConstant(fq4xy, fq4aPlusOne, 1n),
+);
+assert.equal(
+  flint.mpolyToString(fq4polynomial, ["x", "y"]),
+  "x^2 + y + (a+1)",
+);
+assert.equal(
+  flint.mpolyEqual(
+    flint.mpolyGcd(
+      flint.mpolyMul(fq4polynomial, fq4x),
+      flint.mpolyMul(fq4polynomial, fq4y),
+    ),
+    fq4polynomial,
+  ),
+  true,
+);
+assert.throws(
+  () =>
+    flint.mpolyConstant(
+      fq4xy,
+      flint.fqGen(flint.fqContext(2n, 2, "b")),
+      1n,
+    ),
+  /different parent/,
+);
+
 assert.equal(flint.wordIsPrime(2n), true);
 assert.equal(flint.wordIsPrime(18446744073709551557n), true);
 assert.equal(flint.wordIsPrime(15n), false);

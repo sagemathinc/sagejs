@@ -16,7 +16,7 @@
 
 #include "extension_field.h"
 
-typedef struct
+struct sagejs_fq_context_value
 {
     uint64_t magic;
     fq_default_ctx_t value;
@@ -24,7 +24,7 @@ typedef struct
     slong degree;
     char *variable;
     size_t references;
-} sagejs_fq_context_value;
+};
 
 typedef struct
 {
@@ -241,7 +241,13 @@ static char *value_to_string(napi_env env, napi_value value)
     return result;
 }
 
-static void release_context(sagejs_fq_context_value *context)
+void sagejs_fq_retain_context(sagejs_fq_context_value *context)
+{
+    if (context != NULL && context->magic == SAGEJS_FQ_CONTEXT_MAGIC)
+        context->references++;
+}
+
+void sagejs_fq_release_context(sagejs_fq_context_value *context)
 {
     if (context == NULL || context->magic != SAGEJS_FQ_CONTEXT_MAGIC)
         return;
@@ -258,7 +264,7 @@ static void finalize_context(napi_env env, void *data, void *hint)
 {
     (void) env;
     (void) hint;
-    release_context(data);
+    sagejs_fq_release_context(data);
 }
 
 static void finalize_element(napi_env env, void *data, void *hint)
@@ -270,12 +276,12 @@ static void finalize_element(napi_env env, void *data, void *hint)
     if (element == NULL || element->magic != SAGEJS_FQ_ELEMENT_MAGIC)
         return;
     fq_default_clear(element->value, element->context->value);
-    release_context(element->context);
+    sagejs_fq_release_context(element->context);
     element->magic = 0;
     free(element);
 }
 
-static sagejs_fq_context_value *unwrap_context(
+sagejs_fq_context_value *sagejs_fq_unwrap_context(
     napi_env env,
     napi_value object)
 {
@@ -329,6 +335,46 @@ static sagejs_fq_element *unwrap_element(
         return NULL;
     }
     return element;
+}
+
+fq_nmod_ctx_struct *sagejs_fq_nmod_context(
+    napi_env env, sagejs_fq_context_value *context)
+{
+    if (context == NULL || context->magic != SAGEJS_FQ_CONTEXT_MAGIC)
+    {
+        napi_throw_type_error(env, NULL,
+            "expected a Sage.js FLINT finite-field context");
+        return NULL;
+    }
+    if (fq_default_ctx_type(context->value) != FQ_DEFAULT_FQ_NMOD)
+    {
+        napi_throw_range_error(env, NULL,
+            "multivariate extension fields currently require "
+            "word-sized characteristic");
+        return NULL;
+    }
+    return FQ_DEFAULT_CTX_FQ_NMOD(context->value);
+}
+
+int sagejs_fq_nmod_mpoly_set_constant(
+    napi_env env,
+    napi_value value,
+    sagejs_fq_context_value *context,
+    fq_nmod_mpoly_t polynomial,
+    const fq_nmod_mpoly_ctx_t polynomial_context)
+{
+    sagejs_fq_element *element = unwrap_element(env, value);
+    if (element == NULL)
+        return 0;
+    if (element->context != context)
+    {
+        napi_throw_type_error(env, NULL,
+            "finite-field coefficient has a different parent");
+        return 0;
+    }
+    fq_nmod_mpoly_set_fq_nmod(
+        polynomial, element->value->fq_nmod, polynomial_context);
+    return 1;
 }
 
 static napi_value create_element(
@@ -474,7 +520,7 @@ napi_value sagejs_fq_context_modulus(
 
     if (!require_arguments(env, info, 1, args))
         return NULL;
-    context = unwrap_context(env, args[0]);
+    context = sagejs_fq_unwrap_context(env, args[0]);
     if (context == NULL)
         return NULL;
     fmpz_mod_ctx_init(modulus_context, context->prime);
@@ -522,7 +568,7 @@ napi_value sagejs_fq_from_bigint(napi_env env, napi_callback_info info)
 
     if (!require_arguments(env, info, 2, args))
         return NULL;
-    context = unwrap_context(env, args[0]);
+    context = sagejs_fq_unwrap_context(env, args[0]);
     if (context == NULL)
         return NULL;
     fmpz_init(value);
@@ -553,7 +599,7 @@ napi_value sagejs_fq_gen(napi_env env, napi_callback_info info)
 
     if (!require_arguments(env, info, 1, args))
         return NULL;
-    context = unwrap_context(env, args[0]);
+    context = sagejs_fq_unwrap_context(env, args[0]);
     if (context == NULL)
         return NULL;
     result = create_element(env, context);
@@ -794,7 +840,7 @@ static void finalize_fq_poly(napi_env env, void *data, void *hint)
     if (poly == NULL || poly->magic != SAGEJS_FQ_POLY_MAGIC)
         return;
     fq_default_poly_clear(poly->value, poly->context->value);
-    release_context(poly->context);
+    sagejs_fq_release_context(poly->context);
     poly->magic = 0;
     free(poly);
 }
@@ -918,7 +964,7 @@ napi_value sagejs_fq_poly_constant(
 
     if (!require_arguments(env, info, 2, args))
         return NULL;
-    context = unwrap_context(env, args[0]);
+    context = sagejs_fq_unwrap_context(env, args[0]);
     coefficient = unwrap_element(env, args[1]);
     if (context == NULL || coefficient == NULL)
         return NULL;
@@ -950,7 +996,7 @@ napi_value sagejs_fq_poly_gen(
 
     if (!require_arguments(env, info, 1, args))
         return NULL;
-    context = unwrap_context(env, args[0]);
+    context = sagejs_fq_unwrap_context(env, args[0]);
     if (context == NULL)
         return NULL;
     result = create_fq_poly(env, context);
@@ -1478,7 +1524,7 @@ static void finalize_fq_matrix(napi_env env, void *data, void *hint)
     if (matrix == NULL || matrix->magic != SAGEJS_FQ_MATRIX_MAGIC)
         return;
     fq_default_mat_clear(matrix->value, matrix->context->value);
-    release_context(matrix->context);
+    sagejs_fq_release_context(matrix->context);
     matrix->magic = 0;
     free(matrix);
 }
@@ -1596,7 +1642,7 @@ napi_value sagejs_fq_matrix(
 
     if (!require_arguments(env, info, 4, args))
         return NULL;
-    context = unwrap_context(env, args[0]);
+    context = sagejs_fq_unwrap_context(env, args[0]);
     if (context == NULL ||
         !value_to_matrix_dimension(env, args[1], &rows) ||
         !value_to_matrix_dimension(env, args[2], &cols))

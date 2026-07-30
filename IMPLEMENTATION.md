@@ -76,6 +76,14 @@ packaging systems, object models, and startup costs. The Julia benchmark is
 valuable because it validates the compiler architecture, not because Sage.js
 should depend on Julia.
 
+The multivariate-polynomial boundary follows the same rule. FLINT owns exact
+polynomial values and currently supplies bounded Gröbner bases over `QQ`,
+including rational-to-primitive-integer normalization. That is the preferred
+small, embeddable implementation. Singular remains the intended candidate for
+primary decomposition, associated primes, broad ideal algorithms, and
+algebraic geometry; those features should not be approximated by silently
+extending the small FLINT layer beyond its mathematical contract.
+
 ## Native-kernel contract
 
 A native-compilable Sage.js function should have:

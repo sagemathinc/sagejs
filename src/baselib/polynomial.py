@@ -15,6 +15,15 @@ def _untyped(value: Any) -> Any:
     return value
 
 
+def _ideal_generators(values: Any) -> Any:
+    if (
+        len(values) == 1
+        and isinstance(values[0], (list, tuple))
+    ):
+        return values[0]
+    return values
+
+
 def ρσ_callable_instance_class(cls: type[Any]) -> type[Any]:
     # Identity fallback for bootstrap compilers which predate callable-instance
     # lowering. The converged compiler consumes this decorator.
@@ -603,10 +612,13 @@ class MultivariatePolynomialRingParent(sage.Parent):
         elif base._kind in ['GF', 'ZMOD']:
             kind = 'nmod'
             modulus = base._modulus
+        elif base._kind == 'GF_EXTENSION':
+            kind = 'fq_nmod'
+            modulus = _untyped(base)._nativeContext
         else:
             raise TypeError(
                 'multivariate FLINT polynomials currently support '
-                + 'ZZ, QQ, GF(p), and Zmod(n)')
+                + 'ZZ, QQ, finite fields, and Zmod(n)')
         self._nativeContext = runtime.flint_backend().mpolyContext(
             kind, len(variables), order, modulus)
 
@@ -678,6 +690,10 @@ class MultivariatePolynomialRingParent(sage.Parent):
             residue = self._base(value)
             numerator = residue._value
             denominator = runtime.bigint(1)
+        elif self._base._kind == 'GF_EXTENSION':
+            residue = self._base(value)
+            numerator = residue._native
+            denominator = runtime.bigint(1)
         else:
             raise TypeError('unsupported coefficient parent')
         return MultivariatePolynomialElement(
@@ -707,6 +723,11 @@ class MultivariatePolynomialRingParent(sage.Parent):
             and source.base_ring()._modulus != self._base._modulus
         ):
             raise TypeError('incompatible multivariate coefficient rings')
+        if (
+            self._base._kind == 'GF_EXTENSION'
+            and source.base_ring() is not self._base
+        ):
+            raise TypeError('incompatible multivariate coefficient fields')
         mapping = []
         canonical = self.has_coerce_map_from(source)
         for source_index in range(source.ngens()):
@@ -738,6 +759,11 @@ class MultivariatePolynomialRingParent(sage.Parent):
             and source.base_ring()._modulus != self._base._modulus
         ):
             return False
+        if (
+            self._base._kind == 'GF_EXTENSION'
+            and source.base_ring() is not self._base
+        ):
+            return False
         for name in source._variables:
             if name not in self._variables:
                 return False
@@ -765,6 +791,132 @@ class MultivariatePolynomialRingParent(sage.Parent):
             isinstance(value, MultivariatePolynomialElement)
             and value._parent is self
         )
+
+    def ideal(self, *generators: Any) -> PolynomialIdeal:
+        selected = _ideal_generators(generators)
+        return PolynomialIdeal(self, selected)
+
+    def __rmul__(self, generators: Any) -> PolynomialIdeal:
+        if not isinstance(generators, (list, tuple)):
+            raise TypeError('an ideal needs a list or tuple of generators')
+        return self.ideal(generators)
+
+
+@runtime.callable_instance_class
+class PolynomialSequence:
+
+    def __init__(
+        self,
+        values: Any,
+        universe: MultivariatePolynomialRingParent,
+    ) -> None:
+        self._values = runtime.math_tuple(values)
+        self._universe = universe
+        runtime.object.freeze(self)
+
+    def universe(self) -> MultivariatePolynomialRingParent:
+        return self._universe
+
+    def __len__(self) -> int:
+        return len(self._values)
+
+    def __iter__(self) -> Any:
+        return iter(self._values)
+
+    def __getitem__(self, index: Any) -> Any:
+        return self._values[index]
+
+    def __setitem__(self, index: Any, value: Any) -> None:
+        raise ValueError('object is immutable; please change a copy instead.')
+
+    def __repr__(self) -> str:
+        return '[' + ', '.join(
+            [repr(value) for value in self._values]) + ']'
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class PolynomialIdeal:
+
+    def __init__(
+        self,
+        ring: MultivariatePolynomialRingParent,
+        generators: Any,
+    ) -> None:
+        if ring.base_ring()._kind != 'QQ':
+            raise NotImplementedError(
+                'FLINT ideal arithmetic currently supports QQ')
+        self._ring = ring
+        self._generators = runtime.math_tuple(
+            [ring(generator) for generator in generators])
+        self._groebner = runtime.undefined
+
+    def ring(self) -> MultivariatePolynomialRingParent:
+        return self._ring
+
+    def gens(self) -> Any:
+        return self._generators
+
+    def groebner_basis(self) -> PolynomialSequence:
+        if self._groebner is runtime.undefined:
+            native = runtime.flint_backend().mpolyGroebner(
+                [generator._native for generator in self._generators])
+            values = []
+            for value in native:
+                values.append(
+                    MultivariatePolynomialElement(self._ring, value))
+            self._groebner = PolynomialSequence(values, self._ring)
+        return self._groebner
+
+    def __contains__(self, value: object) -> bool:
+        polynomial = self._ring(value)
+        basis = self.groebner_basis()
+        native_basis = []
+        for generator in basis:
+            native_basis.append(generator._native)
+        remainder = MultivariatePolynomialElement(
+            self._ring,
+            runtime.flint_backend().mpolyReduce(
+                polynomial._native, native_basis),
+        )
+        return remainder == self._ring(0)
+
+    def __repr__(self) -> str:
+        text = (
+            'Ideal (' + ', '.join(
+                [repr(generator) for generator in self._generators])
+            + ') of ' + str(self._ring)
+        )
+        words = text.split(' ')
+        lines = []
+        line = ''
+        for word in words:
+            if line and len(line) + len(word) + 1 > 72:
+                lines.append(line)
+                line = word
+            elif line:
+                line += ' ' + word
+            else:
+                line = word
+        if line:
+            lines.append(line)
+        return '\n'.join(lines)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+def ideal(*generators: Any) -> PolynomialIdeal:
+    selected = _ideal_generators(generators)
+    if len(selected) == 0:
+        raise ValueError('an ideal needs at least one generator')
+    first = selected[0]
+    if not isinstance(first, MultivariatePolynomialElement):
+        raise TypeError(
+            'the prototype ideal constructor needs polynomial generators')
+    return first._parent.ideal(selected)
 
 
 @runtime.callable_instance_class
@@ -943,11 +1095,11 @@ def _multivariate_polynomial_ring(
 ) -> MultivariatePolynomialRingParent:
     if (
         base._kind not in ['ZZ', 'QQ']
-        and base._kind not in ['GF', 'ZMOD']
+        and base._kind not in ['GF', 'GF_EXTENSION', 'ZMOD']
     ):
         raise TypeError(
             'FLINT multivariate polynomial rings currently support '
-            + 'ZZ, QQ, GF(p), and Zmod(n)')
+            + 'ZZ, QQ, finite fields, and Zmod(n)')
     by_variable = ρσ_polynomial_ring_cache.get(base)
     if by_variable is runtime.undefined:
         by_variable = runtime.map()

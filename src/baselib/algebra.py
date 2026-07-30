@@ -728,6 +728,11 @@ def _tuple_add(self: Any, other: Any) -> Any:
 
 @runtime.native_method
 def _tuple_mul(self: Any, other: Any) -> Any:
+    if (
+        not runtime.is_exact_integer(other)
+        and hasattr(other, '__rmul__')
+    ):
+        return other.__rmul__(math_tuple(self))
     count = int(other)
     answer = runtime.list_constructor()
     for _repeat in range(max(0, count)):
