@@ -1,0 +1,5522 @@
+{
+  "schema": "sagejs.sage-doctests/v1",
+  "generatedBy": "scripts/extract-sage-tutorial.cjs",
+  "source": {
+    "repository": "https://github.com/sagemath/sage.git",
+    "revision": "09472ff530d280d0c9f44fdc5a9c3e856ed95b37",
+    "path": "src/doc/en/tutorial/tour*.rst",
+    "license": "GPL-2.0-or-later",
+    "files": [
+      {
+        "path": "src/doc/en/tutorial/tour.rst",
+        "sha256": "b9c5271d9b0fc7925dd5cf80a06d60b95c1297f75b72910f4149c9816ff7a3fc",
+        "lines": 32,
+        "examples": 0
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_advanced.rst",
+        "sha256": "24a4c696736e4cccd7d2ae40152466d326f631641ea070cef4ba89b7c675c5ef",
+        "lines": 534,
+        "examples": 120
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_algebra.rst",
+        "sha256": "3c94a48c6e8da9d382e51fa54635b0276f7af435d9659d25f74c8e9e55c02658",
+        "lines": 436,
+        "examples": 72
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_assignment.rst",
+        "sha256": "2416c6678d2a9f2c120f3865aec114690cfd380c4325d97ea18d5190d639a7a1",
+        "lines": 103,
+        "examples": 28
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_coercion.rst",
+        "sha256": "7e3c30c4a5a079ef81f9b02e2553b10e57a51da837021a9783111e6ba5d573e3",
+        "lines": 412,
+        "examples": 61
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_functions.rst",
+        "sha256": "ec6caaa49f8150fd2660aa5a94f8181fb324ea5a91ae6ba23ff8f4aaa6cda600",
+        "lines": 244,
+        "examples": 57
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_groups.rst",
+        "sha256": "cef3e7dea9b1a23492805826f08fceb8fb49ec5544bf33a2b7382e2eb1af7f40",
+        "lines": 86,
+        "examples": 25
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_help.rst",
+        "sha256": "7714256dc5d40daa4dc8aea99234bee597a2b132db1043f78fb9e16870fe048e",
+        "lines": 359,
+        "examples": 40
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_linalg.rst",
+        "sha256": "e343fbc9f2891573a9b3d9d0e23af25437f2c8741ca35779307faac441e29eac",
+        "lines": 239,
+        "examples": 52
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_numtheory.rst",
+        "sha256": "c9a237b91bde1404b7735e2ef9a1eb25f1d5562afd7a18a723c413fb2403fd4d",
+        "lines": 168,
+        "examples": 47
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_plotting.rst",
+        "sha256": "c5bec66ea55db922b4b13aea877ae95b59c7e5c868dc94716f01b61108d02f41",
+        "lines": 253,
+        "examples": 54
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_polynomial.rst",
+        "sha256": "ebd9bad5d602ebc7f5b30b84485e813e9f3147858ece124b9e8c15dbd943dd7e",
+        "lines": 328,
+        "examples": 74
+      },
+      {
+        "path": "src/doc/en/tutorial/tour_rings.rst",
+        "sha256": "51ca51d2f5e33c1b6553bc14d5d22480919f9e87929779c1c472f33963602e49",
+        "lines": 144,
+        "examples": 32
+      }
+    ]
+  },
+  "summary": {
+    "groups": 12,
+    "examples": 662
+  },
+  "groups": [
+    {
+      "id": "src/doc/en/tutorial/tour_advanced.rst",
+      "owner": "src/doc/en/tutorial/tour_advanced.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:15",
+          "line": 15,
+          "section": "Algebraic Geometry",
+          "source": "x, y = AffineSpace(2, QQ, 'xy').gens()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:16",
+          "line": 16,
+          "section": "Algebraic Geometry",
+          "source": "C2 = Curve(x^2 + y^2 - 1)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:17",
+          "line": 17,
+          "section": "Algebraic Geometry",
+          "source": "C3 = Curve(x^3 + y^3 - 1)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:18",
+          "line": 18,
+          "section": "Algebraic Geometry",
+          "source": "D = C2 + C3",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:19",
+          "line": 19,
+          "section": "Algebraic Geometry",
+          "source": "D",
+          "want": "Affine Plane Curve over Rational Field defined by\n   x^5 + x^3*y^2 + x^2*y^3 + y^5 - x^3 - y^3 - x^2 - y^2 + 1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:22",
+          "line": 22,
+          "section": "Algebraic Geometry",
+          "source": "D.irreducible_components()",
+          "want": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n   x^2 + y^2 - 1,\n Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n   x^3 + y^3 - 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:35",
+          "line": 35,
+          "section": "Algebraic Geometry",
+          "source": "V = C2.intersection(C3)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:36",
+          "line": 36,
+          "section": "Algebraic Geometry",
+          "source": "V.irreducible_components()",
+          "want": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n   y - 1,\n   x,\n Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n   y,\n   x - 1,\n Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n   x + y + 2,\n   2*y^2 + 4*y + 3]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:56",
+          "line": 56,
+          "section": "Algebraic Geometry",
+          "source": "R.<a,b,c,d> = PolynomialRing(QQ, 4)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:57",
+          "line": 57,
+          "section": "Algebraic Geometry",
+          "source": "I = ideal(b^2-a*c, c^2-b*d, a*d-b*c)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:58",
+          "line": 58,
+          "section": "Algebraic Geometry",
+          "source": "F = I.groebner_fan(); F",
+          "want": "Groebner fan of the ideal:\nIdeal (b^2 - a*c, c^2 - b*d, -b*c + a*d) of Multivariate Polynomial Ring\nin a, b, c, d over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:62",
+          "line": 62,
+          "section": "Algebraic Geometry",
+          "source": "list(map(sorted, F.reduced_groebner_bases()))",
+          "want": "[[-b^2 + a*c, -b*c + a*d, -c^2 + b*d],\n [-b*c + a*d, -c^2 + b*d, b^2 - a*c],\n [-c^3 + a*d^2, -c^2 + b*d, b*c - a*d, b^2 - a*c],\n [-c^2 + b*d, b*c - a*d, b^2 - a*c, c^3 - a*d^2],\n [-b^2 + a*c, -b*c + a*d, c^2 - b*d],\n [-b^3 + a^2*d, -b^2 + a*c, c^2 - b*d, b*c - a*d],\n [-b^2 + a*c, c^2 - b*d, b*c - a*d, b^3 - a^2*d],\n [c^2 - b*d, b*c - a*d, b^2 - a*c]]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:71",
+          "line": 71,
+          "section": "Algebraic Geometry",
+          "source": "F.polyhedralfan()",
+          "want": "Polyhedral fan in 4 dimensions of dimension 4\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:120",
+          "line": 120,
+          "section": "Elliptic Curves",
+          "source": "EllipticCurve([0,0,1,-1,0])",
+          "want": "Elliptic Curve defined by y^2 + y = x^3 - x over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:123",
+          "line": 123,
+          "section": "Elliptic Curves",
+          "source": "EllipticCurve([GF(5)(0),0,1,-1,0])",
+          "want": "Elliptic Curve defined by y^2 + y = x^3 + 4*x over Finite Field of size 5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:126",
+          "line": 126,
+          "section": "Elliptic Curves",
+          "source": "EllipticCurve([1,2])",
+          "want": "Elliptic Curve defined by y^2  = x^3 + x + 2 over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:129",
+          "line": 129,
+          "section": "Elliptic Curves",
+          "source": "EllipticCurve('37a')",
+          "want": "Elliptic Curve defined by y^2 + y = x^3 - x over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:132",
+          "line": 132,
+          "section": "Elliptic Curves",
+          "source": "EllipticCurve_from_j(1)",
+          "want": "Elliptic Curve defined by y^2 + x*y = x^3 + 36*x + 3455 over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:135",
+          "line": 135,
+          "section": "Elliptic Curves",
+          "source": "EllipticCurve(GF(5), [0,0,1,-1,0])",
+          "want": "Elliptic Curve defined by y^2 + y = x^3 + 4*x over Finite Field of size 5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:148",
+          "line": 148,
+          "section": "Elliptic Curves",
+          "source": "E = EllipticCurve([0,0,1,-1,0])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:149",
+          "line": 149,
+          "section": "Elliptic Curves",
+          "source": "E",
+          "want": "Elliptic Curve defined by y^2 + y = x^3 - x over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:151",
+          "line": 151,
+          "section": "Elliptic Curves",
+          "source": "P = E([0,0])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:152",
+          "line": 152,
+          "section": "Elliptic Curves",
+          "source": "P + P",
+          "want": "(1 : 0 : 1)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:154",
+          "line": 154,
+          "section": "Elliptic Curves",
+          "source": "10*P",
+          "want": "(161/16 : -2065/64 : 1)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:156",
+          "line": 156,
+          "section": "Elliptic Curves",
+          "source": "20*P",
+          "want": "(683916417/264517696 : -18784454671297/4302115807744 : 1)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:158",
+          "line": 158,
+          "section": "Elliptic Curves",
+          "source": "E.conductor()",
+          "want": "37\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:167",
+          "line": 167,
+          "section": "Elliptic Curves",
+          "source": "E = EllipticCurve([0,0,0,-4,2]); E",
+          "want": "Elliptic Curve defined by y^2 = x^3 - 4*x + 2 over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:169",
+          "line": 169,
+          "section": "Elliptic Curves",
+          "source": "E.conductor()",
+          "want": "2368\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:171",
+          "line": 171,
+          "section": "Elliptic Curves",
+          "source": "E.j_invariant()",
+          "want": "110592/37\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:181",
+          "line": 181,
+          "section": "Elliptic Curves",
+          "source": "F = EllipticCurve_from_j(110592/37)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:182",
+          "line": 182,
+          "section": "Elliptic Curves",
+          "source": "F.conductor()",
+          "want": "37\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:191",
+          "line": 191,
+          "section": "Elliptic Curves",
+          "source": "G = F.quadratic_twist(2); G",
+          "want": "Elliptic Curve defined by y^2 = x^3 - 4*x + 2 over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:193",
+          "line": 193,
+          "section": "Elliptic Curves",
+          "source": "G.conductor()",
+          "want": "2368\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:195",
+          "line": 195,
+          "section": "Elliptic Curves",
+          "source": "G.j_invariant()",
+          "want": "110592/37\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:206",
+          "line": 206,
+          "section": "Elliptic Curves",
+          "source": "E = EllipticCurve([0,0,1,-1,0])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:207",
+          "line": 207,
+          "section": "Elliptic Curves",
+          "source": "E.anlist(30)",
+          "want": "[0, 1, -2, -3, 2, -2, 6, -1, 0, 6, 4, -5, -6, -2, 2, 6, -4, 0, -12, 0, -4,\n 3, 10, 2, 0, -1, 4, -9, -2, 6, -12]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:210",
+          "line": 210,
+          "section": "Elliptic Curves",
+          "source": "v = E.anlist(10000)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:219",
+          "line": 219,
+          "section": "Elliptic Curves",
+          "source": "%time v = E.anlist(100000)",
+          "want": "CPU times: user 0.98 s, sys: 0.06 s, total: 1.04 s\nWall time: 1.06\n",
+          "tags": [
+            {
+              "name": "skip",
+              "value": "rst-directive"
+            }
+          ]
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:229",
+          "line": 229,
+          "section": "Elliptic Curves",
+          "source": "E = EllipticCurve(\"37b2\")",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:230",
+          "line": 230,
+          "section": "Elliptic Curves",
+          "source": "E",
+          "want": "Elliptic Curve defined by y^2 + y = x^3 + x^2 - 1873*x - 31833 over Rational\nField\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:233",
+          "line": 233,
+          "section": "Elliptic Curves",
+          "source": "E = EllipticCurve(\"389a\")",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:234",
+          "line": 234,
+          "section": "Elliptic Curves",
+          "source": "E",
+          "want": "Elliptic Curve defined by y^2 + y = x^3 + x^2 - 2*x  over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:236",
+          "line": 236,
+          "section": "Elliptic Curves",
+          "source": "E.rank()",
+          "want": "2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:238",
+          "line": 238,
+          "section": "Elliptic Curves",
+          "source": "E = EllipticCurve(\"5077a\")",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:239",
+          "line": 239,
+          "section": "Elliptic Curves",
+          "source": "E.rank()",
+          "want": "3\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:246",
+          "line": 246,
+          "section": "Elliptic Curves",
+          "source": "db = sage.databases.cremona.CremonaDatabase()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:247",
+          "line": 247,
+          "section": "Elliptic Curves",
+          "source": "db.curves(37)",
+          "want": "{'a1': [[0, 0, 1, -1, 0], 1, 1], 'b1': [[0, 1, 1, -23, -50], 0, 3]}\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:249",
+          "line": 249,
+          "section": "Elliptic Curves",
+          "source": "db.allcurves(37)",
+          "want": "{'a1': [[0, 0, 1, -1, 0], 1, 1],\n 'b1': [[0, 1, 1, -23, -50], 0, 3],\n 'b2': [[0, 1, 1, -1873, -31833], 0, 1],\n 'b3': [[0, 1, 1, -3, 1], 0, 3]}\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:276",
+          "line": 276,
+          "section": "Dirichlet Characters",
+          "source": "G = DirichletGroup(12)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:277",
+          "line": 277,
+          "section": "Dirichlet Characters",
+          "source": "G.list()",
+          "want": "[Dirichlet character modulo 12 of conductor 1 mapping 7 |--> 1, 5 |--> 1,\nDirichlet character modulo 12 of conductor 4 mapping 7 |--> -1, 5 |--> 1,\nDirichlet character modulo 12 of conductor 3 mapping 7 |--> 1, 5 |--> -1,\nDirichlet character modulo 12 of conductor 12 mapping 7 |--> -1, 5 |--> -1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:282",
+          "line": 282,
+          "section": "Dirichlet Characters",
+          "source": "G.gens()",
+          "want": "(Dirichlet character modulo 12 of conductor 4 mapping 7 |--> -1, 5 |--> 1,\nDirichlet character modulo 12 of conductor 3 mapping 7 |--> 1, 5 |--> -1)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:285",
+          "line": 285,
+          "section": "Dirichlet Characters",
+          "source": "len(G)",
+          "want": "4\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:295",
+          "line": 295,
+          "section": "Dirichlet Characters",
+          "source": "G = DirichletGroup(21)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:296",
+          "line": 296,
+          "section": "Dirichlet Characters",
+          "source": "chi = G.1; chi",
+          "want": "Dirichlet character modulo 21 of conductor 7 mapping 8 |--> 1, 10 |--> zeta6\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:298",
+          "line": 298,
+          "section": "Dirichlet Characters",
+          "source": "chi.values()",
+          "want": "[0, 1, zeta6 - 1, 0, -zeta6, -zeta6 + 1, 0, 0, 1, 0, zeta6, -zeta6, 0, -1,\n 0, 0, zeta6 - 1, zeta6, 0, -zeta6 + 1, -1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:301",
+          "line": 301,
+          "section": "Dirichlet Characters",
+          "source": "chi.conductor()",
+          "want": "7\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:303",
+          "line": 303,
+          "section": "Dirichlet Characters",
+          "source": "chi.modulus()",
+          "want": "21\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:305",
+          "line": 305,
+          "section": "Dirichlet Characters",
+          "source": "chi.order()",
+          "want": "6\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:307",
+          "line": 307,
+          "section": "Dirichlet Characters",
+          "source": "chi(19)",
+          "want": "-zeta6 + 1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:309",
+          "line": 309,
+          "section": "Dirichlet Characters",
+          "source": "chi(40)",
+          "want": "-zeta6 + 1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:321",
+          "line": 321,
+          "section": "Dirichlet Characters",
+          "source": "chi.galois_orbit()",
+          "want": "[Dirichlet character modulo 21 of conductor 7 mapping 8 |--> 1, 10 |--> -zeta6 + 1,\n Dirichlet character modulo 21 of conductor 7 mapping 8 |--> 1, 10 |--> zeta6]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:325",
+          "line": 325,
+          "section": "Dirichlet Characters",
+          "source": "go = G.galois_orbits()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:326",
+          "line": 326,
+          "section": "Dirichlet Characters",
+          "source": "[len(orbit) for orbit in go]",
+          "want": "[1, 2, 2, 1, 1, 2, 2, 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:329",
+          "line": 329,
+          "section": "Dirichlet Characters",
+          "source": "G.decomposition()",
+          "want": "[Group of Dirichlet characters modulo 3 with values in Cyclotomic Field of order 6 and degree 2,\n Group of Dirichlet characters modulo 7 with values in Cyclotomic Field of order 6 and degree 2]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:338",
+          "line": 338,
+          "section": "Dirichlet Characters",
+          "source": "K.<i> = NumberField(x^2+1)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:339",
+          "line": 339,
+          "section": "Dirichlet Characters",
+          "source": "G = DirichletGroup(20,K)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:340",
+          "line": 340,
+          "section": "Dirichlet Characters",
+          "source": "G",
+          "want": "Group of Dirichlet characters modulo 20 with values in Number Field in i with defining polynomial x^2 + 1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:350",
+          "line": 350,
+          "section": "Dirichlet Characters",
+          "source": "G.gens()",
+          "want": "(Dirichlet character modulo 20 of conductor 4 mapping 11 |--> -1, 17 |--> 1,\nDirichlet character modulo 20 of conductor 5 mapping 11 |--> 1, 17 |--> i)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:354",
+          "line": 354,
+          "section": "Dirichlet Characters",
+          "source": "G.unit_gens()",
+          "want": "(11, 17)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:356",
+          "line": 356,
+          "section": "Dirichlet Characters",
+          "source": "G.zeta()",
+          "want": "i\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:358",
+          "line": 358,
+          "section": "Dirichlet Characters",
+          "source": "G.zeta_order()",
+          "want": "4\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:367",
+          "line": 367,
+          "section": "Dirichlet Characters",
+          "source": "x = polygen(QQ, 'x')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:368",
+          "line": 368,
+          "section": "Dirichlet Characters",
+          "source": "K = NumberField(x^4 + 1, 'a'); a = K.0",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:369",
+          "line": 369,
+          "section": "Dirichlet Characters",
+          "source": "b = K.gen(); a == b",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:371",
+          "line": 371,
+          "section": "Dirichlet Characters",
+          "source": "K",
+          "want": "Number Field in a with defining polynomial x^4 + 1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:373",
+          "line": 373,
+          "section": "Dirichlet Characters",
+          "source": "G = DirichletGroup(5, K, a); G",
+          "want": "Group of Dirichlet characters modulo 5 with values in the group of order 8 generated by a in Number Field in a with defining polynomial x^4 + 1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:375",
+          "line": 375,
+          "section": "Dirichlet Characters",
+          "source": "chi = G.0; chi",
+          "want": "Dirichlet character modulo 5 of conductor 5 mapping 2 |--> a^2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:377",
+          "line": 377,
+          "section": "Dirichlet Characters",
+          "source": "[(chi^i)(2) for i in range(4)]",
+          "want": "[1, a^2, -1, -a^2]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:399",
+          "line": 399,
+          "section": "Modular Forms",
+          "source": "from sage.modular.dims import dimension_cusp_forms",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:400",
+          "line": 400,
+          "section": "Modular Forms",
+          "source": "dimension_cusp_forms(Gamma0(11),2)",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:402",
+          "line": 402,
+          "section": "Modular Forms",
+          "source": "dimension_cusp_forms(Gamma0(1),12)",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:404",
+          "line": 404,
+          "section": "Modular Forms",
+          "source": "dimension_cusp_forms(Gamma1(389),2)",
+          "want": "6112\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:412",
+          "line": 412,
+          "section": "Modular Forms",
+          "source": "M = ModularSymbols(1,12)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:413",
+          "line": 413,
+          "section": "Modular Forms",
+          "source": "M.basis()",
+          "want": "([X^8*Y^2,(0,0)], [X^9*Y,(0,0)], [X^10,(0,0)])\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:415",
+          "line": 415,
+          "section": "Modular Forms",
+          "source": "t2 = M.T(2)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:416",
+          "line": 416,
+          "section": "Modular Forms",
+          "source": "t2",
+          "want": "Hecke operator T_2 on Modular Symbols space of dimension 3 for Gamma_0(1)\nof weight 12 with sign 0 over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:419",
+          "line": 419,
+          "section": "Modular Forms",
+          "source": "t2.matrix()",
+          "want": "[ -24    0    0]\n[   0  -24    0]\n[4860    0 2049]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:423",
+          "line": 423,
+          "section": "Modular Forms",
+          "source": "f = t2.charpoly('x'); f",
+          "want": "x^3 - 2001*x^2 - 97776*x - 1180224\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:425",
+          "line": 425,
+          "section": "Modular Forms",
+          "source": "factor(f)",
+          "want": "(x - 2049) * (x + 24)^2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:427",
+          "line": 427,
+          "section": "Modular Forms",
+          "source": "M.T(11).charpoly('x').factor()",
+          "want": "(x - 285311670612) * (x - 534612)^2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:435",
+          "line": 435,
+          "section": "Modular Forms",
+          "source": "ModularSymbols(11,2)",
+          "want": "Modular Symbols space of dimension 3 for Gamma_0(11) of weight 2 with sign\n 0 over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:438",
+          "line": 438,
+          "section": "Modular Forms",
+          "source": "ModularSymbols(Gamma1(11),2)",
+          "want": "Modular Symbols space of dimension 11 for Gamma_1(11) of weight 2 with\nsign 0 over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:447",
+          "line": 447,
+          "section": "Modular Forms",
+          "source": "M = ModularSymbols(Gamma1(11),2)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:448",
+          "line": 448,
+          "section": "Modular Forms",
+          "source": "M.T(2).charpoly('x')",
+          "want": "x^11 - 8*x^10 + 20*x^9 + 10*x^8 - 145*x^7 + 229*x^6 + 58*x^5 - 360*x^4\n     + 70*x^3 - 515*x^2 + 1804*x - 1452\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:451",
+          "line": 451,
+          "section": "Modular Forms",
+          "source": "M.T(2).charpoly('x').factor()",
+          "want": "(x - 3) * (x + 2)^2 * (x^4 - 7*x^3 + 19*x^2 - 23*x + 11)\n        * (x^4 - 2*x^3 + 4*x^2 + 2*x + 11)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:454",
+          "line": 454,
+          "section": "Modular Forms",
+          "source": "S = M.cuspidal_submodule()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:455",
+          "line": 455,
+          "section": "Modular Forms",
+          "source": "S.T(2).matrix()",
+          "want": "[-2  0]\n[ 0 -2]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:458",
+          "line": 458,
+          "section": "Modular Forms",
+          "source": "S.q_expansion_basis(10)",
+          "want": "[q - 2*q^2 - q^3 + 2*q^4 + q^5 + 2*q^6 - 2*q^7 - 2*q^9 + O(q^10)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:465",
+          "line": 465,
+          "section": "Modular Forms",
+          "source": "G = DirichletGroup(13)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:466",
+          "line": 466,
+          "section": "Modular Forms",
+          "source": "e = G.0^2",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:467",
+          "line": 467,
+          "section": "Modular Forms",
+          "source": "M = ModularSymbols(e,2); M",
+          "want": "Modular Symbols space of dimension 4 and level 13, weight 2, character\n[zeta6], sign 0, over Cyclotomic Field of order 6 and degree 2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:470",
+          "line": 470,
+          "section": "Modular Forms",
+          "source": "M.T(2).charpoly('x').factor()",
+          "want": "(x - zeta6 - 2) * (x - 2*zeta6 - 1) * (x + zeta6 + 1)^2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:472",
+          "line": 472,
+          "section": "Modular Forms",
+          "source": "S = M.cuspidal_submodule(); S",
+          "want": "Modular Symbols subspace of dimension 2 of Modular Symbols space of\ndimension 4 and level 13, weight 2, character [zeta6], sign 0, over\nCyclotomic Field of order 6 and degree 2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:476",
+          "line": 476,
+          "section": "Modular Forms",
+          "source": "S.T(2).charpoly('x').factor()",
+          "want": "(x + zeta6 + 1)^2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:478",
+          "line": 478,
+          "section": "Modular Forms",
+          "source": "S.q_expansion_basis(10)",
+          "want": "[q + (-zeta6 - 1)*q^2 + (2*zeta6 - 2)*q^3 + zeta6*q^4 + (-2*zeta6 + 1)*q^5 + (-2*zeta6 + 4)*q^6 + (2*zeta6 - 1)*q^8 - zeta6*q^9 + O(q^10)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:486",
+          "line": 486,
+          "section": "Modular Forms",
+          "source": "T = ModularForms(Gamma0(11),2)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:487",
+          "line": 487,
+          "section": "Modular Forms",
+          "source": "T",
+          "want": "Modular Forms space of dimension 2 for Congruence Subgroup Gamma0(11) of\nweight 2 over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:490",
+          "line": 490,
+          "section": "Modular Forms",
+          "source": "T.degree()",
+          "want": "2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:492",
+          "line": 492,
+          "section": "Modular Forms",
+          "source": "T.level()",
+          "want": "11\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:494",
+          "line": 494,
+          "section": "Modular Forms",
+          "source": "T.group()",
+          "want": "Congruence Subgroup Gamma0(11)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:496",
+          "line": 496,
+          "section": "Modular Forms",
+          "source": "T.dimension()",
+          "want": "2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:498",
+          "line": 498,
+          "section": "Modular Forms",
+          "source": "T.cuspidal_subspace()",
+          "want": "Cuspidal subspace of dimension 1 of Modular Forms space of dimension 2 for\nCongruence Subgroup Gamma0(11) of weight 2 over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:501",
+          "line": 501,
+          "section": "Modular Forms",
+          "source": "T.eisenstein_subspace()",
+          "want": "Eisenstein subspace of dimension 1 of Modular Forms space of dimension 2\nfor Congruence Subgroup Gamma0(11) of weight 2 over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:504",
+          "line": 504,
+          "section": "Modular Forms",
+          "source": "M = ModularSymbols(11); M",
+          "want": "Modular Symbols space of dimension 3 for Gamma_0(11) of weight 2 with sign\n0 over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:507",
+          "line": 507,
+          "section": "Modular Forms",
+          "source": "M.weight()",
+          "want": "2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:509",
+          "line": 509,
+          "section": "Modular Forms",
+          "source": "M.basis()",
+          "want": "((1,0), (1,8), (1,9))\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:511",
+          "line": 511,
+          "section": "Modular Forms",
+          "source": "M.sign()",
+          "want": "0\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:522",
+          "line": 522,
+          "section": "Modular Forms",
+          "source": "M.T(2).matrix()",
+          "want": "[ 3  0 -1]\n[ 0 -2  0]\n[ 0  0 -2]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:526",
+          "line": 526,
+          "section": "Modular Forms",
+          "source": "M.T(3).matrix()",
+          "want": "[ 4  0 -1]\n[ 0 -1  0]\n[ 0  0 -1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_advanced.rst:530",
+          "line": 530,
+          "section": "Modular Forms",
+          "source": "M.T(5).matrix()",
+          "want": "[ 6  0 -1]\n[ 0  1  0]\n[ 0  0  1]\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/doc/en/tutorial/tour_algebra.rst",
+      "owner": "src/doc/en/tutorial/tour_algebra.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:15",
+          "line": 15,
+          "section": "Basic Algebra and Calculus",
+          "source": "u = var('u')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:16",
+          "line": 16,
+          "section": "Basic Algebra and Calculus",
+          "source": "diff(sin(u), u)",
+          "want": "cos(u)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:36",
+          "line": 36,
+          "section": "Solving Equations Exactly",
+          "source": "x = var('x')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:37",
+          "line": 37,
+          "section": "Solving Equations Exactly",
+          "source": "solve(x^2 + 3*x + 2, x)",
+          "want": "[x == -2, x == -1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:44",
+          "line": 44,
+          "section": "Solving Equations Exactly",
+          "source": "x, b, c = var('x b c')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:45",
+          "line": 45,
+          "section": "Solving Equations Exactly",
+          "source": "solve([x^2 + b*x + c == 0],x)",
+          "want": "[x == -1/2*b - 1/2*sqrt(b^2 - 4*c), x == -1/2*b + 1/2*sqrt(b^2 - 4*c)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:52",
+          "line": 52,
+          "section": "Solving Equations Exactly",
+          "source": "x, y = var('x, y')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:53",
+          "line": 53,
+          "section": "Solving Equations Exactly",
+          "source": "solve([x+y==6, x-y==4], x, y)",
+          "want": "[[x == 5, y == 1]]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:62",
+          "line": 62,
+          "section": "Solving Equations Exactly",
+          "source": "var('x y p q')",
+          "want": "(x, y, p, q)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:64",
+          "line": 64,
+          "section": "Solving Equations Exactly",
+          "source": "eq1 = p+q==9",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:65",
+          "line": 65,
+          "section": "Solving Equations Exactly",
+          "source": "eq2 = q*y+p*x==-6",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:66",
+          "line": 66,
+          "section": "Solving Equations Exactly",
+          "source": "eq3 = q*y^2+p*x^2==24",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:67",
+          "line": 67,
+          "section": "Solving Equations Exactly",
+          "source": "solve([eq1,eq2,eq3,p==1],p,q,x,y)",
+          "want": "[[p == 1, q == 8, x == -4/3*sqrt(10) - 2/3, y == 1/6*sqrt(10) - 2/3], [p == 1, q == 8, x == 4/3*sqrt(10) - 2/3, y == -1/6*sqrt(10) - 2/3]]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:76",
+          "line": 76,
+          "section": "Solving Equations Exactly",
+          "source": "solns = solve([eq1,eq2,eq3,p==1],p,q,x,y, solution_dict=True)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:77",
+          "line": 77,
+          "section": "Solving Equations Exactly",
+          "source": "[[s[p].n(30), s[q].n(30), s[x].n(30), s[y].n(30)] for s in solns]",
+          "want": "[[1.0000000, 8.0000000, -4.8830369, -0.13962039],\n [1.0000000, 8.0000000, 3.5497035, -1.1937129]]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:92",
+          "line": 92,
+          "section": "Solving Equations Numerically",
+          "source": "theta = var('theta')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:93",
+          "line": 93,
+          "section": "Solving Equations Numerically",
+          "source": "solve(cos(theta)==sin(theta), theta)",
+          "want": "[sin(theta) == cos(theta)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:99",
+          "line": 99,
+          "section": "Solving Equations Numerically",
+          "source": "phi = var('phi')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:100",
+          "line": 100,
+          "section": "Solving Equations Numerically",
+          "source": "find_root(cos(phi)==sin(phi),0,pi/2)",
+          "want": "0.785398163397448...\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:112",
+          "line": 112,
+          "section": "Differentiation, Integration, etc.",
+          "source": "u = var('u')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:113",
+          "line": 113,
+          "section": "Differentiation, Integration, etc.",
+          "source": "diff(sin(u), u)",
+          "want": "cos(u)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:120",
+          "line": 120,
+          "section": "Differentiation, Integration, etc.",
+          "source": "diff(sin(x^2), x, 4)",
+          "want": "16*x^4*sin(x^2) - 48*x^2*cos(x^2) - 12*sin(x^2)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:128",
+          "line": 128,
+          "section": "Differentiation, Integration, etc.",
+          "source": "x, y = var('x,y')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:129",
+          "line": 129,
+          "section": "Differentiation, Integration, etc.",
+          "source": "f = x^2 + 17*y^2",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:130",
+          "line": 130,
+          "section": "Differentiation, Integration, etc.",
+          "source": "f.diff(x)",
+          "want": "2*x\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:132",
+          "line": 132,
+          "section": "Differentiation, Integration, etc.",
+          "source": "f.diff(y)",
+          "want": "34*y\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:141",
+          "line": 141,
+          "section": "Differentiation, Integration, etc.",
+          "source": "integral(x*sin(x^2), x)",
+          "want": "-1/2*cos(x^2)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:143",
+          "line": 143,
+          "section": "Differentiation, Integration, etc.",
+          "source": "integral(x/(x^2+1), x, 0, 1)",
+          "want": "1/2*log(2)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:151",
+          "line": 151,
+          "section": "Differentiation, Integration, etc.",
+          "source": "f = 1/((1+x)*(x-1))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:152",
+          "line": 152,
+          "section": "Differentiation, Integration, etc.",
+          "source": "f.partial_fraction(x)",
+          "want": "-1/2/(x + 1) + 1/2/(x - 1)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:165",
+          "line": 165,
+          "section": "Solving Differential Equations",
+          "source": "t = var('t')    # define a variable t",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:166",
+          "line": 166,
+          "section": "Solving Differential Equations",
+          "source": "x = function('x')(t)   # define x to be a function of that variable",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:167",
+          "line": 167,
+          "section": "Solving Differential Equations",
+          "source": "DE = diff(x, t) + x - 1",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:168",
+          "line": 168,
+          "section": "Solving Differential Equations",
+          "source": "desolve(DE, [x,t])",
+          "want": "(_C + e^t)*e^(-t)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:181",
+          "line": 181,
+          "section": "Solving Differential Equations",
+          "source": "s = var(\"s\")",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:182",
+          "line": 182,
+          "section": "Solving Differential Equations",
+          "source": "t = var(\"t\")",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:183",
+          "line": 183,
+          "section": "Solving Differential Equations",
+          "source": "f = t^2*exp(t) - sin(t)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:184",
+          "line": 184,
+          "section": "Solving Differential Equations",
+          "source": "f.laplace(t,s).simplify_rational()",
+          "want": "-(s^3 - 5*s^2 + 3*s - 3)/(s^5 - 3*s^4 + 4*s^3 - 4*s^2 + 3*s - 1)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:218",
+          "line": 218,
+          "section": "Solving Differential Equations",
+          "source": "t,s = SR.var('t,s')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:219",
+          "line": 219,
+          "section": "Solving Differential Equations",
+          "source": "x = function('x')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:220",
+          "line": 220,
+          "section": "Solving Differential Equations",
+          "source": "y = function('y')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:221",
+          "line": 221,
+          "section": "Solving Differential Equations",
+          "source": "f = 2*x(t).diff(t,2) + 6*x(t) - 2*y(t)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:222",
+          "line": 222,
+          "section": "Solving Differential Equations",
+          "source": "f.laplace(t,s)",
+          "want": "2*s^2*laplace(x(t), t, s) - 2*s*x(0) + 6*laplace(x(t), t, s) - 2*laplace(y(t), t, s) - 2*D[0](x)(0)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:236",
+          "line": 236,
+          "section": "Solving Differential Equations",
+          "source": "de2 = maxima(\"diff(y(t),t, 2) + 2*y(t) - 2*x(t)\")",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:237",
+          "line": 237,
+          "section": "Solving Differential Equations",
+          "source": "lde2 = de2.laplace(\"t\",\"s\"); lde2.sage()",
+          "want": "s^2*laplace(y(t), t, s) - s*y(0) - 2*laplace(x(t), t, s) + 2*laplace(y(t), t, s) - D[0](y)(0)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:251",
+          "line": 251,
+          "section": "Solving Differential Equations",
+          "source": "var('s X Y')",
+          "want": "(s, X, Y)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:253",
+          "line": 253,
+          "section": "Solving Differential Equations",
+          "source": "eqns = [(2*s^2+6)*X-2*Y == 6*s, -2*X +(s^2+2)*Y == 3*s]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:254",
+          "line": 254,
+          "section": "Solving Differential Equations",
+          "source": "solve(eqns, X,Y)",
+          "want": "[[X == 3*(s^3 + 3*s)/(s^4 + 5*s^2 + 4),\n  Y == 3*(s^3 + 5*s)/(s^4 + 5*s^2 + 4)]]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:262",
+          "line": 262,
+          "section": "Solving Differential Equations",
+          "source": "var('s t')",
+          "want": "(s, t)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:264",
+          "line": 264,
+          "section": "Solving Differential Equations",
+          "source": "inverse_laplace((3*s^3 + 9*s)/(s^4 + 5*s^2 + 4),s,t)",
+          "want": "cos(2*t) + 2*cos(t)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:266",
+          "line": 266,
+          "section": "Solving Differential Equations",
+          "source": "inverse_laplace((3*s^3 + 15*s)/(s^4 + 5*s^2 + 4),s,t)",
+          "want": "-cos(2*t) + 4*cos(t)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:278",
+          "line": 278,
+          "section": "Solving Differential Equations",
+          "source": "t = var('t')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:279",
+          "line": 279,
+          "section": "Solving Differential Equations",
+          "source": "P = parametric_plot((cos(2*t) + 2*cos(t), 4*cos(t) - cos(2*t) ),\n    (t, 0, 2*pi), rgbcolor=hue(0.9))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:281",
+          "line": 281,
+          "section": "Solving Differential Equations",
+          "source": "show(P)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:287",
+          "line": 287,
+          "section": "Solving Differential Equations",
+          "source": "t = var('t')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:288",
+          "line": 288,
+          "section": "Solving Differential Equations",
+          "source": "p1 = plot(cos(2*t) + 2*cos(t), (t,0, 2*pi), rgbcolor=hue(0.3))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:289",
+          "line": 289,
+          "section": "Solving Differential Equations",
+          "source": "p2 = plot(4*cos(t) - cos(2*t), (t,0, 2*pi), rgbcolor=hue(0.6))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:290",
+          "line": 290,
+          "section": "Solving Differential Equations",
+          "source": "show(p1 + p2)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:362",
+          "line": 362,
+          "section": "Euler's Method for Systems of Differential Equations",
+          "source": "t,x,y = PolynomialRing(RealField(10),3,\"txy\").gens()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:363",
+          "line": 363,
+          "section": "Euler's Method for Systems of Differential Equations",
+          "source": "f = y; g = -x - y * t",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:364",
+          "line": 364,
+          "section": "Euler's Method for Systems of Differential Equations",
+          "source": "eulers_method_2x2(f,g, 0, 1, 0, 1/4, 1)",
+          "want": "      t                x            h*f(t,x,y)                y       h*g(t,x,y)\n      0                1                  0.00                0           -0.25\n    1/4              1.0                -0.062            -0.25           -0.23\n    1/2             0.94                 -0.12            -0.48           -0.17\n    3/4             0.82                 -0.16            -0.66          -0.081\n      1             0.65                 -0.18            -0.74           0.022\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:382",
+          "line": 382,
+          "section": "Euler's Method for Systems of Differential Equations",
+          "source": "f = lambda z: z[2]        # f(t,x,y) = y",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:383",
+          "line": 383,
+          "section": "Euler's Method for Systems of Differential Equations",
+          "source": "g = lambda z: -sin(z[1])  # g(t,x,y) = -sin(x)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:384",
+          "line": 384,
+          "section": "Euler's Method for Systems of Differential Equations",
+          "source": "P = eulers_method_2x2_plot(f,g, 0.0, 0.75, 0.0, 0.1, 1.0)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:394",
+          "line": 394,
+          "section": "Euler's Method for Systems of Differential Equations",
+          "source": "show(P[0] + P[1])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:409",
+          "line": 409,
+          "section": "Special functions",
+          "source": "x = polygen(QQ, 'x')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:410",
+          "line": 410,
+          "section": "Special functions",
+          "source": "chebyshev_U(2,x)",
+          "want": "4*x^2 - 1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:412",
+          "line": 412,
+          "section": "Special functions",
+          "source": "bessel_I(1,1).n(250)",
+          "want": "0.56515910399248502720769602760986330732889962162109200948029448947925564096\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:414",
+          "line": 414,
+          "section": "Special functions",
+          "source": "bessel_I(1,1).n()",
+          "want": "0.565159103992485\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:416",
+          "line": 416,
+          "section": "Special functions",
+          "source": "bessel_I(2,1.1).n()",
+          "want": "0.167089499251049\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:425",
+          "line": 425,
+          "section": "Special functions",
+          "source": "maxima.eval(\"f:bessel_y(v, w)\")",
+          "want": "'bessel_y(v,w)'\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_algebra.rst:427",
+          "line": 427,
+          "section": "Special functions",
+          "source": "maxima.eval(\"diff(f,w)\")",
+          "want": "'(bessel_y(v-1,w)-bessel_y(v+1,w))/2'\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/doc/en/tutorial/tour_assignment.rst",
+      "owner": "src/doc/en/tutorial/tour_assignment.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:13",
+          "line": 13,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "a = 5",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:14",
+          "line": 14,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "a",
+          "want": "5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:16",
+          "line": 16,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "2 == 2",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:18",
+          "line": 18,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "2 == 3",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:20",
+          "line": 20,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "2 < 3",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:22",
+          "line": 22,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "a == 5",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:29",
+          "line": 29,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "2**3    #  ** means exponent",
+          "want": "8\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:31",
+          "line": 31,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "2^3     #  ^ is a synonym for ** (unlike in Python)",
+          "want": "8\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:33",
+          "line": 33,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "10 % 3  #  for integer arguments, % means mod, i.e., remainder",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:35",
+          "line": 35,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "10/4",
+          "want": "5/2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:37",
+          "line": 37,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "10//4   #  for integer arguments, // returns the integer quotient",
+          "want": "2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:39",
+          "line": 39,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "4 * (10 // 4) + 10 % 4 == 10",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:41",
+          "line": 41,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "3^2*4 + 2%5",
+          "want": "38\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:53",
+          "line": 53,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "sqrt(3.4)",
+          "want": "1.84390889145858\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:55",
+          "line": 55,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "sin(5.135)",
+          "want": "-0.912021158525540\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:57",
+          "line": 57,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "sin(pi/3)",
+          "want": "1/2*sqrt(3)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:71",
+          "line": 71,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "exp(2)",
+          "want": "e^2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:73",
+          "line": 73,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "n(exp(2))",
+          "want": "7.38905609893065\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:75",
+          "line": 75,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "sqrt(pi).numerical_approx()",
+          "want": "1.77245385090552\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:77",
+          "line": 77,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "sin(10).n(digits=5)",
+          "want": "-0.54402\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:79",
+          "line": 79,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "N(sin(10),digits=10)",
+          "want": "-0.5440211109\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:81",
+          "line": 81,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "numerical_approx(pi, prec=200)",
+          "want": "3.1415926535897932384626433832795028841971693993751058209749\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:90",
+          "line": 90,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "a = 5   # a is an integer",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:91",
+          "line": 91,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "type(a)",
+          "want": "<class 'sage.rings.integer.Integer'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:93",
+          "line": 93,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "a = 5/3  # now a is a rational number",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:94",
+          "line": 94,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "type(a)",
+          "want": "<class 'sage.rings.rational.Rational'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:96",
+          "line": 96,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "a = 'hello'  # now a is a string",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_assignment.rst:97",
+          "line": 97,
+          "section": "Assignment, Equality, and Arithmetic",
+          "source": "type(a)",
+          "want": "<... 'str'>\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/doc/en/tutorial/tour_coercion.rst",
+      "owner": "src/doc/en/tutorial/tour_coercion.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:43",
+          "line": 43,
+          "section": "Elements",
+          "source": "P.<x,y> = GF(3)[]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:44",
+          "line": 44,
+          "section": "Elements",
+          "source": "Q.<a,b> = GF(4,'z')[]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:45",
+          "line": 45,
+          "section": "Elements",
+          "source": "type(x)==type(a)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:54",
+          "line": 54,
+          "section": "Elements",
+          "source": "P.<a> = PolynomialRing(ZZ)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:55",
+          "line": 55,
+          "section": "Elements",
+          "source": "Q.<b> = PolynomialRing(ZZ, sparse=True)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:56",
+          "line": 56,
+          "section": "Elements",
+          "source": "R.<c> = PolynomialRing(ZZ, implementation='NTL')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:57",
+          "line": 57,
+          "section": "Elements",
+          "source": "type(a); type(b); type(c)",
+          "want": "<class 'sage.rings.polynomial.polynomial_integer_dense_flint.Polynomial_integer_dense_flint'>\n<class 'sage.rings.polynomial.polynomial_ring.PolynomialRing_integral_domain_with_category.element_class'>\n<class 'sage.rings.polynomial.polynomial_integer_dense_ntl.Polynomial_integer_dense_ntl'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:79",
+          "line": 79,
+          "section": "Elements",
+          "source": "a.parent(); b.parent(); c.parent()",
+          "want": "Univariate Polynomial Ring in a over Integer Ring\nSparse Univariate Polynomial Ring in b over Integer Ring\nUnivariate Polynomial Ring in c over Integer Ring (using NTL)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:98",
+          "line": 98,
+          "section": "Parents and categories",
+          "source": "isinstance(QQ,Field)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:100",
+          "line": 100,
+          "section": "Parents and categories",
+          "source": "isinstance(QQ, Ring)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:102",
+          "line": 102,
+          "section": "Parents and categories",
+          "source": "isinstance(ZZ,Field)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:104",
+          "line": 104,
+          "section": "Parents and categories",
+          "source": "isinstance(ZZ, Ring)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:116",
+          "line": 116,
+          "section": "Parents and categories",
+          "source": "Rings()",
+          "want": "Category of rings\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:118",
+          "line": 118,
+          "section": "Parents and categories",
+          "source": "ZZ.category()",
+          "want": "Join of Category of Dedekind domains\n    and Category of euclidean domains\n    and Category of noetherian rings\n    and Category of infinite enumerated sets\n    and Category of metric spaces\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:124",
+          "line": 124,
+          "section": "Parents and categories",
+          "source": "ZZ.category().is_subcategory(Rings())",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:126",
+          "line": 126,
+          "section": "Parents and categories",
+          "source": "ZZ in Rings()",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:128",
+          "line": 128,
+          "section": "Parents and categories",
+          "source": "ZZ in Fields()",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:130",
+          "line": 130,
+          "section": "Parents and categories",
+          "source": "QQ in Fields()",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:145",
+          "line": 145,
+          "section": "Parents and categories",
+          "source": "RR['x','y'] is RR['x','y']",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:158",
+          "line": 158,
+          "section": "Types versus parents",
+          "source": "M = Matrix(ZZ,2,2); M",
+          "want": "[0 0]\n[0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:161",
+          "line": 161,
+          "section": "Types versus parents",
+          "source": "isinstance(M, RingElement)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:170",
+          "line": 170,
+          "section": "Types versus parents",
+          "source": "int(1) is int(1) # Python int",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:172",
+          "line": 172,
+          "section": "Types versus parents",
+          "source": "int(-15) is int(-15)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:174",
+          "line": 174,
+          "section": "Types versus parents",
+          "source": "1 is 1           # Sage Integer",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:182",
+          "line": 182,
+          "section": "Types versus parents",
+          "source": "a = GF(2)(1)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:183",
+          "line": 183,
+          "section": "Types versus parents",
+          "source": "b = GF(5)(1)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:184",
+          "line": 184,
+          "section": "Types versus parents",
+          "source": "type(a) is type(b)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:186",
+          "line": 186,
+          "section": "Types versus parents",
+          "source": "parent(a)",
+          "want": "Finite Field of size 2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:188",
+          "line": 188,
+          "section": "Types versus parents",
+          "source": "parent(b)",
+          "want": "Finite Field of size 5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:238",
+          "line": 238,
+          "section": "Conversion versus Coercion",
+          "source": "a = GF(2)(1)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:239",
+          "line": 239,
+          "section": "Conversion versus Coercion",
+          "source": "b = GF(5)(1)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:240",
+          "line": 240,
+          "section": "Conversion versus Coercion",
+          "source": "GF(5)(a) == b",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:242",
+          "line": 242,
+          "section": "Conversion versus Coercion",
+          "source": "GF(2)(b) == a",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:275",
+          "line": 275,
+          "section": "Conversion versus Coercion",
+          "source": "R1.<x,y> = ZZ[]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:276",
+          "line": 276,
+          "section": "Conversion versus Coercion",
+          "source": "R2 = ZZ['y','x']",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:277",
+          "line": 277,
+          "section": "Conversion versus Coercion",
+          "source": "R2.has_coerce_map_from(R1)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:279",
+          "line": 279,
+          "section": "Conversion versus Coercion",
+          "source": "R2(x)",
+          "want": "x\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:281",
+          "line": 281,
+          "section": "Conversion versus Coercion",
+          "source": "R2(y)",
+          "want": "y\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:283",
+          "line": 283,
+          "section": "Conversion versus Coercion",
+          "source": "R2.coerce(y)",
+          "want": "y\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:294",
+          "line": 294,
+          "section": "Conversion versus Coercion",
+          "source": "R3 = ZZ['z','x']",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:295",
+          "line": 295,
+          "section": "Conversion versus Coercion",
+          "source": "R3.has_coerce_map_from(R1)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:297",
+          "line": 297,
+          "section": "Conversion versus Coercion",
+          "source": "R3(x)",
+          "want": "z\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:299",
+          "line": 299,
+          "section": "Conversion versus Coercion",
+          "source": "R3(y)",
+          "want": "x\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:301",
+          "line": 301,
+          "section": "Conversion versus Coercion",
+          "source": "R3.coerce(y)",
+          "want": "Traceback (most recent call last):\n...\nTypeError: no canonical coercion\nfrom Multivariate Polynomial Ring in x, y over Integer Ring\nto Multivariate Polynomial Ring in z, x over Integer Ring\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:329",
+          "line": 329,
+          "section": "Conversion versus Coercion",
+          "source": "GF(5)(1) == 1",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:331",
+          "line": 331,
+          "section": "Conversion versus Coercion",
+          "source": "1 == GF(2)(1)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:333",
+          "line": 333,
+          "section": "Conversion versus Coercion",
+          "source": "GF(5)(1) == GF(2)(1)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:335",
+          "line": 335,
+          "section": "Conversion versus Coercion",
+          "source": "GF(5)(1) != GF(2)(1)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:344",
+          "line": 344,
+          "section": "Conversion versus Coercion",
+          "source": "R3(R1.1) == R3.1",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:346",
+          "line": 346,
+          "section": "Conversion versus Coercion",
+          "source": "R1.1 == R3.1",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:348",
+          "line": 348,
+          "section": "Conversion versus Coercion",
+          "source": "R1.1 != R3.1",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:363",
+          "line": 363,
+          "section": "Conversion versus Coercion",
+          "source": "RR(1/10^200+1/10^100) == RR(1/10^100)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:365",
+          "line": 365,
+          "section": "Conversion versus Coercion",
+          "source": "1/10^200+1/10^100 == 1/10^100",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:378",
+          "line": 378,
+          "section": "Conversion versus Coercion",
+          "source": "P1.<x> = ZZ[]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:379",
+          "line": 379,
+          "section": "Conversion versus Coercion",
+          "source": "p = 2*x+3",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:380",
+          "line": 380,
+          "section": "Conversion versus Coercion",
+          "source": "q = 1/2",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:381",
+          "line": 381,
+          "section": "Conversion versus Coercion",
+          "source": "parent(p)",
+          "want": "Univariate Polynomial Ring in x over Integer Ring\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:383",
+          "line": 383,
+          "section": "Conversion versus Coercion",
+          "source": "parent(p+q)",
+          "want": "Univariate Polynomial Ring in x over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:400",
+          "line": 400,
+          "section": "Conversion versus Coercion",
+          "source": "R.<x> = QQ[]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:401",
+          "line": 401,
+          "section": "Conversion versus Coercion",
+          "source": "S.<y> = QQ[]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_coercion.rst:402",
+          "line": 402,
+          "section": "Conversion versus Coercion",
+          "source": "x+y",
+          "want": "Traceback (most recent call last):\n...\nTypeError: unsupported operand parent(s) for +: 'Univariate Polynomial Ring in x over Rational Field' and 'Univariate Polynomial Ring in y over Rational Field'\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/doc/en/tutorial/tour_functions.rst",
+      "owner": "src/doc/en/tutorial/tour_functions.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:18",
+          "line": 18,
+          "section": "Some Common Issues with Functions",
+          "source": "def f(z): return z^2",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:19",
+          "line": 19,
+          "section": "Some Common Issues with Functions",
+          "source": "type(f)",
+          "want": "<... 'function'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:21",
+          "line": 21,
+          "section": "Some Common Issues with Functions",
+          "source": "f(3)",
+          "want": "9\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:23",
+          "line": 23,
+          "section": "Some Common Issues with Functions",
+          "source": "plot(f, 0, 2)",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:37",
+          "line": 37,
+          "section": "Some Common Issues with Functions",
+          "source": "var('z')   # define z to be a variable",
+          "want": "z\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:39",
+          "line": 39,
+          "section": "Some Common Issues with Functions",
+          "source": "f(z)",
+          "want": "z^2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:41",
+          "line": 41,
+          "section": "Some Common Issues with Functions",
+          "source": "plot(f(z), 0, 2)",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:52",
+          "line": 52,
+          "section": "Some Common Issues with Functions",
+          "source": "g(x) = x^2",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:53",
+          "line": 53,
+          "section": "Some Common Issues with Functions",
+          "source": "g        # g sends x to x^2",
+          "want": "x |--> x^2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:55",
+          "line": 55,
+          "section": "Some Common Issues with Functions",
+          "source": "g(3)",
+          "want": "9\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:57",
+          "line": 57,
+          "section": "Some Common Issues with Functions",
+          "source": "Dg = g.derivative(); Dg",
+          "want": "x |--> 2*x\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:59",
+          "line": 59,
+          "section": "Some Common Issues with Functions",
+          "source": "Dg(3)",
+          "want": "6\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:61",
+          "line": 61,
+          "section": "Some Common Issues with Functions",
+          "source": "type(g)",
+          "want": "<class 'sage.symbolic.expression.Expression'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:63",
+          "line": 63,
+          "section": "Some Common Issues with Functions",
+          "source": "plot(g, 0, 2)",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:75",
+          "line": 75,
+          "section": "Some Common Issues with Functions",
+          "source": "g(x)",
+          "want": "x^2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:77",
+          "line": 77,
+          "section": "Some Common Issues with Functions",
+          "source": "type(g(x))",
+          "want": "<class 'sage.symbolic.expression.Expression'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:79",
+          "line": 79,
+          "section": "Some Common Issues with Functions",
+          "source": "g(x).derivative()",
+          "want": "2*x\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:81",
+          "line": 81,
+          "section": "Some Common Issues with Functions",
+          "source": "plot(g(x), 0, 2)",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:89",
+          "line": 89,
+          "section": "Some Common Issues with Functions",
+          "source": "type(sin)",
+          "want": "<class 'sage.functions.trig.Function_sin'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:91",
+          "line": 91,
+          "section": "Some Common Issues with Functions",
+          "source": "plot(sin, 0, 2)",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:93",
+          "line": 93,
+          "section": "Some Common Issues with Functions",
+          "source": "type(sin(x))",
+          "want": "<class 'sage.symbolic.expression.Expression'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:95",
+          "line": 95,
+          "section": "Some Common Issues with Functions",
+          "source": "plot(sin(x), 0, 2)",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:103",
+          "line": 103,
+          "section": "Some Common Issues with Functions",
+          "source": "f = sin",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:104",
+          "line": 104,
+          "section": "Some Common Issues with Functions",
+          "source": "f.derivative()",
+          "want": "Traceback (most recent call last):\n...\nAttributeError: ...\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:115",
+          "line": 115,
+          "section": "Some Common Issues with Functions",
+          "source": "S(x) = sin(x)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:116",
+          "line": 116,
+          "section": "Some Common Issues with Functions",
+          "source": "S.derivative()",
+          "want": "x |--> cos(x)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:125",
+          "line": 125,
+          "section": "Some Common Issues with Functions",
+          "source": "def h(x):\n    if x<2:\n        return 0\n    return x - 2",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:141",
+          "line": 141,
+          "section": "Some Common Issues with Functions",
+          "source": "bool(x < 2)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:143",
+          "line": 143,
+          "section": "Some Common Issues with Functions",
+          "source": "h(x)",
+          "want": "x - 2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:156",
+          "line": 156,
+          "section": "Some Common Issues with Functions",
+          "source": "plot(h, 0, 4)",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:163",
+          "line": 163,
+          "section": "Some Common Issues with Functions",
+          "source": "f = x",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:164",
+          "line": 164,
+          "section": "Some Common Issues with Functions",
+          "source": "g = f.derivative()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:165",
+          "line": 165,
+          "section": "Some Common Issues with Functions",
+          "source": "g",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:175",
+          "line": 175,
+          "section": "Some Common Issues with Functions",
+          "source": "type(f)",
+          "want": "<class 'sage.symbolic.expression.Expression'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:177",
+          "line": 177,
+          "section": "Some Common Issues with Functions",
+          "source": "type(g)",
+          "want": "<class 'sage.symbolic.expression.Expression'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:189",
+          "line": 189,
+          "section": "Some Common Issues with Functions",
+          "source": "f(x) = x        # instead of 'f = x'",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:190",
+          "line": 190,
+          "section": "Some Common Issues with Functions",
+          "source": "g = f.derivative()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:191",
+          "line": 191,
+          "section": "Some Common Issues with Functions",
+          "source": "g",
+          "want": "x |--> 1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:193",
+          "line": 193,
+          "section": "Some Common Issues with Functions",
+          "source": "g(3)",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:195",
+          "line": 195,
+          "section": "Some Common Issues with Functions",
+          "source": "type(g)",
+          "want": "<class 'sage.symbolic.expression.Expression'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:203",
+          "line": 203,
+          "section": "Some Common Issues with Functions",
+          "source": "f = x",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:204",
+          "line": 204,
+          "section": "Some Common Issues with Functions",
+          "source": "g(x) = f.derivative()  # instead of 'g = f.derivative()'",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:205",
+          "line": 205,
+          "section": "Some Common Issues with Functions",
+          "source": "g",
+          "want": "x |--> 1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:207",
+          "line": 207,
+          "section": "Some Common Issues with Functions",
+          "source": "g(3)",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:209",
+          "line": 209,
+          "section": "Some Common Issues with Functions",
+          "source": "type(g)",
+          "want": "<class 'sage.symbolic.expression.Expression'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:217",
+          "line": 217,
+          "section": "Some Common Issues with Functions",
+          "source": "f = x",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:218",
+          "line": 218,
+          "section": "Some Common Issues with Functions",
+          "source": "g = f.derivative()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:219",
+          "line": 219,
+          "section": "Some Common Issues with Functions",
+          "source": "g",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:221",
+          "line": 221,
+          "section": "Some Common Issues with Functions",
+          "source": "g(x=3)    # instead of 'g(3)'",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:229",
+          "line": 229,
+          "section": "Some Common Issues with Functions",
+          "source": "f(x) = x",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:230",
+          "line": 230,
+          "section": "Some Common Issues with Functions",
+          "source": "g = f.derivative()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:231",
+          "line": 231,
+          "section": "Some Common Issues with Functions",
+          "source": "g.variables()  # the variables present in g",
+          "want": "()\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:233",
+          "line": 233,
+          "section": "Some Common Issues with Functions",
+          "source": "g.arguments()  # the arguments which can be plugged into g",
+          "want": "(x,)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:235",
+          "line": 235,
+          "section": "Some Common Issues with Functions",
+          "source": "f = x",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:236",
+          "line": 236,
+          "section": "Some Common Issues with Functions",
+          "source": "h = f.derivative()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:237",
+          "line": 237,
+          "section": "Some Common Issues with Functions",
+          "source": "h.variables()",
+          "want": "()\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_functions.rst:239",
+          "line": 239,
+          "section": "Some Common Issues with Functions",
+          "source": "h.arguments()",
+          "want": "()\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/doc/en/tutorial/tour_groups.rst",
+      "owner": "src/doc/en/tutorial/tour_groups.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:14",
+          "line": 14,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G = PermutationGroup(['(1,2,3)(4,5)', '(3,4)'])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:15",
+          "line": 15,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G",
+          "want": "Permutation Group with generators [(3,4), (1,2,3)(4,5)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:17",
+          "line": 17,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G.order()",
+          "want": "120\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:19",
+          "line": 19,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G.is_abelian()",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:21",
+          "line": 21,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G.derived_series()           # random-ish output",
+          "want": "[Permutation Group with generators [(1,2,3)(4,5), (3,4)],\n Permutation Group with generators [(1,5)(3,4), (1,5)(2,4), (1,3,5)]]\n",
+          "tags": [
+            {
+              "name": "random"
+            }
+          ]
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:24",
+          "line": 24,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G.center()",
+          "want": "Subgroup generated by [()] of (Permutation Group with generators [(3,4), (1,2,3)(4,5)])\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:26",
+          "line": 26,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G.random_element()           # random output",
+          "want": "(1,5,3)(2,4)\n",
+          "tags": [
+            {
+              "name": "random"
+            }
+          ]
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:28",
+          "line": 28,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "print(latex(G))",
+          "want": "\\langle (3,4), (1,2,3)(4,5) \\rangle\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:35",
+          "line": 35,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G = PermutationGroup([[(1,2),(3,4)], [(1,2,3)]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:36",
+          "line": 36,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "latex(G.character_table()) # random",
+          "want": "\\left(\\begin{array}{rrrr}\n1 & 1 & 1 & 1 \\\\\n1 & -\\zeta_{3} - 1 & \\zeta_{3} & 1 \\\\\n1 & \\zeta_{3} & -\\zeta_{3} - 1 & 1 \\\\\n3 & 0 & 0 & -1\n\\end{array}\\right)\n",
+          "tags": [
+            {
+              "name": "random"
+            }
+          ]
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:48",
+          "line": 48,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "MS = MatrixSpace(GF(7), 2)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:49",
+          "line": 49,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "gens = [MS([[1,0],[-1,1]]),MS([[1,1],[0,1]])]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:50",
+          "line": 50,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G = MatrixGroup(gens)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:51",
+          "line": 51,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G.conjugacy_classes_representatives()",
+          "want": "(\n[1 0]  [0 6]  [0 4]  [6 0]  [0 6]  [0 4]  [0 6]  [0 6]  [0 6]  [4 0]\n[0 1], [1 5], [5 5], [0 6], [1 2], [5 2], [1 0], [1 4], [1 3], [0 2],\n<BLANKLINE>\n[5 0]\n[0 3]\n)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:59",
+          "line": 59,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G = Sp(4,GF(7))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:60",
+          "line": 60,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G",
+          "want": "Symplectic Group of degree 4 over Finite Field of size 7\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:62",
+          "line": 62,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G.random_element()             # random output",
+          "want": "[5 5 5 1]\n[0 2 6 3]\n[5 0 1 0]\n[4 6 3 4]\n",
+          "tags": [
+            {
+              "name": "random"
+            }
+          ]
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:67",
+          "line": 67,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "G.order()",
+          "want": "276595200\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:74",
+          "line": 74,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "F = AbelianGroup(5, [5,5,7,8,9], names='abcde')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:75",
+          "line": 75,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "(a, b, c, d, e) = F.gens()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:76",
+          "line": 76,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "d * b**2 * c**3",
+          "want": "b^2*c^3*d\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:78",
+          "line": 78,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "F = AbelianGroup(3,[2]*3); F",
+          "want": "Multiplicative Abelian group isomorphic to C2 x C2 x C2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:80",
+          "line": 80,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "H = AbelianGroup([2,3], names=\"xy\"); H",
+          "want": "Multiplicative Abelian group isomorphic to C2 x C3\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:82",
+          "line": 82,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "AbelianGroup(5)",
+          "want": "Multiplicative Abelian group isomorphic to Z x Z x Z x Z x Z\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_groups.rst:84",
+          "line": 84,
+          "section": "Finite Groups, Abelian Groups",
+          "source": "AbelianGroup(5).order()",
+          "want": "+Infinity\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/doc/en/tutorial/tour_help.rst",
+      "owner": "src/doc/en/tutorial/tour_help.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:14",
+          "line": 14,
+          "section": "Getting Help",
+          "source": "tan?",
+          "want": "Type:        <class 'sage.calculus.calculus.Function_tan'>\nDefinition:  tan( [noargspec] )\nDocstring:\n\n    The tangent function\n\n    EXAMPLES:\n        sage: tan(pi)\n        0\n        sage: tan(3.1415)\n        -0.0000926535900581913\n        sage: tan(3.1415/4)\n        0.999953674278156\n        sage: tan(pi/4)\n        1\n        sage: tan(1/2)\n        tan(1/2)\n        sage: RR(tan(1/2))\n        0.546302489843790\n",
+          "tags": [
+            {
+              "name": "skip",
+              "value": "rst-directive"
+            }
+          ]
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:34",
+          "line": 34,
+          "section": "Getting Help",
+          "source": "log2?",
+          "want": "Type:        <class 'sage.functions.constants.Log2'>\nDefinition:  log2( [noargspec] )\nDocstring:\n\n    The natural logarithm of the real number 2.\n\n    EXAMPLES:\n        sage: log2\n        log2\n        sage: float(log2)\n        0.69314718055994529\n        sage: RR(log2)\n        0.693147180559945\n        sage: R = RealField(200); R\n        Real Field with 200 bits of precision\n        sage: R(log2)\n        0.69314718055994530941723212145817656807550013436025525412068\n        sage: l = (1-log2)/(1+log2); l\n        (1 - log(2))/(log(2) + 1)\n        sage: R(l)\n        0.18123221829928249948761381864650311423330609774776013488056\n        sage: maxima(log2)\n        log(2)\n        sage: maxima(log2).float()\n        .6931471805599453\n        sage: gp(log2)\n        0.693147180559945309417232121...\n",
+          "tags": [
+            {
+              "name": "skip",
+              "value": "rst-directive"
+            }
+          ]
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:62",
+          "line": 62,
+          "section": "Getting Help",
+          "source": "sudoku?",
+          "want": "File:        sage/local/lib/python2.5/site-packages/sage/games/sudoku.py\nType:        <... 'function'>\nDefinition:  sudoku(A)\nDocstring:\n\n    Solve the 9x9 Sudoku puzzle defined by the matrix A.\n\n    EXAMPLE:\n        sage: A = matrix(ZZ,9,[5,0,0, 0,8,0, 0,4,9, 0,0,0, 5,0,0,\n    0,3,0, 0,6,7, 3,0,0, 0,0,1, 1,5,0, 0,0,0, 0,0,0, 0,0,0, 2,0,8, 0,0,0,\n    0,0,0, 0,0,0, 0,1,8, 7,0,0, 0,0,4, 1,5,0,   0,3,0, 0,0,2,\n    0,0,0, 4,9,0, 0,5,0, 0,0,3])\n        sage: A\n        [5 0 0 0 8 0 0 4 9]\n        [0 0 0 5 0 0 0 3 0]\n        [0 6 7 3 0 0 0 0 1]\n        [1 5 0 0 0 0 0 0 0]\n        [0 0 0 2 0 8 0 0 0]\n        [0 0 0 0 0 0 0 1 8]\n        [7 0 0 0 0 4 1 5 0]\n        [0 3 0 0 0 2 0 0 0]\n        [4 9 0 0 5 0 0 0 3]\n        sage: sudoku(A)\n        [5 1 3 6 8 7 2 4 9]\n        [8 4 9 5 2 1 6 3 7]\n        [2 6 7 3 4 9 5 8 1]\n        [1 5 8 4 6 3 9 7 2]\n        [9 7 4 2 1 8 3 6 5]\n        [3 2 6 7 9 5 4 1 8]\n        [7 8 2 9 3 4 1 5 6]\n        [6 3 5 1 7 2 8 9 4]\n        [4 9 1 8 5 6 7 2 3]\n",
+          "tags": [
+            {
+              "name": "skip",
+              "value": "rst-directive"
+            }
+          ]
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:113",
+          "line": 113,
+          "section": "Functions, Indentation, and Counting",
+          "source": "def is_even(n):\n    return n%2 == 0",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:115",
+          "line": 115,
+          "section": "Functions, Indentation, and Counting",
+          "source": "is_even(2)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:117",
+          "line": 117,
+          "section": "Functions, Indentation, and Counting",
+          "source": "is_even(3)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:133",
+          "line": 133,
+          "section": "Functions, Indentation, and Counting",
+          "source": "def is_divisible_by(number, divisor=2):\n    return number%divisor == 0",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:135",
+          "line": 135,
+          "section": "Functions, Indentation, and Counting",
+          "source": "is_divisible_by(6,2)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:137",
+          "line": 137,
+          "section": "Functions, Indentation, and Counting",
+          "source": "is_divisible_by(6)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:139",
+          "line": 139,
+          "section": "Functions, Indentation, and Counting",
+          "source": "is_divisible_by(6, 5)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:150",
+          "line": 150,
+          "section": "Functions, Indentation, and Counting",
+          "source": "is_divisible_by(6, divisor=5)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:152",
+          "line": 152,
+          "section": "Functions, Indentation, and Counting",
+          "source": "is_divisible_by(divisor=2, number=6)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:166",
+          "line": 166,
+          "section": "Functions, Indentation, and Counting",
+          "source": "def even(n):\n    v = []\n    for i in range(3,n):\n        if i % 2 == 0:\n            v.append(i)\n   return v",
+          "want": "Syntax Error:\n       return v\n",
+          "tags": [
+            {
+              "name": "skip",
+              "value": "rst-directive"
+            }
+          ]
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:179",
+          "line": 179,
+          "section": "Functions, Indentation, and Counting",
+          "source": "def even(n):\n    v = []\n    for i in range(3,n):\n        if i % 2 == 0:\n            v.append(i)\n    return v",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:185",
+          "line": 185,
+          "section": "Functions, Indentation, and Counting",
+          "source": "even(10)",
+          "want": "[4, 6, 8]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:194",
+          "line": 194,
+          "section": "Functions, Indentation, and Counting",
+          "source": "a = 5; b = a + 3; c = b^2; c",
+          "want": "64\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:202",
+          "line": 202,
+          "section": "Functions, Indentation, and Counting",
+          "source": "2 + \\\n   3",
+          "want": "5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:212",
+          "line": 212,
+          "section": "Functions, Indentation, and Counting",
+          "source": "for i in range(3):\n    print(i)",
+          "want": "0\n1\n2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:222",
+          "line": 222,
+          "section": "Functions, Indentation, and Counting",
+          "source": "for i in range(2,5):\n    print(i)",
+          "want": "2\n3\n4\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:233",
+          "line": 233,
+          "section": "Functions, Indentation, and Counting",
+          "source": "for i in range(1,6,2):\n    print(i)",
+          "want": "1\n3\n5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:246",
+          "line": 246,
+          "section": "Functions, Indentation, and Counting",
+          "source": "for i in range(5):\n    print('%6s %6s %6s' % (i, i^2, i^3))",
+          "want": "     0      0      0\n     1      1      1\n     2      4      8\n     3      9     27\n     4     16     64\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:258",
+          "line": 258,
+          "section": "Functions, Indentation, and Counting",
+          "source": "list(range(2,10))",
+          "want": "[2, 3, 4, 5, 6, 7, 8, 9]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:265",
+          "line": 265,
+          "section": "Functions, Indentation, and Counting",
+          "source": "v = [1, \"hello\", 2/3, sin(x^3)]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:266",
+          "line": 266,
+          "section": "Functions, Indentation, and Counting",
+          "source": "v",
+          "want": "[1, 'hello', 2/3, sin(x^3)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:275",
+          "line": 275,
+          "section": "Functions, Indentation, and Counting",
+          "source": "v[0]",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:277",
+          "line": 277,
+          "section": "Functions, Indentation, and Counting",
+          "source": "v[3]",
+          "want": "sin(x^3)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:288",
+          "line": 288,
+          "section": "Functions, Indentation, and Counting",
+          "source": "len(v)",
+          "want": "4\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:290",
+          "line": 290,
+          "section": "Functions, Indentation, and Counting",
+          "source": "v.append(1.5)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:291",
+          "line": 291,
+          "section": "Functions, Indentation, and Counting",
+          "source": "v",
+          "want": "[1, 'hello', 2/3, sin(x^3), 1.50000000000000]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:293",
+          "line": 293,
+          "section": "Functions, Indentation, and Counting",
+          "source": "del v[1]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:294",
+          "line": 294,
+          "section": "Functions, Indentation, and Counting",
+          "source": "v",
+          "want": "[1, 2/3, sin(x^3), 1.50000000000000]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:303",
+          "line": 303,
+          "section": "Functions, Indentation, and Counting",
+          "source": "d = {'hi':-2,  3/8:pi,   e:pi}",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:304",
+          "line": 304,
+          "section": "Functions, Indentation, and Counting",
+          "source": "d['hi']",
+          "want": "-2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:306",
+          "line": 306,
+          "section": "Functions, Indentation, and Counting",
+          "source": "d[e]",
+          "want": "pi\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:317",
+          "line": 317,
+          "section": "Functions, Indentation, and Counting",
+          "source": "class Evens(list):\n    def __init__(self, n):\n        self.n = n\n        list.__init__(self, range(2, n+1, 2))\n    def __repr__(self):\n        return \"Even positive numbers up to n.\"",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:334",
+          "line": 334,
+          "section": "Functions, Indentation, and Counting",
+          "source": "e = Evens(10)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:335",
+          "line": 335,
+          "section": "Functions, Indentation, and Counting",
+          "source": "e",
+          "want": "Even positive numbers up to n.\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:346",
+          "line": 346,
+          "section": "Functions, Indentation, and Counting",
+          "source": "list(e)",
+          "want": "[2, 4, 6, 8, 10]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:355",
+          "line": 355,
+          "section": "Functions, Indentation, and Counting",
+          "source": "e.n",
+          "want": "10\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_help.rst:357",
+          "line": 357,
+          "section": "Functions, Indentation, and Counting",
+          "source": "e[2]",
+          "want": "6\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/doc/en/tutorial/tour_linalg.rst",
+      "owner": "src/doc/en/tutorial/tour_linalg.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:15",
+          "line": 15,
+          "section": "Linear Algebra",
+          "source": "A = Matrix([[1,2,3],[3,2,1],[1,1,1]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:16",
+          "line": 16,
+          "section": "Linear Algebra",
+          "source": "w = vector([1,1,-4])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:17",
+          "line": 17,
+          "section": "Linear Algebra",
+          "source": "w*A",
+          "want": "(0, 0, 0)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:19",
+          "line": 19,
+          "section": "Linear Algebra",
+          "source": "A*w",
+          "want": "(-9, 1, -2)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:21",
+          "line": 21,
+          "section": "Linear Algebra",
+          "source": "kernel(A)",
+          "want": "Free module of degree 3 and rank 1 over Integer Ring\nEchelon basis matrix:\n[ 1  1 -4]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:38",
+          "line": 38,
+          "section": "Linear Algebra",
+          "source": "Y = vector([0, -4, -1])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:39",
+          "line": 39,
+          "section": "Linear Algebra",
+          "source": "X = A.solve_right(Y)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:40",
+          "line": 40,
+          "section": "Linear Algebra",
+          "source": "X",
+          "want": "(-2, 1, 0)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:42",
+          "line": 42,
+          "section": "Linear Algebra",
+          "source": "A * X   # checking our answer...",
+          "want": "(0, -4, -1)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:51",
+          "line": 51,
+          "section": "Linear Algebra",
+          "source": "A.solve_right(w)",
+          "want": "Traceback (most recent call last):\n...\nValueError: matrix equation has no solutions\n",
+          "tags": [
+            {
+              "name": "skip",
+              "value": "rst-directive"
+            }
+          ]
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:61",
+          "line": 61,
+          "section": "Linear Algebra",
+          "source": "A = matrix([[0, 4], [-1, 0]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:62",
+          "line": 62,
+          "section": "Linear Algebra",
+          "source": "A.eigenvalues ()",
+          "want": "[-2*I, 2*I]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:64",
+          "line": 64,
+          "section": "Linear Algebra",
+          "source": "B = matrix([[1, 3], [3, 1]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:65",
+          "line": 65,
+          "section": "Linear Algebra",
+          "source": "B.eigenvectors_left()",
+          "want": "[(4, [(1, 1)], 1), (-2, [(1, -1)], 1)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:79",
+          "line": 79,
+          "section": "Linear Algebra",
+          "source": "AZ = matrix(ZZ, [[2,0], [0,1]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:80",
+          "line": 80,
+          "section": "Linear Algebra",
+          "source": "AQ = matrix(QQ, [[2,0], [0,1]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:81",
+          "line": 81,
+          "section": "Linear Algebra",
+          "source": "AR = matrix(RR, [[2,0], [0,1]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:82",
+          "line": 82,
+          "section": "Linear Algebra",
+          "source": "AZ.echelon_form()",
+          "want": "[2 0]\n[0 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:85",
+          "line": 85,
+          "section": "Linear Algebra",
+          "source": "AQ.echelon_form()",
+          "want": "[1 0]\n[0 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:88",
+          "line": 88,
+          "section": "Linear Algebra",
+          "source": "AR.echelon_form()",
+          "want": "[ 1.00000000000000 0.000000000000000]\n[0.000000000000000  1.00000000000000]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:99",
+          "line": 99,
+          "section": "Linear Algebra",
+          "source": "ARDF = matrix(RDF, [[1.2, 2], [2, 3]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:100",
+          "line": 100,
+          "section": "Linear Algebra",
+          "source": "ARDF.eigenvalues()  # rel tol 8e-16",
+          "want": "[-0.09317121994613098, 4.293171219946131]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:102",
+          "line": 102,
+          "section": "Linear Algebra",
+          "source": "ACDF = matrix(CDF, [[1.2, I], [2, 3]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:103",
+          "line": 103,
+          "section": "Linear Algebra",
+          "source": "ACDF.eigenvectors_right()  # rel tol 3e-15",
+          "want": "[(0.8818456983293743 - 0.8209140653434135*I, [(0.7505608183809549, -0.616145932704589 + 0.2387941530333261*I)], 1),\n(3.3181543016706256 + 0.8209140653434133*I, [(0.14559469829270957 + 0.3756690858502104*I, 0.9152458258662108)], 1)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:113",
+          "line": 113,
+          "section": "Matrix spaces",
+          "source": "M = MatrixSpace(QQ,3)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:114",
+          "line": 114,
+          "section": "Matrix spaces",
+          "source": "M",
+          "want": "Full MatrixSpace of 3 by 3 dense matrices over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:127",
+          "line": 127,
+          "section": "Matrix spaces",
+          "source": "B = M.basis()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:128",
+          "line": 128,
+          "section": "Matrix spaces",
+          "source": "len(B)",
+          "want": "9\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:130",
+          "line": 130,
+          "section": "Matrix spaces",
+          "source": "B[0,1]",
+          "want": "[0 1 0]\n[0 0 0]\n[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:141",
+          "line": 141,
+          "section": "Matrix spaces",
+          "source": "A = M(range(9)); A",
+          "want": "[0 1 2]\n[3 4 5]\n[6 7 8]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:152",
+          "line": 152,
+          "section": "Matrix spaces",
+          "source": "A.echelon_form()",
+          "want": "[ 1  0 -1]\n[ 0  1  2]\n[ 0  0  0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:156",
+          "line": 156,
+          "section": "Matrix spaces",
+          "source": "A.kernel()",
+          "want": "Vector space of degree 3 and dimension 1 over Rational Field\nBasis matrix:\n[ 1 -2  1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:166",
+          "line": 166,
+          "section": "Matrix spaces",
+          "source": "M = MatrixSpace(GF(2),4,8)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:167",
+          "line": 167,
+          "section": "Matrix spaces",
+          "source": "A = M([1,1,0,0, 1,1,1,1, 0,1,0,0, 1,0,1,1,\n       0,0,1,0, 1,1,0,1, 0,0,1,1, 1,1,1,0])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:169",
+          "line": 169,
+          "section": "Matrix spaces",
+          "source": "A",
+          "want": "[1 1 0 0 1 1 1 1]\n[0 1 0 0 1 0 1 1]\n[0 0 1 0 1 1 0 1]\n[0 0 1 1 1 1 1 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:174",
+          "line": 174,
+          "section": "Matrix spaces",
+          "source": "rows = A.rows()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:175",
+          "line": 175,
+          "section": "Matrix spaces",
+          "source": "A.columns()",
+          "want": "[(1, 0, 0, 0), (1, 1, 0, 0), (0, 0, 1, 1), (0, 0, 0, 1),\n (1, 1, 1, 1), (1, 0, 1, 1), (1, 1, 0, 1), (1, 1, 1, 0)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:178",
+          "line": 178,
+          "section": "Matrix spaces",
+          "source": "rows",
+          "want": "[(1, 1, 0, 0, 1, 1, 1, 1), (0, 1, 0, 0, 1, 0, 1, 1),\n (0, 0, 1, 0, 1, 1, 0, 1), (0, 0, 1, 1, 1, 1, 1, 0)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:189",
+          "line": 189,
+          "section": "Matrix spaces",
+          "source": "V = VectorSpace(GF(2),8)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:190",
+          "line": 190,
+          "section": "Matrix spaces",
+          "source": "S = V.subspace(rows)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:191",
+          "line": 191,
+          "section": "Matrix spaces",
+          "source": "S",
+          "want": "Vector space of degree 8 and dimension 4 over Finite Field of size 2\nBasis matrix:\n[1 0 0 0 0 1 0 0]\n[0 1 0 0 1 0 1 1]\n[0 0 1 0 1 1 0 1]\n[0 0 0 1 0 0 1 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:198",
+          "line": 198,
+          "section": "Matrix spaces",
+          "source": "A.echelon_form()",
+          "want": "[1 0 0 0 0 1 0 0]\n[0 1 0 0 1 0 1 1]\n[0 0 1 0 1 1 0 1]\n[0 0 0 1 0 0 1 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:215",
+          "line": 215,
+          "section": "Sparse Linear Algebra",
+          "source": "M = MatrixSpace(QQ, 100, sparse=True)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:216",
+          "line": 216,
+          "section": "Sparse Linear Algebra",
+          "source": "A = M.random_element(density = 0.05)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:217",
+          "line": 217,
+          "section": "Sparse Linear Algebra",
+          "source": "E = A.echelon_form()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:224",
+          "line": 224,
+          "section": "Sparse Linear Algebra",
+          "source": "M = MatrixSpace(QQ, 50, 100, sparse=True)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:225",
+          "line": 225,
+          "section": "Sparse Linear Algebra",
+          "source": "A = M.random_element(density = 0.05)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:226",
+          "line": 226,
+          "section": "Sparse Linear Algebra",
+          "source": "E = A.echelon_form()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:227",
+          "line": 227,
+          "section": "Sparse Linear Algebra",
+          "source": "M = MatrixSpace(GF(2), 20, 40, sparse=True)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:228",
+          "line": 228,
+          "section": "Sparse Linear Algebra",
+          "source": "A = M.random_element()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:229",
+          "line": 229,
+          "section": "Sparse Linear Algebra",
+          "source": "E = A.echelon_form()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_linalg.rst:235",
+          "line": 235,
+          "section": "Sparse Linear Algebra",
+          "source": "M = MatrixSpace(QQ, 10,10, Sparse=True)",
+          "want": "Traceback (most recent call last):\n...\nTypeError: ...__init__() got an unexpected keyword argument 'Sparse'...\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/doc/en/tutorial/tour_numtheory.rst",
+      "owner": "src/doc/en/tutorial/tour_numtheory.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:9",
+          "line": 9,
+          "section": "Number Theory",
+          "source": "R = IntegerModRing(97)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:10",
+          "line": 10,
+          "section": "Number Theory",
+          "source": "a = R(2) / R(3)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:11",
+          "line": 11,
+          "section": "Number Theory",
+          "source": "a",
+          "want": "33\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:13",
+          "line": 13,
+          "section": "Number Theory",
+          "source": "a.rational_reconstruction()",
+          "want": "2/3\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:15",
+          "line": 15,
+          "section": "Number Theory",
+          "source": "b = R(47)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:16",
+          "line": 16,
+          "section": "Number Theory",
+          "source": "b^20052005",
+          "want": "50\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:18",
+          "line": 18,
+          "section": "Number Theory",
+          "source": "b.modulus()",
+          "want": "97\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:20",
+          "line": 20,
+          "section": "Number Theory",
+          "source": "b.is_square()",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:27",
+          "line": 27,
+          "section": "Number Theory",
+          "source": "gcd(515,2005)",
+          "want": "5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:29",
+          "line": 29,
+          "section": "Number Theory",
+          "source": "factor(2005)",
+          "want": "5 * 401\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:31",
+          "line": 31,
+          "section": "Number Theory",
+          "source": "c = factorial(25); c",
+          "want": "15511210043330985984000000\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:33",
+          "line": 33,
+          "section": "Number Theory",
+          "source": "[valuation(c,p) for p in prime_range(2,23)]",
+          "want": "[22, 10, 6, 3, 2, 1, 1, 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:35",
+          "line": 35,
+          "section": "Number Theory",
+          "source": "next_prime(2005)",
+          "want": "2011\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:37",
+          "line": 37,
+          "section": "Number Theory",
+          "source": "previous_prime(2005)",
+          "want": "2003\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:39",
+          "line": 39,
+          "section": "Number Theory",
+          "source": "divisors(28); sum(divisors(28)); 2*28",
+          "want": "[1, 2, 4, 7, 14, 28]\n56\n56\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:51",
+          "line": 51,
+          "section": "Number Theory",
+          "source": "sigma(28,0); sigma(28,1); sigma(28,2)",
+          "want": "6\n56\n1050\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:61",
+          "line": 61,
+          "section": "Number Theory",
+          "source": "d,u,v = xgcd(12,15)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:62",
+          "line": 62,
+          "section": "Number Theory",
+          "source": "d == u*12 + v*15",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:64",
+          "line": 64,
+          "section": "Number Theory",
+          "source": "n = 2005",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:65",
+          "line": 65,
+          "section": "Number Theory",
+          "source": "inverse_mod(3,n)",
+          "want": "1337\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:67",
+          "line": 67,
+          "section": "Number Theory",
+          "source": "3 * 1337",
+          "want": "4011\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:69",
+          "line": 69,
+          "section": "Number Theory",
+          "source": "prime_divisors(n)",
+          "want": "[5, 401]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:71",
+          "line": 71,
+          "section": "Number Theory",
+          "source": "phi = n*prod([1 - 1/p for p in prime_divisors(n)]); phi",
+          "want": "1600\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:73",
+          "line": 73,
+          "section": "Number Theory",
+          "source": "euler_phi(n)",
+          "want": "1600\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:75",
+          "line": 75,
+          "section": "Number Theory",
+          "source": "prime_to_m_part(n, 5)",
+          "want": "401\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:82",
+          "line": 82,
+          "section": "Number Theory",
+          "source": "n = 2005",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:83",
+          "line": 83,
+          "section": "Number Theory",
+          "source": "for i in range(1000):\n    n = 3*odd_part(n) + 1\n    if odd_part(n)==1:\n        print(i)\n        break",
+          "want": "38\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:94",
+          "line": 94,
+          "section": "Number Theory",
+          "source": "x = crt(2, 1, 3, 5); x",
+          "want": "11\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:96",
+          "line": 96,
+          "section": "Number Theory",
+          "source": "x % 3  # x mod 3 = 2",
+          "want": "2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:98",
+          "line": 98,
+          "section": "Number Theory",
+          "source": "x % 5  # x mod 5 = 1",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:100",
+          "line": 100,
+          "section": "Number Theory",
+          "source": "[binomial(13,m) for m in range(14)]",
+          "want": "[1, 13, 78, 286, 715, 1287, 1716, 1716, 1287, 715, 286, 78, 13, 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:102",
+          "line": 102,
+          "section": "Number Theory",
+          "source": "[binomial(13,m)%2 for m in range(14)]",
+          "want": "[1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:104",
+          "line": 104,
+          "section": "Number Theory",
+          "source": "[kronecker(m,13) for m in range(1,13)]",
+          "want": "[1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:106",
+          "line": 106,
+          "section": "Number Theory",
+          "source": "n = 10000; sum([moebius(m) for m in range(1,n)])",
+          "want": "-23\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:108",
+          "line": 108,
+          "section": "Number Theory",
+          "source": "Partitions(4).list()",
+          "want": "[[4], [3, 1], [2, 2], [2, 1, 1], [1, 1, 1, 1]]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:120",
+          "line": 120,
+          "section": ":math:`p`-adic Numbers",
+          "source": "K = Qp(11); K",
+          "want": "11-adic Field with capped relative precision 20\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:122",
+          "line": 122,
+          "section": ":math:`p`-adic Numbers",
+          "source": "a = K(211/17); a",
+          "want": "4 + 4*11 + 11^2 + 7*11^3 + 9*11^5 + 5*11^6 + 4*11^7 + 8*11^8 + 7*11^9\n  + 9*11^10 + 3*11^11 + 10*11^12 + 11^13 + 5*11^14 + 6*11^15 + 2*11^16\n  + 3*11^17 + 11^18 + 7*11^19 + O(11^20)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:126",
+          "line": 126,
+          "section": ":math:`p`-adic Numbers",
+          "source": "b = K(3211/11^2); b",
+          "want": "10*11^-2 + 5*11^-1 + 4 + 2*11 + O(11^18)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:140",
+          "line": 140,
+          "section": ":math:`p`-adic Numbers",
+          "source": "R.<x> = PolynomialRing(QQ)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:141",
+          "line": 141,
+          "section": ":math:`p`-adic Numbers",
+          "source": "K = NumberField(x^3 + x^2 - 2*x + 8, 'a')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:142",
+          "line": 142,
+          "section": ":math:`p`-adic Numbers",
+          "source": "K.integral_basis()",
+          "want": "[1, 1/2*a^2 + 1/2*a, a^2]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:149",
+          "line": 149,
+          "section": ":math:`p`-adic Numbers",
+          "source": "K.galois_group()",
+          "want": "Galois group 3T2 (S3) with order 6 of x^3 + x^2 - 2*x + 8\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:156",
+          "line": 156,
+          "section": ":math:`p`-adic Numbers",
+          "source": "K.polynomial_quotient_ring()",
+          "want": "Univariate Quotient Polynomial Ring in a over Rational Field with modulus\nx^3 + x^2 - 2*x + 8\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:159",
+          "line": 159,
+          "section": ":math:`p`-adic Numbers",
+          "source": "K.units()",
+          "want": "(-3*a^2 - 13*a - 13,)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:161",
+          "line": 161,
+          "section": ":math:`p`-adic Numbers",
+          "source": "K.discriminant()",
+          "want": "-503\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:163",
+          "line": 163,
+          "section": ":math:`p`-adic Numbers",
+          "source": "K.class_group()",
+          "want": "Class group of order 1 of Number Field in a with\ndefining polynomial x^3 + x^2 - 2*x + 8\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_numtheory.rst:166",
+          "line": 166,
+          "section": ":math:`p`-adic Numbers",
+          "source": "K.class_number()",
+          "want": "1\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/doc/en/tutorial/tour_plotting.rst",
+      "owner": "src/doc/en/tutorial/tour_plotting.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:33",
+          "line": 33,
+          "section": "Two-dimensional Plots",
+          "source": "circle((0,0), 1, rgbcolor=(1,1,0))",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:40",
+          "line": 40,
+          "section": "Two-dimensional Plots",
+          "source": "circle((0,0), 1, rgbcolor=(1,1,0), fill=True)",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:48",
+          "line": 48,
+          "section": "Two-dimensional Plots",
+          "source": "c = circle((0,0), 1, rgbcolor=(1,1,0))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:56",
+          "line": 56,
+          "section": "Two-dimensional Plots",
+          "source": "c.show()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:68",
+          "line": 68,
+          "section": "Two-dimensional Plots",
+          "source": "c.show(aspect_ratio=1)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:78",
+          "line": 78,
+          "section": "Two-dimensional Plots",
+          "source": "plot(cos, (-5,5))",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:86",
+          "line": 86,
+          "section": "Two-dimensional Plots",
+          "source": "x = var('x')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:87",
+          "line": 87,
+          "section": "Two-dimensional Plots",
+          "source": "parametric_plot((cos(x),sin(x)^3),(x,0,2*pi),rgbcolor=hue(0.6))",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:96",
+          "line": 96,
+          "section": "Two-dimensional Plots",
+          "source": "plot(x^2,(x,300,500))",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:103",
+          "line": 103,
+          "section": "Two-dimensional Plots",
+          "source": "x = var('x')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:104",
+          "line": 104,
+          "section": "Two-dimensional Plots",
+          "source": "p1 = parametric_plot((cos(x),sin(x)),(x,0,2*pi),rgbcolor=hue(0.2))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:105",
+          "line": 105,
+          "section": "Two-dimensional Plots",
+          "source": "p2 = parametric_plot((cos(x),sin(x)^2),(x,0,2*pi),rgbcolor=hue(0.4))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:106",
+          "line": 106,
+          "section": "Two-dimensional Plots",
+          "source": "p3 = parametric_plot((cos(x),sin(x)^3),(x,0,2*pi),rgbcolor=hue(0.6))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:107",
+          "line": 107,
+          "section": "Two-dimensional Plots",
+          "source": "show(p1+p2+p3, axes=false)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:116",
+          "line": 116,
+          "section": "Two-dimensional Plots",
+          "source": "L = [[-1+cos(pi*i/100)*(1+cos(pi*i/100)),\n    2*sin(pi*i/100)*(1-cos(pi*i/100))] for i in range(200)]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:118",
+          "line": 118,
+          "section": "Two-dimensional Plots",
+          "source": "p = polygon(L, rgbcolor=(1/8,3/4,1/2))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:119",
+          "line": 119,
+          "section": "Two-dimensional Plots",
+          "source": "p",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:128",
+          "line": 128,
+          "section": "Two-dimensional Plots",
+          "source": "L = [[6*cos(pi*i/100)+5*cos((6/2)*pi*i/100),\n    6*sin(pi*i/100)-5*sin((6/2)*pi*i/100)] for i in range(200)]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:130",
+          "line": 130,
+          "section": "Two-dimensional Plots",
+          "source": "p = polygon(L, rgbcolor=(1/8,1/4,1/2))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:131",
+          "line": 131,
+          "section": "Two-dimensional Plots",
+          "source": "t = text(\"hypotrochoid\", (5,4), rgbcolor=(1,0,0))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:132",
+          "line": 132,
+          "section": "Two-dimensional Plots",
+          "source": "show(p+t)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:142",
+          "line": 142,
+          "section": "Two-dimensional Plots",
+          "source": "v = [(sin(x),x) for x in srange(-2*float(pi),2*float(pi),0.1)]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:143",
+          "line": 143,
+          "section": "Two-dimensional Plots",
+          "source": "line(v)",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:152",
+          "line": 152,
+          "section": "Two-dimensional Plots",
+          "source": "v = [(tan(x),x) for x in srange(-2*float(pi),2*float(pi),0.01)]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:153",
+          "line": 153,
+          "section": "Two-dimensional Plots",
+          "source": "show(line(v), xmin=-20, xmax=20)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:161",
+          "line": 161,
+          "section": "Two-dimensional Plots",
+          "source": "f = lambda x,y: cos(x*y)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:162",
+          "line": 162,
+          "section": "Two-dimensional Plots",
+          "source": "contour_plot(f, (-4, 4), (-4, 4))",
+          "want": "Graphics object consisting of 1 graphics primitive\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:177",
+          "line": 177,
+          "section": "Three-Dimensional Plots",
+          "source": "x, y = var('x,y')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:178",
+          "line": 178,
+          "section": "Three-Dimensional Plots",
+          "source": "plot3d(x^2 + y^2, (x,-2,2), (y,-2,2))",
+          "want": "Graphics3d Object\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:189",
+          "line": 189,
+          "section": "Three-Dimensional Plots",
+          "source": "u, v = var('u, v')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:190",
+          "line": 190,
+          "section": "Three-Dimensional Plots",
+          "source": "f_x(u, v) = u",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:191",
+          "line": 191,
+          "section": "Three-Dimensional Plots",
+          "source": "f_y(u, v) = v",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:192",
+          "line": 192,
+          "section": "Three-Dimensional Plots",
+          "source": "f_z(u, v) = u^2 + v^2",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:193",
+          "line": 193,
+          "section": "Three-Dimensional Plots",
+          "source": "parametric_plot3d([f_x, f_y, f_z], (u, -2, 2), (v, -2, 2))",
+          "want": "Graphics3d Object\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:203",
+          "line": 203,
+          "section": "Three-Dimensional Plots",
+          "source": "x, y, z = var('x, y, z')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:204",
+          "line": 204,
+          "section": "Three-Dimensional Plots",
+          "source": "implicit_plot3d(x^2 + y^2 + z^2 - 4, (x,-2, 2), (y,-2, 2), (z,-2, 2))",
+          "want": "Graphics3d Object\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:213",
+          "line": 213,
+          "section": "Three-Dimensional Plots",
+          "source": "u, v = var('u,v')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:214",
+          "line": 214,
+          "section": "Three-Dimensional Plots",
+          "source": "fx = u*v",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:215",
+          "line": 215,
+          "section": "Three-Dimensional Plots",
+          "source": "fy = u",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:216",
+          "line": 216,
+          "section": "Three-Dimensional Plots",
+          "source": "fz = v^2",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:217",
+          "line": 217,
+          "section": "Three-Dimensional Plots",
+          "source": "parametric_plot3d([fx, fy, fz], (u, -1, 1), (v, -1, 1),\n  frame=False, color=\"yellow\")",
+          "want": "Graphics3d Object\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:225",
+          "line": 225,
+          "section": "Three-Dimensional Plots",
+          "source": "u, v = var('u,v')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:226",
+          "line": 226,
+          "section": "Three-Dimensional Plots",
+          "source": "fx = (1+cos(v))*cos(u)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:227",
+          "line": 227,
+          "section": "Three-Dimensional Plots",
+          "source": "fy = (1+cos(v))*sin(u)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:228",
+          "line": 228,
+          "section": "Three-Dimensional Plots",
+          "source": "fz = -tanh((2/3)*(u-pi))*sin(v)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:229",
+          "line": 229,
+          "section": "Three-Dimensional Plots",
+          "source": "parametric_plot3d([fx, fy, fz], (u, 0, 2*pi), (v, 0, 2*pi),\n  frame=False, color=\"red\")",
+          "want": "Graphics3d Object\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:237",
+          "line": 237,
+          "section": "Three-Dimensional Plots",
+          "source": "u, v = var('u,v')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:238",
+          "line": 238,
+          "section": "Three-Dimensional Plots",
+          "source": "fx = (3+sin(v)+cos(u))*cos(2*v)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:239",
+          "line": 239,
+          "section": "Three-Dimensional Plots",
+          "source": "fy = (3+sin(v)+cos(u))*sin(2*v)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:240",
+          "line": 240,
+          "section": "Three-Dimensional Plots",
+          "source": "fz = sin(u)+2*cos(v)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:241",
+          "line": 241,
+          "section": "Three-Dimensional Plots",
+          "source": "parametric_plot3d([fx, fy, fz], (u, 0, 2*pi), (v, 0, 2*pi),\n  frame=False, color=\"red\")",
+          "want": "Graphics3d Object\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:249",
+          "line": 249,
+          "section": "Three-Dimensional Plots",
+          "source": "x, y, z = var('x,y,z')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:250",
+          "line": 250,
+          "section": "Three-Dimensional Plots",
+          "source": "f(x, y, z) = 4*x^2 * (x^2 + y^2 + z^2 + z) + y^2 * (y^2 + z^2 - 1)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_plotting.rst:251",
+          "line": 251,
+          "section": "Three-Dimensional Plots",
+          "source": "implicit_plot3d(f, (x, -0.5, 0.5), (y, -1, 1), (z, -1, 1))",
+          "want": "Graphics3d Object\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/doc/en/tutorial/tour_polynomial.rst",
+      "owner": "src/doc/en/tutorial/tour_polynomial.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:19",
+          "line": 19,
+          "section": "Univariate Polynomials",
+          "source": "R = PolynomialRing(QQ, 't')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:20",
+          "line": 20,
+          "section": "Univariate Polynomials",
+          "source": "R",
+          "want": "Univariate Polynomial Ring in t over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:34",
+          "line": 34,
+          "section": "Univariate Polynomials",
+          "source": "S = QQ['t']",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:35",
+          "line": 35,
+          "section": "Univariate Polynomials",
+          "source": "S == R",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:44",
+          "line": 44,
+          "section": "Univariate Polynomials",
+          "source": "R.<t> = PolynomialRing(QQ)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:50",
+          "line": 50,
+          "section": "Univariate Polynomials",
+          "source": "R.<t> = QQ['t']",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:56",
+          "line": 56,
+          "section": "Univariate Polynomials",
+          "source": "R.<t> = QQ[]",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:68",
+          "line": 68,
+          "section": "Univariate Polynomials",
+          "source": "poly = (t+1) * (t+2); poly",
+          "want": "t^2 + 3*t + 2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:70",
+          "line": 70,
+          "section": "Univariate Polynomials",
+          "source": "poly in R",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:78",
+          "line": 78,
+          "section": "Univariate Polynomials",
+          "source": "R = PolynomialRing(QQ, 't')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:79",
+          "line": 79,
+          "section": "Univariate Polynomials",
+          "source": "t = R.0",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:80",
+          "line": 80,
+          "section": "Univariate Polynomials",
+          "source": "t in R",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:89",
+          "line": 89,
+          "section": "Univariate Polynomials",
+          "source": "CC",
+          "want": "Complex Field with 53 bits of precision\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:91",
+          "line": 91,
+          "section": "Univariate Polynomials",
+          "source": "CC.0  # 0th generator of CC",
+          "want": "1.00000000000000*I\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:99",
+          "line": 99,
+          "section": "Univariate Polynomials",
+          "source": "R, t = QQ['t'].objgen()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:100",
+          "line": 100,
+          "section": "Univariate Polynomials",
+          "source": "t    = QQ['t'].gen()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:101",
+          "line": 101,
+          "section": "Univariate Polynomials",
+          "source": "R, t = objgen(QQ['t'])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:102",
+          "line": 102,
+          "section": "Univariate Polynomials",
+          "source": "t    = gen(QQ['t'])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:108",
+          "line": 108,
+          "section": "Univariate Polynomials",
+          "source": "R, t = QQ['t'].objgen()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:109",
+          "line": 109,
+          "section": "Univariate Polynomials",
+          "source": "f = 2*t^7 + 3*t^2 - 15/19",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:110",
+          "line": 110,
+          "section": "Univariate Polynomials",
+          "source": "f^2",
+          "want": "4*t^14 + 12*t^9 - 60/19*t^7 + 9*t^4 - 90/19*t^2 + 225/361\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:112",
+          "line": 112,
+          "section": "Univariate Polynomials",
+          "source": "cyclo = R.cyclotomic_polynomial(7); cyclo",
+          "want": "t^6 + t^5 + t^4 + t^3 + t^2 + t + 1\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:114",
+          "line": 114,
+          "section": "Univariate Polynomials",
+          "source": "g = 7 * cyclo * t^5 * (t^5 + 10*t + 2)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:115",
+          "line": 115,
+          "section": "Univariate Polynomials",
+          "source": "g",
+          "want": "7*t^16 + 7*t^15 + 7*t^14 + 7*t^13 + 77*t^12 + 91*t^11 + 91*t^10 + 84*t^9\n       + 84*t^8 + 84*t^7 + 84*t^6 + 14*t^5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:118",
+          "line": 118,
+          "section": "Univariate Polynomials",
+          "source": "F = factor(g); F",
+          "want": "(7) * t^5 * (t^5 + 10*t + 2) * (t^6 + t^5 + t^4 + t^3 + t^2 + t + 1)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:120",
+          "line": 120,
+          "section": "Univariate Polynomials",
+          "source": "F.unit()",
+          "want": "7\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:122",
+          "line": 122,
+          "section": "Univariate Polynomials",
+          "source": "list(F)",
+          "want": "[(t, 5), (t^5 + 10*t + 2, 1), (t^6 + t^5 + t^4 + t^3 + t^2 + t + 1, 1)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:142",
+          "line": 142,
+          "section": "Univariate Polynomials",
+          "source": "x = QQ['x'].0",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:143",
+          "line": 143,
+          "section": "Univariate Polynomials",
+          "source": "f = x^3 + 1; g = x^2 - 17",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:144",
+          "line": 144,
+          "section": "Univariate Polynomials",
+          "source": "h = f/g;  h",
+          "want": "(x^3 + 1)/(x^2 - 17)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:146",
+          "line": 146,
+          "section": "Univariate Polynomials",
+          "source": "h.parent()",
+          "want": "Fraction Field of Univariate Polynomial Ring in x over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:154",
+          "line": 154,
+          "section": "Univariate Polynomials",
+          "source": "R.<x> = LaurentSeriesRing(QQ); R",
+          "want": "Laurent Series Ring in x over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:156",
+          "line": 156,
+          "section": "Univariate Polynomials",
+          "source": "1/(1-x) + O(x^10)",
+          "want": "1 + x + x^2 + x^3 + x^4 + x^5 + x^6 + x^7 + x^8 + x^9 + O(x^10)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:164",
+          "line": 164,
+          "section": "Univariate Polynomials",
+          "source": "R.<x> = PolynomialRing(QQ)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:165",
+          "line": 165,
+          "section": "Univariate Polynomials",
+          "source": "S.<y> = PolynomialRing(QQ)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:166",
+          "line": 166,
+          "section": "Univariate Polynomials",
+          "source": "x == y",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:168",
+          "line": 168,
+          "section": "Univariate Polynomials",
+          "source": "R == S",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:170",
+          "line": 170,
+          "section": "Univariate Polynomials",
+          "source": "R(y)",
+          "want": "x\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:172",
+          "line": 172,
+          "section": "Univariate Polynomials",
+          "source": "R(y^2 - 17)",
+          "want": "x^2 - 17\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:180",
+          "line": 180,
+          "section": "Univariate Polynomials",
+          "source": "R = PolynomialRing(QQ, \"x\")",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:181",
+          "line": 181,
+          "section": "Univariate Polynomials",
+          "source": "T = PolynomialRing(QQ, \"x\")",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:182",
+          "line": 182,
+          "section": "Univariate Polynomials",
+          "source": "R == T",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:184",
+          "line": 184,
+          "section": "Univariate Polynomials",
+          "source": "R is T",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:186",
+          "line": 186,
+          "section": "Univariate Polynomials",
+          "source": "R.0 == T.0",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:196",
+          "line": 196,
+          "section": "Univariate Polynomials",
+          "source": "R.<T> = PowerSeriesRing(GF(7)); R",
+          "want": "Power Series Ring in T over Finite Field of size 7\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:198",
+          "line": 198,
+          "section": "Univariate Polynomials",
+          "source": "f = T  + 3*T^2 + T^3 + O(T^4)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:199",
+          "line": 199,
+          "section": "Univariate Polynomials",
+          "source": "f^3",
+          "want": "T^3 + 2*T^4 + 2*T^5 + O(T^6)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:201",
+          "line": 201,
+          "section": "Univariate Polynomials",
+          "source": "1/f",
+          "want": "T^-1 + 4 + T + O(T^2)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:203",
+          "line": 203,
+          "section": "Univariate Polynomials",
+          "source": "parent(1/f)",
+          "want": "Laurent Series Ring in T over Finite Field of size 7\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:211",
+          "line": 211,
+          "section": "Univariate Polynomials",
+          "source": "GF(7)[['T']]",
+          "want": "Power Series Ring in T over Finite Field of size 7\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:222",
+          "line": 222,
+          "section": "Multivariate Polynomials",
+          "source": "R = PolynomialRing(GF(5),3,\"z\") # here, 3 = number of variables",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:223",
+          "line": 223,
+          "section": "Multivariate Polynomials",
+          "source": "R",
+          "want": "Multivariate Polynomial Ring in z0, z1, z2 over Finite Field of size 5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:231",
+          "line": 231,
+          "section": "Multivariate Polynomials",
+          "source": "GF(5)['z0, z1, z2']",
+          "want": "Multivariate Polynomial Ring in z0, z1, z2 over Finite Field of size 5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:233",
+          "line": 233,
+          "section": "Multivariate Polynomials",
+          "source": "R.<z0,z1,z2> = GF(5)[]; R",
+          "want": "Multivariate Polynomial Ring in z0, z1, z2 over Finite Field of size 5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:241",
+          "line": 241,
+          "section": "Multivariate Polynomials",
+          "source": "PolynomialRing(GF(5), 3, 'xyz')",
+          "want": "Multivariate Polynomial Ring in x, y, z over Finite Field of size 5\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:248",
+          "line": 248,
+          "section": "Multivariate Polynomials",
+          "source": "z = GF(5)['z0, z1, z2'].gens()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:249",
+          "line": 249,
+          "section": "Multivariate Polynomials",
+          "source": "z",
+          "want": "(z0, z1, z2)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:251",
+          "line": 251,
+          "section": "Multivariate Polynomials",
+          "source": "(z[0]+z[1]+z[2])^2",
+          "want": "z0^2 + 2*z0*z1 + z1^2 + 2*z0*z2 + 2*z1*z2 + z2^2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:259",
+          "line": 259,
+          "section": "Multivariate Polynomials",
+          "source": "R = GF(5)['x,y,z']",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:260",
+          "line": 260,
+          "section": "Multivariate Polynomials",
+          "source": "x,y,z = R.gens()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:261",
+          "line": 261,
+          "section": "Multivariate Polynomials",
+          "source": "QQ['x']",
+          "want": "Univariate Polynomial Ring in x over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:263",
+          "line": 263,
+          "section": "Multivariate Polynomials",
+          "source": "QQ['x,y'].gens()",
+          "want": "(x, y)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:265",
+          "line": 265,
+          "section": "Multivariate Polynomials",
+          "source": "QQ['x'].objgens()",
+          "want": "(Univariate Polynomial Ring in x over Rational Field, (x,))\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:275",
+          "line": 275,
+          "section": "Multivariate Polynomials",
+          "source": "R, (x, y) = PolynomialRing(RationalField(), 2, 'xy').objgens()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:276",
+          "line": 276,
+          "section": "Multivariate Polynomials",
+          "source": "f = (x^3 + 2*y^2*x)^2",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:277",
+          "line": 277,
+          "section": "Multivariate Polynomials",
+          "source": "g = x^2*y^2",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:278",
+          "line": 278,
+          "section": "Multivariate Polynomials",
+          "source": "f.gcd(g)",
+          "want": "x^2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:289",
+          "line": 289,
+          "section": "Multivariate Polynomials",
+          "source": "I = (f, g)*R; I",
+          "want": "Ideal (x^6 + 4*x^4*y^2 + 4*x^2*y^4, x^2*y^2) of Multivariate Polynomial\nRing in x, y over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:292",
+          "line": 292,
+          "section": "Multivariate Polynomials",
+          "source": "B = I.groebner_basis(); B",
+          "want": "[x^6, x^2*y^2]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:294",
+          "line": 294,
+          "section": "Multivariate Polynomials",
+          "source": "x^2 in I",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:306",
+          "line": 306,
+          "section": "Multivariate Polynomials",
+          "source": "B.universe()",
+          "want": "Multivariate Polynomial Ring in x, y over Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:308",
+          "line": 308,
+          "section": "Multivariate Polynomials",
+          "source": "B[1] = x",
+          "want": "Traceback (most recent call last):\n...\nValueError: object is immutable; please change a copy instead.\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:322",
+          "line": 322,
+          "section": "Multivariate Polynomials",
+          "source": "I.primary_decomposition()",
+          "want": "[Ideal (x^2) of Multivariate Polynomial Ring in x, y over Rational Field,\n Ideal (y^2, x^6) of Multivariate Polynomial Ring in x, y over Rational Field]\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_polynomial.rst:325",
+          "line": 325,
+          "section": "Multivariate Polynomials",
+          "source": "I.associated_primes()",
+          "want": "[Ideal (x) of Multivariate Polynomial Ring in x, y over Rational Field,\n Ideal (y, x) of Multivariate Polynomial Ring in x, y over Rational Field]\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/doc/en/tutorial/tour_rings.rst",
+      "owner": "src/doc/en/tutorial/tour_rings.rst",
+      "line": 1,
+      "examples": [
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:32",
+          "line": 32,
+          "section": "Basic Rings",
+          "source": "ratpoly.<t> = PolynomialRing(QQ)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:33",
+          "line": 33,
+          "section": "Basic Rings",
+          "source": "realpoly.<z> = PolynomialRing(RR)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:41",
+          "line": 41,
+          "section": "Basic Rings",
+          "source": "factor(t^2-2)",
+          "want": "t^2 - 2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:43",
+          "line": 43,
+          "section": "Basic Rings",
+          "source": "factor(z^2-2)",
+          "want": "(z - 1.41421356237310) * (z + 1.41421356237310)\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:55",
+          "line": 55,
+          "section": "Basic Rings",
+          "source": "i  # square root of -1",
+          "want": "I\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:57",
+          "line": 57,
+          "section": "Basic Rings",
+          "source": "i in QQ",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:64",
+          "line": 64,
+          "section": "Basic Rings",
+          "source": "reset('i')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:77",
+          "line": 77,
+          "section": "Basic Rings",
+          "source": "i = CC(i)       # floating point complex number",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:78",
+          "line": 78,
+          "section": "Basic Rings",
+          "source": "i == CC.0",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:80",
+          "line": 80,
+          "section": "Basic Rings",
+          "source": "a, b = 4/3, 2/3",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:81",
+          "line": 81,
+          "section": "Basic Rings",
+          "source": "z = a + b*i",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:82",
+          "line": 82,
+          "section": "Basic Rings",
+          "source": "z",
+          "want": "1.33333333333333 + 0.666666666666667*I\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:84",
+          "line": 84,
+          "section": "Basic Rings",
+          "source": "z.imag()        # imaginary part",
+          "want": "0.666666666666667\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:86",
+          "line": 86,
+          "section": "Basic Rings",
+          "source": "z.real() == a   # automatic coercion before comparison",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:88",
+          "line": 88,
+          "section": "Basic Rings",
+          "source": "a + b",
+          "want": "2\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:90",
+          "line": 90,
+          "section": "Basic Rings",
+          "source": "2*b == a",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:92",
+          "line": 92,
+          "section": "Basic Rings",
+          "source": "parent(2/3)",
+          "want": "Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:94",
+          "line": 94,
+          "section": "Basic Rings",
+          "source": "parent(4/2)",
+          "want": "Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:96",
+          "line": 96,
+          "section": "Basic Rings",
+          "source": "2/3 + 0.1       # automatic coercion before addition",
+          "want": "0.766666666666667\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:98",
+          "line": 98,
+          "section": "Basic Rings",
+          "source": "0.1 + 2/3       # coercion rules are symmetric in Sage",
+          "want": "0.766666666666667\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:108",
+          "line": 108,
+          "section": "Basic Rings",
+          "source": "RationalField()",
+          "want": "Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:110",
+          "line": 110,
+          "section": "Basic Rings",
+          "source": "QQ",
+          "want": "Rational Field\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:112",
+          "line": 112,
+          "section": "Basic Rings",
+          "source": "1/2 in QQ",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:120",
+          "line": 120,
+          "section": "Basic Rings",
+          "source": "1.2 in QQ",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:122",
+          "line": 122,
+          "section": "Basic Rings",
+          "source": "pi in QQ",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:124",
+          "line": 124,
+          "section": "Basic Rings",
+          "source": "pi in RR",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:126",
+          "line": 126,
+          "section": "Basic Rings",
+          "source": "sqrt(2) in QQ",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:128",
+          "line": 128,
+          "section": "Basic Rings",
+          "source": "sqrt(2) in CC",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:136",
+          "line": 136,
+          "section": "Basic Rings",
+          "source": "GF(3)",
+          "want": "Finite Field of size 3\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:138",
+          "line": 138,
+          "section": "Basic Rings",
+          "source": "GF(27, 'a')  # need to name the generator if not a prime field",
+          "want": "Finite Field in a of size 3^3\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:140",
+          "line": 140,
+          "section": "Basic Rings",
+          "source": "Zp(5)",
+          "want": "5-adic Ring with capped relative precision 20\n",
+          "tags": []
+        },
+        {
+          "id": "src/doc/en/tutorial/tour_rings.rst:142",
+          "line": 142,
+          "section": "Basic Rings",
+          "source": "sqrt(3) in QQbar # algebraic closure of QQ",
+          "want": "True\n",
+          "tags": []
+        }
+      ]
+    }
+  ]
+}

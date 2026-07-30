@@ -234,18 +234,22 @@ class MatrixSpaceParent(sage.Parent):
         base: sage.Parent,
         rows: int,
         cols: int,
+        sparse: bool = False,
     ) -> None:
         self._base = base
         self._rows = rows
         self._cols = cols
+        self._sparse = sparse
         self._name = (
             'Full MatrixSpace of ' + str(rows) + ' by ' + str(cols) +
-            ' dense matrices over ' + str(base))
+            (' sparse matrices over ' if sparse else ' dense matrices over ') +
+            str(base))
         self._construction = {
             'kind': 'matrix',
             'base': base,
             'rows': rows,
             'cols': cols,
+            'sparse': sparse,
         }
 
     def base_ring(self) -> sage.Parent:
@@ -268,6 +272,32 @@ class MatrixSpaceParent(sage.Parent):
         return identity_matrix(self._base, self._rows)
 
     one = identity_matrix
+
+    def basis(self) -> MatrixBasis:
+        return MatrixBasis(self)
+
+    def random_element(
+        self,
+        density: float = 1.0,
+        x: int = -2,
+        y: int = 2,
+    ) -> Matrix:
+        probability = float(density)
+        if probability < 0 or probability > 1:
+            raise ValueError('density must be between 0 and 1')
+        entries = []
+        for _index in range(self._rows * self._cols):
+            if _random_float() > probability:
+                entries.append(0)
+            elif getattr(
+                self._base, '_kind', None
+            ) in ['GF', 'GF_EXTENSION', 'ZMOD']:
+                entries.append(
+                    _random_int(
+                        0, int(_untyped(self._base).order()) - 1))
+            else:
+                entries.append(_random_int(x, y))
+        return self(entries)
 
     def matrix_space(
         self,
@@ -324,6 +354,22 @@ class VectorSpaceParent(sage.Parent):
 
     def dimension(self) -> int:
         return self._degree
+
+    def subspace(self, generators: Any) -> VectorSubspaceParent:
+        rows = [self(generator) for generator in generators]
+        entries = []
+        for row in rows:
+            entries.extend(row)
+        source = matrix(
+            self._base,
+            len(rows),
+            self._degree,
+            entries,
+        )
+        return VectorSubspaceParent(
+            self,
+            _canonical_row_basis(source),
+        )
 
     def __call__(self, entries: Any = 0) -> Vector:
         if isinstance(entries, Vector):
@@ -1490,7 +1536,45 @@ class Matrix(sage.Element):
         except Exception:
             pass
         if native_value is runtime.undefined:
-            raise ValueError('matrix equation has no solutions')
+            solve_base = sage.QQ if base is sage.ZZ else base
+            augmented = left_matrix.change_ring(
+                solve_base).augment(
+                    right_matrix.change_ring(solve_base))
+            reduced = augmented.echelon_form()
+            solution_entries = [
+                solve_base(0)
+                for _entry in range(
+                    self.ncols() * right_matrix.ncols())
+            ]
+            for row in range(reduced.nrows()):
+                pivot = None
+                for col in range(self.ncols()):
+                    if reduced[row, col] != 0:
+                        pivot = col
+                        break
+                if pivot is None:
+                    for col in range(right_matrix.ncols()):
+                        if reduced[
+                            row, self.ncols() + col
+                        ] != 0:
+                            raise ValueError(
+                                'matrix equation has no solutions')
+                else:
+                    for col in range(right_matrix.ncols()):
+                        solution_entries[
+                            pivot * right_matrix.ncols() + col
+                        ] = reduced[
+                            row, self.ncols() + col
+                        ]
+            solution = matrix(
+                solve_base,
+                self.ncols(),
+                right_matrix.ncols(),
+                solution_entries,
+            )
+            if vector_result:
+                return solution.column(0)
+            return solution
         result_base = sage.QQ
         if (
             _is_modular_base(base)
@@ -1695,6 +1779,45 @@ class Matrix(sage.Element):
     toString = __repr__
 
 
+@runtime.sequence_class
+class MatrixBasis:
+
+    def __init__(self, space: MatrixSpaceParent) -> None:
+        self._space = space
+
+    def __len__(self) -> int:
+        return self._space.nrows() * self._space.ncols()
+
+    def __iter__(self) -> Iterator[Matrix]:
+        return iter([self[index] for index in range(len(self))])
+
+    def __getitem__(self, index: Any) -> Matrix:
+        if isinstance(index, (list, tuple)):
+            if len(index) != 2:
+                raise IndexError(
+                    'matrix basis index must have two entries')
+            row = _normalize_named_index(
+                int(index[0]), self._space.nrows(), 'row')
+            col = _normalize_named_index(
+                int(index[1]), self._space.ncols(), 'column')
+        else:
+            position = _normalize_index(int(index), len(self))
+            row = position // self._space.ncols()
+            col = position % self._space.ncols()
+        entries = [
+            0 for _entry in range(
+                self._space.nrows() * self._space.ncols())
+        ]
+        entries[row * self._space.ncols() + col] = 1
+        return self._space(entries)
+
+    def __repr__(self) -> str:
+        return 'Basis of ' + str(self._space)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 def _canonical_row_basis(source: Matrix) -> Matrix:
     echelon = source.echelon_form()
     rows = []
@@ -1720,6 +1843,7 @@ def MatrixSpace(
     base: sage.Parent,
     rows: int,
     cols: Any = None,
+    sparse: bool = False,
 ) -> MatrixSpaceParent:
     base = _canonical_base(base)
     if (
@@ -1738,10 +1862,13 @@ def MatrixSpace(
     if by_dimensions is runtime.undefined:
         by_dimensions = runtime.map()
         _matrix_space_cache.set(base, by_dimensions)
-    key = str(rows) + 'x' + str(cols)
+    key = (
+        str(rows) + 'x' + str(cols) +
+        ('-sparse' if sparse else '-dense')
+    )
     parent = by_dimensions.get(key)
     if parent is runtime.undefined:
-        parent = MatrixSpaceParent(base, rows, cols)
+        parent = MatrixSpaceParent(base, rows, cols, sparse)
         by_dimensions.set(key, parent)
     return parent
 
@@ -1871,6 +1998,10 @@ def vector(*args: Any) -> Vector:
     if base is None:
         base = _base_for_values(entries)
     return VectorSpace(base, len(entries))(entries)
+
+
+def kernel(value: Any) -> Any:
+    return value.kernel()
 
 
 def zero_matrix(

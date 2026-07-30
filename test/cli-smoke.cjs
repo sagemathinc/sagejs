@@ -344,9 +344,11 @@ assert.match(
   run(["--python"], "R.<x> = ZZ[]\n"),
   /Unexpected token/,
 );
-assert.match(
-  run([], "f(x) = x^2\n"),
-  /requires the future symbolic-expression runtime/,
+assert.deepEqual(
+  run([], "f(x) = x^2\nf\nf(3)\nf.derivative()\n")
+    .trim()
+    .split("\n"),
+  ["x |--> x^2", "9", "x |--> 2*x"],
 );
 assert.match(
   run(["--python"], "f(x) = x**2\n"),

@@ -6,6 +6,21 @@ assrt.ok(isinstance(QQ, Parent))
 assrt.equal(parent(1), ZZ)
 assrt.equal(parent(BigInt(2)), ZZ)
 assrt.equal(parent(QQ(1, 3)), QQ)
+assrt.equal(factorial(10), 3628800)
+assrt.equal(binomial(10, 3), 120)
+assrt.equal(valuation(2 ** 12 * 3, 2), 12)
+assrt.deepEqual(xgcd(12, 15), (3, -1, 1))
+assrt.equal(inverse_mod(3, 4000), 2667)
+assrt.equal(euler_phi(4000), 1600)
+assrt.equal(sigma(28, 0), 6)
+assrt.equal(sigma(28), 56)
+assrt.equal(crt(2, 1, 3, 5), 11)
+assrt.deepEqual(list(Partitions(5)), [
+    [5], [4, 1], [3, 2], [3, 1, 1],
+    [2, 2, 1], [2, 1, 1, 1], [1, 1, 1, 1, 1],
+])
+R97 = IntegerModRing(97)
+assrt.ok(R97(33).rational_reconstruction() == QQ(2, 3))
 R = PolynomialRing(ZZ, 'x')
 assrt.equal(R, PolynomialRing(ZZ, 'x'))
 assrt.deepEqual(
@@ -342,6 +357,19 @@ assrt.equal(
 assrt.ok(rational_polynomial.factor().value() == rational_polynomial)
 assrt.ok(rational_polynomial // (qx - 1) == (
     QQ(3, 10) * (qx - 1) * (qx + 2)))
+fraction = (qx ** 3 + 1) / (qx ** 2 - 17)
+assrt.equal(repr(fraction), '(q^3 + 1)/(q^2 - 17)')
+assrt.equal(
+    repr(fraction.parent()),
+    'Fraction Field of Univariate Polynomial Ring in q over Rational Field')
+assrt.ok(fraction.numerator() == qx ** 3 + 1)
+assrt.ok(fraction.denominator() == qx ** 2 - 17)
+assrt.ok(fraction + 1 == (
+    (qx ** 3 + qx ** 2 - 16) / (qx ** 2 - 17)))
+assrt.ok(1 / (qx - 1) == QQx.fraction_field()(1, qx - 1))
+
+assrt.ok(GF(5)(GF(2)(1)) == GF(5)(1))
+assrt.ok(GF(2)(GF(5)(2)) == GF(2)(0))
 
 # These are the MPFR/MPC parents and display semantics used by SageMath.
 assrt.ok(RealField(53) is RR)

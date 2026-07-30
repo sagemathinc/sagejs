@@ -1,0 +1,183 @@
+{
+  "fixture": "guided-tour.doctests.json",
+  "skip": {},
+  "match": {
+    "src/doc/en/tutorial/tour_algebra.rst:93": {
+      "accepted": ["[theta == 1/4*pi]\n"]
+    },
+    "src/doc/en/tutorial/tour_algebra.rst:100": {
+      "approx": {"absolute": 1e-12}
+    },
+    "src/doc/en/tutorial/tour_algebra.rst:120": {
+      "accepted": [
+        "16*sin(x^2)*x^4 - 48*cos(x^2)*x^2 - 12*sin(x^2)\n"
+      ]
+    },
+    "src/doc/en/tutorial/tour_algebra.rst:254": {
+      "accepted": [
+        "[[X == 3*(s + (s + 2*s/(s^2 + 3))/(s^2 - 2/(s^2 + 3) + 2))/(s^2 + 3), Y == 3*(s + 2*s/(s^2 + 3))/(s^2 - 2/(s^2 + 3) + 2)]]\n",
+        "[[X == 3*(s + (s + 2*s/(s^2 + 3))/(s^2 + -2/(s^2 + 3) + 2))/(s^2 + 3), Y == 3*(s + 2*s/(s^2 + 3))/(s^2 + -2/(s^2 + 3) + 2)]]\n"
+      ]
+    },
+    "src/doc/en/tutorial/tour_assignment.rst:53": {
+      "approx": {"absolute": 1e-14}
+    },
+    "src/doc/en/tutorial/tour_assignment.rst:55": {
+      "approx": {"absolute": 1e-14}
+    },
+    "src/doc/en/tutorial/tour_assignment.rst:57": {
+      "accepted": ["sqrt(3)/2\n"]
+    },
+    "src/doc/en/tutorial/tour_coercion.rst:402": {
+      "accepted": [
+        "TypeError: no canonical coercion between polynomial rings in x and y\n"
+      ]
+    },
+    "src/doc/en/tutorial/tour_linalg.rst:235": {
+      "accepted": ["TypeError: unexpected keyword argument 'Sparse'\n"]
+    }
+  },
+  "xfail": {},
+  "xfailGroups": [
+    {
+      "reason": "requires a multivariate polynomial and algebraic-geometry subsystem",
+      "file": "src/doc/en/tutorial/tour_advanced.rst",
+      "lines": [15, 16, 17, 19, 22, 35, 36, 56, 57, 58, 62, 71]
+    },
+    {
+      "reason": "requires an elliptic-curve subsystem, algebraic closures, and database integration",
+      "file": "src/doc/en/tutorial/tour_advanced.rst",
+      "lines": [120, 123, 126, 129, 132, 135, 148, 149, 151, 152, 154, 156, 158, 167, 169, 171, 181, 182, 191, 193, 195, 206, 207, 210, 229, 230, 233, 234, 236, 238, 239, 246, 247, 249]
+    },
+    {
+      "reason": "requires Dirichlet groups, characters, and exact cyclotomic-value infrastructure",
+      "file": "src/doc/en/tutorial/tour_advanced.rst",
+      "lines": [276, 277, 282, 285, 295, 296, 298, 301, 303, 305, 307, 309, 321, 325, 326, 329, 338, 339, 340, 350, 354, 356, 358, 368, 369, 371, 373, 375, 377]
+    },
+    {
+      "reason": "requires a deliberate modular-forms and modular-symbols implementation",
+      "file": "src/doc/en/tutorial/tour_advanced.rst",
+      "lines": [399, 400, 402, 404, 412, 413, 415, 416, 419, 423, 425, 427, 435, 438, 447, 448, 451, 454, 455, 458, 465, 466, 467, 470, 472, 476, 478, 486, 487, 490, 492, 494, 496, 498, 501, 504, 507, 509, 511, 522, 526, 530]
+    },
+    {
+      "reason": "Cortex does not solve this coupled nonlinear symbolic system",
+      "file": "src/doc/en/tutorial/tour_algebra.rst",
+      "lines": [67, 77]
+    },
+    {
+      "reason": "requires a general symbolic partial-fraction algorithm",
+      "file": "src/doc/en/tutorial/tour_algebra.rst",
+      "lines": [152]
+    },
+    {
+      "reason": "requires the differential-equation and Laplace-transform CAS layer historically supplied by Maxima",
+      "file": "src/doc/en/tutorial/tour_algebra.rst",
+      "lines": [168, 184, 222, 236, 237, 264, 266]
+    },
+    {
+      "reason": "requires general multivariate polynomials over approximate fields and Sage's legacy Euler plotting helpers",
+      "file": "src/doc/en/tutorial/tour_algebra.rst",
+      "lines": [362, 363, 364, 384, 394]
+    },
+    {
+      "reason": "requires arbitrary-precision special-function evaluation rather than machine-precision Cortex evaluation",
+      "file": "src/doc/en/tutorial/tour_algebra.rst",
+      "lines": [412]
+    },
+    {
+      "reason": "requires the external Maxima interface and its expression conversion model",
+      "file": "src/doc/en/tutorial/tour_algebra.rst",
+      "lines": [425, 427]
+    },
+    {
+      "reason": "Sage.js deliberately uses optimized JavaScript integer identity and compact runtime class names",
+      "file": "src/doc/en/tutorial/tour_assignment.rst",
+      "lines": [91, 94]
+    },
+    {
+      "reason": "requires the multivariate polynomial element model",
+      "file": "src/doc/en/tutorial/tour_coercion.rst",
+      "lines": [43, 44, 45]
+    },
+    {
+      "reason": "Sage concrete polynomial element classes and selectable NTL implementation identities are not part of the portable FLINT object model",
+      "file": "src/doc/en/tutorial/tour_coercion.rst",
+      "lines": [57, 79]
+    },
+    {
+      "reason": "requires Sage's category framework and its generated parent/element class hierarchy",
+      "file": "src/doc/en/tutorial/tour_coercion.rst",
+      "lines": [98, 100, 102, 104, 116, 118, 124, 126, 128, 130]
+    },
+    {
+      "reason": "requires multivariate polynomial parent caching over approximate fields",
+      "file": "src/doc/en/tutorial/tour_coercion.rst",
+      "lines": [145]
+    },
+    {
+      "reason": "requires Sage's RingElement category class hierarchy",
+      "file": "src/doc/en/tutorial/tour_coercion.rst",
+      "lines": [161]
+    },
+    {
+      "reason": "Sage.js intentionally interns optimized small JavaScript integers instead of allocating Sage Integer wrappers",
+      "file": "src/doc/en/tutorial/tour_coercion.rst",
+      "lines": [172, 174]
+    },
+    {
+      "reason": "requires multivariate polynomial coercion maps and generator-by-position conversion semantics",
+      "file": "src/doc/en/tutorial/tour_coercion.rst",
+      "lines": [275, 276, 277, 279, 281, 283, 294, 295, 297, 299, 301, 344, 346, 348]
+    },
+    {
+      "reason": "symbolic functions are native compiled callables rather than Sage's Function_sin wrapper class",
+      "file": "src/doc/en/tutorial/tour_functions.rst",
+      "lines": [89]
+    },
+    {
+      "reason": "requires permutation and finitely generated abelian group subsystems",
+      "file": "src/doc/en/tutorial/tour_groups.rst",
+      "lines": [14, 15, 17, 19, 21, 24, 26, 28, 35, 36, 49, 50, 51, 59, 60, 62, 67, 74, 75, 76, 78, 80, 82, 84]
+    },
+    {
+      "reason": "exact eigensystems require an algebraic-closure and extension-field eigenvector strategy",
+      "file": "src/doc/en/tutorial/tour_linalg.rst",
+      "lines": [62, 65]
+    },
+    {
+      "reason": "requires an explicit approximate real/complex matrix backend and eigensystem policy",
+      "file": "src/doc/en/tutorial/tour_linalg.rst",
+      "lines": [81, 88, 99, 100, 102, 103]
+    },
+    {
+      "reason": "requires p-adic fields/rings and general number fields beyond the current quadratic-field slice",
+      "file": "src/doc/en/tutorial/tour_numtheory.rst",
+      "lines": [120, 122, 126, 141, 142, 149, 156, 159, 161, 163, 166]
+    },
+    {
+      "reason": "requires Laurent and power-series rings with precision propagation",
+      "file": "src/doc/en/tutorial/tour_polynomial.rst",
+      "lines": [154, 156, 196, 198, 199, 201, 203, 211]
+    },
+    {
+      "reason": "requires multivariate polynomial rings and a Singular-class ideal/Groebner backend",
+      "file": "src/doc/en/tutorial/tour_polynomial.rst",
+      "lines": [223, 231, 233, 241, 248, 249, 251, 259, 260, 263, 275, 276, 277, 278, 289, 292, 306, 308, 322, 325]
+    },
+    {
+      "reason": "requires approximate-coefficient polynomial arithmetic and numerical root factorization",
+      "file": "src/doc/en/tutorial/tour_rings.rst",
+      "lines": [33, 43]
+    },
+    {
+      "reason": "requires a p-adic ring implementation",
+      "file": "src/doc/en/tutorial/tour_rings.rst",
+      "lines": [140]
+    },
+    {
+      "reason": "requires an algebraic closure of the rational field",
+      "file": "src/doc/en/tutorial/tour_rings.rst",
+      "lines": [142]
+    }
+  ]
+}

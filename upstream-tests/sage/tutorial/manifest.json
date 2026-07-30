@@ -1,0 +1,96 @@
+{
+  "schema": "sagejs.sage-tutorial-manifest/v1",
+  "generatedBy": "scripts/extract-sage-tutorial.cjs",
+  "source": {
+    "repository": "https://github.com/sagemath/sage.git",
+    "revision": "09472ff530d280d0c9f44fdc5a9c3e856ed95b37",
+    "path": "src/doc/en/tutorial/tour*.rst",
+    "license": "GPL-2.0-or-later"
+  },
+  "fixture": "guided-tour.doctests.json",
+  "summary": {
+    "files": 13,
+    "groups": 12,
+    "examples": 662
+  },
+  "sourceFiles": [
+    {
+      "path": "src/doc/en/tutorial/tour.rst",
+      "sha256": "b9c5271d9b0fc7925dd5cf80a06d60b95c1297f75b72910f4149c9816ff7a3fc",
+      "lines": 32,
+      "examples": 0
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_advanced.rst",
+      "sha256": "24a4c696736e4cccd7d2ae40152466d326f631641ea070cef4ba89b7c675c5ef",
+      "lines": 534,
+      "examples": 120
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_algebra.rst",
+      "sha256": "3c94a48c6e8da9d382e51fa54635b0276f7af435d9659d25f74c8e9e55c02658",
+      "lines": 436,
+      "examples": 72
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_assignment.rst",
+      "sha256": "2416c6678d2a9f2c120f3865aec114690cfd380c4325d97ea18d5190d639a7a1",
+      "lines": 103,
+      "examples": 28
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_coercion.rst",
+      "sha256": "7e3c30c4a5a079ef81f9b02e2553b10e57a51da837021a9783111e6ba5d573e3",
+      "lines": 412,
+      "examples": 61
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_functions.rst",
+      "sha256": "ec6caaa49f8150fd2660aa5a94f8181fb324ea5a91ae6ba23ff8f4aaa6cda600",
+      "lines": 244,
+      "examples": 57
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_groups.rst",
+      "sha256": "cef3e7dea9b1a23492805826f08fceb8fb49ec5544bf33a2b7382e2eb1af7f40",
+      "lines": 86,
+      "examples": 25
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_help.rst",
+      "sha256": "7714256dc5d40daa4dc8aea99234bee597a2b132db1043f78fb9e16870fe048e",
+      "lines": 359,
+      "examples": 40
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_linalg.rst",
+      "sha256": "e343fbc9f2891573a9b3d9d0e23af25437f2c8741ca35779307faac441e29eac",
+      "lines": 239,
+      "examples": 52
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_numtheory.rst",
+      "sha256": "c9a237b91bde1404b7735e2ef9a1eb25f1d5562afd7a18a723c413fb2403fd4d",
+      "lines": 168,
+      "examples": 47
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_plotting.rst",
+      "sha256": "c5bec66ea55db922b4b13aea877ae95b59c7e5c868dc94716f01b61108d02f41",
+      "lines": 253,
+      "examples": 54
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_polynomial.rst",
+      "sha256": "ebd9bad5d602ebc7f5b30b84485e813e9f3147858ece124b9e8c15dbd943dd7e",
+      "lines": 328,
+      "examples": 74
+    },
+    {
+      "path": "src/doc/en/tutorial/tour_rings.rst",
+      "sha256": "51ca51d2f5e33c1b6553bc14d5d22480919f9e87929779c1c472f33963602e49",
+      "lines": 144,
+      "examples": 32
+    }
+  ]
+}

@@ -46,9 +46,9 @@ class FiniteFieldElement(sage.Element):
 
     def __init__(self, parent: Any, value: Any) -> None:
         if isinstance(value, FiniteFieldElement):
-            if value._parent is not parent:
-                raise TypeError(
-                    'no canonical conversion between distinct finite fields')
+            # Explicit conversion lifts the canonical integer residue before
+            # reducing in the target prime field.  This does not introduce a
+            # coercion map between fields of different characteristic.
             value = value._value
 
         if isinstance(value, sage.Rational):
@@ -178,6 +178,65 @@ class FiniteFieldElement(sage.Element):
         return runtime.bigint_gcd(
             self._value, self._parent._modulus
         ) == runtime.bigint(1)
+
+    def modulus(self) -> int:
+        return runtime.normalize_integer(self._parent._modulus)
+
+    def is_square(self) -> bool:
+        if self.is_zero():
+            return True
+        if self._parent.is_field():
+            exponent = (
+                self._parent._modulus - runtime.bigint(1)
+            ) // runtime.bigint(2)
+            return runtime.modular_power(
+                self._value,
+                exponent,
+                self._parent._modulus,
+            ) == runtime.bigint(1)
+        candidate = runtime.bigint(0)
+        while candidate < self._parent._modulus:
+            if (
+                candidate * candidate
+            ) % self._parent._modulus == self._value:
+                return True
+            candidate += runtime.bigint(1)
+        return False
+
+    def rational_reconstruction(self) -> Any:
+        modulus = self._parent._modulus
+        residue = self._value
+        bound = runtime.bigint(
+            runtime.math.floor(
+                runtime.math.sqrt(
+                    runtime.number(modulus) / 2.0
+                )
+            )
+        )
+        old_r, current_r = modulus, residue
+        old_t, current_t = runtime.bigint(0), runtime.bigint(1)
+        while current_r > bound:
+            quotient = runtime.native_div(old_r, current_r)
+            next_r = runtime.native_sub(
+                old_r, runtime.native_mul(quotient, current_r))
+            old_r = current_r
+            current_r = next_r
+            next_t = runtime.native_sub(
+                old_t, runtime.native_mul(quotient, current_t))
+            old_t = current_t
+            current_t = next_t
+        if current_t < 0:
+            current_r = -current_r
+            current_t = -current_t
+        if (
+            current_t == 0
+            or current_t > bound
+            or runtime.bigint_gcd(current_r, current_t)
+                != runtime.bigint(1)
+        ):
+            raise ArithmeticError(
+                'rational reconstruction does not exist')
+        return runtime.rational_class(current_r, current_t)
 
     def inverse_of_unit(self) -> FiniteFieldElement:
         if not self.is_unit():
@@ -463,6 +522,7 @@ class FiniteField_prime_modn(sage.Parent):
 class IntegerModRing(sage.Parent):
 
     def __init__(self, order: int) -> None:
+        order = runtime.integer_bigint(order)
         self._name = (
             'Ring of integers modulo ' + runtime.string(order))
         self._kind = 'ZMOD'

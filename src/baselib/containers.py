@@ -251,6 +251,16 @@ def _list_init(
         runtime.reflect.apply(_list_extend, self, [iterable])
 
 
+def _list_static_init(
+    self: Any,
+    iterable: Any = runtime.undefined,
+) -> None:
+    """Unbound descriptor form used by ``list.__init__(self, values)``."""
+    self.length = 0
+    if iterable is not runtime.undefined:
+        runtime.reflect.apply(_list_extend, self, [iterable])
+
+
 @runtime.native_method
 def _list_index(
     self: Any,
@@ -1539,6 +1549,8 @@ runtime.reflect.set(
 list_constructor = ρσ_list_constructor
 runtime.reflect.set(
     list_constructor, 'prototype', _list_prototype())
+runtime.reflect.set(
+    list_constructor, '__init__', _list_static_init)
 runtime.reflect.set(
     list_constructor, 'append', _list_type_append)
 runtime.reflect.set(

@@ -68,6 +68,14 @@ class PolynomialElement(sage.Element):
     def __mul__(self, other: object) -> Any:
         return runtime.coercion_model.binOp('mul', self, other)
 
+    def _truediv_(
+        self, other: PolynomialElement,
+    ) -> RationalFunctionElement:
+        return self._parent.fraction_field()(self, other)
+
+    def __truediv__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('truediv', self, other)
+
     def __neg__(self) -> PolynomialElement:
         if self._parent.base_ring()._kind == 'GF_EXTENSION':
             return self._new(
@@ -270,17 +278,26 @@ class PolynomialElement(sage.Element):
 @runtime.callable_instance_class
 class PolynomialRingParent(sage.Parent):
 
-    def __init__(self, base: sage.Parent, variable: str) -> None:
+    def __init__(
+        self,
+        base: sage.Parent,
+        variable: str,
+        sparse: bool = False,
+    ) -> None:
         self._name = (
+            ('Sparse ' if sparse else '') +
             'Univariate Polynomial Ring in ' + variable +
             ' over ' + str(base))
         self._base = base
         self._variable = variable
+        self._sparse = sparse
         self._construction = {
             'kind': 'polynomial',
             'base': base,
             'variable': variable,
+            'sparse': sparse,
         }
+        self._fraction_field = runtime.undefined
 
     def base_ring(self) -> sage.Parent:
         return self._base
@@ -307,11 +324,47 @@ class PolynomialRingParent(sage.Parent):
             native_value = backend.nmodPolyGen(self._base._modulus)
         return PolynomialElement(self, native_value)
 
+    def objgen(self) -> tuple[Any, PolynomialElement]:
+        return runtime.math_tuple([self, self.gen()])
+
+    def objgens(self) -> tuple[Any, Any]:
+        return runtime.math_tuple([
+            self,
+            runtime.math_tuple([self.gen()]),
+        ])
+
+    def gens(self) -> Any:
+        return runtime.math_tuple([self.gen()])
+
+    def fraction_field(self) -> RationalFunctionFieldParent:
+        if self._fraction_field is runtime.undefined:
+            self._fraction_field = RationalFunctionFieldParent(self)
+        return self._fraction_field
+
     def _first_ngens(self, count: int) -> list[PolynomialElement]:
         if count != 1:
             raise ValueError(
                 'a univariate polynomial ring has exactly one generator')
         return [self.gen()]
+
+    def __contains__(self, value: object) -> bool:
+        return (
+            isinstance(value, PolynomialElement)
+            and value._parent is self
+        )
+
+    def cyclotomic_polynomial(self, degree: Any) -> PolynomialElement:
+        if not runtime.is_exact_integer(degree):
+            raise TypeError('cyclotomic polynomial degree must be an integer')
+        n = int(degree)
+        if n < 1:
+            raise ValueError('cyclotomic polynomial degree must be positive')
+        generator = self.gen()
+        answer = generator ** n - 1
+        for divisor in sage.divisors(n):
+            if divisor < n:
+                answer = answer // self.cyclotomic_polynomial(divisor)
+        return answer
 
     def _constant(self, value: Any) -> PolynomialElement:
         backend = runtime.flint_backend()
@@ -355,9 +408,19 @@ class PolynomialRingParent(sage.Parent):
         if value._parent is self:
             return value
         source = value._parent
-        if (source._construction is runtime.undefined
-                or source._construction.kind != 'polynomial'
-                or source.variable_name() != self.variable_name()):
+        if (
+            source._construction is runtime.undefined
+            or source._construction.kind != 'polynomial'
+        ):
+            raise TypeError('incompatible polynomial rings')
+        if source.base_ring() is self._base:
+            result = self(0)
+            generator = self.gen()
+            for coefficient in reversed(value.coefficients()):
+                result = result._mul_(generator)._add_(
+                    self(coefficient))
+            return result
+        if source.variable_name() != self.variable_name():
             raise TypeError('incompatible polynomial rings')
         if source.base_ring() is sage.ZZ and self._base is sage.QQ:
             return PolynomialElement(
@@ -399,6 +462,128 @@ class PolynomialRingParent(sage.Parent):
         return self._constant(plan.leftMap(value))
 
 
+@runtime.callable_instance_class
+class RationalFunctionFieldParent(sage.Parent):
+
+    def __init__(self, polynomial_ring: PolynomialRingParent) -> None:
+        self._polynomial_ring = polynomial_ring
+        self._name = 'Fraction Field of ' + str(polynomial_ring)
+        self._construction = {
+            'kind': 'fraction_field',
+            'base': polynomial_ring,
+        }
+
+    def __call__(
+        self,
+        numerator: Any = 0,
+        denominator: Any = 1,
+    ) -> RationalFunctionElement:
+        if (
+            isinstance(numerator, RationalFunctionElement)
+            and numerator._parent is self
+            and denominator == 1
+        ):
+            return numerator
+        ring = self._polynomial_ring
+        return RationalFunctionElement(
+            self, ring(numerator), ring(denominator))
+
+    def gen(self) -> RationalFunctionElement:
+        return self(self._polynomial_ring.gen())
+
+
+@runtime.lightweight_math_class
+class RationalFunctionElement(sage.Element):
+
+    def __init__(
+        self,
+        parent: RationalFunctionFieldParent,
+        numerator: PolynomialElement,
+        denominator: PolynomialElement,
+    ) -> None:
+        if denominator == 0:
+            raise ZeroDivisionError('rational function denominator is zero')
+        self._parent = parent
+        self._numerator = numerator
+        self._denominator = denominator
+        runtime.object.freeze(self)
+
+    def _add_(
+        self, right: RationalFunctionElement,
+    ) -> RationalFunctionElement:
+        return self._parent(
+            self._numerator * right._denominator
+            + right._numerator * self._denominator,
+            self._denominator * right._denominator,
+        )
+
+    def _sub_(
+        self, right: RationalFunctionElement,
+    ) -> RationalFunctionElement:
+        return self._parent(
+            self._numerator * right._denominator
+            - right._numerator * self._denominator,
+            self._denominator * right._denominator,
+        )
+
+    def _mul_(
+        self, right: RationalFunctionElement,
+    ) -> RationalFunctionElement:
+        return self._parent(
+            self._numerator * right._numerator,
+            self._denominator * right._denominator,
+        )
+
+    def _truediv_(
+        self, right: RationalFunctionElement,
+    ) -> RationalFunctionElement:
+        return self._parent(
+            self._numerator * right._denominator,
+            self._denominator * right._numerator,
+        )
+
+    def __add__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('add', self, other)
+
+    def __sub__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('sub', self, other)
+
+    def __mul__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('mul', self, other)
+
+    def __truediv__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('truediv', self, other)
+
+    def __neg__(self) -> RationalFunctionElement:
+        return self._parent(-self._numerator, self._denominator)
+
+    def __eq__(self, other: object) -> bool:
+        try:
+            right = self._parent(other)
+        except Exception:
+            return False
+        return (
+            self._numerator * right._denominator
+            == right._numerator * self._denominator
+        )
+
+    def numerator(self) -> PolynomialElement:
+        return self._numerator
+
+    def denominator(self) -> PolynomialElement:
+        return self._denominator
+
+    def __repr__(self) -> str:
+        return (
+            self._numerator._factorization_repr()
+            + '/'
+            + self._denominator._factorization_repr()
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 ρσ_polynomial_ring_cache = runtime.map()
 
 
@@ -406,6 +591,8 @@ def PolynomialRing(
     base: sage.Parent,
     variable: Any = None,
     names: Any = None,
+    sparse: bool = False,
+    implementation: Any = None,
 ) -> PolynomialRingParent:
     if (variable is not None and runtime.jstype(variable) == 'object'
             and variable[runtime.kwargs_symbol]):
@@ -439,11 +626,45 @@ def PolynomialRing(
     if by_variable is runtime.undefined:
         by_variable = runtime.map()
         ρσ_polynomial_ring_cache.set(base, by_variable)
-    parent = by_variable.get(variable)
+    cache_key = variable + ('|sparse' if sparse else '|dense')
+    parent = by_variable.get(cache_key)
     if parent is runtime.undefined:
-        parent = PolynomialRingParent(base, variable)
-        by_variable.set(variable, parent)
+        parent = PolynomialRingParent(base, variable, sparse)
+        by_variable.set(cache_key, parent)
     return parent
+
+
+def objgen(parent: Any) -> Any:
+    return parent.objgen()
+
+
+def objgens(parent: Any) -> Any:
+    return parent.objgens()
+
+
+def gen(parent: Any, index: int = 0) -> Any:
+    if index == 0:
+        return parent.gen()
+    return parent.gen(index)
+
+
+def polygen(base: sage.Parent, name: str = 'x') -> Any:
+    return PolynomialRing(base, name).gen()
+
+
+def chebyshev_U(degree: Any, value: Any) -> Any:
+    degree = int(degree)
+    if degree < 0:
+        raise ValueError('Chebyshev degree must be nonnegative')
+    if degree == 0:
+        return 1
+    previous = 1
+    current = 2 * value
+    for _index in range(1, degree):
+        next_value = 2 * value * current - previous
+        previous = current
+        current = next_value
+    return current
 
 
 # Stable compiler/runtime alias: library modules may legitimately bind a
@@ -453,3 +674,7 @@ def PolynomialRing(
 
 runtime.set_class_repr(
     PolynomialElement, "<class 'PolynomialElement'>")
+runtime.set_class_repr(
+    RationalFunctionElement,
+    "<class 'sage.rings.fraction_field_element.FractionFieldElement'>",
+)

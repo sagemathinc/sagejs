@@ -26,6 +26,7 @@ _FUNCTION_NAMES = {
 }
 _CONSTANT_NAMES = {
     "ExponentialE": "e",
+    "ImaginaryUnit": "I",
     "Pi": "pi",
 }
 
@@ -65,6 +66,37 @@ def _join_text(separator: str, values: Sequence[str]) -> str:
     return text
 
 
+def _positive_term(value: Any) -> Any:
+    """Return the positive form of a syntactically negative MathJSON term."""
+    if (
+        runtime.array.isArray(value)
+        and len(value) == 2
+        and value[0] == "Negate"
+    ):
+        return value[1]
+    if runtime.jstype(value) in ("number", "bigint") and value < 0:
+        return -value
+    if (
+        runtime.array.isArray(value)
+        and len(value) >= 3
+        and value[0] == "Multiply"
+    ):
+        first = value[1]
+        replacement = runtime.undefined
+        if runtime.jstype(first) in ("number", "bigint") and first < 0:
+            replacement = -first
+        elif (
+            runtime.array.isArray(first)
+            and len(first) == 3
+            and first[0] == "Rational"
+            and first[1] < 0
+        ):
+            replacement = ["Rational", -first[1], first[2]]
+        if replacement is not runtime.undefined:
+            return ["Multiply", replacement] + list(value[2:])
+    return runtime.undefined
+
+
 def _format_expression(value: Any, surrounding: int = 0) -> str:
     value_type = runtime.jstype(value)
     if value_type in ("number", "bigint"):
@@ -88,20 +120,13 @@ def _format_expression(value: Any, surrounding: int = 0) -> str:
         pieces = []
         for index in range(len(operands)):
             argument = operands[index]
-            negative = (
-                runtime.array.isArray(argument)
-                and len(argument) == 2
-                and argument[0] == "Negate"
-            )
-            numeric_negative = (
-                runtime.jstype(argument) in ("number", "bigint") and argument < 0
-            )
+            positive = _positive_term(argument)
             if index == 0:
                 pieces.append(_format_expression(argument, precedence))
-            elif negative:
-                pieces.append(" - " + _format_expression(argument[1], precedence + 1))
-            elif numeric_negative:
-                pieces.append(" - " + str(-argument))
+            elif positive is not runtime.undefined:
+                pieces.append(
+                    " - " + _format_expression(
+                        positive, precedence + 1))
             else:
                 pieces.append(" + " + _format_expression(argument, precedence))
         text = _join_text("", pieces)
@@ -133,6 +158,22 @@ def _format_expression(value: Any, surrounding: int = 0) -> str:
         text = (
             _format_expression(operands[0], precedence)
             + "^"
+            + _format_expression(operands[1], precedence)
+        )
+    elif head in [
+        "Equal", "Less", "LessEqual", "Greater", "GreaterEqual"
+    ]:
+        precedence = 20
+        operators = {
+            "Equal": " == ",
+            "Less": " < ",
+            "LessEqual": " <= ",
+            "Greater": " > ",
+            "GreaterEqual": " >= ",
+        }
+        text = (
+            _format_expression(operands[0], precedence)
+            + operators[head]
             + _format_expression(operands[1], precedence)
         )
     else:
@@ -198,6 +239,9 @@ class SymbolicRing(sage.Parent):
             return value
         return Expression(_expression_tree(value))
 
+    def _var(self, names: str) -> Any:
+        return symbolic_variable(names)
+
 
 @runtime.lightweight_math_class
 class Expression(sage.Element):
@@ -225,7 +269,8 @@ class Expression(sage.Element):
         return self._canonical("Divide", other)
 
     def _eq_(self, other: Expression) -> bool:
-        return runtime.json.stringify(self._tree) == runtime.json.stringify(other._tree)
+        return bool(_call_backend(
+            "same", [self._tree, other._tree]))
 
     def __add__(self, other: object) -> Any:
         return runtime.coercion_model.binOp("add", self, other)
@@ -239,8 +284,20 @@ class Expression(sage.Element):
     def __truediv__(self, other: object) -> Any:
         return runtime.coercion_model.binOp("truediv", self, other)
 
-    def __eq__(self, other: object) -> bool:
-        return runtime.coercion_model.equals(self, other)
+    def __eq__(self, other: object) -> Any:
+        try:
+            right = SR(other)
+        except Exception:
+            return False
+        if self._eq_(right):
+            return True
+        return self._relation('Equal', right)
+
+    def __bool__(self) -> bool:
+        evaluated = _call_backend('evaluate', [self._tree])
+        if evaluated is True:
+            return True
+        return False
 
     def __neg__(self) -> Expression:
         return Expression(_call_backend("canonical", [["Negate", self._tree]]))
@@ -348,11 +405,19 @@ class Expression(sage.Element):
         maxiter: int = 100,
         xtol: float = 1e-12,
     ) -> float:
-        variables = self.variables()
+        expression = self
+        if (
+            runtime.array.isArray(self._tree)
+            and len(self._tree) == 3
+            and self._tree[0] == 'Equal'
+        ):
+            expression = Expression([
+                'Subtract', self._tree[1], self._tree[2]])
+        variables = expression.variables()
         if len(variables) != 1:
             raise ValueError(
                 'find_root() requires an expression in one variable')
-        evaluator = fast_callable(self, vars=variables)
+        evaluator = fast_callable(expression, vars=variables)
         left = float(lower)
         right = float(upper)
         left_value = float(evaluator(left))
@@ -409,17 +474,39 @@ class Expression(sage.Element):
             variables.append(Expression(name))
         return runtime.math_tuple(variables)
 
-    def n(self) -> Any:
-        return _call_backend("numeric", [self._tree])
+    def _arguments_tuple(self) -> Any:
+        return runtime.math_tuple([])
+
+    def n(
+        self,
+        prec: Any = None,
+        digits: Any = None,
+    ) -> Any:
+        if digits is not None:
+            decimal_digits = int(digits)
+        elif prec is None:
+            decimal_digits = 15
+        else:
+            decimal_digits = max(
+                1,
+                int(
+                    runtime.math.floor(
+                        (int(prec) - 1) * 0.3010299956639812
+                    )
+                ),
+            )
+        result = _call_backend(
+            "numeric", [self._tree, decimal_digits])
+        return NumericalApproximation(
+            runtime.reflect.get(result, 'text'),
+            runtime.reflect.get(result, 'value'),
+        )
 
     numerical_approx = n
     N = n
 
     def __float__(self) -> float:
-        value = self.n()
-        if runtime.jstype(value) != "number":
-            raise TypeError("symbolic expression does not have a real value")
-        return value
+        return float(self.n())
 
     def _plot_fast_callable(self, variable: Any) -> Any:
         if isinstance(variable, (list, tuple)):
@@ -429,7 +516,116 @@ class Expression(sage.Element):
         return fast_callable(self, vars=variables)
 
 
+class CallableExpression(Expression):
+    """A symbolic expression with an explicit ordered argument tuple."""
+
+    def __init__(self, argument_values: Any, value: Any) -> None:
+        self._arguments = runtime.math_tuple([
+            SR(argument) for argument in argument_values
+        ])
+        Expression.__init__(self, _expression_tree(value))
+
+    def _arguments_tuple(self) -> Any:
+        return self._arguments
+
+    def __call__(
+        self,
+        *values: Any,
+        **substitutions: Any,
+    ) -> Expression:
+        if len(values) > len(self._arguments):
+            raise TypeError('too many positional substitutions')
+        replacements = runtime.object.create(None)
+        for index in range(len(values)):
+            runtime.reflect.set(
+                replacements,
+                _symbol_name(self._arguments[index]),
+                _expression_tree(values[index]),
+            )
+        for key in runtime.object.keys(substitutions):
+            runtime.reflect.set(
+                replacements,
+                key,
+                _expression_tree(
+                    runtime.reflect.get(substitutions, key)),
+            )
+        return Expression(
+            _call_backend('substitute', [self._tree, replacements]))
+
+    def derivative(
+        self,
+        variable: Any = None,
+        degree: int = 1,
+    ) -> CallableExpression:
+        if variable is None:
+            if len(self._arguments) == 0:
+                raise ValueError(
+                    'you must specify a variable for differentiation')
+            variable = self._arguments[0]
+        result = Expression.derivative(
+            self, variable, degree)
+        return CallableExpression(self._arguments, result)
+
+    diff = derivative
+
+    def __repr__(self) -> str:
+        names = [
+            _symbol_name(argument)
+            for argument in self._arguments
+        ]
+        left = (
+            names[0]
+            if len(names) == 1
+            else '(' + ', '.join(names) + ')'
+        )
+        return left + ' |--> ' + _format_expression(self._tree)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class UndefinedSymbolicFunction:
+    """A named symbolic function which can be applied to expressions."""
+
+    def __init__(self, name: str) -> None:
+        self._name = str(name)
+        runtime.object.freeze(self)
+
+    def __call__(self, *values: Any) -> Expression:
+        return Expression(
+            [self._name]
+            + [_expression_tree(value) for value in values]
+        )
+
+    def __repr__(self) -> str:
+        return self._name
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 SR = SymbolicRing()
+
+
+@runtime.lightweight_math_class
+class NumericalApproximation:
+
+    def __init__(self, text: str, value: Any) -> None:
+        self._text = text
+        self._value = value
+        runtime.object.freeze(self)
+
+    def __repr__(self) -> str:
+        return self._text
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def __float__(self) -> float:
+        if runtime.jstype(self._value) != 'number':
+            raise TypeError('numerical approximation is not real')
+        return self._value
 
 
 def _to_symbolic(value: Any) -> Expression:
@@ -463,13 +659,14 @@ def symbolic_variable(names: str) -> Any:
     """Create one or more symbolic variables."""
     if not isinstance(names, str):
         raise TypeError("variable names must be a string")
-    split_names = names.replace(",", " ").split(" ")
     variables = []
-    for name in split_names:
-        if name:
-            variable = Expression(name)
-            runtime.reflect.set(runtime.global_object, name, variable)
-            variables.append(variable)
+    for comma_part in names.split(","):
+        for name in comma_part.split(" "):
+            if name:
+                variable = Expression(name)
+                runtime.reflect.set(
+                    runtime.global_object, name, variable)
+                variables.append(variable)
     if len(variables) == 0:
         raise ValueError("at least one variable name is required")
     if len(variables) == 1:
@@ -477,15 +674,49 @@ def symbolic_variable(names: str) -> Any:
     return runtime.math_tuple(variables)
 
 
+def symbolic_function(
+    argument_values: Any,
+    value: Any,
+) -> CallableExpression:
+    return CallableExpression(argument_values, value)
+
+
+def symbolic_function_factory(name: str) -> UndefinedSymbolicFunction:
+    return UndefinedSymbolicFunction(name)
+
+
+runtime.reflect.set(
+    runtime.global_object,
+    'ρσ_py_function',
+    symbolic_function_factory,
+)
+
+
+runtime.reflect.set(
+    runtime.reflect.get(SymbolicRing, 'prototype'),
+    'var',
+    runtime.reflect.get(
+        runtime.reflect.get(SymbolicRing, 'prototype'),
+        '_var',
+    ),
+)
+
+
 def _symbolic_function(
     name: str,
     value: Any,
     numeric_function: Callable[[float], float],
 ) -> Any:
-    if runtime.jstype(value) == "number":
+    if (
+        runtime.jstype(value) == "number"
+        and not runtime.number.isSafeInteger(value)
+    ):
         return numeric_function(value)
+    parent_value = getattr(value, '_parent', None)
+    if getattr(parent_value, '_kind', None) in ['RDF', 'RealField']:
+        return numeric_function(float(value))
     tree = [name, _expression_tree(value)]
-    return Expression(_call_backend("canonical", [tree]))
+    return Expression(_call_backend("evaluate", [tree]))
 
 
 def sin(value: Any) -> Any:
@@ -500,6 +731,10 @@ def tan(value: Any) -> Any:
     return _symbolic_function("Tan", value, runtime.math.tan)
 
 
+def tanh(value: Any) -> Any:
+    return _symbolic_function("Tanh", value, runtime.math.tanh)
+
+
 def exp(value: Any) -> Any:
     return _symbolic_function("Exp", value, runtime.math.exp)
 
@@ -509,23 +744,156 @@ def log(value: Any, base: Any = None) -> Any:
     if base is None:
         return natural
     denominator = _symbolic_function("Ln", base, runtime.math.log)
-    return natural / denominator
+    return (natural / denominator).simplify()
 
 
 def floor(value: Any) -> Any:
     if runtime.jstype(value) == "number":
         return runtime.math.floor(value)
+    if isinstance(value, Expression) and len(value.variables()) == 0:
+        return runtime.math.floor(float(value))
     return _symbolic_function("Floor", value, runtime.math.floor)
 
 
 def ceil(value: Any) -> Any:
     if runtime.jstype(value) == "number":
         return runtime.math.ceil(value)
+    if isinstance(value, Expression) and len(value.variables()) == 0:
+        return runtime.math.ceil(float(value))
     return _symbolic_function("Ceil", value, runtime.math.ceil)
 
 
 def sqrt(value: Any) -> Any:
     return _symbolic_function("Sqrt", value, runtime.math.sqrt)
+
+
+def bessel_I(order: Any, value: Any) -> Expression:
+    return Expression(_call_backend(
+        'evaluate',
+        [['BesselI', _expression_tree(order), _expression_tree(value)]],
+    ))
+
+
+def diff(
+    expression: Any,
+    variable: Any = None,
+    degree: int = 1,
+) -> Expression:
+    return SR(expression).derivative(variable, degree)
+
+
+def integral(
+    expression: Any,
+    variable: Any,
+    lower: Any = runtime.undefined,
+    upper: Any = runtime.undefined,
+) -> Expression:
+    return SR(expression).integrate(
+        variable, lower, upper)
+
+
+def solve(
+    equations: Any,
+    *variables: Any,
+    **options: Any,
+) -> Any:
+    """Solve elementary symbolic equations with the Cortex backend."""
+    solution_option = runtime.reflect.get(
+        options, 'solution_dict')
+    solution_dict = False
+    if solution_option is not runtime.undefined:
+        solution_dict = bool(solution_option)
+    runtime.reflect.deleteProperty(options, 'solution_dict')
+    if len(runtime.object.keys(options)):
+        raise TypeError('unsupported solve() option')
+    if isinstance(equations, (list, tuple)):
+        equation_values = list(equations)
+    else:
+        equation_values = [equations]
+    if len(equation_values) == 0:
+        return []
+    trees = []
+    for equation in equation_values:
+        tree = _expression_tree(equation)
+        if (
+            not runtime.array.isArray(tree)
+            or len(tree) == 0
+            or tree[0] != 'Equal'
+        ):
+            tree = ['Equal', tree, 0]
+        trees.append(tree)
+    if len(trees) == 1:
+        expression_tree = trees[0]
+    else:
+        expression_tree = ['List'] + trees
+    if len(variables) == 1 and isinstance(
+        variables[0], (list, tuple)
+    ):
+        variables = runtime.math_tuple(list(variables[0]))
+    if len(variables) == 0:
+        variables = Expression(expression_tree).variables()
+    names = [_symbol_name(variable) for variable in variables]
+    result = _call_backend('solve', [expression_tree, names])
+    kind = runtime.reflect.get(result, 'kind')
+    values = runtime.reflect.get(result, 'values')
+    if kind == 'roots':
+        answers = []
+        for value in values:
+            relation = Expression([
+                'Equal', _expression_tree(variables[0]), value])
+            if solution_dict:
+                mapping = {}
+                mapping[variables[0]] = Expression(value)
+                answers.append(mapping)
+            else:
+                answers.append(relation)
+        return answers
+    if kind == 'mapping':
+        mapping = {}
+        relations = []
+        for variable in variables:
+            name = _symbol_name(variable)
+            value = runtime.reflect.get(values, name)
+            if value is runtime.undefined:
+                continue
+            expression_value = Expression(value).simplify()
+            mapping[variable] = expression_value
+            relations.append(Expression([
+                'Equal',
+                _expression_tree(variable),
+                expression_value._tree,
+            ]))
+        if solution_dict:
+            return [mapping]
+        return [relations]
+    return [SR(equation_values[0])]
+
+
+def find_root(
+    expression: Any,
+    lower: Any,
+    upper: Any,
+    **options: Any,
+) -> float:
+    return SR(expression).find_root(
+        lower, upper, **options)
+
+
+def numerical_approx(
+    value: Any,
+    prec: Any = None,
+    digits: Any = None,
+) -> Any:
+    if isinstance(value, Expression):
+        return value.n(prec=prec, digits=digits)
+    if hasattr(value, 'numerical_approx'):
+        return value.numerical_approx(
+            prec=prec, digits=digits)
+    return SR(value).n(prec=prec, digits=digits)
+
+
+n = numerical_approx
+N = numerical_approx
 
 
 def fast_callable(
@@ -541,6 +909,10 @@ def fast_callable(
 
 pi = Expression("Pi")
 e = Expression("ExponentialE")
+_imaginary_unit = Expression("ImaginaryUnit")
+i = _imaginary_unit
+runtime.reflect.set(
+    runtime.global_object, 'I', _imaginary_unit)
 
 
 def assume(*conditions: Any) -> None:
@@ -551,6 +923,21 @@ def assume(*conditions: Any) -> None:
     silently rewriting the pinned source.
     """
     return None
+
+
+def reset(name: Any = None) -> None:
+    """Restore the small set of symbolic globals initialized by Sage.js."""
+    names = ['x', 'i'] if name is None else [str(name)]
+    for current in names:
+        if current == 'x':
+            runtime.reflect.set(
+                runtime.global_object, 'x', Expression('x'))
+        elif current == 'i':
+            runtime.reflect.set(
+                runtime.global_object, 'i', _imaginary_unit)
+        else:
+            runtime.reflect.deleteProperty(
+                runtime.global_object, current)
 
 
 def _initialize_sage_symbolic_globals() -> None:
@@ -572,6 +959,26 @@ if runtime.reflect.get(
 runtime.set_class_repr(
     Expression,
     "<class 'sage.symbolic.expression.Expression'>",
+)
+runtime.set_class_repr(
+    CallableExpression,
+    "<class 'sage.symbolic.expression.Expression'>",
+)
+runtime.reflect.set(
+    runtime.reflect.get(CallableExpression, 'prototype'),
+    'arguments',
+    runtime.reflect.get(
+        runtime.reflect.get(CallableExpression, 'prototype'),
+        '_arguments_tuple',
+    ),
+)
+runtime.reflect.set(
+    runtime.reflect.get(Expression, 'prototype'),
+    'arguments',
+    runtime.reflect.get(
+        runtime.reflect.get(Expression, 'prototype'),
+        '_arguments_tuple',
+    ),
 )
 runtime.set_class_repr(
     SymbolicRing,

@@ -435,6 +435,45 @@ class Histogram(GraphicPrimitive):
         return trace
 
 
+class Contour(GraphicPrimitive):
+    """A rectangular grid rendered as a Plotly contour trace."""
+
+    def __init__(
+        self,
+        xdata: Sequence[float],
+        ydata: Sequence[float],
+        zdata: Sequence[Sequence[float]],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive.__init__(self, options)
+        self.xdata = list(xdata)
+        self.ydata = list(ydata)
+        self.zdata = [list(row) for row in zdata]
+
+    def __repr__(self) -> str:
+        return 'Contour plot'
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_trace(self) -> Any:
+        options = self._options
+        return _native_record(
+            type='contour',
+            x=self.xdata,
+            y=self.ydata,
+            z=self.zdata,
+            showscale=bool(_option_get(options, 'colorbar', True)),
+            contours=_native_record(
+                coloring=(
+                    'fill'
+                    if bool(_option_get(options, 'fill', True))
+                    else 'lines'
+                ),
+            ),
+        )
+
+
 @runtime.sequence_class
 class Text(GraphicPrimitive):
     """A text label positioned in two-dimensional coordinates."""
@@ -727,6 +766,11 @@ class Graphics:
         )
         return self
 
+    def show(self, **options: Any) -> Graphics:
+        if len(options):
+            self.set_extra_kwds(options)
+        return self
+
 
 def _graphics_options(options: dict[str, Any]) -> dict[str, Any]:
     answer = {}
@@ -761,6 +805,57 @@ def line(points: Any, **options: Any) -> Graphics:
         )
     )
     return graphic
+
+
+def hue(
+    value: Any,
+    saturation: Any = 1,
+    brightness: Any = 1,
+) -> tuple[float, float, float]:
+    """Return an RGB triple from hue, saturation, and brightness."""
+    h = float(value) % 1.0
+    s = max(0.0, min(1.0, float(saturation)))
+    v = max(0.0, min(1.0, float(brightness)))
+    scaled = h * 6.0
+    sector = int(runtime.math.floor(scaled))
+    fraction = scaled - sector
+    p = v * (1.0 - s)
+    q = v * (1.0 - s * fraction)
+    t = v * (1.0 - s * (1.0 - fraction))
+    choices = [
+        (v, t, p),
+        (q, v, p),
+        (p, v, t),
+        (p, q, v),
+        (t, p, v),
+        (v, p, q),
+    ]
+    return runtime.math_tuple(list(choices[sector % 6]))
+
+
+def circle(
+    center: Any,
+    radius: Any,
+    **options: Any,
+) -> Graphics:
+    """Return a circle centered at ``center`` with the given radius."""
+    coordinates = _point_pair(center)
+    numeric_radius = float(radius)
+    if numeric_radius < 0:
+        raise ValueError('circle radius must be nonnegative')
+    count = int(_option_pop(options, 'plot_points', 75))
+    if count < 3:
+        raise ValueError('circle plot_points must be at least 3')
+    points = []
+    for index in range(count + 1):
+        angle = 2.0 * runtime.math.PI * index / count
+        points.append((
+            coordinates[0] + numeric_radius * runtime.math.cos(angle),
+            coordinates[1] + numeric_radius * runtime.math.sin(angle)
+        ))
+    if bool(_option_pop(options, 'fill', False)):
+        return polygon(points[:-1], **options)
+    return line(points, **options)
 
 
 def arrow(
@@ -1438,6 +1533,113 @@ def plot(
         answer = answer + line(points, **line_options)
     answer.set_extra_kwds(graphics_options)
     return answer
+
+
+def parametric_plot(
+    functions: Sequence[Any],
+    *range_args: Any,
+    **options: Any,
+) -> Graphics:
+    """Plot a two-component parametric plane curve."""
+    components = list(functions)
+    if len(components) != 2:
+        raise ValueError(
+            'parametric_plot() requires exactly two components')
+    minimum, maximum = _plot_range(range_args)
+    variable = _plot_variable(range_args)
+    count = int(_option_pop(options, 'plot_points', 200))
+    if count < 2:
+        raise ValueError('plot_points must be at least 2')
+    callables = []
+    for component in components:
+        current = component
+        if hasattr(current, '_plot_fast_callable'):
+            if variable is None:
+                variables = current.variables()
+                if len(variables) != 1:
+                    raise ValueError(
+                        'parametric_plot() needs a parameter variable')
+                variable = variables[0]
+            current = current._plot_fast_callable(variable)
+        if callable(current):
+            callables.append(current)
+        else:
+            numeric = float(current)
+
+            def constant(
+                _value: Any,
+                constant_value: float = numeric,
+            ) -> float:
+                return constant_value
+
+            callables.append(constant)
+    step = (maximum - minimum) / float(count - 1)
+    points = []
+    for index in range(count):
+        value = (
+            maximum
+            if index == count - 1
+            else minimum + index * step
+        )
+        points.append((
+            _finite_value(callables[0](value)),
+            _finite_value(callables[1](value))
+        ))
+    return line(points, **options)
+
+
+def contour_plot(
+    function_value: Any,
+    xrange: Any,
+    yrange: Any,
+    **options: Any,
+) -> Graphics:
+    """Plot a sampled scalar function as a filled contour grid."""
+    xminimum, xmaximum = _plot_range([xrange])
+    yminimum, ymaximum = _plot_range([yrange])
+    xvariable = _plot_variable([xrange])
+    yvariable = _plot_variable([yrange])
+    count = int(_option_pop(options, 'plot_points', 50))
+    if count < 2:
+        raise ValueError('plot_points must be at least 2')
+    current = function_value
+    if hasattr(current, '_plot_fast_callable'):
+        variables = [
+            variable
+            for variable in [xvariable, yvariable]
+            if variable is not None
+        ]
+        current = current._plot_fast_callable(variables)
+    if not callable(current):
+        raise TypeError('contour_plot() requires a callable function')
+    xstep = (xmaximum - xminimum) / float(count - 1)
+    ystep = (ymaximum - yminimum) / float(count - 1)
+    xvalues = [
+        (
+            xmaximum
+            if index == count - 1
+            else xminimum + index * xstep
+        )
+        for index in range(count)
+    ]
+    yvalues = [
+        (
+            ymaximum
+            if index == count - 1
+            else yminimum + index * ystep
+        )
+        for index in range(count)
+    ]
+    zvalues = []
+    for yvalue in yvalues:
+        row = []
+        for xvalue in xvalues:
+            row.append(_finite_value(current(xvalue, yvalue)))
+        zvalues.append(row)
+    graphic = Graphics()
+    graphic.add_primitive(
+        Contour(xvalues, yvalues, zvalues, options))
+    return graphic
 
 
 def show(

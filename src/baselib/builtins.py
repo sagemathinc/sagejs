@@ -3915,6 +3915,17 @@ def ρσ_next_prime(value: Any) -> Any:
         runtime.flint_backend().nextPrime(value))
 
 
+def previous_prime(value: Any) -> Any:
+    if not runtime.is_exact_integer(value):
+        raise TypeError('previous_prime() requires an integer')
+    candidate = runtime.integer_bigint(value) - runtime.bigint(1)
+    while candidate >= runtime.bigint(2):
+        if runtime.flint_backend().isPrime(candidate):
+            return runtime.normalize_integer(candidate)
+        candidate -= runtime.bigint(1)
+    raise ValueError('no previous prime')
+
+
 def ρσ_is_prime(value: Any) -> _Bool:
     if runtime.strict_equal(runtime.jstype(value), 'number'):
         if not runtime.number.isSafeInteger(value):
@@ -4054,6 +4065,305 @@ def denominator(value: Any) -> Any:
     if _builtins_member_is_function(value, 'denominator'):
         return _builtins_call_member(value, 'denominator', [])
     raise TypeError('denominator() is not defined for this value')
+
+
+def factorial(value: Any) -> Any:
+    if not runtime.is_exact_integer(value):
+        raise TypeError('factorial() requires an integer')
+    integer = runtime.integer_bigint(value)
+    if integer < 0:
+        raise ValueError('factorial() is not defined for negative integers')
+    if integer > runtime.bigint(4294967295):
+        raise OverflowError('factorial() argument is too large')
+    return runtime.normalize_integer(
+        runtime.flint_backend().factorial(runtime.number(integer)))
+
+
+def binomial(n: Any, k: Any) -> Any:
+    if not runtime.is_exact_integer(n) or not runtime.is_exact_integer(k):
+        raise TypeError('binomial() arguments must be integers')
+    n_integer = runtime.integer_bigint(n)
+    k_integer = runtime.integer_bigint(k)
+    if n_integer < 0:
+        raise NotImplementedError(
+            'negative upper binomial arguments are not implemented')
+    if k_integer < 0 or k_integer > n_integer:
+        return 0
+    if n_integer > runtime.bigint(4294967295):
+        raise OverflowError('binomial() argument is too large')
+    return runtime.normalize_integer(
+        runtime.flint_backend().binomial(
+            runtime.number(n_integer),
+            runtime.number(k_integer),
+        )
+    )
+
+
+def valuation(value: Any, prime: Any) -> Any:
+    if not runtime.is_exact_integer(value):
+        if _builtins_member_is_function(value, 'valuation'):
+            return _builtins_call_member(value, 'valuation', [prime])
+        raise TypeError('valuation() requires an integer')
+    if not runtime.is_exact_integer(prime):
+        raise TypeError('valuation base must be an integer')
+    integer = runtime.integer_bigint(value)
+    base = runtime.integer_bigint(prime)
+    if integer == 0:
+        raise ValueError('valuation of zero is infinite')
+    if base < 0:
+        base = -base
+    if base < 2:
+        raise ValueError('valuation base must have absolute value at least 2')
+    if integer < 0:
+        integer = -integer
+    exponent = 0
+    while integer % base == 0:
+        integer //= base
+        exponent += 1
+    return exponent
+
+
+def xgcd(left: Any, right: Any) -> Any:
+    if not runtime.is_exact_integer(left) or not runtime.is_exact_integer(right):
+        raise TypeError('xgcd() arguments must be integers')
+    a = runtime.integer_bigint(left)
+    b = runtime.integer_bigint(right)
+    old_r, r = a, b
+    old_s, s = runtime.bigint(1), runtime.bigint(0)
+    old_t, t = runtime.bigint(0), runtime.bigint(1)
+    while r != runtime.bigint(0):
+        quotient = runtime.native_div(old_r, r)
+        next_r = runtime.native_sub(
+            old_r, runtime.native_mul(quotient, r))
+        old_r = r
+        r = next_r
+        next_s = runtime.native_sub(
+            old_s, runtime.native_mul(quotient, s))
+        old_s = s
+        s = next_s
+        next_t = runtime.native_sub(
+            old_t, runtime.native_mul(quotient, t))
+        old_t = t
+        t = next_t
+    if old_r < runtime.bigint(0):
+        old_r, old_s, old_t = -old_r, -old_s, -old_t
+    return runtime.math_tuple([
+        runtime.normalize_integer(old_r),
+        runtime.normalize_integer(old_s),
+        runtime.normalize_integer(old_t),
+    ])
+
+
+def inverse_mod(value: Any, modulus: Any) -> Any:
+    gcd_value, coefficient, _other = xgcd(value, modulus)
+    if gcd_value != runtime.bigint(1) and gcd_value != 1:
+        raise ZeroDivisionError('inverse does not exist')
+    modulus_integer = runtime.integer_bigint(modulus)
+    if modulus_integer < 0:
+        modulus_integer = -modulus_integer
+    return runtime.normalize_integer(
+        runtime.integer_bigint(coefficient) % modulus_integer)
+
+
+def euler_phi(value: Any) -> Any:
+    if not runtime.is_exact_integer(value):
+        raise TypeError('euler_phi() requires an integer')
+    integer = runtime.integer_bigint(value)
+    if integer == 0:
+        return 0
+    if integer < 0:
+        integer = -integer
+    answer = integer
+    for prime, _exponent in ρσ_factor(integer):
+        prime_integer = runtime.integer_bigint(prime)
+        answer = runtime.native_mul(
+            runtime.native_div(answer, prime_integer),
+            runtime.native_sub(prime_integer, runtime.bigint(1)),
+        )
+    return runtime.normalize_integer(answer)
+
+
+def sigma(value: Any, power: Any = 1) -> Any:
+    if not runtime.is_exact_integer(value) or not runtime.is_exact_integer(power):
+        raise TypeError('sigma() arguments must be integers')
+    integer = runtime.integer_bigint(value)
+    exponent_power = runtime.integer_bigint(power)
+    if integer == 0:
+        raise ValueError('sigma() is not defined for zero')
+    if exponent_power < 0:
+        raise NotImplementedError('negative divisor powers are not implemented')
+    if integer < 0:
+        integer = -integer
+    answer = runtime.bigint(1)
+    for prime, exponent in ρσ_factor(integer):
+        prime_integer = runtime.integer_bigint(prime)
+        term = runtime.bigint(1)
+        prime_power = runtime.bigint(1)
+        for _index in range(exponent):
+            prime_power *= prime_integer ** exponent_power
+            term += prime_power
+        answer *= term
+    return runtime.normalize_integer(answer)
+
+
+def odd_part(value: Any) -> Any:
+    if not runtime.is_exact_integer(value):
+        raise TypeError('odd_part() requires an integer')
+    integer = runtime.integer_bigint(value)
+    while integer != 0 and integer % runtime.bigint(2) == 0:
+        integer //= runtime.bigint(2)
+    return runtime.normalize_integer(integer)
+
+
+def prime_to_m_part(value: Any, m: Any) -> Any:
+    if not runtime.is_exact_integer(value) or not runtime.is_exact_integer(m):
+        raise TypeError('prime_to_m_part() arguments must be integers')
+    answer = runtime.integer_bigint(value)
+    modulus = runtime.integer_bigint(m)
+    if answer < 0:
+        answer = -answer
+    if modulus < 0:
+        modulus = -modulus
+    common = runtime.integer_bigint(ρσ_gcd(answer, modulus))
+    while common != 1:
+        answer //= common
+        common = runtime.integer_bigint(ρσ_gcd(answer, modulus))
+    return runtime.normalize_integer(answer)
+
+
+def crt(
+    left_value: Any,
+    right_value: Any,
+    left_modulus: Any,
+    right_modulus: Any,
+) -> Any:
+    gcd_value, left_coefficient, right_coefficient = xgcd(
+        left_modulus, right_modulus)
+    if gcd_value != 1:
+        raise ValueError('CRT moduli must be coprime')
+    left_m = runtime.integer_bigint(left_modulus)
+    right_m = runtime.integer_bigint(right_modulus)
+    result = runtime.native_add(
+        runtime.native_mul(
+            runtime.native_mul(
+                runtime.integer_bigint(left_value),
+                runtime.integer_bigint(right_coefficient),
+            ),
+            right_m,
+        ),
+        runtime.native_mul(
+            runtime.native_mul(
+                runtime.integer_bigint(right_value),
+                runtime.integer_bigint(left_coefficient),
+            ),
+            left_m,
+        ),
+    )
+    modulus = runtime.native_mul(left_m, right_m)
+    reduced = runtime.native_mod(result, modulus)
+    if reduced < runtime.bigint(0):
+        reduced = runtime.native_add(reduced, modulus)
+    return runtime.normalize_integer(reduced)
+
+
+def kronecker(left: Any, right: Any) -> Any:
+    if not runtime.is_exact_integer(left) or not runtime.is_exact_integer(right):
+        raise TypeError('kronecker() arguments must be integers')
+    a = runtime.integer_bigint(left)
+    b = runtime.integer_bigint(right)
+    if b == 0:
+        return 1 if a == 1 or a == -1 else 0
+    result = 1
+    if b < 0:
+        b = -b
+        if a < 0:
+            result = -result
+    twos = 0
+    while b % runtime.bigint(2) == 0:
+        b //= runtime.bigint(2)
+        twos += 1
+    if twos % 2 == 1:
+        residue = a % runtime.bigint(8)
+        if residue == 0 or residue == 2 or residue == 4 or residue == 6:
+            return 0
+        if residue == 3 or residue == 5:
+            result = -result
+    a %= b
+    while a != 0:
+        while a % runtime.bigint(2) == 0:
+            a //= runtime.bigint(2)
+            residue = b % runtime.bigint(8)
+            if residue == 3 or residue == 5:
+                result = -result
+        a, b = b, a
+        if a % runtime.bigint(4) == 3 and b % runtime.bigint(4) == 3:
+            result = -result
+        a %= b
+    return result if b == 1 else 0
+
+
+def srange(
+    start: Any,
+    stop: Any = None,
+    step: Any = 1,
+    include_endpoint: _Bool = False,
+) -> list[Any]:
+    if stop is None:
+        stop = start
+        start = 0
+    start_value = float(start)
+    stop_value = float(stop)
+    step_value = float(step)
+    if step_value == 0:
+        raise ValueError('srange() step must not be zero')
+    answer = []
+    current = start_value
+    if step_value > 0:
+        while current < stop_value or (
+            include_endpoint and current <= stop_value
+        ):
+            answer.append(current)
+            current += step_value
+    else:
+        while current > stop_value or (
+            include_endpoint and current >= stop_value
+        ):
+            answer.append(current)
+            current += step_value
+    return answer
+
+
+class _Partitions:
+
+    def __init__(self, value: Any) -> None:
+        if not runtime.is_exact_integer(value):
+            raise TypeError('partition size must be an integer')
+        self._value = int(value)
+        if self._value < 0:
+            raise ValueError('partition size must be nonnegative')
+
+    def _partitions(
+        self,
+        remaining: _Int,
+        maximum: _Int,
+    ) -> Iterator[list[_Int]]:
+        if remaining == 0:
+            yield []
+        else:
+            upper = min(remaining, maximum)
+            for first in range(upper, 0, -1):
+                for rest in self._partitions(remaining - first, first):
+                    yield [first] + rest
+
+    def __iter__(self) -> Iterator[list[_Int]]:
+        return self._partitions(self._value, self._value)
+
+    def list(self) -> list[list[_Int]]:
+        return list(self)
+
+
+def Partitions(value: Any) -> _Partitions:
+    return _Partitions(value)
 
 
 def bernoulli(index: Any) -> Any:
@@ -4667,5 +4977,9 @@ runtime.reflect.set(
     'is_square',
     _integer_is_square_native,
 )
+runtime.reflect.set(runtime.global_object, 'true', True)
+runtime.reflect.set(runtime.global_object, 'false', False)
+runtime.reflect.set(runtime.global_object, 'ρσ_py_true', True)
+runtime.reflect.set(runtime.global_object, 'ρσ_py_false', False)
 runtime.set_class_repr(_Code, "<class 'code'>")
 runtime.set_class_repr(ρσ_function_type, "<class 'function'>")

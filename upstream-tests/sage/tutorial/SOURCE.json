@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/sagemath/sage.git",
+  "revision": "09472ff530d280d0c9f44fdc5a9c3e856ed95b37",
+  "path": "src/doc/en/tutorial/tour*.rst",
+  "license": "GPL-2.0-or-later"
+}

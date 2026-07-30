@@ -15,6 +15,10 @@ from typing import Any, Callable
 import sagejs.runtime as runtime
 
 
+def _untyped(value: Any) -> Any:
+    return value
+
+
 def is_exact_integer(value: object) -> bool:
     return (
         runtime.jstype(value) == 'bigint'
@@ -129,6 +133,18 @@ class RationalField(Parent):
         ):
             return numerator
         return runtime.rational_class(numerator, denominator)
+
+    def __contains__(self, value: object) -> bool:
+        return (
+            getattr(value, '_parent', None) is self
+            or runtime.is_exact_integer(value)
+            or runtime.jstype(value) == 'number'
+            or getattr(
+                getattr(value, '_parent', None),
+                '_kind',
+                None,
+            ) in ['RDF', 'RealField']
+        )
 
 
 ZZ = IntegerRing('Integer Ring')
@@ -301,6 +317,30 @@ class CoercionModel:
 
         left_construction = left._construction
         right_construction = right._construction
+        if (
+            left_construction is not runtime.undefined
+            and left_construction['kind'] == 'fraction_field'
+        ):
+            def coerce_right_fraction(value: Any) -> Any:
+                return _untyped(left)(value)
+
+            return self._cache(
+                left, right,
+                CoercionPlan(
+                    left, _identity, coerce_right_fraction),
+            )
+        if (
+            right_construction is not runtime.undefined
+            and right_construction['kind'] == 'fraction_field'
+        ):
+            def coerce_left_fraction(value: Any) -> Any:
+                return _untyped(right)(value)
+
+            return self._cache(
+                left, right,
+                CoercionPlan(
+                    right, coerce_left_fraction, _identity),
+            )
         if (
             left_construction is not runtime.undefined
             and left_construction['kind'] == 'polynomial'

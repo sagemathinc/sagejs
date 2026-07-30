@@ -22,6 +22,13 @@ assert A.is_one() is False
 assert MatrixSpace(ZZ, 2).one() == identity_matrix(ZZ, 2)
 assert MatrixSpace(ZZ, 2, 3).zero() == zero_matrix(ZZ, 2, 3)
 assert MatrixSpace(ZZ, 2).matrix_space(3, 4) is MatrixSpace(ZZ, 3, 4)
+assert 'sparse matrices' in str(MatrixSpace(QQ, 2, sparse=True))
+matrix_basis = MatrixSpace(QQ, 2, 3).basis()
+assert len(matrix_basis) == 6
+assert matrix_basis[1, 2] == matrix(
+    QQ, [[0, 0, 0], [0, 0, 1]])
+assert list(matrix_basis)[1] == matrix(
+    QQ, [[0, 1, 0], [0, 0, 0]])
 assert A.list() == [1, 2, 3, 4]
 assert A[0, 1] == 2
 assert A[-1, -1] == 4
@@ -38,6 +45,10 @@ assert A.det(algorithm='flint') == -2
 assert A.rank() == 2
 assert A.rank(algorithm='modp') == 2
 assert A.rref() == identity_matrix(QQ, 2)
+singular = matrix([[1, 2, 3], [3, 2, 1], [1, 1, 1]])
+solution = singular.solve_right(vector([0, -4, -1]))
+assert solution == vector(QQ, [-2, 1, 0])
+assert singular * solution == vector(QQ, [0, -4, -1])
 assert A.rref().base_ring() is QQ
 assert A.hermite_form() == matrix(ZZ, [[1, 0], [0, 2]])
 assert A.echelon_form() == A.hermite_form()
@@ -423,7 +434,6 @@ random_residue = random_matrix(R36, 4, 6)
 set_random_seed(2026)
 assert random_matrix(R36, 4, 6) == random_residue
 assert all(value.parent() is R36 for value in random_residue.list())
-
 try:
     matrix(ZZ, [[1, 2], [3]])
     assert False

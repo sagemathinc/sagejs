@@ -3,12 +3,16 @@
 const assert = require("node:assert/strict");
 const {
   extractSageDoctests,
+  extractRstSageDoctests,
   filterSageDoctests,
   tripleQuotedStrings,
 } = require("../tools/sage-doctest-fixture.cjs");
 const {
   matchesExpected,
 } = require("../scripts/run-sage-doctests.cjs");
+const {
+  matchesTutorialExpected,
+} = require("../scripts/run-sage-tutorial.cjs");
 
 const source = [
   'r"""',
@@ -74,5 +78,64 @@ assert.ok(
   ),
 );
 assert.ok(!matchesExpected("6\n", "5\n"));
+assert.ok(
+  matchesTutorialExpected("sqrt(3)/2\n", "1/2*sqrt(3)\n", {
+    accepted: ["sqrt(3)/2\n"],
+  }),
+);
+
+const rst = [
+  "First section",
+  "=============",
+  "",
+  "::",
+  "",
+  "    sage: a = 2",
+  "    sage: a + 3",
+  "    5",
+  "",
+  ".. skip",
+  "",
+  "::",
+  "",
+  "    sage: tan?",
+  "    Type: function",
+  "        EXAMPLES:",
+  "            sage: tan(0)",
+  "            0",
+  "",
+  "Second section",
+  "--------------",
+  "",
+  "A list has a more deeply indented literal block:",
+  "",
+  "   ::",
+  "",
+  "       sage: def square(x):",
+  "       ....:     return x^2",
+  "       sage: square(4)",
+  "       16",
+  "",
+].join("\n");
+const rstFixture = extractRstSageDoctests(rst, {
+  repository: "https://example.invalid/sage.git",
+  revision: "def456",
+  path: "src/doc/en/tutorial/example.rst",
+  license: "GPL-2.0-or-later",
+});
+assert.deepEqual(rstFixture.summary, { groups: 1, examples: 5 });
+assert.equal(rstFixture.groups[0].examples[1].section, "First section");
+assert.equal(
+  rstFixture.groups[0].examples[2].want,
+  "Type: function\n    EXAMPLES:\n        sage: tan(0)\n        0\n",
+);
+assert.deepEqual(rstFixture.groups[0].examples[2].tags, [
+  { name: "skip", value: "rst-directive" },
+]);
+assert.equal(
+  rstFixture.groups[0].examples[3].source,
+  "def square(x):\n    return x^2",
+);
+assert.equal(rstFixture.groups[0].examples[4].section, "Second section");
 
 console.log("Upstream Sage doctest extraction and matching passed.");

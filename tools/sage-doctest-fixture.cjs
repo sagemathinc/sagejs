@@ -219,6 +219,152 @@ function extractSageDoctests(source, metadata) {
   };
 }
 
+function rstHeading(lines, index) {
+  const title = lines[index]?.trim();
+  const underline = lines[index + 1]?.trim();
+  if (
+    !title ||
+    !underline ||
+    underline.length < title.length ||
+    !/^([=\-~^`:#*+])\1+$/.test(underline)
+  ) {
+    return;
+  }
+  return title;
+}
+
+function leadingWhitespace(line) {
+  return line.match(/^[ \t]*/)?.[0] ?? "";
+}
+
+function rstPrompt(line) {
+  const match = line.match(/^([ \t]+)sage:\s?(.*)$/);
+  if (!match) return;
+  return { indent: match[1], source: match[2] };
+}
+
+function rstContinuation(line, indent) {
+  const prefix = line.slice(0, indent.length);
+  if (prefix !== indent) return;
+  const match = line.slice(indent.length).match(/^\.\.\.\.:\s?(.*)$/);
+  return match?.[1];
+}
+
+// Extract the executable transcript from a Sage tutorial reStructuredText
+// source. A tutorial file is one stateful session, even though its examples
+// are split among many literal blocks. Nested ``sage:`` text in help output
+// has greater indentation than its enclosing prompt and remains expected
+// output instead of becoming an executable example.
+function extractRstSageDoctests(source, metadata) {
+  const sourcePath = metadata.path.replaceAll("\\", "/");
+  const lines = source.split("\n");
+  const examples = [];
+  let index = 0;
+  let section = "<document>";
+  let skipNextBlock = false;
+
+  while (index < lines.length) {
+    const heading = rstHeading(lines, index);
+    if (heading) {
+      section = heading;
+      index += 2;
+      continue;
+    }
+    if (lines[index].trim() === ".. skip") {
+      skipNextBlock = true;
+      index += 1;
+      continue;
+    }
+
+    const first = rstPrompt(lines[index]);
+    if (!first) {
+      index += 1;
+      continue;
+    }
+
+    const blockIndent = first.indent;
+    const blockSkipped = skipNextBlock;
+    skipNextBlock = false;
+    let blockEnd = index + 1;
+    while (blockEnd < lines.length) {
+      const candidate = lines[blockEnd];
+      if (
+        candidate.trim() &&
+        leadingWhitespace(candidate).length < blockIndent.length
+      ) {
+        break;
+      }
+      blockEnd += 1;
+    }
+
+    while (index < blockEnd) {
+      const prompt = rstPrompt(lines[index]);
+      if (!prompt || prompt.indent !== blockIndent) {
+        index += 1;
+        continue;
+      }
+
+      const line = index + 1;
+      const sourceLines = [prompt.source];
+      index += 1;
+      while (index < blockEnd) {
+        const continuation = rstContinuation(lines[index], blockIndent);
+        if (continuation === undefined) break;
+        sourceLines.push(continuation);
+        index += 1;
+      }
+
+      const wanted = [];
+      while (index < blockEnd) {
+        const candidate = lines[index];
+        const nextPrompt = rstPrompt(candidate);
+        if (nextPrompt?.indent === blockIndent) break;
+        wanted.push(
+          candidate.trim() ? candidate.slice(blockIndent.length) : "",
+        );
+        index += 1;
+      }
+      while (wanted.at(-1) === "") wanted.pop();
+
+      const exampleSource = sourceLines.join("\n");
+      const tags = exampleTags(exampleSource);
+      if (blockSkipped) tags.push({ name: "skip", value: "rst-directive" });
+      examples.push({
+        id: `${sourcePath}:${line}`,
+        line,
+        section,
+        source: exampleSource,
+        want: wanted.length ? `${wanted.join("\n")}\n` : "",
+        tags,
+      });
+    }
+  }
+
+  return {
+    schema: SCHEMA,
+    generatedBy: "scripts/extract-sage-tutorial.cjs",
+    source: {
+      repository: metadata.repository,
+      revision: metadata.revision,
+      path: sourcePath,
+      sha256: createHash("sha256").update(source).digest("hex"),
+      license: metadata.license ?? "unknown",
+    },
+    summary: {
+      groups: 1,
+      examples: examples.length,
+    },
+    groups: [
+      {
+        id: sourcePath,
+        owner: sourcePath,
+        line: 1,
+        examples,
+      },
+    ],
+  };
+}
+
 function filterSageDoctests(fixture, options = {}) {
   const ownerPattern = options.ownerPattern;
   const groups = fixture.groups.filter(
@@ -240,6 +386,7 @@ function filterSageDoctests(fixture, options = {}) {
 module.exports = {
   SCHEMA,
   exampleTags,
+  extractRstSageDoctests,
   extractSageDoctests,
   filterSageDoctests,
   tripleQuotedStrings,

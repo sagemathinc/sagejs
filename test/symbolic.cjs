@@ -42,6 +42,47 @@ async function main() {
     assert.equal((await session.evaluate("var('x y')")).repr, "(x, y)");
     assert.equal((await session.evaluate("pi")).repr, "pi");
     assert.equal((await session.evaluate("e")).repr, "e");
+    assert.equal((await session.evaluate("I")).repr, "I");
+    assert.equal((await session.evaluate("i")).repr, "I");
+    assert.equal((await session.evaluate("bool(x < 2)")).repr, "False");
+    assert.equal(
+      (await session.evaluate("x,y,z = var('x,y,z')\nx+y+z")).repr,
+      "x + y + z",
+    );
+    assert.equal(
+      (await session.evaluate("g(x) = x^2\ng")).repr,
+      "x |--> x^2",
+    );
+    assert.equal((await session.evaluate("g(3)")).repr, "9");
+    assert.equal(
+      (await session.evaluate("g.derivative()")).repr,
+      "x |--> 2*x",
+    );
+    assert.equal(
+      (await session.evaluate("g.arguments()")).repr,
+      "(x,)",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "b,c=var('b,c')\nsolve(x^2+b*x+c==0, x)",
+        )
+      ).repr,
+      "[x == -1/2*b - 1/2*sqrt(b^2 - 4*c), " +
+        "x == -1/2*b + 1/2*sqrt(b^2 - 4*c)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "x,y=var('x,y')\nsolve([x+y==6,x-y==4],x,y)",
+        )
+      ).repr,
+      "[[x == 5, y == 1]]",
+    );
+    assert.equal(
+      (await session.evaluate("function('f')(x)")).repr,
+      "f(x)",
+    );
     assert.equal((await session.evaluate("log(8, 2)")).repr, "3");
     assert.equal((await session.evaluate("floor(log(17, 2))")).repr, "4");
     assert.equal(

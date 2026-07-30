@@ -156,6 +156,15 @@ class Factorization:
         if len(self._factors) == 0:
             return runtime.repr(self._unit)
 
+        one = runtime.bigint(1) \
+            if runtime.jstype(self._unit) == 'bigint' else 1
+        if (
+            len(self._factors) == 1
+            and self._factors[0][1] == 1
+            and runtime.equals(self._unit, one)
+        ):
+            return runtime.repr(self._factors[0][0])
+
         separator = ' *\n' if self._cr_value else ' * '
         terms = []
         for pair in self._factors:
@@ -168,10 +177,16 @@ class Factorization:
                 prime += '^' + str(exponent)
             terms.append(prime)
 
-        one = runtime.bigint(1) \
-            if runtime.jstype(self._unit) == 'bigint' else 1
         if not runtime.equals(self._unit, one):
-            terms.insert(0, runtime.repr(self._unit))
+            unit_text = runtime.repr(self._unit)
+            if (
+                runtime.jstype(self._unit) == 'object'
+                and runtime.reflect.has(self._unit, '_denominator')
+                and runtime.reflect.get(
+                    self._unit, '_denominator') == runtime.bigint(1)
+            ):
+                unit_text = '(' + unit_text + ')'
+            terms.insert(0, unit_text)
         return str.join(separator, terms)
 
     def unit(self) -> Any:

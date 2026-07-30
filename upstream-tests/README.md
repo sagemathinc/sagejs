@@ -60,6 +60,25 @@ all outcomes so regressions and newly passing tests are both visible.
 See [`micropython/README.md`](micropython/README.md) for provenance, selection
 rules, and commands.
 
+## Sage Guided Tour
+
+`sage/tutorial/guided-tour.doctests.json` pins every executable `sage:`
+transcript from the public Guided Tour. The fixture keeps source-file, section,
+line, output, and revision provenance while running each tutorial source file
+as one stateful session:
+
+```sh
+pnpm test:tutorial
+pnpm tutorial:report
+```
+
+Regenerate it from a Sage checkout at the revision in
+`sage/tutorial/SOURCE.json`:
+
+```sh
+pnpm tutorial:extract -- --sage-root /path/to/sage
+```
+
 ## Foreign-language parsers
 
 The `tree-sitter-magma` submodule pins the MIT-licensed parser grammar used by

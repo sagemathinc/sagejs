@@ -4029,9 +4029,56 @@ return {completion:completion,namespace:ρσ_modules[module_id]};
         if is_("operator") and ASSIGNMENT[val]:
             if is_node_type(left, AST_Call):
                 if options.jsage and val is '=':
-                    croak(
-                        "symbolic function assignment f(x)=... requires the future symbolic-expression runtime; use def or lambda for ordinary functions"
-                    )
+                    if not is_node_type(
+                        left.expression, AST_SymbolRef
+                    ):
+                        croak(
+                            'symbolic function assignment target '
+                            'must be an identifier')
+                    symbolic_arguments = r'%js []'
+                    seen_arguments = {}
+                    for argument in left.args:
+                        if not is_node_type(argument, AST_SymbolRef):
+                            croak(
+                                'symbolic function arguments must '
+                                'be identifiers')
+                        if has_prop(seen_arguments, argument.name):
+                            croak(
+                                'symbolic function arguments must '
+                                'be distinct')
+                        seen_arguments[argument.name] = True
+                        symbolic_arguments.push(argument)
+                    if (
+                        left.args.kwargs.length
+                        or left.args.kwarg_items.length
+                        or left.args.starargs
+                    ):
+                        croak(
+                            'symbolic function arguments must '
+                            'be identifiers')
+                    next()
+                    call_arguments = r'%js []'
+                    call_arguments.push(AST_Array({
+                        'elements': symbolic_arguments,
+                    }))
+                    call_arguments.push(maybe_assign(no_in, True))
+                    symbolic_function = AST_Call({
+                        'start': start,
+                        'expression': AST_SymbolRef({
+                            'name': 'symbolic_function',
+                            'start': start,
+                            'end': prev(),
+                        }),
+                        'args': call_arguments,
+                        'end': prev(),
+                    })
+                    return create_assign({
+                        'start': start,
+                        'left': left.expression,
+                        'operator': '=',
+                        'right': symbolic_function,
+                        'end': prev(),
+                    })
                 croak("cannot assign to a function call")
             if not valid_assignment_target(left, val is '='):
                 croak('invalid assignment target')

@@ -245,6 +245,17 @@ class RealDoubleField_class(sage.Parent):
 
     prec = precision
 
+    def __contains__(self, value: Any) -> bool:
+        try:
+            self(value)
+            return True
+        except Exception:
+            try:
+                float(value)
+                return True
+            except Exception:
+                return False
+
 
 @runtime.callable_instance_class
 class RealField_class(sage.Parent):
@@ -272,6 +283,17 @@ class RealField_class(sage.Parent):
         return self._precision
 
     prec = precision
+
+    def __contains__(self, value: Any) -> bool:
+        try:
+            self(value)
+            return True
+        except Exception:
+            try:
+                float(value)
+                return True
+            except Exception:
+                return False
 
 
 @runtime.callable_instance_class
@@ -304,6 +326,20 @@ class ComplexField_class(sage.Parent):
         return self._precision
 
     prec = precision
+
+    def gen(self) -> ComplexNumberElement:
+        return self(0, 1)
+
+    def __contains__(self, value: Any) -> bool:
+        try:
+            self(value)
+            return True
+        except Exception:
+            try:
+                self(float(value))
+                return True
+            except Exception:
+                return False
 
 
 @runtime.callable_instance_class
@@ -370,6 +406,12 @@ def _real_field_element(
         return RealNumberElement(
             field,
             backend.realFromString(str(value), field._precision),
+        )
+    if hasattr(value, '__float__'):
+        return RealNumberElement(
+            field,
+            backend.realFromString(
+                str(float(value)), field._precision),
         )
     raise TypeError('unable to convert value to ' + str(field))
 
@@ -476,6 +518,12 @@ def _complex_field_element(
             backend.complexRound(value._native, field._precision),
         )
     real_field = RealField(field._precision)
+    if (
+        imag is runtime.undefined
+        and getattr(value, '_tree', None) == 'ImaginaryUnit'
+    ):
+        imag = 1
+        value = 0
     real_part = real_field(value)
     imag_part = real_field(0 if imag is runtime.undefined else imag)
     return ComplexNumberElement(

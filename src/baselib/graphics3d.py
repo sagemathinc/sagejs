@@ -499,6 +499,62 @@ class Surface3d(GraphicPrimitive3d):
         return traces
 
 
+class Isosurface3d(GraphicPrimitive3d):
+    """A scalar field sampled on a rectangular three-dimensional grid."""
+
+    def __init__(
+        self,
+        xdata: Sequence[float],
+        ydata: Sequence[float],
+        zdata: Sequence[float],
+        values: Sequence[float],
+        level: float,
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive3d.__init__(self, options)
+        self.xdata = list(xdata)
+        self.ydata = list(ydata)
+        self.zdata = list(zdata)
+        self.values = list(values)
+        self.level = level
+
+    def __repr__(self) -> str:
+        return (
+            '3D implicit surface sampled at ' +
+            str(len(self.values)) + ' points'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_traces(self) -> list[Any]:
+        options = self._options
+        tolerance = float(
+            _g3d_option_get(options, 'plot_tolerance', 1e-9))
+        color = _g3d_option_get(options, 'color', 'steelblue')
+        return [_g3d_native_record(
+            type='isosurface',
+            x=self.xdata,
+            y=self.ydata,
+            z=self.zdata,
+            value=self.values,
+            isomin=self.level - tolerance,
+            isomax=self.level + tolerance,
+            surface=_g3d_native_record(count=1, fill=1),
+            caps=_g3d_native_record(
+                x=_g3d_native_record(show=False),
+                y=_g3d_native_record(show=False),
+                z=_g3d_native_record(show=False),
+            ),
+            colorscale=_g3d_colorscale(color),
+            showscale=bool(
+                _g3d_option_get(options, 'colorbar', False)),
+            opacity=float(
+                _g3d_option_get(options, 'opacity', 1)),
+            showlegend=False,
+        )]
+
+
 @runtime.sequence_class
 class Graphics3d:
     """A composable collection of semantic 3D graphics primitives."""
@@ -887,6 +943,76 @@ def parametric_plot3d(
             _g3d_finite_value(callables[2](value))
         ))
     return line3d(points, **options)
+
+
+def implicit_plot3d(
+    function_value: Any,
+    xrange: Any,
+    yrange: Any,
+    zrange: Any,
+    **options: Any,
+) -> Graphics3d:
+    """Plot the zero set of a sampled function of three variables."""
+    xvariable, xmin, xmax = _g3d_range(xrange)
+    yvariable, ymin, ymax = _g3d_range(yrange)
+    zvariable, zmin, zmax = _g3d_range(zrange)
+    variables = _g3d_variables(
+        [function_value],
+        [xvariable, yvariable, zvariable],
+        3,
+    )
+    evaluated = _g3d_component_callable(
+        function_value, variables)
+    counts = _g3d_plot_points(
+        _g3d_option_pop(options, 'plot_points', 'automatic'),
+        20,
+        3,
+    )
+    xvalues = _g3d_linspace(xmin, xmax, counts[0])
+    yvalues = _g3d_linspace(ymin, ymax, counts[1])
+    zvalues = _g3d_linspace(zmin, zmax, counts[2])
+    sampled_x = []
+    sampled_y = []
+    sampled_z = []
+    sampled_values = []
+    for zvalue in zvalues:
+        for yvalue in yvalues:
+            for xvalue in xvalues:
+                sampled_x.append(xvalue)
+                sampled_y.append(yvalue)
+                sampled_z.append(zvalue)
+                sampled_values.append(_g3d_finite_value(
+                    evaluated(xvalue, yvalue, zvalue)))
+    options = _g3d_copy_options(options)
+    defaults = {
+        'color': 'steelblue',
+        'opacity': 1,
+        'colorbar': False,
+        'plot_tolerance': 1e-9,
+    }
+    if (
+        _g3d_option_has(options, 'alpha')
+        and not _g3d_option_has(options, 'opacity')
+    ):
+        options['opacity'] = _g3d_option_pop(options, 'alpha')
+    if (
+        _g3d_option_has(options, 'rgbcolor')
+        and not _g3d_option_has(options, 'color')
+    ):
+        options['color'] = _g3d_option_pop(options, 'rgbcolor')
+    _g3d_option_update(defaults, options)
+    graphics_options = _g3d_graphics_options(defaults)
+    graphic = Graphics3d()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(Isosurface3d(
+        sampled_x,
+        sampled_y,
+        sampled_z,
+        sampled_values,
+        0.0,
+        defaults,
+    ))
+    return graphic
 
 
 def sphere(

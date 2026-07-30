@@ -159,6 +159,19 @@ async function main() {
       [Math.PI, Math.PI],
     ]);
 
+    const implicit = await session.evaluate(
+      [
+        "x, y, z = var('x,y,z')",
+        "implicit_plot3d(x^2 + y^2 + z^2 - 1,",
+        "    (x, -1, 1), (y, -1, 1), (z, -1, 1),",
+        "    plot_points=3)",
+      ].join("\n"),
+    );
+    assert.equal(implicit.repr, "Graphics3d Object");
+    assert.equal(implicit.display?.data.data[0].type, "isosurface");
+    assert.equal(implicit.display?.data.data[0].value.length, 27);
+    assert.equal(implicit.display?.data.data[0].value[13], -1);
+
     assert.equal(
       (
         await session.evaluate(
