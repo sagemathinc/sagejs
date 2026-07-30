@@ -352,6 +352,10 @@ function polyToString(value, variable) {
   return terms.length === 0 ? "0" : terms.join("");
 }
 
+function polyCoefficients(value) {
+  return assertPolynomial(value).coefficients.slice();
+}
+
 function zzPolyGen() {
   return polynomial("ZZ", [0n, 1n]);
 }
@@ -407,6 +411,7 @@ export function createPortablePolynomialBackend() {
     nmodPolyConstant,
     nmodPolyGen,
     polyAdd,
+    polyCoefficients,
     polyEqual,
     polyMul,
     polyNeg,

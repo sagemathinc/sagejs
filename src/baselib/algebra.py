@@ -100,12 +100,20 @@ class Element:
 @runtime.callable_instance_class
 class IntegerRing(Parent):
 
+    def __init__(self, name: str = 'Integer Ring') -> None:
+        Parent.__init__(self, name)
+        self._kind = 'ZZ'
+
     def __call__(self, value: object) -> Any:
         return normalize_integer(value)
 
 
 @runtime.callable_instance_class
 class RationalField(Parent):
+
+    def __init__(self, name: str = 'Rational Field') -> None:
+        Parent.__init__(self, name)
+        self._kind = 'QQ'
 
     def __call__(
         self,

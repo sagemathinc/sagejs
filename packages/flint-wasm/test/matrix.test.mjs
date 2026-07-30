@@ -25,6 +25,36 @@ test("provides the exact matrix backend contract without native code", () => {
     ),
     [1n, 0n, 0n, 2n],
   );
+  const [transformedHermite, hermiteTransform] =
+    matrix.matrixHermiteTransform(value);
+  assert.equal(
+    matrix.matrixEqual(
+      matrix.matrixMul(hermiteTransform, value),
+      transformedHermite,
+    ),
+    true,
+  );
+  const [smith, smithLeft, smithRight] = matrix.matrixSmith(value);
+  assert.deepEqual(
+    [0, 1, 2, 3].map((index) =>
+      matrix.matrixEntry(
+        smith,
+        Math.floor(index / 2),
+        index % 2,
+      ),
+    ),
+    [1n, 0n, 0n, 2n],
+  );
+  assert.equal(
+    matrix.matrixEqual(
+      matrix.matrixMul(
+        matrix.matrixMul(smithLeft, value),
+        smithRight,
+      ),
+      smith,
+    ),
+    true,
+  );
   assert.deepEqual(
     matrix.matrixCharpoly(value),
     [-2n, -5n, 1n],
@@ -33,6 +63,23 @@ test("provides the exact matrix backend contract without native code", () => {
     2,
     3,
     [1n, 2n, 3n, 2n, 4n, 6n],
+  );
+  const rectangular = matrix.zzMatrix(
+    3,
+    2,
+    [0n, 1n, 2n, 3n, 4n, 5n],
+  );
+  const [rectangularSmith, rectangularLeft, rectangularRight] =
+    matrix.matrixSmith(rectangular);
+  assert.equal(
+    matrix.matrixEqual(
+      matrix.matrixMul(
+        matrix.matrixMul(rectangularLeft, rectangular),
+        rectangularRight,
+      ),
+      rectangularSmith,
+    ),
+    true,
   );
   const kernel = matrix.matrixRightKernel(dependent);
   assert.deepEqual(

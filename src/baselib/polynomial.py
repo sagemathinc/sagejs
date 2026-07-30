@@ -21,6 +21,7 @@ def ρσ_callable_instance_class(cls: type[Any]) -> type[Any]:
     return cls
 
 
+@runtime.callable_instance_class
 @runtime.lightweight_math_class
 class PolynomialElement(sage.Element):
 
@@ -145,6 +146,39 @@ class PolynomialElement(sage.Element):
             return runtime.factor_pair(root, pair[1]) if multiplicities else root
 
         return runtime.flint_backend().nmodPolyRoots(self._native).map(make_root)
+
+    def coefficients(self) -> list[Any]:
+        raw = runtime.flint_backend().polyCoefficients(self._native)
+        base = self._parent.base_ring()
+        answer = []
+        for coefficient in raw:
+            if base is sage.ZZ:
+                answer.append(runtime.normalize_integer(coefficient))
+            elif base is sage.QQ:
+                answer.append(base(
+                    runtime.reflect.get(coefficient, 'numerator'),
+                    runtime.reflect.get(coefficient, 'denominator'),
+                ))
+            else:
+                answer.append(base(coefficient))
+        return answer
+
+    def __call__(self, value: Any) -> Any:
+        coefficients = self.coefficients()
+        if (
+            hasattr(value, 'nrows')
+            and hasattr(value, 'ncols')
+            and value.is_square()
+        ):
+            answer = value.parent().zero()
+            identity = value.parent().one()
+            for coefficient in reversed(coefficients):
+                answer = answer * value + coefficient * identity
+            return answer
+        answer = self._parent.base_ring()(0)
+        for coefficient in reversed(coefficients):
+            answer = answer * value + coefficient
+        return answer
 
     def __repr__(self) -> str:
         raw = runtime.flint_backend().polyToString(

@@ -239,6 +239,16 @@ assrt.deepEqual(divisors(12), [1, 2, 3, 4, 6, 12])
 assrt.equal(prod([2, 3, 5]), 30)
 assrt.equal(prime_pi(100), 25)
 assrt.equal(Integer(97).is_irreducible(), True)
+assrt.equal(Integer(1).is_one(), True)
+assrt.equal(Integer(2).is_one(), False)
+assrt.equal(Integer(0).is_square(), True)
+assrt.equal(Integer(144).is_square(), True)
+assrt.equal(Integer(145).is_square(), False)
+assrt.equal(Integer(-1).is_square(), False)
+assrt.equal(
+    BigInt("10000000000000000000000000000000000000000").is_square(),
+    True,
+)
 assrt.equal(numerator(bernoulli(10)), 5)
 assrt.equal(denominator(bernoulli(10)), 66)
 assrt.deepEqual(

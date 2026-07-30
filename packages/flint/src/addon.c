@@ -857,6 +857,78 @@ static napi_value poly_to_string(napi_env env, napi_callback_info info)
     return result;
 }
 
+static napi_value poly_coefficients(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    napi_value coefficient;
+    napi_value numerator;
+    napi_value denominator;
+    sagejs_poly *poly;
+    slong index;
+    slong length;
+    fmpz_t integer;
+    fmpq_t rational;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    poly = unwrap_poly(env, args[0], 0);
+    if (poly == NULL)
+        return NULL;
+    if (poly->kind == SAGEJS_POLY_ZZ)
+        length = fmpz_poly_length(poly->integer);
+    else if (poly->kind == SAGEJS_POLY_QQ)
+        length = fmpq_poly_length(poly->rational);
+    else
+        length = nmod_poly_length(poly->modular);
+    if (!check_napi(env,
+        napi_create_array_with_length(env, (size_t) length, &result)))
+        return NULL;
+
+    fmpz_init(integer);
+    fmpq_init(rational);
+    for (index = 0; index < length; index++)
+    {
+        if (poly->kind == SAGEJS_POLY_ZZ)
+        {
+            fmpz_poly_get_coeff_fmpz(integer, poly->integer, index);
+            coefficient = fmpz_to_bigint(env, integer);
+        }
+        else if (poly->kind == SAGEJS_POLY_QQ)
+        {
+            fmpq_poly_get_coeff_fmpq(rational, poly->rational, index);
+            numerator = fmpz_to_bigint(env, fmpq_numref(rational));
+            denominator = fmpz_to_bigint(env, fmpq_denref(rational));
+            if (numerator == NULL || denominator == NULL ||
+                !check_napi(env, napi_create_object(env, &coefficient)) ||
+                !check_napi(env, napi_set_named_property(
+                    env, coefficient, "numerator", numerator)) ||
+                !check_napi(env, napi_set_named_property(
+                    env, coefficient, "denominator", denominator)))
+                coefficient = NULL;
+        }
+        else
+        {
+            if (!check_napi(env, napi_create_bigint_uint64(
+                env,
+                nmod_poly_get_coeff_ui(poly->modular, index),
+                &coefficient)))
+                coefficient = NULL;
+        }
+        if (coefficient == NULL ||
+            !check_napi(env, napi_set_element(
+                env, result, (uint32_t) index, coefficient)))
+        {
+            fmpz_clear(integer);
+            fmpq_clear(rational);
+            return NULL;
+        }
+    }
+    fmpz_clear(integer);
+    fmpq_clear(rational);
+    return result;
+}
+
 static napi_value nmod_poly_gcd_value(napi_env env, napi_callback_info info)
 {
     napi_value args[2];
@@ -1463,6 +1535,10 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"matrixHermite", NULL, sagejs_matrix_hermite, NULL, NULL, NULL,
             napi_default, NULL},
+        {"matrixHermiteTransform", NULL, sagejs_matrix_hermite_transform,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"matrixSmith", NULL, sagejs_matrix_smith, NULL, NULL, NULL,
+            napi_default, NULL},
         {"matrixRightKernel", NULL, sagejs_matrix_right_kernel,
             NULL, NULL, NULL, napi_default, NULL},
         {"matrixCharpoly", NULL, sagejs_matrix_charpoly,
@@ -1535,6 +1611,8 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"polyFactor", NULL, poly_factor_value, NULL, NULL, NULL,
             napi_default, NULL},
         {"polyToString", NULL, poly_to_string, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"polyCoefficients", NULL, poly_coefficients, NULL, NULL, NULL,
             napi_default, NULL},
         {"nmodPolyGcd", NULL, nmod_poly_gcd_value, NULL, NULL, NULL,
             napi_default, NULL},

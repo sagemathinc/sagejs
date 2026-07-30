@@ -4266,6 +4266,33 @@ def _builtins_integer_is_irreducible(self: Any) -> _Bool:
         runtime.native_neg(value) if value < 0 else value)
 
 
+def _builtins_integer_is_one(self: Any) -> _Bool:
+    return runtime.bigint(self) == runtime.bigint(1)
+
+
+def _builtins_integer_is_square(self: Any) -> _Bool:
+    value = runtime.bigint(self)
+    if value < 0:
+        return False
+    if value < 2:
+        return True
+    estimate = value
+    candidate = runtime.native_div(
+        runtime.native_add(estimate, runtime.bigint(1)),
+        runtime.bigint(2),
+    )
+    while candidate < estimate:
+        estimate = candidate
+        candidate = runtime.native_div(
+            runtime.native_add(
+                estimate,
+                runtime.native_div(value, estimate),
+            ),
+            runtime.bigint(2),
+        )
+    return runtime.native_mul(estimate, estimate) == value
+
+
 def _builtins_extreme(
     positional: Any,
     keywords: Any,
@@ -4606,6 +4633,10 @@ compile = ρσ_compile
 exec = ρσ_exec
 _integer_is_irreducible_native = runtime.native_method(
     _builtins_integer_is_irreducible)
+_integer_is_one_native = runtime.native_method(
+    _builtins_integer_is_one)
+_integer_is_square_native = runtime.native_method(
+    _builtins_integer_is_square)
 runtime.reflect.set(
     runtime.reflect.get(runtime.number, 'prototype'),
     'is_irreducible',
@@ -4615,6 +4646,26 @@ runtime.reflect.set(
     runtime.reflect.get(runtime.bigint, 'prototype'),
     'is_irreducible',
     _integer_is_irreducible_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.number, 'prototype'),
+    'is_one',
+    _integer_is_one_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.bigint, 'prototype'),
+    'is_one',
+    _integer_is_one_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.number, 'prototype'),
+    'is_square',
+    _integer_is_square_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.bigint, 'prototype'),
+    'is_square',
+    _integer_is_square_native,
 )
 runtime.set_class_repr(_Code, "<class 'code'>")
 runtime.set_class_repr(ρσ_function_type, "<class 'function'>")

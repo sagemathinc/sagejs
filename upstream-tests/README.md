@@ -27,6 +27,23 @@ out-of-scope dependency and does not execute the example. An `xfail` records a
 known Sage.js compatibility gap and is executed; an unexpected pass fails the
 suite until the obsolete expectation is removed.
 
+## Exact integer matrices
+
+`sage/matrix/matrix_integer_dense_core.doctests.json` pins 207 public examples
+from 15 high-frequency methods in Sage's integer dense-matrix implementation at
+revision `09472ff530d280d0c9f44fdc5a9c3e856ed95b37`. Run the compatibility gate
+or an unclassified development report with:
+
+```sh
+pnpm test:matrix:corpus
+pnpm matrix:report
+```
+
+The extraction filter is an owner regular expression, so additional coherent
+method groups can be adopted without importing the entire implementation
+docstring corpus at once. Both extraction and execution accept
+`--owner-regexp`.
+
 ## Python language compatibility
 
 The `micropython` directory contains a pinned copy of MicroPython's compact

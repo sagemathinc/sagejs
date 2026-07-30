@@ -219,9 +219,28 @@ function extractSageDoctests(source, metadata) {
   };
 }
 
+function filterSageDoctests(fixture, options = {}) {
+  const ownerPattern = options.ownerPattern;
+  const groups = fixture.groups.filter(
+    (group) => !ownerPattern || ownerPattern.test(group.owner),
+  );
+  return {
+    ...fixture,
+    summary: {
+      groups: groups.length,
+      examples: groups.reduce(
+        (total, group) => total + group.examples.length,
+        0,
+      ),
+    },
+    groups,
+  };
+}
+
 module.exports = {
   SCHEMA,
   exampleTags,
   extractSageDoctests,
+  filterSageDoctests,
   tripleQuotedStrings,
 };

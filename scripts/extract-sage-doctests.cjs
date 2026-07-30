@@ -4,13 +4,17 @@
 const { readFileSync, writeFileSync, mkdirSync } = require("node:fs");
 const { dirname, relative, resolve } = require("node:path");
 const { spawnSync } = require("node:child_process");
-const { extractSageDoctests } = require("../tools/sage-doctest-fixture.cjs");
+const {
+  extractSageDoctests,
+  filterSageDoctests,
+} = require("../tools/sage-doctest-fixture.cjs");
 
 function usage(message) {
   if (message) process.stderr.write(`${message}\n\n`);
   process.stderr.write(
     "Usage: extract-sage-doctests.cjs --source FILE --output FILE [--root DIR]\n" +
-      "       [--repository URL] [--revision REV] [--license SPDX-ID]\n",
+      "       [--repository URL] [--revision REV] [--license SPDX-ID]\n" +
+      "       [--owner-regexp REGEXP]\n",
   );
   process.exit(message ? 2 : 0);
 }
@@ -53,12 +57,17 @@ const revision =
   options.revision || git(inferredRoot, "rev-parse", "HEAD") || "unknown";
 const sourcePath = relative(inferredRoot, sourceFile);
 const source = readFileSync(sourceFile, "utf8");
-const fixture = extractSageDoctests(source, {
+let fixture = extractSageDoctests(source, {
   repository,
   revision,
   path: sourcePath,
   license: options.license,
 });
+if (options["owner-regexp"]) {
+  fixture = filterSageDoctests(fixture, {
+    ownerPattern: new RegExp(options["owner-regexp"]),
+  });
+}
 
 const output = resolve(options.output);
 mkdirSync(dirname(output), { recursive: true });

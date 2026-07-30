@@ -110,7 +110,11 @@ async function worker() {
 }
 
 function parseArguments(argv) {
-  const options = { verbose: false, allowFailures: false };
+  const options = {
+    verbose: false,
+    allowFailures: false,
+    ownerRegexp: null,
+  };
   const positional = [];
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
@@ -124,6 +128,12 @@ function parseArguments(argv) {
         throw new Error("--expectations requires a filename");
       }
       options.expectations = filename;
+    } else if (value === "--owner-regexp") {
+      const pattern = argv[++index];
+      if (!pattern || pattern.startsWith("--")) {
+        throw new Error("--owner-regexp requires a regular expression");
+      }
+      options.ownerRegexp = new RegExp(pattern);
     } else if (value.startsWith("--")) {
       throw new Error(`unknown option: ${value}`);
     } else {
@@ -133,7 +143,7 @@ function parseArguments(argv) {
   if (positional.length !== 1) {
     throw new Error(
       "usage: run-sage-doctests.cjs FIXTURE [--expectations FILE] " +
-        "[--verbose] [--allow-failures]",
+        "[--verbose] [--allow-failures] [--owner-regexp REGEXP]",
     );
   }
   options.fixture = positional[0];
@@ -184,14 +194,22 @@ function main() {
   const skip = expectations.skip ?? {};
   const xfail = expectations.xfail ?? {};
   const counts = { pass: 0, fail: 0, skip: 0, xfail: 0, xpass: 0 };
-  const examples = fixture.groups.flatMap((group) => group.examples);
-  const ids = new Set(examples.map((example) => example.id));
-  if (ids.size !== examples.length) {
+  const allExamples = fixture.groups.flatMap(
+    (group) => group.examples);
+  const ids = new Set(
+    allExamples.map((example) => example.id));
+  if (ids.size !== allExamples.length) {
     throw new Error("doctest fixture contains duplicate example ids");
   }
-  if (fixture.summary.examples !== examples.length) {
+  if (fixture.summary.examples !== allExamples.length) {
     throw new Error("doctest fixture summary does not match its examples");
   }
+  const groups = fixture.groups.filter(
+    (group) =>
+      options.ownerRegexp === null ||
+      options.ownerRegexp.test(group.owner),
+  );
+  const examples = groups.flatMap((group) => group.examples);
   for (const id of [...Object.keys(skip), ...Object.keys(xfail)]) {
     if (!ids.has(id)) {
       throw new Error(`expectation refers to unknown test: ${id}`);
@@ -201,7 +219,7 @@ function main() {
     if (xfail[id]) throw new Error(`test is both skipped and xfailed: ${id}`);
   }
 
-  for (const group of fixture.groups) {
+  for (const group of groups) {
     const runnable = group.examples.filter((example) => !skip[example.id]);
     const observed = new Map(
       runGroup(runnable).map((result) => [result.id, result.actual]),
@@ -241,7 +259,7 @@ function main() {
   process.stdout.write(
     `Sage doctests: ${counts.pass} passed, ${counts.xfail} xfailed, ` +
       `${counts.skip} skipped, ${counts.fail} failed, ${counts.xpass} xpassed ` +
-      `(${fixture.summary.examples} total)\n`,
+    `(${examples.length} total)\n`,
   );
   if (
     !options.allowFailures &&

@@ -57,12 +57,17 @@ const zx = flint.zzPolyGen();
 const zone = flint.zzPolyConstant(1n);
 const zf = flint.polyPow(flint.polyAdd(zx, zone), 3n);
 assert.equal(flint.polyToString(zf, "x"), "x^3+3*x^2+3*x+1");
+assert.deepEqual(flint.polyCoefficients(zf), [1n, 3n, 3n, 1n]);
 assert.equal(flint.polyEqual(zf, zf), true);
 
 const qx = flint.zzPolyToQQ(zx);
 const third = flint.qqPolyConstant(1n, 3n);
 const qf = flint.polyAdd(flint.polyAdd(qx, flint.qqPolyConstant(1n, 1n)), third);
 assert.equal(flint.polyToString(qf, "x"), "x+4/3");
+assert.deepEqual(flint.polyCoefficients(qf), [
+  { numerator: 4n, denominator: 3n },
+  { numerator: 1n, denominator: 1n },
+]);
 assert.equal(
   flint.polyEqual(qf, flint.polyAdd(qx, flint.qqPolyConstant(4n, 3n))),
   true,
@@ -324,6 +329,37 @@ assert.deepEqual(
     ),
   ),
   [1n, 0n, 0n, 2n],
+);
+const [integerHermiteWithTransform, integerHermiteTransform] =
+  flint.matrixHermiteTransform(integerMatrix);
+assert.equal(
+  flint.matrixEqual(
+    flint.matrixMul(integerHermiteTransform, integerMatrix),
+    integerHermiteWithTransform,
+  ),
+  true,
+);
+const [integerSmith, integerSmithLeft, integerSmithRight] =
+  flint.matrixSmith(integerMatrix);
+assert.deepEqual(
+  [0, 1, 2, 3].map((index) =>
+    flint.matrixEntry(
+      integerSmith,
+      Math.floor(index / 2),
+      index % 2,
+    ),
+  ),
+  [1n, 0n, 0n, 2n],
+);
+assert.equal(
+  flint.matrixEqual(
+    flint.matrixMul(
+      flint.matrixMul(integerSmithLeft, integerMatrix),
+      integerSmithRight,
+    ),
+    integerSmith,
+  ),
+  true,
 );
 assert.deepEqual(
   flint.matrixCharpoly(integerMatrix),

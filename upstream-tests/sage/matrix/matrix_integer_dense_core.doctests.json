@@ -1,0 +1,1575 @@
+{
+  "schema": "sagejs.sage-doctests/v1",
+  "generatedBy": "scripts/extract-sage-doctests.cjs",
+  "source": {
+    "repository": "https://github.com/sagemath/sage.git",
+    "revision": "09472ff530d280d0c9f44fdc5a9c3e856ed95b37",
+    "path": "src/sage/matrix/matrix_integer_dense.pyx",
+    "sha256": "f7e5c0fba2586eb948d5832bafc770a6e022a1da7e0e86a0932fffe0f19bb0e4",
+    "license": "GPL-2.0-or-later"
+  },
+  "summary": {
+    "groups": 15,
+    "examples": 207
+  },
+  "groups": [
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.__bool__@727",
+      "owner": "Matrix_integer_dense.__bool__",
+      "line": 727,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:732",
+          "line": 732,
+          "source": "a = MatrixSpace(ZZ, 2, 3)(range(6)); a",
+          "want": "[0 1 2]\n[3 4 5]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:735",
+          "line": 735,
+          "source": "bool(a)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:737",
+          "line": 737,
+          "source": "bool(a - a)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:742",
+          "line": 742,
+          "source": "a = MatrixSpace(ZZ, 0, 3)()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:743",
+          "line": 743,
+          "source": "bool(a)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:745",
+          "line": 745,
+          "source": "a = MatrixSpace(ZZ, 3, 0)()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:746",
+          "line": 746,
+          "source": "bool(a)",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:748",
+          "line": 748,
+          "source": "a = MatrixSpace(ZZ, 0, 0)()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:749",
+          "line": 749,
+          "source": "bool(a)",
+          "want": "False\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.is_one@755",
+      "owner": "Matrix_integer_dense.is_one",
+      "line": 755,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:760",
+          "line": 760,
+          "source": "matrix(2, [1,0,0,1]).is_one()",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:762",
+          "line": 762,
+          "source": "matrix(2, [1,1,0,1]).is_one()",
+          "want": "False\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:764",
+          "line": 764,
+          "source": "matrix(2, 3, [1,0,0,0,1,0]).is_one()",
+          "want": "False\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.__pow__@952",
+      "owner": "Matrix_integer_dense.__pow__",
+      "line": 952,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:957",
+          "line": 957,
+          "source": "M = MatrixSpace(ZZ,3)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:958",
+          "line": 958,
+          "source": "m = M([1, 1, 1, 2, 1, 1, -3, -2, -1])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:959",
+          "line": 959,
+          "source": "m ** 3",
+          "want": "[-3 -2 -1]\n[-3 -2  0]\n[ 2  1 -3]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:963",
+          "line": 963,
+          "source": "m ** -2",
+          "want": "[ 2 -3 -1]\n[-4  4  1]\n[ 1  0  0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:967",
+          "line": 967,
+          "source": "M(range(9)) ** -1",
+          "want": "Traceback (most recent call last):\n...\nZeroDivisionError: matrix must be nonsingular\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:974",
+          "line": 974,
+          "source": "m ** 3 == m ** 3r == (~m) ** (-3) == (~m) ** (-3r)",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:981",
+          "line": 981,
+          "source": "m = M.identity_matrix()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:982",
+          "line": 982,
+          "source": "m ** (2**256)",
+          "want": "[1 0 0]\n[0 1 0]\n[0 0 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:986",
+          "line": 986,
+          "source": "m ** (2r**256r)",
+          "want": "[1 0 0]\n[0 1 0]\n[0 0 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:994",
+          "line": 994,
+          "source": "M = Matrix(2, 2, range(4))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:995",
+          "line": 995,
+          "source": "None^M",
+          "want": "Traceback (most recent call last):\n...\nTypeError: Cannot convert NoneType to sage.matrix.matrix_integer_dense.Matrix_integer_dense\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:999",
+          "line": 999,
+          "source": "M^M",
+          "want": "Traceback (most recent call last):\n...\nNotImplementedError: the given exponent is not supported\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.charpoly@1313",
+      "owner": "Matrix_integer_dense.charpoly",
+      "line": 1313,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1327",
+          "line": 1327,
+          "source": "A = matrix(ZZ,6, range(36))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1328",
+          "line": 1328,
+          "source": "f = A.charpoly(); f",
+          "want": "x^6 - 105*x^5 - 630*x^4\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1330",
+          "line": 1330,
+          "source": "f(A) == 0",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1332",
+          "line": 1332,
+          "source": "g = A.charpoly(algorithm='flint')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1333",
+          "line": 1333,
+          "source": "f == g",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1335",
+          "line": 1335,
+          "source": "n=20; A = Mat(ZZ,n)(range(n^2))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1336",
+          "line": 1336,
+          "source": "A.charpoly()",
+          "want": "x^20 - 3990*x^19 - 266000*x^18\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1338",
+          "line": 1338,
+          "source": "A.minpoly()",
+          "want": "x^3 - 3990*x^2 - 266000*x\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1343",
+          "line": 1343,
+          "source": "matrix(ZZ, 2, 1).charpoly()",
+          "want": "Traceback (most recent call last):\n...\nArithmeticError: only valid for square matrix\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1355",
+          "line": 1355,
+          "source": "M = MatrixSpace(ZZ, 2)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1356",
+          "line": 1356,
+          "source": "A = M(range(0, 2^2))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1357",
+          "line": 1357,
+          "source": "type(A)",
+          "want": "<class 'sage.matrix.matrix_integer_dense.Matrix_integer_dense'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1359",
+          "line": 1359,
+          "source": "A.charpoly('x')",
+          "want": "x^2 - 3*x - 2\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1361",
+          "line": 1361,
+          "source": "A.charpoly('y')",
+          "want": "y^2 - 3*y - 2\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1363",
+          "line": 1363,
+          "source": "A._cache['charpoly_linbox']",
+          "want": "x^2 - 3*x - 2\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1368",
+          "line": 1368,
+          "source": "matrix([5]).charpoly('z', 'flint')",
+          "want": "z - 5\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1370",
+          "line": 1370,
+          "source": "matrix([5]).charpoly('z', 'linbox')",
+          "want": "z - 5\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1372",
+          "line": 1372,
+          "source": "matrix([5]).charpoly('z', 'generic')",
+          "want": "z - 5\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1376",
+          "line": 1376,
+          "source": "matrix([]).charpoly('y', 'flint')",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1378",
+          "line": 1378,
+          "source": "matrix([]).charpoly('y', 'linbox')",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1380",
+          "line": 1380,
+          "source": "matrix([]).charpoly('y', 'generic')",
+          "want": "1\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1383",
+          "line": 1383,
+          "source": "matrix([0]).charpoly('x', 'flint')",
+          "want": "x\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1385",
+          "line": 1385,
+          "source": "matrix([0]).charpoly('x', 'linbox')",
+          "want": "x\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1387",
+          "line": 1387,
+          "source": "matrix([0]).charpoly('x', 'generic')",
+          "want": "x\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1392",
+          "line": 1392,
+          "source": "for _ in range(100):\n    dim = randint(1, 20)\n    m  = random_matrix(ZZ, dim)\n    m._clear_cache(); ans_flint = m.charpoly(algorithm='flint')\n    m._clear_cache(); ans_linbox = m.charpoly(algorithm='linbox')\n    m._clear_cache(); ans_generic = m.charpoly(algorithm='generic')\n    if ans_flint != ans_linbox or ans_flint != ans_generic:\n        raise RuntimeError(\"ans_flint = {}, ans_linbox = {} and ans_generic = {} for\\n{}\".format(\n                           ans_flint, ans_linbox, ans_generic, m.str()))",
+          "want": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.echelon_form@1842",
+      "owner": "Matrix_integer_dense.echelon_form",
+      "line": 1842,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1894",
+          "line": 1894,
+          "source": "A = MatrixSpace(ZZ,2)([1,2,3,4])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1895",
+          "line": 1895,
+          "source": "A.echelon_form()",
+          "want": "[1 0]\n[0 2]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1898",
+          "line": 1898,
+          "source": "A = MatrixSpace(ZZ,5)(range(25))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1899",
+          "line": 1899,
+          "source": "A.echelon_form()",
+          "want": "[  5   0  -5 -10 -15]\n[  0   1   2   3   4]\n[  0   0   0   0   0]\n[  0   0   0   0   0]\n[  0   0   0   0   0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1908",
+          "line": 1908,
+          "source": "A = matrix(ZZ,5,3,[1..15])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1909",
+          "line": 1909,
+          "source": "H, U = A.hermite_form(transformation=True, include_zero_rows=False)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1910",
+          "line": 1910,
+          "source": "H",
+          "want": "[1 2 3]\n[0 3 6]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1913",
+          "line": 1913,
+          "source": "U",
+          "want": "[  0   0   0   4  -3]\n[  0   0   0  13 -10]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1916",
+          "line": 1916,
+          "source": "U*A == H",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1923",
+          "line": 1923,
+          "source": "m = matrix(ZZ,3,3,[0]*9)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1924",
+          "line": 1924,
+          "source": "m.echelon_form()",
+          "want": "[0 0 0]\n[0 0 0]\n[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1928",
+          "line": 1928,
+          "source": "m = matrix(ZZ,3,1,[0]*3)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1929",
+          "line": 1929,
+          "source": "m.echelon_form()",
+          "want": "[0]\n[0]\n[0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1933",
+          "line": 1933,
+          "source": "m = matrix(ZZ,1,3,[0]*3)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1934",
+          "line": 1934,
+          "source": "m.echelon_form()",
+          "want": "[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1941",
+          "line": 1941,
+          "source": "m = matrix(ZZ,0,0,[])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1942",
+          "line": 1942,
+          "source": "m.echelon_form()",
+          "want": "[]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1952",
+          "line": 1952,
+          "source": "a = matrix(ZZ, 1,2,[0,-1])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1953",
+          "line": 1953,
+          "source": "a.hermite_form()",
+          "want": "[0 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1955",
+          "line": 1955,
+          "source": "a.pivots()",
+          "want": "(1,)\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1957",
+          "line": 1957,
+          "source": "a = matrix(ZZ, 1,2,[0,0])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1958",
+          "line": 1958,
+          "source": "a.hermite_form()",
+          "want": "[0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1960",
+          "line": 1960,
+          "source": "a.pivots()",
+          "want": "()\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1962",
+          "line": 1962,
+          "source": "a = matrix(ZZ,1,3); a",
+          "want": "[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1964",
+          "line": 1964,
+          "source": "a.echelon_form(include_zero_rows=False)",
+          "want": "[]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1966",
+          "line": 1966,
+          "source": "a.echelon_form(include_zero_rows=True)",
+          "want": "[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1971",
+          "line": 1971,
+          "source": "matrix(ZZ,3,[1..9]).hermite_form(algorithm='pari')",
+          "want": "[1 2 3]\n[0 3 6]\n[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1975",
+          "line": 1975,
+          "source": "matrix(ZZ,3,[1..9]).hermite_form(algorithm='pari0')",
+          "want": "[1 2 3]\n[0 3 6]\n[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1979",
+          "line": 1979,
+          "source": "matrix(ZZ,3,[1..9]).hermite_form(algorithm='pari4')",
+          "want": "[1 2 3]\n[0 3 6]\n[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1983",
+          "line": 1983,
+          "source": "matrix(ZZ,3,[1..9]).hermite_form(algorithm='padic')",
+          "want": "[1 2 3]\n[0 3 6]\n[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1987",
+          "line": 1987,
+          "source": "matrix(ZZ,3,[1..9]).hermite_form(algorithm='default')",
+          "want": "[1 2 3]\n[0 3 6]\n[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1994",
+          "line": 1994,
+          "source": "matrix(ZZ,3,[1..9]).hermite_form(algorithm='ntl')",
+          "want": "Traceback (most recent call last):\n...\nValueError: ntl only computes HNF for square matrices of full rank.\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:1998",
+          "line": 1998,
+          "source": "matrix(ZZ,3,[0] +[2..9]).hermite_form(algorithm='ntl')",
+          "want": "[1 0 0]\n[0 1 0]\n[0 0 3]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2007",
+          "line": 2007,
+          "source": "a = matrix([(0, 0, 3), (0, -2, 2), (0, 1, 2), (0, -2, 5)])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2008",
+          "line": 2008,
+          "source": "a.hermite_form()",
+          "want": "[0 1 2]\n[0 0 3]\n[0 0 0]\n[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2016",
+          "line": 2016,
+          "source": "m = matrix([(-2, 1, 9, 2, -8, 1, -3, -1, -4, -1),\n            (5, -2, 0, 1, 0, 4, -1, 1, -2, 0),\n            (-11, 3, 1, 0, -3, -2, -1, -11, 2, -2),\n            (-1, 1, -1, -2, 1, -1, -1, -1, -1, 7),\n            (-2, -1, -1, 1, 1, -2, 1, 0, 2, -4)]).stack(\n            200 * identity_matrix(ZZ, 10))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2022",
+          "line": 2022,
+          "source": "matrix(ZZ,m).hermite_form(algorithm='pari', include_zero_rows=False)",
+          "want": "[  1   0   2   0  13   5   1 166  72  69]\n[  0   1   1   0  20   4  15 195  65 190]\n[  0   0   4   0  24   5  23  22  51 123]\n[  0   0   0   1  23   7  20 105  60 151]\n[  0   0   0   0  40   4   0  80  36  68]\n[  0   0   0   0   0  10   0 100 190 170]\n[  0   0   0   0   0   0  25   0 100 150]\n[  0   0   0   0   0   0   0 200   0   0]\n[  0   0   0   0   0   0   0   0 200   0]\n[  0   0   0   0   0   0   0   0   0 200]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2033",
+          "line": 2033,
+          "source": "matrix(ZZ,m).hermite_form(algorithm='padic', include_zero_rows=False)",
+          "want": "[  1   0   2   0  13   5   1 166  72  69]\n[  0   1   1   0  20   4  15 195  65 190]\n[  0   0   4   0  24   5  23  22  51 123]\n[  0   0   0   1  23   7  20 105  60 151]\n[  0   0   0   0  40   4   0  80  36  68]\n[  0   0   0   0   0  10   0 100 190 170]\n[  0   0   0   0   0   0  25   0 100 150]\n[  0   0   0   0   0   0   0 200   0   0]\n[  0   0   0   0   0   0   0   0 200   0]\n[  0   0   0   0   0   0   0   0   0 200]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2047",
+          "line": 2047,
+          "source": "m = matrix(2, 0)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2048",
+          "line": 2048,
+          "source": "m.parent()",
+          "want": "Full MatrixSpace of 2 by 0 dense matrices over Integer Ring\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2050",
+          "line": 2050,
+          "source": "H, U = m.echelon_form(transformation=True)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2051",
+          "line": 2051,
+          "source": "H.parent()",
+          "want": "Full MatrixSpace of 2 by 0 dense matrices over Integer Ring\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2053",
+          "line": 2053,
+          "source": "H.is_immutable()",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2055",
+          "line": 2055,
+          "source": "U",
+          "want": "[1 0]\n[0 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2058",
+          "line": 2058,
+          "source": "H == U * m",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2060",
+          "line": 2060,
+          "source": "H, U = m.echelon_form(transformation=True,\n                      include_zero_rows=False)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2062",
+          "line": 2062,
+          "source": "H.parent()",
+          "want": "Full MatrixSpace of 0 by 0 dense matrices over Integer Ring\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2064",
+          "line": 2064,
+          "source": "U.parent()",
+          "want": "Full MatrixSpace of 0 by 2 dense matrices over Integer Ring\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2066",
+          "line": 2066,
+          "source": "H == U * m",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2068",
+          "line": 2068,
+          "source": "m = random_matrix(ZZ, 15, 15, x=-1000, y=1000, density=0.1)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2069",
+          "line": 2069,
+          "source": "m.parent()",
+          "want": "Full MatrixSpace of 15 by 15 dense matrices over Integer Ring\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2071",
+          "line": 2071,
+          "source": "H, U = m.hermite_form(algorithm='flint',\n                      transformation=True)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2073",
+          "line": 2073,
+          "source": "H == U*m",
+          "want": "True\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.pivots@2304",
+      "owner": "Matrix_integer_dense.pivots",
+      "line": 2304,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2312",
+          "line": 2312,
+          "source": "n = 3; A = matrix(ZZ,n,range(n^2)); A",
+          "want": "[0 1 2]\n[3 4 5]\n[6 7 8]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2316",
+          "line": 2316,
+          "source": "A.pivots()",
+          "want": "(0, 1)\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2318",
+          "line": 2318,
+          "source": "A.echelon_form()",
+          "want": "[ 3  0 -3]\n[ 0  1  2]\n[ 0  0  0]\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.elementary_divisors@2348",
+      "owner": "Matrix_integer_dense.elementary_divisors",
+      "line": 2348,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2376",
+          "line": 2376,
+          "source": "M = Matrix([[3,0,1],[0,1,0]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2377",
+          "line": 2377,
+          "source": "M",
+          "want": "[3 0 1]\n[0 1 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2380",
+          "line": 2380,
+          "source": "M.elementary_divisors()",
+          "want": "[1, 1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2382",
+          "line": 2382,
+          "source": "M.transpose().elementary_divisors()",
+          "want": "[1, 1, 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2387",
+          "line": 2387,
+          "source": "matrix(3, range(9)).elementary_divisors()",
+          "want": "[1, 3, 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2389",
+          "line": 2389,
+          "source": "matrix(3, range(9)).elementary_divisors(algorithm='pari')",
+          "want": "[1, 3, 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2391",
+          "line": 2391,
+          "source": "C = MatrixSpace(ZZ,4)([3,4,5,6,7,3,8,10,14,5,6,7,2,2,10,9])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2392",
+          "line": 2392,
+          "source": "C.elementary_divisors()",
+          "want": "[1, 1, 1, 687]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2397",
+          "line": 2397,
+          "source": "M = matrix(ZZ, 3, [1,5,7, 3,6,9, 0,1,2])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2398",
+          "line": 2398,
+          "source": "M.elementary_divisors()",
+          "want": "[1, 1, 6]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2403",
+          "line": 2403,
+          "source": "edivs = M.elementary_divisors()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2404",
+          "line": 2404,
+          "source": "edivs.pop()",
+          "want": "6\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2406",
+          "line": 2406,
+          "source": "M.elementary_divisors()",
+          "want": "[1, 1, 6]\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.smith_form@2433",
+      "owner": "Matrix_integer_dense.smith_form",
+      "line": 2433,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2458",
+          "line": 2458,
+          "source": "A = MatrixSpace(IntegerRing(), 3)(range(9))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2459",
+          "line": 2459,
+          "source": "D, U, V = A.smith_form()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2460",
+          "line": 2460,
+          "source": "D",
+          "want": "[1 0 0]\n[0 3 0]\n[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2464",
+          "line": 2464,
+          "source": "U",
+          "want": "[ 0  2 -1]\n[ 0 -1  1]\n[ 1 -2  1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2468",
+          "line": 2468,
+          "source": "V",
+          "want": "[ 0  0  1]\n[-1  2 -2]\n[ 1 -1  1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2472",
+          "line": 2472,
+          "source": "U*A*V",
+          "want": "[1 0 0]\n[0 3 0]\n[0 0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2479",
+          "line": 2479,
+          "source": "A = Matrix(ZZ,3,2,range(6))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2480",
+          "line": 2480,
+          "source": "D, U, V = A.smith_form()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2481",
+          "line": 2481,
+          "source": "D",
+          "want": "[1 0]\n[0 2]\n[0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2485",
+          "line": 2485,
+          "source": "U",
+          "want": "[ 0  2 -1]\n[ 0 -1  1]\n[ 1 -2  1]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2489",
+          "line": 2489,
+          "source": "V",
+          "want": "[-1  1]\n[ 1  0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2492",
+          "line": 2492,
+          "source": "U * A * V",
+          "want": "[1 0]\n[0 2]\n[0 0]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2499",
+          "line": 2499,
+          "source": "m = MatrixSpace(ZZ, 2,0)(0); d,u,v = m.smith_form(); u*m*v == d",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2501",
+          "line": 2501,
+          "source": "m = MatrixSpace(ZZ, 0,2)(0); d,u,v = m.smith_form(); u*m*v == d",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:2503",
+          "line": 2503,
+          "source": "m = MatrixSpace(ZZ, 0,0)(0); d,u,v = m.smith_form(); u*m*v == d",
+          "want": "True\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.rank@3694",
+      "owner": "Matrix_integer_dense.rank",
+      "line": 3694,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3716",
+          "line": 3716,
+          "source": "a = matrix(ZZ,2,3,[1..6]); a",
+          "want": "[1 2 3]\n[4 5 6]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3719",
+          "line": 3719,
+          "source": "a.rank()",
+          "want": "2\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3721",
+          "line": 3721,
+          "source": "a = matrix(ZZ,3,3,[1..9]); a",
+          "want": "[1 2 3]\n[4 5 6]\n[7 8 9]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3725",
+          "line": 3725,
+          "source": "a.rank()",
+          "want": "2\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3730",
+          "line": 3730,
+          "source": "a = matrix(ZZ,100,[1..100^2]); a.rank()",
+          "want": "2\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3735",
+          "line": 3735,
+          "source": "a.rank(algorithm='funky')",
+          "want": "Traceback (most recent call last):\n...\nValueError: algorithm must be one of 'modp', 'flint' or 'linbox'\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.determinant@3790",
+      "owner": "Matrix_integer_dense.determinant",
+      "line": 3790,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3833",
+          "line": 3833,
+          "source": "A = matrix(ZZ,8,8,[3..66])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3834",
+          "line": 3834,
+          "source": "A.determinant()",
+          "want": "0\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3839",
+          "line": 3839,
+          "source": "A = random_matrix(ZZ,20,20)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3840",
+          "line": 3840,
+          "source": "D1 = A.determinant()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3841",
+          "line": 3841,
+          "source": "A._clear_cache()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3842",
+          "line": 3842,
+          "source": "D2 = A.determinant(algorithm='ntl')",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3843",
+          "line": 3843,
+          "source": "D1 == D2",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3848",
+          "line": 3848,
+          "source": "A = matrix(ZZ,4,[1,2,3,4,4,3,2,1,0,5,0,1,9,1,2,3])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3849",
+          "line": 3849,
+          "source": "A.determinant()",
+          "want": "270\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3856",
+          "line": 3856,
+          "source": "A = matrix(ZZ,5,[1,2,3,4,5,4,6,3,2,1,7,9,7,5,2,1,4,6,7,8,3,2,4,6,7])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3857",
+          "line": 3857,
+          "source": "A.determinant(algorithm='linbox')",
+          "want": "Traceback (most recent call last):\n...\nRuntimeError: you must pass the proof=False option to the determinant command to use LinBox's det algorithm\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3861",
+          "line": 3861,
+          "source": "A.determinant(algorithm='linbox', proof=False)",
+          "want": "doctest:warning...\nDeprecationWarning: algorithm='linbox' for integer matrix determinants is deprecated...\nSee https://github.com/sagemath/sage/issues/42086 for details.\n-21\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3866",
+          "line": 3866,
+          "source": "A._clear_cache()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3867",
+          "line": 3867,
+          "source": "A.determinant()",
+          "want": "-21\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3872",
+          "line": 3872,
+          "source": "A._clear_cache(); A.determinant(algorithm='padic')",
+          "want": "-21\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3874",
+          "line": 3874,
+          "source": "A._clear_cache(); A.determinant(algorithm='pari')",
+          "want": "-21\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3876",
+          "line": 3876,
+          "source": "A._clear_cache(); A.determinant(algorithm='ntl')",
+          "want": "-21\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3878",
+          "line": 3878,
+          "source": "A._clear_cache(); A.determinant(algorithm='padic')",
+          "want": "-21\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3883",
+          "line": 3883,
+          "source": "A = random_matrix(ZZ,30)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3884",
+          "line": 3884,
+          "source": "d = A.determinant()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3885",
+          "line": 3885,
+          "source": "A._clear_cache()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3886",
+          "line": 3886,
+          "source": "A.determinant(algorithm='flint',proof=False) == d",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3895",
+          "line": 3895,
+          "source": "for s in [1..80]:  # long time\n    M = random_matrix(ZZ, s)\n    d = (M*M).determinant()\n    assert d.is_square()",
+          "want": "",
+          "tags": [
+            {
+              "name": "long time"
+            }
+          ]
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3902",
+          "line": 3902,
+          "source": "all(matrix(ZZ, 0).det(algorithm=algo).is_one() for algo in ['flint', 'padic', 'pari', 'ntl'])",
+          "want": "True\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:3904",
+          "line": 3904,
+          "source": "for _ in range(100):\n    dim = randint(1, 10)\n    m = random_matrix(ZZ, dim)\n    det_flint = m.__copy__().det(algorithm='flint')\n    det_padic = m.__copy__().det(algorithm='padic')\n    det_pari = m.__copy__().det(algorithm='pari')\n    det_ntl = m.__copy__().det(algorithm='ntl')\n    if type(det_flint) is not Integer:\n        raise RuntimeError(\"type(det_flint) = {}\".format(type(det_flint)))\n    if type(det_padic) is not Integer:\n        raise RuntimeError(\"type(det_padic) = {}\".format(type(det_padic)))\n    if type(det_pari) is not Integer:\n        raise RuntimeError(\"type(det_pari) = {}\".format(type(det_pari)))\n    if type(det_ntl) is not Integer:\n        raise RuntimeError(\"type(det_ntl) = {}\".format(type(det_ntl)))\n    if det_flint != det_padic or det_flint != det_pari or det_flint != det_ntl:\n        raise RuntimeError(\"ERROR\\ndet_flint = {}\\ndet_padic={}\\ndet_pari={}\\ndet_ntl={}\\n{}\".format(\n                          det_flint, det_padic, det_pari, det_ntl, self.str()))",
+          "want": "",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.row@5313",
+      "owner": "Matrix_integer_dense.row",
+      "line": 5313,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5324",
+          "line": 5324,
+          "source": "m = matrix(ZZ, 2, [1, -2, 3, 4])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5325",
+          "line": 5325,
+          "source": "m.row(0)",
+          "want": "(1, -2)\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5327",
+          "line": 5327,
+          "source": "m.row(1)",
+          "want": "(3, 4)\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5329",
+          "line": 5329,
+          "source": "m.row(1, from_list=True)",
+          "want": "(3, 4)\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5331",
+          "line": 5331,
+          "source": "m.row(-2)",
+          "want": "(1, -2)\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5334",
+          "line": 5334,
+          "source": "m.row(2)",
+          "want": "Traceback (most recent call last):\n...\nIndexError: row index out of range\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5338",
+          "line": 5338,
+          "source": "m.row(-3)",
+          "want": "Traceback (most recent call last):\n...\nIndexError: row index out of range\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.column@5356",
+      "owner": "Matrix_integer_dense.column",
+      "line": 5356,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5367",
+          "line": 5367,
+          "source": "m = matrix(ZZ, 3, 2, [1, -2, 3, 4, -1, 0])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5368",
+          "line": 5368,
+          "source": "m.column(1)",
+          "want": "(-2, 4, 0)\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5370",
+          "line": 5370,
+          "source": "m.column(1, from_list=True)",
+          "want": "(-2, 4, 0)\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5372",
+          "line": 5372,
+          "source": "m.column(-1)",
+          "want": "(-2, 4, 0)\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5374",
+          "line": 5374,
+          "source": "m.column(-2)",
+          "want": "(1, 3, -1)\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5377",
+          "line": 5377,
+          "source": "m.column(2)",
+          "want": "Traceback (most recent call last):\n...\nIndexError: column index out of range\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5381",
+          "line": 5381,
+          "source": "m.column(-3)",
+          "want": "Traceback (most recent call last):\n...\nIndexError: column index out of range\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense._stack_impl@5399",
+      "owner": "Matrix_integer_dense._stack_impl",
+      "line": 5399,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5407",
+          "line": 5407,
+          "source": "M = Matrix(ZZ, 2, 3, range(6))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5408",
+          "line": 5408,
+          "source": "N = Matrix(ZZ, 1, 3, [10,11,12])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5409",
+          "line": 5409,
+          "source": "M.stack(N)",
+          "want": "[ 0  1  2]\n[ 3  4  5]\n[10 11 12]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5416",
+          "line": 5416,
+          "source": "A = matrix(ZZ, 2, 4, range(8))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5417",
+          "line": 5417,
+          "source": "v = vector(ZZ, 4, range(4))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5418",
+          "line": 5418,
+          "source": "A.stack(v)",
+          "want": "[0 1 2 3]\n[4 5 6 7]\n[0 1 2 3]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5428",
+          "line": 5428,
+          "source": "A = matrix(ZZ, 3, 4, range(12))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5429",
+          "line": 5429,
+          "source": "B = matrix(ZZ, 2, 4, range(8))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5430",
+          "line": 5430,
+          "source": "A.stack(B, subdivide=True)",
+          "want": "[ 0  1  2  3]\n[ 4  5  6  7]\n[ 8  9 10 11]\n[-----------]\n[ 0  1  2  3]\n[ 4  5  6  7]\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.augment@5454",
+      "owner": "Matrix_integer_dense.augment",
+      "line": 5454,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5475",
+          "line": 5475,
+          "source": "A = matrix(ZZ, 4, 5, range(20))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5476",
+          "line": 5476,
+          "source": "B = matrix(ZZ, 4, 3, range(12))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5477",
+          "line": 5477,
+          "source": "A.augment(B)",
+          "want": "[ 0  1  2  3  4  0  1  2]\n[ 5  6  7  8  9  3  4  5]\n[10 11 12 13 14  6  7  8]\n[15 16 17 18 19  9 10 11]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5485",
+          "line": 5485,
+          "source": "A = matrix(ZZ, 3, 5, range(15))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5486",
+          "line": 5486,
+          "source": "v = vector(ZZ, 3, range(3))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5487",
+          "line": 5487,
+          "source": "A.augment(v)",
+          "want": "[ 0  1  2  3  4  0]\n[ 5  6  7  8  9  1]\n[10 11 12 13 14  2]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5497",
+          "line": 5497,
+          "source": "A = matrix(ZZ, 3, 5, range(15))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5498",
+          "line": 5498,
+          "source": "B = matrix(ZZ, 3, 3, range(9))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5499",
+          "line": 5499,
+          "source": "A.augment(B, subdivide=True)",
+          "want": "[ 0  1  2  3  4| 0  1  2]\n[ 5  6  7  8  9| 3  4  5]\n[10 11 12 13 14| 6  7  8]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5506",
+          "line": 5506,
+          "source": "A = matrix(ZZ, [[1, 2],[3, 4]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5507",
+          "line": 5507,
+          "source": "B = matrix(ZZ, [[10, 20], [30, 40], [50, 60]])",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5508",
+          "line": 5508,
+          "source": "A.augment(B)",
+          "want": "Traceback (most recent call last):\n...\nTypeError: number of rows must be the same, not 2 != 3\n",
+          "tags": []
+        }
+      ]
+    },
+    {
+      "id": "src/sage/matrix/matrix_integer_dense.pyx#Matrix_integer_dense.transpose@5785",
+      "owner": "Matrix_integer_dense.transpose",
+      "line": 5785,
+      "examples": [
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5795",
+          "line": 5795,
+          "source": "A = matrix(ZZ, 2, 3, range(6))",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5796",
+          "line": 5796,
+          "source": "type(A)",
+          "want": "<class 'sage.matrix.matrix_integer_dense.Matrix_integer_dense'>\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5798",
+          "line": 5798,
+          "source": "B = A.transpose()",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5799",
+          "line": 5799,
+          "source": "print(B)",
+          "want": "[0 3]\n[1 4]\n[2 5]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5803",
+          "line": 5803,
+          "source": "print(A)",
+          "want": "[0 1 2]\n[3 4 5]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5809",
+          "line": 5809,
+          "source": "A.T",
+          "want": "[0 3]\n[1 4]\n[2 5]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5816",
+          "line": 5816,
+          "source": "A.subdivide(None, 1); A",
+          "want": "[0|1 2]\n[3|4 5]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/matrix/matrix_integer_dense.pyx:5819",
+          "line": 5819,
+          "source": "A.transpose()",
+          "want": "[0 3]\n[---]\n[1 4]\n[2 5]\n",
+          "tags": []
+        }
+      ]
+    }
+  ]
+}

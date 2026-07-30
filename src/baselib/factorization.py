@@ -159,10 +159,7 @@ class Factorization:
         separator = ' *\n' if self._cr_value else ' * '
         terms = []
         for pair in self._factors:
-            if (
-                runtime.jstype(pair[0]) == 'object'
-                and hasattr(pair[0], '_factorization_repr')
-            ):
+            if hasattr(pair[0], '_factorization_repr'):
                 prime = pair[0]._factorization_repr()
             else:
                 prime = runtime.repr(pair[0])

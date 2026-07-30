@@ -2,27 +2,51 @@ from __future__ import annotations
 
 
 A = matrix(ZZ, 2, 2, [1, 2, 3, 4])
+assert Matrix([[1, 2], [3, 4]]) == A
+assert Matrix(ZZ, 2, 2, [1, 2, 3, 4]) == A
+assert MatrixSpace(IntegerRing(), 2) is MatrixSpace(ZZ, 2)
+assert list(matrix([]).dimensions()) == [0, 0]
+assert list(matrix([5]).dimensions()) == [1, 1]
+assert list(matrix([1, 2]).dimensions()) == [1, 2]
 assert str(A) == '[1 2]\n[3 4]'
 assert A.parent() is MatrixSpace(ZZ, 2)
 assert A.base_ring() is ZZ
 assert isinstance(A.dimensions(), tuple)
 assert list(A.dimensions()) == [2, 2]
+assert bool(A)
+assert not bool(zero_matrix(ZZ, 2))
+assert A.is_zero() is False
+assert zero_matrix(ZZ, 2).is_zero() is True
+assert identity_matrix(ZZ, 2).is_one() is True
+assert A.is_one() is False
+assert MatrixSpace(ZZ, 2).one() == identity_matrix(ZZ, 2)
+assert MatrixSpace(ZZ, 2, 3).zero() == zero_matrix(ZZ, 2, 3)
+assert MatrixSpace(ZZ, 2).matrix_space(3, 4) is MatrixSpace(ZZ, 3, 4)
 assert A.list() == [1, 2, 3, 4]
 assert A[0, 1] == 2
 assert A[-1, -1] == 4
 assert A[0] == vector(ZZ, [1, 2])
 assert A.rows() == [vector([1, 2]), vector([3, 4])]
 assert A.columns() == [vector([1, 3]), vector([2, 4])]
+assert list(A.row(1, from_list=True)) == [3, 4]
+assert list(A.column(1, from_list=True)) == [2, 4]
+assert vector(ZZ, 3, range(3)) == vector(ZZ, [0, 1, 2])
 
 assert A.det() == -2
 assert A.determinant() == -2
+assert A.det(algorithm='flint') == -2
 assert A.rank() == 2
+assert A.rank(algorithm='modp') == 2
 assert A.rref() == identity_matrix(QQ, 2)
 assert A.rref().base_ring() is QQ
 assert A.hermite_form() == matrix(ZZ, [[1, 0], [0, 2]])
 assert A.echelon_form() == A.hermite_form()
 assert A.transpose() == matrix(ZZ, [[1, 3], [2, 4]])
 assert A.T == A.transpose()
+subdivided = matrix(ZZ, 2, 3, range(6))
+subdivided.subdivide(None, 1)
+assert str(subdivided) == '[0|1 2]\n[3|4 5]'
+assert str(subdivided.transpose()) == '[0 3]\n[---]\n[1 4]\n[2 5]'
 assert A * A == matrix(ZZ, [[7, 10], [15, 22]])
 assert A ** 0 == identity_matrix(ZZ, 2)
 assert A ** 3 == matrix(ZZ, [[37, 54], [81, 118]])
@@ -60,6 +84,23 @@ rectangular = matrix(ZZ, 2, 3, lambda row, col: row + col)
 assert rectangular == matrix(ZZ, [[0, 1, 2], [1, 2, 3]])
 assert rectangular * rectangular.T == matrix(ZZ, [[5, 8], [8, 14]])
 assert rectangular.rank() == 2
+assert rectangular.nullity() == 0
+assert rectangular.right_nullity() == 1
+assert list(rectangular.pivots()) == [0, 1]
+assert rectangular.row_space().basis_matrix() == matrix(
+    ZZ, [[1, 0, -1], [0, 1, 2]])
+assert rectangular.image() == rectangular.row_space()
+assert rectangular.column_space().basis_matrix() == identity_matrix(ZZ, 2)
+assert rectangular.stack(vector(ZZ, [2, 3, 4])) == matrix(
+    ZZ, [[0, 1, 2], [1, 2, 3], [2, 3, 4]])
+assert rectangular.augment(vector(ZZ, [5, 6])) == matrix(
+    ZZ, [[0, 1, 2, 5], [1, 2, 3, 6]])
+assert rectangular.matrix_from_rows([1, 0]) == matrix(
+    ZZ, [[1, 2, 3], [0, 1, 2]])
+assert rectangular.matrix_from_columns([2, 0]) == matrix(
+    ZZ, [[2, 0], [3, 1]])
+assert rectangular.diagonal() == [0, 2]
+assert A.trace() == 5
 
 dependent = matrix(ZZ, 3, [1, 2, 3, 4, 5, 6, 7, 8, 9])
 assert dependent.rref() == matrix(
@@ -67,6 +108,32 @@ assert dependent.rref() == matrix(
 assert dependent.hermite_form() == matrix(
     ZZ, [[1, 2, 3], [0, 3, 6], [0, 0, 0]])
 assert dependent.echelon_form() == dependent.hermite_form()
+hermite, hermite_left = dependent.hermite_form(transformation=True)
+assert hermite_left * dependent == hermite
+short_hermite, short_left = dependent.hermite_form(
+    transformation=True, include_zero_rows=False)
+assert list(short_hermite.dimensions()) == [2, 3]
+assert list(short_left.dimensions()) == [2, 3]
+assert short_left * dependent == short_hermite
+smith, smith_left, smith_right = dependent.smith_form()
+assert smith == diagonal_matrix(ZZ, [1, 3, 0])
+assert smith_left * dependent * smith_right == smith
+assert dependent.elementary_divisors() == [1, 3, 0]
+assert dependent.charpoly()(dependent) == zero_matrix(ZZ, 3)
+assert dependent.minpoly()(dependent) == zero_matrix(ZZ, 3)
+assert zero_matrix(ZZ, 2) == 0
+assert identity_matrix(ZZ, 2) == 1
+assert A != 0
+
+wide_smith_source = matrix(ZZ, 2, 3, [3, 0, 1, 0, 1, 0])
+wide_smith, wide_left, wide_right = wide_smith_source.smith_form()
+assert wide_left * wide_smith_source * wide_right == wide_smith
+assert wide_smith_source.elementary_divisors() == [1, 1]
+
+tall_smith_source = wide_smith_source.transpose()
+tall_smith, tall_left, tall_right = tall_smith_source.smith_form()
+assert tall_left * tall_smith_source * tall_right == tall_smith
+assert tall_smith_source.elementary_divisors() == [1, 1, 0]
 
 rational_echelon = matrix(
     QQ, [[QQ(1, 2), 1], [0, 1]])

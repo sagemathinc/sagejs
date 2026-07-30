@@ -1,0 +1,19 @@
+{
+  "schema": "sagejs.sage-doctest-expectations/v1",
+  "fixture": "matrix_integer_dense_core.doctests.json",
+  "skip": {
+    "src/sage/matrix/matrix_integer_dense.pyx:1357": "Sage.js exposes its own Matrix class rather than claiming Sage's Python module path",
+    "src/sage/matrix/matrix_integer_dense.pyx:1363": "tests Sage's private algorithm-specific cache key rather than the public charpoly result",
+    "src/sage/matrix/matrix_integer_dense.pyx:2464": "FLINT returns a valid but non-unique left Smith transformation; U*A*V == D is tested separately",
+    "src/sage/matrix/matrix_integer_dense.pyx:2468": "FLINT returns a valid but non-unique right Smith transformation; U*A*V == D is tested separately",
+    "src/sage/matrix/matrix_integer_dense.pyx:2485": "FLINT returns a valid but non-unique left Smith transformation; U*A*V == D is tested separately",
+    "src/sage/matrix/matrix_integer_dense.pyx:2489": "FLINT returns a valid but non-unique right Smith transformation; U*A*V == D is tested separately",
+    "src/sage/matrix/matrix_integer_dense.pyx:3904": "Sage.js intentionally represents exact small integers as JavaScript safe integers instead of boxed Sage Integer instances",
+    "src/sage/matrix/matrix_integer_dense.pyx:5796": "Sage.js exposes its own Matrix class rather than claiming Sage's Python module path"
+  },
+  "xfail": {
+    "src/sage/matrix/matrix_integer_dense.pyx:974": "chained comparison lowering mishandles this mix of Sage-preparsed and raw integer exponents; each pairwise comparison passes",
+    "src/sage/matrix/matrix_integer_dense.pyx:995": "the compiler's native left-power fast path currently bypasses Matrix.__rpow__ for None",
+    "src/sage/matrix/matrix_integer_dense.pyx:3861": "the deprecated LinBox selector computes the correct determinant but does not yet emit Sage's deprecation warning"
+  }
+}

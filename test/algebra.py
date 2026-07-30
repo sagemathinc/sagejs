@@ -8,6 +8,11 @@ assrt.equal(parent(BigInt(2)), ZZ)
 assrt.equal(parent(QQ(1, 3)), QQ)
 R = PolynomialRing(ZZ, 'x')
 assrt.equal(R, PolynomialRing(ZZ, 'x'))
+assrt.deepEqual(
+    (R.gen() ** 2 + 2 * R.gen() + 3).coefficients(),
+    [3, 2, 1],
+)
+assrt.equal((R.gen() ** 2 + 2 * R.gen() + 3)(4), 27)
 assrt.equal(R, ZZ.__getitem__('x'))
 assrt.equal(R.base_ring(), ZZ)
 assrt.equal(R.variable_name(), 'x')

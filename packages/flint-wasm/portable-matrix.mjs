@@ -318,6 +318,188 @@ function integerHermite(matrix) {
   return integerHermiteData(matrix).matrix;
 }
 
+function integerRows(matrix) {
+  const rows = [];
+  for (let row = 0; row < matrix.rows; row += 1) {
+    rows.push(
+      matrix.entries.slice(row * matrix.cols, (row + 1) * matrix.cols),
+    );
+  }
+  return rows;
+}
+
+function identityRows(size) {
+  return Array.from(
+    { length: size },
+    (_, row) =>
+      Array.from(
+        { length: size },
+        (_, col) => (row === col ? 1n : 0n),
+      ),
+  );
+}
+
+function integerSmith(matrix) {
+  matrix = requireMatrix(matrix);
+  if (matrix.kind !== "ZZ") {
+    throw new TypeError("Smith form currently requires an integer matrix");
+  }
+  const values = integerRows(matrix);
+  const left = identityRows(matrix.rows);
+  const right = identityRows(matrix.cols);
+
+  function swapRows(first, second) {
+    [values[first], values[second]] = [values[second], values[first]];
+    [left[first], left[second]] = [left[second], left[first]];
+  }
+
+  function swapColumns(first, second) {
+    for (let row = 0; row < matrix.rows; row += 1) {
+      [values[row][first], values[row][second]] = [
+        values[row][second],
+        values[row][first],
+      ];
+    }
+    for (let row = 0; row < matrix.cols; row += 1) {
+      [right[row][first], right[row][second]] = [
+        right[row][second],
+        right[row][first],
+      ];
+    }
+  }
+
+  function addRow(target, source, multiple) {
+    for (let col = 0; col < matrix.cols; col += 1) {
+      values[target][col] += multiple * values[source][col];
+    }
+    for (let col = 0; col < matrix.rows; col += 1) {
+      left[target][col] += multiple * left[source][col];
+    }
+  }
+
+  function addColumn(target, source, multiple) {
+    for (let row = 0; row < matrix.rows; row += 1) {
+      values[row][target] += multiple * values[row][source];
+    }
+    for (let row = 0; row < matrix.cols; row += 1) {
+      right[row][target] += multiple * right[row][source];
+    }
+  }
+
+  function negateRow(row) {
+    for (let col = 0; col < matrix.cols; col += 1) {
+      values[row][col] = -values[row][col];
+    }
+    for (let col = 0; col < matrix.rows; col += 1) {
+      left[row][col] = -left[row][col];
+    }
+  }
+
+  const diagonalLength = Math.min(matrix.rows, matrix.cols);
+  for (let pivotIndex = 0; pivotIndex < diagonalLength; pivotIndex += 1) {
+    let selectedRow = -1;
+    let selectedColumn = -1;
+    let selectedMagnitude;
+    for (let row = pivotIndex; row < matrix.rows; row += 1) {
+      for (let col = pivotIndex; col < matrix.cols; col += 1) {
+        const value = values[row][col];
+        if (value === 0n) continue;
+        const magnitude = value < 0n ? -value : value;
+        if (
+          selectedMagnitude === undefined ||
+          magnitude < selectedMagnitude
+        ) {
+          selectedRow = row;
+          selectedColumn = col;
+          selectedMagnitude = magnitude;
+        }
+      }
+    }
+    if (selectedRow === -1) break;
+    if (selectedRow !== pivotIndex) swapRows(selectedRow, pivotIndex);
+    if (selectedColumn !== pivotIndex) {
+      swapColumns(selectedColumn, pivotIndex);
+    }
+
+    while (true) {
+      let reduced = false;
+      for (let row = pivotIndex + 1; row < matrix.rows; row += 1) {
+        if (values[row][pivotIndex] === 0n) continue;
+        const quotient =
+          values[row][pivotIndex] / values[pivotIndex][pivotIndex];
+        addRow(row, pivotIndex, -quotient);
+        if (
+          values[row][pivotIndex] !== 0n &&
+          (
+            values[row][pivotIndex] < 0n
+              ? -values[row][pivotIndex]
+              : values[row][pivotIndex]
+          ) <
+            (
+              values[pivotIndex][pivotIndex] < 0n
+                ? -values[pivotIndex][pivotIndex]
+                : values[pivotIndex][pivotIndex]
+            )
+        ) {
+          swapRows(row, pivotIndex);
+        }
+        reduced = true;
+        break;
+      }
+      if (reduced) continue;
+
+      for (let col = pivotIndex + 1; col < matrix.cols; col += 1) {
+        if (values[pivotIndex][col] === 0n) continue;
+        const quotient =
+          values[pivotIndex][col] / values[pivotIndex][pivotIndex];
+        addColumn(col, pivotIndex, -quotient);
+        if (
+          values[pivotIndex][col] !== 0n &&
+          (
+            values[pivotIndex][col] < 0n
+              ? -values[pivotIndex][col]
+              : values[pivotIndex][col]
+          ) <
+            (
+              values[pivotIndex][pivotIndex] < 0n
+                ? -values[pivotIndex][pivotIndex]
+                : values[pivotIndex][pivotIndex]
+            )
+        ) {
+          swapColumns(col, pivotIndex);
+        }
+        reduced = true;
+        break;
+      }
+      if (reduced) continue;
+
+      let offendingRow = -1;
+      for (let row = pivotIndex + 1; row < matrix.rows; row += 1) {
+        for (let col = pivotIndex + 1; col < matrix.cols; col += 1) {
+          if (
+            values[row][col] % values[pivotIndex][pivotIndex] !== 0n
+          ) {
+            offendingRow = row;
+            break;
+          }
+        }
+        if (offendingRow !== -1) break;
+      }
+      if (offendingRow === -1) break;
+      addRow(pivotIndex, offendingRow, 1n);
+    }
+    if (values[pivotIndex][pivotIndex] < 0n) {
+      negateRow(pivotIndex);
+    }
+  }
+
+  return [
+    make("ZZ", matrix.rows, matrix.cols, values.flat()),
+    make("ZZ", matrix.rows, matrix.rows, left.flat()),
+    make("ZZ", matrix.cols, matrix.cols, right.flat()),
+  ];
+}
+
 function echelon(matrix, augmentedColumns = 0) {
   const values = asRationalRows(matrix);
   const coefficientColumns = matrix.cols - augmentedColumns;
@@ -552,6 +734,19 @@ export function createPortableMatrixBackend() {
     return integerHermite(requireMatrix(matrix));
   }
 
+  function matrixHermiteTransform(matrix) {
+    matrix = requireMatrix(matrix);
+    const data = integerHermiteData(matrix, true);
+    return [
+      data.matrix,
+      make("ZZ", matrix.rows, matrix.rows, data.transform.flat()),
+    ];
+  }
+
+  function matrixSmith(matrix) {
+    return integerSmith(matrix);
+  }
+
   function matrixRightKernel(matrix) {
     matrix = requireMatrix(matrix);
     if (matrix.kind === "ZZ") {
@@ -721,6 +916,8 @@ export function createPortableMatrixBackend() {
     matrixRank,
     matrixRref,
     matrixHermite,
+    matrixHermiteTransform,
+    matrixSmith,
     matrixRightKernel,
     matrixCharpoly,
     matrixSolve,

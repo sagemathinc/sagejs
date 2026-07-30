@@ -69,6 +69,10 @@ test("provides exact portable polynomial construction and arithmetic", () => {
     one,
   );
   assert.equal(flint.polyToString(x, "x"), "x");
+  assert.deepEqual(flint.polyCoefficients(x), [
+    { numerator: 0n, denominator: 1n },
+    { numerator: 1n, denominator: 1n },
+  ]);
   assert.equal(
     flint.polyToString(value, "x"),
     "x^2 - 2*x + 1",

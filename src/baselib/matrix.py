@@ -16,7 +16,20 @@ import sagejs.runtime as runtime
 
 
 def _is_base_ring(value: object) -> bool:
-    return value is sage.ZZ or value is sage.QQ
+    return (
+        value is sage.ZZ
+        or value is sage.QQ
+        or getattr(value, '_kind', None) == 'ZZ'
+        or getattr(value, '_kind', None) == 'QQ'
+    )
+
+
+def _canonical_base(base: sage.Parent) -> sage.Parent:
+    if base is sage.ZZ or getattr(base, '_kind', None) == 'ZZ':
+        return sage.ZZ
+    if base is sage.QQ or getattr(base, '_kind', None) == 'QQ':
+        return sage.QQ
+    return base
 
 
 def _base_for_values(values: list[Any]) -> sage.Parent:
@@ -118,6 +131,18 @@ def _normalize_index(index: int, length: int) -> int:
     return index
 
 
+def _normalize_named_index(
+    index: int,
+    length: int,
+    kind: str,
+) -> int:
+    if index < 0:
+        index += length
+    if index < 0 or index >= length:
+        raise IndexError(kind + ' index out of range')
+    return index
+
+
 @runtime.callable_instance_class
 class MatrixSpaceParent(sage.Parent):
 
@@ -148,6 +173,27 @@ class MatrixSpaceParent(sage.Parent):
 
     def ncols(self) -> int:
         return self._cols
+
+    def zero_matrix(self) -> Matrix:
+        return self(0)
+
+    zero = zero_matrix
+
+    def identity_matrix(self) -> Matrix:
+        if self._rows != self._cols:
+            raise TypeError('identity matrix must be square')
+        return identity_matrix(self._base, self._rows)
+
+    one = identity_matrix
+
+    def matrix_space(
+        self,
+        rows: Any = None,
+        cols: Any = None,
+    ) -> MatrixSpaceParent:
+        rows = self._rows if rows is None else int(rows)
+        cols = self._cols if cols is None else int(cols)
+        return MatrixSpace(self._base, rows, cols)
 
     def __call__(self, entries: Any = 0) -> Matrix:
         if isinstance(entries, Matrix):
@@ -520,19 +566,37 @@ class Matrix(sage.Element):
 
     def __init__(
         self,
-        parent: MatrixSpaceParent,
-        native_value: Any,
+        parent: Any,
+        native_value: Any = runtime.undefined,
+        *constructor_args: Any,
     ) -> None:
+        if (
+            not isinstance(parent, MatrixSpaceParent)
+            or native_value is runtime.undefined
+            or len(constructor_args) != 0
+        ):
+            values = [parent]
+            if native_value is not runtime.undefined:
+                values.append(native_value)
+            values.extend(constructor_args)
+            source = matrix(*values)
+            parent = source._parent
+            native_value = source._native
         self._parent = parent
         self._native = native_value
+        self._row_subdivisions = []
+        self._col_subdivisions = []
         self._determinant_cache = runtime.undefined
         self._rank_cache = runtime.undefined
         self._inverse_cache = runtime.undefined
         self._rref_cache = runtime.undefined
         self._hermite_cache = runtime.undefined
+        self._hermite_transform_cache = runtime.undefined
+        self._smith_cache = runtime.undefined
         self._right_kernel_cache = runtime.undefined
         self._left_kernel_cache = runtime.undefined
         self._charpoly_cache = runtime.map()
+        self._minpoly_cache = runtime.map()
 
     def base_ring(self) -> sage.Parent:
         return self._parent.base_ring()
@@ -549,6 +613,25 @@ class Matrix(sage.Element):
 
     def is_square(self) -> bool:
         return self.nrows() == self.ncols()
+
+    def is_zero(self) -> bool:
+        for entry in self.list():
+            if entry != 0:
+                return False
+        return True
+
+    def __bool__(self) -> bool:
+        return not self.is_zero()
+
+    def is_one(self) -> bool:
+        if not self.is_square():
+            return False
+        for row in range(self.nrows()):
+            for col in range(self.ncols()):
+                expected = 1 if row == col else 0
+                if self._entry(row, col) != expected:
+                    return False
+        return True
 
     def __len__(self) -> int:
         return self.nrows()
@@ -576,22 +659,38 @@ class Matrix(sage.Element):
                 answer.append(self._entry(row, col))
         return answer
 
-    def row(self, index: int) -> Vector:
-        index = _normalize_index(index, self.nrows())
-        return vector(
+    def row(
+        self,
+        index: int,
+        from_list: bool = False,
+    ) -> Any:
+        index = _normalize_named_index(
+            index, self.nrows(), 'row')
+        answer = vector(
             self.base_ring(),
             [self._entry(index, col) for col in range(self.ncols())],
         )
+        if from_list:
+            return runtime.math_tuple(answer.list())
+        return answer
 
     def rows(self) -> list[Vector]:
         return [self.row(index) for index in range(self.nrows())]
 
-    def column(self, index: int) -> Vector:
-        index = _normalize_index(index, self.ncols())
-        return vector(
+    def column(
+        self,
+        index: int,
+        from_list: bool = False,
+    ) -> Any:
+        index = _normalize_named_index(
+            index, self.ncols(), 'column')
+        answer = vector(
             self.base_ring(),
             [self._entry(row, index) for row in range(self.nrows())],
         )
+        if from_list:
+            return runtime.math_tuple(answer.list())
+        return answer
 
     def columns(self) -> list[Vector]:
         return [
@@ -710,6 +809,9 @@ class Matrix(sage.Element):
         return self._scalar_mul(reciprocal)
 
     def __pow__(self, exponent: int) -> Matrix:
+        if not runtime.is_exact_integer(exponent):
+            raise NotImplementedError(
+                'the given exponent is not supported')
         exponent = int(exponent)
         if not self.is_square():
             raise ArithmeticError('matrix must be square')
@@ -726,21 +828,44 @@ class Matrix(sage.Element):
                 power = power * power
         return answer
 
+    def __rpow__(self, base: Any) -> Matrix:
+        if base is None:
+            raise TypeError(
+                'Cannot convert NoneType to '
+                'sage.matrix.matrix_integer_dense.Matrix_integer_dense')
+        raise NotImplementedError(
+            'the given exponent is not supported')
+
     def transpose(self) -> Matrix:
-        return Matrix(
+        answer = Matrix(
             MatrixSpace(
                 self.base_ring(), self.ncols(), self.nrows()),
             runtime.flint_backend().matrixTranspose(self._native),
         )
+        answer._row_subdivisions = list(self._col_subdivisions)
+        answer._col_subdivisions = list(self._row_subdivisions)
+        return answer
 
     @property
     def T(self) -> Matrix:
         return self.transpose()
 
-    def determinant(self) -> Any:
+    def determinant(
+        self,
+        algorithm: Any = None,
+        proof: Any = None,
+    ) -> Any:
         if not self.is_square():
             raise ValueError(
                 'determinant is only defined for square matrices')
+        if algorithm == 'linbox' and proof is not False:
+            raise RuntimeError(
+                'you must pass the proof=False option to the '
+                'determinant command to use LinBox\'s det algorithm')
+        if algorithm not in [
+            None, 'flint', 'linbox', 'ntl', 'padic', 'pari',
+        ]:
+            raise ValueError('unknown determinant algorithm')
         if self._determinant_cache is not runtime.undefined:
             return self._determinant_cache
         value = runtime.flint_backend().matrixDet(self._native)
@@ -750,11 +875,33 @@ class Matrix(sage.Element):
 
     det = determinant
 
-    def rank(self) -> int:
+    def _clear_cache(self) -> None:
+        self._determinant_cache = runtime.undefined
+        self._rank_cache = runtime.undefined
+        self._inverse_cache = runtime.undefined
+        self._rref_cache = runtime.undefined
+        self._hermite_cache = runtime.undefined
+        self._hermite_transform_cache = runtime.undefined
+        self._smith_cache = runtime.undefined
+        self._right_kernel_cache = runtime.undefined
+        self._left_kernel_cache = runtime.undefined
+        self._charpoly_cache = runtime.map()
+        self._minpoly_cache = runtime.map()
+
+    def rank(self, algorithm: Any = None) -> int:
+        if algorithm not in [None, 'flint', 'linbox', 'modp']:
+            raise ValueError(
+                "algorithm must be one of 'modp', 'flint' or 'linbox'")
         if self._rank_cache is runtime.undefined:
             self._rank_cache = runtime.flint_backend().matrixRank(
                 self._native)
         return self._rank_cache
+
+    def nullity(self) -> int:
+        return self.nrows() - self.rank()
+
+    def right_nullity(self) -> int:
+        return self.ncols() - self.rank()
 
     def density(self) -> float:
         if self.nrows() == 0 or self.ncols() == 0:
@@ -776,21 +923,130 @@ class Matrix(sage.Element):
             )
         return self._rref_cache
 
-    def hermite_form(self) -> Matrix:
+    def hermite_form(
+        self,
+        algorithm: Any = None,
+        include_zero_rows: bool = True,
+        transformation: bool = False,
+    ) -> Any:
         if self.base_ring() is not sage.ZZ:
             raise TypeError(
                 'Hermite form currently requires an integer matrix')
+        if algorithm not in [
+            None, 'default', 'flint', 'ntl', 'padic', 'pari',
+            'pari0', 'pari4',
+        ]:
+            raise ValueError('unknown Hermite form algorithm')
+        if (
+            algorithm == 'ntl'
+            and (not self.is_square() or self.rank() != self.nrows())
+        ):
+            raise ValueError(
+                'ntl only computes HNF for square matrices of full rank.')
+        if transformation:
+            if self._hermite_transform_cache is runtime.undefined:
+                raw = runtime.flint_backend().matrixHermiteTransform(
+                    self._native)
+                self._hermite_cache = Matrix(self._parent, raw[0])
+                self._hermite_transform_cache = Matrix(
+                    MatrixSpace(
+                        sage.ZZ, self.nrows(), self.nrows()),
+                    raw[1],
+                )
+            hermite = self._hermite_cache
+            transform = self._hermite_transform_cache
+            if not include_zero_rows:
+                indices = range(self.rank())
+                hermite = hermite.matrix_from_rows(indices)
+                transform = transform.matrix_from_rows(indices)
+            return runtime.math_tuple([hermite, transform])
         if self._hermite_cache is runtime.undefined:
             self._hermite_cache = Matrix(
                 self._parent,
                 runtime.flint_backend().matrixHermite(self._native),
             )
+        if not include_zero_rows:
+            return self._hermite_cache.matrix_from_rows(
+                range(self.rank()))
         return self._hermite_cache
 
-    def echelon_form(self) -> Matrix:
+    def smith_form(self) -> Any:
+        if self.base_ring() is not sage.ZZ:
+            raise TypeError(
+                'Smith form currently requires an integer matrix')
+        if self._smith_cache is runtime.undefined:
+            raw = runtime.flint_backend().matrixSmith(self._native)
+            self._smith_cache = runtime.math_tuple([
+                Matrix(
+                    MatrixSpace(
+                        sage.ZZ, self.nrows(), self.ncols()),
+                    raw[0],
+                ),
+                Matrix(
+                    MatrixSpace(
+                        sage.ZZ, self.nrows(), self.nrows()),
+                    raw[1],
+                ),
+                Matrix(
+                    MatrixSpace(
+                        sage.ZZ, self.ncols(), self.ncols()),
+                    raw[2],
+                ),
+            ])
+        return self._smith_cache
+
+    def elementary_divisors(self, algorithm: Any = None) -> list[Any]:
+        diagonal = self.smith_form()[0].diagonal()
+        while len(diagonal) < self.nrows():
+            diagonal.append(0)
+        return diagonal
+
+    def echelon_form(
+        self,
+        algorithm: Any = None,
+        include_zero_rows: bool = True,
+        transformation: bool = False,
+    ) -> Any:
         if self.base_ring() is sage.ZZ:
-            return self.hermite_form()
+            return self.hermite_form(
+                algorithm,
+                include_zero_rows,
+                transformation,
+            )
+        if transformation:
+            raise NotImplementedError(
+                'rational echelon transformations are not available')
         return self.rref()
+
+    def is_immutable(self) -> bool:
+        return True
+
+    def pivots(self) -> Any:
+        answer = []
+        echelon = self.echelon_form()
+        for row in range(echelon.nrows()):
+            for col in range(echelon.ncols()):
+                if echelon._entry(row, col) != 0:
+                    answer.append(col)
+                    break
+        return runtime.math_tuple(answer)
+
+    def row_space(self) -> VectorSubspaceParent:
+        return VectorSubspaceParent(
+            VectorSpace(self.base_ring(), self.ncols()),
+            _canonical_row_basis(self),
+        )
+
+    row_module = row_space
+    image = row_space
+
+    def column_space(self) -> VectorSubspaceParent:
+        return VectorSubspaceParent(
+            VectorSpace(self.base_ring(), self.nrows()),
+            _canonical_row_basis(self.transpose()),
+        )
+
+    column_module = column_space
 
     def right_kernel(self) -> VectorSubspaceParent:
         if self._right_kernel_cache is runtime.undefined:
@@ -822,9 +1078,17 @@ class Matrix(sage.Element):
 
     kernel = left_kernel
 
-    def charpoly(self, variable: str = 'x') -> Any:
+    def charpoly(
+        self,
+        variable: str = 'x',
+        algorithm: Any = None,
+    ) -> Any:
         if not self.is_square():
-            raise ArithmeticError('matrix must be square')
+            raise ArithmeticError('only valid for square matrix')
+        if algorithm not in [
+            None, 'flint', 'generic', 'linbox', 'pari',
+        ]:
+            raise ValueError('unknown characteristic polynomial algorithm')
         cached = self._charpoly_cache.get(variable)
         if cached is not runtime.undefined:
             return cached
@@ -843,6 +1107,60 @@ class Matrix(sage.Element):
         return answer
 
     characteristic_polynomial = charpoly
+
+    def minpoly(self, variable: str = 'x') -> Any:
+        if not self.is_square():
+            raise ArithmeticError('only valid for square matrix')
+        cached = self._minpoly_cache.get(variable)
+        if cached is not runtime.undefined:
+            return cached
+        size = self.nrows()
+        powers = [identity_matrix(self.base_ring(), size)]
+        entries_per_power = size * size
+        for degree in range(size + 1):
+            entries = []
+            for entry_index in range(entries_per_power):
+                for power_index in range(degree + 1):
+                    entries.append(
+                        powers[power_index].list()[entry_index])
+            relations = matrix(
+                self.base_ring(),
+                entries_per_power,
+                degree + 1,
+                entries,
+            ).right_kernel()
+            for relation in relations.basis():
+                leading = relation[-1]
+                if leading == 0:
+                    continue
+                coefficients = [
+                    coefficient / leading
+                    for coefficient in relation
+                ]
+                base = sage.ZZ
+                integer_coefficients = []
+                for coefficient in coefficients:
+                    try:
+                        integer_coefficients.append(sage.ZZ(coefficient))
+                    except Exception:
+                        base = sage.QQ
+                        break
+                if base is sage.ZZ:
+                    coefficients = integer_coefficients
+                ring = sage.PolynomialRing(base, variable)
+                generator = ring.gen()
+                answer = ring(0)
+                power = ring(1)
+                for coefficient in coefficients:
+                    answer += ring(coefficient) * power
+                    power *= generator
+                self._minpoly_cache.set(variable, answer)
+                return answer
+            powers.append(powers[-1] * self)
+        raise ArithmeticError(
+            'could not determine the minimal polynomial')
+
+    minimal_polynomial = minpoly
 
     def inverse(self) -> Matrix:
         if not self.is_square():
@@ -901,9 +1219,127 @@ class Matrix(sage.Element):
         return self.transpose().solve_right(
             left.transpose()).transpose()
 
+    def stack(
+        self,
+        other: object,
+        subdivide: bool = False,
+    ) -> Matrix:
+        if isinstance(other, Vector):
+            other = other.row()
+        if not isinstance(other, Matrix):
+            other = matrix(other)
+        if self.ncols() != other.ncols():
+            raise TypeError(
+                'number of columns must agree for stacking')
+        base = _common_base(
+            self.base_ring(), other.base_ring())
+        top = self.change_ring(base)
+        bottom = other.change_ring(base)
+        answer = matrix(
+            base,
+            top.nrows() + bottom.nrows(),
+            top.ncols(),
+            top.list() + bottom.list(),
+        )
+        if subdivide:
+            answer._row_subdivisions = [top.nrows()]
+        return answer
+
+    def augment(
+        self,
+        other: object,
+        subdivide: bool = False,
+    ) -> Matrix:
+        if isinstance(other, Vector):
+            other = other.column()
+        if not isinstance(other, Matrix):
+            other = matrix(other)
+        if self.nrows() != other.nrows():
+            raise TypeError(
+                'number of rows must be the same, not ' +
+                str(self.nrows()) + ' != ' + str(other.nrows()))
+        base = _common_base(
+            self.base_ring(), other.base_ring())
+        left = self.change_ring(base)
+        right = other.change_ring(base)
+        entries = []
+        for row in range(left.nrows()):
+            entries.extend(left.row(row))
+            entries.extend(right.row(row))
+        answer = matrix(
+            base,
+            left.nrows(),
+            left.ncols() + right.ncols(),
+            entries,
+        )
+        if subdivide:
+            answer._col_subdivisions = [left.ncols()]
+        return answer
+
+    def subdivide(
+        self,
+        row_lines: Any = None,
+        col_lines: Any = None,
+    ) -> None:
+        def lines(value: Any) -> list[int]:
+            if value is None:
+                return []
+            if runtime.is_exact_integer(value):
+                return [int(value)]
+            return [int(index) for index in value]
+
+        self._row_subdivisions = lines(row_lines)
+        self._col_subdivisions = lines(col_lines)
+
+    def matrix_from_rows(self, rows: Any) -> Matrix:
+        indices = [int(index) for index in rows]
+        entries = []
+        for index in indices:
+            entries.extend(self.row(index))
+        return matrix(
+            self.base_ring(),
+            len(indices),
+            self.ncols(),
+            entries,
+        )
+
+    def matrix_from_columns(self, columns: Any) -> Matrix:
+        indices = [int(index) for index in columns]
+        entries = []
+        for row in range(self.nrows()):
+            for index in indices:
+                entries.append(self._entry(row, index))
+        return matrix(
+            self.base_ring(),
+            self.nrows(),
+            len(indices),
+            entries,
+        )
+
+    def diagonal(self) -> list[Any]:
+        return [
+            self._entry(index, index)
+            for index in range(min(self.nrows(), self.ncols()))
+        ]
+
+    def trace(self) -> Any:
+        if not self.is_square():
+            raise ValueError('trace is only defined for square matrices')
+        return sum(self.diagonal(), self.base_ring()(0))
+
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Matrix):
-            return False
+            if other == 0:
+                return self.is_zero()
+            if not self.is_square():
+                return False
+            try:
+                return self == (
+                    identity_matrix(self.base_ring(), self.nrows())
+                    * other
+                )
+            except Exception:
+                return False
         if self.dimensions() != other.dimensions():
             return False
         try:
@@ -916,24 +1352,44 @@ class Matrix(sage.Element):
         return runtime.flint_backend().matrixEqual(
             left._native, right._native)
 
+    def __copy__(self) -> Matrix:
+        answer = matrix(
+            self.base_ring(),
+            self.nrows(),
+            self.ncols(),
+            self.list(),
+        )
+        answer._row_subdivisions = list(self._row_subdivisions)
+        answer._col_subdivisions = list(self._col_subdivisions)
+        return answer
+
     def __repr__(self) -> str:
         if self.nrows() == 0:
             return '[]'
         text_rows = []
-        widths = [0 for _ in range(self.ncols())]
+        width = 0
         for row in range(self.nrows()):
             text_row = []
             for col in range(self.ncols()):
                 text = str(self._entry(row, col))
                 text_row.append(text)
-                widths[col] = max(widths[col], len(text))
+                width = max(width, len(text))
             text_rows.append(text_row)
         lines = []
-        for text_row in text_rows:
+        for row, text_row in enumerate(text_rows):
+            if row in self._row_subdivisions:
+                lines.append(
+                    '[' + '-' * (len(lines[-1]) - 2) + ']')
             entries = []
             for col in range(self.ncols()):
-                entries.append(text_row[col].rjust(widths[col]))
-            lines.append('[' + ' '.join(entries) + ']')
+                entries.append(text_row[col].rjust(width))
+            inner = ''
+            for col, entry in enumerate(entries):
+                if col != 0:
+                    inner += (
+                        '|' if col in self._col_subdivisions else ' ')
+                inner += entry
+            lines.append('[' + inner + ']')
         return '\n'.join(lines)
 
     __str__ = __repr__
@@ -966,6 +1422,7 @@ def MatrixSpace(
     rows: int,
     cols: Any = None,
 ) -> MatrixSpaceParent:
+    base = _canonical_base(base)
     if base is not sage.ZZ and base is not sage.QQ:
         raise TypeError(
             'exact matrices currently require ZZ or QQ')
@@ -989,6 +1446,7 @@ def VectorSpace(
     base: sage.Parent,
     degree: int,
 ) -> VectorSpaceParent:
+    base = _canonical_base(base)
     if base is not sage.ZZ and base is not sage.QQ:
         raise TypeError(
             'exact vectors currently require ZZ or QQ')
@@ -1008,10 +1466,10 @@ def VectorSpace(
 
 def _matrix_data(value: Any) -> tuple[int, int, list[Any]]:
     rows = list(value)
-    if not rows:
+    if len(rows) == 0:
         return 0, 0, []
     if not isinstance(rows[0], (list, tuple, Vector)):
-        raise TypeError('matrix rows must be sequences')
+        return 1, len(rows), rows
     first = list(rows[0])
     cols = len(first)
     values = []
@@ -1029,7 +1487,7 @@ def matrix(*args: Any) -> Matrix:
     values = list(args)
     base = None
     if _is_base_ring(values[0]):
-        base = values.pop(0)
+        base = _canonical_base(values.pop(0))
     if len(values) == 1:
         if isinstance(values[0], Matrix):
             source = values[0]
@@ -1084,8 +1542,16 @@ def vector(*args: Any) -> Vector:
     values = list(args)
     base = None
     if _is_base_ring(values[0]):
-        base = values.pop(0)
-    if len(values) != 1:
+        base = _canonical_base(values.pop(0))
+    if len(values) == 2:
+        degree = int(values[0])
+        entries = list(values[1])
+        if len(entries) != degree:
+            raise ValueError(
+                'vector entry count does not match its dimension')
+    elif len(values) == 1:
+        entries = list(values[0])
+    else:
         raise TypeError('unsupported vector() constructor signature')
     if isinstance(values[0], Vector):
         source = values[0]
@@ -1093,7 +1559,6 @@ def vector(*args: Any) -> Vector:
             source if base is None
             else source.change_ring(base)
         )
-    entries = list(values[0])
     if base is None:
         base = _base_for_values(entries)
     return VectorSpace(base, len(entries))(entries)
@@ -1278,3 +1743,4 @@ runtime.set_class_repr(
 runtime.set_class_repr(
     VectorSubspaceParent, "<class 'VectorSubspace'>")
 runtime.reflect.set(matrix, 'random', random_matrix)
+Mat = MatrixSpace

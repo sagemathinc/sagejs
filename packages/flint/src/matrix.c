@@ -833,6 +833,133 @@ napi_value sagejs_matrix_hermite(napi_env env, napi_callback_info info)
     return wrap_matrix(env, answer);
 }
 
+napi_value sagejs_matrix_hermite_transform(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    napi_value wrapped;
+    sagejs_matrix *source;
+    sagejs_matrix *hermite;
+    sagejs_matrix *transform;
+    slong rows;
+    slong cols;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    if (source->kind != SAGEJS_MATRIX_ZZ)
+    {
+        napi_throw_type_error(env, NULL,
+            "Hermite form currently requires an integer matrix");
+        return NULL;
+    }
+    rows = matrix_nrows(source);
+    cols = matrix_ncols(source);
+    hermite = new_matrix(env, SAGEJS_MATRIX_ZZ, rows, cols);
+    transform = new_matrix(env, SAGEJS_MATRIX_ZZ, rows, rows);
+    if (hermite == NULL || transform == NULL)
+    {
+        if (hermite != NULL)
+            finalize_matrix(env, hermite, NULL);
+        if (transform != NULL)
+            finalize_matrix(env, transform, NULL);
+        return NULL;
+    }
+    fmpz_mat_hnf_transform(
+        hermite->integer, transform->integer, source->integer);
+    if (!check_napi(env, napi_create_array_with_length(env, 2, &result)))
+    {
+        finalize_matrix(env, hermite, NULL);
+        finalize_matrix(env, transform, NULL);
+        return NULL;
+    }
+    wrapped = wrap_matrix(env, hermite);
+    if (wrapped == NULL ||
+        !check_napi(env, napi_set_element(env, result, 0, wrapped)))
+    {
+        finalize_matrix(env, transform, NULL);
+        return NULL;
+    }
+    wrapped = wrap_matrix(env, transform);
+    if (wrapped == NULL ||
+        !check_napi(env, napi_set_element(env, result, 1, wrapped)))
+        return NULL;
+    return result;
+}
+
+napi_value sagejs_matrix_smith(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    napi_value wrapped;
+    sagejs_matrix *source;
+    sagejs_matrix *smith;
+    sagejs_matrix *left;
+    sagejs_matrix *right;
+    slong rows;
+    slong cols;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    if (source->kind != SAGEJS_MATRIX_ZZ)
+    {
+        napi_throw_type_error(env, NULL,
+            "Smith form currently requires an integer matrix");
+        return NULL;
+    }
+    rows = matrix_nrows(source);
+    cols = matrix_ncols(source);
+    smith = new_matrix(env, SAGEJS_MATRIX_ZZ, rows, cols);
+    left = new_matrix(env, SAGEJS_MATRIX_ZZ, rows, rows);
+    right = new_matrix(env, SAGEJS_MATRIX_ZZ, cols, cols);
+    if (smith == NULL || left == NULL || right == NULL)
+    {
+        if (smith != NULL)
+            finalize_matrix(env, smith, NULL);
+        if (left != NULL)
+            finalize_matrix(env, left, NULL);
+        if (right != NULL)
+            finalize_matrix(env, right, NULL);
+        return NULL;
+    }
+    fmpz_mat_snf_transform(
+        smith->integer, left->integer, right->integer, source->integer);
+    if (!check_napi(env, napi_create_array_with_length(env, 3, &result)))
+    {
+        finalize_matrix(env, smith, NULL);
+        finalize_matrix(env, left, NULL);
+        finalize_matrix(env, right, NULL);
+        return NULL;
+    }
+    wrapped = wrap_matrix(env, smith);
+    if (wrapped == NULL ||
+        !check_napi(env, napi_set_element(env, result, 0, wrapped)))
+    {
+        finalize_matrix(env, left, NULL);
+        finalize_matrix(env, right, NULL);
+        return NULL;
+    }
+    wrapped = wrap_matrix(env, left);
+    if (wrapped == NULL ||
+        !check_napi(env, napi_set_element(env, result, 1, wrapped)))
+    {
+        finalize_matrix(env, right, NULL);
+        return NULL;
+    }
+    wrapped = wrap_matrix(env, right);
+    if (wrapped == NULL ||
+        !check_napi(env, napi_set_element(env, result, 2, wrapped)))
+        return NULL;
+    return result;
+}
+
 napi_value sagejs_matrix_right_kernel(
     napi_env env,
     napi_callback_info info)

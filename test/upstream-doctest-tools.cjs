@@ -3,6 +3,7 @@
 const assert = require("node:assert/strict");
 const {
   extractSageDoctests,
+  filterSageDoctests,
   tripleQuotedStrings,
 } = require("../tools/sage-doctest-fixture.cjs");
 const {
@@ -56,6 +57,11 @@ assert.equal(fixture.groups[1].examples[2].want, [
   "ValueError: bad",
   "",
 ].join("\n"));
+const filtered = filterSageDoctests(fixture, {
+  ownerPattern: /^Example$/,
+});
+assert.deepEqual(filtered.summary, { groups: 1, examples: 3 });
+assert.equal(filtered.groups[0].owner, "Example");
 
 assert.ok(matchesExpected("5\n", "5\n"));
 assert.ok(matchesExpected("prefix middle suffix\n", "prefix ... suffix\n"));
