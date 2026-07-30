@@ -32,6 +32,8 @@ From the Sage.js repository root:
 pnpm test:cowasm
 pnpm bench:cowasm
 pnpm bench:numbers
+pnpm bench:brython
+pnpm bench:programs
 pnpm bench:numbers:check
 pnpm bench:cowasm:ceilings
 ```
@@ -75,6 +77,16 @@ integer workloads in upstream `numbers.py` and keeps them in one persistent
 process per runtime. Named suites live in `performance-suites.json`; they are
 selections from the unchanged compatibility corpus, not rewritten benchmark
 implementations.
+
+`bench:brython` selects the language and object-model microbenchmarks from
+`brython.py`. `bench:programs` selects the larger Pystone, nbody, recursive
+Fibonacci, and matrix-multiplication workloads. They use the same persistent
+process, warmup, and comparative reporting as `bench:numbers`. For a focused
+nbody measurement:
+
+```sh
+pnpm bench:cowasm -- --only nbody --samples 5 --warmups 2
+```
 
 Write a machine-readable report when comparing revisions or machines:
 

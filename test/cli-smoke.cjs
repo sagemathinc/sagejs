@@ -50,6 +50,7 @@ assert.match(run(["--version"]), /^sagejs 0\.1\.0\s*$/);
 const help = run(["--help"]);
 assert.match(help, /Sage\.js — research mathematics native to JavaScript/);
 assert.match(help, /With no program, start an interactive Sage calculator/);
+assert.match(help, /\.py files use Python and \.sage files use Sage/);
 assert.match(help, /--python\s+ordinary Python syntax and division/);
 assert.match(help, /--wolfram\s+experimental Wolfram Language frontend/);
 assert.match(help, /sagejs-jupyter --install --user/);
@@ -127,6 +128,25 @@ assert.equal(
     ].join("\n"),
   ).trim(),
   "2\n3\n2",
+);
+assert.match(
+  run(
+    ["compile", "--python", "--omit-baselib"],
+    "def pooled_real(): return 1.5\n",
+  ),
+  /var ρσ_const_0 = Number\("1\.5"\)/,
+);
+assert.doesNotMatch(
+  run(
+    ["compile", "--python", "--omit-baselib"],
+    [
+      "class LazyMethods:",
+      "    from __python__ import no_bound_methods",
+      "    def value(self): return 1",
+      "",
+    ].join("\n"),
+  ),
+  /LazyMethods\.prototype\.__bind_methods__/,
 );
 assert.equal(
   run(
@@ -452,7 +472,9 @@ try {
     "utf8",
   );
   assert.match(run([sageFile]), /^32\s*$/);
+  assert.match(run([pythonFile]), /^7\s*$/);
   assert.match(run(["--python", pythonFile]), /^7\s*$/);
+  assert.match(run(["--sage", pythonFile]), /^32\s*$/);
   assert.equal(run([loadingFile]).trim(), "49");
   assert.match(
     run(["compile", "--omit-baselib", sageFile]),

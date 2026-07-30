@@ -764,6 +764,30 @@ def ρσ_interpolate_kwargs_constructor_legacy(
 
 
 def ρσ_getitem(value: Any, key: Any) -> Any:
+    # Native lists and tuples are JavaScript arrays.  Keep their overwhelmingly
+    # common integer-index path monomorphic instead of performing reflective
+    # special-method discovery for every access in a Python loop.
+    if runtime.array.isArray(value):
+        key_type = runtime.jstype(key)
+        integer_index = True
+        if _internal_type_is(key_type, 'boolean'):
+            key = 1 if key else 0
+        elif _internal_type_is(key_type, 'bigint'):
+            if key < -value.length or key >= value.length:
+                raise IndexError('index out of range')
+            key = runtime.number(key)
+        elif _internal_type_is(key_type, 'number'):
+            if not runtime.number.isInteger(key):
+                raise TypeError(
+                    'sequence indices must be integers or slices')
+        else:
+            integer_index = False
+        if integer_index:
+            if key < 0:
+                key += value.length
+            if key < 0 or key >= value.length:
+                raise IndexError('index out of range')
+            return value[key]
     if _internal_member_is_function(value, '__getitem__'):
         return runtime.reflect.apply(
             _internal_get_member(value, '__getitem__'),
@@ -815,6 +839,17 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
 
 
 def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
+    # See the matching read fast path above.  Preserve the existing assignment
+    # behavior (including JavaScript's frozen-array TypeError for tuples).
+    if (
+        runtime.array.isArray(value)
+        and _internal_type_is(runtime.jstype(key), 'number')
+        and runtime.number.isInteger(key)
+    ):
+        if key < 0:
+            key += value.length
+        value[key] = member
+        return
     if _internal_member_is_function(value, '__setitem__'):
         runtime.reflect.apply(
             _internal_get_member(value, '__setitem__'),

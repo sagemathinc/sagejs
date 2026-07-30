@@ -13,6 +13,46 @@
         "sum_range",
         "sum_reversed"
       ]
+    },
+    "brython": {
+      "description": "Language and object-model microbenchmarks from CoWasm's brython.py",
+      "benchmarks": [
+        "simple assignment",
+        "augmented_assignment",
+        "augmented_assignment_and_list_append",
+        "simple_assignment_to_float",
+        "big_integers",
+        "build_dictionary",
+        "build_dictionary_2",
+        "set_dictionary_item",
+        "build_set",
+        "build_list",
+        "set_list_item",
+        "list_slice",
+        "integer_addition",
+        "string_addition",
+        "cast_int_to_string",
+        "create_function_without_arguments",
+        "create_function_single_positional_argument",
+        "create_function_complex_arguments",
+        "function_call",
+        "function call, complex arguments",
+        "create simple class",
+        "create class with init",
+        "create instance of simple class",
+        "create instance of simple jsclass",
+        "create instance of class with init",
+        "call_instance_method"
+      ]
+    },
+    "programs": {
+      "description": "Larger whole-program workloads from the CoWasm corpus",
+      "benchmarks": [
+        "Pystone",
+        "nbody",
+        "recursive fibonacci",
+        "matrix multiplication"
+      ]
     }
   }
 }

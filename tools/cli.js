@@ -130,12 +130,13 @@ function print_top_level_usage() {
   console.log(
     "With no program, start an interactive Sage calculator. A program file",
   );
+  console.log("is executed, and piped input is evaluated. Interactive input");
   console.log(
-    "is executed, and piped input is evaluated. Sage syntax is the default.\n",
+    "defaults to Sage syntax; .py files use Python and .sage files use Sage.\n",
   );
 
   console.log(label("Language modes:"));
-  console.log("  --sage          Sage/Python mathematical syntax (default)");
+  console.log("  --sage          force Sage/Python mathematical syntax");
   console.log("  --python        ordinary Python syntax and division");
   console.log("  --magma         experimental Magma frontend");
   console.log("  --maple         experimental Maple frontend");

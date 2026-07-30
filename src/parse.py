@@ -4364,9 +4364,8 @@ def parse(text, options):
     def get(name, defval):
         for i in range(this.stack.length - 1, -1, -1):
             d = this.stack[i]
-            q = d[name]
-            if q:
-                return q
+            if has_prop(d, name):
+                return d[name]
         return defval
 
     def set(name, val):

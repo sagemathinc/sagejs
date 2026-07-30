@@ -9,10 +9,27 @@ function load(mod) {
 const path = require("path");
 const argv = load("cli").argv;
 
-// `sagejs` uses mathematics-friendly Sage syntax by default.  The second npm
-// binary, `sagepython`, and the explicit --python flag select Python-like mode.
+// Interactive input uses mathematics-friendly Sage syntax by default.  Program
+// files follow their extension so `sagejs program.py` behaves like Python while
+// `sagejs program.sage` enables Sage preparsing.  The executable name and
+// explicit language flags take precedence over extension inference.
 const executable = path.basename(process.argv[1]);
 let sageMode = executable !== "sagepython";
+const explicitLanguageMode =
+  argv.python ||
+  argv.sage ||
+  argv.magma ||
+  argv.maple ||
+  argv.matlab ||
+  argv.wolfram ||
+  argv.mathematica;
+if (
+  !explicitLanguageMode &&
+  argv.files.length > 0 &&
+  argv.files.every((filename) => path.extname(filename).toLowerCase() === ".py")
+) {
+  sageMode = false;
+}
 if (argv.python) sageMode = false;
 if (argv.sage) sageMode = true;
 if (

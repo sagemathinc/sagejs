@@ -107,6 +107,8 @@
     "bench:cowasm": "node bench/cowasm/run.cjs",
     "bench:numbers": "node bench/cowasm/run.cjs --suite numbers",
     "bench:numbers:check": "node bench/cowasm/run.cjs --budget bench/cowasm/numbers-budget.json",
+    "bench:brython": "node bench/cowasm/run.cjs --suite brython",
+    "bench:programs": "node bench/cowasm/run.cjs --suite programs",
     "bench:micropython": "node bench/micropython-conformance.cjs",
     "bench:cowasm:ceilings": "node bench/cowasm/direct-ceilings.cjs",
     "bench:native": "node bench/compare-native-compiler.cjs",
