@@ -515,6 +515,19 @@ class Expression(sage.Element):
             variables = [variable]
         return fast_callable(self, vars=variables)
 
+    def _plot_zero_set_expression(self) -> Expression:
+        """Normalize a relation to the scalar function defining its zero set."""
+        if (
+            runtime.array.isArray(self._tree)
+            and len(self._tree) == 3
+            and self._tree[0] == 'Equal'
+        ):
+            return Expression(_call_backend(
+                'canonical',
+                [['Subtract', self._tree[1], self._tree[2]]],
+            ))
+        return self
+
 
 class CallableExpression(Expression):
     """A symbolic expression with an explicit ordered argument tuple."""

@@ -172,6 +172,18 @@ async function main() {
     assert.equal(implicit.display?.data.data[0].value.length, 27);
     assert.equal(implicit.display?.data.data[0].value[13], -1);
 
+    const implicitEquality = await session.evaluate(
+      [
+        "implicit_plot3d(x^2 + y^2 + z^2 == 1,",
+        "    [x, -1, 1], [y, -1, 1], [z, -1, 1],",
+        "    plot_points=3)",
+      ].join("\n"),
+    );
+    assert.deepEqual(
+      implicitEquality.display?.data.data[0].value,
+      implicit.display?.data.data[0].value,
+    );
+
     assert.equal(
       (
         await session.evaluate(

@@ -953,6 +953,9 @@ def implicit_plot3d(
     **options: Any,
 ) -> Graphics3d:
     """Plot the zero set of a sampled function of three variables."""
+    if hasattr(function_value, '_plot_zero_set_expression'):
+        function_value = (
+            function_value._plot_zero_set_expression())
     xvariable, xmin, xmax = _g3d_range(xrange)
     yvariable, ymin, ymax = _g3d_range(yrange)
     zvariable, zmin, zmax = _g3d_range(zrange)
