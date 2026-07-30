@@ -592,6 +592,8 @@ def sorted(
 def _set_normalize_value(value: Any) -> Any:
     if value is True or value is False:
         return int(value)
+    if runtime.strict_equal(runtime.jstype(value), 'number'):
+        return value
     if runtime.is_exact_integer(value):
         return runtime.normalize_integer(runtime.bigint(value))
     return value
@@ -619,11 +621,23 @@ def _set_delete_value(native_set: Any, value: Any) -> bool:
     return False
 
 
+def _set_add_value(native_set: Any, value: Any) -> None:
+    if _set_has_value(native_set, value):
+        return
+    if value is True or value is False:
+        native_set.add(value)
+    else:
+        native_set.add(_set_normalize_value(value))
+
+
 class SageSet:
 
     def __init__(self, iterable: Any = runtime.undefined) -> None:
         self.jsset = _new_set()
-        if iterable is not runtime.undefined:
+        if runtime.array.isArray(iterable):
+            for value in iterable:
+                _set_add_value(self.jsset, value)
+        elif iterable is not runtime.undefined:
             self.update(iterable)
 
     @property
@@ -646,11 +660,7 @@ class SageSet:
         return self.jsset.values()
 
     def add(self, value: Any) -> None:
-        if not self.has(value):
-            if value is True or value is False:
-                self.jsset.add(value)
-            else:
-                self.jsset.add(_set_normalize_value(value))
+        _set_add_value(self.jsset, value)
 
     def clear(self) -> None:
         self.jsset.clear()
@@ -989,6 +999,8 @@ def _dict_normalize_key(key: Any) -> Any:
         return 1
     if key is False:
         return 0
+    if runtime.strict_equal(runtime.jstype(key), 'number'):
+        return key
     if runtime.is_exact_integer(key):
         return runtime.normalize_integer(runtime.bigint(key))
     return key

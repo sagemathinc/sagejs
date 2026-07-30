@@ -63,6 +63,10 @@ class _BuiltinsMissing:
 
 _BUILTINS_MISSING = _BuiltinsMissing()
 _BUILTINS_EMPTY = _BuiltinsMissing()
+_BUILTINS_DESCRIPTOR_MISSING = _BuiltinsMissing()
+_builtins_descriptor_cache = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, 'WeakMap'), [])
+_builtins_descriptor_epoch = 0
 
 
 def cached_function(
@@ -175,13 +179,53 @@ def _builtins_class_attribute_descriptor(
     name: Any,
 ) -> Any:
     owner = _builtins_get_member(value, 'constructor')
+    if (
+        owner is None
+        or owner is runtime.undefined
+        or (
+            not runtime.strict_equal(
+                runtime.jstype(owner), 'object')
+            and not runtime.strict_equal(
+                runtime.jstype(owner), 'function')
+        )
+    ):
+        return runtime.undefined
+    owner_cache = _builtins_descriptor_cache.get(owner)
+    if owner_cache is not runtime.undefined:
+        cached = owner_cache.get(name)
+        if (
+            cached is not runtime.undefined
+            and cached[0] == _builtins_descriptor_epoch
+        ):
+            return (
+                runtime.undefined
+                if cached[1] is _BUILTINS_DESCRIPTOR_MISSING
+                else cached[1]
+            )
+    else:
+        owner_cache = runtime.map()
+        _builtins_descriptor_cache.set(owner, owner_cache)
     prototype = _builtins_get_member(owner, 'prototype')
     while prototype is not None and prototype is not runtime.undefined:
         descriptor = runtime.object.getOwnPropertyDescriptor(
             prototype, name)
         if descriptor is not runtime.undefined:
+            owner_cache.set(
+                name,
+                runtime.math_tuple([
+                    _builtins_descriptor_epoch,
+                    descriptor,
+                ]),
+            )
             return descriptor
         prototype = runtime.object.getPrototypeOf(prototype)
+    owner_cache.set(
+        name,
+        runtime.math_tuple([
+            _builtins_descriptor_epoch,
+            _BUILTINS_DESCRIPTOR_MISSING,
+        ]),
+    )
     return runtime.undefined
 
 
@@ -3118,6 +3162,7 @@ def ρσ_getattr(
 
 
 def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
+    global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
     if _builtins_get_member(value, '__sagejs_super__') is True:
@@ -3151,6 +3196,7 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             return _builtins_call_member(
                 descriptor, '__set__', [value, member])
     if _builtins_is_python_class(value):
+        _builtins_descriptor_epoch += 1
         runtime.reflect.set(value.prototype, name, member)
         if _builtins_member_is_function(member, '__set_name__'):
             _builtins_call_member(
@@ -3445,6 +3491,7 @@ def ρσ_exec(
 
 
 def ρσ_delattr(value: Any, name: _Str) -> None:
+    global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
     if _builtins_get_member(value, '__sagejs_super__') is True:
@@ -3469,6 +3516,7 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
             runtime.reflect.deleteProperty(value, name)
         if prototype_has_own:
             runtime.reflect.deleteProperty(prototype, name)
+        _builtins_descriptor_epoch += 1
         return
     if (
         not runtime.strict_equal(runtime.jstype(value), 'function')

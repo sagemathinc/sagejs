@@ -89,6 +89,28 @@ def gety():
 
 assrt.throws(gety, AttributeError)
 
+
+class DynamicDescriptor:
+    pass
+
+
+dynamic_descriptor = DynamicDescriptor()
+assrt.equal(getattr(dynamic_descriptor, 'answer', None), None)
+setattr(
+    DynamicDescriptor,
+    'answer',
+    property(lambda self: 42),
+)
+assrt.equal(getattr(dynamic_descriptor, 'answer'), 42)
+setattr(
+    DynamicDescriptor,
+    'answer',
+    property(lambda self: 43),
+)
+assrt.equal(getattr(dynamic_descriptor, 'answer'), 43)
+delattr(DynamicDescriptor, 'answer')
+assrt.equal(getattr(dynamic_descriptor, 'answer', None), None)
+
 # int()/float()
 assrt.equal(int('a', 16), 10)
 
@@ -383,6 +405,10 @@ def test_sets():
     a = {1}
     a.update({1, 2})
     assrt.deepEqual(a, {1, 2})
+    add = a.add
+    add(3)
+    assrt.deepEqual(a, {1, 2, 3})
+    assrt.equal(len(set([True, 1, 1.0])), 1)
 
 
 test_sets()
