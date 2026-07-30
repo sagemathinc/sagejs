@@ -5,7 +5,7 @@ const { createSage } = require("../dist/tools/kernel.js");
 
 async function output(session, language, source) {
   const result = await session.evaluate(source, { language });
-  return result.stdout.trim();
+  return [result.stdout.trim(), result.repr].filter(Boolean).join("\n");
 }
 
 (async () => {

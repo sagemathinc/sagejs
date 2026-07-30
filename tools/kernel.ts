@@ -397,11 +397,14 @@ export class SageSession extends EventEmitter {
       };
     }
     const frontend = await this.foreignFrontend(language);
+    const lowering = frontend.lower(source, {
+      filename,
+      captureResult: true,
+    });
     return {
-      source: frontend.lower(source, { filename }).source,
+      source: lowering.source,
       compilerLanguage: "sage",
-      // Foreign lowerers emit print calls for unsuppressed statements.
-      suppressResult: true,
+      suppressResult: !lowering.hasResult,
     };
   }
 

@@ -55,12 +55,14 @@ export class MagmaSyntaxError extends SyntaxError {
 export interface MagmaLowering {
   ast: MagmaProgram;
   source: string;
+  hasResult?: boolean;
   loadedFiles: string[];
   attachedFiles: string[];
 }
 
 export interface MagmaLowerOptions {
   filename?: string;
+  captureResult?: boolean;
 }
 
 export interface MagmaFrontend extends ForeignFrontend {
@@ -494,8 +496,14 @@ class SageLowerer {
     "Type",
   ]);
 
-  program(program: MagmaProgram): string {
-    const body = this.statements(program.body, 0);
+  program(program: MagmaProgram, captureResult = false): string {
+    const lastIndex = program.body.length - 1;
+    const body = program.body.map((statement, index) => {
+      const asResult = captureResult &&
+        index === lastIndex &&
+        statement.kind === "expression-statement";
+      return this.statement(statement, 0, asResult);
+    }).join("");
     return `import magma as _magma\n${body}`;
   }
 
@@ -525,7 +533,11 @@ class SageLowerer {
     return statements.map((statement) => this.statement(statement, depth)).join("");
   }
 
-  private statement(statement: MagmaStatement, depth: number): string {
+  private statement(
+    statement: MagmaStatement,
+    depth: number,
+    asResult = false,
+  ): string {
     const indentation = "    ".repeat(depth);
     switch (statement.kind) {
       case "assignment":
@@ -537,6 +549,16 @@ class SageLowerer {
       case "generator-assignment":
         return this.generatorAssignment(statement, depth);
       case "expression-statement":
+        if (asResult) {
+          const expressions = statement.expressions.map((expression) =>
+            this.expression(expression)
+          );
+          return `${indentation}${
+            expressions.length === 1
+              ? expressions[0]
+              : `(${expressions.join(", ")})`
+          }\n`;
+        }
         return `${indentation}print(${statement.expressions.map((expression) =>
           this.expression(expression)
         ).join(", ")})\n`;
@@ -875,7 +897,12 @@ export function createMagmaFrontend(): Promise<MagmaFrontend> {
         };
         return {
           ast,
-          source: new SageLowerer().program(expandedAst),
+          source: new SageLowerer().program(
+            expandedAst,
+            options.captureResult,
+          ),
+          hasResult: options.captureResult &&
+            expandedAst.body.at(-1)?.kind === "expression-statement",
           loadedFiles,
           attachedFiles,
         };

@@ -54,6 +54,10 @@ which loads the pinned Plotly.js version from its CDN. This makes plots work in
 trusted Jupyter frontends without installing a Plotly MIME extension while
 preserving the structured representation for frontends that provide one.
 
+`show(graphic)` returns the graphics object through this rich-display path.
+The Wolfram frontend exposes the same operation as `Show[graphic]`; a bare
+final `Plot[...]` is also rich-displayed by the polyglot kernel.
+
 ## Supported API
 
 Plotting v0 includes:

@@ -157,8 +157,11 @@ def main() -> None:
 
             matlab_read_id = client.execute("%%matlab\nA(1,1)")
             messages = iopub_until_idle(client, matlab_read_id)
-            assert message_of_type(messages, "stream")["content"]["text"] == (
-                "9\n"
+            assert (
+                message_of_type(messages, "execute_result")["content"]["data"][
+                    "text/plain"
+                ]
+                == "9"
             )
             assert matching_message(
                 client, "shell", matlab_read_id
@@ -171,9 +174,11 @@ def main() -> None:
             ):
                 foreign_id = client.execute(f"%%{language}\n{source}")
                 messages = iopub_until_idle(client, foreign_id)
-                output = message_of_type(messages, "stream")["content"]["text"]
-                assert "[[9 2]" in output
-                assert "[3 4]]" in output
+                output = message_of_type(messages, "execute_result")[
+                    "content"
+                ]["data"]["text/plain"]
+                assert "9, 2" in output
+                assert "3, 4" in output
                 assert matching_message(
                     client, "shell", foreign_id
                 )["content"]["status"] == "ok"
@@ -219,6 +224,32 @@ def main() -> None:
             assert matching_message(client, "shell", plot_id)["content"][
                 "status"
             ] == "ok"
+
+            wolfram_plot_id = client.execute(
+                "%%mathematica\nPlot[Sin[x^2],{x,0,Pi}]"
+            )
+            messages = iopub_until_idle(client, wolfram_plot_id)
+            wolfram_plot_data = message_of_type(
+                messages, "execute_result"
+            )["content"]["data"]
+            assert "text/plain" in wolfram_plot_data
+            assert "application/vnd.plotly.v1+json" in wolfram_plot_data
+            assert "text/html" in wolfram_plot_data
+            assert matching_message(
+                client, "shell", wolfram_plot_id
+            )["content"]["status"] == "ok"
+
+            wolfram_show_id = client.execute(
+                "%%mathematica\nShow[Plot[Sin[x^2],{x,0,Pi}]]"
+            )
+            messages = iopub_until_idle(client, wolfram_show_id)
+            wolfram_show_data = message_of_type(
+                messages, "execute_result"
+            )["content"]["data"]
+            assert "application/vnd.plotly.v1+json" in wolfram_show_data
+            assert matching_message(
+                client, "shell", wolfram_show_id
+            )["content"]["status"] == "ok"
 
             complete_id = client.complete("prime_p", 7)
             completion = matching_message(client, "shell", complete_id)["content"]

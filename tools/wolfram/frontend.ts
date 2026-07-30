@@ -8,6 +8,7 @@ import {
 import {
   ForeignFrontend,
   ForeignLowering,
+  ForeignLowerOptions,
 } from "../foreign/types";
 import {
   BinaryExpression,
@@ -212,15 +213,24 @@ class SageLowerer {
     Plot: "plot",
     PrimePi: "prime_pi",
     Sin: "sin",
+    Show: "show",
     Sqrt: "sqrt",
     Tan: "tan",
   };
 
-  program(program: WolframProgram): string {
+  program(program: WolframProgram, captureResult = false): string {
     const lines = ["import wolfram as _wolfram"];
-    for (const expression of program.body) {
-      lines.push(this.statement(expression));
-    }
+    const lastIndex = program.body.length - 1;
+    program.body.forEach((expression, index) => {
+      const asResult = captureResult &&
+        index === lastIndex &&
+        expression.kind !== "suppressed" &&
+        !(
+          expression.kind === "binary" &&
+          (expression.operator === "=" || expression.operator === ":=")
+        );
+      lines.push(this.statement(expression, asResult));
+    });
     return `${lines.join("\n")}\n`;
   }
 
@@ -239,7 +249,10 @@ class SageLowerer {
     return result;
   }
 
-  private statement(expression: WolframExpression): string {
+  private statement(
+    expression: WolframExpression,
+    asResult = false,
+  ): string {
     if (expression.kind === "suppressed") {
       return this.statementValue(expression.expression);
     }
@@ -249,7 +262,8 @@ class SageLowerer {
     ) {
       return this.assignment(expression);
     }
-    return `print(${this.expression(expression)})`;
+    const value = this.expression(expression);
+    return asResult ? value : `print(${value})`;
   }
 
   private statementValue(expression: WolframExpression): string {
@@ -475,11 +489,25 @@ export function createWolframFrontend(): Promise<ForeignFrontend> {
     return {
       language: "wolfram",
       parse,
-      lower(source: string): ForeignLowering {
+      lower(
+        source: string,
+        options: ForeignLowerOptions = {},
+      ): ForeignLowering {
         const ast = parse(source);
+        const last = ast.body.at(-1);
         return {
           ast,
-          source: new SageLowerer().program(ast),
+          source: new SageLowerer().program(ast, options.captureResult),
+          hasResult: options.captureResult &&
+            last !== undefined &&
+            last.kind !== "suppressed" &&
+            !(
+              last.kind === "binary" &&
+              (
+                last.operator === "=" ||
+                last.operator === ":="
+              )
+            ),
         };
       },
     };

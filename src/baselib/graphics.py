@@ -1440,6 +1440,21 @@ def plot(
     return answer
 
 
+def show(
+    value: Any,
+    *others: Any,
+    **options: Any,
+) -> Any:
+    """Return a value for rich display, combining graphics when requested."""
+
+    answer = value
+    for other in others:
+        answer = answer + other
+    if len(options) and hasattr(answer, 'set_extra_kwds'):
+        answer.set_extra_kwds(options)
+    return answer
+
+
 def list_plot(
     data: Any,
     plotjoined: bool = False,

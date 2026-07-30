@@ -8,6 +8,7 @@ import {
 import {
   ForeignFrontend,
   ForeignLowering,
+  ForeignLowerOptions,
 } from "../foreign/types";
 import {
   BinaryExpression,
@@ -254,16 +255,26 @@ class SageLowerer {
     zeros: "_np.zeros",
   };
 
-  program(program: MatlabProgram): string {
-    return [
+  program(program: MatlabProgram, captureResult = false): string {
+    const lastIndex = program.body.length - 1;
+    const lines = [
       "import matlab as _matlab",
       "import numpy as _np",
-      ...program.body.map((statement) => this.statement(statement)),
-      "",
-    ].join("\n");
+      ...program.body.map((statement, index) =>
+        this.statement(
+          statement,
+          captureResult && index === lastIndex,
+        )
+      ),
+    ];
+    lines.push("");
+    return lines.join("\n");
   }
 
-  private statement(statement: MatlabStatement): string {
+  private statement(
+    statement: MatlabStatement,
+    asResult = false,
+  ): string {
     if (statement.kind === "assignment") {
       if (statement.target.kind === "call") {
         if (statement.target.callee.kind !== "name") {
@@ -300,7 +311,7 @@ class SageLowerer {
         : `${assignment}\nprint(${statement.target.name})`;
     }
     const value = this.expression(statement.expression);
-    return statement.suppressOutput ? value : `print(${value})`;
+    return statement.suppressOutput || asResult ? value : `print(${value})`;
   }
 
   private call(expression: CallExpression): string {
@@ -455,11 +466,17 @@ export function createMatlabFrontend(): Promise<ForeignFrontend> {
     return {
       language: "matlab",
       parse,
-      lower(source: string): ForeignLowering {
+      lower(
+        source: string,
+        options: ForeignLowerOptions = {},
+      ): ForeignLowering {
         const ast = parse(source);
         return {
           ast,
-          source: new SageLowerer().program(ast),
+          source: new SageLowerer().program(ast, options.captureResult),
+          hasResult: options.captureResult &&
+            ast.body.at(-1)?.kind === "expression" &&
+            !ast.body.at(-1)?.suppressOutput,
         };
       },
     };

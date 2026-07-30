@@ -76,14 +76,14 @@ async function main() {
   );
   await session.evaluate("A[0, 0] = 9", { language: "sage" });
   assert.equal(
-    (await session.evaluate("A(1,1)", { language: "matlab" })).stdout,
-    "9\n",
+    (await session.evaluate("A(1,1)", { language: "matlab" })).repr,
+    "9",
   );
   for (const language of ["magma", "maple", "wolfram"]) {
     const source = language === "wolfram" ? "A" : "A;";
     assert.match(
-      (await session.evaluate(source, { language })).stdout,
-      /\[\[9 2\]\s+\[3 4\]\]/,
+      (await session.evaluate(source, { language })).repr,
+      /9, 2[\s\S]*3, 4/,
     );
   }
   assert.equal(

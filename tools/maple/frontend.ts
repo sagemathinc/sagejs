@@ -8,6 +8,7 @@ import {
 import {
   ForeignFrontend,
   ForeignLowering,
+  ForeignLowerOptions,
 } from "../foreign/types";
 import {
   BinaryExpression,
@@ -248,12 +249,20 @@ class AstBuilder {
 }
 
 class SageLowerer {
-  program(program: MapleProgram): string {
-    return [
+  program(program: MapleProgram, captureResult = false): string {
+    const lastIndex = program.body.length - 1;
+    const lines = [
       "import maple as _maple",
-      ...program.body.map((statement) => this.statement(statement, 0)),
-      "",
-    ].join("\n");
+      ...program.body.map((statement, index) =>
+        this.statement(
+          statement,
+          0,
+          captureResult && index === lastIndex,
+        )
+      ),
+    ];
+    lines.push("");
+    return lines.join("\n");
   }
 
   private statements(statements: MapleStatement[], depth: number): string {
@@ -262,7 +271,11 @@ class SageLowerer {
       .join("\n");
   }
 
-  private statement(statement: MapleStatement, depth: number): string {
+  private statement(
+    statement: MapleStatement,
+    depth: number,
+    asResult = false,
+  ): string {
     const indentation = "    ".repeat(depth);
     switch (statement.kind) {
       case "assignment": {
@@ -278,6 +291,8 @@ class SageLowerer {
           this.expression(statement.expression)
         }`;
         return statement.suppressOutput
+          ? expression
+          : asResult
           ? expression
           : `${indentation}print(${this.expression(statement.expression)})`;
       }
@@ -490,11 +505,18 @@ export function createMapleFrontend(): Promise<ForeignFrontend> {
     return {
       language: "maple",
       parse,
-      lower(source: string): ForeignLowering {
+      lower(
+        source: string,
+        options: ForeignLowerOptions = {},
+      ): ForeignLowering {
         const ast = parse(source);
+        const last = ast.body.at(-1);
         return {
           ast,
-          source: new SageLowerer().program(ast),
+          source: new SageLowerer().program(ast, options.captureResult),
+          hasResult: options.captureResult &&
+            last?.kind === "expression" &&
+            !last.suppressOutput,
         };
       },
     };

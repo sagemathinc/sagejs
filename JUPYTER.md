@@ -122,6 +122,12 @@ CDN and render the HTML fallback, so a separate JupyterLab extension is not
 required. The browser must be online the first time it fetches that renderer;
 normal browser caching applies afterward.
 
+The final visible expression in every language frontend is returned through
+this same rich-result path. Thus both Sage `show(graphic)` and Wolfram
+`Show[graphic]` display a plot, and a bare final Wolfram `Plot[...]` displays
+without requiring `Show`. A language's explicit output-suppression terminator
+still suppresses the result.
+
 On Node, evaluations run in an interruptible VM context. Tight generated loops
 and `time.sleep()` therefore respond by raising `KeyboardInterrupt`, ordinary
 notebook definitions survive, and user code can catch the exception. An

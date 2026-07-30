@@ -2,11 +2,15 @@ export type ForeignLanguage = "magma" | "wolfram" | "matlab" | "maple";
 
 export interface ForeignLowerOptions {
   filename?: string;
+  /** Leave the final visible expression as the evaluator result. */
+  captureResult?: boolean;
 }
 
 export interface ForeignLowering {
   ast: unknown;
   source: string;
+  /** Whether source lowered with captureResult has a visible final value. */
+  hasResult?: boolean;
   loadedFiles?: string[];
   attachedFiles?: string[];
 }

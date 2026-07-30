@@ -63,6 +63,28 @@ async function main() {
     assert.deepEqual(listed.display?.data.data[0].x, [0, 1, 2]);
     assert.deepEqual(listed.display?.data.data[0].y, [1, 4, 9]);
 
+    const shown = await session.evaluate(
+      "show(plot(sin(x^2), (x, 0, pi)))",
+    );
+    assert.equal(shown.display?.mime, "application/vnd.plotly.v1+json");
+    assert.equal(
+      shown.repr,
+      "Graphics object consisting of 1 graphics primitive",
+    );
+    const wolframPlot = await session.evaluate(
+      "Plot[Sin[x^2],{x,0,Pi}]",
+      { language: "wolfram" },
+    );
+    assert.equal(
+      wolframPlot.display?.mime,
+      "application/vnd.plotly.v1+json",
+    );
+    const wolframShow = await session.evaluate(
+      "Show[Plot[Sin[x],{x,0,Pi}],Plot[Cos[x],{x,0,Pi}]]",
+      { language: "wolfram" },
+    );
+    assert.equal(wolframShow.display?.data.data.length, 2);
+
     const labels = await session.evaluate(
       [
         "labels = graphics_array([[",
