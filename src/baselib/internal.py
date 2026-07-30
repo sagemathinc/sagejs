@@ -339,6 +339,9 @@ def ρσ_strict_equal(left: Any, right: Any) -> bool:
 
 def ρσ_sequence_proxy(instance: Any) -> Any:
     integer_property = runtime.regexp(r'^-?[0-9]+$')
+    integer_tuple_property = runtime.regexp(
+        r'^\[?-?[0-9]+(?:,\s*-?[0-9]+)+\]?$')
+    integer_tuple_cleanup = runtime.regexp(r'[\[\]\s]', 'g')
 
     def get_item(
         target: Any,
@@ -351,6 +354,25 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
             and integer_property.test(property_name)
         ):
             return target.__getitem__(runtime.number(property_name))
+        if (
+            _internal_type_is(
+                runtime.jstype(property_name), 'string')
+            and integer_tuple_property.test(property_name)
+        ):
+            property_name = runtime.reflect.apply(
+                runtime.string_class.prototype.replace,
+                property_name,
+                [integer_tuple_cleanup, ''],
+            )
+            parts = runtime.reflect.apply(
+                runtime.string_class.prototype.split,
+                property_name,
+                [','],
+            )
+            indices = []
+            for part in parts:
+                indices.append(runtime.number(part))
+            return target.__getitem__(runtime.math_tuple(indices))
         if runtime.strict_equal(property_name, 'length'):
             return target.__len__()
         value = runtime.reflect.get(target, property_name, receiver)

@@ -103,6 +103,7 @@
     "bench:cold": "node bench/cold-start.cjs",
     "bench:arithmetic": "node bench/compare-sagelite.cjs",
     "bench:complex": "node bench/compare-complex.cjs",
+    "bench:linear-algebra": "node bench/compare-exact-linear-algebra.cjs",
     "bench:finite-fields": "node bench/compare-finite-fields.cjs",
     "bench:cowasm": "node bench/cowasm/run.cjs",
     "bench:numbers": "node bench/cowasm/run.cjs --suite numbers",

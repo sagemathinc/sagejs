@@ -8,7 +8,10 @@ loading the language must not initialize native mathematics libraries.
 The API exposes JavaScript `BigInt` round trips, GCD, factorial,
 Fibonacci numbers, binomial coefficients, primorials, integer factorization,
 word-prime testing, opaque `fmpz_poly`/`fmpq_poly`/`nmod_poly` values, and
-opaque MPFR/MPC real and complex values. Integer conversion uses Node-API's
+opaque `fmpz_mat`/`fmpq_mat` matrices and MPFR/MPC real and complex values.
+Exact matrices support native addition, multiplication, determinant, rank,
+inverse, and linear solving; integer systems canonically produce rational
+answers when division is required. Integer conversion uses Node-API's
 little-endian 64-bit word arrays and FLINT's `fmpz_set_ui_array` /
 `fmpz_get_ui_array` functions, so crossing the integer boundary requires one
 linear copy in each direction and no decimal-string conversion.

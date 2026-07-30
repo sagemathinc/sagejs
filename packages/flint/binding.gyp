@@ -8,7 +8,8 @@
       "sources": [
         "src/addon.c",
         "src/extension_field.c",
-        "src/floating.c"
+        "src/floating.c",
+        "src/matrix.c"
       ],
       "include_dirs": ["<(native_prefix)/include", "include"],
       "libraries": [

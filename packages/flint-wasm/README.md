@@ -9,7 +9,11 @@ native Node-API add-on, so the ordinary Sage.js baselib constructs and
 displays `IntegerFactorization` objects unchanged. A small exact JavaScript
 backend supplies polynomial construction, arithmetic, powers, equality, and
 representation over `ZZ`, `QQ`, and prime fields; advanced polynomial
-algorithms still require future FLINT WASM bindings.
+algorithms still require future FLINT WASM bindings. The same portable backend
+provides dense exact `ZZ` and `QQ` matrices with addition, multiplication,
+determinant, rank, inverse, and linear solving. Its public contract matches
+the native FLINT matrix backend, so Sage-facing matrix code and serialized
+results do not depend on the host.
 
 The JavaScript loader has no host Node.js dependency. Its browser bundle uses
 CoWasm's `wasi-js` with `@cowasm/memfs`, so FLINT can create, seek, reopen, and

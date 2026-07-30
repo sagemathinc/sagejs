@@ -144,6 +144,14 @@ Sage-compatible `plot3d()`, `parametric_plot3d()`, `sphere()`, `line3d()`, and
 surfaces compile their two-variable expression once inside the evaluator
 worker and render as interactive Plotly surfaces in the frontend.
 
+Dense exact `matrix()` and `vector()` objects over `ZZ` and `QQ` provide
+Sage-compatible arithmetic, determinant, rank, inverse, and linear solving.
+Node keeps entries in opaque FLINT `fmpz_mat`/`fmpq_mat` objects; browser
+workers use the same backend contract implemented with portable `BigInt`
+rationals. Run `pnpm bench:linear-algebra` to compare the shared workload
+against SageMath without process startup or cached determinant/inverse
+results.
+
 ## Sage mode
 
 The `sagejs` command uses Sage-style syntax by default:

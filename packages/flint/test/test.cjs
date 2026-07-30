@@ -301,4 +301,40 @@ assert.deepEqual(
   ["14.134725141735", "21.022039638772", "25.010857580146"],
 );
 
+const integerMatrix = flint.zzMatrix(2, 2, [1n, 2n, 3n, 4n]);
+assert.equal(flint.matrixEntry(integerMatrix, 0, 1), 2n);
+assert.equal(flint.matrixDet(integerMatrix), -2n);
+assert.equal(flint.matrixRank(integerMatrix), 2);
+const integerSquare = flint.matrixMul(integerMatrix, integerMatrix);
+assert.deepEqual(
+  [0, 1, 2, 3].map((index) =>
+    flint.matrixEntry(
+      integerSquare,
+      Math.floor(index / 2),
+      index % 2,
+    ),
+  ),
+  [7n, 10n, 15n, 22n],
+);
+const rationalInverse = flint.matrixInverse(integerMatrix);
+assert.deepEqual(
+  [0, 1, 2, 3].map((index) =>
+    flint.matrixEntry(
+      rationalInverse,
+      Math.floor(index / 2),
+      index % 2,
+    ),
+  ),
+  [
+    { numerator: -2n, denominator: 1n },
+    { numerator: 1n, denominator: 1n },
+    { numerator: 3n, denominator: 2n },
+    { numerator: -1n, denominator: 2n },
+  ],
+);
+assert.throws(
+  () => flint.matrixInverse(flint.zzMatrix(2, 2, [1n, 2n, 2n, 4n])),
+  /singular/,
+);
+
 console.log("Native FLINT arithmetic and BigInt conversion passed.");

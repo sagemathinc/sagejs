@@ -35,12 +35,13 @@
     "kernel.mjs",
     "plotly-renderer.d.ts",
     "plotly-renderer.mjs",
+    "portable-matrix.mjs",
     "portable-polynomial.mjs",
     "README.md"
   ],
   "scripts": {
     "build": "node scripts/build.cjs",
-    "test": "pnpm run build && node --test test/factor.test.mjs",
+    "test": "pnpm run build && node --test test/*.test.mjs",
     "test:browser": "pnpm run build && node test/browser-smoke.mjs"
   },
   "dependencies": {

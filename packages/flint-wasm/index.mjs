@@ -1,5 +1,6 @@
 import { createWasiHost } from "./dist/wasi-runtime.mjs";
 import { createPortablePolynomialBackend } from "./portable-polynomial.mjs";
+import { createPortableMatrixBackend } from "./portable-matrix.mjs";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -135,6 +136,7 @@ export async function instantiateFlintFactor(source) {
     isPrime,
     nextPrime,
     ...createPortablePolynomialBackend(),
+    ...createPortableMatrixBackend(),
   });
 }
 

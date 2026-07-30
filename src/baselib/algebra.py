@@ -446,6 +446,31 @@ class CoercionModel:
     def binOp(
         self, operator: str, left: Any, right: Any,
     ) -> Any:
+        # Structured parents such as rectangular matrix spaces and vector
+        # spaces are not closed under every operation: a 2x3 matrix times a
+        # 3x4 matrix lives in a third parent. Let those elements describe the
+        # action before applying the common-parent arithmetic model.
+        left_action = runtime.undefined
+        right_action = runtime.undefined
+        if (
+            left is not None
+            and runtime.jstype(left) == 'object'
+        ):
+            left_action = runtime.reflect.get(
+                left, '_sage_binop_')
+        if runtime.jstype(left_action) == 'function':
+            return runtime.reflect.apply(
+                left_action, left, [operator, right, False])
+        if (
+            right is not None
+            and runtime.jstype(right) == 'object'
+        ):
+            right_action = runtime.reflect.get(
+                right, '_sage_binop_')
+        if runtime.jstype(right_action) == 'function':
+            return runtime.reflect.apply(
+                right_action, right, [operator, left, True])
+
         left_parent = runtime.undefined
         right_parent = runtime.undefined
         if (

@@ -19,6 +19,7 @@
 
 #include "extension_field.h"
 #include "floating.h"
+#include "matrix.h"
 
 #if ULONG_MAX != UINT64_MAX
 #error "The initial Sage.js FLINT bridge requires 64-bit FLINT limbs"
@@ -1432,6 +1433,36 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"primorial", NULL, primorial, NULL, NULL, NULL, napi_default, NULL},
         {"binomial", NULL, binomial, NULL, NULL, NULL, napi_default, NULL},
         {"factor", NULL, factor, NULL, NULL, NULL, napi_default, NULL},
+        {"zzMatrix", NULL, sagejs_zz_matrix, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"qqMatrix", NULL, sagejs_qq_matrix, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"zzMatrixToQQ", NULL, sagejs_zz_matrix_to_qq, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"matrixAdd", NULL, sagejs_matrix_add, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"matrixSub", NULL, sagejs_matrix_sub, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"matrixMul", NULL, sagejs_matrix_mul, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"matrixNeg", NULL, sagejs_matrix_neg, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"matrixScalarMul", NULL, sagejs_matrix_scalar_mul,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"matrixTranspose", NULL, sagejs_matrix_transpose,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"matrixEqual", NULL, sagejs_matrix_equal, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"matrixEntry", NULL, sagejs_matrix_entry, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"matrixDet", NULL, sagejs_matrix_det, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"matrixRank", NULL, sagejs_matrix_rank, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"matrixSolve", NULL, sagejs_matrix_solve, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"matrixInverse", NULL, sagejs_matrix_inverse, NULL, NULL, NULL,
+            napi_default, NULL},
         {"zzPolyConstant", NULL, zz_poly_constant, NULL, NULL, NULL,
             napi_default, NULL},
         {"qqPolyConstant", NULL, qq_poly_constant, NULL, NULL, NULL,

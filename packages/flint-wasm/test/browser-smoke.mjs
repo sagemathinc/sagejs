@@ -245,6 +245,11 @@ try {
       "R.<x> = QQ[]\nx^2 - 2*x + 1",
       "x^2 - 2*x + 1",
     );
+    await runSource(
+      "A = matrix(ZZ, [[1,2],[3,4]])\n" +
+        "print(A.det(), A.rank())\nA.inverse()",
+      "-2 2\n[ -2    1]\n[3/2 -1/2]",
+    );
     await runSource("a = 12\nfactor(a)", "2^2 * 3");
     await runSource("factor(a^2)", "2^4 * 3^2");
     await runSource(
