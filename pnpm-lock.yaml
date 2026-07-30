@@ -20,6 +20,9 @@ importers:
       plotly.js-dist-min:
         specifier: 3.7.0
         version: 3.7.0
+      web-tree-sitter:
+        specifier: 0.26.11
+        version: 0.26.11
     devDependencies:
       '@astral-sh/ruff-wasm-nodejs':
         specifier: 0.16.0
@@ -36,6 +39,9 @@ importers:
       pyright:
         specifier: 1.1.411
         version: 1.1.411
+      tree-sitter-cli:
+        specifier: 0.26.11
+        version: 0.26.11
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -689,6 +695,11 @@ packages:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
     engines: {node: '>=12.0.0'}
 
+  tree-sitter-cli@0.26.11:
+    resolution: {integrity: sha512-/hRCA0Ehkgk6B5WTYSiENk1R2Zv3LJcfvL3wjofzx+EYaKySZDu0agGRQcccay9Lg7wxJWsDa9cTRS92wsM5gQ==}
+    engines: {node: '>=12.0.0'}
+    hasBin: true
+
   typedarray-to-buffer@4.0.0:
     resolution: {integrity: sha512-6dOYeZfS3O9RtRD1caom0sMxgK59b27+IwoNy8RDPsmslSGOyU+mpTamlaIW7aNKi90ZQZ9DFaZL3YRoiSCULQ==}
 
@@ -713,6 +724,9 @@ packages:
   wasi-js@1.7.3:
     resolution: {integrity: sha512-4oq6iVdY4nlsqFviS98ltEdWnhYQoeZwz3/5AxQ3bs0fd/YBzBMS162p/n0DHEIJFev1Jvk3gnJwck1s4a8mVQ==}
     hasBin: true
+
+  web-tree-sitter@0.26.11:
+    resolution: {integrity: sha512-Q5Dm3YTIXSXuH6FxX6RuzX2Qwpc4DPGiYMU87Wg5Z8OIStiQFiUex4zMDc0vBTw78EphaYJacncJghCHzbZptg==}
 
   which-typed-array@1.1.22:
     resolution: {integrity: sha512-fvO4ExWMFsqyhG3AiPAObMuY1lxaqgYcxbc49CNdWDDECOJNgQyvsOWVwbZc+qf3rzRtxojBK+CMEv0Ld5CYpw==}
@@ -1220,6 +1234,8 @@ snapshots:
       fdir: 6.5.0(picomatch@4.0.5)
       picomatch: 4.0.5
 
+  tree-sitter-cli@0.26.11: {}
+
   typedarray-to-buffer@4.0.0: {}
 
   typescript@7.0.2:
@@ -1270,6 +1286,8 @@ snapshots:
       typedarray-to-buffer: 4.0.0
     transitivePeerDependencies:
       - supports-color
+
+  web-tree-sitter@0.26.11: {}
 
   which-typed-array@1.1.22:
     dependencies:

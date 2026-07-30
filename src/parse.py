@@ -293,7 +293,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'output_write': 'ρσ_output_write',
     'parse_float': 'parseFloat',
     'parse_int': 'parseInt',
-    'polynomial_ring': 'PolynomialRing',
+    'polynomial_ring': 'ρσ_polynomial_ring',
     'proxy_class': 'Proxy',
     'qq': 'QQ',
     'rational_class': 'Rational',
@@ -327,12 +327,17 @@ SAGEJS_PUBLIC_INTRINSICS = {
     'Factorization': 'Factorization',
     'FiniteFieldElement': 'FiniteFieldElement',
     'Parent': 'Parent',
-    'PolynomialRing': 'PolynomialRing',
+    'PolynomialRing': 'ρσ_polynomial_ring',
     'QQ': 'QQ',
     'QuotientFunctor': 'QuotientFunctor',
     'Rational': 'Rational',
     'ZZ': 'ZZ',
     'ZeroDivisionError': 'ZeroDivisionError',
+    'divisors': 'ρσ_divisors',
+    'factor': 'ρσ_factor',
+    'is_prime': 'ρσ_is_prime',
+    'parent': 'parent',
+    'prime_divisors': 'ρσ_prime_divisors',
 }
 
 INTRINSIC_MODULES = {

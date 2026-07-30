@@ -1,6 +1,7 @@
 "use strict";
 
-const { mkdirSync } = require("node:fs");
+const { copyFileSync, mkdirSync } = require("node:fs");
+const { execFileSync } = require("node:child_process");
 const { join } = require("node:path");
 const { buildSync } = require("esbuild");
 
@@ -30,4 +31,21 @@ buildSync({
   minify: false,
 });
 
-console.log("Bundled NumPy and symbolic backends");
+copyFileSync(
+  require.resolve("web-tree-sitter/web-tree-sitter.wasm"),
+  join(outputDirectory, "web-tree-sitter.wasm"),
+);
+
+execFileSync(
+  join(root, "node_modules", ".bin", "tree-sitter"),
+  [
+    "build",
+    "--wasm",
+    "--output",
+    join(outputDirectory, "tree-sitter-magma.wasm"),
+    join(root, "upstream-tests", "tree-sitter-magma"),
+  ],
+  { cwd: root, stdio: "inherit" },
+);
+
+console.log("Bundled NumPy, symbolic, and Magma parser backends");

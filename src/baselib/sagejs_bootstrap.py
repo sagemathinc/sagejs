@@ -10,6 +10,7 @@ has no source-level spelling for.
 # globals: FiniteFieldElement, Int32Array, Number, Parent, PolynomialRing
 # globals: QQ, QuotientFunctor
 # globals: Rational, RuntimeError, SharedArrayBuffer, ZZ, ZeroDivisionError
+# globals: divisors, factor, is_prime, parent, prime_divisors
 
 algebraic_extension_functor = AlgebraicExtensionFunctor
 element_class = Element
@@ -22,6 +23,11 @@ quotient_functor = QuotientFunctor
 rational_class = Rational
 zz = ZZ
 zero_division_error = ZeroDivisionError
+divisors_function = divisors
+factor_function = factor
+is_prime_function = is_prime
+parent_function = parent
+prime_divisors_function = prime_divisors
 
 
 def ρσ_native_method_adapter(target_function):

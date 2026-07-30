@@ -83,6 +83,18 @@ function buildExecutable(name, withFlint) {
     "vendor/plotly.min.js": require.resolve(
       "plotly.js-dist-min/plotly.min.js",
     ),
+    "vendor/web-tree-sitter.wasm": join(
+      root,
+      "dist",
+      "vendor",
+      "web-tree-sitter.wasm",
+    ),
+    "vendor/tree-sitter-magma.wasm": join(
+      root,
+      "dist",
+      "vendor",
+      "tree-sitter-magma.wasm",
+    ),
   };
   if (withFlint) assets["native/sagejs_flint.node"] = flintAddon;
 

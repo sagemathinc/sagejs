@@ -1,3 +1,6 @@
 [submodule "upstream-tests/rh/source"]
 	path = upstream-tests/rh/source
 	url = https://github.com/williamstein/rh.git
+[submodule "upstream-tests/tree-sitter-magma"]
+	path = upstream-tests/tree-sitter-magma
+	url = https://github.com/edgarcosta/tree-sitter-magma.git

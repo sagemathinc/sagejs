@@ -300,5 +300,10 @@ def PolynomialRing(
     return parent
 
 
+# Stable compiler/runtime alias: library modules may legitimately bind a
+# Python name called ``PolynomialRing`` (the Magma compatibility module does).
+ρσ_polynomial_ring = PolynomialRing
+
+
 runtime.set_class_repr(
     PolynomialElement, "<class 'PolynomialElement'>")

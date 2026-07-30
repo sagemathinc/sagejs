@@ -18,6 +18,8 @@ interface SeaArguments {
   mode: "compile" | "repl";
   execute: boolean;
   sage: boolean;
+  magma: boolean;
+  emit_sage: boolean;
   no_js: boolean;
   tokens: boolean;
 }
@@ -30,6 +32,8 @@ Run Sage.js from a self-contained executable. With no program, start a REPL.
 Options:
   --python        use Python syntax and division
   --sage          use mathematics-friendly Sage syntax
+  --magma         use the experimental Magma language frontend
+  --emit-sage     print Sage source generated from Magma input
   --no-js         hide generated JavaScript in the REPL (default)
   --tokens        display parser tokens
   -h, --help      show this help
@@ -43,6 +47,8 @@ function parseArguments(): SeaArguments {
     mode: "repl",
     execute: false,
     sage: executable !== "sagepython",
+    magma: false,
+    emit_sage: false,
     no_js: true,
     tokens: false,
   };
@@ -54,6 +60,11 @@ function parseArguments(): SeaArguments {
       args.sage = false;
     } else if (!optionsEnded && argument === "--sage") {
       args.sage = true;
+    } else if (!optionsEnded && argument === "--magma") {
+      args.sage = true;
+      args.magma = true;
+    } else if (!optionsEnded && argument === "--emit-sage") {
+      args.emit_sage = true;
     } else if (!optionsEnded && argument === "--no-js") {
       args.no_js = true;
     } else if (!optionsEnded && argument === "--tokens") {
@@ -92,6 +103,8 @@ async function main(): Promise<void> {
     await Repl({
       show_js: !argv.no_js,
       sage: sageMode,
+      magma: argv.magma,
+      emitSage: argv.emit_sage,
       tokens: argv.tokens,
     });
     return;

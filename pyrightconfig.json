@@ -20,6 +20,7 @@
     "src/baselib/symbolic.py",
     "src/baselib/zeta_data.py",
     "src/baselib/zz_introspection.py",
+    "src/lib/magma.py",
     "src/lib/numpy.py"
   ],
   "extraPaths": [

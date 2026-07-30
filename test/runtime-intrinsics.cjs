@@ -56,10 +56,14 @@ const expectedBootstrapAssignments = runtimeManifest
       name !== "undefined" && !bootstrapFunctions.includes(name),
   )
   .map(([name, value]) =>
-    // The source bootstrap runs before builtins initializes this stable alias.
-    // The converged compiler uses the alias so a user variable named Number
+    // The source bootstrap runs before builtins initializes these stable
+    // aliases. The converged compiler uses the aliases so user variables
     // cannot capture low-level runtime operations.
-    name === "number" ? [name, "Number"] : [name, value],
+    name === "number"
+      ? [name, "Number"]
+      : name === "polynomial_ring"
+        ? [name, "PolynomialRing"]
+        : [name, value],
   );
 assert.deepEqual(
   bootstrapAssignments,

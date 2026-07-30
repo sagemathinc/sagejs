@@ -2,6 +2,7 @@ packages:
   - packages/*
 allowBuilds:
   esbuild: true
+  tree-sitter-cli: true
   wasi-js: false
   zeromq: true
 minimumReleaseAgeExclude:

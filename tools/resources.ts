@@ -19,12 +19,17 @@ const COMPILER_ASSET = "compiler/compiler.js";
 const BASELIB_ASSET = "compiler/baselib-plain-pretty.js";
 const FLINT_ASSET = "native/sagejs_flint.node";
 const PLOTLY_ASSET = "vendor/plotly.min.js";
+const VENDOR_ASSET_PREFIX = "vendor/";
 
 let flintModule: unknown;
 let nativeTemporaryDirectory: string | undefined;
 
 function assetText(key: string): string {
   return Buffer.from(getAsset(key)).toString("utf8");
+}
+
+function assetBytes(key: string): Uint8Array {
+  return new Uint8Array(getAsset(key));
 }
 
 function assetKeyForVirtualPath(filename: string): string | undefined {
@@ -60,6 +65,20 @@ export function readResourceText(filename: string): string {
     if (key && getAssetKeys().includes(key)) return assetText(key);
   }
   return readFileSync(filename, "utf8");
+}
+
+export function readResourceBytes(filename: string): Uint8Array {
+  if (isSea()) {
+    const key = assetKeyForVirtualPath(filename);
+    if (key && getAssetKeys().includes(key)) return assetBytes(key);
+  }
+  return readFileSync(filename);
+}
+
+export function vendorResourcePath(filename: string): string {
+  return isSea()
+    ? join(VIRTUAL_ROOT, VENDOR_ASSET_PREFIX, filename)
+    : join(__dirname, "..", "vendor", filename);
 }
 
 export function readCompilerSource(fallbackFilename: string): string {

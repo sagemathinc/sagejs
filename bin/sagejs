@@ -15,6 +15,7 @@ const executable = path.basename(process.argv[1]);
 let sageMode = executable !== "sagepython";
 if (argv.python) sageMode = false;
 if (argv.sage) sageMode = true;
+if (argv.magma) sageMode = true;
 argv.sage = sageMode;
 
 const basePath = path.resolve(
@@ -50,6 +51,8 @@ if (argv.mode === "self") {
   load("repl").default({
     show_js: !argv.no_js,
     sage: sageMode,
+    magma: !!argv.magma,
+    emitSage: !!argv.emit_sage,
     tokens: argv.tokens,
   });
 } else if (argv.mode === "msgfmt") {

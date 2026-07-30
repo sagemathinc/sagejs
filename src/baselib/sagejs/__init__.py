@@ -9,10 +9,15 @@ one from the same readable source.
 from sagejs_bootstrap import (
     algebraic_extension_functor,
     element_class,
+    divisors_function,
     factorization_class,
+    factor_function,
     finite_field_element_class,
+    is_prime_function,
     parent_class,
+    parent_function,
     polynomial_ring,
+    prime_divisors_function,
     qq,
     quotient_functor,
     rational_class,
@@ -31,3 +36,8 @@ QuotientFunctor = quotient_functor
 Rational = rational_class
 ZZ = zz
 ZeroDivisionError = zero_division_error
+divisors = divisors_function
+factor = factor_function
+is_prime = is_prime_function
+parent = parent_function
+prime_divisors = prime_divisors_function

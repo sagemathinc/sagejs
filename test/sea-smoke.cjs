@@ -16,8 +16,8 @@ const pythonExecutable = join(root, "build", "sea", "sagepython");
 const mathExecutable = join(root, "build", "sea", "sagejs");
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-test-"));
 
-function run(executable, filename) {
-  const result = spawnSync(executable, [filename], {
+function run(executable, filename, extraArguments = []) {
+  const result = spawnSync(executable, [...extraArguments, filename], {
     cwd: temporaryDirectory,
     encoding: "utf8",
   });
@@ -67,6 +67,22 @@ try {
   assert.match(
     missingBackend.stderr,
     /built without the optional FLINT mathematics backend/,
+  );
+
+  const magmaHelper = join(temporaryDirectory, "portable-helper.m");
+  const magmaProgram = join(temporaryDirectory, "portable.m");
+  writeFileSync(magmaHelper, "loaded_value := 17;\n");
+  writeFileSync(
+    magmaProgram,
+    [
+      'load "portable-helper.m";',
+      "print loaded_value + 25;",
+      "",
+    ].join("\n"),
+  );
+  assert.equal(
+    run(pythonExecutable, magmaProgram, ["--magma"]),
+    "42",
   );
 
   const mathProgram = join(temporaryDirectory, "portable.sage");

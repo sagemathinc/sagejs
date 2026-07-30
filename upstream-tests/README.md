@@ -36,3 +36,12 @@ all outcomes so regressions and newly passing tests are both visible.
 
 See [`micropython/README.md`](micropython/README.md) for provenance, selection
 rules, and commands.
+
+## Magma parser
+
+The `tree-sitter-magma` submodule pins the MIT-licensed parser grammar used by
+the experimental Magma frontend. Initialize submodules before building:
+
+```sh
+git submodule update --init --recursive
+```

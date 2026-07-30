@@ -17,6 +17,11 @@ import {
   runtimeRequire,
   standardLibraryCacheDirectory,
 } from "./resources";
+import {
+  createMagmaFrontend,
+  MagmaFrontend,
+  MagmaSyntaxError,
+} from "./magma/frontend";
 
 const PyLang = createCompiler();
 
@@ -82,10 +87,15 @@ export default async function Compile({
     filename_for_stdin?: string;
     comments?: string;
     sage?: boolean;
+    magma?: boolean;
+    emit_sage?: boolean;
   };
   src_path: string;
   lib_path: string;
 }): Promise<void> {
+  const magmaFrontend: MagmaFrontend | undefined = argv.magma
+    ? await createMagmaFrontend()
+    : undefined;
   // configure settings for the output
   const module_cache_dir = argv.cache_dir
     ? process_cache_dir(argv.cache_dir)
@@ -191,7 +201,23 @@ export default async function Compile({
     timeIt("parse", () => {
       const filename =
         sourceFilename || argv.filename_for_stdin || "<stdin>";
-      if (argv.sage && filename !== "<stdin>") {
+      if (magmaFrontend) {
+        try {
+          code = magmaFrontend.lower(code, { filename }).source;
+        } catch (err) {
+          if (err instanceof MagmaSyntaxError) {
+            console.error(err.toString());
+            process.exitCode = 1;
+            return;
+          }
+          throw err;
+        }
+        if (argv.emit_sage) {
+          console.log(code.trimEnd());
+          if (!argv.execute) return;
+        }
+      }
+      if (argv.sage && !magmaFrontend && filename !== "<stdin>") {
         code = expandSageLoads(code, filename);
       }
       try {
@@ -204,6 +230,7 @@ export default async function Compile({
         process.exit(1);
       }
     });
+    if (process.exitCode || !topLevel) return;
 
     let output;
     try {

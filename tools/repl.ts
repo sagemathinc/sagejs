@@ -26,6 +26,11 @@ import {
   standardLibraryCacheDirectory,
 } from "./resources";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
+import {
+  createMagmaFrontend,
+  MagmaFrontend,
+  MagmaSyntaxError,
+} from "./magma/frontend";
 
 const DEFAULT_HISTORY_SIZE = 1000;
 const HOME =
@@ -51,6 +56,8 @@ export interface Options {
   historySize: number;
   mockReadline?: Function; // for mocking readline (for testing only)
   sage?: boolean; // Sage-style mathematical syntax
+  magma?: boolean;
+  emitSage?: boolean;
   tokens?: boolean; // show very verbose tokens as parsed
   moduleCacheDir?: string | false;
 }
@@ -66,7 +73,9 @@ function replDefaults(options: Partial<Options>): Options {
     options.show_js = true;
   }
   if (!options.ps1) {
-    if (options.sage) {
+    if (options.magma) {
+      options.ps1 = process.stdin.isTTY ? "magma> " : "";
+    } else if (options.sage) {
       options.ps1 = process.stdin.isTTY ? "sage: " : "";
     } else {
       options.ps1 = process.stdin.isTTY ? ">>> " : "";
@@ -140,6 +149,9 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   const PyLang = createCompiler({
     console: options.console,
   });
+  const magmaFrontendPromise = options.magma
+    ? createMagmaFrontend()
+    : undefined;
   const moduleCacheDir =
     options.moduleCacheDir === false
       ? ""
@@ -171,6 +183,8 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     initLines.push(line);
   }
   readline.on("line", duringInit);
+  const magmaFrontend: MagmaFrontend | undefined =
+    await magmaFrontendPromise;
   await initContext();
   readline.off("line", duringInit);
 
@@ -187,7 +201,11 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   if (process.stdin.isTTY) {
     options.console.log(
       colorize(
-        `Welcome to Sage.js${options.sage ? "" : " (Python mode)"} [Node.js ${
+        `Welcome to Sage.js${
+          options.magma
+            ? " (Magma mode)"
+            : options.sage ? "" : " (Python mode)"
+        } [Node.js ${
           process.version
         } on ${arch()}].`,
         "green",
@@ -239,6 +257,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   }
 
   function prompt(): void {
+    if (readline.closed) return;
     let leadingWhitespace = "";
     if (more && buffer.length) {
       let prev_line = buffer[buffer.length - 1];
@@ -295,6 +314,10 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   }
 
   function stripCopiedPrompt(line: string): string {
+    if (options.magma) {
+      const magmaPrompt = line.match(/^(?:magma>)\s?/);
+      if (magmaPrompt) return line.slice(magmaPrompt[0].length);
+    }
     if (options.sage) {
       const sagePrompt = line.match(/^sage:\s?/);
       if (sagePrompt) return line.slice(sagePrompt[0].length);
@@ -314,10 +337,10 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
 
   function loadFile(filename: string, attach: boolean): void {
     try {
-      const contents = expandSageLoads(
-        readFileSync(filename, "utf-8"),
-        filename,
-      );
+      const rawContents = readFileSync(filename, "utf-8");
+      const contents = magmaFrontend
+        ? rawContents
+        : expandSageLoads(rawContents, filename);
       if (attach) {
         attachedFiles.set(filename, statSync(filename).mtimeMs);
       }
@@ -354,7 +377,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       allowLoadDirective?: boolean;
     } = {},
   ): boolean {
-    if (runOptions.allowLoadDirective !== false) {
+    if (!magmaFrontend && runOptions.allowLoadDirective !== false) {
       const directive = parseLoadDirective(source);
       if (directive) {
         loadFile(directive.filename, directive.attach);
@@ -365,6 +388,28 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     if (source.startsWith("%time ") || source.startsWith("time ")) {
       time = 0;
       source = source.slice(5).trimLeft();
+    }
+    if (magmaFrontend) {
+      try {
+        const lowering = magmaFrontend.lower(source, {
+          filename: runOptions.filename,
+        });
+        source = lowering.source;
+        for (const filename of lowering.attachedFiles) {
+          attachedFiles.set(filename, statSync(filename).mtimeMs);
+        }
+      } catch (err) {
+        if (
+          err instanceof MagmaSyntaxError &&
+          err.incomplete &&
+          !runOptions.filename
+        ) {
+          return true;
+        }
+        options.console.log(err?.toString?.() ?? err);
+        return false;
+      }
+      if (options.emitSage) options.console.log(source.trimEnd());
     }
     const classes = toplevel?.classes;
     const scoped_flags = toplevel?.scoped_flags ?? {
@@ -424,6 +469,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       finalStatement.body instanceof PyLang.AST_Assign;
     const noPrint =
       !!runOptions.noPrint ||
+      !!magmaFrontend ||
       source.trimRight().endsWith(";") ||
       finalStatementIsAssignment;
     if (time != null) {
@@ -467,6 +513,13 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     line = stripCopiedPrompt(line);
     if (more) {
       // We are in a block
+      if (options.magma) {
+        // Magma has explicit ``end ...;`` terminators.  Ask the real parser
+        // after every line instead of requiring Python's blank-line gesture.
+        more = push(line);
+        prompt();
+        return;
+      }
       const lineIsEmpty = !line.trimLeft();
       if (lineIsEmpty && buffer.length > 0) {
         // We have an empty lines, so evaluate the block:
