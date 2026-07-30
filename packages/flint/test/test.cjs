@@ -325,6 +325,26 @@ assert.deepEqual(
   ),
   [1n, 0n, 0n, 2n],
 );
+assert.deepEqual(
+  flint.matrixCharpoly(integerMatrix),
+  [-2n, -5n, 1n],
+);
+const dependentMatrix = flint.zzMatrix(
+  2,
+  3,
+  [1n, 2n, 3n, 2n, 4n, 6n],
+);
+const integerKernel = flint.matrixRightKernel(dependentMatrix);
+assert.deepEqual(
+  Array.from({ length: 6 }, (_, index) =>
+    flint.matrixEntry(
+      integerKernel,
+      Math.floor(index / 3),
+      index % 3,
+    ),
+  ),
+  [1n, 1n, -1n, 0n, 3n, -2n],
+);
 const integerSquare = flint.matrixMul(integerMatrix, integerMatrix);
 assert.deepEqual(
   [0, 1, 2, 3].map((index) =>

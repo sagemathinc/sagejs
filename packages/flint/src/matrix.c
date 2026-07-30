@@ -7,8 +7,10 @@
 #include <flint/flint.h>
 #include <flint/fmpq.h>
 #include <flint/fmpq_mat.h>
+#include <flint/fmpq_poly.h>
 #include <flint/fmpz.h>
 #include <flint/fmpz_mat.h>
+#include <flint/fmpz_poly.h>
 
 #include "matrix.h"
 
@@ -829,6 +831,211 @@ napi_value sagejs_matrix_hermite(napi_env env, napi_callback_info info)
         return NULL;
     fmpz_mat_hnf(answer->integer, source->integer);
     return wrap_matrix(env, answer);
+}
+
+napi_value sagejs_matrix_right_kernel(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    sagejs_matrix *source;
+    sagejs_matrix *answer;
+    slong rows;
+    slong cols;
+    slong rank;
+    slong nullity;
+    slong row;
+    slong col;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    rows = matrix_nrows(source);
+    cols = matrix_ncols(source);
+
+    if (source->kind == SAGEJS_MATRIX_ZZ)
+    {
+        fmpz_mat_t transpose;
+        fmpz_mat_t hermite;
+        fmpz_mat_t transform;
+        fmpz_mat_t basis;
+
+        rank = fmpz_mat_rank(source->integer);
+        nullity = cols - rank;
+        answer = new_matrix(env, SAGEJS_MATRIX_ZZ, nullity, cols);
+        if (answer == NULL)
+            return NULL;
+        fmpz_mat_init(transpose, cols, rows);
+        fmpz_mat_init(hermite, cols, rows);
+        fmpz_mat_init(transform, cols, cols);
+        fmpz_mat_init(basis, nullity, cols);
+        fmpz_mat_transpose(transpose, source->integer);
+        fmpz_mat_hnf_transform(hermite, transform, transpose);
+        for (row = 0; row < nullity; row++)
+        {
+            for (col = 0; col < cols; col++)
+            {
+                fmpz_set(
+                    fmpz_mat_entry(basis, row, col),
+                    fmpz_mat_entry(transform, rank + row, col));
+            }
+        }
+        fmpz_mat_hnf(answer->integer, basis);
+        fmpz_mat_clear(transpose);
+        fmpz_mat_clear(hermite);
+        fmpz_mat_clear(transform);
+        fmpz_mat_clear(basis);
+        return wrap_matrix(env, answer);
+    }
+    else
+    {
+        fmpq_mat_t reduced;
+        slong *pivots;
+        slong pivot_col;
+        slong free_col;
+        slong basis_row;
+        int is_pivot;
+
+        fmpq_mat_init(reduced, rows, cols);
+        rank = fmpq_mat_rref(reduced, source->rational);
+        nullity = cols - rank;
+        answer = new_matrix(env, SAGEJS_MATRIX_QQ, nullity, cols);
+        if (answer == NULL)
+        {
+            fmpq_mat_clear(reduced);
+            return NULL;
+        }
+        pivots = rank == 0 ? NULL : malloc(rank * sizeof(slong));
+        if (rank != 0 && pivots == NULL)
+        {
+            fmpq_mat_clear(reduced);
+            finalize_matrix(env, answer, NULL);
+            napi_throw_error(env, NULL, "unable to allocate kernel pivots");
+            return NULL;
+        }
+        pivot_col = 0;
+        for (row = 0; row < rank; row++)
+        {
+            while (pivot_col < cols &&
+                fmpq_is_zero(
+                    fmpq_mat_entry(reduced, row, pivot_col)))
+                pivot_col++;
+            pivots[row] = pivot_col;
+            pivot_col++;
+        }
+        basis_row = 0;
+        for (free_col = 0; free_col < cols; free_col++)
+        {
+            is_pivot = 0;
+            for (row = 0; row < rank; row++)
+            {
+                if (pivots[row] == free_col)
+                {
+                    is_pivot = 1;
+                    break;
+                }
+            }
+            if (is_pivot)
+                continue;
+            fmpq_one(
+                fmpq_mat_entry(answer->rational, basis_row, free_col));
+            for (row = 0; row < rank; row++)
+            {
+                fmpq_neg(
+                    fmpq_mat_entry(
+                        answer->rational, basis_row, pivots[row]),
+                    fmpq_mat_entry(reduced, row, free_col));
+            }
+            basis_row++;
+        }
+        fmpq_mat_rref(answer->rational, answer->rational);
+        free(pivots);
+        fmpq_mat_clear(reduced);
+        return wrap_matrix(env, answer);
+    }
+}
+
+napi_value sagejs_matrix_charpoly(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value coefficients;
+    napi_value coefficient;
+    sagejs_matrix *source;
+    slong degree;
+    slong index;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    if (matrix_nrows(source) != matrix_ncols(source))
+    {
+        napi_throw_range_error(env, NULL,
+            "characteristic polynomial requires a square matrix");
+        return NULL;
+    }
+    degree = matrix_nrows(source);
+    if (!check_napi(env,
+        napi_create_array_with_length(
+            env, (size_t) degree + 1, &coefficients)))
+        return NULL;
+    if (source->kind == SAGEJS_MATRIX_ZZ)
+    {
+        fmpz_poly_t polynomial;
+        fmpz_t value;
+
+        fmpz_poly_init(polynomial);
+        fmpz_init(value);
+        fmpz_mat_charpoly(polynomial, source->integer);
+        for (index = 0; index <= degree; index++)
+        {
+            fmpz_poly_get_coeff_fmpz(value, polynomial, index);
+            coefficient = fmpz_to_bigint(env, value);
+            if (coefficient == NULL ||
+                !check_napi(env,
+                    napi_set_element(
+                        env, coefficients, (uint32_t) index, coefficient)))
+            {
+                fmpz_clear(value);
+                fmpz_poly_clear(polynomial);
+                return NULL;
+            }
+        }
+        fmpz_clear(value);
+        fmpz_poly_clear(polynomial);
+    }
+    else
+    {
+        fmpq_poly_t polynomial;
+        fmpq_t value;
+
+        fmpq_poly_init(polynomial);
+        fmpq_init(value);
+        fmpq_mat_charpoly(polynomial, source->rational);
+        for (index = 0; index <= degree; index++)
+        {
+            fmpq_poly_get_coeff_fmpq(value, polynomial, index);
+            coefficient = rational_result(
+                env, fmpq_numref(value), fmpq_denref(value));
+            if (coefficient == NULL ||
+                !check_napi(env,
+                    napi_set_element(
+                        env, coefficients, (uint32_t) index, coefficient)))
+            {
+                fmpq_clear(value);
+                fmpq_poly_clear(polynomial);
+                return NULL;
+            }
+        }
+        fmpq_clear(value);
+        fmpq_poly_clear(polynomial);
+    }
+    return coefficients;
 }
 
 static void matrix_to_rational(

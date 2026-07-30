@@ -72,6 +72,49 @@ rational_echelon = matrix(
 assert rational_echelon.rref() == identity_matrix(QQ, 2)
 assert rational_echelon.echelon_form() == identity_matrix(QQ, 2)
 
+integer_kernel = matrix(
+    ZZ, [[1, 2, 3], [2, 4, 6]]).right_kernel()
+assert integer_kernel.base_ring() is ZZ
+assert integer_kernel.degree() == 3
+assert integer_kernel.dimension() == 2
+assert integer_kernel.rank() == 2
+assert integer_kernel.ambient_module() is VectorSpace(ZZ, 3)
+assert integer_kernel.basis_matrix() == matrix(
+    ZZ, [[1, 1, -1], [0, 3, -2]])
+assert integer_kernel.basis() == [
+    vector(ZZ, [1, 1, -1]),
+    vector(ZZ, [0, 3, -2]),
+]
+assert vector(ZZ, [1, 1, -1]) in integer_kernel
+assert vector(ZZ, [1, 0, 0]) not in integer_kernel
+assert integer_kernel([1, 1, -1]) == vector(ZZ, [1, 1, -1])
+
+left_kernel = matrix(
+    ZZ, [[1, 2, 3], [2, 4, 6]]).left_kernel()
+assert left_kernel.degree() == 2
+assert left_kernel.basis_matrix() == matrix(ZZ, [[2, -1]])
+assert vector(ZZ, [2, -1]) in left_kernel
+
+rational_kernel = matrix(
+    QQ, [[1, 2, 3], [2, 4, 6]]).kernel()
+assert rational_kernel.base_ring() is QQ
+assert rational_kernel.basis_matrix() == matrix(
+    QQ,
+    [
+        [1, 0, QQ(-1, 3)],
+        [0, 1, QQ(-2, 3)],
+    ],
+)
+
+assert A.charpoly() == PolynomialRing(ZZ, 'x')(
+    PolynomialRing(ZZ, 'x').gen() ** 2
+    - 5 * PolynomialRing(ZZ, 'x').gen()
+    - 2
+)
+assert str(A.charpoly()) == 'x^2 - 5*x - 2'
+assert str(A.characteristic_polynomial('t')) == 't^2 - 5*t - 2'
+assert str(rational_echelon.charpoly()) == 'x^2 - 3/2*x + 1/2'
+
 huge = Integer(
     '1606938044258990275541962092341162602522202993782792835301499')
 large = matrix(ZZ, [[huge, 1], [1, huge]])
@@ -82,6 +125,20 @@ assert diagonal_matrix([2, 3, 5]) == matrix(
     ZZ, [[2, 0, 0], [0, 3, 0], [0, 0, 5]])
 assert VectorSpace(QQ, 2)([1, 2]).parent() is VectorSpace(QQ, 2)
 assert vector([1, 2, 3]).dot_product(vector([4, 5, 6])) == 32
+
+set_random_seed(2026)
+random_integer = random_matrix(ZZ, 3, 4, x=-5, y=5)
+set_random_seed(2026)
+assert random_matrix(ZZ, 3, 4, x=-5, y=5) == random_integer
+assert all(-5 <= value < 5 for value in random_integer.list())
+assert random_integer.base_ring() is ZZ
+assert random_matrix(QQ, 2, 3).base_ring() is QQ
+assert random_matrix(ZZ, 3, density=0) == zero_matrix(ZZ, 3)
+uniform = matrix.random(
+    ZZ, 4, 5, distribution='uniform', density=0.6)
+assert all(-2 <= value <= 2 for value in uniform.list())
+assert uniform.density() <= 0.6
+assert not uniform.is_sparse()
 
 try:
     matrix(ZZ, [[1, 2], [3]])
@@ -97,6 +154,12 @@ except ZeroDivisionError:
 
 try:
     A * vector([1, 2, 3])
+    assert False
+except ValueError:
+    pass
+
+try:
+    integer_kernel([1, 0, 0])
     assert False
 except ValueError:
     pass

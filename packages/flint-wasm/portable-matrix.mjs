@@ -199,7 +199,7 @@ function floorDivide(numerator, positiveDenominator) {
   return quotient;
 }
 
-function integerHermite(matrix) {
+function integerHermiteData(matrix, withTransform = false) {
   if (matrix.kind !== "ZZ") {
     throw new TypeError("Hermite form currently requires an integer matrix");
   }
@@ -208,6 +208,17 @@ function integerHermite(matrix) {
     values.push(
       matrix.entries.slice(row * matrix.cols, (row + 1) * matrix.cols),
     );
+  }
+  const transform = [];
+  if (withTransform) {
+    for (let row = 0; row < matrix.rows; row += 1) {
+      transform.push(
+        Array.from(
+          { length: matrix.rows },
+          (_, col) => (row === col ? 1n : 0n),
+        ),
+      );
+    }
   }
   let pivotRow = 0;
   for (
@@ -228,6 +239,12 @@ function integerHermite(matrix) {
         values[pivotRow],
         values[candidate],
       ];
+      if (withTransform) {
+        [transform[candidate], transform[pivotRow]] = [
+          transform[pivotRow],
+          transform[candidate],
+        ];
+      }
     }
 
     while (true) {
@@ -244,17 +261,34 @@ function integerHermite(matrix) {
       for (let col = 0; col < matrix.cols; col += 1) {
         values[target][col] -= quotient * values[pivotRow][col];
       }
+      if (withTransform) {
+        for (let col = 0; col < matrix.rows; col += 1) {
+          transform[target][col] -=
+            quotient * transform[pivotRow][col];
+        }
+      }
       if (values[target][pivotColumn] !== 0n) {
         [values[target], values[pivotRow]] = [
           values[pivotRow],
           values[target],
         ];
+        if (withTransform) {
+          [transform[target], transform[pivotRow]] = [
+            transform[pivotRow],
+            transform[target],
+          ];
+        }
       }
     }
 
     if (values[pivotRow][pivotColumn] < 0n) {
       for (let col = 0; col < matrix.cols; col += 1) {
         values[pivotRow][col] = -values[pivotRow][col];
+      }
+      if (withTransform) {
+        for (let col = 0; col < matrix.rows; col += 1) {
+          transform[pivotRow][col] = -transform[pivotRow][col];
+        }
       }
     }
     const pivot = values[pivotRow][pivotColumn];
@@ -264,15 +298,24 @@ function integerHermite(matrix) {
       for (let col = 0; col < matrix.cols; col += 1) {
         values[row][col] -= quotient * values[pivotRow][col];
       }
+      if (withTransform) {
+        for (let col = 0; col < matrix.rows; col += 1) {
+          transform[row][col] -=
+            quotient * transform[pivotRow][col];
+        }
+      }
     }
     pivotRow += 1;
   }
-  return make(
-    "ZZ",
-    matrix.rows,
-    matrix.cols,
-    values.flat(),
-  );
+  return {
+    matrix: make("ZZ", matrix.rows, matrix.cols, values.flat()),
+    rank: pivotRow,
+    transform,
+  };
+}
+
+function integerHermite(matrix) {
+  return integerHermiteData(matrix).matrix;
 }
 
 function echelon(matrix, augmentedColumns = 0) {
@@ -509,6 +552,110 @@ export function createPortableMatrixBackend() {
     return integerHermite(requireMatrix(matrix));
   }
 
+  function matrixRightKernel(matrix) {
+    matrix = requireMatrix(matrix);
+    if (matrix.kind === "ZZ") {
+      const transpose = matrixTranspose(matrix);
+      const data = integerHermiteData(transpose, true);
+      const nullity = matrix.cols - data.rank;
+      const rows = data.transform
+        .slice(data.rank)
+        .map((row) => row.slice());
+      return integerHermite(
+        make("ZZ", nullity, matrix.cols, rows.flat()),
+      );
+    }
+    const reduced = echelon(matrix);
+    const pivots = [];
+    let pivotColumn = 0;
+    for (let row = 0; row < reduced.rank; row += 1) {
+      while (
+        pivotColumn < matrix.cols &&
+        isZero(reduced.values[row][pivotColumn])
+      ) {
+        pivotColumn += 1;
+      }
+      pivots.push(pivotColumn);
+      pivotColumn += 1;
+    }
+    const rows = [];
+    for (let freeColumn = 0; freeColumn < matrix.cols; freeColumn += 1) {
+      if (pivots.includes(freeColumn)) continue;
+      const row = Array.from(
+        { length: matrix.cols },
+        () => rational(0n),
+      );
+      row[freeColumn] = rational(1n);
+      for (let index = 0; index < pivots.length; index += 1) {
+        row[pivots[index]] = neg(
+          reduced.values[index][freeColumn],
+        );
+      }
+      rows.push(row);
+    }
+    const raw = make(
+      "QQ",
+      rows.length,
+      matrix.cols,
+      rows.flat(),
+    );
+    return matrixRref(raw);
+  }
+
+  function matrixCharpoly(matrix) {
+    matrix = requireMatrix(matrix);
+    if (matrix.rows !== matrix.cols) {
+      throw new RangeError(
+        "characteristic polynomial requires a square matrix",
+      );
+    }
+    const degree = matrix.rows;
+    const exact = matrix.kind === "QQ"
+      ? matrix
+      : zzMatrixToQQ(matrix);
+    let auxiliary = make(
+      "QQ",
+      degree,
+      degree,
+      Array.from(
+        { length: degree * degree },
+        (_, index) =>
+          rational(
+            Math.floor(index / degree) === index % degree ? 1n : 0n,
+          ),
+      ),
+    );
+    const descending = [rational(1n)];
+    for (let step = 1; step <= degree; step += 1) {
+      const product = matrixMul(exact, auxiliary);
+      let trace = rational(0n);
+      for (let index = 0; index < degree; index += 1) {
+        trace = add(
+          trace,
+          product.entries[index * degree + index],
+        );
+      }
+      const coefficient = neg(div(trace, rational(BigInt(step))));
+      descending.push(coefficient);
+      const entries = product.entries.slice();
+      for (let index = 0; index < degree; index += 1) {
+        const diagonal = index * degree + index;
+        entries[diagonal] = add(entries[diagonal], coefficient);
+      }
+      auxiliary = make("QQ", degree, degree, entries);
+    }
+    const ascending = descending.reverse();
+    if (matrix.kind === "QQ") return ascending;
+    return ascending.map((coefficient) => {
+      if (coefficient.denominator !== 1n) {
+        throw new Error(
+          "integer characteristic polynomial was not integral",
+        );
+      }
+      return coefficient.numerator;
+    });
+  }
+
   function matrixSolve(left, right) {
     left = requireMatrix(left);
     right = requireMatrix(right);
@@ -574,6 +721,8 @@ export function createPortableMatrixBackend() {
     matrixRank,
     matrixRref,
     matrixHermite,
+    matrixRightKernel,
+    matrixCharpoly,
     matrixSolve,
     matrixInverse,
   });

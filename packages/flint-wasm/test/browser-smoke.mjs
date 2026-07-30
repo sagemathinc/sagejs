@@ -248,8 +248,16 @@ try {
     await runSource(
       "A = matrix(ZZ, [[1,2],[3,4]])\n" +
         "print(A.det(), A.rank())\n" +
-        "print(A.rref())\nA.hermite_form()",
-      "-2 2\n[1 0]\n[0 1]\n[1 0]\n[0 2]",
+        "print(A.rref())\n" +
+        "print(A.hermite_form())\n" +
+        "print(A.charpoly())\n" +
+        "print(matrix(ZZ, [[1,2,3],[2,4,6]]).right_kernel())\n" +
+        "set_random_seed(2026)\nR = random_matrix(ZZ,2,3,x=-5,y=5)\n" +
+        "set_random_seed(2026)\nR == random_matrix(ZZ,2,3,x=-5,y=5)",
+      "-2 2\n[1 0]\n[0 1]\n[1 0]\n[0 2]\n" +
+        "x^2 - 5*x - 2\n" +
+        "Free module of degree 3 and rank 2 over Integer Ring\n" +
+        "Echelon basis matrix:\n[1 1 -1]\n[0 3 -2]\nTrue",
     );
     await runSource("a = 12\nfactor(a)", "2^2 * 3");
     await runSource("factor(a^2)", "2^4 * 3^2");

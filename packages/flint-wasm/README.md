@@ -12,7 +12,9 @@ representation over `ZZ`, `QQ`, and prime fields; advanced polynomial
 algorithms still require future FLINT WASM bindings. The same portable backend
 provides dense exact `ZZ` and `QQ` matrices with addition, multiplication,
 determinant, rank, rational RREF, integer Hermite form, inverse, and linear
-solving. Its public contract matches
+solving. It also computes canonical exact kernel bases and characteristic
+polynomials, retaining the same subspace and polynomial objects at the
+Sage-facing layer. Its public contract matches
 the native FLINT matrix backend, so Sage-facing matrix code and serialized
 results do not depend on the host.
 

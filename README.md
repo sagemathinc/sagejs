@@ -147,6 +147,10 @@ worker and render as interactive Plotly surfaces in the frontend.
 Dense exact `matrix()` and `vector()` objects over `ZZ` and `QQ` provide
 Sage-compatible arithmetic, determinant, rank, rational RREF, integer Hermite
 form, inverse, and linear solving.
+Kernels are genuine vector-subspace or free-submodule parents with canonical
+bases, ambient spaces, membership, and generators. Characteristic
+polynomials return ordinary Sage.js polynomial elements, and `random_matrix()`
+provides reproducible dense `ZZ`/`QQ` inputs for experiments and benchmarks.
 Node keeps entries in opaque FLINT `fmpz_mat`/`fmpq_mat` objects; browser
 workers use the same backend contract implemented with portable `BigInt`
 rationals. Run `pnpm bench:linear-algebra` to compare the shared workload

@@ -4098,36 +4098,60 @@ def zeta(value: Any) -> Any:
     return answer
 
 
-def set_random_seed(seed_value: Any) -> None:
-    random_module = runtime.reflect.get(runtime.modules, 'random')
-    if random_module is runtime.undefined:
-        raise ImportError("No module named 'random'")
-    runtime.reflect.apply(
-        runtime.reflect.get(random_module, 'seed'),
-        random_module,
-        [seed_value],
+def _sage_random_float() -> _Float:
+    state = runtime.reflect.get(
+        runtime.global_object, '__sagejs_random_state__')
+    if state is runtime.undefined:
+        state = runtime.math.floor(
+            runtime.math.random() * 4294967296)
+    state = runtime.native_mod(
+        runtime.native_add(
+            runtime.native_mul(1664525, state),
+            1013904223,
+        ),
+        4294967296,
     )
+    runtime.reflect.set(
+        runtime.global_object, '__sagejs_random_state__', state)
+    return runtime.native_div(state, 4294967296)
+
+
+def set_random_seed(seed_value: Any) -> None:
+    text = str(seed_value)
+    state = 5381
+    for character in text:
+        state = (
+            state * 33 + ord(character)
+        ) % 4294967296
+    if state == 0:
+        state = 1
+    runtime.reflect.set(
+        runtime.global_object, '__sagejs_random_state__',
+        runtime.number(state),
+    )
+    random_module = runtime.reflect.get(runtime.modules, 'random')
+    if random_module is not runtime.undefined:
+        runtime.reflect.apply(
+            runtime.reflect.get(random_module, 'seed'),
+            random_module,
+            [seed_value],
+        )
 
 
 def random() -> _Float:
-    random_module = runtime.reflect.get(runtime.modules, 'random')
-    if random_module is runtime.undefined:
-        raise ImportError("No module named 'random'")
-    return runtime.reflect.apply(
-        runtime.reflect.get(random_module, 'random'),
-        random_module,
-        [],
-    )
+    return _sage_random_float()
 
 
 def randint(start: Any, stop: Any) -> Any:
-    random_module = runtime.reflect.get(runtime.modules, 'random')
-    if random_module is runtime.undefined:
-        raise ImportError("No module named 'random'")
-    return runtime.reflect.apply(
-        runtime.reflect.get(random_module, 'randint'),
-        random_module,
-        [start, stop],
+    start = runtime.number(start)
+    stop = runtime.number(stop)
+    if stop < start:
+        raise ValueError('empty range for randint()')
+    return runtime.normalize_integer(
+        runtime.math.floor(
+            _sage_random_float() * (stop - start + 1)
+        )
+        + start
     )
 
 

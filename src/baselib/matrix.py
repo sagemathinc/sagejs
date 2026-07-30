@@ -351,6 +351,99 @@ class Vector(sage.Element):
     toString = __repr__
 
 
+@runtime.callable_instance_class
+class VectorSubspaceParent(sage.Parent):
+
+    def __init__(
+        self,
+        ambient: VectorSpaceParent,
+        basis: Matrix,
+        defining_matrix: Matrix,
+        left_kernel: bool,
+    ) -> None:
+        self._ambient = ambient
+        self._basis_matrix = basis
+        self._defining_matrix = defining_matrix
+        self._left_kernel = left_kernel
+        degree = ambient.degree()
+        dimension = basis.nrows()
+        if ambient.base_ring() is sage.ZZ:
+            self._name = (
+                'Free module of degree ' + str(degree) +
+                ' and rank ' + str(dimension) +
+                ' over ' + str(ambient.base_ring()) +
+                '\nEchelon basis matrix:\n' + str(basis))
+        else:
+            self._name = (
+                'Vector space of degree ' + str(degree) +
+                ' and dimension ' + str(dimension) +
+                ' over ' + str(ambient.base_ring()) +
+                '\nBasis matrix:\n' + str(basis))
+        self._construction = {
+            'kind': 'vector-subspace',
+            'ambient': ambient,
+            'basis': basis,
+        }
+
+    def base_ring(self) -> sage.Parent:
+        return self._ambient.base_ring()
+
+    def ambient_module(self) -> VectorSpaceParent:
+        return self._ambient
+
+    def ambient_vector_space(self) -> VectorSpaceParent:
+        return self._ambient
+
+    def degree(self) -> int:
+        return self._ambient.degree()
+
+    def dimension(self) -> int:
+        return self._basis_matrix.nrows()
+
+    rank = dimension
+
+    def basis_matrix(self) -> Matrix:
+        return self._basis_matrix
+
+    def basis(self) -> list[Vector]:
+        return self._basis_matrix.rows()
+
+    gens = basis
+
+    def gen(self, index: int = 0) -> Vector:
+        return self._basis_matrix.row(index)
+
+    def zero(self) -> Vector:
+        return self._ambient(0)
+
+    def __contains__(self, value: object) -> bool:
+        try:
+            element = self._ambient(value)
+        except Exception:
+            return False
+        if self._left_kernel:
+            image = element * self._defining_matrix
+        else:
+            image = self._defining_matrix * element
+        for entry in image:
+            if entry != 0:
+                return False
+        return True
+
+    def __call__(self, entries: Any = 0) -> Vector:
+        element = self._ambient(entries)
+        if element not in self:
+            raise ValueError('vector is not in the subspace')
+        return element
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, VectorSubspaceParent)
+            and self._ambient is other._ambient
+            and self._basis_matrix == other._basis_matrix
+        )
+
+
 @runtime.sequence_class
 @runtime.lightweight_math_class
 class Matrix(sage.Element):
@@ -367,6 +460,9 @@ class Matrix(sage.Element):
         self._inverse_cache = runtime.undefined
         self._rref_cache = runtime.undefined
         self._hermite_cache = runtime.undefined
+        self._right_kernel_cache = runtime.undefined
+        self._left_kernel_cache = runtime.undefined
+        self._charpoly_cache = runtime.map()
 
     def base_ring(self) -> sage.Parent:
         return self._parent.base_ring()
@@ -589,6 +685,18 @@ class Matrix(sage.Element):
                 self._native)
         return self._rank_cache
 
+    def density(self) -> float:
+        if self.nrows() == 0 or self.ncols() == 0:
+            return 0.0
+        nonzero = 0
+        for value in self.list():
+            if value != 0:
+                nonzero += 1
+        return nonzero / (self.nrows() * self.ncols())
+
+    def is_sparse(self) -> bool:
+        return False
+
     def rref(self) -> Matrix:
         if self._rref_cache is runtime.undefined:
             self._rref_cache = Matrix(
@@ -612,6 +720,58 @@ class Matrix(sage.Element):
         if self.base_ring() is sage.ZZ:
             return self.hermite_form()
         return self.rref()
+
+    def right_kernel(self) -> VectorSubspaceParent:
+        if self._right_kernel_cache is runtime.undefined:
+            nullity = self.ncols() - self.rank()
+            basis = Matrix(
+                MatrixSpace(
+                    self.base_ring(), nullity, self.ncols()),
+                runtime.flint_backend().matrixRightKernel(
+                    self._native),
+            )
+            self._right_kernel_cache = VectorSubspaceParent(
+                VectorSpace(self.base_ring(), self.ncols()),
+                basis,
+                self,
+                False,
+            )
+        return self._right_kernel_cache
+
+    kernel = right_kernel
+
+    def left_kernel(self) -> VectorSubspaceParent:
+        if self._left_kernel_cache is runtime.undefined:
+            basis = self.transpose().right_kernel().basis_matrix()
+            self._left_kernel_cache = VectorSubspaceParent(
+                VectorSpace(self.base_ring(), self.nrows()),
+                basis,
+                self,
+                True,
+            )
+        return self._left_kernel_cache
+
+    def charpoly(self, variable: str = 'x') -> Any:
+        if not self.is_square():
+            raise ArithmeticError('matrix must be square')
+        cached = self._charpoly_cache.get(variable)
+        if cached is not runtime.undefined:
+            return cached
+        ring = sage.PolynomialRing(self.base_ring(), variable)
+        generator = ring.gen()
+        power = ring(1)
+        answer = ring(0)
+        coefficients = runtime.flint_backend().matrixCharpoly(
+            self._native)
+        for raw_coefficient in coefficients:
+            coefficient = _entry_from_native(
+                self.base_ring(), raw_coefficient)
+            answer += ring(coefficient) * power
+            power *= generator
+        self._charpoly_cache.set(variable, answer)
+        return answer
+
+    characteristic_polynomial = charpoly
 
     def inverse(self) -> Matrix:
         if not self.is_square():
@@ -886,9 +1046,147 @@ def diagonal_matrix(
     return matrix(base, size, size, entries)
 
 
+def _random_float() -> float:
+    state = runtime.reflect.get(
+        runtime.global_object, '__sagejs_random_state__')
+    if state is runtime.undefined:
+        state = runtime.math.floor(
+            runtime.math.random() * 4294967296)
+    state = runtime.native_mod(
+        runtime.native_add(
+            runtime.native_mul(1664525, state),
+            1013904223,
+        ),
+        4294967296,
+    )
+    runtime.reflect.set(
+        runtime.global_object, '__sagejs_random_state__', state)
+    return runtime.native_div(state, 4294967296)
+
+
+def _random_int(start: int, stop: int) -> int:
+    return int(
+        runtime.math.floor(
+            _random_float() * (stop - start + 1)
+        )
+        + start
+    )
+
+
+def _random_integer(
+    distribution: Any,
+    lower: Any,
+    upper: Any,
+    nonzero: bool,
+) -> int:
+    while True:
+        if lower is not None:
+            if upper is None:
+                value = _random_int(0, int(lower) - 1)
+            else:
+                value = _random_int(
+                    int(lower), int(upper) - 1)
+        elif distribution == 'uniform':
+            value = _random_int(-2, 2)
+        else:
+            first = float(_random_float())
+            if first < 0.2:
+                value = 0
+            else:
+                tail = float(_random_float())
+                while tail == 0:
+                    tail = float(_random_float())
+                magnitude = int(1 / tail)
+                value = (
+                    magnitude
+                    if float(_random_float()) < 0.5
+                    else -magnitude
+                )
+        if not nonzero or value != 0:
+            return value
+
+
+def random_matrix(
+    base: sage.Parent,
+    nrows: int,
+    ncols: Any = None,
+    algorithm: str = 'randomize',
+    implementation: Any = None,
+    *args: Any,
+    **kwds: Any,
+) -> Matrix:
+    def keyword(name: str, fallback: Any) -> Any:
+        value = runtime.reflect.get(kwds, name)
+        return fallback if value is runtime.undefined else value
+
+    if base is not sage.ZZ and base is not sage.QQ:
+        raise TypeError(
+            'random_matrix currently requires ZZ or QQ')
+    if algorithm != 'randomize':
+        raise NotImplementedError(
+            "random_matrix algorithm '" + algorithm +
+            "' is not implemented yet")
+    if implementation is not None:
+        raise NotImplementedError(
+            'alternate matrix implementations are not available')
+    if len(args) != 0:
+        raise TypeError('unexpected positional random_matrix arguments')
+    if keyword('sparse', False):
+        raise NotImplementedError('sparse matrices are not available')
+    rows = int(nrows)
+    cols = rows if ncols is None else int(ncols)
+    if rows < 0 or cols < 0:
+        raise ValueError('matrix dimensions must be nonnegative')
+    density = float(keyword('density', 1.0))
+    if density < 0 or density > 1:
+        raise ValueError('density must be between 0 and 1')
+    distribution = keyword('distribution', None)
+    if (
+        distribution is not None
+        and distribution != 'uniform'
+    ):
+        raise ValueError('unknown random integer distribution')
+    lower = keyword('x', None)
+    upper = keyword('y', None)
+    if upper is not None and lower is None:
+        raise TypeError('y requires x')
+    if base is sage.QQ and (
+        lower is not None or distribution is not None
+    ):
+        raise TypeError(
+            'QQ random matrices do not accept x, y, or distribution')
+    if lower is not None:
+        lower = int(lower)
+        if upper is not None:
+            upper = int(upper)
+            if upper <= lower:
+                raise ValueError('y must be greater than x')
+        elif lower <= 0:
+            raise ValueError('x must be positive when y is omitted')
+
+    values = [0 for _ in range(rows * cols)]
+    if density == 1:
+        for index in range(len(values)):
+            value = _random_integer(
+                distribution, lower, upper, False)
+            values[index] = base(value)
+    else:
+        choices_per_row = int(density * cols)
+        for row in range(rows):
+            for _ in range(choices_per_row):
+                column = _random_int(0, cols - 1)
+                value = _random_integer(
+                    distribution, lower, upper, True)
+                values[row * cols + column] = base(value)
+    return matrix(base, rows, cols, values)
+
+
 runtime.set_class_repr(Matrix, "<class 'Matrix'>")
 runtime.set_class_repr(Vector, "<class 'Vector'>")
 runtime.set_class_repr(
     MatrixSpaceParent, "<class 'MatrixSpace'>")
 runtime.set_class_repr(
     VectorSpaceParent, "<class 'VectorSpace'>")
+runtime.set_class_repr(
+    VectorSubspaceParent, "<class 'VectorSubspace'>")
+runtime.reflect.set(matrix, 'random', random_matrix)

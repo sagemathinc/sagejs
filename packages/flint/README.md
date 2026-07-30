@@ -12,6 +12,9 @@ opaque `fmpz_mat`/`fmpq_mat` matrices and MPFR/MPC real and complex values.
 Exact matrices support native addition, multiplication, determinant, rank,
 rational RREF, integer Hermite form, inverse, and linear solving; integer
 systems canonically produce rational answers when division is required.
+Characteristic polynomials and canonical saturated integer or rational kernel
+bases also execute in FLINT; Sage.js wraps each kernel basis as a genuine
+free-submodule or vector-subspace parent.
 Integer conversion uses Node-API's
 little-endian 64-bit word arrays and FLINT's `fmpz_set_ui_array` /
 `fmpz_get_ui_array` functions, so crossing the integer boundary requires one
