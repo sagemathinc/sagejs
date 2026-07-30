@@ -5,6 +5,66 @@ from typing import Any, Callable
 import sagejs as sage
 
 
+def _runtime_type_name(value: Any) -> str:
+    name = type(value).__name__
+    if name.startswith("ρσ_"):
+        return name[3:]
+    return name
+
+
+def head(value: Any) -> str:
+    """Return the Wolfram head corresponding to a shared evaluator object."""
+
+    names = {
+        "bool": "Boolean",
+        "int": "Integer",
+        "Integer": "Integer",
+        "Rational": "Rational",
+        "float": "Real",
+        "RealLiteral": "Real",
+        "RealNumberElement": "Real",
+        "complex": "Complex",
+        "ComplexNumberElement": "Complex",
+        "str": "String",
+        "list": "List",
+        "list_constructor": "List",
+        "tuple": "List",
+        "set": "Set",
+        "dict": "Association",
+        "ndarray": "NumericArray",
+        "PolynomialRingParent": "PolynomialRing",
+        "PolynomialElement": "Polynomial",
+        "Expression": "SageExpression",
+        "Graphics": "Graphics",
+        "Graphics3d": "Graphics3D",
+    }
+    name = _runtime_type_name(value)
+    return names[name] if name in names else name
+
+
+def dimensions(value: Any) -> list[int]:
+    if hasattr(value, "shape"):
+        return [int(dimension) for dimension in value.shape]
+    if not isinstance(value, (list, tuple)):
+        return []
+    result = [len(value)]
+    if value:
+        child = dimensions(value[0])
+        if all(dimensions(item) == child for item in value):
+            result.extend(child)
+    return result
+
+
+def length(value: Any) -> int:
+    if hasattr(value, "shape"):
+        shape = value.shape
+        return int(shape[0]) if len(shape) else 0
+    try:
+        return len(value)
+    except TypeError:
+        return 0
+
+
 def factor_integer(value: Any) -> list[list[Any]]:
     result = []
     for pair in sage.factor(value):
@@ -48,6 +108,9 @@ def table(
 
 
 FactorInteger = factor_integer
+Dimensions = dimensions
+Head = head
+Length = length
 Prime = prime
 Range = wolfram_range
 Table = table

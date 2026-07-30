@@ -238,13 +238,16 @@ class AstBuilder {
 
 class SageLowerer {
   private readonly directFunctions: Record<string, string> = {
+    class: "_matlab.class_name",
     cos: "_np.cos",
     disp: "print",
     exp: "_np.exp",
     linspace: "_np.linspace",
     log: "_np.log",
+    numel: "_matlab.numel",
     ones: "_np.ones",
     sin: "_np.sin",
+    size: "_matlab.size",
     sqrt: "_np.sqrt",
     sum: "_np.sum",
     tan: "_np.tan",

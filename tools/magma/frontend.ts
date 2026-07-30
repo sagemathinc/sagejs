@@ -491,6 +491,7 @@ class SageLowerer {
     "PolynomialRing",
     "PrimeDivisors",
     "Rationals",
+    "Type",
   ]);
 
   program(program: MagmaProgram): string {

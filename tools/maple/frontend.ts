@@ -321,9 +321,11 @@ class SageLowerer {
       isprime: "is_prime",
       ithprime: "_maple.ithprime",
       ln: "log",
+      nops: "_maple.nops",
       sin: "sin",
       sqrt: "sqrt",
       tan: "tan",
+      whattype: "_maple.whattype",
     };
     const target = direct[name] ?? name;
     return `${target}(${

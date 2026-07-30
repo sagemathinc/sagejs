@@ -59,6 +59,7 @@ IsPrime = MagmaIntrinsic('IsPrime')
 PrimeDivisors = MagmaIntrinsic('PrimeDivisors')
 Divisors = MagmaIntrinsic('Divisors')
 Parent = MagmaIntrinsic('Parent')
+Type = MagmaIntrinsic('Type')
 
 
 @Integers.register()
@@ -104,6 +105,44 @@ def divisors_method(value: Any) -> Any:
 @Parent.register(object)
 def parent_method(value: Any) -> Any:
     return sage.parent(value)
+
+
+def _runtime_type_name(value: Any) -> str:
+    name = type(value).__name__
+    if name.startswith('ρσ_'):
+        return name[3:]
+    return name
+
+
+@Type.register(object)
+def type_method(value: Any) -> str:
+    """Return a Magma-style category for a shared evaluator object."""
+
+    names = {
+        'bool': 'BoolElt',
+        'int': 'RngIntElt',
+        'Integer': 'RngIntElt',
+        'Rational': 'FldRatElt',
+        'float': 'FldReElt',
+        'RealLiteral': 'FldReElt',
+        'RealNumberElement': 'FldReElt',
+        'complex': 'FldComElt',
+        'ComplexNumberElement': 'FldComElt',
+        'str': 'MonStgElt',
+        'list': 'SeqEnum',
+        'list_constructor': 'SeqEnum',
+        'tuple': 'Tup',
+        'set': 'SetEnum',
+        'dict': 'Assoc',
+        'ndarray': 'AlgMatElt',
+        'PolynomialRingParent': 'RngUPol',
+        'PolynomialElement': 'RngUPolElt',
+        'Expression': 'SymExpr',
+        'Graphics': 'GrphObj',
+        'Graphics3d': 'GrphObj',
+    }
+    name = _runtime_type_name(value)
+    return names[name] if name in names else name
 
 
 def magma_range(start: int, stop: int, step: int = 1) -> list[int]:

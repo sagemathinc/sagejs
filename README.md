@@ -129,7 +129,9 @@ display for 2D and 3D graphics. Cells marked `%%sage`, `%%python`, `%%magma`,
 `%%matlab`, `%%maple`, or `%%wolfram` share one JavaScript object namespace.
 Run `pnpm jupyter:install`, then select **Sage.js Polyglot** in JupyterLab or
 Notebook. See [`JUPYTER.md`](JUPYTER.md) for installation, behavior, and
-testing details.
+testing details. [`POLYGLOT.md`](POLYGLOT.md) defines the shared-object
+interoperability contract, compatibility matrix, executable corpus, example
+notebook, and frontend-overhead benchmark.
 
 Sage-compatible `plot()`, `line()`, `point()`, and `list_plot()` now produce
 composable `Graphics` objects. Browser embeddings receive an optional Plotly

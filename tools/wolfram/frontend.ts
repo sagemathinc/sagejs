@@ -302,7 +302,8 @@ class SageLowerer {
     if (head === "Plot") return this.plot(expression);
     const direct = this.directHeads[head];
     const target = direct ?? (
-      ["FactorInteger", "Prime", "Range"].includes(head)
+      ["Dimensions", "FactorInteger", "Head", "Length", "Prime", "Range"]
+        .includes(head)
         ? `_wolfram.${head}`
         : this.name(head)
     );

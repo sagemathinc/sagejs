@@ -7,6 +7,62 @@ import numpy as np
 ALL = object()
 
 
+def _runtime_type_name(value: Any) -> str:
+    name = type(value).__name__
+    if name.startswith("ρσ_"):
+        return name[3:]
+    return name
+
+
+def size(value: Any) -> tuple[int, ...]:
+    """Return MATLAB-style dimensions without copying a shared object."""
+
+    if hasattr(value, "shape"):
+        return tuple(int(dimension) for dimension in value.shape)
+    if isinstance(value, (list, tuple, str)):
+        return (1, len(value))
+    return (1, 1)
+
+
+def numel(value: Any) -> int:
+    result = 1
+    for dimension in size(value):
+        result *= dimension
+    return result
+
+
+def class_name(value: Any) -> str:
+    """Describe a shared object using MATLAB names where they are exact."""
+
+    name = _runtime_type_name(value)
+    if name == "bool":
+        return "logical"
+    if name in {"float", "RealLiteral", "RealNumberElement"}:
+        return "double"
+    if name == "str":
+        return "char"
+    if name in {"list", "list_constructor", "tuple"}:
+        return "cell"
+    if name == "ndarray":
+        dtype = getattr(value, "dtype", None)
+        return str(getattr(dtype, "name", "ndarray"))
+    adapted = {
+        "int": "sage.Integer",
+        "Integer": "sage.Integer",
+        "Rational": "sage.Rational",
+        "complex": "sage.Complex",
+        "ComplexNumberElement": "sage.Complex",
+        "dict": "sage.Dictionary",
+        "set": "sage.Set",
+        "PolynomialRingParent": "sage.PolynomialRing",
+        "PolynomialElement": "sage.Polynomial",
+        "Expression": "sage.SymbolicExpression",
+        "Graphics": "sage.Graphics",
+        "Graphics3d": "sage.Graphics3d",
+    }
+    return adapted[name] if name in adapted else name
+
+
 def colon(start: float, stop: float, step: float = 1) -> list[float]:
     if step == 0:
         raise ValueError("colon step must not be zero")
@@ -147,6 +203,11 @@ def _scalar_indices(
 def call_or_index(value: Any, *items: Any) -> Any:
     if callable(value):
         return value(*items)
+    if isinstance(value, (list, tuple, str)):
+        if len(items) != 1 or items[0] is ALL or hasattr(items[0], "tolist"):
+            raise NotImplementedError(
+                "shared sequences currently support one scalar MATLAB index")
+        return value[_integer_index(items[0]) - 1]
     if len(items) == 1 and items[0] is not ALL and not hasattr(
         items[0], "tolist"
     ):

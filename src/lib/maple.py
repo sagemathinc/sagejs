@@ -8,6 +8,55 @@ infinity = 1e309
 CATALAN = 0.915965594177219
 
 
+def _runtime_type_name(value: Any) -> str:
+    name = type(value).__name__
+    if name.startswith("ρσ_"):
+        return name[3:]
+    return name
+
+
+def whattype(value: Any) -> str:
+    """Return a Maple-style type name for a shared evaluator object."""
+
+    names = {
+        "bool": "boolean",
+        "int": "integer",
+        "Integer": "integer",
+        "Rational": "fraction",
+        "float": "float",
+        "RealLiteral": "float",
+        "RealNumberElement": "float",
+        "complex": "complex",
+        "ComplexNumberElement": "complex",
+        "str": "string",
+        "list": "list",
+        "list_constructor": "list",
+        "tuple": "exprseq",
+        "set": "set",
+        "dict": "table",
+        "ndarray": "Array",
+        "PolynomialRingParent": "polynom",
+        "PolynomialElement": "polynom",
+        "Expression": "expression",
+        "Graphics": "PLOT",
+        "Graphics3d": "PLOT3D",
+    }
+    name = _runtime_type_name(value)
+    return names[name] if name in names else name
+
+
+def nops(value: Any) -> int:
+    if hasattr(value, "shape"):
+        result = 1
+        for dimension in value.shape:
+            result *= int(dimension)
+        return result
+    try:
+        return len(value)
+    except TypeError:
+        return 0
+
+
 def maple_range(start: int, stop: int, step: int = 1) -> list[int]:
     if step == 0:
         raise ValueError("Maple range step must not be zero")

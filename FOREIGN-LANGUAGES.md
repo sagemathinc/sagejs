@@ -11,6 +11,11 @@ These frontends demonstrate language interoperability; they are not claims of
 complete compatibility and are not affiliated with the language vendors.
 Unsupported syntax fails explicitly instead of being guessed.
 
+Within an embedding or the Sage.js Polyglot Jupyter kernel, every frontend
+uses one live object namespace. See [`POLYGLOT.md`](POLYGLOT.md) for the
+shared-object contract, native introspection operations, compatibility matrix,
+and executable cross-language corpus.
+
 ## Running them
 
 Use one language flag with a file, standard input, or the REPL:
