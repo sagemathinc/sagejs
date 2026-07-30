@@ -365,6 +365,8 @@ class Matrix(sage.Element):
         self._determinant_cache = runtime.undefined
         self._rank_cache = runtime.undefined
         self._inverse_cache = runtime.undefined
+        self._rref_cache = runtime.undefined
+        self._hermite_cache = runtime.undefined
 
     def base_ring(self) -> sage.Parent:
         return self._parent.base_ring()
@@ -586,6 +588,30 @@ class Matrix(sage.Element):
             self._rank_cache = runtime.flint_backend().matrixRank(
                 self._native)
         return self._rank_cache
+
+    def rref(self) -> Matrix:
+        if self._rref_cache is runtime.undefined:
+            self._rref_cache = Matrix(
+                MatrixSpace(sage.QQ, self.nrows(), self.ncols()),
+                runtime.flint_backend().matrixRref(self._native),
+            )
+        return self._rref_cache
+
+    def hermite_form(self) -> Matrix:
+        if self.base_ring() is not sage.ZZ:
+            raise TypeError(
+                'Hermite form currently requires an integer matrix')
+        if self._hermite_cache is runtime.undefined:
+            self._hermite_cache = Matrix(
+                self._parent,
+                runtime.flint_backend().matrixHermite(self._native),
+            )
+        return self._hermite_cache
+
+    def echelon_form(self) -> Matrix:
+        if self.base_ring() is sage.ZZ:
+            return self.hermite_form()
+        return self.rref()
 
     def inverse(self) -> Matrix:
         if not self.is_square():

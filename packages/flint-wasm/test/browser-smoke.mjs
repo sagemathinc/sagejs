@@ -247,8 +247,9 @@ try {
     );
     await runSource(
       "A = matrix(ZZ, [[1,2],[3,4]])\n" +
-        "print(A.det(), A.rank())\nA.inverse()",
-      "-2 2\n[ -2    1]\n[3/2 -1/2]",
+        "print(A.det(), A.rank())\n" +
+        "print(A.rref())\nA.hermite_form()",
+      "-2 2\n[1 0]\n[0 1]\n[1 0]\n[0 2]",
     );
     await runSource("a = 12\nfactor(a)", "2^2 * 3");
     await runSource("factor(a^2)", "2^4 * 3^2");

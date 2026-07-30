@@ -10,6 +10,21 @@ test("provides the exact matrix backend contract without native code", () => {
   assert.equal(matrix.matrixEntry(value, 0, 1), 2n);
   assert.equal(matrix.matrixDet(value), -2n);
   assert.equal(matrix.matrixRank(value), 2);
+  assert.deepEqual(matrix.matrixEntry(matrix.matrixRref(value), 0, 0), {
+    numerator: 1n,
+    denominator: 1n,
+  });
+  const hermite = matrix.matrixHermite(value);
+  assert.deepEqual(
+    [0, 1, 2, 3].map((index) =>
+      matrix.matrixEntry(
+        hermite,
+        Math.floor(index / 2),
+        index % 2,
+      ),
+    ),
+    [1n, 0n, 0n, 2n],
+  );
 
   const square = matrix.matrixMul(value, value);
   assert.deepEqual(

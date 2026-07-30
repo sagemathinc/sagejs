@@ -16,6 +16,10 @@ assert A.columns() == [vector([1, 3]), vector([2, 4])]
 assert A.det() == -2
 assert A.determinant() == -2
 assert A.rank() == 2
+assert A.rref() == identity_matrix(QQ, 2)
+assert A.rref().base_ring() is QQ
+assert A.hermite_form() == matrix(ZZ, [[1, 0], [0, 2]])
+assert A.echelon_form() == A.hermite_form()
 assert A.transpose() == matrix(ZZ, [[1, 3], [2, 4]])
 assert A.T == A.transpose()
 assert A * A == matrix(ZZ, [[7, 10], [15, 22]])
@@ -55,6 +59,18 @@ rectangular = matrix(ZZ, 2, 3, lambda row, col: row + col)
 assert rectangular == matrix(ZZ, [[0, 1, 2], [1, 2, 3]])
 assert rectangular * rectangular.T == matrix(ZZ, [[5, 8], [8, 14]])
 assert rectangular.rank() == 2
+
+dependent = matrix(ZZ, 3, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+assert dependent.rref() == matrix(
+    QQ, [[1, 0, -1], [0, 1, 2], [0, 0, 0]])
+assert dependent.hermite_form() == matrix(
+    ZZ, [[1, 2, 3], [0, 3, 6], [0, 0, 0]])
+assert dependent.echelon_form() == dependent.hermite_form()
+
+rational_echelon = matrix(
+    QQ, [[QQ(1, 2), 1], [0, 1]])
+assert rational_echelon.rref() == identity_matrix(QQ, 2)
+assert rational_echelon.echelon_form() == identity_matrix(QQ, 2)
 
 huge = Integer(
     '1606938044258990275541962092341162602522202993782792835301499')

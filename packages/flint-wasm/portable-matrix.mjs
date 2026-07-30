@@ -188,6 +188,93 @@ function integerDeterminant(matrix) {
   return sign * values[size - 1][size - 1];
 }
 
+function floorDivide(numerator, positiveDenominator) {
+  let quotient = numerator / positiveDenominator;
+  if (
+    numerator < 0n &&
+    numerator % positiveDenominator !== 0n
+  ) {
+    quotient -= 1n;
+  }
+  return quotient;
+}
+
+function integerHermite(matrix) {
+  if (matrix.kind !== "ZZ") {
+    throw new TypeError("Hermite form currently requires an integer matrix");
+  }
+  const values = [];
+  for (let row = 0; row < matrix.rows; row += 1) {
+    values.push(
+      matrix.entries.slice(row * matrix.cols, (row + 1) * matrix.cols),
+    );
+  }
+  let pivotRow = 0;
+  for (
+    let pivotColumn = 0;
+    pivotColumn < matrix.cols && pivotRow < matrix.rows;
+    pivotColumn += 1
+  ) {
+    let candidate = pivotRow;
+    while (
+      candidate < matrix.rows &&
+      values[candidate][pivotColumn] === 0n
+    ) {
+      candidate += 1;
+    }
+    if (candidate === matrix.rows) continue;
+    if (candidate !== pivotRow) {
+      [values[candidate], values[pivotRow]] = [
+        values[pivotRow],
+        values[candidate],
+      ];
+    }
+
+    while (true) {
+      let target = pivotRow + 1;
+      while (
+        target < matrix.rows &&
+        values[target][pivotColumn] === 0n
+      ) {
+        target += 1;
+      }
+      if (target === matrix.rows) break;
+      const quotient =
+        values[target][pivotColumn] / values[pivotRow][pivotColumn];
+      for (let col = 0; col < matrix.cols; col += 1) {
+        values[target][col] -= quotient * values[pivotRow][col];
+      }
+      if (values[target][pivotColumn] !== 0n) {
+        [values[target], values[pivotRow]] = [
+          values[pivotRow],
+          values[target],
+        ];
+      }
+    }
+
+    if (values[pivotRow][pivotColumn] < 0n) {
+      for (let col = 0; col < matrix.cols; col += 1) {
+        values[pivotRow][col] = -values[pivotRow][col];
+      }
+    }
+    const pivot = values[pivotRow][pivotColumn];
+    for (let row = 0; row < pivotRow; row += 1) {
+      const quotient = floorDivide(
+        values[row][pivotColumn], pivot);
+      for (let col = 0; col < matrix.cols; col += 1) {
+        values[row][col] -= quotient * values[pivotRow][col];
+      }
+    }
+    pivotRow += 1;
+  }
+  return make(
+    "ZZ",
+    matrix.rows,
+    matrix.cols,
+    values.flat(),
+  );
+}
+
 function echelon(matrix, augmentedColumns = 0) {
   const values = asRationalRows(matrix);
   const coefficientColumns = matrix.cols - augmentedColumns;
@@ -407,6 +494,21 @@ export function createPortableMatrixBackend() {
     return echelon(matrix).rank;
   }
 
+  function matrixRref(matrix) {
+    matrix = requireMatrix(matrix);
+    const reduced = echelon(matrix);
+    return make(
+      "QQ",
+      matrix.rows,
+      matrix.cols,
+      reduced.values.flat(),
+    );
+  }
+
+  function matrixHermite(matrix) {
+    return integerHermite(requireMatrix(matrix));
+  }
+
   function matrixSolve(left, right) {
     left = requireMatrix(left);
     right = requireMatrix(right);
@@ -470,6 +572,8 @@ export function createPortableMatrixBackend() {
     matrixEntry,
     matrixDet,
     matrixRank,
+    matrixRref,
+    matrixHermite,
     matrixSolve,
     matrixInverse,
   });

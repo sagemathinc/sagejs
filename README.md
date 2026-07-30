@@ -145,7 +145,8 @@ surfaces compile their two-variable expression once inside the evaluator
 worker and render as interactive Plotly surfaces in the frontend.
 
 Dense exact `matrix()` and `vector()` objects over `ZZ` and `QQ` provide
-Sage-compatible arithmetic, determinant, rank, inverse, and linear solving.
+Sage-compatible arithmetic, determinant, rank, rational RREF, integer Hermite
+form, inverse, and linear solving.
 Node keeps entries in opaque FLINT `fmpz_mat`/`fmpq_mat` objects; browser
 workers use the same backend contract implemented with portable `BigInt`
 rationals. Run `pnpm bench:linear-algebra` to compare the shared workload

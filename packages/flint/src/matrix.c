@@ -770,6 +770,67 @@ napi_value sagejs_matrix_rank(napi_env env, napi_callback_info info)
     return result;
 }
 
+napi_value sagejs_matrix_rref(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    sagejs_matrix *source;
+    sagejs_matrix *answer;
+    fmpz_mat_t numerator;
+    fmpz_t denominator;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    answer = new_matrix(
+        env, SAGEJS_MATRIX_QQ,
+        matrix_nrows(source), matrix_ncols(source));
+    if (answer == NULL)
+        return NULL;
+    if (source->kind == SAGEJS_MATRIX_QQ)
+    {
+        fmpq_mat_rref(answer->rational, source->rational);
+        return wrap_matrix(env, answer);
+    }
+    fmpz_mat_init(
+        numerator, matrix_nrows(source), matrix_ncols(source));
+    fmpz_init(denominator);
+    fmpz_mat_rref(numerator, denominator, source->integer);
+    fmpq_mat_set_fmpz_mat(answer->rational, numerator);
+    fmpq_mat_scalar_div_fmpz(
+        answer->rational, answer->rational, denominator);
+    fmpz_mat_clear(numerator);
+    fmpz_clear(denominator);
+    return wrap_matrix(env, answer);
+}
+
+napi_value sagejs_matrix_hermite(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    sagejs_matrix *source;
+    sagejs_matrix *answer;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    if (source->kind != SAGEJS_MATRIX_ZZ)
+    {
+        napi_throw_type_error(env, NULL,
+            "Hermite form currently requires an integer matrix");
+        return NULL;
+    }
+    answer = new_matrix(
+        env, SAGEJS_MATRIX_ZZ,
+        matrix_nrows(source), matrix_ncols(source));
+    if (answer == NULL)
+        return NULL;
+    fmpz_mat_hnf(answer->integer, source->integer);
+    return wrap_matrix(env, answer);
+}
+
 static void matrix_to_rational(
     fmpq_mat_t answer,
     const sagejs_matrix *source)

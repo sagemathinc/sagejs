@@ -305,6 +305,26 @@ const integerMatrix = flint.zzMatrix(2, 2, [1n, 2n, 3n, 4n]);
 assert.equal(flint.matrixEntry(integerMatrix, 0, 1), 2n);
 assert.equal(flint.matrixDet(integerMatrix), -2n);
 assert.equal(flint.matrixRank(integerMatrix), 2);
+const integerRref = flint.matrixRref(integerMatrix);
+assert.deepEqual(
+  flint.matrixEntry(integerRref, 0, 0),
+  { numerator: 1n, denominator: 1n },
+);
+assert.deepEqual(
+  flint.matrixEntry(integerRref, 1, 1),
+  { numerator: 1n, denominator: 1n },
+);
+const integerHermite = flint.matrixHermite(integerMatrix);
+assert.deepEqual(
+  [0, 1, 2, 3].map((index) =>
+    flint.matrixEntry(
+      integerHermite,
+      Math.floor(index / 2),
+      index % 2,
+    ),
+  ),
+  [1n, 0n, 0n, 2n],
+);
 const integerSquare = flint.matrixMul(integerMatrix, integerMatrix);
 assert.deepEqual(
   [0, 1, 2, 3].map((index) =>
