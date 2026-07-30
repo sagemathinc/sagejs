@@ -188,6 +188,8 @@ def _new_prime_field_element(
     return FiniteFieldElement(parent, value)
 
 
+@runtime.bigint_fields('_value')
+@runtime.lightweight_math_class
 class IntegerModElement(FiniteFieldElement):
 
     def _add_(

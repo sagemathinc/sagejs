@@ -37,7 +37,7 @@ function execute(label, command, args) {
     entry.samples.push(Number(elapsedText));
     timings.set(operation, entry);
   }
-  if (timings.size !== 4) {
+  if (timings.size !== 5) {
     throw new Error(`${label} produced ${timings.size} benchmark cases`);
   }
   return timings;

@@ -30,6 +30,42 @@ def _sum_exact_integer_range(iterable: Any, start: Any) -> Any:
     return runtime.operator_add_exact(start, total)
 
 
+def _sum_modular_array(iterable: Any, start: Any) -> Any:
+    """Accumulate a homogeneous prime-field or residue-ring array in BigInt."""
+    first = iterable[0]
+    parent = getattr(first, '_parent', None)
+    if parent is None:
+        return runtime.undefined
+    kind = getattr(parent, '_kind', None)
+    if kind != 'GF' and kind != 'ZMOD':
+        return runtime.undefined
+
+    start_type = runtime.jstype(start)
+    if (
+        (start_type == 'bigint' or start_type == 'number')
+        and start == 0
+    ):
+        total = runtime.bigint(0)
+    elif getattr(start, '_parent', None) is parent:
+        total = start._value
+    else:
+        return runtime.undefined
+
+    for value in iterable:
+        # The first element established this optimized internal representation.
+        # Direct field access keeps this loop at native JavaScript speed; null
+        # and undefined are guarded because JavaScript cannot box them.
+        if (
+            value is None
+            or value is runtime.undefined
+            or value._parent is not parent
+        ):
+            return runtime.undefined
+        total = runtime.native_add(total, value._value)
+    return runtime.reflect.apply(
+        parent, runtime.undefined, [total])
+
+
 def sum(iterable: Iterable[Any], start: Any = 0) -> Any:
     start_type = runtime.jstype(start)
     if (
@@ -43,6 +79,13 @@ def sum(iterable: Iterable[Any], start: Any = 0) -> Any:
         )
     ):
         return _sum_exact_integer_range(iterable, start)
+    if (
+        runtime.array.isArray(iterable)
+        and runtime.reflect.get(iterable, 'length')
+    ):
+        modular_sum = _sum_modular_array(iterable, start)
+        if modular_sum is not runtime.undefined:
+            return modular_sum
     result = start
     for value in iterable:
         result = runtime.operator_add_exact(result, value)

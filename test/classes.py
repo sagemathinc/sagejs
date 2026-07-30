@@ -51,17 +51,27 @@ assrt.equal(callable_value(5), 12)
 # eagerly allocated identity slot without falling back to handwritten JS.
 @ρσ_lightweight_math_class
 class LightweightMathElement:
+    from __python__ import bound_methods
+
     def __init__(self, value):
         self.value = value
 
     def __repr__(self):
         return 'lightweight'
 
+    def add(self, increment):
+        return self.value + increment
+
 
 lightweight_element = LightweightMathElement(5)
 assrt.equal(lightweight_element.value, 5)
 assrt.equal(repr(lightweight_element), 'lightweight')
 assrt.equal(lightweight_element.ρσ_object_id, undefined)
+lightweight_add = lightweight_element.add
+assrt.equal(lightweight_add(4), 9)
+assrt.equal(lightweight_add.__self__, lightweight_element)
+assrt.equal(lightweight_add.__func__, LightweightMathElement.add)
+assrt.equal(lightweight_add.__name__, 'add')
 
 # basic class
 class Human:

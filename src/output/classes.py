@@ -340,50 +340,55 @@ def print_class(output):
                         base.print(output), output.print(
                             '.prototype.__bind_methods__.call(this)')
                         output.end_statement()
-                for bname in self.bound:
-                    if seen_methods[bname] or self.dynamic_properties[bname]:
-                        continue
-                    seen_methods[bname] = True
-                    is_classmethod = has_prop(self.classmethods, bname)
+                # Lightweight immutable mathematical values are often
+                # allocated millions of times.  Their own methods use lazy
+                # prototype accessors emitted below; only inherited methods
+                # from ordinary classes need the traditional eager binding.
+                if not self.lightweight:
+                    for bname in self.bound:
+                        if seen_methods[bname] or self.dynamic_properties[bname]:
+                            continue
+                        seen_methods[bname] = True
+                        is_classmethod = has_prop(self.classmethods, bname)
 
-                    def f_bind_one():
-                        output.indent(), output.assign('this.' + bname)
+                        def f_bind_one():
+                            output.indent(), output.assign('this.' + bname)
+                            self.name.print(output)
+                            output.print(
+                                '.prototype.' + bname + '.bind(')
+                            output.print(
+                                'this.constructor'
+                                if is_classmethod else 'this')
+                            output.print(')')
+                            output.end_statement()
+                            output.indent(), output.print(
+                                'Object.assign(this.' + bname + ', ')
+                            self.name.print(output), output.print(
+                                '.prototype.' + bname + ')')
+                            output.end_statement()
+                            output.indent(), output.assign(
+                                'this.' + bname + '.__func__')
+                            self.name.print(output), output.print(
+                                '.prototype.' + bname)
+                            output.end_statement()
+                            output.indent(), output.assign(
+                                'this.' + bname + '.__self__')
+                            output.print(
+                                'this.constructor'
+                                if is_classmethod else 'this')
+                            output.end_statement()
+                            output.indent(), output.assign(
+                                'this.' + bname + '.__name__')
+                            output.print(JSON.stringify(bname))
+                            output.end_statement()
+
+                        output.indent()
+                        output.print('if (typeof ')
                         self.name.print(output)
                         output.print(
-                            '.prototype.' + bname + '.bind(')
-                        output.print(
-                            'this.constructor'
-                            if is_classmethod else 'this')
-                        output.print(')')
-                        output.end_statement()
-                        output.indent(), output.print(
-                            'Object.assign(this.' + bname + ', ')
-                        self.name.print(output), output.print(
-                            '.prototype.' + bname + ')')
-                        output.end_statement()
-                        output.indent(), output.assign(
-                            'this.' + bname + '.__func__')
-                        self.name.print(output), output.print(
-                            '.prototype.' + bname)
-                        output.end_statement()
-                        output.indent(), output.assign(
-                            'this.' + bname + '.__self__')
-                        output.print(
-                            'this.constructor'
-                            if is_classmethod else 'this')
-                        output.end_statement()
-                        output.indent(), output.assign(
-                            'this.' + bname + '.__name__')
-                        output.print(JSON.stringify(bname))
-                        output.end_statement()
-
-                    output.indent()
-                    output.print('if (typeof ')
-                    self.name.print(output)
-                    output.print(
-                        '.prototype.' + bname
-                        + ' === "function")')
-                    output.with_block(f_bind_one)
+                            '.prototype.' + bname
+                            + ' === "function")')
+                        output.with_block(f_bind_one)
 
             output.with_block(f_bases)
 
@@ -600,6 +605,106 @@ def print_class(output):
             finally:
                 output.in_class_body = previous_class_body
             output.newline()
+
+    # Preserve Python bound-method behavior for lightweight mathematical
+    # classes without eagerly allocating and decorating every bound method on
+    # every instance.  A method is bound only when it is first retrieved.
+    if self.lightweight and self.bound.length:
+        seen_lazy_methods = Object.create(None)
+        for bname in self.bound:
+            if (
+                seen_lazy_methods[bname]
+                or self.dynamic_properties[bname]
+                # Single-underscore methods on these internal classes are
+                # compiler/runtime hooks, not user-facing Python methods.
+                # Leaving them as ordinary prototype functions lets hot
+                # calls such as ``left._mul_(right)`` preserve JavaScript's
+                # receiver without allocating a bound wrapper.
+                or (
+                    bname.startswith('_')
+                    and not bname.startswith('__')
+                )
+            ):
+                continue
+            seen_lazy_methods[bname] = True
+            is_classmethod = has_prop(self.classmethods, bname)
+            output.indent()
+            output.print('(function(ρσ_unbound_method, ρσ_prototype)')
+
+            def f_lazy_binding():
+                output.indent()
+                output.print('Object.defineProperty(ρσ_prototype, ')
+                output.print(JSON.stringify(bname))
+                output.comma()
+                output.space()
+                output.print('{configurable: true, enumerable: true, ')
+                output.print('get: function()')
+
+                def f_lazy_getter():
+                    output.indent()
+                    output.print(
+                        'if (this === ρσ_prototype) '
+                        'return ρσ_unbound_method')
+                    output.end_statement()
+                    output.indent()
+                    output.assign('var ρσ_receiver')
+                    output.print(
+                        'this.constructor'
+                        if is_classmethod else 'this')
+                    output.end_statement()
+                    output.indent()
+                    output.assign('var ρσ_bound_method')
+                    output.print(
+                        'ρσ_unbound_method.bind(ρσ_receiver)')
+                    output.end_statement()
+                    output.indent()
+                    output.print(
+                        'Object.assign(ρσ_bound_method, '
+                        'ρσ_unbound_method)')
+                    output.end_statement()
+                    output.indent()
+                    output.assign('ρσ_bound_method.__func__')
+                    output.print('ρσ_unbound_method')
+                    output.end_statement()
+                    output.indent()
+                    output.assign('ρσ_bound_method.__self__')
+                    output.print('ρσ_receiver')
+                    output.end_statement()
+                    output.indent()
+                    output.assign('ρσ_bound_method.__name__')
+                    output.print(JSON.stringify(bname))
+                    output.end_statement()
+                    output.indent()
+                    output.print('return ρσ_bound_method')
+                    output.end_statement()
+
+                output.with_block(f_lazy_getter)
+                output.print(', set: function(ρσ_method_value)')
+
+                def f_lazy_setter():
+                    output.indent()
+                    output.print('Object.defineProperty(this, ')
+                    output.print(JSON.stringify(bname))
+                    output.comma()
+                    output.space()
+                    output.print(
+                        '{value: ρσ_method_value, writable: true, '
+                        'configurable: true, enumerable: true})')
+                    output.end_statement()
+
+                output.with_block(f_lazy_setter)
+                output.print('})')
+                output.end_statement()
+
+            output.with_block(f_lazy_binding)
+            output.print(')(')
+            self.name.print(output)
+            output.print('.prototype.' + bname)
+            output.comma()
+            self.name.print(output)
+            output.print('.prototype)')
+            output.end_statement()
+
     for classvar_name in Object.keys(self.classvars):
         output.indent()
         output.print('if (typeof ')
