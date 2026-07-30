@@ -68,43 +68,18 @@ function print_usage(group) {
   var COL_WIDTH = 79;
   var OPT_WIDTH = 23;
 
-  var usage = group ? group.usage : "[subcommand] ...";
+  if (!group) {
+    print_top_level_usage();
+    return;
+  }
+
+  var usage = group.usage;
   console.log(
     colored("Usage:", COL1),
     colored(path.basename(process.argv[1]), COL2),
     usage,
     "\n"
   );
-  if (!group) {
-    // Overall usage
-    help =
-      "Sage.js can perform many actions, depending on which" +
-      "\nsubcommand is invoked. With no arguments, it will start a REPL," +
-      "\nunless STDIN is a pipe, in which case it will compile whatever" +
-      "\nyou pass on STDIN and write the output to STDOUT. See the full" +
-      "\nlist of subcommands below.";
-    console.log(help, "\n");
-    console.log(colored("Subcommands:", COL1));
-    Object.keys(groups).forEach(function (name) {
-      console.log();
-      var dt = utils.wrap(
-        groups[name].description.split("\n"),
-        COL_WIDTH - OPT_WIDTH
-      );
-      console.log(
-        colored(
-          (name + utils.repeat(" ", OPT_WIDTH)).slice(0, OPT_WIDTH),
-          COL2
-        ),
-        dt[0]
-      );
-      dt.slice(1).forEach(function (line) {
-        console.log(utils.repeat(" ", OPT_WIDTH), line);
-      });
-    });
-    return;
-  }
-
   // Group specific usage
 
   console.log(group.description);
@@ -138,6 +113,61 @@ function print_usage(group) {
     console.log();
   });
 } // }}}
+
+function print_top_level_usage() {
+  var executable = path.basename(process.argv[1]);
+  var label = function (text) {
+    return colored(text, COL1);
+  };
+  var command = function (text) {
+    return colored(text, COL2);
+  };
+
+  console.log(label("Sage.js — research mathematics native to JavaScript\n"));
+  console.log(label("Usage:"));
+  console.log("  " + command(executable) + " [options] [program]");
+  console.log("  " + command(executable) + " [subcommand] [options]\n");
+  console.log(
+    "With no program, start an interactive Sage calculator. A program file",
+  );
+  console.log(
+    "is executed, and piped input is evaluated. Sage syntax is the default.\n",
+  );
+
+  console.log(label("Language modes:"));
+  console.log("  --sage          Sage/Python mathematical syntax (default)");
+  console.log("  --python        ordinary Python syntax and division");
+  console.log("  --magma         experimental Magma frontend");
+  console.log("  --maple         experimental Maple frontend");
+  console.log("  --matlab        experimental MATLAB frontend");
+  console.log("  --wolfram       experimental Wolfram Language frontend");
+  console.log("  --mathematica   alias for --wolfram\n");
+
+  console.log(label("Common options:"));
+  console.log("  --emit-sage     show Sage source lowered from a foreign language");
+  console.log("  -h, --help      show this help");
+  console.log("  -V, --version   show the Sage.js version\n");
+
+  console.log(label("Examples:"));
+  console.log("  " + command(executable));
+  console.log("  " + command(executable + " --python"));
+  console.log("  " + command(executable + " program.sage"));
+  console.log("  " + command(executable + " --wolfram program.wl"));
+  console.log("  " + command("echo 'factor(2026)' | " + executable));
+  console.log("  " + command("sagejs-jupyter --install --user\n"));
+
+  console.log(label("Advanced subcommands:"));
+  console.log("  compile         compile Sage.js source to JavaScript");
+  console.log("  repl            start a REPL with detailed options");
+  console.log("  lint            check Python/Sage source");
+  console.log("  test            run compiler tests");
+  console.log("  self            rebuild the Sage.js compiler");
+  console.log("  msgfmt          compile gettext translations\n");
+  console.log(
+    "Run " + command(executable + " <subcommand> --help") +
+      " for detailed options.",
+  );
+}
 
 // Process options {{{
 

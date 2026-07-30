@@ -34,6 +34,17 @@ function runError(args, input) {
 }
 
 assert.match(run(["--version"]), /^sagejs 0\.1\.0\s*$/);
+const help = run(["--help"]);
+assert.match(help, /Sage\.js — research mathematics native to JavaScript/);
+assert.match(help, /With no program, start an interactive Sage calculator/);
+assert.match(help, /--python\s+ordinary Python syntax and division/);
+assert.match(help, /--wolfram\s+experimental Wolfram Language frontend/);
+assert.match(help, /sagejs-jupyter --install --user/);
+assert.match(help, /Advanced subcommands:/);
+assert.match(
+  run(["compile", "--help"]),
+  /Compile Sage\.js source code into JavaScript/,
+);
 assert.match(run([], "print(2^3)\nprint(sum([1..10]))\n"), /8\s+55\s*$/);
 assert.equal(run([], "value = GF(5)\n").trim(), "");
 assert.equal(
