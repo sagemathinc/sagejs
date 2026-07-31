@@ -634,6 +634,43 @@ class MultivariatePolynomialElement(sage.Element):
     def number_of_terms(self) -> int:
         return runtime.flint_backend().mpolyLength(self._native)
 
+    def univariate_polynomial(
+        self,
+        variable: Any = None,
+    ) -> PolynomialElement:
+        """Extract this polynomial when it involves at most one generator."""
+        if variable is None:
+            active = []
+            for candidate in self._parent.gens():
+                if self.degree(candidate) > 0:
+                    active.append(candidate)
+            if len(active) > 1:
+                raise TypeError(
+                    'multivariate polynomial involves several generators')
+            variable = (
+                active[0] if len(active) else self._parent.gen(0))
+        index = self._parent._generator_index(variable)
+        names = self._parent.variable_names()
+        base = self._parent.base_ring()
+        if base._kind not in ['ZZ', 'QQ']:
+            raise TypeError(
+                'univariate extraction currently requires ZZ or QQ')
+        raw = runtime.flint_backend().mpolyUnivariateCoefficients(
+            self._native, index)
+        ring = PolynomialRing(base, names[index])
+        generator = ring.gen()
+        result = ring(0)
+        for coefficient in reversed(raw):
+            if base is sage.ZZ:
+                scalar = runtime.normalize_integer(coefficient)
+            else:
+                scalar = base(
+                    runtime.reflect.get(coefficient, 'numerator'),
+                    runtime.reflect.get(coefficient, 'denominator'),
+                )
+            result = result * generator + scalar
+        return result
+
     def __repr__(self) -> str:
         raw = runtime.flint_backend().mpolyToString(
             self._native, self._parent.variable_names())

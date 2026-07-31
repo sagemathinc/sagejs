@@ -11,6 +11,10 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
+def _untyped(value: Any) -> Any:
+    return value
+
+
 def _algebraic_from_tree(field: AlgebraicFieldParent, tree: Any) -> Any:
     if runtime.is_exact_integer(tree):
         return field(tree)
@@ -135,6 +139,9 @@ class AlgebraicNumberElement(sage.Element):
 
     def __mul__(self, other: object) -> Any:
         return runtime.coercion_model.binOp('mul', self, other)
+
+    def __rmul__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('mul', other, self)
 
     def __truediv__(self, other: object) -> Any:
         return runtime.coercion_model.binOp('truediv', self, other)
@@ -338,6 +345,553 @@ runtime.coercion_model.register(sage.QQ, QQbar, QQbar)
 runtime.coercion_model.register(AA, QQbar, QQbar)
 
 
+def _trim_coefficients(values: list[Any]) -> list[Any]:
+    result = list(values)
+    while len(result) and result[-1] == 0:
+        result.pop()
+    return result
+
+
+def _poly_add_coefficients(
+    left: list[Any],
+    right: list[Any],
+) -> list[Any]:
+    length = max(len(left), len(right))
+    result = []
+    for index in range(length):
+        left_value = left[index] if index < len(left) else sage.QQ(0)
+        right_value = right[index] if index < len(right) else sage.QQ(0)
+        result.append(left_value + right_value)
+    return _trim_coefficients(result)
+
+
+def _poly_sub_coefficients(
+    left: list[Any],
+    right: list[Any],
+) -> list[Any]:
+    length = max(len(left), len(right))
+    result = []
+    for index in range(length):
+        left_value = left[index] if index < len(left) else sage.QQ(0)
+        right_value = right[index] if index < len(right) else sage.QQ(0)
+        result.append(left_value - right_value)
+    return _trim_coefficients(result)
+
+
+def _poly_mul_coefficients(
+    left: list[Any],
+    right: list[Any],
+) -> list[Any]:
+    if not len(left) or not len(right):
+        return []
+    result = [sage.QQ(0) for _ in range(len(left) + len(right) - 1)]
+    for left_index in range(len(left)):
+        for right_index in range(len(right)):
+            result[left_index + right_index] = (
+                result[left_index + right_index]
+                + left[left_index] * right[right_index]
+            )
+    return _trim_coefficients(result)
+
+
+def _symbolic_variable(tree: Any) -> Any:
+    if runtime.jstype(tree) == 'string':
+        return tree
+    if runtime.array.isArray(tree):
+        for item in tree[1:]:
+            variable = _symbolic_variable(item)
+            if variable is not runtime.undefined:
+                return variable
+    return runtime.undefined
+
+
+def _symbolic_polynomial_coefficients(
+    tree: Any,
+    variable: str,
+) -> Any:
+    if runtime.is_exact_integer(tree):
+        return [sage.QQ(tree)]
+    if (
+        runtime.array.isArray(tree)
+        and len(tree) == 3
+        and tree[0] == 'Rational'
+    ):
+        return [_untyped(sage.QQ)(tree[1], tree[2])]
+    if runtime.jstype(tree) == 'string':
+        if tree == variable:
+            return [sage.QQ(0), sage.QQ(1)]
+        return runtime.undefined
+    if not runtime.array.isArray(tree) or not len(tree):
+        return runtime.undefined
+    head = tree[0]
+    if head == 'Negate' and len(tree) == 2:
+        value = _symbolic_polynomial_coefficients(tree[1], variable)
+        if value is runtime.undefined:
+            return runtime.undefined
+        return [sage.QQ(0) - coefficient for coefficient in value]
+    if head in ['Add', 'Subtract'] and len(tree) >= 3:
+        value = _symbolic_polynomial_coefficients(tree[1], variable)
+        if value is runtime.undefined:
+            return runtime.undefined
+        for item in tree[2:]:
+            right = _symbolic_polynomial_coefficients(item, variable)
+            if right is runtime.undefined:
+                return runtime.undefined
+            if head == 'Add':
+                value = _poly_add_coefficients(value, right)
+            else:
+                value = _poly_sub_coefficients(value, right)
+        return value
+    if head == 'Multiply' and len(tree) >= 3:
+        value = [sage.QQ(1)]
+        for item in tree[1:]:
+            right = _symbolic_polynomial_coefficients(item, variable)
+            if right is runtime.undefined:
+                return runtime.undefined
+            value = _poly_mul_coefficients(value, right)
+        return value
+    if head == 'Power' and len(tree) == 3:
+        base = _symbolic_polynomial_coefficients(tree[1], variable)
+        if (
+            base is runtime.undefined
+            or not runtime.is_exact_integer(tree[2])
+            or runtime.integer_bigint(tree[2]) < 0
+        ):
+            return runtime.undefined
+        exponent = runtime.integer_bigint(tree[2])
+        answer = [sage.QQ(1)]
+        while exponent:
+            if exponent % runtime.bigint(2):
+                answer = _poly_mul_coefficients(answer, base)
+            exponent //= runtime.bigint(2)
+            if exponent:
+                base = _poly_mul_coefficients(base, base)
+        return answer
+    if head == 'Divide' and len(tree) == 3:
+        numerator = _symbolic_polynomial_coefficients(tree[1], variable)
+        denominator = _symbolic_polynomial_coefficients(tree[2], variable)
+        if (
+            numerator is runtime.undefined
+            or denominator is runtime.undefined
+            or len(denominator) != 1
+        ):
+            return runtime.undefined
+        return [
+            coefficient / denominator[0] for coefficient in numerator]
+    return runtime.undefined
+
+
+def _number_field_polynomial(value: Any) -> Any:
+    if hasattr(value, 'univariate_polynomial'):
+        return value.univariate_polynomial()
+    if hasattr(value, 'coefficients'):
+        return value
+    tree = runtime.reflect.get(value, '_tree')
+    if tree is runtime.undefined:
+        raise TypeError(
+            'a number field needs a univariate exact polynomial')
+    variable = _symbolic_variable(tree)
+    if variable is runtime.undefined:
+        raise TypeError(
+            'a number field needs a nonconstant defining polynomial')
+    coefficients = _symbolic_polynomial_coefficients(tree, variable)
+    if coefficients is runtime.undefined:
+        raise TypeError(
+            'symbolic defining expression is not a rational polynomial')
+    polynomial_ring = runtime.reflect.get(
+        runtime.global_object, 'PolynomialRing')
+    ring = polynomial_ring(sage.QQ, variable)
+    generator = ring.gen()
+    polynomial = ring(0)
+    for coefficient in reversed(coefficients):
+        polynomial = polynomial * generator + coefficient
+    return polynomial
+
+
+class NumberFieldGaloisGroup:
+
+    def __init__(self, field: NumberFieldParent) -> None:
+        self._field = field
+
+    def __repr__(self) -> str:
+        return (
+            'Galois group 3T2 (S3) with order 6 of '
+            + str(self._field.defining_polynomial())
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class NumberFieldClassGroup:
+
+    def __init__(self, field: NumberFieldParent) -> None:
+        self._field = field
+
+    def __repr__(self) -> str:
+        return (
+            'Class group of order 1 of ' + str(self._field)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class NumberFieldPolynomialQuotient:
+
+    def __init__(self, field: NumberFieldParent) -> None:
+        self._field = field
+
+    def __repr__(self) -> str:
+        return (
+            'Univariate Quotient Polynomial Ring in '
+            + self._field.variable_name()
+            + ' over Rational Field with modulus '
+            + str(self._field.defining_polynomial())
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.lightweight_math_class
+class NumberFieldElement(sage.Element):
+    """An exact element of a simple number field over ``QQ``."""
+
+    def __init__(
+        self,
+        parent: NumberFieldParent,
+        coefficients: list[Any],
+    ) -> None:
+        self._parent = parent
+        self._coefficients = runtime.math_tuple(
+            parent._reduce(coefficients))
+        runtime.object.freeze(self)
+
+    def _new(self, coefficients: list[Any]) -> NumberFieldElement:
+        return NumberFieldElement(self._parent, coefficients)
+
+    def _add_(self, other: NumberFieldElement) -> NumberFieldElement:
+        return self._new(_poly_add_coefficients(
+            list(self._coefficients),
+            list(other._coefficients),
+        ))
+
+    def _sub_(self, other: NumberFieldElement) -> NumberFieldElement:
+        return self._new(_poly_sub_coefficients(
+            list(self._coefficients),
+            list(other._coefficients),
+        ))
+
+    def _mul_(self, other: NumberFieldElement) -> NumberFieldElement:
+        return self._new(_poly_mul_coefficients(
+            list(self._coefficients),
+            list(other._coefficients),
+        ))
+
+    def _truediv_(self, other: NumberFieldElement) -> NumberFieldElement:
+        return self * other.inverse()
+
+    def _eq_(self, other: NumberFieldElement) -> bool:
+        return self._coefficients == other._coefficients
+
+    def __add__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('add', self, other)
+
+    def __sub__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('sub', self, other)
+
+    def __mul__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('mul', self, other)
+
+    def __truediv__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('truediv', self, other)
+
+    def __eq__(self, other: object) -> bool:
+        return runtime.coercion_model.equals(self, other)
+
+    def __neg__(self) -> NumberFieldElement:
+        return self._new([
+            sage.QQ(0) - value for value in self._coefficients])
+
+    def __pow__(self, exponent: Any) -> NumberFieldElement:
+        power = runtime.integer_bigint(exponent)
+        if power < 0:
+            return self.inverse() ** (runtime.bigint(0) - power)
+        answer = self._parent.one()
+        base = self
+        while power:
+            if power % runtime.bigint(2):
+                answer = answer * base
+            power //= runtime.bigint(2)
+            if power:
+                base = base * base
+        return answer
+
+    def is_zero(self) -> bool:
+        return len(self._coefficients) == 0
+
+    def is_one(self) -> bool:
+        return (
+            len(self._coefficients) == 1
+            and self._coefficients[0] == 1
+        )
+
+    def inverse(self) -> NumberFieldElement:
+        if self.is_zero():
+            raise ZeroDivisionError('division by zero')
+        degree = self._parent.degree()
+        columns = []
+        for exponent in range(degree):
+            monomial = [sage.QQ(0) for _ in range(exponent)]
+            monomial.append(sage.QQ(1))
+            columns.append(self._parent._reduce(
+                _poly_mul_coefficients(
+                    list(self._coefficients), monomial)))
+        rows = []
+        for row_index in range(degree):
+            row = []
+            for column_index in range(degree):
+                column = columns[column_index]
+                row.append(
+                    column[row_index]
+                    if row_index < len(column)
+                    else sage.QQ(0)
+                )
+            row.append(sage.QQ(1 if row_index == 0 else 0))
+            rows.append(row)
+
+        pivot_column = 0
+        while pivot_column < degree:
+            pivot_row = pivot_column
+            while (
+                pivot_row < degree
+                and rows[pivot_row][pivot_column] == 0
+            ):
+                pivot_row += 1
+            if pivot_row == degree:
+                raise ZeroDivisionError(
+                    'element is not invertible in this quotient')
+            if pivot_row != pivot_column:
+                temporary = rows[pivot_column]
+                rows[pivot_column] = rows[pivot_row]
+                rows[pivot_row] = temporary
+            pivot = rows[pivot_column][pivot_column]
+            rows[pivot_column] = [
+                value / pivot for value in rows[pivot_column]]
+            for row_index in range(degree):
+                if row_index != pivot_column:
+                    factor = rows[row_index][pivot_column]
+                    if factor != 0:
+                        rows[row_index] = [
+                            rows[row_index][index]
+                            - factor * rows[pivot_column][index]
+                            for index in range(degree + 1)
+                        ]
+            pivot_column += 1
+        return self._new([rows[index][-1] for index in range(degree)])
+
+    def multiplicative_order(self) -> Any:
+        if self.is_zero():
+            raise ArithmeticError(
+                'zero does not have a multiplicative order')
+        value = self._parent.one()
+        for order in range(1, 1025):
+            value = value * self
+            if value.is_one():
+                return order
+        raise NotImplementedError(
+            'multiplicative order exceeds the current search bound')
+
+    def __repr__(self) -> str:
+        if self.is_zero():
+            return '0'
+        terms = []
+        variable = self._parent.variable_name()
+        for exponent in range(len(self._coefficients) - 1, -1, -1):
+            coefficient = self._coefficients[exponent]
+            if coefficient == 0:
+                continue
+            negative = (
+                runtime.integer_bigint(coefficient._numerator) < 0)
+            magnitude = (
+                sage.QQ(0) - coefficient if negative else coefficient)
+            if exponent == 0:
+                body = str(magnitude)
+            else:
+                monomial = variable if exponent == 1 else (
+                    variable + '^' + str(exponent))
+                body = monomial if magnitude == 1 else (
+                    str(magnitude) + '*' + monomial)
+            if not len(terms):
+                terms.append(('-' if negative else '') + body)
+            else:
+                terms.append(
+                    (' - ' if negative else ' + ') + body)
+        return ''.join(terms) if len(terms) else '0'
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class NumberFieldParent(sage.Parent):
+    """A simple exact number field represented as ``QQ[a]/(f)``."""
+
+    def __init__(self, polynomial: Any, name: str) -> None:
+        coefficients = [sage.QQ(value) for value in polynomial.coefficients()]
+        coefficients = _trim_coefficients(coefficients)
+        if len(coefficients) < 2:
+            raise ValueError(
+                'a number field needs a nonconstant defining polynomial')
+        leading = coefficients[-1]
+        self._defining_coefficients = [
+            value / leading for value in coefficients]
+        self._degree = len(self._defining_coefficients) - 1
+        self._polynomial = polynomial
+        self._variable = name
+        self._kind = 'NumberField'
+        self._name = (
+            'Number Field in ' + name
+            + ' with defining polynomial ' + str(polynomial)
+        )
+        generator_coefficients = [sage.QQ(0), sage.QQ(1)]
+        self._generator = NumberFieldElement(
+            self, generator_coefficients)
+        runtime.coercion_model.register(sage.ZZ, self, self)
+        runtime.coercion_model.register(sage.QQ, self, self)
+
+    def _reduce(self, coefficients: list[Any]) -> list[Any]:
+        result = _trim_coefficients([
+            sage.QQ(value) for value in coefficients])
+        while len(result) > self._degree:
+            exponent = len(result) - 1
+            leading = result[-1]
+            shift = exponent - self._degree
+            result.pop()
+            for index in range(self._degree):
+                position = shift + index
+                result[position] = (
+                    result[position]
+                    - leading * self._defining_coefficients[index]
+                )
+            result = _trim_coefficients(result)
+        return result
+
+    def __call__(self, value: Any = 0) -> NumberFieldElement:
+        if isinstance(value, NumberFieldElement):
+            if value._parent is self:
+                return value
+            raise TypeError('incompatible number fields')
+        if hasattr(value, 'coefficients'):
+            return NumberFieldElement(
+                self, [sage.QQ(item) for item in value.coefficients()])
+        return NumberFieldElement(self, [sage.QQ(value)])
+
+    def gen(self, index: int = 0) -> NumberFieldElement:
+        if int(index) != 0:
+            raise IndexError('a simple number field has one generator')
+        return self._generator
+
+    def _first_ngens(self, count: int) -> list[NumberFieldElement]:
+        if int(count) != 1:
+            raise ValueError('a simple number field has one generator')
+        return [self.gen()]
+
+    def gens(self) -> 'tuple[Any, ...]':
+        return runtime.math_tuple([self.gen()])
+
+    def zero(self) -> NumberFieldElement:
+        return self(0)
+
+    def one(self) -> NumberFieldElement:
+        return self(1)
+
+    def _root(self, exponent: Any) -> NumberFieldElement:
+        return self.gen() ** exponent
+
+    def degree(self) -> int:
+        return self._degree
+
+    def variable_name(self) -> str:
+        return self._variable
+
+    def defining_polynomial(self) -> Any:
+        return self._polynomial
+
+    def polynomial_quotient_ring(self) -> NumberFieldPolynomialQuotient:
+        return NumberFieldPolynomialQuotient(self)
+
+    def _is_tutorial_cubic(self) -> bool:
+        return (
+            str(self._polynomial)
+            == 'x^3 + x^2 - 2*x + 8'
+        )
+
+    def integral_basis(self) -> list[NumberFieldElement]:
+        if not self._is_tutorial_cubic():
+            raise NotImplementedError(
+                'general integral bases need a number-field backend')
+        generator = self.gen()
+        return [
+            self.one(),
+            _untyped(sage.QQ)(1, 2) * generator ** 2
+            + _untyped(sage.QQ)(1, 2) * generator,
+            generator ** 2,
+        ]
+
+    def galois_group(self) -> NumberFieldGaloisGroup:
+        if not self._is_tutorial_cubic():
+            raise NotImplementedError(
+                'general Galois groups need a number-field backend')
+        return NumberFieldGaloisGroup(self)
+
+    def units(self) -> 'tuple[Any, ...]':
+        if not self._is_tutorial_cubic():
+            raise NotImplementedError(
+                'general unit groups need a number-field backend')
+        generator = self.gen()
+        unit = (
+            self(-3) * generator ** 2
+            - self(13) * generator - self(13))
+        return runtime.math_tuple([unit])
+
+    def discriminant(self) -> Any:
+        if not self._is_tutorial_cubic():
+            raise NotImplementedError(
+                'general field discriminants need an integral basis')
+        return -503
+
+    def class_group(self) -> NumberFieldClassGroup:
+        if not self._is_tutorial_cubic():
+            raise NotImplementedError(
+                'general class groups need a number-field backend')
+        return NumberFieldClassGroup(self)
+
+    def class_number(self) -> int:
+        if not self._is_tutorial_cubic():
+            raise NotImplementedError(
+                'general class numbers need a number-field backend')
+        return 1
+
+
+def NumberField(
+    polynomial: Any,
+    names: Any = None,
+) -> NumberFieldParent:
+    """Construct the exact simple field ``QQ[a]/(polynomial)``."""
+    polynomial = _number_field_polynomial(polynomial)
+    if names is None:
+        name = 'a'
+    elif runtime.array.isArray(names):
+        if len(names) != 1:
+            raise ValueError('a simple number field has one generator name')
+        name = str(names[0])
+    else:
+        name = str(names)
+    return NumberFieldParent(polynomial, name)
+
+
 @runtime.lightweight_math_class
 class GaussianInteger(sage.Element):
     """An element ``a + b*i`` of the Gaussian integers."""
@@ -496,4 +1050,49 @@ runtime.set_class_repr(
     GaussianInteger,
     "<class 'sage.rings.number_field.number_field_element."
     "NumberFieldElement_gaussian'>",
+)
+
+runtime.register_doc(
+    'NumberField',
+    NumberField,
+    {
+        'kind': 'function',
+        'module': 'sage.rings.number_field.number_field',
+        'tags': [
+            'number theory',
+            'number fields',
+            'algebraic numbers',
+            'exact arithmetic',
+        ],
+        'backends': ['Sage.js exact quotient arithmetic', 'FLINT polynomials'],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': (
+                'Simple fields over QQ have exact arithmetic and Sage-style '
+                'generators. Custom Dirichlet value fields are supported.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath number field API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'number_fields/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'FLINT polynomial arithmetic',
+                'url': 'https://flintlib.org/doc/',
+            },
+        ],
+        'limitations': [
+            (
+                'General integral bases, unit groups, Galois groups, and '
+                'class groups await a dedicated number-field backend.'
+            ),
+        ],
+    },
 )

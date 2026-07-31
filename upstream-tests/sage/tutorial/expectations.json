@@ -99,19 +99,9 @@
       "lines": [62, 71]
     },
     {
-      "reason": "requires general number fields and custom Dirichlet character value groups",
-      "file": "src/doc/en/tutorial/tour_advanced.rst",
-      "lines": [338, 340, 350, 356, 368, 369, 371, 373, 375, 377]
-    },
-    {
       "reason": "requires a deliberate modular-forms and modular-symbols implementation",
       "file": "src/doc/en/tutorial/tour_advanced.rst",
       "lines": [412, 413, 415, 416, 419, 423, 425, 427, 435, 438, 447, 448, 451, 454, 455, 458, 467, 470, 472, 476, 478, 504, 507, 509, 511, 522, 526, 530]
-    },
-    {
-      "reason": "requires general number fields beyond the current quadratic-field slice",
-      "file": "src/doc/en/tutorial/tour_numtheory.rst",
-      "lines": [141, 142, 149, 156, 159, 161, 163, 166]
     },
     {
       "reason": "requires primary decomposition and associated-prime algorithms",

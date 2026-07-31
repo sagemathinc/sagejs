@@ -203,6 +203,27 @@ for (const [kind, modulus, expected] of [
     ),
     true,
   );
+  if (kind === "zz" || kind === "qq") {
+    assert.throws(
+      () => flint.mpolyUnivariateCoefficients(polynomial, 0),
+      /another generator/,
+    );
+    const univariate = flint.mpolyAdd(
+      flint.mpolyPow(x, 2),
+      flint.mpolyConstant(context, 2n, 1n),
+    );
+    const coefficients = flint.mpolyUnivariateCoefficients(univariate, 0);
+    assert.deepEqual(
+      coefficients,
+      kind === "zz"
+        ? [2n, 0n, 1n]
+        : [
+            { numerator: 2n, denominator: 1n },
+            { numerator: 0n, denominator: 1n },
+            { numerator: 1n, denominator: 1n },
+          ],
+    );
+  }
   const reorderedContext = flint.mpolyContext(
     kind,
     3,

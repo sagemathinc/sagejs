@@ -208,8 +208,9 @@ sage: eps(3) * eps(7) == eps(21)
 True
 ```
 
-Custom value fields through `base_ring` or `zeta` are not yet
-implemented.
+A custom exact value field may be supplied, optionally together with a
+root of unity whose order is divisible by the exponent of the character
+group.
 
 ### Metadata
 
@@ -217,9 +218,9 @@ implemented.
 - Module: `sage.modular.dirichlet`
 - Tags: number theory, Dirichlet characters, finite abelian groups, modular forms
 - Backends: FLINT, Sage.js native helpers
-- Sage compatibility: partial — Standard groups, generators, evaluation, parity, conductors, Galois orbits, and decomposition are compatible; custom value fields are not yet accepted.
+- Sage compatibility: partial — Standard groups, generators, evaluation, parity, conductors, Galois orbits, decomposition, and exact custom value fields with a supplied root of unity are supported.
 - Algorithm: FLINT unit-group decomposition and character evaluation with Sage.js exact cyclotomic values
-- Limitations: Custom base_ring and zeta arguments are not implemented.
+- Limitations: Analytic sums currently return values in QQbar rather than coercing them back into a custom value field.
 
 ### Provenance
 
@@ -734,6 +735,28 @@ Return the smallest prime strictly greater than `value` using FLINT.
 ### References
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `NumberField`
+
+```sage
+NumberField(polynomial, names=None)
+```
+
+Construct the exact simple field `QQ[a]/(polynomial)`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.rings.number_field.number_field`
+- Tags: number theory, number fields, algebraic numbers, exact arithmetic
+- Backends: Sage.js exact quotient arithmetic, FLINT polynomials
+- Sage compatibility: partial — Simple fields over QQ have exact arithmetic and Sage-style generators. Custom Dirichlet value fields are supported.
+- Limitations: General integral bases, unit groups, Galois groups, and class groups await a dedicated number-field backend.
+
+### Provenance
+
+- `sage-derived` — [SageMath number field API](https://doc.sagemath.org/html/en/reference/number_fields/); license GPL-2.0-or-later
+- `library-backed` — [FLINT polynomial arithmetic](https://flintlib.org/doc/)
 
 ## `PermutationGroup`
 

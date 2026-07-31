@@ -10,9 +10,11 @@
 #include <flint/fq_nmod_mpoly.h>
 #include <flint/fq_nmod_mpoly_factor.h>
 #include <flint/fmpq.h>
+#include <flint/fmpq_poly.h>
 #include <flint/fmpq_mpoly.h>
 #include <flint/fmpq_mpoly_factor.h>
 #include <flint/fmpz.h>
+#include <flint/fmpz_poly.h>
 #include <flint/fmpz_mpoly.h>
 #include <flint/fmpz_mpoly_factor.h>
 #include <flint/nmod_mpoly.h>
@@ -185,6 +187,44 @@ static int bigint_to_fmpz(napi_env env, napi_value value, fmpz_t result)
     if (sign)
         fmpz_neg(result, result);
     return 1;
+}
+
+static napi_value fmpz_to_bigint(napi_env env, const fmpz_t value)
+{
+    napi_value result;
+    fmpz_t magnitude;
+    flint_bitcnt_t bits;
+    size_t count;
+    uint64_t *words;
+    int sign = fmpz_sgn(value) < 0;
+
+    if (fmpz_is_zero(value))
+    {
+        if (!check_napi(env, napi_create_bigint_uint64(env, 0, &result)))
+            return NULL;
+        return result;
+    }
+    fmpz_init(magnitude);
+    fmpz_abs(magnitude, value);
+    bits = fmpz_bits(magnitude);
+    count = (size_t) ((bits + 63) / 64);
+    words = malloc(count * sizeof(uint64_t));
+    if (words == NULL)
+    {
+        fmpz_clear(magnitude);
+        napi_throw_error(env, NULL, "unable to allocate FLINT limbs");
+        return NULL;
+    }
+    fmpz_get_ui_array((ulong *) words, (slong) count, magnitude);
+    fmpz_clear(magnitude);
+    if (!check_napi(env,
+        napi_create_bigint_words(env, sign, count, words, &result)))
+    {
+        free(words);
+        return NULL;
+    }
+    free(words);
+    return result;
 }
 
 static ordering_t parse_order(napi_env env, napi_value value)
@@ -1196,6 +1236,109 @@ napi_value sagejs_mpoly_to_string(napi_env env, napi_callback_info info)
         return NULL;
     }
     flint_free(text);
+    return result;
+}
+
+napi_value sagejs_mpoly_univariate_coefficients(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2], result, coefficient, numerator, denominator;
+    sagejs_mpoly_value *value;
+    slong variable, index, length;
+    fmpz_poly_t integer_poly;
+    fmpq_poly_t rational_poly;
+    fmpz_t integer;
+    fmpq_t rational;
+    int success;
+
+    if (!require_arguments(env, info, 2, args) ||
+        (value = unwrap_value(env, args[0])) == NULL ||
+        !value_to_slong(env, args[1], 0, value->context->nvars - 1,
+            "generator index is out of range", &variable))
+        return NULL;
+    if (value->context->kind != SAGEJS_MPOLY_ZZ &&
+        value->context->kind != SAGEJS_MPOLY_QQ)
+    {
+        napi_throw_type_error(env, NULL,
+            "univariate extraction requires coefficients in ZZ or QQ");
+        return NULL;
+    }
+
+    fmpz_poly_init(integer_poly);
+    fmpq_poly_init(rational_poly);
+    if (value->context->kind == SAGEJS_MPOLY_ZZ)
+    {
+        success = fmpz_mpoly_is_fmpz_poly(
+            value->value.zz, variable, value->context->value.zz);
+        if (success)
+            success = fmpz_mpoly_get_fmpz_poly(
+                integer_poly, value->value.zz, variable,
+                value->context->value.zz);
+        length = fmpz_poly_length(integer_poly);
+    }
+    else
+    {
+        success = fmpq_mpoly_is_fmpq_poly(
+            value->value.qq, variable, value->context->value.qq);
+        if (success)
+            success = fmpq_mpoly_get_fmpq_poly(
+                rational_poly, value->value.qq, variable,
+                value->context->value.qq);
+        length = fmpq_poly_length(rational_poly);
+    }
+    if (!success)
+    {
+        fmpz_poly_clear(integer_poly);
+        fmpq_poly_clear(rational_poly);
+        napi_throw_type_error(env, NULL,
+            "multivariate polynomial involves another generator");
+        return NULL;
+    }
+    if (!check_napi(env,
+        napi_create_array_with_length(env, (size_t) length, &result)))
+    {
+        fmpz_poly_clear(integer_poly);
+        fmpq_poly_clear(rational_poly);
+        return NULL;
+    }
+
+    fmpz_init(integer);
+    fmpq_init(rational);
+    for (index = 0; index < length; index++)
+    {
+        if (value->context->kind == SAGEJS_MPOLY_ZZ)
+        {
+            fmpz_poly_get_coeff_fmpz(integer, integer_poly, index);
+            coefficient = fmpz_to_bigint(env, integer);
+        }
+        else
+        {
+            fmpq_poly_get_coeff_fmpq(rational, rational_poly, index);
+            numerator = fmpz_to_bigint(env, fmpq_numref(rational));
+            denominator = fmpz_to_bigint(env, fmpq_denref(rational));
+            if (numerator == NULL || denominator == NULL ||
+                !check_napi(env, napi_create_object(env, &coefficient)) ||
+                !check_napi(env, napi_set_named_property(
+                    env, coefficient, "numerator", numerator)) ||
+                !check_napi(env, napi_set_named_property(
+                    env, coefficient, "denominator", denominator)))
+                coefficient = NULL;
+        }
+        if (coefficient == NULL ||
+            !check_napi(env, napi_set_element(
+                env, result, (uint32_t) index, coefficient)))
+        {
+            fmpz_clear(integer);
+            fmpq_clear(rational);
+            fmpz_poly_clear(integer_poly);
+            fmpq_poly_clear(rational_poly);
+            return NULL;
+        }
+    }
+    fmpz_clear(integer);
+    fmpq_clear(rational);
+    fmpz_poly_clear(integer_poly);
+    fmpq_poly_clear(rational_poly);
     return result;
 }
 
