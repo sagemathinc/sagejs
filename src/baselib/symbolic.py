@@ -232,6 +232,22 @@ def _expression_tree(value: Any) -> Any:
     )
 
 
+def _exact_scalar_from_tree(value: Any) -> Any:
+    if runtime.is_exact_integer(value):
+        return runtime.normalize_integer(value)
+    if runtime.jstype(value) == 'number':
+        return value
+    if (
+        runtime.array.isArray(value)
+        and len(value) == 3
+        and value[0] == 'Rational'
+    ):
+        return runtime.rational_class(value[1], value[2])
+    raise NotImplementedError(
+        'arbitrary-precision special functions currently '
+        'require exact scalar arguments')
+
+
 @runtime.callable_instance_class
 class SymbolicRing(sage.Parent):
     """The parent of all Sage.js symbolic expressions."""
@@ -580,6 +596,38 @@ class Expression(sage.Element):
                     )
                 ),
             )
+        if (
+            runtime.array.isArray(self._tree)
+            and len(self._tree) == 3
+            and self._tree[0] == 'BesselI'
+        ):
+            if digits is not None:
+                bit_precision = max(
+                    53,
+                    int(
+                        runtime.math.ceil(
+                            int(digits) / 0.3010299956639812
+                        )
+                    ) + 8,
+                )
+            elif prec is None:
+                bit_precision = 53
+            else:
+                bit_precision = max(2, int(prec))
+            field = runtime.reflect.get(
+                runtime.global_object, 'ComplexField')(
+                    bit_precision)
+            order = field(_exact_scalar_from_tree(
+                self._tree[1]))
+            argument = field(_exact_scalar_from_tree(
+                self._tree[2]))
+            value = field._fromNative(
+                runtime.flint_backend().complexBesselI(
+                    order._native, argument._native))
+            imaginary = value.imag()
+            if imaginary == 0:
+                return value.real()
+            return value
         result = _call_backend(
             "numeric", [self._tree, decimal_digits])
         return NumericalApproximation(

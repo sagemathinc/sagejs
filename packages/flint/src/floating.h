@@ -34,6 +34,7 @@ napi_value sagejs_complex_imag(napi_env env, napi_callback_info info);
 napi_value sagejs_complex_real_double(napi_env env, napi_callback_info info);
 napi_value sagejs_complex_imag_double(napi_env env, napi_callback_info info);
 napi_value sagejs_complex_ei(napi_env env, napi_callback_info info);
+napi_value sagejs_complex_bessel_i(napi_env env, napi_callback_info info);
 napi_value sagejs_zeta_zeros(napi_env env, napi_callback_info info);
 
 #endif

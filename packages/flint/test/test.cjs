@@ -677,6 +677,17 @@ assert.equal(
   flint.complexToString(flint.complexEi(c53)),
   "1.04216770816494 + 3.70150142593787*I",
 );
+{
+  const one = flint.realFromBigInt(1n, 250);
+  const exactOne = flint.complexFromReals(
+    one,
+    flint.realFromBigInt(0n, 250),
+  );
+  assert.equal(
+    flint.complexToString(flint.complexBesselI(exactOne, exactOne)),
+    "0.56515910399248502720769602760986330732889962162109200948029448947925564096",
+  );
+}
 assert.deepEqual(
   flint.zetaZeros(3, 53).map((value) => value.toFixed(12)),
   ["14.134725141735", "21.022039638772", "25.010857580146"],

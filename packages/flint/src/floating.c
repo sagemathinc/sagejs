@@ -827,6 +827,68 @@ napi_value sagejs_complex_ei(napi_env env, napi_callback_info info)
     return wrap_complex(env, result);
 }
 
+napi_value sagejs_complex_bessel_i(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    sagejs_complex *order;
+    sagejs_complex *argument;
+    sagejs_complex *result;
+    mpfr_prec_t precision;
+    acb_t acb_order;
+    acb_t acb_argument;
+    acb_t output;
+
+    if (!require_arguments(env, info, 2, args) ||
+        (order = unwrap_complex(env, args[0])) == NULL ||
+        (argument = unwrap_complex(env, args[1])) == NULL)
+        return NULL;
+    precision = mpc_get_prec(argument->value);
+    if (mpc_get_prec(order->value) > precision)
+        precision = mpc_get_prec(order->value);
+    result = new_complex(env, precision);
+    if (result == NULL)
+        return NULL;
+
+    acb_init(acb_order);
+    acb_init(acb_argument);
+    acb_init(output);
+    arb_set_interval_mpfr(
+        acb_realref(acb_order),
+        mpc_realref(order->value),
+        mpc_realref(order->value),
+        precision);
+    arb_set_interval_mpfr(
+        acb_imagref(acb_order),
+        mpc_imagref(order->value),
+        mpc_imagref(order->value),
+        precision);
+    arb_set_interval_mpfr(
+        acb_realref(acb_argument),
+        mpc_realref(argument->value),
+        mpc_realref(argument->value),
+        precision);
+    arb_set_interval_mpfr(
+        acb_imagref(acb_argument),
+        mpc_imagref(argument->value),
+        mpc_imagref(argument->value),
+        precision);
+    acb_hypgeom_bessel_i(
+        output, acb_order, acb_argument, precision);
+    arf_get_mpfr(
+        mpc_realref(result->value),
+        arb_midref(acb_realref(output)),
+        MPFR_RNDN);
+    arf_get_mpfr(
+        mpc_imagref(result->value),
+        arb_midref(acb_imagref(output)),
+        MPFR_RNDN);
+    acb_clear(output);
+    acb_clear(acb_argument);
+    acb_clear(acb_order);
+    return wrap_complex(env, result);
+}
+
 napi_value sagejs_zeta_zeros(napi_env env, napi_callback_info info)
 {
     napi_value args[2];

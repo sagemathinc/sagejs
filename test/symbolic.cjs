@@ -105,6 +105,10 @@ async function main() {
       (await session.evaluate("float(pi)")).repr,
       "3.141592653589793",
     );
+    assert.equal(
+      (await session.evaluate("bessel_I(1,1).n(250)")).repr,
+      "0.56515910399248502720769602760986330732889962162109200948029448947925564096",
+    );
 
     const plotted = await session.evaluate(
       [

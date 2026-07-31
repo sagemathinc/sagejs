@@ -2675,6 +2675,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             NULL, NULL, NULL, napi_default, NULL},
         {"complexEi", NULL, sagejs_complex_ei, NULL, NULL, NULL,
             napi_default, NULL},
+        {"complexBesselI", NULL, sagejs_complex_bessel_i,
+            NULL, NULL, NULL, napi_default, NULL},
         {"zetaZeros", NULL, sagejs_zeta_zeros, NULL, NULL, NULL,
             napi_default, NULL},
         {"nativeAbiVersion", NULL, native_abi_version, NULL, NULL, NULL,

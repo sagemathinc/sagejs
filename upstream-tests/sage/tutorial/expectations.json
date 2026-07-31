@@ -81,11 +81,6 @@
       "lines": [362, 363, 364, 384, 394]
     },
     {
-      "reason": "requires arbitrary-precision special-function evaluation rather than machine-precision Cortex evaluation",
-      "file": "src/doc/en/tutorial/tour_algebra.rst",
-      "lines": [412]
-    },
-    {
       "reason": "requires the external Maxima interface and its expression conversion model",
       "file": "src/doc/en/tutorial/tour_algebra.rst",
       "lines": [425, 427]
