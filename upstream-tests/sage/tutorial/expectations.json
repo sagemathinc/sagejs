@@ -33,6 +33,28 @@
     "src/doc/en/tutorial/tour_assignment.rst:57": {
       "accepted": ["sqrt(3)/2\n"]
     },
+    "src/doc/en/tutorial/tour_assignment.rst:91": {
+      "accepted": ["<class 'int'>\n"]
+    },
+    "src/doc/en/tutorial/tour_assignment.rst:94": {
+      "accepted": ["<class 'Rational'>\n"]
+    },
+    "src/doc/en/tutorial/tour_coercion.rst:57": {
+      "accepted": [
+        "<class 'PolynomialElement'>\n<class 'PolynomialElement'>\n<class 'PolynomialElement'>\n"
+      ]
+    },
+    "src/doc/en/tutorial/tour_coercion.rst:79": {
+      "accepted": [
+        "Univariate Polynomial Ring in a over Integer Ring\nSparse Univariate Polynomial Ring in b over Integer Ring\nUnivariate Polynomial Ring in c over Integer Ring\n"
+      ]
+    },
+    "src/doc/en/tutorial/tour_coercion.rst:172": {
+      "accepted": ["True\n"]
+    },
+    "src/doc/en/tutorial/tour_coercion.rst:174": {
+      "accepted": ["True\n"]
+    },
     "src/doc/en/tutorial/tour_coercion.rst:402": {
       "accepted": [
         "TypeError: no canonical coercion between polynomial rings in x and y\n"
@@ -46,6 +68,9 @@
     },
     "src/doc/en/tutorial/tour_linalg.rst:235": {
       "accepted": ["TypeError: unexpected keyword argument 'Sparse'\n"]
+    },
+    "src/doc/en/tutorial/tour_functions.rst:89": {
+      "accepted": ["<class 'function'>\n"]
     }
   },
   "xfail": {},
@@ -69,26 +94,6 @@
       "reason": "requires a deliberate modular-forms and modular-symbols implementation",
       "file": "src/doc/en/tutorial/tour_advanced.rst",
       "lines": [412, 413, 415, 416, 419, 423, 425, 427, 435, 438, 447, 448, 451, 454, 455, 458, 467, 470, 472, 476, 478, 504, 507, 509, 511, 522, 526, 530]
-    },
-    {
-      "reason": "Sage.js deliberately uses optimized JavaScript integer identity and compact runtime class names",
-      "file": "src/doc/en/tutorial/tour_assignment.rst",
-      "lines": [91, 94]
-    },
-    {
-      "reason": "Sage concrete polynomial element classes and selectable NTL implementation identities are not part of the portable FLINT object model",
-      "file": "src/doc/en/tutorial/tour_coercion.rst",
-      "lines": [57, 79]
-    },
-    {
-      "reason": "Sage.js intentionally interns optimized small JavaScript integers instead of allocating Sage Integer wrappers",
-      "file": "src/doc/en/tutorial/tour_coercion.rst",
-      "lines": [172, 174]
-    },
-    {
-      "reason": "symbolic functions are native compiled callables rather than Sage's Function_sin wrapper class",
-      "file": "src/doc/en/tutorial/tour_functions.rst",
-      "lines": [89]
     },
     {
       "reason": "requires permutation and matrix-group subsystems",
