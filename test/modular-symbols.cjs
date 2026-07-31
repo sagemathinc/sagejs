@@ -287,13 +287,14 @@ test("boundary maps, cuspidal spaces, star eigenspaces, and elements", async () 
               "ModularSymbols(N).cuspidal_submodule().dimension(), " +
               "ModularSymbols(N).plus_submodule().dimension(), " +
               "ModularSymbols(N).minus_submodule().dimension()) " +
-              "for N in [11,37,100,389]]",
+              "for N in [11,37,100,389,5077]]",
             "",
           ].join("\n"),
         )
       ).repr,
       "[(11, 2, 1, 2, 2, 1), (37, 2, 1, 4, 3, 2), " +
-        "(100, 18, 17, 14, 18, 13), (389, 2, 1, 64, 33, 32)]",
+        "(100, 18, 17, 14, 18, 13), (389, 2, 1, 64, 33, 32), " +
+        "(5077, 2, 1, 844, 423, 422)]",
     );
     assert.equal(
       (
@@ -311,6 +312,18 @@ test("boundary maps, cuspidal spaces, star eigenspaces, and elements", async () 
         )
       ).repr,
       "[18, 13, True, True, True, True]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "S = ModularSymbols(5077, 2, sign=1).cuspidal_subspace()",
+            "T = S.hecke_matrix(2)",
+            "[S.dimension(), T.nrows(), T.ncols(), T.trace()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[422, 422, 422, -2]",
     );
   } finally {
     await session.close();

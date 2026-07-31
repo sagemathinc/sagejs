@@ -483,6 +483,20 @@ napi_value sagejs_zz_matrix_from_slong_entries(
     return wrap_matrix(env, matrix);
 }
 
+napi_value sagejs_qq_matrix_from_fmpq_mat(
+    napi_env env,
+    const fmpq_mat_t entries)
+{
+    sagejs_matrix *matrix = new_matrix(
+        env, SAGEJS_MATRIX_QQ,
+        fmpq_mat_nrows(entries), fmpq_mat_ncols(entries));
+
+    if (matrix == NULL)
+        return NULL;
+    fmpq_mat_set(matrix->rational, entries);
+    return wrap_matrix(env, matrix);
+}
+
 static sagejs_matrix *unwrap_matrix(napi_env env, napi_value object)
 {
     sagejs_matrix *matrix = NULL;
@@ -1076,6 +1090,253 @@ napi_value sagejs_matrix_sub(napi_env env, napi_callback_info info)
 napi_value sagejs_matrix_mul(napi_env env, napi_callback_info info)
 {
     return matrix_binary(env, info, MATRIX_MUL);
+}
+
+napi_value sagejs_matrix_sparse_left_mul(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    sagejs_matrix *left, *right, *answer;
+    slong rows, inner, cols;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    left = unwrap_matrix(env, args[0]);
+    right = unwrap_matrix(env, args[1]);
+    if (left == NULL || right == NULL)
+        return NULL;
+    if (left->kind != right->kind ||
+        (left->kind != SAGEJS_MATRIX_ZZ &&
+         left->kind != SAGEJS_MATRIX_QQ))
+    {
+        napi_throw_type_error(env, NULL,
+            "sparse-left multiplication requires a common exact base ring");
+        return NULL;
+    }
+    if (matrix_ncols(left) != matrix_nrows(right))
+    {
+        napi_throw_range_error(env, NULL,
+            "matrix dimensions are incompatible for multiplication");
+        return NULL;
+    }
+    rows = matrix_nrows(left);
+    inner = matrix_ncols(left);
+    cols = matrix_ncols(right);
+    answer = new_matrix_like(env, left, rows, cols);
+    if (answer == NULL)
+        return NULL;
+    if (left->kind == SAGEJS_MATRIX_ZZ)
+    {
+        for (slong row = 0; row < rows; row++)
+            for (slong index = 0; index < inner; index++)
+            {
+                const fmpz *coefficient =
+                    fmpz_mat_entry(left->integer, row, index);
+                if (fmpz_is_zero(coefficient))
+                    continue;
+                for (slong col = 0; col < cols; col++)
+                    fmpz_addmul(
+                        fmpz_mat_entry(answer->integer, row, col),
+                        coefficient,
+                        fmpz_mat_entry(right->integer, index, col));
+            }
+    }
+    else
+    {
+        fmpq_t product;
+        fmpq_init(product);
+        for (slong row = 0; row < rows; row++)
+            for (slong index = 0; index < inner; index++)
+            {
+                const fmpq *coefficient =
+                    fmpq_mat_entry(left->rational, row, index);
+                if (fmpq_is_zero(coefficient))
+                    continue;
+                for (slong col = 0; col < cols; col++)
+                {
+                    fmpq_mul(
+                        product,
+                        coefficient,
+                        fmpq_mat_entry(right->rational, index, col));
+                    fmpq_add(
+                        fmpq_mat_entry(answer->rational, row, col),
+                        fmpq_mat_entry(answer->rational, row, col),
+                        product);
+                }
+            }
+        fmpq_clear(product);
+    }
+    return wrap_matrix(env, answer);
+}
+
+static int matrix_indices(
+    napi_env env,
+    napi_value value,
+    slong limit,
+    slong **indices,
+    slong *count)
+{
+    bool is_array;
+    uint32_t length;
+    slong *result;
+
+    if (!check_napi(env, napi_is_array(env, value, &is_array)))
+        return 0;
+    if (!is_array)
+    {
+        napi_throw_type_error(env, NULL, "matrix indices must be an array");
+        return 0;
+    }
+    if (!check_napi(env, napi_get_array_length(env, value, &length)))
+        return 0;
+    result = malloc((length == 0 ? 1 : length) * sizeof(*result));
+    if (result == NULL)
+    {
+        napi_throw_error(env, NULL, "unable to allocate matrix indices");
+        return 0;
+    }
+    for (uint32_t index = 0; index < length; index++)
+    {
+        napi_value item;
+        if (!check_napi(env, napi_get_element(env, value, index, &item)) ||
+            !value_to_index(env, item, limit, &result[index]))
+        {
+            free(result);
+            return 0;
+        }
+    }
+    *indices = result;
+    *count = (slong) length;
+    return 1;
+}
+
+static void matrix_copy_entry(
+    sagejs_matrix *target,
+    slong target_row,
+    slong target_col,
+    const sagejs_matrix *source,
+    slong source_row,
+    slong source_col)
+{
+    if (source->kind == SAGEJS_MATRIX_ZZ)
+        fmpz_set(
+            fmpz_mat_entry(target->integer, target_row, target_col),
+            fmpz_mat_entry(source->integer, source_row, source_col));
+    else if (source->kind == SAGEJS_MATRIX_QQ)
+        fmpq_set(
+            fmpq_mat_entry(target->rational, target_row, target_col),
+            fmpq_mat_entry(source->rational, source_row, source_col));
+    else if (source->kind == SAGEJS_MATRIX_ACB)
+        acb_set(
+            acb_mat_entry(target->approximate, target_row, target_col),
+            acb_mat_entry(source->approximate, source_row, source_col));
+    else if (source->kind == SAGEJS_MATRIX_QQBAR)
+        qqbar_set(
+            (qqbar_ptr) gr_mat_entry_ptr(
+                target->algebraic, target_row, target_col,
+                target->algebraic_context),
+            (qqbar_srcptr) gr_mat_entry_ptr(
+                (gr_mat_struct *) source->algebraic,
+                source_row, source_col,
+                (gr_ctx_struct *) source->algebraic_context));
+    else
+        nmod_mat_entry(target->modular, target_row, target_col) =
+            nmod_mat_entry(source->modular, source_row, source_col);
+}
+
+static napi_value matrix_select(
+    napi_env env,
+    napi_callback_info info,
+    int select_rows)
+{
+    napi_value args[2];
+    sagejs_matrix *source, *answer;
+    slong *indices = NULL, count;
+    slong rows, cols;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL || !matrix_indices(
+            env, args[1],
+            select_rows ? matrix_nrows(source) : matrix_ncols(source),
+            &indices, &count))
+        return NULL;
+    rows = select_rows ? count : matrix_nrows(source);
+    cols = select_rows ? matrix_ncols(source) : count;
+    answer = new_matrix_like(env, source, rows, cols);
+    if (answer == NULL)
+    {
+        free(indices);
+        return NULL;
+    }
+    for (slong row = 0; row < rows; row++)
+        for (slong col = 0; col < cols; col++)
+            matrix_copy_entry(
+                answer, row, col, source,
+                select_rows ? indices[row] : row,
+                select_rows ? col : indices[col]);
+    free(indices);
+    return wrap_matrix(env, answer);
+}
+
+napi_value sagejs_matrix_select_rows(
+    napi_env env, napi_callback_info info)
+{
+    return matrix_select(env, info, 1);
+}
+
+napi_value sagejs_matrix_select_columns(
+    napi_env env, napi_callback_info info)
+{
+    return matrix_select(env, info, 0);
+}
+
+static int matrix_entry_is_zero(
+    const sagejs_matrix *matrix, slong row, slong col)
+{
+    if (matrix->kind == SAGEJS_MATRIX_ZZ)
+        return fmpz_is_zero(fmpz_mat_entry(matrix->integer, row, col));
+    if (matrix->kind == SAGEJS_MATRIX_QQ)
+        return fmpq_is_zero(fmpq_mat_entry(matrix->rational, row, col));
+    if (matrix->kind == SAGEJS_MATRIX_ACB)
+        return acb_is_zero(acb_mat_entry(matrix->approximate, row, col));
+    if (matrix->kind == SAGEJS_MATRIX_QQBAR)
+        return qqbar_is_zero((qqbar_srcptr) gr_mat_entry_ptr(
+            (gr_mat_struct *) matrix->algebraic, row, col,
+            (gr_ctx_struct *) matrix->algebraic_context));
+    return nmod_mat_entry(matrix->modular, row, col) == 0;
+}
+
+napi_value sagejs_matrix_pivots(napi_env env, napi_callback_info info)
+{
+    napi_value args[1], result;
+    sagejs_matrix *matrix;
+    uint32_t count = 0;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    matrix = unwrap_matrix(env, args[0]);
+    if (matrix == NULL || !check_napi(env, napi_create_array(env, &result)))
+        return NULL;
+    for (slong row = 0; row < matrix_nrows(matrix); row++)
+        for (slong col = 0; col < matrix_ncols(matrix); col++)
+        {
+            napi_value index;
+            if (matrix_entry_is_zero(matrix, row, col))
+                continue;
+            if (matrix->kind != SAGEJS_MATRIX_ZMOD ||
+                nmod_mat_entry(matrix->modular, row, col) == 1)
+            {
+                if (col > INT32_MAX ||
+                    !check_napi(env, napi_create_int64(env, col, &index)) ||
+                    !check_napi(env, napi_set_element(
+                        env, result, count++, index)))
+                    return NULL;
+            }
+            break;
+        }
+    return result;
 }
 
 napi_value sagejs_matrix_neg(napi_env env, napi_callback_info info)

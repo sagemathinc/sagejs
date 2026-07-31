@@ -746,6 +746,251 @@ fail:
     return NULL;
 }
 
+static size_t forest_root(size_t *parents, size_t vertex)
+{
+    size_t root = vertex;
+
+    while (parents[root] != root)
+        root = parents[root];
+    while (parents[vertex] != vertex)
+    {
+        size_t next = parents[vertex];
+        parents[vertex] = root;
+        vertex = next;
+    }
+    return root;
+}
+
+static int forest_join(
+    size_t *parents, unsigned char *ranks, size_t left, size_t right)
+{
+    left = forest_root(parents, left);
+    right = forest_root(parents, right);
+    if (left == right)
+        return 0;
+    if (ranks[left] < ranks[right])
+    {
+        size_t swap = left;
+        left = right;
+        right = swap;
+    }
+    parents[right] = left;
+    if (ranks[left] == ranks[right])
+        ranks[left]++;
+    return 1;
+}
+
+/*
+ * The boundary matrix is the incidence matrix of the graph whose oriented
+ * edges are the E1 paths and whose vertices are Gamma0 cusp classes. Choose
+ * a reverse-lexicographically maximal spanning forest. Every remaining edge
+ * then gives its fundamental cycle, and reverse greedy ordering ensures that
+ * these cycles form an RREF basis in the original E1 coordinate order.
+ */
+slong *sagejs_modsym_weight2_cuspidal_basis(
+    const sagejs_modsym_presentation_view *view,
+    size_t *rows,
+    size_t *columns)
+{
+    sagejs_modsym_cusp *representatives = NULL;
+    slong *boundary = NULL, *basis = NULL;
+    size_t dimension = 0, cusps = 0, tree_count = 0;
+    size_t *starts = NULL, *stops = NULL;
+    size_t *forest = NULL, *head = NULL, *next = NULL, *to = NULL;
+    size_t *tree_edge = NULL, *parent = NULL, *parent_edge = NULL;
+    size_t *depth = NULL, *stack = NULL;
+    unsigned char *ranks = NULL, *is_tree = NULL;
+    size_t adjacency = 0, basis_row = 0, cells;
+
+    if (rows == NULL || columns == NULL)
+        return NULL;
+    *rows = 0;
+    *columns = 0;
+    boundary = sagejs_modsym_weight2_boundary_matrix(
+        view, &dimension, &cusps, &representatives);
+    if (boundary == NULL)
+        goto fail;
+    *columns = dimension;
+    starts = malloc((dimension == 0 ? 1 : dimension) * sizeof(*starts));
+    stops = malloc((dimension == 0 ? 1 : dimension) * sizeof(*stops));
+    forest = malloc((cusps == 0 ? 1 : cusps) * sizeof(*forest));
+    ranks = calloc(cusps == 0 ? 1 : cusps, sizeof(*ranks));
+    is_tree = calloc(dimension == 0 ? 1 : dimension, sizeof(*is_tree));
+    if (starts == NULL || stops == NULL || forest == NULL ||
+        ranks == NULL || is_tree == NULL)
+        goto fail;
+    for (size_t vertex = 0; vertex < cusps; vertex++)
+        forest[vertex] = vertex;
+    for (size_t edge = 0; edge < dimension; edge++)
+    {
+        starts[edge] = SIZE_MAX;
+        stops[edge] = SIZE_MAX;
+        for (size_t vertex = 0; vertex < cusps; vertex++)
+        {
+            slong coefficient = boundary[edge * cusps + vertex];
+            if (coefficient > 0)
+                starts[edge] = vertex;
+            else if (coefficient < 0)
+                stops[edge] = vertex;
+        }
+        if (starts[edge] == SIZE_MAX && stops[edge] == SIZE_MAX)
+            starts[edge] = stops[edge] = 0;
+        else if (starts[edge] == SIZE_MAX || stops[edge] == SIZE_MAX)
+            goto fail;
+    }
+    for (size_t cursor = dimension; cursor > 0; cursor--)
+    {
+        size_t edge = cursor - 1;
+        if (starts[edge] != stops[edge] && forest_join(
+                forest, ranks, starts[edge], stops[edge]))
+        {
+            is_tree[edge] = 1;
+            tree_count++;
+        }
+    }
+    *rows = dimension - tree_count;
+    if (*rows != 0 && dimension > SIZE_MAX / *rows)
+        goto fail;
+    if (tree_count > SIZE_MAX / 2)
+        goto fail;
+    cells = *rows * dimension;
+    basis = calloc(cells == 0 ? 1 : cells, sizeof(*basis));
+    head = malloc((cusps == 0 ? 1 : cusps) * sizeof(*head));
+    parent = malloc((cusps == 0 ? 1 : cusps) * sizeof(*parent));
+    parent_edge = malloc(
+        (cusps == 0 ? 1 : cusps) * sizeof(*parent_edge));
+    depth = calloc(cusps == 0 ? 1 : cusps, sizeof(*depth));
+    stack = malloc((cusps == 0 ? 1 : cusps) * sizeof(*stack));
+    next = malloc((tree_count == 0 ? 1 : 2 * tree_count) * sizeof(*next));
+    to = malloc((tree_count == 0 ? 1 : 2 * tree_count) * sizeof(*to));
+    tree_edge = malloc(
+        (tree_count == 0 ? 1 : 2 * tree_count) * sizeof(*tree_edge));
+    if (basis == NULL || head == NULL || parent == NULL ||
+        parent_edge == NULL || depth == NULL || stack == NULL ||
+        next == NULL || to == NULL || tree_edge == NULL)
+        goto fail;
+    for (size_t vertex = 0; vertex < cusps; vertex++)
+    {
+        head[vertex] = SIZE_MAX;
+        parent[vertex] = SIZE_MAX;
+        parent_edge[vertex] = SIZE_MAX;
+    }
+    for (size_t edge = 0; edge < dimension; edge++)
+    {
+        size_t left, right;
+        if (!is_tree[edge])
+            continue;
+        left = starts[edge];
+        right = stops[edge];
+        to[adjacency] = right;
+        tree_edge[adjacency] = edge;
+        next[adjacency] = head[left];
+        head[left] = adjacency++;
+        to[adjacency] = left;
+        tree_edge[adjacency] = edge;
+        next[adjacency] = head[right];
+        head[right] = adjacency++;
+    }
+    for (size_t root = 0; root < cusps; root++)
+    {
+        size_t used = 0;
+        if (parent[root] != SIZE_MAX)
+            continue;
+        parent[root] = root;
+        stack[used++] = root;
+        while (used != 0)
+        {
+            size_t vertex = stack[--used];
+            for (size_t item = head[vertex]; item != SIZE_MAX;
+                 item = next[item])
+            {
+                size_t neighbor = to[item];
+                if (parent[neighbor] != SIZE_MAX)
+                    continue;
+                parent[neighbor] = vertex;
+                parent_edge[neighbor] = tree_edge[item];
+                depth[neighbor] = depth[vertex] + 1;
+                stack[used++] = neighbor;
+            }
+        }
+    }
+    for (size_t edge = 0; edge < dimension; edge++)
+    {
+        slong *row;
+        size_t left, right;
+        if (is_tree[edge])
+            continue;
+        if (basis_row >= *rows)
+            goto fail;
+        row = basis + basis_row * dimension;
+        row[edge] = 1;
+        left = stops[edge];
+        right = starts[edge];
+        while (depth[left] > depth[right])
+        {
+            size_t path_edge = parent_edge[left];
+            row[path_edge] += starts[path_edge] == left ? 1 : -1;
+            left = parent[left];
+        }
+        while (depth[right] > depth[left])
+        {
+            size_t path_edge = parent_edge[right];
+            row[path_edge] += starts[path_edge] == right ? -1 : 1;
+            right = parent[right];
+        }
+        while (left != right)
+        {
+            size_t left_edge = parent_edge[left];
+            size_t right_edge = parent_edge[right];
+            row[left_edge] += starts[left_edge] == left ? 1 : -1;
+            row[right_edge] += starts[right_edge] == right ? -1 : 1;
+            left = parent[left];
+            right = parent[right];
+        }
+        basis_row++;
+    }
+    if (basis_row != *rows)
+        goto fail;
+
+    free(boundary);
+    free(representatives);
+    free(starts);
+    free(stops);
+    free(forest);
+    free(ranks);
+    free(is_tree);
+    free(head);
+    free(next);
+    free(to);
+    free(tree_edge);
+    free(parent);
+    free(parent_edge);
+    free(depth);
+    free(stack);
+    return basis;
+
+fail:
+    free(boundary);
+    free(representatives);
+    free(basis);
+    free(starts);
+    free(stops);
+    free(forest);
+    free(ranks);
+    free(is_tree);
+    free(head);
+    free(next);
+    free(to);
+    free(tree_edge);
+    free(parent);
+    free(parent_edge);
+    free(depth);
+    free(stack);
+    *rows = 0;
+    *columns = 0;
+    return NULL;
+}
+
 slong *sagejs_modsym_weight2_star_matrix(
     const sagejs_modsym_presentation_view *view,
     size_t *dimension)

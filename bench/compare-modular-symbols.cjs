@@ -22,10 +22,34 @@ const expected = new Map([
   ["manin-modp-1000", 301],
   ["modsym-qq-389", 65],
   ["modsym-qq-1000", 301],
+  ["space-full-5077", 845],
+  ["space-cuspidal-5077", 844],
+  ["space-plus-5077", 423],
+  ["space-plus-cuspidal-5077", 422],
+  ["space-plus-cuspidal-t2-5077", -2],
   ["hecke-t3-389", 4],
   ["hecke-t3-1000", 20],
   ["hecke-t3-10000", 20],
   ["hecke-t3-20011", 0],
+]);
+const requiredOperations = new Map([
+  ["Sage.js", [...expected.keys()]],
+  ["SageMath", [...expected.keys()]],
+  [
+    "PARI/GP",
+    [...expected.keys()].filter(
+      (operation) =>
+        !operation.startsWith("p1-") &&
+        !operation.startsWith("manin-modp-"),
+    ),
+  ],
+  [
+    "Magma",
+    [...expected.keys()].filter(
+      (operation) =>
+        operation.startsWith("space-") || operation.startsWith("hecke-"),
+    ),
+  ],
 ]);
 
 function median(values) {
@@ -78,6 +102,7 @@ function execute(label, command, args, options = {}) {
 function executePari() {
   const program = [
     "default(parisizemax, 4G);",
+    "default(nbthreads, 1);",
     "msinit(11,2);",
     "for(i=1,2, N=[389,1000][i]; " +
       "for(sample=0,2, t=getwalltime(); M=msinit(N,2); " +
@@ -87,6 +112,21 @@ function executePari() {
       "for(sample=0,2, t=getwalltime(); T=mshecke(M,3); " +
       'print("RESULT hecke-t3-",N," ",sample," ",' +
       '(getwalltime()-t)/1000.0," ",trace(T))));',
+    "N=5077; t=getwalltime(); M=msinit(N,2); " +
+      'print("RESULT space-full-5077 0 ",' +
+      '(getwalltime()-t)/1000.0," ",msdim(M));',
+    "t=getwalltime(); S=mscuspidal(M); " +
+      'print("RESULT space-cuspidal-5077 0 ",' +
+      '(getwalltime()-t)/1000.0," ",msdim(S));',
+    "t=getwalltime(); P=msinit(N,2,1); " +
+      'print("RESULT space-plus-5077 0 ",' +
+      '(getwalltime()-t)/1000.0," ",msdim(P));',
+    "t=getwalltime(); C=mscuspidal(P); " +
+      'print("RESULT space-plus-cuspidal-5077 0 ",' +
+      '(getwalltime()-t)/1000.0," ",msdim(C));',
+    "t=getwalltime(); T=mshecke(P,2,C); " +
+      'print("RESULT space-plus-cuspidal-t2-5077 0 ",' +
+      '(getwalltime()-t)/1000.0," ",trace(T));',
     "quit;",
     "",
   ].join("\n");
@@ -105,6 +145,22 @@ function executeMagma() {
       "N, sample, Cputime(t), Trace(T);",
     "  end for;",
     "end for;",
+    "N := 5077;",
+    "t := Cputime(); M := ModularSymbols(N, 2);",
+    'printf "RESULT space-full-5077 0 %.9o %o\\n", ' +
+      "Cputime(t), Dimension(M);",
+    "t := Cputime(); S := CuspidalSubspace(M);",
+    'printf "RESULT space-cuspidal-5077 0 %.9o %o\\n", ' +
+      "Cputime(t), Dimension(S);",
+    "t := Cputime(); P := ModularSymbols(N, 2, 1);",
+    'printf "RESULT space-plus-5077 0 %.9o %o\\n", ' +
+      "Cputime(t), Dimension(P);",
+    "t := Cputime(); C := CuspidalSubspace(P);",
+    'printf "RESULT space-plus-cuspidal-5077 0 %.9o %o\\n", ' +
+      "Cputime(t), Dimension(C);",
+    "t := Cputime(); T := HeckeOperator(C, 2);",
+    'printf "RESULT space-plus-cuspidal-t2-5077 0 %.9o %o\\n", ' +
+      "Cputime(t), Trace(T);",
     "quit;",
     "",
   ].join("\n");
@@ -151,6 +207,10 @@ for (const runtime of runtimes) {
       correct: answersAgree,
     });
   }
+  runtime.result.missing = (requiredOperations.get(runtime.name) || []).filter(
+    (operation) => !runtime.result.cases.has(operation),
+  );
+  correct &&= runtime.result.missing.length === 0;
 }
 
 const report = {
@@ -161,6 +221,10 @@ const report = {
     "manin-modp-*":
       "weight-2 Gamma0 S/R relation quotient over GF(65521)",
     "modsym-qq-*": "full weight-2 Gamma0 modular-symbol space over Q",
+    "space-*-5077":
+      "full, cuspidal, plus, and plus-cuspidal construction phases",
+    "space-plus-cuspidal-t2-5077":
+      "T2 on the level-5077 plus-cuspidal subspace, answer is its trace",
     "hecke-t3-*":
       "exact weight-2 Gamma0 T3/Hecke matrix, answer is its trace",
   },
@@ -168,6 +232,7 @@ const report = {
     name,
     available: result.available,
     reason: result.reason,
+    missing: result.missing,
     skipped: result.skips ? Object.fromEntries(result.skips) : undefined,
   })),
   rows,
@@ -195,6 +260,10 @@ if (json) {
   for (const runtime of report.runtimes) {
     if (!runtime.available) {
       console.log(`${runtime.name}: unavailable — ${runtime.reason}`);
+    } else if (runtime.missing?.length) {
+      console.log(
+        `${runtime.name}: MISSING — ${runtime.missing.join(", ")}`,
+      );
     }
   }
   console.log(`\ncorrectness: ${correct ? "PASS" : "FAIL"}`);

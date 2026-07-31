@@ -73,6 +73,12 @@ slong *sagejs_modsym_weight2_boundary_matrix(
     size_t *cusps,
     sagejs_modsym_cusp **cusp_representatives);
 
+/* Return a sparse integral cycle basis for the kernel of the boundary map. */
+slong *sagejs_modsym_weight2_cuspidal_basis(
+    const sagejs_modsym_presentation_view *view,
+    size_t *rows,
+    size_t *columns);
+
 /* Return the column-action matrix of complex conjugation. */
 slong *sagejs_modsym_weight2_star_matrix(
     const sagejs_modsym_presentation_view *view,

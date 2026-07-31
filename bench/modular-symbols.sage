@@ -5,6 +5,7 @@ import time
 
 
 SAMPLES = 3
+PHASE_SAMPLES = 1
 MODULUS = 65521
 
 
@@ -64,16 +65,57 @@ def measure_manin(level):
 
 
 def measure_rational_modular_symbols(level):
-    # Sage.js deliberately does not claim this operation yet: its current
-    # vertical slice computes the relation quotient over a word-size field.
-    if hasattr(P1List(1), "manin_relations"):
-        print("SKIP", "modsym-qq-" + str(level), "not-implemented")
-        return
-    ModularSymbols(11, 2, use_cache=False).dimension()
+    native = hasattr(P1List(1), "manin_relations")
+    if not native:
+        ModularSymbols(11, 2, use_cache=False).dimension()
     for sample in range(SAMPLES):
         start = time.time()
-        answer = ModularSymbols(level, 2, use_cache=False).dimension()
+        if native:
+            answer = ModularSymbols(level, 2).dimension()
+        else:
+            answer = ModularSymbols(
+                level, 2, use_cache=False).dimension()
         report("modsym-qq-" + str(level), sample, start, answer)
+
+
+def fresh_space(level, sign=0):
+    if hasattr(P1List(1), "manin_relations"):
+        return ModularSymbols(level, 2, sign=sign)
+    return ModularSymbols(
+        level, 2, sign=sign, use_cache=False)
+
+
+def measure_subspace_phases(level):
+    for sample in range(PHASE_SAMPLES):
+        start = time.time()
+        full = fresh_space(level)
+        report(
+            "space-full-" + str(level), sample, start, full.dimension())
+
+        full = fresh_space(level)
+        start = time.time()
+        cuspidal = full.cuspidal_subspace()
+        report(
+            "space-cuspidal-" + str(level),
+            sample, start, cuspidal.dimension())
+
+        start = time.time()
+        plus = fresh_space(level, 1)
+        report(
+            "space-plus-" + str(level), sample, start, plus.dimension())
+
+        plus = fresh_space(level, 1)
+        start = time.time()
+        plus_cuspidal = plus.cuspidal_subspace()
+        report(
+            "space-plus-cuspidal-" + str(level),
+            sample, start, plus_cuspidal.dimension())
+
+        start = time.time()
+        signed_cuspidal_hecke = plus_cuspidal.hecke_matrix(2)
+        report(
+            "space-plus-cuspidal-t2-" + str(level),
+            sample, start, signed_cuspidal_hecke.trace())
 
 
 def measure_hecke(level, prime):
@@ -106,6 +148,7 @@ measure_manin(389)
 measure_manin(1000)
 measure_rational_modular_symbols(389)
 measure_rational_modular_symbols(1000)
+measure_subspace_phases(5077)
 measure_hecke(389, 3)
 measure_hecke(1000, 3)
 measure_hecke(10000, 3)

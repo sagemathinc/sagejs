@@ -12,13 +12,16 @@ Agents and automation can request stable structured output:
 pnpm bench:modular-symbols -- --json
 ```
 
-The dashboard currently separates three operations because conflating them
+The dashboard separates the following operations because conflating them
 would give misleading performance numbers:
 
 - canonical construction and indexing of `P1List(N)`;
 - the weight-2 `Gamma0(N)` Manin `S`/`R` relation quotient over the
   machine-word field `GF(65521)`;
-- construction of the full weight-2 rational modular-symbol space.
+- construction of the full weight-2 rational modular-symbol space;
+- construction of the full, cuspidal, plus, and plus-cuspidal spaces at
+  level 5077;
+- restriction of `T_2` to the level-5077 plus-cuspidal space;
 - construction of the exact dense weight-2 `T_3` matrix, checked by trace.
 
 The presentation cases include prime level 389 and composite level 1000. The
@@ -82,12 +85,29 @@ finished row-major buffer. This is the intended boundary for a WASM adapter.
 
 The same retained E1 endpoints now define the exact boundary map. Rational
 cusps are classified under `Gamma0(N)` using Cremona's equivalence criterion,
-and each basis path maps to its endpoint divisor. The cuspidal submodule is
-the exact kernel of this matrix. Complex conjugation negates both path
-endpoints and passes through the same native continued-fraction reducer;
-exact `+1` and `-1` eigenspaces follow from FLINT kernels. Arbitrary rational
-paths can also be reduced to genuine coordinate elements, on which boundary,
-star, and Hecke actions agree with the row-action matrices exposed by Sage.
+and each basis path maps to its endpoint divisor.  Since this is an oriented
+graph-incidence matrix, the native cuspidal algorithm chooses a
+reverse-lexicographically maximal spanning forest and writes down a sparse
+integral fundamental-cycle basis directly.  It therefore avoids dense
+rational kernel computation entirely while returning an RREF basis.
+
+Complex conjugation negates both path endpoints and passes through the same
+native continued-fraction reducer.  Signed spaces use the sparse projection
+`1 + sign*star`: a word-prime elimination selects a rank profile, whose exact
+rows are then reduced over `QQ`.  Restricting the boundary map to that signed
+basis computes signed-cuspidal spaces without a generic large-subspace
+intersection.  Sparse-left exact products skip the overwhelmingly zero
+coefficient entries. Native pivot extraction and row/column selection keep
+large restricted Hecke matrices inside FLINT instead of transferring each
+entry through the language boundary. Arbitrary rational paths can also be
+reduced to genuine coordinate elements, on which boundary, star, and Hecke
+actions agree with the row-action matrices exposed by Sage.
+
+At the high-level boundary, matrix and subspace representations are lazy.
+Large matrices print a Sage-compatible dimension/base-ring summary; `.str()`
+is the explicit request for every entry.  Ordinary levels also bypass the
+level-11-only change-of-basis conjugation rather than constructing large
+rational identity matrices.
 
 The algorithmic reference is PARI/GP's GPL-2.0-or-later
 `src/basemath/modsym.c`, copyright 2011 The PARI Group, inspected at

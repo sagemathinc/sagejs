@@ -111,12 +111,45 @@ assert.deepEqual(
 const boundary100 = flint.p1ListBoundaryData(flint.p1List(100));
 assert.equal(boundary100.cusps.length, 18);
 assert.equal(flint.matrixRank(boundary100.matrix), 17);
+const cuspidal100 = flint.p1ListCuspidalBasis(flint.p1List(100));
+assert.equal(flint.matrixRank(cuspidal100), 14);
+assert.equal(
+  flint.matrixRank(flint.matrixMul(cuspidal100, boundary100.matrix)),
+  0,
+);
+assert.equal(
+  flint.matrixEqual(
+    flint.matrixRref(cuspidal100),
+    flint.zzMatrixToQQ(cuspidal100),
+  ),
+  true,
+);
 const star11 = flint.p1ListStarMatrix(flint.p1List(11));
 assert.deepEqual(
   Array.from({ length: 3 }, (_, row) =>
     Array.from({ length: 3 }, (_, col) =>
       flint.matrixEntry(star11, row, col))),
   [[1n, 0n, 0n], [0n, 0n, 1n], [0n, 1n, 0n]],
+);
+const plus100 = flint.p1ListStarEigenspaceBasis(
+  flint.p1List(100),
+  1,
+);
+assert.equal(plus100.dimension, 18);
+assert.equal(flint.matrixRank(plus100.matrix), 18);
+assert.equal(
+  flint.matrixEqual(
+    flint.matrixMul(
+      plus100.matrix,
+      flint.matrixTranspose(
+        flint.zzMatrixToQQ(
+          flint.p1ListStarMatrix(flint.p1List(100)),
+        ),
+      ),
+    ),
+    plus100.matrix,
+  ),
+  true,
 );
 assert.deepEqual(
   Array.from({ length: 3 }, (_, row) =>

@@ -1640,6 +1640,8 @@ class P1List:
         self._native = runtime.flint_backend().p1List(self._level)
         self._manin_presentation_cache = None
         self._boundary_data_cache = None
+        self._cuspidal_basis_cache = None
+        self._star_eigenspace_basis_cache = [None, None]
 
     def N(self) -> int:
         return self._level
@@ -1793,6 +1795,20 @@ class P1List:
         """Return the E1-basis boundary map matrix over `ZZ`."""
         return self.boundary_data()[0]
 
+    def cuspidal_basis_matrix(self) -> Any:
+        """Return the native integral cycle basis of the boundary kernel."""
+        if self._cuspidal_basis_cache is None:
+            dimension = self.manin_presentation().dimension()
+            rows = dimension - self.boundary_matrix().rank()
+            native = runtime.flint_backend().p1ListCuspidalBasis(
+                self._native)
+            self._cuspidal_basis_cache = Matrix(  # type: ignore[name-defined]  # noqa: F821
+                MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                    sage.ZZ, rows, dimension),
+                native,
+            )
+        return self._cuspidal_basis_cache
+
     def cusps(self) -> list[ModularCusp]:
         """Return representatives for the discovered `Gamma_0(N)` cusps."""
         return list(self.boundary_data()[1])
@@ -1806,6 +1822,32 @@ class P1List:
                 sage.ZZ, dimension, dimension),
             native,
         )
+
+    def star_eigenspace_basis(self, sign: Any) -> Any:
+        """Return the native RREF basis for a star eigenspace over `QQ`."""
+        sign = _exact_integer(sign, 'star eigenspace sign')
+        if sign not in [-1, 1]:
+            raise ValueError('star eigenspace sign must be -1 or 1')
+        cache_index = 0 if sign == -1 else 1
+        cached = self._star_eigenspace_basis_cache[cache_index]
+        if cached is None:
+            raw = runtime.flint_backend().p1ListStarEigenspaceBasis(
+                self._native, sign)
+            dimension = runtime.number(
+                runtime.reflect.get(raw, 'dimension'))
+            native = runtime.reflect.get(raw, 'matrix')
+            cached = Matrix(  # type: ignore[name-defined]  # noqa: F821
+                MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                    sage.QQ,
+                    dimension,
+                    self.manin_presentation().dimension(),
+                ),
+                native,
+            )
+            # The native rank-profile extraction finishes with exact RREF.
+            cached._rref_cache = cached
+            self._star_eigenspace_basis_cache[cache_index] = cached
+        return cached
 
     def reduce_path(
         self,
@@ -2058,8 +2100,7 @@ class ModularSymbolsSpace(sage.Parent):
                 [sage.QQ(2) / sage.QQ(5), 1, 1],
                 [sage.QQ(2) / sage.QQ(5), 0, 1],
             ])
-        return identity_matrix(  # type: ignore[name-defined]  # noqa: F821
-            self.base_ring(), dimension)
+        return None
 
     def basis_matrix(self) -> Any:
         if self._basis_matrix_cache is not None:
@@ -2170,7 +2211,8 @@ class ModularSymbolsSpace(sage.Parent):
             raw_matrix, cusps = ambient.p1list().boundary_data()
             defining_matrix = raw_matrix.change_ring(ambient.base_ring())
             change = ambient._ambient_change_of_basis()
-            defining_matrix = change.transpose() * defining_matrix
+            if change is not None:
+                defining_matrix = change.transpose() * defining_matrix
             boundary_space = BoundarySymbolsSpace(ambient, cusps)
             ambient._boundary_data_cache = runtime.math_tuple([
                 defining_matrix, boundary_space])
@@ -2198,7 +2240,10 @@ class ModularSymbolsSpace(sage.Parent):
         ```
         """
         if self._boundary_map_cache is None:
-            defining_matrix = self.basis_matrix() * self._boundary_matrix()
+            if self.is_ambient():
+                defining_matrix = self._boundary_matrix()
+            else:
+                defining_matrix = self.basis_matrix() * self._boundary_matrix()
             self._boundary_map_cache = ModularSymbolsBoundaryMap(
                 self, self.boundary_space(), defining_matrix)
         return self._boundary_map_cache
@@ -2219,10 +2264,13 @@ class ModularSymbolsSpace(sage.Parent):
         """
         ambient = self.ambient_module()
         native_coordinates = ambient.p1list().reduce_path(start, stop)
-        coordinates = (
-            ambient._ambient_change_of_basis().inverse()
-            * native_coordinates.column()
-        ).column(0)
+        change = ambient._ambient_change_of_basis()
+        if change is None:
+            coordinates = native_coordinates
+        else:
+            coordinates = (
+                change.inverse() * native_coordinates.column()
+            ).column(0)
         return self(ambient(coordinates))
 
     def _full_star_matrix(self) -> Any:
@@ -2231,16 +2279,19 @@ class ModularSymbolsSpace(sage.Parent):
             native = ambient.p1list().star_matrix().change_ring(
                 ambient.base_ring())
             change = ambient._ambient_change_of_basis()
-            ambient._star_matrix_cache = (
-                change.inverse() * native * change
-            ).transpose()
+            if change is None:
+                ambient._star_matrix_cache = native.transpose()
+            else:
+                ambient._star_matrix_cache = (
+                    change.inverse() * native * change
+                ).transpose()
         return ambient._star_matrix_cache
 
     def _restrict_ambient_matrix(self, defining_matrix: Any) -> Any:
         if self.is_ambient():
             return defining_matrix
         basis = self.basis_matrix()
-        image = basis * defining_matrix
+        image = basis._sparse_left_multiply(defining_matrix)
         return image.matrix_from_columns(list(basis.pivots()))
 
     def star_involution(self) -> ModularSymbolsLinearOperator:
@@ -2285,12 +2336,19 @@ class ModularSymbolsSpace(sage.Parent):
         if cached is not None:
             return cached
         ambient = self.ambient_module()
-        relation = ambient._full_star_matrix() - identity_matrix(  # type: ignore[name-defined]  # noqa: F821
-            self.base_ring(), ambient.dimension()) * sign
-        eigenspace = relation.left_kernel_matrix()
-        basis = (
-            eigenspace if self.is_ambient()
-            else self._intersect_basis(eigenspace))
+        change = ambient._ambient_change_of_basis()
+        if self.is_ambient() and change is None:
+            basis = ambient.p1list().star_eigenspace_basis(
+                sign).change_ring(self.base_ring())
+        elif self._is_cuspidal:
+            basis = ambient._star_submodule(sign).cuspidal_submodule().basis_matrix()
+        else:
+            relation = ambient._full_star_matrix() - identity_matrix(  # type: ignore[name-defined]  # noqa: F821
+                self.base_ring(), ambient.dimension()) * sign
+            eigenspace = relation.left_kernel_matrix()
+            basis = (
+                eigenspace if self.is_ambient()
+                else self._intersect_basis(eigenspace))
         prefix = 'Cuspidal ' if self._is_cuspidal else ''
         result = self._new_coordinate_subspace(
             basis,
@@ -2346,11 +2404,14 @@ class ModularSymbolsSpace(sage.Parent):
                 2, dimension) ** 0
         result = result.change_ring(ambient.base_ring())
         change_of_basis = ambient._ambient_change_of_basis()
-        result = (
-            change_of_basis.inverse()
-            * result
-            * change_of_basis
-        ).transpose()
+        if change_of_basis is None:
+            result = result.transpose()
+        else:
+            result = (
+                change_of_basis.inverse()
+                * result
+                * change_of_basis
+            ).transpose()
         return self._restrict_ambient_matrix(result)
 
     def hecke_matrix(self, index: Any) -> Any:
@@ -2383,12 +2444,30 @@ class ModularSymbolsSpace(sage.Parent):
             return self
         if self._supports_native_weight2():
             if self._cuspidal_cache is None:
-                ambient_cusp_basis = (
-                    self.ambient_module()._boundary_matrix()
-                    .left_kernel_matrix())
-                basis = (
-                    ambient_cusp_basis if self.is_ambient()
-                    else self._intersect_basis(ambient_cusp_basis))
+                ambient = self.ambient_module()
+                change = ambient._ambient_change_of_basis()
+                if change is None:
+                    ambient_cusp_basis = (
+                        ambient.p1list().cuspidal_basis_matrix()
+                        .change_ring(ambient.base_ring()))
+                    # Fundamental cycles are emitted in reverse-greedy RREF.
+                    ambient_cusp_basis._rref_cache = ambient_cusp_basis
+                else:
+                    ambient_cusp_basis = (
+                        ambient._boundary_matrix().left_kernel_matrix())
+                if self.is_ambient():
+                    basis = ambient_cusp_basis
+                else:
+                    restricted_boundary = (
+                        self.basis_matrix()
+                        * self.ambient_module()._boundary_matrix())
+                    coefficients = (
+                        restricted_boundary.left_kernel_matrix())
+                    basis = coefficients._sparse_left_multiply(
+                        self.basis_matrix())
+                    # RREF coefficient rows acting on an RREF row basis
+                    # preserve the latter's ordered pivot columns.
+                    basis._rref_cache = basis
                 kind = 'Cuspidal'
                 if self._sign == 1:
                     kind += ' Plus'

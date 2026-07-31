@@ -9,6 +9,11 @@ assert list(matrix([]).dimensions()) == [0, 0]
 assert list(matrix([5]).dimensions()) == [1, 1]
 assert list(matrix([1, 2]).dimensions()) == [1, 2]
 assert str(A) == '[1 2]\n[3 4]'
+large_matrix = zero_matrix(QQ, 20, 1)
+assert str(large_matrix) == (
+    "20 x 1 dense matrix over Rational Field "
+    "(use the '.str()' method to see the entries)")
+assert len(large_matrix.str().splitlines()) == 20
 assert A.parent() is MatrixSpace(ZZ, 2)
 assert A.base_ring() is ZZ
 assert isinstance(A.dimensions(), tuple)
@@ -59,6 +64,9 @@ subdivided.subdivide(None, 1)
 assert str(subdivided) == '[0|1 2]\n[3|4 5]'
 assert str(subdivided.transpose()) == '[0 3]\n[---]\n[1 4]\n[2 5]'
 assert A * A == matrix(ZZ, [[7, 10], [15, 22]])
+assert A._sparse_left_multiply(A) == A * A
+assert A.matrix_from_rows([1, 0, 1]) == matrix(ZZ, [[3, 4], [1, 2], [3, 4]])
+assert A.matrix_from_columns([1, 0, 1]) == matrix(ZZ, [[2, 1, 2], [4, 3, 4]])
 assert A ** 0 == identity_matrix(ZZ, 2)
 assert A ** 3 == matrix(ZZ, [[37, 54], [81, 118]])
 assert -A == matrix(ZZ, [[-1, -2], [-3, -4]])

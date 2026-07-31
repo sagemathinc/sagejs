@@ -760,26 +760,6 @@ class VectorSubspaceParent(sage.Parent):
         self._basis_matrix = basis
         self._defining_matrix = defining_matrix
         self._left_kernel = left_kernel
-        degree = ambient.degree()
-        dimension = self._basis_matrix.nrows()
-        if (
-            ambient.base_ring() is sage.ZZ
-            or getattr(
-                ambient.base_ring(), '_kind', None
-            ) == 'ZMOD'
-        ):
-            self._name = (
-                'Free module of degree ' + str(degree) +
-                ' and rank ' + str(dimension) +
-                ' over ' + str(ambient.base_ring()) +
-                '\nEchelon basis matrix:\n' +
-                str(self._basis_matrix))
-        else:
-            self._name = (
-                'Vector space of degree ' + str(degree) +
-                ' and dimension ' + str(dimension) +
-                ' over ' + str(ambient.base_ring()) +
-                '\nBasis matrix:\n' + str(self._basis_matrix))
         self._construction = {
             'kind': 'vector-subspace',
             'ambient': ambient,
@@ -912,6 +892,28 @@ class VectorSubspaceParent(sage.Parent):
             self._ambient,
             _canonical_row_basis(common_vectors),
         )
+
+    def __repr__(self) -> str:
+        degree = self.degree()
+        dimension = self.dimension()
+        if (
+            self.base_ring() is sage.ZZ
+            or getattr(self.base_ring(), '_kind', None) == 'ZMOD'
+        ):
+            return (
+                'Free module of degree ' + str(degree) +
+                ' and rank ' + str(dimension) +
+                ' over ' + str(self.base_ring()) +
+                '\nEchelon basis matrix:\n' +
+                str(self._basis_matrix))
+        return (
+            'Vector space of degree ' + str(degree) +
+            ' and dimension ' + str(dimension) +
+            ' over ' + str(self.base_ring()) +
+            '\nBasis matrix:\n' + str(self._basis_matrix))
+
+    __str__ = __repr__
+    toString = __repr__
 
 
 @runtime.sequence_class
@@ -1225,6 +1227,24 @@ class Matrix(sage.Element):
     def __matmul__(self, other: object) -> Any:
         return self * other
 
+    def _sparse_left_multiply(self, other: Matrix) -> Matrix:
+        """Multiply while skipping zero entries in the left exact matrix."""
+        if not isinstance(other, Matrix):
+            raise TypeError('right operand must be a matrix')
+        if self.ncols() != other.nrows():
+            raise ValueError('matrix and matrix dimensions are incompatible')
+        base = _common_base(self.base_ring(), other.base_ring())
+        if base not in [sage.ZZ, sage.QQ]:
+            return self * other
+        left = self.change_ring(base)
+        right = other.change_ring(base)
+        native_value = runtime.flint_backend().matrixSparseLeftMul(
+            left._native, right._native)
+        return Matrix(
+            MatrixSpace(base, left.nrows(), right.ncols()),
+            native_value,
+        )
+
     def __rmul__(self, other: object) -> Matrix:
         return self._scalar_mul(other)
 
@@ -1531,21 +1551,11 @@ class Matrix(sage.Element):
         return True
 
     def pivots(self) -> Any:
-        answer = []
         echelon = self.echelon_form()
-        for row in range(echelon.nrows()):
-            for col in range(echelon.ncols()):
-                value = echelon._entry(row, col)
-                if value != 0:
-                    if (
-                        getattr(
-                            self.base_ring(), '_kind', None
-                        ) != 'ZMOD'
-                        or value == 1
-                    ):
-                        answer.append(col)
-                    break
-        return runtime.math_tuple(answer)
+        answer = runtime.flint_backend().matrixPivots(echelon._native)
+        return runtime.math_tuple([
+            runtime.number(index) for index in answer
+        ])
 
     def row_space(self) -> VectorSubspaceParent:
         return VectorSubspaceParent(
@@ -2059,27 +2069,22 @@ class Matrix(sage.Element):
 
     def matrix_from_rows(self, rows: Any) -> Matrix:
         indices = [int(index) for index in rows]
-        entries = []
-        for index in indices:
-            entries.extend(self.row(index))
-        return matrix(
-            self.base_ring(),
-            len(indices),
-            self.ncols(),
-            entries,
+        native = runtime.flint_backend().matrixSelectRows(
+            self._native, indices)
+        return Matrix(
+            MatrixSpace(
+                self.base_ring(), len(indices), self.ncols()),
+            native,
         )
 
     def matrix_from_columns(self, columns: Any) -> Matrix:
         indices = [int(index) for index in columns]
-        entries = []
-        for row in range(self.nrows()):
-            for index in indices:
-                entries.append(self._entry(row, index))
-        return matrix(
-            self.base_ring(),
-            self.nrows(),
-            len(indices),
-            entries,
+        native = runtime.flint_backend().matrixSelectColumns(
+            self._native, indices)
+        return Matrix(
+            MatrixSpace(
+                self.base_ring(), self.nrows(), len(indices)),
+            native,
         )
 
     def diagonal(self) -> list[Any]:
@@ -2132,7 +2137,8 @@ class Matrix(sage.Element):
         answer._col_subdivisions = list(self._col_subdivisions)
         return answer
 
-    def __repr__(self) -> str:
+    def str(self) -> str:
+        """Return the full entry-by-entry matrix representation."""
         if self.nrows() == 0:
             return '[]'
         text_rows = []
@@ -2160,6 +2166,17 @@ class Matrix(sage.Element):
                 inner += entry
             lines.append('[' + inner + ']')
         return '\n'.join(lines)
+
+    def __repr__(self) -> str:
+        if self.nrows() >= 20 or self.ncols() >= 20:
+            return (
+                str(self.nrows()) + ' x ' + str(self.ncols()) +
+                (' sparse matrix over ' if self.is_sparse()
+                 else ' dense matrix over ') +
+                str(self.base_ring()) +
+                " (use the '.str()' method to see the entries)"
+            )
+        return self.str()
 
     __str__ = __repr__
     toString = __repr__

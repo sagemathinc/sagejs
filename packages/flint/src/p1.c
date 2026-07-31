@@ -7,6 +7,7 @@
 
 #include <node_api.h>
 
+#include <flint/fmpq.h>
 #include <flint/nmod_mat.h>
 #include <flint/ulong_extras.h>
 
@@ -1087,6 +1088,43 @@ done:
     return result;
 }
 
+napi_value sagejs_p1list_cuspidal_basis(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[1], result;
+    sagejs_p1list_value *list;
+    sagejs_manin_presentation_info presentation;
+    sagejs_modsym_presentation_view view;
+    slong *entries;
+    size_t rows, columns;
+
+    if (!p1_arguments(env, info, 1, arguments) ||
+        (list = p1_unwrap(env, arguments[0])) == NULL)
+        return NULL;
+    if (!p1_manin_presentation_build(list, &presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct minimal Manin presentation");
+        return NULL;
+    }
+    view = p1_presentation_view(list, &presentation);
+    entries = sagejs_modsym_weight2_cuspidal_basis(
+        &view, &rows, &columns);
+    p1_manin_presentation_clear(&presentation);
+    if (entries == NULL || rows > (size_t) WORD_MAX ||
+        columns > (size_t) WORD_MAX)
+    {
+        free(entries);
+        napi_throw_error(env, NULL,
+            "unable to construct exact cuspidal cycle basis");
+        return NULL;
+    }
+    result = sagejs_zz_matrix_from_slong_entries(
+        env, (slong) rows, (slong) columns, entries);
+    free(entries);
+    return result;
+}
+
 napi_value sagejs_p1list_star_matrix(
     napi_env env, napi_callback_info info)
 {
@@ -1118,6 +1156,129 @@ napi_value sagejs_p1list_star_matrix(
     }
     result = sagejs_zz_matrix_from_slong_entries(
         env, (slong) dimension, (slong) dimension, entries);
+    free(entries);
+    return result;
+}
+
+napi_value sagejs_p1list_star_eigenspace_basis(
+    napi_env env, napi_callback_info info)
+{
+    const ulong modulus = 65521;
+    napi_value arguments[2], result = NULL, matrix = NULL;
+    sagejs_p1list_value *list;
+    sagejs_manin_presentation_info presentation;
+    sagejs_modsym_presentation_view view;
+    slong *entries = NULL;
+    int64_t sign_value;
+    size_t dimension;
+    slong rank;
+    size_t *selected = NULL;
+    nmod_mat_t modular_transpose;
+    fmpq_mat_t basis;
+    int modular_initialized = 0, basis_initialized = 0;
+
+    if (!p1_arguments(env, info, 2, arguments) ||
+        (list = p1_unwrap(env, arguments[0])) == NULL ||
+        !p1_safe_integer(env, arguments[1], &sign_value))
+        return NULL;
+    if (sign_value != -1 && sign_value != 1)
+    {
+        napi_throw_range_error(env, NULL,
+            "star eigenspace sign must be -1 or 1");
+        return NULL;
+    }
+    if (!p1_manin_presentation_build(list, &presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct minimal Manin presentation");
+        return NULL;
+    }
+    view = p1_presentation_view(list, &presentation);
+    entries = sagejs_modsym_weight2_star_matrix(&view, &dimension);
+    p1_manin_presentation_clear(&presentation);
+    if (entries == NULL || dimension > (size_t) WORD_MAX)
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct native star eigenspace");
+        goto done;
+    }
+    nmod_mat_init(
+        modular_transpose, (slong) dimension, (slong) dimension, modulus);
+    modular_initialized = 1;
+    for (size_t row = 0; row < dimension; row++)
+        for (size_t col = 0; col < dimension; col++)
+        {
+            slong value = (row == col ? 1 : 0)
+                + (slong) sign_value * entries[row * dimension + col];
+            slong reduced = value % (slong) modulus;
+            if (reduced < 0)
+                reduced += (slong) modulus;
+            nmod_mat_entry(
+                modular_transpose, row, col) = (ulong) reduced;
+        }
+    rank = nmod_mat_rref(modular_transpose);
+    selected = malloc((rank == 0 ? 1 : (size_t) rank) * sizeof(*selected));
+    if (selected == NULL)
+    {
+        napi_throw_error(env, NULL,
+            "unable to allocate star eigenspace rank profile");
+        goto done;
+    }
+    for (slong row = 0; row < rank; row++)
+    {
+        slong pivot = 0;
+        while (pivot < (slong) dimension &&
+            nmod_mat_entry(modular_transpose, row, pivot) == 0)
+            pivot++;
+        if (pivot == (slong) dimension)
+        {
+            napi_throw_error(env, NULL,
+                "invalid star eigenspace rank profile");
+            goto done;
+        }
+        selected[row] = (size_t) pivot;
+    }
+    fmpq_mat_init(basis, rank, (slong) dimension);
+    basis_initialized = 1;
+    for (slong row = 0; row < rank; row++)
+    {
+        size_t source_row = selected[row];
+        for (size_t col = 0; col < dimension; col++)
+        {
+            slong value = (source_row == col ? 1 : 0)
+                + (slong) sign_value
+                    * entries[col * dimension + source_row];
+            fmpq_set_si(
+                fmpq_mat_entry(basis, row, (slong) col), value, 1);
+        }
+    }
+    if (fmpq_mat_rref(basis, basis) != rank)
+    {
+        napi_throw_error(env, NULL,
+            "exact star eigenspace rank disagrees with modular rank");
+        goto done;
+    }
+    matrix = sagejs_qq_matrix_from_fmpq_mat(env, basis);
+    if (matrix != NULL &&
+        p1_check_napi(env, napi_create_object(env, &result)) &&
+        p1_check_napi(env, napi_set_named_property(
+            env, result, "matrix", matrix)) &&
+        manin_set_number_property(
+            env, result, "dimension", (double) rank))
+    {
+        /* The result is complete. */
+    }
+    else
+    {
+        result = NULL;
+    }
+
+done:
+    if (basis_initialized)
+        fmpq_mat_clear(basis);
+    if (modular_initialized)
+        nmod_mat_clear(modular_transpose);
+    free(selected);
     free(entries);
     return result;
 }
