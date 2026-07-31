@@ -57,6 +57,15 @@ values cross back as root-of-unity exponents; Sage.js presents those values
 exactly in a cyclotomic basis and constructs `qqbar` roots only when algebraic
 operations or approximations require them.
 
+The analytic Dirichlet boundary uses `acb_dirichlet` directly for Gauss and
+Jacobi sums, primitive-character root numbers, and arbitrary derivatives of
+Dirichlet L-functions. Results cross the boundary once as precision-matched
+MPC values. Exact Gauss and Jacobi sums use FLINT `qqbar`, so their algebraic
+identity remains available independently of the requested numerical
+precision. Generalized Bernoulli numbers combine FLINT's exact Bernoulli
+polynomials with the same `qqbar` character values; this also supplies the
+exact special-value input needed by Eisenstein series.
+
 The `nmod_poly` API additionally provides GCD, irreducibility testing,
 factorization, and roots over word-sized prime fields. Factorization returns
 opaque native factors and a separate scalar unit. Sage.js wraps these as

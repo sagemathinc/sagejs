@@ -19,6 +19,32 @@ def _native_field(value: Any, name: str) -> Any:
     return runtime.reflect.get(value, name)
 
 
+def _analytic_precision(precision: Any) -> int:
+    precision = runtime.normalize_integer(precision)
+    if (
+        runtime.jstype(precision) != 'number'
+        or not runtime.number.isSafeInteger(precision)
+        or precision < 2
+    ):
+        raise ValueError('precision must be at least 2 bits')
+    return precision
+
+
+def _complex_from_native(
+    native_value: Any,
+    precision: Any,
+) -> Any:
+    complex_field = runtime.reflect.get(
+        runtime.global_object, 'ComplexField')
+    return complex_field(precision)._fromNative(native_value)
+
+
+def _qqbar_from_native(native_value: Any) -> Any:
+    algebraic_field = runtime.reflect.get(
+        runtime.global_object, 'QQbar')
+    return algebraic_field._from_native(native_value)
+
+
 def _format_cyclotomic_polynomial(
     coefficients: list[Any],
     variable: str,
@@ -326,6 +352,7 @@ class DirichletCharacter(sage.Element):
         self._index = index
         self._data = runtime.undefined
         self._values_cache = runtime.undefined
+        self._bernoulli_cache = runtime.map()
 
     def _native_data(self) -> Any:
         if self._data is runtime.undefined:
@@ -466,6 +493,144 @@ class DirichletCharacter(sage.Element):
         return runtime.normalize_integer(
             _native_field(self._native_data(), 'conreyNumber'))
 
+    def gauss_sum(self, a: Any = 1) -> Any:
+        """Return the exact Gauss sum in Sage.js's algebraic closure."""
+        additive_factor = (
+            runtime.integer_bigint(a) % self._parent._modulus
+        )
+        return _qqbar_from_native(
+            runtime.flint_backend().dirichletGaussSumExact(
+                self._parent._native,
+                self._index,
+                runtime.integer_bigint(additive_factor),
+            )
+        )
+
+    def gauss_sum_numerical(
+        self,
+        prec: int = 53,
+        a: Any = 1,
+    ) -> Any:
+        """Return a FLINT/Arb approximation to the Gauss sum."""
+        precision = _analytic_precision(prec)
+        additive_factor = (
+            runtime.integer_bigint(a) % self._parent._modulus
+        )
+        return _complex_from_native(
+            runtime.flint_backend().dirichletGaussSum(
+                self._parent._native,
+                self._index,
+                runtime.integer_bigint(additive_factor),
+                precision,
+            ),
+            precision,
+        )
+
+    def jacobi_sum(
+        self,
+        char: DirichletCharacter,
+        check: bool = True,
+    ) -> Any:
+        """Return the exact Jacobi sum in Sage.js's algebraic closure."""
+        if (
+            not isinstance(char, DirichletCharacter)
+            or char._parent is not self._parent
+        ):
+            raise TypeError(
+                'characters must belong to the same Dirichlet group')
+        if check and self.modulus() != char.modulus():
+            raise ValueError('characters must have the same modulus')
+        return _qqbar_from_native(
+            runtime.flint_backend().dirichletJacobiSumExact(
+                self._parent._native,
+                self._index,
+                char._index,
+            )
+        )
+
+    def jacobi_sum_numerical(
+        self,
+        char: DirichletCharacter,
+        prec: int = 53,
+    ) -> Any:
+        """Return a FLINT/Arb approximation to the Jacobi sum."""
+        if (
+            not isinstance(char, DirichletCharacter)
+            or char._parent is not self._parent
+        ):
+            raise TypeError(
+                'characters must belong to the same Dirichlet group')
+        precision = _analytic_precision(prec)
+        return _complex_from_native(
+            runtime.flint_backend().dirichletJacobiSum(
+                self._parent._native,
+                self._index,
+                char._index,
+                precision,
+            ),
+            precision,
+        )
+
+    def root_number(self, prec: int = 53) -> Any:
+        """Return the root number of this primitive character."""
+        if not self.is_primitive():
+            raise ValueError(
+                'root number requires a primitive character')
+        precision = _analytic_precision(prec)
+        return _complex_from_native(
+            runtime.flint_backend().dirichletRootNumber(
+                self._parent._native,
+                self._index,
+                precision,
+            ),
+            precision,
+        )
+
+    def lfunction(
+        self,
+        prec: int = 53,
+        algorithm: str = 'flint',
+    ) -> DirichletLFunction:
+        """Return the FLINT/Arb analytic Dirichlet L-function."""
+        if algorithm not in ('flint', 'arb', 'pari'):
+            raise ValueError(
+                "algorithm must be 'flint', 'arb', or 'pari'")
+        return DirichletLFunction(
+            self, _analytic_precision(prec))
+
+    def bernoulli(
+        self,
+        k: Any,
+        algorithm: str = 'recurrence',
+        cache: bool = True,
+        **opts: Any,
+    ) -> Any:
+        """Return the exact generalized Bernoulli number ``B_(k,chi)``."""
+        index = runtime.normalize_integer(k)
+        if (
+            runtime.jstype(index) != 'number'
+            or not runtime.number.isSafeInteger(index)
+            or index < 0
+        ):
+            raise ValueError(
+                'Bernoulli index must be nonnegative')
+        if algorithm not in ('recurrence', 'definition', 'flint'):
+            raise ValueError(
+                'unsupported generalized Bernoulli algorithm')
+        cached = self._bernoulli_cache.get(index)
+        if cache and cached is not runtime.undefined:
+            return cached
+        result = _qqbar_from_native(
+            runtime.flint_backend().dirichletBernoulli(
+                self._parent._native,
+                self._index,
+                index,
+            )
+        )
+        if cache:
+            self._bernoulli_cache.set(index, result)
+        return result
+
     def galois_orbit(self) -> list[DirichletCharacter]:
         result = []
         seen = runtime.map()
@@ -515,6 +680,68 @@ class DirichletCharacter(sage.Element):
         if len(mappings):
             text += ' mapping ' + ', '.join(mappings)
         return text
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class DirichletLFunction:
+    """An arbitrary-precision Dirichlet L-function backed by FLINT/Arb."""
+
+    def __init__(
+        self,
+        character: DirichletCharacter,
+        precision: int = 53,
+    ) -> None:
+        self._character = character
+        self._precision = _analytic_precision(precision)
+
+    def _value(self, s: Any, derivative: Any) -> Any:
+        derivative = runtime.normalize_integer(derivative)
+        if (
+            runtime.jstype(derivative) != 'number'
+            or not runtime.number.isSafeInteger(derivative)
+            or derivative < 0
+        ):
+            raise ValueError(
+                'derivative order must be nonnegative')
+        complex_field = runtime.reflect.get(
+            runtime.global_object, 'ComplexField')(
+                self._precision)
+        argument = complex_field(s)
+        return complex_field._fromNative(
+            runtime.flint_backend().dirichletLValue(
+                self._character._parent._native,
+                self._character._index,
+                argument._native,
+                derivative,
+                self._precision,
+            )
+        )
+
+    def __call__(self, s: Any) -> Any:
+        return self._value(s, 0)
+
+    def derivative(self, s: Any, D: Any = 1) -> Any:
+        return self._value(s, D)
+
+    def character(self) -> DirichletCharacter:
+        return self._character
+
+    def precision(self) -> int:
+        return self._precision
+
+    prec = precision
+
+    def root_number(self) -> Any:
+        return self._character.root_number(self._precision)
+
+    def __repr__(self) -> str:
+        return (
+            'FLINT L-function associated to ' +
+            str(self._character)
+        )
 
     __str__ = __repr__
     toString = __repr__

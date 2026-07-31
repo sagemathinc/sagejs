@@ -13,5 +13,19 @@ napi_value sagejs_dirichlet_character_exponent(
     napi_env env, napi_callback_info info);
 napi_value sagejs_dirichlet_character_exponents(
     napi_env env, napi_callback_info info);
+napi_value sagejs_dirichlet_gauss_sum_exact(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_dirichlet_gauss_sum(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_dirichlet_jacobi_sum_exact(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_dirichlet_jacobi_sum(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_dirichlet_root_number(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_dirichlet_l_value(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_dirichlet_bernoulli(
+    napi_env env, napi_callback_info info);
 
 #endif

@@ -93,3 +93,80 @@ test("Dirichlet character arithmetic and exact values stay native", async () => 
     await session.close();
   }
 });
+
+test("Dirichlet character sums are exact with precision-aware numerics", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "G = DirichletGroup(5)\n" +
+            "chi = G.0\n" +
+            "g = chi.gauss_sum()\n" +
+            "[g.minpoly(), g.degree(), chi.jacobi_sum(chi), " +
+            "chi.gauss_sum_numerical(100).parent(), " +
+            "chi.root_number(100).parent()]",
+        )
+      ).repr,
+      "[x^8 + 30*x^4 + 625, 8, -2*I - 1, " +
+        "Complex Field with 100 bits of precision, " +
+        "Complex Field with 100 bits of precision]",
+    );
+
+    assert.equal(
+      (
+        await session.evaluate(
+          "G = DirichletGroup(5)\n" +
+            "chi = G.0\n" +
+            "z = chi.gauss_sum_numerical(a=2)\n" +
+            "[round(float(z.real()), 12), " +
+            "round(float(z.imag()), 12)]",
+        )
+      ).repr,
+      "[1.90211303259, 1.175570504585]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("Dirichlet L-functions agree with Sage values and derivatives", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "G = DirichletGroup(5)\n" +
+            "chi = G.0\n" +
+            "L = chi.lfunction()\n" +
+            "[L(2), L.derivative(2), L.derivative(2, 2), " +
+            "L.precision()]",
+        )
+      ).repr,
+      "[0.958716122716883 + 0.145565876785090*I, " +
+        "0.0505097931323040 - 0.0628837125364825*I, " +
+        "-0.0591413218047955 + 0.00611865758282376*I, 53]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("generalized Bernoulli numbers agree exactly with Sage", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "G = DirichletGroup(5)\n" +
+            "chi = G.0\n" +
+            "[chi.bernoulli(k) for k in range(8)]",
+        )
+      ).repr,
+      "[0, -1/5*I - 3/5, 0, 6/5*I + 12/5, 0, " +
+        "-86/5*I - 148/5, 0, 2366/5*I + 3892/5]",
+    );
+  } finally {
+    await session.close();
+  }
+});
