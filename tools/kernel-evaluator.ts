@@ -104,6 +104,8 @@ export function createKernelEvaluator({
   );
   const defaultSage = mode === "sage";
   let toplevel;
+  let finalStatementIsAssignment = false;
+  let sourceEndsWithSemicolon = false;
   let numericLiteralPoolCounter = 0;
   const scopedFlagsByLanguage = new Map<
     SageLanguageMode,
@@ -194,6 +196,11 @@ export function createKernelEvaluator({
       source,
       parserOptions(filename, false, language),
     );
+    const finalStatement = toplevel.body[toplevel.body.length - 1];
+    finalStatementIsAssignment =
+      finalStatement instanceof compiler.AST_SimpleStatement &&
+      finalStatement.body instanceof compiler.AST_Assign;
+    sourceEndsWithSemicolon = source.trimEnd().endsWith(";");
     scopedFlagsByLanguage.set(language, { ...toplevel.scoped_flags });
     const javascript = outputJavaScript(toplevel, false, language);
 
@@ -356,13 +363,21 @@ export function createKernelEvaluator({
         if (interruptState) Atomics.store(interruptState, 1, 0);
       }
       const repr =
-        suppressResult || value === undefined
+        suppressResult ||
+        finalStatementIsAssignment ||
+        sourceEndsWithSemicolon ||
+        value === undefined
           ? ""
           : String(global.ρσ_repr(value));
       return {
         repr,
         durationMs: performance.now() - started,
-        display: suppressResult ? undefined : richDisplay(value),
+        display:
+          suppressResult ||
+          finalStatementIsAssignment ||
+          sourceEndsWithSemicolon
+            ? undefined
+            : richDisplay(value),
       };
     },
 

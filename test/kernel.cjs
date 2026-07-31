@@ -28,6 +28,9 @@ async function main() {
   assert.ok(first.durationMs >= 0);
 
   assert.equal((await session.eval("value^2")).repr, "144");
+  assert.equal((await session.evaluate("assigned = 17")).repr, "");
+  assert.equal((await session.evaluate("assigned")).repr, "17");
+  assert.equal((await session.evaluate("assigned + 1;")).repr, "");
   assert.deepEqual(parsePolyglotCell("%%matlab\nA = [1 2; 3 4]"), {
     language: "matlab",
     source: "\nA = [1 2; 3 4]",

@@ -805,6 +805,92 @@ def integral(
         variable, lower, upper)
 
 
+def _solve_exact_number_tree(value: Any) -> Any:
+    if runtime.jstype(value) != 'number':
+        return value
+    text = str(value)
+    if '.' not in text or 'e' in text or 'E' in text:
+        return value
+    negative = text.startswith('-')
+    if negative:
+        text = text[1:]
+    pieces = text.split('.')
+    numerator = int(pieces[0] + pieces[1])
+    if negative:
+        numerator = -numerator
+    rational = sage.QQ(numerator) / sage.QQ(10 ** len(pieces[1]))
+    return _expression_tree(rational)
+
+
+def _solve_partial_relation(
+    tree: Any,
+    variables: Any,
+) -> Any:
+    if (
+        len(variables) != 1
+        or not runtime.array.isArray(tree)
+        or len(tree) != 3
+        or tree[0] != 'Equal'
+    ):
+        return runtime.undefined
+    left = tree[1]
+    right = tree[2]
+    if (
+        not runtime.array.isArray(left)
+        or len(left) < 3
+        or left[0] != 'Multiply'
+    ):
+        return runtime.undefined
+    exact_right = _solve_exact_number_tree(right)
+    exact_right_is_number = (
+        runtime.jstype(exact_right) in ('number', 'bigint')
+        or (
+            runtime.array.isArray(exact_right)
+            and len(exact_right) == 3
+            and exact_right[0] == 'Rational'
+        )
+    )
+    if not exact_right_is_number:
+        return runtime.undefined
+    if (
+        runtime.jstype(exact_right) in ('number', 'bigint')
+        and exact_right == 0
+    ):
+        return runtime.undefined
+    if (
+        runtime.array.isArray(exact_right)
+        and len(exact_right) == 3
+        and exact_right[0] == 'Rational'
+        and exact_right[1] == 0
+    ):
+        return runtime.undefined
+    variable_name = _symbol_name(variables[0])
+    selected = -1
+    for index in range(1, len(left)):
+        factor_variables = Expression(left[index]).variables()
+        for factor_variable in factor_variables:
+            if _symbol_name(factor_variable) == variable_name:
+                selected = index
+                break
+        if selected >= 0:
+            break
+    if selected < 0:
+        return runtime.undefined
+    remaining = []
+    for index in range(1, len(left)):
+        if index != selected:
+            remaining.append(left[index])
+    if len(remaining) == 1:
+        denominator = remaining[0]
+    else:
+        denominator = ['Multiply'] + remaining
+    return Expression([
+        'Equal',
+        left[selected],
+        ['Divide', exact_right, denominator],
+    ])
+
+
 def solve(
     equations: Any,
     *variables: Any,
@@ -850,6 +936,12 @@ def solve(
     kind = runtime.reflect.get(result, 'kind')
     values = runtime.reflect.get(result, 'values')
     if kind == 'roots':
+        if len(values) == 0:
+            partial = _solve_partial_relation(
+                expression_tree, variables)
+            if partial is not runtime.undefined:
+                return [partial]
+            return [SR(equation_values[0])]
         answers = []
         for value in values:
             relation = Expression([

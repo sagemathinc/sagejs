@@ -80,6 +80,14 @@ async function main() {
       "[[x == 5, y == 1]]",
     );
     assert.equal(
+      (
+        await session.evaluate(
+          "x=var('x')\nsolve(sin(x)*cos(x)==0.1,x)",
+        )
+      ).repr,
+      "[sin(x) == 1/10/cos(x)]",
+    );
+    assert.equal(
       (await session.evaluate("function('f')(x)")).repr,
       "f(x)",
     );

@@ -571,6 +571,14 @@ class MultivariatePolynomialElement(sage.Element):
         raw = runtime.flint_backend().mpolyToString(
             self._native, self._parent.variable_names())
         raw = raw.replace(runtime.regexp(r'\s+', 'g'), '')
+        if self._parent.base_ring()._kind == 'GF_EXTENSION':
+            raw = raw.replace(
+                runtime.regexp(
+                    r'\(([A-Za-z_][A-Za-z0-9_]*)\)\*', 'g'),
+                '$1*',
+            )
+            raw = raw.replace(
+                runtime.regexp(r'\(([^()]*)\)$', 'g'), '$1')
         raw = raw.replace(runtime.regexp(r'\+', 'g'), ' + ').replace(
             runtime.regexp(r'([^-])-+', 'g'), '$1 - ')
         return raw.replace(

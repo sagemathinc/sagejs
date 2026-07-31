@@ -9,7 +9,8 @@ assert str(R) == (
     'Multivariate Polynomial Ring in x, y over '
     'Finite Field in a of size 2^2'
 )
-assert str((x + a) ** 2 + y) == 'x^2 + y + (a + 1)'
+assert str((x + a) ** 2 + y) == 'x^2 + y + a + 1'
+assert str(x + y + a) == 'x + y + a'
 f = (x + a) ** 2 + y
 assert gcd(f * x, f * y) == f
 assert R(a + 1) == a + 1
