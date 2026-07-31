@@ -28,6 +28,7 @@ def _native_valuation(native_value: Any) -> int:
     return int(runtime.flint_backend().polyValuation(native_value))
 
 
+@runtime.sequence_class
 @runtime.lightweight_math_class
 class SeriesElement(sage.Element):
 
@@ -60,6 +61,78 @@ class SeriesElement(sage.Element):
                 return self._precision
             raise ValueError('the valuation of zero is infinity')
         return self._shift
+
+    def precision_absolute(self) -> Any:
+        return self._precision
+
+    prec = precision_absolute
+
+    def __getitem__(self, exponent: Any) -> Any:
+        exponent = runtime.normalize_integer(exponent)
+        if (
+            runtime.jstype(exponent) != 'number'
+            or not runtime.number.isSafeInteger(exponent)
+        ):
+            raise TypeError('series exponent must be an integer')
+        index = exponent - self._shift
+        if index < 0:
+            return self._parent.base_ring()(0)
+        coefficients = self._parent._polynomial_ring._from_native(
+            self._native).coefficients()
+        if index >= len(coefficients):
+            return self._parent.base_ring()(0)
+        return coefficients[index]
+
+    def padded_list(self, length: Any = None) -> list[Any]:
+        if length is None:
+            if self._precision is not None:
+                length = max(0, self._precision)
+            else:
+                coefficients = (
+                    self._parent._polynomial_ring._from_native(
+                        self._native).coefficients()
+                )
+                length = max(0, self._shift + len(coefficients))
+        length = int(length)
+        if length < 0:
+            raise ValueError('series coefficient length must be nonnegative')
+        result = [
+            self._parent.base_ring()(0)
+            for _index in range(length)
+        ]
+        coefficients = self._parent._polynomial_ring._from_native(
+            self._native).coefficients()
+        for index in range(len(coefficients)):
+            exponent = self._shift + index
+            if exponent >= 0 and exponent < length:
+                result[exponent] = coefficients[index]
+        return result
+
+    def add_bigoh(self, precision: Any) -> SeriesElement:
+        precision = int(precision)
+        return self._parent._from_native(
+            self._native,
+            self._shift,
+            _minimum_precision(self._precision, precision),
+        )
+
+    def _inflate(
+        self,
+        factor: Any,
+        precision: Any = None,
+    ) -> SeriesElement:
+        factor = int(factor)
+        if factor <= 0:
+            raise ValueError('series inflation factor must be positive')
+        target_precision = precision
+        if target_precision is None and self._precision is not None:
+            target_precision = self._precision * factor
+        return self._parent._from_native(
+            runtime.flint_backend().polyInflate(
+                self._native, runtime.integer_bigint(factor)),
+            self._shift * factor,
+            target_precision,
+        )
 
     def _add_(self, other: SeriesElement) -> SeriesElement:
         shift = min(self._shift, other._shift)

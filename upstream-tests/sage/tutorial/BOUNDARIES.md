@@ -2,10 +2,10 @@
 
 At the pinned Sage revision, the corpus contains 662 executable examples:
 
-- 485 pass with Sage-compatible output or an explicitly equivalent numeric or
+- 497 pass with Sage-compatible output or an explicitly equivalent numeric or
   symbolic result;
 - 6 carry upstream `.. skip` directives;
-- 171 are expected failures grouped by architectural boundary in
+- 159 are expected failures grouped by architectural boundary in
   `expectations.json`;
 - 0 are unclassified failures or unexpected passes.
 
@@ -27,9 +27,10 @@ requires choosing or building one of these substantial subsystems:
 - broader symbolic CAS facilities: coupled nonlinear solving, partial
   fractions, ODEs, Laplace transforms, and arbitrary-precision special
   functions;
-- elliptic curves, databases, and modular forms/modular symbols; FLINT-backed
-  default Dirichlet groups, exact cyclotomic values, and Galois orbits now
-  cover the guided-tour character examples;
+- elliptic curves, databases, cuspidal modular forms, Hecke operators, and
+  modular symbols; FLINT-backed Dirichlet characters and exact Eisenstein
+  expansions now cover the guided-tour character, dimension, and ambient
+  modular-form examples;
 - polynomial and multivariate arithmetic over approximate coefficient fields;
 - Sage's category framework and concrete implementation-class identity model.
 

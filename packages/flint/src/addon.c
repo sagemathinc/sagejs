@@ -2,14 +2,17 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <node_api.h>
 
+#include <flint/arith.h>
 #include <flint/flint.h>
 #include <flint/fmpz.h>
 #include <flint/fmpz_factor.h>
 #include <flint/fmpz_poly.h>
 #include <flint/fmpz_poly_factor.h>
+#include <flint/fmpz_vec.h>
 #include <flint/fmpq.h>
 #include <flint/fmpq_poly.h>
 #include <flint/nmod_poly.h>
@@ -924,6 +927,58 @@ static napi_value poly_truncate(napi_env env, napi_callback_info info)
     return result;
 }
 
+static napi_value poly_inflate(napi_env env, napi_callback_info info)
+{
+    napi_value args[2], result;
+    sagejs_poly *source, *answer;
+    ulong factor;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !bigint_to_ulong(env, args[1], &factor))
+        return NULL;
+    if (factor == 0)
+    {
+        napi_throw_range_error(
+            env, NULL, "polynomial inflation factor must be positive");
+        return NULL;
+    }
+    source = unwrap_poly(env, args[0], 0);
+    if (source == NULL)
+        return NULL;
+    result = create_poly(
+        env, source->kind,
+        source->kind == SAGEJS_POLY_NMOD ? source->modular->mod.n : 0);
+    if (result == NULL)
+        return NULL;
+    answer = unwrap_poly(env, result, source->kind);
+    if (answer == NULL)
+        return NULL;
+    if (source->kind == SAGEJS_POLY_ZZ)
+        fmpz_poly_inflate(answer->integer, source->integer, factor);
+    else if (source->kind == SAGEJS_POLY_QQ)
+    {
+        slong index;
+        slong length = fmpq_poly_length(source->rational);
+        fmpq_t coefficient;
+
+        fmpq_init(coefficient);
+        for (index = 0; index < length; index++)
+        {
+            fmpq_poly_get_coeff_fmpq(
+                coefficient, source->rational, index);
+            fmpq_poly_set_coeff_fmpq(
+                answer->rational,
+                index * (slong) factor,
+                coefficient);
+        }
+        fmpq_clear(coefficient);
+    }
+    else
+        nmod_poly_inflate(
+            answer->modular, source->modular, (slong) factor);
+    return result;
+}
+
 static napi_value poly_mullow(napi_env env, napi_callback_info info)
 {
     napi_value args[3], result;
@@ -1283,6 +1338,178 @@ static napi_value poly_coefficients(napi_env env, napi_callback_info info)
     }
     fmpz_clear(integer);
     fmpq_clear(rational);
+    return result;
+}
+
+/*
+ * Return the level-one Eisenstein q-expansion as an fmpq polynomial.
+ *
+ * Computing all divisor sums with a sieve avoids one factorization per
+ * coefficient.  Keeping the loop in C also prevents coefficient construction
+ * from crossing the Node-API boundary O(precision) times.
+ */
+static napi_value qq_eisenstein_series(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[3];
+    napi_value result;
+    sagejs_poly *poly;
+    ulong weight;
+    ulong precision;
+    napi_valuetype normalization_type;
+    size_t normalization_length = 0;
+    char *normalization = NULL;
+    enum
+    {
+        EISENSTEIN_LINEAR,
+        EISENSTEIN_CONSTANT,
+        EISENSTEIN_INTEGRAL
+    } mode;
+    fmpz *sums = NULL;
+    fmpz_t divisor_power;
+    fmpq_t bernoulli;
+    fmpq_t constant;
+    fmpq_t scale;
+    fmpq_t coefficient;
+    ulong divisor;
+    ulong multiple;
+
+    if (!require_arguments(env, info, 3, args))
+        return NULL;
+    if (!number_to_ulong(env, args[0], &weight) ||
+        !number_to_ulong(env, args[1], &precision))
+        return NULL;
+    if (weight == 0 || (weight & 1) != 0)
+    {
+        napi_throw_range_error(
+            env, NULL, "weight must be a positive even integer");
+        return NULL;
+    }
+    if (!check_napi(
+        env, napi_typeof(env, args[2], &normalization_type)))
+        return NULL;
+    if (normalization_type != napi_string ||
+        !check_napi(env, napi_get_value_string_utf8(
+            env, args[2], NULL, 0, &normalization_length)))
+    {
+        if (normalization_type != napi_string)
+            napi_throw_type_error(
+                env, NULL, "normalization must be a string");
+        return NULL;
+    }
+    normalization = malloc(normalization_length + 1);
+    if (normalization == NULL)
+    {
+        napi_throw_error(env, NULL, "unable to allocate normalization");
+        return NULL;
+    }
+    if (!check_napi(env, napi_get_value_string_utf8(
+        env,
+        args[2],
+        normalization,
+        normalization_length + 1,
+        &normalization_length)))
+    {
+        free(normalization);
+        return NULL;
+    }
+    if (strcmp(normalization, "linear") == 0)
+        mode = EISENSTEIN_LINEAR;
+    else if (strcmp(normalization, "constant") == 0)
+        mode = EISENSTEIN_CONSTANT;
+    else if (strcmp(normalization, "integral") == 0)
+        mode = EISENSTEIN_INTEGRAL;
+    else
+    {
+        free(normalization);
+        napi_throw_range_error(
+            env, NULL,
+            "normalization must be 'linear', 'constant', or 'integral'");
+        return NULL;
+    }
+    free(normalization);
+
+    result = create_poly(env, SAGEJS_POLY_QQ, 0);
+    if (result == NULL)
+        return NULL;
+    poly = unwrap_poly(env, result, SAGEJS_POLY_QQ);
+    if (poly == NULL || precision == 0)
+        return poly == NULL ? NULL : result;
+
+    fmpz_init(divisor_power);
+    fmpq_init(bernoulli);
+    fmpq_init(constant);
+    fmpq_init(scale);
+    fmpq_init(coefficient);
+
+    arith_bernoulli_number(bernoulli, weight);
+    fmpq_set(constant, bernoulli);
+    fmpz_set_ui(divisor_power, weight);
+    fmpz_mul_ui(divisor_power, divisor_power, 2);
+    fmpq_div_fmpz(constant, constant, divisor_power);
+    fmpq_neg(constant, constant);
+
+    if (mode == EISENSTEIN_LINEAR)
+    {
+        fmpq_one(scale);
+        fmpq_poly_set_coeff_fmpq(poly->rational, 0, constant);
+    }
+    else if (mode == EISENSTEIN_CONSTANT)
+    {
+        if (fmpq_is_zero(constant))
+        {
+            fmpz_clear(divisor_power);
+            fmpq_clear(bernoulli);
+            fmpq_clear(constant);
+            fmpq_clear(scale);
+            fmpq_clear(coefficient);
+            napi_throw_range_error(
+                env, NULL, "Eisenstein constant term is zero");
+            return NULL;
+        }
+        fmpq_inv(scale, constant);
+        fmpq_poly_set_coeff_ui(poly->rational, 0, 1);
+    }
+    else
+    {
+        fmpq_set_fmpz(scale, fmpq_denref(constant));
+        fmpq_set_fmpz(coefficient, fmpq_numref(constant));
+        fmpq_poly_set_coeff_fmpq(poly->rational, 0, coefficient);
+    }
+
+    if (precision > 1)
+    {
+        sums = _fmpz_vec_init((slong) precision);
+        for (divisor = 1; divisor < precision; divisor++)
+        {
+            fmpz_set_ui(divisor_power, divisor);
+            fmpz_pow_ui(divisor_power, divisor_power, weight - 1);
+            for (
+                multiple = divisor;
+                multiple < precision;
+                multiple += divisor)
+            {
+                fmpz_add(
+                    sums + multiple,
+                    sums + multiple,
+                    divisor_power);
+            }
+        }
+        for (multiple = 1; multiple < precision; multiple++)
+        {
+            fmpq_mul_fmpz(coefficient, scale, sums + multiple);
+            fmpq_poly_set_coeff_fmpq(
+                poly->rational, (slong) multiple, coefficient);
+        }
+        _fmpz_vec_clear(sums, (slong) precision);
+    }
+
+    fmpz_clear(divisor_power);
+    fmpq_clear(bernoulli);
+    fmpq_clear(constant);
+    fmpq_clear(scale);
+    fmpq_clear(coefficient);
     return result;
 }
 
@@ -2352,6 +2579,8 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"polyPow", NULL, poly_pow, NULL, NULL, NULL, napi_default, NULL},
         {"polyTruncate", NULL, poly_truncate, NULL, NULL, NULL,
             napi_default, NULL},
+        {"polyInflate", NULL, poly_inflate, NULL, NULL, NULL,
+            napi_default, NULL},
         {"polyMullow", NULL, poly_mullow, NULL, NULL, NULL,
             napi_default, NULL},
         {"polyPowTrunc", NULL, poly_pow_trunc, NULL, NULL, NULL,
@@ -2374,6 +2603,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"polyCoefficients", NULL, poly_coefficients, NULL, NULL, NULL,
             napi_default, NULL},
+        {"qqEisensteinSeries", NULL, qq_eisenstein_series,
+            NULL, NULL, NULL, napi_default, NULL},
         {"nmodPolyGcd", NULL, nmod_poly_gcd_value, NULL, NULL, NULL,
             napi_default, NULL},
         {"nmodPolyIsIrreducible", NULL, nmod_poly_is_irreducible_value,

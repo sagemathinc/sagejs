@@ -66,6 +66,14 @@ precision. Generalized Bernoulli numbers combine FLINT's exact Bernoulli
 polynomials with the same `qqbar` character values; this also supplies the
 exact special-value input needed by Eisenstein series.
 
+Level-one Eisenstein expansions are constructed as one native `fmpq_poly`.
+FLINT supplies the exact Bernoulli constant, while a C divisor-sum sieve
+computes every coefficient through the requested precision. The complete
+polynomial crosses Node-API once instead of constructing coefficients through
+repeated scalar calls. Native polynomial inflation implements substitution
+`q -> q^d`, which the Sage.js modular-forms layer uses for degeneracy maps and
+prime-level Eisenstein bases.
+
 The `nmod_poly` API additionally provides GCD, irreducibility testing,
 factorization, and roots over word-sized prime fields. Factorization returns
 opaque native factors and a separate scalar unit. Sage.js wraps these as

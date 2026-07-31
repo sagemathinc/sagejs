@@ -29,3 +29,12 @@ assert str(O(T ** 3) * (T ** 2 + 1)) == 'O(T^3)'
 assert 1 + O(T ** 5) == 1
 assert O(T ** 5) == 0
 assert str(-x) == '-x'
+assert f[0] == 0
+assert f[1] == 1
+assert f[3] == 1
+assert f[4] == 0
+assert f.precision_absolute() == 4
+assert f.padded_list() == [0, 1, 3, 1]
+assert str(f._inflate(2, 8)) == (
+    'T^2 + 3*T^4 + T^6 + O(T^8)'
+)

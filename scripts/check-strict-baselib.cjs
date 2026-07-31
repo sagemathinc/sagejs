@@ -16,7 +16,7 @@ const files = pyrightConfig.include;
 
 assert.ok(Array.isArray(files) && files.length > 0);
 for (const file of files) {
-  assert.match(file, /^src\/(?:baselib|lib)\/[^/]+\.py$/);
+  assert.match(file, /^src\/(?:baselib|lib)\/.+\.py$/);
 }
 
 const pythonSyntax = spawnSync(

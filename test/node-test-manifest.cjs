@@ -20,6 +20,7 @@ const integration = [
   "test/graphics3d.cjs",
   "test/graphics-export.cjs",
   "test/dirichlet.cjs",
+  "test/modular.cjs",
   "test/symbolic.cjs",
   "test/algebraic-numbers.cjs",
   "test/spectral-linear-algebra.cjs",
