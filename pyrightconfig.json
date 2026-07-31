@@ -12,6 +12,7 @@
     "src/baselib/finite_fields.py",
     "src/baselib/graphics.py",
     "src/baselib/graphics3d.py",
+    "src/baselib/groups.py",
     "src/baselib/internal.py",
     "src/baselib/itertools.py",
     "src/baselib/matrix.py",

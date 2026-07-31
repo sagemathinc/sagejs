@@ -78,6 +78,13 @@ def _positive_term(value: Any) -> Any:
         return -value
     if (
         runtime.array.isArray(value)
+        and len(value) == 3
+        and value[0] == "Rational"
+        and value[1] < 0
+    ):
+        return ["Rational", -value[1], value[2]]
+    if (
+        runtime.array.isArray(value)
         and len(value) >= 3
         and value[0] == "Multiply"
     ):
@@ -466,6 +473,84 @@ class Expression(sage.Element):
 
     def simplify(self) -> Expression:
         return Expression(_call_backend("simplify", [self._tree]))
+
+    def partial_fraction(self, variable: Any = None) -> Expression:
+        """
+        Decompose a rational expression with distinct linear factors.
+
+        The current exact implementation handles a univariate denominator
+        expressed as a product of distinct monic linear factors. Unsupported
+        nonlinear or repeated-factor cases raise `NotImplementedError`.
+        """
+        variables = self.variables()
+        if variable is None:
+            if len(variables) != 1:
+                raise ValueError(
+                    'partial_fraction() requires an explicit variable')
+            variable = variables[0]
+        name = _symbol_name(variable)
+        tree = self._tree
+        if (
+            not runtime.array.isArray(tree)
+            or len(tree) != 3
+            or tree[0] != 'Divide'
+        ):
+            return self
+        numerator = tree[1]
+        denominator = tree[2]
+        if (
+            runtime.array.isArray(denominator)
+            and len(denominator) >= 3
+            and denominator[0] == 'Multiply'
+        ):
+            factors = list(denominator[1:])
+        else:
+            factors = [denominator]
+        roots = []
+        for factor_value in factors:
+            if (
+                not runtime.array.isArray(factor_value)
+                or len(factor_value) != 3
+                or factor_value[0] != 'Add'
+            ):
+                raise NotImplementedError(
+                    'partial fractions currently require '
+                    'distinct monic linear factors')
+            if factor_value[1] == name:
+                constant = factor_value[2]
+            elif factor_value[2] == name:
+                constant = factor_value[1]
+            else:
+                raise NotImplementedError(
+                    'partial fractions currently require '
+                    'distinct monic linear factors')
+            roots.append(['Negate', constant])
+
+        terms = []
+        for index in range(len(factors)):
+            denominator_at_root = 1
+            for other_index in range(len(factors)):
+                if other_index != index:
+                    difference = [
+                        'Subtract',
+                        roots[index],
+                        roots[other_index],
+                    ]
+                    denominator_at_root = [
+                        'Multiply',
+                        denominator_at_root,
+                        difference,
+                    ]
+            coefficient = _call_backend(
+                'simplify',
+                [['Divide', numerator, denominator_at_root]],
+            )
+            term = ['Divide', coefficient, factors[index]]
+            if _positive_term(coefficient) is not runtime.undefined:
+                terms.insert(0, term)
+            else:
+                terms.append(term)
+        return Expression(['Add'] + terms)
 
     def variables(self) -> Any:
         names = _call_backend("variables", [self._tree])

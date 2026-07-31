@@ -20,6 +20,7 @@ const integration = [
   "test/graphics.cjs",
   "test/graphics3d.cjs",
   "test/graphics-export.cjs",
+  "test/groups.cjs",
   "test/dirichlet.cjs",
   "test/modular.cjs",
   "test/symbolic.cjs",

@@ -94,6 +94,14 @@ async function main() {
     assert.equal((await session.evaluate("log(8, 2)")).repr, "3");
     assert.equal((await session.evaluate("floor(log(17, 2))")).repr, "4");
     assert.equal(
+      (
+        await session.evaluate(
+          "f = 1/((1+x)*(x-1))\nf.partial_fraction(x)",
+        )
+      ).repr,
+      "-1/2/(x + 1) + 1/2/(x - 1)",
+    );
+    assert.equal(
       (await session.evaluate("float(pi)")).repr,
       "3.141592653589793",
     );

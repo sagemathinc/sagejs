@@ -100,6 +100,25 @@ class Parent:
                 return power_series_ring(self, variable[0])
         return runtime.polynomial_ring(self, variable)
 
+    def category(self) -> Category:
+        kind = getattr(self, '_kind', None)
+        if kind == 'ZZ':
+            return _integer_ring_category
+        if kind in [
+            'QQ', 'GF', 'GF_EXTENSION', 'RDF', 'CDF',
+            'RealField', 'ComplexField', 'AA', 'QQBAR',
+        ]:
+            return Fields()
+        return Rings()
+
+
+class Ring(Parent):
+    """Base class for ring parents in the lightweight Sage.js hierarchy."""
+
+
+class Field(Ring):
+    """Base class for field parents in the lightweight Sage.js hierarchy."""
+
 
 @runtime.lightweight_math_class
 class Element:
@@ -111,8 +130,12 @@ class Element:
         return self._parent
 
 
+class RingElement(Element):
+    """Base class for elements represented by ring parents."""
+
+
 @runtime.callable_instance_class
-class IntegerRing(Parent):
+class IntegerRing(Ring):
 
     def __init__(self, name: str = 'Integer Ring') -> None:
         Parent.__init__(self, name)
@@ -123,7 +146,7 @@ class IntegerRing(Parent):
 
 
 @runtime.callable_instance_class
-class RationalField(Parent):
+class RationalField(Field):
 
     def __init__(self, name: str = 'Rational Field') -> None:
         Parent.__init__(self, name)
@@ -160,6 +183,72 @@ ZZ = IntegerRing('Integer Ring')
 ZZ._kind = 'ZZ'
 QQ = RationalField('Rational Field')
 QQ._kind = 'QQ'
+
+
+class Category:
+
+    def __init__(
+        self,
+        name: str,
+        accepted_kinds: list[str],
+        is_field_category: bool = False,
+    ) -> None:
+        self._name = name
+        self._accepted_kinds = accepted_kinds
+        self._is_field_category = is_field_category
+
+    def __repr__(self) -> str:
+        return self._name
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def __contains__(self, value: Any) -> bool:
+        kind = getattr(value, '_kind', None)
+        if kind in self._accepted_kinds:
+            return True
+        if self._is_field_category:
+            return isinstance(value, Field)
+        return isinstance(value, Ring)
+
+    def is_subcategory(self, other: Any) -> bool:
+        if self is other:
+            return True
+        if self._is_field_category and other is _rings_category:
+            return True
+        if self is _integer_ring_category and other is _rings_category:
+            return True
+        return False
+
+
+_field_kinds = [
+    'QQ', 'GF', 'GF_EXTENSION', 'RDF', 'CDF',
+    'RealField', 'ComplexField', 'AA', 'QQBAR',
+]
+_ring_kinds = [
+    'QQ', 'GF', 'GF_EXTENSION', 'RDF', 'CDF',
+    'RealField', 'ComplexField', 'AA', 'QQBAR',
+    'ZZ', 'ZMOD', 'POLYNOMIAL', 'MULTIVARIATE_POLYNOMIAL',
+    'POWER_SERIES',
+]
+_rings_category = Category('Category of rings', _ring_kinds)
+_fields_category = Category('Category of fields', _field_kinds, True)
+_integer_ring_category = Category(
+    'Join of Category of Dedekind domains\n'
+    '    and Category of euclidean domains\n'
+    '    and Category of noetherian rings\n'
+    '    and Category of infinite enumerated sets\n'
+    '    and Category of metric spaces',
+    ['ZZ'],
+)
+
+
+def Rings() -> Category:
+    return _rings_category
+
+
+def Fields() -> Category:
+    return _fields_category
 
 
 def _identity(value: Any) -> Any:
