@@ -14,6 +14,9 @@ napi_value sagejs_mpoly_pow(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_equal(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_divexact(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_gcd(napi_env env, napi_callback_info info);
+napi_value sagejs_mpoly_resultant(napi_env env, napi_callback_info info);
+napi_value sagejs_mpoly_irreducible_factors(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_compose_gen(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_to_string(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_length(napi_env env, napi_callback_info info);

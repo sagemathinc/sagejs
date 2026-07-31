@@ -8,11 +8,15 @@
 
 #include <flint/flint.h>
 #include <flint/fq_nmod_mpoly.h>
+#include <flint/fq_nmod_mpoly_factor.h>
 #include <flint/fmpq.h>
 #include <flint/fmpq_mpoly.h>
+#include <flint/fmpq_mpoly_factor.h>
 #include <flint/fmpz.h>
 #include <flint/fmpz_mpoly.h>
+#include <flint/fmpz_mpoly_factor.h>
 #include <flint/nmod_mpoly.h>
+#include <flint/nmod_mpoly_factor.h>
 #include <flint/ulong_extras.h>
 
 #include "multivariate.h"
@@ -760,6 +764,289 @@ napi_value sagejs_mpoly_divexact(napi_env e, napi_callback_info i)
 { return divides_or_gcd(e, i, 0); }
 napi_value sagejs_mpoly_gcd(napi_env e, napi_callback_info i)
 { return divides_or_gcd(e, i, 1); }
+
+napi_value sagejs_mpoly_resultant(napi_env env, napi_callback_info info)
+{
+    napi_value args[3], object;
+    sagejs_mpoly_value *left, *right, *result;
+    slong variable;
+    int success;
+
+    if (!require_arguments(env, info, 3, args) ||
+        (left = unwrap_pair(env, args[0], args[1], &right)) == NULL ||
+        !value_to_slong(
+            env, args[2], 0, left->context->nvars - 1,
+            "resultant variable index is out of range", &variable))
+        return NULL;
+    object = create_value(env, left->context);
+    if (object == NULL ||
+        (result = unwrap_value(env, object)) == NULL)
+        return NULL;
+    if (left->context->kind == SAGEJS_MPOLY_ZZ)
+        success = fmpz_mpoly_resultant(
+            result->value.zz, left->value.zz, right->value.zz,
+            variable, left->context->value.zz);
+    else if (left->context->kind == SAGEJS_MPOLY_QQ)
+        success = fmpq_mpoly_resultant(
+            result->value.qq, left->value.qq, right->value.qq,
+            variable, left->context->value.qq);
+    else if (left->context->kind == SAGEJS_MPOLY_NMOD)
+        success = nmod_mpoly_resultant(
+            result->value.nmod, left->value.nmod, right->value.nmod,
+            variable, left->context->value.nmod);
+    else
+        success = fq_nmod_mpoly_resultant(
+            result->value.fq_nmod, left->value.fq_nmod,
+            right->value.fq_nmod, variable,
+            left->context->value.fq_nmod);
+    if (!success)
+    {
+        napi_throw_range_error(
+            env, NULL, "FLINT could not compute the resultant");
+        return NULL;
+    }
+    return object;
+}
+
+napi_value sagejs_mpoly_irreducible_factors(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[1], factors;
+    sagejs_mpoly_value *source;
+    slong index, length;
+    int success;
+
+    if (!require_arguments(env, info, 1, args) ||
+        (source = unwrap_value(env, args[0])) == NULL)
+        return NULL;
+
+    if (source->context->kind == SAGEJS_MPOLY_ZZ)
+    {
+        fmpz_mpoly_factor_t decomposition;
+        fmpz_mpoly_factor_init(decomposition, source->context->value.zz);
+        success = fmpz_mpoly_factor(
+            decomposition, source->value.zz, source->context->value.zz);
+        length = fmpz_mpoly_factor_length(
+            decomposition, source->context->value.zz);
+        if (!success ||
+            !check_napi(env,
+                napi_create_array_with_length(env, (size_t) length, &factors)))
+        {
+            fmpz_mpoly_factor_clear(
+                decomposition, source->context->value.zz);
+            if (success)
+                return NULL;
+            napi_throw_range_error(
+                env, NULL, "FLINT could not factor the polynomial");
+            return NULL;
+        }
+        for (index = 0; index < length; index++)
+        {
+            napi_value pair, polynomial, exponent;
+            sagejs_mpoly_value *target;
+            polynomial = create_value(env, source->context);
+            if (polynomial == NULL ||
+                (target = unwrap_value(env, polynomial)) == NULL ||
+                !check_napi(env,
+                    napi_create_array_with_length(env, 2, &pair)) ||
+                !check_napi(env, napi_create_double(
+                    env,
+                    (double) fmpz_mpoly_factor_get_exp_si(
+                        decomposition, index, source->context->value.zz),
+                    &exponent)))
+            {
+                fmpz_mpoly_factor_clear(
+                    decomposition, source->context->value.zz);
+                return NULL;
+            }
+            fmpz_mpoly_factor_get_base(
+                target->value.zz, decomposition, index,
+                source->context->value.zz);
+            if (!check_napi(env, napi_set_element(env, pair, 0, polynomial)) ||
+                !check_napi(env, napi_set_element(env, pair, 1, exponent)) ||
+                !check_napi(env,
+                    napi_set_element(env, factors, (uint32_t) index, pair)))
+            {
+                fmpz_mpoly_factor_clear(
+                    decomposition, source->context->value.zz);
+                return NULL;
+            }
+        }
+        fmpz_mpoly_factor_clear(decomposition, source->context->value.zz);
+        return factors;
+    }
+
+    if (source->context->kind == SAGEJS_MPOLY_QQ)
+    {
+        fmpq_mpoly_factor_t decomposition;
+        fmpq_mpoly_factor_init(decomposition, source->context->value.qq);
+        success = fmpq_mpoly_factor(
+            decomposition, source->value.qq, source->context->value.qq);
+        length = fmpq_mpoly_factor_length(
+            decomposition, source->context->value.qq);
+        if (!success ||
+            !check_napi(env,
+                napi_create_array_with_length(env, (size_t) length, &factors)))
+        {
+            fmpq_mpoly_factor_clear(
+                decomposition, source->context->value.qq);
+            if (success)
+                return NULL;
+            napi_throw_range_error(
+                env, NULL, "FLINT could not factor the polynomial");
+            return NULL;
+        }
+        for (index = 0; index < length; index++)
+        {
+            napi_value pair, polynomial, exponent;
+            sagejs_mpoly_value *target;
+            polynomial = create_value(env, source->context);
+            if (polynomial == NULL ||
+                (target = unwrap_value(env, polynomial)) == NULL ||
+                !check_napi(env,
+                    napi_create_array_with_length(env, 2, &pair)) ||
+                !check_napi(env, napi_create_double(
+                    env,
+                    (double) fmpq_mpoly_factor_get_exp_si(
+                        decomposition, index, source->context->value.qq),
+                    &exponent)))
+            {
+                fmpq_mpoly_factor_clear(
+                    decomposition, source->context->value.qq);
+                return NULL;
+            }
+            fmpq_mpoly_factor_get_base(
+                target->value.qq, decomposition, index,
+                source->context->value.qq);
+            if (!check_napi(env, napi_set_element(env, pair, 0, polynomial)) ||
+                !check_napi(env, napi_set_element(env, pair, 1, exponent)) ||
+                !check_napi(env,
+                    napi_set_element(env, factors, (uint32_t) index, pair)))
+            {
+                fmpq_mpoly_factor_clear(
+                    decomposition, source->context->value.qq);
+                return NULL;
+            }
+        }
+        fmpq_mpoly_factor_clear(decomposition, source->context->value.qq);
+        return factors;
+    }
+
+    if (source->context->kind == SAGEJS_MPOLY_NMOD)
+    {
+        nmod_mpoly_factor_t decomposition;
+        nmod_mpoly_factor_init(decomposition, source->context->value.nmod);
+        success = nmod_mpoly_factor(
+            decomposition, source->value.nmod, source->context->value.nmod);
+        length = nmod_mpoly_factor_length(
+            decomposition, source->context->value.nmod);
+        if (!success ||
+            !check_napi(env,
+                napi_create_array_with_length(env, (size_t) length, &factors)))
+        {
+            nmod_mpoly_factor_clear(
+                decomposition, source->context->value.nmod);
+            if (success)
+                return NULL;
+            napi_throw_range_error(
+                env, NULL, "FLINT could not factor the polynomial");
+            return NULL;
+        }
+        for (index = 0; index < length; index++)
+        {
+            napi_value pair, polynomial, exponent;
+            sagejs_mpoly_value *target;
+            polynomial = create_value(env, source->context);
+            if (polynomial == NULL ||
+                (target = unwrap_value(env, polynomial)) == NULL ||
+                !check_napi(env,
+                    napi_create_array_with_length(env, 2, &pair)) ||
+                !check_napi(env, napi_create_double(
+                    env,
+                    (double) nmod_mpoly_factor_get_exp_si(
+                        decomposition, index, source->context->value.nmod),
+                    &exponent)))
+            {
+                nmod_mpoly_factor_clear(
+                    decomposition, source->context->value.nmod);
+                return NULL;
+            }
+            nmod_mpoly_factor_get_base(
+                target->value.nmod, decomposition, index,
+                source->context->value.nmod);
+            if (!check_napi(env, napi_set_element(env, pair, 0, polynomial)) ||
+                !check_napi(env, napi_set_element(env, pair, 1, exponent)) ||
+                !check_napi(env,
+                    napi_set_element(env, factors, (uint32_t) index, pair)))
+            {
+                nmod_mpoly_factor_clear(
+                    decomposition, source->context->value.nmod);
+                return NULL;
+            }
+        }
+        nmod_mpoly_factor_clear(decomposition, source->context->value.nmod);
+        return factors;
+    }
+
+    {
+        fq_nmod_mpoly_factor_t decomposition;
+        fq_nmod_mpoly_factor_init(
+            decomposition, source->context->value.fq_nmod);
+        success = fq_nmod_mpoly_factor(
+            decomposition, source->value.fq_nmod,
+            source->context->value.fq_nmod);
+        length = fq_nmod_mpoly_factor_length(
+            decomposition, source->context->value.fq_nmod);
+        if (!success ||
+            !check_napi(env,
+                napi_create_array_with_length(env, (size_t) length, &factors)))
+        {
+            fq_nmod_mpoly_factor_clear(
+                decomposition, source->context->value.fq_nmod);
+            if (success)
+                return NULL;
+            napi_throw_range_error(
+                env, NULL, "FLINT could not factor the polynomial");
+            return NULL;
+        }
+        for (index = 0; index < length; index++)
+        {
+            napi_value pair, polynomial, exponent;
+            sagejs_mpoly_value *target;
+            polynomial = create_value(env, source->context);
+            if (polynomial == NULL ||
+                (target = unwrap_value(env, polynomial)) == NULL ||
+                !check_napi(env,
+                    napi_create_array_with_length(env, 2, &pair)) ||
+                !check_napi(env, napi_create_double(
+                    env,
+                    (double) fq_nmod_mpoly_factor_get_exp_si(
+                        decomposition, index,
+                        source->context->value.fq_nmod),
+                    &exponent)))
+            {
+                fq_nmod_mpoly_factor_clear(
+                    decomposition, source->context->value.fq_nmod);
+                return NULL;
+            }
+            fq_nmod_mpoly_factor_get_base(
+                target->value.fq_nmod, decomposition, index,
+                source->context->value.fq_nmod);
+            if (!check_napi(env, napi_set_element(env, pair, 0, polynomial)) ||
+                !check_napi(env, napi_set_element(env, pair, 1, exponent)) ||
+                !check_napi(env,
+                    napi_set_element(env, factors, (uint32_t) index, pair)))
+            {
+                fq_nmod_mpoly_factor_clear(
+                    decomposition, source->context->value.fq_nmod);
+                return NULL;
+            }
+        }
+        fq_nmod_mpoly_factor_clear(
+            decomposition, source->context->value.fq_nmod);
+        return factors;
+    }
+}
 
 napi_value sagejs_mpoly_compose_gen(
     napi_env env, napi_callback_info info)

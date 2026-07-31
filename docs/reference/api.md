@@ -9,6 +9,77 @@ generated: true
 This file is generated from the runtime DocSpec registry. Edit the
 adjacent public docstring and registration metadata, then regenerate it.
 
+## `AffineSpace`
+
+```sage
+AffineSpace(dimension, base, names='x')
+```
+
+Construct affine space with the requested coordinate names.
+
+### Example
+
+```sage
+sage: A = AffineSpace(2, QQ, 'xy')
+sage: A
+Affine Space of dimension 2 over Rational Field
+sage: A.gens()
+(x, y)
+```
+
+The coordinate ring is a FLINT-backed multivariate polynomial ring.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.schemes`
+- Tags: algebraic geometry, affine schemes, curves, multivariate polynomials
+- Backends: FLINT, Sage.js algebraic geometry layer
+- Sage compatibility: partial — Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation.
+- Limitations: General primary decomposition and complete Gröbner fans are not implemented.
+
+### Provenance
+
+- `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
+- `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
+
+## `Curve`
+
+```sage
+Curve(polynomial)
+```
+
+Construct an affine plane curve from a multivariate polynomial.
+
+### Example
+
+```sage
+sage: x, y = AffineSpace(2, QQ, 'xy').gens()
+sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))
+sage: C.irreducible_components()
+[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
+  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
+  x^3 + y^3 - 1]
+```
+
+Hypersurface components use FLINT multivariate factorization. Plane-curve
+intersections over `QQ` use a resultant followed by factorization and
+Gröbner bases. General primary decomposition is not yet implemented.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.schemes`
+- Tags: algebraic geometry, affine schemes, curves, multivariate polynomials
+- Backends: FLINT, Sage.js algebraic geometry layer
+- Sage compatibility: partial — Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation.
+- Limitations: General primary decomposition and complete Gröbner fans are not implemented.
+
+### Provenance
+
+- `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
+- `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
+
 ## `dimension_cusp_forms`
 
 ```sage
@@ -653,8 +724,10 @@ PolynomialRing(base, variable=None, names=None, sparse=False, implementation=Non
 Construct a univariate or multivariate polynomial ring.
 
 Coefficient rings currently include `ZZ`, `QQ`, prime and extension
-finite fields, and `Zmod(n)`. Arithmetic is exact and backed by FLINT.
-A comma-separated name list constructs a multivariate ring.
+finite fields, `Zmod(n)`, and approximate real fields. Exact arithmetic
+is backed by FLINT; approximate real polynomials use a small sparse
+coefficient layer. A comma-separated name list constructs a multivariate
+ring.
 
 ### Examples
 
@@ -676,11 +749,11 @@ full constructor while native implementations are selected automatically.
 - Kind: `function`
 - Module: `sage.rings.polynomial.polynomial_ring_constructor`
 - Aliases: `polygen`
-- Tags: rings, polynomials, multivariate polynomials, exact arithmetic
-- Backends: FLINT
-- Sage compatibility: partial — Core univariate and multivariate construction and arithmetic are compatible; SageMath exposes additional constructor implementations and coefficient rings.
-- Algorithm: FLINT univariate and multivariate polynomial arithmetic
-- Limitations: Only lex, deglex, and degrevlex monomial orders are currently accepted.
+- Tags: rings, polynomials, multivariate polynomials, exact arithmetic, approximate arithmetic
+- Backends: FLINT, Sage.js sparse polynomial layer
+- Sage compatibility: partial — Core univariate and multivariate construction and arithmetic are compatible over exact and approximate real coefficient rings; SageMath exposes additional constructor implementations and coefficient rings.
+- Algorithm: FLINT exact polynomial arithmetic with a sparse generic layer for approximate real coefficients
+- Limitations: Only lex, deglex, and degrevlex monomial orders are currently accepted. Approximate factorization currently handles real quadratics.
 
 ### Provenance
 
@@ -771,6 +844,29 @@ sage: prime_range(10, 20)
 ### References
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `Qp`
+
+```sage
+Qp(prime, prec=20)
+```
+
+Construct a capped-relative p-adic field.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.rings.padics.factory`
+- Aliases: `Zp`
+- Tags: number theory, p-adic fields, p-adic rings
+- Backends: Sage.js exact rational expansion
+- Sage compatibility: partial — Capped-relative parents and exact rational expansions are compatible; analytic and extension-field operations are not yet implemented.
+- Algorithm: modular inversion followed by base-p digit extraction
+- Limitations: Only exact rational elements are currently supported.
+
+### Provenance
+
+- `sage-derived` — [SageMath p-adic factory API](https://doc.sagemath.org/html/en/reference/padics/); license GPL-2.0-or-later
 
 ## `random_matrix`
 

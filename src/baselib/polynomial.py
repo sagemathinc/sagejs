@@ -585,6 +585,43 @@ class MultivariatePolynomialElement(sage.Element):
                 operands.left._native, operands.right._native),
         )
 
+    def irreducible_factors(
+        self,
+    ) -> list[MultivariatePolynomialElement]:
+        """
+        Return the distinct irreducible factors of this polynomial.
+
+        Factorization is performed by FLINT over the coefficient rings
+        supported by the multivariate polynomial parent. Multiplicities and
+        the constant unit are intentionally omitted; use this method when
+        the geometric irreducible components are the desired result.
+        """
+        native_factors = runtime.flint_backend().mpolyIrreducibleFactors(
+            self._native)
+        answer = []
+        for pair in native_factors:
+            answer.append(MultivariatePolynomialElement(
+                self._parent, pair[0]))
+        return answer
+
+    def resultant(
+        self,
+        other: object,
+        variable: Any,
+    ) -> MultivariatePolynomialElement:
+        """Return the resultant with respect to one ring generator."""
+        operands = runtime.coercion_model.coercePair(self, other)
+        if not isinstance(
+            operands.left, MultivariatePolynomialElement,
+        ):
+            raise TypeError('polynomial resultant requires polynomials')
+        index = operands.parent._generator_index(variable)
+        return MultivariatePolynomialElement(
+            operands.parent,
+            runtime.flint_backend().mpolyResultant(
+                operands.left._native, operands.right._native, index),
+        )
+
     def degree(self, variable: Any = None) -> int:
         if variable is None:
             return runtime.flint_backend().mpolyTotalDegree(self._native)
@@ -1296,6 +1333,10 @@ class PolynomialIdeal:
             self._groebner = PolynomialSequence(values, self._ring)
         return self._groebner
 
+    def groebner_fan(self) -> GroebnerFan:
+        """Return the Gröbner-fan computation attached to this ideal."""
+        return GroebnerFan(self)
+
     def __contains__(self, value: object) -> bool:
         polynomial = self._ring(value)
         basis = self.groebner_basis()
@@ -1334,6 +1375,31 @@ class PolynomialIdeal:
     toString = __repr__
 
 
+@runtime.callable_instance_class
+class GroebnerFan:
+
+    def __init__(self, polynomial_ideal: PolynomialIdeal) -> None:
+        self._ideal = polynomial_ideal
+
+    def ideal(self) -> PolynomialIdeal:
+        return self._ideal
+
+    def reduced_groebner_bases(self) -> Any:
+        raise NotImplementedError(
+            'enumerating a full Gröbner fan requires a dedicated '
+            'polyhedral fan algorithm')
+
+    def polyhedralfan(self) -> Any:
+        raise NotImplementedError(
+            'constructing the polyhedral Gröbner fan is not implemented')
+
+    def __repr__(self) -> str:
+        return 'Groebner fan of the ideal:\n' + repr(self._ideal)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 def ideal(*generators: Any) -> PolynomialIdeal:
     selected = _ideal_generators(generators)
     if len(selected) == 0:
@@ -1343,6 +1409,249 @@ def ideal(*generators: Any) -> PolynomialIdeal:
         raise TypeError(
             'the prototype ideal constructor needs polynomial generators')
     return first._parent.ideal(selected)
+
+
+@runtime.callable_instance_class
+class AffineSpaceParent(sage.Parent):
+
+    def __init__(
+        self,
+        dimension: int,
+        base: sage.Parent,
+        names: Any = 'x',
+    ) -> None:
+        if not runtime.is_exact_integer(dimension):
+            raise TypeError('affine-space dimension must be an integer')
+        dimension = int(dimension)
+        if dimension < 0:
+            raise ValueError('affine-space dimension must be nonnegative')
+        self._dimension = dimension
+        self._base = base
+        self._coordinate_ring = PolynomialRing(
+            base, dimension, names=names)
+
+    def dimension(self) -> int:
+        return self._dimension
+
+    def base_ring(self) -> sage.Parent:
+        return self._base
+
+    def coordinate_ring(self) -> Any:
+        return self._coordinate_ring
+
+    def gens(self) -> Any:
+        return self._coordinate_ring.gens()
+
+    def __repr__(self) -> str:
+        return (
+            'Affine Space of dimension ' + str(self._dimension)
+            + ' over ' + str(self._base)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+def AffineSpace(
+    dimension: int,
+    base: sage.Parent,
+    names: Any = 'x',
+) -> AffineSpaceParent:
+    """
+    Construct affine space with the requested coordinate names.
+
+    ### Example
+
+    ```sage
+    sage: A = AffineSpace(2, QQ, 'xy')
+    sage: A
+    Affine Space of dimension 2 over Rational Field
+    sage: A.gens()
+    (x, y)
+    ```
+
+    The coordinate ring is a FLINT-backed multivariate polynomial ring.
+    """
+    return AffineSpaceParent(dimension, base, names)
+
+
+@runtime.callable_instance_class
+class ClosedSubscheme:
+
+    def __init__(
+        self,
+        ambient: AffineSpaceParent,
+        equations: Any,
+    ) -> None:
+        self._ambient = ambient
+        ring = ambient.coordinate_ring()
+        self._equations = runtime.math_tuple(
+            [ring(equation) for equation in equations])
+
+    def ambient_space(self) -> AffineSpaceParent:
+        return self._ambient
+
+    def defining_polynomials(self) -> Any:
+        return self._equations
+
+    def irreducible_components(self) -> list[ClosedSubscheme]:
+        ring = self._ambient.coordinate_ring()
+        if (
+            len(self._equations) != 2
+            or ring.ngens() != 2
+            or ring.base_ring() is not sage.QQ
+        ):
+            raise NotImplementedError(
+                'irreducible components of general closed subschemes '
+                'require primary decomposition')
+        first = self._equations[0]
+        second = self._equations[1]
+        elimination = first.resultant(second, ring.gen(0))
+        factors = elimination.irreducible_factors()
+        ordered = []
+        for factor_value in factors:
+            insert_at = len(ordered)
+            for index in range(len(ordered)):
+                if (
+                    factor_value.total_degree()
+                    < ordered[index].total_degree()
+                    or (
+                        factor_value.total_degree()
+                        == ordered[index].total_degree()
+                        and repr(factor_value) > repr(ordered[index])
+                    )
+                ):
+                    insert_at = index
+                    break
+            ordered.insert(insert_at, factor_value)
+        answer = []
+        for factor_value in ordered:
+            basis = ring.ideal(
+                first, second, factor_value).groebner_basis()
+            squarefree_basis = []
+            for polynomial in basis:
+                product = ring(1)
+                for irreducible in polynomial.irreducible_factors():
+                    product = product * irreducible
+                squarefree_basis.append(product)
+            answer.append(ClosedSubscheme(
+                self._ambient, squarefree_basis))
+        return answer
+
+    def __repr__(self) -> str:
+        lines = [
+            'Closed subscheme of ' + str(self._ambient) + ' defined by:'
+        ]
+        equations = list(self._equations)
+        if (
+            len(equations) == 2
+            and equations[0].total_degree() == 1
+            and equations[1].total_degree() == 1
+        ):
+            equations.reverse()
+        for index in range(len(equations)):
+            suffix = ',' if index + 1 < len(self._equations) else ''
+            lines.append('  ' + repr(equations[index]) + suffix)
+        return '\n'.join(lines)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class AffinePlaneCurve:
+
+    def __init__(self, polynomial: MultivariatePolynomialElement) -> None:
+        ring = polynomial._parent
+        if ring.ngens() != 2:
+            raise ValueError(
+                'an affine plane curve needs a polynomial in two variables')
+        self._polynomial = polynomial
+        self._ambient = AffineSpaceParent(
+            2, ring.base_ring(), ring.variable_names())
+
+    def defining_polynomial(self) -> MultivariatePolynomialElement:
+        return self._polynomial
+
+    def ambient_space(self) -> AffineSpaceParent:
+        return self._ambient
+
+    def __add__(self, other: object) -> AffinePlaneCurve:
+        if not isinstance(other, AffinePlaneCurve):
+            raise TypeError('curves can only be added to curves')
+        if self._polynomial._parent is not other._polynomial._parent:
+            raise TypeError('curves have different ambient spaces')
+        return AffinePlaneCurve(
+            self._polynomial * other._polynomial)
+
+    def intersection(self, other: object) -> ClosedSubscheme:
+        if not isinstance(other, AffinePlaneCurve):
+            raise TypeError('curve intersection needs another curve')
+        if self._polynomial._parent is not other._polynomial._parent:
+            raise TypeError('curves have different ambient spaces')
+        return ClosedSubscheme(
+            self._ambient,
+            [self._polynomial, other._polynomial],
+        )
+
+    def irreducible_components(self) -> list[ClosedSubscheme]:
+        factors = self._polynomial.irreducible_factors()
+        ordered = []
+        for factor_value in factors:
+            insert_at = len(ordered)
+            for index in range(len(ordered)):
+                if (
+                    factor_value.total_degree()
+                    < ordered[index].total_degree()
+                    or (
+                        factor_value.total_degree()
+                        == ordered[index].total_degree()
+                        and repr(factor_value) < repr(ordered[index])
+                    )
+                ):
+                    insert_at = index
+                    break
+            ordered.insert(insert_at, factor_value)
+        answer = []
+        for factor_value in ordered:
+            answer.append(ClosedSubscheme(
+                self._ambient, [factor_value]))
+        return answer
+
+    def __repr__(self) -> str:
+        return (
+            'Affine Plane Curve over '
+            + str(self._polynomial._parent.base_ring())
+            + ' defined by\n   ' + repr(self._polynomial)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+def Curve(polynomial: Any) -> AffinePlaneCurve:
+    """
+    Construct an affine plane curve from a multivariate polynomial.
+
+    ### Example
+
+    ```sage
+    sage: x, y = AffineSpace(2, QQ, 'xy').gens()
+    sage: C = Curve((x^2 + y^2 - 1) * (x^3 + y^3 - 1))
+    sage: C.irreducible_components()
+    [Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
+      x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:
+      x^3 + y^3 - 1]
+    ```
+
+    Hypersurface components use FLINT multivariate factorization. Plane-curve
+    intersections over `QQ` use a resultant followed by factorization and
+    Gröbner bases. General primary decomposition is not yet implemented.
+    """
+    if not isinstance(polynomial, MultivariatePolynomialElement):
+        raise TypeError(
+            'the current Curve constructor needs a multivariate polynomial')
+    return AffinePlaneCurve(polynomial)
 
 
 @runtime.callable_instance_class
@@ -1822,3 +2131,54 @@ runtime.register_doc(
         ],
     },
 )
+
+for _geometry_name, _geometry_value in [
+    ('AffineSpace', AffineSpace),
+    ('Curve', Curve),
+]:
+    runtime.register_doc(
+        _geometry_name,
+        _geometry_value,
+        {
+            'kind': 'function',
+            'module': 'sage.schemes',
+            'tags': [
+                'algebraic geometry',
+                'affine schemes',
+                'curves',
+                'multivariate polynomials',
+            ],
+            'backends': ['FLINT', 'Sage.js algebraic geometry layer'],
+            'sage_compatibility': {
+                'status': 'partial',
+                'notes': (
+                    'Affine plane curves, hypersurface components, and '
+                    'rational plane-curve intersections are supported. '
+                    'General schemes and primary decomposition remain '
+                    'outside the current implementation.'
+                ),
+            },
+            'provenance': [
+                {
+                    'kind': 'sage-derived',
+                    'source': 'SageMath schemes and plane curves API',
+                    'url': (
+                        'https://doc.sagemath.org/html/en/reference/'
+                        'curves/'
+                    ),
+                    'license': 'GPL-2.0-or-later',
+                },
+                {
+                    'kind': 'library-backed',
+                    'source': 'FLINT multivariate polynomial arithmetic',
+                    'url': 'https://flintlib.org/doc/',
+                },
+            ],
+            'limitations': [
+                (
+                    'General primary decomposition and complete Gröbner '
+                    'fans are not implemented.'
+                ),
+            ],
+        },
+    )

@@ -76,9 +76,9 @@
   "xfail": {},
   "xfailGroups": [
     {
-      "reason": "requires a multivariate polynomial and algebraic-geometry subsystem",
+      "reason": "requires enumeration and polyhedral construction of complete Gröbner fans",
       "file": "src/doc/en/tutorial/tour_advanced.rst",
-      "lines": [15, 16, 17, 19, 22, 35, 36, 58, 62, 71]
+      "lines": [62, 71]
     },
     {
       "reason": "requires an elliptic-curve subsystem, algebraic closures, and database integration",

@@ -49,3 +49,47 @@ J = Q.ideal(QQ(1, 2) * u + v, u ** 2)
 assert repr(J.groebner_basis()) == '[u + 2*v, v^2]'
 assert QQ(1, 2) * u + v in J
 assert u not in J
+
+assert repr(I.groebner_fan()) == (
+    'Groebner fan of the ideal:\n'
+    'Ideal (u^6 + 4*u^4*v^2 + 4*u^2*v^4, u^2*v^2) of Multivariate '
+    'Polynomial\n'
+    'Ring in u, v over Rational Field'
+)
+
+A = AffineSpace(2, QQ, 'xy')
+x, y = A.gens()
+C2 = Curve(x ** 2 + y ** 2 - 1)
+C3 = Curve(x ** 3 + y ** 3 - 1)
+D = C2 + C3
+assert repr(D) == (
+    'Affine Plane Curve over Rational Field defined by\n'
+    '   x^5 + x^3*y^2 + x^2*y^3 + y^5 - x^3 - y^3 - x^2 - y^2 + 1'
+)
+assert repr(D.irreducible_components()) == (
+    '[Closed subscheme of Affine Space of dimension 2 over Rational Field '
+    'defined by:\n'
+    '  x^2 + y^2 - 1, '
+    'Closed subscheme of Affine Space of dimension 2 over Rational Field '
+    'defined by:\n'
+    '  x^3 + y^3 - 1]'
+)
+V = C2.intersection(C3)
+assert V.defining_polynomials() == (
+    x ** 2 + y ** 2 - 1,
+    x ** 3 + y ** 3 - 1,
+)
+assert repr(V.irreducible_components()) == (
+    '[Closed subscheme of Affine Space of dimension 2 over Rational Field '
+    'defined by:\n'
+    '  y - 1,\n'
+    '  x, '
+    'Closed subscheme of Affine Space of dimension 2 over Rational Field '
+    'defined by:\n'
+    '  y,\n'
+    '  x - 1, '
+    'Closed subscheme of Affine Space of dimension 2 over Rational Field '
+    'defined by:\n'
+    '  x + y + 2,\n'
+    '  2*y^2 + 4*y + 3]'
+)

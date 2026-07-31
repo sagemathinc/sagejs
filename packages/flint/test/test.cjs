@@ -226,6 +226,50 @@ assert.throws(
   /term order/,
 );
 
+{
+  const context = flint.mpolyContext("qq", 2, "degrevlex", 0n);
+  const x = flint.mpolyGen(context, 0);
+  const y = flint.mpolyGen(context, 1);
+  const one = flint.mpolyConstant(context, 1n, 1n);
+  const quadratic = flint.mpolySub(
+    flint.mpolyAdd(flint.mpolyPow(x, 2), flint.mpolyPow(y, 2)),
+    one,
+  );
+  const cubic = flint.mpolySub(
+    flint.mpolyAdd(flint.mpolyPow(x, 3), flint.mpolyPow(y, 3)),
+    one,
+  );
+  const product = flint.mpolyMul(quadratic, cubic);
+  assert.deepEqual(
+    flint.mpolyIrreducibleFactors(product).map(([factor, exponent]) => [
+      flint.mpolyToString(factor, ["x", "y"]),
+      exponent,
+    ]),
+    [
+      ["x^3 + y^3 - 1", 1],
+      ["x^2 + y^2 - 1", 1],
+    ],
+  );
+  const resultant = flint.mpolyResultant(quadratic, cubic, 0);
+  assert.equal(
+    flint.mpolyToString(resultant, ["x", "y"]),
+    "2*y^6 - 3*y^4 - 2*y^3 + 3*y^2",
+  );
+  assert.deepEqual(
+    flint.mpolyIrreducibleFactors(resultant).map(
+      ([factor, exponent]) => [
+        flint.mpolyToString(factor, ["x", "y"]),
+        exponent,
+      ],
+    ),
+    [
+      ["y", 2],
+      ["2*y^2 + 4*y + 3", 1],
+      ["y - 1", 2],
+    ],
+  );
+}
+
 const groebnerContext = flint.mpolyContext("qq", 2, "degrevlex", 0n);
 const groebnerX = flint.mpolyGen(groebnerContext, 0);
 const groebnerY = flint.mpolyGen(groebnerContext, 1);
