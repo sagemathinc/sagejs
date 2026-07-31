@@ -1,7 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+const { existsSync, mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -58,6 +58,34 @@ assert.match(help, /Advanced subcommands:/);
 assert.match(
   run(["compile", "--help"]),
   /Compile Sage\.js source code into JavaScript/,
+);
+assert.match(
+  run(["docs", "--help"]),
+  /Search, inspect, and export the installed Sage\.js API documentation/,
+);
+assert.equal(existsSync(run(["docs", "path"]).trim()), true);
+assert.match(
+  run(["docs", "search", "--backend", "FLINT", "finite-field"]),
+  /GF\(order, name=None/,
+);
+const documentedDimension = JSON.parse(
+  run(["docs", "show", "--json", "dimension_cusp_forms"]),
+);
+assert.equal(documentedDimension.schema_version, 1);
+assert.equal(documentedDimension.sage_compatibility.status, "partial");
+assert.equal(
+  documentedDimension.references[0].doi,
+  "10.1007/BFb0065297",
+);
+const documentationCoverage = JSON.parse(
+  run(["docs", "coverage", "--json"]),
+);
+assert.ok(documentationCoverage.registry_entries >= 26);
+assert.deepEqual(documentationCoverage.incomplete_entries, []);
+assert.equal(
+  JSON.parse(run(["docs", "export", "--jsonl"]).split("\n")[0])
+    .schema_version,
+  1,
 );
 assert.match(run([], "print(2^3)\nprint(sum([1..10]))\n"), /8\s+55\s*$/);
 assert.equal(run([], "value = GF(5)\n").trim(), "");

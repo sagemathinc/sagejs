@@ -158,6 +158,7 @@ function print_top_level_usage() {
   console.log("  " + command("sagejs-jupyter --install --user\n"));
 
   console.log(label("Advanced subcommands:"));
+  console.log("  docs            search and export installed API documentation");
   console.log("  compile         compile Sage.js source to JavaScript");
   console.log("  repl            start a REPL with detailed options");
   console.log("  lint            check Python/Sage source");
@@ -552,6 +553,85 @@ Print generated Sage source before executing foreign-language input.
 opt("tokens", "", "bool", false, function () {
   /*
 Show every token as they are parsed.
+*/
+});
+
+create_group(
+  "docs",
+  "<search|show|export|path|coverage> [query]",
+  function () {
+    /*
+Search, inspect, and export the installed Sage.js API documentation.
+The runtime registry follows Sage.js DocSpec v1 and is available as
+plain text, Markdown, JSON, or line-delimited JSON.
+*/
+  },
+  function () {
+    /*
+Examples:
+  sagejs docs search finite field
+  sagejs docs search --regex --backend FLINT 'matrix|polynomial'
+  sagejs docs show GF
+  sagejs docs show --json dimension_cusp_forms
+  sagejs docs export --jsonl
+  sagejs docs export --markdown
+  sagejs docs coverage --json
+  rg -i 'groebner|finite field' "$(sagejs docs path)"
+*/
+  }
+);
+
+opt("json", "", "bool", false, function () {
+  /*
+Write structured JSON.
+*/
+});
+
+opt("jsonl", "", "bool", false, function () {
+  /*
+Write one DocSpec JSON object per line.
+*/
+});
+
+opt("markdown", "", "bool", false, function () {
+  /*
+Write generated Markdown.
+*/
+});
+
+opt("regex", "e", "bool", false, function () {
+  /*
+Interpret the search query as a JavaScript regular expression.
+*/
+});
+
+opt("ignore_case", "i", "bool", false, function () {
+  /*
+Search case-insensitively. Literal search otherwise uses smart case.
+*/
+});
+
+opt("case_sensitive", "s", "bool", false, function () {
+  /*
+Search case-sensitively, overriding smart-case matching.
+*/
+});
+
+opt("kind", "", "string", "", function () {
+  /*
+Restrict results to a DocSpec kind such as function, method, or class.
+*/
+});
+
+opt("backend", "", "string", "", function () {
+  /*
+Restrict results to an exact backend name such as FLINT.
+*/
+});
+
+opt("tag", "", "string", "", function () {
+  /*
+Restrict results to an exact documentation tag.
 */
 });
 

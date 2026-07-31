@@ -3,6 +3,8 @@
 Sage.js documentation starts with ordinary Python docstrings beside the public
 API they describe.  The build retains those docstrings at runtime so the same
 source serves interactive users, notebooks, editors, tests, and agents.
+Structured metadata follows [DocSpec v1](DOCSPEC.md), and ordinary Markdown is
+the canonical format for guides and generated reference pages.
 
 ## Interactive access
 
@@ -13,11 +15,13 @@ source serves interactive users, notebooks, editors, tests, and agents.
   which powers notebook inspection UI.
 - `search_doc("text")` searches the public names and docstrings currently
   loaded in the Sage.js runtime.
+- `sagejs docs search`, `show`, `export`, and `coverage` expose the same
+  installed registry to shells and agents.
 
-Public subsystems register searchable objects by qualified name in the small
-runtime documentation registry.  Registration stores the object itself—not a
-second copy of its prose—so `help`, inspection, and search cannot disagree
-about the docstring.
+Public subsystems register searchable objects by qualified name, together with
+DocSpec metadata. Registration stores the object itself—not a second copy of
+its prose—so `help`, inspection, search, JSON, and generated Markdown cannot
+disagree about the docstring.
 
 `search_doc` describes the installed Sage.js API.  The full SageMath manual is
 valuable reference material, but it contains many interfaces that Sage.js has
@@ -41,10 +45,26 @@ boundaries—without exposing incidental internal details.
 ## Source and build policy
 
 Mathematical library files remain ordinary CPython-parseable `.py` files.
-Docstrings use Sage's familiar examples and lightweight reStructuredText
-conventions where useful.  They are executable metadata, so removing them from
-the runtime build or allowing public APIs to lose them is a regression.
+Docstrings use Sage's familiar executable examples. Existing lightweight
+reStructuredText is accepted, but new prose should favor Markdown-compatible
+plain text that remains readable in a terminal. They are executable metadata,
+so removing them from the runtime build or allowing public APIs to lose them
+is a regression.
 
-As the API grows, this runtime corpus can also generate a static reference and
-a compact machine-readable symbol index.  The adjacent docstring remains the
-authoritative source so interactive and generated documentation cannot drift.
+The runtime corpus generates the Markdown reference under `docs/reference/`
+and can be exported as compact JSON or JSONL. The adjacent docstring remains
+the authoritative prose source so interactive and generated documentation
+cannot drift. Run:
+
+```bash
+pnpm docs:generate
+pnpm docs:check
+```
+
+## Attribution and algorithms
+
+Documentation adapted from SageMath records its source URL or revision and GPL
+license in DocSpec provenance. Library-backed implementations name their
+backend. Implementations based on published algorithms cite the paper, book,
+or primary description used. Sage.js-original code is labeled explicitly;
+these provenance categories may be combined.

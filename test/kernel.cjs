@@ -1,6 +1,8 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const { join } = require("node:path");
 const test = require("node:test");
 
 const {
@@ -14,6 +16,9 @@ const {
   prepareSubmittedPolyglotCell,
   rewriteQuestionMarkHelp,
 } = require("../dist/tools/polyglot.js");
+const {
+  renderDocumentationMarkdown,
+} = require("../dist/tools/documentation.js");
 
 async function main() {
   const session = await createSage();
@@ -27,6 +32,30 @@ async function main() {
   assert.equal(first.stdout, "value: 12\n");
   assert.deepEqual(streamed, ["value: 12\n"]);
   assert.ok(first.durationMs >= 0);
+
+  const documentation = await session.documentation();
+  assert.equal(documentation.schema_version, 1);
+  assert.ok(documentation.entries.length >= 26);
+  const dimensionDocumentation = documentation.entries.find(
+    (entry) => entry.name === "dimension_cusp_forms",
+  );
+  assert.equal(
+    dimensionDocumentation.references[0].doi,
+    "10.1007/BFb0065297",
+  );
+  assert.ok(dimensionDocumentation.tags.includes("modular forms"));
+  assert.equal(
+    documentation.entries.find((entry) => entry.name === "matrix").signature,
+    "matrix(*args)",
+  );
+  assert.equal(
+    readFileSync(
+      join(__dirname, "..", "docs", "reference", "api.md"),
+      "utf8",
+    ),
+    renderDocumentationMarkdown(documentation),
+    "generated API documentation is stale; run pnpm docs:generate",
+  );
 
   assert.equal((await session.eval("value^2")).repr, "144");
   assert.equal((await session.evaluate("assigned = 17")).repr, "");

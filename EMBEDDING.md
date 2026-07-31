@@ -155,6 +155,22 @@ The evaluator waits for `onGraphicsSave` before resolving `evaluate()`. A
 browser embedding which does not install this capability receives an explicit
 export error instead of silently discarding the requested file.
 
+## Documentation records
+
+An embedding can inspect the exact API installed in its worker:
+
+```js
+const catalog = await sage.documentation();
+const finiteFields = catalog.entries.filter((entry) =>
+  entry.tags.includes("finite fields")
+);
+```
+
+This returns structured-clone-safe [DocSpec v1](DOCSPEC.md) entries containing
+the retained docstring and signature together with Sage compatibility,
+backends, limitations, provenance, and references. Live mathematical objects
+do not cross the worker boundary.
+
 ## Interruption, timeouts, and reset
 
 ```js

@@ -50,6 +50,7 @@
     "CONTRIBUTORS.md",
     "DISTRIBUTION.md",
     "DOCUMENTATION.md",
+    "DOCSPEC.md",
     "EMBEDDING.md",
     "FOREIGN-LANGUAGES.md",
     "HACKING.md",
@@ -62,6 +63,7 @@
     "TESTING.md",
     "pyrightconfig.json",
     "TYPING.md",
+    "docs",
     "index.cjs"
   ],
   "engines": {
@@ -73,6 +75,8 @@
     "build:sea:python": "pnpm run build && node scripts/build-sea.cjs --python",
     "build:sea:math": "pnpm run build && pnpm --dir packages/flint build && node scripts/build-sea.cjs --with-flint",
     "build:wasm": "pnpm run build && pnpm --dir packages/flint-wasm build",
+    "docs:generate": "pnpm run build && node scripts/generate-docs.cjs",
+    "docs:check": "pnpm run build && node scripts/generate-docs.cjs --check",
     "baselib:status": "node scripts/baselib-status.cjs",
     "clean": "node scripts/clean.cjs",
     "start": "node bin/sagejs",

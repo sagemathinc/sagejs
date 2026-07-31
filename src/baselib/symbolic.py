@@ -669,7 +669,19 @@ def _symbol_name(value: Any) -> str:
 
 
 def symbolic_variable(names: str) -> Any:
-    """Create one or more symbolic variables."""
+    r"""
+    Create one or more symbolic variables and publish them in the session.
+
+    Names may be separated by commas, spaces, or both.  A single name returns
+    one symbolic expression; multiple names return a tuple.
+
+    EXAMPLES::
+
+        sage: var('x y')
+        (x, y)
+        sage: (x^2 + y).derivative(x)
+        2*x
+    """
     if not isinstance(names, str):
         raise TypeError("variable names must be a string")
     variables = []
@@ -896,7 +908,24 @@ def solve(
     *variables: Any,
     **options: Any,
 ) -> Any:
-    """Solve elementary symbolic equations with the Cortex backend."""
+    r"""
+    Solve supported elementary symbolic equations.
+
+    One equation or a list of equations may be supplied, followed by one or
+    more variables.  Set ``solution_dict=True`` for dictionary-valued
+    solutions.
+
+    EXAMPLES::
+
+        sage: solve(x^2 == 4, x)
+        [x == -2, x == 2]
+
+    Sage.js delegates elementary solving to Cortex Compute Engine and applies
+    a few exact Sage-compatible reductions.  If the backend cannot solve an
+    equation, Sage.js returns an equivalent unsolved relation instead of the
+    mathematically misleading empty list.  Coupled nonlinear systems and many
+    transcendental families remain outside the current supported surface.
+    """
     solution_option = runtime.reflect.get(
         options, 'solution_dict')
     solution_dict = False
@@ -1088,4 +1117,97 @@ runtime.reflect.set(
 runtime.set_class_repr(
     SymbolicRing,
     "<class 'sage.symbolic.ring.SymbolicRing'>",
+)
+
+
+def _symbolic_doc(
+    tags: list[str],
+    compatibility_status: str,
+    compatibility_notes: str,
+    limitations: Any = None,
+) -> Any:
+    all_tags = runtime.reflect.apply(
+        runtime.array.prototype.concat,
+        ['symbolic mathematics'],
+        [tags],
+    )
+    return {
+        'kind': 'function',
+        'module': 'sage.symbolic',
+        'tags': all_tags,
+        'backends': ['Cortex Compute Engine'],
+        'sage_compatibility': {
+            'status': compatibility_status,
+            'notes': compatibility_notes,
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath symbolic API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'calculus/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'Cortex Compute Engine',
+                'url': 'https://cortexjs.io/compute-engine/',
+            },
+        ],
+        'references': [
+            {
+                'id': 'cortex-compute-engine',
+                'type': 'software',
+                'title': 'Cortex Compute Engine',
+                'url': 'https://cortexjs.io/compute-engine/',
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'MathJSON adapter over Cortex Compute Engine'
+            ),
+        },
+        'limitations': [] if limitations is None else limitations,
+    }
+
+
+runtime.register_doc(
+    'var',
+    symbolic_variable,
+    _symbolic_doc(
+        ['variables', 'expressions'],
+        'compatible',
+        'Matches Sage variable creation for supported names.',
+    ),
+)
+runtime.register_doc(
+    'solve',
+    solve,
+    _symbolic_doc(
+        ['equations', 'solving'],
+        'partial',
+        (
+            'Supported elementary equations follow Sage-style output; '
+            'unsupported families are returned as unsolved relations.'
+        ),
+        [
+            'Coupled nonlinear systems are not generally implemented.',
+            'Many transcendental solution families are not implemented.',
+        ],
+    ),
+)
+runtime.register_doc(
+    'fast_callable',
+    fast_callable,
+    _symbolic_doc(
+        ['evaluation', 'performance'],
+        'partial',
+        (
+            'Compiles supported real-valued symbolic expressions directly '
+            'to JavaScript numeric functions.'
+        ),
+        ['The current compiler targets JavaScript numeric evaluation.'],
+    ),
 )

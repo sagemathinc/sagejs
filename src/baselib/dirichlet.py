@@ -955,6 +955,25 @@ def DirichletGroup(
     base_ring: Any = None,
     zeta: Any = None,
 ) -> DirichletGroup_class:
+    r"""
+    Return the group of Dirichlet characters modulo ``modulus``.
+
+    Characters are exact, iterable, multiplicative, and valued in a
+    cyclotomic field.  FLINT supplies the unit-group decomposition and native
+    character arithmetic.
+
+    EXAMPLES::
+
+        sage: G = DirichletGroup(20)
+        sage: G.order(), G.modulus()
+        (8, 20)
+        sage: eps = G.gen(0)
+        sage: eps(3) * eps(7) == eps(21)
+        True
+
+    Custom value fields through ``base_ring`` or ``zeta`` are not yet
+    implemented.
+    """
     modulus = runtime.normalize_integer(
         runtime.integer_bigint(modulus))
     if base_ring is not None or zeta is not None:
@@ -975,4 +994,68 @@ runtime.set_class_repr(
 runtime.set_class_repr(
     DirichletCharacter,
     "<class 'sage.modular.dirichlet.DirichletCharacter'>",
+)
+
+runtime.register_doc(
+    'DirichletGroup',
+    DirichletGroup,
+    {
+        'kind': 'function',
+        'module': 'sage.modular.dirichlet',
+        'tags': [
+            'number theory',
+            'Dirichlet characters',
+            'finite abelian groups',
+            'modular forms',
+        ],
+        'backends': ['FLINT', 'Sage.js native helpers'],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': (
+                'Standard groups, generators, evaluation, parity, conductors, '
+                'Galois orbits, and decomposition are compatible; custom '
+                'value fields are not yet accepted.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath Dirichlet character API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'modfrm/sage/modular/dirichlet.html'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'FLINT Dirichlet characters',
+                'url': 'https://flintlib.org/doc/dirichlet.html',
+            },
+            {
+                'kind': 'sagejs-original',
+                'source': (
+                    'Sage.js parent/element and exact cyclotomic integration'
+                ),
+            },
+        ],
+        'references': [
+            {
+                'id': 'flint-dirichlet',
+                'type': 'software',
+                'title': 'FLINT Dirichlet characters',
+                'authors': ['The FLINT contributors'],
+                'url': 'https://flintlib.org/doc/dirichlet.html',
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'FLINT unit-group decomposition and character evaluation '
+                'with Sage.js exact cyclotomic values'
+            ),
+        },
+        'limitations': [
+            'Custom base_ring and zeta arguments are not implemented.',
+        ],
+    },
 )

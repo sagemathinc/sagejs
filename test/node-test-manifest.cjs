@@ -7,6 +7,7 @@ const unit = [
   "test/typed-math-lowering.cjs",
   "test/runtime-intrinsics.cjs",
   "test/baselib-boundaries.cjs",
+  "test/documentation.cjs",
   "test/magma.cjs",
   "test/foreign-languages.cjs",
 ];

@@ -6,6 +6,8 @@
  */
 
 import Compile from "./compile";
+import { runDocumentationCli } from "./docs";
+import { createKernelEvaluator } from "./kernel-evaluator";
 import Repl from "./repl";
 import { importPath, libraryPath } from "./utils";
 import { basename } from "path";
@@ -15,7 +17,7 @@ const executable = basename(process.argv[1]);
 interface SeaArguments {
   files: string[];
   import_path: string;
-  mode: "compile" | "repl";
+  mode: "compile" | "docs" | "repl";
   execute: boolean;
   sage: boolean;
   magma: boolean;
@@ -26,12 +28,23 @@ interface SeaArguments {
   emit_sage: boolean;
   no_js: boolean;
   tokens: boolean;
+  json?: boolean;
+  jsonl?: boolean;
+  markdown?: boolean;
+  regex?: boolean;
+  ignore_case?: boolean;
+  case_sensitive?: boolean;
+  kind?: string;
+  backend?: string;
+  tag?: string;
 }
 
 function usage(): void {
   console.log(`Usage: ${executable} [options] [program.py]
 
 Run Sage.js from a self-contained executable. With no program, start a REPL.
+
+  ${executable} docs <search|show|export|coverage> [query]
 
 Options:
   --python        use Python syntax and division
@@ -64,8 +77,56 @@ function parseArguments(): SeaArguments {
     no_js: true,
     tokens: false,
   };
+  const rawArguments = process.argv.slice(2);
+  if (rawArguments[0] === "docs") {
+    args.mode = "docs";
+    const documentationArguments = rawArguments.slice(1);
+    for (let index = 0; index < documentationArguments.length; index += 1) {
+      const argument = documentationArguments[index];
+      if (argument === "--json") args.json = true;
+      else if (argument === "--jsonl") args.jsonl = true;
+      else if (argument === "--markdown") args.markdown = true;
+      else if (argument === "--regex" || argument === "-e") args.regex = true;
+      else if (argument === "--ignore-case" || argument === "-i") {
+        args.ignore_case = true;
+      } else if (argument === "--case-sensitive" || argument === "-s") {
+        args.case_sensitive = true;
+      } else if (
+        argument === "--kind" ||
+        argument === "--backend" ||
+        argument === "--tag"
+      ) {
+        const value = documentationArguments[++index];
+        if (value === undefined) {
+          throw new Error(`${argument} requires a value`);
+        }
+        args[argument.slice(2) as "kind" | "backend" | "tag"] = value;
+      } else if (/^--(?:kind|backend|tag)=/.test(argument)) {
+        const separator = argument.indexOf("=");
+        const name = argument.slice(2, separator) as
+          | "kind"
+          | "backend"
+          | "tag";
+        args[name] = argument.slice(separator + 1);
+      } else if (argument === "--help" || argument === "-h") {
+        console.log(
+          `Usage: ${executable} docs ` +
+            "<search|show|export|coverage> [options] [query]\n\n" +
+            "Options: --json --jsonl --markdown --regex/-e " +
+            "--ignore-case/-i --case-sensitive/-s " +
+            "--kind VALUE --backend VALUE --tag VALUE",
+        );
+        process.exit(0);
+      } else if (argument.startsWith("-")) {
+        throw new Error(`unknown docs option ${JSON.stringify(argument)}`);
+      } else {
+        args.files.push(argument);
+      }
+    }
+    return args;
+  }
   let optionsEnded = false;
-  for (const argument of process.argv.slice(2)) {
+  for (const argument of rawArguments) {
     if (!optionsEnded && argument === "--") {
       optionsEnded = true;
     } else if (!optionsEnded && argument === "--python") {
@@ -147,6 +208,23 @@ async function main(): Promise<void> {
     });
     return;
   }
+  if (argv.mode === "docs") {
+    const evaluator = createKernelEvaluator({
+      mode: "sage",
+      onOutput(text) {
+        process.stderr.write(text);
+      },
+    });
+    try {
+      await runDocumentationCli(argv, process.cwd(), {
+        pathAvailable: false,
+        catalog: evaluator.documentation(),
+      });
+    } finally {
+      evaluator.close();
+    }
+    return;
+  }
   throw new Error(
     `The single-executable distribution does not include the ${JSON.stringify(
       argv.mode,
@@ -154,4 +232,7 @@ async function main(): Promise<void> {
   );
 }
 
-void main();
+void main().catch((error) => {
+  console.error(error?.message ?? String(error));
+  process.exitCode = 1;
+});

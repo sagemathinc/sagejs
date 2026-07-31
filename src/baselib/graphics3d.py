@@ -952,7 +952,25 @@ def implicit_plot3d(
     zrange: Any,
     **options: Any,
 ) -> Graphics3d:
-    """Plot the zero set of a sampled function of three variables."""
+    r"""
+    Plot an implicit surface in three variables.
+
+    The first argument may be an expression interpreted as ``f = 0`` or a
+    symbolic equality, which is reduced to ``left - right = 0``.  Each range
+    has Sage form ``(variable, minimum, maximum)`` or a three-item list.
+
+    EXAMPLES::
+
+        sage: var('x,y,z')
+        (x, y, z)
+        sage: implicit_plot3d(x^2+y^2+z^2 == 1,
+        ....:     (x,-2,2), (y,-2,2), (z,-2,2))
+        Graphics3d Object
+
+    The current renderer samples a deterministic rectangular grid and emits a
+    Plotly isosurface.  It does not yet implement Sage's adaptive marching
+    cubes refinements.
+    """
     if hasattr(function_value, '_plot_zero_set_expression'):
         function_value = (
             function_value._plot_zero_set_expression())
@@ -1084,3 +1102,62 @@ def sphere(
     graphic.add_primitive(
         Surface3d(xdata, ydata, zdata, defaults))
     return graphic
+
+
+runtime.register_doc(
+    'implicit_plot3d',
+    implicit_plot3d,
+    {
+        'kind': 'function',
+        'module': 'sage.plot.plot3d.implicit_plot3d',
+        'tags': [
+            'graphics',
+            '3D graphics',
+            'implicit surfaces',
+            'symbolic equations',
+        ],
+        'backends': ['Plotly', 'Sage.js rectangular sampler'],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': (
+                'Sage expressions, equalities, ranges, and common options '
+                'are supported; adaptive meshing is not yet implemented.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath 3D plotting API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'plot3d/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'Plotly.js isosurface rendering',
+                'url': 'https://plotly.com/javascript/3d-isosurface-plots/',
+            },
+        ],
+        'references': [
+            {
+                'id': 'plotly-js-isosurface',
+                'type': 'software',
+                'title': 'Plotly.js 3D Isosurface Plots',
+                'url': (
+                    'https://plotly.com/javascript/'
+                    '3d-isosurface-plots/'
+                ),
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Rectangular scalar-field sampling and Plotly isosurface'
+            ),
+        },
+        'limitations': [
+            'Adaptive marching-cubes refinement is not implemented.',
+        ],
+    },
+)

@@ -176,18 +176,20 @@ def ρσ_dynamic_eval(
     })()"""
 
 
-def register_doc(name, value):
-    """Register a public runtime object for interactive documentation."""
+def register_doc(name, value, metadata=None):
+    """Register a public runtime object and optional DocSpec metadata."""
     registry = reflect.get(
         global_object, '__sagejs_doc_registry__')
     if registry is undefined:
         registry = []
         reflect.set(
             global_object, '__sagejs_doc_registry__', registry)
+    if metadata is None:
+        metadata = object.create(None)
     reflect.apply(
         reflect.get(registry, 'push'),
         registry,
-        [[name, value]],
+        [[name, value, metadata]],
     )
 
 

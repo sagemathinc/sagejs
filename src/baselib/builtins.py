@@ -2074,18 +2074,33 @@ def _builtins_doc_search_match(
     query: _Str,
     candidate: _Str,
 ) -> _Bool:
-    lowered = candidate.lower()
+    lowered = runtime.reflect.apply(
+        runtime.string_class.prototype.normalize,
+        candidate.lower(),
+        ['NFD'],
+    ).replace(
+        runtime.regexp(r'[\u0300-\u036f]', 'g'),
+        '',
+    )
+    query = runtime.reflect.apply(
+        runtime.string_class.prototype.normalize,
+        query,
+        ['NFD'],
+    ).replace(
+        runtime.regexp(r'[\u0300-\u036f]', 'g'),
+        '',
+    )
     if query in lowered:
         return True
     normalized_query = (
-        query.replace('`', '')
-        .replace('_', ' ')
-        .replace('-', ' ')
+        query.replace(
+            runtime.regexp(r'[`_-]+', 'g'), ' ')
+        .replace(runtime.regexp(r'\s+', 'g'), ' ')
     )
     normalized_candidate = (
-        lowered.replace('`', '')
-        .replace('_', ' ')
-        .replace('-', ' ')
+        lowered.replace(
+            runtime.regexp(r'[`_-]+', 'g'), ' ')
+        .replace(runtime.regexp(r'\s+', 'g'), ' ')
     )
     return normalized_query in normalized_candidate
 
@@ -2225,9 +2240,9 @@ def ρσ_search_doc(query: Any) -> None:
 
     matches = []
     seen = []
-    for registered_name, registered_value in (
-        runtime.documentation_registry()
-    ):
+    for registered_entry in runtime.documentation_registry():
+        registered_name = registered_entry[0]
+        registered_value = registered_entry[1]
         if registered_name in seen:
             continue
         registered_doc = _builtins_doc(registered_value)
@@ -4034,6 +4049,23 @@ def ρσ_divmod(left: Any, right: Any) -> Any:
 
 
 def ρσ_factor(value: Any) -> Any:
+    r"""
+    Return the exact factorization of an integer or factorable element.
+
+    Integer factorization is computed by FLINT and returned as a Sage-style
+    factorization object, so it can be iterated over as ``(prime, exponent)``
+    pairs.
+
+    EXAMPLES::
+
+        sage: factor(2026)
+        2 * 1013
+        sage: list(factor(-12))
+        [(2, 2), (3, 1)]
+
+    JavaScript ``number`` inputs must be safe integers.  Sage integer literals
+    automatically use ``BigInt`` when necessary.
+    """
     if _builtins_member_is_function(value, 'factor'):
         return _builtins_call_member(value, 'factor', [])
     if runtime.strict_equal(runtime.jstype(value), 'number'):
@@ -4083,6 +4115,7 @@ def ρσ_gcd(left: Any, right: Any) -> Any:
 
 
 def ρσ_next_prime(value: Any) -> Any:
+    """Return the smallest prime strictly greater than ``value`` using FLINT."""
     if runtime.strict_equal(runtime.jstype(value), 'number'):
         if not runtime.number.isSafeInteger(value):
             raise TypeError('next_prime() requires an integer')
@@ -4105,6 +4138,7 @@ def previous_prime(value: Any) -> Any:
 
 
 def ρσ_is_prime(value: Any) -> _Bool:
+    """Return whether ``value`` is prime, using FLINT's primality test."""
     if runtime.strict_equal(runtime.jstype(value), 'number'):
         if not runtime.number.isSafeInteger(value):
             return False
@@ -4120,6 +4154,19 @@ def ρσ_prime_range(
     start: Any,
     stop: Any = None,
 ) -> Any:
+    r"""
+    Return the primes in the half-open interval ``[start, stop)``.
+
+    With one argument, return the primes from 2 up to (but not including)
+    ``start``.
+
+    EXAMPLES::
+
+        sage: prime_range(10)
+        [2, 3, 5, 7]
+        sage: prime_range(10, 20)
+        [11, 13, 17, 19]
+    """
     if stop is None:
         stop = start
         start = 2
@@ -4193,6 +4240,23 @@ _prime_pi_checked_through = 1
 
 
 def prime_pi(value: Any) -> Any:
+    r"""
+    Return the number of primes less than or equal to ``value``.
+
+    Results are exact.  The current implementation incrementally caches
+    primes supplied by FLINT, which is efficient for repeated calls over
+    increasing moderate bounds.
+
+    EXAMPLES::
+
+        sage: prime_pi(10)
+        4
+        sage: prime_pi(100)
+        25
+
+    For very large isolated bounds, a future direct FLINT prime-counting
+    backend may be preferable to enumerating all preceding primes.
+    """
     global _prime_pi_checked_through, _prime_pi_primes
     if _prime_pi_primes is None:
         _prime_pi_primes = []
@@ -4895,8 +4959,36 @@ divmod = ρσ_divmod
 dir = ρσ_dir
 help = ρσ_help
 search_doc = ρσ_search_doc
-runtime.register_doc('help', help)
-runtime.register_doc('search_doc', search_doc)
+runtime.register_doc(
+    'help',
+    help,
+    {
+        'kind': 'function',
+        'module': 'builtins',
+        'tags': ['documentation', 'introspection'],
+        'backends': ['Sage.js runtime'],
+        'sage_compatibility': {
+            'status': 'compatible',
+            'notes': 'Provides concise runtime help for installed APIs.',
+        },
+        'provenance': [{'kind': 'sagejs-original'}],
+    },
+)
+runtime.register_doc(
+    'search_doc',
+    search_doc,
+    {
+        'kind': 'function',
+        'module': 'builtins',
+        'tags': ['documentation', 'search', 'introspection'],
+        'backends': ['Sage.js runtime'],
+        'sage_compatibility': {
+            'status': 'compatible',
+            'notes': 'Searches the installed Sage.js corpus only.',
+        },
+        'provenance': [{'kind': 'sagejs-original'}],
+    },
+)
 ord = ρσ_ord
 chr = ρσ_chr
 bin = ρσ_bin
@@ -5120,6 +5212,108 @@ is_prime = ρσ_is_prime
 prime_range = ρσ_prime_range
 prime_divisors = ρσ_prime_divisors
 divisors = ρσ_divisors
+
+
+def _builtins_arithmetic_doc(
+    tags: Any,
+    algorithm: _Str,
+    limitations: Any = None,
+) -> Any:
+    all_tags = runtime.reflect.apply(
+        runtime.array.prototype.concat,
+        ['arithmetic'],
+        [tags],
+    )
+    return {
+        'kind': 'function',
+        'module': 'sage.arith.misc',
+        'tags': all_tags,
+        'backends': ['FLINT'],
+        'sage_compatibility': {
+            'status': 'compatible',
+            'notes': (
+                'Matches the documented SageMath result for the '
+                'supported integer inputs.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath arithmetic API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'rings_standard/sage/arith/misc.html'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'FLINT',
+                'url': 'https://flintlib.org/doc/',
+            },
+        ],
+        'references': [
+            {
+                'id': 'flint',
+                'type': 'software',
+                'title': (
+                    'FLINT: Fast Library for Number Theory'
+                ),
+                'authors': ['The FLINT contributors'],
+                'url': 'https://flintlib.org/',
+            },
+        ],
+        'implementation': {'algorithm': algorithm},
+        'limitations': [] if limitations is None else limitations,
+    }
+
+
+runtime.register_doc(
+    'factor',
+    factor,
+    _builtins_arithmetic_doc(
+        ['factorization'],
+        'FLINT integer factorization',
+    ),
+)
+runtime.register_doc(
+    'next_prime',
+    next_prime,
+    _builtins_arithmetic_doc(
+        ['primes'],
+        'FLINT next-prime search',
+    ),
+)
+runtime.register_doc(
+    'is_prime',
+    is_prime,
+    _builtins_arithmetic_doc(
+        ['primes', 'primality'],
+        'FLINT primality testing',
+    ),
+)
+runtime.register_doc(
+    'prime_range',
+    prime_range,
+    _builtins_arithmetic_doc(
+        ['primes', 'enumeration'],
+        'Repeated FLINT next-prime search',
+    ),
+)
+runtime.register_doc(
+    'prime_pi',
+    prime_pi,
+    _builtins_arithmetic_doc(
+        ['primes', 'prime counting'],
+        'Incremental prime enumeration and caching over FLINT',
+        [
+            (
+                'Large isolated bounds currently enumerate all '
+                'preceding primes.'
+            ),
+        ],
+    ),
+)
 compile = ρσ_compile
 exec = ρσ_exec
 _integer_is_irreducible_native = runtime.native_method(

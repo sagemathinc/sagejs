@@ -1473,7 +1473,22 @@ def plot(
     *range_args: Any,
     **options: Any,
 ) -> Graphics:
-    """Plot a callable, or a list of callables, over a real interval."""
+    r"""
+    Plot a callable, symbolic expression, or list of functions on an interval.
+
+    Both ``plot(f, xmin, xmax)`` and Sage's ``plot(f, (x, xmin, xmax))``
+    forms are accepted.  Adaptive sampling produces a semantic ``Graphics``
+    object whose rich representation is portable Plotly data.
+
+    EXAMPLES::
+
+        sage: g = plot(sin(x), (x, 0, 2*pi), color='navy')
+        sage: len(g)
+        1
+
+    Use ``show(g)`` in a notebook for rich display, or ``g.save(...)`` on a
+    host with a supported Plotly export route.
+    """
     options = _copy_options(options)
     xmin, xmax = _plot_range(range_args)
     plot_variable = _plot_variable(range_args)
@@ -1647,7 +1662,13 @@ def show(
     *others: Any,
     **options: Any,
 ) -> Any:
-    """Return a value for rich display, combining graphics when requested."""
+    r"""
+    Return ``value`` for rich display, combining graphics when requested.
+
+    Multiple graphics are added before display.  Notebook kernels render the
+    returned semantic object using Plotly-compatible HTML/data, without
+    requiring a Jupyter extension.
+    """
 
     answer = value
     for other in others:
@@ -1677,3 +1698,79 @@ def list_plot(
     if plotjoined:
         return line(points, **options)
     return point(points, **options)
+
+
+def _graphics_doc(
+    tags: list[str],
+    compatibility_notes: str,
+    limitations: Any = None,
+) -> Any:
+    all_tags = runtime.reflect.apply(
+        runtime.array.prototype.concat,
+        ['graphics', 'plotting'],
+        [tags],
+    )
+    return {
+        'kind': 'function',
+        'module': 'sage.plot',
+        'tags': all_tags,
+        'backends': ['Plotly', 'Sage.js adaptive sampler'],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': compatibility_notes,
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath plotting API and object model',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'plotting/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'Plotly.js',
+                'url': 'https://plotly.com/javascript/',
+            },
+        ],
+        'references': [
+            {
+                'id': 'plotly-js',
+                'type': 'software',
+                'title': 'Plotly JavaScript Open Source Graphing Library',
+                'url': 'https://plotly.com/javascript/',
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Sage-compatible semantic graphics with Plotly rendering'
+            ),
+        },
+        'limitations': [] if limitations is None else limitations,
+    }
+
+
+runtime.register_doc(
+    'plot',
+    plot,
+    _graphics_doc(
+        ['2D graphics', 'adaptive sampling'],
+        (
+            'Core Sage call forms and common options are supported; the '
+            'complete Sage plotting option and primitive catalog is larger.'
+        ),
+    ),
+)
+runtime.register_doc(
+    'show',
+    show,
+    _graphics_doc(
+        ['rich display', 'Jupyter'],
+        (
+            'Sage-style graphics composition is supported; display routing '
+            'uses portable Plotly MIME/HTML rather than a Sage frontend.'
+        ),
+    ),
+)

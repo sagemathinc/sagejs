@@ -2297,6 +2297,22 @@ def _matrix_data(value: Any) -> tuple[int, int, list[Any]]:
 
 
 def matrix(*args: Any) -> Matrix:
+    r"""
+    Construct a dense matrix, optionally over an explicit base ring.
+
+    Sage's common row-list, flat-list, dimension, and entry-function forms are
+    supported.  Exact matrices use FLINT on native hosts; ``RDF``/``CDF`` and
+    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.
+
+    EXAMPLES::
+
+        sage: A = matrix(ZZ, 2, [1, 2, 3, 4])
+        sage: A.det()
+        -2
+        sage: A.rref()
+        [1 0]
+        [0 1]
+    """
     if not args:
         raise TypeError('matrix() requires entries or dimensions')
     values = list(args)
@@ -2521,6 +2537,24 @@ def random_matrix(
     *args: Any,
     **kwds: Any,
 ) -> Matrix:
+    r"""
+    Construct a random dense matrix over ``base``.
+
+    The dimensions are ``nrows`` by ``ncols``; omitting ``ncols`` constructs
+    a square matrix.  The common Sage keywords ``density``, ``x``, ``y``, and
+    ``distribution='uniform'`` are supported where meaningful.
+
+    EXAMPLES::
+
+        sage: A = random_matrix(ZZ, 3, 5, x=-10, y=11)
+        sage: A.nrows(), A.ncols(), A.base_ring()
+        (3, 5, Integer Ring)
+        sage: random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')
+        True
+
+    Sparse matrices and alternate construction algorithms are not yet
+    implemented.
+    """
     def keyword(name: str, fallback: Any) -> Any:
         value = runtime.reflect.get(kwds, name)
         return fallback if value is runtime.undefined else value
@@ -2632,3 +2666,86 @@ runtime.set_class_repr(
     VectorSubspaceParent, "<class 'VectorSubspace'>")
 runtime.reflect.set(matrix, 'random', random_matrix)
 Mat = MatrixSpace
+
+
+def _matrix_doc(
+    tags: list[str],
+    compatibility_notes: str,
+    limitations: Any = None,
+) -> Any:
+    all_tags = runtime.reflect.apply(
+        runtime.array.prototype.concat,
+        ['linear algebra', 'matrices'],
+        [tags],
+    )
+    return {
+        'kind': 'function',
+        'module': 'sage.matrix.constructor',
+        'tags': all_tags,
+        'backends': ['FLINT', 'Arb', 'ACB'],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': compatibility_notes,
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath matrix API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'matrices/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'FLINT, Arb, and ACB',
+                'url': 'https://flintlib.org/doc/',
+            },
+        ],
+        'references': [
+            {
+                'id': 'flint',
+                'type': 'software',
+                'title': 'FLINT: Fast Library for Number Theory',
+                'authors': ['The FLINT contributors'],
+                'url': 'https://flintlib.org/',
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Native FLINT dense matrices, including Arb/ACB '
+                'approximate arithmetic'
+            ),
+        },
+        'limitations': [] if limitations is None else limitations,
+    }
+
+
+runtime.register_doc(
+    'matrix',
+    matrix,
+    _matrix_doc(
+        ['construction', 'exact arithmetic', 'numerical linear algebra'],
+        (
+            'Common dense constructors and implemented matrix methods are '
+            'Sage-compatible; sparse matrices are not yet available.'
+        ),
+        ['Sparse matrix construction is not implemented.'],
+    ),
+)
+runtime.register_doc(
+    'random_matrix',
+    random_matrix,
+    _matrix_doc(
+        ['random generation', 'benchmarking'],
+        (
+            'The randomize algorithm and common density/range options are '
+            'compatible; specialized SageMath algorithms are not available.'
+        ),
+        [
+            'Only algorithm=randomize is supported.',
+            'Sparse output is not implemented.',
+        ],
+    ),
+)

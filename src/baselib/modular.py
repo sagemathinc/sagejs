@@ -425,6 +425,27 @@ def dimension_cusp_forms(
     group: Any,
     weight: Any = 2,
 ) -> int:
+    r"""
+    Return the dimension of a space of cuspidal modular forms.
+
+    ``group`` may be a positive level (interpreted as ``Gamma0(level)``), a
+    ``Gamma0`` or ``Gamma1`` subgroup, or a Dirichlet character.  Dimensions
+    for congruence subgroups use exact Riemann--Roch formulas; character
+    spaces use the Cohen--Oesterlé formula.
+
+    EXAMPLES::
+
+        sage: dimension_cusp_forms(Gamma0(11), 2)
+        1
+        sage: dimension_cusp_forms(Gamma0(1), 12)
+        1
+        sage: eps = DirichletGroup(13).gen(0)^2
+        sage: dimension_cusp_forms(eps, 2)
+        1
+
+    Weight-one cases that require the Schaeffer algorithm raise
+    ``NotImplementedError`` instead of returning an unproved value.
+    """
     weight = _exact_integer(weight, 'weight')
     if _is_dirichlet_character(group):
         return _dimension_character_cusp_forms(group, weight)
@@ -498,6 +519,13 @@ def dimension_eis(
     group: Any,
     weight: Any = 2,
 ) -> int:
+    r"""
+    Return the dimension of the Eisenstein subspace.
+
+    Accepted groups and characters are the same as for
+    ``dimension_cusp_forms``.  The result is an exact integer obtained from
+    cusp data or the Cohen--Oesterlé character formula.
+    """
     weight = _exact_integer(weight, 'weight')
     if _is_dirichlet_character(group):
         return _dimension_character_eis(group, weight)
@@ -526,6 +554,7 @@ def dimension_modular_forms(
     group: Any,
     weight: Any = 2,
 ) -> int:
+    """Return cusp dimension plus Eisenstein dimension for ``group``."""
     weight = _exact_integer(weight, 'weight')
     return (
         dimension_cusp_forms(group, weight)
@@ -966,6 +995,25 @@ def ModularForms(
     use_cache: bool = True,
     prec: Any = 6,
 ) -> ModularFormsSpace:
+    r"""
+    Construct the implemented ambient space of modular forms.
+
+    ``group`` is a level or congruence subgroup, ``weight`` is nonnegative,
+    and ``prec`` controls the default displayed q-expansion precision.
+    Initial ambient spaces are exact over ``QQ``.
+
+    EXAMPLES::
+
+        sage: M = ModularForms(Gamma0(11), 2)
+        sage: M.dimension()
+        2
+        sage: M.cuspidal_subspace().dimension()
+        1
+
+    This foundation currently provides exact dimensions, cusp/Eisenstein
+    subspaces, and Eisenstein q-expansions.  It is not yet SageMath's complete
+    Hecke-module implementation.
+    """
     del use_cache
     if runtime.is_exact_integer(group):
         group = Gamma0(group)
@@ -989,6 +1037,19 @@ def EisensteinForms(
     use_cache: bool = True,
     prec: Any = 6,
 ) -> EisensteinSubspace:
+    r"""
+    Construct the Eisenstein subspace of ``ModularForms(group, weight)``.
+
+    Basis elements retain their parent and can be expanded later to a
+    different precision with ``q_expansion(prec)``.
+
+    EXAMPLES::
+
+        sage: E = EisensteinForms(389, 2)
+        sage: b = E.basis(prec=20)[0]
+        sage: b.q_expansion(100).precision_absolute()
+        100
+    """
     ambient = ModularForms(
         group, weight, base_ring, use_cache, prec)
     return ambient.eisenstein_subspace()
@@ -1006,6 +1067,64 @@ runtime.reflect.set(
 runtime.register_doc(
     'EisensteinSeriesElement.q_expansion',
     _eisenstein_q_expansion_method,
+    {
+        'kind': 'method',
+        'module': 'sage.modular.modform.element',
+        'tags': [
+            'modular forms',
+            'Eisenstein series',
+            'q-expansions',
+            'power series',
+        ],
+        'backends': ['FLINT', 'Sage.js native helpers'],
+        'sage_compatibility': {
+            'status': 'compatible',
+            'notes': (
+                'Returns an exact power series with Sage-style absolute '
+                'precision notation.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath modular-form element API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'modfrm/sage/modular/modform/element.html'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'FLINT exact arithmetic',
+                'url': 'https://flintlib.org/',
+            },
+            {
+                'kind': 'sagejs-original',
+                'source': 'Native coefficient sieve and parent integration',
+            },
+        ],
+        'references': [
+            {
+                'id': 'flint',
+                'type': 'software',
+                'title': 'FLINT: Fast Library for Number Theory',
+                'authors': ['The FLINT contributors'],
+                'url': 'https://flintlib.org/',
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Native exact divisor-sum sieve and degeneracy maps'
+            ),
+        },
+        'limitations': [
+            (
+                'The currently constructed Eisenstein spaces cover the '
+                'implemented congruence-subgroup cases.'
+            ),
+        ],
+    },
 )
 runtime.register_doc(
     'EisensteinSubspace.basis',
@@ -1013,5 +1132,200 @@ runtime.register_doc(
         runtime.reflect.get(
             EisensteinSubspace, 'prototype'),
         'basis',
+    ),
+    {
+        'kind': 'method',
+        'module': 'sage.modular.modform.eis_submodule',
+        'tags': [
+            'modular forms',
+            'Eisenstein series',
+            'basis',
+            'q-expansions',
+        ],
+        'backends': ['FLINT', 'Sage.js native helpers'],
+        'sage_compatibility': {
+            'status': 'extension',
+            'notes': (
+                'The basis is Sage-compatible; the optional prec keyword is '
+                'a Sage.js convenience extension.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath Eisenstein subspace API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'modfrm/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'sagejs-original',
+                'source': 'Precision-aware retained-parent basis elements',
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Exact Eisenstein coefficient construction with lazy '
+                'precision extension'
+            ),
+        },
+        'limitations': [],
+    },
+)
+
+
+def _modular_dimension_doc(tags: list[str]) -> Any:
+    all_tags = runtime.reflect.apply(
+        runtime.array.prototype.concat,
+        ['modular forms', 'dimensions'],
+        [tags],
+    )
+    return {
+        'kind': 'function',
+        'module': 'sage.modular.dims',
+        'tags': all_tags,
+        'backends': ['Sage.js exact arithmetic', 'FLINT'],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': (
+                'Implemented Gamma0, Gamma1, and Dirichlet-character cases '
+                'match SageMath; unresolved weight-one Schaeffer cases raise '
+                'NotImplementedError.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath modular dimension API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'modfrm/sage/modular/dims.html'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'literature-implemented',
+                'source': 'Riemann--Roch and Cohen--Oesterlé formulas',
+            },
+        ],
+        'references': [
+            {
+                'id': 'cohen-oesterle-1977',
+                'type': 'paper',
+                'title': (
+                    'Dimensions des espaces de formes modulaires'
+                ),
+                'authors': ['Henri Cohen', 'Joseph Oesterlé'],
+                'year': 1977,
+                'doi': '10.1007/BFb0065297',
+                'url': 'https://doi.org/10.1007/BFb0065297',
+                'relevant_sections': ['pages 69--78'],
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Exact Riemann--Roch and Cohen--Oesterlé dimension formulas'
+            ),
+        },
+        'limitations': [
+            (
+                'Some weight-one cusp dimensions requiring the Schaeffer '
+                'algorithm are not implemented.'
+            ),
+        ],
+    }
+
+
+def _modular_space_doc(tags: list[str], extension: bool = False) -> Any:
+    all_tags = runtime.reflect.apply(
+        runtime.array.prototype.concat,
+        ['modular forms', 'spaces'],
+        [tags],
+    )
+    return {
+        'kind': 'function',
+        'module': 'sage.modular.modform.constructor',
+        'tags': all_tags,
+        'backends': ['FLINT', 'Sage.js exact arithmetic'],
+        'sage_compatibility': {
+            'status': 'extension' if extension else 'partial',
+            'notes': (
+                'The supported exact space and q-expansion operations follow '
+                'SageMath; Sage.js does not yet implement the complete '
+                'Hecke-module surface.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath modular forms API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'modfrm/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'FLINT exact arithmetic',
+                'url': 'https://flintlib.org/',
+            },
+            {
+                'kind': 'sagejs-original',
+                'source': (
+                    'Lightweight parent-aware modular-form implementation'
+                ),
+            },
+        ],
+        'references': [
+            {
+                'id': 'flint',
+                'type': 'software',
+                'title': 'FLINT: Fast Library for Number Theory',
+                'authors': ['The FLINT contributors'],
+                'url': 'https://flintlib.org/',
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Exact dimension formulas and native Eisenstein '
+                'coefficient generation'
+            ),
+        },
+        'limitations': [
+            'Only QQ is currently accepted as the ambient base ring.',
+            'General Hecke operators and cusp-form bases are not implemented.',
+        ],
+    }
+
+
+runtime.register_doc(
+    'dimension_cusp_forms',
+    dimension_cusp_forms,
+    _modular_dimension_doc(['cusp forms', 'Dirichlet characters']),
+)
+runtime.register_doc(
+    'dimension_eis',
+    dimension_eis,
+    _modular_dimension_doc(['Eisenstein series', 'Dirichlet characters']),
+)
+runtime.register_doc(
+    'dimension_modular_forms',
+    dimension_modular_forms,
+    _modular_dimension_doc(['ambient spaces', 'Dirichlet characters']),
+)
+runtime.register_doc(
+    'ModularForms',
+    ModularForms,
+    _modular_space_doc(['ambient spaces']),
+)
+runtime.register_doc(
+    'EisensteinForms',
+    EisensteinForms,
+    _modular_space_doc(
+        ['Eisenstein series', 'q-expansions'],
+        True,
     ),
 )

@@ -9,6 +9,10 @@ import {
 } from "./resources";
 import { getImportDirs, importPath, libraryPath } from "./utils";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
+import {
+  DocumentationCatalog,
+  documentationCatalogFromRegistry,
+} from "./documentation";
 
 export type SageLanguageMode = "sage" | "python";
 
@@ -54,6 +58,7 @@ export interface KernelEvaluator {
     source: string,
     language?: SageLanguageMode,
   ): KernelCompleteness;
+  documentation(): DocumentationCatalog;
   close(): void;
 }
 
@@ -452,6 +457,12 @@ export function createKernelEvaluator({
         }
         return { status: "invalid" };
       }
+    },
+
+    documentation(): DocumentationCatalog {
+      return documentationCatalogFromRegistry(
+        Reflect.get(globalThis, "__sagejs_doc_registry__"),
+      );
     },
 
     close(): void {

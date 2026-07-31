@@ -100,6 +100,27 @@ CoWasm's FLINT, GMP, and MPFR archives into a 4.7 MiB browser module. The real
 Sage.js evaluator compiles source in a nested worker and runs
 arbitrary-precision factorization in an interruptible outer worker.
 
+## Documentation
+
+Sage.js retains public docstrings for `help(f)`, `f?`, Jupyter inspection, and
+`search_doc(...)`. The same live objects feed a versioned
+[DocSpec](DOCSPEC.md) registry for shells and agents:
+
+```sh
+sagejs docs search finite field
+sagejs docs search --regex --backend FLINT 'matrix|polynomial'
+sagejs docs show dimension_cusp_forms
+sagejs docs show --json GF
+sagejs docs export --jsonl
+sagejs docs path
+```
+
+Guides and the generated [API reference](docs/reference/api.md) are ordinary,
+searchable Markdown. DocSpec records Sage compatibility, implementation
+backends, limitations, provenance, and literature/software references, so an
+answering agent can distinguish supported behavior from an accidental-looking
+result.
+
 ## Embed Sage.js
 
 Applications can create a persistent, interruptible Sage session with a small

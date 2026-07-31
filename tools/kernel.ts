@@ -18,6 +18,7 @@ import {
   isSageSourceLanguage,
   SageSourceLanguage,
 } from "./polyglot";
+import { DocumentationCatalog } from "./documentation";
 
 export interface SageDisplayData {
   /** MIME type understood by an embedding renderer. */
@@ -303,7 +304,7 @@ export class SageSession extends EventEmitter {
   }
 
   private async request<T>(
-    type: "complete" | "inspect" | "isComplete",
+    type: "complete" | "inspect" | "isComplete" | "documentation",
     source: string,
     extra: Record<string, unknown> = {},
   ): Promise<T> {
@@ -338,6 +339,16 @@ export class SageSession extends EventEmitter {
 
   inspect(source: string, cursorPosition: number): Promise<KernelInspection> {
     return this.request("inspect", source, { cursorPosition });
+  }
+
+  /**
+   * Return the installed API as structured Sage.js DocSpec v1 records.
+   *
+   * Mathematical objects remain isolated in the worker; only serializable
+   * documentation records cross this boundary.
+   */
+  documentation(): Promise<DocumentationCatalog> {
+    return this.request("documentation", "");
   }
 
   async isComplete(

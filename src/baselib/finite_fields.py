@@ -854,6 +854,27 @@ def GF(
     modulus: Any = runtime.undefined,
     names: Any = runtime.undefined,
 ) -> Any:
+    r"""
+    Construct the finite field with ``order`` elements.
+
+    The order must be a prime power.  Prime fields and extension fields use
+    FLINT arithmetic and participate in Sage.js parent/coercion semantics.
+    ``name`` (or ``names``) names an extension-field generator.
+
+    EXAMPLES::
+
+        sage: GF(7)
+        Finite Field of size 7
+        sage: K.<a> = GF(9)
+        sage: a^8
+        1
+        sage: K['x']
+        Univariate Polynomial Ring in x over Finite Field in a of size 3^2
+
+    Explicit user-supplied modulus polynomials are not implemented yet.
+    Passing ``modulus='primitive'`` requests a primitive generator when the
+    backend supports it.
+    """
     order = runtime.integer_bigint(order)
     if order < runtime.bigint(2):
         raise ValueError(
@@ -907,6 +928,22 @@ FiniteField = GF
 
 
 def Zmod(order: Any) -> IntegerModRing:
+    r"""
+    Construct the ring of integers modulo ``order``.
+
+    Elements support exact arithmetic, inversion of units, iteration, and
+    matrices and polynomial rings over the resulting parent.
+
+    EXAMPLES::
+
+        sage: R = Zmod(15)
+        sage: R(17)
+        2
+        sage: R(2)^4
+        1
+
+    The current constructor requires ``order >= 2``.
+    """
     order = runtime.integer_bigint(order)
     if order < runtime.bigint(2):
         raise ValueError(
@@ -966,3 +1003,86 @@ runtime.set_class_repr(
     FiniteFieldElement_pari_ffelt,
     "<class 'sage.rings.finite_rings.element_pari_ffelt." +
     "FiniteFieldElement_pari_ffelt'>")
+
+
+def _finite_field_doc(
+    module: str,
+    tags: list[str],
+    compatibility_status: str = 'compatible',
+    compatibility_notes: str = '',
+    limitations: Any = None,
+) -> Any:
+    all_tags = runtime.reflect.apply(
+        runtime.array.prototype.concat,
+        ['rings', 'finite fields'],
+        [tags],
+    )
+    return {
+        'kind': 'function',
+        'module': module,
+        'tags': all_tags,
+        'backends': ['FLINT'],
+        'sage_compatibility': {
+            'status': compatibility_status,
+            'notes': compatibility_notes,
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath finite rings API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'finite_rings/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'FLINT finite-field and modular arithmetic',
+                'url': 'https://flintlib.org/doc/',
+            },
+        ],
+        'references': [
+            {
+                'id': 'flint',
+                'type': 'software',
+                'title': 'FLINT: Fast Library for Number Theory',
+                'authors': ['The FLINT contributors'],
+                'url': 'https://flintlib.org/',
+            },
+        ],
+        'implementation': {
+            'algorithm': 'FLINT finite-field and modular arithmetic',
+        },
+        'limitations': [] if limitations is None else limitations,
+    }
+
+
+runtime.register_doc(
+    'GF',
+    GF,
+    _finite_field_doc(
+        'sage.rings.finite_rings.finite_field_constructor',
+        ['field construction', 'extension fields'],
+        'partial',
+        (
+            'Prime-power construction and standard generator naming are '
+            'compatible; explicit modulus polynomials remain unsupported.'
+        ),
+        ['Explicit user-supplied modulus polynomials are not implemented.'],
+    ),
+)
+runtime.register_doc(
+    'Zmod',
+    Zmod,
+    _finite_field_doc(
+        'sage.rings.finite_rings.integer_mod_ring',
+        ['residue rings', 'modular arithmetic'],
+        'partial',
+        (
+            'The supported arithmetic is Sage-compatible; the current '
+            'constructor requires modulus at least 2.'
+        ),
+        ['Moduli 0 and 1 are not currently constructed.'],
+    ),
+)

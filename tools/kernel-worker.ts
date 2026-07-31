@@ -47,7 +47,8 @@ parentPort.on("message", (message) => {
     message.type === "evaluate" ||
     message.type === "complete" ||
     message.type === "inspect" ||
-    message.type === "isComplete"
+    message.type === "isComplete" ||
+    message.type === "documentation"
   ) {
     evaluationId = message.id;
     try {
@@ -62,6 +63,8 @@ parentPort.on("message", (message) => {
         result = evaluator.complete(message.source, message.cursorPosition);
       } else if (message.type === "inspect") {
         result = evaluator.inspect(message.source, message.cursorPosition);
+      } else if (message.type === "documentation") {
+        result = evaluator.documentation();
       } else {
         result = evaluator.isComplete(message.source, message.language);
       }

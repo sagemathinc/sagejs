@@ -41,6 +41,53 @@ export interface SageInspection {
   text: string;
 }
 
+export interface DocumentationCompatibility {
+  status: "compatible" | "extension" | "partial" | "incompatible";
+  notes?: string;
+}
+
+export interface DocumentationEntry {
+  schema_version: 1;
+  name: string;
+  aliases: string[];
+  kind: "class" | "constant" | "function" | "method" | "object";
+  module: string;
+  signature: string;
+  summary: string;
+  doc: string;
+  tags: string[];
+  backends: string[];
+  sage_compatibility: DocumentationCompatibility;
+  provenance: Array<{
+    kind:
+      | "sage-derived"
+      | "library-backed"
+      | "literature-implemented"
+      | "sagejs-original";
+    source?: string;
+    revision?: string;
+    url?: string;
+    license?: string;
+  }>;
+  references: Array<{
+    id: string;
+    type?: "article" | "book" | "manual" | "paper" | "software" | "web";
+    title: string;
+    authors?: string[];
+    year?: number;
+    doi?: string;
+    url?: string;
+    relevant_sections?: string[];
+  }>;
+  implementation?: { algorithm?: string; notes?: string };
+  limitations: string[];
+}
+
+export interface DocumentationCatalog {
+  schema_version: 1;
+  entries: DocumentationEntry[];
+}
+
 export interface SageCompleteness {
   status: "complete" | "incomplete" | "invalid";
   indent?: string;
@@ -64,6 +111,7 @@ export class SageSession extends EventEmitter {
   ): Promise<SageEvaluationResult>;
   complete(source: string, cursorPosition: number): Promise<SageCompletion>;
   inspect(source: string, cursorPosition: number): Promise<SageInspection>;
+  documentation(): Promise<DocumentationCatalog>;
   isComplete(source: string): Promise<SageCompleteness>;
   interrupt(): Promise<void>;
   reset(): Promise<void>;

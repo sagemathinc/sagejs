@@ -180,7 +180,11 @@ weak_ref_class: _WeakRefClass
 coercion_model: Any
 
 
-def register_doc(name: str, value: Any) -> None: ...
+def register_doc(
+    name: str,
+    value: Any,
+    metadata: Any = None,
+) -> None: ...
 def documentation_registry() -> list[list[Any]]: ...
 kwargs_symbol: Any
 iterator_symbol: Any

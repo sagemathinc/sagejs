@@ -1159,6 +1159,26 @@ def PolynomialRing(
     implementation: Any = None,
     order: str = 'degrevlex',
 ) -> Any:
+    r"""
+    Construct a univariate or multivariate polynomial ring.
+
+    Coefficient rings currently include ``ZZ``, ``QQ``, prime and extension
+    finite fields, and ``Zmod(n)``.  Arithmetic is exact and backed by FLINT.
+    A comma-separated name list constructs a multivariate ring.
+
+    EXAMPLES::
+
+        sage: R.<x> = QQ[]
+        sage: (x^4 - 1).factor()
+        (x + 1) * (x - 1) * (x^2 + 1)
+        sage: S.<x,y> = GF(4, 'a')[]
+        sage: (x + y)^3
+        x^3 + x^2*y + x*y^2 + y^3
+
+    Supported monomial orders are ``lex``, ``deglex``, and ``degrevlex``.
+    The accepted keyword surface is intentionally smaller than SageMath's
+    full constructor while native implementations are selected automatically.
+    """
     if (variable is not None and runtime.jstype(variable) == 'object'
             and variable[runtime.kwargs_symbol]):
         names = variable.names
@@ -1246,4 +1266,65 @@ runtime.set_class_repr(
 runtime.set_class_repr(
     RationalFunctionElement,
     "<class 'sage.rings.fraction_field_element.FractionFieldElement'>",
+)
+
+runtime.register_doc(
+    'PolynomialRing',
+    PolynomialRing,
+    {
+        'kind': 'function',
+        'module': 'sage.rings.polynomial.polynomial_ring_constructor',
+        'aliases': ['polygen'],
+        'tags': [
+            'rings',
+            'polynomials',
+            'multivariate polynomials',
+            'exact arithmetic',
+        ],
+        'backends': ['FLINT'],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': (
+                'Core univariate and multivariate construction and '
+                'arithmetic are compatible; SageMath exposes additional '
+                'constructor implementations and coefficient rings.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath polynomial ring API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'polynomial_rings/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'FLINT polynomial arithmetic',
+                'url': 'https://flintlib.org/doc/',
+            },
+        ],
+        'references': [
+            {
+                'id': 'flint',
+                'type': 'software',
+                'title': 'FLINT: Fast Library for Number Theory',
+                'authors': ['The FLINT contributors'],
+                'url': 'https://flintlib.org/',
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'FLINT univariate and multivariate polynomial arithmetic'
+            ),
+        },
+        'limitations': [
+            (
+                'Only lex, deglex, and degrevlex monomial orders are '
+                'currently accepted.'
+            ),
+        ],
+    },
 )

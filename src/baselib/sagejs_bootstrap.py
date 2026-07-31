@@ -71,12 +71,12 @@ def ρσ_wall_time():
     return r"%js Date.now() / 1000"
 
 
-def ρσ_register_doc(name, value):
+def ρσ_register_doc(name, value, metadata):
     return r"""%js (() => {
         const registry = (
             globalThis.__sagejs_doc_registry__ ??= []
         );
-        registry.push([name, value]);
+        registry.push([name, value, metadata ?? Object.create(null)]);
     })()"""
 
 

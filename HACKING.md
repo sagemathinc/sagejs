@@ -78,7 +78,8 @@ program structure, but should not attempt to statically encode value-dependent
 parents or Sage's runtime coercion graph.
 
 Public APIs retain their ordinary Python docstrings for `help`, Jupyter
-inspection, and `search_doc`. See [`DOCUMENTATION.md`](DOCUMENTATION.md) for
+inspection, `search_doc`, and the DocSpec CLI. See
+[`DOCUMENTATION.md`](DOCUMENTATION.md) and [`DOCSPEC.md`](DOCSPEC.md) for
 the docstring content, registration, and compatibility-note policy.
 
 Run `pnpm baselib:status` to inventory every top-level baselib module. It
