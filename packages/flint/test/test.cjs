@@ -188,6 +188,15 @@ for (const [kind, modulus, expected] of [
   assert.equal(flint.mpolyLength(polynomial), 2);
   assert.equal(flint.mpolyDegree(polynomial, 0), 2);
   assert.equal(flint.mpolyTotalDegree(polynomial), 2);
+  const comparison = flint.mpolyCompare(
+    polynomial,
+    flint.mpolyNeg(polynomial),
+  );
+  assert.notEqual(comparison, 0);
+  assert.equal(
+    comparison,
+    -flint.mpolyCompare(flint.mpolyNeg(polynomial), polynomial),
+  );
   const multiple = flint.mpolyMul(polynomial, x);
   assert.equal(
     flint.mpolyEqual(flint.mpolyDivExact(multiple, polynomial), x),

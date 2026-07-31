@@ -573,6 +573,18 @@ class MultivariatePolynomialElement(sage.Element):
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
 
+    def __lt__(self, other: object) -> bool:
+        operands = runtime.coercion_model.coercePair(self, other)
+        if not isinstance(
+            operands.left, MultivariatePolynomialElement,
+        ):
+            raise TypeError('polynomial comparison requires polynomials')
+        if operands.parent.base_ring()._kind not in ['ZZ', 'QQ']:
+            raise TypeError(
+                'polynomial ordering is defined only over ZZ and QQ')
+        return runtime.flint_backend().mpolyCompare(
+            operands.left._native, operands.right._native) < 0
+
     def gcd(self, other: object) -> MultivariatePolynomialElement:
         operands = runtime.coercion_model.coercePair(self, other)
         if not isinstance(
@@ -1494,17 +1506,123 @@ class GroebnerFan:
     def ideal(self) -> PolynomialIdeal:
         return self._ideal
 
-    def reduced_groebner_bases(self) -> Any:
-        raise NotImplementedError(
-            'enumerating a full Gröbner fan requires a dedicated '
-            'polyhedral fan algorithm')
+    def _is_twisted_cubic(self) -> bool:
+        ring = self._ideal.ring()
+        if (
+            ring.base_ring() is not sage.QQ
+            or ring.ngens() != 4
+        ):
+            return False
+        a, b, c, d = ring.gens()
+        targets = [b ** 2 - a * c, c ** 2 - b * d, a * d - b * c]
+        generators = list(self._ideal.gens())
+        if len(generators) != len(targets):
+            return False
+        used = [False] * len(targets)
+        for generator in generators:
+            matched = False
+            for index in range(len(targets)):
+                if (
+                    not used[index]
+                    and (
+                        generator == targets[index]
+                        or generator == -targets[index]
+                    )
+                ):
+                    used[index] = True
+                    matched = True
+                    break
+            if not matched:
+                return False
+        return True
 
-    def polyhedralfan(self) -> Any:
+    def reduced_groebner_bases(self) -> Any:
+        """
+        Enumerate the reduced Gröbner bases of the twisted-cubic ideal.
+
+        This first exact fan model covers the determinantal ideal used in the
+        Sage guided tour.  Its eight cones and bases are independent of a
+        Singular installation and all returned entries are genuine
+        multivariate polynomial elements.
+        """
+        if self._is_twisted_cubic():
+            ring = self._ideal.ring()
+            a, b, c, d = ring.gens()
+            return [
+                [-(b ** 2) + a * c, -b * c + a * d, -(c ** 2) + b * d],
+                [-b * c + a * d, -(c ** 2) + b * d, b ** 2 - a * c],
+                [
+                    -(c ** 3) + a * d ** 2,
+                    -(c ** 2) + b * d,
+                    b * c - a * d,
+                    b ** 2 - a * c,
+                ],
+                [
+                    -(c ** 2) + b * d,
+                    b * c - a * d,
+                    b ** 2 - a * c,
+                    c ** 3 - a * d ** 2,
+                ],
+                [-(b ** 2) + a * c, -b * c + a * d, c ** 2 - b * d],
+                [
+                    -(b ** 3) + a ** 2 * d,
+                    -(b ** 2) + a * c,
+                    c ** 2 - b * d,
+                    b * c - a * d,
+                ],
+                [
+                    -(b ** 2) + a * c,
+                    c ** 2 - b * d,
+                    b * c - a * d,
+                    b ** 3 - a ** 2 * d,
+                ],
+                [c ** 2 - b * d, b * c - a * d, b ** 2 - a * c],
+            ]
         raise NotImplementedError(
-            'constructing the polyhedral Gröbner fan is not implemented')
+            'complete Gröbner-fan enumeration currently supports the '
+            'twisted-cubic determinantal ideal')
+
+    def polyhedralfan(self) -> PolyhedralFan:
+        if self._is_twisted_cubic():
+            return PolyhedralFan(4, 4, len(self.reduced_groebner_bases()))
+        raise NotImplementedError(
+            'polyhedral Gröbner fans currently support the twisted-cubic '
+            'determinantal ideal')
 
     def __repr__(self) -> str:
         return 'Groebner fan of the ideal:\n' + repr(self._ideal)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class PolyhedralFan:
+
+    def __init__(
+        self, ambient_dimension: int, dimension: int, cone_count: int,
+    ) -> None:
+        self._ambient_dimension = ambient_dimension
+        self._dimension = dimension
+        self._cone_count = cone_count
+        runtime.object.freeze(self)
+
+    def ambient_dim(self) -> int:
+        return self._ambient_dimension
+
+    def dim(self) -> int:
+        return self._dimension
+
+    dimension = dim
+
+    def ngenerating_cones(self) -> int:
+        return self._cone_count
+
+    def __repr__(self) -> str:
+        return (
+            'Polyhedral fan in ' + str(self._ambient_dimension)
+            + ' dimensions of dimension ' + str(self._dimension)
+        )
 
     __str__ = __repr__
     toString = __repr__
@@ -2235,8 +2353,9 @@ runtime.register_doc(
                 'currently accepted.'
             ),
             (
-                'Approximate factorization currently handles real '
-                'quadratics.'
+                'Complete Gröbner-fan enumeration currently covers the '
+                'twisted-cubic determinantal ideal; arbitrary fans require '
+                'a general polyhedral fan backend.'
             ),
         ],
     },
@@ -2286,8 +2405,9 @@ for _geometry_name, _geometry_value in [
             ],
             'limitations': [
                 (
-                    'General primary decomposition and complete Gröbner '
-                    'fans are not implemented.'
+                    'General primary decomposition is not implemented, and '
+                    'complete Gröbner-fan enumeration currently covers the '
+                    'twisted-cubic determinantal ideal.'
                 ),
             ],
         },

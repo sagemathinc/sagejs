@@ -2434,6 +2434,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"mpolyEqual", NULL, sagejs_mpoly_equal, NULL, NULL, NULL,
             napi_default, NULL},
+        {"mpolyCompare", NULL, sagejs_mpoly_compare, NULL, NULL, NULL,
+            napi_default, NULL},
         {"mpolyDivExact", NULL, sagejs_mpoly_divexact, NULL, NULL, NULL,
             napi_default, NULL},
         {"mpolyGcd", NULL, sagejs_mpoly_gcd, NULL, NULL, NULL,

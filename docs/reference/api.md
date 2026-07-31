@@ -36,7 +36,7 @@ The coordinate ring is a FLINT-backed multivariate polynomial ring.
 - Tags: algebraic geometry, affine schemes, curves, multivariate polynomials
 - Backends: FLINT, Sage.js algebraic geometry layer
 - Sage compatibility: partial — Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation.
-- Limitations: General primary decomposition and complete Gröbner fans are not implemented.
+- Limitations: General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal.
 
 ### Provenance
 
@@ -73,7 +73,7 @@ Gröbner bases. General primary decomposition is not yet implemented.
 - Tags: algebraic geometry, affine schemes, curves, multivariate polynomials
 - Backends: FLINT, Sage.js algebraic geometry layer
 - Sage compatibility: partial — Affine plane curves, hypersurface components, and rational plane-curve intersections are supported. General schemes and primary decomposition remain outside the current implementation.
-- Limitations: General primary decomposition and complete Gröbner fans are not implemented.
+- Limitations: General primary decomposition is not implemented, and complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal.
 
 ### Provenance
 
@@ -897,7 +897,7 @@ full constructor while native implementations are selected automatically.
 - Backends: FLINT, Sage.js sparse polynomial layer
 - Sage compatibility: partial — Core univariate and multivariate construction and arithmetic are compatible over exact and approximate real coefficient rings; SageMath exposes additional constructor implementations and coefficient rings.
 - Algorithm: FLINT exact polynomial arithmetic with a sparse generic layer for approximate real coefficients
-- Limitations: Only lex, deglex, and degrevlex monomial orders are currently accepted. Approximate factorization currently handles real quadratics.
+- Limitations: Only lex, deglex, and degrevlex monomial orders are currently accepted. Complete Gröbner-fan enumeration currently covers the twisted-cubic determinantal ideal; arbitrary fans require a general polyhedral fan backend.
 
 ### Provenance
 

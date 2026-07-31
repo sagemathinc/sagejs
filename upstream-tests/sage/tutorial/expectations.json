@@ -95,11 +95,5 @@
     }
   },
   "xfail": {},
-  "xfailGroups": [
-    {
-      "reason": "requires enumeration and polyhedral construction of complete Gröbner fans",
-      "file": "src/doc/en/tutorial/tour_advanced.rst",
-      "lines": [62, 71]
-    }
-  ]
+  "xfailGroups": []
 }

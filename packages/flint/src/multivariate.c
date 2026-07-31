@@ -670,6 +670,66 @@ napi_value sagejs_mpoly_sub(napi_env e, napi_callback_info i)
 napi_value sagejs_mpoly_mul(napi_env e, napi_callback_info i)
 { return binary(e, i, OP_MUL); }
 
+napi_value sagejs_mpoly_compare(napi_env env, napi_callback_info info)
+{
+    napi_value args[2], result;
+    sagejs_mpoly_value *left, *right;
+    int comparison;
+    if (!require_arguments(env, info, 2, args) ||
+        (left = unwrap_pair(env, args[0], args[1], &right)) == NULL)
+        return NULL;
+    if (left->context->kind == SAGEJS_MPOLY_ZZ)
+    {
+        fmpz_mpoly_t difference;
+        fmpz_t leading;
+        fmpz_mpoly_init(difference, left->context->value.zz);
+        fmpz_init(leading);
+        fmpz_mpoly_sub(difference, left->value.zz, right->value.zz,
+            left->context->value.zz);
+        if (fmpz_mpoly_is_zero(difference, left->context->value.zz))
+            comparison = 0;
+        else
+        {
+            fmpz_mpoly_get_term_coeff_fmpz(
+                leading, difference, 0, left->context->value.zz);
+            comparison = fmpz_sgn(leading);
+        }
+        fmpz_clear(leading);
+        fmpz_mpoly_clear(difference, left->context->value.zz);
+    }
+    else if (left->context->kind == SAGEJS_MPOLY_QQ)
+    {
+        fmpq_mpoly_t difference;
+        fmpq_t leading;
+        fmpq_mpoly_init(difference, left->context->value.qq);
+        fmpq_init(leading);
+        fmpq_mpoly_sub(difference, left->value.qq, right->value.qq,
+            left->context->value.qq);
+        if (fmpq_mpoly_is_zero(difference, left->context->value.qq))
+            comparison = 0;
+        else
+        {
+            fmpq_mpoly_get_term_coeff_fmpq(
+                leading, difference, 0, left->context->value.qq);
+            comparison = fmpq_sgn(leading);
+        }
+        fmpq_clear(leading);
+        fmpq_mpoly_clear(difference, left->context->value.qq);
+    }
+    else if (left->context->kind == SAGEJS_MPOLY_NMOD)
+        comparison = nmod_mpoly_cmp(
+            left->value.nmod, right->value.nmod,
+            left->context->value.nmod);
+    else
+        comparison = fq_nmod_mpoly_cmp(
+            left->value.fq_nmod, right->value.fq_nmod,
+            left->context->value.fq_nmod);
+    if (!check_napi(env,
+            napi_create_int32(env, comparison, &result)))
+        return NULL;
+    return result;
+}
+
 napi_value sagejs_mpoly_neg(napi_env env, napi_callback_info info)
 {
     napi_value args[1], object;

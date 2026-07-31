@@ -12,6 +12,7 @@ napi_value sagejs_mpoly_mul(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_neg(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_pow(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_equal(napi_env env, napi_callback_info info);
+napi_value sagejs_mpoly_compare(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_divexact(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_gcd(napi_env env, napi_callback_info info);
 napi_value sagejs_mpoly_resultant(napi_env env, napi_callback_info info);
