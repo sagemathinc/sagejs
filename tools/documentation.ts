@@ -23,6 +23,7 @@ export interface DocumentationCompatibility {
 export interface DocumentationProvenance {
   kind:
     | "sage-derived"
+    | "software-derived"
     | "library-backed"
     | "literature-implemented"
     | "sagejs-original";
@@ -235,6 +236,7 @@ function provenance(value: unknown): DocumentationProvenance[] {
     const raw = objectValue(item);
     if (
       raw.kind !== "sage-derived" &&
+      raw.kind !== "software-derived" &&
       raw.kind !== "library-backed" &&
       raw.kind !== "literature-implemented" &&
       raw.kind !== "sagejs-original"

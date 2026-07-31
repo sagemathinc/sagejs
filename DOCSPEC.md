@@ -74,6 +74,7 @@ answer.
 Each provenance record has a `kind`:
 
 - `sage-derived`: API, semantics, prose, tests, or code adapted from SageMath;
+- `software-derived`: code or an algorithm adapted from other software;
 - `library-backed`: substantial computation is delegated to a named library;
 - `literature-implemented`: an algorithm is implemented from published work;
 - `sagejs-original`: design or implementation originated in Sage.js.

@@ -1130,6 +1130,67 @@ class ManinSymbolBasisElement:
     toString = __repr__
 
 
+class ManinPresentation:
+    """
+    A minimal weight-2 `Gamma_0(N)` modular-symbol presentation.
+
+    This is built natively from a connected well-formed fundamental domain.
+    Paired interior and boundary paths are eliminated structurally, leaving
+    the `E1` paths together with order-two and order-three stabilizer paths.
+    """
+
+    def __init__(self, projective_line: P1List) -> None:
+        self._projective_line = projective_line
+        self._info = runtime.flint_backend().p1ListManinPresentationInfo(
+            projective_line._native)
+
+    def _number(self, name: str) -> int:
+        return runtime.number(runtime.reflect.get(self._info, name))
+
+    def level(self) -> int:
+        return self._number('level')
+
+    def projective_cosets(self) -> int:
+        return self._number('projectiveCosets')
+
+    def cusps(self) -> int:
+        return self._number('cusps')
+
+    def interior_paths(self) -> int:
+        return self._number('interiorPaths')
+
+    def e1(self) -> int:
+        return self._number('e1')
+
+    def e2(self) -> int:
+        return self._number('e2')
+
+    def torsion2(self) -> int:
+        return self._number('torsion2')
+
+    def torsion3(self) -> int:
+        return self._number('torsion3')
+
+    def ngens(self) -> int:
+        return self._number('generators')
+
+    def nrelations(self) -> int:
+        return self._number('relations')
+
+    def dimension(self) -> int:
+        return self._number('dimension')
+
+    def __repr__(self) -> str:
+        return (
+            'Minimal weight-2 Manin presentation at level '
+            + str(self.level()) + ' with ' + str(self.ngens())
+            + ' generators and ' + str(self.nrelations()) + ' relations'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class ManinRelations:
     """
     Sparse weight-2 `Gamma_0(N)` Manin relations over `GF(p)`.
@@ -1189,8 +1250,14 @@ class ManinRelations:
 
     def rank(self) -> int:
         if self._rank_cache is None:
-            self._rank_cache = runtime.number(
-                runtime.flint_backend().maninRelationsRank(self._native))
+            if self._modulus > 3:
+                self._rank_cache = (
+                    self.ncols()
+                    - self._projective_line.manin_presentation().dimension()
+                )
+            else:
+                self._rank_cache = runtime.number(
+                    runtime.flint_backend().maninRelationsRank(self._native))
         return self._rank_cache
 
     def quotient_dimension(self) -> int:
@@ -1233,6 +1300,7 @@ class P1List:
     def __init__(self, level: Any) -> None:
         self._level = _positive_integer(level, 'P1List level')
         self._native = runtime.flint_backend().p1List(self._level)
+        self._manin_presentation_cache = None
 
     def N(self) -> int:
         return self._level
@@ -1316,6 +1384,11 @@ class P1List:
 
     def manin_relations(self, modulus: Any = 65521) -> ManinRelations:
         return ManinRelations(self, modulus)
+
+    def manin_presentation(self) -> ManinPresentation:
+        if self._manin_presentation_cache is None:
+            self._manin_presentation_cache = ManinPresentation(self)
+        return self._manin_presentation_cache
 
     def __repr__(self) -> str:
         return (
@@ -1947,14 +2020,72 @@ runtime.register_doc(
         'implementation': {
             'algorithm': (
                 'Exact cardinality preallocation, canonical normalization, '
-                'lexicographic representatives, and open-addressed indexing'
+                'lexicographic representatives, open-addressed indexing, '
+                'and a preallocated Pollack--Stevens fundamental domain'
             ),
         },
         'limitations': [
             'Levels are currently limited to signed 32-bit positive integers.',
+        ],
+    },
+)
+runtime.register_doc(
+    'ManinPresentation',
+    ManinPresentation,
+    {
+        'kind': 'class',
+        'module': 'sage.modular.modsym.manin_symbol_list',
+        'tags': [
+            'number theory',
+            'modular symbols',
+            'fundamental domains',
+            'Manin relations',
+        ],
+        'backends': ['Sage.js native C'],
+        'sage_compatibility': {
+            'status': 'extension',
+            'notes': (
+                'This explicit presentation-inspection object is a Sage.js '
+                'API; its weight-2 dimension agrees with SageMath.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'literature-implemented',
+                'source': (
+                    'Pollack and Stevens, Overconvergent modular symbols '
+                    'and p-adic L-functions'
+                ),
+                'url': (
+                    'https://doi.org/10.24033/asens.2139'
+                ),
+            },
+            {
+                'kind': 'software-derived',
+                'source': 'PARI/GP src/basemath/modsym.c',
+                'revision': '0f5a08ee7e',
+                'url': 'https://pari.math.u-bordeaux.fr/',
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'sagejs-original',
+                'source': (
+                    'Preallocated array-and-index fundamental-domain '
+                    'implementation'
+                ),
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Connected Farey-triangle fundamental domain with '
+                'structural elimination of F, E2, and T32 paths'
+            ),
+        },
+        'limitations': [
+            'The current public object exposes presentation metadata only.',
             (
-                'Relation rank currently uses dense FLINT elimination below '
-                'a safety threshold; scalable sparse elimination is next.'
+                'Generator reduction, boundary maps, and Hecke actions will '
+                'be layered on the retained path presentation.'
             ),
         ],
     },
@@ -1971,7 +2102,11 @@ runtime.register_doc(
             'sparse matrices',
             'finite fields',
         ],
-        'backends': ['Sage.js native CSR', 'FLINT nmod_mat'],
+        'backends': [
+            'Sage.js native CSR',
+            'Sage.js minimal Manin presentation',
+            'FLINT nmod_mat',
+        ],
         'sage_compatibility': {
             'status': 'extension',
             'notes': (
@@ -1995,11 +2130,20 @@ runtime.register_doc(
                     'Pre-sized native compressed-row relation builder'
                 ),
             },
+            {
+                'kind': 'software-derived',
+                'source': 'PARI/GP src/basemath/modsym.c',
+                'revision': '0f5a08ee7e',
+                'url': 'https://pari.math.u-bordeaux.fr/',
+                'license': 'GPL-2.0-or-later',
+            },
         ],
         'implementation': {
             'algorithm': (
                 'Orbit representatives for x + S*x and '
-                'x + R*x + R^2*x over a prime field'
+                'x + R*x + R^2*x over a prime field, with rank and '
+                'dimension obtained from a minimal fundamental-domain '
+                'presentation in characteristic greater than 3'
             ),
         },
         'references': [
@@ -2015,7 +2159,7 @@ runtime.register_doc(
         ],
         'limitations': [
             (
-                'Rank conversion currently uses dense FLINT elimination '
+                'Characteristic 2 and 3 still use dense FLINT elimination '
                 'below 20 million matrix cells.'
             ),
             (

@@ -57,6 +57,49 @@ assert.deepEqual(flint.maninRelationsInfo(maninRelations), {
 });
 assert.deepEqual(flint.maninRelationsRow(maninRelations, 0), [0, 1n, 1, 1n]);
 assert.equal(flint.maninRelationsRank(maninRelations), 9);
+assert.deepEqual(
+  flint.p1ListManinPresentationInfo(flint.p1List(389)),
+  {
+    level: 389,
+    projectiveCosets: 390,
+    cusps: 131,
+    interiorPaths: 258,
+    e1: 65,
+    e2: 65,
+    torsion2: 2,
+    torsion3: 0,
+    generators: 67,
+    relations: 3,
+    dimension: 65,
+  },
+);
+assert.deepEqual(
+  flint.p1ListManinPresentationInfo(flint.p1List(1000)),
+  {
+    level: 1000,
+    projectiveCosets: 1800,
+    cusps: 601,
+    interiorPaths: 1198,
+    e1: 301,
+    e2: 301,
+    torsion2: 0,
+    torsion3: 0,
+    generators: 301,
+    relations: 1,
+    dimension: 301,
+  },
+);
+for (let level = 1; level <= 80; level += 1) {
+  const p1 = flint.p1List(level);
+  const presentation = flint.p1ListManinPresentationInfo(p1);
+  const relations = flint.p1ListManinRelations(p1, 65521n);
+  const relationInfo = flint.maninRelationsInfo(relations);
+  assert.equal(
+    presentation.dimension,
+    relationInfo.generators - flint.maninRelationsRank(relations),
+    `minimal and dense Manin presentations differ at level ${level}`,
+  );
+}
 
 for (const value of [
   0n,

@@ -127,6 +127,28 @@ test("native sparse weight-2 Gamma0 Manin relations", async () => {
       (
         await session.evaluate(
           [
+            "P = P1List(389).manin_presentation()",
+            "[P.level(), P.projective_cosets(), P.cusps(), " +
+              "P.interior_paths(), P.e1(), P.e2(), P.torsion2(), " +
+              "P.torsion3(), P.ngens(), P.nrelations(), " +
+              "P.dimension()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[389, 390, 131, 258, 65, 65, 2, 0, 67, 3, 65]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "P1List(1000).manin_relations(65521).dimension()",
+        )
+      ).repr,
+      "301",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
             "R = P1List(11).manin_relations(65521)",
             "[R.level(), R.modulus(), R.nrows(), R.ncols(), R.nnz(), " +
               "R.s_relations(), R.r_relations(), R.rank(), " +

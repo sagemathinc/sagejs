@@ -49,14 +49,22 @@ The native implementation first computes
 `#P1(Z/NZ) = N product_(p | N) (1 + 1/p)`, allocates the representative array
 once, and builds a fixed-size open-addressed lookup table. The sparse relation
 builder likewise counts relation orbits and allocates compressed-row storage
-once. Dense FLINT rank is only a first correctness backend; scalable sparse
-exact linear algebra is the next distinct layer of this project.
+once.
 
 PARI/GP provides an independent correctness and performance reference through
 its `msinit` implementation for even-weight `Gamma0(N)` modular symbols. Its
 weight-2 path constructs a connected fundamental domain and eliminates paired
 interior and boundary edges structurally; it does not compute the rank of the
-full Manin relation matrix. This is both a performance baseline and the design
-reference for Sage.js's next native presentation layer. eclib remains an
-important reference for the specialized weight-2/newform pipeline and its
-linear algebra.
+full Manin relation matrix. Sage.js now implements this Pollack--Stevens/PARI
+strategy natively using preallocated C arrays and integer indices. For
+characteristic greater than 3, dimension and rank queries use the minimal
+presentation; dense FLINT rank remains the independent small-level oracle and
+the characteristic-2/3 fallback.
+
+The algorithmic reference is PARI/GP's GPL-2.0-or-later
+`src/basemath/modsym.c`, copyright 2011 The PARI Group, inspected at
+development revision `0f5a08ee7e` on 2026-07-31. That source cites Robert
+Pollack and Glenn Stevens, *Overconvergent modular symbols and p-adic
+L-functions*, Annales scientifiques de l'École Normale Supérieure 44 (2011),
+1–42. eclib remains an important reference for the specialized
+weight-2/newform pipeline and its linear algebra.

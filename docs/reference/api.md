@@ -620,6 +620,34 @@ sage: float(log2)
 
 - `sage-derived` — [SageMath symbolic constants API](https://doc.sagemath.org/html/en/reference/functions/sage/functions/constants.html); license GPL-2.0-or-later
 
+## `ManinPresentation`
+
+```sage
+ManinPresentation(projective_line)
+```
+
+A minimal weight-2 `Gamma_0(N)` modular-symbol presentation.
+
+This is built natively from a connected well-formed fundamental domain.
+Paired interior and boundary paths are eliminated structurally, leaving
+the `E1` paths together with order-two and order-three stabilizer paths.
+
+### Metadata
+
+- Kind: `class`
+- Module: `sage.modular.modsym.manin_symbol_list`
+- Tags: number theory, modular symbols, fundamental domains, Manin relations
+- Backends: Sage.js native C
+- Sage compatibility: extension — This explicit presentation-inspection object is a Sage.js API; its weight-2 dimension agrees with SageMath.
+- Algorithm: Connected Farey-triangle fundamental domain with structural elimination of F, E2, and T32 paths
+- Limitations: The current public object exposes presentation metadata only. Generator reduction, boundary maps, and Hecke actions will be layered on the retained path presentation.
+
+### Provenance
+
+- `literature-implemented` — [Pollack and Stevens, Overconvergent modular symbols and p-adic L-functions](https://doi.org/10.24033/asens.2139)
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Preallocated array-and-index fundamental-domain implementation
+
 ## `ManinRelations`
 
 ```sage
@@ -636,15 +664,16 @@ relations `x + R*x + R^2*x`, stored in native compressed-row form.
 - Kind: `class`
 - Module: `sage.modular.modsym.manin_symbol_list`
 - Tags: number theory, modular symbols, sparse matrices, finite fields
-- Backends: Sage.js native CSR, FLINT nmod_mat
+- Backends: Sage.js native CSR, Sage.js minimal Manin presentation, FLINT nmod_mat
 - Sage compatibility: extension — This explicit relation-matrix object is a Sage.js API. Its quotient dimension agrees with weight-2 Gamma0 modular symbols away from bad reduction characteristics.
-- Algorithm: Orbit representatives for x + S*x and x + R*x + R^2*x over a prime field
-- Limitations: Rank conversion currently uses dense FLINT elimination below 20 million matrix cells. Boundary maps, cuspidal subspaces, Hecke actions, and rational lifting are not yet part of this object.
+- Algorithm: Orbit representatives for x + S*x and x + R*x + R^2*x over a prime field, with rank and dimension obtained from a minimal fundamental-domain presentation in characteristic greater than 3
+- Limitations: Characteristic 2 and 3 still use dense FLINT elimination below 20 million matrix cells. Boundary maps, cuspidal subspaces, Hecke actions, and rational lifting are not yet part of this object.
 
 ### Provenance
 
 - `literature-implemented` — [William Stein, Modular Forms: A Computational Approach](https://wstein.org/books/modform/)
 - `sagejs-original` — Pre-sized native compressed-row relation builder
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
 
 ### References
 
@@ -873,8 +902,8 @@ sage: P.apply_S(P.apply_S(10))
 - Tags: number theory, modular symbols, projective line, Manin relations
 - Backends: Sage.js native C, FLINT nmod_mat
 - Sage compatibility: compatible — Representative ordering, normalization, I, S, and the historical order-three T action agree with SageMath. apply_R and apply_translation are explicit extensions.
-- Algorithm: Exact cardinality preallocation, canonical normalization, lexicographic representatives, and open-addressed indexing
-- Limitations: Levels are currently limited to signed 32-bit positive integers. Relation rank currently uses dense FLINT elimination below a safety threshold; scalable sparse elimination is next.
+- Algorithm: Exact cardinality preallocation, canonical normalization, lexicographic representatives, open-addressed indexing, and a preallocated Pollack--Stevens fundamental domain
+- Limitations: Levels are currently limited to signed 32-bit positive integers.
 
 ### Provenance
 
