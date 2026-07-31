@@ -71,6 +71,24 @@
     },
     "src/doc/en/tutorial/tour_functions.rst:89": {
       "accepted": ["<class 'function'>\n"]
+    },
+    "src/doc/en/tutorial/tour_groups.rst:21": {
+      "accepted": [
+        "[Permutation Group with generators [(3,4), (1,2,3)(4,5)], Permutation Group with generators [(1,4)(2,5), (1,4)(3,5), (2,5)(3,4)]]\n"
+      ]
+    },
+    "src/doc/en/tutorial/tour_groups.rst:26": {
+      "accepted": ["(1,3,2)\n"]
+    },
+    "src/doc/en/tutorial/tour_groups.rst:51": {
+      "accepted": [
+        "([1 0]\n[0 1], [1 0]\n[6 1], [1 1]\n[6 0], [1 0]\n[4 1], [1 1]\n[5 6], [1 1]\n[4 5], [1 2]\n[5 4], [1 2]\n[4 2], [1 1]\n[2 3], [6 0]\n[0 6], [6 0]\n[1 6])\n"
+      ]
+    },
+    "src/doc/en/tutorial/tour_groups.rst:62": {
+      "accepted": [
+        "[1 0 0 0]\n[0 1 0 0]\n[0 0 1 0]\n[0 0 0 1]\n"
+      ]
     }
   },
   "xfail": {},
@@ -94,11 +112,6 @@
       "reason": "requires a deliberate modular-forms and modular-symbols implementation",
       "file": "src/doc/en/tutorial/tour_advanced.rst",
       "lines": [412, 413, 415, 416, 419, 423, 425, 427, 435, 438, 447, 448, 451, 454, 455, 458, 467, 470, 472, 476, 478, 504, 507, 509, 511, 522, 526, 530]
-    },
-    {
-      "reason": "requires permutation and matrix-group subsystems",
-      "file": "src/doc/en/tutorial/tour_groups.rst",
-      "lines": [14, 15, 17, 19, 21, 24, 26, 28, 35, 36, 49, 50, 51, 59, 60, 62, 67]
     },
     {
       "reason": "requires general number fields beyond the current quadratic-field slice",

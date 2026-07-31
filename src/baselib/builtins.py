@@ -4234,11 +4234,26 @@ def prod(values: Any, start: Any = 1) -> Any:
     return answer
 
 
-def latex(value: Any) -> str:
-    """Return a compact LaTeX representation of ``value``."""
+class LatexExpr:
+
+    def __init__(self, value: Any) -> None:
+        self._value = str(value)
+
+    def __repr__(self) -> str:
+        return self._value
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def __eq__(self, other: Any) -> _Bool:
+        return self._value == str(other)
+
+
+def latex(value: Any) -> LatexExpr:
+    """Return a compact LaTeX expression for ``value``."""
     if _builtins_member_is_function(value, '_latex_'):
-        return str(_builtins_call_member(value, '_latex_', []))
-    return str(value)
+        return LatexExpr(_builtins_call_member(value, '_latex_', []))
+    return LatexExpr(value)
 
 
 _prime_pi_primes = None

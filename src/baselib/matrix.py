@@ -497,6 +497,19 @@ class MatrixSpaceParent(sage.Parent):
             values = [0 for _ in range(self._rows * self._cols)]
         else:
             values = list(entries)
+            if (
+                len(values) == self._rows
+                and len(values) > 0
+                and isinstance(values[0], (list, tuple, Vector))
+            ):
+                flattened = []
+                for row in values:
+                    row_values = list(row)
+                    if len(row_values) != self._cols:
+                        raise ValueError(
+                            'matrix row length does not match its dimensions')
+                    flattened.extend(row_values)
+                values = flattened
         if len(values) != self._rows * self._cols:
             raise ValueError(
                 'matrix entry count does not match its dimensions')
