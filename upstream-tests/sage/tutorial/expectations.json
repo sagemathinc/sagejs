@@ -106,19 +106,14 @@
       "lines": [14, 15, 17, 19, 21, 24, 26, 28, 35, 36, 49, 50, 51, 59, 60, 62, 67]
     },
     {
-      "reason": "requires p-adic fields/rings and general number fields beyond the current quadratic-field slice",
+      "reason": "requires general number fields beyond the current quadratic-field slice",
       "file": "src/doc/en/tutorial/tour_numtheory.rst",
-      "lines": [120, 122, 126, 141, 142, 149, 156, 159, 161, 163, 166]
+      "lines": [141, 142, 149, 156, 159, 161, 163, 166]
     },
     {
       "reason": "requires primary decomposition and associated-prime algorithms",
       "file": "src/doc/en/tutorial/tour_polynomial.rst",
       "lines": [322, 325]
-    },
-    {
-      "reason": "requires a p-adic ring implementation",
-      "file": "src/doc/en/tutorial/tour_rings.rst",
-      "lines": [140]
     }
   ]
 }

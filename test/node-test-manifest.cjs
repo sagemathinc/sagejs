@@ -21,6 +21,7 @@ const integration = [
   "test/graphics3d.cjs",
   "test/graphics-export.cjs",
   "test/approximate-polynomial.cjs",
+  "test/padics.cjs",
   "test/groups.cjs",
   "test/dirichlet.cjs",
   "test/modular.cjs",

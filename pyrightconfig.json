@@ -18,6 +18,7 @@
     "src/baselib/matrix.py",
     "src/baselib/modular.py",
     "src/baselib/number_fields.py",
+    "src/baselib/padics.py",
     "src/baselib/polynomial.py",
     "src/baselib/real_complex.py",
     "src/baselib/series.py",
