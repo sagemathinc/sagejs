@@ -1,8 +1,8 @@
-# Dense exact matrices and vectors over ZZ, QQ, finite fields, and Zmod.
+# Dense matrices and vectors over exact and approximate Sage rings.
 #
-# The Python-visible object model follows SageMath. Native hosts keep matrix
-# entries in FLINT fmpz_mat/fmpq_mat objects; browser hosts use the matching
-# portable BigInt backend contract.
+# The Python-visible object model follows SageMath. Native hosts use FLINT
+# matrices, including Arb/ACB for approximate real and complex arithmetic;
+# browser hosts use the portable exact-matrix backend where available.
 #
 # Copyright (C) 2026 Sage.js contributors
 # License: GPL-3.0-only
@@ -27,6 +27,22 @@ def _is_extension_field_base(value: object) -> bool:
     return getattr(value, '_kind', None) == 'GF_EXTENSION'
 
 
+def _is_approximate_base(value: object) -> bool:
+    return getattr(value, '_kind', None) in [
+        'RDF',
+        'RealField',
+        'ComplexDoubleField',
+        'ComplexField',
+    ]
+
+
+def _is_complex_base(value: object) -> bool:
+    return getattr(value, '_kind', None) in [
+        'ComplexDoubleField',
+        'ComplexField',
+    ]
+
+
 def _is_base_ring(value: object) -> bool:
     return (
         value is sage.ZZ
@@ -35,6 +51,7 @@ def _is_base_ring(value: object) -> bool:
         or getattr(value, '_kind', None) == 'QQ'
         or _is_modular_base(value)
         or _is_extension_field_base(value)
+        or _is_approximate_base(value)
     )
 
 
@@ -51,13 +68,38 @@ def _base_for_values(values: list[Any]) -> sage.Parent:
         if isinstance(value, sage.Rational):
             return sage.QQ
         parent = getattr(value, '_parent', None)
+        if _is_approximate_base(parent):
+            return runtime.reflect.get(value, '_parent')
         if (
             _is_modular_base(parent)
             or _is_extension_field_base(parent)
         ):
             return _canonical_base(
                 runtime.reflect.get(value, '_parent'))
+        if (
+            runtime.jstype(value) == 'number'
+            and not runtime.number.isSafeInteger(value)
+        ):
+            return runtime.reflect.get(
+                runtime.global_object, 'RDF')
     return sage.ZZ
+
+
+def _approximate_precision(base: sage.Parent) -> int:
+    return int(_untyped(base).precision())
+
+
+def _complex_field(precision: int) -> sage.Parent:
+    constructor = runtime.reflect.get(
+        runtime.global_object, 'ComplexField')
+    return constructor(precision)
+
+
+def _complex_result_base(base: sage.Parent) -> sage.Parent:
+    if getattr(base, '_kind', None) == 'RDF':
+        return runtime.reflect.get(
+            runtime.global_object, 'CDF')
+    return _complex_field(_approximate_precision(base))
 
 
 def _coerce_values(
@@ -111,8 +153,21 @@ def _native_matrix(
                 rows, cols, entries, base._modulus)
         return backend.nmodMatrix(
             rows, cols, entries, base._modulus)
+    if _is_approximate_base(base):
+        field = _complex_field(_approximate_precision(base))
+        entries = []
+        for value in values:
+            entries.append(
+                runtime.reflect.get(field(value), '_native'))
+        return backend.acbMatrix(
+            rows,
+            cols,
+            entries,
+            _approximate_precision(base),
+        )
     raise TypeError(
-        'exact matrices currently require ZZ, QQ, GF, or Zmod')
+        'matrices currently require ZZ, QQ, GF, Zmod, '
+        'or a real/complex field')
 
 
 def _rational_result(value: Any) -> sage.Rational:
@@ -129,6 +184,14 @@ def _entry_from_native(base: sage.Parent, value: Any) -> Any:
         return _untyped(base)._from_native(value)
     if _is_modular_base(base):
         return base(value)
+    if _is_approximate_base(base):
+        field = _complex_field(_approximate_precision(base))
+        complex_value = _untyped(field)._fromNative(value)
+        if _is_complex_base(base):
+            return _untyped(base)._fromNative(value)
+        if getattr(base, '_kind', None) == 'RDF':
+            return float(complex_value.real())
+        return complex_value.real()
     return _rational_result(value)
 
 
@@ -138,6 +201,38 @@ def _common_base(
 ) -> sage.Parent:
     if left is right:
         return left
+    if _is_approximate_base(left) or _is_approximate_base(right):
+        if left is sage.ZZ or left is sage.QQ:
+            return right
+        if right is sage.ZZ or right is sage.QQ:
+            return left
+        if (
+            _is_approximate_base(left)
+            and _is_approximate_base(right)
+        ):
+            precision = max(
+                _approximate_precision(left),
+                _approximate_precision(right),
+            )
+            if _is_complex_base(left) or _is_complex_base(right):
+                if (
+                    precision == 53
+                    and getattr(left, '_kind', None)
+                    == 'ComplexDoubleField'
+                    and getattr(right, '_kind', None)
+                    == 'ComplexDoubleField'
+                ):
+                    return left
+                return _complex_field(precision)
+            if (
+                precision == 53
+                and getattr(left, '_kind', None) == 'RDF'
+                and getattr(right, '_kind', None) == 'RDF'
+            ):
+                return left
+            real_field = runtime.reflect.get(
+                runtime.global_object, 'RealField')
+            return real_field(precision)
     if (
         (left is sage.ZZ and right is sage.QQ)
         or (left is sage.QQ and right is sage.ZZ)
@@ -196,6 +291,8 @@ def _matrix_scalar_parts(
         )
     if _is_extension_field_base(base):
         return (base, 0, 1)
+    if _is_approximate_base(base):
+        return (base, 0, 1)
     parent = getattr(value, '_parent', None)
     if _is_extension_field_base(parent):
         return (
@@ -224,6 +321,63 @@ def _normalize_named_index(
     if index < 0 or index >= length:
         raise IndexError(kind + ' index out of range')
     return index
+
+
+def _expression_from_tree(tree: Any) -> Any:
+    if runtime.jstype(tree) == 'bigint':
+        return runtime.normalize_integer(tree)
+    if (
+        runtime.array.isArray(tree)
+        and len(tree) == 3
+        and tree[0] == 'Divide'
+        and runtime.jstype(tree[1]) == 'bigint'
+        and runtime.jstype(tree[2]) == 'bigint'
+    ):
+        return runtime.rational_class(tree[1], tree[2])
+    expression_class = runtime.reflect.get(
+        runtime.global_object, 'Expression')
+    return runtime.reflect.construct(expression_class, [tree])
+
+
+def _approximate_value_from_native(
+    base: sage.Parent,
+    native_value: Any,
+    force_complex: bool = False,
+) -> Any:
+    precision = _approximate_precision(base)
+    complex_field = _complex_field(precision)
+    value = _untyped(complex_field)._fromNative(native_value)
+    if (
+        not force_complex
+        and float(value.imag()) == 0
+        and not _is_complex_base(base)
+    ):
+        if getattr(base, '_kind', None) == 'RDF':
+            return float(value.real())
+        return value.real()
+    if _is_complex_base(base):
+        return _untyped(base)._fromNative(native_value)
+    return _untyped(
+        _complex_result_base(base))._fromNative(native_value)
+
+
+def _approximate_vector_from_native(
+    base: sage.Parent,
+    native_values: list[Any],
+    force_complex: bool,
+) -> Vector:
+    values = [
+        _approximate_value_from_native(
+            base, value, force_complex)
+        for value in native_values
+    ]
+    vector_base = base
+    if (
+        force_complex
+        and not _is_complex_base(vector_base)
+    ):
+        vector_base = _complex_result_base(vector_base)
+    return VectorSpace(vector_base, len(values))(values)
 
 
 @runtime.callable_instance_class
@@ -429,6 +583,7 @@ class Vector(sage.Element):
                 base is sage.QQ
                 or _is_modular_base(base)
                 or _is_extension_field_base(base)
+                or _is_approximate_base(base)
             )
         ):
             return VectorSpace(base, len(self))(
@@ -479,6 +634,10 @@ class Vector(sage.Element):
             result = self.row() * other
             return result.row(0)
         if _is_extension_field_base(self.base_ring()):
+            scalar = self.base_ring()(other)
+            return VectorSpace(self.base_ring(), len(self))(
+                [value * scalar for value in self])
+        if _is_approximate_base(self.base_ring()):
             scalar = self.base_ring()(other)
             return VectorSpace(self.base_ring(), len(self))(
                 [value * scalar for value in self])
@@ -868,6 +1027,16 @@ class Matrix(sage.Element):
             and (
                 _is_modular_base(base)
                 or _is_extension_field_base(base)
+                or _is_approximate_base(base)
+            )
+        ):
+            return matrix(
+                base, self.nrows(), self.ncols(), self.list())
+        if (
+            _is_approximate_base(base)
+            and (
+                self.base_ring() is sage.QQ
+                or _is_approximate_base(self.base_ring())
             )
         ):
             return matrix(
@@ -928,6 +1097,17 @@ class Matrix(sage.Element):
             native_value = runtime.flint_backend().fqMatrixScalarMul(
                 self._native, runtime.reflect.get(value, '_native'))
             return Matrix(self._parent, native_value)
+        if _is_approximate_base(self.base_ring()):
+            field = _complex_field(
+                _approximate_precision(self.base_ring()))
+            value = field(scalar)
+            return Matrix(
+                self._parent,
+                runtime.flint_backend().acbMatrixScalarMul(
+                    self._native,
+                    runtime.reflect.get(value, '_native'),
+                ),
+            )
         scalar_base, numerator, denominator = _matrix_scalar_parts(
             self.base_ring(), scalar)
         base = _common_base(self.base_ring(), scalar_base)
@@ -1006,6 +1186,12 @@ class Matrix(sage.Element):
                 raise ZeroDivisionError('matrix division by zero')
             return self._scalar_mul(
                 value ** runtime.bigint(-1))
+        if _is_approximate_base(self.base_ring()):
+            value = self.base_ring()(scalar)
+            if value == 0:
+                raise ZeroDivisionError('matrix division by zero')
+            return self._scalar_mul(
+                self.base_ring()(1) / value)
         _base, numerator, denominator = _scalar_parts(scalar)
         if numerator == 0:
             raise ZeroDivisionError('matrix division by zero')
@@ -1139,6 +1325,8 @@ class Matrix(sage.Element):
     def rref(self) -> Matrix:
         if self._rref_cache is runtime.undefined:
             base = sage.QQ
+            if _is_approximate_base(self.base_ring()):
+                base = self.base_ring()
             if getattr(
                 self.base_ring(), '_kind', None
             ) in ['GF', 'GF_EXTENSION']:
@@ -1357,6 +1545,123 @@ class Matrix(sage.Element):
 
     kernel = left_kernel
 
+    def _approximate_eigensystem(self) -> Any:
+        if not self.is_square():
+            raise ArithmeticError('only valid for square matrix')
+        if not _is_approximate_base(self.base_ring()):
+            raise TypeError(
+                'approximate eigensystems require a real '
+                'or complex matrix')
+        return runtime.flint_backend().matrixApproxEigensystem(
+            self._native)
+
+    def eigenvalues(
+        self,
+        extend: bool = True,
+    ) -> list[Any]:
+        if not self.is_square():
+            raise ArithmeticError('only valid for square matrix')
+        if _is_approximate_base(self.base_ring()):
+            raw = self._approximate_eigensystem()
+            values = runtime.reflect.get(raw, 'values')
+            answer = []
+            for value in values:
+                answer.append(_approximate_value_from_native(
+                    self.base_ring(), value))
+            return answer
+        if self.base_ring() not in [sage.ZZ, sage.QQ]:
+            raise NotImplementedError(
+                'eigenvalues are currently implemented for '
+                'integer, rational, real, and complex matrices')
+        if not extend:
+            raise NotImplementedError(
+                'eigenvalues with extend=False are not available yet')
+        trees = runtime.flint_backend().matrixExactEigenvalues(
+            self._native)
+        return [_expression_from_tree(tree) for tree in trees]
+
+    def _exact_eigenvectors(
+        self,
+        left: bool,
+    ) -> list[Any]:
+        values = self.eigenvalues()
+        answer = []
+        index = 0
+        while index < len(values):
+            value = values[index]
+            multiplicity = 1
+            while (
+                index + multiplicity < len(values)
+                and values[index + multiplicity] == value
+            ):
+                multiplicity += 1
+            if not (
+                runtime.is_exact_integer(value)
+                or isinstance(value, sage.Rational)
+            ):
+                raise NotImplementedError(
+                    'exact eigenvectors over algebraic extensions '
+                    'are not available yet')
+            scalar = sage.QQ(value)
+            source = self.change_ring(sage.QQ)
+            shifted = (
+                source
+                - identity_matrix(
+                    sage.QQ, self.nrows()) * scalar
+            )
+            if left:
+                space = shifted.left_kernel()
+            else:
+                space = shifted.right_kernel()
+            answer.append(runtime.math_tuple([
+                value,
+                space.basis(),
+                multiplicity,
+            ]))
+            index += multiplicity
+        return answer
+
+    def _approximate_eigenvectors(
+        self,
+        left: bool,
+    ) -> list[Any]:
+        raw = self._approximate_eigensystem()
+        raw_values = runtime.reflect.get(raw, 'values')
+        raw_vectors = runtime.reflect.get(
+            raw,
+            'leftVectors' if left else 'rightVectors',
+        )
+        answer = []
+        for index in range(len(raw_values)):
+            value = _approximate_value_from_native(
+                self.base_ring(), raw_values[index])
+            force_complex = (
+                _is_complex_base(self.base_ring())
+                or _is_complex_base(
+                    getattr(value, '_parent', None))
+            )
+            vector_value = _approximate_vector_from_native(
+                self.base_ring(),
+                list(raw_vectors[index]),
+                force_complex,
+            )
+            answer.append(runtime.math_tuple([
+                value,
+                [vector_value],
+                1,
+            ]))
+        return answer
+
+    def eigenvectors_left(self) -> list[Any]:
+        if _is_approximate_base(self.base_ring()):
+            return self._approximate_eigenvectors(True)
+        return self._exact_eigenvectors(True)
+
+    def eigenvectors_right(self) -> list[Any]:
+        if _is_approximate_base(self.base_ring()):
+            return self._approximate_eigenvectors(False)
+        return self._exact_eigenvectors(False)
+
     def charpoly(
         self,
         variable: str = 'x',
@@ -1481,6 +1786,7 @@ class Matrix(sage.Element):
         if (
             _is_modular_base(self.base_ring())
             or _is_extension_field_base(self.base_ring())
+            or _is_approximate_base(self.base_ring())
         ):
             inverse_base = self.base_ring()
         self._inverse_cache = Matrix(
@@ -1579,6 +1885,7 @@ class Matrix(sage.Element):
         if (
             _is_modular_base(base)
             or _is_extension_field_base(base)
+            or _is_approximate_base(base)
         ):
             result_base = base
         result = Matrix(
@@ -1851,9 +2158,11 @@ def MatrixSpace(
         and base is not sage.QQ
         and not _is_modular_base(base)
         and not _is_extension_field_base(base)
+        and not _is_approximate_base(base)
     ):
         raise TypeError(
-            'exact matrices currently require ZZ, QQ, GF, or Zmod')
+            'matrices currently require ZZ, QQ, GF, Zmod, '
+            'or a real/complex field')
     rows = int(rows)
     cols = rows if cols is None else int(cols)
     if rows < 0 or cols < 0:
@@ -1883,9 +2192,11 @@ def VectorSpace(
         and base is not sage.QQ
         and not _is_modular_base(base)
         and not _is_extension_field_base(base)
+        and not _is_approximate_base(base)
     ):
         raise TypeError(
-            'exact vectors currently require ZZ, QQ, GF, or Zmod')
+            'vectors currently require ZZ, QQ, GF, Zmod, '
+            'or a real/complex field')
     degree = int(degree)
     if degree < 0:
         raise ValueError('vector dimension must be nonnegative')
@@ -2149,14 +2460,17 @@ def random_matrix(
     base = _canonical_base(base)
     modular_ring = _is_modular_base(base)
     extension_field = _is_extension_field_base(base)
+    approximate_field = _is_approximate_base(base)
     if (
         base is not sage.ZZ
         and base is not sage.QQ
         and not modular_ring
         and not extension_field
+        and not approximate_field
     ):
         raise TypeError(
-            'random_matrix currently requires ZZ, QQ, GF, or Zmod')
+            'random_matrix currently requires ZZ, QQ, GF, Zmod, '
+            'or a real/complex field')
     if algorithm != 'randomize':
         raise NotImplementedError(
             "random_matrix algorithm '" + algorithm +

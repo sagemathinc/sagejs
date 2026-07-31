@@ -756,6 +756,80 @@ assert.throws(
   /singular/,
 );
 
+assert.deepEqual(
+  flint.matrixExactEigenvalues(
+    flint.zzMatrix(2, 2, [0n, 4n, -1n, 0n]),
+  ),
+  [
+    ["Multiply", -2n, "ImaginaryUnit"],
+    ["Multiply", 2n, "ImaginaryUnit"],
+  ],
+);
+assert.deepEqual(
+  flint.matrixExactEigenvalues(
+    flint.qqMatrix(2, 2, [
+      [1n, 1n],
+      [3n, 1n],
+      [3n, 1n],
+      [1n, 1n],
+    ]),
+  ),
+  [4n, -2n],
+);
+
+const approximateComplex = (real, imaginary = 0) =>
+  flint.complexFromReals(
+    flint.realFromString(String(real), 80),
+    flint.realFromString(String(imaginary), 80),
+  );
+const approximateMatrix = flint.acbMatrix(
+  2,
+  2,
+  [
+    approximateComplex(1.2),
+    approximateComplex(0, 1),
+    approximateComplex(2),
+    approximateComplex(3),
+  ],
+  80,
+);
+const approximateEigensystem =
+  flint.matrixApproxEigensystem(approximateMatrix);
+const complexDoublePair = (value) => [
+  flint.complexRealDouble(value),
+  flint.complexImagDouble(value),
+];
+const approximatelyEqual = (actual, expected, tolerance = 1e-14) => {
+  assert.ok(
+    Math.abs(actual - expected) <= tolerance,
+    `${actual} is not within ${tolerance} of ${expected}`,
+  );
+};
+const expectedApproximateEigenvalues = [
+  [0.8818456983293743, -0.8209140653434133],
+  [3.3181543016706256, 0.8209140653434133],
+];
+approximateEigensystem.values.forEach((value, index) => {
+  const actual = complexDoublePair(value);
+  approximatelyEqual(actual[0], expectedApproximateEigenvalues[index][0]);
+  approximatelyEqual(actual[1], expectedApproximateEigenvalues[index][1]);
+});
+for (const vectors of [
+  approximateEigensystem.leftVectors,
+  approximateEigensystem.rightVectors,
+]) {
+  assert.equal(vectors.length, 2);
+  for (const vector of vectors) {
+    approximatelyEqual(
+      vector.reduce((norm, value) => {
+        const [real, imaginary] = complexDoublePair(value);
+        return norm + real * real + imaginary * imaginary;
+      }, 0),
+      1,
+    );
+  }
+}
+
 const finiteMatrix = flint.nmodMatrix(
   2, 2, [1n, 2n, 3n, 4n], 5n);
 assert.equal(flint.matrixEntry(finiteMatrix, 1, 0), 3n);

@@ -447,7 +447,9 @@ zd = CDF(1, 2)
 assrt.equal(parent(zd), CDF)
 assrt.equal(zd.real(), 1.0)
 assrt.equal(zd.imag(), 2.0)
-assrt.equal(repr(Ei(zd)), '1.04216770816494 + 3.70150142593787*I')
+assrt.equal(
+    repr(Ei(zd)),
+    '1.0421677081649356 + 3.7015014259378742*I')
 assrt.deepEqual(
     [round(value, 10) for value in zeta_zeros(3)],
     [14.1347251417, 21.0220396388, 25.0108575801])

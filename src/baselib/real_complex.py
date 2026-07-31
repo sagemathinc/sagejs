@@ -219,6 +219,17 @@ class ComplexNumberElement(sage.Element):
             runtime.flint_backend().complexImag(self._native))
 
     def __repr__(self) -> str:
+        if self._parent._kind == 'ComplexDoubleField':
+            real = self.real()
+            imag = self.imag()
+            if imag == 0:
+                return str(real)
+            if real == 0:
+                return str(imag) + '*I'
+            sign = ' - ' if imag < 0 else ' + '
+            magnitude = -imag if imag < 0 else imag
+            return (
+                str(real) + sign + str(magnitude) + '*I')
         return runtime.flint_backend().complexToString(self._native)
 
     __str__ = __repr__

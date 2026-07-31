@@ -1,9 +1,16 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <node_api.h>
+#include <sagejs/native.h>
 
+#include <flint/acb.h>
+#include <flint/acb_mat.h>
+#include <flint/arb.h>
+#include <flint/arf.h>
+#include <flint/fexpr.h>
 #include <flint/flint.h>
 #include <flint/fmpq.h>
 #include <flint/fmpq_mat.h>
@@ -13,6 +20,7 @@
 #include <flint/fmpz_poly.h>
 #include <flint/nmod_mat.h>
 #include <flint/nmod_poly.h>
+#include <flint/qqbar.h>
 #include <flint/ulong_extras.h>
 
 #include "matrix.h"
@@ -22,7 +30,8 @@ typedef enum
     SAGEJS_MATRIX_ZZ = 1,
     SAGEJS_MATRIX_QQ = 2,
     SAGEJS_MATRIX_NMOD = 3,
-    SAGEJS_MATRIX_ZMOD = 4
+    SAGEJS_MATRIX_ZMOD = 4,
+    SAGEJS_MATRIX_ACB = 5
 } sagejs_matrix_kind;
 
 typedef struct
@@ -32,6 +41,8 @@ typedef struct
     fmpz_mat_t integer;
     fmpq_mat_t rational;
     nmod_mat_t modular;
+    acb_mat_t approximate;
+    slong precision;
 } sagejs_matrix;
 
 #define SAGEJS_MATRIX_MAGIC UINT64_C(0x534147454A534D41)
@@ -239,6 +250,8 @@ static slong matrix_nrows(const sagejs_matrix *matrix)
         return fmpz_mat_nrows(matrix->integer);
     if (matrix->kind == SAGEJS_MATRIX_QQ)
         return fmpq_mat_nrows(matrix->rational);
+    if (matrix->kind == SAGEJS_MATRIX_ACB)
+        return acb_mat_nrows(matrix->approximate);
     return nmod_mat_nrows(matrix->modular);
 }
 
@@ -248,6 +261,8 @@ static slong matrix_ncols(const sagejs_matrix *matrix)
         return fmpz_mat_ncols(matrix->integer);
     if (matrix->kind == SAGEJS_MATRIX_QQ)
         return fmpq_mat_ncols(matrix->rational);
+    if (matrix->kind == SAGEJS_MATRIX_ACB)
+        return acb_mat_ncols(matrix->approximate);
     return nmod_mat_ncols(matrix->modular);
 }
 
@@ -277,6 +292,8 @@ static void finalize_matrix(napi_env env, void *data, void *hint)
         fmpz_mat_clear(matrix->integer);
     else if (matrix->kind == SAGEJS_MATRIX_QQ)
         fmpq_mat_clear(matrix->rational);
+    else if (matrix->kind == SAGEJS_MATRIX_ACB)
+        acb_mat_clear(matrix->approximate);
     else
         nmod_mat_clear(matrix->modular);
     matrix->magic = 0;
@@ -339,6 +356,33 @@ static sagejs_matrix *new_nmod_matrix(
     return matrix;
 }
 
+static sagejs_matrix *new_acb_matrix(
+    napi_env env,
+    slong rows,
+    slong cols,
+    slong precision)
+{
+    sagejs_matrix *matrix;
+
+    if (precision < 2)
+    {
+        napi_throw_range_error(env, NULL,
+            "approximate matrix precision must be at least 2 bits");
+        return NULL;
+    }
+    matrix = calloc(1, sizeof(*matrix));
+    if (matrix == NULL)
+    {
+        napi_throw_error(env, NULL, "unable to allocate matrix");
+        return NULL;
+    }
+    matrix->magic = SAGEJS_MATRIX_MAGIC;
+    matrix->kind = SAGEJS_MATRIX_ACB;
+    matrix->precision = precision;
+    acb_mat_init(matrix->approximate, rows, cols);
+    return matrix;
+}
+
 static sagejs_matrix *new_matrix_like(
     napi_env env,
     const sagejs_matrix *source,
@@ -348,6 +392,8 @@ static sagejs_matrix *new_matrix_like(
     if (matrix_is_modular(source))
         return new_nmod_matrix(
             env, source->kind, rows, cols, matrix_modulus(source));
+    if (source->kind == SAGEJS_MATRIX_ACB)
+        return new_acb_matrix(env, rows, cols, source->precision);
     return new_matrix(env, source->kind, rows, cols);
 }
 
@@ -616,6 +662,93 @@ napi_value sagejs_zmod_matrix(napi_env env, napi_callback_info info)
         env, info, SAGEJS_MATRIX_ZMOD);
 }
 
+static void acb_set_mpc_exact(acb_t target, const mpc_t source)
+{
+    arf_t part;
+
+    arf_init(part);
+    arf_set_mpfr(part, mpc_realref(source));
+    arb_set_arf(acb_realref(target), part);
+    arf_set_mpfr(part, mpc_imagref(source));
+    arb_set_arf(acb_imagref(target), part);
+    arf_clear(part);
+}
+
+static sagejs_complex *complex_from_acb_midpoint(
+    napi_env env,
+    const acb_t value,
+    slong precision)
+{
+    sagejs_complex *result =
+        sagejs_native_new_complex(env, (mpfr_prec_t) precision);
+
+    if (result == NULL)
+        return NULL;
+    arf_get_mpfr(
+        mpc_realref(result->value),
+        arb_midref(acb_realref(value)),
+        MPFR_RNDN);
+    arf_get_mpfr(
+        mpc_imagref(result->value),
+        arb_midref(acb_imagref(value)),
+        MPFR_RNDN);
+    return result;
+}
+
+napi_value sagejs_acb_matrix(napi_env env, napi_callback_info info)
+{
+    napi_value args[4];
+    sagejs_matrix *matrix;
+    sagejs_complex *entry;
+    slong rows;
+    slong cols;
+    slong precision;
+    uint32_t length;
+    uint64_t expected;
+    uint32_t index;
+    bool is_array = false;
+    napi_value value;
+
+    if (!require_arguments(env, info, 4, args) ||
+        !value_to_dimension(env, args[0], &rows) ||
+        !value_to_dimension(env, args[1], &cols) ||
+        !check_napi(env, napi_is_array(env, args[2], &is_array)) ||
+        !value_to_dimension(env, args[3], &precision))
+        return NULL;
+    if (!is_array)
+    {
+        napi_throw_type_error(env, NULL, "matrix entries must be an Array");
+        return NULL;
+    }
+    if (!check_napi(env, napi_get_array_length(env, args[2], &length)))
+        return NULL;
+    expected = (uint64_t) rows * (uint64_t) cols;
+    if (expected > UINT32_MAX || length != expected)
+    {
+        napi_throw_range_error(env, NULL,
+            "matrix entry count does not match its dimensions");
+        return NULL;
+    }
+    matrix = new_acb_matrix(env, rows, cols, precision);
+    if (matrix == NULL)
+        return NULL;
+    for (index = 0; index < length; index++)
+    {
+        if (!check_napi(env,
+            napi_get_element(env, args[2], index, &value)) ||
+            (entry = sagejs_native_unwrap_complex(env, value)) == NULL)
+        {
+            finalize_matrix(env, matrix, NULL);
+            return NULL;
+        }
+        acb_set_mpc_exact(
+            acb_mat_entry(
+                matrix->approximate, index / cols, index % cols),
+            entry->value);
+    }
+    return wrap_matrix(env, matrix);
+}
+
 napi_value sagejs_zz_matrix_to_qq(napi_env env, napi_callback_info info)
 {
     napi_value args[1];
@@ -677,6 +810,13 @@ static napi_value matrix_binary(
         napi_throw_type_error(env, NULL, "matrix base rings differ");
         return NULL;
     }
+    if (left->kind == SAGEJS_MATRIX_ACB &&
+        left->precision != right->precision)
+    {
+        napi_throw_type_error(env, NULL,
+            "approximate matrix precisions differ");
+        return NULL;
+    }
     if (operation == MATRIX_MUL)
     {
         if (matrix_ncols(left) != matrix_nrows(right))
@@ -720,6 +860,27 @@ static napi_value matrix_binary(
             fmpq_mat_sub(answer->rational, left->rational, right->rational);
         else
             fmpq_mat_mul(answer->rational, left->rational, right->rational);
+    }
+    else if (left->kind == SAGEJS_MATRIX_ACB)
+    {
+        if (operation == MATRIX_ADD)
+            acb_mat_add(
+                answer->approximate,
+                left->approximate,
+                right->approximate,
+                left->precision);
+        else if (operation == MATRIX_SUB)
+            acb_mat_sub(
+                answer->approximate,
+                left->approximate,
+                right->approximate,
+                left->precision);
+        else
+            acb_mat_mul(
+                answer->approximate,
+                left->approximate,
+                right->approximate,
+                left->precision);
     }
     else
     {
@@ -767,6 +928,8 @@ napi_value sagejs_matrix_neg(napi_env env, napi_callback_info info)
         fmpz_mat_neg(answer->integer, source->integer);
     else if (source->kind == SAGEJS_MATRIX_QQ)
         fmpq_mat_neg(answer->rational, source->rational);
+    else if (source->kind == SAGEJS_MATRIX_ACB)
+        acb_mat_neg(answer->approximate, source->approximate);
     else
         nmod_mat_neg(answer->modular, source->modular);
     return wrap_matrix(env, answer);
@@ -839,6 +1002,45 @@ fail:
     return NULL;
 }
 
+napi_value sagejs_acb_matrix_scalar_mul(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[2];
+    sagejs_matrix *source;
+    sagejs_matrix *answer;
+    sagejs_complex *scalar;
+    acb_t value;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    if (source->kind != SAGEJS_MATRIX_ACB)
+    {
+        napi_throw_type_error(env, NULL,
+            "expected an approximate matrix");
+        return NULL;
+    }
+    scalar = sagejs_native_unwrap_complex(env, args[1]);
+    if (scalar == NULL)
+        return NULL;
+    answer = new_matrix_like(
+        env, source, matrix_nrows(source), matrix_ncols(source));
+    if (answer == NULL)
+        return NULL;
+    acb_init(value);
+    acb_set_mpc_exact(value, scalar->value);
+    acb_mat_scalar_mul_acb(
+        answer->approximate,
+        source->approximate,
+        value,
+        source->precision);
+    acb_clear(value);
+    return wrap_matrix(env, answer);
+}
+
 napi_value sagejs_matrix_transpose(
     napi_env env,
     napi_callback_info info)
@@ -860,6 +1062,8 @@ napi_value sagejs_matrix_transpose(
         fmpz_mat_transpose(answer->integer, source->integer);
     else if (source->kind == SAGEJS_MATRIX_QQ)
         fmpq_mat_transpose(answer->rational, source->rational);
+    else if (source->kind == SAGEJS_MATRIX_ACB)
+        acb_mat_transpose(answer->approximate, source->approximate);
     else
         nmod_mat_transpose(answer->modular, source->modular);
     return wrap_matrix(env, answer);
@@ -887,6 +1091,11 @@ napi_value sagejs_matrix_equal(napi_env env, napi_callback_info info)
             equal = fmpz_mat_equal(left->integer, right->integer);
         else if (left->kind == SAGEJS_MATRIX_QQ)
             equal = fmpq_mat_equal(left->rational, right->rational);
+        else if (
+            left->kind == SAGEJS_MATRIX_ACB &&
+            left->precision == right->precision)
+            equal = acb_mat_equal(
+                left->approximate, right->approximate);
         else if (matrix_modulus(left) == matrix_modulus(right))
             equal = nmod_mat_equal(left->modular, right->modular);
     }
@@ -913,6 +1122,16 @@ napi_value sagejs_matrix_entry(napi_env env, napi_callback_info info)
     if (matrix->kind == SAGEJS_MATRIX_ZZ)
         return fmpz_to_bigint(
             env, fmpz_mat_entry(matrix->integer, row, col));
+    if (matrix->kind == SAGEJS_MATRIX_ACB)
+    {
+        sagejs_complex *result = complex_from_acb_midpoint(
+            env,
+            acb_mat_entry(matrix->approximate, row, col),
+            matrix->precision);
+        return result == NULL
+            ? NULL
+            : sagejs_native_wrap_complex(env, result);
+    }
     if (matrix_is_modular(matrix))
         return ulong_to_bigint(
             env, nmod_mat_entry(matrix->modular, row, col));
@@ -928,6 +1147,7 @@ napi_value sagejs_matrix_det(napi_env env, napi_callback_info info)
     sagejs_matrix *matrix;
     fmpz_t integer;
     fmpq_t rational;
+    acb_t approximate;
 
     if (!require_arguments(env, info, 1, args))
         return NULL;
@@ -948,6 +1168,20 @@ napi_value sagejs_matrix_det(napi_env env, napi_callback_info info)
         fmpz_clear(integer);
         return result;
     }
+    if (matrix->kind == SAGEJS_MATRIX_ACB)
+    {
+        sagejs_complex *value;
+
+        acb_init(approximate);
+        acb_mat_det(
+            approximate, matrix->approximate, matrix->precision);
+        value = complex_from_acb_midpoint(
+            env, approximate, matrix->precision);
+        acb_clear(approximate);
+        return value == NULL
+            ? NULL
+            : sagejs_native_wrap_complex(env, value);
+    }
     if (matrix_is_modular(matrix))
         return ulong_to_bigint(env, nmod_mat_det(matrix->modular));
     fmpq_init(rational);
@@ -956,6 +1190,75 @@ napi_value sagejs_matrix_det(napi_env env, napi_callback_info info)
         env, fmpq_numref(rational), fmpq_denref(rational));
     fmpq_clear(rational);
     return result;
+}
+
+static slong acb_matrix_rref(
+    acb_mat_t answer,
+    const acb_mat_t source,
+    slong precision)
+{
+    slong rows = acb_mat_nrows(source);
+    slong cols = acb_mat_ncols(source);
+    slong pivot_row = 0;
+    slong pivot_col;
+    slong row;
+    slong col;
+    slong selected;
+    acb_t pivot;
+    acb_t factor;
+
+    acb_mat_set(answer, source);
+    acb_init(pivot);
+    acb_init(factor);
+    for (pivot_col = 0;
+         pivot_col < cols && pivot_row < rows;
+         pivot_col++)
+    {
+        selected = -1;
+        for (row = pivot_row; row < rows; row++)
+        {
+            if (!acb_contains_zero(
+                acb_mat_entry(answer, row, pivot_col)))
+            {
+                selected = row;
+                break;
+            }
+        }
+        if (selected < 0)
+            continue;
+        if (selected != pivot_row)
+            acb_mat_swap_rows(answer, NULL, selected, pivot_row);
+        acb_set(pivot, acb_mat_entry(answer, pivot_row, pivot_col));
+        for (col = pivot_col; col < cols; col++)
+            acb_div(
+                acb_mat_entry(answer, pivot_row, col),
+                acb_mat_entry(answer, pivot_row, col),
+                pivot,
+                precision);
+        acb_one(acb_mat_entry(answer, pivot_row, pivot_col));
+        for (row = 0; row < rows; row++)
+        {
+            if (row == pivot_row)
+                continue;
+            acb_set(factor, acb_mat_entry(answer, row, pivot_col));
+            if (acb_contains_zero(factor))
+            {
+                acb_zero(acb_mat_entry(answer, row, pivot_col));
+                continue;
+            }
+            for (col = pivot_col + 1; col < cols; col++)
+                acb_submul(
+                    acb_mat_entry(answer, row, col),
+                    factor,
+                    acb_mat_entry(answer, pivot_row, col),
+                    precision);
+            acb_zero(acb_mat_entry(answer, row, pivot_col));
+        }
+        pivot_row++;
+    }
+    acb_clear(pivot);
+    acb_clear(factor);
+    return pivot_row;
 }
 
 napi_value sagejs_matrix_rank(napi_env env, napi_callback_info info)
@@ -980,6 +1283,16 @@ napi_value sagejs_matrix_rank(napi_env env, napi_callback_info info)
         fmpq_mat_init_set(copy, matrix->rational);
         rank = fmpq_mat_rref(copy, copy);
         fmpq_mat_clear(copy);
+    }
+    else if (matrix->kind == SAGEJS_MATRIX_ACB)
+    {
+        acb_mat_t reduced;
+
+        acb_mat_init(
+            reduced, matrix_nrows(matrix), matrix_ncols(matrix));
+        rank = acb_matrix_rref(
+            reduced, matrix->approximate, matrix->precision);
+        acb_mat_clear(reduced);
     }
     else if (matrix->kind == SAGEJS_MATRIX_NMOD)
     {
@@ -1048,6 +1361,18 @@ napi_value sagejs_matrix_rref(napi_env env, napi_callback_info info)
         napi_throw_type_error(env, NULL,
             "RREF over a residue ring requires Howell reduction");
         return NULL;
+    }
+    if (source->kind == SAGEJS_MATRIX_ACB)
+    {
+        answer = new_matrix_like(
+            env, source, matrix_nrows(source), matrix_ncols(source));
+        if (answer == NULL)
+            return NULL;
+        acb_matrix_rref(
+            answer->approximate,
+            source->approximate,
+            source->precision);
+        return wrap_matrix(env, answer);
     }
     if (source->kind == SAGEJS_MATRIX_NMOD)
     {
@@ -1293,6 +1618,12 @@ napi_value sagejs_matrix_right_kernel(
     source = unwrap_matrix(env, args[0]);
     if (source == NULL)
         return NULL;
+    if (source->kind == SAGEJS_MATRIX_ACB)
+    {
+        napi_throw_type_error(env, NULL,
+            "approximate matrix kernels are not available");
+        return NULL;
+    }
     rows = matrix_nrows(source);
     cols = matrix_ncols(source);
 
@@ -1589,6 +1920,12 @@ napi_value sagejs_matrix_charpoly(
             "characteristic polynomial requires a square matrix");
         return NULL;
     }
+    if (source->kind == SAGEJS_MATRIX_ACB)
+    {
+        napi_throw_type_error(env, NULL,
+            "approximate characteristic polynomials are not available yet");
+        return NULL;
+    }
     degree = matrix_nrows(source);
     if (!check_napi(env,
         napi_create_array_with_length(
@@ -1755,6 +2092,45 @@ napi_value sagejs_matrix_solve(napi_env env, napi_callback_info info)
     right = unwrap_matrix(env, args[1]);
     if (left == NULL || right == NULL)
         return NULL;
+    if (
+        left->kind == SAGEJS_MATRIX_ACB ||
+        right->kind == SAGEJS_MATRIX_ACB
+    )
+    {
+        if (
+            left->kind != SAGEJS_MATRIX_ACB ||
+            right->kind != SAGEJS_MATRIX_ACB ||
+            left->precision != right->precision
+        )
+        {
+            napi_throw_type_error(env, NULL, "matrix base rings differ");
+            return NULL;
+        }
+        if (matrix_nrows(left) != matrix_ncols(left) ||
+            matrix_nrows(right) != matrix_nrows(left))
+        {
+            napi_throw_range_error(env, NULL,
+                "solve requires a square matrix and compatible right side");
+            return NULL;
+        }
+        answer = new_acb_matrix(
+            env, matrix_ncols(left), matrix_ncols(right),
+            left->precision);
+        if (answer == NULL)
+            return NULL;
+        solved = acb_mat_approx_solve(
+            answer->approximate,
+            left->approximate,
+            right->approximate,
+            left->precision);
+        if (!solved)
+        {
+            finalize_matrix(env, answer, NULL);
+            napi_throw_range_error(env, NULL, "matrix is singular");
+            return NULL;
+        }
+        return wrap_matrix(env, answer);
+    }
     if (matrix_is_modular(left) || matrix_is_modular(right))
     {
         int solved;
@@ -1862,6 +2238,25 @@ napi_value sagejs_matrix_inverse(napi_env env, napi_callback_info info)
             "inverse requires a square matrix");
         return NULL;
     }
+    if (source->kind == SAGEJS_MATRIX_ACB)
+    {
+        answer = new_acb_matrix(
+            env, matrix_nrows(source), matrix_ncols(source),
+            source->precision);
+        if (answer == NULL)
+            return NULL;
+        inverted = acb_mat_approx_inv(
+            answer->approximate,
+            source->approximate,
+            source->precision);
+        if (!inverted)
+        {
+            finalize_matrix(env, answer, NULL);
+            napi_throw_range_error(env, NULL, "matrix is singular");
+            return NULL;
+        }
+        return wrap_matrix(env, answer);
+    }
     if (matrix_is_modular(source))
     {
         answer = new_nmod_matrix(
@@ -1900,4 +2295,501 @@ napi_value sagejs_matrix_inverse(napi_env env, napi_callback_info info)
         return NULL;
     }
     return wrap_matrix(env, answer);
+}
+
+static const char *mathjson_symbol(const char *symbol)
+{
+    if (strcmp(symbol, "NumberI") == 0 || strcmp(symbol, "I") == 0)
+        return "ImaginaryUnit";
+    if (strcmp(symbol, "Mul") == 0)
+        return "Multiply";
+    if (strcmp(symbol, "Div") == 0)
+        return "Divide";
+    if (strcmp(symbol, "Sub") == 0)
+        return "Subtract";
+    if (strcmp(symbol, "Neg") == 0)
+        return "Negate";
+    if (strcmp(symbol, "Pow") == 0)
+        return "Power";
+    return symbol;
+}
+
+static napi_value fexpr_to_napi(napi_env env, const fexpr_t expression)
+{
+    napi_value result;
+    fmpz_t integer;
+    char *symbol;
+    const char *mapped;
+    slong nargs;
+    slong index;
+    fexpr_t function;
+    fexpr_t argument;
+
+    if (fexpr_is_integer(expression))
+    {
+        fmpz_init(integer);
+        if (!fexpr_get_fmpz(integer, expression))
+        {
+            fmpz_clear(integer);
+            napi_throw_error(env, NULL,
+                "unable to convert an exact eigenvalue integer");
+            return NULL;
+        }
+        result = fmpz_to_bigint(env, integer);
+        fmpz_clear(integer);
+        return result;
+    }
+    if (fexpr_is_symbol(expression))
+    {
+        symbol = fexpr_get_symbol_str(expression);
+        mapped = mathjson_symbol(symbol);
+        if (!check_napi(env,
+            napi_create_string_utf8(
+                env, mapped, NAPI_AUTO_LENGTH, &result)))
+        {
+            flint_free(symbol);
+            return NULL;
+        }
+        flint_free(symbol);
+        return result;
+    }
+    nargs = fexpr_nargs(expression);
+    if (nargs < 0)
+    {
+        symbol = fexpr_get_str(expression);
+        if (!check_napi(env,
+            napi_create_string_utf8(
+                env, symbol, NAPI_AUTO_LENGTH, &result)))
+        {
+            flint_free(symbol);
+            return NULL;
+        }
+        flint_free(symbol);
+        return result;
+    }
+    if (!check_napi(env,
+        napi_create_array_with_length(
+            env, (size_t) nargs + 1, &result)))
+        return NULL;
+    fexpr_init(function);
+    fexpr_init(argument);
+    fexpr_func(function, expression);
+    {
+        napi_value head = fexpr_to_napi(env, function);
+        if (head == NULL ||
+            !check_napi(env, napi_set_element(env, result, 0, head)))
+            goto fail;
+    }
+    for (index = 0; index < nargs; index++)
+    {
+        napi_value value;
+
+        fexpr_arg(argument, expression, index);
+        value = fexpr_to_napi(env, argument);
+        if (value == NULL ||
+            !check_napi(env,
+                napi_set_element(
+                    env, result, (uint32_t) index + 1, value)))
+            goto fail;
+    }
+    fexpr_clear(function);
+    fexpr_clear(argument);
+    return result;
+
+fail:
+    fexpr_clear(function);
+    fexpr_clear(argument);
+    return NULL;
+}
+
+napi_value sagejs_matrix_exact_eigenvalues(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    napi_value value;
+    sagejs_matrix *source;
+    qqbar_ptr eigenvalues;
+    fexpr_t expression;
+    slong *order;
+    slong degree;
+    slong index;
+    slong position;
+    slong selected;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    if (
+        source->kind != SAGEJS_MATRIX_ZZ &&
+        source->kind != SAGEJS_MATRIX_QQ
+    )
+    {
+        napi_throw_type_error(env, NULL,
+            "exact eigenvalues require an integer or rational matrix");
+        return NULL;
+    }
+    if (matrix_nrows(source) != matrix_ncols(source))
+    {
+        napi_throw_range_error(env, NULL,
+            "eigenvalues require a square matrix");
+        return NULL;
+    }
+    degree = matrix_nrows(source);
+    eigenvalues = _qqbar_vec_init(degree);
+    order = degree == 0 ? NULL : malloc(degree * sizeof(slong));
+    if (degree != 0 && order == NULL)
+    {
+        napi_throw_error(env, NULL,
+            "unable to allocate exact eigenvalue ordering");
+        _qqbar_vec_clear(eigenvalues, degree);
+        return NULL;
+    }
+    if (source->kind == SAGEJS_MATRIX_ZZ)
+        qqbar_eigenvalues_fmpz_mat(eigenvalues, source->integer, 0);
+    else
+        qqbar_eigenvalues_fmpq_mat(eigenvalues, source->rational, 0);
+    for (index = 0; index < degree; index++)
+        order[index] = index;
+    for (index = 1; index < degree; index++)
+    {
+        int compare;
+        int left_real;
+        int right_real;
+
+        selected = order[index];
+        position = index;
+        while (position > 0)
+        {
+            qqbar_srcptr left = eigenvalues + selected;
+            qqbar_srcptr right = eigenvalues + order[position - 1];
+
+            left_real = qqbar_is_real(left);
+            right_real = qqbar_is_real(right);
+            if (left_real != right_real)
+                compare = left_real ? -1 : 1;
+            else
+            {
+                compare = -qqbar_cmp_re(left, right);
+                if (compare == 0)
+                    compare = qqbar_cmpabs_im(left, right);
+                if (compare == 0)
+                    compare = qqbar_sgn_im(left);
+            }
+            if (compare >= 0)
+                break;
+            order[position] = order[position - 1];
+            position--;
+        }
+        order[position] = selected;
+    }
+    if (!check_napi(env,
+        napi_create_array_with_length(env, degree, &result)))
+        goto fail;
+    fexpr_init(expression);
+    for (position = 0; position < degree; position++)
+    {
+        index = order[position];
+        if (!qqbar_get_fexpr_formula(
+            expression, eigenvalues + index, QQBAR_FORMULA_ALL))
+            qqbar_get_fexpr_root_indexed(
+                expression, eigenvalues + index);
+        value = fexpr_to_napi(env, expression);
+        if (value == NULL ||
+            !check_napi(env,
+                napi_set_element(
+                    env, result, (uint32_t) position, value)))
+        {
+            fexpr_clear(expression);
+            goto fail;
+        }
+    }
+    fexpr_clear(expression);
+    free(order);
+    _qqbar_vec_clear(eigenvalues, degree);
+    return result;
+
+fail:
+    free(order);
+    _qqbar_vec_clear(eigenvalues, degree);
+    return NULL;
+}
+
+static double acb_mid_real_double(const acb_t value)
+{
+    return arf_get_d(
+        arb_midref(acb_realref(value)), ARF_RND_NEAR);
+}
+
+static double acb_mid_imag_double(const acb_t value)
+{
+    return arf_get_d(
+        arb_midref(acb_imagref(value)), ARF_RND_NEAR);
+}
+
+static int acb_pretty_less(const acb_t left, const acb_t right)
+{
+    double left_real = acb_mid_real_double(left);
+    double right_real = acb_mid_real_double(right);
+    double left_imag;
+    double right_imag;
+
+    if (left_real < right_real)
+        return 1;
+    if (left_real > right_real)
+        return 0;
+    left_imag = acb_mid_imag_double(left);
+    right_imag = acb_mid_imag_double(right);
+    return left_imag < right_imag;
+}
+
+static napi_value wrap_acb_midpoint(
+    napi_env env,
+    const acb_t value,
+    slong precision)
+{
+    sagejs_complex *complex =
+        complex_from_acb_midpoint(env, value, precision);
+
+    return complex == NULL
+        ? NULL
+        : sagejs_native_wrap_complex(env, complex);
+}
+
+static napi_value normalized_eigenvector(
+    napi_env env,
+    const acb_mat_t vectors,
+    slong vector_index,
+    int right,
+    slong precision)
+{
+    slong size = acb_mat_nrows(vectors);
+    slong index;
+    slong pivot = 0;
+    double largest = -1.0;
+    double current;
+    napi_value result;
+    napi_value value;
+    arb_t magnitude;
+    arb_t pivot_magnitude;
+    arb_t norm_squared;
+    arb_t norm;
+    acb_t factor;
+    acb_t normalized;
+    const acb_struct *entry;
+
+    arb_init(magnitude);
+    arb_init(pivot_magnitude);
+    arb_init(norm_squared);
+    arb_init(norm);
+    acb_init(factor);
+    acb_init(normalized);
+    arb_zero(norm_squared);
+    for (index = 0; index < size; index++)
+    {
+        entry = right
+            ? acb_mat_entry(vectors, index, vector_index)
+            : acb_mat_entry(vectors, vector_index, index);
+        acb_abs(magnitude, entry, precision);
+        arb_addmul(
+            norm_squared, magnitude, magnitude, precision);
+        current = arf_get_d(
+            arb_midref(magnitude), ARF_RND_NEAR);
+        if (current > largest)
+        {
+            largest = current;
+            pivot = index;
+            arb_set(pivot_magnitude, magnitude);
+        }
+    }
+    arb_sqrt(norm, norm_squared, precision);
+    entry = right
+        ? acb_mat_entry(vectors, pivot, vector_index)
+        : acb_mat_entry(vectors, vector_index, pivot);
+    acb_conj(factor, entry);
+    acb_div_arb(factor, factor, pivot_magnitude, precision);
+    acb_div_arb(factor, factor, norm, precision);
+    if (!check_napi(env,
+        napi_create_array_with_length(env, size, &result)))
+        goto fail;
+    for (index = 0; index < size; index++)
+    {
+        entry = right
+            ? acb_mat_entry(vectors, index, vector_index)
+            : acb_mat_entry(vectors, vector_index, index);
+        if (index == pivot)
+        {
+            acb_set_arb(normalized, pivot_magnitude);
+            acb_div_arb(
+                normalized, normalized, norm, precision);
+        }
+        else
+        {
+            acb_mul(normalized, entry, factor, precision);
+        }
+        value = wrap_acb_midpoint(env, normalized, precision);
+        if (value == NULL ||
+            !check_napi(env,
+                napi_set_element(
+                    env, result, (uint32_t) index, value)))
+            goto fail;
+    }
+    arb_clear(magnitude);
+    arb_clear(pivot_magnitude);
+    arb_clear(norm_squared);
+    arb_clear(norm);
+    acb_clear(factor);
+    acb_clear(normalized);
+    return result;
+
+fail:
+    arb_clear(magnitude);
+    arb_clear(pivot_magnitude);
+    arb_clear(norm_squared);
+    arb_clear(norm);
+    acb_clear(factor);
+    acb_clear(normalized);
+    return NULL;
+}
+
+napi_value sagejs_matrix_approx_eigensystem(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    napi_value values;
+    napi_value left_vectors;
+    napi_value right_vectors;
+    napi_value value;
+    sagejs_matrix *source;
+    acb_ptr eigenvalues;
+    acb_mat_t left;
+    acb_mat_t right;
+    slong *order;
+    slong size;
+    slong index;
+    slong position;
+    slong selected;
+    slong working_precision;
+    int converged;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    if (source->kind != SAGEJS_MATRIX_ACB)
+    {
+        napi_throw_type_error(env, NULL,
+            "approximate eigensystems require an approximate matrix");
+        return NULL;
+    }
+    if (matrix_nrows(source) != matrix_ncols(source))
+    {
+        napi_throw_range_error(env, NULL,
+            "eigensystems require a square matrix");
+        return NULL;
+    }
+    size = matrix_nrows(source);
+    working_precision = source->precision + 32;
+    eigenvalues = _acb_vec_init(size);
+    acb_mat_init(left, size, size);
+    acb_mat_init(right, size, size);
+    order = size == 0 ? NULL : malloc(size * sizeof(slong));
+    if (size != 0 && order == NULL)
+    {
+        napi_throw_error(env, NULL,
+            "unable to allocate eigenvalue ordering");
+        goto fail;
+    }
+    converged = acb_mat_approx_eig_qr(
+        eigenvalues,
+        left,
+        right,
+        source->approximate,
+        NULL,
+        0,
+        working_precision);
+    if (!converged)
+    {
+        napi_throw_error(env, NULL,
+            "FLINT's approximate eigensolver did not converge");
+        goto fail;
+    }
+    for (index = 0; index < size; index++)
+        order[index] = index;
+    for (index = 1; index < size; index++)
+    {
+        selected = order[index];
+        position = index;
+        while (
+            position > 0 &&
+            acb_pretty_less(
+                eigenvalues + selected,
+                eigenvalues + order[position - 1])
+        )
+        {
+            order[position] = order[position - 1];
+            position--;
+        }
+        order[position] = selected;
+    }
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env,
+            napi_create_array_with_length(env, size, &values)) ||
+        !check_napi(env,
+            napi_create_array_with_length(env, size, &left_vectors)) ||
+        !check_napi(env,
+            napi_create_array_with_length(env, size, &right_vectors)))
+        goto fail;
+    for (position = 0; position < size; position++)
+    {
+        index = order[position];
+        value = wrap_acb_midpoint(
+            env, eigenvalues + index, source->precision);
+        if (value == NULL ||
+            !check_napi(env,
+                napi_set_element(
+                    env, values, (uint32_t) position, value)))
+            goto fail;
+        value = normalized_eigenvector(
+            env, left, index, 0, source->precision);
+        if (value == NULL ||
+            !check_napi(env,
+                napi_set_element(
+                    env, left_vectors, (uint32_t) position, value)))
+            goto fail;
+        value = normalized_eigenvector(
+            env, right, index, 1, source->precision);
+        if (value == NULL ||
+            !check_napi(env,
+                napi_set_element(
+                    env, right_vectors, (uint32_t) position, value)))
+            goto fail;
+    }
+    if (!check_napi(env,
+        napi_set_named_property(env, result, "values", values)) ||
+        !check_napi(env,
+            napi_set_named_property(
+                env, result, "leftVectors", left_vectors)) ||
+        !check_napi(env,
+            napi_set_named_property(
+                env, result, "rightVectors", right_vectors)))
+        goto fail;
+    free(order);
+    acb_mat_clear(left);
+    acb_mat_clear(right);
+    _acb_vec_clear(eigenvalues, size);
+    return result;
+
+fail:
+    free(order);
+    acb_mat_clear(left);
+    acb_mat_clear(right);
+    _acb_vec_clear(eigenvalues, size);
+    return NULL;
 }

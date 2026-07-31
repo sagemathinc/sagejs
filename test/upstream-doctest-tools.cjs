@@ -83,6 +83,18 @@ assert.ok(
     accepted: ["sqrt(3)/2\n"],
   }),
 );
+assert.ok(
+  matchesTutorialExpected(
+    "[(1.000000000000001, 2.0), (3.0 + 4.0*I)]\n",
+    "[(1.0, 2.0),\n(3.0 + 4.0*I)]\n",
+    { approx: { relative: 2e-15 } },
+  ),
+);
+assert.ok(
+  !matchesTutorialExpected("[(1.01, 2.0)]\n", "[(1.0, 2.0)]\n", {
+    approx: { relative: 1e-6 },
+  }),
+);
 
 const rst = [
   "First section",

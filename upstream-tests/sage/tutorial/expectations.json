@@ -33,6 +33,12 @@
         "TypeError: no canonical coercion between polynomial rings in x and y\n"
       ]
     },
+    "src/doc/en/tutorial/tour_linalg.rst:100": {
+      "approx": {"relative": 8e-16}
+    },
+    "src/doc/en/tutorial/tour_linalg.rst:103": {
+      "approx": {"relative": 3e-15}
+    },
     "src/doc/en/tutorial/tour_linalg.rst:235": {
       "accepted": ["TypeError: unexpected keyword argument 'Sparse'\n"]
     }
@@ -128,16 +134,6 @@
       "reason": "requires permutation and finitely generated abelian group subsystems",
       "file": "src/doc/en/tutorial/tour_groups.rst",
       "lines": [14, 15, 17, 19, 21, 24, 26, 28, 35, 36, 49, 50, 51, 59, 60, 62, 67, 74, 75, 76, 78, 80, 82, 84]
-    },
-    {
-      "reason": "exact eigensystems require an algebraic-closure and extension-field eigenvector strategy",
-      "file": "src/doc/en/tutorial/tour_linalg.rst",
-      "lines": [62, 65]
-    },
-    {
-      "reason": "requires an explicit approximate real/complex matrix backend and eigensystem policy",
-      "file": "src/doc/en/tutorial/tour_linalg.rst",
-      "lines": [81, 88, 99, 100, 102, 103]
     },
     {
       "reason": "requires p-adic fields/rings and general number fields beyond the current quadratic-field slice",

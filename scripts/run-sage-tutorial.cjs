@@ -135,6 +135,34 @@ function matchesTutorialExpected(actual, wanted, rule) {
     if (matchesExpected(actual, `${exception}\n`)) return true;
   }
   if (!rule?.approx) return false;
+  const numericPattern =
+    /[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?/g;
+  const observedNumbers = normalized(actual).match(numericPattern) ?? [];
+  const expectedNumbers = normalized(wanted).match(numericPattern) ?? [];
+  const observedShape = collapseWhitespace(
+    normalized(actual).replace(numericPattern, "#"),
+  );
+  const expectedShape = collapseWhitespace(
+    normalized(wanted).replace(numericPattern, "#"),
+  );
+  if (
+    observedShape === expectedShape &&
+    observedNumbers.length === expectedNumbers.length &&
+    observedNumbers.length > 0
+  ) {
+    const absolute = rule.approx.absolute ?? 0;
+    const relative = rule.approx.relative ?? 0;
+    return observedNumbers.every((text, index) => {
+      const observed = Number(text);
+      const expected = Number(expectedNumbers[index]);
+      return (
+        Number.isFinite(observed) &&
+        Number.isFinite(expected) &&
+        Math.abs(observed - expected) <=
+          Math.max(absolute, relative * Math.abs(expected))
+      );
+    });
+  }
   const numericText = (value) => normalized(value).replace(/\.\.\.$/, "");
   const observed = Number(numericText(actual));
   const expected = Number(numericText(wanted));
