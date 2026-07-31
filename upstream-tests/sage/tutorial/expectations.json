@@ -76,11 +76,6 @@
       "lines": [168, 184, 222, 236, 237, 264, 266]
     },
     {
-      "reason": "requires general multivariate polynomials over approximate fields and Sage's legacy Euler plotting helpers",
-      "file": "src/doc/en/tutorial/tour_algebra.rst",
-      "lines": [362, 363, 364, 384, 394]
-    },
-    {
       "reason": "requires the external Maxima interface and its expression conversion model",
       "file": "src/doc/en/tutorial/tour_algebra.rst",
       "lines": [425, 427]
@@ -94,11 +89,6 @@
       "reason": "Sage concrete polynomial element classes and selectable NTL implementation identities are not part of the portable FLINT object model",
       "file": "src/doc/en/tutorial/tour_coercion.rst",
       "lines": [57, 79]
-    },
-    {
-      "reason": "requires multivariate polynomial parent caching over approximate fields",
-      "file": "src/doc/en/tutorial/tour_coercion.rst",
-      "lines": [145]
     },
     {
       "reason": "Sage.js intentionally interns optimized small JavaScript integers instead of allocating Sage Integer wrappers",
@@ -124,11 +114,6 @@
       "reason": "requires primary decomposition and associated-prime algorithms",
       "file": "src/doc/en/tutorial/tour_polynomial.rst",
       "lines": [322, 325]
-    },
-    {
-      "reason": "requires approximate-coefficient polynomial arithmetic and numerical root factorization",
-      "file": "src/doc/en/tutorial/tour_rings.rst",
-      "lines": [33, 43]
     },
     {
       "reason": "requires a p-adic ring implementation",

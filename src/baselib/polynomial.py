@@ -840,6 +840,394 @@ class MultivariatePolynomialRingParent(sage.Parent):
         return self.ideal(generators)
 
 
+def _same_exponents(left: list[int], right: list[int]) -> bool:
+    if len(left) != len(right):
+        return False
+    for index in range(len(left)):
+        if left[index] != right[index]:
+            return False
+    return True
+
+
+def _normalize_approximate_terms(
+    base: sage.Parent,
+    variable_count: int,
+    terms: list[Any],
+) -> list[Any]:
+    answer = []
+    zero = base(0)
+    for term in terms:
+        coefficient = base(term[0])
+        exponents = list(term[1])
+        if len(exponents) != variable_count:
+            raise ValueError('incorrect polynomial exponent vector')
+        if coefficient == zero:
+            continue
+        found = -1
+        for index in range(len(answer)):
+            if _same_exponents(answer[index][1], exponents):
+                found = index
+                break
+        if found == -1:
+            answer.append([coefficient, exponents])
+        else:
+            coefficient = answer[found][0] + coefficient
+            if coefficient == zero:
+                del answer[found]
+            else:
+                answer[found] = [coefficient, exponents]
+    return answer
+
+
+def _approximate_term_precedes(left: Any, right: Any) -> bool:
+    left_degree = 0
+    right_degree = 0
+    for exponent in left[1]:
+        left_degree += exponent
+    for exponent in right[1]:
+        right_degree += exponent
+    if left_degree != right_degree:
+        return left_degree > right_degree
+    for index in range(len(left[1])):
+        if left[1][index] != right[1][index]:
+            return left[1][index] > right[1][index]
+    return False
+
+
+@runtime.callable_instance_class
+@runtime.lightweight_math_class
+class ApproximatePolynomialElement(sage.Element):
+    """A sparse polynomial over an approximate real field."""
+
+    def __init__(
+        self,
+        parent: ApproximatePolynomialRingParent,
+        terms: list[Any],
+    ) -> None:
+        self._parent = parent
+        self._terms = _normalize_approximate_terms(
+            parent.base_ring(), parent.ngens(), terms)
+        runtime.object.freeze(self)
+
+    def _new(self, terms: list[Any]) -> ApproximatePolynomialElement:
+        return ApproximatePolynomialElement(self._parent, terms)
+
+    def _add_(
+        self, other: ApproximatePolynomialElement,
+    ) -> ApproximatePolynomialElement:
+        return self._new(self._terms + other._terms)
+
+    def _sub_(
+        self, other: ApproximatePolynomialElement,
+    ) -> ApproximatePolynomialElement:
+        terms = list(self._terms)
+        for coefficient, exponents in other._terms:
+            terms.append([-coefficient, exponents])
+        return self._new(terms)
+
+    def _mul_(
+        self, other: ApproximatePolynomialElement,
+    ) -> ApproximatePolynomialElement:
+        terms = []
+        for left_coefficient, left_exponents in self._terms:
+            for right_coefficient, right_exponents in other._terms:
+                exponents = []
+                for index in range(self._parent.ngens()):
+                    exponents.append(
+                        left_exponents[index] + right_exponents[index])
+                terms.append([
+                    left_coefficient * right_coefficient,
+                    exponents,
+                ])
+        return self._new(terms)
+
+    def __add__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('add', self, other)
+
+    def __sub__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('sub', self, other)
+
+    def __mul__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('mul', self, other)
+
+    def __neg__(self) -> ApproximatePolynomialElement:
+        terms = []
+        for coefficient, exponents in self._terms:
+            terms.append([-coefficient, exponents])
+        return self._new(terms)
+
+    def __pow__(self, exponent: int) -> ApproximatePolynomialElement:
+        exponent = runtime.integer_bigint(exponent)
+        if exponent < 0:
+            raise ValueError('negative polynomial exponent')
+        answer = self._parent(1)
+        power = self
+        while exponent:
+            if exponent % 2:
+                answer = answer._mul_(power)
+            exponent //= 2
+            if exponent:
+                power = power._mul_(power)
+        return answer
+
+    def _eq_(self, other: ApproximatePolynomialElement) -> bool:
+        return len(self._sub_(other)._terms) == 0
+
+    def __eq__(self, other: object) -> bool:
+        return runtime.coercion_model.equals(self, other)
+
+    def __call__(self, *values: Any) -> Any:
+        if (
+            len(values) == 1
+            and isinstance(values[0], (list, tuple))
+        ):
+            values = tuple(values[0])
+        if len(values) != self._parent.ngens():
+            raise TypeError(
+                'polynomial evaluation needs one value per generator')
+        base = self._parent.base_ring()
+        answer = base(0)
+        for coefficient, exponents in self._terms:
+            term = coefficient
+            for index in range(len(exponents)):
+                if exponents[index]:
+                    term *= values[index] ** exponents[index]
+            answer += term
+        return answer
+
+    def degree(self, variable: Any = None) -> int:
+        if len(self._terms) == 0:
+            return -1
+        if variable is None and self._parent.ngens() == 1:
+            index = 0
+        elif variable is None:
+            return self.total_degree()
+        else:
+            index = self._parent._generator_index(variable)
+        answer = 0
+        for _coefficient, exponents in self._terms:
+            if exponents[index] > answer:
+                answer = exponents[index]
+        return answer
+
+    def total_degree(self) -> int:
+        answer = -1
+        for _coefficient, exponents in self._terms:
+            degree = 0
+            for exponent in exponents:
+                degree += exponent
+            if degree > answer:
+                answer = degree
+        return answer
+
+    def factor(self) -> sage.Factorization:
+        if self._parent.ngens() != 1 or self.degree() != 2:
+            raise NotImplementedError(
+                'approximate factorization currently supports quadratics')
+        base = self._parent.base_ring()
+        coefficients = [base(0), base(0), base(0)]
+        for coefficient, exponents in self._terms:
+            coefficients[exponents[0]] = coefficient
+        c = coefficients[0]
+        b = coefficients[1]
+        a = coefficients[2]
+        discriminant = b * b - base(4) * a * c
+        if discriminant < base(0):
+            raise NotImplementedError(
+                'complex approximate roots are not implemented')
+        square_root = base(runtime.math.sqrt(float(discriminant)))
+        denominator = base(2) * a
+        first_root = (-b + square_root) / denominator
+        second_root = (-b - square_root) / denominator
+        generator = self._parent.gen()
+        return sage.Factorization(
+            [
+                [generator - first_root, 1],
+                [generator - second_root, 1],
+            ],
+            a,
+            False,
+            False,
+            False,
+        )
+
+    def _factorization_repr(self) -> str:
+        return '(' + repr(self) + ')'
+
+    def __repr__(self) -> str:
+        if len(self._terms) == 0:
+            return '0'
+        ordered = []
+        for term in self._terms:
+            index = 0
+            while (
+                index < len(ordered)
+                and not _approximate_term_precedes(term, ordered[index])
+            ):
+                index += 1
+            ordered.insert(index, term)
+        base = self._parent.base_ring()
+        zero = base(0)
+        one = base(1)
+        terms = []
+        for coefficient, exponents in ordered:
+            negative = coefficient < zero
+            magnitude = -coefficient if negative else coefficient
+            pieces = []
+            for index in range(len(exponents)):
+                exponent = exponents[index]
+                if exponent == 0:
+                    continue
+                piece = self._parent.variable_names()[index]
+                if exponent != 1:
+                    piece += '^' + str(exponent)
+                pieces.append(piece)
+            monomial = '*'.join(pieces)
+            if monomial and magnitude == one:
+                text = monomial
+            elif monomial:
+                text = str(magnitude) + '*' + monomial
+            else:
+                text = str(magnitude)
+            if len(terms) == 0:
+                terms.append(('-' if negative else '') + text)
+            elif negative:
+                terms.append(' - ' + text)
+            else:
+                terms.append(' + ' + text)
+        return ''.join(terms)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class ApproximatePolynomialRingParent(sage.Parent):
+    """A cached sparse polynomial parent over an approximate real field."""
+
+    def __init__(
+        self,
+        base: sage.Parent,
+        variables: list[str],
+        order: str = 'degrevlex',
+        sparse: bool = False,
+    ) -> None:
+        self._base = base
+        self._variables = runtime.math_tuple(variables)
+        self._order = order
+        self._sparse = sparse
+        if len(variables) == 1:
+            self._name = (
+                ('Sparse ' if sparse else '')
+                + 'Univariate Polynomial Ring in '
+                + variables[0] + ' over ' + str(base)
+            )
+            self._construction = {
+                'kind': 'polynomial',
+                'base': base,
+                'variable': variables[0],
+                'sparse': sparse,
+            }
+        else:
+            self._name = (
+                'Multivariate Polynomial Ring in '
+                + ', '.join(variables) + ' over ' + str(base)
+            )
+            self._construction = {
+                'kind': 'multivariate_polynomial',
+                'base': base,
+                'variables': self._variables,
+                'order': order,
+            }
+
+    def base_ring(self) -> sage.Parent:
+        return self._base
+
+    def variable_name(self) -> str:
+        if len(self._variables) != 1:
+            raise AttributeError(
+                'a multivariate ring has no single variable name')
+        return self._variables[0]
+
+    def variable_names(self) -> Any:
+        return self._variables
+
+    def ngens(self) -> int:
+        return len(self._variables)
+
+    def gen(self, index: int = 0) -> ApproximatePolynomialElement:
+        index = int(index)
+        if index < 0 or index >= self.ngens():
+            raise IndexError('generator index out of range')
+        exponents = [0] * self.ngens()
+        exponents[index] = 1
+        return ApproximatePolynomialElement(
+            self, [[self._base(1), exponents]])
+
+    def gens(self) -> Any:
+        answer = []
+        for index in range(self.ngens()):
+            answer.append(self.gen(index))
+        return runtime.math_tuple(answer)
+
+    def objgen(self) -> Any:
+        return runtime.math_tuple([self, self.gen()])
+
+    def objgens(self) -> Any:
+        return runtime.math_tuple([self, self.gens()])
+
+    def _first_ngens(
+        self, count: int,
+    ) -> list[ApproximatePolynomialElement]:
+        if count > self.ngens():
+            raise ValueError('not enough polynomial generators')
+        answer = []
+        for index in range(count):
+            answer.append(self.gen(index))
+        return answer
+
+    def _generator_index(self, variable: Any) -> int:
+        for index in range(self.ngens()):
+            if (
+                variable == self._variables[index]
+                or variable == self.gen(index)
+            ):
+                return index
+        raise ValueError('not a generator of this polynomial ring')
+
+    def _constant(self, value: Any) -> ApproximatePolynomialElement:
+        return ApproximatePolynomialElement(
+            self, [[self._base(value), [0] * self.ngens()]])
+
+    def _coercePolynomial(
+        self, value: Any,
+    ) -> ApproximatePolynomialElement:
+        if not isinstance(value, ApproximatePolynomialElement):
+            raise TypeError('expected an approximate polynomial')
+        if value._parent is self:
+            return value
+        source = value._parent
+        if source.variable_names() != self.variable_names():
+            raise TypeError('incompatible approximate polynomial rings')
+        terms = []
+        for coefficient, exponents in value._terms:
+            terms.append([self._base(coefficient), exponents])
+        return ApproximatePolynomialElement(self, terms)
+
+    def __call__(
+        self, value: Any = 0,
+    ) -> ApproximatePolynomialElement:
+        if isinstance(value, ApproximatePolynomialElement):
+            return self._coercePolynomial(value)
+        return self._constant(value)
+
+    def __contains__(self, value: object) -> bool:
+        return (
+            isinstance(value, ApproximatePolynomialElement)
+            and value._parent is self
+        )
+
+
 @runtime.callable_instance_class
 class PolynomialSequence:
 
@@ -1130,14 +1518,16 @@ def _multivariate_polynomial_ring(
     base: sage.Parent,
     variables: list[str],
     order: str,
-) -> MultivariatePolynomialRingParent:
+) -> Any:
+    approximate = base._kind in ['RealField', 'RDF']
     if (
         base._kind not in ['ZZ', 'QQ']
         and base._kind not in ['GF', 'GF_EXTENSION', 'ZMOD']
+        and not approximate
     ):
         raise TypeError(
             'FLINT multivariate polynomial rings currently support '
-            + 'ZZ, QQ, finite fields, and Zmod(n)')
+            + 'ZZ, QQ, finite fields, Zmod(n), and approximate real fields')
     by_variable = ρσ_polynomial_ring_cache.get(base)
     if by_variable is runtime.undefined:
         by_variable = runtime.map()
@@ -1145,8 +1535,12 @@ def _multivariate_polynomial_ring(
     cache_key = ','.join(variables) + '|multivariate|' + order
     parent = by_variable.get(cache_key)
     if parent is runtime.undefined:
-        parent = MultivariatePolynomialRingParent(
-            base, variables, order)
+        if approximate:
+            parent = ApproximatePolynomialRingParent(
+                base, variables, order)
+        else:
+            parent = MultivariatePolynomialRingParent(
+                base, variables, order)
         by_variable.set(cache_key, parent)
     return parent
 
@@ -1163,8 +1557,10 @@ def PolynomialRing(
     Construct a univariate or multivariate polynomial ring.
 
     Coefficient rings currently include `ZZ`, `QQ`, prime and extension
-    finite fields, and `Zmod(n)`. Arithmetic is exact and backed by FLINT.
-    A comma-separated name list constructs a multivariate ring.
+    finite fields, `Zmod(n)`, and approximate real fields. Exact arithmetic
+    is backed by FLINT; approximate real polynomials use a small sparse
+    coefficient layer. A comma-separated name list constructs a multivariate
+    ring.
 
     ### Examples
 
@@ -1199,11 +1595,13 @@ def PolynomialRing(
     if (
         base is not sage.ZZ
         and base is not sage.QQ
-        and base._kind not in ['GF', 'GF_EXTENSION', 'ZMOD']
+        and base._kind not in [
+            'GF', 'GF_EXTENSION', 'ZMOD', 'RealField', 'RDF',
+        ]
     ):
         raise TypeError(
             'the prototype currently supports polynomial rings over ' +
-            'ZZ, QQ, finite fields, and Zmod')
+            'ZZ, QQ, finite fields, Zmod, and approximate real fields')
     if (
         not isinstance(variable, str)
         or not runtime.regexp(
@@ -1220,7 +1618,11 @@ def PolynomialRing(
     cache_key = variable + ('|sparse' if sparse else '|dense')
     parent = by_variable.get(cache_key)
     if parent is runtime.undefined:
-        parent = PolynomialRingParent(base, variable, sparse)
+        if base._kind in ['RealField', 'RDF']:
+            parent = ApproximatePolynomialRingParent(
+                base, [variable], order, sparse)
+        else:
+            parent = PolynomialRingParent(base, variable, sparse)
         by_variable.set(cache_key, parent)
     return parent
 
@@ -1258,6 +1660,89 @@ def chebyshev_U(degree: Any, value: Any) -> Any:
     return current
 
 
+def _euler_2x2_value(
+    callable_value: Any,
+    t_value: Any,
+    x_value: Any,
+    y_value: Any,
+) -> Any:
+    if isinstance(callable_value, ApproximatePolynomialElement):
+        return callable_value(t_value, x_value, y_value)
+    return callable_value([t_value, x_value, y_value])
+
+
+def _right_aligned(value: Any, width: int) -> str:
+    text = str(value)
+    if len(text) >= width:
+        return text
+    return ' ' * (width - len(text)) + text
+
+
+def eulers_method_2x2(
+    first_function: Any,
+    second_function: Any,
+    initial_t: Any,
+    initial_x: Any,
+    initial_y: Any,
+    step: Any,
+    end_t: Any,
+) -> None:
+    """Print Euler iterates for a two-dimensional first-order system."""
+    print(
+        '      t                x            h*f(t,x,y)'
+        + '                y       h*g(t,x,y)')
+    t_value = initial_t
+    x_value = initial_x
+    y_value = initial_y
+    while float(t_value) <= float(end_t):
+        x_step = step * _euler_2x2_value(
+            first_function, t_value, x_value, y_value)
+        y_step = step * _euler_2x2_value(
+            second_function, t_value, x_value, y_value)
+        print(
+            _right_aligned(t_value, 7)
+            + _right_aligned(x_value, 17)
+            + _right_aligned(x_step, 22)
+            + _right_aligned(y_value, 17)
+            + _right_aligned(y_step, 16)
+        )
+        x_value = x_value + x_step
+        y_value = y_value + y_step
+        t_value = t_value + step
+
+
+def eulers_method_2x2_plot(
+    first_function: Any,
+    second_function: Any,
+    initial_t: Any,
+    initial_x: Any,
+    initial_y: Any,
+    step: Any,
+    end_t: Any,
+) -> list[Any]:
+    """Return the two coordinate plots produced by Euler's method."""
+    t_value = initial_t
+    x_value = initial_x
+    y_value = initial_y
+    x_points = []
+    y_points = []
+    while float(t_value) <= float(end_t):
+        x_points.append([t_value, x_value])
+        y_points.append([t_value, y_value])
+        x_step = step * _euler_2x2_value(
+            first_function, t_value, x_value, y_value)
+        y_step = step * _euler_2x2_value(
+            second_function, t_value, x_value, y_value)
+        x_value = x_value + x_step
+        y_value = y_value + y_step
+        t_value = t_value + step
+    line_function = runtime.reflect.get(runtime.global_object, 'line')
+    return [
+        line_function(x_points, rgbcolor=(0, 0, 1)),
+        line_function(y_points, rgbcolor=(1, 0, 0)),
+    ]
+
+
 # Stable compiler/runtime alias: library modules may legitimately bind a
 # Python name called ``PolynomialRing`` (the Magma compatibility module does).
 ρσ_polynomial_ring = PolynomialRing
@@ -1282,14 +1767,16 @@ runtime.register_doc(
             'polynomials',
             'multivariate polynomials',
             'exact arithmetic',
+            'approximate arithmetic',
         ],
-        'backends': ['FLINT'],
+        'backends': ['FLINT', 'Sage.js sparse polynomial layer'],
         'sage_compatibility': {
             'status': 'partial',
             'notes': (
                 'Core univariate and multivariate construction and '
-                'arithmetic are compatible; SageMath exposes additional '
-                'constructor implementations and coefficient rings.'
+                'arithmetic are compatible over exact and approximate real '
+                'coefficient rings; SageMath exposes additional constructor '
+                'implementations and coefficient rings.'
             ),
         },
         'provenance': [
@@ -1319,13 +1806,18 @@ runtime.register_doc(
         ],
         'implementation': {
             'algorithm': (
-                'FLINT univariate and multivariate polynomial arithmetic'
+                'FLINT exact polynomial arithmetic with a sparse generic '
+                'layer for approximate real coefficients'
             ),
         },
         'limitations': [
             (
                 'Only lex, deglex, and degrevlex monomial orders are '
                 'currently accepted.'
+            ),
+            (
+                'Approximate factorization currently handles real '
+                'quadratics.'
             ),
         ],
     },
