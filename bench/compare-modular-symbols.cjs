@@ -24,6 +24,8 @@ const expected = new Map([
   ["modsym-qq-1000", 301],
   ["hecke-t3-389", 4],
   ["hecke-t3-1000", 20],
+  ["hecke-t3-10000", 20],
+  ["hecke-t3-20011", 0],
 ]);
 
 function median(values) {
@@ -81,7 +83,7 @@ function executePari() {
       "for(sample=0,2, t=getwalltime(); M=msinit(N,2); " +
       'print("RESULT modsym-qq-",N," ",sample," ",' +
       '(getwalltime()-t)/1000.0," ",msdim(M))));',
-    "for(i=1,2, N=[389,1000][i]; M=msinit(N,2); " +
+    "for(i=1,4, N=[389,1000,10000,20011][i]; M=msinit(N,2); " +
       "for(sample=0,2, t=getwalltime(); T=mshecke(M,3); " +
       'print("RESULT hecke-t3-",N," ",sample," ",' +
       '(getwalltime()-t)/1000.0," ",trace(T))));',
@@ -94,7 +96,7 @@ function executePari() {
 function executeMagma() {
   const program = [
     "SetSeed(1);",
-    "for N in [389, 1000] do",
+    "for N in [389, 1000, 10000, 20011] do",
     "  for sample in [0..2] do",
     "    M := ModularSymbols(N, 2);",
     "    t := Cputime();",

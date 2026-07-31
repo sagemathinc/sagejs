@@ -21,10 +21,11 @@ would give misleading performance numbers:
 - construction of the full weight-2 rational modular-symbol space.
 - construction of the exact dense weight-2 `T_3` matrix, checked by trace.
 
-The modular-symbol cases include prime level 389 and the substantially more
-revealing composite level 1000. The latter has 1,800 projective cosets and
-exposes presentation and linear-algebra costs that the small prime-level case
-can hide.
+The presentation cases include prime level 389 and composite level 1000. The
+Hecke matrix cases additionally include composite level 10000 and prime level
+20011. Their respective exact modular-symbol dimensions are 3001 and 3335, so
+the dashboard constructs roughly 9-million- and 11-million-entry matrices
+instead of measuring only tiny examples.
 
 Hecke timings use an initialized modular-symbol space but force matrix
 recomputation rather than timing a cached lookup. SageMath's operator and
