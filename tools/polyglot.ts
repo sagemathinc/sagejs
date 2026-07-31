@@ -93,3 +93,23 @@ export function prepareSubmittedPolyglotCell(
     source: `${cell.source}\n;`,
   };
 }
+
+/**
+ * Support Sage/IPython's ``expression?`` inspection shorthand.
+ *
+ * Keep this deliberately conservative: only a final dotted identifier is
+ * rewritten, so the compiler's existing uses of ``?`` remain untouched.
+ */
+export function rewriteQuestionMarkHelp(
+  source: string,
+  language: SageSourceLanguage,
+): string {
+  if (language !== "sage" && language !== "python") return source;
+  const match = source.match(
+    /(^|\n)([ \t]*)([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\?[ \t]*$/,
+  );
+  if (!match || match.index === undefined) return source;
+  const start = match.index + match[1].length;
+  const replacement = `${match[2]}help(${match[3]})`;
+  return source.slice(0, start) + replacement;
+}

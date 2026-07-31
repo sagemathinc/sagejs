@@ -34,6 +34,7 @@ import {
   isForeignSyntaxError,
   selectedForeignLanguage,
 } from "./foreign";
+import { rewriteQuestionMarkHelp } from "./polyglot";
 
 const DEFAULT_HISTORY_SIZE = 1000;
 const HOME =
@@ -167,6 +168,8 @@ function createReadlineInterface(options: Options, PyLang) {
 export default async function Repl(options0: Partial<Options>): Promise<void> {
   const options = replDefaults(options0);
   const foreignLanguage = selectedForeignLanguage(options);
+  const sourceLanguage =
+    foreignLanguage ?? (options.sage ? "sage" : "python");
   const PyLang = createCompiler({
     console: options.console,
   });
@@ -534,6 +537,9 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       refreshAttachedFiles();
     }
     line = stripCopiedPrompt(line);
+    if (!more) {
+      line = rewriteQuestionMarkHelp(line, sourceLanguage);
+    }
     if (more) {
       // We are in a block
       if (foreignFrontend) {

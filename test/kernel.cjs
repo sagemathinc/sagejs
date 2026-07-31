@@ -12,6 +12,7 @@ const {
 const {
   parsePolyglotCell,
   prepareSubmittedPolyglotCell,
+  rewriteQuestionMarkHelp,
 } = require("../dist/tools/polyglot.js");
 
 async function main() {
@@ -63,6 +64,18 @@ async function main() {
       parsePolyglotCell("%%wolfram\n2 + 2"),
     ).source,
     "\n2 + 2",
+  );
+  assert.equal(
+    rewriteQuestionMarkHelp("b.q_expansion?", "sage"),
+    "help(b.q_expansion)",
+  );
+  assert.equal(
+    rewriteQuestionMarkHelp("value ? other", "sage"),
+    "value ? other",
+  );
+  assert.equal(
+    rewriteQuestionMarkHelp("b.q_expansion?", "matlab"),
+    "b.q_expansion?",
   );
   assert.throws(
     () => parsePolyglotCell("%%fortran\n1 + 1"),

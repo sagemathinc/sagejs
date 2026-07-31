@@ -39,6 +39,7 @@ function compile_baselib(PyLang, src_path) {
     }
     var output = new PyLang.OutputStream({
       beautify: true,
+      keep_docstrings: true,
       write_name: false,
       private_scope: false,
       omit_baselib: true,

@@ -286,6 +286,30 @@ def main() -> None:
             assert inspection["found"]
             assert "prime_pi" in inspection["data"]["text/plain"]
 
+            docs_setup_id = client.execute(
+                "b = EisensteinForms(389,2).basis(prec=5)[0]"
+            )
+            iopub_until_idle(client, docs_setup_id)
+            assert matching_message(
+                client, "shell", docs_setup_id
+            )["content"]["status"] == "ok"
+
+            qmark_id = client.execute("b.q_expansion?")
+            messages = iopub_until_idle(client, qmark_id)
+            qmark_text = message_of_type(messages, "stream")["content"]["text"]
+            assert "Help on method q_expansion" in qmark_text
+            assert "FLINT" in qmark_text
+            assert matching_message(
+                client, "shell", qmark_id
+            )["content"]["status"] == "ok"
+
+            qexp_inspect_id = client.inspect("b.q_expansion", 13)
+            qexp_inspection = matching_message(
+                client, "shell", qexp_inspect_id
+            )["content"]
+            assert qexp_inspection["found"]
+            assert "absolute precision" in qexp_inspection["data"]["text/plain"]
+
             completeness_id = client.is_complete("for n in range(3):")
             completeness = matching_message(
                 client, "shell", completeness_id

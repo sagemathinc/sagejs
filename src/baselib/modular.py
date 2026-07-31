@@ -657,6 +657,94 @@ def _eisenstein_basis_qexp(
     ).add_bigoh(precision)
 
 
+class EisensteinSeriesElement(sage.Element):
+    r"""
+    An exact Eisenstein modular form represented by its parent and basis index.
+
+    The element retains its modular-form parent instead of becoming a bare
+    power series.  Its coefficients are generated on demand by the
+    FLINT-backed Eisenstein implementation.
+    """
+
+    def __init__(
+        self,
+        parent: EisensteinSubspace,
+        index: int,
+        precision: int,
+    ) -> None:
+        self._parent = parent
+        self._index = index
+        self._display_precision = precision
+        runtime.object.freeze(self)
+
+    def q_expansion(self, prec: Any = None) -> Any:
+        r"""
+        Return the `q`-expansion to absolute precision ``O(q^prec)``.
+
+        INPUT:
+
+        - ``prec`` -- nonnegative integer; when omitted, use the precision
+          requested when this basis element was constructed.
+
+        EXAMPLES:
+
+        The level-389 weight-2 Eisenstein form can be displayed briefly and
+        then expanded farther without reconstructing its parent::
+
+            sage: E = EisensteinForms(389, 2)
+            sage: b = E.basis(prec=8)[0]
+            sage: b.q_expansion(5)
+            1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)
+
+        IMPLEMENTATION:
+
+        Level-one divisor sums are generated in one native FLINT sieve.
+        Prime-level oldforms use the exact degeneracy map ``q -> q^N``.
+        """
+        if prec is None:
+            precision = self._display_precision
+        else:
+            precision = _exact_nonnegative_integer(
+                prec, 'precision')
+        return self._parent._q_expansion(
+            self._index, precision)
+
+    qexp = q_expansion
+
+    def prec(self) -> int:
+        """Return the default display precision of this element."""
+        return self._display_precision
+
+    def parent(self) -> EisensteinSubspace:
+        """Return the Eisenstein space containing this form."""
+        return self._parent
+
+    def base_ring(self) -> Any:
+        """Return the coefficient ring of this modular form."""
+        return self._parent.base_ring()
+
+    def level(self) -> int:
+        """Return the level of this modular form."""
+        return self._parent.level()
+
+    def weight(self) -> int:
+        """Return the weight of this modular form."""
+        return self._parent.weight()
+
+    def __getitem__(self, exponent: Any) -> Any:
+        """Return the coefficient of ``q^exponent``."""
+        return self.q_expansion(
+            _exact_nonnegative_integer(
+                exponent, 'coefficient exponent') + 1
+        )[exponent]
+
+    def __repr__(self) -> str:
+        return str(self.q_expansion())
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class ModularFormsSubspace(sage.Parent):
 
     def __init__(
@@ -728,17 +816,15 @@ class EisensteinSubspace(ModularFormsSubspace):
         self._basis = None
         if basis_supported:
             self._basis = [
-                _eisenstein_basis_qexp(
-                    level,
-                    weight,
-                    ambient.base_ring(),
+                EisensteinSeriesElement(
+                    self,
                     index,
                     precision,
                 )
                 for index in range(dimension)
             ]
 
-    def _require_basis(self) -> list[Any]:
+    def _require_basis(self) -> list[EisensteinSeriesElement]:
         if self._basis is None:
             raise NotImplementedError(
                 'q-expansion bases are currently implemented for '
@@ -762,17 +848,36 @@ class EisensteinSubspace(ModularFormsSubspace):
             raise ValueError('too many Eisenstein generators requested')
         return self._require_basis()[:count]
 
-    def basis(self) -> list[Any]:
-        return list(self._require_basis())
+    def basis(self, prec: Any = None) -> list[Any]:
+        r"""
+        Return a basis of modular forms, optionally with display precision.
+
+        INPUT:
+
+        - ``prec`` -- nonnegative integer or ``None``.  If specified, basis
+          entries are displayed to ``O(q^prec)``.  They retain their parent
+          and can subsequently be expanded to any supported precision with
+          :meth:`q_expansion`.
+
+        This optional argument is a convenient Sage.js extension: SageMath's
+        ``basis()`` currently uses the space's default precision instead.
+        """
+        self._require_basis()
+        if prec is None:
+            return list(self._require_basis())
+        precision = _exact_nonnegative_integer(prec, 'precision')
+        return [
+            EisensteinSeriesElement(self, index, precision)
+            for index in range(self._dimension)
+        ]
 
     gens = basis
 
     def q_expansion_basis(self, prec: Any = None) -> list[Any]:
+        """Return the basis as power series to absolute precision ``prec``."""
         if prec is None:
             prec = self._precision
         precision = _exact_nonnegative_integer(prec, 'precision')
-        if precision == self._precision:
-            return list(self._require_basis())
         self._require_basis()
         return [
             _eisenstein_basis_qexp(
@@ -887,3 +992,26 @@ def EisensteinForms(
     ambient = ModularForms(
         group, weight, base_ring, use_cache, prec)
     return ambient.eisenstein_subspace()
+
+
+_eisenstein_element_prototype = runtime.reflect.get(
+    EisensteinSeriesElement, 'prototype')
+_eisenstein_q_expansion_method = runtime.reflect.get(
+    _eisenstein_element_prototype, 'q_expansion')
+runtime.reflect.set(
+    _eisenstein_q_expansion_method,
+    '__module__',
+    'sage.modular.modform.element',
+)
+runtime.register_doc(
+    'EisensteinSeriesElement.q_expansion',
+    _eisenstein_q_expansion_method,
+)
+runtime.register_doc(
+    'EisensteinSubspace.basis',
+    runtime.reflect.get(
+        runtime.reflect.get(
+            EisensteinSubspace, 'prototype'),
+        'basis',
+    ),
+)

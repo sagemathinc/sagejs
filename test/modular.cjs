@@ -192,6 +192,48 @@ test("Eisenstein spaces reproduce level one and level 11 bases", async () => {
   }
 });
 
+test("Eisenstein basis elements retain their parent and expand on demand", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          "E=EisensteinForms(389,2)\n" +
+            "B=E.basis(prec=20)\n" +
+            "b=B[0]\n" +
+            "[b.parent() is E, b.prec(), b[4], " +
+            "b.q_expansion(5), " +
+            "b.q_expansion(100).precision_absolute()]",
+        )
+      ).repr,
+      "[True, 20, 42/97, " +
+        "1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + " +
+        "42/97*q^4 + O(q^5), 100]",
+    );
+
+    const help = await session.evaluate("help(b.q_expansion)");
+    assert.match(
+      help.stdout,
+      /Help on method q_expansion in module sage\.modular\.modform\.element:/,
+    );
+    assert.match(help.stdout, /Return the `q`-expansion/);
+    assert.match(help.stdout, /FLINT/);
+
+    const inspection = await session.inspect("b.q_expansion", 13);
+    assert.equal(inspection.found, true);
+    assert.match(inspection.text, /q_expansion/);
+    assert.match(inspection.text, /absolute precision/);
+
+    const search = await session.evaluate("search_doc('q-expansion')");
+    assert.match(
+      search.stdout,
+      /EisensteinSeriesElement\.q_expansion/,
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("ModularForms exposes Sage-style ambient and subspaces", async () => {
   const session = await createSage();
   try {

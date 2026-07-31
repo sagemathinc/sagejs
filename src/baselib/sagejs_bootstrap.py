@@ -71,6 +71,19 @@ def ρσ_wall_time():
     return r"%js Date.now() / 1000"
 
 
+def ρσ_register_doc(name, value):
+    return r"""%js (() => {
+        const registry = (
+            globalThis.__sagejs_doc_registry__ ??= []
+        );
+        registry.push([name, value]);
+    })()"""
+
+
+def ρσ_documentation_registry():
+    return r"%js globalThis.__sagejs_doc_registry__ ?? []"
+
+
 ρσ_interrupt_counter = 0
 
 

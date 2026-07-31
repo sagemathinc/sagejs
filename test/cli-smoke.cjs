@@ -410,7 +410,7 @@ assert.equal(
     "True",
     "False",
     "True",
-    "Help on function value:",
+    "Help on method value in module __main__:",
     "",
     "value(n=2)",
     "",
@@ -425,6 +425,19 @@ assert.equal(
     "    value(n=2)",
     "        Return an example value.",
   ].join("\n"),
+);
+
+assert.match(
+  run(
+    [],
+    [
+      "E = EisensteinForms(389,2)",
+      "b = E.basis(prec=5)[0]",
+      "b.q_expansion?",
+      "",
+    ].join("\n"),
+  ),
+  /Help on method q_expansion in module sage\.modular\.modform\.element:[\s\S]*FLINT/,
 );
 
 assert.equal(

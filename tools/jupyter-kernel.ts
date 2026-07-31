@@ -21,6 +21,7 @@ import { SageLanguageMode } from "./kernel-evaluator";
 import {
   parsePolyglotCell,
   prepareSubmittedPolyglotCell,
+  rewriteQuestionMarkHelp,
 } from "./polyglot";
 
 const DELIMITER = Buffer.from("<IDS|MSG>");
@@ -387,12 +388,17 @@ export class SageJupyterKernel {
 
     let outputTail = Promise.resolve();
     try {
-      const cell = prepareSubmittedPolyglotCell(
+      const parsedCell = prepareSubmittedPolyglotCell(
         parsePolyglotCell(
           String(content.code ?? ""),
           this.mode,
         ),
       );
+      const cell = {
+        ...parsedCell,
+        source: rewriteQuestionMarkHelp(
+          parsedCell.source, parsedCell.language),
+      };
       const result = await this.session!.evaluate(cell.source, {
         filename: `<jupyter-input-${executionCount}>`,
         language: cell.language,

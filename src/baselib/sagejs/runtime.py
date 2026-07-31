@@ -176,6 +176,30 @@ def ρσ_dynamic_eval(
     })()"""
 
 
+def register_doc(name, value):
+    """Register a public runtime object for interactive documentation."""
+    registry = reflect.get(
+        global_object, '__sagejs_doc_registry__')
+    if registry is undefined:
+        registry = []
+        reflect.set(
+            global_object, '__sagejs_doc_registry__', registry)
+    reflect.apply(
+        reflect.get(registry, 'push'),
+        registry,
+        [[name, value]],
+    )
+
+
+def documentation_registry():
+    """Return public names explicitly registered for documentation."""
+    registry = reflect.get(
+        global_object, '__sagejs_doc_registry__')
+    if registry is undefined:
+        return []
+    return registry
+
+
 array = Array
 arraylike = ρσ_arraylike
 bigint = BigInt

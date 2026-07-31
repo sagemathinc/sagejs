@@ -2062,6 +2062,34 @@ def _builtins_indent_doc(doc: _Str, prefix: _Str) -> _Str:
     return str.join('\n', lines)
 
 
+def _builtins_doc_summary(doc: _Str) -> _Str:
+    for line in doc.split('\n'):
+        summary = line.strip()
+        if summary:
+            return summary
+    return ''
+
+
+def _builtins_doc_search_match(
+    query: _Str,
+    candidate: _Str,
+) -> _Bool:
+    lowered = candidate.lower()
+    if query in lowered:
+        return True
+    normalized_query = (
+        query.replace('`', '')
+        .replace('_', ' ')
+        .replace('-', ' ')
+    )
+    normalized_candidate = (
+        lowered.replace('`', '')
+        .replace('_', ' ')
+        .replace('-', ' ')
+    )
+    return normalized_query in normalized_candidate
+
+
 def _builtins_is_python_class(value: Any) -> _Bool:
     if not runtime.strict_equal(runtime.jstype(value), 'function'):
         return False
@@ -2070,6 +2098,22 @@ def _builtins_is_python_class(value: Any) -> _Bool:
         prototype is not runtime.undefined
         and _builtins_has_member(prototype, '__bases__')
     )
+
+
+def _builtins_prototype_member(
+    prototype: Any,
+    name: _Str,
+) -> Any:
+    current = prototype
+    while current is not None and current is not runtime.undefined:
+        descriptor = runtime.object.getOwnPropertyDescriptor(
+            current, name)
+        if descriptor is not runtime.undefined:
+            # Do not invoke a property getter while merely inspecting docs.
+            # Ordinary Python methods are stored as descriptor values.
+            return runtime.reflect.get(descriptor, 'value')
+        current = runtime.object.getPrototypeOf(current)
+    return runtime.undefined
 
 
 def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
@@ -2092,7 +2136,8 @@ def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
     prototype = _builtins_get_member(cls, 'prototype')
     methods = []
     for method_name in ρσ_dir(cls):
-        method = _builtins_get_member(prototype, method_name)
+        method = _builtins_prototype_member(
+            prototype, method_name)
         if (
             runtime.string_find(method_name, '_') != 0
             and runtime.strict_equal(runtime.jstype(method), 'function')
@@ -2101,7 +2146,8 @@ def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
     if len(methods) > 0:
         lines.extend(['', 'Methods:'])
         for method_name in methods:
-            method = _builtins_get_member(prototype, method_name)
+            method = _builtins_prototype_member(
+                prototype, method_name)
             lines.append(
                 '    ' + _builtins_signature(method, method_name))
             method_doc = _builtins_doc(method)
@@ -2113,7 +2159,7 @@ def _builtins_class_help(value: Any, instance: _Bool) -> _Str:
 def ρσ_help(item: Any = runtime.undefined) -> None:
     """Print concise Python-style help derived from Sage.js metadata."""
     if item is runtime.undefined:
-        runtime.console_object.log(
+        ρσ_print(
             'Welcome to Sage.js help.  '
             + 'Call help(object) for information about an object.')
         return
@@ -2126,8 +2172,17 @@ def ρσ_help(item: Any = runtime.undefined) -> None:
             text = _builtins_class_help(item, True)
         elif runtime.strict_equal(runtime.jstype(item), 'function'):
             name = _builtins_callable_name(item)
+            bound = _builtins_has_member(item, '__self__')
+            kind = 'method' if bound else 'function'
+            module = _builtins_get_member(item, '__module__')
+            heading = 'Help on ' + kind + ' ' + name
+            if (
+                runtime.strict_equal(runtime.jstype(module), 'string')
+                and module
+            ):
+                heading += ' in module ' + module
             lines = [
-                'Help on function ' + name + ':',
+                heading + ':',
                 '',
                 _builtins_signature(item, name),
             ]
@@ -2142,7 +2197,120 @@ def ρσ_help(item: Any = runtime.undefined) -> None:
             doc = _builtins_doc(item)
             if doc:
                 text += '\n\n' + _builtins_indent_doc(doc, '    ')
-    runtime.console_object.log(text)
+    ρσ_print(text)
+
+
+def ρσ_search_doc(query: Any) -> None:
+    r"""
+    Search the docstrings of public objects loaded into Sage.js.
+
+    The search is a case-insensitive literal match over public names and
+    runtime docstrings.  Results include top-level functions and classes as
+    well as documented methods of loaded Python classes.
+
+    EXAMPLES::
+
+        sage: search_doc('q-expansion')
+        Search results for 'q-expansion':
+            EisensteinSeriesElement.q_expansion -- Return the ...
+
+    This intentionally searches the locally installed Sage.js API.  It does
+    not imply that every object documented by the full SageMath manual is
+    implemented.
+    """
+    text = str(query)
+    needle = text.lower()
+    if not needle:
+        raise ValueError('search_doc query must not be empty')
+
+    matches = []
+    seen = []
+    for registered_name, registered_value in (
+        runtime.documentation_registry()
+    ):
+        if registered_name in seen:
+            continue
+        registered_doc = _builtins_doc(registered_value)
+        if (
+            _builtins_doc_search_match(
+                needle, registered_name)
+            or (
+                registered_doc
+                and _builtins_doc_search_match(
+                    needle, registered_doc)
+            )
+        ):
+            matches.append(
+                registered_name + ' -- '
+                + _builtins_doc_summary(registered_doc))
+            seen.append(registered_name)
+
+    namespace = _builtins_get_member(
+        runtime.modules, '__main__')
+    names = runtime.object.getOwnPropertyNames(namespace)
+    names.sort()
+    for name in names:
+        if (
+            runtime.string_find(name, '_') == 0
+            or runtime.string_find(name, 'ρσ_') == 0
+            or name in seen
+        ):
+            continue
+        descriptor = runtime.object.getOwnPropertyDescriptor(
+            namespace, name)
+        value = runtime.reflect.get(descriptor, 'value')
+        if value is runtime.undefined:
+            continue
+        doc = _builtins_doc(value)
+        if (
+            _builtins_doc_search_match(needle, name)
+            or (
+                doc
+                and _builtins_doc_search_match(needle, doc)
+            )
+        ):
+            matches.append(
+                name + ' -- ' + _builtins_doc_summary(doc))
+            seen.append(name)
+
+        if not _builtins_is_python_class(value):
+            continue
+        prototype = _builtins_get_member(value, 'prototype')
+        for method_name in ρσ_dir(value):
+            if runtime.string_find(method_name, '_') == 0:
+                continue
+            method = _builtins_prototype_member(
+                prototype, method_name)
+            if not runtime.strict_equal(
+                runtime.jstype(method), 'function'
+            ):
+                continue
+            qualified_name = name + '.' + method_name
+            if qualified_name in seen:
+                continue
+            method_doc = _builtins_doc(method)
+            if (
+                _builtins_doc_search_match(
+                    needle, qualified_name)
+                or (
+                    method_doc
+                    and _builtins_doc_search_match(
+                        needle, method_doc)
+                )
+            ):
+                matches.append(
+                    qualified_name + ' -- '
+                    + _builtins_doc_summary(method_doc))
+                seen.append(qualified_name)
+
+    matches.sort()
+    if len(matches) == 0:
+        ρσ_print(
+            "No documentation matching '" + text + "'.")
+        return
+    ρσ_print(
+        "Search results for '" + text + "':\n    "
+        + str.join('\n    ', matches))
 
 
 def ρσ_ord(value: Any) -> _Int:
@@ -4726,6 +4894,9 @@ pow = ρσ_pow
 divmod = ρσ_divmod
 dir = ρσ_dir
 help = ρσ_help
+search_doc = ρσ_search_doc
+runtime.register_doc('help', help)
+runtime.register_doc('search_doc', search_doc)
 ord = ρσ_ord
 chr = ρσ_chr
 bin = ρσ_bin
