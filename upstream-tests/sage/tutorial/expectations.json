@@ -56,14 +56,14 @@
       "lines": [120, 123, 126, 129, 132, 135, 148, 149, 151, 152, 154, 156, 158, 167, 169, 171, 181, 182, 191, 193, 195, 206, 207, 210, 229, 230, 233, 234, 236, 238, 239, 246, 247, 249]
     },
     {
-      "reason": "requires Dirichlet groups, characters, and exact cyclotomic-value infrastructure",
+      "reason": "requires general number fields and custom Dirichlet character value groups",
       "file": "src/doc/en/tutorial/tour_advanced.rst",
-      "lines": [276, 277, 282, 285, 295, 296, 298, 301, 303, 305, 307, 309, 321, 325, 326, 329, 338, 339, 340, 350, 354, 356, 358, 368, 369, 371, 373, 375, 377]
+      "lines": [338, 340, 350, 356, 368, 369, 371, 373, 375, 377]
     },
     {
       "reason": "requires a deliberate modular-forms and modular-symbols implementation",
       "file": "src/doc/en/tutorial/tour_advanced.rst",
-      "lines": [399, 400, 402, 404, 412, 413, 415, 416, 419, 423, 425, 427, 435, 438, 447, 448, 451, 454, 455, 458, 465, 466, 467, 470, 472, 476, 478, 486, 487, 490, 492, 494, 496, 498, 501, 504, 507, 509, 511, 522, 526, 530]
+      "lines": [399, 400, 402, 404, 412, 413, 415, 416, 419, 423, 425, 427, 435, 438, 447, 448, 451, 454, 455, 458, 467, 470, 472, 476, 478, 486, 487, 490, 492, 494, 496, 498, 501, 504, 507, 509, 511, 522, 526, 530]
     },
     {
       "reason": "Cortex does not solve this coupled nonlinear symbolic system",

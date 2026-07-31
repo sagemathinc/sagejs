@@ -18,6 +18,7 @@
 #include <sagejs/native.h>
 
 #include "algebraic.h"
+#include "dirichlet.h"
 #include "extension_field.h"
 #include "floating.h"
 #include "matrix.h"
@@ -2045,6 +2046,11 @@ static napi_value initialize(napi_env env, napi_value exports)
             NULL, NULL, NULL, napi_default, NULL},
         {"qqbarI", NULL, sagejs_qqbar_i,
             NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarRootOfUnity", NULL, sagejs_qqbar_root_of_unity,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"cyclotomicRootCoefficients", NULL,
+            sagejs_cyclotomic_root_coefficients,
+            NULL, NULL, NULL, napi_default, NULL},
         {"qqbarAdd", NULL, sagejs_qqbar_add,
             NULL, NULL, NULL, napi_default, NULL},
         {"qqbarSub", NULL, sagejs_qqbar_sub,
@@ -2085,6 +2091,19 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"qqbarToString", NULL, sagejs_qqbar_to_string,
             NULL, NULL, NULL, napi_default, NULL},
         {"qqbarApprox", NULL, sagejs_qqbar_approx,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"dirichletGroup", NULL, sagejs_dirichlet_group,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"dirichletGroupData", NULL, sagejs_dirichlet_group_data,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"dirichletCharacterData", NULL,
+            sagejs_dirichlet_character_data,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"dirichletCharacterExponent", NULL,
+            sagejs_dirichlet_character_exponent,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"dirichletCharacterExponents", NULL,
+            sagejs_dirichlet_character_exponents,
             NULL, NULL, NULL, napi_default, NULL},
         {"zzMatrix", NULL, sagejs_zz_matrix, NULL, NULL, NULL,
             napi_default, NULL},

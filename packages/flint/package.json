@@ -20,7 +20,7 @@
     "build:deps": "node scripts/build-deps.cjs",
     "build:addon": "node-gyp rebuild",
     "build": "pnpm run build:deps && pnpm run build:addon",
-    "test": "node --expose-gc --test --test-concurrency=3 --test-reporter=spec test/test.cjs test/extension-field-lifecycle.cjs test/lazy-factor.cjs",
+    "test": "node --expose-gc --test --test-concurrency=3 --test-reporter=spec test/test.cjs test/dirichlet.cjs test/extension-field-lifecycle.cjs test/lazy-factor.cjs",
     "bench": "node bench/benchmark.cjs"
   },
   "devDependencies": {

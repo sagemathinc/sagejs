@@ -11,6 +11,7 @@
 #include <flint/arf.h>
 #include <flint/fmpq.h>
 #include <flint/fmpz.h>
+#include <flint/fmpz_poly.h>
 #include <flint/qqbar.h>
 
 #include "algebraic.h"
@@ -98,6 +99,32 @@ static int bigint_to_fmpz(napi_env env, napi_value value, fmpz_t result)
     free(words);
     if (sign)
         fmpz_neg(result, result);
+    return 1;
+}
+
+static int bigint_to_ulong(napi_env env, napi_value value, ulong *result)
+{
+    napi_valuetype type;
+    uint64_t number;
+    bool lossless;
+
+    if (!check_napi(env, napi_typeof(env, value, &type)))
+        return 0;
+    if (type != napi_bigint)
+    {
+        napi_throw_type_error(env, NULL, "expected a BigInt");
+        return 0;
+    }
+    if (!check_napi(env,
+        napi_get_value_bigint_uint64(env, value, &number, &lossless)))
+        return 0;
+    if (!lossless || number > (uint64_t) WORD_MAX)
+    {
+        napi_throw_range_error(
+            env, NULL, "root-of-unity data is too large");
+        return 0;
+    }
+    *result = (ulong) number;
     return 1;
 }
 
@@ -253,6 +280,90 @@ napi_value sagejs_qqbar_i(napi_env env, napi_callback_info info)
     answer = sagejs_qqbar_wrap_copy(env, result);
     qqbar_clear(result);
     return answer;
+}
+
+napi_value sagejs_qqbar_root_of_unity(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    ulong exponent;
+    ulong order;
+    qqbar_t result;
+    napi_value answer;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !bigint_to_ulong(env, args[0], &exponent) ||
+        !bigint_to_ulong(env, args[1], &order))
+        return NULL;
+    if (order == 0)
+    {
+        napi_throw_range_error(
+            env, NULL, "root-of-unity order must be positive");
+        return NULL;
+    }
+    exponent %= order;
+    qqbar_init(result);
+    qqbar_root_of_unity(result, (slong) exponent, order);
+    answer = sagejs_qqbar_wrap_copy(env, result);
+    qqbar_clear(result);
+    return answer;
+}
+
+napi_value sagejs_cyclotomic_root_coefficients(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result;
+    napi_value coefficient;
+    ulong order;
+    ulong exponent;
+    slong index;
+    slong length;
+    fmpz_poly_t cyclotomic;
+    fmpz_poly_t monomial;
+    fmpz_poly_t remainder;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !bigint_to_ulong(env, args[0], &exponent) ||
+        !bigint_to_ulong(env, args[1], &order))
+        return NULL;
+    if (order == 0)
+    {
+        napi_throw_range_error(
+            env, NULL, "cyclotomic order must be positive");
+        return NULL;
+    }
+    exponent %= order;
+    fmpz_poly_init(cyclotomic);
+    fmpz_poly_init(monomial);
+    fmpz_poly_init(remainder);
+    fmpz_poly_cyclotomic(cyclotomic, order);
+    fmpz_poly_set_coeff_ui(monomial, (slong) exponent, 1);
+    fmpz_poly_rem(remainder, monomial, cyclotomic);
+    length = fmpz_poly_length(remainder);
+    if (!check_napi(env,
+        napi_create_array_with_length(env, (size_t) length, &result)))
+        goto failure;
+    for (index = 0; index < length; index++)
+    {
+        coefficient = fmpz_to_bigint(
+            env, fmpz_poly_get_coeff_ptr(remainder, index));
+        if (coefficient == NULL ||
+            !check_napi(env,
+                napi_set_element(
+                    env, result, (uint32_t) index, coefficient)))
+            goto failure;
+    }
+    fmpz_poly_clear(remainder);
+    fmpz_poly_clear(monomial);
+    fmpz_poly_clear(cyclotomic);
+    return result;
+
+failure:
+    fmpz_poly_clear(remainder);
+    fmpz_poly_clear(monomial);
+    fmpz_poly_clear(cyclotomic);
+    return NULL;
 }
 
 typedef void (*sagejs_qqbar_binary_function)(

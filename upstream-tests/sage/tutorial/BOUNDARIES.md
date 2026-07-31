@@ -2,10 +2,10 @@
 
 At the pinned Sage revision, the corpus contains 662 executable examples:
 
-- 440 pass with Sage-compatible output or an explicitly equivalent numeric or
+- 485 pass with Sage-compatible output or an explicitly equivalent numeric or
   symbolic result;
 - 6 carry upstream `.. skip` directives;
-- 216 are expected failures grouped by architectural boundary in
+- 171 are expected failures grouped by architectural boundary in
   `expectations.json`;
 - 0 are unclassified failures or unexpected passes.
 
@@ -19,16 +19,18 @@ requires choosing or building one of these substantial subsystems:
 - multivariate ideals, Gröbner bases, and algebraic geometry, most naturally
   by deciding how Sage.js should integrate Singular; FLINT-backed
   multivariate polynomial rings over `ZZ`, `QQ`, and prime fields now cover
-  the ring, arithmetic, gcd, and conversion layer;
-- Laurent and power series with precision propagation;
-- approximate real and complex matrix arithmetic and eigensystems;
-- exact algebraic closures and eigensystems;
-- p-adic rings/fields and general number fields;
+  the ring, arithmetic, gcd, conversion, ideal, and Gröbner-basis layers,
+  leaving primary decomposition and broader algebraic geometry;
+- p-adic rings/fields and general number fields, including custom value
+  fields for Dirichlet characters;
 - permutation and finitely generated abelian groups;
 - broader symbolic CAS facilities: coupled nonlinear solving, partial
   fractions, ODEs, Laplace transforms, and arbitrary-precision special
   functions;
-- elliptic curves, Dirichlet characters, and modular forms/modular symbols;
+- elliptic curves, databases, and modular forms/modular symbols; FLINT-backed
+  default Dirichlet groups, exact cyclotomic values, and Galois orbits now
+  cover the guided-tour character examples;
+- polynomial and multivariate arithmetic over approximate coefficient fields;
 - Sage's category framework and concrete implementation-class identity model.
 
 Some output differences are intentional consequences of Sage.js architecture,

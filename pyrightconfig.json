@@ -5,6 +5,7 @@
     "src/baselib/builtins.py",
     "src/baselib/byte_strings.py",
     "src/baselib/containers.py",
+    "src/baselib/dirichlet.py",
     "src/baselib/exact_rational.py",
     "src/baselib/errors.py",
     "src/baselib/factorization.py",

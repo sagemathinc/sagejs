@@ -9,6 +9,10 @@ napi_value sagejs_qqbar_wrap_copy(napi_env env, const qqbar_t value);
 
 napi_value sagejs_qqbar_from_rational(napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_i(napi_env env, napi_callback_info info);
+napi_value sagejs_qqbar_root_of_unity(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_cyclotomic_root_coefficients(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_add(napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_sub(napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_mul(napi_env env, napi_callback_info info);

@@ -49,6 +49,14 @@ generators, arithmetic, powers, exact division, GCD, degrees, term counts,
 and generator composition for Sage-compatible conversions between parents;
 only pretty-printing crosses polynomial data back into JavaScript.
 
+Dirichlet groups are retained opaque `dirichlet_group_t` contexts. FLINT
+provides their finite abelian decomposition, Conrey data, conductors, orders,
+parity, primitivity, and character evaluation. The bridge translates Sage's
+historical first-component-fastest enumeration at its boundary. Character
+values cross back as root-of-unity exponents; Sage.js presents those values
+exactly in a cyclotomic basis and constructs `qqbar` roots only when algebraic
+operations or approximations require them.
+
 The `nmod_poly` API additionally provides GCD, irreducibility testing,
 factorization, and roots over word-sized prime fields. Factorization returns
 opaque native factors and a separate scalar unit. Sage.js wraps these as
