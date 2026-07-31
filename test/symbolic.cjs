@@ -148,6 +148,28 @@ async function main() {
     assert.equal(
       (
         await session.evaluate(
+          [
+            'de2=maxima("diff(y(t),t, 2) + 2*y(t) - 2*x(t)")',
+            'de2.laplace("t","s").sage()',
+          ].join("\n"),
+        )
+      ).repr,
+      "s^2*laplace(y(t), t, s) - s*y(0) - " +
+        "2*laplace(x(t), t, s) + 2*laplace(y(t), t, s) - " +
+        "D[0](y)(0)",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          'maxima.eval("f:bessel_y(v,w)")\n' +
+            'maxima.eval("diff(f,w)")',
+        )
+      ).repr,
+      "'(bessel_y(v-1,w)-bessel_y(v+1,w))/2'",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
           "x=var('x')\nsolve(sin(x)*cos(x)==0.1,x)",
         )
       ).repr,

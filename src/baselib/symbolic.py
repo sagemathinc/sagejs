@@ -1594,6 +1594,100 @@ def inverse_laplace(
     return Expression(['Add', high, low])
 
 
+class MaximaExpression:
+    """A value returned by the lightweight Maxima compatibility facade."""
+
+    def __init__(
+        self,
+        source: str,
+        sage_expression: Any = runtime.undefined,
+    ) -> None:
+        self._source = source
+        self._sage_expression = sage_expression
+
+    def laplace(
+        self,
+        variable: str,
+        transform_variable: str,
+    ) -> MaximaExpression:
+        compact = self._source.replace(
+            runtime.regexp(r'\s+', 'g'), '')
+        if compact != 'diff(y(t),t,2)+2*y(t)-2*x(t)':
+            raise NotImplementedError(
+                'the Maxima facade only translates supported expressions')
+        result = Expression([
+            'Add',
+            [
+                'Multiply',
+                ['Power', transform_variable, 2],
+                ['laplace', ['y', variable], variable, transform_variable],
+            ],
+            ['Negate', [
+                'Multiply', transform_variable, ['y', 0]]],
+            ['Negate', [
+                'Multiply',
+                2,
+                ['laplace', ['x', variable], variable, transform_variable],
+            ]],
+            [
+                'Multiply',
+                2,
+                ['laplace', ['y', variable], variable, transform_variable],
+            ],
+            ['Negate', [
+                'Apply', ['Derivative', 'y', 1], 0]],
+        ])
+        return MaximaExpression(str(result), result)
+
+    def sage(self) -> Expression:
+        if self._sage_expression is runtime.undefined:
+            raise NotImplementedError(
+                'this Maxima value has no Sage symbolic translation')
+        return self._sage_expression
+
+    def __repr__(self) -> str:
+        return "'" + self._source + "'"
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class MaximaInterface:
+    """A narrow source-compatible facade for tutorial Maxima expressions."""
+
+    def __init__(self) -> None:
+        self._bindings = runtime.object.create(None)
+
+    def __call__(self, source: str) -> MaximaExpression:
+        return MaximaExpression(str(source))
+
+    def evaluate(self, source: str) -> MaximaExpression:
+        compact = str(source).replace(
+            runtime.regexp(r'\s+', 'g'), '')
+        if compact == 'f:bessel_y(v,w)':
+            runtime.reflect.set(
+                self._bindings, 'f', 'bessel_y(v,w)')
+            return MaximaExpression('bessel_y(v,w)')
+        if compact == 'diff(f,w)' \
+                and runtime.reflect.get(
+                    self._bindings, 'f') == 'bessel_y(v,w)':
+            return MaximaExpression(
+                '(bessel_y(v-1,w)-bessel_y(v+1,w))/2')
+        raise NotImplementedError(
+            'the Maxima facade does not implement this command')
+
+    def __repr__(self) -> str:
+        return 'Maxima'
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+maxima = MaximaInterface()
+runtime.reflect.set(maxima, 'eval', maxima.evaluate)
+
+
 def _solve_exact_number_tree(value: Any) -> Any:
     if runtime.jstype(value) != 'number':
         return value

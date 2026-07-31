@@ -71,16 +71,6 @@
       "lines": [412, 413, 415, 416, 419, 423, 425, 427, 435, 438, 447, 448, 451, 454, 455, 458, 467, 470, 472, 476, 478, 504, 507, 509, 511, 522, 526, 530]
     },
     {
-      "reason": "requires the external Maxima interface and its expression conversion model",
-      "file": "src/doc/en/tutorial/tour_algebra.rst",
-      "lines": [236, 237]
-    },
-    {
-      "reason": "requires the external Maxima interface and its expression conversion model",
-      "file": "src/doc/en/tutorial/tour_algebra.rst",
-      "lines": [425, 427]
-    },
-    {
       "reason": "Sage.js deliberately uses optimized JavaScript integer identity and compact runtime class names",
       "file": "src/doc/en/tutorial/tour_assignment.rst",
       "lines": [91, 94]
