@@ -103,6 +103,51 @@ async function main() {
     assert.equal(
       (
         await session.evaluate(
+          "t=var('t')\n" +
+            "u=function('u')(t)\n" +
+            "desolve(diff(u,t)+u-1,[u,t])",
+        )
+      ).repr,
+      "(_C + e^t)*e^(-t)",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "s=var('s')\n" +
+            "f=t^2*exp(t)-sin(t)\n" +
+            "f.laplace(t,s).simplify_rational()",
+        )
+      ).repr,
+      "-(s^3 - 5*s^2 + 3*s - 3)/" +
+        "(s^5 - 3*s^4 + 4*s^3 - 4*s^2 + 3*s - 1)",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "t,s=SR.var('t,s')",
+            "u=function('u')",
+            "v=function('v')",
+            "f=2*u(t).diff(t,2)+6*u(t)-2*v(t)",
+            "f.laplace(t,s)",
+          ].join("\n"),
+        )
+      ).repr,
+      "2*s^2*laplace(u(t), t, s) - 2*s*u(0) + " +
+        "6*laplace(u(t), t, s) - 2*laplace(v(t), t, s) - " +
+        "2*D[0](u)(0)",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "inverse_laplace((3*s^3+15*s)/(s^4+5*s^2+4),s,t)",
+        )
+      ).repr,
+      "-cos(2*t) + 4*cos(t)",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
           "x=var('x')\nsolve(sin(x)*cos(x)==0.1,x)",
         )
       ).repr,

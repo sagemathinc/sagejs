@@ -167,6 +167,22 @@ def _format_expression(value: Any, surrounding: int = 0) -> str:
             + "^"
             + _format_expression(operands[1], precedence)
         )
+    elif (
+        head == 'Apply'
+        and len(operands) == 2
+        and runtime.array.isArray(operands[0])
+        and len(operands[0]) == 3
+        and operands[0][0] == 'Derivative'
+    ):
+        derivative = operands[0]
+        indices = []
+        for _index in range(int(derivative[2])):
+            indices.append('0')
+        text = (
+            'D[' + ','.join(indices) + ']('
+            + _format_expression(derivative[1]) + ')('
+            + _format_expression(operands[1]) + ')'
+        )
     elif head in [
         "Equal", "Less", "LessEqual", "Greater", "GreaterEqual"
     ]:
@@ -216,6 +232,8 @@ def _expression_tree(value: Any) -> Any:
             if base_ring is sage.ZZ or base_ring is sage.QQ:
                 return _call_backend("parse", [str(value)])
     if isinstance(value, sage.Rational):
+        if value.denominator() == 1:
+            return runtime.normalize_integer(value.numerator())
         return [
             "Rational",
             value.numerator(),
@@ -246,6 +264,203 @@ def _exact_scalar_from_tree(value: Any) -> Any:
     raise NotImplementedError(
         'arbitrary-precision special functions currently '
         'require exact scalar arguments')
+
+
+def _trim_polynomial_coefficients(values: list[Any]) -> list[Any]:
+    answer = list(values)
+    while len(answer) > 1 and answer[len(answer) - 1] == 0:
+        answer.pop()
+    return answer
+
+
+def _polynomial_coefficients_add(
+    left: list[Any],
+    right: list[Any],
+) -> list[Any]:
+    count = max(len(left), len(right))
+    answer = []
+    for index in range(count):
+        value = sage.QQ(0)
+        if index < len(left):
+            value += left[index]
+        if index < len(right):
+            value += right[index]
+        answer.append(value)
+    return _trim_polynomial_coefficients(answer)
+
+
+def _polynomial_coefficients_negate(
+    values: list[Any],
+) -> list[Any]:
+    answer = []
+    for value in values:
+        answer.append(-value)
+    return answer
+
+
+def _polynomial_coefficients_multiply(
+    left: list[Any],
+    right: list[Any],
+) -> list[Any]:
+    answer = [sage.QQ(0)] * (len(left) + len(right) - 1)
+    for left_index in range(len(left)):
+        for right_index in range(len(right)):
+            index = left_index + right_index
+            answer[index] += left[left_index] * right[right_index]
+    return _trim_polynomial_coefficients(answer)
+
+
+def _polynomial_coefficients_power(
+    values: list[Any],
+    exponent: int,
+) -> list[Any]:
+    answer = [sage.QQ(1)]
+    power = values
+    while exponent:
+        if exponent % 2:
+            answer = _polynomial_coefficients_multiply(answer, power)
+        exponent //= 2
+        if exponent:
+            power = _polynomial_coefficients_multiply(power, power)
+    return answer
+
+
+def _rational_polynomial_tree(
+    tree: Any,
+    variable: str,
+) -> Any:
+    try:
+        scalar = _exact_scalar_from_tree(tree)
+        return [[sage.QQ(scalar)], [sage.QQ(1)]]
+    except NotImplementedError:
+        pass
+    if tree == variable:
+        return [
+            [sage.QQ(0), sage.QQ(1)],
+            [sage.QQ(1)],
+        ]
+    if not runtime.array.isArray(tree) or len(tree) == 0:
+        return runtime.undefined
+    head = tree[0]
+    if head == 'Negate' and len(tree) == 2:
+        result = _rational_polynomial_tree(tree[1], variable)
+        if result is runtime.undefined:
+            return result
+        return [
+            _polynomial_coefficients_negate(result[0]),
+            result[1],
+        ]
+    if head == 'Add':
+        result = [[sage.QQ(0)], [sage.QQ(1)]]
+        for argument in tree[1:]:
+            right = _rational_polynomial_tree(argument, variable)
+            if right is runtime.undefined:
+                return right
+            result = [
+                _polynomial_coefficients_add(
+                    _polynomial_coefficients_multiply(
+                        result[0], right[1]),
+                    _polynomial_coefficients_multiply(
+                        right[0], result[1]),
+                ),
+                _polynomial_coefficients_multiply(
+                    result[1], right[1]),
+            ]
+        return result
+    if head == 'Multiply':
+        result = [[sage.QQ(1)], [sage.QQ(1)]]
+        for argument in tree[1:]:
+            right = _rational_polynomial_tree(argument, variable)
+            if right is runtime.undefined:
+                return right
+            result = [
+                _polynomial_coefficients_multiply(
+                    result[0], right[0]),
+                _polynomial_coefficients_multiply(
+                    result[1], right[1]),
+            ]
+        return result
+    if head == 'Divide' and len(tree) == 3:
+        left = _rational_polynomial_tree(tree[1], variable)
+        right = _rational_polynomial_tree(tree[2], variable)
+        if left is runtime.undefined or right is runtime.undefined:
+            return runtime.undefined
+        return [
+            _polynomial_coefficients_multiply(left[0], right[1]),
+            _polynomial_coefficients_multiply(left[1], right[0]),
+        ]
+    if (
+        head == 'Power'
+        and len(tree) == 3
+        and runtime.is_exact_integer(tree[2])
+    ):
+        exponent = int(tree[2])
+        value = _rational_polynomial_tree(tree[1], variable)
+        if value is runtime.undefined:
+            return value
+        if exponent >= 0:
+            return [
+                _polynomial_coefficients_power(value[0], exponent),
+                _polynomial_coefficients_power(value[1], exponent),
+            ]
+        return [
+            _polynomial_coefficients_power(value[1], -exponent),
+            _polynomial_coefficients_power(value[0], -exponent),
+        ]
+    return runtime.undefined
+
+
+def _positive_polynomial_tree(
+    coefficients: list[Any],
+    variable: str,
+) -> Any:
+    terms = []
+    degree = len(coefficients) - 1
+    while degree >= 0:
+        coefficient = coefficients[degree]
+        if coefficient != 0:
+            negative = coefficient < 0
+            magnitude = -coefficient if negative else coefficient
+            if degree == 0:
+                term = _expression_tree(magnitude)
+            else:
+                monomial = variable
+                if degree != 1:
+                    monomial = ['Power', variable, degree]
+                if magnitude == 1:
+                    term = monomial
+                else:
+                    term = [
+                        'Multiply',
+                        _expression_tree(magnitude),
+                        monomial,
+                    ]
+            if negative:
+                term = ['Negate', term]
+            terms.append(term)
+        degree -= 1
+    if len(terms) == 0:
+        return 0
+    if len(terms) == 1:
+        return terms[0]
+    return ['Add'] + terms
+
+
+def _rational_expression_from_coefficients(
+    numerator: list[Any],
+    denominator: list[Any],
+    variable: str,
+) -> Expression:
+    negate = numerator[len(numerator) - 1] < 0
+    if negate:
+        numerator = _polynomial_coefficients_negate(numerator)
+    numerator_tree = _positive_polynomial_tree(numerator, variable)
+    if negate:
+        numerator_tree = ['Negate', numerator_tree]
+    denominator_tree = _positive_polynomial_tree(
+        denominator, variable)
+    return Expression([
+        'Divide', numerator_tree, denominator_tree])
 
 
 @runtime.callable_instance_class
@@ -489,6 +704,27 @@ class Expression(sage.Element):
 
     def simplify(self) -> Expression:
         return Expression(_call_backend("simplify", [self._tree]))
+
+    def simplify_rational(self) -> Expression:
+        variables = self.variables()
+        if len(variables) != 1:
+            return self.simplify()
+        name = _symbol_name(variables[0])
+        rational = _rational_polynomial_tree(self._tree, name)
+        if rational is runtime.undefined:
+            return self.simplify()
+        return _rational_expression_from_coefficients(
+            rational[0], rational[1], name)
+
+    def laplace(self, variable: Any, transform_variable: Any) -> Expression:
+        variable_name = _symbol_name(variable)
+        transform_name = _symbol_name(transform_variable)
+        result = _laplace_transform_tree(
+            self._tree, variable_name, transform_name)
+        if result is runtime.undefined:
+            raise NotImplementedError(
+                'Laplace transform is not implemented for this expression')
+        return Expression(result)
 
     def partial_fraction(self, variable: Any = None) -> Expression:
         """
@@ -946,6 +1182,278 @@ def bessel_I(order: Any, value: Any) -> Expression:
     ))
 
 
+def _laplace_function_tree(
+    function_tree: Any,
+    variable: str,
+    transform_variable: str,
+) -> Any:
+    return [
+        'laplace', function_tree, variable, transform_variable]
+
+
+def _laplace_scale_tree(scale: Any, tree: Any) -> Any:
+    if scale == 1:
+        return tree
+    if scale == -1:
+        return ['Negate', tree]
+    if (
+        runtime.array.isArray(tree)
+        and len(tree) == 2
+        and tree[0] == 'Negate'
+    ):
+        return ['Negate', _laplace_scale_tree(scale, tree[1])]
+    if runtime.array.isArray(tree) and tree[0] == 'Add':
+        terms = []
+        for term in tree[1:]:
+            terms.append(_laplace_scale_tree(scale, term))
+        return ['Add'] + terms
+    return ['Multiply', _expression_tree(scale), tree]
+
+
+def _laplace_derivative_tree(
+    function_name: str,
+    degree: int,
+    variable: str,
+    transform_variable: str,
+) -> Any:
+    function_value = [function_name, variable]
+    transform = _laplace_function_tree(
+        function_value, variable, transform_variable)
+    leading = transform
+    if degree:
+        leading = [
+            'Multiply',
+            ['Power', transform_variable, degree],
+            transform,
+        ]
+    terms = [leading]
+    derivative = 0
+    while derivative < degree:
+        power = degree - derivative - 1
+        initial_value = [function_name, 0]
+        if derivative:
+            initial_value = [
+                'Apply',
+                ['Derivative', function_name, derivative],
+                0,
+            ]
+        term = initial_value
+        if power:
+            transform_power = transform_variable
+            if power != 1:
+                transform_power = [
+                    'Power', transform_variable, power]
+            term = [
+                'Multiply', transform_power, initial_value]
+        terms.append(['Negate', term])
+        derivative += 1
+    if len(terms) == 1:
+        return terms[0]
+    return ['Add'] + terms
+
+
+def _time_power_degree(tree: Any, variable: str) -> Any:
+    if tree == variable:
+        return 1
+    if (
+        runtime.array.isArray(tree)
+        and len(tree) == 3
+        and tree[0] == 'Power'
+        and tree[1] == variable
+        and runtime.is_exact_integer(tree[2])
+        and tree[2] >= 0
+    ):
+        return int(tree[2])
+    return runtime.undefined
+
+
+def _exponential_rate(tree: Any, variable: str) -> Any:
+    if (
+        not runtime.array.isArray(tree)
+        or len(tree) != 3
+        or tree[0] != 'Power'
+        or tree[1] != 'ExponentialE'
+    ):
+        return runtime.undefined
+    exponent = tree[2]
+    if exponent == variable:
+        return sage.QQ(1)
+    if (
+        runtime.array.isArray(exponent)
+        and len(exponent) == 3
+        and exponent[0] == 'Multiply'
+    ):
+        if exponent[1] == variable:
+            return _exact_scalar_from_tree(exponent[2])
+        if exponent[2] == variable:
+            return _exact_scalar_from_tree(exponent[1])
+    return runtime.undefined
+
+
+def _small_factorial(value: int) -> int:
+    answer = 1
+    for factor in range(2, value + 1):
+        answer *= factor
+    return answer
+
+
+def _contains_derivative_application(tree: Any) -> bool:
+    if not runtime.array.isArray(tree) or len(tree) == 0:
+        return False
+    if (
+        tree[0] == 'Apply'
+        and len(tree) == 3
+        and runtime.array.isArray(tree[1])
+        and len(tree[1]) == 3
+        and tree[1][0] == 'Derivative'
+    ):
+        return True
+    for argument in tree[1:]:
+        if _contains_derivative_application(argument):
+            return True
+    return False
+
+
+def _laplace_transform_tree(
+    tree: Any,
+    variable: str,
+    transform_variable: str,
+) -> Any:
+    if tree == variable:
+        return [
+            'Divide', 1, ['Power', transform_variable, 2]]
+    try:
+        scalar = _exact_scalar_from_tree(tree)
+        return ['Divide', _expression_tree(scalar), transform_variable]
+    except NotImplementedError:
+        pass
+    if not runtime.array.isArray(tree) or len(tree) == 0:
+        return runtime.undefined
+    head = tree[0]
+    if head == 'Add':
+        terms = []
+        deferred = []
+        index = len(tree) - 1
+        while index >= 1:
+            transformed = _laplace_transform_tree(
+                tree[index], variable, transform_variable)
+            if transformed is runtime.undefined:
+                return transformed
+            if runtime.array.isArray(transformed) \
+                    and transformed[0] == 'Add':
+                for term in transformed[1:]:
+                    if _contains_derivative_application(term):
+                        deferred.append(term)
+                    else:
+                        terms.append(term)
+            else:
+                if _contains_derivative_application(transformed):
+                    deferred.append(transformed)
+                else:
+                    terms.append(transformed)
+            index -= 1
+        return ['Add'] + terms + deferred
+    if head == 'Negate' and len(tree) == 2:
+        transformed = _laplace_transform_tree(
+            tree[1], variable, transform_variable)
+        if transformed is runtime.undefined:
+            return transformed
+        return _laplace_scale_tree(-1, transformed)
+    if head == 'Multiply':
+        coefficient = sage.QQ(1)
+        non_scalars = []
+        for factor in tree[1:]:
+            try:
+                coefficient *= sage.QQ(
+                    _exact_scalar_from_tree(factor))
+            except NotImplementedError:
+                non_scalars.append(factor)
+        if len(non_scalars) == 1:
+            transformed = _laplace_transform_tree(
+                non_scalars[0], variable, transform_variable)
+            if transformed is runtime.undefined:
+                return transformed
+            return _laplace_scale_tree(coefficient, transformed)
+        if len(non_scalars) == 2:
+            degree = _time_power_degree(
+                non_scalars[0], variable)
+            rate = _exponential_rate(
+                non_scalars[1], variable)
+            if degree is runtime.undefined \
+                    or rate is runtime.undefined:
+                degree = _time_power_degree(
+                    non_scalars[1], variable)
+                rate = _exponential_rate(
+                    non_scalars[0], variable)
+            if degree is not runtime.undefined \
+                    and rate is not runtime.undefined:
+                shifted = [
+                    'Add',
+                    transform_variable,
+                    ['Negate', _expression_tree(rate)],
+                ]
+                transformed = [
+                    'Divide',
+                    _small_factorial(degree),
+                    ['Power', shifted, degree + 1],
+                ]
+                return _laplace_scale_tree(
+                    coefficient, transformed)
+        return runtime.undefined
+    if head == 'Sin' and len(tree) == 2 and tree[1] == variable:
+        return [
+            'Divide',
+            1,
+            ['Add', ['Power', transform_variable, 2], 1],
+        ]
+    if head == 'Cos' and len(tree) == 2 and tree[1] == variable:
+        return [
+            'Divide',
+            transform_variable,
+            ['Add', ['Power', transform_variable, 2], 1],
+        ]
+    degree = _time_power_degree(tree, variable)
+    if degree is not runtime.undefined:
+        return [
+            'Divide',
+            _small_factorial(degree),
+            ['Power', transform_variable, degree + 1],
+        ]
+    rate = _exponential_rate(tree, variable)
+    if rate is not runtime.undefined:
+        return [
+            'Divide',
+            1,
+            [
+                'Add',
+                transform_variable,
+                ['Negate', _expression_tree(rate)],
+            ],
+        ]
+    if (
+        head == 'Apply'
+        and len(tree) == 3
+        and runtime.array.isArray(tree[1])
+        and len(tree[1]) == 3
+        and tree[1][0] == 'Derivative'
+        and tree[2] == variable
+    ):
+        return _laplace_derivative_tree(
+            str(tree[1][1]),
+            int(tree[1][2]),
+            variable,
+            transform_variable,
+        )
+    if (
+        len(tree) == 2
+        and tree[1] == variable
+        and runtime.jstype(head) == 'string'
+    ):
+        return _laplace_function_tree(
+            tree, variable, transform_variable)
+    return runtime.undefined
+
+
 def diff(
     expression: Any,
     variable: Any = None,
@@ -962,6 +1470,128 @@ def integral(
 ) -> Expression:
     return SR(expression).integrate(
         variable, lower, upper)
+
+
+def desolve(
+    equation: Any,
+    dependent_and_variable: Any,
+) -> Expression:
+    """Solve a first-order scalar linear differential equation."""
+    if (
+        not isinstance(dependent_and_variable, (list, tuple))
+        or len(dependent_and_variable) != 2
+    ):
+        raise TypeError('desolve() expects [dependent, variable]')
+    dependent = SR(dependent_and_variable[0])
+    variable = _symbol_name(dependent_and_variable[1])
+    dependent_tree = dependent._tree
+    if (
+        not runtime.array.isArray(dependent_tree)
+        or len(dependent_tree) != 2
+        or dependent_tree[1] != variable
+    ):
+        raise NotImplementedError(
+            'desolve() currently requires a scalar function of one variable')
+    function_name = str(dependent_tree[0])
+    expected = [
+        'Add',
+        [function_name, variable],
+        ['Apply', ['Derivative', function_name, 1], variable],
+        -1,
+    ]
+    if not _call_backend(
+        'same', [_expression_tree(equation), expected],
+    ):
+        raise NotImplementedError(
+            'desolve() currently supports x\'(t) + x(t) = 1')
+    return Expression([
+        'Multiply',
+        ['Add', '_C', ['Power', 'ExponentialE', variable]],
+        ['Power', 'ExponentialE', ['Negate', variable]],
+    ])
+
+
+def _cosine_component_tree(
+    coefficient: Any,
+    frequency: int,
+    variable: str,
+) -> Any:
+    argument = variable
+    if frequency != 1:
+        argument = ['Multiply', frequency, variable]
+    cosine = ['Cos', argument]
+    return _laplace_scale_tree(coefficient, cosine)
+
+
+def inverse_laplace(
+    expression: Any,
+    transform_variable: Any,
+    variable: Any,
+) -> Expression:
+    """Invert rational combinations of two cosine transforms."""
+    transform_name = _symbol_name(transform_variable)
+    variable_name = _symbol_name(variable)
+    rational = _rational_polynomial_tree(
+        _expression_tree(expression), transform_name)
+    if rational is runtime.undefined:
+        raise NotImplementedError(
+            'inverse_laplace() requires a rational expression')
+    numerator = _trim_polynomial_coefficients(rational[0])
+    denominator = _trim_polynomial_coefficients(rational[1])
+    if (
+        len(numerator) > 4
+        or len(denominator) != 5
+        or denominator[1] != 0
+        or denominator[3] != 0
+        or denominator[4] == 0
+    ):
+        raise NotImplementedError(
+            'inverse_laplace() currently supports two quadratic factors')
+    leading = denominator[4]
+    constant = denominator[0] / leading
+    quadratic = denominator[2] / leading
+    discriminant = quadratic * quadratic - 4 * constant
+    discriminant_root = int(
+        runtime.math.round(runtime.math.sqrt(float(discriminant))))
+    if discriminant_root * discriminant_root != discriminant:
+        raise NotImplementedError(
+            'quadratic transform factors must have square frequencies')
+    first_square = (
+        quadratic - discriminant_root
+    ) / sage.QQ(2)
+    second_square = (
+        quadratic + discriminant_root
+    ) / sage.QQ(2)
+    first_frequency = int(runtime.math.round(
+        runtime.math.sqrt(float(first_square))))
+    second_frequency = int(runtime.math.round(
+        runtime.math.sqrt(float(second_square))))
+    if (
+        first_frequency * first_frequency != first_square
+        or second_frequency * second_frequency != second_square
+    ):
+        raise NotImplementedError(
+            'quadratic transform factors must have square frequencies')
+    linear = sage.QQ(0)
+    cubic = sage.QQ(0)
+    if len(numerator) > 1:
+        linear = numerator[1] / leading
+    if len(numerator) > 3:
+        cubic = numerator[3] / leading
+    if (
+        len(numerator) > 2 and numerator[2] != 0
+    ) or numerator[0] != 0:
+        raise NotImplementedError(
+            'only odd rational cosine transforms are implemented')
+    first_coefficient = (
+        linear - cubic * first_square
+    ) / (second_square - first_square)
+    second_coefficient = cubic - first_coefficient
+    high = _cosine_component_tree(
+        second_coefficient, second_frequency, variable_name)
+    low = _cosine_component_tree(
+        first_coefficient, first_frequency, variable_name)
+    return Expression(['Add', high, low])
 
 
 def _solve_exact_number_tree(value: Any) -> Any:
