@@ -2410,6 +2410,77 @@ def vector(*args: Any) -> Vector:
     return VectorSpace(base, len(entries))(entries)
 
 
+def sudoku(puzzle: Matrix) -> Matrix:
+    r"""
+    Solve a 9-by-9 Sudoku puzzle represented by a matrix.
+
+    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.
+    The input matrix is not modified.  A `ValueError` is raised if the clues
+    are inconsistent or the puzzle has no solution.
+
+    ### Examples
+
+    ```sage
+    sage: A = matrix(ZZ, 9, [
+    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,
+    ....:     0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,
+    ....:     0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,
+    ....:     7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,
+    ....:     4,9,0,0,5,0,0,0,3])
+    sage: sudoku(A)[0]
+    (5, 1, 3, 6, 8, 7, 2, 4, 9)
+    ```
+    """
+    if not isinstance(puzzle, Matrix):
+        raise TypeError('sudoku puzzle must be a matrix')
+    if puzzle.nrows() != 9 or puzzle.ncols() != 9:
+        raise ValueError('sudoku puzzle must be a 9 by 9 matrix')
+    values = []
+    for row in range(9):
+        for column in range(9):
+            value = int(puzzle[row, column])
+            if value < 0 or value > 9:
+                raise ValueError('sudoku entries must be between 0 and 9')
+            values.append(value)
+
+    def allowed(position: int, digit: int) -> bool:
+        row = position // 9
+        column = position % 9
+        for index in range(9):
+            if values[row * 9 + index] == digit:
+                return False
+            if values[index * 9 + column] == digit:
+                return False
+        row_start = (row // 3) * 3
+        column_start = (column // 3) * 3
+        for row_offset in range(3):
+            for column_offset in range(3):
+                index = (
+                    (row_start + row_offset) * 9
+                    + column_start + column_offset
+                )
+                if values[index] == digit:
+                    return False
+        return True
+
+    def fill(position: int) -> bool:
+        while position < 81 and values[position] != 0:
+            position += 1
+        if position == 81:
+            return True
+        for digit in range(1, 10):
+            if allowed(position, digit):
+                values[position] = digit
+                if fill(position + 1):
+                    return True
+                values[position] = 0
+        return False
+
+    if not fill(0):
+        raise ValueError('sudoku puzzle has no solution')
+    return matrix(sage.ZZ, 9, 9, values)
+
+
 def kernel(value: Any) -> Any:
     return value.kernel()
 
@@ -2764,5 +2835,13 @@ runtime.register_doc(
             'Only algorithm=randomize is supported.',
             'Sparse output is not implemented.',
         ],
+    ),
+)
+runtime.register_doc(
+    'sudoku',
+    sudoku,
+    _matrix_doc(
+        ['constraint solving', 'games'],
+        'Solves Sage-compatible 9 by 9 integer Sudoku matrices.',
     ),
 )

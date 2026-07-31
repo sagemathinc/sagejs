@@ -2047,6 +2047,13 @@ def _builtins_signature(value: Any, name: _Str) -> _Str:
 
 
 def _builtins_doc(value: Any) -> _Str:
+    for entry in runtime.documentation_registry():
+        if entry[1] is value:
+            metadata_doc = _builtins_get_member(entry[2], 'doc')
+            if runtime.strict_equal(
+                runtime.jstype(metadata_doc), 'string'
+            ):
+                return metadata_doc
     doc = _builtins_get_member(value, '__doc__')
     if runtime.strict_equal(runtime.jstype(doc), 'string'):
         return doc
@@ -2178,6 +2185,40 @@ def ρσ_help(item: Any = runtime.undefined) -> None:
             'Welcome to Sage.js help.  '
             + 'Call help(object) for information about an object.')
         return
+
+    for entry in runtime.documentation_registry():
+        if entry[1] is item:
+            registered_name = entry[0]
+            metadata = entry[2]
+            metadata_doc = _builtins_get_member(metadata, 'doc')
+            if runtime.strict_equal(
+                runtime.jstype(metadata_doc), 'string'
+            ):
+                registered_kind = _builtins_get_member(
+                    metadata, 'kind')
+                if not runtime.strict_equal(
+                    runtime.jstype(registered_kind), 'string'
+                ):
+                    registered_kind = 'object'
+                registered_lines = [
+                    (
+                        'Help on ' + registered_kind + ' '
+                        + registered_name + ':'
+                    ),
+                    '',
+                ]
+                if registered_kind in [
+                    'function', 'method', 'class'
+                ]:
+                    registered_lines.append(
+                        _builtins_signature(item, registered_name))
+                    registered_lines.append('')
+                else:
+                    registered_lines.extend([registered_name, ''])
+                registered_lines.append(
+                    _builtins_indent_doc(metadata_doc.strip(), '    '))
+                ρσ_print(str.join('\n', registered_lines))
+                return
 
     if _builtins_is_python_class(item):
         text = _builtins_class_help(item, False)

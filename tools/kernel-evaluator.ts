@@ -355,6 +355,16 @@ export function createKernelEvaluator({
       } = {},
     ): KernelEvaluation {
       const started = performance.now();
+      let timed = false;
+      const timingMatch =
+        source.match(/^[ \t]*%time[ \t]+/) ??
+        (language === "sage"
+          ? source.match(/^[ \t]*time[ \t]+/)
+          : null);
+      if (timingMatch) {
+        timed = true;
+        source = source.slice(timingMatch[0].length);
+      }
       const javascript = compile(source, filename, language);
       if (interruptState) Atomics.store(interruptState, 1, 1);
       let value: unknown;
@@ -374,9 +384,11 @@ export function createKernelEvaluator({
         value === undefined
           ? ""
           : String(global.ρσ_repr(value));
+      const durationMs = performance.now() - started;
+      if (timed) onOutput(`Wall time: ${durationMs.toFixed(3)}ms\n`);
       return {
         repr,
-        durationMs: performance.now() - started,
+        durationMs,
         display:
           suppressResult ||
           finalStatementIsAssignment ||

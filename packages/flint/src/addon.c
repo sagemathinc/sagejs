@@ -1,10 +1,13 @@
 #include <limits.h>
 #include <math.h>
 #include <stdint.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <node_api.h>
+#include <pthread.h>
 
 #include <flint/arith.h>
 #include <flint/flint.h>
@@ -226,6 +229,269 @@ static int bigint_to_modulus(
         return 0;
     }
     return 1;
+}
+
+static ulong mul_mod_word(ulong left, ulong right, ulong modulus)
+{
+    return (ulong) (((__uint128_t) left * right) % modulus);
+}
+
+static slong elliptic_ap_integral(
+    fmpz_t coefficients[5],
+    ulong prime,
+    unsigned char *quadratic_residues)
+{
+    ulong a1 = fmpz_fdiv_ui(coefficients[0], prime);
+    ulong a2 = fmpz_fdiv_ui(coefficients[1], prime);
+    ulong a3 = fmpz_fdiv_ui(coefficients[2], prime);
+    ulong a4 = fmpz_fdiv_ui(coefficients[3], prime);
+    ulong a6 = fmpz_fdiv_ui(coefficients[4], prime);
+    ulong x, y, points = 1;
+
+    if (prime == 2)
+    {
+        for (x = 0; x < prime; x++)
+        {
+            for (y = 0; y < prime; y++)
+            {
+                ulong left = (
+                    mul_mod_word(y, y, prime)
+                    + mul_mod_word(a1, mul_mod_word(x, y, prime), prime)
+                    + mul_mod_word(a3, y, prime)
+                ) % prime;
+                ulong right = (
+                    mul_mod_word(mul_mod_word(x, x, prime), x, prime)
+                    + mul_mod_word(a2, mul_mod_word(x, x, prime), prime)
+                    + mul_mod_word(a4, x, prime) + a6
+                ) % prime;
+                if (left == right) points++;
+            }
+        }
+        return (slong) prime + 1 - (slong) points;
+    }
+
+    memset(quadratic_residues, 0, prime);
+    for (y = 1; y < prime; y++)
+        quadratic_residues[mul_mod_word(y, y, prime)] = 1;
+    for (x = 0; x < prime; x++)
+    {
+        ulong x2 = mul_mod_word(x, x, prime);
+        ulong right = (
+            mul_mod_word(x2, x, prime)
+            + mul_mod_word(a2, x2, prime)
+            + mul_mod_word(a4, x, prime) + a6
+        ) % prime;
+        ulong linear = (mul_mod_word(a1, x, prime) + a3) % prime;
+        ulong discriminant = (
+            mul_mod_word(linear, linear, prime) + 4 * right
+        ) % prime;
+        if (discriminant == 0)
+            points++;
+        else if (quadratic_residues[discriminant])
+            points += 2;
+    }
+    return (slong) prime + 1 - (slong) points;
+}
+
+typedef struct
+{
+    fmpz_t *coefficients;
+    const ulong *primes;
+    size_t prime_count;
+    int64_t *ap_values;
+    ulong bound;
+    atomic_size_t next;
+} elliptic_ap_work;
+
+static void *elliptic_ap_worker(void *argument)
+{
+    elliptic_ap_work *work = (elliptic_ap_work *) argument;
+    unsigned char *quadratic_residues = malloc(work->bound + 1);
+    size_t index;
+    if (quadratic_residues == NULL)
+        return (void *) 1;
+    while ((index = atomic_fetch_add(&work->next, 1)) < work->prime_count)
+    {
+        ulong prime = work->primes[index];
+        work->ap_values[prime] = elliptic_ap_integral(
+            work->coefficients, prime, quadratic_residues);
+    }
+    free(quadratic_residues);
+    return NULL;
+}
+
+static napi_value elliptic_anlist_integral(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[7], result, entry;
+    fmpz_t coefficients[5], discriminant;
+    ulong bound, candidate, multiple, index;
+    ulong *smallest, *primes;
+    int64_t *values, *ap_values;
+    size_t prime_count = 0, prime_index = 0;
+    int initialized = 0;
+
+    if (!require_arguments(env, info, 7, args))
+        return NULL;
+    for (int i = 0; i < 5; i++)
+    {
+        fmpz_init(coefficients[i]);
+        initialized++;
+        if (!bigint_to_fmpz(env, args[i], coefficients[i]))
+            goto fail_before_alloc;
+    }
+    fmpz_init(discriminant);
+    initialized++;
+    if (!bigint_to_fmpz(env, args[5], discriminant) ||
+        !bigint_to_ulong(env, args[6], &bound))
+        goto fail_before_alloc;
+    if (bound >= UINT32_MAX)
+    {
+        napi_throw_range_error(env, NULL, "coefficient bound is too large");
+        goto fail_before_alloc;
+    }
+
+    smallest = calloc(bound + 1, sizeof(*smallest));
+    values = calloc(bound + 1, sizeof(*values));
+    ap_values = calloc(bound + 1, sizeof(*ap_values));
+    primes = malloc((bound + 1) * sizeof(*primes));
+    if (smallest == NULL || values == NULL || ap_values == NULL ||
+        primes == NULL)
+    {
+        free(smallest); free(values); free(ap_values);
+        free(primes);
+        napi_throw_error(env, NULL, "unable to allocate elliptic coefficients");
+        goto fail_before_alloc;
+    }
+
+    if (bound >= 1) values[1] = 1;
+    for (candidate = 2; candidate <= bound; candidate++)
+    {
+        if (smallest[candidate] == 0)
+        {
+            smallest[candidate] = candidate;
+            if (candidate <= bound / candidate)
+            {
+                for (multiple = candidate * candidate;
+                    multiple <= bound; multiple += candidate)
+                {
+                    if (smallest[multiple] == 0)
+                        smallest[multiple] = candidate;
+                }
+            }
+        }
+    }
+    for (candidate = 2; candidate <= bound; candidate++)
+    {
+        if (smallest[candidate] == candidate)
+            primes[prime_count++] = candidate;
+    }
+    if (prime_count > 0)
+    {
+        long available = sysconf(_SC_NPROCESSORS_ONLN);
+        size_t worker_count = (
+            bound < 1000 ? 1
+            : available < 1 ? 1
+            : available > 8 ? 8
+            : (size_t) available
+        );
+        pthread_t *workers = malloc(worker_count * sizeof(*workers));
+        elliptic_ap_work work;
+        int worker_error = 0;
+        if (workers == NULL)
+        {
+            napi_throw_error(env, NULL, "unable to allocate elliptic workers");
+            goto fail_after_alloc;
+        }
+        work.coefficients = coefficients;
+        work.primes = primes;
+        work.prime_count = prime_count;
+        work.ap_values = ap_values;
+        work.bound = bound;
+        atomic_init(&work.next, 0);
+        for (prime_index = 0; prime_index < worker_count; prime_index++)
+        {
+            if (pthread_create(
+                    &workers[prime_index], NULL,
+                    elliptic_ap_worker, &work) != 0)
+            {
+                worker_error = 1;
+                break;
+            }
+        }
+        for (size_t joined = 0; joined < prime_index; joined++)
+        {
+            void *worker_result = NULL;
+            pthread_join(workers[joined], &worker_result);
+            if (worker_result != NULL) worker_error = 1;
+        }
+        free(workers);
+        if (worker_error)
+        {
+            napi_throw_error(env, NULL, "elliptic coefficient worker failed");
+            goto fail_after_alloc;
+        }
+    }
+    for (index = 2; index <= bound; index++)
+    {
+        ulong prime = smallest[index];
+        ulong rest = index;
+        ulong exponent = 0, power;
+        int64_t previous = 1, current, prime_power_value = 1;
+        while (rest % prime == 0)
+        {
+            rest /= prime;
+            exponent++;
+        }
+        current = ap_values[prime];
+        for (power = 1; power <= exponent; power++)
+        {
+            if (power == 1)
+                prime_power_value = current;
+            else if (fmpz_fdiv_ui(discriminant, prime) == 0)
+                prime_power_value *= ap_values[prime];
+            else
+            {
+                int64_t next = (
+                    ap_values[prime] * current
+                    - (int64_t) prime * previous
+                );
+                previous = current;
+                current = next;
+                prime_power_value = current;
+            }
+        }
+        values[index] = values[rest] * prime_power_value;
+    }
+
+    if (!check_napi(env,
+        napi_create_array_with_length(env, bound + 1, &result)))
+        goto fail_after_alloc;
+    for (index = 0; index <= bound; index++)
+    {
+        if (!check_napi(env,
+                napi_create_int64(env, values[index], &entry)) ||
+            !check_napi(env,
+                napi_set_element(env, result, (uint32_t) index, entry)))
+            goto fail_after_alloc;
+    }
+    free(smallest); free(values); free(ap_values); free(primes);
+    for (int i = 0; i < initialized; i++)
+    {
+        if (i < 5) fmpz_clear(coefficients[i]);
+        else fmpz_clear(discriminant);
+    }
+    return result;
+
+fail_after_alloc:
+    free(smallest); free(values); free(ap_values); free(primes);
+fail_before_alloc:
+    for (int i = 0; i < initialized; i++)
+    {
+        if (i < 5) fmpz_clear(coefficients[i]);
+        else fmpz_clear(discriminant);
+    }
+    return NULL;
 }
 
 typedef enum
@@ -2613,6 +2879,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"polyCoefficients", NULL, poly_coefficients, NULL, NULL, NULL,
             napi_default, NULL},
+        {"ecAnlistIntegral", NULL, elliptic_anlist_integral,
+            NULL, NULL, NULL, napi_default, NULL},
         {"qqEisensteinSeries", NULL, qq_eisenstein_series,
             NULL, NULL, NULL, napi_default, NULL},
         {"nmodPolyGcd", NULL, nmod_poly_gcd_value, NULL, NULL, NULL,

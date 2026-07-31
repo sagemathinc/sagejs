@@ -95,6 +95,11 @@ assert.ok(
     approx: { relative: 1e-6 },
   }),
 );
+assert.ok(
+  matchesTutorialExpected("Wall time: 12.345ms\n", "old timing\n", {
+    regex: "^Wall time: [0-9.]+ms$",
+  }),
+);
 
 const rst = [
   "First section",

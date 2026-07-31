@@ -375,6 +375,37 @@ class EllipticCurveParent(sage.Parent):
         bound = int(bound)
         if bound < 0:
             raise ValueError('coefficient bound must be nonnegative')
+        integral_coefficients = []
+        integral_model = (
+            self._base is sage.QQ or self._base is sage.ZZ)
+        for coefficient in self._ainvs:
+            if (
+                hasattr(coefficient, '_denominator')
+                and coefficient._denominator != 1
+            ):
+                integral_model = False
+                break
+            if hasattr(coefficient, '_numerator'):
+                integral_coefficients.append(coefficient._numerator)
+            else:
+                integral_coefficients.append(
+                    runtime.integer_bigint(coefficient))
+        if integral_model:
+            discriminant = self.discriminant()
+            if hasattr(discriminant, '_numerator'):
+                native_discriminant = discriminant._numerator
+            else:
+                native_discriminant = runtime.integer_bigint(discriminant)
+            native_values = runtime.flint_backend().ecAnlistIntegral(
+                integral_coefficients[0],
+                integral_coefficients[1],
+                integral_coefficients[2],
+                integral_coefficients[3],
+                integral_coefficients[4],
+                native_discriminant,
+                runtime.bigint(bound),
+            )
+            return list(native_values)
         values = [0 for _index in range(bound + 1)]
         if bound == 0:
             return values

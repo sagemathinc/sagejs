@@ -299,7 +299,10 @@ export function documentationCatalogFromRegistry(
       value === null || value === undefined
         ? undefined
         : Reflect.get(Object(value), "__doc__");
-    const doc = typeof docValue === "string" ? docValue.trim() : "";
+    const metadataDoc =
+      typeof metadata.doc === "string" ? metadata.doc : "";
+    const doc =
+      (metadataDoc || (typeof docValue === "string" ? docValue : "")).trim();
     const moduleValue =
       typeof metadata.module === "string"
         ? metadata.module
@@ -307,13 +310,17 @@ export function documentationCatalogFromRegistry(
           ? ""
           : Reflect.get(Object(value), "__module__");
     const implementation = objectValue(metadata.implementation);
+    const kind = inferKind(name, value, metadata.kind);
     const normalized: DocumentationEntry = {
       schema_version: DOCSPEC_VERSION,
       name,
       aliases: stringArray(metadata.aliases),
-      kind: inferKind(name, value, metadata.kind),
+      kind,
       module: typeof moduleValue === "string" ? moduleValue : "",
-      signature: signature(value, name),
+      signature:
+        kind === "constant" || kind === "object"
+          ? name
+          : signature(value, name),
       summary: firstNonemptyLine(doc),
       doc,
       tags: stringArray(metadata.tags),

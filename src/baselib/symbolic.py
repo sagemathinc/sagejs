@@ -1136,6 +1136,21 @@ def cos(value: Any) -> Any:
 
 
 def tan(value: Any) -> Any:
+    r"""
+    Return the tangent of `value`.
+
+    Exact and symbolic arguments produce a symbolic expression, while
+    approximate real arguments are evaluated numerically.
+
+    ### Examples
+
+    ```sage
+    sage: tan(pi)
+    0
+    sage: tan(pi/4)
+    1
+    ```
+    """
     return _symbolic_function("Tan", value, runtime.math.tan)
 
 
@@ -1153,6 +1168,49 @@ def log(value: Any, base: Any = None) -> Any:
         return natural
     denominator = _symbolic_function("Ln", base, runtime.math.log)
     return (natural / denominator).simplify()
+
+
+log2 = Expression(['Ln', 2])
+
+runtime.register_doc(
+    'log2',
+    log2,
+    {
+        'kind': 'constant',
+        'module': 'sage.functions.constants',
+        'doc': r"""
+The natural logarithm of `2`.
+
+### Examples
+
+```sage
+sage: log2
+log(2)
+sage: float(log2)
+0.6931471805599453
+```
+""",
+        'tags': ['symbolic constants', 'logarithms'],
+        'backends': ['Sage.js symbolic engine'],
+        'sage_compatibility': {
+            'status': 'compatible',
+            'notes': (
+                'Sage.js displays this constant canonically as log(2).'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath symbolic constants API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'functions/sage/functions/constants.html'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+        ],
+    },
+)
 
 
 def floor(value: Any) -> Any:

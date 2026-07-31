@@ -76,3 +76,26 @@ test("elliptic-curve coefficients, labels, and bundled Cremona data", async () =
     await session.close();
   }
 });
+
+test("native integral elliptic coefficient sweep", async () => {
+  const session = await createSage();
+  try {
+    const started = performance.now();
+    assert.equal(
+      (
+        await session.evaluate(
+          "E = EllipticCurve([0,0,1,-1,0])\n" +
+            "[len(E.anlist(100000)), E.anlist(30)[30]]",
+          { timeout: 30_000 },
+        )
+      ).repr,
+      "[100001, -12]",
+    );
+    assert.ok(
+      performance.now() - started < 30_000,
+      "the tutorial-sized native coefficient sweep must stay interactive",
+    );
+  } finally {
+    await session.close();
+  }
+});

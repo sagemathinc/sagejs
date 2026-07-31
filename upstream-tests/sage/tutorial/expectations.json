@@ -1,7 +1,30 @@
 {
   "fixture": "guided-tour.doctests.json",
   "skip": {},
+  "run": {
+    "src/doc/en/tutorial/tour_advanced.rst:219": true,
+    "src/doc/en/tutorial/tour_help.rst:14": true,
+    "src/doc/en/tutorial/tour_help.rst:34": true,
+    "src/doc/en/tutorial/tour_help.rst:62": true,
+    "src/doc/en/tutorial/tour_help.rst:166": true,
+    "src/doc/en/tutorial/tour_linalg.rst:51": true
+  },
   "match": {
+    "src/doc/en/tutorial/tour_advanced.rst:219": {
+      "regex": "^Wall time: [0-9.]+ms$"
+    },
+    "src/doc/en/tutorial/tour_help.rst:14": {
+      "regex": "^Help on function tan[\\s\\S]*Return the tangent"
+    },
+    "src/doc/en/tutorial/tour_help.rst:34": {
+      "regex": "^Help on constant log2[\\s\\S]*natural logarithm"
+    },
+    "src/doc/en/tutorial/tour_help.rst:62": {
+      "regex": "^Help on function sudoku[\\s\\S]*Solve a 9-by-9 Sudoku"
+    },
+    "src/doc/en/tutorial/tour_help.rst:166": {
+      "regex": "^Error: Inconsistent indentation$"
+    },
     "src/doc/en/tutorial/tour_algebra.rst:93": {
       "accepted": ["[theta == 1/4*pi]\n"]
     },

@@ -4,6 +4,7 @@
 const { readFileSync, writeFileSync } = require("node:fs");
 const { basename, join, resolve } = require("node:path");
 const { createSage } = require("../dist/tools/kernel.js");
+const { rewriteQuestionMarkHelp } = require("../dist/tools/polyglot.js");
 const {
   matchesExpected,
   normalized,
@@ -98,9 +99,10 @@ async function evaluate(session, example, timeout) {
   try {
     let actual = "";
     for (const statement of splitTopLevelSemicolons(example.source)) {
+      const prepared = rewriteQuestionMarkHelp(statement, "sage");
       actual += actualText(
-        await session.evaluate(`${statement}\n`, { timeout }),
-        statement,
+        await session.evaluate(`${prepared}\n`, { timeout }),
+        prepared,
         example.want,
       );
     }
@@ -125,6 +127,10 @@ function matchesTutorialExpected(actual, wanted, rule) {
     )
   ) {
     return true;
+  }
+  if (typeof rule?.regex === "string") {
+    const matcher = new RegExp(rule.regex, "s");
+    if (matcher.test(normalized(actual))) return true;
   }
   if (wanted.includes("Traceback (most recent call last):")) {
     const exception = wanted
@@ -215,6 +221,7 @@ async function main() {
     fixture.groups.flatMap((group) => group.examples.map((example) => example.id)),
   );
   const skip = expectations.skip ?? {};
+  const run = expectations.run ?? {};
   const xfail = { ...(expectations.xfail ?? {}) };
   for (const group of expectations.xfailGroups ?? []) {
     const groupIds = group.ids ?? group.lines?.map(
@@ -236,6 +243,7 @@ async function main() {
   if (!options.only && !options.file && !options.section) {
     for (const id of [
       ...Object.keys(skip),
+      ...Object.keys(run),
       ...Object.keys(xfail),
       ...Object.keys(match),
     ]) {
@@ -280,7 +288,9 @@ async function main() {
     try {
       for (const example of group.examples) {
         const rstSkip = example.tags.find((tag) => tag.name === "skip");
-        const reason = skip[example.id] ?? rstSkip?.value;
+        const reason =
+          skip[example.id] ??
+          (run[example.id] ? undefined : rstSkip?.value);
         if (reason) {
           record(example, "skip", "", reason);
           if (options.verbose) {

@@ -591,6 +591,35 @@ Return whether `value` is prime, using FLINT's primality test.
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `log2`
+
+```sage
+log2
+```
+
+The natural logarithm of `2`.
+
+### Examples
+
+```sage
+sage: log2
+log(2)
+sage: float(log2)
+0.6931471805599453
+```
+
+### Metadata
+
+- Kind: `constant`
+- Module: `sage.functions.constants`
+- Tags: symbolic constants, logarithms
+- Backends: Sage.js symbolic engine
+- Sage compatibility: compatible — Sage.js displays this constant canonically as log(2).
+
+### Provenance
+
+- `sage-derived` — [SageMath symbolic constants API](https://doc.sagemath.org/html/en/reference/functions/sage/functions/constants.html); license GPL-2.0-or-later
+
 ## `matrix`
 
 ```sage
@@ -1194,6 +1223,49 @@ sage: Sp(4, GF(7)).order()
 ### Provenance
 
 - `sage-derived` — [SageMath finite groups API](https://doc.sagemath.org/html/en/reference/groups/); license GPL-2.0-or-later
+
+## `sudoku`
+
+```sage
+sudoku(puzzle)
+```
+
+Solve a 9-by-9 Sudoku puzzle represented by a matrix.
+
+Entries from 1 through 9 are fixed clues and zero denotes an empty cell.
+The input matrix is not modified.  A `ValueError` is raised if the clues
+are inconsistent or the puzzle has no solution.
+
+### Examples
+
+```sage
+sage: A = matrix(ZZ, 9, [
+....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,
+....:     0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,
+....:     0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,
+....:     7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,
+....:     4,9,0,0,5,0,0,0,3])
+sage: sudoku(A)[0]
+(5, 1, 3, 6, 8, 7, 2, 4, 9)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.matrix.constructor`
+- Tags: linear algebra, matrices, constraint solving, games
+- Backends: FLINT, Arb, ACB
+- Sage compatibility: partial — Solves Sage-compatible 9 by 9 integer Sudoku matrices.
+- Algorithm: Native FLINT dense matrices, including Arb/ACB approximate arithmetic
+
+### Provenance
+
+- `sage-derived` — [SageMath matrix API](https://doc.sagemath.org/html/en/reference/matrices/); license GPL-2.0-or-later
+- `library-backed` — [FLINT, Arb, and ACB](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
 ## `var`
 

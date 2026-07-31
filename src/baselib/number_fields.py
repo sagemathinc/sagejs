@@ -879,7 +879,7 @@ def NumberField(
     polynomial: Any,
     names: Any = None,
 ) -> NumberFieldParent:
-    """Construct the exact simple field ``QQ[a]/(polynomial)``."""
+    """Construct the exact simple field `QQ[a]/(polynomial)`."""
     polynomial = _number_field_polynomial(polynomial)
     if names is None:
         name = 'a'

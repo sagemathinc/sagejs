@@ -108,3 +108,22 @@ test("DocSpec rejects reStructuredText artifacts", () => {
     ],
   );
 });
+
+test("DocSpec supports documented constants without mutating their value", () => {
+  const value = Object.freeze({ value: Math.log(2) });
+  const catalog = documentationCatalogFromRegistry([
+    [
+      "log2",
+      value,
+      {
+        kind: "constant",
+        module: "sage.functions.constants",
+        doc: "The natural logarithm of `2`.",
+        provenance: [{ kind: "sagejs-original" }],
+      },
+    ],
+  ]);
+  assert.equal(catalog.entries[0].kind, "constant");
+  assert.equal(catalog.entries[0].signature, "log2");
+  assert.equal(catalog.entries[0].summary, "The natural logarithm of `2`.");
+});
