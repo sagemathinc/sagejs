@@ -1130,6 +1130,203 @@ class ManinSymbolBasisElement:
     toString = __repr__
 
 
+class ManinRelations:
+    """
+    Sparse weight-2 `Gamma_0(N)` Manin relations over `GF(p)`.
+
+    Rows use the two-term relations `x + S*x` and the three-term
+    relations `x + R*x + R^2*x`, stored in native compressed-row form.
+    """
+
+    def __init__(self, projective_line: P1List, modulus: Any) -> None:
+        self._projective_line = projective_line
+        self._modulus = _positive_integer(modulus, 'relation modulus')
+        if not sage.is_prime(self._modulus):
+            raise ValueError('relation modulus must be prime')
+        backend = runtime.flint_backend()
+        self._native = backend.p1ListManinRelations(
+            projective_line._native,
+            runtime.bigint(self._modulus),
+        )
+        self._info = backend.maninRelationsInfo(self._native)
+        self._rank_cache = None
+
+    def level(self) -> int:
+        return self._projective_line.N()
+
+    def modulus(self) -> int:
+        return self._modulus
+
+    def nrows(self) -> int:
+        return runtime.number(runtime.reflect.get(self._info, 'rows'))
+
+    def ncols(self) -> int:
+        return runtime.number(runtime.reflect.get(self._info, 'generators'))
+
+    def nnz(self) -> int:
+        return runtime.number(runtime.reflect.get(self._info, 'nonzero'))
+
+    def s_relations(self) -> int:
+        return runtime.number(runtime.reflect.get(self._info, 'sRelations'))
+
+    def r_relations(self) -> int:
+        return runtime.number(runtime.reflect.get(self._info, 'rRelations'))
+
+    def checksum(self) -> str:
+        return runtime.reflect.get(self._info, 'checksum')
+
+    def row(self, index: Any) -> Any:
+        index = _exact_nonnegative_integer(index, 'relation row')
+        raw = runtime.flint_backend().maninRelationsRow(
+            self._native, index)
+        entries = []
+        for position in range(0, len(raw), 2):
+            entries.append(runtime.math_tuple([
+                runtime.number(raw[position]),
+                runtime.normalize_integer(raw[position + 1]),
+            ]))
+        return runtime.math_tuple(entries)
+
+    def rank(self) -> int:
+        if self._rank_cache is None:
+            self._rank_cache = runtime.number(
+                runtime.flint_backend().maninRelationsRank(self._native))
+        return self._rank_cache
+
+    def quotient_dimension(self) -> int:
+        return self.ncols() - self.rank()
+
+    dimension = quotient_dimension
+
+    def __repr__(self) -> str:
+        return (
+            'Sparse Manin relation matrix with '
+            + str(self.nrows()) + ' rows, ' + str(self.ncols())
+            + ' columns, and ' + str(self.nnz())
+            + ' nonzero entries over Finite Field of size '
+            + str(self._modulus)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class P1List:
+    """
+    The projective line `P^1(Z/NZ)` with Sage-compatible representatives.
+
+    Representative storage and indexing are native. The constructor computes
+    the exact cardinality first, allocates once, fills the array, sorts it in
+    Sage order, and builds a fixed-size open-addressed index.
+
+    ```sage
+    sage: P = P1List(12)
+    sage: len(P)
+    24
+    sage: P.normalize(7, 15)
+    (1, 9)
+    sage: P.apply_S(P.apply_S(10))
+    10
+    ```
+    """
+
+    def __init__(self, level: Any) -> None:
+        self._level = _positive_integer(level, 'P1List level')
+        self._native = runtime.flint_backend().p1List(self._level)
+
+    def N(self) -> int:
+        return self._level
+
+    def __len__(self) -> int:
+        return runtime.number(
+            runtime.flint_backend().p1ListCount(self._native))
+
+    def __getitem__(self, index: Any) -> Any:
+        if hasattr(index, '__sagejs_slice__'):
+            start, stop, step = index.indices(len(self))
+            return [
+                self.__getitem__(position)
+                for position in range(start, stop, step)
+            ]
+        index = _exact_integer(index, 'P1List index')
+        if index < 0:
+            index += len(self)
+        raw = runtime.flint_backend().p1ListEntry(self._native, index)
+        return runtime.math_tuple([
+            runtime.number(raw[0]), runtime.number(raw[1])])
+
+    def list(self) -> list[Any]:
+        return [self.__getitem__(index) for index in range(len(self))]
+
+    def normalize(self, u: Any, v: Any) -> Any:
+        u = _exact_integer(u, 'projective numerator')
+        v = _exact_integer(v, 'projective denominator')
+        raw = runtime.flint_backend().p1ListNormalize(
+            self._native, u, v, 0)
+        return runtime.math_tuple([
+            runtime.number(raw[0]), runtime.number(raw[1])])
+
+    def normalize_with_scalar(self, u: Any, v: Any) -> Any:
+        u = _exact_integer(u, 'projective numerator')
+        v = _exact_integer(v, 'projective denominator')
+        raw = runtime.flint_backend().p1ListNormalize(
+            self._native, u, v, 1)
+        return runtime.math_tuple([
+            runtime.number(raw[0]),
+            runtime.number(raw[1]),
+            runtime.number(raw[2]),
+        ])
+
+    def index(self, u: Any, v: Any) -> int:
+        u = _exact_integer(u, 'projective numerator')
+        v = _exact_integer(v, 'projective denominator')
+        return runtime.number(runtime.flint_backend().p1ListIndex(
+            self._native, u, v))
+
+    def index_of_normalized_pair(self, u: Any, v: Any) -> int:
+        return self.index(u, v)
+
+    def _action_index(self, index: Any) -> int:
+        index = _exact_integer(index, 'P1List index')
+        if index < 0:
+            index += len(self)
+        return index
+
+    def apply_I(self, index: Any) -> int:
+        return runtime.number(runtime.flint_backend().p1ListApplyI(
+            self._native, self._action_index(index)))
+
+    def apply_S(self, index: Any) -> int:
+        return runtime.number(runtime.flint_backend().p1ListApplyS(
+            self._native, self._action_index(index)))
+
+    def apply_R(self, index: Any) -> int:
+        """Apply the order-three matrix `R = S*T^-1`."""
+        return runtime.number(runtime.flint_backend().p1ListApplyR(
+            self._native, self._action_index(index)))
+
+    def apply_T(self, index: Any) -> int:
+        """Apply SageMath's historical order-three `T` action."""
+        return self.apply_R(index)
+
+    def apply_translation(self, index: Any) -> int:
+        """Apply the translation matrix `[[1,1],[0,1]]`."""
+        return runtime.number(runtime.flint_backend().p1ListApplyT(
+            self._native, self._action_index(index)))
+
+    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:
+        return ManinRelations(self, modulus)
+
+    def __repr__(self) -> str:
+        return (
+            'The projective line over the integers modulo '
+            + str(self._level)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 def _modular_symbols_matrix(rows: list[list[Any]]) -> Any:
     matrix_constructor = runtime.reflect.get(
         runtime.global_object, 'matrix')
@@ -1256,6 +1453,7 @@ class ModularSymbolsSpace(sage.Parent):
         self._base = base_ring
         self._character = character
         self._ambient = ambient
+        self._p1list_cache = None
         if ambient is None:
             if character is not None:
                 cusp_dimension = dimension_cusp_forms(character, weight)
@@ -1320,6 +1518,21 @@ class ModularSymbolsSpace(sage.Parent):
         raise NotImplementedError(
             'a canonical basis is not available for this '
             'modular-symbol model')
+
+    def p1list(self) -> P1List:
+        if (
+            self._character is not None
+            or self._group._family != 'Gamma0'
+            or self._weight != 2
+        ):
+            raise NotImplementedError(
+                'native P1 lists currently model weight-2 Gamma0 spaces')
+        if self._p1list_cache is None:
+            self._p1list_cache = P1List(self.level())
+        return self._p1list_cache
+
+    def manin_relations(self, modulus: Any = 65521) -> ManinRelations:
+        return self.p1list().manin_relations(modulus)
 
     def T(self, index: Any) -> HeckeOperator:
         return HeckeOperator(
@@ -1690,6 +1903,129 @@ def _modular_space_doc(tags: list[str], extension: bool = False) -> Any:
 
 
 runtime.register_doc(
+    'P1List',
+    P1List,
+    {
+        'kind': 'class',
+        'module': 'sage.modular.modsym.p1list',
+        'tags': [
+            'number theory',
+            'modular symbols',
+            'projective line',
+            'Manin relations',
+        ],
+        'backends': ['Sage.js native C', 'FLINT nmod_mat'],
+        'sage_compatibility': {
+            'status': 'compatible',
+            'notes': (
+                'Representative ordering, normalization, I, S, and the '
+                'historical order-three T action agree with SageMath. '
+                'apply_R and apply_translation are explicit extensions.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath P1List implementation',
+                'url': (
+                    'https://github.com/sagemath/sage/blob/develop/'
+                    'src/sage/modular/modsym/p1list.pyx'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'sagejs-original',
+                'source': 'William Stein JSage Zig P1List',
+                'revision': '2582234b6f76f8a5e1cecae319ae1a098d9b3c50',
+                'url': (
+                    'https://github.com/sagemathinc/JSage/blob/'
+                    '2582234b6f76f8a5e1cecae319ae1a098d9b3c50/'
+                    'lib/src/modular/p1list.zig'
+                ),
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Exact cardinality preallocation, canonical normalization, '
+                'lexicographic representatives, and open-addressed indexing'
+            ),
+        },
+        'limitations': [
+            'Levels are currently limited to signed 32-bit positive integers.',
+            (
+                'Relation rank currently uses dense FLINT elimination below '
+                'a safety threshold; scalable sparse elimination is next.'
+            ),
+        ],
+    },
+)
+runtime.register_doc(
+    'ManinRelations',
+    ManinRelations,
+    {
+        'kind': 'class',
+        'module': 'sage.modular.modsym.manin_symbol_list',
+        'tags': [
+            'number theory',
+            'modular symbols',
+            'sparse matrices',
+            'finite fields',
+        ],
+        'backends': ['Sage.js native CSR', 'FLINT nmod_mat'],
+        'sage_compatibility': {
+            'status': 'extension',
+            'notes': (
+                'This explicit relation-matrix object is a Sage.js API. '
+                'Its quotient dimension agrees with weight-2 Gamma0 '
+                'modular symbols away from bad reduction characteristics.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'literature-implemented',
+                'source': (
+                    'William Stein, Modular Forms: '
+                    'A Computational Approach'
+                ),
+                'url': 'https://wstein.org/books/modform/',
+            },
+            {
+                'kind': 'sagejs-original',
+                'source': (
+                    'Pre-sized native compressed-row relation builder'
+                ),
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Orbit representatives for x + S*x and '
+                'x + R*x + R^2*x over a prime field'
+            ),
+        },
+        'references': [
+            {
+                'id': 'stein-modform',
+                'type': 'book',
+                'title': 'Modular Forms: A Computational Approach',
+                'authors': ['William Stein'],
+                'year': 2007,
+                'url': 'https://wstein.org/books/modform/',
+                'relevant_sections': ['Modular symbols'],
+            },
+        ],
+        'limitations': [
+            (
+                'Rank conversion currently uses dense FLINT elimination '
+                'below 20 million matrix cells.'
+            ),
+            (
+                'Boundary maps, cuspidal subspaces, Hecke actions, and '
+                'rational lifting are not yet part of this object.'
+            ),
+        ],
+    },
+)
+runtime.register_doc(
     'dimension_cusp_forms',
     dimension_cusp_forms,
     _modular_dimension_doc(['cusp forms', 'Dirichlet characters']),
@@ -1730,14 +2066,19 @@ runtime.register_doc(
             'Hecke operators',
             'q-expansions',
         ],
-        'backends': ['FLINT', 'Sage.js exact Hecke models'],
+        'backends': [
+            'FLINT',
+            'Sage.js native P1List and Manin relations',
+            'Sage.js exact Hecke models',
+        ],
         'sage_compatibility': {
             'status': 'partial',
             'notes': (
-                'Space dimensions are formula-driven. The exact level 1, '
-                'level 11, and character-level 13 guided-tour Hecke models '
-                'provide bases, characteristic polynomials, matrices, and '
-                'cuspidal q-expansions.'
+                'Weight-2 Gamma0 spaces expose native P1 representatives '
+                'and Manin relations over machine-word prime fields. The '
+                'exact level 1, level 11, and character-level 13 guided-tour '
+                'Hecke models provide bases, characteristic polynomials, '
+                'matrices, and cuspidal q-expansions.'
             ),
         },
         'provenance': [
@@ -1763,10 +2104,8 @@ runtime.register_doc(
                 'Hecke data beyond the documented level 1, level 11, and '
                 'character-level 13 models is not yet computed.'
             ),
-            (
-                'The general Manin-symbol relation and sparse Hecke engine '
-                'remains future work.'
-            ),
+            'General-weight and character Manin relations are not yet built.',
+            'The scalable sparse Hecke and elimination engine remains future work.',
         ],
     },
 )

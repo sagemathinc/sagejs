@@ -620,6 +620,36 @@ sage: float(log2)
 
 - `sage-derived` — [SageMath symbolic constants API](https://doc.sagemath.org/html/en/reference/functions/sage/functions/constants.html); license GPL-2.0-or-later
 
+## `ManinRelations`
+
+```sage
+ManinRelations(projective_line, modulus)
+```
+
+Sparse weight-2 `Gamma_0(N)` Manin relations over `GF(p)`.
+
+Rows use the two-term relations `x + S*x` and the three-term
+relations `x + R*x + R^2*x`, stored in native compressed-row form.
+
+### Metadata
+
+- Kind: `class`
+- Module: `sage.modular.modsym.manin_symbol_list`
+- Tags: number theory, modular symbols, sparse matrices, finite fields
+- Backends: Sage.js native CSR, FLINT nmod_mat
+- Sage compatibility: extension — This explicit relation-matrix object is a Sage.js API. Its quotient dimension agrees with weight-2 Gamma0 modular symbols away from bad reduction characteristics.
+- Algorithm: Orbit representatives for x + S*x and x + R*x + R^2*x over a prime field
+- Limitations: Rank conversion currently uses dense FLINT elimination below 20 million matrix cells. Boundary maps, cuspidal subspaces, Hecke actions, and rational lifting are not yet part of this object.
+
+### Provenance
+
+- `literature-implemented` — [William Stein, Modular Forms: A Computational Approach](https://wstein.org/books/modform/)
+- `sagejs-original` — Pre-sized native compressed-row relation builder
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/) (2007).
+
 ## `matrix`
 
 ```sage
@@ -757,9 +787,9 @@ tour. Requests for unavailable Hecke data raise `NotImplementedError`.
 - Kind: `function`
 - Module: `sage.modular.modsym.modsym`
 - Tags: number theory, modular symbols, modular forms, Hecke operators, q-expansions
-- Backends: FLINT, Sage.js exact Hecke models
-- Sage compatibility: partial — Space dimensions are formula-driven. The exact level 1, level 11, and character-level 13 guided-tour Hecke models provide bases, characteristic polynomials, matrices, and cuspidal q-expansions.
-- Limitations: Hecke data beyond the documented level 1, level 11, and character-level 13 models is not yet computed. The general Manin-symbol relation and sparse Hecke engine remains future work.
+- Backends: FLINT, Sage.js native P1List and Manin relations, Sage.js exact Hecke models
+- Sage compatibility: partial — Weight-2 Gamma0 spaces expose native P1 representatives and Manin relations over machine-word prime fields. The exact level 1, level 11, and character-level 13 guided-tour Hecke models provide bases, characteristic polynomials, matrices, and cuspidal q-expansions.
+- Limitations: Hecke data beyond the documented level 1, level 11, and character-level 13 models is not yet computed. General-weight and character Manin relations are not yet built. The scalable sparse Hecke and elimination engine remains future work.
 
 ### Provenance
 
@@ -813,6 +843,43 @@ Construct the exact simple field `QQ[a]/(polynomial)`.
 
 - `sage-derived` — [SageMath number field API](https://doc.sagemath.org/html/en/reference/number_fields/); license GPL-2.0-or-later
 - `library-backed` — [FLINT polynomial arithmetic](https://flintlib.org/doc/)
+
+## `P1List`
+
+```sage
+P1List(level)
+```
+
+The projective line `P^1(Z/NZ)` with Sage-compatible representatives.
+
+Representative storage and indexing are native. The constructor computes
+the exact cardinality first, allocates once, fills the array, sorts it in
+Sage order, and builds a fixed-size open-addressed index.
+
+```sage
+sage: P = P1List(12)
+sage: len(P)
+24
+sage: P.normalize(7, 15)
+(1, 9)
+sage: P.apply_S(P.apply_S(10))
+10
+```
+
+### Metadata
+
+- Kind: `class`
+- Module: `sage.modular.modsym.p1list`
+- Tags: number theory, modular symbols, projective line, Manin relations
+- Backends: Sage.js native C, FLINT nmod_mat
+- Sage compatibility: compatible — Representative ordering, normalization, I, S, and the historical order-three T action agree with SageMath. apply_R and apply_translation are explicit extensions.
+- Algorithm: Exact cardinality preallocation, canonical normalization, lexicographic representatives, and open-addressed indexing
+- Limitations: Levels are currently limited to signed 32-bit positive integers. Relation rank currently uses dense FLINT elimination below a safety threshold; scalable sparse elimination is next.
+
+### Provenance
+
+- `sage-derived` — [SageMath P1List implementation](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modsym/p1list.pyx); license GPL-2.0-or-later
+- `sagejs-original` — [William Stein JSage Zig P1List](https://github.com/sagemathinc/JSage/blob/2582234b6f76f8a5e1cecae319ae1a098d9b3c50/lib/src/modular/p1list.zig); revision 2582234b6f76f8a5e1cecae319ae1a098d9b3c50
 
 ## `PermutationGroup`
 

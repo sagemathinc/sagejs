@@ -92,6 +92,24 @@ opaque native factors and a separate scalar unit. Sage.js wraps these as
 ordinary polynomial elements and a Sage-compatible `Factorization`; it never
 copies coefficient arrays through JavaScript.
 
+Weight-2 modular-symbol foundations use a separate compact native `P1List`.
+The implementation computes the exact cardinality of
+`P^1(Z/NZ)` before allocating, fills a contiguous representative array once,
+sorts it in Sage-compatible order, and builds a fixed-size open-addressed
+index. Normalization and the `I`, `S`, order-three `R`, and translation `T`
+actions therefore require no per-call allocation. The associated Manin
+two-term and three-term relations are stored in pre-sized compressed-row
+arrays over a word-sized prime field. FLINT `nmod_mat` supplies the initial
+dense rank backend; relation storage itself is sparse so a scalable sparse
+eliminator can replace that backend without changing the public boundary.
+
+This code follows the representative conventions of William Stein's original
+Sage Cython `P1List` (GPL-2.0-or-later) and incorporates the exact-allocation
+strategy from his later JSage/Zig experiment. See
+[`bench/MODULAR-SYMBOLS.md`](../../bench/MODULAR-SYMBOLS.md) for correctness
+cross-checks and comparative timings against SageMath and, when installed,
+PARI/GP.
+
 MPFR and MPC values likewise stay behind opaque Node-API objects. Sage.js uses
 them to implement Sage-compatible `RealField(p)` and `ComplexField(p)` parents,
 with round-to-nearest arithmetic and exact conversion from `BigInt`

@@ -12,7 +12,8 @@
         "src/extension_field.c",
         "src/floating.c",
         "src/matrix.c",
-        "src/multivariate.c"
+        "src/multivariate.c",
+        "src/p1.c"
       ],
       "include_dirs": ["<(native_prefix)/include", "include"],
       "libraries": [

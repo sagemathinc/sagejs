@@ -12,6 +12,52 @@ assert.equal(flint.mpcVersion(), "1.4.1");
 assert.match(flint.gmpVersion(), /^6\./);
 assert.equal(flint.smalljacVersion(), "smalljac version 4.1.3");
 
+const projectiveLine = flint.p1List(12);
+assert.equal(flint.p1ListLevel(projectiveLine), 12);
+assert.equal(flint.p1ListCount(projectiveLine), 24);
+assert.deepEqual(flint.p1ListEntry(projectiveLine, 0), [0, 1]);
+assert.deepEqual(flint.p1ListEntry(projectiveLine, 23), [6, 1]);
+assert.deepEqual(
+  flint.p1ListNormalize(projectiveLine, 7, 15, 1),
+  [1, 9, 7],
+);
+assert.equal(flint.p1ListIndex(projectiveLine, 2, 3), 14);
+for (let index = 0; index < flint.p1ListCount(projectiveLine); index += 1) {
+  assert.equal(
+    flint.p1ListApplyS(
+      projectiveLine,
+      flint.p1ListApplyS(projectiveLine, index),
+    ),
+    index,
+  );
+  assert.equal(
+    flint.p1ListApplyR(
+      projectiveLine,
+      flint.p1ListApplyR(
+        projectiveLine,
+        flint.p1ListApplyR(projectiveLine, index),
+      ),
+    ),
+    index,
+  );
+}
+const maninRelations = flint.p1ListManinRelations(
+  flint.p1List(11),
+  65521n,
+);
+assert.deepEqual(flint.maninRelationsInfo(maninRelations), {
+  level: 11,
+  modulus: 65521,
+  generators: 12,
+  rows: 10,
+  nonzero: 24,
+  sRelations: 6,
+  rRelations: 4,
+  checksum: "00be8e2ac6d23394",
+});
+assert.deepEqual(flint.maninRelationsRow(maninRelations, 0), [0, 1n, 1, 1n]);
+assert.equal(flint.maninRelationsRank(maninRelations), 9);
+
 for (const value of [
   0n,
   1n,

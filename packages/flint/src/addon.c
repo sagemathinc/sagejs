@@ -30,6 +30,7 @@
 #include "floating.h"
 #include "matrix.h"
 #include "multivariate.h"
+#include "p1.h"
 
 #if ULONG_MAX != UINT64_MAX
 #error "The initial Sage.js FLINT bridge requires 64-bit FLINT limbs"
@@ -2856,6 +2857,34 @@ static napi_value initialize(napi_env env, napi_value exports)
             NULL, NULL, NULL, napi_default, NULL},
         {"dirichletBernoulli", NULL,
             sagejs_dirichlet_bernoulli,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"p1List", NULL, sagejs_p1list, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"p1ListLevel", NULL, sagejs_p1list_level, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"p1ListCount", NULL, sagejs_p1list_count, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"p1ListEntry", NULL, sagejs_p1list_entry, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"p1ListNormalize", NULL, sagejs_p1list_normalize,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"p1ListIndex", NULL, sagejs_p1list_index, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"p1ListApplyI", NULL, sagejs_p1list_apply_i,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"p1ListApplyS", NULL, sagejs_p1list_apply_s,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"p1ListApplyR", NULL, sagejs_p1list_apply_r,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"p1ListApplyT", NULL, sagejs_p1list_apply_t,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"p1ListManinRelations", NULL, sagejs_p1list_manin_relations,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"maninRelationsInfo", NULL, sagejs_manin_relations_info,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"maninRelationsRow", NULL, sagejs_manin_relations_row,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"maninRelationsRank", NULL, sagejs_manin_relations_rank,
             NULL, NULL, NULL, napi_default, NULL},
         {"zzMatrix", NULL, sagejs_zz_matrix, NULL, NULL, NULL,
             napi_default, NULL},

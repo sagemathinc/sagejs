@@ -84,3 +84,74 @@ test("Gamma1 and character cuspidal modular-symbol models", async () => {
     await session.close();
   }
 });
+
+test("native P1List representatives, normalization, and actions", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "P = P1List(12)",
+            "[len(P), P[:8], P[-1], P.normalize(7,15), " +
+              "P.normalize_with_scalar(7,15), P.index(2,3)]",
+          ].join("\n"),
+        )
+      ).repr,
+        "[24, [(0, 1), (1, 0), (1, 1), (1, 2), (1, 3), (1, 4), " +
+        "(1, 5), (1, 6)], (6, 1), (1, 9), (1, 9, 7), 14]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "[all(P.apply_I(P.apply_I(i)) == i for i in range(len(P))), " +
+              "all(P.apply_S(P.apply_S(i)) == i for i in range(len(P))), " +
+              "all(P.apply_R(P.apply_R(P.apply_R(i))) == i " +
+              "for i in range(len(P))), " +
+              "all(P.apply_T(i) == P.apply_R(i) for i in range(len(P)))]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[True, True, True, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("native sparse weight-2 Gamma0 Manin relations", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R = P1List(11).manin_relations(65521)",
+            "[R.level(), R.modulus(), R.nrows(), R.ncols(), R.nnz(), " +
+              "R.s_relations(), R.r_relations(), R.rank(), " +
+              "R.dimension(), R.row(0)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[11, 65521, 10, 12, 24, 6, 4, 9, 3, ((0, 1), (1, 1))]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "[(N, len(ModularSymbols(N).p1list()), " +
+              "ModularSymbols(N).manin_relations().dimension(), " +
+              "ModularSymbols(N).dimension()) " +
+              "for N in [1,2,3,5,11,37,389]]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(1, 1, 0, 0), (2, 3, 1, 1), (3, 4, 1, 1), " +
+        "(5, 6, 1, 1), (11, 12, 3, 3), (37, 38, 5, 5), " +
+        "(389, 390, 65, 65)]",
+    );
+  } finally {
+    await session.close();
+  }
+});
