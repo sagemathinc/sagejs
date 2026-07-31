@@ -8,6 +8,7 @@ const {
   createHash,
 } = require("node:crypto");
 const {
+  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -16,6 +17,7 @@ const {
 } = require("node:fs");
 const {
   basename,
+  dirname,
   join,
   resolve,
 } = require("node:path");
@@ -62,6 +64,20 @@ const dependencies = [
     url: "https://flintlib.org/download/flint-3.5.0.tar.gz",
     sha256: "3982f385f00610a944e0152eb0a29893b2366fa640e8f5f3076c47564cf7e2a6",
     archive: process.env.SAGEJS_FLINT_TARBALL,
+  },
+  {
+    name: "ffpoly",
+    version: "1.2.7",
+    url: "https://math.mit.edu/~drew/ff_poly_v1.2.7.tar",
+    sha256: "ffbe5c7f7ce077f3fedb530656b0f7ae95268cf23a38c9adfc3f654a65973b13",
+    archive: process.env.SAGEJS_FFPOLY_TARBALL,
+  },
+  {
+    name: "smalljac",
+    version: "4.1.3",
+    url: "https://math.mit.edu/~drew/smalljac_v4.1.3.tar",
+    sha256: "5a145509e491bba19bf73d8104576083286bd35aea2a149c7c516e9ea5ca8ec7",
+    archive: process.env.SAGEJS_SMALLJAC_TARBALL,
   },
 ];
 
@@ -193,20 +209,89 @@ function buildFlint(source) {
   run("make", ["install"], { cwd: source });
 }
 
+function installFiles(source, paths, destination) {
+  for (const path of paths) {
+    const target = join(destination, path);
+    mkdirSync(dirname(target), { recursive: true });
+    copyFileSync(join(source, path), target);
+  }
+}
+
+function buildFfpoly(source) {
+  const cflags =
+    "-O3 -fPIC -fomit-frame-pointer -funroll-loops -m64 -std=gnu99";
+  run(
+    "make",
+    [
+      `-j${jobs}`,
+      "libff_poly.a",
+      `CFLAGS=${cflags}`,
+      `INCLUDES=-I${join(prefix, "include")}`,
+    ],
+    { cwd: source }
+  );
+  installFiles(source, ["libff_poly.a"], join(prefix, "lib"));
+  installFiles(source, ["ff_poly.h"], join(prefix, "include"));
+  installFiles(
+    source,
+    [
+      "asm.h",
+      "cstd.h",
+      "ff.h",
+      "ff2k.h",
+      "ffext.h",
+      "ffmontgomery64.h",
+      "ffpoly.h",
+      "ffpolybig.h",
+      "ffpolyfromroots.h",
+      "ffpolysmall.h",
+      "ntutil.h",
+      "polyparse.h",
+    ],
+    join(prefix, "include", "ff_poly")
+  );
+}
+
+function buildSmalljac(source) {
+  const cflags =
+    "-O3 -fPIC -fomit-frame-pointer -funroll-loops -m64 -std=gnu99";
+  run(
+    "make",
+    [
+      `-j${jobs}`,
+      "libsmalljac.a",
+      `CFLAGS=${cflags}`,
+      `INCLUDES=-I${join(prefix, "include")}`,
+    ],
+    { cwd: source }
+  );
+  installFiles(source, ["libsmalljac.a"], join(prefix, "lib"));
+  installFiles(source, ["smalljac.h"], join(prefix, "include"));
+}
+
 async function main() {
+  if (process.platform !== "linux" || process.arch !== "x64") {
+    throw new Error(
+      "the native smalljac/ffpoly backend currently requires x86-64 Linux"
+    );
+  }
   const stampPath = join(prefix, ".sagejs-flint-dependencies.json");
   const expectedStamp = {
-    flint: dependencies[3].version,
-    gmp: dependencies[0].version,
-    mpc: dependencies[2].version,
-    mpfr: dependencies[1].version,
+    ffpoly: dependencies.find(({ name }) => name === "ffpoly").version,
+    flint: dependencies.find(({ name }) => name === "flint").version,
+    gmp: dependencies.find(({ name }) => name === "gmp").version,
+    mpc: dependencies.find(({ name }) => name === "mpc").version,
+    mpfr: dependencies.find(({ name }) => name === "mpfr").version,
+    smalljac: dependencies.find(({ name }) => name === "smalljac").version,
   };
 
   if (
     existsSync(join(prefix, "lib", "libgmp.a")) &&
     existsSync(join(prefix, "lib", "libflint.a")) &&
+    existsSync(join(prefix, "lib", "libff_poly.a")) &&
     existsSync(join(prefix, "lib", "libmpc.a")) &&
     existsSync(join(prefix, "lib", "libmpfr.a")) &&
+    existsSync(join(prefix, "lib", "libsmalljac.a")) &&
     existsSync(stampPath) &&
     JSON.stringify(JSON.parse(readFileSync(stampPath, "utf8"))) ===
       JSON.stringify(expectedStamp)
@@ -217,14 +302,20 @@ async function main() {
 
   mkdirSync(prefix, { recursive: true });
   mkdirSync(sources, { recursive: true });
-  const gmpArchive = await obtainArchive(dependencies[0]);
-  const mpfrArchive = await obtainArchive(dependencies[1]);
-  const mpcArchive = await obtainArchive(dependencies[2]);
-  const flintArchive = await obtainArchive(dependencies[3]);
-  buildGmp(extract(gmpArchive, dependencies[0]));
-  buildMpfr(extract(mpfrArchive, dependencies[1]));
-  buildMpc(extract(mpcArchive, dependencies[2]));
-  buildFlint(extract(flintArchive, dependencies[3]));
+  const archives = new Map();
+  for (const dependency of dependencies) {
+    archives.set(dependency.name, await obtainArchive(dependency));
+  }
+  const source = (name) => {
+    const dependency = dependencies.find((entry) => entry.name === name);
+    return extract(archives.get(name), dependency);
+  };
+  buildGmp(source("gmp"));
+  buildMpfr(source("mpfr"));
+  buildMpc(source("mpc"));
+  buildFlint(source("flint"));
+  buildFfpoly(source("ffpoly"));
+  buildSmalljac(source("smalljac"));
   writeFileSync(stampPath, `${JSON.stringify(expectedStamp, null, 2)}\n`);
   process.stdout.write(`Native dependencies installed in ${prefix}\n`);
 }

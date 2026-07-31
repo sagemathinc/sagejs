@@ -74,6 +74,18 @@ repeated scalar calls. Native polynomial inflation implements substitution
 `q -> q^d`, which the Sage.js modular-forms layer uses for degeneracy maps and
 prime-level Eisenstein bases.
 
+Integral elliptic curves use Andrew Sutherland's
+[smalljac 4.1.3](https://math.mit.edu/~drew/smalljac.html) to compute traces
+of Frobenius over a whole prime interval. Sage.js translates smalljac's
+`1 - a_p*T + p*T^2` convention at the native boundary, then uses the usual
+Euler recurrences to construct `anlist`. Bad-reduction primes, and models or
+intervals rejected by smalljac, automatically use the earlier direct
+point-counting backend, so the optimization does not narrow the supported
+Sage semantics. This implementation
+is based on Kiran Kedlaya and Andrew Sutherland, “Computing L-series of
+hyperelliptic curves,” ANTS VIII (2008), 312–326. The pinned upstream release
+is GPL-2.0-or-later and depends on Andrew Sutherland's `ffpoly` 1.2.7.
+
 The `nmod_poly` API additionally provides GCD, irreducibility testing,
 factorization, and roots over word-sized prime fields. Factorization returns
 opaque native factors and a separate scalar unit. Sage.js wraps these as
@@ -110,11 +122,12 @@ rather than adding it to the factor list.
 
 ## Build
 
-The current prototype supports 64-bit Linux hosts with a C compiler, `make`,
-and GMP development files. MPFR 4.2.2, MPC 1.4.1, and FLINT 3.5.0 are
-downloaded, verified by SHA-256, and built statically. The prototype
-dynamically links the host's GMP ABI; release prebuilds will need to bundle or
-otherwise provide a compatible GMP runtime:
+The current prototype supports x86-64 Linux hosts with a C compiler and
+`make`. GMP 6.3.0, MPFR 4.2.2, MPC 1.4.1, FLINT 3.5.0, `ffpoly` 1.2.7, and
+smalljac 4.1.3 are downloaded, verified by SHA-256, and built as
+position-independent static libraries. The x86-64 restriction comes from the
+current `ffpoly` release's assembly implementation; a future portable backend
+must be selected on other architectures:
 
 ```sh
 pnpm --dir packages/flint build

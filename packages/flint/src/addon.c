@@ -22,6 +22,7 @@
 #include <flint/nmod_poly_factor.h>
 #include <flint/ulong_extras.h>
 #include <sagejs/native.h>
+#include <smalljac.h>
 
 #include "algebraic.h"
 #include "dirichlet.h"
@@ -295,6 +296,173 @@ static slong elliptic_ap_integral(
 
 typedef struct
 {
+    int64_t *ap_values;
+    unsigned char *available;
+    ulong bound;
+    int failed;
+} elliptic_smalljac_result;
+
+/* ffpoly deliberately uses one global finite-field context. */
+static pthread_mutex_t elliptic_smalljac_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static int elliptic_smalljac_callback(
+    smalljac_curve_t curve,
+    unsigned long prime,
+    int good,
+    long coefficients[],
+    int count,
+    void *argument)
+{
+    elliptic_smalljac_result *result = argument;
+    (void) curve;
+
+    if (prime > result->bound)
+    {
+        result->failed = 1;
+        return 0;
+    }
+    if (!good || coefficients == NULL || count < 1)
+        return 1;
+    /* smalljac returns the T coefficient of 1 - a_p*T + p*T^2. */
+    result->ap_values[prime] = -(int64_t) coefficients[0];
+    result->available[prime] = 1;
+    return 1;
+}
+
+static char *elliptic_smalljac_curve_string(fmpz_t coefficients[5])
+{
+    size_t length = 8;
+    char *text, *cursor;
+
+    for (int index = 0; index < 5; index++)
+        length += (size_t) fmpz_sizeinbase(coefficients[index], 10) + 2;
+    text = malloc(length);
+    if (text == NULL)
+        return NULL;
+
+    cursor = text;
+    *cursor++ = '[';
+    for (int index = 0; index < 5; index++)
+    {
+        if (index != 0)
+            *cursor++ = ',';
+        fmpz_get_str(cursor, 10, coefficients[index]);
+        cursor += strlen(cursor);
+    }
+    *cursor++ = ']';
+    *cursor = '\0';
+    return text;
+}
+
+static int elliptic_smalljac_ap_values(
+    fmpz_t coefficients[5],
+    ulong bound,
+    int64_t *ap_values,
+    unsigned char *available)
+{
+    char *curve_text;
+    smalljac_curve_t curve;
+    elliptic_smalljac_result result;
+    long status;
+    int error = 0;
+
+    if (bound < 2)
+        return 1;
+    curve_text = elliptic_smalljac_curve_string(coefficients);
+    if (curve_text == NULL)
+        return 0;
+    pthread_mutex_lock(&elliptic_smalljac_mutex);
+    curve = smalljac_curve_init(curve_text, &error);
+    free(curve_text);
+    if (curve == NULL || error != 0)
+    {
+        pthread_mutex_unlock(&elliptic_smalljac_mutex);
+        return 0;
+    }
+
+    result.ap_values = ap_values;
+    result.available = available;
+    result.bound = bound;
+    result.failed = 0;
+    status = smalljac_Lpolys(
+        curve,
+        2,
+        bound,
+        SMALLJAC_A1_ONLY,
+        elliptic_smalljac_callback,
+        &result);
+    smalljac_curve_clear(curve);
+    pthread_mutex_unlock(&elliptic_smalljac_mutex);
+    return status >= 0 && !result.failed;
+}
+
+typedef struct
+{
+    ulong prime;
+    int64_t value;
+    int found;
+} elliptic_smalljac_single_result;
+
+static int elliptic_smalljac_single_callback(
+    smalljac_curve_t curve,
+    unsigned long prime,
+    int good,
+    long coefficients[],
+    int count,
+    void *argument)
+{
+    elliptic_smalljac_single_result *result = argument;
+    (void) curve;
+
+    if (prime != result->prime || !good ||
+        coefficients == NULL || count < 1)
+        return 0;
+    result->value = -(int64_t) coefficients[0];
+    result->found = 1;
+    return 1;
+}
+
+static int elliptic_smalljac_single_ap(
+    fmpz_t coefficients[5], ulong prime, int64_t *value)
+{
+    char *curve_text;
+    smalljac_curve_t curve;
+    elliptic_smalljac_single_result result;
+    long status;
+    int error = 0;
+
+    curve_text = elliptic_smalljac_curve_string(coefficients);
+    if (curve_text == NULL)
+        return 0;
+    pthread_mutex_lock(&elliptic_smalljac_mutex);
+    curve = smalljac_curve_init(curve_text, &error);
+    free(curve_text);
+    if (curve == NULL || error != 0)
+    {
+        pthread_mutex_unlock(&elliptic_smalljac_mutex);
+        return 0;
+    }
+
+    result.prime = prime;
+    result.value = 0;
+    result.found = 0;
+    status = smalljac_Lpolys(
+        curve,
+        prime,
+        prime,
+        SMALLJAC_A1_ONLY,
+        elliptic_smalljac_single_callback,
+        &result);
+    smalljac_curve_clear(curve);
+    pthread_mutex_unlock(&elliptic_smalljac_mutex);
+    if (status < 0 || !result.found)
+        return 0;
+    *value = result.value;
+    return 1;
+}
+
+typedef struct
+{
     fmpz_t *coefficients;
     const ulong *primes;
     size_t prime_count;
@@ -327,6 +495,7 @@ static napi_value elliptic_anlist_integral(
     fmpz_t coefficients[5], discriminant;
     ulong bound, candidate, multiple, index;
     ulong *smallest, *primes;
+    unsigned char *available;
     int64_t *values, *ap_values;
     size_t prime_count = 0, prime_index = 0;
     int initialized = 0;
@@ -354,12 +523,13 @@ static napi_value elliptic_anlist_integral(
     smallest = calloc(bound + 1, sizeof(*smallest));
     values = calloc(bound + 1, sizeof(*values));
     ap_values = calloc(bound + 1, sizeof(*ap_values));
+    available = calloc(bound + 1, sizeof(*available));
     primes = malloc((bound + 1) * sizeof(*primes));
     if (smallest == NULL || values == NULL || ap_values == NULL ||
-        primes == NULL)
+        available == NULL || primes == NULL)
     {
         free(smallest); free(values); free(ap_values);
-        free(primes);
+        free(available); free(primes);
         napi_throw_error(env, NULL, "unable to allocate elliptic coefficients");
         goto fail_before_alloc;
     }
@@ -388,12 +558,25 @@ static napi_value elliptic_anlist_integral(
     }
     if (prime_count > 0)
     {
-        long available = sysconf(_SC_NPROCESSORS_ONLN);
+        size_t missing_count = 0;
+        elliptic_smalljac_ap_values(
+            coefficients, bound, ap_values, available);
+        for (prime_index = 0; prime_index < prime_count; prime_index++)
+        {
+            ulong prime = primes[prime_index];
+            if (!available[prime])
+                primes[missing_count++] = prime;
+        }
+        prime_count = missing_count;
+    }
+    if (prime_count > 0)
+    {
+        long processor_count = sysconf(_SC_NPROCESSORS_ONLN);
         size_t worker_count = (
             bound < 1000 ? 1
-            : available < 1 ? 1
-            : available > 8 ? 8
-            : (size_t) available
+            : processor_count < 1 ? 1
+            : processor_count > 8 ? 8
+            : (size_t) processor_count
         );
         pthread_t *workers = malloc(worker_count * sizeof(*workers));
         elliptic_ap_work work;
@@ -475,7 +658,8 @@ static napi_value elliptic_anlist_integral(
                 napi_set_element(env, result, (uint32_t) index, entry)))
             goto fail_after_alloc;
     }
-    free(smallest); free(values); free(ap_values); free(primes);
+    free(smallest); free(values); free(ap_values);
+    free(available); free(primes);
     for (int i = 0; i < initialized; i++)
     {
         if (i < 5) fmpz_clear(coefficients[i]);
@@ -484,13 +668,60 @@ static napi_value elliptic_anlist_integral(
     return result;
 
 fail_after_alloc:
-    free(smallest); free(values); free(ap_values); free(primes);
+    free(smallest); free(values); free(ap_values);
+    free(available); free(primes);
 fail_before_alloc:
     for (int i = 0; i < initialized; i++)
     {
         if (i < 5) fmpz_clear(coefficients[i]);
         else fmpz_clear(discriminant);
     }
+    return NULL;
+}
+
+static napi_value elliptic_ap_smalljac_integral(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[6], result;
+    fmpz_t coefficients[5];
+    ulong prime;
+    int64_t value;
+    int initialized = 0;
+
+    if (!require_arguments(env, info, 6, args))
+        return NULL;
+    for (int index = 0; index < 5; index++)
+    {
+        fmpz_init(coefficients[index]);
+        initialized++;
+        if (!bigint_to_fmpz(env, args[index], coefficients[index]))
+            goto fail;
+    }
+    if (!bigint_to_prime_modulus(env, args[5], &prime))
+        goto fail;
+    if (!elliptic_smalljac_single_ap(coefficients, prime, &value))
+    {
+        unsigned char *quadratic_residues;
+        if (prime == ULONG_MAX ||
+            (quadratic_residues = malloc((size_t) prime + 1)) == NULL)
+        {
+            napi_throw_error(env, NULL,
+                "unable to allocate the elliptic trace fallback");
+            goto fail;
+        }
+        value = elliptic_ap_integral(
+            coefficients, prime, quadratic_residues);
+        free(quadratic_residues);
+    }
+    if (!check_napi(env, napi_create_int64(env, value, &result)))
+        goto fail;
+    for (int index = 0; index < initialized; index++)
+        fmpz_clear(coefficients[index]);
+    return result;
+
+fail:
+    for (int index = 0; index < initialized; index++)
+        fmpz_clear(coefficients[index]);
     return NULL;
 }
 
@@ -2525,6 +2756,13 @@ static napi_value gmp_version_value(napi_env env, napi_callback_info info)
     return library_version(env, gmp_version);
 }
 
+static napi_value smalljac_version_value(
+    napi_env env, napi_callback_info info)
+{
+    (void) info;
+    return library_version(env, SMALLJAC_VERSION_STRING);
+}
+
 static napi_value initialize(napi_env env, napi_value exports)
 {
     napi_property_descriptor properties[] = {
@@ -2881,6 +3119,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"ecAnlistIntegral", NULL, elliptic_anlist_integral,
             NULL, NULL, NULL, napi_default, NULL},
+        {"ecApIntegral", NULL, elliptic_ap_smalljac_integral,
+            NULL, NULL, NULL, napi_default, NULL},
         {"qqEisensteinSeries", NULL, qq_eisenstein_series,
             NULL, NULL, NULL, napi_default, NULL},
         {"nmodPolyGcd", NULL, nmod_poly_gcd_value, NULL, NULL, NULL,
@@ -2965,6 +3205,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"gmpVersion", NULL, gmp_version_value, NULL, NULL, NULL,
             napi_default, NULL},
+        {"smalljacVersion", NULL, smalljac_version_value,
+            NULL, NULL, NULL, napi_default, NULL},
         {"version", NULL, version, NULL, NULL, NULL, napi_default, NULL},
     };
 

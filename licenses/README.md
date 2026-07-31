@@ -14,3 +14,13 @@ Compute Engine, `tree-sitter-magma`, `tree-sitter-wolfram`, and
 
 The mathematical library embeds a generated 15,000-row prefix of SageMath's
 Odlyzko zeta-zero database; see `ODLYZKO-ZETA-NOTICE.md`.
+
+The optional native mathematics addon links Andrew Sutherland's
+[`smalljac` 4.1.3](https://math.mit.edu/~drew/smalljac.html) and its
+[`ffpoly` 1.2.7](https://math.mit.edu/~drew/ffpoly.html) dependency.
+`smalljac`'s upstream README licenses the software under GPL version 2 or
+later and asks research users to cite Kiran Kedlaya and Andrew Sutherland,
+“Computing L-series of hyperelliptic curves,” ANTS VIII (2008), 312–326.
+The dependency build records the exact upstream URLs, versions, and SHA-256
+digests used to produce the linked addon. The combined Sage.js distribution
+is conveyed under GPL-3.0-only.

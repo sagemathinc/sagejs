@@ -50,12 +50,13 @@ test("elliptic-curve coefficients, labels, and bundled Cremona data", async () =
             "E = EllipticCurve('37a')",
             "F = EllipticCurve_from_j(110592/37)",
             "G = F.quadratic_twist(2)",
-            "[E.anlist(30), G, G.conductor(), " +
+            "[E.aplist(10), E.ap(37), E.anlist(30), G, G.conductor(), " +
               "EllipticCurve('389a').rank(), EllipticCurve('5077a').rank()]",
           ].join("\n"),
         )
       ).repr,
-      "[[0, 1, -2, -3, 2, -2, 6, -1, 0, 6, 4, -5, -6, -2, 2, 6, " +
+      "[[-2, -3, -2, -1], -1, " +
+        "[0, 1, -2, -3, 2, -2, 6, -1, 0, 6, 4, -5, -6, -2, 2, 6, " +
         "-4, 0, -12, 0, -4, 3, 10, 2, 0, -1, 4, -9, -2, 6, -12], " +
         "Elliptic Curve defined by y^2 = x^3 - 4*x + 2 over Rational Field, " +
         "2368, 2, 3]",
@@ -94,6 +95,32 @@ test("native integral elliptic coefficient sweep", async () => {
     assert.ok(
       performance.now() - started < 30_000,
       "the tutorial-sized native coefficient sweep must stay interactive",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("smalljac agrees across integral models and bad primes", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "curves = [[0,0,0,-1,0], [0,0,1,-1,0], " +
+              "[1,-1,1,-10,-20], [0,1,1,-2,0], [1,2,3,4,5]]",
+            "models = [EllipticCurve(c) for c in curves]",
+            "[[E.aplist(20) for E in models], " +
+              "[models[1].ap(37), models[2].ap(37), models[4].ap(11)]]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[[0, 0, -2, 0, 0, 6, 2, 0], " +
+        "[-2, -3, -2, -1, -5, -2, 0, 0], " +
+        "[-1, 0, 0, 2, 2, -4, 7, -1], " +
+        "[-2, -2, -3, -5, -4, -3, -6, 5], " +
+        "[1, 0, -3, -1, -1, 1, 5, 4]], [-1, -1, -1]]",
     );
   } finally {
     await session.close();

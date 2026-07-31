@@ -16,6 +16,8 @@
       ],
       "include_dirs": ["<(native_prefix)/include", "include"],
       "libraries": [
+        "<(native_prefix)/lib/libsmalljac.a",
+        "<(native_prefix)/lib/libff_poly.a",
         "<(native_prefix)/lib/libflint.a",
         "<(native_prefix)/lib/libmpc.a",
         "<(native_prefix)/lib/libmpfr.a",

@@ -337,6 +337,23 @@ class EllipticCurveParent(sage.Parent):
             return int(value._value % prime)
         return int(value) % prime
 
+    def _integral_model_coefficients(self) -> Any:
+        if self._base is not sage.QQ and self._base is not sage.ZZ:
+            return None
+        integral_coefficients = []
+        for coefficient in self._ainvs:
+            if (
+                hasattr(coefficient, '_denominator')
+                and coefficient._denominator != 1
+            ):
+                return None
+            if hasattr(coefficient, '_numerator'):
+                integral_coefficients.append(coefficient._numerator)
+            else:
+                integral_coefficients.append(
+                    runtime.integer_bigint(coefficient))
+        return integral_coefficients
+
     def _ap(self, prime: int) -> int:
         coefficients = [
             self._coefficient_mod_prime(value, prime)
@@ -371,26 +388,68 @@ class EllipticCurveParent(sage.Parent):
                 points += 2
         return prime + 1 - points
 
+    def ap(self, prime: int) -> int:
+        """
+        Return the trace of Frobenius `a_p` at the prime `p`.
+
+        Integral curves over `QQ` use smalljac's optimized native
+        point-counting algorithms. Rational nonintegral models use the
+        direct Sage.js point counter.
+
+        ```sage
+        sage: E = EllipticCurve([0,0,1,-1,0])
+        sage: [E.ap(p) for p in prime_range(10)]
+        [-2, -3, -2, -1]
+        sage: E.ap(37)
+        -1
+        ```
+        """
+        prime = int(prime)
+        if not sage.is_prime(prime):
+            raise ValueError('p must be prime')
+        integral_coefficients = self._integral_model_coefficients()
+        if integral_coefficients is not None:
+            return int(runtime.flint_backend().ecApIntegral(
+                integral_coefficients[0],
+                integral_coefficients[1],
+                integral_coefficients[2],
+                integral_coefficients[3],
+                integral_coefficients[4],
+                runtime.bigint(prime),
+            ))
+        if self._base is not sage.QQ and self._base is not sage.ZZ:
+            raise NotImplementedError(
+                'ap() is currently implemented for curves over QQ or ZZ')
+        return self._ap(prime)
+
+    def aplist(self, bound: int) -> list[int]:
+        """
+        Return `[a_p : p < bound]`, with `p` prime.
+
+        The complete prime interval is computed in one native smalljac
+        invocation for integral curves.
+
+        ```sage
+        sage: EllipticCurve([0,0,1,-1,0]).aplist(10)
+        [-2, -3, -2, -1]
+        ```
+        """
+        bound = int(bound)
+        if bound < 0:
+            raise ValueError('coefficient bound must be nonnegative')
+        values = self.anlist(bound)
+        return [
+            values[candidate]
+            for candidate in range(2, bound)
+            if sage.is_prime(candidate)
+        ]
+
     def anlist(self, bound: int) -> list[int]:
         bound = int(bound)
         if bound < 0:
             raise ValueError('coefficient bound must be nonnegative')
-        integral_coefficients = []
-        integral_model = (
-            self._base is sage.QQ or self._base is sage.ZZ)
-        for coefficient in self._ainvs:
-            if (
-                hasattr(coefficient, '_denominator')
-                and coefficient._denominator != 1
-            ):
-                integral_model = False
-                break
-            if hasattr(coefficient, '_numerator'):
-                integral_coefficients.append(coefficient._numerator)
-            else:
-                integral_coefficients.append(
-                    runtime.integer_bigint(coefficient))
-        if integral_model:
+        integral_coefficients = self._integral_model_coefficients()
+        if integral_coefficients is not None:
             discriminant = self.discriminant()
             if hasattr(discriminant, '_numerator'):
                 native_discriminant = discriminant._numerator

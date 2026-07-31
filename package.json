@@ -118,6 +118,7 @@
     "bench:complex": "node bench/compare-complex.cjs",
     "bench:linear-algebra": "node bench/compare-exact-linear-algebra.cjs",
     "bench:finite-fields": "node bench/compare-finite-fields.cjs",
+    "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
     "bench:cowasm": "node bench/cowasm/run.cjs",
     "bench:numbers": "node bench/cowasm/run.cjs --suite numbers",
     "bench:numbers:check": "node bench/cowasm/run.cjs --budget bench/cowasm/numbers-budget.json",

@@ -10,6 +10,7 @@ assert.equal(flint.nativeAbiVersion(), 1);
 assert.equal(flint.mpfrVersion(), "4.2.2");
 assert.equal(flint.mpcVersion(), "1.4.1");
 assert.match(flint.gmpVersion(), /^6\./);
+assert.equal(flint.smalljacVersion(), "smalljac version 4.1.3");
 
 for (const value of [
   0n,
