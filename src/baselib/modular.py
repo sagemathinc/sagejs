@@ -1,5 +1,5 @@
-# First exact modular-forms layer: congruence subgroups, dimensions, and
-# FLINT-backed Eisenstein q-expansions.
+# Exact modular-forms foundations: congruence subgroups, Riemann--Roch and
+# Cohen--Oesterle dimensions, and FLINT-backed Eisenstein q-expansions.
 #
 # Copyright (C) 2026 Sage.js contributors
 # License: GPL-3.0-only
@@ -12,15 +12,21 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
-def _exact_nonnegative_integer(value: Any, name: str) -> int:
+def _exact_integer(value: Any, name: str) -> int:
     value = runtime.normalize_integer(value)
     if (
         runtime.jstype(value) != 'number'
         or not runtime.number.isSafeInteger(value)
-        or value < 0
     ):
-        raise ValueError(name + ' must be a nonnegative integer')
+        raise ValueError(name + ' must be an integer')
     return runtime.number(value)
+
+
+def _exact_nonnegative_integer(value: Any, name: str) -> int:
+    value = _exact_integer(value, name)
+    if value < 0:
+        raise ValueError(name + ' must be a nonnegative integer')
+    return value
 
 
 def _positive_integer(value: Any, name: str) -> int:
@@ -49,24 +55,83 @@ class CongruenceSubgroup:
     def __init__(self, family: str, level: int) -> None:
         self._family = family
         self._level = level
+        if family == 'Gamma0':
+            index = level
+            for prime in _factor_primes(level):
+                index = index // prime * (prime + 1)
+            self._index_value = index
+            self._projective_index_value = index
+            self._nu2_value = (
+                _gamma0_elliptic_points_order_two(level)
+            )
+            self._nu3_value = (
+                _gamma0_elliptic_points_order_three(level)
+            )
+            self._cusps_value = _gamma0_cusps(level)
+            self._regular_cusps_value = self._cusps_value
+        else:
+            index = level * level
+            for prime in _factor_primes(level):
+                index = index // (prime * prime) * (
+                    prime * prime - 1)
+            self._index_value = index
+            self._projective_index_value = (
+                index // 2 if level > 2 else index
+            )
+            self._nu2_value = 1 if level <= 2 else 0
+            self._nu3_value = (
+                1 if level == 1 or level == 3 else 0
+            )
+            self._cusps_value = _gamma1_cusps(level)
+            self._regular_cusps_value = (
+                2 if level == 4 else self._cusps_value
+            )
+        self._genus_value = (
+            12 + self._projective_index_value
+            - 3 * self._nu2_value
+            - 4 * self._nu3_value
+            - 6 * self._cusps_value
+        ) // 12
         runtime.object.freeze(self)
 
     def level(self) -> int:
         return self._level
 
     def index(self) -> int:
-        if self._family == 'Gamma0':
-            result = self._level
-            for prime in _factor_primes(self._level):
-                result = result // prime * (prime + 1)
-            return result
-        if self._level <= 2:
-            return Gamma0(self._level).index()
-        result = self._level * self._level
-        for prime in _factor_primes(self._level):
-            result = result // (prime * prime) * (
-                prime * prime - 1)
-        return result // 2
+        return self._index_value
+
+    def projective_index(self) -> int:
+        return self._projective_index_value
+
+    def is_even(self) -> bool:
+        return self._family == 'Gamma0' or self._level <= 2
+
+    def nu2(self) -> int:
+        return self._nu2_value
+
+    def nu3(self) -> int:
+        return self._nu3_value
+
+    def ncusps(self) -> int:
+        return self._cusps_value
+
+    def nregcusps(self) -> int:
+        return self._regular_cusps_value
+
+    def nirregcusps(self) -> int:
+        return self.ncusps() - self.nregcusps()
+
+    def genus(self) -> int:
+        return self._genus_value
+
+    def dimension_cusp_forms(self, weight: Any = 2) -> int:
+        return dimension_cusp_forms(self, weight)
+
+    def dimension_eis(self, weight: Any = 2) -> int:
+        return dimension_eis(self, weight)
+
+    def dimension_modular_forms(self, weight: Any = 2) -> int:
+        return dimension_modular_forms(self, weight)
 
     def __eq__(self, other: object) -> bool:
         return (
@@ -150,69 +215,322 @@ def _gamma0_elliptic_points_order_three(level: int) -> int:
     return result
 
 
-def _gamma0_genus(group: CongruenceSubgroup) -> int:
-    level = group.level()
-    numerator = (
-        12 + group.index()
-        - 3 * _gamma0_elliptic_points_order_two(level)
-        - 4 * _gamma0_elliptic_points_order_three(level)
-        - 6 * _gamma0_cusps(level)
-    )
-    return numerator // 12
-
-
-def _gamma1_genus(group: CongruenceSubgroup) -> int:
-    level = group.level()
-    if level <= 2:
-        return _gamma0_genus(Gamma0(level))
-    if level < 5:
-        raise NotImplementedError(
-            'Gamma1 genus is currently implemented for levels 1, 2, '
-            'and at least 5')
-    cusps = 0
+def _gamma1_cusps(level: int) -> int:
+    if level <= 4:
+        return [0, 1, 2, 2, 3][level]
+    result = 0
     for divisor in sage.divisors(level):
         divisor = runtime.number(divisor)
-        cusps += (
+        result += (
             _euler_phi(divisor)
             * _euler_phi(level // divisor)
         )
-    cusps //= 2
-    return (12 + group.index() - 6 * cusps) // 12
+    return result // 2
 
 
-def _level_one_modular_dimension(weight: int) -> int:
-    if weight < 0 or weight % 2 == 1:
+def _is_dirichlet_character(value: Any) -> bool:
+    value_type = runtime.jstype(value)
+    if value is None or (
+        value_type != 'object' and value_type != 'function'
+    ):
+        return False
+    parent = runtime.reflect.get(value, '_parent')
+    return (
+        parent is not runtime.undefined
+        and runtime.reflect.get(parent, '_kind') == 'DirichletGroup'
+    )
+
+
+def _primitive_root_prime(prime: int) -> int:
+    factors = _factor_primes(prime - 1)
+    candidate = 2
+    while candidate < prime:
+        primitive = True
+        for factor in factors:
+            if pow(candidate, (prime - 1) // factor, prime) == 1:
+                primitive = False
+                break
+        if primitive:
+            return candidate
+        candidate += 1
+    raise ArithmeticError('unable to find a primitive root')
+
+
+def _local_character_argument(
+    prime: int,
+    exponent: int,
+    modulus: int,
+    root_order: int,
+) -> int:
+    generator = _primitive_root_prime(prime)
+    local_root = pow(
+        generator, (prime - 1) // root_order, prime)
+    complement = modulus // (prime ** exponent)
+    if complement == 1:
+        lifted = local_root
+    else:
+        inverse = pow(complement % prime, prime - 2, prime)
+        multiplier = (
+            (local_root - 1) * inverse
+        ) % prime
+        lifted = 1 + complement * multiplier
+    return pow(
+        lifted,
+        prime ** (exponent - 1),
+        modulus,
+    )
+
+
+def CO_delta(
+    exponent: Any,
+    prime: Any,
+    modulus: Any,
+    character: Any,
+) -> int:
+    exponent = _positive_integer(exponent, 'prime exponent')
+    prime = _positive_integer(prime, 'prime')
+    modulus = _positive_integer(modulus, 'modulus')
+    if prime % 4 == 3:
         return 0
-    if weight == 2:
+    if prime == 2:
+        return 1 if exponent == 1 else 0
+    argument = _local_character_argument(
+        prime, exponent, modulus, 4)
+    value = character(argument)
+    if value == 1:
+        return 2
+    if value == -1:
+        return -2
+    return 0
+
+
+def CO_nu(
+    exponent: Any,
+    prime: Any,
+    modulus: Any,
+    character: Any,
+) -> int:
+    exponent = _positive_integer(exponent, 'prime exponent')
+    prime = _positive_integer(prime, 'prime')
+    modulus = _positive_integer(modulus, 'modulus')
+    if prime % 3 == 2:
         return 0
-    dimension = weight // 12 + 1
-    if weight % 12 == 2:
-        dimension -= 1
-    return dimension
+    if prime == 3:
+        return 1 if exponent == 1 else 0
+    argument = _local_character_argument(
+        prime, exponent, modulus, 3)
+    return 2 if character(argument) == 1 else -1
+
+
+def _cohen_oesterle_numerator(
+    character: Any,
+    weight: int,
+) -> int:
+    modulus = _positive_integer(
+        character.modulus(), 'character modulus')
+    conductor = _positive_integer(
+        character.conductor(), 'character conductor')
+    factors = [
+        (runtime.number(prime), runtime.number(exponent))
+        for prime, exponent in sage.factor(modulus)
+    ]
+
+    lambda_product = 1
+    delta_product = 1
+    nu_product = 1
+    for prime, exponent in factors:
+        conductor_exponent = 0
+        conductor_part = conductor
+        while conductor_part % prime == 0:
+            conductor_part //= prime
+            conductor_exponent += 1
+        if 2 * conductor_exponent <= exponent:
+            if exponent % 2 == 0:
+                local_lambda = (
+                    prime ** (exponent // 2)
+                    + prime ** (exponent // 2 - 1)
+                )
+            else:
+                local_lambda = (
+                    2 * prime ** ((exponent - 1) // 2)
+                )
+        else:
+            local_lambda = (
+                2 * prime ** (exponent - conductor_exponent)
+            )
+        lambda_product *= local_lambda
+        delta_product *= CO_delta(
+            exponent, prime, modulus, character)
+        nu_product *= CO_nu(
+            exponent, prime, modulus, character)
+
+    gamma_times_twelve = 0
+    if weight % 4 == 2:
+        gamma_times_twelve = -3
+    elif weight % 4 == 0:
+        gamma_times_twelve = 3
+
+    mu_times_twelve = 0
+    if weight % 3 == 2:
+        mu_times_twelve = -4
+    elif weight % 3 == 0:
+        mu_times_twelve = 4
+
+    return (
+        -6 * lambda_product
+        + gamma_times_twelve * delta_product
+        + mu_times_twelve * nu_product
+    )
+
+
+def CohenOesterle(character: Any, weight: Any) -> Any:
+    if not _is_dirichlet_character(character):
+        raise TypeError('CohenOesterle requires a Dirichlet character')
+    weight = _exact_integer(weight, 'weight')
+    return (
+        sage.QQ(_cohen_oesterle_numerator(character, weight))
+        / sage.QQ(12)
+    )
+
+
+def _dimension_character_cusp_forms(
+    character: Any,
+    weight: int,
+) -> int:
+    modulus = _positive_integer(
+        character.modulus(), 'character modulus')
+    if character.is_principal():
+        return dimension_cusp_forms(Gamma0(modulus), weight)
+    if (
+        weight <= 0
+        or (weight % 2 == 1 and character.is_even())
+        or (weight % 2 == 0 and character.is_odd())
+    ):
+        return 0
+    if weight == 1:
+        raise NotImplementedError(
+            'weight-one cusp dimensions require the '
+            'Schaeffer algorithm')
+    numerator = (
+        Gamma0(modulus).index() * (weight - 1)
+        + _cohen_oesterle_numerator(character, weight)
+    )
+    if numerator % 12 != 0:
+        raise ArithmeticError(
+            'Cohen-Oesterle dimension is not integral')
+    return numerator // 12
 
 
 def dimension_cusp_forms(
     group: Any,
     weight: Any = 2,
 ) -> int:
-    weight = _exact_nonnegative_integer(weight, 'weight')
+    weight = _exact_integer(weight, 'weight')
+    if _is_dirichlet_character(group):
+        return _dimension_character_cusp_forms(group, weight)
     if runtime.is_exact_integer(group):
         group = Gamma0(group)
     if not isinstance(group, CongruenceSubgroup):
         raise TypeError(
-            'dimension_cusp_forms requires Gamma0 or Gamma1')
-    if weight % 2 == 1:
+            'dimension_cusp_forms requires an integer, Gamma0, '
+            'Gamma1, or a Dirichlet character')
+    if weight <= 0:
         return 0
-    if weight == 2:
-        if group._family == 'Gamma0':
-            return _gamma0_genus(group)
-        return _gamma1_genus(group)
-    if group.level() == 1:
-        dimension = _level_one_modular_dimension(weight)
-        return max(0, dimension - (1 if weight >= 4 else 0))
+    if weight % 2 == 0:
+        if weight == 2:
+            return group.genus()
+        return (
+            (weight - 1) * (group.genus() - 1)
+            + (weight // 4) * group.nu2()
+            + (weight // 3) * group.nu3()
+            + (weight // 2 - 1) * group.ncusps()
+        )
+    if group.is_even():
+        return 0
+    regular_cusps = group.nregcusps()
+    irregular_cusps = group.nirregcusps()
+    if weight > 1:
+        numerator = (
+            2 * (weight - 1) * (group.genus() - 1)
+            + 2 * (weight // 3) * group.nu3()
+            + (weight - 2) * regular_cusps
+            + (weight - 1) * irregular_cusps
+        )
+        return numerator // 2
+    if regular_cusps > 2 * group.genus() - 2:
+        return 0
     raise NotImplementedError(
-        'higher-weight cusp dimensions are currently implemented '
-        'at level one')
+        'weight-one cusp dimensions require the '
+        'Schaeffer algorithm')
+
+
+def _dimension_character_eis(
+    character: Any,
+    weight: int,
+) -> int:
+    modulus = _positive_integer(
+        character.modulus(), 'character modulus')
+    if character.is_principal():
+        return dimension_eis(Gamma0(modulus), weight)
+    if (
+        weight <= 0
+        or (weight % 2 == 1 and character.is_even())
+        or (weight % 2 == 0 and character.is_odd())
+    ):
+        return 0
+    dual_weight = 2 - weight
+    numerator = (
+        Gamma0(modulus).index() * (dual_weight - 1)
+        + _cohen_oesterle_numerator(
+            character, dual_weight)
+    )
+    if numerator % 12 != 0:
+        raise ArithmeticError(
+            'Cohen-Oesterle Eisenstein dimension is not integral')
+    total = -(numerator // 12)
+    if weight == 1:
+        return total
+    return total - _dimension_character_cusp_forms(
+        character, weight)
+
+
+def dimension_eis(
+    group: Any,
+    weight: Any = 2,
+) -> int:
+    weight = _exact_integer(weight, 'weight')
+    if _is_dirichlet_character(group):
+        return _dimension_character_eis(group, weight)
+    if runtime.is_exact_integer(group):
+        group = Gamma0(group)
+    if not isinstance(group, CongruenceSubgroup):
+        raise TypeError(
+            'dimension_eis requires an integer, Gamma0, Gamma1, '
+            'or a Dirichlet character')
+    if weight < 0:
+        return 0
+    if weight == 0:
+        return 1
+    if weight % 2 == 0:
+        if weight == 2:
+            return group.ncusps() - 1
+        return group.ncusps()
+    if group.is_even():
+        return 0
+    if weight > 1:
+        return group.nregcusps()
+    return group.nregcusps() // 2
+
+
+def dimension_modular_forms(
+    group: Any,
+    weight: Any = 2,
+) -> int:
+    weight = _exact_integer(weight, 'weight')
+    return (
+        dimension_cusp_forms(group, weight)
+        + dimension_eis(group, weight)
+    )
 
 
 def eisenstein_series_qexp(
@@ -390,29 +708,42 @@ class EisensteinSubspace(ModularFormsSubspace):
     ) -> None:
         level = ambient.level()
         weight = ambient.weight()
-        if level == 1:
-            dimension = 1 if weight >= 4 and weight % 2 == 0 else 0
-        elif sage.is_prime(level) and weight == 2:
-            dimension = 1
-        elif sage.is_prime(level) and weight >= 4 and weight % 2 == 0:
-            dimension = 2
-        else:
-            raise NotImplementedError(
-                'Eisenstein spaces currently support level one and '
-                'prime Gamma0 level')
+        dimension = dimension_eis(ambient.group(), weight)
         ModularFormsSubspace.__init__(
             self, ambient, 'Eisenstein', dimension)
         self._precision = precision
-        self._basis = [
-            _eisenstein_basis_qexp(
-                level,
-                weight,
-                ambient.base_ring(),
-                index,
-                precision,
+        basis_supported = (
+            dimension == 0
+            or (
+                level == 1
+                and weight >= 4
+                and weight % 2 == 0
             )
-            for index in range(dimension)
-        ]
+            or (
+                sage.is_prime(level)
+                and weight >= 2
+                and weight % 2 == 0
+            )
+        )
+        self._basis = None
+        if basis_supported:
+            self._basis = [
+                _eisenstein_basis_qexp(
+                    level,
+                    weight,
+                    ambient.base_ring(),
+                    index,
+                    precision,
+                )
+                for index in range(dimension)
+            ]
+
+    def _require_basis(self) -> list[Any]:
+        if self._basis is None:
+            raise NotImplementedError(
+                'q-expansion bases are currently implemented for '
+                'level one and prime Gamma0 level')
+        return self._basis
 
     def precision(self) -> int:
         return self._precision
@@ -421,18 +752,18 @@ class EisensteinSubspace(ModularFormsSubspace):
         return self._dimension
 
     def __getitem__(self, index: int) -> Any:
-        return self._basis[index]
+        return self._require_basis()[index]
 
     def gen(self, index: int = 0) -> Any:
-        return self._basis[index]
+        return self._require_basis()[index]
 
     def _first_ngens(self, count: int) -> list[Any]:
         if count > self._dimension:
             raise ValueError('too many Eisenstein generators requested')
-        return self._basis[:count]
+        return self._require_basis()[:count]
 
     def basis(self) -> list[Any]:
-        return list(self._basis)
+        return list(self._require_basis())
 
     gens = basis
 
@@ -441,7 +772,8 @@ class EisensteinSubspace(ModularFormsSubspace):
             prec = self._precision
         precision = _exact_nonnegative_integer(prec, 'precision')
         if precision == self._precision:
-            return list(self._basis)
+            return list(self._require_basis())
+        self._require_basis()
         return [
             _eisenstein_basis_qexp(
                 self.level(),
@@ -493,26 +825,8 @@ class ModularFormsSpace(sage.Parent):
         return self._base
 
     def dimension(self) -> int:
-        cusp_dimension = dimension_cusp_forms(
+        return dimension_modular_forms(
             self._group, self._weight)
-        if self.level() == 1:
-            eisenstein_dimension = (
-                1 if self._weight >= 4
-                and self._weight % 2 == 0 else 0
-            )
-        elif sage.is_prime(self.level()) and self._weight == 2:
-            eisenstein_dimension = 1
-        elif (
-            sage.is_prime(self.level())
-            and self._weight >= 4
-            and self._weight % 2 == 0
-        ):
-            eisenstein_dimension = 2
-        else:
-            raise NotImplementedError(
-                'modular-form dimensions currently support level one '
-                'and prime Gamma0 level')
-        return cusp_dimension + eisenstein_dimension
 
     degree = dimension
 

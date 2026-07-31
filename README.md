@@ -165,14 +165,18 @@ Exact modular forms have an initial FLINT-backed vertical slice. The
 `eisenstein_series_qexp()` function supports Sage's linear, constant, and
 integral normalizations over `QQ`, together with reduction to prime finite
 fields. `Gamma0()`, `Gamma1()`, `dimension_cusp_forms()`, `ModularForms()`,
-and `EisensteinForms()` cover level one and prime `Gamma0` Eisenstein spaces,
-including the weight-2 level-11 form and oldform degeneracy maps:
+and `EisensteinForms()` cover arbitrary-level Riemann--Roch dimensions and
+level one or prime `Gamma0` Eisenstein bases. Dimensions for individual
+Dirichlet characters use the exact Cohen--Oesterlé formula. This includes the
+weight-2 level-11 form and oldform degeneracy maps:
 
 ```py
 sage: eisenstein_series_qexp(4, 6)
 1/240 + q + 9*q^2 + 28*q^3 + 73*q^4 + 126*q^5 + O(q^6)
 sage: EisensteinForms(11, 2).basis()
 [1 + 12/5*q + 36/5*q^2 + 48/5*q^3 + 84/5*q^4 + 72/5*q^5 + O(q^6)]
+sage: dimension_cusp_forms(DirichletGroup(13).0^2, 2)
+1
 ```
 
 FLINT computes the Bernoulli constant and all divisor sums in one native

@@ -480,6 +480,8 @@ class DirichletCharacter(sage.Element):
         return bool(_native_field(
             self._native_data(), 'principal'))
 
+    is_trivial = is_principal
+
     def is_real(self) -> bool:
         return bool(_native_field(self._native_data(), 'real'))
 
