@@ -8,6 +8,7 @@
 #include <node_api.h>
 
 #include <flint/fmpq.h>
+#include <flint/fmpq_vec.h>
 #include <flint/nmod_mat.h>
 #include <flint/ulong_extras.h>
 
@@ -1160,10 +1161,584 @@ napi_value sagejs_p1list_star_matrix(
     return result;
 }
 
+typedef struct
+{
+    size_t length;
+    size_t capacity;
+    size_t *columns;
+    slong *values;
+} p1_sparse_row;
+
+static int p1_star_projector_entry(
+    const slong *entries,
+    size_t dimension,
+    size_t source,
+    size_t column,
+    slong sign,
+    slong *result)
+{
+    __int128 value = (source == column ? 1 : 0) +
+        (__int128) sign * entries[column * dimension + source];
+    if (value < LONG_MIN || value > LONG_MAX)
+        return 0;
+    *result = (slong) value;
+    return 1;
+}
+
+static void p1_sparse_row_clear(p1_sparse_row *row)
+{
+    free(row->columns);
+    free(row->values);
+    memset(row, 0, sizeof(*row));
+}
+
+static int p1_sparse_row_reserve(p1_sparse_row *row, size_t capacity)
+{
+    size_t next;
+    size_t *columns;
+    slong *values;
+
+    if (capacity <= row->capacity)
+        return 1;
+    next = row->capacity == 0 ? 4 : row->capacity;
+    while (next < capacity)
+    {
+        if (next > SIZE_MAX / 2)
+            return 0;
+        next *= 2;
+    }
+    columns = malloc(next * sizeof(*columns));
+    values = malloc(next * sizeof(*values));
+    if (columns == NULL || values == NULL)
+    {
+        free(columns);
+        free(values);
+        return 0;
+    }
+    if (row->length != 0)
+    {
+        memcpy(columns, row->columns, row->length * sizeof(*columns));
+        memcpy(values, row->values, row->length * sizeof(*values));
+    }
+    free(row->columns);
+    free(row->values);
+    row->columns = columns;
+    row->values = values;
+    row->capacity = next;
+    return 1;
+}
+
+static slong p1_sparse_row_entry(
+    const p1_sparse_row *row, size_t column)
+{
+    size_t left = 0, right = row->length;
+    while (left < right)
+    {
+        size_t middle = left + (right - left) / 2;
+        if (row->columns[middle] < column)
+            left = middle + 1;
+        else
+            right = middle;
+    }
+    return left < row->length && row->columns[left] == column
+        ? row->values[left] : 0;
+}
+
+static ulong p1_sparse_abs_slong(slong value)
+{
+    return value < 0
+        ? (ulong) (-(value + 1)) + 1
+        : (ulong) value;
+}
+
+/* Divide a nonzero integer row by the positive gcd of its coefficients. */
+static void p1_sparse_row_make_primitive(p1_sparse_row *row)
+{
+    ulong common = 0;
+    for (size_t item = 0; item < row->length; item++)
+    {
+        common = n_gcd(common, p1_sparse_abs_slong(row->values[item]));
+        if (common == 1)
+            break;
+    }
+    if (common > 1)
+        for (size_t item = 0; item < row->length; item++)
+            row->values[item] /= (slong) common;
+}
+
+/* Replace left by left - coefficient * right using fixed-size workspaces. */
+static int p1_sparse_row_axpy(
+    p1_sparse_row *left,
+    const p1_sparse_row *right,
+    slong coefficient,
+    size_t *workspace_columns,
+    slong *workspace_values,
+    size_t workspace_capacity)
+{
+    size_t i = 0, j = 0, used = 0;
+
+    while (i < left->length || j < right->length)
+    {
+        size_t column;
+        __int128 value;
+        if (j == right->length ||
+            (i < left->length && left->columns[i] < right->columns[j]))
+        {
+            column = left->columns[i];
+            value = left->values[i++];
+        }
+        else if (i == left->length || right->columns[j] < left->columns[i])
+        {
+            column = right->columns[j];
+            value = -(__int128) coefficient * right->values[j++];
+        }
+        else
+        {
+            column = left->columns[i];
+            value = (__int128) left->values[i++] -
+                (__int128) coefficient * right->values[j++];
+        }
+        if (value < LONG_MIN || value > LONG_MAX)
+            return 0;
+        if (value != 0)
+        {
+            if (used >= workspace_capacity)
+                return 0;
+            workspace_columns[used] = column;
+            workspace_values[used++] = (slong) value;
+        }
+    }
+    if (!p1_sparse_row_reserve(left, used))
+        return -1;
+    if (used != 0)
+    {
+        memcpy(left->columns, workspace_columns,
+            used * sizeof(*workspace_columns));
+        memcpy(left->values, workspace_values,
+            used * sizeof(*workspace_values));
+    }
+    left->length = used;
+    return 1;
+}
+
+static int p1_sparse_row_compare(const void *left, const void *right)
+{
+    const p1_sparse_row *a = left;
+    const p1_sparse_row *b = right;
+    size_t ca = a->length == 0 ? SIZE_MAX : a->columns[0];
+    size_t cb = b->length == 0 ? SIZE_MAX : b->columns[0];
+    return ca < cb ? -1 : ca > cb;
+}
+
+/*
+ * Compute RREF(rowspace(I + sign * star^T)) without destroying sparsity.
+ *
+ * The star involution has only O(dimension) nonzero entries in the native
+ * E1 basis.  Dense modular rank selection followed by dense rational RREF
+ * made signed spaces cubic in their ambient dimension.  Here exact sparse
+ * elimination is first attempted in machine integers. Presentations whose
+ * primitive rows still have nonunit pivots fall through to the sparse exact
+ * rational implementation below.
+ */
+static int p1_sparse_star_eigenspace(
+    fmpq_mat_t basis,
+    slong *rank_out,
+    const slong *entries,
+    size_t dimension,
+    slong sign)
+{
+    p1_sparse_row *pivots = NULL;
+    p1_sparse_row working = {0};
+    size_t *pivot_by_column = NULL, *workspace_columns = NULL;
+    slong *workspace_values = NULL;
+    size_t rank = 0;
+    int status = 0;
+
+    if (dimension > (size_t) WORD_MAX)
+        return 0;
+    pivots = calloc(dimension == 0 ? 1 : dimension, sizeof(*pivots));
+    pivot_by_column = malloc(
+        (dimension == 0 ? 1 : dimension) * sizeof(*pivot_by_column));
+    workspace_columns = malloc(
+        (dimension == 0 ? 1 : dimension) * sizeof(*workspace_columns));
+    workspace_values = malloc(
+        (dimension == 0 ? 1 : dimension) * sizeof(*workspace_values));
+    if (pivots == NULL || pivot_by_column == NULL ||
+        workspace_columns == NULL || workspace_values == NULL)
+    {
+        status = -1;
+        goto done;
+    }
+    for (size_t column = 0; column < dimension; column++)
+        pivot_by_column[column] = SIZE_MAX;
+
+    for (size_t source = 0; source < dimension; source++)
+    {
+        size_t count = 0;
+        working.length = 0;
+        for (size_t column = 0; column < dimension; column++)
+        {
+            slong value;
+            if (!p1_star_projector_entry(
+                    entries, dimension, source, column, sign, &value))
+                goto done;
+            count += value != 0;
+        }
+        if (!p1_sparse_row_reserve(&working, count))
+        {
+            status = -1;
+            goto done;
+        }
+        for (size_t column = 0; column < dimension; column++)
+        {
+            slong value;
+            if (!p1_star_projector_entry(
+                    entries, dimension, source, column, sign, &value))
+                goto done;
+            if (value != 0)
+            {
+                working.columns[working.length] = column;
+                working.values[working.length++] = value;
+            }
+        }
+        while (working.length != 0)
+        {
+            size_t pivot_column = working.columns[0];
+            size_t pivot = pivot_by_column[pivot_column];
+            if (pivot == SIZE_MAX)
+            {
+                p1_sparse_row_make_primitive(&working);
+                if (working.values[0] == -1)
+                {
+                    for (size_t item = 0; item < working.length; item++)
+                    {
+                        if (working.values[item] == WORD_MIN)
+                            goto done;
+                        working.values[item] = -working.values[item];
+                    }
+                }
+                else if (working.values[0] != 1)
+                {
+                    goto done;
+                }
+                pivots[rank] = working;
+                memset(&working, 0, sizeof(working));
+                pivot_by_column[pivot_column] = rank++;
+                break;
+            }
+            {
+                int reduced = p1_sparse_row_axpy(
+                    &working, &pivots[pivot], working.values[0],
+                    workspace_columns, workspace_values, dimension);
+                if (reduced <= 0)
+                {
+                    status = reduced;
+                    goto done;
+                }
+            }
+        }
+    }
+
+    qsort(pivots, rank, sizeof(*pivots), p1_sparse_row_compare);
+    for (size_t cursor = rank; cursor > 0; cursor--)
+    {
+        size_t row = cursor - 1;
+        size_t pivot_column = pivots[row].columns[0];
+        for (size_t earlier = 0; earlier < row; earlier++)
+        {
+            slong coefficient = p1_sparse_row_entry(
+                &pivots[earlier], pivot_column);
+            if (coefficient != 0)
+            {
+                int reduced = p1_sparse_row_axpy(
+                    &pivots[earlier], &pivots[row], coefficient,
+                    workspace_columns, workspace_values, dimension);
+                if (reduced <= 0)
+                {
+                    status = reduced;
+                    goto done;
+                }
+            }
+        }
+    }
+
+    fmpq_mat_init(basis, (slong) rank, (slong) dimension);
+    for (size_t row = 0; row < rank; row++)
+        for (size_t item = 0; item < pivots[row].length; item++)
+            fmpq_set_si(fmpq_mat_entry(
+                basis, (slong) row, (slong) pivots[row].columns[item]),
+                pivots[row].values[item], 1);
+    *rank_out = (slong) rank;
+    status = 1;
+
+done:
+    p1_sparse_row_clear(&working);
+    if (pivots != NULL)
+        for (size_t row = 0; row < dimension; row++)
+            p1_sparse_row_clear(&pivots[row]);
+    free(pivots);
+    free(pivot_by_column);
+    free(workspace_columns);
+    free(workspace_values);
+    return status;
+}
+
+typedef struct
+{
+    size_t length;
+    size_t capacity;
+    size_t *columns;
+    fmpq *values;
+} p1_sparse_qrow;
+
+static void p1_sparse_qrow_clear(p1_sparse_qrow *row)
+{
+    free(row->columns);
+    if (row->values != NULL)
+        _fmpq_vec_clear(row->values, (slong) row->capacity);
+    memset(row, 0, sizeof(*row));
+}
+
+static int p1_sparse_qrow_reserve(p1_sparse_qrow *row, size_t capacity)
+{
+    size_t next;
+    size_t *columns;
+    fmpq *values;
+
+    if (capacity <= row->capacity)
+        return 1;
+    next = row->capacity == 0 ? 4 : row->capacity;
+    while (next < capacity)
+    {
+        if (next > SIZE_MAX / 2 || next > (size_t) WORD_MAX / 2)
+            return 0;
+        next *= 2;
+    }
+    columns = malloc(next * sizeof(*columns));
+    values = _fmpq_vec_init((slong) next);
+    if (columns == NULL || values == NULL)
+    {
+        free(columns);
+        if (values != NULL)
+            _fmpq_vec_clear(values, (slong) next);
+        return 0;
+    }
+    for (size_t item = 0; item < row->length; item++)
+    {
+        columns[item] = row->columns[item];
+        fmpq_set(values + item, row->values + item);
+    }
+    free(row->columns);
+    if (row->values != NULL)
+        _fmpq_vec_clear(row->values, (slong) row->capacity);
+    row->columns = columns;
+    row->values = values;
+    row->capacity = next;
+    return 1;
+}
+
+static const fmpq *p1_sparse_qrow_entry(
+    const p1_sparse_qrow *row, size_t column)
+{
+    size_t left = 0, right = row->length;
+    while (left < right)
+    {
+        size_t middle = left + (right - left) / 2;
+        if (row->columns[middle] < column)
+            left = middle + 1;
+        else
+            right = middle;
+    }
+    return left < row->length && row->columns[left] == column
+        ? row->values + left : NULL;
+}
+
+static int p1_sparse_qrow_axpy(
+    p1_sparse_qrow *left,
+    const p1_sparse_qrow *right,
+    const fmpq_t coefficient,
+    size_t *workspace_columns,
+    fmpq *workspace_values,
+    size_t workspace_capacity)
+{
+    size_t i = 0, j = 0, used = 0;
+
+    while (i < left->length || j < right->length)
+    {
+        size_t column;
+        if (used >= workspace_capacity)
+            return 0;
+        if (j == right->length ||
+            (i < left->length && left->columns[i] < right->columns[j]))
+        {
+            column = left->columns[i];
+            fmpq_set(workspace_values + used, left->values + i++);
+        }
+        else if (i == left->length || right->columns[j] < left->columns[i])
+        {
+            column = right->columns[j];
+            fmpq_mul(workspace_values + used,
+                coefficient, right->values + j++);
+            fmpq_neg(workspace_values + used, workspace_values + used);
+        }
+        else
+        {
+            column = left->columns[i];
+            fmpq_set(workspace_values + used, left->values + i++);
+            fmpq_submul(workspace_values + used,
+                coefficient, right->values + j++);
+        }
+        if (!fmpq_is_zero(workspace_values + used))
+            workspace_columns[used++] = column;
+    }
+    if (!p1_sparse_qrow_reserve(left, used))
+        return 0;
+    for (size_t item = 0; item < used; item++)
+    {
+        left->columns[item] = workspace_columns[item];
+        fmpq_set(left->values + item, workspace_values + item);
+    }
+    left->length = used;
+    return 1;
+}
+
+static int p1_sparse_qrow_compare(const void *left, const void *right)
+{
+    const p1_sparse_qrow *a = left;
+    const p1_sparse_qrow *b = right;
+    size_t ca = a->length == 0 ? SIZE_MAX : a->columns[0];
+    size_t cb = b->length == 0 ? SIZE_MAX : b->columns[0];
+    return ca < cb ? -1 : ca > cb;
+}
+
+/* Fully general sparse rational fallback for nonunit integer pivots. */
+static int p1_sparse_rational_star_eigenspace(
+    fmpq_mat_t basis,
+    slong *rank_out,
+    const slong *entries,
+    size_t dimension,
+    slong sign)
+{
+    p1_sparse_qrow *pivots = NULL;
+    p1_sparse_qrow working = {0};
+    size_t *pivot_by_column = NULL, *workspace_columns = NULL;
+    fmpq *workspace_values = NULL;
+    fmpq_t coefficient;
+    size_t rank = 0;
+    int status = 0;
+
+    if (dimension > (size_t) WORD_MAX)
+        return 0;
+    fmpq_init(coefficient);
+    pivots = calloc(dimension == 0 ? 1 : dimension, sizeof(*pivots));
+    pivot_by_column = malloc(
+        (dimension == 0 ? 1 : dimension) * sizeof(*pivot_by_column));
+    workspace_columns = malloc(
+        (dimension == 0 ? 1 : dimension) * sizeof(*workspace_columns));
+    workspace_values = _fmpq_vec_init(
+        (slong) (dimension == 0 ? 1 : dimension));
+    if (pivots == NULL || pivot_by_column == NULL ||
+        workspace_columns == NULL || workspace_values == NULL)
+        goto done;
+    for (size_t column = 0; column < dimension; column++)
+        pivot_by_column[column] = SIZE_MAX;
+
+    for (size_t source = 0; source < dimension; source++)
+    {
+        size_t count = 0;
+        working.length = 0;
+        for (size_t column = 0; column < dimension; column++)
+        {
+            slong value;
+            if (!p1_star_projector_entry(
+                    entries, dimension, source, column, sign, &value))
+                goto done;
+            count += value != 0;
+        }
+        if (!p1_sparse_qrow_reserve(&working, count))
+            goto done;
+        for (size_t column = 0; column < dimension; column++)
+        {
+            slong value;
+            if (!p1_star_projector_entry(
+                    entries, dimension, source, column, sign, &value))
+                goto done;
+            if (value != 0)
+            {
+                working.columns[working.length] = column;
+                fmpq_set_si(working.values + working.length++, value, 1);
+            }
+        }
+        while (working.length != 0)
+        {
+            size_t pivot_column = working.columns[0];
+            size_t pivot = pivot_by_column[pivot_column];
+            if (pivot == SIZE_MAX)
+            {
+                fmpq_set(coefficient, working.values);
+                for (size_t item = 0; item < working.length; item++)
+                    fmpq_div(working.values + item,
+                        working.values + item, coefficient);
+                pivots[rank] = working;
+                memset(&working, 0, sizeof(working));
+                pivot_by_column[pivot_column] = rank++;
+                break;
+            }
+            fmpq_set(coefficient, working.values);
+            if (!p1_sparse_qrow_axpy(
+                    &working, &pivots[pivot], coefficient,
+                    workspace_columns, workspace_values, dimension))
+                goto done;
+        }
+    }
+
+    qsort(pivots, rank, sizeof(*pivots), p1_sparse_qrow_compare);
+    for (size_t cursor = rank; cursor > 0; cursor--)
+    {
+        size_t row = cursor - 1;
+        size_t pivot_column = pivots[row].columns[0];
+        for (size_t earlier = 0; earlier < row; earlier++)
+        {
+            const fmpq *entry = p1_sparse_qrow_entry(
+                &pivots[earlier], pivot_column);
+            if (entry != NULL)
+            {
+                fmpq_set(coefficient, entry);
+                if (!p1_sparse_qrow_axpy(
+                        &pivots[earlier], &pivots[row], coefficient,
+                        workspace_columns, workspace_values, dimension))
+                    goto done;
+            }
+        }
+    }
+
+    fmpq_mat_init(basis, (slong) rank, (slong) dimension);
+    for (size_t row = 0; row < rank; row++)
+        for (size_t item = 0; item < pivots[row].length; item++)
+            fmpq_set(fmpq_mat_entry(
+                basis, (slong) row, (slong) pivots[row].columns[item]),
+                pivots[row].values + item);
+    *rank_out = (slong) rank;
+    status = 1;
+
+done:
+    fmpq_clear(coefficient);
+    p1_sparse_qrow_clear(&working);
+    if (pivots != NULL)
+        for (size_t row = 0; row < dimension; row++)
+            p1_sparse_qrow_clear(&pivots[row]);
+    free(pivots);
+    free(pivot_by_column);
+    free(workspace_columns);
+    if (workspace_values != NULL)
+        _fmpq_vec_clear(workspace_values,
+            (slong) (dimension == 0 ? 1 : dimension));
+    return status;
+}
+
 napi_value sagejs_p1list_star_eigenspace_basis(
     napi_env env, napi_callback_info info)
 {
-    const ulong modulus = 65521;
     napi_value arguments[2], result = NULL, matrix = NULL;
     sagejs_p1list_value *list;
     sagejs_manin_presentation_info presentation;
@@ -1171,11 +1746,10 @@ napi_value sagejs_p1list_star_eigenspace_basis(
     slong *entries = NULL;
     int64_t sign_value;
     size_t dimension;
-    slong rank;
-    size_t *selected = NULL;
-    nmod_mat_t modular_transpose;
+    slong rank = 0;
     fmpq_mat_t basis;
-    int modular_initialized = 0, basis_initialized = 0;
+    int basis_initialized = 0;
+    int sparse_status;
 
     if (!p1_arguments(env, info, 2, arguments) ||
         (list = p1_unwrap(env, arguments[0])) == NULL ||
@@ -1202,62 +1776,29 @@ napi_value sagejs_p1list_star_eigenspace_basis(
             "unable to construct native star eigenspace");
         goto done;
     }
-    nmod_mat_init(
-        modular_transpose, (slong) dimension, (slong) dimension, modulus);
-    modular_initialized = 1;
-    for (size_t row = 0; row < dimension; row++)
-        for (size_t col = 0; col < dimension; col++)
-        {
-            slong value = (row == col ? 1 : 0)
-                + (slong) sign_value * entries[row * dimension + col];
-            slong reduced = value % (slong) modulus;
-            if (reduced < 0)
-                reduced += (slong) modulus;
-            nmod_mat_entry(
-                modular_transpose, row, col) = (ulong) reduced;
-        }
-    rank = nmod_mat_rref(modular_transpose);
-    selected = malloc((rank == 0 ? 1 : (size_t) rank) * sizeof(*selected));
-    if (selected == NULL)
+    sparse_status = p1_sparse_star_eigenspace(
+        basis, &rank, entries, dimension, (slong) sign_value);
+    if (sparse_status < 0)
     {
         napi_throw_error(env, NULL,
-            "unable to allocate star eigenspace rank profile");
+            "unable to allocate sparse star eigenspace workspace");
         goto done;
     }
-    for (slong row = 0; row < rank; row++)
+    if (sparse_status > 0)
     {
-        slong pivot = 0;
-        while (pivot < (slong) dimension &&
-            nmod_mat_entry(modular_transpose, row, pivot) == 0)
-            pivot++;
-        if (pivot == (slong) dimension)
-        {
-            napi_throw_error(env, NULL,
-                "invalid star eigenspace rank profile");
-            goto done;
-        }
-        selected[row] = (size_t) pivot;
+        basis_initialized = 1;
+        goto wrap;
     }
-    fmpq_mat_init(basis, rank, (slong) dimension);
+    sparse_status = p1_sparse_rational_star_eigenspace(
+        basis, &rank, entries, dimension, (slong) sign_value);
+    if (sparse_status <= 0)
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct sparse rational star eigenspace");
+        goto done;
+    }
     basis_initialized = 1;
-    for (slong row = 0; row < rank; row++)
-    {
-        size_t source_row = selected[row];
-        for (size_t col = 0; col < dimension; col++)
-        {
-            slong value = (source_row == col ? 1 : 0)
-                + (slong) sign_value
-                    * entries[col * dimension + source_row];
-            fmpq_set_si(
-                fmpq_mat_entry(basis, row, (slong) col), value, 1);
-        }
-    }
-    if (fmpq_mat_rref(basis, basis) != rank)
-    {
-        napi_throw_error(env, NULL,
-            "exact star eigenspace rank disagrees with modular rank");
-        goto done;
-    }
+wrap:
     matrix = sagejs_qq_matrix_from_fmpq_mat(env, basis);
     if (matrix != NULL &&
         p1_check_napi(env, napi_create_object(env, &result)) &&
@@ -1276,9 +1817,6 @@ napi_value sagejs_p1list_star_eigenspace_basis(
 done:
     if (basis_initialized)
         fmpq_mat_clear(basis);
-    if (modular_initialized)
-        nmod_mat_clear(modular_transpose);
-    free(selected);
     free(entries);
     return result;
 }

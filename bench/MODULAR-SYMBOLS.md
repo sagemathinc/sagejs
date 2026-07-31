@@ -92,16 +92,24 @@ integral fundamental-cycle basis directly.  It therefore avoids dense
 rational kernel computation entirely while returning an RREF basis.
 
 Complex conjugation negates both path endpoints and passes through the same
-native continued-fraction reducer.  Signed spaces use the sparse projection
-`1 + sign*star`: a word-prime elimination selects a rank profile, whose exact
-rows are then reduced over `QQ`.  Restricting the boundary map to that signed
-basis computes signed-cuspidal spaces without a generic large-subspace
-intersection.  Sparse-left exact products skip the overwhelmingly zero
-coefficient entries. Native pivot extraction and row/column selection keep
-large restricted Hecke matrices inside FLINT instead of transferring each
-entry through the language boundary. Arbitrary rational paths can also be
-reduced to genuine coordinate elements, on which boundary, star, and Hecke
-actions agree with the row-action matrices exposed by Sage.
+native continued-fraction reducer. Signed spaces use the sparse projection
+`1 + sign*star`. The native E1 star matrix has only linearly many nonzero
+entries (4,794 at level 10,000, versus 9,006,001 possible entries), so Sage.js
+keeps projector rows sparse throughout exact elimination. A machine-integer
+fast path primitive-normalizes unit-pivot rows; a sparse `fmpq` path handles
+nonunit pivots without sacrificing exactness. Only the final Sage-compatible
+RREF basis is materialized as a matrix. This replaces the former dense
+word-prime rank profile and dense rational RREF, whose cubic scaling dominated
+signed-space construction.
+
+Restricting the boundary map to that signed basis computes signed-cuspidal
+spaces without a generic large-subspace intersection. Sparse-left exact
+products skip the overwhelmingly zero coefficient entries. Native pivot
+extraction and row/column selection keep large restricted Hecke matrices
+inside FLINT instead of transferring each entry through the language
+boundary. Arbitrary rational paths can also be reduced to genuine coordinate
+elements, on which boundary, star, and Hecke actions agree with the row-action
+matrices exposed by Sage.
 
 At the high-level boundary, matrix and subspace representations are lazy.
 Large matrices print a Sage-compatible dimension/base-ring summary; `.str()`

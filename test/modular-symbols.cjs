@@ -325,6 +325,23 @@ test("boundary maps, cuspidal spaces, star eigenspaces, and elements", async () 
       ).repr,
       "[422, 422, 422, -2]",
     );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "data = []",
+            "for sign in [-1, 1]:",
+            "    M = ModularSymbols(1000, 2, sign=sign)",
+            "    S = M.cuspidal_subspace()",
+            "    T = S.hecke_matrix(2)",
+            "    data.append((sign, M.dimension(), S.dimension(), " +
+              "T.trace(), (T*T).trace()))",
+            "data",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(-1, 147, 131, 0, 2), (1, 154, 131, 0, 2)]",
+    );
   } finally {
     await session.close();
   }
