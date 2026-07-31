@@ -63,4 +63,28 @@ slong *sagejs_modsym_weight2_hecke_matrix(
     ulong prime,
     size_t *dimension);
 
+/*
+ * Return the boundary map with one row per E1 basis path and one column per
+ * Gamma0 cusp class. The caller owns both the matrix and cusp buffers.
+ */
+slong *sagejs_modsym_weight2_boundary_matrix(
+    const sagejs_modsym_presentation_view *view,
+    size_t *dimension,
+    size_t *cusps,
+    sagejs_modsym_cusp **cusp_representatives);
+
+/* Return the column-action matrix of complex conjugation. */
+slong *sagejs_modsym_weight2_star_matrix(
+    const sagejs_modsym_presentation_view *view,
+    size_t *dimension);
+
+/* Reduce an arbitrary rational path into the E1 basis. */
+slong *sagejs_modsym_weight2_reduce_path(
+    const sagejs_modsym_presentation_view *view,
+    int64_t start_numerator,
+    int64_t start_denominator,
+    int64_t stop_numerator,
+    int64_t stop_denominator,
+    size_t *dimension);
+
 #endif

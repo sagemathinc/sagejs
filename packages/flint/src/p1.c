@@ -1011,6 +1011,162 @@ napi_value sagejs_p1list_hecke_matrix(
     return result;
 }
 
+static napi_value p1_cusp_array(
+    napi_env env,
+    const sagejs_modsym_cusp *cusps,
+    size_t count)
+{
+    napi_value result;
+
+    if (count > UINT32_MAX || !p1_check_napi(
+            env, napi_create_array_with_length(env, count, &result)))
+        return NULL;
+    for (size_t index = 0; index < count; index++)
+    {
+        napi_value pair, numerator, denominator;
+        if (!p1_check_napi(env, napi_create_array_with_length(env, 2, &pair)) ||
+            !p1_check_napi(env, napi_create_bigint_int64(
+                env, cusps[index].numerator, &numerator)) ||
+            !p1_check_napi(env, napi_create_bigint_int64(
+                env, cusps[index].denominator, &denominator)) ||
+            !p1_check_napi(env, napi_set_element(env, pair, 0, numerator)) ||
+            !p1_check_napi(env, napi_set_element(env, pair, 1, denominator)) ||
+            !p1_check_napi(env, napi_set_element(
+                env, result, (uint32_t) index, pair)))
+            return NULL;
+    }
+    return result;
+}
+
+napi_value sagejs_p1list_boundary_data(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[1], result = NULL, matrix = NULL, cusps_value = NULL;
+    sagejs_p1list_value *list;
+    sagejs_manin_presentation_info presentation;
+    sagejs_modsym_presentation_view view;
+    sagejs_modsym_cusp *cusp_representatives = NULL;
+    slong *entries = NULL;
+    size_t dimension, cusps;
+
+    if (!p1_arguments(env, info, 1, arguments) ||
+        (list = p1_unwrap(env, arguments[0])) == NULL)
+        return NULL;
+    if (!p1_manin_presentation_build(list, &presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct minimal Manin presentation");
+        return NULL;
+    }
+    view = p1_presentation_view(list, &presentation);
+    entries = sagejs_modsym_weight2_boundary_matrix(
+        &view, &dimension, &cusps, &cusp_representatives);
+    p1_manin_presentation_clear(&presentation);
+    if (entries == NULL || dimension > (size_t) WORD_MAX ||
+        cusps > (size_t) WORD_MAX)
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct exact weight-2 boundary map");
+        goto done;
+    }
+    matrix = sagejs_zz_matrix_from_slong_entries(
+        env, (slong) dimension, (slong) cusps, entries);
+    cusps_value = p1_cusp_array(
+        env, cusp_representatives, cusps);
+    if (matrix == NULL || cusps_value == NULL ||
+        !p1_check_napi(env, napi_create_object(env, &result)) ||
+        !p1_check_napi(env, napi_set_named_property(
+            env, result, "matrix", matrix)) ||
+        !p1_check_napi(env, napi_set_named_property(
+            env, result, "cusps", cusps_value)))
+        result = NULL;
+
+done:
+    free(entries);
+    free(cusp_representatives);
+    return result;
+}
+
+napi_value sagejs_p1list_star_matrix(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[1], result;
+    sagejs_p1list_value *list;
+    sagejs_manin_presentation_info presentation;
+    sagejs_modsym_presentation_view view;
+    slong *entries;
+    size_t dimension;
+
+    if (!p1_arguments(env, info, 1, arguments) ||
+        (list = p1_unwrap(env, arguments[0])) == NULL)
+        return NULL;
+    if (!p1_manin_presentation_build(list, &presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct minimal Manin presentation");
+        return NULL;
+    }
+    view = p1_presentation_view(list, &presentation);
+    entries = sagejs_modsym_weight2_star_matrix(&view, &dimension);
+    p1_manin_presentation_clear(&presentation);
+    if (entries == NULL || dimension > (size_t) WORD_MAX)
+    {
+        free(entries);
+        napi_throw_error(env, NULL,
+            "unable to construct exact weight-2 star involution");
+        return NULL;
+    }
+    result = sagejs_zz_matrix_from_slong_entries(
+        env, (slong) dimension, (slong) dimension, entries);
+    free(entries);
+    return result;
+}
+
+napi_value sagejs_p1list_reduce_path(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[5], result;
+    sagejs_p1list_value *list;
+    sagejs_manin_presentation_info presentation;
+    sagejs_modsym_presentation_view view;
+    int64_t start_numerator, start_denominator;
+    int64_t stop_numerator, stop_denominator;
+    slong *entries;
+    size_t dimension;
+
+    if (!p1_arguments(env, info, 5, arguments) ||
+        (list = p1_unwrap(env, arguments[0])) == NULL ||
+        !p1_safe_integer(env, arguments[1], &start_numerator) ||
+        !p1_safe_integer(env, arguments[2], &start_denominator) ||
+        !p1_safe_integer(env, arguments[3], &stop_numerator) ||
+        !p1_safe_integer(env, arguments[4], &stop_denominator))
+        return NULL;
+    if (!p1_manin_presentation_build(list, &presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct minimal Manin presentation");
+        return NULL;
+    }
+    view = p1_presentation_view(list, &presentation);
+    entries = sagejs_modsym_weight2_reduce_path(
+        &view,
+        start_numerator, start_denominator,
+        stop_numerator, stop_denominator,
+        &dimension);
+    p1_manin_presentation_clear(&presentation);
+    if (entries == NULL || dimension > (size_t) WORD_MAX)
+    {
+        free(entries);
+        napi_throw_error(env, NULL,
+            "unable to reduce exact weight-2 modular-symbol path");
+        return NULL;
+    }
+    result = sagejs_zz_matrix_from_slong_entries(
+        env, (slong) dimension, 1, entries);
+    free(entries);
+    return result;
+}
+
 napi_value sagejs_manin_relations_info(
     napi_env env, napi_callback_info info)
 {

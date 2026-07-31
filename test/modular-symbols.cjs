@@ -239,3 +239,80 @@ test("native exact weight-2 Hecke matrices", async () => {
     await session.close();
   }
 });
+
+test("boundary maps, cuspidal spaces, star eigenspaces, and elements", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "M = ModularSymbols(11)",
+            "C = M.cuspidal_submodule()",
+            "[M.boundary_map().matrix(), M.star_involution().matrix(), " +
+              "C.basis_matrix(), C.T(2).matrix(), " +
+              "M.plus_submodule().basis_matrix(), " +
+              "M.minus_submodule().basis_matrix()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[ 1 -1]\n[ 0  0]\n[ 0  0], " +
+        "[ 1  0  0]\n[ 0 -1  1]\n[ 0  0  1], " +
+        "[0 1 0]\n[0 0 1], [-2  0]\n[ 0 -2], " +
+        "[1 0 0]\n[0 0 1], [   0    1 -1/2]]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "M = ModularSymbols(11)",
+            "x = M.modular_symbol((1,0), (0,1))",
+            "[x.vector(), x.boundary().vector(), " +
+              "M.gen(1).boundary(), M.gen(1).star().vector(), " +
+              "M.T(2)(M.gen(1)).vector(), " +
+              "(M.gen(1)+M.gen(1)).vector(), " +
+              "(3*M.gen(1)-M.gen(1)).vector()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(1, 0, -2/5), (1, -1), 0, (0, -1, 1), " +
+        "(0, -2, 0), (0, 2, 0), (0, 2, 0)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "[(N, ModularSymbols(N).boundary_space().dimension(), " +
+              "ModularSymbols(N).boundary_map().matrix().rank(), " +
+              "ModularSymbols(N).cuspidal_submodule().dimension(), " +
+              "ModularSymbols(N).plus_submodule().dimension(), " +
+              "ModularSymbols(N).minus_submodule().dimension()) " +
+              "for N in [11,37,100,389]]",
+            "",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(11, 2, 1, 2, 2, 1), (37, 2, 1, 4, 3, 2), " +
+        "(100, 18, 17, 14, 18, 13), (389, 2, 1, 64, 33, 32)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "P = ModularSymbols(100, sign=1)",
+            "N = ModularSymbols(100, sign=-1)",
+            "C = ModularSymbols(100).cuspidal_submodule()",
+            "[P.dimension(), N.dimension(), " +
+              "P.star_involution().matrix() == identity_matrix(QQ, 18), " +
+              "N.star_involution().matrix() == -identity_matrix(QQ, 13), " +
+              "C.gen(0).star().parent() is C, " +
+              "C.gen(0).hecke(2).parent() is C]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[18, 13, True, True, True, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});

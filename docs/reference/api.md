@@ -827,6 +827,75 @@ cover selected higher-weight, character, and cuspidal examples.
 - `software-derived` — [PARI/GP well-formed fundamental domain and path reduction strategy](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
 - `sagejs-original` — Portable preallocated C Hecke assembler, strict-Python Hecke algebra integration, and FLINT matrix boundary
 
+## `ModularSymbolsSpace.boundary_map`
+
+```sage
+boundary_map()
+```
+
+Return the exact map from modular symbols to cusp divisors.
+
+Rows of the matrix are boundaries of the domain basis vectors. Its
+kernel is the cuspidal submodule.
+
+```sage
+sage: M = ModularSymbols(11)
+sage: M.boundary_map().matrix()
+[ 1 -1]
+[ 0  0]
+[ 0  0]
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, boundary maps, cusps, exact linear algebra
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — The weight-2 Gamma0 API follows SageMath matrix and subspace conventions, including row-action operator matrices.
+- Algorithm: Cremona Gamma0 cusp equivalence and endpoint divisors
+- Limitations: This general native implementation currently covers weight 2, Gamma0, and trivial character.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
+## `ModularSymbolsSpace.cuspidal_submodule`
+
+```sage
+cuspidal_submodule()
+```
+
+Return the exact kernel of the boundary map.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, cuspidal subspaces, kernels, Hecke modules
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — The weight-2 Gamma0 API follows SageMath matrix and subspace conventions, including row-action operator matrices.
+- Algorithm: Exact FLINT kernel of the boundary matrix
+- Limitations: This general native implementation currently covers weight 2, Gamma0, and trivial character.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
 ## `ModularSymbolsSpace.hecke_matrix`
 
 ```sage
@@ -855,12 +924,131 @@ sage: M.hecke_matrix(6).trace()
 - Backends: Sage.js portable C modular-symbol core, FLINT integer and rational matrices
 - Sage compatibility: compatible — Full weight-2 Gamma0 sign-zero spaces support exact T_n matrices for every positive index.
 - Algorithm: Native prime Hecke matrices, multiplicativity, Up powers, and the weight-2 good-prime recurrence
-- Limitations: The general engine currently requires full weight-2 Gamma0 spaces with sign zero and trivial character.
+- Limitations: The general engine currently requires weight-2 Gamma0 spaces with trivial character; ambient, cuspidal, and star-eigenspace restrictions are supported.
 
 ### Provenance
 
 - `literature-implemented` — [William Stein, Modular Forms: A Computational Approach](https://wstein.org/books/modform/)
 - `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+
+## `ModularSymbolsSpace.minus_submodule`
+
+```sage
+minus_submodule()
+```
+
+Return the `-1` eigenspace of the star involution.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, star eigenspaces, minus subspaces, exact linear algebra
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — The weight-2 Gamma0 API follows SageMath matrix and subspace conventions, including row-action operator matrices.
+- Algorithm: Exact left kernel of star plus the identity
+- Limitations: This general native implementation currently covers weight 2, Gamma0, and trivial character.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
+## `ModularSymbolsSpace.modular_symbol`
+
+```sage
+modular_symbol(start, stop)
+```
+
+Construct the rational path `{start, stop}` as an exact element.
+
+Endpoints are numerator/denominator pairs; `(1, 0)` denotes infinity.
+Continued-fraction reduction happens in one native call.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, elements, rational paths, continued fractions
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — The weight-2 Gamma0 API follows SageMath matrix and subspace conventions, including row-action operator matrices.
+- Algorithm: Native continued-fraction reduction into the minimal E1 basis
+- Limitations: This general native implementation currently covers weight 2, Gamma0, and trivial character.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
+## `ModularSymbolsSpace.plus_submodule`
+
+```sage
+plus_submodule()
+```
+
+Return the `+1` eigenspace of the star involution.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, star eigenspaces, plus subspaces, exact linear algebra
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — The weight-2 Gamma0 API follows SageMath matrix and subspace conventions, including row-action operator matrices.
+- Algorithm: Exact left kernel of star minus the identity
+- Limitations: This general native implementation currently covers weight 2, Gamma0, and trivial character.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
+## `ModularSymbolsSpace.star_involution`
+
+```sage
+star_involution()
+```
+
+Return complex conjugation on this modular-symbol space.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, star involution, complex conjugation, exact matrices
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: compatible — The weight-2 Gamma0 API follows SageMath matrix and subspace conventions, including row-action operator matrices.
+- Algorithm: Native endpoint negation and continued-fraction Manin reduction
+- Limitations: This general native implementation currently covers weight 2, Gamma0, and trivial character.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
 
 ## `next_prime`
 

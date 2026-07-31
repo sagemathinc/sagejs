@@ -1130,6 +1130,344 @@ class ManinSymbolBasisElement:
     toString = __repr__
 
 
+class ModularCusp:
+
+    def __init__(self, numerator: Any, denominator: Any = 1) -> None:
+        numerator = _exact_integer(numerator, 'cusp numerator')
+        denominator = _exact_integer(denominator, 'cusp denominator')
+        if numerator == 0 and denominator == 0:
+            raise ValueError('a cusp cannot be represented by (0, 0)')
+        left = abs(numerator)
+        right = abs(denominator)
+        while right:
+            left, right = right, left % right
+        if left > 1:
+            numerator //= left
+            denominator //= left
+        if denominator < 0:
+            numerator = -numerator
+            denominator = -denominator
+        if denominator == 0:
+            numerator = 1
+        self._numerator = numerator
+        self._denominator = denominator
+        runtime.object.freeze(self)
+
+    def numerator(self) -> int:
+        return self._numerator
+
+    def denominator(self) -> int:
+        return self._denominator
+
+    def pair(self) -> Any:
+        return runtime.math_tuple([
+            self._numerator, self._denominator])
+
+    def __neg__(self) -> ModularCusp:
+        return ModularCusp(-self._numerator, self._denominator)
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, ModularCusp)
+            and self._numerator == other._numerator
+            and self._denominator == other._denominator
+        )
+
+    def __repr__(self) -> str:
+        if self._denominator == 0:
+            return 'Infinity'
+        if self._denominator == 1:
+            return str(self._numerator)
+        return (
+            str(self._numerator) + '/' + str(self._denominator))
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class BoundarySymbolElement:
+
+    def __init__(self, parent: BoundarySymbolsSpace, coordinates: Any) -> None:
+        self._parent = parent
+        self._coordinates = VectorSpace(  # type: ignore[name-defined]  # noqa: F821
+            parent.base_ring(), parent.dimension())(coordinates)
+
+    def parent(self) -> BoundarySymbolsSpace:
+        return self._parent
+
+    def vector(self) -> Any:
+        return self._coordinates
+
+    element = vector
+
+    def is_zero(self) -> bool:
+        return all(value == 0 for value in self._coordinates)
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, BoundarySymbolElement)
+            and self._parent is other._parent
+            and self._coordinates == other._coordinates
+        )
+
+    def __repr__(self) -> str:
+        terms = []
+        for index in range(self._parent.dimension()):
+            coefficient = self._coordinates[index]
+            if coefficient != 0:
+                terms.append(
+                    str(coefficient) + '*['
+                    + str(self._parent.cusps()[index]) + ']')
+        if len(terms) == 0:
+            return '0'
+        return ' + '.join(terms)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class BoundarySymbolsSpace(sage.Parent):
+
+    def __init__(
+        self,
+        ambient: ModularSymbolsSpace,
+        cusps: list[ModularCusp],
+    ) -> None:
+        self._ambient = ambient
+        self._cusps = cusps
+
+    def dimension(self) -> int:
+        return len(self._cusps)
+
+    degree = dimension
+
+    def base_ring(self) -> Any:
+        return self._ambient.base_ring()
+
+    def level(self) -> int:
+        return self._ambient.level()
+
+    def weight(self) -> int:
+        return self._ambient.weight()
+
+    def cusps(self) -> list[ModularCusp]:
+        return list(self._cusps)
+
+    def __call__(self, coordinates: Any = 0) -> BoundarySymbolElement:
+        if runtime.is_exact_integer(coordinates) and coordinates == 0:
+            coordinates = [0 for _ in range(self.dimension())]
+        return BoundarySymbolElement(self, coordinates)
+
+    def basis(self) -> list[BoundarySymbolElement]:
+        result = []
+        for index in range(self.dimension()):
+            coordinates = [0 for _ in range(self.dimension())]
+            coordinates[index] = 1
+            result.append(self(coordinates))
+        return result
+
+    gens = basis
+
+    def __repr__(self) -> str:
+        return (
+            'Space of Boundary Modular Symbols for Gamma_0('
+            + str(self.level()) + ') of weight '
+            + str(self.weight()) + ' over ' + str(self.base_ring())
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class ModularSymbolElement(sage.Element):
+
+    def __init__(
+        self,
+        parent: ModularSymbolsSpace,
+        coordinates: Any,
+        label: Any = None,
+    ) -> None:
+        self._parent = parent
+        ambient = parent.ambient_module()
+        self._coordinates = VectorSpace(  # type: ignore[name-defined]  # noqa: F821
+            parent.base_ring(), ambient.dimension())(coordinates)
+        self._label = label
+
+    def parent(self) -> ModularSymbolsSpace:
+        return self._parent
+
+    def vector(self) -> Any:
+        return self._coordinates
+
+    element = vector
+
+    def is_zero(self) -> bool:
+        return all(value == 0 for value in self._coordinates)
+
+    def is_cuspidal(self) -> bool:
+        return self.boundary().is_zero()
+
+    def boundary(self) -> BoundarySymbolElement:
+        return self._parent.ambient_module().boundary_map()(self)
+
+    def star(self) -> ModularSymbolElement:
+        return self._parent.star_involution()(self)
+
+    def hecke(self, index: Any) -> ModularSymbolElement:
+        return self._parent.T(index)(self)
+
+    def _compatible(
+        self, other: object,
+    ) -> tuple[ModularSymbolElement, ModularSymbolElement]:
+        if (
+            not isinstance(other, ModularSymbolElement)
+            or self._parent.ambient_module()
+            is not other._parent.ambient_module()
+        ):
+            raise TypeError(
+                'modular symbols must have the same ambient space')
+        return self, other
+
+    def __add__(self, other: object) -> ModularSymbolElement:
+        left, right = self._compatible(other)
+        parent = (
+            left._parent if left._parent is right._parent
+            else left._parent.ambient_module())
+        return ModularSymbolElement(
+            parent, left._coordinates + right._coordinates)
+
+    def _add_(self, other: ModularSymbolElement) -> ModularSymbolElement:
+        return self.__add__(other)
+
+    def __sub__(self, other: object) -> ModularSymbolElement:
+        left, right = self._compatible(other)
+        parent = (
+            left._parent if left._parent is right._parent
+            else left._parent.ambient_module())
+        return ModularSymbolElement(
+            parent, left._coordinates - right._coordinates)
+
+    def _sub_(self, other: ModularSymbolElement) -> ModularSymbolElement:
+        return self.__sub__(other)
+
+    def __neg__(self) -> ModularSymbolElement:
+        return ModularSymbolElement(self._parent, -self._coordinates)
+
+    def _neg_(self) -> ModularSymbolElement:
+        return self.__neg__()
+
+    def __mul__(self, scalar: object) -> ModularSymbolElement:
+        return ModularSymbolElement(
+            self._parent, self._coordinates * scalar)
+
+    def __rmul__(self, scalar: object) -> ModularSymbolElement:
+        return self.__mul__(scalar)
+
+    def _lmul_(self, scalar: object) -> ModularSymbolElement:
+        return self.__mul__(scalar)
+
+    def _rmul_(self, scalar: object) -> ModularSymbolElement:
+        return self.__mul__(scalar)
+
+    def _sage_binop_(
+        self,
+        operator: str,
+        other: object,
+        reflected: bool,
+    ) -> Any:
+        if operator == 'add' and not reflected:
+            return self.__add__(other)
+        if operator == 'sub' and not reflected:
+            return self.__sub__(other)
+        if operator == 'mul':
+            if reflected:
+                return self.__rmul__(other)
+            return self.__mul__(other)
+        raise TypeError(
+            'operation ' + operator + ' is not defined for modular symbols')
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, ModularSymbolElement)
+            and self._parent.ambient_module()
+            is other._parent.ambient_module()
+            and self._coordinates == other._coordinates
+        )
+
+    def __repr__(self) -> str:
+        if self._label is not None:
+            return str(self._label)
+        return 'Modular symbol ' + str(self._coordinates)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class ModularSymbolsBoundaryMap:
+
+    def __init__(
+        self,
+        domain: ModularSymbolsSpace,
+        codomain: BoundarySymbolsSpace,
+        defining_matrix: Any,
+    ) -> None:
+        self._domain = domain
+        self._codomain = codomain
+        self._matrix = defining_matrix
+
+    def domain(self) -> ModularSymbolsSpace:
+        return self._domain
+
+    def codomain(self) -> BoundarySymbolsSpace:
+        return self._codomain
+
+    def matrix(self) -> Any:
+        return self._matrix
+
+    def __call__(self, element: Any) -> BoundarySymbolElement:
+        symbol = self._domain(element)
+        image = symbol.vector() * self._domain.ambient_module()._boundary_matrix()
+        return self._codomain(image)
+
+    def __repr__(self) -> str:
+        return (
+            'Boundary map defined by the matrix\n' + str(self._matrix))
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class ModularSymbolsLinearOperator:
+
+    def __init__(
+        self,
+        space: ModularSymbolsSpace,
+        defining_matrix: Any,
+        name: str,
+        ambient_matrix: Any = None,
+    ) -> None:
+        self._space = space
+        self._matrix = defining_matrix
+        self._name = name
+        self._ambient_matrix = (
+            defining_matrix if ambient_matrix is None else ambient_matrix)
+
+    def matrix(self) -> Any:
+        return self._matrix
+
+    def __call__(self, element: Any) -> ModularSymbolElement:
+        symbol = self._space(element)
+        ambient_image = symbol.vector() * self._ambient_matrix
+        return self._space(ambient_image)
+
+    def __repr__(self) -> str:
+        return self._name + ' on ' + str(self._space)
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class ManinPresentation:
     """
     A minimal weight-2 `Gamma_0(N)` modular-symbol presentation.
@@ -1301,6 +1639,7 @@ class P1List:
         self._level = _positive_integer(level, 'P1List level')
         self._native = runtime.flint_backend().p1List(self._level)
         self._manin_presentation_cache = None
+        self._boundary_data_cache = None
 
     def N(self) -> int:
         return self._level
@@ -1428,6 +1767,73 @@ class P1List:
         return self._hecke_matrix(
             prime, self.manin_presentation().dimension())
 
+    def boundary_data(self) -> Any:
+        """Return the native E1 boundary matrix and cusp representatives."""
+        if self._boundary_data_cache is None:
+            raw = runtime.flint_backend().p1ListBoundaryData(self._native)
+            dimension = self.manin_presentation().dimension()
+            raw_matrix = runtime.reflect.get(raw, 'matrix')
+            raw_cusps = runtime.reflect.get(raw, 'cusps')
+            defining_matrix = Matrix(  # type: ignore[name-defined]  # noqa: F821
+                MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                    sage.ZZ, dimension, len(raw_cusps)),
+                raw_matrix,
+            )
+            cusps = []
+            for pair in raw_cusps:
+                cusps.append(ModularCusp(
+                    runtime.normalize_integer(pair[0]),
+                    runtime.normalize_integer(pair[1]),
+                ))
+            self._boundary_data_cache = runtime.math_tuple([
+                defining_matrix, cusps])
+        return self._boundary_data_cache
+
+    def boundary_matrix(self) -> Any:
+        """Return the E1-basis boundary map matrix over `ZZ`."""
+        return self.boundary_data()[0]
+
+    def cusps(self) -> list[ModularCusp]:
+        """Return representatives for the discovered `Gamma_0(N)` cusps."""
+        return list(self.boundary_data()[1])
+
+    def star_matrix(self) -> Any:
+        """Return complex conjugation in the native E1 basis."""
+        dimension = self.manin_presentation().dimension()
+        native = runtime.flint_backend().p1ListStarMatrix(self._native)
+        return Matrix(  # type: ignore[name-defined]  # noqa: F821
+            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                sage.ZZ, dimension, dimension),
+            native,
+        )
+
+    def reduce_path(
+        self,
+        start: Any,
+        stop: Any,
+    ) -> Any:
+        """Reduce `{start, stop}` into the native E1 coordinate basis."""
+        start_values = list(start)
+        stop_values = list(stop)
+        if len(start_values) != 2 or len(stop_values) != 2:
+            raise ValueError('path endpoints must be numerator/denominator pairs')
+        values = [
+            _exact_integer(start_values[0], 'start numerator'),
+            _exact_integer(start_values[1], 'start denominator'),
+            _exact_integer(stop_values[0], 'stop numerator'),
+            _exact_integer(stop_values[1], 'stop denominator'),
+        ]
+        dimension = self.manin_presentation().dimension()
+        native = runtime.flint_backend().p1ListReducePath(
+            self._native,
+            values[0], values[1], values[2], values[3],
+        )
+        return Matrix(  # type: ignore[name-defined]  # noqa: F821
+            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                sage.ZZ, dimension, 1),
+            native,
+        ).column(0)
+
     def __repr__(self) -> str:
         return (
             'The projective line over the integers modulo '
@@ -1454,13 +1860,21 @@ class HeckeOperator:
 
     def matrix(self) -> Any:
         key = self._space._model_key()
-        if key == 'gamma0-1-12' and self._index == 2:
+        if (
+            key == 'gamma0-1-12'
+            and self._space.is_ambient()
+            and self._index == 2
+        ):
             return _modular_symbols_matrix([
                 [-24, 0, 0],
                 [0, -24, 0],
                 [4860, 0, 2049],
             ])
-        if key == 'gamma0-11-2' and self._index in [2, 3, 5]:
+        if (
+            key == 'gamma0-11-2'
+            and self._space.is_ambient()
+            and self._index in [2, 3, 5]
+        ):
             cusp_eigenvalue = {2: -2, 3: -1, 5: 1}[self._index]
             return _modular_symbols_matrix([
                 [self._index + 1, 0, -1],
@@ -1479,14 +1893,18 @@ class HeckeOperator:
             self._space._character is None
             and self._space._group._family == 'Gamma0'
             and self._space.weight() == 2
-            and self._space.sign() == 0
-            and not self._space._is_cuspidal
         ):
             return self._space._native_weight2_hecke_matrix(
                 self._index)
         raise NotImplementedError(
             'the requested Hecke matrix is not in the implemented '
             'modular-symbol models')
+
+    def __call__(self, element: Any) -> ModularSymbolElement:
+        symbol = self._space(element)
+        ambient = self._space.ambient_module()
+        image = symbol.vector() * ambient.hecke_matrix(self._index)
+        return self._space(image)
 
     def charpoly(self, variable: str = 'x') -> Any:
         key = self._space._model_key()
@@ -1564,6 +1982,8 @@ class ModularSymbolsSpace(sage.Parent):
         base_ring: Any,
         character: Any = None,
         ambient: Any = None,
+        basis_matrix: Any = None,
+        subspace_kind: Any = None,
     ) -> None:
         self._group = group
         self._weight = weight
@@ -1572,7 +1992,20 @@ class ModularSymbolsSpace(sage.Parent):
         self._character = character
         self._ambient = ambient
         self._p1list_cache = None
-        if ambient is None:
+        self._basis_matrix_cache = basis_matrix
+        self._subspace_kind = subspace_kind
+        self._boundary_data_cache = None
+        self._boundary_map_cache = None
+        self._star_matrix_cache = None
+        self._cuspidal_cache = None
+        self._plus_cache = None
+        self._minus_cache = None
+        if basis_matrix is not None:
+            self._dimension = basis_matrix.nrows()
+            self._is_cuspidal = (
+                subspace_kind is not None
+                and 'Cuspidal' in subspace_kind)
+        elif ambient is None:
             if character is not None:
                 cusp_dimension = dimension_cusp_forms(character, weight)
                 eis_dimension = dimension_eis(character, weight)
@@ -1600,6 +2033,44 @@ class ModularSymbolsSpace(sage.Parent):
             + str(self.level()) + '-' + str(self._weight) + suffix
         )
 
+    def _supports_native_weight2(self) -> bool:
+        return (
+            self._character is None
+            and self._group._family == 'Gamma0'
+            and self._weight == 2
+        )
+
+    def ambient_module(self) -> ModularSymbolsSpace:
+        if self._ambient is None:
+            return self
+        return self._ambient.ambient_module()
+
+    ambient_space = ambient_module
+
+    def is_ambient(self) -> bool:
+        return self._ambient is None
+
+    def _ambient_change_of_basis(self) -> Any:
+        dimension = self.ambient_module().dimension()
+        if self.level() == 11 and dimension == 3:
+            return _modular_symbols_matrix([
+                [1, 0, 0],
+                [sage.QQ(2) / sage.QQ(5), 1, 1],
+                [sage.QQ(2) / sage.QQ(5), 0, 1],
+            ])
+        return identity_matrix(  # type: ignore[name-defined]  # noqa: F821
+            self.base_ring(), dimension)
+
+    def basis_matrix(self) -> Any:
+        if self._basis_matrix_cache is not None:
+            return self._basis_matrix_cache
+        self._basis_matrix_cache = identity_matrix(  # type: ignore[name-defined]  # noqa: F821
+            self.base_ring(), self.dimension())
+        return self._basis_matrix_cache
+
+    def free_module(self) -> Any:
+        return self.basis_matrix().row_space()
+
     def dimension(self) -> int:
         return self._dimension
 
@@ -1620,6 +2091,21 @@ class ModularSymbolsSpace(sage.Parent):
         return self._base
 
     def basis(self) -> Any:
+        if self._supports_native_weight2():
+            rows = self.basis_matrix().rows()
+            result = []
+            for index in range(len(rows)):
+                label = None
+                if self.is_ambient() and self.level() == 11:
+                    labels = [
+                        ManinSymbolBasisElement(1, 0),
+                        ManinSymbolBasisElement(1, 8),
+                        ManinSymbolBasisElement(1, 9),
+                    ]
+                    label = labels[index]
+                result.append(ModularSymbolElement(
+                    self, rows[index], label))
+            return runtime.math_tuple(result)
         key = self._model_key()
         if key == 'gamma0-1-12':
             return runtime.math_tuple([
@@ -1637,6 +2123,32 @@ class ModularSymbolsSpace(sage.Parent):
             'a canonical basis is not available for this '
             'modular-symbol model')
 
+    gens = basis
+
+    def gen(self, index: Any = 0) -> Any:
+        index = _exact_nonnegative_integer(index, 'basis index')
+        return self.basis()[index]
+
+    def zero(self) -> ModularSymbolElement:
+        return ModularSymbolElement(
+            self,
+            [0 for _ in range(self.ambient_module().dimension())],
+        )
+
+    def __call__(self, value: Any = 0) -> ModularSymbolElement:
+        if isinstance(value, ModularSymbolElement):
+            if value.parent().ambient_module() is not self.ambient_module():
+                raise TypeError('modular symbol has a different ambient space')
+            coordinates = value.vector()
+        elif runtime.is_exact_integer(value) and value == 0:
+            return self.zero()
+        else:
+            coordinates = VectorSpace(  # type: ignore[name-defined]  # noqa: F821
+                self.base_ring(), self.ambient_module().dimension())(value)
+        if not self.is_ambient() and coordinates not in self.free_module():
+            raise ValueError('modular symbol is not in this subspace')
+        return ModularSymbolElement(self, coordinates)
+
     def p1list(self) -> P1List:
         if (
             self._character is not None
@@ -1652,9 +2164,158 @@ class ModularSymbolsSpace(sage.Parent):
     def manin_relations(self, modulus: Any = 65521) -> ManinRelations:
         return self.p1list().manin_relations(modulus)
 
+    def _boundary_data(self) -> Any:
+        ambient = self.ambient_module()
+        if ambient._boundary_data_cache is None:
+            raw_matrix, cusps = ambient.p1list().boundary_data()
+            defining_matrix = raw_matrix.change_ring(ambient.base_ring())
+            change = ambient._ambient_change_of_basis()
+            defining_matrix = change.transpose() * defining_matrix
+            boundary_space = BoundarySymbolsSpace(ambient, cusps)
+            ambient._boundary_data_cache = runtime.math_tuple([
+                defining_matrix, boundary_space])
+        return ambient._boundary_data_cache
+
+    def _boundary_matrix(self) -> Any:
+        return self._boundary_data()[0]
+
+    def boundary_space(self) -> BoundarySymbolsSpace:
+        return self._boundary_data()[1]
+
+    def boundary_map(self) -> ModularSymbolsBoundaryMap:
+        r"""
+        Return the exact map from modular symbols to cusp divisors.
+
+        Rows of the matrix are boundaries of the domain basis vectors. Its
+        kernel is the cuspidal submodule.
+
+        ```sage
+        sage: M = ModularSymbols(11)
+        sage: M.boundary_map().matrix()
+        [ 1 -1]
+        [ 0  0]
+        [ 0  0]
+        ```
+        """
+        if self._boundary_map_cache is None:
+            defining_matrix = self.basis_matrix() * self._boundary_matrix()
+            self._boundary_map_cache = ModularSymbolsBoundaryMap(
+                self, self.boundary_space(), defining_matrix)
+        return self._boundary_map_cache
+
+    def cusps(self) -> list[ModularCusp]:
+        return self.boundary_space().cusps()
+
+    def modular_symbol(
+        self,
+        start: Any,
+        stop: Any,
+    ) -> ModularSymbolElement:
+        r"""
+        Construct the rational path `{start, stop}` as an exact element.
+
+        Endpoints are numerator/denominator pairs; `(1, 0)` denotes infinity.
+        Continued-fraction reduction happens in one native call.
+        """
+        ambient = self.ambient_module()
+        native_coordinates = ambient.p1list().reduce_path(start, stop)
+        coordinates = (
+            ambient._ambient_change_of_basis().inverse()
+            * native_coordinates.column()
+        ).column(0)
+        return self(ambient(coordinates))
+
+    def _full_star_matrix(self) -> Any:
+        ambient = self.ambient_module()
+        if ambient._star_matrix_cache is None:
+            native = ambient.p1list().star_matrix().change_ring(
+                ambient.base_ring())
+            change = ambient._ambient_change_of_basis()
+            ambient._star_matrix_cache = (
+                change.inverse() * native * change
+            ).transpose()
+        return ambient._star_matrix_cache
+
+    def _restrict_ambient_matrix(self, defining_matrix: Any) -> Any:
+        if self.is_ambient():
+            return defining_matrix
+        basis = self.basis_matrix()
+        image = basis * defining_matrix
+        return image.matrix_from_columns(list(basis.pivots()))
+
+    def star_involution(self) -> ModularSymbolsLinearOperator:
+        """Return complex conjugation on this modular-symbol space."""
+        ambient_matrix = self._full_star_matrix()
+        return ModularSymbolsLinearOperator(
+            self,
+            self._restrict_ambient_matrix(ambient_matrix),
+            'Star involution',
+            ambient_matrix,
+        )
+
+    def star_involution_matrix(self) -> Any:
+        return self.star_involution().matrix()
+
+    def _new_coordinate_subspace(
+        self,
+        basis_matrix: Any,
+        kind: str,
+        sign: Any = None,
+    ) -> ModularSymbolsSpace:
+        if sign is None:
+            sign = self._sign
+        return ModularSymbolsSpace(
+            self._group,
+            self._weight,
+            sign,
+            self._base,
+            self._character,
+            self.ambient_module(),
+            basis_matrix,
+            kind,
+        )
+
+    def _intersect_basis(self, other_basis: Any) -> Any:
+        return self.basis_matrix().row_space().intersection(
+            other_basis.row_space()).basis_matrix()
+
+    def _star_submodule(self, sign: int) -> ModularSymbolsSpace:
+        cache_name = '_plus_cache' if sign == 1 else '_minus_cache'
+        cached = runtime.reflect.get(self, cache_name)
+        if cached is not None:
+            return cached
+        ambient = self.ambient_module()
+        relation = ambient._full_star_matrix() - identity_matrix(  # type: ignore[name-defined]  # noqa: F821
+            self.base_ring(), ambient.dimension()) * sign
+        eigenspace = relation.left_kernel_matrix()
+        basis = (
+            eigenspace if self.is_ambient()
+            else self._intersect_basis(eigenspace))
+        prefix = 'Cuspidal ' if self._is_cuspidal else ''
+        result = self._new_coordinate_subspace(
+            basis,
+            prefix + ('Plus' if sign == 1 else 'Minus'),
+            sign,
+        )
+        runtime.reflect.set(self, cache_name, result)
+        return result
+
+    def plus_submodule(self) -> ModularSymbolsSpace:
+        """Return the `+1` eigenspace of the star involution."""
+        return self._star_submodule(1)
+
+    plus_subspace = plus_submodule
+
+    def minus_submodule(self) -> ModularSymbolsSpace:
+        """Return the `-1` eigenspace of the star involution."""
+        return self._star_submodule(-1)
+
+    minus_subspace = minus_submodule
+
     def _native_weight2_hecke_matrix(self, index: int) -> Any:
-        projective_line = self.p1list()
-        dimension = self.dimension()
+        ambient = self.ambient_module()
+        projective_line = ambient.p1list()
+        dimension = ambient.dimension()
         result = None
         for prime, exponent in sage.factor(index):
             p = runtime.number(prime)
@@ -1663,7 +2324,7 @@ class ModularSymbolsSpace(sage.Parent):
                 p, dimension)
             if e == 1:
                 prime_power = prime_matrix
-            elif self.level() % p == 0:
+            elif ambient.level() % p == 0:
                 prime_power = prime_matrix ** e
             else:
                 previous = prime_matrix ** 0
@@ -1683,19 +2344,14 @@ class ModularSymbolsSpace(sage.Parent):
         if result is None:
             result = projective_line._hecke_matrix(
                 2, dimension) ** 0
-        result = result.change_ring(self.base_ring())
-        if self._model_key() == 'gamma0-11-2':
-            change_of_basis = _modular_symbols_matrix([
-                [5, 0, -1],
-                [1, 1, 0],
-                [1, 0, 0],
-            ])
-            result = (
-                change_of_basis.inverse()
-                * result
-                * change_of_basis
-            )
-        return result
+        result = result.change_ring(ambient.base_ring())
+        change_of_basis = ambient._ambient_change_of_basis()
+        result = (
+            change_of_basis.inverse()
+            * result
+            * change_of_basis
+        ).transpose()
+        return self._restrict_ambient_matrix(result)
 
     def hecke_matrix(self, index: Any) -> Any:
         r"""
@@ -1722,8 +2378,25 @@ class ModularSymbolsSpace(sage.Parent):
     hecke_operator = T
 
     def cuspidal_submodule(self) -> ModularSymbolsSpace:
+        """Return the exact kernel of the boundary map."""
         if self._is_cuspidal:
             return self
+        if self._supports_native_weight2():
+            if self._cuspidal_cache is None:
+                ambient_cusp_basis = (
+                    self.ambient_module()._boundary_matrix()
+                    .left_kernel_matrix())
+                basis = (
+                    ambient_cusp_basis if self.is_ambient()
+                    else self._intersect_basis(ambient_cusp_basis))
+                kind = 'Cuspidal'
+                if self._sign == 1:
+                    kind += ' Plus'
+                elif self._sign == -1:
+                    kind += ' Minus'
+                self._cuspidal_cache = self._new_coordinate_subspace(
+                    basis, kind)
+            return self._cuspidal_cache
         return ModularSymbolsSpace(
             self._group,
             self._weight,
@@ -1764,9 +2437,12 @@ class ModularSymbolsSpace(sage.Parent):
             'modular-symbol model')
 
     def __repr__(self) -> str:
-        if self._is_cuspidal:
+        if not self.is_ambient():
+            kind = (
+                '' if self._subspace_kind is None
+                else self._subspace_kind + ' ')
             return (
-                'Modular Symbols subspace of dimension '
+                'Modular Symbols ' + kind + 'subspace of dimension '
                 + str(self._dimension) + ' of ' + str(self._ambient)
             )
         if self._character is not None:
@@ -1834,8 +2510,24 @@ def ModularSymbols(
                 'or Dirichlet character')
     if base_ring is None:
         base_ring = sage.QQ
-    return ModularSymbolsSpace(
-        congruence_group, weight, sign, base_ring, character)
+    native_signed = (
+        character is None
+        and congruence_group._family == 'Gamma0'
+        and weight == 2
+        and sign != 0
+    )
+    result = ModularSymbolsSpace(
+        congruence_group,
+        weight,
+        0 if native_signed else sign,
+        base_ring,
+        character,
+    )
+    if native_signed:
+        if sign == 1:
+            return result.plus_submodule()
+        return result.minus_submodule()
+    return result
 
 
 _eisenstein_element_prototype = runtime.reflect.get(
@@ -2192,11 +2884,144 @@ runtime.register_doc(
         },
         'limitations': [
             (
-                'The general engine currently requires full weight-2 '
-                'Gamma0 spaces with sign zero and trivial character.'
+                'The general engine currently requires weight-2 Gamma0 '
+                'spaces with trivial character; ambient, cuspidal, and '
+                'star-eigenspace restrictions are supported.'
             ),
         ],
     },
+)
+
+
+def _modular_symbols_method_doc(
+    tags: list[str],
+    algorithm: str,
+) -> Any:
+    all_tags = runtime.reflect.apply(
+        runtime.array.prototype.concat,
+        ['number theory', 'modular symbols'],
+        [tags],
+    )
+    return {
+        'kind': 'method',
+        'module': 'sage.modular.modsym.space',
+        'tags': all_tags,
+        'backends': [
+            'Sage.js portable C modular-symbol core',
+            'FLINT exact matrices',
+        ],
+        'sage_compatibility': {
+            'status': 'compatible',
+            'notes': (
+                'The weight-2 Gamma0 API follows SageMath matrix and '
+                'subspace conventions, including row-action operator '
+                'matrices.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath modular-symbol API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'modsym/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'software-derived',
+                'source': 'PARI/GP src/basemath/modsym.c',
+                'revision': '0f5a08ee7e',
+                'url': 'https://pari.math.u-bordeaux.fr/',
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'sagejs-original',
+                'source': (
+                    'Portable preallocated coordinate and subspace adapter'
+                ),
+            },
+        ],
+        'references': [
+            {
+                'id': 'stein-modform',
+                'type': 'book',
+                'title': 'Modular Forms: A Computational Approach',
+                'authors': ['William Stein'],
+                'url': 'https://wstein.org/books/modform/',
+            },
+            {
+                'id': 'cremona-algorithms',
+                'type': 'book',
+                'title': 'Algorithms for Modular Elliptic Curves',
+                'authors': ['John Cremona'],
+                'url': 'https://johncremona.github.io/book/fulltext/',
+            },
+        ],
+        'implementation': {'algorithm': algorithm},
+        'limitations': [
+            (
+                'This general native implementation currently covers '
+                'weight 2, Gamma0, and trivial character.'
+            ),
+        ],
+    }
+
+
+runtime.register_doc(
+    'ModularSymbolsSpace.boundary_map',
+    runtime.reflect.get(_modular_symbols_space_prototype, 'boundary_map'),
+    _modular_symbols_method_doc(
+        ['boundary maps', 'cusps', 'exact linear algebra'],
+        'Cremona Gamma0 cusp equivalence and endpoint divisors',
+    ),
+)
+
+runtime.register_doc(
+    'ModularSymbolsSpace.cuspidal_submodule',
+    runtime.reflect.get(
+        _modular_symbols_space_prototype, 'cuspidal_submodule'),
+    _modular_symbols_method_doc(
+        ['cuspidal subspaces', 'kernels', 'Hecke modules'],
+        'Exact FLINT kernel of the boundary matrix',
+    ),
+)
+
+runtime.register_doc(
+    'ModularSymbolsSpace.star_involution',
+    runtime.reflect.get(
+        _modular_symbols_space_prototype, 'star_involution'),
+    _modular_symbols_method_doc(
+        ['star involution', 'complex conjugation', 'exact matrices'],
+        'Native endpoint negation and continued-fraction Manin reduction',
+    ),
+)
+
+runtime.register_doc(
+    'ModularSymbolsSpace.plus_submodule',
+    runtime.reflect.get(_modular_symbols_space_prototype, 'plus_submodule'),
+    _modular_symbols_method_doc(
+        ['star eigenspaces', 'plus subspaces', 'exact linear algebra'],
+        'Exact left kernel of star minus the identity',
+    ),
+)
+
+runtime.register_doc(
+    'ModularSymbolsSpace.minus_submodule',
+    runtime.reflect.get(_modular_symbols_space_prototype, 'minus_submodule'),
+    _modular_symbols_method_doc(
+        ['star eigenspaces', 'minus subspaces', 'exact linear algebra'],
+        'Exact left kernel of star plus the identity',
+    ),
+)
+
+runtime.register_doc(
+    'ModularSymbolsSpace.modular_symbol',
+    runtime.reflect.get(_modular_symbols_space_prototype, 'modular_symbol'),
+    _modular_symbols_method_doc(
+        ['elements', 'rational paths', 'continued fractions'],
+        'Native continued-fraction reduction into the minimal E1 basis',
+    ),
 )
 
 

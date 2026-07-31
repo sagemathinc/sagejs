@@ -100,6 +100,33 @@ assert.deepEqual(
     [1n, 0n, -2n],
   ],
 );
+const boundary11 = flint.p1ListBoundaryData(flint.p1List(11));
+assert.deepEqual(boundary11.cusps, [[1n, 0n], [0n, 1n]]);
+assert.deepEqual(
+  Array.from({ length: 3 }, (_, row) =>
+    Array.from({ length: 2 }, (_, col) =>
+      flint.matrixEntry(boundary11.matrix, row, col))),
+  [[1n, -1n], [0n, 0n], [0n, 0n]],
+);
+const boundary100 = flint.p1ListBoundaryData(flint.p1List(100));
+assert.equal(boundary100.cusps.length, 18);
+assert.equal(flint.matrixRank(boundary100.matrix), 17);
+const star11 = flint.p1ListStarMatrix(flint.p1List(11));
+assert.deepEqual(
+  Array.from({ length: 3 }, (_, row) =>
+    Array.from({ length: 3 }, (_, col) =>
+      flint.matrixEntry(star11, row, col))),
+  [[1n, 0n, 0n], [0n, 0n, 1n], [0n, 1n, 0n]],
+);
+assert.deepEqual(
+  Array.from({ length: 3 }, (_, row) =>
+    flint.matrixEntry(
+      flint.p1ListReducePath(flint.p1List(11), -1, 2, 3, 5),
+      row,
+      0,
+    )),
+  [0n, 0n, 1n],
+);
 for (const [level, prime, dimension, traces] of [
   [389, 3n, 65, [4n, 264n, 88n]],
   [1000, 2n, 301, [4n, 10n, 10n]],

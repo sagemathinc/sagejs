@@ -80,6 +80,15 @@ fundamental-domain, path-reduction, and Hecke-assembly code lives in
 Node adapter supplies only a projective-coset lookup callback and wraps the
 finished row-major buffer. This is the intended boundary for a WASM adapter.
 
+The same retained E1 endpoints now define the exact boundary map. Rational
+cusps are classified under `Gamma0(N)` using Cremona's equivalence criterion,
+and each basis path maps to its endpoint divisor. The cuspidal submodule is
+the exact kernel of this matrix. Complex conjugation negates both path
+endpoints and passes through the same native continued-fraction reducer;
+exact `+1` and `-1` eigenspaces follow from FLINT kernels. Arbitrary rational
+paths can also be reduced to genuine coordinate elements, on which boundary,
+star, and Hecke actions agree with the row-action matrices exposed by Sage.
+
 The algorithmic reference is PARI/GP's GPL-2.0-or-later
 `src/basemath/modsym.c`, copyright 2011 The PARI Group, inspected at
 development revision `0f5a08ee7e` on 2026-07-31. That source cites Robert

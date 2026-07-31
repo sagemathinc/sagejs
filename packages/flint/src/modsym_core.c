@@ -586,6 +586,243 @@ static int transform_cusp(
     return normalize_cusp(numerator, denominator);
 }
 
+static uint64_t gcd_i64_modulus(int64_t value, uint32_t modulus)
+{
+    uint64_t reduced = abs_i64(value) % modulus;
+    return gcd_u64(reduced, modulus);
+}
+
+static int64_t inverse_mod_positive(int64_t value, int64_t modulus)
+{
+    int64_t old_r = modulus, r = value % modulus;
+    int64_t old_s = 0, s = 1;
+
+    if (r < 0)
+        r += modulus;
+    while (r != 0)
+    {
+        int64_t quotient = old_r / r;
+        int64_t next_r = old_r - quotient * r;
+        int64_t next_s = old_s - quotient * s;
+        old_r = r;
+        r = next_r;
+        old_s = s;
+        s = next_s;
+    }
+    if (old_r != 1)
+        return -1;
+    old_s %= modulus;
+    if (old_s < 0)
+        old_s += modulus;
+    return old_s;
+}
+
+/* Cremona, Algorithms for Modular Elliptic Curves, Proposition 2.2.3. */
+static int gamma0_cusps_equivalent(
+    uint32_t level,
+    const sagejs_modsym_cusp *left,
+    const sagejs_modsym_cusp *right)
+{
+    int64_t s_left, s_right;
+    uint64_t product_mod_level, common;
+    __int128 difference;
+
+    if (left->numerator == right->numerator &&
+        left->denominator == right->denominator)
+        return 1;
+    if (gcd_i64_modulus(left->denominator, level) !=
+        gcd_i64_modulus(right->denominator, level))
+        return 0;
+    if (left->numerator == 0 && left->denominator == 1)
+        s_left = 0;
+    else if (left->denominator == 0 || left->denominator == 1)
+        s_left = 1;
+    else
+        s_left = inverse_mod_positive(
+            left->numerator, left->denominator);
+    if (right->numerator == 0 && right->denominator == 1)
+        s_right = 0;
+    else if (right->denominator == 0 || right->denominator == 1)
+        s_right = 1;
+    else
+        s_right = inverse_mod_positive(
+            right->numerator, right->denominator);
+    if (s_left < 0 || s_right < 0)
+        return 0;
+    product_mod_level = (uint64_t) (
+        ((__uint128_t) (abs_i64(left->denominator) % level)
+         * (abs_i64(right->denominator) % level)) % level);
+    common = gcd_u64(product_mod_level, level);
+    difference = (__int128) s_left * right->denominator
+        - (__int128) s_right * left->denominator;
+    return common == 0 || difference % (__int128) common == 0;
+}
+
+static size_t cusp_class(
+    uint32_t level,
+    const sagejs_modsym_cusp *cusp,
+    sagejs_modsym_cusp *representatives,
+    size_t *count,
+    size_t capacity)
+{
+    for (size_t index = 0; index < *count; index++)
+        if (gamma0_cusps_equivalent(
+                level, cusp, &representatives[index]))
+            return index;
+    if (*count >= capacity)
+        return SIZE_MAX;
+    representatives[*count] = *cusp;
+    return (*count)++;
+}
+
+slong *sagejs_modsym_weight2_boundary_matrix(
+    const sagejs_modsym_presentation_view *view,
+    size_t *dimension,
+    size_t *cusps,
+    sagejs_modsym_cusp **cusp_representatives)
+{
+    const sagejs_modsym_presentation *presentation;
+    sagejs_modsym_cusp *representatives = NULL;
+    size_t *starts = NULL, *stops = NULL;
+    slong *entries = NULL;
+    size_t capacity, cells;
+    sagejs_modsym_cusp infinity = {1, 0, SIZE_MAX, 0};
+
+    if (dimension == NULL || cusps == NULL || cusp_representatives == NULL)
+        return NULL;
+    *dimension = 0;
+    *cusps = 0;
+    *cusp_representatives = NULL;
+    if (view == NULL || view->presentation == NULL)
+        return NULL;
+    presentation = view->presentation;
+    *dimension = presentation->e1;
+    if (presentation->e1 > (SIZE_MAX - 1) / 2)
+        goto fail;
+    capacity = 2 * presentation->e1 + 1;
+    representatives = calloc(capacity, sizeof(*representatives));
+    starts = malloc((presentation->e1 == 0 ? 1 : presentation->e1)
+        * sizeof(*starts));
+    stops = malloc((presentation->e1 == 0 ? 1 : presentation->e1)
+        * sizeof(*stops));
+    if (representatives == NULL || starts == NULL || stops == NULL)
+        goto fail;
+    representatives[0] = infinity;
+    *cusps = 1;
+    for (size_t index = 0; index < presentation->e1; index++)
+    {
+        starts[index] = cusp_class(
+            view->level, &presentation->e1_start[index],
+            representatives, cusps, capacity);
+        stops[index] = cusp_class(
+            view->level, &presentation->e1_stop[index],
+            representatives, cusps, capacity);
+        if (starts[index] == SIZE_MAX || stops[index] == SIZE_MAX)
+            goto fail;
+    }
+    if (*cusps != 0 && presentation->e1 > SIZE_MAX / *cusps)
+        goto fail;
+    cells = presentation->e1 * *cusps;
+    entries = calloc(cells == 0 ? 1 : cells, sizeof(*entries));
+    if (entries == NULL)
+        goto fail;
+    for (size_t row = 0; row < presentation->e1; row++)
+    {
+        entries[row * *cusps + starts[row]]++;
+        entries[row * *cusps + stops[row]]--;
+    }
+    free(starts);
+    free(stops);
+    *cusp_representatives = representatives;
+    return entries;
+
+fail:
+    free(representatives);
+    free(starts);
+    free(stops);
+    free(entries);
+    *dimension = 0;
+    *cusps = 0;
+    return NULL;
+}
+
+slong *sagejs_modsym_weight2_star_matrix(
+    const sagejs_modsym_presentation_view *view,
+    size_t *dimension)
+{
+    const sagejs_modsym_presentation *presentation;
+    slong *entries = NULL, *vector = NULL;
+    size_t cells;
+
+    if (dimension == NULL)
+        return NULL;
+    *dimension = 0;
+    if (view == NULL || view->presentation == NULL)
+        return NULL;
+    presentation = view->presentation;
+    *dimension = presentation->e1;
+    if (presentation->e1 != 0 &&
+        presentation->e1 > SIZE_MAX / presentation->e1)
+        goto fail;
+    cells = presentation->e1 * presentation->e1;
+    entries = calloc(cells == 0 ? 1 : cells, sizeof(*entries));
+    vector = calloc(presentation->e1 == 0 ? 1 : presentation->e1,
+        sizeof(*vector));
+    if (entries == NULL || vector == NULL)
+        goto fail;
+    for (size_t column = 0; column < presentation->e1; column++)
+    {
+        const sagejs_modsym_cusp *start = &presentation->e1_start[column];
+        const sagejs_modsym_cusp *stop = &presentation->e1_stop[column];
+        memset(vector, 0, presentation->e1 * sizeof(*vector));
+        if (!reduce_path(
+                view,
+                -start->numerator, start->denominator,
+                -stop->numerator, stop->denominator,
+                1, vector))
+            goto fail;
+        for (size_t row = 0; row < presentation->e1; row++)
+            entries[row * presentation->e1 + column] = vector[row];
+    }
+    free(vector);
+    return entries;
+
+fail:
+    free(entries);
+    free(vector);
+    *dimension = 0;
+    return NULL;
+}
+
+slong *sagejs_modsym_weight2_reduce_path(
+    const sagejs_modsym_presentation_view *view,
+    int64_t start_numerator,
+    int64_t start_denominator,
+    int64_t stop_numerator,
+    int64_t stop_denominator,
+    size_t *dimension)
+{
+    slong *vector;
+
+    if (dimension == NULL)
+        return NULL;
+    *dimension = 0;
+    if (view == NULL || view->presentation == NULL)
+        return NULL;
+    *dimension = view->presentation->e1;
+    vector = calloc(*dimension == 0 ? 1 : *dimension, sizeof(*vector));
+    if (vector == NULL || !reduce_path(
+            view,
+            start_numerator, start_denominator,
+            stop_numerator, stop_denominator, 1, vector))
+    {
+        free(vector);
+        *dimension = 0;
+        return NULL;
+    }
+    return vector;
+}
+
 slong *sagejs_modsym_weight2_hecke_matrix(
     const sagejs_modsym_presentation_view *view,
     ulong prime,
