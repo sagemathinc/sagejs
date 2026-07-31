@@ -18,7 +18,9 @@ const expected = new Map([
   ["p1-100000", 180000],
   ["p1-1000000", 1800000],
   ["manin-modp-389", 65],
+  ["manin-modp-1000", 301],
   ["modsym-qq-389", 65],
+  ["modsym-qq-1000", 301],
 ]);
 
 function median(values) {
@@ -72,9 +74,10 @@ function executePari() {
   const program = [
     "default(parisizemax, 4G);",
     "msinit(11,2);",
-    "for(sample=0,2, t=getwalltime(); M=msinit(389,2); " +
-      'print("RESULT modsym-qq-389 ",sample," ",' +
-      '(getwalltime()-t)/1000.0," ",msdim(M)));',
+    "for(i=1,2, N=[389,1000][i]; " +
+      "for(sample=0,2, t=getwalltime(); M=msinit(N,2); " +
+      'print("RESULT modsym-qq-",N," ",sample," ",' +
+      '(getwalltime()-t)/1000.0," ",msdim(M))));',
     "quit;",
     "",
   ].join("\n");

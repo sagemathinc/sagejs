@@ -79,4 +79,6 @@ def measure_rational_modular_symbols(level):
 measure_p1(100000)
 measure_p1(1000000)
 measure_manin(389)
+measure_manin(1000)
 measure_rational_modular_symbols(389)
+measure_rational_modular_symbols(1000)

@@ -20,6 +20,11 @@ would give misleading performance numbers:
   machine-word field `GF(65521)`;
 - construction of the full weight-2 rational modular-symbol space.
 
+The modular-symbol cases include prime level 389 and the substantially more
+revealing composite level 1000. The latter has 1,800 projective cosets and
+exposes presentation and linear-algebra costs that the small prime-level case
+can hide.
+
 Sage.js and SageMath run the same `.sage` benchmark source. PARI/GP is used
 for its public `msinit`/`msdim` rational modular-symbol interface when `gp` is
 installed. eclib is reported explicitly but is not assigned a synthetic
@@ -48,5 +53,10 @@ once. Dense FLINT rank is only a first correctness backend; scalable sparse
 exact linear algebra is the next distinct layer of this project.
 
 PARI/GP provides an independent correctness and performance reference through
-its general `msinit` implementation. eclib remains an important reference for
-the specialized weight-2/newform pipeline and its linear algebra.
+its `msinit` implementation for even-weight `Gamma0(N)` modular symbols. Its
+weight-2 path constructs a connected fundamental domain and eliminates paired
+interior and boundary edges structurally; it does not compute the rank of the
+full Manin relation matrix. This is both a performance baseline and the design
+reference for Sage.js's next native presentation layer. eclib remains an
+important reference for the specialized weight-2/newform pipeline and its
+linear algebra.
