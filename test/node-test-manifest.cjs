@@ -25,6 +25,7 @@ const integration = [
   "test/groups.cjs",
   "test/dirichlet.cjs",
   "test/modular.cjs",
+  "test/elliptic-curves.cjs",
   "test/symbolic.cjs",
   "test/algebraic-numbers.cjs",
   "test/spectral-linear-algebra.cjs",

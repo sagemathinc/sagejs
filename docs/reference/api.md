@@ -353,6 +353,36 @@ This optional argument is a convenient Sage.js extension: SageMath's
 - `sage-derived` — [SageMath Eisenstein subspace API](https://doc.sagemath.org/html/en/reference/modfrm/); license GPL-2.0-or-later
 - `sagejs-original` — Precision-aware retained-parent basis elements
 
+## `EllipticCurve`
+
+```sage
+EllipticCurve(data, coefficients=None)
+```
+
+Construct an elliptic curve in general Weierstrass form.
+
+```sage
+sage: E = EllipticCurve([0,0,1,-1,0])
+sage: E
+Elliptic Curve defined by y^2 + y = x^3 - x over Rational Field
+sage: 10 * E([0,0])
+(161/16 : -2065/64 : 1)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.schemes.elliptic_curves.constructor`
+- Aliases: `EllipticCurve_from_j`
+- Tags: elliptic curves, number theory, Weierstrass equations, modular forms
+- Backends: Sage.js exact arithmetic
+- Sage compatibility: partial — General Weierstrass construction, rational point arithmetic, basic invariants, small Cremona labels, and coefficient lists are supported.
+- Limitations: General conductors, ranks, descent, and isogeny classes need additional arithmetic algorithms or databases.
+
+### Provenance
+
+- `sage-derived` — [SageMath elliptic curves API](https://doc.sagemath.org/html/en/reference/arithmetic_curves/); license GPL-2.0-or-later
+
 ## `factor`
 
 ```sage

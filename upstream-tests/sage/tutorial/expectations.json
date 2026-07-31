@@ -99,11 +99,6 @@
       "lines": [62, 71]
     },
     {
-      "reason": "requires an elliptic-curve subsystem, algebraic closures, and database integration",
-      "file": "src/doc/en/tutorial/tour_advanced.rst",
-      "lines": [120, 123, 126, 129, 132, 135, 148, 149, 151, 152, 154, 156, 158, 167, 169, 171, 181, 182, 191, 193, 195, 206, 207, 210, 229, 230, 233, 234, 236, 238, 239, 246, 247, 249]
-    },
-    {
       "reason": "requires general number fields and custom Dirichlet character value groups",
       "file": "src/doc/en/tutorial/tour_advanced.rst",
       "lines": [338, 340, 350, 356, 368, 369, 371, 373, 375, 377]
