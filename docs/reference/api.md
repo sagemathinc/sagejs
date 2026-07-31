@@ -640,7 +640,7 @@ the `E1` paths together with order-two and order-three stabilizer paths.
 - Backends: Sage.js native C
 - Sage compatibility: extension — This explicit presentation-inspection object is a Sage.js API; its weight-2 dimension agrees with SageMath.
 - Algorithm: Connected Farey-triangle fundamental domain with structural elimination of F, E2, and T32 paths
-- Limitations: The current public object exposes presentation metadata only. Generator reduction, boundary maps, and Hecke actions will be layered on the retained path presentation.
+- Limitations: The public object exposes presentation metadata; the retained paths and reductions are consumed internally by the exact Hecke engine. Boundary maps and explicit modular-symbol elements remain future work.
 
 ### Provenance
 
@@ -806,24 +806,61 @@ ModularSymbols(group=1, weight=2, sign=0, base_ring=None)
 
 Construct a modular-symbol Hecke module.
 
-The initial implementation provides exact dimensions for supported
-congruence subgroups and characters, together with explicit Hecke models
-for the level 1, 11, and character-level 13 examples in the Sage guided
-tour. Requests for unavailable Hecke data raise `NotImplementedError`.
+Weight-2 full `Gamma_0(N)` spaces with sign zero provide exact matrices
+for every Hecke operator `T_n`. Prime operators are assembled natively
+from a minimal Manin presentation; general indices use multiplicativity
+and the weight-2 prime-power recurrence. Additional guided-tour models
+cover selected higher-weight, character, and cuspidal examples.
 
 ### Metadata
 
 - Kind: `function`
 - Module: `sage.modular.modsym.modsym`
 - Tags: number theory, modular symbols, modular forms, Hecke operators, q-expansions
-- Backends: FLINT, Sage.js native P1List and Manin relations, Sage.js exact Hecke models
-- Sage compatibility: partial — Weight-2 Gamma0 spaces expose native P1 representatives and Manin relations over machine-word prime fields. The exact level 1, level 11, and character-level 13 guided-tour Hecke models provide bases, characteristic polynomials, matrices, and cuspidal q-expansions.
-- Limitations: Hecke data beyond the documented level 1, level 11, and character-level 13 models is not yet computed. General-weight and character Manin relations are not yet built. The scalable sparse Hecke and elimination engine remains future work.
+- Backends: FLINT, Sage.js portable C modular-symbol core, Sage.js native P1List and Manin presentation
+- Sage compatibility: partial — Weight-2 Gamma0 spaces expose native P1 representatives and exact T_n matrices for arbitrary positive indices in the full sign-zero space. Selected higher-weight, Gamma1, character, and cuspidal guided-tour models provide further bases, characteristic polynomials, and q-expansions.
+- Limitations: The general native engine currently covers full weight-2 Gamma0 spaces with sign zero and trivial character. General-weight and character Manin relations are not yet built. Boundary maps, star eigenspaces, and cuspidal restriction remain future work.
 
 ### Provenance
 
 - `sage-derived` — [SageMath modular symbols API and guided tour](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
-- `sagejs-original` — Bounded exact Hecke models integrated with Sage.js matrices, elliptic curves, and power series
+- `software-derived` — [PARI/GP well-formed fundamental domain and path reduction strategy](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated C Hecke assembler, strict-Python Hecke algebra integration, and FLINT matrix boundary
+
+## `ModularSymbolsSpace.hecke_matrix`
+
+```sage
+hecke_matrix(index)
+```
+
+Return the exact matrix of the Hecke operator `T_index`.
+
+For a full weight-2 `Gamma_0(N)` space with sign zero, every positive
+index is supported. Prime matrices are computed by the portable C
+Manin-symbol engine. Composite indices use commuting prime factors,
+`U_p` powers at bad primes, and
+`T_(p^r) = T_p T_(p^(r-1)) - p T_(p^(r-2))` at good primes.
+
+```sage
+sage: M = ModularSymbols(1000, 2)
+sage: M.hecke_matrix(6).trace()
+60
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, Hecke operators, exact matrices
+- Backends: Sage.js portable C modular-symbol core, FLINT integer and rational matrices
+- Sage compatibility: compatible — Full weight-2 Gamma0 sign-zero spaces support exact T_n matrices for every positive index.
+- Algorithm: Native prime Hecke matrices, multiplicativity, Up powers, and the weight-2 good-prime recurrence
+- Limitations: The general engine currently requires full weight-2 Gamma0 spaces with sign zero and trivial character.
+
+### Provenance
+
+- `literature-implemented` — [William Stein, Modular Forms: A Computational Approach](https://wstein.org/books/modform/)
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
 
 ## `next_prime`
 
@@ -902,13 +939,49 @@ sage: P.apply_S(P.apply_S(10))
 - Tags: number theory, modular symbols, projective line, Manin relations
 - Backends: Sage.js native C, FLINT nmod_mat
 - Sage compatibility: compatible — Representative ordering, normalization, I, S, and the historical order-three T action agree with SageMath. apply_R and apply_translation are explicit extensions.
-- Algorithm: Exact cardinality preallocation, canonical normalization, lexicographic representatives, open-addressed indexing, and a preallocated Pollack--Stevens fundamental domain
+- Algorithm: Exact cardinality preallocation, canonical normalization, lexicographic representatives, open-addressed indexing, a preallocated Pollack--Stevens fundamental domain, and batched exact path reduction for weight-2 Hecke matrices
 - Limitations: Levels are currently limited to signed 32-bit positive integers.
 
 ### Provenance
 
 - `sage-derived` — [SageMath P1List implementation](https://github.com/sagemath/sage/blob/develop/src/sage/modular/modsym/p1list.pyx); license GPL-2.0-or-later
 - `sagejs-original` — [William Stein JSage Zig P1List](https://github.com/sagemathinc/JSage/blob/2582234b6f76f8a5e1cecae319ae1a098d9b3c50/lib/src/modular/p1list.zig); revision 2582234b6f76f8a5e1cecae319ae1a098d9b3c50
+
+## `P1List.hecke_matrix`
+
+```sage
+hecke_matrix(prime)
+```
+
+Return the exact weight-2 `T_p` (or `U_p`) matrix in the native
+minimal Manin basis.
+
+The index must be prime. If it divides the level this constructs
+`U_p`; otherwise it constructs `T_p`. Path reduction and matrix
+assembly happen in one native batch, so matrix entries never cross
+the JavaScript boundary individually.
+
+```sage
+sage: P1List(11).hecke_matrix(2)
+[ 3  0  0]
+[ 1 -2  0]
+[ 1  0 -2]
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.p1list`
+- Tags: number theory, modular symbols, Hecke operators, Manin symbols
+- Backends: Sage.js portable C modular-symbol core, FLINT integer matrices
+- Sage compatibility: extension — The matrix is expressed in Sage.js's minimal E1 Manin basis; traces and characteristic polynomials agree with SageMath and PARI.
+- Algorithm: Pollack--Stevens fundamental domain, continued-fraction Manin reduction, and standard Tp/Up representatives
+- Limitations: The low-level method accepts prime indices only. Use ModularSymbols(...).hecke_matrix(n) for composite indices.
+
+### Provenance
+
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated path reducer and batched row-major Hecke assembler
 
 ## `PermutationGroup`
 

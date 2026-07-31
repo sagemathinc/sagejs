@@ -38,6 +38,18 @@ test("level one and Gamma0(11) modular-symbol Hecke models", async () => {
         "[ 4  0 -1]\n[ 0 -1  0]\n[ 0  0 -1], " +
         "[ 6  0 -1]\n[ 0  1  0]\n[ 0  0  1]]]",
     );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "M = ModularSymbols(11)",
+            "[M.T(7).matrix(), " +
+              "M.T(6).matrix() == M.T(2).matrix()*M.T(3).matrix()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[ 8  0 -2]\n[ 0 -2  0]\n[ 0  0 -2], True]",
+    );
   } finally {
     await session.close();
   }
@@ -172,6 +184,56 @@ test("native sparse weight-2 Gamma0 Manin relations", async () => {
       "[(1, 1, 0, 0), (2, 3, 1, 1), (3, 4, 1, 1), " +
         "(5, 6, 1, 1), (11, 12, 3, 3), (37, 38, 5, 5), " +
         "(389, 390, 65, 65)]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("native exact weight-2 Hecke matrices", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (await session.evaluate("P1List(11).hecke_matrix(2)")).repr,
+      "[ 3  0  0]\n[ 1 -2  0]\n[ 1  0 -2]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "M = ModularSymbols(389)",
+            "T = M.hecke_matrix(3)",
+            "[T.nrows(), T.ncols(), T.base_ring(), T.trace(), " +
+              "(T*T).trace(), (T*T*T).trace()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[65, 65, Rational Field, 4, 264, 88]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "M = ModularSymbols(1000)",
+            "T = M.T(3).matrix()",
+            "[T.nrows(), T.trace(), (T*T).trace(), (T*T*T).trace()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[301, 20, 1280, 416]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "M = ModularSymbols(1000)",
+            "[(n, M.T(n).matrix().trace()) " +
+              "for n in [1, 4, 6, 9, 10, 25]]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(1, 301), (4, 10), (6, 60), (9, 377), " +
+        "(10, 8), (25, 85)]",
     );
   } finally {
     await session.close();

@@ -10,6 +10,8 @@
 #include <flint/nmod_mat.h>
 #include <flint/ulong_extras.h>
 
+#include "matrix.h"
+#include "modsym_core.h"
 #include "p1.h"
 
 /*
@@ -56,30 +58,7 @@ typedef struct
     ulong *values;
 } sagejs_manin_relations_value;
 
-typedef struct
-{
-    int64_t numerator;
-    int64_t denominator;
-    size_t next;
-    unsigned char edge_type;
-} sagejs_farey_cusp;
-
-typedef struct
-{
-    size_t cusps;
-    size_t interior_paths;
-    size_t e1;
-    size_t e2;
-    size_t torsion2;
-    size_t torsion3;
-} sagejs_manin_presentation_info;
-
-enum
-{
-    SAGEJS_FAREY_EDGE_CLOSED,
-    SAGEJS_FAREY_EDGE_PENDING,
-    SAGEJS_FAREY_EDGE_TORSION3
-};
+typedef sagejs_modsym_presentation sagejs_manin_presentation_info;
 
 static const napi_type_tag sagejs_p1_type_tag = {
     UINT64_C(0x690d50401f624373),
@@ -389,235 +368,38 @@ static size_t p1_apply_pair(
     return p1_index_normalized(list, normalized);
 }
 
-static int p1_farey_mark(
+static size_t p1_modsym_coset_index(
+    const void *context, int64_t u, int64_t v)
+{
+    return p1_apply_pair(context, u, v);
+}
+
+static sagejs_modsym_presentation_view p1_presentation_view(
     const sagejs_p1list_value *list,
-    unsigned char *visited,
-    int64_t u,
-    int64_t v)
+    const sagejs_manin_presentation_info *presentation)
 {
-    size_t index = p1_apply_pair(list, u, v);
-    if (index == SIZE_MAX)
-        return 0;
-    visited[index] = 1;
-    return 1;
+    return (sagejs_modsym_presentation_view) {
+        list->level,
+        list->count,
+        presentation,
+        list,
+        p1_modsym_coset_index
+    };
 }
 
-static int p1_farey_torsion3(
-    uint32_t level, int64_t left, int64_t right)
-{
-    uint64_t a = p1_reduce_signed(left, level);
-    uint64_t b = p1_reduce_signed(right, level);
-    __uint128_t value = (__uint128_t) a * a
-        + (__uint128_t) b * b + (__uint128_t) a * b;
-    return (uint32_t) (value % level) == 0;
-}
-
-static size_t p1_path_index(
-    const sagejs_p1list_value *list,
-    const sagejs_farey_cusp *start,
-    const sagejs_farey_cusp *stop)
-{
-    __int128 determinant = (__int128) start->numerator * stop->denominator
-        - (__int128) stop->numerator * start->denominator;
-    int64_t c = start->denominator;
-    if (determinant < 0)
-        c = -c;
-    return p1_apply_pair(list, c, stop->denominator);
-}
-
-static int p1_insert_boundary_path(
-    const sagejs_p1list_value *list,
-    const sagejs_farey_cusp *start,
-    const sagejs_farey_cusp *stop,
-    size_t *standard_e1,
-    sagejs_manin_presentation_info *result)
-{
-    size_t reverse = p1_path_index(list, stop, start);
-    if (reverse == SIZE_MAX)
-        return 0;
-    if (standard_e1[reverse] != 0)
-    {
-        result->e2++;
-    }
-    else
-    {
-        size_t forward = p1_path_index(list, start, stop);
-        if (forward == SIZE_MAX)
-            return 0;
-        result->e1++;
-        standard_e1[forward] = result->e1;
-    }
-    return 1;
-}
-
-/*
- * Construct the Pollack--Stevens well-formed fundamental domain used by
- * PARI's msinit.  The algorithm is adapted from PARI/GP modsym.c, copyright
- * (C) 2011 The PARI Group, GPL-2.0-or-later, development revision
- * 0f5a08ee7e (2026-07-31).  This implementation is intentionally built from
- * arrays and indices: the maximum storage is known from #P1(Z/NZ), so no cusp
- * or edge node is individually allocated.  At weight 2 the number of E1
- * boundary paths is the dimension of the full Gamma0(N) modular-symbol space
- * in characteristic different from 2 and 3.
- */
 static int p1_manin_presentation_build(
     const sagejs_p1list_value *list,
     sagejs_manin_presentation_info *result)
 {
-    sagejs_farey_cusp *nodes = NULL;
-    unsigned char *visited = NULL;
-    size_t *order = NULL, *standard_e1 = NULL;
-    size_t used = 2;
-    const size_t none = SIZE_MAX;
-    sagejs_farey_cusp infinity = {1, 0, SIZE_MAX, 0};
+    sagejs_modsym_presentation_view view =
+        p1_presentation_view(list, result);
+    return sagejs_modsym_presentation_build(&view, result);
+}
 
-    memset(result, 0, sizeof(*result));
-    if (list->level == 1)
-    {
-        result->cusps = 2;
-        return 1;
-    }
-    nodes = calloc(list->count, sizeof(*nodes));
-    visited = calloc(list->count, sizeof(*visited));
-    order = malloc(list->count * sizeof(*order));
-    standard_e1 = calloc(list->count, sizeof(*standard_e1));
-    if (nodes == NULL || visited == NULL || order == NULL ||
-        standard_e1 == NULL)
-        goto fail;
-
-    nodes[0] = (sagejs_farey_cusp) {
-        0, 1, 1, SAGEJS_FAREY_EDGE_CLOSED};
-    nodes[1] = (sagejs_farey_cusp) {
-        1, 1, none, SAGEJS_FAREY_EDGE_PENDING};
-    if (!p1_farey_mark(list, visited, 0, 1) ||
-        !p1_farey_mark(list, visited, 1, -1) ||
-        !p1_farey_mark(list, visited, -1, 0))
-        goto fail;
-
-    for (;;)
-    {
-        int done = 1;
-        size_t current = 0;
-        while (current != none && nodes[current].next != none)
-        {
-            size_t right = nodes[current].next;
-            int64_t b1, b2;
-            size_t position;
-
-            if (nodes[right].edge_type != SAGEJS_FAREY_EDGE_PENDING)
-            {
-                current = right;
-                continue;
-            }
-            b1 = nodes[right].denominator;
-            b2 = nodes[current].denominator;
-            position = p1_apply_pair(list, b1, b2);
-            if (position == SIZE_MAX)
-                goto fail;
-            if (visited[position])
-            {
-                nodes[right].edge_type = SAGEJS_FAREY_EDGE_CLOSED;
-            }
-            else
-            {
-                int64_t denominator, numerator;
-                visited[position] = 1;
-                if (!p1_farey_mark(list, visited, -(b1 + b2), b1) ||
-                    !p1_farey_mark(list, visited, b2, -(b1 + b2)))
-                    goto fail;
-                if (p1_farey_torsion3(list->level, b1, b2))
-                {
-                    nodes[right].edge_type =
-                        SAGEJS_FAREY_EDGE_TORSION3;
-                }
-                else
-                {
-                    if (used >= list->count ||
-                        __builtin_add_overflow(
-                            nodes[current].numerator,
-                            nodes[right].numerator,
-                            &numerator) ||
-                        __builtin_add_overflow(
-                            nodes[current].denominator,
-                            nodes[right].denominator,
-                            &denominator))
-                        goto fail;
-                    nodes[used] = (sagejs_farey_cusp) {
-                        numerator,
-                        denominator,
-                        right,
-                        SAGEJS_FAREY_EDGE_PENDING
-                    };
-                    nodes[current].next = used++;
-                    done = 0;
-                }
-            }
-            /* Match PARI's traversal: new adjacent edges wait for a new pass. */
-            current = right;
-        }
-        if (done)
-            break;
-    }
-
-    result->cusps = 0;
-    for (size_t current = 0; current != none; current = nodes[current].next)
-        order[result->cusps++] = current;
-    if (result->cusps != used)
-        goto fail;
-    for (size_t index = 1; index < result->cusps; index++)
-        if (nodes[order[index]].edge_type == SAGEJS_FAREY_EDGE_TORSION3)
-            result->torsion3++;
-
-    if (!p1_insert_boundary_path(
-            list, &infinity, &nodes[order[0]], standard_e1, result) ||
-        !p1_insert_boundary_path(
-            list, &nodes[order[result->cusps - 1]], &infinity,
-            standard_e1, result))
-        goto fail;
-    for (size_t left = 0; left + 1 < result->cusps; left++)
-    {
-        const sagejs_farey_cusp *c1 = &nodes[order[left]];
-        for (size_t right = left + 1; right < result->cusps; right++)
-        {
-            const sagejs_farey_cusp *c2 = &nodes[order[right]];
-            __int128 determinant = (__int128) c1->numerator * c2->denominator
-                - (__int128) c1->denominator * c2->numerator;
-            if (determinant != 1 && determinant != -1)
-                continue;
-            if (right == left + 1)
-            {
-                size_t forward, reverse;
-                if (c2->edge_type == SAGEJS_FAREY_EDGE_TORSION3)
-                    continue;
-                forward = p1_path_index(list, c1, c2);
-                reverse = p1_path_index(list, c2, c1);
-                if (forward == SIZE_MAX || reverse == SIZE_MAX)
-                    goto fail;
-                if (forward == reverse)
-                    result->torsion2++;
-                else if (!p1_insert_boundary_path(
-                    list, c1, c2, standard_e1, result))
-                    goto fail;
-            }
-            else
-            {
-                result->interior_paths += 2;
-            }
-        }
-    }
-
-    free(nodes);
-    free(visited);
-    free(order);
-    free(standard_e1);
-    return 1;
-
-fail:
-    free(nodes);
-    free(visited);
-    free(order);
-    free(standard_e1);
-    return 0;
+static void p1_manin_presentation_clear(
+    sagejs_manin_presentation_info *presentation)
+{
+    sagejs_modsym_presentation_clear(presentation);
 }
 
 static void p1_free_value(sagejs_p1list_value *list)
@@ -1177,7 +959,55 @@ napi_value sagejs_p1list_manin_presentation_info(
             env, result, "relations", relations) ||
         !manin_set_number_property(
             env, result, "dimension", presentation.e1))
+    {
+        p1_manin_presentation_clear(&presentation);
         return NULL;
+    }
+    p1_manin_presentation_clear(&presentation);
+    return result;
+}
+
+napi_value sagejs_p1list_hecke_matrix(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[2], result;
+    sagejs_p1list_value *list;
+    sagejs_manin_presentation_info presentation;
+    sagejs_modsym_presentation_view view;
+    slong *entries;
+    ulong prime;
+    size_t dimension;
+
+    if (!p1_arguments(env, info, 2, arguments) ||
+        (list = p1_unwrap(env, arguments[0])) == NULL ||
+        !p1_bigint_to_ulong(env, arguments[1], &prime))
+        return NULL;
+    if (prime < 2 || prime > INT32_MAX || !n_is_prime(prime))
+    {
+        napi_throw_range_error(env, NULL,
+            "weight-2 Hecke index must be a prime fitting in 31 bits");
+        return NULL;
+    }
+    if (!p1_manin_presentation_build(list, &presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct minimal Manin presentation");
+        return NULL;
+    }
+    view = p1_presentation_view(list, &presentation);
+    entries = sagejs_modsym_weight2_hecke_matrix(
+        &view, prime, &dimension);
+    p1_manin_presentation_clear(&presentation);
+    if (entries == NULL || dimension > (size_t) WORD_MAX)
+    {
+        free(entries);
+        napi_throw_error(env, NULL,
+            "unable to construct exact weight-2 Hecke matrix");
+        return NULL;
+    }
+    result = sagejs_zz_matrix_from_slong_entries(
+        env, (slong) dimension, (slong) dimension, entries);
+    free(entries);
     return result;
 }
 

@@ -12,6 +12,7 @@ const defaultSage = existsSync("/home/user/bin/sagelite")
   : "/opt/cocalc-webdev-python/bin/sage";
 const sage = process.env.SAGELITE_SAGE || defaultSage;
 const gp = process.env.PARI_GP || "gp";
+const magma = process.env.MAGMA || "/home/user/bin/magma";
 const json = process.argv.includes("--json");
 
 const expected = new Map([
@@ -21,6 +22,8 @@ const expected = new Map([
   ["manin-modp-1000", 301],
   ["modsym-qq-389", 65],
   ["modsym-qq-1000", 301],
+  ["hecke-t3-389", 4],
+  ["hecke-t3-1000", 20],
 ]);
 
 function median(values) {
@@ -78,10 +81,32 @@ function executePari() {
       "for(sample=0,2, t=getwalltime(); M=msinit(N,2); " +
       'print("RESULT modsym-qq-",N," ",sample," ",' +
       '(getwalltime()-t)/1000.0," ",msdim(M))));',
+    "for(i=1,2, N=[389,1000][i]; M=msinit(N,2); " +
+      "for(sample=0,2, t=getwalltime(); T=mshecke(M,3); " +
+      'print("RESULT hecke-t3-",N," ",sample," ",' +
+      '(getwalltime()-t)/1000.0," ",trace(T))));',
     "quit;",
     "",
   ].join("\n");
   return execute("PARI/GP", gp, ["-q", "-f"], { input: program });
+}
+
+function executeMagma() {
+  const program = [
+    "SetSeed(1);",
+    "for N in [389, 1000] do",
+    "  for sample in [0..2] do",
+    "    M := ModularSymbols(N, 2);",
+    "    t := Cputime();",
+    "    T := HeckeOperator(M, 3);",
+    '    printf "RESULT hecke-t3-%o %o %.9o %o\\n", ' +
+      "N, sample, Cputime(t), Trace(T);",
+    "  end for;",
+    "end for;",
+    "quit;",
+    "",
+  ].join("\n");
+  return execute("Magma", magma, [], { input: program });
 }
 
 const runtimes = [
@@ -94,6 +119,7 @@ const runtimes = [
     result: execute("SageMath", sage, [source]),
   },
   { name: "PARI/GP", result: executePari() },
+  { name: "Magma", result: executeMagma() },
   {
     name: "eclib",
     result: {
@@ -133,6 +159,8 @@ const report = {
     "manin-modp-*":
       "weight-2 Gamma0 S/R relation quotient over GF(65521)",
     "modsym-qq-*": "full weight-2 Gamma0 modular-symbol space over Q",
+    "hecke-t3-*":
+      "exact weight-2 Gamma0 T3/Hecke matrix, answer is its trace",
   },
   runtimes: runtimes.map(({ name, result }) => ({
     name,

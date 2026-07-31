@@ -19,19 +19,27 @@ would give misleading performance numbers:
 - the weight-2 `Gamma0(N)` Manin `S`/`R` relation quotient over the
   machine-word field `GF(65521)`;
 - construction of the full weight-2 rational modular-symbol space.
+- construction of the exact dense weight-2 `T_3` matrix, checked by trace.
 
 The modular-symbol cases include prime level 389 and the substantially more
 revealing composite level 1000. The latter has 1,800 projective cosets and
 exposes presentation and linear-algebra costs that the small prime-level case
 can hide.
 
+Hecke timings use an initialized modular-symbol space but force matrix
+recomputation rather than timing a cached lookup. SageMath's operator and
+ambient-space matrix caches are explicitly cleared between samples. The
+reported answer is the basis-independent trace; regression tests also compare
+traces of the second and third powers with PARI.
+
 Sage.js and SageMath run the same `.sage` benchmark source. PARI/GP is used
 for its public `msinit`/`msdim` rational modular-symbol interface when `gp` is
-installed. eclib is reported explicitly but is not assigned a synthetic
+installed. Magma is included when `MAGMA` (or `/home/user/bin/magma`) is
+available. eclib is reported explicitly but is not assigned a synthetic
 timing: its public modular-symbol programs specialize in weight-2 newform and
 elliptic-curve workflows rather than exposing these same operations.
 
-Set `SAGELITE_SAGE`, `PARI_GP`, or both to compare specific installations.
+Set `SAGELITE_SAGE`, `PARI_GP`, or `MAGMA` to compare specific installations.
 Unavailable tools are reported as such rather than silently omitted.
 
 ## Implementation lineage
@@ -60,6 +68,16 @@ strategy natively using preallocated C arrays and integer indices. For
 characteristic greater than 3, dimension and rank queries use the minimal
 presentation; dense FLINT rank remains the independent small-level oracle and
 the characteristic-2/3 fallback.
+
+Exact weight-2 Hecke matrices use the minimal `E1` basis directly. For every
+basis path, Sage.js applies the standard `T_p` (or `U_p`) representatives,
+reduces the resulting rational paths by continued fractions, and expands
+fundamental-domain paths through a precomputed boundary reduction. The entire
+operation is a single native batch returning a FLINT integer matrix. The
+fundamental-domain, path-reduction, and Hecke-assembly code lives in
+`packages/flint/src/modsym_core.c`, which has no Node-API dependency; the
+Node adapter supplies only a projective-coset lookup callback and wraps the
+finished row-major buffer. This is the intended boundary for a WASM adapter.
 
 The algorithmic reference is PARI/GP's GPL-2.0-or-later
 `src/basemath/modsym.c`, copyright 2011 The PARI Group, inspected at

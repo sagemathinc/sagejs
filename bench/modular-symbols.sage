@@ -76,9 +76,35 @@ def measure_rational_modular_symbols(level):
         report("modsym-qq-" + str(level), sample, start, answer)
 
 
+def measure_hecke(level, prime):
+    native = hasattr(P1List(1), "hecke_matrix")
+    if native:
+        space = ModularSymbols(level, 2)
+    else:
+        space = ModularSymbols(level, 2, use_cache=False)
+    space.T(prime).matrix()
+    for sample in range(SAMPLES):
+        if hasattr(space, "_hecke_matrices"):
+            space._hecke_matrices.clear()
+        operator = space.T(prime)
+        matrix_cache = "_HeckeOperator__matrix"
+        if hasattr(operator, matrix_cache):
+            delattr(operator, matrix_cache)
+        start = time.time()
+        answer = operator.matrix().trace()
+        report(
+            "hecke-t" + str(prime) + "-" + str(level),
+            sample,
+            start,
+            answer,
+        )
+
+
 measure_p1(100000)
 measure_p1(1000000)
 measure_manin(389)
 measure_manin(1000)
 measure_rational_modular_symbols(389)
 measure_rational_modular_symbols(1000)
+measure_hecke(389, 3)
+measure_hecke(1000, 3)

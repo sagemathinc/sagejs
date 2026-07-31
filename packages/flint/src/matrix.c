@@ -457,6 +457,32 @@ static napi_value wrap_matrix(napi_env env, sagejs_matrix *matrix)
     return object;
 }
 
+napi_value sagejs_zz_matrix_from_slong_entries(
+    napi_env env,
+    slong rows,
+    slong cols,
+    const slong *entries)
+{
+    sagejs_matrix *matrix;
+
+    if (rows < 0 || cols < 0 ||
+        (rows != 0 && (ulong) cols > SIZE_MAX / (ulong) rows) ||
+        ((rows != 0 && cols != 0) && entries == NULL))
+    {
+        napi_throw_range_error(env, NULL, "invalid integer matrix entries");
+        return NULL;
+    }
+    matrix = new_matrix(env, SAGEJS_MATRIX_ZZ, rows, cols);
+    if (matrix == NULL)
+        return NULL;
+    for (slong row = 0; row < rows; row++)
+        for (slong col = 0; col < cols; col++)
+            fmpz_set_si(
+                fmpz_mat_entry(matrix->integer, row, col),
+                entries[(size_t) row * (size_t) cols + (size_t) col]);
+    return wrap_matrix(env, matrix);
+}
+
 static sagejs_matrix *unwrap_matrix(napi_env env, napi_value object)
 {
     sagejs_matrix *matrix = NULL;

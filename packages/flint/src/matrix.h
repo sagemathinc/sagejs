@@ -2,6 +2,13 @@
 #define SAGEJS_MATRIX_H
 
 #include <node_api.h>
+#include <flint/flint.h>
+
+napi_value sagejs_zz_matrix_from_slong_entries(
+    napi_env env,
+    slong rows,
+    slong cols,
+    const slong *entries);
 
 napi_value sagejs_zz_matrix(napi_env env, napi_callback_info info);
 napi_value sagejs_qq_matrix(napi_env env, napi_callback_info info);

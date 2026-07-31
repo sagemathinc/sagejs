@@ -1390,6 +1390,44 @@ class P1List:
             self._manin_presentation_cache = ManinPresentation(self)
         return self._manin_presentation_cache
 
+    def _hecke_matrix(
+        self,
+        prime: Any,
+        dimension: Any,
+    ) -> Any:
+        prime = _positive_integer(prime, 'Hecke prime')
+        if not sage.is_prime(prime):
+            raise ValueError('Hecke index must be prime')
+        dimension = _exact_nonnegative_integer(
+            dimension, 'known Hecke dimension')
+        native = runtime.flint_backend().p1ListHeckeMatrix(
+            self._native, runtime.bigint(prime))
+        return Matrix(  # type: ignore[name-defined]  # noqa: F821
+            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                sage.ZZ, dimension, dimension),
+            native,
+        )
+
+    def hecke_matrix(self, prime: Any) -> Any:
+        r"""
+        Return the exact weight-2 `T_p` (or `U_p`) matrix in the native
+        minimal Manin basis.
+
+        The index must be prime. If it divides the level this constructs
+        `U_p`; otherwise it constructs `T_p`. Path reduction and matrix
+        assembly happen in one native batch, so matrix entries never cross
+        the JavaScript boundary individually.
+
+        ```sage
+        sage: P1List(11).hecke_matrix(2)
+        [ 3  0  0]
+        [ 1 -2  0]
+        [ 1  0 -2]
+        ```
+        """
+        return self._hecke_matrix(
+            prime, self.manin_presentation().dimension())
+
     def __repr__(self) -> str:
         return (
             'The projective line over the integers modulo '
@@ -1401,9 +1439,7 @@ class P1List:
 
 
 def _modular_symbols_matrix(rows: list[list[Any]]) -> Any:
-    matrix_constructor = runtime.reflect.get(
-        runtime.global_object, 'matrix')
-    return matrix_constructor(sage.QQ, rows)
+    return matrix(sage.QQ, rows)  # type: ignore[name-defined]  # noqa: F821
 
 
 class HeckeOperator:
@@ -1439,6 +1475,15 @@ class HeckeOperator:
                 [-2, 0],
                 [0, -2],
             ])
+        if (
+            self._space._character is None
+            and self._space._group._family == 'Gamma0'
+            and self._space.weight() == 2
+            and self._space.sign() == 0
+            and not self._space._is_cuspidal
+        ):
+            return self._space._native_weight2_hecke_matrix(
+                self._index)
         raise NotImplementedError(
             'the requested Hecke matrix is not in the implemented '
             'modular-symbol models')
@@ -1607,6 +1652,69 @@ class ModularSymbolsSpace(sage.Parent):
     def manin_relations(self, modulus: Any = 65521) -> ManinRelations:
         return self.p1list().manin_relations(modulus)
 
+    def _native_weight2_hecke_matrix(self, index: int) -> Any:
+        projective_line = self.p1list()
+        dimension = self.dimension()
+        result = None
+        for prime, exponent in sage.factor(index):
+            p = runtime.number(prime)
+            e = runtime.number(exponent)
+            prime_matrix = projective_line._hecke_matrix(
+                p, dimension)
+            if e == 1:
+                prime_power = prime_matrix
+            elif self.level() % p == 0:
+                prime_power = prime_matrix ** e
+            else:
+                previous = prime_matrix ** 0
+                current = prime_matrix
+                for _power in range(2, e + 1):
+                    following = (
+                        prime_matrix * current
+                        - previous * p
+                    )
+                    previous = current
+                    current = following
+                prime_power = current
+            if result is None:
+                result = prime_power
+            else:
+                result = result * prime_power
+        if result is None:
+            result = projective_line._hecke_matrix(
+                2, dimension) ** 0
+        result = result.change_ring(self.base_ring())
+        if self._model_key() == 'gamma0-11-2':
+            change_of_basis = _modular_symbols_matrix([
+                [5, 0, -1],
+                [1, 1, 0],
+                [1, 0, 0],
+            ])
+            result = (
+                change_of_basis.inverse()
+                * result
+                * change_of_basis
+            )
+        return result
+
+    def hecke_matrix(self, index: Any) -> Any:
+        r"""
+        Return the exact matrix of the Hecke operator `T_index`.
+
+        For a full weight-2 `Gamma_0(N)` space with sign zero, every positive
+        index is supported. Prime matrices are computed by the portable C
+        Manin-symbol engine. Composite indices use commuting prime factors,
+        `U_p` powers at bad primes, and
+        `T_(p^r) = T_p T_(p^(r-1)) - p T_(p^(r-2))` at good primes.
+
+        ```sage
+        sage: M = ModularSymbols(1000, 2)
+        sage: M.hecke_matrix(6).trace()
+        60
+        ```
+        """
+        return self.T(index).matrix()
+
     def T(self, index: Any) -> HeckeOperator:
         return HeckeOperator(
             self, _positive_integer(index, 'Hecke index'))
@@ -1693,10 +1801,11 @@ def ModularSymbols(
     r"""
     Construct a modular-symbol Hecke module.
 
-    The initial implementation provides exact dimensions for supported
-    congruence subgroups and characters, together with explicit Hecke models
-    for the level 1, 11, and character-level 13 examples in the Sage guided
-    tour. Requests for unavailable Hecke data raise `NotImplementedError`.
+    Weight-2 full `Gamma_0(N)` spaces with sign zero provide exact matrices
+    for every Hecke operator `T_n`. Prime operators are assembled natively
+    from a minimal Manin presentation; general indices use multiplicativity
+    and the weight-2 prime-power recurrence. Additional guided-tour models
+    cover selected higher-weight, character, and cuspidal examples.
     """
     weight = _positive_integer(weight, 'weight')
     sign = _exact_integer(sign, 'sign')
@@ -1975,6 +2084,122 @@ def _modular_space_doc(tags: list[str], extension: bool = False) -> Any:
     }
 
 
+_p1list_prototype = runtime.reflect.get(P1List, 'prototype')
+_p1list_hecke_matrix_method = runtime.reflect.get(
+    _p1list_prototype, 'hecke_matrix')
+runtime.register_doc(
+    'P1List.hecke_matrix',
+    _p1list_hecke_matrix_method,
+    {
+        'kind': 'method',
+        'module': 'sage.modular.modsym.p1list',
+        'tags': [
+            'number theory',
+            'modular symbols',
+            'Hecke operators',
+            'Manin symbols',
+        ],
+        'backends': [
+            'Sage.js portable C modular-symbol core',
+            'FLINT integer matrices',
+        ],
+        'sage_compatibility': {
+            'status': 'extension',
+            'notes': (
+                'The matrix is expressed in Sage.js\'s minimal E1 Manin '
+                'basis; traces and characteristic polynomials agree with '
+                'SageMath and PARI.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'software-derived',
+                'source': 'PARI/GP src/basemath/modsym.c',
+                'revision': '0f5a08ee7e',
+                'url': 'https://pari.math.u-bordeaux.fr/',
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'sagejs-original',
+                'source': (
+                    'Portable preallocated path reducer and batched '
+                    'row-major Hecke assembler'
+                ),
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Pollack--Stevens fundamental domain, continued-fraction '
+                'Manin reduction, and standard Tp/Up representatives'
+            ),
+        },
+        'limitations': [
+            'The low-level method accepts prime indices only.',
+            'Use ModularSymbols(...).hecke_matrix(n) for composite indices.',
+        ],
+    },
+)
+
+_modular_symbols_space_prototype = runtime.reflect.get(
+    ModularSymbolsSpace, 'prototype')
+_modular_symbols_hecke_matrix_method = runtime.reflect.get(
+    _modular_symbols_space_prototype, 'hecke_matrix')
+runtime.register_doc(
+    'ModularSymbolsSpace.hecke_matrix',
+    _modular_symbols_hecke_matrix_method,
+    {
+        'kind': 'method',
+        'module': 'sage.modular.modsym.space',
+        'tags': [
+            'number theory',
+            'modular symbols',
+            'Hecke operators',
+            'exact matrices',
+        ],
+        'backends': [
+            'Sage.js portable C modular-symbol core',
+            'FLINT integer and rational matrices',
+        ],
+        'sage_compatibility': {
+            'status': 'compatible',
+            'notes': (
+                'Full weight-2 Gamma0 sign-zero spaces support exact T_n '
+                'matrices for every positive index.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'literature-implemented',
+                'source': (
+                    'William Stein, Modular Forms: '
+                    'A Computational Approach'
+                ),
+                'url': 'https://wstein.org/books/modform/',
+            },
+            {
+                'kind': 'software-derived',
+                'source': 'PARI/GP src/basemath/modsym.c',
+                'revision': '0f5a08ee7e',
+                'url': 'https://pari.math.u-bordeaux.fr/',
+                'license': 'GPL-2.0-or-later',
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Native prime Hecke matrices, multiplicativity, Up powers, '
+                'and the weight-2 good-prime recurrence'
+            ),
+        },
+        'limitations': [
+            (
+                'The general engine currently requires full weight-2 '
+                'Gamma0 spaces with sign zero and trivial character.'
+            ),
+        ],
+    },
+)
+
+
 runtime.register_doc(
     'P1List',
     P1List,
@@ -2021,7 +2246,8 @@ runtime.register_doc(
             'algorithm': (
                 'Exact cardinality preallocation, canonical normalization, '
                 'lexicographic representatives, open-addressed indexing, '
-                'and a preallocated Pollack--Stevens fundamental domain'
+                'a preallocated Pollack--Stevens fundamental domain, and '
+                'batched exact path reduction for weight-2 Hecke matrices'
             ),
         },
         'limitations': [
@@ -2082,11 +2308,12 @@ runtime.register_doc(
             ),
         },
         'limitations': [
-            'The current public object exposes presentation metadata only.',
             (
-                'Generator reduction, boundary maps, and Hecke actions will '
-                'be layered on the retained path presentation.'
+                'The public object exposes presentation metadata; the '
+                'retained paths and reductions are consumed internally by '
+                'the exact Hecke engine.'
             ),
+            'Boundary maps and explicit modular-symbol elements remain future work.',
         ],
     },
 )
@@ -2212,17 +2439,17 @@ runtime.register_doc(
         ],
         'backends': [
             'FLINT',
-            'Sage.js native P1List and Manin relations',
-            'Sage.js exact Hecke models',
+            'Sage.js portable C modular-symbol core',
+            'Sage.js native P1List and Manin presentation',
         ],
         'sage_compatibility': {
             'status': 'partial',
             'notes': (
                 'Weight-2 Gamma0 spaces expose native P1 representatives '
-                'and Manin relations over machine-word prime fields. The '
-                'exact level 1, level 11, and character-level 13 guided-tour '
-                'Hecke models provide bases, characteristic polynomials, '
-                'matrices, and cuspidal q-expansions.'
+                'and exact T_n matrices for arbitrary positive indices in '
+                'the full sign-zero space. Selected higher-weight, Gamma1, '
+                'character, and cuspidal guided-tour models provide further '
+                'bases, characteristic polynomials, and q-expansions.'
             ),
         },
         'provenance': [
@@ -2236,20 +2463,30 @@ runtime.register_doc(
                 'license': 'GPL-2.0-or-later',
             },
             {
+                'kind': 'software-derived',
+                'source': (
+                    'PARI/GP well-formed fundamental domain and path '
+                    'reduction strategy'
+                ),
+                'revision': '0f5a08ee7e',
+                'url': 'https://pari.math.u-bordeaux.fr/',
+                'license': 'GPL-2.0-or-later',
+            },
+            {
                 'kind': 'sagejs-original',
                 'source': (
-                    'Bounded exact Hecke models integrated with Sage.js '
-                    'matrices, elliptic curves, and power series'
+                    'Portable preallocated C Hecke assembler, strict-Python '
+                    'Hecke algebra integration, and FLINT matrix boundary'
                 ),
             },
         ],
         'limitations': [
             (
-                'Hecke data beyond the documented level 1, level 11, and '
-                'character-level 13 models is not yet computed.'
+                'The general native engine currently covers full weight-2 '
+                'Gamma0 spaces with sign zero and trivial character.'
             ),
             'General-weight and character Manin relations are not yet built.',
-            'The scalable sparse Hecke and elimination engine remains future work.',
+            'Boundary maps, star eigenspaces, and cuspidal restriction remain future work.',
         ],
     },
 )

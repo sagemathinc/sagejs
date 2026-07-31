@@ -89,6 +89,37 @@ assert.deepEqual(
     dimension: 301,
   },
 );
+const hecke11 = flint.p1ListHeckeMatrix(flint.p1List(11), 2n);
+assert.deepEqual(
+  Array.from({ length: 3 }, (_, row) =>
+    Array.from({ length: 3 }, (_, col) =>
+      flint.matrixEntry(hecke11, row, col))),
+  [
+    [3n, 0n, 0n],
+    [1n, -2n, 0n],
+    [1n, 0n, -2n],
+  ],
+);
+for (const [level, prime, dimension, traces] of [
+  [389, 3n, 65, [4n, 264n, 88n]],
+  [1000, 2n, 301, [4n, 10n, 10n]],
+  [1000, 3n, 301, [20n, 1280n, 416n]],
+]) {
+  const matrix = flint.p1ListHeckeMatrix(flint.p1List(level), prime);
+  let power = matrix;
+  for (const expected of traces) {
+    let trace = 0n;
+    for (let index = 0; index < dimension; index += 1) {
+      trace += flint.matrixEntry(power, index, index);
+    }
+    assert.equal(trace, expected);
+    power = flint.matrixMul(power, matrix);
+  }
+}
+assert.throws(
+  () => flint.p1ListHeckeMatrix(flint.p1List(11), 4n),
+  /must be a prime/,
+);
 for (let level = 1; level <= 80; level += 1) {
   const p1 = flint.p1List(level);
   const presentation = flint.p1ListManinPresentationInfo(p1);

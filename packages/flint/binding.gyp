@@ -12,6 +12,7 @@
         "src/extension_field.c",
         "src/floating.c",
         "src/matrix.c",
+        "src/modsym_core.c",
         "src/multivariate.c",
         "src/p1.c"
       ],

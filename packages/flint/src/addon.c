@@ -2881,6 +2881,8 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"p1ListManinPresentationInfo", NULL,
          sagejs_p1list_manin_presentation_info,
          NULL, NULL, NULL, napi_default, NULL},
+        {"p1ListHeckeMatrix", NULL, sagejs_p1list_hecke_matrix,
+         NULL, NULL, NULL, napi_default, NULL},
         {"p1ListManinRelations", NULL, sagejs_p1list_manin_relations,
          NULL, NULL, NULL, napi_default, NULL},
         {"maninRelationsInfo", NULL, sagejs_manin_relations_info,
