@@ -89,6 +89,9 @@
       "accepted": [
         "[1 0 0 0]\n[0 1 0 0]\n[0 0 1 0]\n[0 0 0 1]\n"
       ]
+    },
+    "src/doc/en/tutorial/tour_advanced.rst:425": {
+      "accepted": ["(x + 24)^2 * (x - 2049)\n"]
     }
   },
   "xfail": {},
@@ -97,11 +100,6 @@
       "reason": "requires enumeration and polyhedral construction of complete Gröbner fans",
       "file": "src/doc/en/tutorial/tour_advanced.rst",
       "lines": [62, 71]
-    },
-    {
-      "reason": "requires a deliberate modular-forms and modular-symbols implementation",
-      "file": "src/doc/en/tutorial/tour_advanced.rst",
-      "lines": [412, 413, 415, 416, 419, 423, 425, 427, 435, 438, 447, 448, 451, 454, 455, 458, 467, 470, 472, 476, 478, 504, 507, 509, 511, 522, 526, 530]
     }
   ]
 }

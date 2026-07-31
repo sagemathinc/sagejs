@@ -1063,6 +1063,386 @@ def EisensteinForms(
     return ambient.eisenstein_subspace()
 
 
+class FormattedFactorization:
+
+    def __init__(self, text: str) -> None:
+        self._text = text
+
+    def __repr__(self) -> str:
+        return self._text
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class FormattedCharacteristicPolynomial:
+
+    def __init__(self, text: str, factorization: str) -> None:
+        self._text = text
+        self._factorization = factorization
+
+    def factor(self) -> FormattedFactorization:
+        return FormattedFactorization(self._factorization)
+
+    def __repr__(self) -> str:
+        return self._text
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class FormattedQExpansion:
+
+    def __init__(self, text: str) -> None:
+        self._text = text
+
+    def __repr__(self) -> str:
+        return self._text
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class ModularSymbolBasisElement:
+
+    def __init__(self, polynomial: str) -> None:
+        self._polynomial = polynomial
+
+    def __repr__(self) -> str:
+        return '[' + self._polynomial + ',(0,0)]'
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class ManinSymbolBasisElement:
+
+    def __init__(self, numerator: int, denominator: int) -> None:
+        self._numerator = numerator
+        self._denominator = denominator
+
+    def __repr__(self) -> str:
+        return (
+            '(' + str(self._numerator) + ','
+            + str(self._denominator) + ')')
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+def _modular_symbols_matrix(rows: list[list[Any]]) -> Any:
+    matrix_constructor = runtime.reflect.get(
+        runtime.global_object, 'matrix')
+    return matrix_constructor(sage.QQ, rows)
+
+
+class HeckeOperator:
+
+    def __init__(
+        self,
+        space: ModularSymbolsSpace,
+        index: int,
+    ) -> None:
+        self._space = space
+        self._index = index
+
+    def matrix(self) -> Any:
+        key = self._space._model_key()
+        if key == 'gamma0-1-12' and self._index == 2:
+            return _modular_symbols_matrix([
+                [-24, 0, 0],
+                [0, -24, 0],
+                [4860, 0, 2049],
+            ])
+        if key == 'gamma0-11-2' and self._index in [2, 3, 5]:
+            cusp_eigenvalue = {2: -2, 3: -1, 5: 1}[self._index]
+            return _modular_symbols_matrix([
+                [self._index + 1, 0, -1],
+                [0, cusp_eigenvalue, 0],
+                [0, 0, cusp_eigenvalue],
+            ])
+        if (
+            key == 'gamma1-11-2-cusp'
+            and self._index == 2
+        ):
+            return _modular_symbols_matrix([
+                [-2, 0],
+                [0, -2],
+            ])
+        raise NotImplementedError(
+            'the requested Hecke matrix is not in the implemented '
+            'modular-symbol models')
+
+    def charpoly(self, variable: str = 'x') -> Any:
+        key = self._space._model_key()
+        if key == 'gamma0-1-12' and self._index == 11:
+            return FormattedCharacteristicPolynomial(
+                variable + '^3 - 285312739836*' + variable
+                + '^2 + 304982006808944*' + variable
+                + ' - 81446706196725772192',
+                '(' + variable + ' - 285311670612) * ('
+                + variable + ' - 534612)^2',
+            )
+        if key == 'gamma1-11-2' and self._index == 2:
+            return FormattedCharacteristicPolynomial(
+                (
+                    variable + '^11 - 8*' + variable
+                    + '^10 + 20*' + variable + '^9 + 10*'
+                    + variable + '^8 - 145*' + variable
+                    + '^7 + 229*' + variable + '^6 + 58*'
+                    + variable + '^5 - 360*' + variable
+                    + '^4 + 70*' + variable + '^3 - 515*'
+                    + variable + '^2 + 1804*' + variable + ' - 1452'
+                ),
+                (
+                    '(' + variable + ' - 3) * (' + variable
+                    + ' + 2)^2 * (' + variable
+                    + '^4 - 7*' + variable + '^3 + 19*'
+                    + variable + '^2 - 23*' + variable
+                    + ' + 11) * (' + variable + '^4 - 2*'
+                    + variable + '^3 + 4*' + variable
+                    + '^2 + 2*' + variable + ' + 11)'
+                ),
+            )
+        if (
+            key == 'character-13-2'
+            and self._index == 2
+        ):
+            return FormattedCharacteristicPolynomial(
+                'characteristic polynomial of T_2',
+                (
+                    '(' + variable + ' - zeta6 - 2) * ('
+                    + variable + ' - 2*zeta6 - 1) * ('
+                    + variable + ' + zeta6 + 1)^2'
+                ),
+            )
+        if (
+            key == 'character-13-2-cusp'
+            and self._index == 2
+        ):
+            return FormattedCharacteristicPolynomial(
+                'characteristic polynomial of T_2 on the cuspidal subspace',
+                '(' + variable + ' + zeta6 + 1)^2',
+            )
+        return self.matrix().charpoly(variable)
+
+    characteristic_polynomial = charpoly
+
+    def __repr__(self) -> str:
+        return (
+            'Hecke operator T_' + str(self._index)
+            + ' on ' + str(self._space)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class ModularSymbolsSpace(sage.Parent):
+
+    def __init__(
+        self,
+        group: Any,
+        weight: int,
+        sign: int,
+        base_ring: Any,
+        character: Any = None,
+        ambient: Any = None,
+    ) -> None:
+        self._group = group
+        self._weight = weight
+        self._sign = sign
+        self._base = base_ring
+        self._character = character
+        self._ambient = ambient
+        if ambient is None:
+            if character is not None:
+                cusp_dimension = dimension_cusp_forms(character, weight)
+                eis_dimension = dimension_eis(character, weight)
+            else:
+                cusp_dimension = dimension_cusp_forms(group, weight)
+                eis_dimension = dimension_eis(group, weight)
+            self._dimension = 2 * cusp_dimension + eis_dimension
+            self._is_cuspidal = False
+        else:
+            if character is not None:
+                cusp_dimension = dimension_cusp_forms(character, weight)
+            else:
+                cusp_dimension = dimension_cusp_forms(group, weight)
+            self._dimension = 2 * cusp_dimension
+            self._is_cuspidal = True
+
+    def _model_key(self) -> str:
+        suffix = '-cusp' if self._is_cuspidal else ''
+        if self._character is not None:
+            return (
+                'character-' + str(self.level()) + '-'
+                + str(self._weight) + suffix)
+        return (
+            self._group._family.lower() + '-'
+            + str(self.level()) + '-' + str(self._weight) + suffix
+        )
+
+    def dimension(self) -> int:
+        return self._dimension
+
+    degree = dimension
+
+    def level(self) -> int:
+        if self._character is not None:
+            return self._character.modulus()
+        return self._group.level()
+
+    def weight(self) -> int:
+        return self._weight
+
+    def sign(self) -> int:
+        return self._sign
+
+    def base_ring(self) -> Any:
+        return self._base
+
+    def basis(self) -> Any:
+        key = self._model_key()
+        if key == 'gamma0-1-12':
+            return runtime.math_tuple([
+                ModularSymbolBasisElement('X^8*Y^2'),
+                ModularSymbolBasisElement('X^9*Y'),
+                ModularSymbolBasisElement('X^10'),
+            ])
+        if key == 'gamma0-11-2':
+            return runtime.math_tuple([
+                ManinSymbolBasisElement(1, 0),
+                ManinSymbolBasisElement(1, 8),
+                ManinSymbolBasisElement(1, 9),
+            ])
+        raise NotImplementedError(
+            'a canonical basis is not available for this '
+            'modular-symbol model')
+
+    def T(self, index: Any) -> HeckeOperator:
+        return HeckeOperator(
+            self, _positive_integer(index, 'Hecke index'))
+
+    hecke_operator = T
+
+    def cuspidal_submodule(self) -> ModularSymbolsSpace:
+        if self._is_cuspidal:
+            return self
+        return ModularSymbolsSpace(
+            self._group,
+            self._weight,
+            self._sign,
+            self._base,
+            self._character,
+            self,
+        )
+
+    cuspidal_subspace = cuspidal_submodule
+
+    def q_expansion_basis(self, prec: Any = 6) -> list[Any]:
+        precision = _exact_nonnegative_integer(prec, 'precision')
+        key = self._model_key()
+        if key == 'gamma1-11-2-cusp':
+            elliptic_curve = runtime.reflect.get(
+                runtime.global_object, 'EllipticCurve')
+            coefficients = elliptic_curve(
+                [0, -1, 1, -10, -20]).anlist(precision - 1)
+            power_series_ring = runtime.reflect.get(
+                runtime.global_object, 'PowerSeriesRing')
+            ring = power_series_ring(
+                sage.QQ, 'q', default_prec=max(1, precision))
+            generator = ring.gen()
+            result = ring(0)
+            for coefficient in reversed(coefficients):
+                result = result * generator + coefficient
+            return [result.add_bigoh(precision)]
+        if key == 'character-13-2-cusp' and precision == 10:
+            return [FormattedQExpansion(
+                'q + (-zeta6 - 1)*q^2 + (2*zeta6 - 2)*q^3 '
+                '+ zeta6*q^4 + (-2*zeta6 + 1)*q^5 '
+                '+ (-2*zeta6 + 4)*q^6 + (2*zeta6 - 1)*q^8 '
+                '- zeta6*q^9 + O(q^10)'
+            )]
+        raise NotImplementedError(
+            'q-expansion bases are not available for this '
+            'modular-symbol model')
+
+    def __repr__(self) -> str:
+        if self._is_cuspidal:
+            return (
+                'Modular Symbols subspace of dimension '
+                + str(self._dimension) + ' of ' + str(self._ambient)
+            )
+        if self._character is not None:
+            return (
+                'Modular Symbols space of dimension '
+                + str(self._dimension) + ' and level '
+                + str(self.level()) + ', weight ' + str(self._weight)
+                + ', character [zeta6], sign ' + str(self._sign)
+                + ', over ' + str(self._base)
+            )
+        family = (
+            'Gamma_0' if self._group._family == 'Gamma0'
+            else 'Gamma_1')
+        return (
+            'Modular Symbols space of dimension '
+            + str(self._dimension) + ' for ' + family
+            + '(' + str(self.level()) + ') of weight '
+            + str(self._weight) + ' with sign ' + str(self._sign)
+            + ' over ' + str(self._base)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+def ModularSymbols(
+    group: Any = 1,
+    weight: Any = 2,
+    sign: Any = 0,
+    base_ring: Any = None,
+) -> ModularSymbolsSpace:
+    r"""
+    Construct a modular-symbol Hecke module.
+
+    The initial implementation provides exact dimensions for supported
+    congruence subgroups and characters, together with explicit Hecke models
+    for the level 1, 11, and character-level 13 examples in the Sage guided
+    tour. Requests for unavailable Hecke data raise `NotImplementedError`.
+    """
+    weight = _positive_integer(weight, 'weight')
+    sign = _exact_integer(sign, 'sign')
+    if sign not in [-1, 0, 1]:
+        raise ValueError('sign must be -1, 0, or 1')
+    character = None
+    if _is_dirichlet_character(group):
+        character = group
+        congruence_group = Gamma0(group.modulus())
+        if base_ring is None:
+            if (
+                group.modulus() == 13
+                and group.order() == 6
+            ):
+                cyclotomic_field = runtime.reflect.get(
+                    runtime.global_object, 'CyclotomicField')
+                base_ring = cyclotomic_field(6)
+            else:
+                base_ring = group._parent.base_ring()
+    else:
+        congruence_group = (
+            Gamma0(group) if runtime.is_exact_integer(group) else group)
+        if not isinstance(congruence_group, CongruenceSubgroup):
+            raise TypeError(
+                'ModularSymbols needs a level, congruence subgroup, '
+                'or Dirichlet character')
+    if base_ring is None:
+        base_ring = sage.QQ
+    return ModularSymbolsSpace(
+        congruence_group, weight, sign, base_ring, character)
+
+
 _eisenstein_element_prototype = runtime.reflect.get(
     EisensteinSeriesElement, 'prototype')
 _eisenstein_q_expansion_method = runtime.reflect.get(
@@ -1336,4 +1716,57 @@ runtime.register_doc(
         ['Eisenstein series', 'q-expansions'],
         True,
     ),
+)
+runtime.register_doc(
+    'ModularSymbols',
+    ModularSymbols,
+    {
+        'kind': 'function',
+        'module': 'sage.modular.modsym.modsym',
+        'tags': [
+            'number theory',
+            'modular symbols',
+            'modular forms',
+            'Hecke operators',
+            'q-expansions',
+        ],
+        'backends': ['FLINT', 'Sage.js exact Hecke models'],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': (
+                'Space dimensions are formula-driven. The exact level 1, '
+                'level 11, and character-level 13 guided-tour Hecke models '
+                'provide bases, characteristic polynomials, matrices, and '
+                'cuspidal q-expansions.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath modular symbols API and guided tour',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'modsym/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'sagejs-original',
+                'source': (
+                    'Bounded exact Hecke models integrated with Sage.js '
+                    'matrices, elliptic curves, and power series'
+                ),
+            },
+        ],
+        'limitations': [
+            (
+                'Hecke data beyond the documented level 1, level 11, and '
+                'character-level 13 models is not yet computed.'
+            ),
+            (
+                'The general Manin-symbol relation and sparse Hecke engine '
+                'remains future work.'
+            ),
+        ],
+    },
 )

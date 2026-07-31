@@ -710,6 +710,33 @@ Hecke-module implementation.
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `ModularSymbols`
+
+```sage
+ModularSymbols(group=1, weight=2, sign=0, base_ring=None)
+```
+
+Construct a modular-symbol Hecke module.
+
+The initial implementation provides exact dimensions for supported
+congruence subgroups and characters, together with explicit Hecke models
+for the level 1, 11, and character-level 13 examples in the Sage guided
+tour. Requests for unavailable Hecke data raise `NotImplementedError`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.modular.modsym.modsym`
+- Tags: number theory, modular symbols, modular forms, Hecke operators, q-expansions
+- Backends: FLINT, Sage.js exact Hecke models
+- Sage compatibility: partial — Space dimensions are formula-driven. The exact level 1, level 11, and character-level 13 guided-tour Hecke models provide bases, characteristic polynomials, matrices, and cuspidal q-expansions.
+- Limitations: Hecke data beyond the documented level 1, level 11, and character-level 13 models is not yet computed. The general Manin-symbol relation and sparse Hecke engine remains future work.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular symbols API and guided tour](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `sagejs-original` — Bounded exact Hecke models integrated with Sage.js matrices, elliptic curves, and power series
+
 ## `next_prime`
 
 ```sage
