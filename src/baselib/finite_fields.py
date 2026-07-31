@@ -855,24 +855,26 @@ def GF(
     names: Any = runtime.undefined,
 ) -> Any:
     r"""
-    Construct the finite field with ``order`` elements.
+    Construct the finite field with `order` elements.
 
     The order must be a prime power.  Prime fields and extension fields use
     FLINT arithmetic and participate in Sage.js parent/coercion semantics.
-    ``name`` (or ``names``) names an extension-field generator.
+    `name` (or `names`) names an extension-field generator.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: GF(7)
-        Finite Field of size 7
-        sage: K.<a> = GF(9)
-        sage: a^8
-        1
-        sage: K['x']
-        Univariate Polynomial Ring in x over Finite Field in a of size 3^2
+    ```sage
+    sage: GF(7)
+    Finite Field of size 7
+    sage: K.<a> = GF(9)
+    sage: a^8
+    1
+    sage: K['x']
+    Univariate Polynomial Ring in x over Finite Field in a of size 3^2
+    ```
 
     Explicit user-supplied modulus polynomials are not implemented yet.
-    Passing ``modulus='primitive'`` requests a primitive generator when the
+    Passing `modulus='primitive'` requests a primitive generator when the
     backend supports it.
     """
     order = runtime.integer_bigint(order)
@@ -929,20 +931,22 @@ FiniteField = GF
 
 def Zmod(order: Any) -> IntegerModRing:
     r"""
-    Construct the ring of integers modulo ``order``.
+    Construct the ring of integers modulo `order`.
 
     Elements support exact arithmetic, inversion of units, iteration, and
     matrices and polynomial rings over the resulting parent.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: R = Zmod(15)
-        sage: R(17)
-        2
-        sage: R(2)^4
-        1
+    ```sage
+    sage: R = Zmod(15)
+    sage: R(17)
+    2
+    sage: R(2)^4
+    1
+    ```
 
-    The current constructor requires ``order >= 2``.
+    The current constructor requires `order >= 2`.
     """
     order = runtime.integer_bigint(order)
     if order < runtime.bigint(2):

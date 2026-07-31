@@ -1162,20 +1162,22 @@ def PolynomialRing(
     r"""
     Construct a univariate or multivariate polynomial ring.
 
-    Coefficient rings currently include ``ZZ``, ``QQ``, prime and extension
-    finite fields, and ``Zmod(n)``.  Arithmetic is exact and backed by FLINT.
+    Coefficient rings currently include `ZZ`, `QQ`, prime and extension
+    finite fields, and `Zmod(n)`. Arithmetic is exact and backed by FLINT.
     A comma-separated name list constructs a multivariate ring.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: R.<x> = QQ[]
-        sage: (x^4 - 1).factor()
-        (x + 1) * (x - 1) * (x^2 + 1)
-        sage: S.<x,y> = GF(4, 'a')[]
-        sage: (x + y)^3
-        x^3 + x^2*y + x*y^2 + y^3
+    ```sage
+    sage: R.<x> = QQ[]
+    sage: (x^4 - 1).factor()
+    (x + 1) * (x - 1) * (x^2 + 1)
+    sage: S.<x,y> = GF(4, 'a')[]
+    sage: (x + y)^3
+    x^3 + x^2*y + x*y^2 + y^3
+    ```
 
-    Supported monomial orders are ``lex``, ``deglex``, and ``degrevlex``.
+    Supported monomial orders are `lex`, `deglex`, and `degrevlex`.
     The accepted keyword surface is intentionally smaller than SageMath's
     full constructor while native implementations are selected automatically.
     """

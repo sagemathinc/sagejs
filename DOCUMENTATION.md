@@ -45,11 +45,13 @@ boundaries—without exposing incidental internal details.
 ## Source and build policy
 
 Mathematical library files remain ordinary CPython-parseable `.py` files.
-Docstrings use Sage's familiar executable examples. Existing lightweight
-reStructuredText is accepted, but new prose should favor Markdown-compatible
-plain text that remains readable in a terminal. They are executable metadata,
-so removing them from the runtime build or allowing public APIs to lose them
-is a regression.
+Docstrings use Markdown and Sage's familiar executable examples. Inline code
+uses single backticks, examples use fenced `sage` code blocks, and links use
+Markdown syntax. reStructuredText constructs such as doubled backticks,
+`EXAMPLES::`, interpreted-text roles, and directives are not accepted in
+registered public documentation. Docstrings are executable metadata, so
+removing them from the runtime build or allowing public APIs to lose them is a
+regression.
 
 The runtime corpus generates the Markdown reference under `docs/reference/`
 and can be exported as compact JSON or JSONL. The adjacent docstring remains

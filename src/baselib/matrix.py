@@ -2301,17 +2301,19 @@ def matrix(*args: Any) -> Matrix:
     Construct a dense matrix, optionally over an explicit base ring.
 
     Sage's common row-list, flat-list, dimension, and entry-function forms are
-    supported.  Exact matrices use FLINT on native hosts; ``RDF``/``CDF`` and
+    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and
     arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: A = matrix(ZZ, 2, [1, 2, 3, 4])
-        sage: A.det()
-        -2
-        sage: A.rref()
-        [1 0]
-        [0 1]
+    ```sage
+    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])
+    sage: A.det()
+    -2
+    sage: A.rref()
+    [1 0]
+    [0 1]
+    ```
     """
     if not args:
         raise TypeError('matrix() requires entries or dimensions')
@@ -2538,19 +2540,21 @@ def random_matrix(
     **kwds: Any,
 ) -> Matrix:
     r"""
-    Construct a random dense matrix over ``base``.
+    Construct a random dense matrix over `base`.
 
-    The dimensions are ``nrows`` by ``ncols``; omitting ``ncols`` constructs
-    a square matrix.  The common Sage keywords ``density``, ``x``, ``y``, and
-    ``distribution='uniform'`` are supported where meaningful.
+    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs
+    a square matrix. The common Sage keywords `density`, `x`, `y`, and
+    `distribution='uniform'` are supported where meaningful.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: A = random_matrix(ZZ, 3, 5, x=-10, y=11)
-        sage: A.nrows(), A.ncols(), A.base_ring()
-        (3, 5, Integer Ring)
-        sage: random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')
-        True
+    ```sage
+    sage: A = random_matrix(ZZ, 3, 5, x=-10, y=11)
+    sage: A.nrows(), A.ncols(), A.base_ring()
+    (3, 5, Integer Ring)
+    sage: random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')
+    True
+    ```
 
     Sparse matrices and alternate construction algorithms are not yet
     implemented.

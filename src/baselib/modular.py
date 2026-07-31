@@ -428,23 +428,25 @@ def dimension_cusp_forms(
     r"""
     Return the dimension of a space of cuspidal modular forms.
 
-    ``group`` may be a positive level (interpreted as ``Gamma0(level)``), a
-    ``Gamma0`` or ``Gamma1`` subgroup, or a Dirichlet character.  Dimensions
+    `group` may be a positive level (interpreted as `Gamma0(level)`), a
+    `Gamma0` or `Gamma1` subgroup, or a Dirichlet character. Dimensions
     for congruence subgroups use exact Riemann--Roch formulas; character
     spaces use the Cohen--Oesterlé formula.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: dimension_cusp_forms(Gamma0(11), 2)
-        1
-        sage: dimension_cusp_forms(Gamma0(1), 12)
-        1
-        sage: eps = DirichletGroup(13).gen(0)^2
-        sage: dimension_cusp_forms(eps, 2)
-        1
+    ```sage
+    sage: dimension_cusp_forms(Gamma0(11), 2)
+    1
+    sage: dimension_cusp_forms(Gamma0(1), 12)
+    1
+    sage: eps = DirichletGroup(13).gen(0)^2
+    sage: dimension_cusp_forms(eps, 2)
+    1
+    ```
 
     Weight-one cases that require the Schaeffer algorithm raise
-    ``NotImplementedError`` instead of returning an unproved value.
+    `NotImplementedError` instead of returning an unproved value.
     """
     weight = _exact_integer(weight, 'weight')
     if _is_dirichlet_character(group):
@@ -523,7 +525,7 @@ def dimension_eis(
     Return the dimension of the Eisenstein subspace.
 
     Accepted groups and characters are the same as for
-    ``dimension_cusp_forms``.  The result is an exact integer obtained from
+    `dimension_cusp_forms`. The result is an exact integer obtained from
     cusp data or the Cohen--Oesterlé character formula.
     """
     weight = _exact_integer(weight, 'weight')
@@ -554,7 +556,7 @@ def dimension_modular_forms(
     group: Any,
     weight: Any = 2,
 ) -> int:
-    """Return cusp dimension plus Eisenstein dimension for ``group``."""
+    """Return cusp dimension plus Eisenstein dimension for `group`."""
     weight = _exact_integer(weight, 'weight')
     return (
         dimension_cusp_forms(group, weight)
@@ -708,27 +710,29 @@ class EisensteinSeriesElement(sage.Element):
 
     def q_expansion(self, prec: Any = None) -> Any:
         r"""
-        Return the `q`-expansion to absolute precision ``O(q^prec)``.
+        Return the `q`-expansion to absolute precision `O(q^prec)`.
 
-        INPUT:
+        ### Parameters
 
-        - ``prec`` -- nonnegative integer; when omitted, use the precision
+        - `prec` — nonnegative integer; when omitted, use the precision
           requested when this basis element was constructed.
 
-        EXAMPLES:
+        ### Examples
 
         The level-389 weight-2 Eisenstein form can be displayed briefly and
-        then expanded farther without reconstructing its parent::
+        then expanded farther without reconstructing its parent:
 
-            sage: E = EisensteinForms(389, 2)
-            sage: b = E.basis(prec=8)[0]
-            sage: b.q_expansion(5)
-            1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)
+        ```sage
+        sage: E = EisensteinForms(389, 2)
+        sage: b = E.basis(prec=8)[0]
+        sage: b.q_expansion(5)
+        1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)
+        ```
 
-        IMPLEMENTATION:
+        ### Implementation
 
         Level-one divisor sums are generated in one native FLINT sieve.
-        Prime-level oldforms use the exact degeneracy map ``q -> q^N``.
+        Prime-level oldforms use the exact degeneracy map `q -> q^N`.
         """
         if prec is None:
             precision = self._display_precision
@@ -881,15 +885,15 @@ class EisensteinSubspace(ModularFormsSubspace):
         r"""
         Return a basis of modular forms, optionally with display precision.
 
-        INPUT:
+        ### Parameters
 
-        - ``prec`` -- nonnegative integer or ``None``.  If specified, basis
-          entries are displayed to ``O(q^prec)``.  They retain their parent
+        - `prec` — nonnegative integer or `None`. If specified, basis
+          entries are displayed to `O(q^prec)`. They retain their parent
           and can subsequently be expanded to any supported precision with
-          :meth:`q_expansion`.
+          `q_expansion`.
 
         This optional argument is a convenient Sage.js extension: SageMath's
-        ``basis()`` currently uses the space's default precision instead.
+        `basis()` currently uses the space's default precision instead.
         """
         self._require_basis()
         if prec is None:
@@ -903,7 +907,7 @@ class EisensteinSubspace(ModularFormsSubspace):
     gens = basis
 
     def q_expansion_basis(self, prec: Any = None) -> list[Any]:
-        """Return the basis as power series to absolute precision ``prec``."""
+        """Return the basis as power series to absolute precision `prec`."""
         if prec is None:
             prec = self._precision
         precision = _exact_nonnegative_integer(prec, 'precision')
@@ -998,17 +1002,19 @@ def ModularForms(
     r"""
     Construct the implemented ambient space of modular forms.
 
-    ``group`` is a level or congruence subgroup, ``weight`` is nonnegative,
-    and ``prec`` controls the default displayed q-expansion precision.
-    Initial ambient spaces are exact over ``QQ``.
+    `group` is a level or congruence subgroup, `weight` is nonnegative,
+    and `prec` controls the default displayed q-expansion precision.
+    Initial ambient spaces are exact over `QQ`.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: M = ModularForms(Gamma0(11), 2)
-        sage: M.dimension()
-        2
-        sage: M.cuspidal_subspace().dimension()
-        1
+    ```sage
+    sage: M = ModularForms(Gamma0(11), 2)
+    sage: M.dimension()
+    2
+    sage: M.cuspidal_subspace().dimension()
+    1
+    ```
 
     This foundation currently provides exact dimensions, cusp/Eisenstein
     subspaces, and Eisenstein q-expansions.  It is not yet SageMath's complete
@@ -1038,17 +1044,19 @@ def EisensteinForms(
     prec: Any = 6,
 ) -> EisensteinSubspace:
     r"""
-    Construct the Eisenstein subspace of ``ModularForms(group, weight)``.
+    Construct the Eisenstein subspace of `ModularForms(group, weight)`.
 
     Basis elements retain their parent and can be expanded later to a
-    different precision with ``q_expansion(prec)``.
+    different precision with `q_expansion(prec)`.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: E = EisensteinForms(389, 2)
-        sage: b = E.basis(prec=20)[0]
-        sage: b.q_expansion(100).precision_absolute()
-        100
+    ```sage
+    sage: E = EisensteinForms(389, 2)
+    sage: b = E.basis(prec=20)[0]
+    sage: b.q_expansion(100).precision_absolute()
+    100
+    ```
     """
     ambient = ModularForms(
         group, weight, base_ring, use_cache, prec)

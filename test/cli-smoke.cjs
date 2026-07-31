@@ -77,10 +77,25 @@ assert.equal(
   documentedDimension.references[0].doi,
   "10.1007/BFb0065297",
 );
+const implicitPlotDocumentation = run([
+  "docs",
+  "show",
+  "implicit_plot3d",
+]);
+assert.match(implicitPlotDocumentation, /^# implicit_plot3d/m);
+assert.match(implicitPlotDocumentation, /`f = 0`/);
+assert.match(implicitPlotDocumentation, /### Examples/);
+assert.match(implicitPlotDocumentation, /```sage/);
+assert.doesNotMatch(implicitPlotDocumentation, /``f = 0``|EXAMPLES::/);
 const documentationCoverage = JSON.parse(
   run(["docs", "coverage", "--json"]),
 );
 assert.ok(documentationCoverage.registry_entries >= 26);
+assert.equal(
+  documentationCoverage.markdown_docstrings,
+  documentationCoverage.registry_entries,
+);
+assert.deepEqual(documentationCoverage.invalid_markdown_entries, []);
 assert.deepEqual(documentationCoverage.incomplete_entries, []);
 assert.equal(
   JSON.parse(run(["docs", "export", "--jsonl"]).split("\n")[0])

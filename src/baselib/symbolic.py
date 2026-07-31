@@ -675,12 +675,14 @@ def symbolic_variable(names: str) -> Any:
     Names may be separated by commas, spaces, or both.  A single name returns
     one symbolic expression; multiple names return a tuple.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: var('x y')
-        (x, y)
-        sage: (x^2 + y).derivative(x)
-        2*x
+    ```sage
+    sage: var('x y')
+    (x, y)
+    sage: (x^2 + y).derivative(x)
+    2*x
+    ```
     """
     if not isinstance(names, str):
         raise TypeError("variable names must be a string")
@@ -912,13 +914,15 @@ def solve(
     Solve supported elementary symbolic equations.
 
     One equation or a list of equations may be supplied, followed by one or
-    more variables.  Set ``solution_dict=True`` for dictionary-valued
+    more variables. Set `solution_dict=True` for dictionary-valued
     solutions.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: solve(x^2 == 4, x)
-        [x == -2, x == 2]
+    ```sage
+    sage: solve(x^2 == 4, x)
+    [x == -2, x == 2]
+    ```
 
     Sage.js delegates elementary solving to Cortex Compute Engine and applies
     a few exact Sage-compatible reductions.  If the backend cannot solve an

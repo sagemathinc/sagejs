@@ -6,6 +6,7 @@ const test = require("node:test");
 const {
   documentationCatalogFromRegistry,
   documentationCoverage,
+  documentationMarkdownIssues,
   renderDocumentationMarkdown,
   searchDocumentation,
 } = require("../dist/tools/documentation.js");
@@ -14,9 +15,11 @@ function documented(value, metadata) {
   value.__doc__ = [
     "Construct a finite-field polynomial.",
     "",
-    "EXAMPLES::",
+    "### Examples",
     "",
-    "    sage: example()",
+    "```sage",
+    "sage: example()",
+    "```",
   ].join("\n");
   value.__name__ = "example";
   value.__argnames__ = ["order"];
@@ -75,10 +78,33 @@ test("DocSpec extraction, normalized search, and Markdown are deterministic", ()
   );
   assert.equal(searchDocumentation(catalog, "Oesterle").length, 1);
   assert.equal(documentationCoverage(catalog).incomplete_entries.length, 0);
+  assert.deepEqual(documentationMarkdownIssues(catalog.entries[0].doc), []);
 
   const markdown = renderDocumentationMarkdown(catalog);
   assert.match(markdown, /docspec_version: 1/);
   assert.match(markdown, /### Examples/);
   assert.match(markdown, /\[Example paper\]\(https:\/\/example\.com\/paper\)/);
   assert.match(markdown, /A\. Author, Example algorithms \(2026\)/);
+});
+
+test("DocSpec rejects reStructuredText artifacts", () => {
+  assert.deepEqual(
+    documentationMarkdownIssues(
+      "Use ``value``.\n\nEXAMPLES::\n\n    sage: value",
+    ),
+    [
+      "reStructuredText doubled-backtick literal",
+      "reStructuredText section marker",
+      "reStructuredText literal-block marker",
+    ],
+  );
+  assert.deepEqual(
+    documentationMarkdownIssues(
+      "See :meth:`q_expansion`.\n\n.. note:: This is not Markdown.",
+    ),
+    [
+      "reStructuredText interpreted-text role",
+      "reStructuredText directive",
+    ],
+  );
 });

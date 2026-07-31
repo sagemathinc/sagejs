@@ -51,24 +51,29 @@ function formatSearchResult(entry: DocumentationEntry): string {
 }
 
 function formatShow(entry: DocumentationEntry): string {
-  const lines = [entry.name, "", `    ${entry.signature}`];
+  const lines = [
+    `# ${entry.name}`,
+    "",
+    "```sage",
+    entry.signature,
+    "```",
+  ];
   if (entry.doc) {
-    lines.push(
-      "",
-      ...entry.doc.split("\n").map((line) => `    ${line}`),
-    );
+    lines.push("", entry.doc);
   }
   const metadata = [
-    `kind: ${entry.kind}`,
-    entry.module ? `module: ${entry.module}` : "",
-    entry.tags.length ? `tags: ${entry.tags.join(", ")}` : "",
-    entry.backends.length ? `backends: ${entry.backends.join(", ")}` : "",
-    `Sage compatibility: ${entry.sage_compatibility.status}`,
+    `- Kind: \`${entry.kind}\``,
+    entry.module ? `- Module: \`${entry.module}\`` : "",
+    entry.tags.length ? `- Tags: ${entry.tags.join(", ")}` : "",
+    entry.backends.length ? `- Backends: ${entry.backends.join(", ")}` : "",
+    `- Sage compatibility: ${entry.sage_compatibility.status}`,
     entry.provenance.length
-      ? `provenance: ${entry.provenance.map((item) => item.kind).join(", ")}`
+      ? `- Provenance: ${entry.provenance
+          .map((item) => `\`${item.kind}\``)
+          .join(", ")}`
       : "",
   ].filter(Boolean);
-  if (metadata.length) lines.push("", ...metadata);
+  if (metadata.length) lines.push("", "## Metadata", "", ...metadata);
   return `${lines.join("\n")}\n`;
 }
 
@@ -140,6 +145,8 @@ export async function runDocumentationCli(
             `  with tags: ${coverage.with_tags}`,
             `  with backends: ${coverage.with_backend}`,
             `  with provenance: ${coverage.with_provenance}`,
+            `  Markdown docstrings: ${coverage.markdown_docstrings}`,
+            `  invalid Markdown: ${coverage.invalid_markdown_entries.length}`,
             `  incomplete: ${coverage.incomplete_entries.length}`,
             ...(coverage.incomplete_entries.length
               ? [

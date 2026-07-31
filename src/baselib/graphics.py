@@ -1476,17 +1476,19 @@ def plot(
     r"""
     Plot a callable, symbolic expression, or list of functions on an interval.
 
-    Both ``plot(f, xmin, xmax)`` and Sage's ``plot(f, (x, xmin, xmax))``
-    forms are accepted.  Adaptive sampling produces a semantic ``Graphics``
+    Both `plot(f, xmin, xmax)` and Sage's `plot(f, (x, xmin, xmax))`
+    forms are accepted. Adaptive sampling produces a semantic `Graphics`
     object whose rich representation is portable Plotly data.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: g = plot(sin(x), (x, 0, 2*pi), color='navy')
-        sage: len(g)
-        1
+    ```sage
+    sage: g = plot(sin(x), (x, 0, 2*pi), color='navy')
+    sage: len(g)
+    1
+    ```
 
-    Use ``show(g)`` in a notebook for rich display, or ``g.save(...)`` on a
+    Use `show(g)` in a notebook for rich display, or `g.save(...)` on a
     host with a supported Plotly export route.
     """
     options = _copy_options(options)
@@ -1663,7 +1665,7 @@ def show(
     **options: Any,
 ) -> Any:
     r"""
-    Return ``value`` for rich display, combining graphics when requested.
+    Return `value` for rich display, combining graphics when requested.
 
     Multiple graphics are added before display.  Notebook kernels render the
     returned semantic object using Plotly-compatible HTML/data, without

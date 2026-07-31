@@ -17,6 +17,7 @@ const {
   rewriteQuestionMarkHelp,
 } = require("../dist/tools/polyglot.js");
 const {
+  documentationMarkdownIssues,
   renderDocumentationMarkdown,
 } = require("../dist/tools/documentation.js");
 
@@ -47,6 +48,15 @@ async function main() {
   assert.equal(
     documentation.entries.find((entry) => entry.name === "matrix").signature,
     "matrix(*args)",
+  );
+  assert.deepEqual(
+    documentation.entries.flatMap((entry) =>
+      documentationMarkdownIssues(entry.doc).map(
+        (issue) => `${entry.name}: ${issue}`,
+      ),
+    ),
+    [],
+    "registered public docstrings must use canonical Markdown",
   );
   assert.equal(
     readFileSync(

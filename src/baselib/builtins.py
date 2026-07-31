@@ -2223,11 +2223,13 @@ def ρσ_search_doc(query: Any) -> None:
     runtime docstrings.  Results include top-level functions and classes as
     well as documented methods of loaded Python classes.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: search_doc('q-expansion')
-        Search results for 'q-expansion':
-            EisensteinSeriesElement.q_expansion -- Return the ...
+    ```sage
+    sage: search_doc('q-expansion')
+    Search results for 'q-expansion':
+        EisensteinSeriesElement.q_expansion -- Return the ...
+    ```
 
     This intentionally searches the locally installed Sage.js API.  It does
     not imply that every object documented by the full SageMath manual is
@@ -4053,18 +4055,20 @@ def ρσ_factor(value: Any) -> Any:
     Return the exact factorization of an integer or factorable element.
 
     Integer factorization is computed by FLINT and returned as a Sage-style
-    factorization object, so it can be iterated over as ``(prime, exponent)``
+    factorization object, so it can be iterated over as `(prime, exponent)`
     pairs.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: factor(2026)
-        2 * 1013
-        sage: list(factor(-12))
-        [(2, 2), (3, 1)]
+    ```sage
+    sage: factor(2026)
+    2 * 1013
+    sage: list(factor(-12))
+    [(2, 2), (3, 1)]
+    ```
 
-    JavaScript ``number`` inputs must be safe integers.  Sage integer literals
-    automatically use ``BigInt`` when necessary.
+    JavaScript `number` inputs must be safe integers. Sage integer literals
+    automatically use `BigInt` when necessary.
     """
     if _builtins_member_is_function(value, 'factor'):
         return _builtins_call_member(value, 'factor', [])
@@ -4115,7 +4119,7 @@ def ρσ_gcd(left: Any, right: Any) -> Any:
 
 
 def ρσ_next_prime(value: Any) -> Any:
-    """Return the smallest prime strictly greater than ``value`` using FLINT."""
+    """Return the smallest prime strictly greater than `value` using FLINT."""
     if runtime.strict_equal(runtime.jstype(value), 'number'):
         if not runtime.number.isSafeInteger(value):
             raise TypeError('next_prime() requires an integer')
@@ -4138,7 +4142,7 @@ def previous_prime(value: Any) -> Any:
 
 
 def ρσ_is_prime(value: Any) -> _Bool:
-    """Return whether ``value`` is prime, using FLINT's primality test."""
+    """Return whether `value` is prime, using FLINT's primality test."""
     if runtime.strict_equal(runtime.jstype(value), 'number'):
         if not runtime.number.isSafeInteger(value):
             return False
@@ -4155,17 +4159,19 @@ def ρσ_prime_range(
     stop: Any = None,
 ) -> Any:
     r"""
-    Return the primes in the half-open interval ``[start, stop)``.
+    Return the primes in the half-open interval `[start, stop)`.
 
     With one argument, return the primes from 2 up to (but not including)
-    ``start``.
+    `start`.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: prime_range(10)
-        [2, 3, 5, 7]
-        sage: prime_range(10, 20)
-        [11, 13, 17, 19]
+    ```sage
+    sage: prime_range(10)
+    [2, 3, 5, 7]
+    sage: prime_range(10, 20)
+    [11, 13, 17, 19]
+    ```
     """
     if stop is None:
         stop = start
@@ -4241,18 +4247,20 @@ _prime_pi_checked_through = 1
 
 def prime_pi(value: Any) -> Any:
     r"""
-    Return the number of primes less than or equal to ``value``.
+    Return the number of primes less than or equal to `value`.
 
     Results are exact.  The current implementation incrementally caches
     primes supplied by FLINT, which is efficient for repeated calls over
     increasing moderate bounds.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: prime_pi(10)
-        4
-        sage: prime_pi(100)
-        25
+    ```sage
+    sage: prime_pi(10)
+    4
+    sage: prime_pi(100)
+    25
+    ```
 
     For very large isolated bounds, a future direct FLINT prime-counting
     backend may be preferable to enumerating all preceding primes.

@@ -956,22 +956,24 @@ def DirichletGroup(
     zeta: Any = None,
 ) -> DirichletGroup_class:
     r"""
-    Return the group of Dirichlet characters modulo ``modulus``.
+    Return the group of Dirichlet characters modulo `modulus`.
 
     Characters are exact, iterable, multiplicative, and valued in a
     cyclotomic field.  FLINT supplies the unit-group decomposition and native
     character arithmetic.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: G = DirichletGroup(20)
-        sage: G.order(), G.modulus()
-        (8, 20)
-        sage: eps = G.gen(0)
-        sage: eps(3) * eps(7) == eps(21)
-        True
+    ```sage
+    sage: G = DirichletGroup(20)
+    sage: G.order(), G.modulus()
+    (8, 20)
+    sage: eps = G.gen(0)
+    sage: eps(3) * eps(7) == eps(21)
+    True
+    ```
 
-    Custom value fields through ``base_ring`` or ``zeta`` are not yet
+    Custom value fields through `base_ring` or `zeta` are not yet
     implemented.
     """
     modulus = runtime.normalize_integer(

@@ -530,10 +530,33 @@ export function renderDocumentationMarkdown(
   return `${markdown.trimEnd()}\n`;
 }
 
+export function documentationMarkdownIssues(doc: string): string[] {
+  const issues: string[] = [];
+  if (/(^|[^`])``([^`]|$)/m.test(doc)) {
+    issues.push("reStructuredText doubled-backtick literal");
+  }
+  if (/^\s*(?:EXAMPLES|INPUT|OUTPUT|IMPLEMENTATION)::?\s*$/m.test(doc)) {
+    issues.push("reStructuredText section marker");
+  }
+  if (/:[a-zA-Z][a-zA-Z0-9_-]*:`/.test(doc)) {
+    issues.push("reStructuredText interpreted-text role");
+  }
+  if (/^\s*\.\.\s+[a-zA-Z][a-zA-Z0-9_-]*::/m.test(doc)) {
+    issues.push("reStructuredText directive");
+  }
+  if (/(^|[^:]):{2}\s*$/m.test(doc)) {
+    issues.push("reStructuredText literal-block marker");
+  }
+  return issues;
+}
+
 export function documentationCoverage(catalog: DocumentationCatalog) {
   const entries = catalog.entries.length;
   const count = (predicate: (entry: DocumentationEntry) => boolean) =>
     catalog.entries.filter(predicate).length;
+  const invalidMarkdownEntries = catalog.entries
+    .filter((entry) => documentationMarkdownIssues(entry.doc).length > 0)
+    .map((entry) => entry.name);
   return {
     schema_version: DOCSPEC_VERSION,
     registry_entries: entries,
@@ -546,13 +569,16 @@ export function documentationCoverage(catalog: DocumentationCatalog) {
       (entry) => Boolean(entry.sage_compatibility.notes),
     ),
     with_references: count((entry) => entry.references.length > 0),
+    markdown_docstrings: entries - invalidMarkdownEntries.length,
+    invalid_markdown_entries: invalidMarkdownEntries,
     incomplete_entries: catalog.entries
       .filter(
         (entry) =>
           !entry.doc ||
           !entry.tags.length ||
           !entry.provenance.length ||
-          !entry.backends.length,
+          !entry.backends.length ||
+          documentationMarkdownIssues(entry.doc).length > 0,
       )
       .map((entry) => entry.name),
   };

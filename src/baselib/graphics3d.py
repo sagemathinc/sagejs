@@ -955,17 +955,19 @@ def implicit_plot3d(
     r"""
     Plot an implicit surface in three variables.
 
-    The first argument may be an expression interpreted as ``f = 0`` or a
-    symbolic equality, which is reduced to ``left - right = 0``.  Each range
-    has Sage form ``(variable, minimum, maximum)`` or a three-item list.
+    The first argument may be an expression interpreted as `f = 0` or a
+    symbolic equality, which is reduced to `left - right = 0`. Each range
+    has Sage form `(variable, minimum, maximum)` or a three-item list.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: var('x,y,z')
-        (x, y, z)
-        sage: implicit_plot3d(x^2+y^2+z^2 == 1,
-        ....:     (x,-2,2), (y,-2,2), (z,-2,2))
-        Graphics3d Object
+    ```sage
+    sage: var('x,y,z')
+    (x, y, z)
+    sage: implicit_plot3d(x^2+y^2+z^2 == 1,
+    ....:     (x,-2,2), (y,-2,2), (z,-2,2))
+    Graphics3d Object
+    ```
 
     The current renderer samples a deterministic rectangular grid and emits a
     Plotly isosurface.  It does not yet implement Sage's adaptive marching

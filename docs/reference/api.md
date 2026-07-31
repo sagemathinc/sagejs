@@ -18,19 +18,21 @@ dimension_cusp_forms(group, weight=2)
 Return the dimension of a space of cuspidal modular forms.
 
 `group` may be a positive level (interpreted as `Gamma0(level)`), a
-`Gamma0` or `Gamma1` subgroup, or a Dirichlet character.  Dimensions
+`Gamma0` or `Gamma1` subgroup, or a Dirichlet character. Dimensions
 for congruence subgroups use exact Riemann--Roch formulas; character
 spaces use the Cohen--Oesterlé formula.
 
 ### Examples
 
-    sage: dimension_cusp_forms(Gamma0(11), 2)
-    1
-    sage: dimension_cusp_forms(Gamma0(1), 12)
-    1
-    sage: eps = DirichletGroup(13).gen(0)^2
-    sage: dimension_cusp_forms(eps, 2)
-    1
+```sage
+sage: dimension_cusp_forms(Gamma0(11), 2)
+1
+sage: dimension_cusp_forms(Gamma0(1), 12)
+1
+sage: eps = DirichletGroup(13).gen(0)^2
+sage: dimension_cusp_forms(eps, 2)
+1
+```
 
 Weight-one cases that require the Schaeffer algorithm raise
 `NotImplementedError` instead of returning an unproved value.
@@ -63,7 +65,7 @@ dimension_eis(group, weight=2)
 Return the dimension of the Eisenstein subspace.
 
 Accepted groups and characters are the same as for
-`dimension_cusp_forms`.  The result is an exact integer obtained from
+`dimension_cusp_forms`. The result is an exact integer obtained from
 cusp data or the Cohen--Oesterlé character formula.
 
 ### Metadata
@@ -126,12 +128,14 @@ character arithmetic.
 
 ### Examples
 
-    sage: G = DirichletGroup(20)
-    sage: G.order(), G.modulus()
-    (8, 20)
-    sage: eps = G.gen(0)
-    sage: eps(3) * eps(7) == eps(21)
-    True
+```sage
+sage: G = DirichletGroup(20)
+sage: G.order(), G.modulus()
+(8, 20)
+sage: eps = G.gen(0)
+sage: eps(3) * eps(7) == eps(21)
+True
+```
 
 Custom value fields through `base_ring` or `zeta` are not yet
 implemented.
@@ -169,10 +173,12 @@ different precision with `q_expansion(prec)`.
 
 ### Examples
 
-    sage: E = EisensteinForms(389, 2)
-    sage: b = E.basis(prec=20)[0]
-    sage: b.q_expansion(100).precision_absolute()
-    100
+```sage
+sage: E = EisensteinForms(389, 2)
+sage: b = E.basis(prec=20)[0]
+sage: b.q_expansion(100).precision_absolute()
+100
+```
 
 ### Metadata
 
@@ -202,9 +208,9 @@ q_expansion(prec=None)
 
 Return the `q`-expansion to absolute precision `O(q^prec)`.
 
-### Input
+### Parameters
 
-- `prec` -- nonnegative integer; when omitted, use the precision
+- `prec` — nonnegative integer; when omitted, use the precision
   requested when this basis element was constructed.
 
 ### Examples
@@ -212,10 +218,12 @@ Return the `q`-expansion to absolute precision `O(q^prec)`.
 The level-389 weight-2 Eisenstein form can be displayed briefly and
 then expanded farther without reconstructing its parent:
 
-    sage: E = EisensteinForms(389, 2)
-    sage: b = E.basis(prec=8)[0]
-    sage: b.q_expansion(5)
-    1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)
+```sage
+sage: E = EisensteinForms(389, 2)
+sage: b = E.basis(prec=8)[0]
+sage: b.q_expansion(5)
+1 + 6/97*q + 18/97*q^2 + 24/97*q^3 + 42/97*q^4 + O(q^5)
+```
 
 ### Implementation
 
@@ -250,10 +258,10 @@ basis(prec=None)
 
 Return a basis of modular forms, optionally with display precision.
 
-### Input
+### Parameters
 
-- `prec` -- nonnegative integer or `None`.  If specified, basis
-  entries are displayed to `O(q^prec)`.  They retain their parent
+- `prec` — nonnegative integer or `None`. If specified, basis
+  entries are displayed to `O(q^prec)`. They retain their parent
   and can subsequently be expanded to any supported precision with
   `q_expansion`.
 
@@ -288,12 +296,14 @@ pairs.
 
 ### Examples
 
-    sage: factor(2026)
-    2 * 1013
-    sage: list(factor(-12))
-    [(2, 2), (3, 1)]
+```sage
+sage: factor(2026)
+2 * 1013
+sage: list(factor(-12))
+[(2, 2), (3, 1)]
+```
 
-JavaScript `number` inputs must be safe integers.  Sage integer literals
+JavaScript `number` inputs must be safe integers. Sage integer literals
 automatically use `BigInt` when necessary.
 
 ### Metadata
@@ -355,13 +365,15 @@ FLINT arithmetic and participate in Sage.js parent/coercion semantics.
 
 ### Examples
 
-    sage: GF(7)
-    Finite Field of size 7
-    sage: K.<a> = GF(9)
-    sage: a^8
-    1
-    sage: K['x']
-    Univariate Polynomial Ring in x over Finite Field in a of size 3^2
+```sage
+sage: GF(7)
+Finite Field of size 7
+sage: K.<a> = GF(9)
+sage: a^8
+1
+sage: K['x']
+Univariate Polynomial Ring in x over Finite Field in a of size 3^2
+```
 
 Explicit user-supplied modulus polynomials are not implemented yet.
 Passing `modulus='primitive'` requests a primitive generator when the
@@ -415,16 +427,18 @@ implicit_plot3d(function_value, xrange, yrange, zrange, **options)
 Plot an implicit surface in three variables.
 
 The first argument may be an expression interpreted as `f = 0` or a
-symbolic equality, which is reduced to `left - right = 0`.  Each range
+symbolic equality, which is reduced to `left - right = 0`. Each range
 has Sage form `(variable, minimum, maximum)` or a three-item list.
 
 ### Examples
 
-    sage: var('x,y,z')
-    (x, y, z)
-    sage: implicit_plot3d(x^2+y^2+z^2 == 1,
-    ....:     (x,-2,2), (y,-2,2), (z,-2,2))
-    Graphics3d Object
+```sage
+sage: var('x,y,z')
+(x, y, z)
+sage: implicit_plot3d(x^2+y^2+z^2 == 1,
+....:     (x,-2,2), (y,-2,2), (z,-2,2))
+Graphics3d Object
+```
 
 The current renderer samples a deterministic rectangular grid and emits a
 Plotly isosurface.  It does not yet implement Sage's adaptive marching
@@ -484,17 +498,19 @@ matrix(*args)
 Construct a dense matrix, optionally over an explicit base ring.
 
 Sage's common row-list, flat-list, dimension, and entry-function forms are
-supported.  Exact matrices use FLINT on native hosts; `RDF`/`CDF` and
+supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and
 arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.
 
 ### Examples
 
-    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])
-    sage: A.det()
-    -2
-    sage: A.rref()
-    [1 0]
-    [0 1]
+```sage
+sage: A = matrix(ZZ, 2, [1, 2, 3, 4])
+sage: A.det()
+-2
+sage: A.rref()
+[1 0]
+[0 1]
+```
 
 ### Metadata
 
@@ -529,11 +545,13 @@ Initial ambient spaces are exact over `QQ`.
 
 ### Examples
 
-    sage: M = ModularForms(Gamma0(11), 2)
-    sage: M.dimension()
-    2
-    sage: M.cuspidal_subspace().dimension()
-    1
+```sage
+sage: M = ModularForms(Gamma0(11), 2)
+sage: M.dimension()
+2
+sage: M.cuspidal_subspace().dimension()
+1
+```
 
 This foundation currently provides exact dimensions, cusp/Eisenstein
 subspaces, and Eisenstein q-expansions.  It is not yet SageMath's complete
@@ -594,14 +612,16 @@ plot(funcs, *range_args, **options)
 Plot a callable, symbolic expression, or list of functions on an interval.
 
 Both `plot(f, xmin, xmax)` and Sage's `plot(f, (x, xmin, xmax))`
-forms are accepted.  Adaptive sampling produces a semantic `Graphics`
+forms are accepted. Adaptive sampling produces a semantic `Graphics`
 object whose rich representation is portable Plotly data.
 
 ### Examples
 
-    sage: g = plot(sin(x), (x, 0, 2*pi), color='navy')
-    sage: len(g)
-    1
+```sage
+sage: g = plot(sin(x), (x, 0, 2*pi), color='navy')
+sage: len(g)
+1
+```
 
 Use `show(g)` in a notebook for rich display, or `g.save(...)` on a
 host with a supported Plotly export route.
@@ -633,17 +653,19 @@ PolynomialRing(base, variable=None, names=None, sparse=False, implementation=Non
 Construct a univariate or multivariate polynomial ring.
 
 Coefficient rings currently include `ZZ`, `QQ`, prime and extension
-finite fields, and `Zmod(n)`.  Arithmetic is exact and backed by FLINT.
+finite fields, and `Zmod(n)`. Arithmetic is exact and backed by FLINT.
 A comma-separated name list constructs a multivariate ring.
 
 ### Examples
 
-    sage: R.<x> = QQ[]
-    sage: (x^4 - 1).factor()
-    (x + 1) * (x - 1) * (x^2 + 1)
-    sage: S.<x,y> = GF(4, 'a')[]
-    sage: (x + y)^3
-    x^3 + x^2*y + x*y^2 + y^3
+```sage
+sage: R.<x> = QQ[]
+sage: (x^4 - 1).factor()
+(x + 1) * (x - 1) * (x^2 + 1)
+sage: S.<x,y> = GF(4, 'a')[]
+sage: (x + y)^3
+x^3 + x^2*y + x*y^2 + y^3
+```
 
 Supported monomial orders are `lex`, `deglex`, and `degrevlex`.
 The accepted keyword surface is intentionally smaller than SageMath's
@@ -683,10 +705,12 @@ increasing moderate bounds.
 
 ### Examples
 
-    sage: prime_pi(10)
-    4
-    sage: prime_pi(100)
-    25
+```sage
+sage: prime_pi(10)
+4
+sage: prime_pi(100)
+25
+```
 
 For very large isolated bounds, a future direct FLINT prime-counting
 backend may be preferable to enumerating all preceding primes.
@@ -723,10 +747,12 @@ With one argument, return the primes from 2 up to (but not including)
 
 ### Examples
 
-    sage: prime_range(10)
-    [2, 3, 5, 7]
-    sage: prime_range(10, 20)
-    [11, 13, 17, 19]
+```sage
+sage: prime_range(10)
+[2, 3, 5, 7]
+sage: prime_range(10, 20)
+[11, 13, 17, 19]
+```
 
 ### Metadata
 
@@ -755,16 +781,18 @@ random_matrix(base, nrows, ncols=None, algorithm='randomize', implementation=Non
 Construct a random dense matrix over `base`.
 
 The dimensions are `nrows` by `ncols`; omitting `ncols` constructs
-a square matrix.  The common Sage keywords `density`, `x`, `y`, and
+a square matrix. The common Sage keywords `density`, `x`, `y`, and
 `distribution='uniform'` are supported where meaningful.
 
 ### Examples
 
-    sage: A = random_matrix(ZZ, 3, 5, x=-10, y=11)
-    sage: A.nrows(), A.ncols(), A.base_ring()
-    (3, 5, Integer Ring)
-    sage: random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')
-    True
+```sage
+sage: A = random_matrix(ZZ, 3, 5, x=-10, y=11)
+sage: A.nrows(), A.ncols(), A.base_ring()
+(3, 5, Integer Ring)
+sage: random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')
+True
+```
 
 Sparse matrices and alternate construction algorithms are not yet
 implemented.
@@ -802,9 +830,11 @@ well as documented methods of loaded Python classes.
 
 ### Examples
 
-    sage: search_doc('q-expansion')
-    Search results for 'q-expansion':
-        EisensteinSeriesElement.q_expansion -- Return the ...
+```sage
+sage: search_doc('q-expansion')
+Search results for 'q-expansion':
+    EisensteinSeriesElement.q_expansion -- Return the ...
+```
 
 This intentionally searches the locally installed Sage.js API.  It does
 not imply that every object documented by the full SageMath manual is
@@ -861,13 +891,15 @@ solve(equations, *variables, **options)
 Solve supported elementary symbolic equations.
 
 One equation or a list of equations may be supplied, followed by one or
-more variables.  Set `solution_dict=True` for dictionary-valued
+more variables. Set `solution_dict=True` for dictionary-valued
 solutions.
 
 ### Examples
 
-    sage: solve(x^2 == 4, x)
-    [x == -2, x == 2]
+```sage
+sage: solve(x^2 == 4, x)
+[x == -2, x == 2]
+```
 
 Sage.js delegates elementary solving to Cortex Compute Engine and applies
 a few exact Sage-compatible reductions.  If the backend cannot solve an
@@ -907,10 +939,12 @@ one symbolic expression; multiple names return a tuple.
 
 ### Examples
 
-    sage: var('x y')
-    (x, y)
-    sage: (x^2 + y).derivative(x)
-    2*x
+```sage
+sage: var('x y')
+(x, y)
+sage: (x^2 + y).derivative(x)
+2*x
+```
 
 ### Metadata
 
@@ -943,11 +977,13 @@ matrices and polynomial rings over the resulting parent.
 
 ### Examples
 
-    sage: R = Zmod(15)
-    sage: R(17)
-    2
-    sage: R(2)^4
-    1
+```sage
+sage: R = Zmod(15)
+sage: R(17)
+2
+sage: R(2)^4
+1
+```
 
 The current constructor requires `order >= 2`.
 

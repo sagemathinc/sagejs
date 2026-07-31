@@ -99,10 +99,12 @@ def dimension_cusp_forms(group, weight=2):
     """
     Return the dimension of a space of cuspidal modular forms.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: dimension_cusp_forms(Gamma0(11), 2)
-        1
+    ```sage
+    sage: dimension_cusp_forms(Gamma0(11), 2)
+    1
+    ```
     """
     ...
 
@@ -150,6 +152,11 @@ Public docstrings should normally include:
 - short executable Sage examples;
 - implementation/backend details that affect exactness or performance;
 - explicit limitations and intentional Sage differences.
+
+Public docstrings are Markdown. Use single backticks for inline code, fenced
+`sage` code blocks for examples, Markdown headings, and Markdown links. Do not
+introduce reStructuredText forms such as doubled backticks,
+`EXAMPLES::`, `:meth:`, or `.. note::`.
 
 ## Access and generation
 
