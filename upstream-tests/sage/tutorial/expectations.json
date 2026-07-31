@@ -145,11 +145,6 @@
       "lines": [120, 122, 126, 141, 142, 149, 156, 159, 161, 163, 166]
     },
     {
-      "reason": "requires Laurent and power-series rings with precision propagation",
-      "file": "src/doc/en/tutorial/tour_polynomial.rst",
-      "lines": [154, 156, 196, 198, 199, 201, 203, 211]
-    },
-    {
       "reason": "requires primary decomposition and associated-prime algorithms",
       "file": "src/doc/en/tutorial/tour_polynomial.rst",
       "lines": [322, 325]

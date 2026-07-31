@@ -88,7 +88,16 @@ class Parent:
     __str__ = __repr__
     toString = __repr__
 
-    def __getitem__(self, variable: str) -> Any:
+    def __getitem__(self, variable: Any) -> Any:
+        if (
+            isinstance(variable, (list, tuple))
+            and len(variable) == 1
+            and isinstance(variable[0], str)
+        ):
+            power_series_ring = runtime.reflect.get(
+                runtime.global_object, 'PowerSeriesRing')
+            if power_series_ring is not runtime.undefined:
+                return power_series_ring(self, variable[0])
         return runtime.polynomial_ring(self, variable)
 
 
@@ -317,6 +326,85 @@ class CoercionModel:
 
         left_construction = left._construction
         right_construction = right._construction
+        series_kinds = ['power_series', 'laurent_series']
+        if (
+            left_construction is not runtime.undefined
+            and left_construction['kind'] in series_kinds
+        ):
+            if (
+                right_construction is not runtime.undefined
+                and right_construction['kind'] in series_kinds
+            ):
+                if (
+                    left_construction['base']
+                    is not right_construction['base']
+                    or left_construction['variable']
+                    != right_construction['variable']
+                ):
+                    raise TypeError(
+                        'no canonical coercion between these series rings')
+                target = left
+                if right_construction['kind'] == 'laurent_series':
+                    target = right
+
+                def coerce_left_series(value: Any) -> Any:
+                    return _untyped(target)(value)
+
+                def coerce_right_series(value: Any) -> Any:
+                    return _untyped(target)(value)
+
+                return self._cache(
+                    left, right,
+                    CoercionPlan(
+                        target,
+                        coerce_left_series,
+                        coerce_right_series,
+                    ),
+                )
+            base_plan = self.resolveParents(
+                left_construction['base'], right)
+            if base_plan.parent is not left_construction['base']:
+                raise TypeError(
+                    'constant does not canonically coerce to series base ring')
+
+            def coerce_left_series(value: Any) -> Any:
+                return _untyped(left)(value)
+
+            def coerce_right_series_constant(value: Any) -> Any:
+                return _untyped(left)(base_plan.rightMap(value))
+
+            return self._cache(
+                left, right,
+                CoercionPlan(
+                    left,
+                    coerce_left_series,
+                    coerce_right_series_constant,
+                ),
+            )
+        if (
+            right_construction is not runtime.undefined
+            and right_construction['kind'] in series_kinds
+        ):
+            base_plan = self.resolveParents(
+                left, right_construction['base'])
+            if base_plan.parent is not right_construction['base']:
+                raise TypeError(
+                    'constant does not canonically coerce to series base ring')
+
+            def coerce_left_series_constant(value: Any) -> Any:
+                return _untyped(right)(base_plan.leftMap(value))
+
+            def coerce_right_series(value: Any) -> Any:
+                return _untyped(right)(value)
+
+            return self._cache(
+                left, right,
+                CoercionPlan(
+                    right,
+                    coerce_left_series_constant,
+                    coerce_right_series,
+                ),
+            )
         if (
             left_construction is not runtime.undefined
             and left_construction['kind'] == 'fraction_field'

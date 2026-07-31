@@ -81,6 +81,60 @@ assert.throws(
 );
 assert.throws(() => flint.qqPolyConstant(1n, 0n), /denominator is zero/);
 
+const shifted = flint.polyShiftLeft(flint.polyAdd(zx, zone), 2n);
+assert.equal(flint.polyToString(shifted, "x"), "x^3+x^2");
+assert.equal(flint.polyValuation(shifted), 2);
+assert.equal(
+  flint.polyEqual(
+    flint.polyShiftRight(shifted, 2n),
+    flint.polyAdd(zx, zone),
+  ),
+  true,
+);
+assert.equal(
+  flint.polyToString(flint.polyTruncate(zf, 2n), "x"),
+  "3*x+1",
+);
+assert.equal(
+  flint.polyToString(
+    flint.polyMullow(
+      flint.polyAdd(zx, zone),
+      flint.polyAdd(zx, zone),
+      2n,
+    ),
+    "x",
+  ),
+  "2*x+1",
+);
+assert.equal(
+  flint.polyToString(
+    flint.polyPowTrunc(flint.polyAdd(zx, zone), 5n, 3n),
+    "x",
+  ),
+  "10*x^2+5*x+1",
+);
+assert.equal(
+  flint.polyToString(
+    flint.polyInvSeries(
+      flint.polySub(
+        flint.qqPolyConstant(1n, 1n),
+        flint.zzPolyToQQ(zx),
+      ),
+      6n,
+    ),
+    "x",
+  ),
+  "x^5 + 1*x^4 + 1*x^3 + 1*x^2 + 1*x + 1",
+);
+assert.throws(
+  () => flint.polyInvSeries(flint.zzPolyConstant(2n), 3n),
+  /constant coefficient is not invertible/,
+);
+assert.throws(
+  () => flint.polyInvSeries(flint.zzPolyConstant(0n), 3n),
+  /constant coefficient is not invertible/,
+);
+
 for (const [kind, modulus, expected] of [
   ["zz", 0n, "x^2+2*y"],
   ["qq", 0n, "x^2 + 2*y"],
