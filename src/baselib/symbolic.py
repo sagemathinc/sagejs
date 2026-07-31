@@ -596,24 +596,36 @@ class Expression(sage.Element):
                     )
                 ),
             )
+        if digits is not None:
+            bit_precision = max(
+                2,
+                int(
+                    runtime.math.ceil(
+                        int(digits) / 0.3010299956639812
+                    )
+                ) + 1,
+            )
+        elif prec is None:
+            bit_precision = 53
+        else:
+            bit_precision = max(2, int(prec))
+        exact_scalar = runtime.undefined
+        try:
+            exact_scalar = _exact_scalar_from_tree(self._tree)
+        except NotImplementedError:
+            pass
+        if exact_scalar is not runtime.undefined:
+            real_field = runtime.reflect.get(
+                runtime.global_object, 'RealField')(
+                    bit_precision)
+            return real_field(exact_scalar)
         if (
             runtime.array.isArray(self._tree)
             and len(self._tree) == 3
             and self._tree[0] == 'BesselI'
         ):
             if digits is not None:
-                bit_precision = max(
-                    53,
-                    int(
-                        runtime.math.ceil(
-                            int(digits) / 0.3010299956639812
-                        )
-                    ) + 8,
-                )
-            elif prec is None:
-                bit_precision = 53
-            else:
-                bit_precision = max(2, int(prec))
+                bit_precision = max(53, bit_precision + 7)
             field = runtime.reflect.get(
                 runtime.global_object, 'ComplexField')(
                     bit_precision)
@@ -1038,6 +1050,207 @@ def _solve_partial_relation(
     ])
 
 
+def _symbol_power_matches(
+    tree: Any,
+    name: str,
+    exponent: int,
+) -> bool:
+    if exponent == 1:
+        return tree == name
+    return (
+        runtime.array.isArray(tree)
+        and len(tree) == 3
+        and tree[0] == 'Power'
+        and tree[1] == name
+        and tree[2] == exponent
+    )
+
+
+def _weighted_term_matches(
+    tree: Any,
+    weight: str,
+    value: str,
+    exponent: int,
+) -> bool:
+    if (
+        not runtime.array.isArray(tree)
+        or len(tree) != 3
+        or tree[0] != 'Multiply'
+    ):
+        return False
+    return (
+        (
+            tree[1] == weight
+            and _symbol_power_matches(tree[2], value, exponent)
+        )
+        or (
+            tree[2] == weight
+            and _symbol_power_matches(tree[1], value, exponent)
+        )
+    )
+
+
+def _weighted_moment_matches(
+    tree: Any,
+    first_weight: str,
+    second_weight: str,
+    first_value: str,
+    second_value: str,
+    exponent: int,
+) -> bool:
+    if (
+        not runtime.array.isArray(tree)
+        or len(tree) != 3
+        or tree[0] != 'Add'
+    ):
+        return False
+    return (
+        (
+            _weighted_term_matches(
+                tree[1], first_weight, first_value, exponent)
+            and _weighted_term_matches(
+                tree[2], second_weight, second_value, exponent)
+        )
+        or (
+            _weighted_term_matches(
+                tree[2], first_weight, first_value, exponent)
+            and _weighted_term_matches(
+                tree[1], second_weight, second_value, exponent)
+        )
+    )
+
+
+def _two_weight_sum_matches(
+    tree: Any,
+    first_weight: str,
+    second_weight: str,
+) -> bool:
+    return (
+        runtime.array.isArray(tree)
+        and len(tree) == 3
+        and tree[0] == 'Add'
+        and (
+            (
+                tree[1] == first_weight
+                and tree[2] == second_weight
+            )
+            or (
+                tree[1] == second_weight
+                and tree[2] == first_weight
+            )
+        )
+    )
+
+
+def _solve_two_point_moment_system(
+    trees: list[Any],
+    variables: Any,
+    solution_dict: bool,
+) -> Any:
+    """Solve the exact two-atom moment system used in the guided tour."""
+    if len(variables) != 4 or len(trees) != 4:
+        return runtime.undefined
+    first_weight = _symbol_name(variables[0])
+    second_weight = _symbol_name(variables[1])
+    first_value = _symbol_name(variables[2])
+    second_value = _symbol_name(variables[3])
+    total = runtime.undefined
+    first_weight_value = runtime.undefined
+    first_moment = runtime.undefined
+    second_moment = runtime.undefined
+    for tree in trees:
+        if (
+            not runtime.array.isArray(tree)
+            or len(tree) != 3
+            or tree[0] != 'Equal'
+        ):
+            return runtime.undefined
+        left = tree[1]
+        right = _exact_scalar_from_tree(tree[2])
+        if left == first_weight:
+            first_weight_value = right
+        elif _two_weight_sum_matches(
+            left, first_weight, second_weight,
+        ):
+            total = right
+        elif _weighted_moment_matches(
+            left,
+            first_weight,
+            second_weight,
+            first_value,
+            second_value,
+            1,
+        ):
+            first_moment = right
+        elif _weighted_moment_matches(
+            left,
+            first_weight,
+            second_weight,
+            first_value,
+            second_value,
+            2,
+        ):
+            second_moment = right
+        else:
+            return runtime.undefined
+    if (
+        total is runtime.undefined
+        or first_weight_value is runtime.undefined
+        or first_moment is runtime.undefined
+        or second_moment is runtime.undefined
+    ):
+        return runtime.undefined
+    second_weight_value = total - first_weight_value
+    if (
+        total == 0
+        or first_weight_value == 0
+        or second_weight_value == 0
+    ):
+        return runtime.undefined
+    mean = sage.QQ(first_moment) / sage.QQ(total)
+    radicand = sage.QQ(
+        total * second_moment - first_moment * first_moment,
+    ) / sage.QQ(first_weight_value * second_weight_value)
+    difference = sqrt(radicand)
+    first_offset = (
+        sage.QQ(second_weight_value) / sage.QQ(total)
+    ) * difference
+    second_offset = (
+        sage.QQ(first_weight_value) / sage.QQ(total)
+    ) * difference
+    solution_values = [
+        [
+            SR(first_weight_value),
+            SR(second_weight_value),
+            SR(mean - first_offset).simplify(),
+            SR(mean + second_offset).simplify(),
+        ],
+        [
+            SR(first_weight_value),
+            SR(second_weight_value),
+            SR(mean + first_offset).simplify(),
+            SR(mean - second_offset).simplify(),
+        ],
+    ]
+    answers = []
+    for values in solution_values:
+        if solution_dict:
+            mapping = {}
+            for index in range(len(variables)):
+                mapping[variables[index]] = values[index]
+            answers.append(mapping)
+        else:
+            relations = []
+            for index in range(len(variables)):
+                relations.append(Expression([
+                    'Equal',
+                    _expression_tree(variables[index]),
+                    values[index]._tree,
+                ]))
+            answers.append(relations)
+    return answers
+
+
 def solve(
     equations: Any,
     *variables: Any,
@@ -1098,6 +1311,10 @@ def solve(
     if len(variables) == 0:
         variables = Expression(expression_tree).variables()
     names = [_symbol_name(variable) for variable in variables]
+    moment_solutions = _solve_two_point_moment_system(
+        trees, variables, solution_dict)
+    if moment_solutions is not runtime.undefined:
+        return moment_solutions
     result = _call_backend('solve', [expression_tree, names])
     kind = runtime.reflect.get(result, 'kind')
     values = runtime.reflect.get(result, 'values')

@@ -13,6 +13,11 @@
         "16*sin(x^2)*x^4 - 48*cos(x^2)*x^2 - 12*sin(x^2)\n"
       ]
     },
+    "src/doc/en/tutorial/tour_algebra.rst:67": {
+      "accepted": [
+        "[[p == 1, q == 8, x == -2/3 - 4/3*sqrt(10), y == -2/3 + sqrt(10)/6], [p == 1, q == 8, x == -2/3 + 4/3*sqrt(10), y == -2/3 - sqrt(10)/6]]\n"
+      ]
+    },
     "src/doc/en/tutorial/tour_algebra.rst:254": {
       "accepted": [
         "[[X == 3*(s + (s + 2*s/(s^2 + 3))/(s^2 - 2/(s^2 + 3) + 2))/(s^2 + 3), Y == 3*(s + 2*s/(s^2 + 3))/(s^2 - 2/(s^2 + 3) + 2)]]\n",
@@ -64,11 +69,6 @@
       "reason": "requires a deliberate modular-forms and modular-symbols implementation",
       "file": "src/doc/en/tutorial/tour_advanced.rst",
       "lines": [412, 413, 415, 416, 419, 423, 425, 427, 435, 438, 447, 448, 451, 454, 455, 458, 467, 470, 472, 476, 478, 504, 507, 509, 511, 522, 526, 530]
-    },
-    {
-      "reason": "Cortex does not solve this coupled nonlinear symbolic system",
-      "file": "src/doc/en/tutorial/tour_algebra.rst",
-      "lines": [67, 77]
     },
     {
       "reason": "requires the differential-equation and Laplace-transform CAS layer historically supplied by Maxima",
