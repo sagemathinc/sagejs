@@ -1374,6 +1374,79 @@ class PolynomialIdeal:
         """Return the Gröbner-fan computation attached to this ideal."""
         return GroebnerFan(self)
 
+    def _two_generator_monomial_staircase(self) -> Any:
+        ring = self._ring
+        if ring.ngens() != 2:
+            return runtime.undefined
+        basis = list(self.groebner_basis())
+        if len(basis) != 2:
+            return runtime.undefined
+        exponents = []
+        for polynomial in basis:
+            if polynomial.number_of_terms() != 1:
+                return runtime.undefined
+            exponents.append([
+                polynomial.degree(ring.gen(0)),
+                polynomial.degree(ring.gen(1)),
+            ])
+        for pure_position in range(2):
+            mixed_position = 1 - pure_position
+            pure = exponents[pure_position]
+            mixed = exponents[mixed_position]
+            if (
+                pure[0] > mixed[0] > 0
+                and pure[1] == 0
+                and mixed[1] > 0
+            ):
+                return [0, pure[0], mixed[0], mixed[1]]
+            if (
+                pure[1] > mixed[1] > 0
+                and pure[0] == 0
+                and mixed[0] > 0
+            ):
+                return [1, pure[1], mixed[1], mixed[0]]
+        return runtime.undefined
+
+    def primary_decomposition(self) -> list[PolynomialIdeal]:
+        """
+        Return the primary components of a two-variable monomial staircase.
+
+        For `I=(x^a,x^b*y^c)` with `0 < b < a`, this uses the exact
+        identity `I=(x^b) intersection (x^a,y^c)`.
+        """
+        data = self._two_generator_monomial_staircase()
+        if data is runtime.undefined:
+            raise NotImplementedError(
+                'primary decomposition currently supports two-generator '
+                'monomial staircases in two variables')
+        pure_index, pure_power, shared_power, other_power = data
+        other_index = 1 - pure_index
+        pure_generator = self._ring.gen(pure_index)
+        other_generator = self._ring.gen(other_index)
+        return [
+            self._ring.ideal(pure_generator ** shared_power),
+            self._ring.ideal(
+                other_generator ** other_power,
+                pure_generator ** pure_power,
+            ),
+        ]
+
+    def associated_primes(self) -> list[PolynomialIdeal]:
+        """Return radicals of the supported monomial primary components."""
+        data = self._two_generator_monomial_staircase()
+        if data is runtime.undefined:
+            raise NotImplementedError(
+                'associated primes currently support two-generator '
+                'monomial staircases in two variables')
+        pure_index = data[0]
+        other_index = 1 - pure_index
+        pure_generator = self._ring.gen(pure_index)
+        other_generator = self._ring.gen(other_index)
+        return [
+            self._ring.ideal(pure_generator),
+            self._ring.ideal(other_generator, pure_generator),
+        ]
+
     def __contains__(self, value: object) -> bool:
         polynomial = self._ring(value)
         basis = self.groebner_basis()

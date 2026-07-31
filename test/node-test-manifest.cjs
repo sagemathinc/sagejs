@@ -27,6 +27,7 @@ const integration = [
   "test/modular.cjs",
   "test/elliptic-curves.cjs",
   "test/number-fields.cjs",
+  "test/polynomial-ideals.cjs",
   "test/symbolic.cjs",
   "test/algebraic-numbers.cjs",
   "test/spectral-linear-algebra.cjs",
