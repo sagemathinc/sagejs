@@ -1,7 +1,6 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include <node_api.h>
 #include <sagejs/native.h>
@@ -10,7 +9,6 @@
 #include <flint/acb_mat.h>
 #include <flint/arb.h>
 #include <flint/arf.h>
-#include <flint/fexpr.h>
 #include <flint/flint.h>
 #include <flint/fmpq.h>
 #include <flint/fmpq_mat.h>
@@ -18,11 +16,14 @@
 #include <flint/fmpz.h>
 #include <flint/fmpz_mat.h>
 #include <flint/fmpz_poly.h>
+#include <flint/gr.h>
+#include <flint/gr_mat.h>
 #include <flint/nmod_mat.h>
 #include <flint/nmod_poly.h>
 #include <flint/qqbar.h>
 #include <flint/ulong_extras.h>
 
+#include "algebraic.h"
 #include "matrix.h"
 
 typedef enum
@@ -31,7 +32,8 @@ typedef enum
     SAGEJS_MATRIX_QQ = 2,
     SAGEJS_MATRIX_NMOD = 3,
     SAGEJS_MATRIX_ZMOD = 4,
-    SAGEJS_MATRIX_ACB = 5
+    SAGEJS_MATRIX_ACB = 5,
+    SAGEJS_MATRIX_QQBAR = 6
 } sagejs_matrix_kind;
 
 typedef struct
@@ -42,6 +44,9 @@ typedef struct
     fmpq_mat_t rational;
     nmod_mat_t modular;
     acb_mat_t approximate;
+    gr_mat_t algebraic;
+    gr_ctx_t algebraic_context;
+    int algebraic_real;
     slong precision;
 } sagejs_matrix;
 
@@ -252,6 +257,9 @@ static slong matrix_nrows(const sagejs_matrix *matrix)
         return fmpq_mat_nrows(matrix->rational);
     if (matrix->kind == SAGEJS_MATRIX_ACB)
         return acb_mat_nrows(matrix->approximate);
+    if (matrix->kind == SAGEJS_MATRIX_QQBAR)
+        return gr_mat_nrows(
+            matrix->algebraic, matrix->algebraic_context);
     return nmod_mat_nrows(matrix->modular);
 }
 
@@ -263,6 +271,9 @@ static slong matrix_ncols(const sagejs_matrix *matrix)
         return fmpq_mat_ncols(matrix->rational);
     if (matrix->kind == SAGEJS_MATRIX_ACB)
         return acb_mat_ncols(matrix->approximate);
+    if (matrix->kind == SAGEJS_MATRIX_QQBAR)
+        return gr_mat_ncols(
+            matrix->algebraic, matrix->algebraic_context);
     return nmod_mat_ncols(matrix->modular);
 }
 
@@ -294,6 +305,11 @@ static void finalize_matrix(napi_env env, void *data, void *hint)
         fmpq_mat_clear(matrix->rational);
     else if (matrix->kind == SAGEJS_MATRIX_ACB)
         acb_mat_clear(matrix->approximate);
+    else if (matrix->kind == SAGEJS_MATRIX_QQBAR)
+    {
+        gr_mat_clear(matrix->algebraic, matrix->algebraic_context);
+        gr_ctx_clear(matrix->algebraic_context);
+    }
     else
         nmod_mat_clear(matrix->modular);
     matrix->magic = 0;
@@ -383,6 +399,31 @@ static sagejs_matrix *new_acb_matrix(
     return matrix;
 }
 
+static sagejs_matrix *new_qqbar_matrix(
+    napi_env env,
+    slong rows,
+    slong cols,
+    int real_only)
+{
+    sagejs_matrix *matrix = calloc(1, sizeof(*matrix));
+
+    if (matrix == NULL)
+    {
+        napi_throw_error(env, NULL, "unable to allocate matrix");
+        return NULL;
+    }
+    matrix->magic = SAGEJS_MATRIX_MAGIC;
+    matrix->kind = SAGEJS_MATRIX_QQBAR;
+    matrix->algebraic_real = real_only != 0;
+    if (matrix->algebraic_real)
+        gr_ctx_init_real_qqbar(matrix->algebraic_context);
+    else
+        gr_ctx_init_complex_qqbar(matrix->algebraic_context);
+    gr_mat_init(
+        matrix->algebraic, rows, cols, matrix->algebraic_context);
+    return matrix;
+}
+
 static sagejs_matrix *new_matrix_like(
     napi_env env,
     const sagejs_matrix *source,
@@ -394,6 +435,9 @@ static sagejs_matrix *new_matrix_like(
             env, source->kind, rows, cols, matrix_modulus(source));
     if (source->kind == SAGEJS_MATRIX_ACB)
         return new_acb_matrix(env, rows, cols, source->precision);
+    if (source->kind == SAGEJS_MATRIX_QQBAR)
+        return new_qqbar_matrix(
+            env, rows, cols, source->algebraic_real);
     return new_matrix(env, source->kind, rows, cols);
 }
 
@@ -749,6 +793,69 @@ napi_value sagejs_acb_matrix(napi_env env, napi_callback_info info)
     return wrap_matrix(env, matrix);
 }
 
+napi_value sagejs_qqbar_matrix(napi_env env, napi_callback_info info)
+{
+    napi_value args[4];
+    sagejs_matrix *matrix;
+    qqbar_srcptr entry;
+    slong rows;
+    slong cols;
+    uint32_t length;
+    uint64_t expected;
+    uint32_t index;
+    bool is_array = false;
+    bool real_only = false;
+    napi_value value;
+
+    if (!require_arguments(env, info, 4, args) ||
+        !value_to_dimension(env, args[0], &rows) ||
+        !value_to_dimension(env, args[1], &cols) ||
+        !check_napi(env, napi_is_array(env, args[2], &is_array)) ||
+        !check_napi(env, napi_get_value_bool(env, args[3], &real_only)))
+        return NULL;
+    if (!is_array ||
+        !check_napi(env, napi_get_array_length(env, args[2], &length)))
+    {
+        napi_throw_type_error(env, NULL, "matrix entries must be an Array");
+        return NULL;
+    }
+    expected = (uint64_t) rows * (uint64_t) cols;
+    if (expected > UINT32_MAX || length != expected)
+    {
+        napi_throw_range_error(env, NULL,
+            "matrix entry count does not match its dimensions");
+        return NULL;
+    }
+    matrix = new_qqbar_matrix(env, rows, cols, real_only);
+    if (matrix == NULL)
+        return NULL;
+    for (index = 0; index < length; index++)
+    {
+        if (!check_napi(env,
+            napi_get_element(env, args[2], index, &value)) ||
+            (entry = sagejs_qqbar_unwrap(env, value)) == NULL)
+        {
+            finalize_matrix(env, matrix, NULL);
+            return NULL;
+        }
+        if (real_only && !qqbar_is_real(entry))
+        {
+            finalize_matrix(env, matrix, NULL);
+            napi_throw_type_error(env, NULL,
+                "AA matrix entries must be real");
+            return NULL;
+        }
+        qqbar_set(
+            (qqbar_ptr) gr_mat_entry_ptr(
+                matrix->algebraic,
+                index / cols,
+                index % cols,
+                matrix->algebraic_context),
+            entry);
+    }
+    return wrap_matrix(env, matrix);
+}
+
 napi_value sagejs_zz_matrix_to_qq(napi_env env, napi_callback_info info)
 {
     napi_value args[1];
@@ -817,6 +924,12 @@ static napi_value matrix_binary(
             "approximate matrix precisions differ");
         return NULL;
     }
+    if (left->kind == SAGEJS_MATRIX_QQBAR &&
+        left->algebraic_real != right->algebraic_real)
+    {
+        napi_throw_type_error(env, NULL, "matrix base rings differ");
+        return NULL;
+    }
     if (operation == MATRIX_MUL)
     {
         if (matrix_ncols(left) != matrix_nrows(right))
@@ -882,6 +995,36 @@ static napi_value matrix_binary(
                 right->approximate,
                 left->precision);
     }
+    else if (left->kind == SAGEJS_MATRIX_QQBAR)
+    {
+        int status;
+
+        if (operation == MATRIX_ADD)
+            status = gr_mat_add(
+                answer->algebraic,
+                left->algebraic,
+                right->algebraic,
+                left->algebraic_context);
+        else if (operation == MATRIX_SUB)
+            status = gr_mat_sub(
+                answer->algebraic,
+                left->algebraic,
+                right->algebraic,
+                left->algebraic_context);
+        else
+            status = gr_mat_mul(
+                answer->algebraic,
+                left->algebraic,
+                right->algebraic,
+                left->algebraic_context);
+        if (status != GR_SUCCESS)
+        {
+            finalize_matrix(env, answer, NULL);
+            napi_throw_error(env, NULL,
+                "FLINT algebraic matrix arithmetic failed");
+            return NULL;
+        }
+    }
     else
     {
         if (operation == MATRIX_ADD)
@@ -930,6 +1073,19 @@ napi_value sagejs_matrix_neg(napi_env env, napi_callback_info info)
         fmpq_mat_neg(answer->rational, source->rational);
     else if (source->kind == SAGEJS_MATRIX_ACB)
         acb_mat_neg(answer->approximate, source->approximate);
+    else if (source->kind == SAGEJS_MATRIX_QQBAR)
+    {
+        if (gr_mat_neg(
+            answer->algebraic,
+            source->algebraic,
+            source->algebraic_context) != GR_SUCCESS)
+        {
+            finalize_matrix(env, answer, NULL);
+            napi_throw_error(env, NULL,
+                "FLINT algebraic matrix negation failed");
+            return NULL;
+        }
+    }
     else
         nmod_mat_neg(answer->modular, source->modular);
     return wrap_matrix(env, answer);
@@ -951,6 +1107,12 @@ napi_value sagejs_matrix_scalar_mul(
     source = unwrap_matrix(env, args[0]);
     if (source == NULL)
         return NULL;
+    if (source->kind == SAGEJS_MATRIX_QQBAR)
+    {
+        napi_throw_type_error(env, NULL,
+            "use qqbarMatrixScalarMul for algebraic matrices");
+        return NULL;
+    }
     fmpz_init(numerator);
     fmpz_init(denominator);
     if (!bigint_to_fmpz(env, args[1], numerator) ||
@@ -1041,6 +1203,53 @@ napi_value sagejs_acb_matrix_scalar_mul(
     return wrap_matrix(env, answer);
 }
 
+napi_value sagejs_qqbar_matrix_scalar_mul(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[2];
+    sagejs_matrix *source;
+    sagejs_matrix *answer;
+    qqbar_srcptr scalar;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    if (source->kind != SAGEJS_MATRIX_QQBAR)
+    {
+        napi_throw_type_error(env, NULL,
+            "expected an algebraic matrix");
+        return NULL;
+    }
+    scalar = sagejs_qqbar_unwrap(env, args[1]);
+    if (scalar == NULL)
+        return NULL;
+    if (source->algebraic_real && !qqbar_is_real(scalar))
+    {
+        napi_throw_type_error(env, NULL,
+            "AA matrices require a real scalar");
+        return NULL;
+    }
+    answer = new_matrix_like(
+        env, source, matrix_nrows(source), matrix_ncols(source));
+    if (answer == NULL)
+        return NULL;
+    if (gr_mat_mul_scalar(
+        answer->algebraic,
+        source->algebraic,
+        scalar,
+        source->algebraic_context) != GR_SUCCESS)
+    {
+        finalize_matrix(env, answer, NULL);
+        napi_throw_error(env, NULL,
+            "FLINT algebraic matrix scalar multiplication failed");
+        return NULL;
+    }
+    return wrap_matrix(env, answer);
+}
+
 napi_value sagejs_matrix_transpose(
     napi_env env,
     napi_callback_info info)
@@ -1064,6 +1273,19 @@ napi_value sagejs_matrix_transpose(
         fmpq_mat_transpose(answer->rational, source->rational);
     else if (source->kind == SAGEJS_MATRIX_ACB)
         acb_mat_transpose(answer->approximate, source->approximate);
+    else if (source->kind == SAGEJS_MATRIX_QQBAR)
+    {
+        if (gr_mat_transpose(
+            answer->algebraic,
+            source->algebraic,
+            source->algebraic_context) != GR_SUCCESS)
+        {
+            finalize_matrix(env, answer, NULL);
+            napi_throw_error(env, NULL,
+                "FLINT algebraic matrix transpose failed");
+            return NULL;
+        }
+    }
     else
         nmod_mat_transpose(answer->modular, source->modular);
     return wrap_matrix(env, answer);
@@ -1096,6 +1318,13 @@ napi_value sagejs_matrix_equal(napi_env env, napi_callback_info info)
             left->precision == right->precision)
             equal = acb_mat_equal(
                 left->approximate, right->approximate);
+        else if (
+            left->kind == SAGEJS_MATRIX_QQBAR &&
+            left->algebraic_real == right->algebraic_real)
+            equal = gr_mat_equal(
+                left->algebraic,
+                right->algebraic,
+                left->algebraic_context) == T_TRUE;
         else if (matrix_modulus(left) == matrix_modulus(right))
             equal = nmod_mat_equal(left->modular, right->modular);
     }
@@ -1132,6 +1361,14 @@ napi_value sagejs_matrix_entry(napi_env env, napi_callback_info info)
             ? NULL
             : sagejs_native_wrap_complex(env, result);
     }
+    if (matrix->kind == SAGEJS_MATRIX_QQBAR)
+        return sagejs_qqbar_wrap_copy(
+            env,
+            (qqbar_srcptr) gr_mat_entry_ptr(
+                matrix->algebraic,
+                row,
+                col,
+                matrix->algebraic_context));
     if (matrix_is_modular(matrix))
         return ulong_to_bigint(
             env, nmod_mat_entry(matrix->modular, row, col));
@@ -1181,6 +1418,25 @@ napi_value sagejs_matrix_det(napi_env env, napi_callback_info info)
         return value == NULL
             ? NULL
             : sagejs_native_wrap_complex(env, value);
+    }
+    if (matrix->kind == SAGEJS_MATRIX_QQBAR)
+    {
+        qqbar_t algebraic;
+
+        qqbar_init(algebraic);
+        if (gr_mat_det(
+            algebraic,
+            matrix->algebraic,
+            matrix->algebraic_context) != GR_SUCCESS)
+        {
+            qqbar_clear(algebraic);
+            napi_throw_error(env, NULL,
+                "FLINT algebraic determinant failed");
+            return NULL;
+        }
+        result = sagejs_qqbar_wrap_copy(env, algebraic);
+        qqbar_clear(algebraic);
+        return result;
     }
     if (matrix_is_modular(matrix))
         return ulong_to_bigint(env, nmod_mat_det(matrix->modular));
@@ -1294,6 +1550,18 @@ napi_value sagejs_matrix_rank(napi_env env, napi_callback_info info)
             reduced, matrix->approximate, matrix->precision);
         acb_mat_clear(reduced);
     }
+    else if (matrix->kind == SAGEJS_MATRIX_QQBAR)
+    {
+        if (gr_mat_rank(
+            &rank,
+            matrix->algebraic,
+            matrix->algebraic_context) != GR_SUCCESS)
+        {
+            napi_throw_error(env, NULL,
+                "FLINT algebraic matrix rank failed");
+            return NULL;
+        }
+    }
     else if (matrix->kind == SAGEJS_MATRIX_NMOD)
     {
         rank = nmod_mat_rank(matrix->modular);
@@ -1372,6 +1640,27 @@ napi_value sagejs_matrix_rref(napi_env env, napi_callback_info info)
             answer->approximate,
             source->approximate,
             source->precision);
+        return wrap_matrix(env, answer);
+    }
+    if (source->kind == SAGEJS_MATRIX_QQBAR)
+    {
+        slong rank;
+
+        answer = new_matrix_like(
+            env, source, matrix_nrows(source), matrix_ncols(source));
+        if (answer == NULL)
+            return NULL;
+        if (gr_mat_rref(
+            &rank,
+            answer->algebraic,
+            source->algebraic,
+            source->algebraic_context) != GR_SUCCESS)
+        {
+            finalize_matrix(env, answer, NULL);
+            napi_throw_error(env, NULL,
+                "FLINT algebraic matrix RREF failed");
+            return NULL;
+        }
         return wrap_matrix(env, answer);
     }
     if (source->kind == SAGEJS_MATRIX_NMOD)
@@ -1618,15 +1907,73 @@ napi_value sagejs_matrix_right_kernel(
     source = unwrap_matrix(env, args[0]);
     if (source == NULL)
         return NULL;
+    rows = matrix_nrows(source);
+    cols = matrix_ncols(source);
     if (source->kind == SAGEJS_MATRIX_ACB)
     {
         napi_throw_type_error(env, NULL,
             "approximate matrix kernels are not available");
         return NULL;
     }
-    rows = matrix_nrows(source);
-    cols = matrix_ncols(source);
+    if (source->kind == SAGEJS_MATRIX_QQBAR)
+    {
+        gr_mat_t basis_columns;
 
+        gr_mat_init(
+            basis_columns, 0, 0, source->algebraic_context);
+        if (gr_mat_nullspace(
+            basis_columns,
+            source->algebraic,
+            source->algebraic_context) != GR_SUCCESS)
+        {
+            gr_mat_clear(
+                basis_columns, source->algebraic_context);
+            napi_throw_error(env, NULL,
+                "FLINT algebraic matrix nullspace failed");
+            return NULL;
+        }
+        nullity = gr_mat_ncols(
+            basis_columns, source->algebraic_context);
+        answer = new_matrix_like(env, source, nullity, cols);
+        if (answer == NULL)
+        {
+            gr_mat_clear(
+                basis_columns, source->algebraic_context);
+            return NULL;
+        }
+        for (row = 0; row < nullity; row++)
+        {
+            for (col = 0; col < cols; col++)
+            {
+                qqbar_set(
+                    (qqbar_ptr) gr_mat_entry_ptr(
+                        answer->algebraic,
+                        row,
+                        col,
+                        answer->algebraic_context),
+                    (qqbar_srcptr) gr_mat_entry_ptr(
+                        basis_columns,
+                        col,
+                        row,
+                        source->algebraic_context));
+            }
+        }
+        if (gr_mat_rref(
+            &rank,
+            answer->algebraic,
+            answer->algebraic,
+            answer->algebraic_context) != GR_SUCCESS)
+        {
+            gr_mat_clear(
+                basis_columns, source->algebraic_context);
+            finalize_matrix(env, answer, NULL);
+            napi_throw_error(env, NULL,
+                "FLINT algebraic kernel normalization failed");
+            return NULL;
+        }
+        gr_mat_clear(basis_columns, source->algebraic_context);
+        return wrap_matrix(env, answer);
+    }
     if (source->kind == SAGEJS_MATRIX_ZMOD)
     {
         sagejs_matrix *howell;
@@ -1920,10 +2267,11 @@ napi_value sagejs_matrix_charpoly(
             "characteristic polynomial requires a square matrix");
         return NULL;
     }
-    if (source->kind == SAGEJS_MATRIX_ACB)
+    if (source->kind == SAGEJS_MATRIX_ACB ||
+        source->kind == SAGEJS_MATRIX_QQBAR)
     {
         napi_throw_type_error(env, NULL,
-            "approximate characteristic polynomials are not available yet");
+            "characteristic polynomials are not available for this matrix");
         return NULL;
     }
     degree = matrix_nrows(source);
@@ -2093,6 +2441,43 @@ napi_value sagejs_matrix_solve(napi_env env, napi_callback_info info)
     if (left == NULL || right == NULL)
         return NULL;
     if (
+        left->kind == SAGEJS_MATRIX_QQBAR ||
+        right->kind == SAGEJS_MATRIX_QQBAR
+    )
+    {
+        if (
+            left->kind != SAGEJS_MATRIX_QQBAR ||
+            right->kind != SAGEJS_MATRIX_QQBAR ||
+            left->algebraic_real != right->algebraic_real
+        )
+        {
+            napi_throw_type_error(env, NULL, "matrix base rings differ");
+            return NULL;
+        }
+        if (matrix_nrows(left) != matrix_ncols(left) ||
+            matrix_nrows(right) != matrix_nrows(left))
+        {
+            napi_throw_range_error(env, NULL,
+                "solve requires a square matrix and compatible right side");
+            return NULL;
+        }
+        answer = new_matrix_like(
+            env, left, matrix_ncols(left), matrix_ncols(right));
+        if (answer == NULL)
+            return NULL;
+        if (gr_mat_solve_field(
+            answer->algebraic,
+            left->algebraic,
+            right->algebraic,
+            left->algebraic_context) != GR_SUCCESS)
+        {
+            finalize_matrix(env, answer, NULL);
+            napi_throw_range_error(env, NULL, "matrix is singular");
+            return NULL;
+        }
+        return wrap_matrix(env, answer);
+    }
+    if (
         left->kind == SAGEJS_MATRIX_ACB ||
         right->kind == SAGEJS_MATRIX_ACB
     )
@@ -2257,6 +2642,23 @@ napi_value sagejs_matrix_inverse(napi_env env, napi_callback_info info)
         }
         return wrap_matrix(env, answer);
     }
+    if (source->kind == SAGEJS_MATRIX_QQBAR)
+    {
+        answer = new_matrix_like(
+            env, source, matrix_nrows(source), matrix_ncols(source));
+        if (answer == NULL)
+            return NULL;
+        if (gr_mat_inv(
+            answer->algebraic,
+            source->algebraic,
+            source->algebraic_context) != GR_SUCCESS)
+        {
+            finalize_matrix(env, answer, NULL);
+            napi_throw_range_error(env, NULL, "matrix is singular");
+            return NULL;
+        }
+        return wrap_matrix(env, answer);
+    }
     if (matrix_is_modular(source))
     {
         answer = new_nmod_matrix(
@@ -2297,111 +2699,6 @@ napi_value sagejs_matrix_inverse(napi_env env, napi_callback_info info)
     return wrap_matrix(env, answer);
 }
 
-static const char *mathjson_symbol(const char *symbol)
-{
-    if (strcmp(symbol, "NumberI") == 0 || strcmp(symbol, "I") == 0)
-        return "ImaginaryUnit";
-    if (strcmp(symbol, "Mul") == 0)
-        return "Multiply";
-    if (strcmp(symbol, "Div") == 0)
-        return "Divide";
-    if (strcmp(symbol, "Sub") == 0)
-        return "Subtract";
-    if (strcmp(symbol, "Neg") == 0)
-        return "Negate";
-    if (strcmp(symbol, "Pow") == 0)
-        return "Power";
-    return symbol;
-}
-
-static napi_value fexpr_to_napi(napi_env env, const fexpr_t expression)
-{
-    napi_value result;
-    fmpz_t integer;
-    char *symbol;
-    const char *mapped;
-    slong nargs;
-    slong index;
-    fexpr_t function;
-    fexpr_t argument;
-
-    if (fexpr_is_integer(expression))
-    {
-        fmpz_init(integer);
-        if (!fexpr_get_fmpz(integer, expression))
-        {
-            fmpz_clear(integer);
-            napi_throw_error(env, NULL,
-                "unable to convert an exact eigenvalue integer");
-            return NULL;
-        }
-        result = fmpz_to_bigint(env, integer);
-        fmpz_clear(integer);
-        return result;
-    }
-    if (fexpr_is_symbol(expression))
-    {
-        symbol = fexpr_get_symbol_str(expression);
-        mapped = mathjson_symbol(symbol);
-        if (!check_napi(env,
-            napi_create_string_utf8(
-                env, mapped, NAPI_AUTO_LENGTH, &result)))
-        {
-            flint_free(symbol);
-            return NULL;
-        }
-        flint_free(symbol);
-        return result;
-    }
-    nargs = fexpr_nargs(expression);
-    if (nargs < 0)
-    {
-        symbol = fexpr_get_str(expression);
-        if (!check_napi(env,
-            napi_create_string_utf8(
-                env, symbol, NAPI_AUTO_LENGTH, &result)))
-        {
-            flint_free(symbol);
-            return NULL;
-        }
-        flint_free(symbol);
-        return result;
-    }
-    if (!check_napi(env,
-        napi_create_array_with_length(
-            env, (size_t) nargs + 1, &result)))
-        return NULL;
-    fexpr_init(function);
-    fexpr_init(argument);
-    fexpr_func(function, expression);
-    {
-        napi_value head = fexpr_to_napi(env, function);
-        if (head == NULL ||
-            !check_napi(env, napi_set_element(env, result, 0, head)))
-            goto fail;
-    }
-    for (index = 0; index < nargs; index++)
-    {
-        napi_value value;
-
-        fexpr_arg(argument, expression, index);
-        value = fexpr_to_napi(env, argument);
-        if (value == NULL ||
-            !check_napi(env,
-                napi_set_element(
-                    env, result, (uint32_t) index + 1, value)))
-            goto fail;
-    }
-    fexpr_clear(function);
-    fexpr_clear(argument);
-    return result;
-
-fail:
-    fexpr_clear(function);
-    fexpr_clear(argument);
-    return NULL;
-}
-
 napi_value sagejs_matrix_exact_eigenvalues(
     napi_env env,
     napi_callback_info info)
@@ -2411,7 +2708,6 @@ napi_value sagejs_matrix_exact_eigenvalues(
     napi_value value;
     sagejs_matrix *source;
     qqbar_ptr eigenvalues;
-    fexpr_t expression;
     slong *order;
     slong degree;
     slong index;
@@ -2489,25 +2785,16 @@ napi_value sagejs_matrix_exact_eigenvalues(
     if (!check_napi(env,
         napi_create_array_with_length(env, degree, &result)))
         goto fail;
-    fexpr_init(expression);
     for (position = 0; position < degree; position++)
     {
         index = order[position];
-        if (!qqbar_get_fexpr_formula(
-            expression, eigenvalues + index, QQBAR_FORMULA_ALL))
-            qqbar_get_fexpr_root_indexed(
-                expression, eigenvalues + index);
-        value = fexpr_to_napi(env, expression);
+        value = sagejs_qqbar_wrap_copy(env, eigenvalues + index);
         if (value == NULL ||
             !check_napi(env,
                 napi_set_element(
                     env, result, (uint32_t) position, value)))
-        {
-            fexpr_clear(expression);
             goto fail;
-        }
     }
-    fexpr_clear(expression);
     free(order);
     _qqbar_vec_clear(eigenvalues, degree);
     return result;

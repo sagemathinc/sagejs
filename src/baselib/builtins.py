@@ -954,6 +954,16 @@ def ρσ_operator_pow(left: Any, right: Any) -> Any:
 def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
     if isinstance(right, runtime.rational_class):
         if right._denominator != 1:
+            if (
+                getattr(
+                    left,
+                    '_supports_exact_rational_powers',
+                    False,
+                )
+                and _builtins_member_is_function(left, '__pow__')
+            ):
+                return _builtins_call_member(
+                    left, '__pow__', [right])
             symbolic_ring = runtime.reflect.get(
                 runtime.global_object, 'SR')
             if symbolic_ring is not runtime.undefined:

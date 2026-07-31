@@ -154,11 +154,6 @@
       "reason": "requires a p-adic ring implementation",
       "file": "src/doc/en/tutorial/tour_rings.rst",
       "lines": [140]
-    },
-    {
-      "reason": "requires an algebraic closure of the rational field",
-      "file": "src/doc/en/tutorial/tour_rings.rst",
-      "lines": [142]
     }
   ]
 }

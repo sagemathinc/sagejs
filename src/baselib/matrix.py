@@ -27,6 +27,10 @@ def _is_extension_field_base(value: object) -> bool:
     return getattr(value, '_kind', None) == 'GF_EXTENSION'
 
 
+def _is_algebraic_base(value: object) -> bool:
+    return getattr(value, '_kind', None) in ['AA', 'QQBAR']
+
+
 def _is_approximate_base(value: object) -> bool:
     return getattr(value, '_kind', None) in [
         'RDF',
@@ -51,6 +55,7 @@ def _is_base_ring(value: object) -> bool:
         or getattr(value, '_kind', None) == 'QQ'
         or _is_modular_base(value)
         or _is_extension_field_base(value)
+        or _is_algebraic_base(value)
         or _is_approximate_base(value)
     )
 
@@ -68,6 +73,8 @@ def _base_for_values(values: list[Any]) -> sage.Parent:
         if isinstance(value, sage.Rational):
             return sage.QQ
         parent = getattr(value, '_parent', None)
+        if _is_algebraic_base(parent):
+            return runtime.reflect.get(value, '_parent')
         if _is_approximate_base(parent):
             return runtime.reflect.get(value, '_parent')
         if (
@@ -133,6 +140,17 @@ def _native_matrix(
                 rational._denominator,
             ])
         return backend.qqMatrix(rows, cols, entries)
+    if _is_algebraic_base(base):
+        entries = []
+        for value in values:
+            entries.append(runtime.reflect.get(
+                base(value), '_native'))
+        return backend.qqbarMatrix(
+            rows,
+            cols,
+            entries,
+            getattr(base, '_kind', None) == 'AA',
+        )
     if _is_extension_field_base(base):
         entries = []
         for value in values:
@@ -166,7 +184,7 @@ def _native_matrix(
             _approximate_precision(base),
         )
     raise TypeError(
-        'matrices currently require ZZ, QQ, GF, Zmod, '
+        'matrices currently require ZZ, QQ, AA, QQbar, GF, Zmod, '
         'or a real/complex field')
 
 
@@ -180,6 +198,8 @@ def _rational_result(value: Any) -> sage.Rational:
 def _entry_from_native(base: sage.Parent, value: Any) -> Any:
     if base is sage.ZZ:
         return runtime.normalize_integer(value)
+    if _is_algebraic_base(base):
+        return _untyped(base)._from_native(value)
     if _is_extension_field_base(base):
         return _untyped(base)._from_native(value)
     if _is_modular_base(base):
@@ -201,6 +221,17 @@ def _common_base(
 ) -> sage.Parent:
     if left is right:
         return left
+    if _is_algebraic_base(left) or _is_algebraic_base(right):
+        if left is sage.ZZ or left is sage.QQ:
+            return right
+        if right is sage.ZZ or right is sage.QQ:
+            return left
+        if _is_algebraic_base(left) and _is_algebraic_base(right):
+            if getattr(left, '_kind', None) == 'QQBAR':
+                return left
+            if getattr(right, '_kind', None) == 'QQBAR':
+                return right
+            return left
     if _is_approximate_base(left) or _is_approximate_base(right):
         if left is sage.ZZ or left is sage.QQ:
             return right
@@ -291,10 +322,18 @@ def _matrix_scalar_parts(
         )
     if _is_extension_field_base(base):
         return (base, 0, 1)
+    if _is_algebraic_base(base):
+        return (base, 0, 1)
     if _is_approximate_base(base):
         return (base, 0, 1)
     parent = getattr(value, '_parent', None)
     if _is_extension_field_base(parent):
+        return (
+            runtime.reflect.get(value, '_parent'),
+            0,
+            1
+        )
+    if _is_algebraic_base(parent):
         return (
             runtime.reflect.get(value, '_parent'),
             0,
@@ -321,22 +360,6 @@ def _normalize_named_index(
     if index < 0 or index >= length:
         raise IndexError(kind + ' index out of range')
     return index
-
-
-def _expression_from_tree(tree: Any) -> Any:
-    if runtime.jstype(tree) == 'bigint':
-        return runtime.normalize_integer(tree)
-    if (
-        runtime.array.isArray(tree)
-        and len(tree) == 3
-        and tree[0] == 'Divide'
-        and runtime.jstype(tree[1]) == 'bigint'
-        and runtime.jstype(tree[2]) == 'bigint'
-    ):
-        return runtime.rational_class(tree[1], tree[2])
-    expression_class = runtime.reflect.get(
-        runtime.global_object, 'Expression')
-    return runtime.reflect.construct(expression_class, [tree])
 
 
 def _approximate_value_from_native(
@@ -583,14 +606,23 @@ class Vector(sage.Element):
                 base is sage.QQ
                 or _is_modular_base(base)
                 or _is_extension_field_base(base)
+                or _is_algebraic_base(base)
                 or _is_approximate_base(base)
             )
         ):
             return VectorSpace(base, len(self))(
                 _coerce_values(base, self._entries))
         if base is not sage.QQ or self.base_ring() is not sage.ZZ:
-            raise TypeError(
-                'unsupported vector base-ring conversion')
+            if (
+                _is_algebraic_base(base)
+                and (
+                    self.base_ring() is sage.QQ
+                    or _is_algebraic_base(self.base_ring())
+                )
+            ):
+                return VectorSpace(base, len(self))(
+                    _coerce_values(base, self._entries))
+            raise TypeError('unsupported vector base-ring conversion')
         raise TypeError('unsupported vector base-ring conversion')
 
     def _pair(self, other: object) -> tuple[Vector, Vector]:
@@ -1027,7 +1059,17 @@ class Matrix(sage.Element):
             and (
                 _is_modular_base(base)
                 or _is_extension_field_base(base)
+                or _is_algebraic_base(base)
                 or _is_approximate_base(base)
+            )
+        ):
+            return matrix(
+                base, self.nrows(), self.ncols(), self.list())
+        if (
+            _is_algebraic_base(base)
+            and (
+                self.base_ring() is sage.QQ
+                or _is_algebraic_base(self.base_ring())
             )
         ):
             return matrix(
@@ -1092,11 +1134,27 @@ class Matrix(sage.Element):
         )
 
     def _scalar_mul(self, scalar: object) -> Matrix:
+        scalar_parent = getattr(scalar, '_parent', None)
+        if (
+            _is_algebraic_base(scalar_parent)
+            and not _is_algebraic_base(self.base_ring())
+        ):
+            return self.change_ring(
+                _untyped(scalar_parent))._scalar_mul(scalar)
         if _is_extension_field_base(self.base_ring()):
             value = self.base_ring()(scalar)
             native_value = runtime.flint_backend().fqMatrixScalarMul(
                 self._native, runtime.reflect.get(value, '_native'))
             return Matrix(self._parent, native_value)
+        if _is_algebraic_base(self.base_ring()):
+            value = self.base_ring()(scalar)
+            return Matrix(
+                self._parent,
+                runtime.flint_backend().qqbarMatrixScalarMul(
+                    self._native,
+                    runtime.reflect.get(value, '_native'),
+                ),
+            )
         if _is_approximate_base(self.base_ring()):
             field = _complex_field(
                 _approximate_precision(self.base_ring()))
@@ -1180,6 +1238,7 @@ class Matrix(sage.Element):
         if (
             _is_modular_base(self.base_ring())
             or _is_extension_field_base(self.base_ring())
+            or _is_algebraic_base(self.base_ring())
         ):
             value = self.base_ring()(scalar)
             if value.is_zero():
@@ -1329,7 +1388,7 @@ class Matrix(sage.Element):
                 base = self.base_ring()
             if getattr(
                 self.base_ring(), '_kind', None
-            ) in ['GF', 'GF_EXTENSION']:
+            ) in ['GF', 'GF_EXTENSION', 'AA', 'QQBAR']:
                 base = self.base_ring()
             backend = runtime.flint_backend()
             if _is_extension_field_base(self.base_ring()):
@@ -1576,9 +1635,14 @@ class Matrix(sage.Element):
         if not extend:
             raise NotImplementedError(
                 'eigenvalues with extend=False are not available yet')
-        trees = runtime.flint_backend().matrixExactEigenvalues(
+        native_values = runtime.flint_backend().matrixExactEigenvalues(
             self._native)
-        return [_expression_from_tree(tree) for tree in trees]
+        algebraic_field = runtime.reflect.get(
+            runtime.global_object, 'QQbar')
+        return [
+            algebraic_field._from_native(value)
+            for value in native_values
+        ]
 
     def _exact_eigenvectors(
         self,
@@ -1595,19 +1659,15 @@ class Matrix(sage.Element):
                 and values[index + multiplicity] == value
             ):
                 multiplicity += 1
-            if not (
-                runtime.is_exact_integer(value)
-                or isinstance(value, sage.Rational)
-            ):
-                raise NotImplementedError(
-                    'exact eigenvectors over algebraic extensions '
-                    'are not available yet')
-            scalar = sage.QQ(value)
-            source = self.change_ring(sage.QQ)
+            scalar_parent = runtime.reflect.get(value, '_parent')
+            if not _is_algebraic_base(scalar_parent):
+                scalar_parent = sage.QQ
+            scalar = scalar_parent(value)
+            source = self.change_ring(scalar_parent)
             shifted = (
                 source
                 - identity_matrix(
-                    sage.QQ, self.nrows()) * scalar
+                    scalar_parent, self.nrows()) * scalar
             )
             if left:
                 space = shifted.left_kernel()
@@ -1677,6 +1737,10 @@ class Matrix(sage.Element):
         cached = self._charpoly_cache.get(variable)
         if cached is not runtime.undefined:
             return cached
+        if _is_algebraic_base(self.base_ring()):
+            raise NotImplementedError(
+                'characteristic polynomials over AA and QQbar '
+                'are not available yet')
         ring = sage.PolynomialRing(self.base_ring(), variable)
         backend = runtime.flint_backend()
         if _is_extension_field_base(self.base_ring()):
@@ -1786,6 +1850,7 @@ class Matrix(sage.Element):
         if (
             _is_modular_base(self.base_ring())
             or _is_extension_field_base(self.base_ring())
+            or _is_algebraic_base(self.base_ring())
             or _is_approximate_base(self.base_ring())
         ):
             inverse_base = self.base_ring()
@@ -1885,6 +1950,7 @@ class Matrix(sage.Element):
         if (
             _is_modular_base(base)
             or _is_extension_field_base(base)
+            or _is_algebraic_base(base)
             or _is_approximate_base(base)
         ):
             result_base = base
@@ -2158,10 +2224,11 @@ def MatrixSpace(
         and base is not sage.QQ
         and not _is_modular_base(base)
         and not _is_extension_field_base(base)
+        and not _is_algebraic_base(base)
         and not _is_approximate_base(base)
     ):
         raise TypeError(
-            'matrices currently require ZZ, QQ, GF, Zmod, '
+            'matrices currently require ZZ, QQ, AA, QQbar, GF, Zmod, '
             'or a real/complex field')
     rows = int(rows)
     cols = rows if cols is None else int(cols)
@@ -2192,10 +2259,11 @@ def VectorSpace(
         and base is not sage.QQ
         and not _is_modular_base(base)
         and not _is_extension_field_base(base)
+        and not _is_algebraic_base(base)
         and not _is_approximate_base(base)
     ):
         raise TypeError(
-            'vectors currently require ZZ, QQ, GF, Zmod, '
+            'vectors currently require ZZ, QQ, AA, QQbar, GF, Zmod, '
             'or a real/complex field')
     degree = int(degree)
     if degree < 0:

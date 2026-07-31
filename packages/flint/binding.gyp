@@ -7,6 +7,7 @@
       "target_name": "sagejs_flint",
       "sources": [
         "src/addon.c",
+        "src/algebraic.c",
         "src/extension_field.c",
         "src/floating.c",
         "src/matrix.c",

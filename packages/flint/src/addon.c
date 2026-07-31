@@ -17,6 +17,7 @@
 #include <flint/ulong_extras.h>
 #include <sagejs/native.h>
 
+#include "algebraic.h"
 #include "extension_field.h"
 #include "floating.h"
 #include "matrix.h"
@@ -1621,6 +1622,186 @@ static napi_value nmod_poly_roots_value(
     return result;
 }
 
+typedef struct
+{
+    qqbar_srcptr value;
+    slong multiplicity;
+}
+sagejs_exact_root;
+
+static int compare_qqbar_values(
+    qqbar_srcptr left,
+    qqbar_srcptr right)
+{
+    double left_real = arf_get_d(
+        arb_midref(acb_realref(QQBAR_ENCLOSURE(left))),
+        ARF_RND_NEAR);
+    double right_real = arf_get_d(
+        arb_midref(acb_realref(QQBAR_ENCLOSURE(right))),
+        ARF_RND_NEAR);
+    double left_imag;
+    double right_imag;
+
+    if (left_real < right_real)
+        return -1;
+    if (left_real > right_real)
+        return 1;
+    left_imag = arf_get_d(
+        arb_midref(acb_imagref(QQBAR_ENCLOSURE(left))),
+        ARF_RND_NEAR);
+    right_imag = arf_get_d(
+        arb_midref(acb_imagref(QQBAR_ENCLOSURE(right))),
+        ARF_RND_NEAR);
+    if (left_imag < right_imag)
+        return -1;
+    if (left_imag > right_imag)
+        return 1;
+    return 0;
+}
+
+static int compare_exact_roots(
+    const void *left_pointer,
+    const void *right_pointer)
+{
+    const sagejs_exact_root *left =
+        (const sagejs_exact_root *) left_pointer;
+    const sagejs_exact_root *right =
+        (const sagejs_exact_root *) right_pointer;
+
+    return compare_qqbar_values(left->value, right->value);
+}
+
+static napi_value exact_poly_roots(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    sagejs_poly *poly;
+    fmpz_poly_t integer_poly;
+    fmpz_poly_factor_t factors;
+    qqbar_ptr roots;
+    sagejs_exact_root *root_records;
+    slong degree;
+    slong distinct_degree = 0;
+    slong factor_index;
+    slong index;
+    slong offset = 0;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    poly = unwrap_poly(env, args[0], 0);
+    if (poly == NULL)
+        return NULL;
+    if (poly->kind != SAGEJS_POLY_ZZ &&
+        poly->kind != SAGEJS_POLY_QQ)
+    {
+        napi_throw_type_error(env, NULL,
+            "exact algebraic roots require an integer or rational polynomial");
+        return NULL;
+    }
+    degree = poly->kind == SAGEJS_POLY_ZZ
+        ? fmpz_poly_degree(poly->integer)
+        : fmpq_poly_degree(poly->rational);
+    if (degree < 0)
+    {
+        napi_throw_range_error(env, NULL,
+            "roots of the zero polynomial are not defined");
+        return NULL;
+    }
+    if (degree == 0)
+    {
+        if (!check_napi(env,
+            napi_create_array_with_length(env, 0, &result)))
+            return NULL;
+        return result;
+    }
+
+    fmpz_poly_init(integer_poly);
+    fmpz_poly_factor_init(factors);
+    if (poly->kind == SAGEJS_POLY_ZZ)
+        fmpz_poly_set(integer_poly, poly->integer);
+    else
+        fmpq_poly_get_numerator(integer_poly, poly->rational);
+    fmpz_poly_factor_squarefree(factors, integer_poly);
+    for (factor_index = 0; factor_index < factors->num; factor_index++)
+        distinct_degree += fmpz_poly_degree(factors->p + factor_index);
+
+    if (!check_napi(env,
+        napi_create_array_with_length(
+            env, (size_t) distinct_degree, &result)))
+    {
+        fmpz_poly_factor_clear(factors);
+        fmpz_poly_clear(integer_poly);
+        return NULL;
+    }
+
+    roots = _qqbar_vec_init(distinct_degree);
+    root_records = malloc(
+        (size_t) distinct_degree * sizeof(sagejs_exact_root));
+    if (root_records == NULL)
+    {
+        _qqbar_vec_clear(roots, distinct_degree);
+        fmpz_poly_factor_clear(factors);
+        fmpz_poly_clear(integer_poly);
+        napi_throw_error(env, NULL, "unable to allocate algebraic roots");
+        return NULL;
+    }
+    for (factor_index = 0; factor_index < factors->num; factor_index++)
+    {
+        slong factor_degree =
+            fmpz_poly_degree(factors->p + factor_index);
+
+        qqbar_roots_fmpz_poly(
+            roots + offset, factors->p + factor_index, 0);
+        for (index = 0; index < factor_degree; index++)
+        {
+            root_records[offset + index].value = roots + offset + index;
+            root_records[offset + index].multiplicity =
+                factors->exp[factor_index];
+        }
+        offset += factor_degree;
+    }
+    qsort(
+        root_records,
+        (size_t) distinct_degree,
+        sizeof(sagejs_exact_root),
+        compare_exact_roots);
+    for (index = 0; index < distinct_degree; index++)
+    {
+        napi_value pair;
+        napi_value root = sagejs_qqbar_wrap_copy(
+            env, root_records[index].value);
+        napi_value multiplicity;
+
+        if (root == NULL ||
+            !check_napi(env,
+                napi_create_array_with_length(env, 2, &pair)) ||
+            !check_napi(env,
+                napi_create_double(
+                    env,
+                    (double) root_records[index].multiplicity,
+                    &multiplicity)) ||
+            !check_napi(env, napi_set_element(env, pair, 0, root)) ||
+            !check_napi(env,
+                napi_set_element(env, pair, 1, multiplicity)) ||
+            !check_napi(env,
+                napi_set_element(env, result, (uint32_t) index, pair)))
+        {
+            free(root_records);
+            _qqbar_vec_clear(roots, distinct_degree);
+            fmpz_poly_factor_clear(factors);
+            fmpz_poly_clear(integer_poly);
+            return NULL;
+        }
+    }
+    free(root_records);
+    _qqbar_vec_clear(roots, distinct_degree);
+    fmpz_poly_factor_clear(factors);
+    fmpz_poly_clear(integer_poly);
+    return result;
+}
+
 static napi_value identity(napi_env env, napi_callback_info info)
 {
     napi_value args[1];
@@ -1860,6 +2041,51 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"primorial", NULL, primorial, NULL, NULL, NULL, napi_default, NULL},
         {"binomial", NULL, binomial, NULL, NULL, NULL, napi_default, NULL},
         {"factor", NULL, factor, NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarFromRational", NULL, sagejs_qqbar_from_rational,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarI", NULL, sagejs_qqbar_i,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarAdd", NULL, sagejs_qqbar_add,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarSub", NULL, sagejs_qqbar_sub,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarMul", NULL, sagejs_qqbar_mul,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarDiv", NULL, sagejs_qqbar_div,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarNeg", NULL, sagejs_qqbar_neg,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarPow", NULL, sagejs_qqbar_pow,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarPowRational", NULL, sagejs_qqbar_pow_rational,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarSqrt", NULL, sagejs_qqbar_sqrt,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarEqual", NULL, sagejs_qqbar_equal,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarCompareReal", NULL, sagejs_qqbar_compare_real,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarIsReal", NULL, sagejs_qqbar_is_real,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarIsRational", NULL, sagejs_qqbar_is_rational,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarReal", NULL, sagejs_qqbar_real,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarImag", NULL, sagejs_qqbar_imag,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarConjugate", NULL, sagejs_qqbar_conjugate,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarAbs", NULL, sagejs_qqbar_abs,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarDegree", NULL, sagejs_qqbar_degree,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarMinpolyCoefficients", NULL,
+            sagejs_qqbar_minpoly_coefficients,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarToString", NULL, sagejs_qqbar_to_string,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarApprox", NULL, sagejs_qqbar_approx,
+            NULL, NULL, NULL, napi_default, NULL},
         {"zzMatrix", NULL, sagejs_zz_matrix, NULL, NULL, NULL,
             napi_default, NULL},
         {"qqMatrix", NULL, sagejs_qq_matrix, NULL, NULL, NULL,
@@ -1869,6 +2095,8 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"zmodMatrix", NULL, sagejs_zmod_matrix, NULL, NULL, NULL,
             napi_default, NULL},
         {"acbMatrix", NULL, sagejs_acb_matrix, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"qqbarMatrix", NULL, sagejs_qqbar_matrix, NULL, NULL, NULL,
             napi_default, NULL},
         {"zzMatrixToQQ", NULL, sagejs_zz_matrix_to_qq, NULL, NULL, NULL,
             napi_default, NULL},
@@ -1883,6 +2111,9 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"matrixScalarMul", NULL, sagejs_matrix_scalar_mul,
             NULL, NULL, NULL, napi_default, NULL},
         {"acbMatrixScalarMul", NULL, sagejs_acb_matrix_scalar_mul,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qqbarMatrixScalarMul", NULL,
+            sagejs_qqbar_matrix_scalar_mul,
             NULL, NULL, NULL, napi_default, NULL},
         {"matrixTranspose", NULL, sagejs_matrix_transpose,
             NULL, NULL, NULL, napi_default, NULL},
@@ -2110,6 +2341,8 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"nmodPolyFactor", NULL, nmod_poly_factor_value, NULL, NULL, NULL,
             napi_default, NULL},
         {"nmodPolyRoots", NULL, nmod_poly_roots_value, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"polyExactRoots", NULL, exact_poly_roots, NULL, NULL, NULL,
             napi_default, NULL},
         {"realFromString", NULL, sagejs_real_from_string, NULL, NULL, NULL,
             napi_default, NULL},

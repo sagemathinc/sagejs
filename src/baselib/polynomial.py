@@ -195,14 +195,44 @@ class PolynomialElement(sage.Element):
                 power = power * factor_value
         return answer
 
-    def roots(self, multiplicities: bool = True) -> list[Any]:
-        if (
-            self._parent.base_ring()._kind
-            not in ['GF', 'GF_EXTENSION']
-        ):
+    def roots(
+        self,
+        ring: Any = runtime.undefined,
+        multiplicities: bool = True,
+    ) -> list[Any]:
+        if isinstance(ring, bool):
+            multiplicities = ring
+            ring = runtime.undefined
+        base = self._parent.base_ring()
+        if ring is not runtime.undefined:
+            target_kind = getattr(ring, '_kind', None)
+            if (
+                target_kind not in ['AA', 'QQBAR']
+                or base._kind not in ['ZZ', 'QQ']
+            ):
+                raise TypeError(
+                    'exact algebraic roots require a polynomial over '
+                    'ZZ or QQ and target ring AA or QQbar')
+            raw_roots = runtime.flint_backend().polyExactRoots(
+                self._native)
+            answer = []
+            for native_root, count in raw_roots:
+                if (
+                    target_kind == 'AA'
+                    and not runtime.flint_backend().qqbarIsReal(
+                        native_root)
+                ):
+                    continue
+                root = ring._from_native(native_root)
+                item = root
+                if multiplicities:
+                    item = runtime.factor_pair(root, count)
+                answer.append(item)
+            return answer
+        if base._kind not in ['GF', 'GF_EXTENSION']:
             raise TypeError(
-                'polynomial roots are currently implemented over ' +
-                'finite fields')
+                'polynomial roots require an explicit algebraic target '
+                'ring unless the base is a finite field')
         field = self._parent.base_ring()
         if field._kind == 'GF_EXTENSION':
             raw_roots = runtime.flint_backend().fqPolyRoots(self._native)

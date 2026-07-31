@@ -62,6 +62,39 @@ assert.equal(flint.polyToString(zf, "x"), "x^3+3*x^2+3*x+1");
 assert.deepEqual(flint.polyCoefficients(zf), [1n, 3n, 3n, 1n]);
 assert.equal(flint.polyEqual(zf, zf), true);
 
+const algebraicTwo = flint.qqbarFromRational(2n, 1n);
+const algebraicSqrtTwo = flint.qqbarSqrt(algebraicTwo);
+assert.equal(flint.qqbarDegree(algebraicSqrtTwo), 2);
+assert.equal(flint.qqbarIsReal(algebraicSqrtTwo), true);
+assert.deepEqual(
+  flint.qqbarMinpolyCoefficients(algebraicSqrtTwo),
+  [-2n, 0n, 1n],
+);
+assert.equal(
+  flint.qqbarEqual(
+    flint.qqbarMul(algebraicSqrtTwo, algebraicSqrtTwo),
+    algebraicTwo,
+  ),
+  true,
+);
+assert.equal(flint.qqbarToString(flint.qqbarI(), 16), "I");
+assert.throws(
+  () => flint.qqbarDiv(algebraicTwo, flint.qqbarFromRational(0n, 1n)),
+  /division by zero/,
+);
+const algebraicRoots = flint.polyExactRoots(
+  flint.polySub(flint.polyPow(zx, 2n), flint.zzPolyConstant(2n)),
+);
+assert.equal(algebraicRoots.length, 2);
+assert.deepEqual(
+  algebraicRoots.map(([, multiplicity]) => multiplicity),
+  [1, 1],
+);
+assert.equal(
+  flint.qqbarCompareReal(algebraicRoots[0][0], algebraicRoots[1][0]),
+  -1,
+);
+
 const qx = flint.zzPolyToQQ(zx);
 const third = flint.qqPolyConstant(1n, 3n);
 const qf = flint.polyAdd(flint.polyAdd(qx, flint.qqPolyConstant(1n, 1n)), third);
@@ -649,6 +682,37 @@ assert.deepEqual(
   ["14.134725141735", "21.022039638772", "25.010857580146"],
 );
 
+const algebraicMatrix = flint.qqbarMatrix(
+  2,
+  2,
+  [algebraicSqrtTwo, flint.qqbarFromRational(1n, 1n),
+    flint.qqbarFromRational(0n, 1n), flint.qqbarNeg(algebraicSqrtTwo)],
+  true,
+);
+assert.equal(
+  flint.qqbarToString(flint.matrixDet(algebraicMatrix), 16),
+  "-2",
+);
+assert.equal(flint.matrixRank(algebraicMatrix), 2);
+assert.equal(
+  flint.matrixEqual(
+    flint.matrixMul(
+      flint.matrixInverse(algebraicMatrix),
+      algebraicMatrix,
+    ),
+    flint.qqbarMatrix(
+      2,
+      2,
+      [flint.qqbarFromRational(1n, 1n),
+        flint.qqbarFromRational(0n, 1n),
+        flint.qqbarFromRational(0n, 1n),
+        flint.qqbarFromRational(1n, 1n)],
+      true,
+    ),
+  ),
+  true,
+);
+
 const integerMatrix = flint.zzMatrix(2, 2, [1n, 2n, 3n, 4n]);
 assert.equal(flint.matrixEntry(integerMatrix, 0, 1), 2n);
 assert.equal(flint.matrixDet(integerMatrix), -2n);
@@ -759,11 +823,8 @@ assert.throws(
 assert.deepEqual(
   flint.matrixExactEigenvalues(
     flint.zzMatrix(2, 2, [0n, 4n, -1n, 0n]),
-  ),
-  [
-    ["Multiply", -2n, "ImaginaryUnit"],
-    ["Multiply", 2n, "ImaginaryUnit"],
-  ],
+  ).map((value) => flint.qqbarToString(value, 16)),
+  ["-2*I", "2*I"],
 );
 assert.deepEqual(
   flint.matrixExactEigenvalues(
@@ -773,8 +834,8 @@ assert.deepEqual(
       [3n, 1n],
       [1n, 1n],
     ]),
-  ),
-  [4n, -2n],
+  ).map((value) => flint.qqbarToString(value, 16)),
+  ["4", "-2"],
 );
 
 const approximateComplex = (real, imaginary = 0) =>
