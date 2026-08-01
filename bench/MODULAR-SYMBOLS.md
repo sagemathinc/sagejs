@@ -123,12 +123,12 @@ stage) illustrates the current performance boundary:
 
 | character | stage | Sage.js | SageMath | Magma |
 | --- | ---: | ---: | ---: | ---: |
-| quadratic | space | 0.95 | 0.40 | 0.38 |
-| quadratic | cuspidal | 0.12 | 0.67 | 0.03 |
-| quadratic | `T_2` | 0.03 | 0.10 | 0.29 |
-| order 5 | space | 0.69 | 7.97 | 0.43 |
-| order 5 | cuspidal | 0.16 | 73.02 | 0.04 |
-| order 5 | `T_2` | 1.02 | 15.55 | 0.80 |
+| quadratic | space | 0.12 | 0.39 | 0.35 |
+| quadratic | cuspidal | 0.11 | 0.66 | 0.03 |
+| quadratic | `T_2` | 0.04 | 0.09 | 0.27 |
+| order 5 | space | 0.74 | 8.12 | 0.42 |
+| order 5 | cuspidal | 0.17 | 71.51 | 0.05 |
+| order 5 | `T_2` | 0.39 | 15.34 | 0.78 |
 
 The degree-12 coefficient-field case added after that snapshot currently
 gives the following on the same development machine:
@@ -144,15 +144,18 @@ All rows passed the independent dimension or trace-fingerprint checks. These
 numbers are a reproducible development snapshot, not portable performance
 claims. Sage.js retains the exact native character presentation behind the
 high-level presentation object, so `T_2` reuses its basis and reduction map
-instead of reconstructing them. Quadratic presentations specialize their
-rational relations to the sparse `fmpq` reducer. Non-real presentations use
+instead of reconstructing them. Quadratic presentations convert their
+root-of-unity terms directly to sparse integer CSR, use the fraction-free
+rational reducer, and retain the quotient map lazily. They never construct the
+former dense `qqbar` relation matrix or scan it back into rationals; at level
+4001 this reduced space construction from about 0.86 seconds to 0.12 seconds.
+Non-real presentations use
 certified multimodular cyclotomic RREF and retain its factorized native result;
 the full generator-to-basis matrix is materialized only when explicitly
 requested. Sage.js's exact order-5 construction is within a factor of two of
-Magma here. Its thin boundary kernel is within a factor of five of Magma and
-about 450 times faster than SageMath in this snapshot. Exact order-5 Hecke
-assembly and cuspidal restriction are within 30 percent of Magma and about 15
-times faster than SageMath.
+Magma here. Its thin boundary kernel is within a factor of four of Magma and
+about 430 times faster than SageMath in this snapshot. Exact order-5 Hecke
+assembly is about twice as fast as Magma and 39 times faster than SageMath.
 
 The dashboard separates the following operations because conflating them
 would give misleading performance numbers:
@@ -286,7 +289,8 @@ have a common pivot profile; their entries are interpolated into the
 cyclotomic power basis, combined by CRT, and rationally reconstructed. A
 coefficient-height test certifies the result. Unsupported character orders or
 an unsuccessful certificate fall back to sparse exact `qqbar` elimination.
-Real-valued characters use the sparse `fmpq` reducer directly.
+Real-valued characters replace their root-of-unity exponents by exact signs
+and feed integer CSR directly to the fraction-free sparse rational reducer.
 
 The reconstructed RREF, weighted union/find data, pivots, and free columns form
 a compact factorized reduction map. Hecke assembly consumes that form directly.

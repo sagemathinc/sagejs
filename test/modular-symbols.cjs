@@ -140,16 +140,21 @@ test("Dirichlet-character Manin symbols, signs, boundaries, and Hecke", async ()
             "quadratic = [(s, ModularSymbols(q,4,sign=s).dimension(), " +
               "ModularSymbols(q,4,sign=s).cuspidal_subspace().dimension()) " +
               "for s in [0,1,-1]]",
+            "P = ModularSymbols(q,4,sign=1).manin_presentation()",
+            "R = P.reduction_matrix()",
             "wrong_parity = ModularSymbols(e,2).dimension()",
             "[quartic, quadratic, wrong_parity, " +
               "ModularSymbols(q,4).base_ring(), " +
-              "ModularSymbols(list(DirichletGroup(7))[2],2).base_ring()]",
+              "ModularSymbols(list(DirichletGroup(7))[2],2).base_ring(), " +
+              "R.rank(), matrix(QQ,[R.rows()[g] " +
+              "for g in P.basis_generators()]) == " +
+              "identity_matrix(QQ,P.dimension())]",
           ].join("\n"),
         )
       ).repr,
       "[[(0, 2, 0), (1, 1, 0), (-1, 1, 0)], " +
         "[(0, 2, 0), (1, 2, 0), (-1, 0, 0)], 0, Rational Field, " +
-        "Cyclotomic Field of order 6 and degree 2]",
+        "Cyclotomic Field of order 6 and degree 2, 2, True]",
     );
     assert.equal(
       (
