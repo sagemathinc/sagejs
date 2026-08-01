@@ -656,3 +656,41 @@ test("boundary maps, cuspidal spaces, star eigenspaces, and elements", async () 
     await session.close();
   }
 });
+
+test("new submodules and simple Hecke decomposition", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "M = ModularSymbols(389, 2, sign=1)",
+            "D = M.decomposition()",
+            "[M.new_submodule() is M, D is M.decomposition(), " +
+              "[A.dimension() for A in D], " +
+              "sum(A.dimension() for A in D)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[True, True, [1, 1, 2, 3, 6, 20], 33]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "M = ModularSymbols(1000, 2, sign=1)",
+            "N = M.new_submodule()",
+            "D = N.decomposition()",
+            "[N.dimension(), N is M.new_subspace(), " +
+              "[A.dimension() for A in D], " +
+              "sum(A.dimension() for A in D), " +
+              "all(A.ambient_module() is M.ambient_module() for A in D)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[24, True, [2, 2, 2, 2, 4, 4, 4, 4], 24, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});

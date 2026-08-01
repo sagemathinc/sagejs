@@ -2461,6 +2461,8 @@ class ModularSymbolsSpace(sage.Parent):
         self._cuspidal_cache = None
         self._plus_cache = None
         self._minus_cache = None
+        self._new_submodule_cache = runtime.map()
+        self._decomposition_cache = runtime.map()
         if basis_matrix is not None:
             self._dimension = basis_matrix.nrows()
             self._is_cuspidal = (
@@ -2967,6 +2969,242 @@ class ModularSymbolsSpace(sage.Parent):
             basis_matrix,
             kind,
         )
+
+    def _subspace_from_local_basis(
+        self,
+        local_basis: Any,
+        kind: str,
+        container: Any = None,
+    ) -> ModularSymbolsSpace:
+        """Embed a row basis in this space into ambient coordinates."""
+        basis = local_basis._sparse_left_multiply(self.basis_matrix())
+        if container is None:
+            container = self
+        return ModularSymbolsSpace(
+            self._group,
+            self._weight,
+            self._sign,
+            self._base,
+            self._character,
+            container,
+            basis,
+            kind,
+        )
+
+    def _good_hecke_primes(self, bound: int) -> list[int]:
+        primes = []
+        candidate = 2
+        while candidate <= bound:
+            if sage.is_prime(candidate) and self.level() % candidate != 0:
+                primes.append(candidate)
+            candidate += 1
+        return primes
+
+    def _default_decomposition_bound(self) -> int:
+        """A conservative Gamma0 Sturm bound, with a small useful floor."""
+        index = self.level()
+        for prime, _exponent in sage.factor(self.level()):
+            index = index * (runtime.number(prime) + 1) // runtime.number(prime)
+        return max(7, self.weight() * index // 12)
+
+    def decomposition(
+        self,
+        bound: Any = None,
+        anemic: bool = True,
+        **_kwds: Any,
+    ) -> list[ModularSymbolsSpace]:
+        r"""Decompose this space into simple modules for good Hecke operators.
+
+        The implementation follows the standard modular-symbol algorithm:
+        factor characteristic polynomials of successive `T_p`, and split by
+        the left kernels of their irreducible factors.  A constituent whose
+        restricted characteristic polynomial is irreducible is certified
+        simple as a module for the commutative Hecke algebra.
+
+        ```sage
+        sage: M = ModularSymbols(389, 2, sign=1)
+        sage: [A.dimension() for A in M.decomposition()]
+        [1, 1, 2, 3, 6, 20]
+        ```
+        """
+        if not anemic:
+            raise NotImplementedError(
+                'non-anemic decomposition using bad-prime operators is not '
+                'implemented')
+        if bound is None:
+            decomposition_bound = self._default_decomposition_bound()
+        else:
+            decomposition_bound = _positive_integer(
+                bound, 'decomposition bound')
+        key = str(decomposition_bound) + ':1'
+        cached = self._decomposition_cache.get(key)
+        if cached is not runtime.undefined:
+            return cached
+        if self.dimension() == 0:
+            answer = []
+            self._decomposition_cache.set(key, answer)
+            return answer
+
+        active = [self]
+        finished = []
+        for prime in self._good_hecke_primes(decomposition_bound):
+            remaining = []
+            for space in active:
+                operator = space.hecke_matrix(prime)
+                factors = list(operator.charpoly().factor())
+                if len(factors) == 1 and factors[0][1] == 1:
+                    finished.append(space)
+                    continue
+                for factor_value, exponent in factors:
+                    local_basis = factor_value(operator).left_kernel_matrix()
+                    if local_basis.nrows() == 0:
+                        continue
+                    constituent = space._subspace_from_local_basis(
+                        local_basis, 'Hecke')
+                    if exponent == 1:
+                        finished.append(constituent)
+                    else:
+                        remaining.append(constituent)
+            active = remaining
+            if len(active) == 0:
+                break
+        answer = finished + active
+        for index in range(1, len(answer)):
+            item = answer[index]
+            position = index
+            while (
+                position > 0
+                and answer[position - 1].dimension() > item.dimension()
+            ):
+                answer[position] = answer[position - 1]
+                position -= 1
+            answer[position] = item
+        self._decomposition_cache.set(key, answer)
+        return answer
+
+    def new_submodule(self, prime: Any = None) -> ModularSymbolsSpace:
+        r"""Return the new, or `p`-new, submodule of this space.
+
+        For weight 2, trivial character and sign 1, the implementation uses
+        lower-level new Hecke polynomials with their exact degeneracy
+        multiplicities.  This is the characteristic-polynomial quotient
+        strategy used by eclib: it avoids constructing a large stack of
+        degeneracy matrices, then recovers the new space as a Hecke kernel.
+
+        ```sage
+        sage: M = ModularSymbols(1000, 2, sign=1)
+        sage: N = M.new_submodule()
+        sage: N.dimension()
+        24
+        sage: [A.dimension() for A in N.decomposition()]
+        [2, 2, 2, 2, 4, 4, 4, 4]
+        ```
+        """
+        if not (
+            self._supports_native_weight2()
+            and self.sign() == 1
+            and self.base_ring() is sage.QQ
+        ):
+            raise NotImplementedError(
+                'new submodules currently require weight 2, Gamma0, '
+                'trivial character, sign 1, and rational coefficients')
+        selected = None if prime is None else _positive_integer(
+            prime, 'new-submodule prime')
+        if selected is not None and self.level() % selected != 0:
+            raise ValueError('p must divide the level')
+        key = 'all' if selected is None else str(selected)
+        cached = self._new_submodule_cache.get(key)
+        if cached is not runtime.undefined:
+            return cached
+        if selected is not None:
+            raise NotImplementedError(
+                'individual p-new submodules are not yet implemented')
+
+        level = self.level()
+        if sage.is_prime(level):
+            self._new_submodule_cache.set(key, self)
+            return self
+        cusp = self.cuspidal_subspace()
+        if cusp.dimension() == 0:
+            self._new_submodule_cache.set(key, cusp)
+            return cusp
+
+        divisors = []
+        candidate = 1
+        while candidate * candidate <= level:
+            if level % candidate == 0:
+                divisors.append(candidate)
+                if candidate * candidate != level:
+                    divisors.append(level // candidate)
+            candidate += 1
+        divisors.sort()
+        proper = [divisor for divisor in divisors if divisor < level]
+        lower_data = []
+        for lower_level in proper:
+            lower = ModularSymbols(lower_level, 2, sign=1)
+            lower_new = lower.new_submodule().cuspidal_subspace()
+            if lower_new.dimension() == 0:
+                continue
+            multiplicity = 1
+            for _q, exponent in sage.factor(level // lower_level):
+                multiplicity *= runtime.number(exponent) + 1
+            lower_data.append([lower_new, multiplicity])
+
+        good_primes = self._good_hecke_primes(
+            self._default_decomposition_bound())
+        operator_specs = []
+        if len(good_primes) >= 2:
+            # A small deterministic combination usually separates new and
+            # old factors immediately (at level 1000, T_3 + 2*T_7 does).
+            operator_specs.append([
+                [good_primes[0], 1], [good_primes[1], 2]])
+        for hecke_prime in good_primes:
+            operator_specs.append([[hecke_prime, 1]])
+        if len(good_primes) >= 2:
+            operator_specs.append([
+                [good_primes[0], 1], [good_primes[1], -1]])
+
+        for specification in operator_specs:
+            full_operator = None
+            for hecke_prime, coefficient in specification:
+                term = cusp.hecke_matrix(hecke_prime) * coefficient
+                full_operator = (
+                    term if full_operator is None
+                    else full_operator + term)
+            if full_operator is None:
+                continue
+            full_polynomial = full_operator.charpoly()
+            old_polynomial = full_polynomial.parent()(1)
+            for lower_new, multiplicity in lower_data:
+                lower_operator = None
+                for hecke_prime, coefficient in specification:
+                    term = lower_new.hecke_matrix(
+                        hecke_prime) * coefficient
+                    lower_operator = (
+                        term if lower_operator is None
+                        else lower_operator + term)
+                if lower_operator is None:
+                    continue
+                lower_polynomial = lower_operator.charpoly()
+                old_polynomial *= lower_polynomial ** multiplicity
+            try:
+                new_polynomial = full_polynomial // old_polynomial
+            except Exception:
+                continue
+            local_basis = new_polynomial(
+                full_operator).left_kernel_matrix()
+            new_degree = len(new_polynomial.coefficients()) - 1
+            if local_basis.nrows() != new_degree:
+                continue
+            answer = cusp._subspace_from_local_basis(
+                local_basis, 'New', self)
+            self._new_submodule_cache.set(key, answer)
+            return answer
+        raise ArithmeticError(
+            'unable to find a good Hecke operator separating new and old '
+            'subspaces')
+
+    new_subspace = new_submodule
 
     def _intersect_basis(self, other_basis: Any) -> Any:
         return self.basis_matrix().row_space().intersection(
@@ -3925,6 +4163,76 @@ runtime.register_doc(
         ['cuspidal subspaces', 'kernels', 'Hecke modules'],
         'Exact FLINT kernel of the boundary matrix',
     ),
+)
+
+_modular_symbols_new_doc = _modular_symbols_method_doc(
+    ['new subspaces', 'oldforms', 'Hecke modules', 'exact linear algebra'],
+    (
+        'Lower-level new Hecke characteristic polynomials with exact '
+        'degeneracy multiplicities, polynomial quotient, and Hecke kernel'
+    ),
+)
+_modular_symbols_new_doc['sage_compatibility'] = {
+    'status': 'partial',
+    'notes': (
+        'The no-argument weight-2 Gamma0 sign-1 operation follows SageMath. '
+        'Individual p-new submodules and other weights, signs, characters, '
+        'or coefficient fields are not yet implemented.'
+    ),
+}
+_modular_symbols_new_doc['backends'] = [
+    'Sage.js portable C modular-symbol core',
+    'FLINT exact matrices and characteristic polynomials',
+]
+_modular_symbols_new_doc['provenance'].append({
+    'kind': 'software-derived',
+    'source': 'eclib newspace.cc characteristic-polynomial strategy',
+    'url': 'https://github.com/JohnCremona/eclib',
+    'license': 'GPL-2.0-or-later',
+})
+_modular_symbols_new_doc['limitations'] = [
+    (
+        'Currently implemented for weight 2, Gamma0, trivial character, '
+        'sign 1, and rational coefficients.'
+    ),
+    'Individual p-new submodules are not yet implemented.',
+]
+runtime.register_doc(
+    'ModularSymbolsSpace.new_submodule',
+    runtime.reflect.get(_modular_symbols_space_prototype, 'new_submodule'),
+    _modular_symbols_new_doc,
+)
+
+_modular_symbols_decomposition_doc = _modular_symbols_method_doc(
+    ['decomposition', 'simple factors', 'Hecke modules', 'newforms'],
+    (
+        'Successive good-prime Hecke characteristic-polynomial '
+        'factorization and exact factor kernels'
+    ),
+)
+_modular_symbols_decomposition_doc['sage_compatibility'] = {
+    'status': 'partial',
+    'notes': (
+        'Anemic decomposition by good Hecke operators follows SageMath. '
+        'Bad-prime refinement is not yet implemented.'
+    ),
+}
+_modular_symbols_decomposition_doc['backends'] = [
+    'Sage.js portable C modular-symbol core',
+    'FLINT exact matrices, characteristic polynomials, and factorization',
+]
+_modular_symbols_decomposition_doc['limitations'] = [
+    'Only anemic decomposition by Hecke operators coprime to the level.',
+    (
+        'Correctness is certified by irreducible restricted characteristic '
+        'polynomials; unresolved repeated factors remain grouped if the '
+        'requested bound is too small.'
+    ),
+]
+runtime.register_doc(
+    'ModularSymbolsSpace.decomposition',
+    runtime.reflect.get(_modular_symbols_space_prototype, 'decomposition'),
+    _modular_symbols_decomposition_doc,
 )
 
 runtime.register_doc(

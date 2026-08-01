@@ -5,7 +5,13 @@ const { spawnSync } = require("node:child_process");
 const { join } = require("node:path");
 
 const root = join(__dirname, "..");
-const source = join(__dirname, "modular-symbols.sage");
+const decompositionOnly = process.argv.includes("--decomposition-only");
+const source = join(
+  __dirname,
+  decompositionOnly
+    ? "modular-symbols-decomposition.sage"
+    : "modular-symbols.sage",
+);
 const sagejs = join(root, "bin", "sagejs");
 const defaultSage = existsSync("/home/user/bin/sagelite")
   ? "/home/user/bin/sagelite"
@@ -32,7 +38,14 @@ const expected = new Map([
   ["hecke-t3-1000", 20],
   ["hecke-t3-10000", 20],
   ["hecke-t3-20011", 0],
-]);
+  ["decomp-389", 10102030620],
+  ["new-1000", 24],
+  ["new-decomp-1000", 202020204040404],
+].filter(([operation]) =>
+  !decompositionOnly ||
+  operation.startsWith("decomp-") ||
+  operation.startsWith("new-"),
+));
 const requiredOperations = new Map([
   ["Sage.js", [...expected.keys()]],
   ["SageMath", [...expected.keys()]],
@@ -41,7 +54,9 @@ const requiredOperations = new Map([
     [...expected.keys()].filter(
       (operation) =>
         !operation.startsWith("p1-") &&
-        !operation.startsWith("manin-modp-"),
+        !operation.startsWith("manin-modp-") &&
+        !operation.startsWith("decomp-") &&
+        !operation.startsWith("new-"),
     ),
   ],
   [
@@ -50,7 +65,9 @@ const requiredOperations = new Map([
       (operation) =>
         operation.startsWith("space-") ||
         operation.startsWith("hecke-") ||
-        operation.startsWith("charpoly-"),
+        operation.startsWith("charpoly-") ||
+        operation.startsWith("decomp-") ||
+        operation.startsWith("new-"),
     ),
   ],
 ]);
@@ -103,6 +120,12 @@ function execute(label, command, args, options = {}) {
 }
 
 function executePari() {
+  if (decompositionOnly) {
+    return {
+      available: false,
+      reason: "the focused newspace decomposition API is not wired for PARI",
+    };
+  }
   const program = [
     "default(nbthreads, 1);",
     "msinit(11,2);",
@@ -142,7 +165,7 @@ function executePari() {
 }
 
 function executeMagma() {
-  const program = [
+  const lines = [
     "SetSeed(1);",
     "for N in [389, 1000, 10000, 20011] do",
     "  for sample in [0..2] do",
@@ -173,9 +196,39 @@ function executeMagma() {
     "fingerprint := Integers() ! Evaluate(F, 2);",
     'printf "RESULT charpoly-t2-5077 0 %.9o %o\\n", ' +
       "Cputime(t), fingerprint mod 1000000007;",
+    "M := ModularSymbols(389, 2, 1);",
+    "t := Cputime(); D := Decomposition(M, 20);",
+    "dimensions := [Dimension(A) : A in D];",
+    "Sort(~dimensions);",
+    "fingerprint := 0;",
+    "for dimension in dimensions do",
+    "  fingerprint := 100*fingerprint + dimension;",
+    "end for;",
+    'printf "RESULT decomp-389 0 %.9o %o\\n", ' +
+      "Cputime(t), fingerprint;",
+    "M := ModularSymbols(1000, 2, 1);",
+    "t := Cputime(); C := CuspidalSubspace(M); N := NewSubspace(C);",
+    'printf "RESULT new-1000 0 %.9o %o\\n", ' +
+      "Cputime(t), Dimension(N);",
+    "t := Cputime(); D := Decomposition(N, 20);",
+    "dimensions := [Dimension(A) : A in D];",
+    "Sort(~dimensions);",
+    "fingerprint := 0;",
+    "for dimension in dimensions do",
+    "  fingerprint := 100*fingerprint + dimension;",
+    "end for;",
+    'printf "RESULT new-decomp-1000 0 %.9o %o\\n", ' +
+      "Cputime(t), fingerprint;",
     "quit;",
     "",
-  ].join("\n");
+  ];
+  const firstDecompositionLine = lines.indexOf(
+    "M := ModularSymbols(389, 2, 1);",
+  );
+  const selectedLines = decompositionOnly
+    ? ["SetSeed(1);", ...lines.slice(firstDecompositionLine)]
+    : lines;
+  const program = selectedLines.join("\n");
   return execute("Magma", magma, [], { input: program });
 }
 
@@ -241,6 +294,12 @@ const report = {
       "exact T2 characteristic polynomial; answer is f(2) modulo 1000000007",
     "hecke-t3-*":
       "exact weight-2 Gamma0 T3/Hecke matrix, answer is its trace",
+    "decomp-389":
+      "anemic simple Hecke decomposition; answer encodes sorted dimensions",
+    "new-1000":
+      "weight-2 Gamma0 plus new submodule; answer is its dimension",
+    "new-decomp-1000":
+      "simple decomposition of the new submodule; answer encodes sorted dimensions",
   },
   runtimes: runtimes.map(({ name, result }) => ({
     name,

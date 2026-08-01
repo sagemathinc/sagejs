@@ -150,6 +150,42 @@ def measure_hecke(level, prime):
         )
 
 
+def decomposition_fingerprint(spaces):
+    dimensions = [space.dimension() for space in spaces]
+    dimensions.sort()
+    answer = 0
+    for dimension in dimensions:
+        answer = 100 * answer + dimension
+    return answer
+
+
+def measure_decomposition(level):
+    space = fresh_space(level, 1)
+    start = time.time()
+    factors = space.decomposition()
+    report(
+        "decomp-" + str(level),
+        0,
+        start,
+        decomposition_fingerprint(factors),
+    )
+
+
+def measure_new_decomposition(level):
+    space = fresh_space(level, 1)
+    start = time.time()
+    new_space = space.new_submodule()
+    report("new-" + str(level), 0, start, new_space.dimension())
+    start = time.time()
+    factors = new_space.decomposition()
+    report(
+        "new-decomp-" + str(level),
+        0,
+        start,
+        decomposition_fingerprint(factors),
+    )
+
+
 measure_p1(100000)
 measure_p1(1000000)
 measure_manin(389)
@@ -161,3 +197,5 @@ measure_hecke(389, 3)
 measure_hecke(1000, 3)
 measure_hecke(10000, 3)
 measure_hecke(20011, 3)
+measure_decomposition(389)
+measure_new_decomposition(1000)
