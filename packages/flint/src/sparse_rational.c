@@ -26,6 +26,24 @@ typedef struct
     fmpq *values;
 } sagejs_sparse_qrow;
 
+typedef struct
+{
+    size_t index;
+    size_t length;
+    size_t first_column;
+} sagejs_sparse_row_order;
+
+static int sparse_row_order_compare(const void *left, const void *right)
+{
+    const sagejs_sparse_row_order *a = left;
+    const sagejs_sparse_row_order *b = right;
+    if (a->length != b->length)
+        return a->length < b->length ? -1 : 1;
+    if (a->first_column != b->first_column)
+        return a->first_column < b->first_column ? -1 : 1;
+    return a->index < b->index ? -1 : a->index > b->index;
+}
+
 static void sparse_qrow_clear(sagejs_sparse_qrow *row)
 {
     free(row->columns);
@@ -347,6 +365,7 @@ int sagejs_fmpq_rref_sparse_fmpz_csr(
     size_t maximum_rank = rows < columns ? rows : columns;
     sagejs_sparse_qrow *pivots = NULL;
     sagejs_sparse_qrow working = {0};
+    sagejs_sparse_row_order *row_order = NULL;
     size_t *pivot_by_column = NULL, *workspace_columns = NULL;
     fmpq *workspace_values = NULL;
     fmpq_t coefficient;
@@ -363,20 +382,45 @@ int sagejs_fmpq_rref_sparse_fmpz_csr(
     *rank_out = 0;
     fmpq_init(coefficient);
     pivots = calloc(maximum_rank == 0 ? 1 : maximum_rank, sizeof(*pivots));
+    row_order = malloc((rows == 0 ? 1 : rows) * sizeof(*row_order));
     pivot_by_column = malloc(
         (columns == 0 ? 1 : columns) * sizeof(*pivot_by_column));
     workspace_columns = malloc(
         (columns == 0 ? 1 : columns) * sizeof(*workspace_columns));
     workspace_values = _fmpq_vec_init(
         (slong) (columns == 0 ? 1 : columns));
-    if (pivots == NULL || pivot_by_column == NULL ||
+    if (pivots == NULL || row_order == NULL || pivot_by_column == NULL ||
         workspace_columns == NULL || workspace_values == NULL)
         goto done;
     for (size_t column = 0; column < columns; column++)
         pivot_by_column[column] = SIZE_MAX;
 
-    for (size_t source_row = 0; source_row < rows; source_row++)
+    /*
+     * Short Manin relations are particularly valuable pivots: consuming
+     * them first sharply limits fill-in in the later exact rows. The first
+     * column is a deterministic tie-breaker that also tends to expose pivots
+     * from left to right. This ordering is only a performance heuristic;
+     * the resulting RREF is canonical and independent of input row order.
+     */
+    for (size_t row = 0; row < rows; row++)
     {
+        size_t length = 0, first = SIZE_MAX;
+        if (row_offsets[row] > row_offsets[row + 1])
+            goto done;
+        for (size_t item = row_offsets[row]; item < row_offsets[row + 1]; item++)
+            if (!fmpz_is_zero(values + item))
+            {
+                length++;
+                if (column_indices[item] < first)
+                    first = column_indices[item];
+            }
+        row_order[row] = (sagejs_sparse_row_order) {row, length, first};
+    }
+    qsort(row_order, rows, sizeof(*row_order), sparse_row_order_compare);
+
+    for (size_t source_index = 0; source_index < rows; source_index++)
+    {
+        size_t source_row = row_order[source_index].index;
         working.length = 0;
         if (row_offsets[source_row] > row_offsets[source_row + 1])
             goto done;
@@ -450,6 +494,7 @@ done:
         for (size_t row = 0; row < maximum_rank; row++)
             sparse_qrow_clear(&pivots[row]);
     free(pivots);
+    free(row_order);
     free(pivot_by_column);
     free(workspace_columns);
     if (workspace_values != NULL)

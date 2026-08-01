@@ -333,7 +333,13 @@ evaluate at every finite-field embedding, perform machine-word linear algebra,
 and reconstruct the cyclotomic answer by CRT and rational reconstruction. The
 Sage.js implementation additionally preserves the sparse Manin relation rows
 through the finite-field phase and keeps the reconstructed quotient map
-factorized.
+factorized. Before exact sparse elimination, it processes the shortest
+relations first, breaking ties by their first nonzero column. This simple
+fill-in heuristic reduced construction of the level-625, weight-4 sign-zero
+space from about 0.80 seconds to 0.094 seconds on the reference machine; the
+plus and minus spaces take about 0.029 and 0.037 seconds. A 20-case seeded
+cross-check (156 timed stages across Sage.js and Magma) retained complete
+agreement.
 
 The same retained E1 endpoints now define the exact boundary map. Rational
 cusps are classified under `Gamma0(N)` using Cremona's equivalence criterion,
