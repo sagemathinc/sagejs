@@ -75,14 +75,16 @@ const dependencies = [
   {
     name: "ffpoly",
     version: "1.2.7",
-    url: "https://math.mit.edu/~drew/ff_poly_v1.2.7.tar",
+    url: "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/ff_poly_v1.2.7.tar",
+    mirrors: ["https://math.mit.edu/~drew/ff_poly_v1.2.7.tar"],
     sha256: "ffbe5c7f7ce077f3fedb530656b0f7ae95268cf23a38c9adfc3f654a65973b13",
     archive: process.env.SAGEJS_FFPOLY_TARBALL,
   },
   {
     name: "smalljac",
     version: "4.1.3",
-    url: "https://math.mit.edu/~drew/smalljac_v4.1.3.tar",
+    url: "https://github.com/sagemathinc/sagejs/releases/download/native-sources-1/smalljac_v4.1.3.tar",
+    mirrors: ["https://math.mit.edu/~drew/smalljac_v4.1.3.tar"],
     sha256: "5a145509e491bba19bf73d8104576083286bd35aea2a149c7c516e9ea5ca8ec7",
     archive: process.env.SAGEJS_SMALLJAC_TARBALL,
   },
