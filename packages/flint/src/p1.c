@@ -3637,7 +3637,7 @@ static int p1_character_hecke_cyclotomic(
     int status = 0;
 
     if (quotient->coefficients == NULL || quotient->rank != presentation->rank ||
-        quotient->columns != presentation->two_term_generators ||
+        quotient->columns != dimension ||
         degree == 0 || order == 0 ||
         (dimension != 0 && dimension > SIZE_MAX / dimension) ||
         dimension * dimension > SIZE_MAX / degree ||
@@ -3653,11 +3653,13 @@ static int p1_character_hecke_cyclotomic(
     root_actions = _fmpz_vec_init(
         (slong) (action_count == 0 ? 1 : action_count));
     target_by_column = malloc(
-        (quotient->columns == 0 ? 1 : quotient->columns)
+        (presentation->two_term_generators == 0
+            ? 1 : presentation->two_term_generators)
             * sizeof(*target_by_column));
     if (output == NULL || root_actions == NULL || target_by_column == NULL)
         goto done;
-    for (size_t column = 0; column < quotient->columns; column++)
+    for (size_t column = 0;
+        column < presentation->two_term_generators; column++)
         target_by_column[column] = SIZE_MAX;
     for (size_t target = 0; target < dimension; target++)
         target_by_column[presentation->free_columns[target]] = target;
@@ -3778,8 +3780,7 @@ static int p1_character_hecke_cyclotomic(
                             const fmpq *coefficient =
                                 quotient->coefficients +
                                 (input_power * quotient->rank + row) *
-                                    quotient->columns +
-                                presentation->free_columns[target];
+                                    quotient->columns + target;
                             if (fmpq_is_zero(coefficient))
                                 continue;
                             fmpq_mul_fmpz(

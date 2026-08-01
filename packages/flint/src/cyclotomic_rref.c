@@ -111,6 +111,50 @@ static ulong sparse_nmod_row_entry(
         ? row->values[left] : 0;
 }
 
+static int sparse_nmod_row_add(
+    sagejs_sparse_nmod_row *row,
+    size_t column,
+    ulong value,
+    nmod_t modulus)
+{
+    size_t left = 0, right = row->length;
+    while (left < right)
+    {
+        size_t middle = left + (right - left) / 2;
+        if (row->columns[middle] < column)
+            left = middle + 1;
+        else
+            right = middle;
+    }
+    if (left < row->length && row->columns[left] == column)
+    {
+        value = nmod_add(row->values[left], value, modulus);
+        if (value == 0)
+        {
+            memmove(row->columns + left, row->columns + left + 1,
+                (row->length - left - 1) * sizeof(*row->columns));
+            memmove(row->values + left, row->values + left + 1,
+                (row->length - left - 1) * sizeof(*row->values));
+            row->length--;
+        }
+        else
+            row->values[left] = value;
+        return 1;
+    }
+    if (value == 0)
+        return 1;
+    if (!sparse_nmod_row_reserve(row, row->length + 1))
+        return 0;
+    memmove(row->columns + left + 1, row->columns + left,
+        (row->length - left) * sizeof(*row->columns));
+    memmove(row->values + left + 1, row->values + left,
+        (row->length - left) * sizeof(*row->values));
+    row->columns[left] = column;
+    row->values[left] = value;
+    row->length++;
+    return 1;
+}
+
 static int sparse_nmod_row_axpy(
     sagejs_sparse_nmod_row *left,
     const sagejs_sparse_nmod_row *right,
@@ -182,7 +226,9 @@ static int sparse_nmod_rref(
     sagejs_sparse_nmod_row *pivots = NULL;
     sagejs_sparse_nmod_row working = {0};
     size_t *pivot_by_column = NULL, *workspace_columns = NULL;
-    ulong *workspace_values = NULL, *dense_row = NULL;
+    size_t *backward_offsets = NULL, *backward_rows = NULL;
+    size_t *backward_cursor = NULL;
+    ulong *workspace_values = NULL;
     size_t rank = 0, cursor = 0;
     int status = 0;
 
@@ -193,18 +239,15 @@ static int sparse_nmod_rref(
         (columns == 0 ? 1 : columns) * sizeof(*workspace_columns));
     workspace_values = malloc(
         (columns == 0 ? 1 : columns) * sizeof(*workspace_values));
-    dense_row = calloc(columns == 0 ? 1 : columns, sizeof(*dense_row));
     if (pivots == NULL || pivot_by_column == NULL ||
-        workspace_columns == NULL || workspace_values == NULL ||
-        dense_row == NULL)
+        workspace_columns == NULL || workspace_values == NULL)
         goto done;
     for (size_t column = 0; column < columns; column++)
         pivot_by_column[column] = SIZE_MAX;
 
     for (size_t source_row = 0; source_row < rows; source_row++)
     {
-        size_t count = 0;
-        memset(dense_row, 0, columns * sizeof(*dense_row));
+        working.length = 0;
         while (cursor < term_count && terms[cursor].row < source_row)
             cursor++;
         while (cursor < term_count && terms[cursor].row == source_row)
@@ -215,20 +258,10 @@ static int sparse_nmod_rref(
             ulong contribution = nmod_mul(coefficient,
                 n_powmod(root, (slong) term->exponent, output->mod.n),
                 output->mod);
-            dense_row[term->column] = nmod_add(
-                dense_row[term->column], contribution, output->mod);
+            if (term->column >= columns || !sparse_nmod_row_add(
+                    &working, term->column, contribution, output->mod))
+                goto done;
         }
-        for (size_t column = 0; column < columns; column++)
-            count += dense_row[column] != 0;
-        working.length = 0;
-        if (!sparse_nmod_row_reserve(&working, count))
-            goto done;
-        for (size_t column = 0; column < columns; column++)
-            if (dense_row[column] != 0)
-            {
-                working.columns[working.length] = column;
-                working.values[working.length++] = dense_row[column];
-            }
         while (working.length != 0)
         {
             size_t pivot_column = working.columns[0];
@@ -253,12 +286,53 @@ static int sparse_nmod_rref(
     }
 
     qsort(pivots, rank, sizeof(*pivots), sparse_nmod_row_compare);
+    for (size_t column = 0; column < columns; column++)
+        pivot_by_column[column] = SIZE_MAX;
+    for (size_t row = 0; row < rank; row++)
+        pivot_by_column[pivots[row].columns[0]] = row;
+    backward_offsets = calloc(rank + 1, sizeof(*backward_offsets));
+    backward_cursor = malloc(
+        (rank == 0 ? 1 : rank) * sizeof(*backward_cursor));
+    if (backward_offsets == NULL || backward_cursor == NULL)
+        goto done;
+    for (size_t row = 0; row < rank; row++)
+        for (size_t item = 1; item < pivots[row].length; item++)
+        {
+            size_t pivot = pivot_by_column[pivots[row].columns[item]];
+            if (pivot != SIZE_MAX && row < pivot)
+            {
+                if (backward_offsets[pivot + 1] == SIZE_MAX)
+                    goto done;
+                backward_offsets[pivot + 1]++;
+            }
+        }
+    for (size_t row = 0; row < rank; row++)
+    {
+        if (backward_offsets[row + 1] >
+            SIZE_MAX - backward_offsets[row])
+            goto done;
+        backward_offsets[row + 1] += backward_offsets[row];
+        backward_cursor[row] = backward_offsets[row];
+    }
+    backward_rows = malloc((backward_offsets[rank] == 0
+        ? 1 : backward_offsets[rank]) * sizeof(*backward_rows));
+    if (backward_rows == NULL)
+        goto done;
+    for (size_t row = 0; row < rank; row++)
+        for (size_t item = 1; item < pivots[row].length; item++)
+        {
+            size_t pivot = pivot_by_column[pivots[row].columns[item]];
+            if (pivot != SIZE_MAX && row < pivot)
+                backward_rows[backward_cursor[pivot]++] = row;
+        }
     for (size_t position = rank; position > 0; position--)
     {
         size_t row = position - 1;
         size_t pivot_column = pivots[row].columns[0];
-        for (size_t earlier = 0; earlier < row; earlier++)
+        for (size_t occurrence = backward_offsets[row];
+            occurrence < backward_offsets[row + 1]; occurrence++)
         {
+            size_t earlier = backward_rows[occurrence];
             ulong coefficient = sparse_nmod_row_entry(
                 &pivots[earlier], pivot_column);
             if (coefficient != 0 && !sparse_nmod_row_axpy(
@@ -285,7 +359,9 @@ done:
     free(pivot_by_column);
     free(workspace_columns);
     free(workspace_values);
-    free(dense_row);
+    free(backward_offsets);
+    free(backward_rows);
+    free(backward_cursor);
     return status;
 }
 
@@ -390,7 +466,7 @@ static int one_split_prime(
     nmod_mat_t inverse, matrix;
     ulong *roots = NULL, *values = NULL;
     size_t *pivots = NULL, *current_pivots = NULL;
-    size_t rank = 0, cells = 0, total = 0;
+    size_t rank = 0, free_count = 0, cells = 0, total = 0;
     int status = 0;
 
     nmod_mat_init(inverse, (slong) degree, (slong) degree, prime);
@@ -420,8 +496,9 @@ static int one_split_prime(
         if (embedding == 0)
         {
             rank = current_rank;
+            free_count = columns - rank;
             pivots = malloc((rank == 0 ? 1 : rank) * sizeof(*pivots));
-            if (!checked_product(rank, columns, &cells) ||
+            if (!checked_product(rank, free_count, &cells) ||
                 !checked_product(degree, cells, &total))
             {
                 nmod_mat_clear(matrix);
@@ -441,10 +518,21 @@ static int one_split_prime(
             nmod_mat_clear(matrix);
             goto done;
         }
-        for (size_t row = 0; row < rank; row++)
+        {
+            size_t pivot = 0, target = 0;
             for (size_t column = 0; column < columns; column++)
-                values[(embedding * rank + row) * columns + column] =
-                    nmod_mat_entry(matrix, (slong) row, (slong) column);
+            {
+                if (pivot < rank && pivots[pivot] == column)
+                {
+                    pivot++;
+                    continue;
+                }
+                for (size_t row = 0; row < rank; row++)
+                    values[(embedding * rank + row) * free_count + target] =
+                        nmod_mat_entry(matrix, (slong) row, (slong) column);
+                target++;
+            }
+        }
         nmod_mat_clear(matrix);
     }
 
@@ -456,7 +544,7 @@ static int one_split_prime(
             goto done;
         for (size_t power = 0; power < degree; power++)
             for (size_t row = 0; row < rank; row++)
-                for (size_t column = 0; column < columns; column++)
+                for (size_t column = 0; column < free_count; column++)
                 {
                     ulong sum = 0;
                     for (size_t embedding = 0; embedding < degree; embedding++)
@@ -464,11 +552,13 @@ static int one_split_prime(
                         ulong product = nmod_mul(
                             nmod_mat_entry(inverse,
                                 (slong) power, (slong) embedding),
-                            values[(embedding * rank + row) * columns + column],
+                            values[(embedding * rank + row) * free_count +
+                                column],
                             inverse->mod);
                         sum = nmod_add(sum, product, inverse->mod);
                     }
-                    interpolated[(power * rank + row) * columns + column] = sum;
+                    interpolated[(power * rank + row) * free_count +
+                        column] = sum;
                 }
         free(values);
         values = interpolated;
@@ -543,6 +633,7 @@ static int candidate_to_qqbar(
     const fmpq *candidate,
     size_t rank,
     size_t columns,
+    const size_t *pivots,
     size_t degree,
     ulong order,
     gr_ctx_t context)
@@ -557,16 +648,31 @@ static int candidate_to_qqbar(
     fmpq_poly_init(polynomial);
     qqbar_root_of_unity(root, 1, order);
     for (size_t row = 0; row < rank; row++)
+        qqbar_one((qqbar_ptr) gr_mat_entry_ptr(
+            output, (slong) row, (slong) pivots[row], context));
+    {
+        size_t pivot = 0, target = 0;
         for (size_t column = 0; column < columns; column++)
         {
+            if (pivot < rank && pivots[pivot] == column)
+            {
+                pivot++;
+                continue;
+            }
+            for (size_t row = 0; row < rank; row++)
+            {
             fmpq_poly_zero(polynomial);
             for (size_t power = 0; power < degree; power++)
                 fmpq_poly_set_coeff_fmpq(polynomial, (slong) power,
-                    candidate + (power * rank + row) * columns + column);
+                    candidate + (power * rank + row) * (columns - rank) +
+                        target);
             qqbar_evaluate_fmpq_poly(value, polynomial, root);
             qqbar_set((qqbar_ptr) gr_mat_entry_ptr(
                 output, (slong) row, (slong) column, context), value);
+            }
+            target++;
         }
+    }
     fmpq_poly_clear(polynomial);
     qqbar_clear(value);
     qqbar_clear(root);
@@ -678,7 +784,7 @@ int sagejs_cyclotomic_rref_multimodular(
             candidate = NULL;
             candidate_count = 0;
             if (!checked_product(degree, prime_rank, &coefficient_count) ||
-                !checked_product(coefficient_count, columns,
+                !checked_product(coefficient_count, columns - prime_rank,
                     &coefficient_count))
             {
                 free(prime_values);
@@ -734,17 +840,17 @@ int sagejs_cyclotomic_rref_multimodular(
             if (reconstruct_candidate(
                     candidate, coefficient_count, residues, modulus) &&
                 height_proves_reconstruction(
-                    candidate, coefficient_count, columns,
+                candidate, coefficient_count, columns,
                     scaled_source_bound, modulus) &&
                 candidate_to_qqbar(
-                    output, candidate, target_rank, columns,
+                    output, candidate, target_rank, columns, target_pivots,
                     degree, order, context))
             {
                 if (coordinates != NULL)
                 {
                     sagejs_cyclotomic_matrix_clear(coordinates);
                     coordinates->rank = target_rank;
-                    coordinates->columns = columns;
+                    coordinates->columns = columns - target_rank;
                     coordinates->degree = degree;
                     coordinates->order = order;
                     coordinates->coefficients = candidate;

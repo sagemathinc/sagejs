@@ -151,11 +151,13 @@ former dense `qqbar` relation matrix or scan it back into rationals; at level
 4001 this reduced space construction from about 0.86 seconds to 0.12 seconds.
 Non-real presentations use
 certified multimodular cyclotomic RREF and retain its factorized native result;
-the full generator-to-basis matrix is materialized only when explicitly
-requested. Sage.js's exact order-5 construction is within a factor of two of
-Magma here. Its complete cuspidal step is now faster than Magma in this
-snapshot and over 1,600 times faster than SageMath. Exact order-5 Hecke
-assembly is about twice as fast as Magma and 39 times faster than SageMath.
+the multimodular reducer stores and reconstructs only the nonpivot block,
+since the pivot columns of an RREF are already known identity columns. The
+full generator-to-basis matrix is materialized only when explicitly
+requested. Sage.js's exact order-5 construction is close to Magma here. Its
+complete cuspidal step is now faster than Magma in this snapshot and over
+1,600 times faster than SageMath. Exact order-5 Hecke assembly is about twice
+as fast as Magma and 39 times faster than SageMath.
 
 A larger prime-level probe at 10061 exposed and then removed an obsolete
 pre-reduction allocation guard. The sparse reducer's actual dense result is
@@ -170,7 +172,7 @@ comparison after this change was:
 | quadratic | space | 0.69 | 1.40 |
 | quadratic | cuspidal | 0.02 | 0.14 |
 | quadratic | `T_2` | 0.31 | 2.64 |
-| order 5 | space | 5.17 | 1.54 |
+| order 5 | space | 3.55 | 1.54 |
 | order 5 | cuspidal | 0.15 | 0.18 |
 | order 5 | `T_2` | 10.07 | 9.60 |
 
