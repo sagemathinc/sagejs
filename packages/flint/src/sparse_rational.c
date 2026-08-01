@@ -7,6 +7,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,6 +16,7 @@
 #include <flint/fmpq_vec.h>
 #include <flint/gr_mat.h>
 #include <flint/qqbar.h>
+#include <flint/ulong_extras.h>
 
 #include "sparse_rational.h"
 
@@ -353,6 +355,381 @@ static void sparse_qrow_remove_zeros(sagejs_sparse_qrow *row)
     row->length = used;
 }
 
+typedef struct
+{
+    size_t length;
+    size_t capacity;
+    size_t *columns;
+    slong *values;
+} sagejs_sparse_irow;
+
+static void sparse_irow_clear(sagejs_sparse_irow *row)
+{
+    free(row->columns);
+    free(row->values);
+    memset(row, 0, sizeof(*row));
+}
+
+static int sparse_irow_reserve(sagejs_sparse_irow *row, size_t capacity)
+{
+    size_t next;
+    size_t *columns;
+    slong *values;
+
+    if (capacity <= row->capacity)
+        return 1;
+    next = row->capacity == 0 ? 4 : row->capacity;
+    while (next < capacity)
+    {
+        if (next > SIZE_MAX / 2)
+            return 0;
+        next *= 2;
+    }
+    columns = malloc(next * sizeof(*columns));
+    values = malloc(next * sizeof(*values));
+    if (columns == NULL || values == NULL)
+    {
+        free(columns);
+        free(values);
+        return 0;
+    }
+    if (row->length != 0)
+    {
+        memcpy(columns, row->columns, row->length * sizeof(*columns));
+        memcpy(values, row->values, row->length * sizeof(*values));
+    }
+    free(row->columns);
+    free(row->values);
+    row->columns = columns;
+    row->values = values;
+    row->capacity = next;
+    return 1;
+}
+
+static int sparse_irow_add_fmpz(
+    sagejs_sparse_irow *row, size_t column, const fmpz *value)
+{
+    size_t left = 0, right = row->length;
+    slong integer;
+
+    if (fmpz_is_zero(value))
+        return 1;
+    if (!fmpz_fits_si(value))
+        return 0;
+    integer = fmpz_get_si(value);
+    while (left < right)
+    {
+        size_t middle = left + (right - left) / 2;
+        if (row->columns[middle] < column)
+            left = middle + 1;
+        else
+            right = middle;
+    }
+    if (left < row->length && row->columns[left] == column)
+    {
+        __int128 sum = (__int128) row->values[left] + integer;
+        if (sum < LONG_MIN || sum > LONG_MAX)
+            return 0;
+        if (sum != 0)
+            row->values[left] = (slong) sum;
+        else
+        {
+            memmove(row->columns + left, row->columns + left + 1,
+                (row->length - left - 1) * sizeof(*row->columns));
+            memmove(row->values + left, row->values + left + 1,
+                (row->length - left - 1) * sizeof(*row->values));
+            row->length--;
+        }
+        return 1;
+    }
+    if (!sparse_irow_reserve(row, row->length + 1))
+        return 0;
+    memmove(row->columns + left + 1, row->columns + left,
+        (row->length - left) * sizeof(*row->columns));
+    memmove(row->values + left + 1, row->values + left,
+        (row->length - left) * sizeof(*row->values));
+    row->columns[left] = column;
+    row->values[left] = integer;
+    row->length++;
+    return 1;
+}
+
+static ulong sparse_abs_slong(slong value)
+{
+    return value < 0
+        ? (ulong) (-(value + 1)) + 1
+        : (ulong) value;
+}
+
+static void sparse_irow_make_primitive(sagejs_sparse_irow *row)
+{
+    ulong common = 0;
+    for (size_t item = 0; item < row->length; item++)
+    {
+        common = n_gcd(common, sparse_abs_slong(row->values[item]));
+        if (common == 1)
+            break;
+    }
+    if (common > 1)
+        for (size_t item = 0; item < row->length; item++)
+            row->values[item] /= (slong) common;
+}
+
+static slong sparse_irow_entry(
+    const sagejs_sparse_irow *row, size_t column)
+{
+    size_t left = 0, right = row->length;
+    while (left < right)
+    {
+        size_t middle = left + (right - left) / 2;
+        if (row->columns[middle] < column)
+            left = middle + 1;
+        else
+            right = middle;
+    }
+    return left < row->length && row->columns[left] == column
+        ? row->values[left] : 0;
+}
+
+static int sparse_irow_combine(
+    sagejs_sparse_irow *left,
+    const sagejs_sparse_irow *right,
+    slong left_multiplier,
+    slong right_multiplier,
+    size_t *workspace_columns,
+    slong *workspace_values,
+    size_t workspace_capacity)
+{
+    size_t i = 0, j = 0, used = 0;
+
+    while (i < left->length || j < right->length)
+    {
+        size_t column;
+        __int128 value;
+        if (j == right->length ||
+            (i < left->length && left->columns[i] < right->columns[j]))
+        {
+            column = left->columns[i];
+            if (__builtin_mul_overflow((__int128) left_multiplier,
+                    (__int128) left->values[i++], &value))
+                return 0;
+        }
+        else if (i == left->length || right->columns[j] < left->columns[i])
+        {
+            __int128 product;
+            column = right->columns[j];
+            if (__builtin_mul_overflow((__int128) right_multiplier,
+                    (__int128) right->values[j++], &product) ||
+                __builtin_sub_overflow((__int128) 0, product, &value))
+                return 0;
+        }
+        else
+        {
+            __int128 left_product, right_product;
+            column = left->columns[i];
+            if (__builtin_mul_overflow((__int128) left_multiplier,
+                    (__int128) left->values[i++], &left_product) ||
+                __builtin_mul_overflow((__int128) right_multiplier,
+                    (__int128) right->values[j++], &right_product) ||
+                __builtin_sub_overflow(left_product, right_product, &value))
+                return 0;
+        }
+        if (value < LONG_MIN || value > LONG_MAX)
+            return 0;
+        if (value != 0)
+        {
+            if (used >= workspace_capacity)
+                return 0;
+            workspace_columns[used] = column;
+            workspace_values[used++] = (slong) value;
+        }
+    }
+    if (!sparse_irow_reserve(left, used))
+        return 0;
+    if (used != 0)
+    {
+        memcpy(left->columns, workspace_columns,
+            used * sizeof(*workspace_columns));
+        memcpy(left->values, workspace_values,
+            used * sizeof(*workspace_values));
+    }
+    left->length = used;
+    return 1;
+}
+
+static int sparse_irow_compare(const void *left, const void *right)
+{
+    const sagejs_sparse_irow *a = left;
+    const sagejs_sparse_irow *b = right;
+    size_t ca = a->length == 0 ? SIZE_MAX : a->columns[0];
+    size_t cb = b->length == 0 ? SIZE_MAX : b->columns[0];
+    return ca < cb ? -1 : ca > cb;
+}
+
+/* Try exact machine-integer RREF, falling back when coefficients grow. */
+static int sparse_fmpz_csr_word_rref(
+    fmpq_mat_t output,
+    slong *rank_out,
+    size_t rows,
+    size_t columns,
+    const size_t *row_offsets,
+    const size_t *column_indices,
+    const fmpz *values,
+    const sagejs_sparse_row_order *row_order)
+{
+    size_t maximum_rank = rows < columns ? rows : columns;
+    sagejs_sparse_irow *pivots = NULL;
+    sagejs_sparse_irow working = {0};
+    size_t *pivot_by_column = NULL, *workspace_columns = NULL;
+    size_t *backward_offsets = NULL, *backward_rows = NULL;
+    size_t *backward_cursor = NULL;
+    slong *workspace_values = NULL;
+    size_t rank = 0;
+    int status = 0;
+
+    pivots = calloc(maximum_rank == 0 ? 1 : maximum_rank, sizeof(*pivots));
+    pivot_by_column = malloc(
+        (columns == 0 ? 1 : columns) * sizeof(*pivot_by_column));
+    workspace_columns = malloc(
+        (columns == 0 ? 1 : columns) * sizeof(*workspace_columns));
+    workspace_values = malloc(
+        (columns == 0 ? 1 : columns) * sizeof(*workspace_values));
+    if (pivots == NULL || pivot_by_column == NULL ||
+        workspace_columns == NULL || workspace_values == NULL)
+        goto done;
+    for (size_t column = 0; column < columns; column++)
+        pivot_by_column[column] = SIZE_MAX;
+    for (size_t source_index = 0; source_index < rows; source_index++)
+    {
+        size_t source_row = row_order[source_index].index;
+        working.length = 0;
+        for (size_t item = row_offsets[source_row];
+            item < row_offsets[source_row + 1]; item++)
+            if (column_indices[item] >= columns ||
+                !sparse_irow_add_fmpz(
+                    &working, column_indices[item], values + item))
+                goto done;
+        while (working.length != 0)
+        {
+            size_t pivot_column = working.columns[0];
+            size_t pivot = pivot_by_column[pivot_column];
+            if (pivot == SIZE_MAX)
+            {
+                sparse_irow_make_primitive(&working);
+                if (working.values[0] < 0)
+                {
+                    for (size_t item = 0; item < working.length; item++)
+                    {
+                        if (working.values[item] == LONG_MIN)
+                            goto done;
+                        working.values[item] = -working.values[item];
+                    }
+                }
+                if (rank >= maximum_rank)
+                    goto done;
+                pivots[rank] = working;
+                memset(&working, 0, sizeof(working));
+                pivot_by_column[pivot_column] = rank++;
+                break;
+            }
+            {
+                slong coefficient = working.values[0];
+                slong pivot_value = pivots[pivot].values[0];
+                if (!sparse_irow_combine(
+                        &working, &pivots[pivot], pivot_value, coefficient,
+                        workspace_columns, workspace_values, columns))
+                    goto done;
+                if (pivot_value != 1)
+                    sparse_irow_make_primitive(&working);
+            }
+        }
+    }
+    qsort(pivots, rank, sizeof(*pivots), sparse_irow_compare);
+    for (size_t column = 0; column < columns; column++)
+        pivot_by_column[column] = SIZE_MAX;
+    for (size_t row = 0; row < rank; row++)
+        pivot_by_column[pivots[row].columns[0]] = row;
+    backward_offsets = calloc(rank + 1, sizeof(*backward_offsets));
+    backward_cursor = malloc((rank == 0 ? 1 : rank) *
+        sizeof(*backward_cursor));
+    if (backward_offsets == NULL || backward_cursor == NULL)
+        goto done;
+    for (size_t row = 0; row < rank; row++)
+        for (size_t item = 1; item < pivots[row].length; item++)
+        {
+            size_t pivot = pivot_by_column[pivots[row].columns[item]];
+            if (pivot != SIZE_MAX && row < pivot)
+            {
+                if (backward_offsets[pivot + 1] == SIZE_MAX)
+                    goto done;
+                backward_offsets[pivot + 1]++;
+            }
+        }
+    for (size_t row = 0; row < rank; row++)
+    {
+        if (backward_offsets[row + 1] >
+            SIZE_MAX - backward_offsets[row])
+            goto done;
+        backward_offsets[row + 1] += backward_offsets[row];
+        backward_cursor[row] = backward_offsets[row];
+    }
+    backward_rows = malloc((backward_offsets[rank] == 0
+        ? 1 : backward_offsets[rank]) * sizeof(*backward_rows));
+    if (backward_rows == NULL)
+        goto done;
+    for (size_t row = 0; row < rank; row++)
+        for (size_t item = 1; item < pivots[row].length; item++)
+        {
+            size_t pivot = pivot_by_column[pivots[row].columns[item]];
+            if (pivot != SIZE_MAX && row < pivot)
+                backward_rows[backward_cursor[pivot]++] = row;
+        }
+    for (size_t cursor = rank; cursor > 0; cursor--)
+    {
+        size_t row = cursor - 1;
+        size_t pivot_column = pivots[row].columns[0];
+        for (size_t occurrence = backward_offsets[row];
+            occurrence < backward_offsets[row + 1]; occurrence++)
+        {
+            size_t earlier = backward_rows[occurrence];
+            slong coefficient = sparse_irow_entry(
+                &pivots[earlier], pivot_column);
+            if (coefficient != 0)
+            {
+                if (!sparse_irow_combine(
+                        &pivots[earlier], &pivots[row],
+                        pivots[row].values[0], coefficient,
+                        workspace_columns, workspace_values, columns))
+                    goto done;
+                if (pivots[row].values[0] != 1)
+                    sparse_irow_make_primitive(&pivots[earlier]);
+            }
+        }
+    }
+    fmpq_mat_init(output, (slong) rank, (slong) columns);
+    for (size_t row = 0; row < rank; row++)
+        for (size_t item = 0; item < pivots[row].length; item++)
+            fmpq_set_si(fmpq_mat_entry(
+                output, (slong) row, (slong) pivots[row].columns[item]),
+                pivots[row].values[item], pivots[row].values[0]);
+    *rank_out = (slong) rank;
+    status = 1;
+
+done:
+    sparse_irow_clear(&working);
+    if (pivots != NULL)
+        for (size_t row = 0; row < maximum_rank; row++)
+            sparse_irow_clear(&pivots[row]);
+    free(pivots);
+    free(pivot_by_column);
+    free(workspace_columns);
+    free(workspace_values);
+    free(backward_offsets);
+    free(backward_rows);
+    free(backward_cursor);
+    return status;
+}
+
 int sagejs_fmpq_rref_sparse_fmpz_csr(
     fmpq_mat_t output,
     slong *rank_out,
@@ -367,6 +744,8 @@ int sagejs_fmpq_rref_sparse_fmpz_csr(
     sagejs_sparse_qrow working = {0};
     sagejs_sparse_row_order *row_order = NULL;
     size_t *pivot_by_column = NULL, *workspace_columns = NULL;
+    size_t *backward_offsets = NULL, *backward_rows = NULL;
+    size_t *backward_cursor = NULL;
     fmpq *workspace_values = NULL;
     fmpq_t coefficient;
     size_t rank = 0;
@@ -375,8 +754,6 @@ int sagejs_fmpq_rref_sparse_fmpz_csr(
     if (rank_out == NULL || row_offsets == NULL ||
         (row_offsets[rows] != 0 &&
             (column_indices == NULL || values == NULL)) ||
-        fmpq_mat_nrows(output) < (slong) maximum_rank ||
-        fmpq_mat_ncols(output) != (slong) columns ||
         rows > (size_t) WORD_MAX || columns > (size_t) WORD_MAX)
         return 0;
     *rank_out = 0;
@@ -417,6 +794,13 @@ int sagejs_fmpq_rref_sparse_fmpz_csr(
         row_order[row] = (sagejs_sparse_row_order) {row, length, first};
     }
     qsort(row_order, rows, sizeof(*row_order), sparse_row_order_compare);
+    if (sparse_fmpz_csr_word_rref(
+            output, rank_out, rows, columns, row_offsets,
+            column_indices, values, row_order))
+    {
+        status = 1;
+        goto done;
+    }
 
     for (size_t source_index = 0; source_index < rows; source_index++)
     {
@@ -457,14 +841,54 @@ int sagejs_fmpq_rref_sparse_fmpz_csr(
                 goto done;
         }
     }
-
     qsort(pivots, rank, sizeof(*pivots), sparse_qrow_compare);
+    for (size_t column = 0; column < columns; column++)
+        pivot_by_column[column] = SIZE_MAX;
+    for (size_t row = 0; row < rank; row++)
+        pivot_by_column[pivots[row].columns[0]] = row;
+    backward_offsets = calloc(rank + 1, sizeof(*backward_offsets));
+    backward_cursor = malloc((rank == 0 ? 1 : rank) *
+        sizeof(*backward_cursor));
+    if (backward_offsets == NULL || backward_cursor == NULL)
+        goto done;
+    for (size_t row = 0; row < rank; row++)
+        for (size_t item = 1; item < pivots[row].length; item++)
+        {
+            size_t pivot = pivot_by_column[pivots[row].columns[item]];
+            if (pivot != SIZE_MAX && row < pivot)
+            {
+                if (backward_offsets[pivot + 1] == SIZE_MAX)
+                    goto done;
+                backward_offsets[pivot + 1]++;
+            }
+        }
+    for (size_t row = 0; row < rank; row++)
+    {
+        if (backward_offsets[row + 1] >
+            SIZE_MAX - backward_offsets[row])
+            goto done;
+        backward_offsets[row + 1] += backward_offsets[row];
+        backward_cursor[row] = backward_offsets[row];
+    }
+    backward_rows = malloc((backward_offsets[rank] == 0
+        ? 1 : backward_offsets[rank]) * sizeof(*backward_rows));
+    if (backward_rows == NULL)
+        goto done;
+    for (size_t row = 0; row < rank; row++)
+        for (size_t item = 1; item < pivots[row].length; item++)
+        {
+            size_t pivot = pivot_by_column[pivots[row].columns[item]];
+            if (pivot != SIZE_MAX && row < pivot)
+                backward_rows[backward_cursor[pivot]++] = row;
+        }
     for (size_t cursor = rank; cursor > 0; cursor--)
     {
         size_t row = cursor - 1;
         size_t pivot_column = pivots[row].columns[0];
-        for (size_t earlier = 0; earlier < row; earlier++)
+        for (size_t occurrence = backward_offsets[row];
+            occurrence < backward_offsets[row + 1]; occurrence++)
         {
+            size_t earlier = backward_rows[occurrence];
             const fmpq *entry = sparse_qrow_entry(
                 &pivots[earlier], pivot_column);
             if (entry != NULL)
@@ -477,8 +901,7 @@ int sagejs_fmpq_rref_sparse_fmpz_csr(
             }
         }
     }
-
-    fmpq_mat_zero(output);
+    fmpq_mat_init(output, (slong) rank, (slong) columns);
     for (size_t row = 0; row < rank; row++)
         for (size_t item = 0; item < pivots[row].length; item++)
             fmpq_set(fmpq_mat_entry(
@@ -497,6 +920,9 @@ done:
     free(row_order);
     free(pivot_by_column);
     free(workspace_columns);
+    free(backward_offsets);
+    free(backward_rows);
+    free(backward_cursor);
     if (workspace_values != NULL)
         _fmpq_vec_clear(workspace_values,
             (slong) (columns == 0 ? 1 : columns));

@@ -18,8 +18,9 @@ int sagejs_fmpq_mat_rref_sparse(
 
 /*
  * Exact sparse RREF from integer CSR input. Duplicate column indices within
- * a row are combined. Output needs at least min(rows, columns) rows and
- * exactly columns columns; only the first rank rows are written.
+ * a row are combined. Output must be uninitialized; on success it is
+ * initialized with exactly rank rows and columns columns. On failure output
+ * remains uninitialized.
  */
 int sagejs_fmpq_rref_sparse_fmpz_csr(
     fmpq_mat_t output,

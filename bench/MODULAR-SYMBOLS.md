@@ -341,6 +341,20 @@ plus and minus spaces take about 0.029 and 0.037 seconds. A 20-case seeded
 cross-check (156 timed stages across Sage.js and Magma) retained complete
 agreement.
 
+The rational presentation reducer first attempts fraction-free sparse
+elimination in machine integers. A row with leading coefficient `a` is
+cancelled against a pivot with leading coefficient `b` using `b*row-a*pivot`,
+then primitive-normalized; every multiply and subtraction is overflow-checked.
+If coefficients outgrow a machine word, reduction restarts through the general
+FLINT `fmpq` path. Pivot-column incidence lists ensure that backward reduction
+visits only rows containing the relevant pivot, and the final dense matrix has
+exactly `rank` rows rather than reserving the square worst case. This second
+layer reduced level-10,000, weight-4 plus-space construction from about 17.3
+seconds before the sparse improvements to 5.8 seconds, level-5,003 weight 4
+from 1.64 to 0.54 seconds, and level-625 weight 4 from 0.80 to 0.041 seconds.
+Inputs that trigger the rational fallback retain the same exact result and
+roughly their former performance.
+
 The same retained E1 endpoints now define the exact boundary map. Rational
 cusps are classified under `Gamma0(N)` using Cremona's equivalence criterion,
 and each basis path maps to its endpoint divisor.  Since this is an oriented

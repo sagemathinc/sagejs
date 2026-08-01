@@ -1949,12 +1949,11 @@ static int p1_higher_weight_build(
     relation_offsets[generators] = relation_used;
     fmpz_clear(binomial);
 
-    fmpq_mat_init(reduced, (slong) free_count, (slong) free_count);
-    reduced_initialized = 1;
     if (!sagejs_fmpq_rref_sparse_fmpz_csr(
             reduced, &rank_slong, generators, free_count,
             relation_offsets, relation_columns, relation_values))
         goto done;
+    reduced_initialized = 1;
     if (rank_slong < 0 || (size_t) rank_slong > free_count)
         goto done;
     rank = (size_t) rank_slong;
