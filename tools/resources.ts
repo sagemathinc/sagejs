@@ -35,8 +35,9 @@ function assetBytes(key: string): Uint8Array {
 function assetKeyForVirtualPath(filename: string): string | undefined {
   const normalized = normalize(filename);
   const prefix = `${VIRTUAL_ROOT}/`;
-  if (!normalized.startsWith(prefix)) return;
-  return normalized.slice(prefix.length);
+  const platformPrefix = normalize(prefix);
+  if (!normalized.startsWith(platformPrefix)) return;
+  return normalized.slice(platformPrefix.length).replaceAll("\\", "/");
 }
 
 export function isSingleExecutable(): boolean {

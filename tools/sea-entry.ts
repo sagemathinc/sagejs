@@ -10,9 +10,10 @@ import { runDocumentationCli } from "./docs";
 import { createKernelEvaluator } from "./kernel-evaluator";
 import Repl from "./repl";
 import { importPath, libraryPath } from "./utils";
-import { basename } from "path";
+import { basename, dirname, extname } from "path";
 
 const executable = basename(process.argv[1]);
+const executableStem = basename(executable, extname(executable)).toLowerCase();
 
 interface SeaArguments {
   files: string[];
@@ -67,7 +68,7 @@ function parseArguments(): SeaArguments {
     import_path: "",
     mode: "repl",
     execute: false,
-    sage: executable !== "sagepython",
+    sage: executableStem !== "sagepython",
     magma: false,
     maple: false,
     matlab: false,
@@ -201,9 +202,7 @@ async function main(): Promise<void> {
   if (argv.mode === "compile") {
     await Compile({
       argv: argv as any,
-      src_path: importPath.endsWith("/lib")
-        ? importPath.slice(0, -"/lib".length)
-        : importPath,
+      src_path: dirname(importPath),
       lib_path: libraryPath,
     });
     return;
