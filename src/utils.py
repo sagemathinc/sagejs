@@ -88,6 +88,11 @@ def make_predicate(words: Union[str, list[str]]) -> dict[str, Literal[True]]:
 def cache_file_name(src: str, cache_dir: str) -> Union[None, str]:
     if cache_dir:
         src = str.replace(src, '\\', '/')
+        # A cache key may contain an absolute Windows path.  Replace every
+        # Win32-forbidden filename character before flattening directories;
+        # in particular, do not leave the drive-letter colon in the key.
+        for character in '<>:"|?*':
+            src = str.replace(src, character, '-')
         return cache_dir + '/' + str.lstrip(
             str.replace(src, '/', '-') + '.json', '-')
     return None

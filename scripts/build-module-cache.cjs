@@ -18,6 +18,7 @@ function compilerCacheFilename(sourceFilename) {
   return (
     sourceFilename
       .replaceAll("\\", "/")
+      .replace(/[<>:"|?*\x00-\x1f]/g, "-")
       .replaceAll("/", "-")
       .replace(/^-+/, "") + ".json"
   );
