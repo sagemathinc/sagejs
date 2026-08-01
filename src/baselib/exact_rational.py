@@ -133,6 +133,30 @@ class Rational(runtime.element):
     def __truediv__(self, other: object) -> Any:
         return runtime.coercion_model.binOp('truediv', self, other)
 
+    def _floor_quotient(self, other: Any) -> int:
+        other_value = (
+            other if isinstance(other, Rational) else runtime.qq(other))
+        if other_value._numerator == runtime.bigint(0):
+            raise ZeroDivisionError('rational division by zero')
+        numerator = self._numerator * other_value._denominator
+        denominator = self._denominator * other_value._numerator
+        if denominator < 0:
+            numerator = -numerator
+            denominator = -denominator
+        quotient = runtime.native_div(numerator, denominator)
+        if runtime.native_mod(numerator, denominator) != 0 and numerator < 0:
+            quotient -= runtime.bigint(1)
+        return runtime.normalize_integer(quotient)
+
+    def __floordiv__(self, other: object) -> int:
+        return self._floor_quotient(other)
+
+    def __mod__(self, other: object) -> Rational:
+        other_value = (
+            other if isinstance(other, Rational) else runtime.qq(other))
+        quotient = Rational(self._floor_quotient(other_value))
+        return self._sub_(other_value._mul_(quotient))
+
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
 

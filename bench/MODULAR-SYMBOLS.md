@@ -12,6 +12,55 @@ Agents and automation can request stable structured output:
 pnpm bench:modular-symbols -- --json
 ```
 
+For differential exploration across level, weight, sign, Hecke prime, and
+each construction stage, run the four-system parameter grid:
+
+```sh
+pnpm bench:modular-symbols:grid
+pnpm bench:modular-symbols:grid -- --large
+pnpm bench:modular-symbols:grid -- --seed 20260801 --count 12 --json
+pnpm bench:modular-symbols:grid -- --seed 20260801 --count 12 --stress
+```
+
+The core profile deliberately mixes prime, composite, and squareful levels;
+weights 2 through 8; all three signs; and several Hecke primes. The large
+profile adds levels 5077, 10000, and 20011 plus larger higher-weight spaces.
+Its most expensive characteristic polynomials are disabled so that the grid
+continues to measure the named stage instead of becoming a charpoly-only
+benchmark. A seeded run selects a reproducible sample from a wider Cartesian
+product. By default, seeded selection caps the rough level-times-weight work
+parameter at 2000. `--stress` removes that guard and records per-case failures
+instead of aborting the remaining sweep. Small and medium seeded cases include
+charpolys; large ones stop at
+the trace-checked Hecke matrix.
+
+Every row is checked against SageMath using a basis-independent integer:
+dimensions for spaces, the Hecke trace modulo 1000000007, or the value at 2
+of the exact characteristic polynomial modulo 1000000007. PARI/GP and Magma
+run independently generated programs with the same parameters. Use `--json`
+to retain results for later performance-cliff analysis.
+
+A core-grid snapshot from 2026-08-01 (milliseconds, one warm-process sample
+per stage) shows both the gains and the remaining higher-weight boundary:
+
+| case | stage | Sage.js | SageMath | PARI/GP | Magma |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| level 1000, weight 2, plus | space | 5 | 144 | 124 | 60 |
+| level 1000, weight 2, plus | cusp | 6 | 198 | 171 | 40 |
+| level 1000, weight 2, plus | `T_2` | 11 | 190 | 75 | 20 |
+| level 1000, weight 2, plus | charpoly | 51 | 37 | 32 | 20 |
+| level 97, weight 8, full | space | 113 | 515 | 5 | 90 |
+| level 97, weight 8, full | cusp | 68 | 541 | 117 | 10 |
+| level 97, weight 8, full | `T_2` | 117 | 66 | 46 | 160 |
+
+All 120 rows in that eight-case, four-runtime snapshot agreed. A separate
+12-case seeded run also produced 192 agreeing rows. The stress version of the
+same seed found the next architectural target: full weight-6 level-1000
+construction reaches Sage.js's dense higher-weight reduction-map guard. A
+factorized reduction map, analogous to the character implementation, is the
+right fix; merely raising the allocation limit would hide the issue while
+using hundreds of megabytes.
+
 Dirichlet-character spaces have a separate three-system dashboard:
 
 ```sh

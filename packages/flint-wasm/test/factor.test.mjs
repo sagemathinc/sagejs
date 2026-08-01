@@ -150,6 +150,59 @@ test("exposes persistent P1 objects and exact weight-2 matrices", () => {
   );
 });
 
+test("computes large signed modular-symbol charpolys inside FLINT", () => {
+  const p1 = flint.p1List(1000);
+  const signed = flint.p1ListStarEigenspaceBasis(p1, 1);
+  const ambient = flint.matrixTranspose(
+    flint.zzMatrixToQQ(flint.p1ListHeckeMatrix(p1, 2n)),
+  );
+  const pivots = [];
+  for (let row = 0; row < signed.matrix.rows; row += 1) {
+    for (let column = 0; column < signed.matrix.cols; column += 1) {
+      if (
+        signed.matrix.entries[
+          row * signed.matrix.cols + column
+        ].numerator !== 0n
+      ) {
+        pivots.push(column);
+        break;
+      }
+    }
+  }
+  const operator = flint.matrixSparseLeftMul(
+    signed.matrix,
+    flint.matrixSelectColumns(ambient, pivots),
+  );
+  const polynomial = flint.matrixCharpoly(operator);
+  const modulus = 1000000007n;
+  let fingerprint = 0n;
+  let power = 1n;
+  for (const coefficient of polynomial) {
+    assert.equal(coefficient.denominator, 1n);
+    fingerprint = (
+      fingerprint + coefficient.numerator * power
+    ) % modulus;
+    power = power * 3n % modulus;
+  }
+  assert.equal(operator.rows, 154);
+  assert.equal(polynomial.length, 155);
+  assert.equal((fingerprint + modulus) % modulus, 804456041n);
+});
+
+test("computes nonintegral rational charpolys inside FLINT", () => {
+  const matrix = flint.qqMatrix(2, 2, [
+    [1n, 2n],
+    [1n, 1n],
+    [0n, 1n],
+    [1n, 3n],
+  ]);
+  assert.deepEqual(flint.matrixCharpoly(matrix), [
+    { numerator: 1n, denominator: 6n },
+    { numerator: -5n, denominator: 6n },
+    { numerator: 1n, denominator: 1n },
+  ]);
+});
+
 test("provides exact portable polynomial construction and arithmetic", () => {
   const x = flint.qqPolyGen();
   const two = flint.qqPolyConstant(2n, 1n);

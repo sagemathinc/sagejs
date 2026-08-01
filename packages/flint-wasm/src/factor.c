@@ -5,12 +5,27 @@
 #include <flint/flint.h>
 #include <flint/fmpz.h>
 #include <flint/fmpz_factor.h>
+#include <flint/fmpz_mat.h>
+#include <flint/fmpz_poly.h>
+#include <flint/fmpq.h>
+#include <flint/fmpq_mat.h>
+#include <flint/fmpq_poly.h>
+
+#include "charpoly.h"
 
 #define SAGEJS_FACTOR_INPUT_CAPACITY 4096
 #define SAGEJS_FACTOR_OUTPUT_CAPACITY 65536
 
 static char factor_input[SAGEJS_FACTOR_INPUT_CAPACITY];
 static char factor_output[SAGEJS_FACTOR_OUTPUT_CAPACITY];
+static fmpz_mat_t integer_matrix;
+static fmpz_poly_t integer_charpoly;
+static int integer_matrix_initialized;
+static int integer_charpoly_initialized;
+static fmpq_mat_t rational_matrix;
+static fmpq_poly_t rational_charpoly;
+static int rational_matrix_initialized;
+static int rational_charpoly_initialized;
 
 static int append_text(size_t *position, const char *text)
 {
@@ -115,6 +130,184 @@ static int write_integer(const fmpz_t value)
     success = append_text(&position, text);
     flint_free(text);
     return success;
+}
+
+static int write_rational(const fmpq_t value)
+{
+    char *text;
+    size_t position = 0;
+    int success;
+
+    factor_output[0] = '\0';
+    text = fmpq_get_str(NULL, 10, value);
+    if (text == NULL)
+        return 0;
+    success = append_text(&position, text);
+    flint_free(text);
+    return success;
+}
+
+static void clear_integer_charpoly(void)
+{
+    if (integer_charpoly_initialized)
+        fmpz_poly_clear(integer_charpoly);
+    if (integer_matrix_initialized)
+        fmpz_mat_clear(integer_matrix);
+    integer_charpoly_initialized = 0;
+    integer_matrix_initialized = 0;
+}
+
+/*
+ * Exact integer matrix characteristic polynomials for the portable matrix
+ * backend. Entries cross the boundary through the existing decimal input
+ * buffer, so this supports arbitrary-size integers without a limb ABI.
+ */
+__attribute__((visibility("default")))
+int sagejs_integer_charpoly_begin(uint32_t rows, uint32_t columns)
+{
+    clear_integer_charpoly();
+    if (rows != columns || rows > INT32_MAX)
+        return 0;
+    fmpz_mat_init(integer_matrix, (slong) rows, (slong) columns);
+    integer_matrix_initialized = 1;
+    return 1;
+}
+
+__attribute__((visibility("default")))
+int sagejs_integer_charpoly_set(uint32_t index)
+{
+    size_t count;
+    fmpz_t value;
+
+    if (!integer_matrix_initialized)
+        return 0;
+    count = (size_t) integer_matrix->r * (size_t) integer_matrix->c;
+    if ((size_t) index >= count)
+        return 0;
+    fmpz_init(value);
+    if (!read_integer(value))
+    {
+        fmpz_clear(value);
+        return 0;
+    }
+    fmpz_set(integer_matrix->entries + index, value);
+    fmpz_clear(value);
+    return 1;
+}
+
+__attribute__((visibility("default")))
+int sagejs_integer_charpoly_compute(void)
+{
+    if (!integer_matrix_initialized)
+        return 0;
+    if (integer_charpoly_initialized)
+        fmpz_poly_clear(integer_charpoly);
+    fmpz_poly_init(integer_charpoly);
+    integer_charpoly_initialized = 1;
+    sagejs_fmpz_mat_charpoly(integer_charpoly, integer_matrix);
+    return 1;
+}
+
+__attribute__((visibility("default")))
+int sagejs_integer_charpoly_coefficient(uint32_t index)
+{
+    fmpz_t value;
+    int status;
+
+    if (!integer_charpoly_initialized ||
+        (slong) index >= fmpz_poly_length(integer_charpoly))
+        return 0;
+    fmpz_init(value);
+    fmpz_poly_get_coeff_fmpz(value, integer_charpoly, (slong) index);
+    status = write_integer(value);
+    fmpz_clear(value);
+    return status ? 1 : 0;
+}
+
+__attribute__((visibility("default")))
+void sagejs_integer_charpoly_clear(void)
+{
+    clear_integer_charpoly();
+}
+
+static void clear_rational_charpoly(void)
+{
+    if (rational_charpoly_initialized)
+        fmpq_poly_clear(rational_charpoly);
+    if (rational_matrix_initialized)
+        fmpq_mat_clear(rational_matrix);
+    rational_charpoly_initialized = 0;
+    rational_matrix_initialized = 0;
+}
+
+/*
+ * Exact rational matrix characteristic polynomials. Rational entries use
+ * FLINT's canonical decimal numerator/denominator syntax in the shared input
+ * buffer, keeping the host boundary independent of FLINT's limb layout.
+ */
+__attribute__((visibility("default")))
+int sagejs_rational_charpoly_begin(uint32_t rows, uint32_t columns)
+{
+    clear_rational_charpoly();
+    if (rows != columns || rows > INT32_MAX)
+        return 0;
+    fmpq_mat_init(rational_matrix, (slong) rows, (slong) columns);
+    rational_matrix_initialized = 1;
+    return 1;
+}
+
+__attribute__((visibility("default")))
+int sagejs_rational_charpoly_set(uint32_t index)
+{
+    size_t count;
+    fmpq *entry;
+
+    if (!rational_matrix_initialized)
+        return 0;
+    count = (size_t) rational_matrix->r * (size_t) rational_matrix->c;
+    if ((size_t) index >= count)
+        return 0;
+    factor_input[SAGEJS_FACTOR_INPUT_CAPACITY - 1] = '\0';
+    entry = rational_matrix->entries + index;
+    if (fmpq_set_str(entry, factor_input, 10) != 0)
+        return 0;
+    fmpq_canonicalise(entry);
+    return 1;
+}
+
+__attribute__((visibility("default")))
+int sagejs_rational_charpoly_compute(void)
+{
+    if (!rational_matrix_initialized)
+        return 0;
+    if (rational_charpoly_initialized)
+        fmpq_poly_clear(rational_charpoly);
+    fmpq_poly_init(rational_charpoly);
+    rational_charpoly_initialized = 1;
+    fmpq_mat_charpoly(rational_charpoly, rational_matrix);
+    return 1;
+}
+
+__attribute__((visibility("default")))
+int sagejs_rational_charpoly_coefficient(uint32_t index)
+{
+    fmpq_t value;
+    int status;
+
+    if (!rational_charpoly_initialized ||
+        (slong) index >= fmpq_poly_length(rational_charpoly))
+        return 0;
+    fmpq_init(value);
+    fmpq_poly_get_coeff_fmpq(value, rational_charpoly, (slong) index);
+    status = write_rational(value);
+    fmpq_clear(value);
+    return status ? 1 : 0;
+}
+
+__attribute__((visibility("default")))
+void sagejs_rational_charpoly_clear(void)
+{
+    clear_rational_charpoly();
 }
 
 /*

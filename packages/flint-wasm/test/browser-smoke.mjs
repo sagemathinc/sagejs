@@ -296,6 +296,12 @@ try {
       "-1 2 2 -2\n1 3 2 1\n",
     );
     await runSource(
+      "M = ModularSymbols(1000,2,sign=1)\n" +
+        "f = M.hecke_matrix(2).charpoly()\n" +
+        "print(M.dimension(), f(3) % 1000000007)",
+      "154 804456041\n",
+    );
+    await runSource(
       "for n in [2025..2050]:\n    print(factor(n))",
       factorLoopOutput,
     );

@@ -70,6 +70,10 @@ export async function instantiateFlintFactor(source) {
     } catch {
       throw new TypeError(`${operation} input must be an integer`);
     }
+    writeText(input, operation);
+  }
+
+  function writeText(input, operation) {
     const bytes = encoder.encode(input);
     if (bytes.length + 1 > inputCapacity) {
       throw new RangeError(
@@ -135,6 +139,84 @@ export async function instantiateFlintFactor(source) {
       throw new Error(`FLINT next-prime search failed with status ${status}`);
     }
     return BigInt(readCString(memory, outputPointer, outputCapacity));
+  }
+
+  function matrixCharpoly(matrix) {
+    const portable = matrixBackend.matrixCharpoly;
+    let entries;
+    let prefix;
+    if (matrix?.kind === "ZZ") {
+      entries = matrix.entries;
+      prefix = "integer";
+    } else if (
+      matrix?.kind === "QQ" &&
+      matrix.entries.every((entry) => entry.denominator === 1n)
+    ) {
+      entries = matrix.entries.map((entry) => entry.numerator);
+      prefix = "integer";
+    } else if (matrix?.kind === "QQ") {
+      entries = matrix.entries;
+      prefix = "rational";
+    } else {
+      return portable(matrix);
+    }
+    if (matrix.rows !== matrix.cols) {
+      throw new RangeError(
+        "characteristic polynomial requires a square matrix",
+      );
+    }
+    if (instance.exports[`sagejs_${prefix}_charpoly_begin`](
+      matrix.rows, matrix.cols,
+    ) !== 1) {
+      throw new Error("unable to initialize FLINT WASM charpoly");
+    }
+    try {
+      for (let index = 0; index < entries.length; index += 1) {
+        if (prefix === "integer") {
+          writeInteger(entries[index], "matrix characteristic polynomial");
+        } else {
+          writeText(
+            `${entries[index].numerator}/${entries[index].denominator}`,
+            "matrix characteristic polynomial",
+          );
+        }
+        if (instance.exports[`sagejs_${prefix}_charpoly_set`](index) !== 1) {
+          throw new Error(
+            `unable to transfer charpoly matrix entry ${index}`,
+          );
+        }
+      }
+      if (instance.exports[`sagejs_${prefix}_charpoly_compute`]() !== 1) {
+        throw new Error("FLINT WASM characteristic polynomial failed");
+      }
+      const coefficients = [];
+      for (let index = 0; index <= matrix.rows; index += 1) {
+        if (
+          instance.exports[`sagejs_${prefix}_charpoly_coefficient`](index) !== 1
+        ) {
+          throw new Error(
+            `unable to read charpoly coefficient ${index}`,
+          );
+        }
+        const text = readCString(memory, outputPointer, outputCapacity);
+        if (prefix === "integer") {
+          coefficients.push(BigInt(text));
+        } else {
+          const [numerator, denominator = "1"] = text.split("/");
+          coefficients.push([BigInt(numerator), BigInt(denominator)]);
+        }
+      }
+      if (matrix.kind === "ZZ") return coefficients;
+      return matrixBackend.qqMatrix(
+        1,
+        coefficients.length,
+        prefix === "integer"
+          ? coefficients.map((coefficient) => [coefficient, 1n])
+          : coefficients,
+      ).entries;
+    } finally {
+      instance.exports[`sagejs_${prefix}_charpoly_clear`]();
+    }
   }
 
   function modularSymbolsWeight2Info(level) {
@@ -425,6 +507,7 @@ export async function instantiateFlintFactor(source) {
     p1ListReducePath,
     ...polynomialBackend,
     ...matrixBackend,
+    matrixCharpoly,
   });
 }
 

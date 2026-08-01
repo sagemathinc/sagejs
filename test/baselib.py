@@ -490,6 +490,8 @@ assrt.equal(-7 % 3, 2)
 assrt.equal(-7 % -3, -1)
 assrt.equal(7 % -3, -2)
 assrt.equal((-6) % 3, 0)
+assrt.equal(QQ(-7, 3) // QQ(2, 5), -6)
+assrt.ok(QQ(-7, 3) % QQ(2, 5) == QQ(1, 15))
 
 
 def divmodtest():
