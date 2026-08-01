@@ -190,6 +190,44 @@ test("Dirichlet-character Manin symbols, signs, boundaries, and Hecke", async ()
   }
 });
 
+test("high-degree cyclotomic Hecke assembly retains exact coordinates", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "G = DirichletGroup(37)",
+            "M = ModularSymbols(G.0,5)",
+            "S = M.cuspidal_subspace()",
+            "T = S.hecke_matrix(2)",
+            "a = T.trace()",
+            "f = T.charpoly()",
+            "c = f.list()",
+            "[M.dimension(), S.dimension(), a.minpoly(), " +
+              "ZZ(a.minpoly()(2)) % 1000000007, " +
+              "c[0], c[23], c[24]]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[26, 24, x^12 + 24*x^11 + 156*x^10 + 320*x^9 - 6624*x^8 + " +
+        "36288*x^7 + 1932800*x^6 - 650496*x^5 + 55034112*x^4 - " +
+        "183756800*x^3 + 96728064*x^2 - 1244848128*x + " +
+        "7676563456, 90480093, " +
+        "413893006848*zeta36^11 + 279382452480*zeta36^10 + " +
+        "6226929292032*zeta36^9 + 279382452480*zeta36^8 + " +
+        "413893006848*zeta36^7 + 6092691727104*zeta36^6 - " +
+        "1672953015168*zeta36^5 + 1410924759552*zeta36^4 - " +
+        "3113464646016*zeta36^3 - 1690307212032*zeta36^2 + " +
+        "1259060008320*zeta36 - 6092691727104, " +
+        "-6*zeta36^10 + 6*zeta36^4 + 6*zeta36^3 + " +
+        "2*zeta36 + 2, 1]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("higher-weight Gamma0 Manin symbols, signs, and Hecke", async () => {
   const session = await createSage();
   try {

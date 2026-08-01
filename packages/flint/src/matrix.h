@@ -18,6 +18,13 @@ napi_value sagejs_qqbar_matrix_from_gr_mat(
     napi_env env,
     const gr_mat_t entries,
     const gr_ctx_t context);
+napi_value sagejs_qqbar_matrix_from_cyclotomic_gr_mat(
+    napi_env env,
+    const gr_mat_t entries,
+    const gr_ctx_t context,
+    ulong order,
+    size_t degree,
+    const fmpq *coordinates);
 napi_value sagejs_qq_matrix_from_qqbar_gr_mat(
     napi_env env,
     const gr_mat_t entries,

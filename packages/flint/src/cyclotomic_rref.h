@@ -14,6 +14,18 @@ typedef struct
     fmpz coefficient;
 } sagejs_cyclotomic_term;
 
+/* Power-basis coordinates for a matrix over Q(zeta_order). */
+typedef struct
+{
+    size_t rank;
+    size_t columns;
+    size_t degree;
+    ulong order;
+    fmpq *coefficients;
+} sagejs_cyclotomic_matrix;
+
+void sagejs_cyclotomic_matrix_clear(sagejs_cyclotomic_matrix *matrix);
+
 /*
  * Reconstruct an exact cyclotomic RREF from completely split word primes.
  * The source is an integral sum of coefficient*zeta_order^exponent terms.
@@ -29,6 +41,7 @@ int sagejs_cyclotomic_rref_multimodular(
     size_t term_count,
     ulong order,
     const fmpz_t source_coefficient_bound,
-    gr_ctx_t context);
+    gr_ctx_t context,
+    sagejs_cyclotomic_matrix *coordinates);
 
 #endif

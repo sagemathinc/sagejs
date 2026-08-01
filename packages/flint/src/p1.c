@@ -8,8 +8,11 @@
 #include <node_api.h>
 
 #include <flint/fmpq.h>
+#include <flint/fmpq_poly.h>
 #include <flint/fmpq_vec.h>
 #include <flint/fmpz.h>
+#include <flint/fmpz_poly.h>
+#include <flint/fmpz_vec.h>
 #include <flint/gr.h>
 #include <flint/gr_mat.h>
 #include <flint/nmod_mat.h>
@@ -89,6 +92,7 @@ typedef struct
     gr_ctx_t context;
     gr_mat_t quotient_relations;
     gr_mat_t reduction;
+    sagejs_cyclotomic_matrix cyclotomic_quotient;
     int context_initialized;
     int quotient_relations_initialized;
     int reduction_initialized;
@@ -2023,6 +2027,8 @@ static void p1_character_presentation_clear(
     if (presentation->quotient_relations_initialized)
         gr_mat_clear(
             presentation->quotient_relations, presentation->context);
+    sagejs_cyclotomic_matrix_clear(
+        &presentation->cyclotomic_quotient);
     if (presentation->context_initialized)
         gr_ctx_clear(presentation->context);
     memset(presentation, 0, sizeof(*presentation));
@@ -2421,7 +2427,7 @@ static int p1_character_build(
                 generators, free_count,
                 cyclotomic_terms, cyclotomic_term_count,
                 sets.root_order, source_coefficient_bound,
-                answer->context);
+                answer->context, &answer->cyclotomic_quotient);
         if (!multimodular_status)
         {
             gr_mat_init(relations,
@@ -3132,6 +3138,268 @@ napi_value sagejs_p1list_higher_weight_hecke_matrix(
     return result;
 }
 
+/*
+ * Assemble character-valued Hecke matrices in the cyclotomic power basis.
+ * The presentation RREF was already reconstructed in exactly these
+ * coordinates. Keeping arithmetic there avoids thousands of extremely
+ * expensive generic qqbar multiplications.
+ */
+static int p1_character_hecke_cyclotomic(
+    gr_mat_t matrix,
+    const sagejs_p1list_value *list,
+    sagejs_character_presentation *presentation,
+    uint32_t weight,
+    const dirichlet_group_struct *group,
+    const dirichlet_char_t character,
+    const p1_matrix_four *heilbronn,
+    size_t heilbronn_count,
+    sagejs_cyclotomic_matrix *hecke_coordinates)
+{
+    const sagejs_cyclotomic_matrix *quotient =
+        &presentation->cyclotomic_quotient;
+    size_t dimension = presentation->dimension;
+    size_t degree = quotient->degree;
+    ulong order = quotient->order;
+    size_t output_count, action_count;
+    fmpq *output = NULL;
+    fmpz *root_actions = NULL;
+    size_t *target_by_column = NULL;
+    fmpz_poly_t cyclotomic, monomial, remainder;
+    fmpz_t integer_coefficient, integer_term;
+    fmpq_t rational_term, weighted_term;
+    fmpq_poly_t polynomial;
+    qqbar_t root, value;
+    int scalars_initialized = 0;
+    int polynomials_initialized = 0;
+    int status = 0;
+
+    if (quotient->coefficients == NULL || quotient->rank != presentation->rank ||
+        quotient->columns != presentation->two_term_generators ||
+        degree == 0 || order == 0 ||
+        (dimension != 0 && dimension > SIZE_MAX / dimension) ||
+        dimension * dimension > SIZE_MAX / degree ||
+        (degree != 0 && degree > SIZE_MAX / degree) ||
+        degree * degree > SIZE_MAX / order)
+        return 0;
+    output_count = dimension * dimension * degree;
+    action_count = (size_t) order * degree * degree;
+    if (output_count > (size_t) WORD_MAX ||
+        action_count > (size_t) WORD_MAX)
+        return 0;
+    output = _fmpq_vec_init((slong) (output_count == 0 ? 1 : output_count));
+    root_actions = _fmpz_vec_init(
+        (slong) (action_count == 0 ? 1 : action_count));
+    target_by_column = malloc(
+        (quotient->columns == 0 ? 1 : quotient->columns)
+            * sizeof(*target_by_column));
+    if (output == NULL || root_actions == NULL || target_by_column == NULL)
+        goto done;
+    for (size_t column = 0; column < quotient->columns; column++)
+        target_by_column[column] = SIZE_MAX;
+    for (size_t target = 0; target < dimension; target++)
+        target_by_column[presentation->free_columns[target]] = target;
+
+    fmpz_poly_init(cyclotomic);
+    fmpz_poly_init(monomial);
+    fmpz_poly_init(remainder);
+    fmpz_init(integer_coefficient);
+    fmpz_init(integer_term);
+    fmpq_init(rational_term);
+    fmpq_init(weighted_term);
+    fmpq_poly_init(polynomial);
+    qqbar_init(root);
+    qqbar_init(value);
+    polynomials_initialized = 1;
+    scalars_initialized = 1;
+    fmpz_poly_cyclotomic(cyclotomic, order);
+
+    /* Matrix of multiplication by every power of the chosen root. */
+    for (ulong exponent = 0; exponent < order; exponent++)
+        for (size_t input_power = 0; input_power < degree; input_power++)
+        {
+            fmpz_poly_zero(monomial);
+            fmpz_poly_set_coeff_ui(
+                monomial, (slong) (input_power + exponent), 1);
+            fmpz_poly_rem(remainder, monomial, cyclotomic);
+            for (size_t output_power = 0;
+                output_power < degree; output_power++)
+                fmpz_poly_get_coeff_fmpz(
+                    root_actions +
+                        (exponent * degree + input_power) * degree +
+                        output_power,
+                    remainder, (slong) output_power);
+        }
+
+    for (size_t source = 0; source < dimension; source++)
+    {
+        size_t generator = presentation->basis_generators[source];
+        uint32_t i = (uint32_t) (generator / list->count);
+        sagejs_p1_pair pair = list->pairs[generator % list->count];
+        for (size_t h = 0; h < heilbronn_count; h++)
+        {
+            int64_t a = heilbronn[h].a;
+            int64_t b = heilbronn[h].b;
+            int64_t c = heilbronn[h].c;
+            int64_t d = heilbronn[h].d;
+            __int128 image_u = (__int128) pair.u * a
+                + (__int128) pair.v * c;
+            __int128 image_v = (__int128) pair.u * b
+                + (__int128) pair.v * d;
+            sagejs_p1_pair normalized;
+            uint32_t scalar;
+            size_t image_coset;
+            ulong value_exponent;
+            if (!p1_normalize_pair(
+                    list->level,
+                    (int64_t) (image_u % list->level),
+                    (int64_t) (image_v % list->level),
+                    &normalized, &scalar))
+                continue;
+            image_coset = p1_index_normalized(list, normalized);
+            if (image_coset >= list->count)
+                continue;
+            value_exponent = p1_character_exponent(
+                group, character, scalar, order);
+            if (value_exponent == ULONG_MAX)
+                continue;
+            for (uint32_t target_degree = 0;
+                target_degree + 2 <= weight; target_degree++)
+            {
+                size_t image_generator =
+                    (size_t) target_degree * list->count + image_coset;
+                size_t column =
+                    presentation->generator_columns[image_generator];
+                ulong combined_exponent;
+                if (column == SIZE_MAX)
+                    continue;
+                p1_monomial_matrix_coefficient(
+                    integer_coefficient, i, weight - 2,
+                    target_degree, a, b, c, d);
+                if (fmpz_is_zero(integer_coefficient))
+                    continue;
+                combined_exponent = p1_add_exponents(
+                    value_exponent,
+                    presentation->generator_exponents[image_generator],
+                    order);
+                if (presentation->pivot_rows[column] == SIZE_MAX)
+                {
+                    size_t target = target_by_column[column];
+                    if (target == SIZE_MAX)
+                        goto done;
+                    for (size_t output_power = 0;
+                        output_power < degree; output_power++)
+                    {
+                        const fmpz *action = root_actions +
+                            combined_exponent * degree * degree +
+                            output_power;
+                        if (fmpz_is_zero(action))
+                            continue;
+                        fmpz_mul(integer_term, integer_coefficient, action);
+                        fmpq_add_fmpz(
+                            output +
+                                (source * dimension + target) * degree +
+                                output_power,
+                            output +
+                                (source * dimension + target) * degree +
+                                output_power,
+                            integer_term);
+                    }
+                }
+                else
+                {
+                    size_t row = presentation->pivot_rows[column];
+                    for (size_t target = 0; target < dimension; target++)
+                        for (size_t input_power = 0;
+                            input_power < degree; input_power++)
+                        {
+                            const fmpq *coefficient =
+                                quotient->coefficients +
+                                (input_power * quotient->rank + row) *
+                                    quotient->columns +
+                                presentation->free_columns[target];
+                            if (fmpq_is_zero(coefficient))
+                                continue;
+                            fmpq_mul_fmpz(
+                                rational_term, coefficient,
+                                integer_coefficient);
+                            for (size_t output_power = 0;
+                                output_power < degree; output_power++)
+                            {
+                                const fmpz *action = root_actions +
+                                    (combined_exponent * degree + input_power) *
+                                        degree + output_power;
+                                fmpq *destination;
+                                if (fmpz_is_zero(action))
+                                    continue;
+                                destination = output +
+                                    (source * dimension + target) * degree +
+                                    output_power;
+                                fmpq_mul_fmpz(
+                                    weighted_term, rational_term, action);
+                                fmpq_sub(
+                                    destination, destination, weighted_term);
+                            }
+                        }
+                }
+            }
+        }
+    }
+
+    qqbar_root_of_unity(root, 1, order);
+    for (size_t source = 0; source < dimension; source++)
+        for (size_t target = 0; target < dimension; target++)
+        {
+            fmpq_poly_zero(polynomial);
+            for (size_t power = 0; power < degree; power++)
+                fmpq_poly_set_coeff_fmpq(
+                    polynomial, (slong) power,
+                    output +
+                        (source * dimension + target) * degree + power);
+            qqbar_evaluate_fmpq_poly(value, polynomial, root);
+            qqbar_set(
+                p1_gr_entry(matrix, (slong) source,
+                    (slong) target, presentation->context),
+                value);
+        }
+    if (hecke_coordinates != NULL)
+    {
+        sagejs_cyclotomic_matrix_clear(hecke_coordinates);
+        hecke_coordinates->rank = dimension;
+        hecke_coordinates->columns = dimension;
+        hecke_coordinates->degree = degree;
+        hecke_coordinates->order = order;
+        hecke_coordinates->coefficients = output;
+        output = NULL;
+    }
+    status = 1;
+
+done:
+    if (scalars_initialized)
+    {
+        qqbar_clear(value);
+        qqbar_clear(root);
+        fmpq_poly_clear(polynomial);
+        fmpq_clear(weighted_term);
+        fmpq_clear(rational_term);
+        fmpz_clear(integer_term);
+        fmpz_clear(integer_coefficient);
+    }
+    if (polynomials_initialized)
+    {
+        fmpz_poly_clear(remainder);
+        fmpz_poly_clear(monomial);
+        fmpz_poly_clear(cyclotomic);
+    }
+    free(target_by_column);
+    if (root_actions != NULL)
+        _fmpz_vec_clear(
+            root_actions, (slong) (action_count == 0 ? 1 : action_count));
+    if (output != NULL)
+        _fmpq_vec_clear(
+            output, (slong) (output_count == 0 ? 1 : output_count));
+    return status;
+}
+
 napi_value sagejs_p1list_character_hecke_matrix(
     napi_env env, napi_callback_info info)
 {
@@ -3149,11 +3417,13 @@ napi_value sagejs_p1list_character_hecke_matrix(
     gr_mat_t matrix;
     int matrix_initialized = 0;
     fmpz_t integer_coefficient;
-    qqbar_t root_value, scaled, term;
+    qqbar_t scaled, term;
+    qqbar_struct *root_values = NULL;
     int scalars_initialized = 0;
     p1_matrix_four *heilbronn = NULL;
     size_t heilbronn_count = 0;
     ulong root_order;
+    sagejs_cyclotomic_matrix hecke_coordinates = {0};
 
     if (!p1_check_napi(env, napi_get_cb_info(
             env, info, &argument_count, arguments, NULL, NULL)) ||
@@ -3218,132 +3488,159 @@ napi_value sagejs_p1list_character_hecke_matrix(
     gr_mat_init(matrix, (slong) presentation->dimension,
         (slong) presentation->dimension, presentation->context);
     matrix_initialized = 1;
-    fmpz_init(integer_coefficient);
-    qqbar_init(root_value);
-    qqbar_init(scaled);
-    qqbar_init(term);
-    scalars_initialized = 1;
     root_order = p1_character_root_order(group, character);
-    for (size_t source = 0; source < presentation->dimension; source++)
+    if (presentation->cyclotomic_quotient.coefficients != NULL)
     {
-        size_t generator = presentation->basis_generators[source];
-        uint32_t i = (uint32_t) (generator / list->count);
-        sagejs_p1_pair pair = list->pairs[generator % list->count];
-        for (size_t h = 0; h < heilbronn_count; h++)
-        {
-            int64_t a = heilbronn[h].a;
-            int64_t b = heilbronn[h].b;
-            int64_t c = heilbronn[h].c;
-            int64_t d = heilbronn[h].d;
-            __int128 image_u = (__int128) pair.u * a
-                + (__int128) pair.v * c;
-            __int128 image_v = (__int128) pair.u * b
-                + (__int128) pair.v * d;
-            sagejs_p1_pair normalized;
-            uint32_t scalar;
-            size_t image_coset;
-            ulong value_exponent;
-            if (!p1_normalize_pair(
-                    list->level,
-                    (int64_t) (image_u % list->level),
-                    (int64_t) (image_v % list->level),
-                    &normalized, &scalar))
-                continue;
-            image_coset = p1_index_normalized(list, normalized);
-            if (image_coset >= list->count)
-                continue;
-            value_exponent = p1_character_exponent(
-                group, character, scalar, root_order);
-            if (value_exponent == ULONG_MAX)
-                continue;
+        if (!p1_character_hecke_cyclotomic(
+                matrix, list, presentation, (uint32_t) weight_value,
+                group, character, heilbronn, heilbronn_count,
+                &hecke_coordinates))
+            goto done;
+    }
+    else
+    {
+        fmpz_init(integer_coefficient);
+        qqbar_init(scaled);
+        qqbar_init(term);
+        scalars_initialized = 1;
+        root_values = _qqbar_vec_init((slong) root_order);
+        if (root_values == NULL)
+            goto done;
+        for (ulong exponent = 0; exponent < root_order; exponent++)
             qqbar_root_of_unity(
-                root_value, (slong) value_exponent, root_order);
-            for (uint32_t target_degree = 0;
-                target_degree + 2 <= (uint32_t) weight_value;
-                target_degree++)
+                root_values + exponent, (slong) exponent, root_order);
+        for (size_t source = 0; source < presentation->dimension; source++)
+        {
+            size_t generator = presentation->basis_generators[source];
+            uint32_t i = (uint32_t) (generator / list->count);
+            sagejs_p1_pair pair = list->pairs[generator % list->count];
+            for (size_t h = 0; h < heilbronn_count; h++)
             {
-                size_t image_generator =
-                    (size_t) target_degree * list->count + image_coset;
-                p1_monomial_matrix_coefficient(
-                    integer_coefficient, i,
-                    (uint32_t) weight_value - 2,
-                    target_degree, a, b, c, d);
-                if (fmpz_is_zero(integer_coefficient))
+                int64_t a = heilbronn[h].a;
+                int64_t b = heilbronn[h].b;
+                int64_t c = heilbronn[h].c;
+                int64_t d = heilbronn[h].d;
+                __int128 image_u = (__int128) pair.u * a
+                    + (__int128) pair.v * c;
+                __int128 image_v = (__int128) pair.u * b
+                    + (__int128) pair.v * d;
+                sagejs_p1_pair normalized;
+                uint32_t scalar;
+                size_t image_coset;
+                ulong value_exponent;
+                if (!p1_normalize_pair(
+                        list->level,
+                        (int64_t) (image_u % list->level),
+                        (int64_t) (image_v % list->level),
+                        &normalized, &scalar))
                     continue;
-                qqbar_mul_fmpz(scaled, root_value, integer_coefficient);
-                if (presentation->quotient_relations_initialized)
+                image_coset = p1_index_normalized(list, normalized);
+                if (image_coset >= list->count)
+                    continue;
+                value_exponent = p1_character_exponent(
+                    group, character, scalar, root_order);
+                if (value_exponent == ULONG_MAX)
+                    continue;
+                for (uint32_t target_degree = 0;
+                    target_degree + 2 <= (uint32_t) weight_value;
+                    target_degree++)
                 {
-                    size_t column =
-                        presentation->generator_columns[image_generator];
-                    if (column == SIZE_MAX)
+                    size_t image_generator =
+                        (size_t) target_degree * list->count + image_coset;
+                    p1_monomial_matrix_coefficient(
+                        integer_coefficient, i,
+                        (uint32_t) weight_value - 2,
+                        target_degree, a, b, c, d);
+                    if (fmpz_is_zero(integer_coefficient))
                         continue;
-                    qqbar_root_of_unity(term,
-                        (slong) presentation->generator_exponents[
-                            image_generator],
-                        presentation->root_order);
-                    qqbar_mul(scaled, scaled, term);
-                    if (presentation->pivot_rows[column] == SIZE_MAX)
+                    if (presentation->quotient_relations_initialized)
                     {
-                        size_t target = 0;
-                        while (target < presentation->dimension &&
-                            presentation->free_columns[target] != column)
-                            target++;
-                        if (target >= presentation->dimension)
-                            goto done;
-                        qqbar_add(
-                            p1_gr_entry(matrix, (slong) source,
-                                (slong) target, presentation->context),
-                            p1_gr_entry(matrix, (slong) source,
-                                (slong) target, presentation->context),
-                            scaled);
+                        size_t column = presentation->generator_columns[
+                            image_generator];
+                        ulong combined_exponent;
+                        if (column == SIZE_MAX)
+                            continue;
+                        combined_exponent = p1_add_exponents(
+                            value_exponent,
+                            presentation->generator_exponents[
+                                image_generator],
+                            root_order);
+                        qqbar_mul_fmpz(
+                            scaled, root_values + combined_exponent,
+                            integer_coefficient);
+                        if (presentation->pivot_rows[column] == SIZE_MAX)
+                        {
+                            size_t target = 0;
+                            while (target < presentation->dimension &&
+                                presentation->free_columns[target] != column)
+                                target++;
+                            if (target >= presentation->dimension)
+                                goto done;
+                            qqbar_add(
+                                p1_gr_entry(matrix, (slong) source,
+                                    (slong) target, presentation->context),
+                                p1_gr_entry(matrix, (slong) source,
+                                    (slong) target, presentation->context),
+                                scaled);
+                        }
+                        else
+                        {
+                            size_t row = presentation->pivot_rows[column];
+                            for (size_t target = 0;
+                                target < presentation->dimension; target++)
+                            {
+                                qqbar_mul(term, scaled,
+                                    p1_gr_entry_src(
+                                        presentation->quotient_relations,
+                                        (slong) row,
+                                        (slong) presentation->free_columns[
+                                            target],
+                                        presentation->context));
+                                qqbar_sub(
+                                    p1_gr_entry(matrix, (slong) source,
+                                        (slong) target,
+                                        presentation->context),
+                                    p1_gr_entry(matrix, (slong) source,
+                                        (slong) target,
+                                        presentation->context),
+                                    term);
+                            }
+                        }
                     }
                     else
                     {
-                        size_t row = presentation->pivot_rows[column];
+                        qqbar_mul_fmpz(
+                            scaled, root_values + value_exponent,
+                            integer_coefficient);
                         for (size_t target = 0;
                             target < presentation->dimension; target++)
                         {
                             qqbar_mul(term, scaled,
-                                p1_gr_entry_src(
-                                    presentation->quotient_relations,
-                                    (slong) row,
-                                    (slong) presentation->free_columns[target],
+                                p1_gr_entry_src(presentation->reduction,
+                                    (slong) image_generator, (slong) target,
                                     presentation->context));
-                            qqbar_sub(
+                            qqbar_add(
                                 p1_gr_entry(matrix, (slong) source,
-                                    (slong) target,
-                                    presentation->context),
+                                    (slong) target, presentation->context),
                                 p1_gr_entry(matrix, (slong) source,
-                                    (slong) target,
-                                    presentation->context),
+                                    (slong) target, presentation->context),
                                 term);
                         }
-                    }
-                }
-                else
-                {
-                    for (size_t target = 0;
-                        target < presentation->dimension; target++)
-                    {
-                        qqbar_mul(term, scaled,
-                            p1_gr_entry_src(presentation->reduction,
-                                (slong) image_generator, (slong) target,
-                                presentation->context));
-                        qqbar_add(
-                            p1_gr_entry(matrix, (slong) source,
-                                (slong) target, presentation->context),
-                            p1_gr_entry(matrix, (slong) source,
-                                (slong) target, presentation->context),
-                            term);
                     }
                 }
             }
         }
     }
-    result = dirichlet_char_is_real(group, character)
-        ? sagejs_qq_matrix_from_qqbar_gr_mat(
-            env, matrix, presentation->context)
-        : sagejs_qqbar_matrix_from_gr_mat(
+    if (dirichlet_char_is_real(group, character))
+        result = sagejs_qq_matrix_from_qqbar_gr_mat(
+            env, matrix, presentation->context);
+    else if (hecke_coordinates.coefficients != NULL)
+        result = sagejs_qqbar_matrix_from_cyclotomic_gr_mat(
+            env, matrix, presentation->context,
+            hecke_coordinates.order, hecke_coordinates.degree,
+            hecke_coordinates.coefficients);
+    else
+        result = sagejs_qqbar_matrix_from_gr_mat(
             env, matrix, presentation->context);
 
 done:
@@ -3351,9 +3648,11 @@ done:
     {
         qqbar_clear(term);
         qqbar_clear(scaled);
-        qqbar_clear(root_value);
         fmpz_clear(integer_coefficient);
     }
+    if (root_values != NULL)
+        _qqbar_vec_clear(root_values, (slong) root_order);
+    sagejs_cyclotomic_matrix_clear(&hecke_coordinates);
     if (matrix_initialized)
         gr_mat_clear(matrix, presentation->context);
     free(heilbronn);

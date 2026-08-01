@@ -55,3 +55,38 @@ def measure_character(level, order, label):
 for benchmark_level in BENCH_LEVELS:
     measure_character(benchmark_level, 2, "quadratic")
     measure_character(benchmark_level, 5, "order5")
+
+
+# A small space over a comparatively large coefficient field catches a
+# different complexity axis than the large-level cases above.
+deep_character = DirichletGroup(37).gen()
+start = time.time()
+deep_space = ModularSymbols(deep_character, 5)
+report(
+    "character-order36-weight5-space-37",
+    time.time() - start,
+    deep_space.dimension(),
+)
+start = time.time()
+deep_cuspidal = deep_space.cuspidal_subspace()
+report(
+    "character-order36-weight5-cusp-37",
+    time.time() - start,
+    deep_cuspidal.dimension(),
+)
+start = time.time()
+deep_t2 = deep_cuspidal.hecke_matrix(2)
+elapsed = time.time() - start
+deep_trace = deep_t2.trace()
+report(
+    "character-order36-weight5-t2-37",
+    elapsed,
+    ZZ(deep_trace.minpoly()(2)) % FINGERPRINT_MODULUS,
+)
+start = time.time()
+deep_charpoly = deep_t2.charpoly()
+report(
+    "character-order36-weight5-charpoly-37",
+    time.time() - start,
+    deep_charpoly.degree(),
+)

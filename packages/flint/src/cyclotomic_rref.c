@@ -28,6 +28,19 @@
 
 #include "cyclotomic_rref.h"
 
+void sagejs_cyclotomic_matrix_clear(sagejs_cyclotomic_matrix *matrix)
+{
+    size_t count;
+
+    if (matrix == NULL)
+        return;
+    count = matrix->rank * matrix->columns * matrix->degree;
+    if (matrix->coefficients != NULL)
+        _fmpq_vec_clear(
+            matrix->coefficients, (slong) (count == 0 ? 1 : count));
+    memset(matrix, 0, sizeof(*matrix));
+}
+
 #define SAGEJS_CYCLOTOMIC_MAX_ORDER 256
 #define SAGEJS_CYCLOTOMIC_MAX_DEGREE 64
 #define SAGEJS_CYCLOTOMIC_MAX_PRIMES 12
@@ -569,7 +582,8 @@ int sagejs_cyclotomic_rref_multimodular(
     size_t term_count,
     ulong order,
     const fmpz_t source_coefficient_bound,
-    gr_ctx_t context)
+    gr_ctx_t context,
+    sagejs_cyclotomic_matrix *coordinates)
 {
     size_t degree, maximum_rank, coefficient_count = 0;
     size_t residue_count = 0, candidate_count = 0;
@@ -726,6 +740,17 @@ int sagejs_cyclotomic_rref_multimodular(
                     output, candidate, target_rank, columns,
                     degree, order, context))
             {
+                if (coordinates != NULL)
+                {
+                    sagejs_cyclotomic_matrix_clear(coordinates);
+                    coordinates->rank = target_rank;
+                    coordinates->columns = columns;
+                    coordinates->degree = degree;
+                    coordinates->order = order;
+                    coordinates->coefficients = candidate;
+                    candidate = NULL;
+                    candidate_count = 0;
+                }
                 *rank_out = (slong) target_rank;
                 status = 1;
                 goto done;

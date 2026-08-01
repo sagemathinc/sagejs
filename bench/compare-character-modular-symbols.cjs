@@ -35,6 +35,10 @@ const expected = new Map([
   ["character-order5-space-1201", 100],
   ["character-order5-cusp-1201", 98],
   ["character-order5-t2-1201", 61],
+  ["character-order36-weight5-space-37", 26],
+  ["character-order36-weight5-cusp-37", 24],
+  ["character-order36-weight5-t2-37", 90480093],
+  ["character-order36-weight5-charpoly-37", 24],
 ]);
 if (large) {
   expected.set("character-quadratic-space-4001", 334);
@@ -125,6 +129,18 @@ function magmaProgram() {
     "  fingerprint := (Integers() ! Evaluate(f, 2)) mod fingerprintModulus;",
     '  printf "RESULT character-order5-t2-%o 0 %.9o %o\\n", N, elapsed, fingerprint;',
     "end for;",
+    "K36<z36> := CyclotomicField(36);",
+    "G36 := DirichletGroup(37, K36); chi36 := G36.1;",
+    "t := Cputime(); D := ModularSymbols(chi36, 5, 0); elapsed := Cputime(t);",
+    'printf "RESULT character-order36-weight5-space-37 0 %.9o %o\\n", elapsed, Dimension(D);',
+    "t := Cputime(); DS := CuspidalSubspace(D); elapsed := Cputime(t);",
+    'printf "RESULT character-order36-weight5-cusp-37 0 %.9o %o\\n", elapsed, Dimension(DS);',
+    "t := Cputime(); DT := HeckeOperator(DS, 2); elapsed := Cputime(t);",
+    "df := MinimalPolynomial(Trace(DT));",
+    "dfingerprint := (Integers() ! Evaluate(df, 2)) mod fingerprintModulus;",
+    'printf "RESULT character-order36-weight5-t2-37 0 %.9o %o\\n", elapsed, dfingerprint;',
+    "t := Cputime(); Df := CharacteristicPolynomial(DT); elapsed := Cputime(t);",
+    'printf "RESULT character-order36-weight5-charpoly-37 0 %.9o %o\\n", elapsed, Degree(Df);',
     "quit;",
     "",
   ].join("\n");

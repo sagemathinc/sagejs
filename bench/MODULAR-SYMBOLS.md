@@ -22,12 +22,15 @@ pnpm bench:character-modular-symbols -- --large --json
 
 The default character profile compares quadratic and order-5 characters at
 prime level 1201. The intentionally expensive `--large` profile adds prime
-level 4001. Each profile times sign-`+1` space construction, its cuspidal
-kernel, and `T_2` independently in Sage.js, SageMath, and Magma. The `T_2`
-answer is a Galois-invariant fingerprint: the rational trace for quadratic
-characters, or the value at 2 of the trace's minimal polynomial for order-5
-characters, reduced modulo 1000000007. Thus inverse choices of an order-5
-character compare correctly across the three systems.
+level 4001. Both profiles also include the full-order character modulo 37 in
+weight 5. This deliberately small-level, degree-12 coefficient-field case
+times space construction, its cuspidal kernel, `T_2`, and the characteristic
+polynomial independently. It catches coefficient-field complexity that the
+larger-level low-order characters do not expose. The `T_2` answer is a
+Galois-invariant fingerprint: the rational trace for quadratic characters,
+or the value at 2 of the trace's minimal polynomial for non-real characters,
+reduced modulo 1000000007. Thus inverse character choices compare correctly
+across the three systems.
 
 One level-4001 snapshot from 2026-08-01 (seconds, one warm-process sample per
 stage) illustrates the current performance boundary:
@@ -40,6 +43,16 @@ stage) illustrates the current performance boundary:
 | order 5 | space | 0.69 | 7.97 | 0.43 |
 | order 5 | cuspidal | 0.16 | 73.02 | 0.04 |
 | order 5 | `T_2` | 1.02 | 15.55 | 0.80 |
+
+The degree-12 coefficient-field case added after that snapshot currently
+gives the following on the same development machine:
+
+| character | stage | Sage.js | SageMath | Magma |
+| --- | ---: | ---: | ---: | ---: |
+| order 36, weight 5, level 37 | space | 0.30 | 0.07 | 0.04 |
+| order 36, weight 5, level 37 | cuspidal | 0.006 | 0.06 | <0.01 |
+| order 36, weight 5, level 37 | `T_2` | 0.096 | 0.29 | 0.01 |
+| order 36, weight 5, level 37 | charpoly | 0.64 | 0.17 | 2.31 |
 
 All rows passed the independent dimension or trace-fingerprint checks. These
 numbers are a reproducible development snapshot, not portable performance
@@ -184,6 +197,12 @@ a compact factorized reduction map. Hecke assembly consumes that form directly.
 The much larger public generator-to-basis matrix is produced lazily by
 `reduction_matrix()`. The native presentation is owned by a finalizable opaque
 Node object and validated by level, weight, sign, and character on reuse.
+Certified RREF power-basis coordinates remain attached to non-real character
+Hecke matrices. Column selection and rational sparse-left multiplication retain
+those coordinates through cuspidal restriction. Characteristic polynomials
+then run in FLINT's number-field matrix context and convert only the final
+coefficients back to Sage.js algebraic values; they do not perform elimination
+with generic `qqbar` entries.
 Composite Hecke operators use multiplicativity and
 
 ```text
