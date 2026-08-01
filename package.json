@@ -1,6 +1,6 @@
 {
   "name": "@sagemath/sagejs",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packageManager": "pnpm@11.9.0",
   "description": "Open research mathematics, native to Node",
   "homepage": "https://github.com/sagemathinc/sagejs#readme",
@@ -75,6 +75,8 @@
     "build:sea": "pnpm run build && pnpm --dir packages/flint build && node scripts/build-sea.cjs --all",
     "build:sea:python": "pnpm run build && node scripts/build-sea.cjs --python",
     "build:sea:math": "pnpm run build && pnpm --dir packages/flint build && node scripts/build-sea.cjs --with-flint",
+    "release:macos": "bash scripts/release-macos.sh",
+    "release:macos:signed": "bash scripts/release-macos.sh --skip-notarize",
     "build:wasm": "pnpm run build && pnpm --dir packages/flint-wasm build",
     "docs:generate": "pnpm run build && node scripts/generate-docs.cjs",
     "docs:check": "pnpm run build && node scripts/generate-docs.cjs --check",

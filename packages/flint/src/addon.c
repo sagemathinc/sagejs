@@ -4,7 +4,13 @@
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#define strdup _strdup
+#else
 #include <unistd.h>
+#endif
 
 #include <node_api.h>
 #include <pthread.h>
@@ -22,7 +28,9 @@
 #include <flint/nmod_poly_factor.h>
 #include <flint/ulong_extras.h>
 #include <sagejs/native.h>
+#ifdef SAGEJS_HAVE_SMALLJAC
 #include <smalljac.h>
+#endif
 
 #include "algebraic.h"
 #include "dirichlet.h"
@@ -33,7 +41,7 @@
 #include "number_field_factor.h"
 #include "p1.h"
 
-#if ULONG_MAX != UINT64_MAX
+#if FLINT_BITS != 64
 #error "The initial Sage.js FLINT bridge requires 64-bit FLINT limbs"
 #endif
 
@@ -194,7 +202,7 @@ static int bigint_to_ulong(napi_env env, napi_value value, ulong *result)
     if (!check_napi(env,
         napi_get_value_bigint_uint64(env, value, &number, &lossless)))
         return 0;
-    if (!lossless || number > ULONG_MAX)
+    if (!lossless || number > UWORD_MAX)
     {
         napi_throw_range_error(
             env, NULL, "BigInt does not fit in an unsigned FLINT word");
@@ -304,6 +312,7 @@ typedef struct
     int failed;
 } elliptic_smalljac_result;
 
+#ifdef SAGEJS_HAVE_SMALLJAC
 /* ffpoly deliberately uses one global finite-field context. */
 static pthread_mutex_t elliptic_smalljac_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -462,6 +471,39 @@ static int elliptic_smalljac_single_ap(
     *value = result.value;
     return 1;
 }
+#else
+static int elliptic_smalljac_ap_values(
+    fmpz_t coefficients[5],
+    ulong bound,
+    int64_t *ap_values,
+    unsigned char *available)
+{
+    (void) coefficients;
+    (void) bound;
+    (void) ap_values;
+    (void) available;
+    return 0;
+}
+
+static int elliptic_smalljac_single_ap(
+    fmpz_t coefficients[5], ulong prime, int64_t *value)
+{
+    (void) coefficients;
+    (void) prime;
+    (void) value;
+    return 0;
+}
+#endif
+
+static long online_processor_count(void)
+{
+#ifdef _WIN32
+    DWORD count = GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
+    return count == 0 ? 1 : (long) count;
+#else
+    return sysconf(_SC_NPROCESSORS_ONLN);
+#endif
+}
 
 typedef struct
 {
@@ -573,7 +615,7 @@ static napi_value elliptic_anlist_integral(
     }
     if (prime_count > 0)
     {
-        long processor_count = sysconf(_SC_NPROCESSORS_ONLN);
+        long processor_count = online_processor_count();
         size_t worker_count = (
             bound < 1000 ? 1
             : processor_count < 1 ? 1
@@ -704,7 +746,7 @@ static napi_value elliptic_ap_smalljac_integral(
     if (!elliptic_smalljac_single_ap(coefficients, prime, &value))
     {
         unsigned char *quadratic_residues;
-        if (prime == ULONG_MAX ||
+        if (prime == UWORD_MAX ||
             (quadratic_residues = malloc((size_t) prime + 1)) == NULL)
         {
             napi_throw_error(env, NULL,
@@ -2762,11 +2804,32 @@ static napi_value smalljac_version_value(
     napi_env env, napi_callback_info info)
 {
     (void) info;
+#ifdef SAGEJS_HAVE_SMALLJAC
     return library_version(env, SMALLJAC_VERSION_STRING);
+#else
+    napi_value result;
+    if (!check_napi(env, napi_get_null(env, &result)))
+        return NULL;
+    return result;
+#endif
 }
 
 static napi_value initialize(napi_env env, napi_value exports)
 {
+#ifdef _WIN32
+    napi_value delay_load_warmup;
+
+    /*
+     * Windows addons must retain node-gyp's delay-load hook so they can bind
+     * to a renamed Node SEA executable (sagejs.exe rather than node.exe).
+     * clang-cl/lld does not preserve the floating argument to the very first
+     * delayed napi_create_double call, so resolve that import once here and
+     * discard its deliberately irrelevant value.
+     */
+    if (!check_napi(env,
+        napi_create_double(env, 0.0, &delay_load_warmup)))
+        return NULL;
+#endif
     napi_property_descriptor properties[] = {
         {"identity", NULL, identity, NULL, NULL, NULL, napi_default, NULL},
         {"gcd", NULL, gcd, NULL, NULL, NULL, napi_default, NULL},

@@ -82,7 +82,7 @@ static int bigint_to_ulong(napi_env env, napi_value value, ulong *result)
     if (!check_napi(env,
         napi_get_value_bigint_uint64(env, value, &number, &lossless)))
         return 0;
-    if (!lossless || number > ULONG_MAX)
+    if (!lossless || number > UWORD_MAX)
     {
         napi_throw_range_error(
             env, NULL, "BigInt does not fit in an unsigned FLINT word");

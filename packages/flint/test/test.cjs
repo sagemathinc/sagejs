@@ -8,9 +8,20 @@ test("native FLINT arithmetic and exact algebra", () => {
 assert.equal(flint.version(), "3.6.0");
 assert.equal(flint.nativeAbiVersion(), 1);
 assert.equal(flint.mpfrVersion(), "4.2.2");
-assert.equal(flint.mpcVersion(), "1.4.1");
+assert.equal(
+  flint.mpcVersion(),
+  process.platform === "win32" ? "1.3.1" : "1.4.1",
+);
 assert.match(flint.gmpVersion(), /^6\./);
-assert.equal(flint.smalljacVersion(), "smalljac version 4.1.3");
+assert.ok(
+  flint.smalljacVersion() === null ||
+    flint.smalljacVersion() === "smalljac version 4.1.3",
+);
+assert.equal(flint.ecApIntegral(0n, 0n, 1n, -1n, 0n, 5n), -2);
+assert.deepEqual(
+  flint.ecAnlistIntegral(0n, 0n, 1n, -1n, 0n, 37n, 12n),
+  [0, 1, -2, -3, 2, -2, 6, -1, 0, 6, 4, -5, -6],
+);
 
 const projectiveLine = flint.p1List(12);
 assert.equal(flint.p1ListLevel(projectiveLine), 12);

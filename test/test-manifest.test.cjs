@@ -16,6 +16,7 @@ test("every host test belongs to a runner tier", () => {
 
   const specialized = new Set([
     "compiler.test.cjs",
+    "native-kernel-addon-child.cjs",
     "native-kernel.cjs",
     "sea-smoke.cjs",
     "upstream-doctest-tools.cjs",

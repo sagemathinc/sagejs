@@ -13,7 +13,6 @@ const { spawnSync } = require("node:child_process");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { generateC } = require("../tools/native-kernel/c-backend.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
-const mpc = require("../packages/flint");
 
 const root = join(__dirname, "..");
 const sourcePath = join(root, "bench", "native-kernel-input.sage");
@@ -78,33 +77,6 @@ assert.throws(
 
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-native-kernel-"));
 
-function complex(realText, imagText, precision) {
-  return mpc.complexFromReals(
-    mpc.realFromString(realText, precision),
-    mpc.realFromString(imagText, precision),
-  );
-}
-
-function reference(precision, iterations) {
-  let value = complex("1.25", "-0.75", precision);
-  const step = complex(
-    "1.0000000000000002",
-    "0.0000000000000001",
-    precision,
-  );
-  for (let index = 0; index < iterations; index += 1)
-    value = mpc.complexMul(value, step);
-  return value;
-}
-
-function realReference(precision, iterations) {
-  let value = mpc.realFromString("1.25", precision);
-  const step = mpc.realFromString("1.0000000000000002", precision);
-  for (let index = 0; index < iterations; index += 1)
-    value = mpc.realMul(value, step);
-  return value;
-}
-
 function runSage(script, env = {}) {
   const scriptPath = join(temporary, "integration.sage");
   writeFileSync(scriptPath, script);
@@ -138,21 +110,12 @@ try {
   assert.equal(first.cacheKey, second.cacheKey);
   assert.equal(first.modulePath, second.modulePath);
 
-  const addon = require(first.addonPath);
-  for (const precision of [53, 1000, 10000]) {
-    const actual = addon.multiply_loop(precision, 25);
-    assert.equal(mpc.complexPrecision(actual), precision);
-    assert.equal(
-      mpc.complexToString(actual),
-      mpc.complexToString(reference(precision, 25)),
-    );
-    const actualReal = addon.real_multiply_loop(precision, 25);
-    assert.equal(mpc.realPrecision(actualReal), precision);
-    assert.equal(
-      mpc.realToString(actualReal),
-      mpc.realToString(realReference(precision, 25)),
-    );
-  }
+  const direct = spawnSync(
+    process.execPath,
+    [join(__dirname, "native-kernel-addon-child.cjs"), first.addonPath],
+    { cwd: root, encoding: "utf8" },
+  );
+  assert.equal(direct.status, 0, direct.stderr);
 
   const modulePath = JSON.stringify(first.modulePath);
   const script = `kernel = require(${modulePath})

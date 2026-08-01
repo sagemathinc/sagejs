@@ -428,7 +428,7 @@ static int sparse_irow_add_fmpz(
     if (left < row->length && row->columns[left] == column)
     {
         __int128 sum = (__int128) row->values[left] + integer;
-        if (sum < LONG_MIN || sum > LONG_MAX)
+        if (sum < WORD_MIN || sum > WORD_MAX)
             return 0;
         if (sum != 0)
             row->values[left] = (slong) sum;
@@ -534,7 +534,7 @@ static int sparse_irow_combine(
                 __builtin_sub_overflow(left_product, right_product, &value))
                 return 0;
         }
-        if (value < LONG_MIN || value > LONG_MAX)
+        if (value < WORD_MIN || value > WORD_MAX)
             return 0;
         if (value != 0)
         {
@@ -620,7 +620,7 @@ static int sparse_fmpz_csr_word_rref(
                 {
                     for (size_t item = 0; item < working.length; item++)
                     {
-                        if (working.values[item] == LONG_MIN)
+                        if (working.values[item] == WORD_MIN)
                             goto done;
                         working.values[item] = -working.values[item];
                     }

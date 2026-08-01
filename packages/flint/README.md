@@ -74,7 +74,7 @@ repeated scalar calls. Native polynomial inflation implements substitution
 `q -> q^d`, which the Sage.js modular-forms layer uses for degeneracy maps and
 prime-level Eisenstein bases.
 
-Integral elliptic curves use Andrew Sutherland's
+On Linux x64, integral elliptic curves use Andrew Sutherland's
 [smalljac 4.1.3](https://math.mit.edu/~drew/smalljac.html) to compute traces
 of Frobenius over a whole prime interval. Sage.js translates smalljac's
 `1 - a_p*T + p*T^2` convention at the native boundary, then uses the usual
@@ -140,18 +140,29 @@ rather than adding it to the factor list.
 
 ## Build
 
-The current prototype supports x86-64 Linux hosts with a C compiler and
-`make`. GMP 6.3.0, MPFR 4.2.2, MPC 1.4.1, FLINT 3.6.0, `ffpoly` 1.2.7, and
-smalljac 4.1.3 are downloaded, verified by SHA-256, and built as
-position-independent static libraries. The x86-64 restriction comes from the
-current `ffpoly` release's assembly implementation; a future portable backend
-must be selected on other architectures:
+The native package is validated on x86-64 and arm64 Linux, Apple Silicon
+macOS, and x86-64 Windows. Linux and macOS download SHA-256-verified GMP 6.3.0, MPFR
+4.2.2, MPC 1.4.1, and FLINT 3.6.0 and build position-independent static
+libraries. Linux x64 additionally builds `ffpoly` 1.2.7 and smalljac 4.1.3.
+Windows uses a pinned vcpkg baseline to build static GMP 6.3.0, MPFR 4.2.2,
+MPC 1.3.1, FLINT 3.6.0, and pthreads4w with the dynamic MSVC runtime. The
+Node addon uses clang-cl because its machine-word kernels rely on portable
+128-bit integer operations. Windows does not require WSL, MSYS2, or MinGW.
+
+The current `ffpoly` release's assembly implementation is Linux x64-specific.
+On Linux arm64, macOS, and Windows, `smalljacVersion()` returns `null` and the
+elliptic-curve API uses its tested portable point-count fallback. Porting ffpoly/smalljac to
+arm64 remains an independently replaceable accelerator project:
 
 ```sh
 pnpm --dir packages/flint build
 pnpm --dir packages/flint test
 pnpm --dir packages/flint bench
 ```
+
+The portable boundary is intentional: an arm64 ffpoly/smalljac port can be
+developed, benchmarked against the fallback, and proposed upstream without
+changing the public elliptic-curve API or blocking core Apple Silicon support.
 
 The dependency build uses up to eight parallel jobs by default. Set
 `SAGEJS_BUILD_JOBS` to a positive integer to match the CPU and memory available
@@ -169,4 +180,4 @@ SAGEJS_FLINT_PREFIX=/path/to/prefix \
 ```
 
 This package is private while the API and prebuilt-binary distribution layout
-are being established. It is not part of the Sage.js 0.1.0 npm package.
+are being established. It is not part of the Sage.js 0.1.1 npm package.

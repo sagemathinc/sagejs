@@ -924,7 +924,7 @@ static int p1_star_projector_entry(
 {
     __int128 value = (source == column ? 1 : 0) +
         (__int128) sign * entries[column * dimension + source];
-    if (value < LONG_MIN || value > LONG_MAX)
+    if (value < WORD_MIN || value > WORD_MAX)
         return 0;
     *result = (slong) value;
     return 1;
@@ -1043,7 +1043,7 @@ static int p1_sparse_row_axpy(
             value = (__int128) left->values[i++] -
                 (__int128) coefficient * right->values[j++];
         }
-        if (value < LONG_MIN || value > LONG_MAX)
+        if (value < WORD_MIN || value > WORD_MAX)
             return 0;
         if (value != 0)
         {
@@ -2127,10 +2127,10 @@ static ulong p1_character_exponent(
     ulong exponent = dirichlet_chi(group, character, residue % group->q);
     __uint128_t scaled;
     if (exponent == DIRICHLET_CHI_NULL)
-        return ULONG_MAX;
+        return UWORD_MAX;
     scaled = (__uint128_t) exponent * root_order;
     if (scaled % group->expo != 0)
-        return ULONG_MAX;
+        return UWORD_MAX;
     return (ulong) (scaled / group->expo);
 }
 
@@ -2356,7 +2356,7 @@ static int p1_character_build(
             image = (size_t) (weight - 2 - i) * cosets + image_coset;
             exponent = p1_character_exponent(
                 group, character, scalar, sets.root_order);
-            if (exponent == ULONG_MAX)
+            if (exponent == UWORD_MAX)
                 goto done;
             if (i & 1U)
                 exponent = p1_add_exponents(
@@ -2384,7 +2384,7 @@ static int p1_character_build(
                 image = (size_t) i * cosets + image_coset;
                 exponent = p1_character_exponent(
                     group, character, scalar, sets.root_order);
-                if (exponent == ULONG_MAX)
+                if (exponent == UWORD_MAX)
                     goto done;
                 if (((i & 1U) != 0) != (sign > 0))
                     exponent = p1_add_exponents(
@@ -2452,7 +2452,7 @@ static int p1_character_build(
             tt_exponent = p1_character_exponent(
                 group, character, tt_scalar, sets.root_order);
             if (t_coset >= cosets || tt_coset >= cosets ||
-                t_exponent == ULONG_MAX || tt_exponent == ULONG_MAX ||
+                t_exponent == UWORD_MAX || tt_exponent == UWORD_MAX ||
                 !p1_character_relation_add(
                     row, row, one, 0, &sets, root_column,
                     cyclotomic_terms, cyclotomic_term_capacity,
@@ -3003,7 +3003,7 @@ static int p1_character_cusp_coefficient(
     ulong value = p1_character_exponent(
         classifier->group, classifier->character,
         scalar, classifier->root_order);
-    if (value == ULONG_MAX)
+    if (value == UWORD_MAX)
         return 0;
     value = value == 0 ? 0 : classifier->root_order - value;
     if (coefficient_sign < 0)
@@ -3043,7 +3043,7 @@ static int p1_character_new_cusp_killed(
         exponent = p1_character_exponent(
             classifier->group, classifier->character,
             scalar, classifier->root_order);
-        if (exponent == ULONG_MAX)
+        if (exponent == UWORD_MAX)
             return 0;
         if (exponent != 0)
         {
@@ -3725,7 +3725,7 @@ static int p1_character_hecke_cyclotomic(
                 continue;
             value_exponent = p1_character_exponent(
                 group, character, scalar, order);
-            if (value_exponent == ULONG_MAX)
+            if (value_exponent == UWORD_MAX)
                 continue;
             for (uint32_t target_degree = 0;
                 target_degree + 2 <= weight; target_degree++)
@@ -4003,7 +4003,7 @@ napi_value sagejs_p1list_character_hecke_matrix(
                     continue;
                 value_exponent = p1_character_exponent(
                     group, character, scalar, root_order);
-                if (value_exponent == ULONG_MAX)
+                if (value_exponent == UWORD_MAX)
                     continue;
                 for (uint32_t target_degree = 0;
                     target_degree + 2 <= (uint32_t) weight_value;

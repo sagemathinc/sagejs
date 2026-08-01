@@ -5023,6 +5023,42 @@ divmod = ρσ_divmod
 dir = ρσ_dir
 help = ρσ_help
 search_doc = ρσ_search_doc
+
+
+def quit(code: Any = None) -> None:
+    """Exit the current Sage.js or Python session.
+
+    `quit()` exits successfully. An integer argument becomes the process exit
+    status, matching Python's interactive convenience function.
+    """
+    if code is None:
+        raise SystemExit
+    raise SystemExit(code)
+
+
+exit = quit
+
+
+_quit_doc = {
+    'kind': 'function',
+    'module': 'builtins',
+    'tags': ['runtime', 'interactive', 'process'],
+    'backends': ['Sage.js runtime'],
+    'sage_compatibility': {
+        'status': 'compatible',
+        'notes': 'Raises SystemExit with the optional supplied status.',
+    },
+    'provenance': [
+        {
+            'kind': 'software-derived',
+            'source': 'Python site.Quitter interactive API',
+            'url': 'https://docs.python.org/3/library/constants.html',
+            'license': 'PSF-2.0',
+        },
+    ],
+}
+runtime.register_doc('quit', quit, _quit_doc)
+runtime.register_doc('exit', exit, _quit_doc)
 runtime.register_doc(
     'help',
     help,

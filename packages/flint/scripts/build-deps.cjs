@@ -27,8 +27,12 @@ const {
 
 const packageRoot = resolve(__dirname, "..");
 const buildRoot = join(packageRoot, ".native");
+const windowsTriplet = "x64-windows-static-md-release";
+const defaultPrefix = process.platform === "win32"
+  ? join(buildRoot, "vcpkg-installed", windowsTriplet)
+  : join(buildRoot, "prefix");
 const prefix = resolve(
-  process.env.SAGEJS_FLINT_PREFIX || join(buildRoot, "prefix")
+  process.env.SAGEJS_FLINT_PREFIX || defaultPrefix
 );
 const downloads = join(buildRoot, "downloads");
 const sources = join(buildRoot, "sources");
@@ -41,6 +45,9 @@ if (configuredJobs !== undefined && !/^[1-9][0-9]*$/.test(configuredJobs)) {
 const jobs =
   configuredJobs ||
   String(Math.min(8, availableParallelism?.() || cpus().length || 2));
+const macosDeploymentTarget = process.platform === "darwin"
+  ? process.env.MACOSX_DEPLOYMENT_TARGET || "13.0"
+  : undefined;
 
 const dependencies = [
   {
@@ -94,7 +101,13 @@ function run(command, args, options = {}) {
   process.stdout.write(`+ ${command} ${args.join(" ")}\n`);
   const result = spawnSync(command, args, {
     cwd: options.cwd,
-    env: { ...process.env, ...options.env },
+    env: {
+      ...process.env,
+      ...(macosDeploymentTarget
+        ? { MACOSX_DEPLOYMENT_TARGET: macosDeploymentTarget }
+        : {}),
+      ...options.env,
+    },
     stdio: "inherit",
   });
   if (result.error) {
@@ -103,6 +116,94 @@ function run(command, args, options = {}) {
   if (result.status !== 0) {
     throw new Error(`${command} exited with status ${result.status}`);
   }
+}
+
+function patchWindowsFlintHeaders() {
+  const headers = ["flint.h", "longlong.h"];
+  const before = "#if defined(__GNUC__)";
+  const after = "#if defined(__GNUC__) || defined(__clang__)";
+  for (const name of headers) {
+    const header = join(prefix, "include", "flint", name);
+    const contents = readFileSync(header, "utf8");
+    if (contents.includes(after)) continue;
+    if (!contents.includes(before)) {
+      throw new Error(
+        `unable to locate the FLINT clang-cl guard in ${header}`
+      );
+    }
+    writeFileSync(header, contents.replace(before, after));
+  }
+  process.stdout.write(
+    "Enabled FLINT's GNU-compatible header paths for clang-cl\n"
+  );
+}
+
+function buildWindowsDependencies() {
+  if (process.arch !== "x64") {
+    throw new Error("the native Windows FLINT backend currently requires x64");
+  }
+
+  const manifest = JSON.parse(
+    readFileSync(join(packageRoot, "vcpkg.json"), "utf8")
+  );
+  const baseline = manifest["builtin-baseline"];
+  const managedVcpkg = !process.env.VCPKG_ROOT;
+  const vcpkgRoot = resolve(
+    process.env.VCPKG_ROOT || join(buildRoot, "vcpkg")
+  );
+  const vcpkg = join(vcpkgRoot, "vcpkg.exe");
+
+  if (managedVcpkg && !existsSync(join(vcpkgRoot, ".git"))) {
+    mkdirSync(dirname(vcpkgRoot), { recursive: true });
+    run("git", [
+      "clone",
+      "--filter=blob:none",
+      "https://github.com/microsoft/vcpkg.git",
+      vcpkgRoot,
+    ]);
+  }
+  if (managedVcpkg) {
+    run("git", ["fetch", "--depth=1", "origin", baseline], {
+      cwd: vcpkgRoot,
+    });
+    run("git", ["checkout", "--detach", baseline], { cwd: vcpkgRoot });
+  }
+  if (!existsSync(vcpkg)) {
+    run(
+      process.env.ComSpec || "cmd.exe",
+      [
+        "/d",
+        "/s",
+        "/c",
+        join(vcpkgRoot, "bootstrap-vcpkg.bat"),
+        "-disableMetrics",
+      ],
+      { cwd: vcpkgRoot }
+    );
+  }
+
+  const installRoot = dirname(prefix);
+  if (basename(prefix) !== windowsTriplet) {
+    throw new Error(
+      `SAGEJS_FLINT_PREFIX on Windows must end in ${windowsTriplet}`
+    );
+  }
+  run(
+    vcpkg,
+    [
+      "install",
+      `--triplet=${windowsTriplet}`,
+      `--x-manifest-root=${packageRoot}`,
+      `--x-install-root=${installRoot}`,
+      `--overlay-triplets=${join(packageRoot, "scripts", "triplets")}`,
+    ],
+    {
+      cwd: packageRoot,
+      env: { VCPKG_MAX_CONCURRENCY: jobs },
+    }
+  );
+  patchWindowsFlintHeaders();
+  process.stdout.write(`Native dependencies installed in ${prefix}\n`);
 }
 
 function digest(path) {
@@ -311,28 +412,48 @@ function buildSmalljac(source) {
 }
 
 async function main() {
-  if (process.platform !== "linux" || process.arch !== "x64") {
+  if (process.platform === "win32") {
+    buildWindowsDependencies();
+    return;
+  }
+  const smalljacAccelerator =
+    process.platform === "linux" && process.arch === "x64";
+  const supportedUnix =
+    (process.platform === "linux" &&
+      (process.arch === "x64" || process.arch === "arm64")) ||
+    (process.platform === "darwin" &&
+      (process.arch === "arm64" || process.arch === "x64"));
+  if (!supportedUnix) {
     throw new Error(
-      "the native smalljac/ffpoly backend currently requires x86-64 Linux"
+      `the native FLINT backend does not yet support ${process.platform}/${process.arch}`
     );
   }
   const stampPath = join(prefix, ".sagejs-flint-dependencies.json");
   const expectedStamp = {
-    ffpoly: dependencies.find(({ name }) => name === "ffpoly").version,
+    ...(smalljacAccelerator
+      ? { ffpoly: dependencies.find(({ name }) => name === "ffpoly").version }
+      : {}),
     flint: dependencies.find(({ name }) => name === "flint").version,
     gmp: dependencies.find(({ name }) => name === "gmp").version,
     mpc: dependencies.find(({ name }) => name === "mpc").version,
     mpfr: dependencies.find(({ name }) => name === "mpfr").version,
-    smalljac: dependencies.find(({ name }) => name === "smalljac").version,
+    ...(smalljacAccelerator
+      ? {
+          smalljac:
+            dependencies.find(({ name }) => name === "smalljac").version,
+        }
+      : {}),
+    ...(macosDeploymentTarget ? { macosDeploymentTarget } : {}),
   };
 
   if (
     existsSync(join(prefix, "lib", "libgmp.a")) &&
     existsSync(join(prefix, "lib", "libflint.a")) &&
-    existsSync(join(prefix, "lib", "libff_poly.a")) &&
     existsSync(join(prefix, "lib", "libmpc.a")) &&
     existsSync(join(prefix, "lib", "libmpfr.a")) &&
-    existsSync(join(prefix, "lib", "libsmalljac.a")) &&
+    (!smalljacAccelerator ||
+      (existsSync(join(prefix, "lib", "libff_poly.a")) &&
+        existsSync(join(prefix, "lib", "libsmalljac.a")))) &&
     existsSync(stampPath) &&
     JSON.stringify(JSON.parse(readFileSync(stampPath, "utf8"))) ===
       JSON.stringify(expectedStamp)
@@ -344,7 +465,11 @@ async function main() {
   mkdirSync(prefix, { recursive: true });
   mkdirSync(sources, { recursive: true });
   const archives = new Map();
-  for (const dependency of dependencies) {
+  const selectedDependencies = dependencies.filter(
+    ({ name }) => smalljacAccelerator ||
+      (name !== "ffpoly" && name !== "smalljac")
+  );
+  for (const dependency of selectedDependencies) {
     archives.set(dependency.name, await obtainArchive(dependency));
   }
   const source = (name) => {
@@ -355,8 +480,10 @@ async function main() {
   buildMpfr(source("mpfr"));
   buildMpc(source("mpc"));
   buildFlint(source("flint"));
-  buildFfpoly(source("ffpoly"));
-  buildSmalljac(source("smalljac"));
+  if (smalljacAccelerator) {
+    buildFfpoly(source("ffpoly"));
+    buildSmalljac(source("smalljac"));
+  }
   writeFileSync(stampPath, `${JSON.stringify(expectedStamp, null, 2)}\n`);
   process.stdout.write(`Native dependencies installed in ${prefix}\n`);
 }

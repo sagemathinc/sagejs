@@ -4,11 +4,26 @@
 
 [![Sage.js CI](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml/badge.svg)](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml)
 
+## Download a standalone executable
+
+The [latest GitHub release](https://github.com/sagemathinc/sagejs/releases/latest)
+contains ready-to-run archives for Linux x64, Linux arm64, and Windows x64.
+They include both `sagejs`, with the native mathematics stack, and
+`sagepython`, the lightweight Python-compatible runtime. No Node.js, Python,
+compiler, package manager, or source checkout is needed on the target machine.
+
+After extracting the archive, run `./sagejs` on Linux or `sagejs.exe` on
+Windows. Each archive has a neighboring `.sha256` file. Linux releases are
+built on Ubuntu 24.04; Windows releases are built on Windows Server 2022 and
+are intended for ordinary Windows 10/11 x64 systems. Native macOS is tested on
+every change, but its signed release is produced separately by a maintainer as
+described below.
+
 ## Build the complete system from source
 
-**The complete native bootstrap currently supports x86-64 Linux only.** On
-that platform, a new checkout becomes a working research system with one pnpm
-command:
+The native bootstrap is validated on x86-64 and arm64 Linux, x86-64 Windows,
+and Apple Silicon macOS. A new checkout becomes a working research system with
+one pnpm command:
 
 ```sh
 git clone https://github.com/sagemathinc/sagejs.git
@@ -23,28 +38,43 @@ the complete native mathematics stack, and produces a self-contained
 both the development runtime and the standalone executable.
 
 The full build requires Node.js 25.5 or newer (for Node's SEA builder), pnpm
-11.9.0, Git, a C/C++ toolchain, `make`, Python 3, `m4`, `tar`, and `xz`. On
-Debian or Ubuntu, the non-Node prerequisites are installed by:
+11.9.0, Git, Python 3, and a native C/C++ toolchain. On Debian or Ubuntu, the
+non-Node prerequisites are installed by:
 
 ```sh
 sudo apt-get install build-essential git python3 m4 xz-utils
 ```
 
-A system GMP installation is **not** required. The build downloads
-SHA-256-pinned releases of GMP, MPFR, MPC, FLINT, ffpoly, and smalljac, tests
-GMP, and links the resulting position-independent static libraries into the
-native addon and SEA. Downloads and builds are cached under
-`packages/flint/.native`, making later bootstrap runs incremental. The current
-ffpoly/smalljac backend contains x86-64 assembly, so the complete native path
-does not yet support other architectures. Native Windows is an active
-first-class port with permanent bring-up CI; see [`WINDOWS.md`](WINDOWS.md) for
-the support contract, toolchain, and promotion criteria.
+A system GMP installation is **not** required. Linux and macOS download and
+build SHA-256-pinned GMP, MPFR, MPC, and FLINT releases. Linux x64 also builds
+ffpoly and smalljac; Windows installs the same core stack from a pinned vcpkg
+baseline. Every platform statically links its libraries into the native addon
+and SEA. The ffpoly/smalljac accelerator still contains x86-64 GNU assembly,
+so Linux arm64, macOS, and Windows currently use the tested portable
+elliptic-curve point-count fallback behind the same API. Downloads and builds
+are cached under `packages/flint/.native`, making later bootstrap runs
+incremental.
 
-The cold native-library build is the expensive step: expect roughly 3–10
-minutes on a modern development machine and longer on a small VM; subsequent
-runs normally take well under a minute because the verified archives and
-static libraries are reused. Builds use up to eight CPU jobs by default. To
-choose the parallelism explicitly, for example on a 16-core builder, run:
+On Apple Silicon macOS, install the Xcode Command Line Tools and Homebrew
+packages `node`, `pnpm`, `m4`, and `xz`. The native libraries target macOS 13
+or newer by default; set `MACOSX_DEPLOYMENT_TARGET` before the first build to
+choose a different compatible target. Homebrew currently disables Node's SEA
+builder; Sage.js detects that build, downloads the matching official Node
+archive, verifies it against Node's published SHA-256 manifest, and caches it
+solely for creating the standalone executable. Set `SAGEJS_SEA_NODE` to use a
+specific SEA-enabled Node executable instead.
+
+On Windows x64, install Git, Python 3, CMake, and Visual Studio 2022 Build
+Tools with the Desktop C++ workload, clang-cl, and the ClangCL MSBuild
+toolset. Native Windows does not require WSL, MSYS2, or MinGW. See
+[`WINDOWS.md`](WINDOWS.md) for the exact toolchain and architecture.
+
+The cold native-library build is the expensive step. Expect roughly 3–15
+minutes on a modern Linux or Apple Silicon machine. A first Windows vcpkg
+build can take 30–60 minutes on a four-core VM. Subsequent runs normally take
+well under a minute because verified archives, package sources, and static
+libraries are reused. Builds use up to eight CPU jobs by default. To choose
+the parallelism explicitly, for example on a 16-core builder, run:
 
 ```sh
 SAGEJS_BUILD_JOBS=16 pnpm bootstrap
@@ -65,7 +95,8 @@ Once built:
 ```sh
 pnpm start                         # interactive Sage.js REPL
 node bin/sagejs program.sage       # run a source file
-build/sea/sagejs program.sage      # run it without Node or the checkout
+build/sea/sagejs program.sage      # Linux/macOS: no Node or checkout
+build\sea\sagejs.exe program.sage  # Windows: no Node or checkout
 
 pnpm test:unit                     # fast JavaScript/runtime regression tier
 pnpm test:native                   # FLINT and native integration tests
@@ -77,6 +108,25 @@ pnpm test                          # full compiler, CLI, upstream, and CoWasm su
 See [`TESTING.md`](TESTING.md) for the test tiers and
 [`DISTRIBUTION.md`](DISTRIBUTION.md) for native, SEA, and WebAssembly
 distribution details.
+
+Tagged releases publish ready-to-run `sagejs` and `sagepython` archives for
+Linux x64, Linux arm64, and Windows x64. They require no Node.js, compiler, or
+package manager on the target machine. macOS remains a required native CI
+target. A maintainer with Apple credentials can build, sign, notarize, and
+staple a native installer locally with:
+
+```sh
+pnpm release:macos
+# Or also attach it to an existing release:
+pnpm release:macos -- --publish v0.1.1
+```
+
+The command uses the same credential conventions as CoCalc's macOS release
+tooling: `SAGEJS_MACOS_SIGN_ID`, `SAGEJS_MACOS_INSTALLER_ID`, and
+`SAGEJS_MACOS_NOTARY_PROFILE` (default `notary-profile`). It creates both a
+signed archive and a signed, notarized, stapled installer under
+`build/release`. GitHub does not publish an unsigned macOS artifact or ask
+users to bypass Gatekeeper.
 
 The main contributor-facing directories are:
 

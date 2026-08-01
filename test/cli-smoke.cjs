@@ -9,16 +9,17 @@ const { defaultHistoryFile } = require("../dist/tools/repl.js");
 
 const root = join(__dirname, "..");
 const cli = join(root, "bin", "sagejs");
+const cache = join("/cache", "sagejs");
 
-assert.equal(defaultHistoryFile({ sage: true }, "/cache"), "/cache/sagejs/history");
+assert.equal(defaultHistoryFile({ sage: true }, "/cache"), join(cache, "history"));
 assert.equal(
   defaultHistoryFile({ sage: false }, "/cache"),
-  "/cache/sagejs/history-python",
+  join(cache, "history-python"),
 );
 for (const language of ["magma", "wolfram", "matlab", "maple"]) {
   assert.equal(
     defaultHistoryFile({ [language]: true }, "/cache"),
-    `/cache/sagejs/history-${language}`,
+    join(cache, `history-${language}`),
   );
 }
 
@@ -46,7 +47,7 @@ function runError(args, input) {
   return result.stderr;
 }
 
-assert.match(run(["--version"]), /^sagejs 0\.1\.0\s*$/);
+assert.match(run(["--version"]), /^sagejs 0\.1\.1\s*$/);
 const help = run(["--help"]);
 assert.match(help, /Sage\.js — research mathematics native to JavaScript/);
 assert.match(help, /With no program, start an interactive Sage calculator/);
@@ -103,6 +104,13 @@ assert.equal(
   1,
 );
 assert.match(run([], "print(2^3)\nprint(sum([1..10]))\n"), /8\s+55\s*$/);
+assert.equal(run([], 'print("before")\nquit()\nprint("after")\n').trim(), "before");
+const explicitExit = spawnSync(process.execPath, [cli], {
+  cwd: root,
+  encoding: "utf8",
+  input: "exit(3)\n",
+});
+assert.equal(explicitExit.status, 3);
 assert.equal(run([], "value = GF(5)\n").trim(), "");
 assert.equal(
   run([], "value = GF(5)\nvalue\n").trim(),

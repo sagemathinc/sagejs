@@ -17,12 +17,28 @@ const {
 const { generateJavaScript } = require("./js-backend.cjs");
 
 const root = resolve(__dirname, "..", "..");
+const windowsTriplet = "x64-windows-static-md-release";
 const nativePrefix = resolve(
   process.env.SAGEJS_FLINT_PREFIX ||
-    join(root, "packages", "flint", ".native", "prefix"),
+    (process.platform === "win32"
+      ? join(
+          root,
+          "packages",
+          "flint",
+          ".native",
+          "vcpkg-installed",
+          windowsTriplet,
+        )
+      : join(root, "packages", "flint", ".native", "prefix")),
 );
 const nativeInclude = join(root, "packages", "flint", "include");
 const header = join(nativeInclude, "sagejs", "native.h");
+const mpcVersion = process.platform === "win32" ? "1.3.1" : "1.4.1";
+const nativeMpcLibrary = join(
+  nativePrefix,
+  "lib",
+  process.platform === "win32" ? "mpc.lib" : "libmpc.a",
+);
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -41,23 +57,48 @@ function backendFingerprint() {
 }
 
 function bindingGyp() {
-  return {
-    targets: [
-      {
-        target_name: "sagejs_native_kernel",
-        sources: ["kernel.c"],
-        include_dirs: [join(nativePrefix, "include"), nativeInclude],
-        libraries: [
-          join(nativePrefix, "lib", "libmpc.a"),
-          join(nativePrefix, "lib", "libmpfr.a"),
-          "-lgmp",
-          "-lm",
-        ],
-        defines: ["NAPI_VERSION=8"],
-        cflags: ["-O3", "-fPIC", "-Wall", "-Wextra"],
-        ldflags: ["-Wl,--exclude-libs,ALL"],
+  const target = {
+    target_name: "sagejs_native_kernel",
+    win_delay_load_hook: "false",
+    sources: ["kernel.c"],
+    include_dirs: [join(nativePrefix, "include"), nativeInclude],
+    defines: ["NAPI_VERSION=8"],
+  };
+  if (process.platform === "win32") {
+    target.libraries = [
+      nativeMpcLibrary,
+      join(nativePrefix, "lib", "mpfr.lib"),
+      join(nativePrefix, "lib", "gmp.lib"),
+    ];
+    target.configurations = {
+      Release: {
+        msvs_settings: {
+          VCCLCompilerTool: { RuntimeLibrary: 2 },
+        },
       },
-    ],
+    };
+    target.msvs_settings = {
+      VCCLCompilerTool: { Optimization: 3, WarningLevel: 3 },
+    };
+  } else {
+    target.libraries = [
+      nativeMpcLibrary,
+      join(nativePrefix, "lib", "libmpfr.a"),
+      join(nativePrefix, "lib", "libgmp.a"),
+      "-lm",
+    ];
+    target.cflags = ["-O3", "-fPIC", "-Wall", "-Wextra"];
+    if (process.platform === "darwin") {
+      target.xcode_settings = {
+        GCC_OPTIMIZATION_LEVEL: "3",
+        MACOSX_DEPLOYMENT_TARGET: "13.0",
+      };
+    } else {
+      target.ldflags = ["-Wl,--exclude-libs,ALL"];
+    }
+  }
+  return {
+    targets: [target],
   };
 }
 
@@ -74,7 +115,7 @@ function compileKernel(options) {
     architecture: process.arch,
     nodeModulesAbi: process.versions.modules,
     mpfr: "4.2.2",
-    mpc: "1.4.1",
+    mpc: mpcVersion,
   };
   const cacheKey = sha256(JSON.stringify(identity));
   const cacheRoot = resolve(
@@ -105,7 +146,7 @@ function compileKernel(options) {
     };
   }
 
-  if (!existsSync(join(nativePrefix, "lib", "libmpc.a"))) {
+  if (!existsSync(nativeMpcLibrary)) {
     throw new Error(
       "native MPC dependencies are not built; run " +
         "pnpm --dir packages/flint build",

@@ -4,10 +4,12 @@ const { buildSync } = require("esbuild");
 const {
   existsSync,
   mkdirSync,
+  readFileSync,
   readdirSync,
   rmSync,
   writeFileSync,
 } = require("fs");
+const { createHash } = require("crypto");
 const { execFileSync } = require("child_process");
 const { join, relative } = require("path");
 
@@ -41,6 +43,69 @@ if (!buildPython && !buildMath) {
   throw new Error(
     "usage: node scripts/build-sea.cjs [--python] [--with-flint] [--all]",
   );
+}
+
+function sha256(filename) {
+  return createHash("sha256").update(readFileSync(filename)).digest("hex");
+}
+
+function seaBuilderExecutable() {
+  if (process.env.SAGEJS_SEA_NODE) return process.env.SAGEJS_SEA_NODE;
+  if (
+    process.platform !== "darwin" ||
+    !process.execPath.includes("/Cellar/node/")
+  ) {
+    return process.execPath;
+  }
+
+  // Homebrew currently compiles Node with SEA disabled. Keep Homebrew Node as
+  // the development runtime, but cache the matching official binary solely as
+  // the executable template/builder. This also keeps `pnpm bootstrap` a
+  // one-command experience on a stock Homebrew Apple Silicon setup.
+  const platform = `darwin-${process.arch}`;
+  const release = `node-v${process.versions.node}-${platform}`;
+  const cache = join(root, "packages", "flint", ".native", "sea-node");
+  const directory = join(cache, release);
+  const executable = join(directory, "bin", "node");
+  if (existsSync(executable)) return executable;
+
+  mkdirSync(cache, { recursive: true });
+  const archiveName = `${release}.tar.xz`;
+  const archive = join(cache, archiveName);
+  const checksums = join(cache, `SHASUMS256-${process.versions.node}.txt`);
+  const base = `https://nodejs.org/dist/v${process.versions.node}`;
+  execFileSync("curl", [
+    "--fail",
+    "--location",
+    "--retry",
+    "3",
+    "--output",
+    archive,
+    `${base}/${archiveName}`,
+  ], { stdio: "inherit" });
+  execFileSync("curl", [
+    "--fail",
+    "--location",
+    "--retry",
+    "3",
+    "--output",
+    checksums,
+    `${base}/SHASUMS256.txt`,
+  ], { stdio: "inherit" });
+  const expectedLine = readFileSync(checksums, "utf8")
+    .split(/\r?\n/)
+    .find((line) => line.endsWith(`  ${archiveName}`));
+  if (!expectedLine || sha256(archive) !== expectedLine.slice(0, 64)) {
+    rmSync(archive, { force: true });
+    throw new Error(`SHA-256 verification failed for ${archiveName}`);
+  }
+  execFileSync("tar", ["-xf", archive, "-C", cache], {
+    stdio: "inherit",
+  });
+  if (!existsSync(executable)) {
+    throw new Error(`official Node SEA builder not found at ${executable}`);
+  }
+  return executable;
 }
 
 function collectStandardLibraryAssets() {
@@ -132,10 +197,17 @@ function buildExecutable(name, withFlint) {
       2,
     )}\n`,
   );
-  execFileSync(process.execPath, ["--build-sea", configFilename], {
+  const seaNode = seaBuilderExecutable();
+  execFileSync(seaNode, ["--build-sea", configFilename], {
     cwd: root,
     stdio: "inherit",
   });
+  if (process.platform === "darwin") {
+    execFileSync("codesign", ["--sign", "-", "--force", output], {
+      cwd: root,
+      stdio: "inherit",
+    });
+  }
   console.log(
     `Built ${relative(root, output)} (${withFlint ? "with FLINT" : "Python runtime"})`,
   );

@@ -10,6 +10,7 @@ const arguments_ = new Set(process.argv.slice(2));
 arguments_.delete("--");
 const withoutSea = arguments_.delete("--without-sea");
 const help = arguments_.delete("--help") || arguments_.delete("-h");
+const executableSuffix = process.platform === "win32" ? ".exe" : "";
 
 if (help) {
   process.stdout.write(`Usage: pnpm bootstrap [--without-sea]
@@ -97,31 +98,32 @@ function checkPrerequisites() {
         "without the standalone executable.",
     );
   }
-  if (process.platform !== "linux" || process.arch !== "x64") {
+  const supportedHost =
+    (process.platform === "linux" &&
+      (process.arch === "x64" || process.arch === "arm64")) ||
+    (process.platform === "darwin" &&
+      (process.arch === "arm64" || process.arch === "x64")) ||
+    (process.platform === "win32" && process.arch === "x64");
+  if (!supportedHost) {
     throw new Error(
-      "the complete native build currently requires x86-64 Linux because " +
-        "the pinned ffpoly/smalljac backend contains x86-64 assembly",
+      `the native build does not yet support ${process.platform}/${process.arch}`,
     );
   }
 
-  const requiredCommands = [
-    "git",
-    "cc",
-    "c++",
-    "make",
-    "python3",
-    "m4",
-    "tar",
-    "xz",
-    "pnpm",
-  ];
+  const requiredCommands = process.platform === "win32"
+    ? ["git", "python", "cmake", "pnpm"]
+    : ["git", "cc", "c++", "make", "python3", "m4", "tar", "xz", "pnpm"];
   const missing = requiredCommands.filter(
     (command) => !commandAvailable(command),
   );
   if (missing.length !== 0) {
     throw new Error(
       `missing build tools: ${missing.join(", ")}\n` +
-        "On Debian or Ubuntu, install: build-essential git python3 m4 xz-utils\n" +
+        (process.platform === "linux"
+          ? "On Debian or Ubuntu, install: build-essential git python3 m4 xz-utils\n"
+          : process.platform === "darwin"
+            ? "On macOS, install the Xcode Command Line Tools and Homebrew packages node, pnpm, m4, and xz.\n"
+            : "On Windows, install Git, Python, CMake, and Visual Studio 2022 Build Tools with C++, clang-cl, and the ClangCL MSBuild toolset.\n") +
         "Install pnpm 11.9.0 using the instructions at https://pnpm.io/installation",
     );
   }
@@ -148,7 +150,9 @@ function main() {
 
   step(
     4,
-    "Building GMP, MPFR, MPC, FLINT, ffpoly, smalljac, and the Node addon",
+    process.platform === "linux" && process.arch === "x64"
+      ? "Building GMP, MPFR, MPC, FLINT, ffpoly, smalljac, and the Node addon"
+      : "Building GMP, MPFR, MPC, FLINT, and the Node addon",
   );
   run("pnpm", ["--dir", "packages/flint", "build"]);
 
@@ -164,8 +168,10 @@ function main() {
   run(process.execPath, ["bin/sagejs", "--version"]);
   smoke(process.execPath, ["bin/sagejs"], "development runtime");
   if (!withoutSea) {
-    const sea = join(root, "build", "sea", "sagejs");
-    if (!existsSync(sea)) throw new Error("build/sea/sagejs was not created");
+    const sea = join(root, "build", "sea", `sagejs${executableSuffix}`);
+    if (!existsSync(sea)) {
+      throw new Error(`build/sea/sagejs${executableSuffix} was not created`);
+    }
     run(sea, ["--version"]);
     smoke(sea, [], "self-contained executable");
   }
@@ -175,7 +181,7 @@ Sage.js is ready.
 
   Interactive development runtime:  pnpm start
   Run a source file:                 node bin/sagejs program.sage
-${withoutSea ? "" : "  Self-contained executable:          build/sea/sagejs\n"}  Fast test tiers:                   pnpm test:unit && pnpm test:native
+${withoutSea ? "" : `  Self-contained executable:          build/sea/sagejs${executableSuffix}\n`}  Fast test tiers:                   pnpm test:unit && pnpm test:native
   Full test suite:                   pnpm test
 
 The native libraries are cached under packages/flint/.native, so subsequent

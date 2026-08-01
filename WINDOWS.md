@@ -10,7 +10,8 @@ build, test, or package Sage.js.
 The completed Windows distribution will provide:
 
 - `sagejs.exe` and `sagepython.exe` built by Node's SEA toolchain;
-- a native Node-API mathematics addon built with MSVC;
+- a native Node-API mathematics addon built with clang-cl and linked against
+  MSVC-runtime-compatible libraries;
 - GMP, MPFR, MPC, and FLINT built from pinned source releases;
 - ordinary `pnpm bootstrap` support from a contributor checkout;
 - a downloadable release requiring no Node.js, pnpm, Python, compiler, WSL, or
@@ -30,21 +31,32 @@ The supported contributor toolchain is:
 - pnpm 11.9.0;
 - Python 3 for `node-gyp`;
 - Visual Studio 2022 Build Tools with the Desktop development with C++ workload;
-- the MSVC x64 compiler, linker, MSBuild, and Windows SDK;
+- the MSVC x64 linker, MSBuild, Windows SDK, clang-cl compiler, and ClangCL
+  MSBuild toolset;
 - CMake 3.22 or newer and Ninja;
 - PowerShell.
 
 GitHub CLI is useful for agent-driven pull requests, and `signtool` will be
-needed for signed releases. `clang-cl` is a valuable secondary compiler after
-the MSVC build works. GCC, MinGW, MSYS2, and WSL are not part of the primary
-build contract.
+needed for signed releases. The C kernels use clang-cl because they rely on
+`__int128` and `__builtin_*` operations that MSVC's C compiler does not
+provide. GCC, MinGW, MSYS2, and WSL are not part of the primary build contract.
 
-## Current boundary
+## Current implementation
 
-The compiler, baselib, JavaScript runtime, and FLINT-free SEA should be portable
-without algorithmic changes. The native dependency build is currently rejected
-on non-Linux hosts, and the addon unconditionally links Unix archives and
-`pthread`.
+The compiler, baselib, JavaScript runtime, FLINT-free SEA, pinned vcpkg
+dependency stack, native FLINT addon, and mathematics SEA all build on native
+Windows. The addon passes its exact-arithmetic, finite-field, Dirichlet/Arb,
+modular-symbol, lifecycle, and lazy-loading suites. Windows uses FLINT's own
+word bounds throughout rather than assuming the Unix LP64 data model.
+
+The addon retains node-gyp's `node.exe` delay-load hook. This is essential for
+the SEA: a native addon normally imports Node-API symbols from `node.exe`, but
+the distributed executable is named `sagejs.exe`. The hook resolves them from
+the running executable instead. clang-cl/lld does not preserve the floating
+argument to the first lazily resolved `napi_create_double` call, so addon
+initialization resolves that import once with an intentionally discarded
+value. The full native suite runs both under ordinary Node and from a relocated
+SEA to guard this subtle ABI boundary.
 
 The main exceptional dependency is ffpoly/smalljac. Its finite-field code uses
 GNU x86-64 inline assembly and assumes that C `unsigned long` is 64 bits.
@@ -60,12 +72,8 @@ different mathematical result.
 
 ## CI stages
 
-`.github/workflows/ci.yml` runs the Windows job on every pull request. During
-initial bring-up the job is marked as an expected failure so it records all
-portable and native layer outcomes without making unrelated changes
-unmergeable. It must not be deleted, skipped, or weakened to hide a regression.
-
-Promote the Windows job to a required, blocking job when all of these pass:
+`.github/workflows/ci.yml` runs a blocking Windows job on every pull request.
+It covers all of these promotion criteria:
 
 1. pinned dependency installation;
 2. compiler and standard-library build;
@@ -75,22 +83,17 @@ Promote the Windows job to a required, blocking job when all of these pass:
 6. relocation tests from a clean temporary directory;
 7. release archive construction with licenses and SHA-256 checksum.
 
-After that point, Windows failures block merging exactly like Linux failures.
+Windows failures block merging exactly like Linux failures.
 
 ## Implementation sequence
 
-1. Make path, executable-name, temporary-directory, and process handling work
-   under native PowerShell and Win32.
-2. Build and test the FLINT-free `sagepython.exe`.
-3. Split optional smalljac code from the core addon and make `binding.gyp`
-   platform-aware.
-4. Build pinned GMP, MPFR, MPC, and FLINT through the upstream-supported Windows
-   CMake/MSVC path.
-5. Build and test the native addon without smalljac.
-6. Produce and relocation-test `sagejs.exe`.
-7. Port ffpoly/smalljac using `uint64_t` and portable MSVC/GNU intrinsics, with
+1. Keep the blocking clean-room Windows build, native tests, and relocated SEA
+   smoke test green.
+2. Package `sagejs.exe` and `sagepython.exe` with licenses and checksums in
+   tagged releases.
+3. Port ffpoly/smalljac using `uint64_t` and portable compiler intrinsics, with
    cross-platform correctness and performance benchmarks.
-8. Test the released archive on a normal Windows 11 laptop with no development
+4. Test the released archive on a normal Windows 11 laptop with no development
    software installed.
 
 The Windows 11 laptop is the final consumer test, not the primary development

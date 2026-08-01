@@ -316,6 +316,15 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       global.console = options.console;
       result = runInThisContext(js);
     } catch (err) {
+      if (err?.name === "SystemExit") {
+        const code = err.code;
+        if (code === undefined || code === null) process.exit(0);
+        if (typeof code === "number" || typeof code === "bigint") {
+          process.exit(Number(code));
+        }
+        options.console.error(String(code));
+        process.exit(1);
+      }
       if (err?.stack) {
         options.console.error(err?.stack);
       } else {

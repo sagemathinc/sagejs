@@ -48,11 +48,12 @@ Linux artifacts also inherit the libc and compiler-runtime baseline of the
 Node executable used to build them; release binaries should therefore be
 built in the oldest Linux environment which Sage.js intends to support.
 
-The native build downloads checksum-pinned releases of GMP, MPFR, MPC, FLINT,
-ffpoly, and smalljac, builds position-independent static libraries, tests GMP,
-and links those libraries into the addon. The smalljac/ffpoly point-counting
-backend currently makes the mathematics build x86-64-specific. At runtime the
-SEA asset API writes the addon to a private temporary directory because Node
+The native build downloads checksum-pinned releases of GMP, MPFR, MPC, and
+FLINT; Linux x64 also downloads ffpoly and smalljac. It builds
+position-independent static libraries, tests GMP, and links those libraries
+into the addon. Other platforms retain the same elliptic-curve API using the
+portable point-counting fallback. At runtime the SEA asset API writes the
+addon to a private temporary directory because Node
 loads native addons through a filesystem path. The directory is removed when
 the process exits.
 
