@@ -15,7 +15,10 @@ const { spawnSync } = require("node:child_process");
 
 const root = join(__dirname, "..");
 const cli = join(root, "bin", "sagejs");
-const temporary = mkdtempSync(join(tmpdir(), "sagejs-module-cache-test-"));
+// Windows commonly shortens part of its temporary path to RUNNER~1.  A tilde
+// away from the beginning is ordinary filename data, not a home-directory
+// marker.
+const temporary = mkdtempSync(join(tmpdir(), "sagejs-module-cache-test-~1-"));
 const sourceDirectory = join(temporary, "source");
 const compilerCache = join(temporary, "compiler-cache");
 const replCache = join(temporary, "repl-cache");

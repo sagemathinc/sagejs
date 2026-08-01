@@ -157,13 +157,15 @@ jobs:
         id: unit
         if: always() && steps.runtime.outcome == 'success'
         continue-on-error: true
-        run: pnpm test:unit
+        run: pnpm test:portable
 
-      - name: Build the FLINT-free Windows SEA
+      - name: Build and relocation-test the FLINT-free Windows SEA
         id: python_sea
         if: always() && steps.runtime.outcome == 'success'
         continue-on-error: true
-        run: pnpm build:sea:python
+        run: |
+          pnpm build:sea:python
+          node test/sea-smoke.cjs --python-only
 
       - name: Attempt the native mathematics build
         id: native

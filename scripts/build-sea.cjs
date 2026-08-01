@@ -27,6 +27,7 @@ const flintAddon = join(
 const args = new Set(process.argv.slice(2));
 const buildPython = args.size === 0 || args.has("--all") || args.has("--python");
 const buildMath = args.has("--all") || args.has("--with-flint");
+const executableSuffix = process.platform === "win32" ? ".exe" : "";
 const [nodeMajor, nodeMinor] = process.versions.node
   .split(".")
   .map((part) => Number(part));
@@ -155,5 +156,5 @@ buildSync({
   external: ["plotly.js-dist-min/plotly.min.js"],
 });
 
-if (buildPython) buildExecutable("sagepython", false);
-if (buildMath) buildExecutable("sagejs", true);
+if (buildPython) buildExecutable(`sagepython${executableSuffix}`, false);
+if (buildMath) buildExecutable(`sagejs${executableSuffix}`, true);

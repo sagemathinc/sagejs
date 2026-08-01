@@ -35,7 +35,17 @@ const integration = [
   "test/polyglot.cjs",
 ];
 
+// Tests which exercise the compiler/runtime without requiring the optional
+// native mathematics addon.  This tier is useful during platform bring-up;
+// unit remains the complete fast developer tier once the addon is available.
+const portable = unit.filter(
+  (filename) =>
+    filename !== "test/foreign-languages.cjs" &&
+    filename !== "test/magma.cjs",
+);
+
 module.exports = {
+  portable,
   unit,
   integration,
   all: [...unit, ...integration],

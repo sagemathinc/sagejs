@@ -12,8 +12,20 @@ const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const root = join(__dirname, "..");
-const pythonExecutable = join(root, "build", "sea", "sagepython");
-const mathExecutable = join(root, "build", "sea", "sagejs");
+const executableSuffix = process.platform === "win32" ? ".exe" : "";
+const pythonExecutable = join(
+  root,
+  "build",
+  "sea",
+  `sagepython${executableSuffix}`,
+);
+const mathExecutable = join(
+  root,
+  "build",
+  "sea",
+  `sagejs${executableSuffix}`,
+);
+const pythonOnly = process.argv.includes("--python-only");
 const temporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-test-"));
 
 function run(executable, filename, extraArguments = []) {
@@ -28,8 +40,10 @@ function run(executable, filename, extraArguments = []) {
 try {
   // Some filesystems do not preserve an executable bit when an artifact is
   // copied into a test workspace.
-  chmodSync(pythonExecutable, 0o755);
-  chmodSync(mathExecutable, 0o755);
+  if (process.platform !== "win32") {
+    chmodSync(pythonExecutable, 0o755);
+    if (!pythonOnly) chmodSync(mathExecutable, 0o755);
+  }
 
   const pythonProgram = join(temporaryDirectory, "portable.py");
   writeFileSync(
@@ -109,30 +123,32 @@ try {
     "[1, 4, 9, 16]",
   );
 
-  const mathProgram = join(temporaryDirectory, "portable.sage");
-  writeFileSync(
-    mathProgram,
-    [
-      "print(factor(2026))",
-      "R = RealField(100)",
-      "print(R('1.25') * R('2.5'))",
-      "print(x)",
-      "print(sin(x^2).derivative(x))",
-      "print(fast_callable(sin(x^2), vars=[x])(2))",
-      "u, v = var('u v')",
-      "print(plot3d(u^2-v^2, (u,-1,1), (v,-1,1), plot_points=2))",
-      "",
-    ].join("\n"),
-  );
-  assert.equal(
-    run(mathExecutable, mathProgram),
-    "2 * 1013\n" +
-      "3.1250000000000000000000000000\n" +
-      "x\n" +
-      "2*x*cos(x^2)\n" +
-      "-0.7568024953079282\n" +
-      "Graphics3d Object",
-  );
+  if (!pythonOnly) {
+    const mathProgram = join(temporaryDirectory, "portable.sage");
+    writeFileSync(
+      mathProgram,
+      [
+        "print(factor(2026))",
+        "R = RealField(100)",
+        "print(R('1.25') * R('2.5'))",
+        "print(x)",
+        "print(sin(x^2).derivative(x))",
+        "print(fast_callable(sin(x^2), vars=[x])(2))",
+        "u, v = var('u v')",
+        "print(plot3d(u^2-v^2, (u,-1,1), (v,-1,1), plot_points=2))",
+        "",
+      ].join("\n"),
+    );
+    assert.equal(
+      run(mathExecutable, mathProgram),
+      "2 * 1013\n" +
+        "3.1250000000000000000000000000\n" +
+        "x\n" +
+        "2*x*cos(x^2)\n" +
+        "-0.7568024953079282\n" +
+        "Graphics3d Object",
+    );
+  }
 } finally {
   rmSync(temporaryDirectory, { recursive: true, force: true });
 }

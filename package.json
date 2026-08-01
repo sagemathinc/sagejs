@@ -84,6 +84,7 @@
     "test": "pnpm run build && pnpm run test:baselib:strict && pnpm run test:compiler && pnpm run test:cli && pnpm run test:upstream:run && pnpm run test:cowasm:run",
     "test:baselib:strict": "node scripts/check-strict-baselib.cjs",
     "test:compiler": "node scripts/run-compiler-tests.cjs",
+    "test:portable": "node scripts/run-test-tier.cjs portable",
     "test:unit": "node scripts/run-test-tier.cjs unit",
     "test:integration": "node scripts/run-test-tier.cjs integration",
     "test:cli": "node scripts/run-test-tier.cjs all",

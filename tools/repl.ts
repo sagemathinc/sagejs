@@ -41,7 +41,7 @@ const HOME =
   process.env[process.platform == "win32" ? "USERPROFILE" : "HOME"] ?? "/tmp";
 
 function expandUser(x: string): string {
-  return x.replace("~", HOME);
+  return x.replace(/^~/, HOME);
 }
 
 const CACHEDIR = process.env.XDG_CACHE_HOME
