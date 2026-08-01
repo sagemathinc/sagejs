@@ -11,6 +11,9 @@
   `pnpm test:baselib:strict` at zero errors.
 - Use `sagejs.runtime` for explicit low-level boundaries; do not add verbatim
   JavaScript or `# globals` declarations to strict mathematical modules.
+- Treat native Windows x64 as a first-class target. New native dependencies
+  must pass Windows CI or have an explicit capability flag with a tested correct
+  fallback; do not make WSL, MSYS2, or MinGW part of the supported user path.
 - Commit coherent completed work and push each commit to GitHub promptly.
 - Do not commit `*.chat` files or generated build artifacts that are already ignored.
 
@@ -37,4 +40,3 @@ EOF
 
 - `git commit -m` is only for subject-only commits with no body.
 - Prefer follow-up commits over amending or rewriting history unless the user explicitly asks for that.
-

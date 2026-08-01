@@ -1,0 +1,227 @@
+name: Sage.js CI
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sagejs-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-x64:
+    name: Linux x64 native, tests, and SEA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out Sage.js and its test corpora
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+
+      - name: Install the native toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential python3 m4 xz-utils
+
+      - name: Cache downloaded and compiled native dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            packages/flint/.native/downloads
+            packages/flint/.native/prefix
+          key: linux-x64-native-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'pnpm-lock.yaml') }}
+
+      - name: Bootstrap the complete native system
+        env:
+          SAGEJS_BUILD_JOBS: "4"
+        run: pnpm bootstrap
+
+      - name: Run strict baselib checks
+        run: pnpm test:baselib:strict
+
+      - name: Run compiler compatibility diagnostics
+        id: compiler
+        continue-on-error: true
+        run: pnpm test:compiler
+
+      - name: Run unit and native integration tests
+        run: |
+          pnpm test:unit
+          pnpm test:native
+
+      - name: Run Sage tutorial compatibility diagnostics
+        id: tutorial
+        continue-on-error: true
+        run: pnpm test:tutorial
+
+      - name: Build and relocation-test both SEA executables
+        env:
+          SAGEJS_BUILD_JOBS: "4"
+        run: pnpm test:sea
+
+      - name: Record non-blocking compatibility status
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ## Compatibility diagnostics
+
+          | Suite | Outcome |
+          | --- | --- |
+          | Compiler corpus | **${{ steps.compiler.outcome }}** |
+          | Sage tutorial | **${{ steps.tutorial.outcome }}** |
+
+          These broad compatibility suites already contain failures on the
+          baseline that introduced CI. They remain visible and non-blocking
+          while those existing failures are triaged; bootstrap, strict baselib,
+          unit, native, and SEA tests are blocking.
+          EOF
+
+      - name: Package the Linux x64 SEA distribution
+        run: |
+          mkdir -p build/release/sagejs-linux-x64/licenses
+          cp build/sea/sagejs build/sea/sagepython build/release/sagejs-linux-x64/
+          cp LICENSE README.md DISTRIBUTION.md build/release/sagejs-linux-x64/
+          cp licenses/* build/release/sagejs-linux-x64/licenses/
+          tar -C build/release -cJf build/release/sagejs-linux-x64.tar.xz sagejs-linux-x64
+          cd build/release
+          sha256sum sagejs-linux-x64.tar.xz > sagejs-linux-x64.tar.xz.sha256
+
+      - name: Upload Linux x64 SEA artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sagejs-linux-x64
+          path: |
+            build/release/sagejs-linux-x64.tar.xz
+            build/release/sagejs-linux-x64.tar.xz.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+  windows-x64-bringup:
+    name: Windows x64 bring-up (expected failure)
+    runs-on: windows-2022
+    timeout-minutes: 45
+    continue-on-error: true
+
+    steps:
+      - name: Check out Sage.js and its test corpora
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 26.5.1
+          cache: pnpm
+
+      - name: Install Python for node-gyp
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install the pinned dependency graph
+        run: pnpm install --frozen-lockfile
+
+      - name: Build the compiler and standard library
+        id: runtime
+        continue-on-error: true
+        run: pnpm build
+
+      - name: Run the portable unit tests
+        id: unit
+        if: always() && steps.runtime.outcome == 'success'
+        continue-on-error: true
+        run: pnpm test:unit
+
+      - name: Build the FLINT-free Windows SEA
+        id: python_sea
+        if: always() && steps.runtime.outcome == 'success'
+        continue-on-error: true
+        run: pnpm build:sea:python
+
+      - name: Attempt the native mathematics build
+        id: native
+        if: always()
+        continue-on-error: true
+        run: pnpm --dir packages/flint build
+
+      - name: Record Windows bring-up status
+        if: always()
+        shell: pwsh
+        run: |
+          @"
+          ## Windows x64 bring-up
+
+          | Layer | Outcome |
+          | --- | --- |
+          | Compiler and standard library | **${{ steps.runtime.outcome }}** |
+          | Portable unit tests | **${{ steps.unit.outcome }}** |
+          | FLINT-free SEA | **${{ steps.python_sea.outcome }}** |
+          | Native mathematics addon | **${{ steps.native.outcome }}** |
+
+          This job is deliberately non-blocking only during the initial native
+          Windows port. It must run on every pull request and will become a
+          required job when the exit criteria in `WINDOWS.md` are satisfied.
+          "@ | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+
+          $outcomes = @(
+            "${{ steps.runtime.outcome }}",
+            "${{ steps.unit.outcome }}",
+            "${{ steps.python_sea.outcome }}",
+            "${{ steps.native.outcome }}"
+          )
+          if ($outcomes -contains "failure" -or $outcomes -contains "skipped") {
+            Write-Error "Native Windows support is not complete; see the job summary."
+            exit 1
+          }
+
+  publish-release:
+    name: Publish tagged SEA release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - linux-x64
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download the validated Linux x64 artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: sagejs-linux-x64
+          path: release
+
+      - name: Create or update the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --verify-tag --generate-notes
+          gh release upload "$TAG" release/* --clobber

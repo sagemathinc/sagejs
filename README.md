@@ -2,6 +2,8 @@
 
 **Open research mathematics, native to Node.**
 
+[![Sage.js CI](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml/badge.svg)](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml)
+
 ## Build the complete system from source
 
 **The complete native bootstrap currently supports x86-64 Linux only.** On
@@ -34,7 +36,9 @@ GMP, and links the resulting position-independent static libraries into the
 native addon and SEA. Downloads and builds are cached under
 `packages/flint/.native`, making later bootstrap runs incremental. The current
 ffpoly/smalljac backend contains x86-64 assembly, so the complete native path
-does not yet support other architectures.
+does not yet support other architectures. Native Windows is an active
+first-class port with permanent bring-up CI; see [`WINDOWS.md`](WINDOWS.md) for
+the support contract, toolchain, and promotion criteria.
 
 The cold native-library build is the expensive step: expect roughly 3–10
 minutes on a modern development machine and longer on a small VM; subsequent
