@@ -2978,6 +2978,339 @@ napi_value sagejs_character_presentation_reduction(
             env, presentation->reduction, presentation->context);
 }
 
+typedef struct
+{
+    sagejs_modsym_cusp *representatives;
+    unsigned char *killed;
+    size_t count;
+    size_t capacity;
+    uint32_t level;
+    int sign;
+    const dirichlet_group_struct *group;
+    const dirichlet_char_struct *character;
+    ulong root_order;
+} p1_character_cusp_classifier;
+
+static int p1_character_cusp_coefficient(
+    const p1_character_cusp_classifier *classifier,
+    uint32_t scalar,
+    int coefficient_sign,
+    ulong *exponent)
+{
+    ulong value = p1_character_exponent(
+        classifier->group, classifier->character,
+        scalar, classifier->root_order);
+    if (value == ULONG_MAX)
+        return 0;
+    value = value == 0 ? 0 : classifier->root_order - value;
+    if (coefficient_sign < 0)
+        value = p1_add_exponents(
+            value, classifier->root_order / 2,
+            classifier->root_order);
+    *exponent = value;
+    return 1;
+}
+
+static int p1_character_new_cusp_killed(
+    const p1_character_cusp_classifier *classifier,
+    const sagejs_modsym_cusp *cusp,
+    int *killed)
+{
+    uint64_t denominator = cusp->denominator < 0
+        ? (uint64_t) (-(cusp->denominator + 1)) + 1
+        : (uint64_t) cusp->denominator;
+    uint64_t common = n_gcd(
+        classifier->level, denominator % classifier->level);
+    uint64_t step = classifier->level / common;
+
+    *killed = 0;
+    for (uint64_t j = 0; j < common; j++)
+    {
+        int64_t scalar_signed = 1 - (int64_t) (j * step);
+        uint32_t scalar = p1_reduce_signed(
+            scalar_signed, classifier->level);
+        ulong exponent;
+        if (n_gcd(scalar, classifier->level) != 1)
+            continue;
+        if (((__int128) cusp->denominator * (1 - scalar_signed))
+                % classifier->level != 0 ||
+            ((__int128) cusp->numerator * (1 - scalar_signed))
+                % common != 0)
+            continue;
+        exponent = p1_character_exponent(
+            classifier->group, classifier->character,
+            scalar, classifier->root_order);
+        if (exponent == ULONG_MAX)
+            return 0;
+        if (exponent != 0)
+        {
+            *killed = 1;
+            return 1;
+        }
+    }
+    return 1;
+}
+
+static int p1_character_classify_cusp(
+    p1_character_cusp_classifier *classifier,
+    const sagejs_modsym_cusp *cusp,
+    size_t *class_index,
+    ulong *coefficient_exponent,
+    int *is_zero)
+{
+    uint32_t scalar;
+
+    for (size_t index = 0; index < classifier->count; index++)
+    {
+        int equivalent = sagejs_modsym_gamma0_cusp_scalar(
+            classifier->level,
+            classifier->representatives + index, cusp, &scalar);
+        if (equivalent < 0)
+            return 0;
+        if (equivalent)
+        {
+            *class_index = index;
+            *is_zero = classifier->killed[index];
+            return *is_zero || p1_character_cusp_coefficient(
+                classifier, scalar, 1, coefficient_exponent);
+        }
+    }
+    if (classifier->sign != 0)
+    {
+        sagejs_modsym_cusp negative = *cusp;
+        negative.numerator = -negative.numerator;
+        for (size_t index = 0; index < classifier->count; index++)
+        {
+            int equivalent = sagejs_modsym_gamma0_cusp_scalar(
+                classifier->level,
+                classifier->representatives + index,
+                &negative, &scalar);
+            if (equivalent < 0)
+                return 0;
+            if (equivalent)
+            {
+                *class_index = index;
+                *is_zero = classifier->killed[index];
+                return *is_zero || p1_character_cusp_coefficient(
+                    classifier, scalar, classifier->sign,
+                    coefficient_exponent);
+            }
+        }
+    }
+    if (classifier->count >= classifier->capacity)
+        return 0;
+    {
+        int killed;
+        size_t index = classifier->count++;
+        if (!p1_character_new_cusp_killed(classifier, cusp, &killed))
+            return 0;
+        if (!killed && classifier->sign != 0)
+        {
+            sagejs_modsym_cusp negative = *cusp;
+            ulong exponent;
+            int equivalent;
+            negative.numerator = -negative.numerator;
+            equivalent = sagejs_modsym_gamma0_cusp_scalar(
+                classifier->level, cusp, &negative, &scalar);
+            if (equivalent < 0)
+                return 0;
+            if (equivalent)
+            {
+                if (!p1_character_cusp_coefficient(
+                        classifier, scalar, 1, &exponent))
+                    return 0;
+                if (exponent != (classifier->sign > 0
+                        ? 0 : classifier->root_order / 2))
+                    killed = 1;
+            }
+        }
+        classifier->representatives[index] = *cusp;
+        classifier->killed[index] = (unsigned char) killed;
+        *class_index = index;
+        *coefficient_exponent = 0;
+        *is_zero = killed;
+    }
+    return 1;
+}
+
+napi_value sagejs_character_presentation_boundary_data(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[4], result = NULL, matrix = NULL, cusps_value = NULL;
+    sagejs_p1list_value *list;
+    sagejs_character_presentation *presentation = NULL;
+    const dirichlet_group_struct *group = NULL;
+    dirichlet_char_t character;
+    int character_initialized = 0;
+    ulong character_index;
+    p1_character_cusp_classifier classifier = {0};
+    size_t terms = 0, compact_count = 0;
+    size_t *term_indices = NULL, *compact_indices = NULL;
+    ulong *term_exponents = NULL;
+    unsigned char *term_present = NULL;
+    sagejs_modsym_cusp *compact_cusps = NULL;
+    gr_mat_t boundary;
+    int boundary_initialized = 0;
+    qqbar_t root;
+    int root_initialized = 0;
+
+    if (!p1_arguments(env, info, 4, arguments) ||
+        (list = p1_unwrap(env, arguments[0])) == NULL ||
+        (presentation = p1_character_presentation_unwrap(
+            env, arguments[1])) == NULL ||
+        !p1_bigint_to_ulong(env, arguments[3], &character_index) ||
+        !sagejs_dirichlet_character_init_native(
+            env, arguments[2], arguments[3], &group, character))
+        goto done;
+    character_initialized = 1;
+    if (presentation->level != list->level ||
+        presentation->character_index != character_index ||
+        group->q != list->level ||
+        presentation->dimension > SIZE_MAX / 2 ||
+        presentation->dimension > (size_t) WORD_MAX)
+    {
+        napi_throw_range_error(env, NULL,
+            "character boundary data requires a matching retained presentation");
+        goto done;
+    }
+    terms = 2 * presentation->dimension;
+    classifier.capacity = terms == 0 ? 1 : terms;
+    classifier.level = list->level;
+    classifier.sign = presentation->sign;
+    classifier.group = group;
+    classifier.character = character;
+    classifier.root_order = presentation->root_order;
+    classifier.representatives = calloc(
+        classifier.capacity, sizeof(*classifier.representatives));
+    classifier.killed = calloc(
+        classifier.capacity, sizeof(*classifier.killed));
+    term_indices = malloc((terms == 0 ? 1 : terms) * sizeof(*term_indices));
+    term_exponents = malloc(
+        (terms == 0 ? 1 : terms) * sizeof(*term_exponents));
+    term_present = calloc(
+        terms == 0 ? 1 : terms, sizeof(*term_present));
+    if (classifier.representatives == NULL || classifier.killed == NULL ||
+        term_indices == NULL || term_exponents == NULL ||
+        term_present == NULL)
+        goto allocation_failure;
+
+    for (size_t row = 0; row < presentation->dimension; row++)
+    {
+        size_t generator = presentation->basis_generators[row];
+        uint32_t degree = (uint32_t) (generator / list->count);
+        size_t coset = generator % list->count;
+        int64_t lift[4];
+        if (!sagejs_modsym_lift_gamma0_coset(
+                list->level, list->pairs[coset].u,
+                list->pairs[coset].v, lift))
+            goto arithmetic_failure;
+        if (degree == presentation->weight - 2)
+        {
+            sagejs_modsym_cusp cusp = {lift[0], lift[2], 0, 0};
+            int zero;
+            if (!p1_character_classify_cusp(
+                    &classifier, &cusp, term_indices + 2 * row,
+                    term_exponents + 2 * row, &zero))
+                goto arithmetic_failure;
+            term_present[2 * row] = (unsigned char) !zero;
+        }
+        if (degree == 0)
+        {
+            sagejs_modsym_cusp cusp = {lift[1], lift[3], 0, 0};
+            int zero;
+            if (!p1_character_classify_cusp(
+                    &classifier, &cusp, term_indices + 2 * row + 1,
+                    term_exponents + 2 * row + 1, &zero))
+                goto arithmetic_failure;
+            if (!zero)
+            {
+                term_exponents[2 * row + 1] = p1_add_exponents(
+                    term_exponents[2 * row + 1],
+                    presentation->root_order / 2,
+                    presentation->root_order);
+                term_present[2 * row + 1] = 1;
+            }
+        }
+    }
+
+    compact_indices = malloc(
+        (classifier.count == 0 ? 1 : classifier.count)
+            * sizeof(*compact_indices));
+    compact_cusps = malloc(
+        (classifier.count == 0 ? 1 : classifier.count)
+            * sizeof(*compact_cusps));
+    if (compact_indices == NULL || compact_cusps == NULL)
+        goto allocation_failure;
+    for (size_t index = 0; index < classifier.count; index++)
+    {
+        if (classifier.killed[index])
+            compact_indices[index] = SIZE_MAX;
+        else
+        {
+            compact_indices[index] = compact_count;
+            compact_cusps[compact_count++] = classifier.representatives[index];
+        }
+    }
+    gr_mat_init(boundary, (slong) presentation->dimension,
+        (slong) compact_count, presentation->context);
+    boundary_initialized = 1;
+    qqbar_init(root);
+    root_initialized = 1;
+    for (size_t term = 0; term < terms; term++)
+    {
+        size_t target;
+        qqbar_ptr entry;
+        if (!term_present[term])
+            continue;
+        target = compact_indices[term_indices[term]];
+        if (target == SIZE_MAX)
+            continue;
+        qqbar_root_of_unity(root, (slong) term_exponents[term],
+            presentation->root_order);
+        entry = p1_gr_entry(boundary, (slong) (term / 2),
+            (slong) target, presentation->context);
+        qqbar_add(entry, entry, root);
+    }
+    matrix = presentation->character_is_real
+        ? sagejs_qq_matrix_from_qqbar_gr_mat(
+            env, boundary, presentation->context)
+        : sagejs_qqbar_matrix_from_gr_mat(
+            env, boundary, presentation->context);
+    cusps_value = p1_cusp_array(env, compact_cusps, compact_count);
+    if (matrix == NULL || cusps_value == NULL ||
+        !p1_check_napi(env, napi_create_object(env, &result)) ||
+        !p1_check_napi(env, napi_set_named_property(
+            env, result, "matrix", matrix)) ||
+        !p1_check_napi(env, napi_set_named_property(
+            env, result, "cusps", cusps_value)))
+        result = NULL;
+    goto done;
+
+allocation_failure:
+    napi_throw_error(env, NULL,
+        "unable to allocate character boundary data");
+    goto done;
+arithmetic_failure:
+    napi_throw_error(env, NULL,
+        "unable to classify exact character boundary cusps");
+
+done:
+    if (root_initialized)
+        qqbar_clear(root);
+    if (boundary_initialized)
+        gr_mat_clear(boundary, presentation->context);
+    free(classifier.representatives);
+    free(classifier.killed);
+    free(term_indices);
+    free(term_exponents);
+    free(term_present);
+    free(compact_indices);
+    free(compact_cusps);
+    if (character_initialized)
+        dirichlet_char_clear(character);
+    return result;
+}
+
 static void p1_monomial_matrix_coefficient(
     fmpz_t result,
     uint32_t i,

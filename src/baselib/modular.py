@@ -2772,6 +2772,35 @@ class ModularSymbolsSpace(sage.Parent):
             return ambient._boundary_data_cache
         projective_line = ambient.p1list()
         presentation = ambient._native_triple_presentation()
+        if ambient._character is not None:
+            backend = runtime.flint_backend()
+            boundary_function = runtime.reflect.get(
+                backend, 'characterPresentationBoundaryData')
+            if boundary_function is not runtime.undefined:
+                raw = runtime.reflect.apply(boundary_function, backend, [
+                    projective_line._native,
+                    presentation._native,
+                    ambient._character._parent._native,
+                    ambient._character._index,
+                ])
+                raw_matrix = runtime.reflect.get(raw, 'matrix')
+                raw_cusps = runtime.reflect.get(raw, 'cusps')
+                defining_matrix = Matrix(  # type: ignore[name-defined]  # noqa: F821
+                    MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                        ambient.base_ring(), ambient.dimension(),
+                        len(raw_cusps)),
+                    raw_matrix,
+                )
+                cusps = []
+                for pair in raw_cusps:
+                    cusps.append(ModularCusp(
+                        runtime.normalize_integer(pair[0]),
+                        runtime.normalize_integer(pair[1]),
+                    ))
+                boundary_space = BoundarySymbolsSpace(ambient, cusps)
+                ambient._boundary_data_cache = runtime.math_tuple([
+                    defining_matrix, boundary_space])
+                return ambient._boundary_data_cache
         classifier = _HigherWeightCuspClassifier(
             ambient.level(), ambient.sign(), ambient._character)
         sparse_rows = []

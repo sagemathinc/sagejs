@@ -123,12 +123,12 @@ stage) illustrates the current performance boundary:
 
 | character | stage | Sage.js | SageMath | Magma |
 | --- | ---: | ---: | ---: | ---: |
-| quadratic | space | 0.12 | 0.39 | 0.35 |
-| quadratic | cuspidal | 0.11 | 0.66 | 0.03 |
-| quadratic | `T_2` | 0.04 | 0.09 | 0.27 |
-| order 5 | space | 0.74 | 8.12 | 0.42 |
-| order 5 | cuspidal | 0.17 | 71.51 | 0.05 |
-| order 5 | `T_2` | 0.39 | 15.34 | 0.78 |
+| quadratic | space | 0.12 | 0.40 | 0.36 |
+| quadratic | cuspidal | 0.004 | 0.67 | 0.03 |
+| quadratic | `T_2` | 0.05 | 0.10 | 0.29 |
+| order 5 | space | 0.74 | 8.03 | 0.41 |
+| order 5 | cuspidal | 0.03 | 55.42 | 0.06 |
+| order 5 | `T_2` | 0.39 | 15.47 | 0.80 |
 
 The degree-12 coefficient-field case added after that snapshot currently
 gives the following on the same development machine:
@@ -136,9 +136,9 @@ gives the following on the same development machine:
 | character | stage | Sage.js | SageMath | Magma |
 | --- | ---: | ---: | ---: | ---: |
 | order 36, weight 5, level 37 | space | 0.30 | 0.07 | 0.04 |
-| order 36, weight 5, level 37 | cuspidal | 0.006 | 0.06 | <0.01 |
-| order 36, weight 5, level 37 | `T_2` | 0.096 | 0.29 | 0.01 |
-| order 36, weight 5, level 37 | charpoly | 0.64 | 0.17 | 2.31 |
+| order 36, weight 5, level 37 | cuspidal | 0.001 | 0.06 | <0.01 |
+| order 36, weight 5, level 37 | `T_2` | 0.093 | 0.37 | 0.01 |
+| order 36, weight 5, level 37 | charpoly | 0.64 | 0.20 | 2.37 |
 
 All rows passed the independent dimension or trace-fingerprint checks. These
 numbers are a reproducible development snapshot, not portable performance
@@ -153,8 +153,8 @@ Non-real presentations use
 certified multimodular cyclotomic RREF and retain its factorized native result;
 the full generator-to-basis matrix is materialized only when explicitly
 requested. Sage.js's exact order-5 construction is within a factor of two of
-Magma here. Its thin boundary kernel is within a factor of four of Magma and
-about 430 times faster than SageMath in this snapshot. Exact order-5 Hecke
+Magma here. Its complete cuspidal step is now faster than Magma in this
+snapshot and over 1,600 times faster than SageMath. Exact order-5 Hecke
 assembly is about twice as fast as Magma and 39 times faster than SageMath.
 
 The dashboard separates the following operations because conflating them
@@ -312,7 +312,17 @@ T_(p^r) = T_p T_(p^(r-1)) - chi(p) p^(k-1) T_(p^(r-2)).
 Boundary classification follows the character-sensitive cusp equivalence
 test in SageMath and the original Magma modular-symbol implementation. It
 records both the equivalence scalar and cusps killed by a stabilizer on which
-the character is nontrivial. The kernel gives the exact cuspidal subspace.
+the character is nontrivial. Projective-coset lifting, signed cusp
+classification, character normalization, and exact boundary-matrix assembly
+now run in one native batch instead of crossing the JavaScript boundary once
+per basis generator. The exact lift and cusp-equivalence-scalar primitives
+live in the portable C modular-symbol core; the Node adapter currently owns
+the character-valued matrix assembly while WASM retains the exact high-level
+fallback. At level 4001 this reduced the quadratic boundary phase from about
+0.14 seconds to 0.003 seconds. The kernel gives the exact cuspidal subspace.
+Composite levels 8, 12, 15, 16, 20, and 24, including imprimitive characters,
+were exhaustively cross-checked against SageMath for weights 2 through 4 and
+all signs.
 For a thin boundary matrix, algebraic kernel reduction scans columns in reverse
 and chooses the rightmost independent columns. The corresponding free-variable
 vectors are already in canonical RREF after reversing back, avoiding a second

@@ -617,6 +617,157 @@ static int64_t inverse_mod_positive(int64_t value, int64_t modulus)
     return old_s;
 }
 
+static int64_t extended_gcd_i64(
+    int64_t left,
+    int64_t right,
+    int64_t *left_coefficient,
+    int64_t *right_coefficient)
+{
+    int64_t old_r = left, r = right;
+    int64_t old_s = 1, s = 0;
+    int64_t old_t = 0, t = 1;
+
+    while (r != 0)
+    {
+        int64_t quotient = old_r / r;
+        __int128 next_r = (__int128) old_r - (__int128) quotient * r;
+        __int128 next_s = (__int128) old_s - (__int128) quotient * s;
+        __int128 next_t = (__int128) old_t - (__int128) quotient * t;
+        if (next_r < INT64_MIN || next_r > INT64_MAX ||
+            next_s < INT64_MIN || next_s > INT64_MAX ||
+            next_t < INT64_MIN || next_t > INT64_MAX)
+            return -1;
+        old_r = r;
+        r = (int64_t) next_r;
+        old_s = s;
+        s = (int64_t) next_s;
+        old_t = t;
+        t = (int64_t) next_t;
+    }
+    if (old_r < 0)
+    {
+        old_r = -old_r;
+        old_s = -old_s;
+        old_t = -old_t;
+    }
+    *left_coefficient = old_s;
+    *right_coefficient = old_t;
+    return old_r;
+}
+
+int sagejs_modsym_lift_gamma0_coset(
+    uint32_t level,
+    uint32_t u,
+    uint32_t v,
+    int64_t matrix[4])
+{
+    int64_t c = u, d = v, z1, z2;
+    uint64_t multiplier, common;
+
+    if (level == 0 || matrix == NULL)
+        return 0;
+    if (extended_gcd_i64(c, d, &z1, &z2) == 1)
+    {
+        matrix[0] = z2;
+        matrix[1] = -z1;
+        matrix[2] = c;
+        matrix[3] = d;
+        return 1;
+    }
+    if (c == 0)
+        c += level;
+    if (d == 0)
+        d += level;
+    multiplier = (uint64_t) c;
+    do
+    {
+        common = gcd_u64(multiplier, abs_i64(d));
+        if (common != 1)
+            multiplier /= common;
+    }
+    while (common != 1);
+    do
+    {
+        common = gcd_u64(multiplier, level);
+        if (common != 1)
+            multiplier /= common;
+    }
+    while (common != 1);
+    {
+        __int128 lifted_d = (__int128) d + (__int128) level * multiplier;
+        if (lifted_d > INT64_MAX)
+            return 0;
+        d = (int64_t) lifted_d;
+    }
+    if (extended_gcd_i64(c, d, &z1, &z2) != 1)
+        return 0;
+    matrix[0] = z2;
+    matrix[1] = -z1;
+    matrix[2] = c;
+    matrix[3] = d;
+    return 1;
+}
+
+static int64_t cusp_inverse_value(const sagejs_modsym_cusp *cusp)
+{
+    if (cusp->numerator == 0 && cusp->denominator == 1)
+        return 0;
+    if (cusp->denominator == 0 || cusp->denominator == 1)
+        return 1;
+    return inverse_mod_positive(
+        cusp->numerator, (int64_t) abs_i64(cusp->denominator));
+}
+
+int sagejs_modsym_gamma0_cusp_scalar(
+    uint32_t level,
+    const sagejs_modsym_cusp *left,
+    const sagejs_modsym_cusp *right,
+    uint32_t *scalar)
+{
+    int64_t initial_left, initial_right;
+    int64_t s1, r1, s2, r2, product_coefficient, unused;
+    uint64_t product_mod_level, common;
+    __int128 difference, x, s1_prime, scalar_value;
+
+    if (level == 0 || left == NULL || right == NULL || scalar == NULL)
+        return -1;
+    if (gcd_i64_modulus(left->denominator, level) !=
+        gcd_i64_modulus(right->denominator, level))
+        return 0;
+    initial_left = cusp_inverse_value(left);
+    initial_right = cusp_inverse_value(right);
+    if (initial_left < 0 || initial_right < 0)
+        return -1;
+    product_mod_level = (uint64_t) (
+        ((__uint128_t) (abs_i64(left->denominator) % level)
+         * (abs_i64(right->denominator) % level)) % level);
+    common = gcd_u64(product_mod_level, level);
+    difference = (__int128) initial_left * right->denominator
+        - (__int128) initial_right * left->denominator;
+    if (difference % (__int128) common != 0)
+        return 0;
+    if (extended_gcd_i64(
+            right->numerator, -right->denominator, &s2, &r2) != 1 ||
+        extended_gcd_i64(
+            left->numerator, -left->denominator, &s1, &r1) != 1 ||
+        extended_gcd_i64(
+            (int64_t) product_mod_level, level,
+            &product_coefficient, &unused) != (int64_t) common)
+        return -1;
+    difference = (__int128) s1 * right->denominator
+        - (__int128) s2 * left->denominator;
+    x = -(__int128) product_coefficient * (difference / common);
+    s1_prime = (__int128) s1 + x * left->denominator;
+    scalar_value = (__int128) right->numerator * s1_prime
+        - (__int128) r2 * left->denominator;
+    scalar_value %= level;
+    if (scalar_value < 0)
+        scalar_value += level;
+    *scalar = (uint32_t) scalar_value;
+    (void) r1;
+    return 1;
+}
+
 /* Cremona, Algorithms for Modular Elliptic Curves, Proposition 2.2.3. */
 static int gamma0_cusps_equivalent(
     uint32_t level,

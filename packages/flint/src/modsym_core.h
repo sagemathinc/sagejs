@@ -52,6 +52,24 @@ int sagejs_modsym_presentation_build(
 void sagejs_modsym_presentation_clear(
     sagejs_modsym_presentation *presentation);
 
+/* Lift a projective bottom row to an SL(2,Z) matrix. */
+int sagejs_modsym_lift_gamma0_coset(
+    uint32_t level,
+    uint32_t u,
+    uint32_t v,
+    int64_t matrix[4]);
+
+/*
+ * Return 1 when two primitive cusps are Gamma0(level)-equivalent and write
+ * the lower-right scalar modulo level, 0 when they are inequivalent, and -1
+ * if an intermediate exact calculation overflows.
+ */
+int sagejs_modsym_gamma0_cusp_scalar(
+    uint32_t level,
+    const sagejs_modsym_cusp *left,
+    const sagejs_modsym_cusp *right,
+    uint32_t *scalar);
+
 /*
  * Return a newly allocated row-major exact integer matrix, or NULL on
  * failure. The caller owns the returned buffer. This interface deliberately

@@ -175,6 +175,26 @@ test("Dirichlet-character Manin symbols, signs, boundaries, and Hecke", async ()
       (
         await session.evaluate(
           [
+            "composite = []",
+            "for N,i,k in [(16,2,4),(20,3,4)]:",
+            "    e = list(DirichletGroup(N))[i]",
+            "    for sign in [0,1,-1]:",
+            "        M = ModularSymbols(e,k,sign=sign)",
+            "        composite.append((N,i,k,sign,M.dimension()," +
+              "M.cuspidal_subspace().dimension()," +
+              "M.boundary_map().matrix().rank()))",
+            "composite",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(16, 2, 4, 0, 12, 10, 2), (16, 2, 4, 1, 7, 5, 2), " +
+        "(16, 2, 4, -1, 5, 5, 0), (20, 3, 4, 0, 18, 14, 4), " +
+        "(20, 3, 4, 1, 9, 7, 2), (20, 3, 4, -1, 9, 7, 2)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
             "e = list(DirichletGroup(13))[2]",
             "P = ModularSymbols(e,2,sign=1)",
             "[P.character() == e, " +
