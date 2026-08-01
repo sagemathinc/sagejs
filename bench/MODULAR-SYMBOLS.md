@@ -159,6 +159,19 @@ complete cuspidal step is now faster than Magma in this snapshot and over
 1,600 times faster than SageMath. Exact order-5 Hecke assembly is about twice
 as fast as Magma and 39 times faster than SageMath.
 
+Cyclotomic coordinates now survive rational and cyclotomic sparse subspace
+restriction. Generic algebraic basis entries are rigorously expressed in the
+known root-of-unity field, then multiplied in its power basis. Characteristic
+polynomials use the same completely split-prime strategy: clear one common
+denominator, compute word-prime characteristic polynomials at every embedding,
+interpolate, CRT-lift past a proven coefficient bound, and rescale. At level
+1009 for an order-3 character, weight 2, and sign 1, the 82-dimensional
+cuspidal `T_2` characteristic polynomial fell from over two minutes to about
+0.13 seconds. A coefficient-level regression agrees with SageMath. For the
+order-36, weight-5 level-37 case in the dashboard, characteristic-polynomial
+time fell from about 0.65 seconds to 0.08 seconds (SageMath: 0.20 seconds;
+Magma: 2.34 seconds in this snapshot).
+
 A larger prime-level probe at 10061 exposed and then removed an obsolete
 pre-reduction allocation guard. The sparse reducer's actual dense result is
 bounded by the square of the two-term quotient size, not by the much larger

@@ -260,6 +260,21 @@ test("high-degree cyclotomic Hecke assembly retains exact coordinates", async ()
         "-6*zeta36^10 + 6*zeta36^4 + 6*zeta36^3 + " +
         "2*zeta36 + 2, 1]",
     );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "e = DirichletGroup(1009).gen()^336",
+            "S = ModularSymbols(e,2,sign=1).cuspidal_subspace()",
+            "f = S.hecke_matrix(2).charpoly()",
+            "c = f.list()",
+            "[S.dimension(), f.degree(), c[0], c[1], c[20]]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[82, 82, 153*zeta6, -22410, " +
+        "-2128563111284847944*zeta6 + 2128563111284847944]",
+    );
   } finally {
     await session.close();
   }

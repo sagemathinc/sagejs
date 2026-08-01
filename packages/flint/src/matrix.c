@@ -17,9 +17,11 @@
 #include <flint/fmpz.h>
 #include <flint/fmpz_mat.h>
 #include <flint/fmpz_poly.h>
+#include <flint/fmpz_vec.h>
 #include <flint/gr.h>
 #include <flint/gr_mat.h>
 #include <flint/gr_poly.h>
+#include <flint/nmod.h>
 #include <flint/nmod_mat.h>
 #include <flint/nmod_poly.h>
 #include <flint/nf.h>
@@ -1238,16 +1240,25 @@ static int matrix_sparse_left_cyclotomic(
     slong inner = matrix_ncols(left);
     slong columns = matrix_ncols(right);
     size_t degree = right->cyclotomic_degree;
-    size_t count;
-    fmpq_t coefficient, product;
+    size_t count, left_count;
+    fmpq *left_coordinates = NULL;
+    fmpz *products = NULL;
+    fmpq_t product, weighted;
+    fmpq_poly_t expression;
+    fmpz_poly_t cyclotomic, monomial, remainder;
+    qqbar_t root;
 
     if (right->cyclotomic_coordinates == NULL)
         return 1;
-    if (rows != 0 && (size_t) columns > SIZE_MAX / (size_t) rows)
+    if (rows != 0 && ((size_t) columns > SIZE_MAX / (size_t) rows ||
+            (size_t) inner > SIZE_MAX / (size_t) rows))
         return 0;
     count = (size_t) rows * (size_t) columns;
+    left_count = (size_t) rows * (size_t) inner;
     if (degree == 0 || count > SIZE_MAX / degree ||
-        count * degree > (size_t) WORD_MAX)
+        left_count > SIZE_MAX / degree ||
+        count * degree > (size_t) WORD_MAX ||
+        left_count * degree > (size_t) WORD_MAX)
         return 0;
     answer->cyclotomic_coordinates = _fmpq_vec_init(
         (slong) (count * degree == 0 ? 1 : count * degree));
@@ -1255,8 +1266,31 @@ static int matrix_sparse_left_cyclotomic(
         return 0;
     answer->cyclotomic_order = right->cyclotomic_order;
     answer->cyclotomic_degree = degree;
-    fmpq_init(coefficient);
+    left_count *= degree;
+    left_coordinates = _fmpq_vec_init(
+        (slong) (left_count == 0 ? 1 : left_count));
+    products = _fmpz_vec_init((slong) ((2 * degree - 1) * degree));
+    if (left_coordinates == NULL || products == NULL)
+        goto fail;
+    fmpq_init(weighted);
     fmpq_init(product);
+    fmpq_poly_init(expression);
+    fmpz_poly_init(cyclotomic);
+    fmpz_poly_init(monomial);
+    fmpz_poly_init(remainder);
+    qqbar_init(root);
+    fmpz_poly_cyclotomic(cyclotomic, right->cyclotomic_order);
+    qqbar_root_of_unity(root, 1, right->cyclotomic_order);
+    for (size_t combined = 0; combined < 2 * degree - 1; combined++)
+    {
+        fmpz_poly_zero(monomial);
+        fmpz_poly_set_coeff_ui(monomial, (slong) combined, 1);
+        fmpz_poly_rem(remainder, monomial, cyclotomic);
+        for (size_t power = 0; power < degree; power++)
+            fmpz_poly_get_coeff_fmpz(
+                products + combined * degree + power,
+                remainder, (slong) power);
+    }
     for (slong row = 0; row < rows; row++)
         for (slong index = 0; index < inner; index++)
         {
@@ -1265,33 +1299,113 @@ static int matrix_sparse_left_cyclotomic(
                 (gr_ctx_struct *) left->algebraic_context);
             if (qqbar_is_zero(value))
                 continue;
-            if (!qqbar_is_rational(value))
+            if (left->cyclotomic_coordinates != NULL &&
+                left->cyclotomic_order == right->cyclotomic_order &&
+                left->cyclotomic_degree == degree)
             {
-                fmpq_clear(product);
-                fmpq_clear(coefficient);
-                _fmpq_vec_clear(answer->cyclotomic_coordinates,
-                    (slong) (count * degree == 0 ? 1 : count * degree));
-                answer->cyclotomic_coordinates = NULL;
-                answer->cyclotomic_order = 0;
-                answer->cyclotomic_degree = 0;
-                return 1;
-            }
-            qqbar_get_fmpq(coefficient, value);
-            for (slong column = 0; column < columns; column++)
                 for (size_t power = 0; power < degree; power++)
-                {
-                    fmpq *target = answer->cyclotomic_coordinates +
-                        ((size_t) row * (size_t) columns +
-                            (size_t) column) * degree + power;
-                    const fmpq *source = right->cyclotomic_coordinates +
-                        ((size_t) index * (size_t) columns +
-                            (size_t) column) * degree + power;
-                    fmpq_mul(product, coefficient, source);
-                    fmpq_add(target, target, product);
-                }
+                    fmpq_set(left_coordinates +
+                            ((size_t) row * (size_t) inner +
+                                (size_t) index) * degree + power,
+                        left->cyclotomic_coordinates +
+                            ((size_t) row * (size_t) inner +
+                                (size_t) index) * degree + power);
+                continue;
+            }
+            if (qqbar_is_rational(value))
+            {
+                qqbar_get_fmpq(left_coordinates +
+                    ((size_t) row * (size_t) inner +
+                        (size_t) index) * degree, value);
+                continue;
+            }
+            {
+                int expressed = 0;
+                for (slong bits = 64; bits <= 4096 && !expressed; bits *= 2)
+                    expressed = qqbar_express_in_field(
+                        expression, root, value, bits, 0, bits);
+                if (!expressed)
+                    goto fail_initialized;
+                for (size_t power = 0; power < degree; power++)
+                    fmpq_poly_get_coeff_fmpq(left_coordinates +
+                            ((size_t) row * (size_t) inner +
+                                (size_t) index) * degree + power,
+                        expression, (slong) power);
+            }
         }
+    for (slong row = 0; row < rows; row++)
+        for (slong index = 0; index < inner; index++)
+        {
+            const fmpq *left_entry = left_coordinates +
+                ((size_t) row * (size_t) inner + (size_t) index) * degree;
+            int left_zero = 1;
+            for (size_t left_power = 0; left_power < degree; left_power++)
+                left_zero &= fmpq_is_zero(left_entry + left_power);
+            if (left_zero)
+                continue;
+            for (slong column = 0; column < columns; column++)
+            {
+                const fmpq *right_entry = right->cyclotomic_coordinates +
+                        ((size_t) index * (size_t) columns +
+                            (size_t) column) * degree;
+                fmpq *target = answer->cyclotomic_coordinates +
+                    ((size_t) row * (size_t) columns +
+                        (size_t) column) * degree;
+                for (size_t left_power = 0;
+                    left_power < degree; left_power++)
+                    if (!fmpq_is_zero(left_entry + left_power))
+                        for (size_t right_power = 0;
+                            right_power < degree; right_power++)
+                            if (!fmpq_is_zero(right_entry + right_power))
+                            {
+                                fmpq_mul(product, left_entry + left_power,
+                                    right_entry + right_power);
+                                for (size_t output_power = 0;
+                                    output_power < degree; output_power++)
+                                {
+                                    const fmpz *factor = products +
+                                        (left_power + right_power) * degree +
+                                        output_power;
+                                    if (fmpz_is_zero(factor))
+                                        continue;
+                                    fmpq_mul_fmpz(weighted, product, factor);
+                                    fmpq_add(target + output_power,
+                                        target + output_power, weighted);
+                                }
+                            }
+            }
+        }
+    qqbar_clear(root);
+    fmpz_poly_clear(remainder);
+    fmpz_poly_clear(monomial);
+    fmpz_poly_clear(cyclotomic);
+    fmpq_poly_clear(expression);
     fmpq_clear(product);
-    fmpq_clear(coefficient);
+    fmpq_clear(weighted);
+    _fmpz_vec_clear(products, (slong) ((2 * degree - 1) * degree));
+    _fmpq_vec_clear(left_coordinates,
+        (slong) (left_count == 0 ? 1 : left_count));
+    return 1;
+
+fail_initialized:
+    qqbar_clear(root);
+    fmpz_poly_clear(remainder);
+    fmpz_poly_clear(monomial);
+    fmpz_poly_clear(cyclotomic);
+    fmpq_poly_clear(expression);
+    fmpq_clear(product);
+    fmpq_clear(weighted);
+fail:
+    if (products != NULL)
+        _fmpz_vec_clear(products, (slong) ((2 * degree - 1) * degree));
+    if (left_coordinates != NULL)
+        _fmpq_vec_clear(left_coordinates,
+            (slong) (left_count == 0 ? 1 : left_count));
+    _fmpq_vec_clear(answer->cyclotomic_coordinates,
+        (slong) (count * degree == 0 ? 1 : count * degree));
+    answer->cyclotomic_coordinates = NULL;
+    answer->cyclotomic_order = 0;
+    answer->cyclotomic_degree = 0;
     return 1;
 }
 
@@ -2993,6 +3107,247 @@ napi_value sagejs_matrix_right_kernel(
     }
 }
 
+/*
+ * Compute a cyclotomic characteristic polynomial through completely split
+ * word primes.  Clearing one common denominator makes every lifted
+ * coefficient integral; (1+B)^n is a deliberately conservative coefficient
+ * bound when B is the maximum column sum of power-basis coefficient norms.
+ */
+static int matrix_charpoly_cyclotomic_multimodular(
+    fmpq **result,
+    const sagejs_matrix *source)
+{
+    slong n = matrix_nrows(source);
+    size_t degree = source->cyclotomic_degree;
+    size_t polynomial_length = (size_t) n + 1;
+    size_t count;
+    fmpz *residues = NULL;
+    fmpq *answer = NULL;
+    fmpz_t denominator, bound, modulus, temporary, scale, basis_coefficient;
+    fmpz_poly_t cyclotomic, monomial, remainder;
+    ulong multiple, prime = 0;
+    int status = 0;
+
+    if (n < 0 || degree == 0 || polynomial_length > SIZE_MAX / degree)
+        return 0;
+    count = polynomial_length * degree;
+    residues = _fmpz_vec_init((slong) (count == 0 ? 1 : count));
+    answer = _fmpq_vec_init((slong) (count == 0 ? 1 : count));
+    if (residues == NULL || answer == NULL)
+        goto done_uninitialized;
+    fmpz_init_set_ui(denominator, 1);
+    fmpz_init_set_ui(bound, 0);
+    fmpz_init_set_ui(modulus, 1);
+    fmpz_init(temporary);
+    fmpz_init(scale);
+    fmpz_init(basis_coefficient);
+    fmpz_poly_init(cyclotomic);
+    fmpz_poly_init(monomial);
+    fmpz_poly_init(remainder);
+
+    for (size_t item = 0;
+        item < (size_t) n * (size_t) n * degree; item++)
+        fmpz_lcm(denominator, denominator,
+            fmpq_denref(source->cyclotomic_coordinates + item));
+    for (slong column = 0; column < n; column++)
+    {
+        fmpz_zero(temporary);
+        for (slong row = 0; row < n; row++)
+            for (size_t power = 0; power < degree; power++)
+            {
+                const fmpq *value = source->cyclotomic_coordinates +
+                    ((size_t) row * (size_t) n + (size_t) column) *
+                        degree + power;
+                fmpz_divexact(scale, denominator, fmpq_denref(value));
+                fmpz_mul(scale, scale, fmpq_numref(value));
+                fmpz_abs(scale, scale);
+                fmpz_add(temporary, temporary, scale);
+            }
+        if (fmpz_cmp(temporary, bound) > 0)
+            fmpz_set(bound, temporary);
+    }
+    /* Bound coefficient growth in one power-basis multiplication. */
+    fmpz_one(scale);
+    fmpz_poly_cyclotomic(cyclotomic, source->cyclotomic_order);
+    for (size_t combined = 0; combined < 2 * degree - 1; combined++)
+    {
+        fmpz_poly_zero(monomial);
+        fmpz_poly_set_coeff_ui(monomial, (slong) combined, 1);
+        fmpz_poly_rem(remainder, monomial, cyclotomic);
+        fmpz_zero(temporary);
+        for (size_t power = 0; power < degree; power++)
+        {
+            fmpz_poly_get_coeff_fmpz(
+                basis_coefficient, remainder, (slong) power);
+            fmpz_abs(basis_coefficient, basis_coefficient);
+            fmpz_add(temporary, temporary, basis_coefficient);
+        }
+        if (fmpz_cmp(temporary, scale) > 0)
+            fmpz_set(scale, temporary);
+    }
+    fmpz_mul(bound, bound, scale);
+    fmpz_add_ui(bound, bound, 1);
+    fmpz_pow_ui(bound, bound, (ulong) n);
+    fmpz_mul_ui(bound, bound, 2);
+
+    multiple = UWORD(1000000000) / source->cyclotomic_order + 1;
+    for (size_t attempt = 0; attempt < 64 && fmpz_cmp(modulus, bound) <= 0;
+        attempt++)
+    {
+        nmod_mat_t vandermonde, inverse, matrix;
+        nmod_poly_t polynomial;
+        ulong *roots = NULL, *values = NULL, *interpolated = NULL;
+        ulong primitive, root;
+        size_t found = 0;
+        int initialized = 0;
+
+        do {
+            if (multiple > (UWORD_MAX - 1) / source->cyclotomic_order)
+                goto done;
+            prime = n_nextprime(
+                multiple * source->cyclotomic_order + 1, 1);
+            multiple = prime / source->cyclotomic_order + 1;
+        } while (prime % source->cyclotomic_order != 1 ||
+            fmpz_fdiv_ui(denominator, prime) == 0);
+
+        nmod_mat_init(vandermonde, (slong) degree, (slong) degree, prime);
+        nmod_mat_init(inverse, (slong) degree, (slong) degree, prime);
+        nmod_mat_init(matrix, n, n, prime);
+        nmod_poly_init(polynomial, prime);
+        initialized = 1;
+        roots = malloc(degree * sizeof(*roots));
+        values = calloc(degree * polynomial_length, sizeof(*values));
+        interpolated = calloc(count == 0 ? 1 : count,
+            sizeof(*interpolated));
+        if (roots == NULL || values == NULL || interpolated == NULL)
+            goto prime_done;
+        primitive = n_primitive_root_prime(prime);
+        root = n_powmod(primitive,
+            (slong) ((prime - 1) / source->cyclotomic_order), prime);
+        for (ulong exponent = 1;
+            exponent <= source->cyclotomic_order && found < degree;
+            exponent++)
+            if (n_gcd(exponent, source->cyclotomic_order) == 1)
+            {
+                ulong value = n_powmod(root, (slong) exponent, prime);
+                ulong root_power = 1;
+                roots[found] = value;
+                for (size_t power = 0; power < degree; power++)
+                {
+                    nmod_mat_entry(vandermonde,
+                        (slong) found, (slong) power) = root_power;
+                    root_power = nmod_mul(root_power, value,
+                        vandermonde->mod);
+                }
+                found++;
+            }
+        if (found != degree || !nmod_mat_inv(inverse, vandermonde))
+            goto prime_done;
+        for (size_t embedding = 0; embedding < degree; embedding++)
+        {
+            for (slong row = 0; row < n; row++)
+                for (slong column = 0; column < n; column++)
+                {
+                    ulong sum = 0, root_power = 1;
+                    for (size_t power = 0; power < degree; power++)
+                    {
+                        const fmpq *entry = source->cyclotomic_coordinates +
+                            ((size_t) row * (size_t) n +
+                                (size_t) column) * degree + power;
+                        ulong coefficient;
+                        fmpz_divexact(scale, denominator,
+                            fmpq_denref(entry));
+                        fmpz_mul(scale, scale, fmpq_numref(entry));
+                        coefficient = fmpz_fdiv_ui(scale, prime);
+                        sum = nmod_add(sum,
+                            nmod_mul(coefficient, root_power, matrix->mod),
+                            matrix->mod);
+                        root_power = nmod_mul(root_power, roots[embedding],
+                            matrix->mod);
+                    }
+                    nmod_mat_entry(matrix, row, column) = sum;
+                }
+            nmod_mat_charpoly(polynomial, matrix);
+            for (size_t index = 0; index < polynomial_length; index++)
+                values[embedding * polynomial_length + index] =
+                    nmod_poly_get_coeff_ui(polynomial, (slong) index);
+        }
+        for (size_t power = 0; power < degree; power++)
+            for (size_t index = 0; index < polynomial_length; index++)
+                for (size_t embedding = 0; embedding < degree; embedding++)
+                    interpolated[power * polynomial_length + index] =
+                        nmod_add(
+                            interpolated[power * polynomial_length + index],
+                            nmod_mul(nmod_mat_entry(inverse,
+                                (slong) power, (slong) embedding),
+                                values[embedding * polynomial_length + index],
+                                inverse->mod), inverse->mod);
+        for (size_t power = 0; power < degree; power++)
+            for (size_t index = 0; index < polynomial_length; index++)
+            {
+                size_t item = index * degree + power;
+                ulong value = interpolated[
+                    power * polynomial_length + index];
+                if (fmpz_is_one(modulus))
+                    fmpz_set_ui(residues + item, value);
+                else
+                    fmpz_CRT_ui(residues + item, residues + item,
+                        modulus, value, prime, 0);
+            }
+        fmpz_mul_ui(modulus, modulus, prime);
+
+prime_done:
+        free(roots);
+        free(values);
+        free(interpolated);
+        if (initialized)
+        {
+            nmod_poly_clear(polynomial);
+            nmod_mat_clear(matrix);
+            nmod_mat_clear(inverse);
+            nmod_mat_clear(vandermonde);
+        }
+        if (roots == NULL || values == NULL || interpolated == NULL)
+            goto done;
+    }
+    if (fmpz_cmp(modulus, bound) <= 0)
+        goto done;
+    fmpz_one(scale);
+    for (slong index = n; index >= 0; index--)
+    {
+        if (index < n)
+            fmpz_mul(scale, scale, denominator);
+        for (size_t power = 0; power < degree; power++)
+        {
+            size_t item = (size_t) index * degree + power;
+            fmpz_mul_ui(temporary, residues + item, 2);
+            if (fmpz_cmp(temporary, modulus) > 0)
+                fmpz_sub(residues + item, residues + item, modulus);
+            fmpq_set_fmpz_frac(answer + item, residues + item, scale);
+        }
+    }
+    *result = answer;
+    answer = NULL;
+    status = 1;
+
+done:
+    fmpz_clear(scale);
+    fmpz_clear(basis_coefficient);
+    fmpz_clear(temporary);
+    fmpz_clear(modulus);
+    fmpz_clear(bound);
+    fmpz_clear(denominator);
+    fmpz_poly_clear(remainder);
+    fmpz_poly_clear(monomial);
+    fmpz_poly_clear(cyclotomic);
+done_uninitialized:
+    if (residues != NULL)
+        _fmpz_vec_clear(residues, (slong) (count == 0 ? 1 : count));
+    if (answer != NULL)
+        _fmpq_vec_clear(answer, (slong) (count == 0 ? 1 : count));
+    return status;
+}
+
 static int matrix_charpoly_cyclotomic(
     gr_poly_t output,
     const sagejs_matrix *source)
@@ -3010,10 +3365,37 @@ static int matrix_charpoly_cyclotomic(
     int matrix_initialized = 0;
     int polynomial_initialized = 0;
     int status = 0;
+    fmpq *multimodular = NULL;
 
     if (source->cyclotomic_coordinates == NULL ||
         source->cyclotomic_order < 3 || degree == 0)
         return 0;
+    if (matrix_charpoly_cyclotomic_multimodular(&multimodular, source))
+    {
+        qqbar_init(root);
+        qqbar_init(value);
+        fmpq_poly_init(coordinates);
+        qqbar_root_of_unity(root, 1, source->cyclotomic_order);
+        for (slong index = 0; index <= n; index++)
+        {
+            fmpq_poly_zero(coordinates);
+            for (size_t power = 0; power < degree; power++)
+                fmpq_poly_set_coeff_fmpq(coordinates, (slong) power,
+                    multimodular + (size_t) index * degree + power);
+            qqbar_evaluate_fmpq_poly(value, coordinates, root);
+            if (gr_poly_set_coeff_scalar(output, index, value,
+                    (gr_ctx_struct *) source->algebraic_context) != GR_SUCCESS)
+                goto multimodular_done;
+        }
+        status = 1;
+multimodular_done:
+        _fmpq_vec_clear(multimodular,
+            (slong) (((size_t) n + 1) * degree));
+        fmpq_poly_clear(coordinates);
+        qqbar_clear(value);
+        qqbar_clear(root);
+        return status;
+    }
     fmpz_poly_init(cyclotomic);
     fmpq_poly_init(defining);
     fmpq_poly_init(coordinates);
