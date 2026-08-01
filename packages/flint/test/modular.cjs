@@ -75,8 +75,25 @@ test("native character Manin presentations retain cyclotomic scalars", () => {
     [full.generators, full.basisGenerators.length],
     [14, 4],
   );
+  global.gc();
   const t2 = flint.p1ListCharacterHeckeMatrix(
-    p1, 2, 0, 2, group, 2n,
+    p1, 2, 0, 2, group, 2n, full,
   );
   assert.equal(flint.matrixRank(t2), 4);
+  const legacyT2 = flint.p1ListCharacterHeckeMatrix(
+    p1, 2, 0, 2, group, 2n,
+  );
+  assert.equal(flint.matrixEqual(t2, legacyT2), true);
+  assert.throws(
+    () => flint.p1ListCharacterHeckeMatrix(
+      p1, 2, 0, 2, group, 1n, full,
+    ),
+    /does not match level, weight, sign, and character/,
+  );
+  assert.throws(
+    () => flint.p1ListCharacterHeckeMatrix(
+      p1, 2, 0, 2, group, 2n, {},
+    ),
+    /expected a retained character presentation/,
+  );
 });

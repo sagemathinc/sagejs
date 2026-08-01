@@ -34,19 +34,22 @@ stage) illustrates the current performance boundary:
 
 | character | stage | Sage.js | SageMath | Magma |
 | --- | ---: | ---: | ---: | ---: |
-| quadratic | space | 62.67 | 0.40 | 0.35 |
-| quadratic | cuspidal | 0.56 | 0.67 | 0.03 |
-| quadratic | `T_2` | 62.34 | 0.10 | 0.28 |
-| order 5 | space | 64.40 | 8.02 | 0.41 |
-| order 5 | cuspidal | 7.45 | 72.74 | 0.04 |
-| order 5 | `T_2` | 66.52 | 15.27 | 0.77 |
+| quadratic | space | 0.84 | 0.40 | 0.36 |
+| quadratic | cuspidal | 0.58 | 0.67 | 0.03 |
+| quadratic | `T_2` | 0.03 | 0.10 | 0.28 |
+| order 5 | space | 64.31 | 8.01 | 0.41 |
+| order 5 | cuspidal | 7.41 | 69.26 | 0.04 |
+| order 5 | `T_2` | 2.47 | 15.27 | 0.77 |
 
 All rows passed the independent dimension or trace-fingerprint checks. These
 numbers are a reproducible development snapshot, not portable performance
-claims. In particular, the nearly identical Sage.js space and `T_2` times
-show that `T_2` currently reconstructs the expensive native character
-presentation instead of retaining it. Conversely, Sage.js's exact order-5
-cuspidal kernel is already substantially faster than SageMath's at this level.
+claims. Sage.js retains the exact native character presentation behind the
+high-level presentation object, so `T_2` reuses its basis and reduction map
+instead of reconstructing them. Quadratic presentations specialize their
+rational relations to the sparse `fmpq` reducer. The remaining construction
+bottleneck is therefore sharply isolated: reducing the order-5 relations over
+an exact cyclotomic field. Sage.js's exact order-5 cuspidal kernel and Hecke
+assembly are already substantially faster than SageMath's at this level.
 
 The dashboard separates the following operations because conflating them
 would give misleading performance numbers:
@@ -165,7 +168,12 @@ lookup. A weighted union/find eliminates monomial two-term and signed-star
 relations while storing root-of-unity exponents, so these relations require
 no general algebraic-number arithmetic. The surviving order-three relations
 are reduced exactly by FLINT's generic-ring matrix layer over a cyclotomic
-field. The retained reduction map then drives exact prime Hecke matrices;
+field. Real-valued characters instead extract the rational relation matrix
+and use Sage.js's sparse `fmpq` elimination. The native presentation is owned
+by a finalizable opaque Node object and retained with the visible basis and
+reduction matrix; subsequent Hecke calls reuse it after validating its level,
+weight, sign, and character. The retained reduction map then drives exact
+prime Hecke matrices;
 composite operators use multiplicativity and
 
 ```text
@@ -183,6 +191,15 @@ These were compared directly with SageMath, including the diamond-operator
 normalization convention. The remaining important character-space API gap is
 exposing the full star matrix on a sign-zero space; signed spaces themselves
 are constructed directly and have exact star action.
+
+The next cyclotomic performance step follows SageMath's
+[`Matrix_cyclo_dense`](https://doc.sagemath.org/html/en/reference/matrices/sage/matrix/matrix_cyclo_dense.html)
+lineage (William Stein and Craig Citro) and the Balakrishnan--Stein work on
+linear algebra over cyclotomic fields: choose primes that split completely,
+evaluate at every finite-field embedding, perform machine-word linear algebra,
+and reconstruct the cyclotomic answer by CRT and rational reconstruction.
+This should replace generic algebraic-number RREF for non-real characters
+without weakening exactness.
 
 The same retained E1 endpoints now define the exact boundary map. Rational
 cusps are classified under `Gamma0(N)` using Cremona's equivalence criterion,

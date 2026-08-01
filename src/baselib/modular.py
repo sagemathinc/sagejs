@@ -1846,6 +1846,7 @@ class HigherWeightManinPresentation:
         base_ring: Any = None,
     ) -> None:
         self._projective_line = projective_line
+        self._native = raw
         self._weight = weight
         self._sign = sign
         self._generators = runtime.number(
@@ -2110,11 +2111,13 @@ class P1List:
         cached = self._character_hecke_cache.get(key)
         if cached is not runtime.undefined:
             return cached
-        dimension = self.character_presentation(
-            weight, sign, character, base_ring).dimension()
+        presentation = self.character_presentation(
+            weight, sign, character, base_ring)
+        dimension = presentation.dimension()
         native = runtime.flint_backend().p1ListCharacterHeckeMatrix(
             self._native, weight, sign, prime,
-            character._parent._native, character._index)
+            character._parent._native, character._index,
+            presentation._native)
         cached = Matrix(  # type: ignore[name-defined]  # noqa: F821
             MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
                 base_ring, dimension, dimension),
