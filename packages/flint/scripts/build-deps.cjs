@@ -32,9 +32,15 @@ const prefix = resolve(
 );
 const downloads = join(buildRoot, "downloads");
 const sources = join(buildRoot, "sources");
-const jobs = String(
-  Math.min(8, availableParallelism?.() || cpus().length || 2)
-);
+const configuredJobs = process.env.SAGEJS_BUILD_JOBS;
+if (configuredJobs !== undefined && !/^[1-9][0-9]*$/.test(configuredJobs)) {
+  throw new Error(
+    `SAGEJS_BUILD_JOBS must be a positive integer, got ${JSON.stringify(configuredJobs)}`
+  );
+}
+const jobs =
+  configuredJobs ||
+  String(Math.min(8, availableParallelism?.() || cpus().length || 2));
 
 const dependencies = [
   {

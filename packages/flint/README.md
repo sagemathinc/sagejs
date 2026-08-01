@@ -153,6 +153,14 @@ pnpm --dir packages/flint test
 pnpm --dir packages/flint bench
 ```
 
+The dependency build uses up to eight parallel jobs by default. Set
+`SAGEJS_BUILD_JOBS` to a positive integer to match the CPU and memory available
+on the build host:
+
+```sh
+SAGEJS_BUILD_JOBS=16 pnpm --dir packages/flint build
+```
+
 For development, an existing compatible prefix can skip the dependency build:
 
 ```sh

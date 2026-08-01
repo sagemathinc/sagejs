@@ -70,6 +70,7 @@
     "node": ">=22.22.2"
   },
   "scripts": {
+    "bootstrap": "node scripts/bootstrap.cjs",
     "build": "node scripts/build.cjs",
     "build:sea": "pnpm run build && pnpm --dir packages/flint build && node scripts/build-sea.cjs --all",
     "build:sea:python": "pnpm run build && node scripts/build-sea.cjs --python",

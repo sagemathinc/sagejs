@@ -2,6 +2,90 @@
 
 **Open research mathematics, native to Node.**
 
+## Build the complete system from source
+
+**The complete native bootstrap currently supports x86-64 Linux only.** On
+that platform, a new checkout becomes a working research system with one pnpm
+command:
+
+```sh
+git clone https://github.com/sagemathinc/sagejs.git
+cd sagejs
+pnpm bootstrap
+```
+
+The bootstrap command checks the host, initializes every Git submodule,
+installs the lockfile exactly, builds the compiler and standard library, builds
+the complete native mathematics stack, and produces a self-contained
+`build/sea/sagejs` executable. It ends by evaluating `factor(2026)` through
+both the development runtime and the standalone executable.
+
+The full build requires Node.js 25.5 or newer (for Node's SEA builder), pnpm
+11.9.0, Git, a C/C++ toolchain, `make`, Python 3, `m4`, `tar`, and `xz`. On
+Debian or Ubuntu, the non-Node prerequisites are installed by:
+
+```sh
+sudo apt-get install build-essential git python3 m4 xz-utils
+```
+
+A system GMP installation is **not** required. The build downloads
+SHA-256-pinned releases of GMP, MPFR, MPC, FLINT, ffpoly, and smalljac, tests
+GMP, and links the resulting position-independent static libraries into the
+native addon and SEA. Downloads and builds are cached under
+`packages/flint/.native`, making later bootstrap runs incremental. The current
+ffpoly/smalljac backend contains x86-64 assembly, so the complete native path
+does not yet support other architectures.
+
+The cold native-library build is the expensive step: expect roughly 3–10
+minutes on a modern development machine and longer on a small VM; subsequent
+runs normally take well under a minute because the verified archives and
+static libraries are reused. Builds use up to eight CPU jobs by default. To
+choose the parallelism explicitly, for example on a 16-core builder, run:
+
+```sh
+SAGEJS_BUILD_JOBS=16 pnpm bootstrap
+```
+
+The value must be a positive integer. More jobs increase peak memory use, and
+the GMP validation suite remains part of every genuinely cold build.
+
+Sage.js development itself supports Node.js 22.22.2 or newer. On Node 22–24,
+build everything except the standalone SEA with:
+
+```sh
+pnpm bootstrap --without-sea
+```
+
+Once built:
+
+```sh
+pnpm start                         # interactive Sage.js REPL
+node bin/sagejs program.sage       # run a source file
+build/sea/sagejs program.sage      # run it without Node or the checkout
+
+pnpm test:unit                     # fast JavaScript/runtime regression tier
+pnpm test:native                   # FLINT and native integration tests
+pnpm test:tutorial                 # complete Sage tutorial compatibility
+pnpm test:sea                      # rebuild and relocation-test both SEAs
+pnpm test                          # full compiler, CLI, upstream, and CoWasm suite
+```
+
+See [`TESTING.md`](TESTING.md) for the test tiers and
+[`DISTRIBUTION.md`](DISTRIBUTION.md) for native, SEA, and WebAssembly
+distribution details.
+
+The main contributor-facing directories are:
+
+| Path | Contents |
+|---|---|
+| `src/lib` | Sage-compatible mathematical library modules, written as ordinary CPython-parseable source |
+| `packages/flint/src` | Hand-written C kernels and stable Node-API bindings for FLINT and related native libraries |
+| `packages/flint-wasm` | The browser/WebWorker adapter and WASM build of shared host-neutral kernels |
+| `src`, `bootstrap`, `tools` | Compiler, runtime, kernel, CLI, and embedding infrastructure |
+| `test`, `upstream-tests` | Focused regressions and executable compatibility corpora derived from upstream projects |
+| `bench` | Reproducible cross-system correctness and performance dashboards |
+| `docs` | Searchable Markdown guides and generated DocSpec API reference |
+
 Sage.js is an experiment in building a genuinely useful open computer algebra
 system in the Node.js ecosystem. It combines:
 
@@ -74,7 +158,7 @@ They share libraries, mathematical ideas, tests, and an open-software mission,
 while bringing the integration pattern to researchers working in different
 language ecosystems.
 
-## Install
+## Install the published npm package
 
 Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.
 
