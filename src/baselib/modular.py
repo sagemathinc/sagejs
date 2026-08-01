@@ -2065,10 +2065,10 @@ class P1List:
         cached = self._higher_weight_hecke_cache.get(key)
         if cached is not runtime.undefined:
             return cached
-        dimension = self.higher_weight_presentation(
-            weight, sign).dimension()
+        presentation = self.higher_weight_presentation(weight, sign)
+        dimension = presentation.dimension()
         native = runtime.flint_backend().p1ListHigherWeightHeckeMatrix(
-            self._native, weight, sign, prime)
+            self._native, weight, sign, prime, presentation._native)
         cached = Matrix(  # type: ignore[name-defined]  # noqa: F821
             MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
                 sage.QQ, dimension, dimension),

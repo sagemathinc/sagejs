@@ -40,6 +40,8 @@
 
 #define SAGEJS_P1_MAGIC UINT64_C(0x534147454A535031)
 #define SAGEJS_MANIN_MAGIC UINT64_C(0x534147454A534D52)
+#define SAGEJS_HIGHER_WEIGHT_PRESENTATION_MAGIC \
+    UINT64_C(0x534147454A534850)
 #define SAGEJS_CHARACTER_PRESENTATION_MAGIC \
     UINT64_C(0x534147454A534350)
 #define SAGEJS_MANIN_MAX_DENSE_CELLS UINT64_C(20000000)
@@ -63,6 +65,10 @@ typedef sagejs_modsym_presentation sagejs_manin_presentation_info;
 
 typedef struct
 {
+    uint64_t magic;
+    uint32_t level;
+    uint32_t weight;
+    int sign;
     size_t generators;
     size_t two_term_generators;
     size_t dimension;
@@ -106,6 +112,11 @@ static const napi_type_tag sagejs_p1_type_tag = {
 static const napi_type_tag sagejs_manin_type_tag = {
     UINT64_C(0xc843bcb4b18e4427),
     UINT64_C(0xa1df45b7e3ca6860)
+};
+
+static const napi_type_tag sagejs_higher_weight_presentation_type_tag = {
+    UINT64_C(0xc4e9b0f7156b42ad),
+    UINT64_C(0x9e351ed1cdfa7b82)
 };
 
 static const napi_type_tag sagejs_character_presentation_type_tag = {
@@ -1611,6 +1622,48 @@ static void p1_higher_weight_clear(
     memset(presentation, 0, sizeof(*presentation));
 }
 
+static void p1_higher_weight_free(
+    sagejs_higher_weight_presentation *presentation)
+{
+    if (presentation == NULL)
+        return;
+    p1_higher_weight_clear(presentation);
+    free(presentation);
+}
+
+static void p1_higher_weight_finalize(
+    napi_env env, void *data, void *hint)
+{
+    sagejs_higher_weight_presentation *presentation = data;
+    (void) env;
+    (void) hint;
+    if (presentation != NULL &&
+        presentation->magic == SAGEJS_HIGHER_WEIGHT_PRESENTATION_MAGIC)
+        p1_higher_weight_free(presentation);
+}
+
+static sagejs_higher_weight_presentation *p1_higher_weight_unwrap(
+    napi_env env, napi_value object)
+{
+    bool tagged = false;
+    sagejs_higher_weight_presentation *presentation = NULL;
+
+    if (!p1_check_napi(env, napi_check_object_type_tag(
+            env, object, &sagejs_higher_weight_presentation_type_tag,
+            &tagged)))
+        return NULL;
+    if (!tagged || !p1_check_napi(env, napi_unwrap(
+            env, object, (void **) &presentation)) ||
+        presentation == NULL ||
+        presentation->magic != SAGEJS_HIGHER_WEIGHT_PRESENTATION_MAGIC)
+    {
+        napi_throw_type_error(
+            env, NULL, "expected a retained higher-weight presentation");
+        return NULL;
+    }
+    return presentation;
+}
+
 static int p1_relation_add_fmpz(
     fmpq_mat_t relations,
     size_t row,
@@ -2651,58 +2704,77 @@ napi_value sagejs_p1list_higher_weight_presentation(
 {
     napi_value arguments[3], result = NULL, reduction = NULL, generators;
     sagejs_p1list_value *list;
-    sagejs_higher_weight_presentation presentation = {0};
+    sagejs_higher_weight_presentation *presentation = NULL;
     int64_t weight_value, sign_value;
+
+    presentation = calloc(1, sizeof(*presentation));
+    if (presentation == NULL)
+    {
+        napi_throw_error(env, NULL,
+            "unable to allocate higher-weight presentation");
+        return NULL;
+    }
 
     if (!p1_arguments(env, info, 3, arguments) ||
         (list = p1_unwrap(env, arguments[0])) == NULL ||
         !p1_safe_integer(env, arguments[1], &weight_value) ||
         !p1_safe_integer(env, arguments[2], &sign_value))
-        return NULL;
+        goto done;
     if (weight_value < 2 || weight_value > UINT32_MAX ||
         (sign_value != -1 && sign_value != 0 && sign_value != 1))
     {
         napi_throw_range_error(env, NULL,
             "higher-weight presentation requires weight >= 2 and sign -1, 0, or 1");
-        return NULL;
+        goto done;
     }
     if (!p1_higher_weight_build(
             list, (uint32_t) weight_value, (int) sign_value,
-            &presentation))
+            presentation))
     {
         napi_throw_error(env, NULL,
             "unable to construct exact higher-weight Manin presentation");
-        return NULL;
-    }
-    reduction = sagejs_qq_matrix_from_fmpq_mat(
-        env, presentation.reduction);
-    if (presentation.dimension > UINT32_MAX || reduction == NULL ||
-        !p1_check_napi(env, napi_create_array_with_length(
-            env, presentation.dimension, &generators)))
         goto done;
-    for (size_t index = 0; index < presentation.dimension; index++)
+    }
+    presentation->magic = SAGEJS_HIGHER_WEIGHT_PRESENTATION_MAGIC;
+    presentation->level = list->level;
+    presentation->weight = (uint32_t) weight_value;
+    presentation->sign = (int) sign_value;
+    reduction = sagejs_qq_matrix_from_fmpq_mat(
+        env, presentation->reduction);
+    if (presentation->dimension > UINT32_MAX || reduction == NULL ||
+        !p1_check_napi(env, napi_create_array_with_length(
+            env, presentation->dimension, &generators)))
+        goto done;
+    for (size_t index = 0; index < presentation->dimension; index++)
     {
         napi_value value;
         if (!p1_check_napi(env, napi_create_int64(
-                env, (int64_t) presentation.basis_generators[index],
+                env, (int64_t) presentation->basis_generators[index],
                 &value)) ||
             !p1_check_napi(env, napi_set_element(
                 env, generators, (uint32_t) index, value)))
             goto done;
     }
     if (!p1_check_napi(env, napi_create_object(env, &result)) ||
-        !p1_napi_set_size(env, result, "generators", presentation.generators) ||
+        !p1_napi_set_size(env, result, "generators", presentation->generators) ||
         !p1_napi_set_size(env, result, "twoTermGenerators",
-            presentation.two_term_generators) ||
-        !p1_napi_set_size(env, result, "dimension", presentation.dimension) ||
+            presentation->two_term_generators) ||
+        !p1_napi_set_size(env, result, "dimension", presentation->dimension) ||
         !p1_check_napi(env, napi_set_named_property(
             env, result, "basisGenerators", generators)) ||
         !p1_check_napi(env, napi_set_named_property(
-            env, result, "reduction", reduction)))
+            env, result, "reduction", reduction)) ||
+        !p1_check_napi(env, napi_type_tag_object(
+            env, result, &sagejs_higher_weight_presentation_type_tag)) ||
+        !p1_check_napi(env, napi_wrap(
+            env, result, presentation,
+            p1_higher_weight_finalize, NULL, NULL)))
         result = NULL;
+    else
+        presentation = NULL;
 
 done:
-    p1_higher_weight_clear(&presentation);
+    p1_higher_weight_free(presentation);
     return result;
 }
 
@@ -3029,9 +3101,9 @@ static int p1_heilbronn_cremona(
 napi_value sagejs_p1list_higher_weight_hecke_matrix(
     napi_env env, napi_callback_info info)
 {
-    napi_value arguments[4], result = NULL;
+    napi_value arguments[5], result = NULL;
     sagejs_p1list_value *list;
-    sagejs_higher_weight_presentation presentation = {0};
+    sagejs_higher_weight_presentation *presentation;
     int64_t weight_value, sign_value, prime_value;
     fmpq_mat_t matrix;
     int matrix_initialized = 0;
@@ -3040,45 +3112,41 @@ napi_value sagejs_p1list_higher_weight_hecke_matrix(
     p1_matrix_four *heilbronn = NULL;
     size_t heilbronn_count = 0;
 
-    if (!p1_arguments(env, info, 4, arguments) ||
+    if (!p1_arguments(env, info, 5, arguments) ||
         (list = p1_unwrap(env, arguments[0])) == NULL ||
         !p1_safe_integer(env, arguments[1], &weight_value) ||
         !p1_safe_integer(env, arguments[2], &sign_value) ||
-        !p1_safe_integer(env, arguments[3], &prime_value))
+        !p1_safe_integer(env, arguments[3], &prime_value) ||
+        (presentation = p1_higher_weight_unwrap(
+            env, arguments[4])) == NULL)
         return NULL;
     if (weight_value < 2 || weight_value > UINT32_MAX ||
         (sign_value != -1 && sign_value != 0 && sign_value != 1) ||
         prime_value < 2 || prime_value > INT32_MAX ||
-        !n_is_prime((ulong) prime_value))
+        !n_is_prime((ulong) prime_value) ||
+        presentation->level != list->level ||
+        presentation->weight != (uint32_t) weight_value ||
+        presentation->sign != (int) sign_value)
     {
         napi_throw_range_error(env, NULL,
             "higher-weight native Hecke requires a 31-bit prime and sign -1, 0, or 1");
         return NULL;
     }
-    if (!p1_higher_weight_build(
-            list, (uint32_t) weight_value, (int) sign_value,
-            &presentation))
-    {
-        napi_throw_error(env, NULL,
-            "unable to construct higher-weight Hecke presentation");
-        return NULL;
-    }
     if (!p1_heilbronn_cremona(
             (ulong) prime_value, &heilbronn, &heilbronn_count))
     {
-        p1_higher_weight_clear(&presentation);
         napi_throw_error(env, NULL,
             "unable to construct Cremona-Heilbronn representatives");
         return NULL;
     }
-    fmpq_mat_init(matrix, (slong) presentation.dimension,
-        (slong) presentation.dimension);
+    fmpq_mat_init(matrix, (slong) presentation->dimension,
+        (slong) presentation->dimension);
     matrix_initialized = 1;
     fmpz_init(coefficient);
     fmpq_init(scaled);
-    for (size_t source = 0; source < presentation.dimension; source++)
+    for (size_t source = 0; source < presentation->dimension; source++)
     {
-        size_t generator = presentation.basis_generators[source];
+        size_t generator = presentation->basis_generators[source];
         uint32_t i = (uint32_t) (generator / list->count);
         sagejs_p1_pair pair = list->pairs[generator % list->count];
         for (size_t h = 0; h < heilbronn_count; h++)
@@ -3110,11 +3178,11 @@ napi_value sagejs_p1list_higher_weight_hecke_matrix(
                 if (fmpz_is_zero(coefficient))
                     continue;
                 for (size_t target = 0;
-                    target < presentation.dimension; target++)
+                    target < presentation->dimension; target++)
                 {
                     fmpq_mul_fmpz(
                         scaled,
-                        fmpq_mat_entry(presentation.reduction,
+                        fmpq_mat_entry(presentation->reduction,
                             (slong) image_generator, (slong) target),
                         coefficient);
                     fmpq_add(
@@ -3134,7 +3202,6 @@ napi_value sagejs_p1list_higher_weight_hecke_matrix(
     if (matrix_initialized)
         fmpq_mat_clear(matrix);
     free(heilbronn);
-    p1_higher_weight_clear(&presentation);
     return result;
 }
 

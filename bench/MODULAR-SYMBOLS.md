@@ -49,9 +49,9 @@ per stage) shows both the gains and the remaining higher-weight boundary:
 | level 1000, weight 2, plus | cusp | 6 | 198 | 171 | 40 |
 | level 1000, weight 2, plus | `T_2` | 11 | 190 | 75 | 20 |
 | level 1000, weight 2, plus | charpoly | 51 | 37 | 32 | 20 |
-| level 97, weight 8, full | space | 113 | 515 | 5 | 90 |
-| level 97, weight 8, full | cusp | 68 | 541 | 117 | 10 |
-| level 97, weight 8, full | `T_2` | 117 | 66 | 46 | 160 |
+| level 97, weight 8, full | space | 113 | 509 | 5 | 90 |
+| level 97, weight 8, full | cusp | 66 | 539 | 117 | <1 |
+| level 97, weight 8, full | `T_2` | 7 | 64 | 47 | 180 |
 
 All 120 rows in that eight-case, four-runtime snapshot agreed. A separate
 12-case seeded run also produced 192 agreeing rows. The stress version of the
@@ -213,6 +213,11 @@ sparse rational elimination.  The retained reduction matrix sends every
 triple generator to the quotient basis. Prime Hecke operators generate
 Cremona's continued-fraction Heilbronn representatives once, then apply the
 entire batch natively, including non-primitive-image zero terms at bad primes.
+The presentation is retained in a finalizable, type-tagged native object, so
+the first Hecke operator reuses the already-computed basis and reduction map
+instead of repeating relation construction and sparse elimination. In the
+core snapshot this reduces the level-97, weight-8 `T_2` stage from 117 ms to
+7 ms; the seeded level-389, weight-4 minus case takes 11 ms.
 Composite indices use Hecke multiplicativity and the exact weight-`k`
 prime-power recurrence. Levels 3, 11, 12, and 37, weights 4 and 6, and all
 three signs are tested against Sage using complete factorizations of the
