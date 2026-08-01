@@ -15,6 +15,14 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
+def _euler_phi(value: int) -> int:
+    result = value
+    for prime, _exponent in sage.factor(value):
+        prime_value = runtime.number(prime)
+        result = result // prime_value * (prime_value - 1)
+    return result
+
+
 def _native_field(value: Any, name: str) -> Any:
     return runtime.reflect.get(value, name)
 
@@ -258,10 +266,16 @@ class CyclotomicElement(sage.Element):
     numerical_approx = n
 
     def minpoly(self, variable: str = 'x') -> Any:
-        algebraic_field = runtime.reflect.get(
-            runtime.global_object, 'QQbar')
-        return algebraic_field._from_native(
-            self._native).minpoly(variable)
+        ring = sage.PolynomialRing(sage.ZZ, variable)
+        coefficients = (
+            runtime.flint_backend().qqbarMinpolyCoefficients(
+                self._native)
+        )
+        generator = ring.gen()
+        result = ring(0)
+        for coefficient in reversed(coefficients):
+            result = result * generator + ring(coefficient)
+        return result
 
     minimal_polynomial = minpoly
 
@@ -288,9 +302,7 @@ class CyclotomicFieldParent(sage.Parent):
             raise ValueError('cyclotomic order must be positive')
         self._order = order
         self._degree = runtime.integer_bigint(
-            runtime.reflect.get(
-                runtime.global_object, 'euler_phi')(
-                    runtime.normalize_integer(order)))
+            _euler_phi(runtime.number(order)))
         self._variable = 'zeta' + str(order)
         self._kind = 'CyclotomicField'
         self._name = (
@@ -521,6 +533,12 @@ class DirichletCharacter(sage.Element):
     def order(self) -> Any:
         return runtime.normalize_integer(
             _native_field(self._native_data(), 'order'))
+
+    def _minimal_base_ring(self) -> Any:
+        value_order = self.order()
+        if value_order % 2 == 1:
+            value_order *= 2
+        return CyclotomicField(value_order)
 
     def is_primitive(self) -> bool:
         return bool(_native_field(

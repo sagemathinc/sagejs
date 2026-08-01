@@ -12,6 +12,42 @@ Agents and automation can request stable structured output:
 pnpm bench:modular-symbols -- --json
 ```
 
+Dirichlet-character spaces have a separate three-system dashboard:
+
+```sh
+pnpm bench:character-modular-symbols
+pnpm bench:character-modular-symbols -- --large
+pnpm bench:character-modular-symbols -- --large --json
+```
+
+The default character profile compares quadratic and order-5 characters at
+prime level 1201. The intentionally expensive `--large` profile adds prime
+level 4001. Each profile times sign-`+1` space construction, its cuspidal
+kernel, and `T_2` independently in Sage.js, SageMath, and Magma. The `T_2`
+answer is a Galois-invariant fingerprint: the rational trace for quadratic
+characters, or the value at 2 of the trace's minimal polynomial for order-5
+characters, reduced modulo 1000000007. Thus inverse choices of an order-5
+character compare correctly across the three systems.
+
+One level-4001 snapshot from 2026-08-01 (seconds, one warm-process sample per
+stage) illustrates the current performance boundary:
+
+| character | stage | Sage.js | SageMath | Magma |
+| --- | ---: | ---: | ---: | ---: |
+| quadratic | space | 62.67 | 0.40 | 0.35 |
+| quadratic | cuspidal | 0.56 | 0.67 | 0.03 |
+| quadratic | `T_2` | 62.34 | 0.10 | 0.28 |
+| order 5 | space | 64.40 | 8.02 | 0.41 |
+| order 5 | cuspidal | 7.45 | 72.74 | 0.04 |
+| order 5 | `T_2` | 66.52 | 15.27 | 0.77 |
+
+All rows passed the independent dimension or trace-fingerprint checks. These
+numbers are a reproducible development snapshot, not portable performance
+claims. In particular, the nearly identical Sage.js space and `T_2` times
+show that `T_2` currently reconstructs the expensive native character
+presentation instead of retaining it. Conversely, Sage.js's exact order-5
+cuspidal kernel is already substantially faster than SageMath's at this level.
+
 The dashboard separates the following operations because conflating them
 would give misleading performance numbers:
 

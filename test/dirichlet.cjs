@@ -1,9 +1,47 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
+const {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+
+test("Dirichlet and character modular-symbol APIs work in script mode", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-dirichlet-test-"));
+  const filename = join(directory, "script.sage");
+  try {
+    writeFileSync(
+      filename,
+      [
+        "G = DirichletGroup(13)",
+        "e = G.gen()^2",
+        "M = ModularSymbols(e, 2, sign=1)",
+        "print([G.gen().order(), CyclotomicField(5).gen().minpoly(),",
+        "       M.dimension(), M.hecke_matrix(2).trace().minpoly()])",
+        "",
+      ].join("\n"),
+    );
+    const result = spawnSync(
+      process.execPath,
+      [join(__dirname, "..", "bin", "sagejs"), filename],
+      { encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      result.stdout.trim(),
+      "[12, x^4 + x^3 + x^2 + x + 1, 3, x^2 - 6*x + 12]",
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test("FLINT-backed Dirichlet groups match the guided tour", async () => {
   const session = await createSage();

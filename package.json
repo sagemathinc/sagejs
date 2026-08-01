@@ -120,6 +120,7 @@
     "bench:finite-fields": "node bench/compare-finite-fields.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
     "bench:modular-symbols": "node bench/compare-modular-symbols.cjs",
+    "bench:character-modular-symbols": "node bench/compare-character-modular-symbols.cjs",
     "bench:cowasm": "node bench/cowasm/run.cjs",
     "bench:numbers": "node bench/cowasm/run.cjs --suite numbers",
     "bench:numbers:check": "node bench/cowasm/run.cjs --budget bench/cowasm/numbers-budget.json",

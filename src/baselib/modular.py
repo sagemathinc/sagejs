@@ -3294,12 +3294,7 @@ def ModularSymbols(
             if group.order() <= 2:
                 base_ring = sage.QQ
             else:
-                cyclotomic_field = runtime.reflect.get(
-                    runtime.global_object, 'CyclotomicField')
-                value_order = group.order()
-                if value_order % 2 == 1:
-                    value_order *= 2
-                base_ring = cyclotomic_field(value_order)
+                base_ring = group._minimal_base_ring()
     else:
         congruence_group = (
             Gamma0(group) if runtime.is_exact_integer(group) else group)

@@ -229,9 +229,7 @@ class AlgebraicNumberElement(sage.Element):
         return runtime.flint_backend().qqbarDegree(self._native)
 
     def minpoly(self, variable: str = 'x') -> Any:
-        polynomial_ring = runtime.reflect.get(
-            runtime.global_object, 'PolynomialRing')
-        ring = polynomial_ring(sage.ZZ, variable)
+        ring = sage.PolynomialRing(sage.ZZ, variable)
         coefficients = (
             runtime.flint_backend().qqbarMinpolyCoefficients(
                 self._native)
