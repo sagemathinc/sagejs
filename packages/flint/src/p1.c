@@ -71,9 +71,16 @@ typedef struct
     int sign;
     size_t generators;
     size_t two_term_generators;
+    size_t rank;
     size_t dimension;
     size_t *basis_generators;
+    size_t *generator_columns;
+    signed char *generator_coefficients;
+    size_t *pivot_rows;
+    size_t *free_columns;
+    fmpq_mat_t quotient_relations;
     fmpq_mat_t reduction;
+    int quotient_relations_initialized;
     int reduction_initialized;
 } sagejs_higher_weight_presentation;
 
@@ -1617,6 +1624,12 @@ static void p1_higher_weight_clear(
     sagejs_higher_weight_presentation *presentation)
 {
     free(presentation->basis_generators);
+    free(presentation->generator_columns);
+    free(presentation->generator_coefficients);
+    free(presentation->pivot_rows);
+    free(presentation->free_columns);
+    if (presentation->quotient_relations_initialized)
+        fmpq_mat_clear(presentation->quotient_relations);
     if (presentation->reduction_initialized)
         fmpq_mat_clear(presentation->reduction);
     memset(presentation, 0, sizeof(*presentation));
@@ -1664,38 +1677,110 @@ static sagejs_higher_weight_presentation *p1_higher_weight_unwrap(
     return presentation;
 }
 
+static int p1_higher_weight_ensure_reduction(
+    sagejs_higher_weight_presentation *presentation)
+{
+    size_t *target_by_column = NULL;
+    int status = 0;
+
+    if (presentation->reduction_initialized)
+        return 1;
+    if (!presentation->quotient_relations_initialized ||
+        (presentation->dimension != 0 &&
+            presentation->generators > SIZE_MAX / presentation->dimension) ||
+        presentation->generators * presentation->dimension >
+            SAGEJS_MANIN_MAX_DENSE_CELLS)
+        return 0;
+    target_by_column = malloc(
+        (presentation->two_term_generators == 0
+            ? 1 : presentation->two_term_generators) *
+            sizeof(*target_by_column));
+    if (target_by_column == NULL)
+        return 0;
+    for (size_t column = 0;
+        column < presentation->two_term_generators; column++)
+        target_by_column[column] = SIZE_MAX;
+    for (size_t target = 0; target < presentation->dimension; target++)
+        target_by_column[presentation->free_columns[target]] = target;
+    fmpq_mat_init(presentation->reduction,
+        (slong) presentation->generators,
+        (slong) presentation->dimension);
+    presentation->reduction_initialized = 1;
+    for (size_t original = 0;
+        original < presentation->generators; original++)
+    {
+        size_t column = presentation->generator_columns[original];
+        int scale = presentation->generator_coefficients[original];
+        if (column == SIZE_MAX)
+            continue;
+        if (presentation->pivot_rows[column] == SIZE_MAX)
+        {
+            size_t target = target_by_column[column];
+            if (target == SIZE_MAX)
+                goto done;
+            fmpq_set_si(fmpq_mat_entry(presentation->reduction,
+                (slong) original, (slong) target), scale, 1);
+        }
+        else
+        {
+            size_t row = presentation->pivot_rows[column];
+            for (size_t target = 0;
+                target < presentation->dimension; target++)
+            {
+                fmpq_set(fmpq_mat_entry(presentation->reduction,
+                    (slong) original, (slong) target),
+                    fmpq_mat_entry(presentation->quotient_relations,
+                        (slong) row,
+                        (slong) presentation->free_columns[target]));
+                if (scale > 0)
+                    fmpq_neg(fmpq_mat_entry(presentation->reduction,
+                        (slong) original, (slong) target),
+                        fmpq_mat_entry(presentation->reduction,
+                            (slong) original, (slong) target));
+            }
+        }
+    }
+    status = 1;
+
+done:
+    free(target_by_column);
+    if (!status)
+    {
+        fmpq_mat_clear(presentation->reduction);
+        presentation->reduction_initialized = 0;
+    }
+    return status;
+}
+
 static int p1_relation_add_fmpz(
-    fmpq_mat_t relations,
-    size_t row,
+    size_t *columns,
+    fmpz *values,
+    size_t *used,
+    size_t capacity,
     size_t original,
     const fmpz_t coefficient,
     p1_signed_union_find *sets,
     const size_t *root_column)
 {
     size_t root = p1_signed_find(sets, original);
-    fmpz_t scaled;
 
     if (sets->killed[root])
         return 1;
-    if (root_column[root] == SIZE_MAX)
+    if (root_column[root] == SIZE_MAX || *used >= capacity)
         return 0;
-    fmpz_init(scaled);
-    fmpz_set(scaled, coefficient);
+    columns[*used] = root_column[root];
+    fmpz_set(values + *used, coefficient);
     if (sets->coefficient[original] < 0)
-        fmpz_neg(scaled, scaled);
-    fmpq_add_fmpz(
-        fmpq_mat_entry(relations, (slong) row,
-            (slong) root_column[root]),
-        fmpq_mat_entry(relations, (slong) row,
-            (slong) root_column[root]),
-        scaled);
-    fmpz_clear(scaled);
+        fmpz_neg(values + *used, values + *used);
+    (*used)++;
     return 1;
 }
 
 static int p1_relation_add_si(
-    fmpq_mat_t relations,
-    size_t row,
+    size_t *columns,
+    fmpz *values,
+    size_t *used,
+    size_t capacity,
     size_t original,
     int coefficient,
     p1_signed_union_find *sets,
@@ -1705,7 +1790,8 @@ static int p1_relation_add_si(
     int status;
     fmpz_init_set_si(value, coefficient);
     status = p1_relation_add_fmpz(
-        relations, row, original, value, sets, root_column);
+        columns, values, used, capacity,
+        original, value, sets, root_column);
     fmpz_clear(value);
     return status;
 }
@@ -1720,9 +1806,12 @@ static int p1_higher_weight_build(
     size_t generators, free_count = 0, rank, dimension;
     size_t *root_column = NULL, *column_root = NULL, *pivot_row = NULL;
     size_t *free_column = NULL;
+    size_t *relation_offsets = NULL, *relation_columns = NULL;
+    size_t relation_capacity = 0, relation_used = 0;
+    fmpz *relation_values = NULL;
     p1_signed_union_find sets = {0};
-    fmpq_mat_t relations, reduced;
-    int relations_initialized = 0, reduced_initialized = 0;
+    fmpq_mat_t reduced;
+    int reduced_initialized = 0;
     slong rank_slong = 0;
     fmpz_t binomial;
     int status = 0;
@@ -1793,11 +1882,21 @@ static int p1_higher_weight_build(
         }
     }
     if (free_count > (size_t) WORD_MAX ||
-        (free_count != 0 && generators >
-            SAGEJS_MANIN_MAX_DENSE_CELLS / free_count))
+        generators > SIZE_MAX / ((size_t) weight + 1))
         goto done;
-    fmpq_mat_init(relations, (slong) generators, (slong) free_count);
-    relations_initialized = 1;
+    relation_capacity = generators * ((size_t) weight + 1);
+    if (relation_capacity > (size_t) WORD_MAX)
+        goto done;
+    relation_offsets = malloc(
+        (generators + 1) * sizeof(*relation_offsets));
+    relation_columns = malloc(
+        (relation_capacity == 0 ? 1 : relation_capacity) *
+            sizeof(*relation_columns));
+    relation_values = _fmpz_vec_init(
+        (slong) (relation_capacity == 0 ? 1 : relation_capacity));
+    if (relation_offsets == NULL || relation_columns == NULL ||
+        relation_values == NULL)
+        goto done;
     fmpz_init(binomial);
 
     /* x + xT + xT^2 = 0 using Sage/Magma's historical T convention. */
@@ -1805,6 +1904,7 @@ static int p1_higher_weight_build(
         for (size_t coset = 0; coset < cosets; coset++)
         {
             size_t row = (size_t) i * cosets + coset;
+            relation_offsets[row] = relation_used;
             sagejs_p1_pair pair = list->pairs[coset];
             size_t t_coset = p1_apply_pair(
                 list, pair.v,
@@ -1816,7 +1916,9 @@ static int p1_higher_weight_build(
             uint32_t a = weight - 2 - i;
             if (t_coset >= cosets || tt_coset >= cosets ||
                 !p1_relation_add_si(
-                    relations, row, row, 1, &sets, root_column))
+                    relation_columns, relation_values,
+                    &relation_used, relation_capacity,
+                    row, 1, &sets, root_column))
                 goto relation_done;
             for (uint32_t j = 0; j <= a; j++)
             {
@@ -1824,7 +1926,8 @@ static int p1_higher_weight_build(
                 if (((weight - 2 + j) & 1U) != 0)
                     fmpz_neg(binomial, binomial);
                 if (!p1_relation_add_fmpz(
-                        relations, row,
+                        relation_columns, relation_values,
+                        &relation_used, relation_capacity,
                         (size_t) j * cosets + t_coset,
                         binomial, &sets, root_column))
                     goto relation_done;
@@ -1835,27 +1938,23 @@ static int p1_higher_weight_build(
                 if (((weight - 2 - i + j) & 1U) != 0)
                     fmpz_neg(binomial, binomial);
                 if (!p1_relation_add_fmpz(
-                        relations, row,
+                        relation_columns, relation_values,
+                        &relation_used, relation_capacity,
                         (size_t) (weight - 2 - i + j) * cosets
                             + tt_coset,
                         binomial, &sets, root_column))
                     goto relation_done;
             }
         }
+    relation_offsets[generators] = relation_used;
     fmpz_clear(binomial);
 
-    fmpq_mat_init(reduced, (slong) generators, (slong) free_count);
+    fmpq_mat_init(reduced, (slong) free_count, (slong) free_count);
     reduced_initialized = 1;
-    if (sagejs_fmpq_mat_prefers_sparse_rref(relations))
-    {
-        if (!sagejs_fmpq_mat_rref_sparse(
-                reduced, &rank_slong, relations))
-            goto done;
-    }
-    else
-    {
-        rank_slong = fmpq_mat_rref(reduced, relations);
-    }
+    if (!sagejs_fmpq_rref_sparse_fmpz_csr(
+            reduced, &rank_slong, generators, free_count,
+            relation_offsets, relation_columns, relation_values))
+        goto done;
     if (rank_slong < 0 || (size_t) rank_slong > free_count)
         goto done;
     rank = (size_t) rank_slong;
@@ -1898,52 +1997,32 @@ static int p1_higher_weight_build(
         if (next != dimension)
             goto done;
     }
-    if (dimension != 0 && generators >
-        SAGEJS_MANIN_MAX_DENSE_CELLS / dimension)
+    answer->generator_columns = malloc(
+        generators * sizeof(*answer->generator_columns));
+    answer->generator_coefficients = malloc(
+        generators * sizeof(*answer->generator_coefficients));
+    if (answer->generator_columns == NULL ||
+        answer->generator_coefficients == NULL)
         goto done;
-    fmpq_mat_init(
-        answer->reduction, (slong) generators, (slong) dimension);
-    answer->reduction_initialized = 1;
     for (size_t original = 0; original < generators; original++)
     {
         size_t root = p1_signed_find(&sets, original);
-        size_t column;
-        int scale = sets.coefficient[original];
-        if (sets.killed[root])
-            continue;
-        column = root_column[root];
-        if (pivot_row[column] == SIZE_MAX)
-        {
-            size_t target = 0;
-            while (target < dimension && free_column[target] != column)
-                target++;
-            if (target == dimension)
-                goto done;
-            fmpq_set_si(
-                fmpq_mat_entry(answer->reduction,
-                    (slong) original, (slong) target), scale, 1);
-        }
-        else
-        {
-            size_t row = pivot_row[column];
-            for (size_t target = 0; target < dimension; target++)
-            {
-                fmpq_neg(
-                    fmpq_mat_entry(answer->reduction,
-                        (slong) original, (slong) target),
-                    fmpq_mat_entry(reduced, (slong) row,
-                        (slong) free_column[target]));
-                if (scale < 0)
-                    fmpq_neg(
-                        fmpq_mat_entry(answer->reduction,
-                            (slong) original, (slong) target),
-                        fmpq_mat_entry(answer->reduction,
-                            (slong) original, (slong) target));
-            }
-        }
+        answer->generator_columns[original] = sets.killed[root]
+            ? SIZE_MAX : root_column[root];
+        answer->generator_coefficients[original] =
+            sets.coefficient[original];
     }
+    answer->pivot_rows = pivot_row;
+    answer->free_columns = free_column;
+    pivot_row = NULL;
+    free_column = NULL;
+    answer->quotient_relations[0] = reduced[0];
+    answer->quotient_relations_initialized = 1;
+    reduced_initialized = 0;
+    memset(reduced, 0, sizeof(*reduced));
     answer->generators = generators;
     answer->two_term_generators = free_count;
+    answer->rank = rank;
     answer->dimension = dimension;
     status = 1;
     goto done;
@@ -1951,8 +2030,6 @@ static int p1_higher_weight_build(
 relation_done:
     fmpz_clear(binomial);
 done:
-    if (relations_initialized)
-        fmpq_mat_clear(relations);
     if (reduced_initialized)
         fmpq_mat_clear(reduced);
     free(sets.parent);
@@ -1960,6 +2037,11 @@ done:
     free(sets.killed);
     free(root_column);
     free(column_root);
+    free(relation_offsets);
+    free(relation_columns);
+    if (relation_values != NULL)
+        _fmpz_vec_clear(relation_values,
+            (slong) (relation_capacity == 0 ? 1 : relation_capacity));
     free(pivot_row);
     free(free_column);
     if (!status)
@@ -2702,7 +2784,7 @@ static int p1_napi_set_size(
 napi_value sagejs_p1list_higher_weight_presentation(
     napi_env env, napi_callback_info info)
 {
-    napi_value arguments[3], result = NULL, reduction = NULL, generators;
+    napi_value arguments[3], result = NULL, generators;
     sagejs_p1list_value *list;
     sagejs_higher_weight_presentation *presentation = NULL;
     int64_t weight_value, sign_value;
@@ -2739,9 +2821,7 @@ napi_value sagejs_p1list_higher_weight_presentation(
     presentation->level = list->level;
     presentation->weight = (uint32_t) weight_value;
     presentation->sign = (int) sign_value;
-    reduction = sagejs_qq_matrix_from_fmpq_mat(
-        env, presentation->reduction);
-    if (presentation->dimension > UINT32_MAX || reduction == NULL ||
+    if (presentation->dimension > UINT32_MAX ||
         !p1_check_napi(env, napi_create_array_with_length(
             env, presentation->dimension, &generators)))
         goto done;
@@ -2762,8 +2842,6 @@ napi_value sagejs_p1list_higher_weight_presentation(
         !p1_napi_set_size(env, result, "dimension", presentation->dimension) ||
         !p1_check_napi(env, napi_set_named_property(
             env, result, "basisGenerators", generators)) ||
-        !p1_check_napi(env, napi_set_named_property(
-            env, result, "reduction", reduction)) ||
         !p1_check_napi(env, napi_type_tag_object(
             env, result, &sagejs_higher_weight_presentation_type_tag)) ||
         !p1_check_napi(env, napi_wrap(
@@ -2776,6 +2854,25 @@ napi_value sagejs_p1list_higher_weight_presentation(
 done:
     p1_higher_weight_free(presentation);
     return result;
+}
+
+napi_value sagejs_higher_weight_presentation_reduction(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[1];
+    sagejs_higher_weight_presentation *presentation;
+
+    if (!p1_arguments(env, info, 1, arguments) ||
+        (presentation = p1_higher_weight_unwrap(
+            env, arguments[0])) == NULL)
+        return NULL;
+    if (!p1_higher_weight_ensure_reduction(presentation))
+    {
+        napi_throw_error(env, NULL,
+            "the explicit higher-weight reduction matrix exceeds the dense allocation guard");
+        return NULL;
+    }
+    return sagejs_qq_matrix_from_fmpq_mat(env, presentation->reduction);
 }
 
 napi_value sagejs_p1list_character_presentation(
@@ -3111,6 +3208,7 @@ napi_value sagejs_p1list_higher_weight_hecke_matrix(
     fmpq_t scaled;
     p1_matrix_four *heilbronn = NULL;
     size_t heilbronn_count = 0;
+    size_t *target_by_column = NULL;
 
     if (!p1_arguments(env, info, 5, arguments) ||
         (list = p1_unwrap(env, arguments[0])) == NULL ||
@@ -3144,6 +3242,17 @@ napi_value sagejs_p1list_higher_weight_hecke_matrix(
     matrix_initialized = 1;
     fmpz_init(coefficient);
     fmpq_init(scaled);
+    target_by_column = malloc(
+        (presentation->two_term_generators == 0
+            ? 1 : presentation->two_term_generators) *
+            sizeof(*target_by_column));
+    if (target_by_column == NULL)
+        goto done;
+    for (size_t column = 0;
+        column < presentation->two_term_generators; column++)
+        target_by_column[column] = SIZE_MAX;
+    for (size_t target = 0; target < presentation->dimension; target++)
+        target_by_column[presentation->free_columns[target]] = target;
     for (size_t source = 0; source < presentation->dimension; source++)
     {
         size_t generator = presentation->basis_generators[source];
@@ -3172,36 +3281,61 @@ napi_value sagejs_p1list_higher_weight_hecke_matrix(
             {
                 size_t image_generator =
                     (size_t) target_degree * list->count + image_coset;
+                size_t column =
+                    presentation->generator_columns[image_generator];
+                int generator_coefficient =
+                    presentation->generator_coefficients[image_generator];
+                if (column == SIZE_MAX)
+                    continue;
                 p1_monomial_matrix_coefficient(
                     coefficient, i, (uint32_t) weight_value - 2,
                     target_degree, a, b, c, d);
                 if (fmpz_is_zero(coefficient))
                     continue;
-                for (size_t target = 0;
-                    target < presentation->dimension; target++)
+                if (presentation->pivot_rows[column] == SIZE_MAX)
                 {
-                    fmpq_mul_fmpz(
-                        scaled,
-                        fmpq_mat_entry(presentation->reduction,
-                            (slong) image_generator, (slong) target),
-                        coefficient);
-                    fmpq_add(
+                    size_t target = target_by_column[column];
+                    if (target == SIZE_MAX)
+                        goto done;
+                    if (generator_coefficient < 0)
+                        fmpz_neg(coefficient, coefficient);
+                    fmpq_add_fmpz(fmpq_mat_entry(matrix,
+                        (slong) source, (slong) target),
                         fmpq_mat_entry(matrix,
+                            (slong) source, (slong) target), coefficient);
+                }
+                else
+                {
+                    size_t row = presentation->pivot_rows[column];
+                    for (size_t target = 0;
+                        target < presentation->dimension; target++)
+                    {
+                        fmpq_mul_fmpz(scaled,
+                            fmpq_mat_entry(
+                                presentation->quotient_relations,
+                                (slong) row,
+                                (slong) presentation->free_columns[target]),
+                            coefficient);
+                        if (generator_coefficient > 0)
+                            fmpq_neg(scaled, scaled);
+                        fmpq_add(fmpq_mat_entry(matrix,
                             (slong) source, (slong) target),
-                        fmpq_mat_entry(matrix,
-                            (slong) source, (slong) target),
-                        scaled);
+                            fmpq_mat_entry(matrix,
+                                (slong) source, (slong) target), scaled);
+                    }
                 }
             }
         }
     }
     result = sagejs_qq_matrix_from_fmpq_mat(env, matrix);
 
+done:
     fmpq_clear(scaled);
     fmpz_clear(coefficient);
     if (matrix_initialized)
         fmpq_mat_clear(matrix);
     free(heilbronn);
+    free(target_by_column);
     return result;
 }
 

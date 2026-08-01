@@ -20,6 +20,9 @@ pnpm bench:modular-symbols:grid
 pnpm bench:modular-symbols:grid -- --large
 pnpm bench:modular-symbols:grid -- --seed 20260801 --count 12 --json
 pnpm bench:modular-symbols:grid -- --seed 20260801 --count 12 --stress
+pnpm bench:modular-symbols:grid -- \
+  --case 1000,6,1,2,false --case 1000,6,-1,2,false \
+  --runtimes sagejs,pari,magma --timeout-ms 120000
 ```
 
 The core profile deliberately mixes prime, composite, and squareful levels;
@@ -31,8 +34,12 @@ benchmark. A seeded run selects a reproducible sample from a wider Cartesian
 product. By default, seeded selection caps the rough level-times-weight work
 parameter at 2000. `--stress` removes that guard and records per-case failures
 instead of aborting the remaining sweep. Small and medium seeded cases include
-charpolys; large ones stop at
-the trace-checked Hecke matrix.
+charpolys; large ones stop at the trace-checked Hecke matrix. Repeated
+`--case N,K,SIGN,P[,CHARPOLY]` options make a discovered cliff an exact,
+reproducible probe. `--runtimes` can omit a reference system known to be
+pathological in that region, and `--timeout-ms` prevents one runtime from
+blocking the remainder of a sweep. Timeout reports distinguish agreement of
+completed rows from completeness of the requested grid.
 
 Every row is checked against SageMath using a basis-independent integer:
 dimensions for spaces, the Hecke trace modulo 1000000007, or the value at 2
@@ -55,11 +62,30 @@ per stage) shows both the gains and the remaining higher-weight boundary:
 
 All 120 rows in that eight-case, four-runtime snapshot agreed. A separate
 12-case seeded run also produced 192 agreeing rows. The stress version of the
-same seed found the next architectural target: full weight-6 level-1000
-construction reaches Sage.js's dense higher-weight reduction-map guard. A
-factorized reduction map, analogous to the character implementation, is the
-right fix; merely raising the allocation limit would hide the issue while
-using hundreds of megabytes.
+same seed originally found a dense-allocation cliff at full weight 6 and level
+1000. Higher-weight presentations now accept their order-three relations as
+sparse integer CSR data and retain a factorized quotient, so this case is
+supported without constructing the generator-by-quotient reduction matrix.
+
+A signed weight-6, level-1000 snapshot after that change gives:
+
+| case | stage | Sage.js | PARI/GP | Magma |
+| --- | ---: | ---: | ---: | ---: |
+| plus | space | 9.00 s | 25.52 s | 39.05 s |
+| plus | cusp | 2.30 s | timeout | 0.09 s |
+| plus | `T_2` | 0.085 s | timeout | 9.62 s |
+| minus | space | 17.54 s | timeout | 46.19 s |
+| minus | cusp | 2.20 s | timeout | 0.08 s |
+| minus | `T_2` | 0.072 s | timeout | 7.58 s |
+
+Every completed dimension and trace fingerprint agreed. PARI/GP exceeded the
+two-minute per-runtime budget before finishing the first case. For sign zero,
+level 1000 and weight 4 improved from over one minute and roughly 750 MB to
+8.1 seconds for the ambient space, 3.3 seconds for its cuspidal subspace, and
+86 ms for `T_2`. Full weight 6 now completes instead of raising an allocation
+error, but its 113-second construction shows the next boundary: the quotient
+RREF itself becomes large and dense even though its input and retained maps
+are sparse.
 
 Dirichlet-character spaces have a separate three-system dashboard:
 
@@ -209,15 +235,20 @@ x + x*S = 0,                 x - sign*x*I = 0
 
 with a signed union/find.  It then expands only the order-three relation
 `x + x*T + x*T^2 = 0` using exact binomial coefficients and applies FLINT's
-sparse rational elimination.  The retained reduction matrix sends every
-triple generator to the quotient basis. Prime Hecke operators generate
+sparse rational elimination. The order-three relations are emitted directly
+as integer CSR rows; no dense generator-by-two-term relation matrix is formed.
+The resulting RREF, signed union/find map, pivots, and free columns are retained
+as a factorized quotient. Prime Hecke operators generate
 Cremona's continued-fraction Heilbronn representatives once, then apply the
 entire batch natively, including non-primitive-image zero terms at bad primes.
 The presentation is retained in a finalizable, type-tagged native object, so
-the first Hecke operator reuses the already-computed basis and reduction map
+the first Hecke operator reuses the already-computed basis and factorized map
 instead of repeating relation construction and sparse elimination. In the
 core snapshot this reduces the level-97, weight-8 `T_2` stage from 117 ms to
 7 ms; the seeded level-389, weight-4 minus case takes 11 ms.
+The much larger generator-to-basis reduction matrix is materialized lazily
+only when `reduction_matrix()` is explicitly requested, subject to a dense
+allocation guard.
 Composite indices use Hecke multiplicativity and the exact weight-`k`
 prime-power recurrence. Levels 3, 11, 12, and 37, weights 4 and 6, and all
 three signs are tested against Sage using complete factorizations of the

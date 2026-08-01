@@ -24,6 +24,37 @@ const json = process.argv.includes("--json");
 const large = process.argv.includes("--large");
 const stress = process.argv.includes("--stress");
 const modulus = 1000000007;
+const timeout = Number(argument("--timeout-ms", "300000"));
+const requestedRuntimes = new Set(
+  argument("--runtimes", "sagejs,sage,pari,magma").split(",")
+    .map((name) => name.trim().toLowerCase()).filter(Boolean),
+);
+
+if (process.argv.includes("--help")) {
+  console.log(`Usage: pnpm bench:modular-symbols:grid -- [options]
+
+Options:
+  --large                    include the fixed large profile
+  --seed INTEGER             generate a reproducible parameter sample
+  --count INTEGER            number of seeded cases (default 8)
+  --stress                   remove the seeded work guard
+  --case N,K,SIGN,P[,CHAR]   run an explicit case; may be repeated
+  --timeout-ms INTEGER       per-runtime timeout (default 300000)
+  --runtimes LIST            comma-separated sagejs,sage,pari,magma
+  --json                     emit structured JSON
+
+CHAR defaults to false and accepts true, false, 1, or 0.`);
+  process.exit(0);
+}
+
+if (!Number.isSafeInteger(timeout) || timeout < 1000) {
+  throw new RangeError("--timeout-ms must be an integer of at least 1000");
+}
+for (const runtime of requestedRuntimes) {
+  if (!["sagejs", "sage", "pari", "magma"].includes(runtime)) {
+    throw new RangeError(`unknown runtime ${JSON.stringify(runtime)}`);
+  }
+}
 
 const coreCases = [
   [37, 2, 0, 2, true],
@@ -57,6 +88,37 @@ function makeCase(values) {
 function argument(name, fallback = undefined) {
   const index = process.argv.indexOf(name);
   return index < 0 ? fallback : process.argv[index + 1];
+}
+
+function argumentsAll(name) {
+  const values = [];
+  for (let index = 0; index < process.argv.length - 1; index++) {
+    if (process.argv[index] === name) values.push(process.argv[index + 1]);
+  }
+  return values;
+}
+
+function explicitCases() {
+  return argumentsAll("--case").map((text) => {
+    const fields = text.split(",");
+    if (fields.length < 4 || fields.length > 5) {
+      throw new Error(`invalid --case ${JSON.stringify(text)}`);
+    }
+    const numbers = fields.slice(0, 4).map(Number);
+    const [level, weight, sign, prime] = numbers;
+    if (!numbers.every(Number.isSafeInteger) || level < 1 || weight < 2 ||
+        ![-1, 0, 1].includes(sign) || prime < 2) {
+      throw new Error(`invalid --case ${JSON.stringify(text)}`);
+    }
+    const charpolyText = fields[4] ?? "false";
+    if (!["true", "false", "1", "0"].includes(charpolyText)) {
+      throw new Error(`invalid charpoly flag in --case ${JSON.stringify(text)}`);
+    }
+    return makeCase([
+      level, weight, sign, prime,
+      charpolyText === "true" || charpolyText === "1",
+    ]);
+  });
 }
 
 function seededCases(seedText, countText) {
@@ -98,9 +160,12 @@ function seededCases(seedText, countText) {
 }
 
 const randomCases = seededCases(argument("--seed"), argument("--count"));
-const cases = randomCases.length
-  ? randomCases
-  : [...coreCases, ...(large ? largeCases : [])].map(makeCase);
+const selectedCases = explicitCases();
+const cases = selectedCases.length
+  ? selectedCases
+  : randomCases.length
+    ? randomCases
+    : [...coreCases, ...(large ? largeCases : [])].map(makeCase);
 
 function parseOutput(label, output) {
   const rows = [];
@@ -136,10 +201,25 @@ function execute(label, command, args, input = undefined) {
     encoding: "utf8",
     env: process.env,
     input,
+    timeout,
     maxBuffer: 128 * 1024 * 1024,
   });
   if (result.error?.code === "ENOENT") {
     return { available: false, reason: `${command} is not installed` };
+  }
+  if (result.error?.code === "ETIMEDOUT") {
+    let partial;
+    try {
+      partial = parseOutput(label, result.stdout || "");
+    } catch {
+      partial = { rows: [], errors: [] };
+    }
+    partial.errors.push({
+      case: "remaining",
+      stage: "timeout",
+      message: `runtime exceeded ${timeout} ms`,
+    });
+    return { available: true, ...partial };
   }
   if (result.error) throw result.error;
   if (result.status !== 0) {
@@ -258,48 +338,73 @@ function magmaProgram() {
   return lines.join("\n");
 }
 
-const runtimes = [
-  {
+const runtimes = [];
+if (requestedRuntimes.has("sagejs")) {
+  runtimes.push({
     name: "Sage.js",
     result: executeSage("Sage.js", process.execPath, [sagejs]),
-  },
-  { name: "SageMath", result: executeSage("SageMath", sage) },
-  { name: "PARI/GP", result: execute("PARI/GP", gp, ["-q", "-f", "-s", "4G"], pariProgram()) },
-  { name: "Magma", result: execute("Magma", magma, [], magmaProgram()) },
-];
+  });
+}
+if (requestedRuntimes.has("sage")) {
+  runtimes.push({ name: "SageMath", result: executeSage("SageMath", sage) });
+}
+if (requestedRuntimes.has("pari")) {
+  runtimes.push({
+    name: "PARI/GP",
+    result: execute("PARI/GP", gp, ["-q", "-f", "-s", "4G"], pariProgram()),
+  });
+}
+if (requestedRuntimes.has("magma")) {
+  runtimes.push({
+    name: "Magma", result: execute("Magma", magma, [], magmaProgram()),
+  });
+}
 
 const reference = new Map();
-const sageResult = runtimes.find((item) => item.name === "SageMath").result;
-if (sageResult.available) {
-  for (const row of sageResult.rows) {
-    reference.set(`${row.case}:${row.stage}`, row.answer);
+const referenceSources = new Map();
+const referenceRuntimes = ["SageMath", "Magma", "PARI/GP", "Sage.js"]
+  .map((name) => runtimes.find((item) => item.name === name))
+  .filter((item) => item?.result.available && item.result.rows.length > 0);
+for (const runtime of referenceRuntimes) {
+  for (const row of runtime.result.rows) {
+    const key = `${row.case}:${row.stage}`;
+    if (!reference.has(key)) {
+      reference.set(key, row.answer);
+      referenceSources.set(key, runtime.name);
+    }
   }
 }
 const rows = [];
-let correct = reference.size > 0;
+let agreement = reference.size > 0;
+let complete = true;
 for (const runtime of runtimes) {
   if (!runtime.result.available) continue;
   for (const row of runtime.result.rows) {
     const expected = reference.get(`${row.case}:${row.stage}`);
     const agrees = row.answer === expected;
-    correct &&= agrees;
+    agreement &&= agrees;
     rows.push({ ...row, runtime: runtime.name, expected, correct: agrees });
   }
 }
 for (const runtime of runtimes) {
   if (runtime.result.available && runtime.result.errors.length > 0) {
-    correct = false;
+    complete = false;
   }
 }
+const correct = agreement && complete;
 
 const report = {
   generatedAt: new Date().toISOString(),
   profile: randomCases.length
     ? stress ? "seeded-stress" : "seeded"
-    : large ? "large" : "core",
+    : selectedCases.length ? "explicit"
+      : large ? "large" : "core",
   seed: argument("--seed"),
   modulus,
+  referenceRuntimes: [...new Set(referenceSources.values())],
   cases: cases.map((item) => ({ id: caseId(item), ...item })),
+  agreement,
+  complete,
   correct,
   runtimes: runtimes.map(({ name, result }) => ({
     name,
@@ -328,7 +433,16 @@ if (json) {
       (row.correct ? "correct" : "WRONG").padStart(9),
     );
   }
-  console.log(`\ncorrectness: ${correct ? "PASS" : "FAIL"}`);
+  for (const runtime of runtimes) {
+    if (!runtime.result.available) continue;
+    for (const error of runtime.result.errors) {
+      console.log(
+        `ERROR ${runtime.name}: ${error.case} ${error.stage} ${error.message}`,
+      );
+    }
+  }
+  console.log(`\nagreement: ${agreement ? "PASS" : "FAIL"}`);
+  console.log(`completeness: ${complete ? "PASS" : "FAIL"}`);
 }
 
 if (!correct) process.exitCode = 1;

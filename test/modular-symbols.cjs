@@ -307,6 +307,21 @@ test("higher-weight Gamma0 Manin symbols, signs, and Hecke", async () => {
       (
         await session.evaluate(
           [
+            "M = ModularSymbols(11,4,sign=1)",
+            "P = M.manin_presentation()",
+            "R = P.reduction_matrix()",
+            "[R.nrows(), R.ncols(), " +
+              "matrix(QQ,[R.rows()[g] for g in P.basis_generators()]) " +
+              "== identity_matrix(QQ,P.dimension())]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[36, 4, True]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
             "data = []",
             "for N,sign in [(12,0),(12,1),(12,-1)," +
               "(100,0),(100,1),(100,-1)]:",
