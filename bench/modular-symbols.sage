@@ -117,6 +117,14 @@ def measure_subspace_phases(level):
             "space-plus-cuspidal-t2-" + str(level),
             sample, start, signed_cuspidal_hecke.trace())
 
+        start = time.time()
+        characteristic_polynomial = signed_cuspidal_hecke.charpoly()
+        fingerprint = (
+            characteristic_polynomial(2).numerator() % 1000000007)
+        report(
+            "charpoly-t2-" + str(level),
+            sample, start, fingerprint)
+
 
 def measure_hecke(level, prime):
     native = hasattr(P1List(1), "hecke_matrix")

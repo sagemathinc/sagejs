@@ -254,6 +254,43 @@ assert str(A.charpoly()) == 'x^2 - 5*x - 2'
 assert str(A.characteristic_polynomial('t')) == 't^2 - 5*t - 2'
 assert str(rational_echelon.charpoly()) == 'x^2 - 3/2*x + 1/2'
 
+# Sparse integer matrices use a certified cyclic-Krylov route when possible.
+# The path graph is cyclic; its characteristic polynomials satisfy the usual
+# continuant recurrence.  Integral QQ matrices should use the same route while
+# retaining QQ coefficients.
+charpoly_ring = PolynomialRing(ZZ, 'x')
+charpoly_x = charpoly_ring.gen()
+path_order = 40
+path_matrix = matrix(
+    ZZ, path_order, path_order,
+    lambda row, column: 1 if abs(row - column) == 1 else 0)
+path_previous = charpoly_ring(1)
+path_expected = charpoly_x
+for _ in range(2, path_order + 1):
+    path_previous, path_expected = (
+        path_expected, charpoly_x * path_expected - path_previous)
+assert path_matrix.charpoly() == path_expected
+assert str(matrix(QQ, path_matrix).charpoly()) == str(path_expected)
+
+# Repeated diagonal entries admit no cyclic vector, so this exercises the
+# certified modular fallback after the Krylov rank test rejects the fast path.
+noncyclic_order = 40
+
+
+def noncyclic_entry(row, column):
+    if row != column:
+        return 0
+    if row < noncyclic_order // 2:
+        return 1
+    return 2
+
+
+noncyclic = matrix(
+    ZZ, noncyclic_order, noncyclic_order, noncyclic_entry)
+assert noncyclic.charpoly() == (
+    (charpoly_x - 1) ** (noncyclic_order // 2)
+    * (charpoly_x - 2) ** (noncyclic_order // 2))
+
 huge = Integer(
     '1606938044258990275541962092341162602522202993782792835301499')
 large = matrix(ZZ, [[huge, 1], [1, huge]])

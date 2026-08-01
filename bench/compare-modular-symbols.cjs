@@ -27,6 +27,7 @@ const expected = new Map([
   ["space-plus-5077", 423],
   ["space-plus-cuspidal-5077", 422],
   ["space-plus-cuspidal-t2-5077", -2],
+  ["charpoly-t2-5077", 938871226],
   ["hecke-t3-389", 4],
   ["hecke-t3-1000", 20],
   ["hecke-t3-10000", 20],
@@ -47,7 +48,9 @@ const requiredOperations = new Map([
     "Magma",
     [...expected.keys()].filter(
       (operation) =>
-        operation.startsWith("space-") || operation.startsWith("hecke-"),
+        operation.startsWith("space-") ||
+        operation.startsWith("hecke-") ||
+        operation.startsWith("charpoly-"),
     ),
   ],
 ]);
@@ -101,7 +104,6 @@ function execute(label, command, args, options = {}) {
 
 function executePari() {
   const program = [
-    "default(parisizemax, 4G);",
     "default(nbthreads, 1);",
     "msinit(11,2);",
     "for(i=1,2, N=[389,1000][i]; " +
@@ -127,10 +129,16 @@ function executePari() {
     "t=getwalltime(); T=mshecke(P,2,C); " +
       'print("RESULT space-plus-cuspidal-t2-5077 0 ",' +
       '(getwalltime()-t)/1000.0," ",trace(T));',
+    "t=getwalltime(); F=charpoly(T); " +
+      'print("RESULT charpoly-t2-5077 0 ",' +
+      '(getwalltime()-t)/1000.0," ",' +
+      "lift(Mod(subst(F,'x,2),1000000007)));",
     "quit;",
     "",
   ].join("\n");
-  return execute("PARI/GP", gp, ["-q", "-f"], { input: program });
+  return execute("PARI/GP", gp, ["-q", "-f", "-s", "4G"], {
+    input: program,
+  });
 }
 
 function executeMagma() {
@@ -161,6 +169,10 @@ function executeMagma() {
     "t := Cputime(); T := HeckeOperator(C, 2);",
     'printf "RESULT space-plus-cuspidal-t2-5077 0 %.9o %o\\n", ' +
       "Cputime(t), Trace(T);",
+    "t := Cputime(); F := CharacteristicPolynomial(T);",
+    "fingerprint := Integers() ! Evaluate(F, 2);",
+    'printf "RESULT charpoly-t2-5077 0 %.9o %o\\n", ' +
+      "Cputime(t), fingerprint mod 1000000007;",
     "quit;",
     "",
   ].join("\n");
@@ -225,6 +237,8 @@ const report = {
       "full, cuspidal, plus, and plus-cuspidal construction phases",
     "space-plus-cuspidal-t2-5077":
       "T2 on the level-5077 plus-cuspidal subspace, answer is its trace",
+    "charpoly-t2-5077":
+      "exact T2 characteristic polynomial; answer is f(2) modulo 1000000007",
     "hecke-t3-*":
       "exact weight-2 Gamma0 T3/Hecke matrix, answer is its trace",
   },

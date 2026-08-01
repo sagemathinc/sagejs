@@ -24,6 +24,7 @@
 #include <flint/ulong_extras.h>
 
 #include "algebraic.h"
+#include "charpoly.h"
 #include "matrix.h"
 #include "sparse_rational.h"
 
@@ -276,6 +277,18 @@ static slong matrix_ncols(const sagejs_matrix *matrix)
         return gr_mat_ncols(
             matrix->algebraic, matrix->algebraic_context);
     return nmod_mat_ncols(matrix->modular);
+}
+
+static int rational_matrix_is_integral(const sagejs_matrix *matrix)
+{
+    slong rows = fmpq_mat_nrows(matrix->rational);
+    slong columns = fmpq_mat_ncols(matrix->rational);
+    for (slong row = 0; row < rows; row++)
+        for (slong column = 0; column < columns; column++)
+            if (!fmpz_is_one(fmpq_denref(fmpq_mat_entry(
+                    matrix->rational, row, column))))
+                return 0;
+    return 1;
 }
 
 static ulong matrix_modulus(const sagejs_matrix *matrix)
@@ -2602,28 +2615,57 @@ napi_value sagejs_matrix_charpoly(
         napi_create_array_with_length(
             env, (size_t) degree + 1, &coefficients)))
         return NULL;
-    if (source->kind == SAGEJS_MATRIX_ZZ)
+    if (source->kind == SAGEJS_MATRIX_ZZ ||
+        (source->kind == SAGEJS_MATRIX_QQ &&
+         rational_matrix_is_integral(source)))
     {
         fmpz_poly_t polynomial;
-        fmpz_t value;
+        fmpz_t value, one;
+        fmpz_mat_t integral_matrix;
+        const fmpz_mat_struct *matrix;
+        int copied = source->kind == SAGEJS_MATRIX_QQ;
 
         fmpz_poly_init(polynomial);
         fmpz_init(value);
-        fmpz_mat_charpoly(polynomial, source->integer);
+        fmpz_init_set_ui(one, 1);
+        if (copied)
+        {
+            fmpz_mat_init(integral_matrix, degree, degree);
+            for (slong row = 0; row < degree; row++)
+                for (slong column = 0; column < degree; column++)
+                    fmpz_set(fmpz_mat_entry(
+                        integral_matrix, row, column),
+                        fmpq_numref(fmpq_mat_entry(
+                            source->rational, row, column)));
+            matrix = integral_matrix;
+        }
+        else
+        {
+            matrix = source->integer;
+        }
+        sagejs_fmpz_mat_charpoly(polynomial, matrix);
         for (index = 0; index <= degree; index++)
         {
             fmpz_poly_get_coeff_fmpz(value, polynomial, index);
-            coefficient = fmpz_to_bigint(env, value);
+            coefficient = copied
+                ? rational_result(env, value, one)
+                : fmpz_to_bigint(env, value);
             if (coefficient == NULL ||
                 !check_napi(env,
                     napi_set_element(
                         env, coefficients, (uint32_t) index, coefficient)))
             {
+                if (copied)
+                    fmpz_mat_clear(integral_matrix);
+                fmpz_clear(one);
                 fmpz_clear(value);
                 fmpz_poly_clear(polynomial);
                 return NULL;
             }
         }
+        if (copied)
+            fmpz_mat_clear(integral_matrix);
+        fmpz_clear(one);
         fmpz_clear(value);
         fmpz_poly_clear(polynomial);
     }

@@ -8,6 +8,7 @@
       "sources": [
         "src/addon.c",
         "src/algebraic.c",
+        "src/charpoly.c",
         "src/dirichlet.c",
         "src/extension_field.c",
         "src/floating.c",
