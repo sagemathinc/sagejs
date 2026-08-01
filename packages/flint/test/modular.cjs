@@ -54,3 +54,29 @@ test("native Eisenstein boundary validates its parameters", () => {
     /normalization/,
   );
 });
+
+test("native character Manin presentations retain cyclotomic scalars", () => {
+  const p1 = flint.p1List(13);
+  const group = flint.dirichletGroup(13n);
+  const full = flint.p1ListCharacterPresentation(
+    p1, 2, 0, group, 2n,
+  );
+  const plus = flint.p1ListCharacterPresentation(
+    p1, 2, 1, group, 2n,
+  );
+  const minus = flint.p1ListCharacterPresentation(
+    p1, 2, -1, group, 2n,
+  );
+  assert.deepEqual(
+    [full.dimension, plus.dimension, minus.dimension],
+    [4, 3, 1],
+  );
+  assert.deepEqual(
+    [full.generators, full.basisGenerators.length],
+    [14, 4],
+  );
+  const t2 = flint.p1ListCharacterHeckeMatrix(
+    p1, 2, 0, 2, group, 2n,
+  );
+  assert.equal(flint.matrixRank(t2), 4);
+});

@@ -18,6 +18,7 @@
 #include <flint/fmpz_poly.h>
 #include <flint/gr.h>
 #include <flint/gr_mat.h>
+#include <flint/gr_poly.h>
 #include <flint/nmod_mat.h>
 #include <flint/nmod_poly.h>
 #include <flint/qqbar.h>
@@ -508,6 +509,63 @@ napi_value sagejs_qq_matrix_from_fmpq_mat(
     if (matrix == NULL)
         return NULL;
     fmpq_mat_set(matrix->rational, entries);
+    return wrap_matrix(env, matrix);
+}
+
+napi_value sagejs_qqbar_matrix_from_gr_mat(
+    napi_env env,
+    const gr_mat_t entries,
+    const gr_ctx_t context)
+{
+    sagejs_matrix *matrix = new_qqbar_matrix(
+        env, gr_mat_nrows(entries, context),
+        gr_mat_ncols(entries, context), 0);
+
+    if (matrix == NULL)
+        return NULL;
+    for (slong row = 0;
+         row < gr_mat_nrows(entries, context); row++)
+        for (slong col = 0;
+             col < gr_mat_ncols(entries, context); col++)
+            qqbar_set(
+                (qqbar_ptr) gr_mat_entry_ptr(
+                    matrix->algebraic, row, col,
+                    matrix->algebraic_context),
+                (qqbar_srcptr) gr_mat_entry_ptr(
+                    (gr_mat_struct *) entries, row, col,
+                    (gr_ctx_struct *) context));
+    return wrap_matrix(env, matrix);
+}
+
+napi_value sagejs_qq_matrix_from_qqbar_gr_mat(
+    napi_env env,
+    const gr_mat_t entries,
+    const gr_ctx_t context)
+{
+    sagejs_matrix *matrix = new_matrix(
+        env, SAGEJS_MATRIX_QQ,
+        gr_mat_nrows(entries, context), gr_mat_ncols(entries, context));
+
+    if (matrix == NULL)
+        return NULL;
+    for (slong row = 0;
+         row < gr_mat_nrows(entries, context); row++)
+        for (slong col = 0;
+             col < gr_mat_ncols(entries, context); col++)
+        {
+            qqbar_srcptr value = (qqbar_srcptr) gr_mat_entry_ptr(
+                (gr_mat_struct *) entries, row, col,
+                (gr_ctx_struct *) context);
+            if (!qqbar_is_rational(value))
+            {
+                finalize_matrix(env, matrix, NULL);
+                napi_throw_error(env, NULL,
+                    "character matrix coefficient is not rational");
+                return NULL;
+            }
+            qqbar_get_fmpq(
+                fmpq_mat_entry(matrix->rational, row, col), value);
+        }
     return wrap_matrix(env, matrix);
 }
 
@@ -2603,8 +2661,7 @@ napi_value sagejs_matrix_charpoly(
             "characteristic polynomial requires a square matrix");
         return NULL;
     }
-    if (source->kind == SAGEJS_MATRIX_ACB ||
-        source->kind == SAGEJS_MATRIX_QQBAR)
+    if (source->kind == SAGEJS_MATRIX_ACB)
     {
         napi_throw_type_error(env, NULL,
             "characteristic polynomials are not available for this matrix");
@@ -2615,6 +2672,35 @@ napi_value sagejs_matrix_charpoly(
         napi_create_array_with_length(
             env, (size_t) degree + 1, &coefficients)))
         return NULL;
+    if (source->kind == SAGEJS_MATRIX_QQBAR)
+    {
+        gr_poly_t polynomial;
+        gr_poly_init(polynomial, source->algebraic_context);
+        if (gr_mat_charpoly(
+                polynomial, source->algebraic,
+                source->algebraic_context) != GR_SUCCESS)
+        {
+            gr_poly_clear(polynomial, source->algebraic_context);
+            napi_throw_error(env, NULL,
+                "FLINT algebraic characteristic polynomial failed");
+            return NULL;
+        }
+        for (index = 0; index <= degree; index++)
+        {
+            coefficient = sagejs_qqbar_wrap_copy(
+                env, (qqbar_srcptr) gr_poly_coeff_srcptr(
+                    polynomial, index, source->algebraic_context));
+            if (coefficient == NULL || !check_napi(env,
+                napi_set_element(
+                    env, coefficients, (uint32_t) index, coefficient)))
+            {
+                gr_poly_clear(polynomial, source->algebraic_context);
+                return NULL;
+            }
+        }
+        gr_poly_clear(polynomial, source->algebraic_context);
+        return coefficients;
+    }
     if (source->kind == SAGEJS_MATRIX_ZZ ||
         (source->kind == SAGEJS_MATRIX_QQ &&
          rational_matrix_is_integral(source)))

@@ -10,6 +10,7 @@
 #include <flint/arb.h>
 #include <flint/arf.h>
 #include <flint/fmpq.h>
+#include <flint/fmpq_poly.h>
 #include <flint/fmpz.h>
 #include <flint/fmpz_poly.h>
 #include <flint/qqbar.h>
@@ -364,6 +365,89 @@ failure:
     fmpz_poly_clear(monomial);
     fmpz_poly_clear(cyclotomic);
     return NULL;
+}
+
+napi_value sagejs_cyclotomic_element_coefficients(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result = NULL;
+    napi_value pair;
+    napi_value numerator;
+    napi_value denominator;
+    qqbar_srcptr value;
+    ulong order;
+    slong index;
+    slong length;
+    slong height;
+    slong precision;
+    int expressed = 0;
+    qqbar_t generator;
+    fmpq_poly_t coefficients;
+
+    if (!require_arguments(env, info, 2, args) ||
+        (value = sagejs_qqbar_unwrap(env, args[0])) == NULL ||
+        !bigint_to_ulong(env, args[1], &order))
+        return NULL;
+    if (order == 0)
+    {
+        napi_throw_range_error(
+            env, NULL, "cyclotomic order must be positive");
+        return NULL;
+    }
+    qqbar_init(generator);
+    fmpq_poly_init(coefficients);
+    qqbar_root_of_unity(generator, 1, order);
+    height = qqbar_height_bits(value);
+    precision = height > (WORD_MAX - 40) / 2
+        ? WORD_MAX : 2 * height + 40;
+    if (precision < 128)
+        precision = 128;
+    for (int attempt = 0; attempt < 4 && !expressed; attempt++)
+    {
+        expressed = qqbar_express_in_field(
+            coefficients, generator, value, precision, 0, precision);
+        if (precision <= WORD_MAX / 2)
+            precision *= 2;
+    }
+    if (!expressed)
+    {
+        napi_throw_range_error(env, NULL,
+            "algebraic number is not in the requested cyclotomic field");
+        goto cleanup;
+    }
+    length = fmpq_poly_length(coefficients);
+    if (!check_napi(env,
+        napi_create_array_with_length(env, (size_t) length, &result)))
+    {
+        result = NULL;
+        goto cleanup;
+    }
+    for (index = 0; index < length; index++)
+    {
+        numerator = fmpz_to_bigint(
+            env, fmpq_poly_numref(coefficients) + index);
+        denominator = fmpz_to_bigint(
+            env, fmpq_poly_denref(coefficients));
+        if (numerator == NULL || denominator == NULL ||
+            !check_napi(env,
+                napi_create_array_with_length(env, 2, &pair)) ||
+            !check_napi(env,
+                napi_set_element(env, pair, 0, numerator)) ||
+            !check_napi(env,
+                napi_set_element(env, pair, 1, denominator)) ||
+            !check_napi(env,
+                napi_set_element(env, result, (uint32_t) index, pair)))
+        {
+            result = NULL;
+            goto cleanup;
+        }
+    }
+
+cleanup:
+    fmpq_poly_clear(coefficients);
+    qqbar_clear(generator);
+    return result;
 }
 
 typedef void (*sagejs_qqbar_binary_function)(

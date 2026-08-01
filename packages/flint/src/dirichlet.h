@@ -2,6 +2,14 @@
 #define SAGEJS_DIRICHLET_H
 
 #include <node_api.h>
+#include <flint/dirichlet.h>
+
+int sagejs_dirichlet_character_init_native(
+    napi_env env,
+    napi_value group_value,
+    napi_value index_value,
+    const dirichlet_group_struct **group,
+    dirichlet_char_t character);
 
 napi_value sagejs_dirichlet_group(
     napi_env env, napi_callback_info info);

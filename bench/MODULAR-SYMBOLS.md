@@ -123,6 +123,31 @@ rational paths with polynomial coefficients remain an explicit unsupported
 operation; Sage.js raises `NotImplementedError` rather than silently applying
 the weight-2 path reducer.
 
+Dirichlet-character spaces use the same triple presentation, with the
+normalization scalar from the character included in every projective-coset
+lookup. A weighted union/find eliminates monomial two-term and signed-star
+relations while storing root-of-unity exponents, so these relations require
+no general algebraic-number arithmetic. The surviving order-three relations
+are reduced exactly by FLINT's generic-ring matrix layer over a cyclotomic
+field. The retained reduction map then drives exact prime Hecke matrices;
+composite operators use multiplicativity and
+
+```text
+T_(p^r) = T_p T_(p^(r-1)) - chi(p) p^(k-1) T_(p^(r-2)).
+```
+
+Boundary classification follows the character-sensitive cusp equivalence
+test in SageMath and the original Magma modular-symbol implementation. It
+records both the equivalence scalar and cusps killed by a stabilizer on which
+the character is nontrivial. The kernel gives the exact cuspidal subspace.
+Regression cases cover quadratic, cubic, quartic, and sextic characters,
+both parities, weights 2 through 4, all three signs, bad-prime and composite
+Hecke operators, and characteristic polynomials over exact cyclotomic fields.
+These were compared directly with SageMath, including the diamond-operator
+normalization convention. The remaining important character-space API gap is
+exposing the full star matrix on a sign-zero space; signed spaces themselves
+are constructed directly and have exact star action.
+
 The same retained E1 endpoints now define the exact boundary map. Rational
 cusps are classified under `Gamma0(N)` using Cremona's equivalence criterion,
 and each basis path maps to its endpoint divisor.  Since this is an oriented

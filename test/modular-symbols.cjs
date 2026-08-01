@@ -97,6 +97,97 @@ test("Gamma1 and character cuspidal modular-symbol models", async () => {
   }
 });
 
+test("Dirichlet-character Manin symbols, signs, boundaries, and Hecke", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "G = DirichletGroup(13)",
+            "e = list(G)[2]",
+            "data = []",
+            "for k in [2,4]:",
+            "    for sign in [0,1,-1]:",
+            "        M = ModularSymbols(e,k,sign=sign)",
+            "        data.append((k,sign,M.dimension()," +
+              "M.cuspidal_subspace().dimension()," +
+              "M.hecke_matrix(2).charpoly()))",
+            "data",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(2, 0, 4, 2, x^4 + (-zeta6 - 1)*x^3 - 8*zeta6*x^2 + " +
+        "(10*zeta6 - 5)*x + 21*zeta6 - 21), " +
+        "(2, 1, 3, 1, x^3 + (-2*zeta6 - 2)*x^2 - 2*zeta6*x + " +
+        "14*zeta6 - 7), (2, -1, 1, 1, x + zeta6 + 1), " +
+        "(4, 0, 6, 4, x^6 + (-7*zeta6 - 7)*x^5 + 10*zeta6*x^4 + " +
+        "(430*zeta6 - 215)*x^3 + (-297*zeta6 + 297)*x^2 + " +
+        "(-1200*zeta6 + 2400)*x - 2628), " +
+        "(4, 1, 4, 2, x^4 + (-8*zeta6 - 8)*x^3 + 40*zeta6*x^2 + " +
+        "(254*zeta6 - 127)*x - (438*zeta6 - 438)), " +
+        "(4, -1, 2, 2, x^2 + (zeta6 + 1)*x - 6*zeta6)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "e = DirichletGroup(5).gen()",
+            "q = e^2",
+            "quartic = [(s, ModularSymbols(e,3,sign=s).dimension(), " +
+              "ModularSymbols(e,3,sign=s).cuspidal_subspace().dimension()) " +
+              "for s in [0,1,-1]]",
+            "quadratic = [(s, ModularSymbols(q,4,sign=s).dimension(), " +
+              "ModularSymbols(q,4,sign=s).cuspidal_subspace().dimension()) " +
+              "for s in [0,1,-1]]",
+            "wrong_parity = ModularSymbols(e,2).dimension()",
+            "[quartic, quadratic, wrong_parity, " +
+              "ModularSymbols(q,4).base_ring(), " +
+              "ModularSymbols(list(DirichletGroup(7))[2],2).base_ring()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[(0, 2, 0), (1, 1, 0), (-1, 1, 0)], " +
+        "[(0, 2, 0), (1, 2, 0), (-1, 0, 0)], 0, Rational Field, " +
+        "Cyclotomic Field of order 6 and degree 2]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "e = list(DirichletGroup(13))[2]",
+            "M = ModularSymbols(e,4,sign=1)",
+            "T2 = M.hecke_matrix(2)",
+            "[M.hecke_matrix(4) == T2*T2 - " +
+              "identity_matrix(M.base_ring(),M.dimension())*e(2)*8, " +
+              "M.hecke_matrix(6) == T2*M.hecke_matrix(3)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[True, True]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "e = list(DirichletGroup(13))[2]",
+            "P = ModularSymbols(e,2,sign=1)",
+            "[P.character() == e, " +
+              "P.diamond_bracket_matrix(2) == " +
+              "identity_matrix(P.base_ring(),P.dimension())*e(2), " +
+              "P.star_involution_matrix() == " +
+              "identity_matrix(P.base_ring(),P.dimension()), " +
+              "P.manin_presentation().dimension() == P.dimension()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[True, True, True, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("higher-weight Gamma0 Manin symbols, signs, and Hecke", async () => {
   const session = await createSage();
   try {

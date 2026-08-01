@@ -80,14 +80,17 @@ test("Dirichlet character arithmetic and exact values stay native", async () => 
         await session.evaluate(
           "G = DirichletGroup(20)\n" +
             "a,b = G.gens()\n" +
+            "K = CyclotomicField(4)\n" +
             "[(a*b)(17), b^2, (b^4).is_principal(), " +
             "a.is_real(), b.is_real(), " +
-            "G.zeta().minpoly(), G.zeta().n()]",
+            "G.zeta().minpoly(), G.zeta().n(), " +
+            "K(1).multiplicative_order(), " +
+            "K(-1).multiplicative_order(), K(0)^0]",
         )
       ).repr,
       "[zeta4, Dirichlet character modulo 20 of conductor 5 mapping " +
         "11 |--> 1, 17 |--> -1, True, True, False, " +
-        "x^2 + 1, 1.00000000000000*I]",
+        "x^2 + 1, 1.00000000000000*I, 1, 2, 1]",
     );
   } finally {
     await session.close();

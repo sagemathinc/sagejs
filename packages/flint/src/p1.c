@@ -10,9 +10,13 @@
 #include <flint/fmpq.h>
 #include <flint/fmpq_vec.h>
 #include <flint/fmpz.h>
+#include <flint/gr.h>
+#include <flint/gr_mat.h>
 #include <flint/nmod_mat.h>
+#include <flint/qqbar.h>
 #include <flint/ulong_extras.h>
 
+#include "dirichlet.h"
 #include "matrix.h"
 #include "modsym_core.h"
 #include "p1.h"
@@ -75,6 +79,18 @@ typedef struct
     fmpq_mat_t reduction;
     int reduction_initialized;
 } sagejs_higher_weight_presentation;
+
+typedef struct
+{
+    size_t generators;
+    size_t two_term_generators;
+    size_t dimension;
+    size_t *basis_generators;
+    gr_ctx_t context;
+    gr_mat_t reduction;
+    int context_initialized;
+    int reduction_initialized;
+} sagejs_character_presentation;
 
 static const napi_type_tag sagejs_p1_type_tag = {
     UINT64_C(0x690d50401f624373),
@@ -2201,6 +2217,455 @@ done:
     return status;
 }
 
+typedef struct
+{
+    size_t *parent;
+    ulong *exponent;
+    unsigned char *killed;
+    size_t count;
+    ulong root_order;
+} p1_root_union_find;
+
+static ulong p1_add_exponents(ulong left, ulong right, ulong modulus)
+{
+    return (ulong) (((__uint128_t) left + right) % modulus);
+}
+
+static ulong p1_sub_exponents(ulong left, ulong right, ulong modulus)
+{
+    return left >= right ? left - right : modulus - (right - left);
+}
+
+static size_t p1_root_find(p1_root_union_find *sets, size_t value)
+{
+    size_t parent = sets->parent[value];
+    if (parent != value)
+    {
+        size_t root = p1_root_find(sets, parent);
+        sets->exponent[value] = p1_add_exponents(
+            sets->exponent[value], sets->exponent[parent],
+            sets->root_order);
+        sets->parent[value] = root;
+    }
+    return sets->parent[value];
+}
+
+/* Impose left + zeta^relation_exponent * right = 0. */
+static void p1_root_union(
+    p1_root_union_find *sets,
+    size_t left,
+    size_t right,
+    ulong relation_exponent)
+{
+    size_t left_root = p1_root_find(sets, left);
+    size_t right_root = p1_root_find(sets, right);
+    ulong left_scale = sets->exponent[left];
+    ulong right_scale = sets->exponent[right];
+    ulong expected_left = p1_add_exponents(
+        sets->root_order / 2,
+        p1_add_exponents(
+            relation_exponent, right_scale, sets->root_order),
+        sets->root_order);
+
+    if (left_root == right_root)
+    {
+        if (left_scale != expected_left)
+            sets->killed[left_root] = 1;
+        return;
+    }
+    sets->parent[left_root] = right_root;
+    sets->exponent[left_root] = p1_sub_exponents(
+        expected_left, left_scale, sets->root_order);
+    sets->killed[right_root] |= sets->killed[left_root];
+}
+
+static ulong p1_character_root_order(
+    const dirichlet_group_struct *group)
+{
+    ulong exponent = group->expo;
+    return (exponent & 1UL) == 0 ? exponent : 2 * exponent;
+}
+
+static ulong p1_character_exponent(
+    const dirichlet_group_struct *group,
+    const dirichlet_char_t character,
+    ulong residue,
+    ulong root_order)
+{
+    ulong exponent = dirichlet_chi(group, character, residue % group->q);
+    if (exponent == DIRICHLET_CHI_NULL)
+        return ULONG_MAX;
+    return (ulong) (((__uint128_t) exponent * root_order) / group->expo);
+}
+
+static qqbar_ptr p1_gr_entry(
+    gr_mat_t matrix, slong row, slong col, gr_ctx_t context)
+{
+    return (qqbar_ptr) gr_mat_entry_ptr(matrix, row, col, context);
+}
+
+static qqbar_srcptr p1_gr_entry_src(
+    const gr_mat_t matrix, slong row, slong col,
+    const gr_ctx_t context)
+{
+    return (qqbar_srcptr) gr_mat_entry_ptr(
+        (gr_mat_struct *) matrix, row, col, (gr_ctx_struct *) context);
+}
+
+static void p1_character_presentation_clear(
+    sagejs_character_presentation *presentation)
+{
+    free(presentation->basis_generators);
+    if (presentation->reduction_initialized)
+        gr_mat_clear(presentation->reduction, presentation->context);
+    if (presentation->context_initialized)
+        gr_ctx_clear(presentation->context);
+    memset(presentation, 0, sizeof(*presentation));
+}
+
+static int p1_character_relation_add(
+    gr_mat_t relations,
+    size_t row,
+    size_t original,
+    const fmpz_t integer_coefficient,
+    ulong value_exponent,
+    p1_root_union_find *sets,
+    const size_t *root_column,
+    gr_ctx_t context)
+{
+    size_t root = p1_root_find(sets, original);
+    qqbar_t root_value, coefficient;
+    ulong exponent;
+
+    if (sets->killed[root])
+        return 1;
+    if (root_column[root] == SIZE_MAX)
+        return 0;
+    exponent = p1_add_exponents(
+        value_exponent, sets->exponent[original], sets->root_order);
+    qqbar_init(root_value);
+    qqbar_init(coefficient);
+    qqbar_root_of_unity(root_value, (slong) exponent, sets->root_order);
+    qqbar_mul_fmpz(coefficient, root_value, integer_coefficient);
+    qqbar_add(
+        p1_gr_entry(relations, (slong) row,
+            (slong) root_column[root], context),
+        p1_gr_entry(relations, (slong) row,
+            (slong) root_column[root], context),
+        coefficient);
+    qqbar_clear(coefficient);
+    qqbar_clear(root_value);
+    return 1;
+}
+
+static int p1_character_build(
+    const sagejs_p1list_value *list,
+    uint32_t weight,
+    int sign,
+    const dirichlet_group_struct *group,
+    const dirichlet_char_t character,
+    sagejs_character_presentation *answer)
+{
+    size_t cosets = list->count;
+    size_t generators, free_count = 0, rank, dimension;
+    size_t *root_column = NULL, *column_root = NULL, *pivot_row = NULL;
+    size_t *free_column = NULL;
+    p1_root_union_find sets = {0};
+    gr_mat_t relations, reduced;
+    int relations_initialized = 0, reduced_initialized = 0;
+    slong rank_slong = 0;
+    fmpz_t binomial, one;
+    qqbar_t root_value, temporary;
+    int scalar_values_initialized = 0;
+    int status = 0;
+
+    memset(answer, 0, sizeof(*answer));
+    if (weight < 2 || (sign != -1 && sign != 0 && sign != 1) ||
+        group == NULL || group->q != list->level || cosets == 0 ||
+        (size_t) (weight - 1) > SIZE_MAX / cosets)
+        return 0;
+    generators = (size_t) (weight - 1) * cosets;
+    if (generators > (size_t) WORD_MAX)
+        return 0;
+    sets.count = generators;
+    sets.root_order = p1_character_root_order(group);
+    sets.parent = malloc(generators * sizeof(*sets.parent));
+    sets.exponent = malloc(generators * sizeof(*sets.exponent));
+    sets.killed = calloc(generators, sizeof(*sets.killed));
+    root_column = malloc(generators * sizeof(*root_column));
+    column_root = malloc(generators * sizeof(*column_root));
+    if (sets.parent == NULL || sets.exponent == NULL ||
+        sets.killed == NULL || root_column == NULL || column_root == NULL)
+        goto done;
+    for (size_t generator = 0; generator < generators; generator++)
+    {
+        sets.parent[generator] = generator;
+        sets.exponent[generator] = 0;
+        root_column[generator] = SIZE_MAX;
+    }
+
+    /* x + xS = 0, including the character normalization scalar. */
+    for (uint32_t i = 0; i + 2 <= weight; i++)
+        for (size_t coset = 0; coset < cosets; coset++)
+        {
+            sagejs_p1_pair pair = list->pairs[coset], normalized;
+            uint32_t scalar;
+            size_t source = (size_t) i * cosets + coset;
+            size_t image_coset, image;
+            ulong exponent;
+            if (!p1_normalize_pair(
+                    list->level, pair.v, -(int64_t) pair.u,
+                    &normalized, &scalar))
+                goto done;
+            image_coset = p1_index_normalized(list, normalized);
+            if (image_coset >= cosets)
+                goto done;
+            image = (size_t) (weight - 2 - i) * cosets + image_coset;
+            exponent = p1_character_exponent(
+                group, character, scalar, sets.root_order);
+            if (exponent == ULONG_MAX)
+                goto done;
+            if (i & 1U)
+                exponent = p1_add_exponents(
+                    exponent, sets.root_order / 2, sets.root_order);
+            p1_root_union(&sets, source, image, exponent);
+        }
+
+    /* x - sign*xI = 0, again retaining the character scalar. */
+    if (sign != 0)
+        for (uint32_t i = 0; i + 2 <= weight; i++)
+            for (size_t coset = 0; coset < cosets; coset++)
+            {
+                sagejs_p1_pair pair = list->pairs[coset], normalized;
+                uint32_t scalar;
+                size_t source = (size_t) i * cosets + coset;
+                size_t image_coset, image;
+                ulong exponent;
+                if (!p1_normalize_pair(
+                        list->level, -(int64_t) pair.u, pair.v,
+                        &normalized, &scalar))
+                    goto done;
+                image_coset = p1_index_normalized(list, normalized);
+                if (image_coset >= cosets)
+                    goto done;
+                image = (size_t) i * cosets + image_coset;
+                exponent = p1_character_exponent(
+                    group, character, scalar, sets.root_order);
+                if (exponent == ULONG_MAX)
+                    goto done;
+                if (((i & 1U) != 0) != (sign > 0))
+                    exponent = p1_add_exponents(
+                        exponent, sets.root_order / 2,
+                        sets.root_order);
+                p1_root_union(&sets, source, image, exponent);
+            }
+
+    for (size_t generator = 0; generator < generators; generator++)
+    {
+        size_t root = p1_root_find(&sets, generator);
+        if (!sets.killed[root] && root_column[root] == SIZE_MAX)
+        {
+            root_column[root] = free_count;
+            column_root[free_count++] = root;
+        }
+    }
+    if (free_count > (size_t) WORD_MAX ||
+        (free_count != 0 && generators >
+            SAGEJS_MANIN_MAX_DENSE_CELLS / free_count))
+        goto done;
+    gr_ctx_init_complex_qqbar(answer->context);
+    answer->context_initialized = 1;
+    gr_mat_init(relations, (slong) generators, (slong) free_count,
+        answer->context);
+    relations_initialized = 1;
+    fmpz_init(binomial);
+    fmpz_init_set_ui(one, 1);
+
+    /* x + xT + xT^2 = 0. */
+    for (uint32_t i = 0; i + 2 <= weight; i++)
+        for (size_t coset = 0; coset < cosets; coset++)
+        {
+            size_t row = (size_t) i * cosets + coset;
+            sagejs_p1_pair pair = list->pairs[coset], normalized;
+            size_t t_coset, tt_coset;
+            uint32_t t_scalar, tt_scalar;
+            ulong t_exponent, tt_exponent;
+            uint32_t a = weight - 2 - i;
+            if (!p1_normalize_pair(
+                    list->level, pair.v,
+                    -(int64_t) pair.u - (int64_t) pair.v,
+                    &normalized, &t_scalar))
+                goto relation_done;
+            t_coset = p1_index_normalized(list, normalized);
+            if (!p1_normalize_pair(
+                    list->level,
+                    -(int64_t) pair.u - (int64_t) pair.v, pair.u,
+                    &normalized, &tt_scalar))
+                goto relation_done;
+            tt_coset = p1_index_normalized(list, normalized);
+            t_exponent = p1_character_exponent(
+                group, character, t_scalar, sets.root_order);
+            tt_exponent = p1_character_exponent(
+                group, character, tt_scalar, sets.root_order);
+            if (t_coset >= cosets || tt_coset >= cosets ||
+                t_exponent == ULONG_MAX || tt_exponent == ULONG_MAX ||
+                !p1_character_relation_add(
+                    relations, row, row, one, 0,
+                    &sets, root_column, answer->context))
+                goto relation_done;
+            for (uint32_t j = 0; j <= a; j++)
+            {
+                fmpz_bin_uiui(binomial, a, j);
+                if (((weight - 2 + j) & 1U) != 0)
+                    fmpz_neg(binomial, binomial);
+                if (!p1_character_relation_add(
+                        relations, row,
+                        (size_t) j * cosets + t_coset,
+                        binomial, t_exponent,
+                        &sets, root_column, answer->context))
+                    goto relation_done;
+            }
+            for (uint32_t j = 0; j <= i; j++)
+            {
+                fmpz_bin_uiui(binomial, i, j);
+                if (((weight - 2 - i + j) & 1U) != 0)
+                    fmpz_neg(binomial, binomial);
+                if (!p1_character_relation_add(
+                        relations, row,
+                        (size_t) (weight - 2 - i + j) * cosets
+                            + tt_coset,
+                        binomial, tt_exponent,
+                        &sets, root_column, answer->context))
+                    goto relation_done;
+            }
+        }
+    fmpz_clear(one);
+    fmpz_clear(binomial);
+
+    gr_mat_init(reduced, (slong) generators, (slong) free_count,
+        answer->context);
+    reduced_initialized = 1;
+    if (gr_mat_rref(
+            &rank_slong, reduced, relations,
+            answer->context) != GR_SUCCESS || rank_slong < 0 ||
+        (size_t) rank_slong > free_count)
+        goto done;
+    rank = (size_t) rank_slong;
+    dimension = free_count - rank;
+    pivot_row = malloc(
+        (free_count == 0 ? 1 : free_count) * sizeof(*pivot_row));
+    free_column = malloc(
+        (dimension == 0 ? 1 : dimension) * sizeof(*free_column));
+    answer->basis_generators = malloc(
+        (dimension == 0 ? 1 : dimension)
+            * sizeof(*answer->basis_generators));
+    if (pivot_row == NULL || free_column == NULL ||
+        answer->basis_generators == NULL)
+        goto done;
+    for (size_t column = 0; column < free_count; column++)
+        pivot_row[column] = SIZE_MAX;
+    {
+        size_t pivot_column = 0;
+        for (size_t row = 0; row < rank; row++)
+        {
+            while (pivot_column < free_count && qqbar_is_zero(
+                p1_gr_entry_src(reduced, (slong) row,
+                    (slong) pivot_column, answer->context)))
+                pivot_column++;
+            if (pivot_column >= free_count)
+                goto done;
+            pivot_row[pivot_column] = row;
+            pivot_column++;
+        }
+    }
+    {
+        size_t next = 0;
+        for (size_t column = 0; column < free_count; column++)
+            if (pivot_row[column] == SIZE_MAX)
+            {
+                free_column[next] = column;
+                answer->basis_generators[next] = column_root[column];
+                next++;
+            }
+        if (next != dimension)
+            goto done;
+    }
+    if (dimension != 0 && generators >
+        SAGEJS_MANIN_MAX_DENSE_CELLS / dimension)
+        goto done;
+    gr_mat_init(answer->reduction, (slong) generators, (slong) dimension,
+        answer->context);
+    answer->reduction_initialized = 1;
+    qqbar_init(root_value);
+    qqbar_init(temporary);
+    scalar_values_initialized = 1;
+    for (size_t original = 0; original < generators; original++)
+    {
+        size_t root = p1_root_find(&sets, original);
+        size_t column;
+        if (sets.killed[root])
+            continue;
+        column = root_column[root];
+        qqbar_root_of_unity(
+            root_value, (slong) sets.exponent[original], sets.root_order);
+        if (pivot_row[column] == SIZE_MAX)
+        {
+            size_t target = 0;
+            while (target < dimension && free_column[target] != column)
+                target++;
+            if (target == dimension)
+                goto done;
+            qqbar_set(p1_gr_entry(answer->reduction,
+                (slong) original, (slong) target, answer->context),
+                root_value);
+        }
+        else
+        {
+            size_t row = pivot_row[column];
+            for (size_t target = 0; target < dimension; target++)
+            {
+                qqbar_mul(
+                    temporary,
+                    p1_gr_entry_src(reduced, (slong) row,
+                        (slong) free_column[target], answer->context),
+                    root_value);
+                qqbar_neg(p1_gr_entry(answer->reduction,
+                    (slong) original, (slong) target, answer->context),
+                    temporary);
+            }
+        }
+    }
+    answer->generators = generators;
+    answer->two_term_generators = free_count;
+    answer->dimension = dimension;
+    status = 1;
+    goto done;
+
+relation_done:
+    fmpz_clear(one);
+    fmpz_clear(binomial);
+done:
+    if (scalar_values_initialized)
+    {
+        qqbar_clear(temporary);
+        qqbar_clear(root_value);
+    }
+    if (relations_initialized)
+        gr_mat_clear(relations, answer->context);
+    if (reduced_initialized)
+        gr_mat_clear(reduced, answer->context);
+    free(sets.parent);
+    free(sets.exponent);
+    free(sets.killed);
+    free(root_column);
+    free(column_root);
+    free(pivot_row);
+    free(free_column);
+    if (!status)
+        p1_character_presentation_clear(answer);
+    return status;
+}
+
 static int p1_napi_set_size(
     napi_env env, napi_value object, const char *name, size_t value)
 {
@@ -2267,6 +2732,78 @@ napi_value sagejs_p1list_higher_weight_presentation(
 
 done:
     p1_higher_weight_clear(&presentation);
+    return result;
+}
+
+napi_value sagejs_p1list_character_presentation(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[5], result = NULL, reduction = NULL, generators;
+    sagejs_p1list_value *list;
+    sagejs_character_presentation presentation = {0};
+    const dirichlet_group_struct *group = NULL;
+    dirichlet_char_t character;
+    int character_initialized = 0;
+    int64_t weight_value, sign_value;
+
+    if (!p1_arguments(env, info, 5, arguments) ||
+        (list = p1_unwrap(env, arguments[0])) == NULL ||
+        !p1_safe_integer(env, arguments[1], &weight_value) ||
+        !p1_safe_integer(env, arguments[2], &sign_value) ||
+        !sagejs_dirichlet_character_init_native(
+            env, arguments[3], arguments[4], &group, character))
+        return NULL;
+    character_initialized = 1;
+    if (weight_value < 2 || weight_value > UINT32_MAX ||
+        (sign_value != -1 && sign_value != 0 && sign_value != 1) ||
+        group->q != list->level)
+    {
+        napi_throw_range_error(env, NULL,
+            "character presentation requires matching level, weight >= 2, and sign -1, 0, or 1");
+        goto done;
+    }
+    if (!p1_character_build(
+            list, (uint32_t) weight_value, (int) sign_value,
+            group, character, &presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct exact character Manin presentation");
+        goto done;
+    }
+    reduction = dirichlet_char_is_real(group, character)
+        ? sagejs_qq_matrix_from_qqbar_gr_mat(
+            env, presentation.reduction, presentation.context)
+        : sagejs_qqbar_matrix_from_gr_mat(
+            env, presentation.reduction, presentation.context);
+    if (presentation.dimension > UINT32_MAX || reduction == NULL ||
+        !p1_check_napi(env, napi_create_array_with_length(
+            env, presentation.dimension, &generators)))
+        goto done;
+    for (size_t index = 0; index < presentation.dimension; index++)
+    {
+        napi_value value;
+        if (!p1_check_napi(env, napi_create_int64(
+                env, (int64_t) presentation.basis_generators[index],
+                &value)) ||
+            !p1_check_napi(env, napi_set_element(
+                env, generators, (uint32_t) index, value)))
+            goto done;
+    }
+    if (!p1_check_napi(env, napi_create_object(env, &result)) ||
+        !p1_napi_set_size(env, result, "generators", presentation.generators) ||
+        !p1_napi_set_size(env, result, "twoTermGenerators",
+            presentation.two_term_generators) ||
+        !p1_napi_set_size(env, result, "dimension", presentation.dimension) ||
+        !p1_check_napi(env, napi_set_named_property(
+            env, result, "basisGenerators", generators)) ||
+        !p1_check_napi(env, napi_set_named_property(
+            env, result, "reduction", reduction)))
+        result = NULL;
+
+done:
+    p1_character_presentation_clear(&presentation);
+    if (character_initialized)
+        dirichlet_char_clear(character);
     return result;
 }
 
@@ -2522,6 +3059,155 @@ napi_value sagejs_p1list_higher_weight_hecke_matrix(
         fmpq_mat_clear(matrix);
     free(heilbronn);
     p1_higher_weight_clear(&presentation);
+    return result;
+}
+
+napi_value sagejs_p1list_character_hecke_matrix(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[6], result = NULL;
+    sagejs_p1list_value *list;
+    sagejs_character_presentation presentation = {0};
+    const dirichlet_group_struct *group = NULL;
+    dirichlet_char_t character;
+    int character_initialized = 0;
+    int64_t weight_value, sign_value, prime_value;
+    gr_mat_t matrix;
+    int matrix_initialized = 0;
+    fmpz_t integer_coefficient;
+    qqbar_t root_value, scaled, term;
+    int scalars_initialized = 0;
+    p1_matrix_four *heilbronn = NULL;
+    size_t heilbronn_count = 0;
+    ulong root_order;
+
+    if (!p1_arguments(env, info, 6, arguments) ||
+        (list = p1_unwrap(env, arguments[0])) == NULL ||
+        !p1_safe_integer(env, arguments[1], &weight_value) ||
+        !p1_safe_integer(env, arguments[2], &sign_value) ||
+        !p1_safe_integer(env, arguments[3], &prime_value) ||
+        !sagejs_dirichlet_character_init_native(
+            env, arguments[4], arguments[5], &group, character))
+        return NULL;
+    character_initialized = 1;
+    if (weight_value < 2 || weight_value > UINT32_MAX ||
+        (sign_value != -1 && sign_value != 0 && sign_value != 1) ||
+        prime_value < 2 || prime_value > INT32_MAX ||
+        !n_is_prime((ulong) prime_value) || group->q != list->level)
+    {
+        napi_throw_range_error(env, NULL,
+            "character Hecke requires matching level, a 31-bit prime, and sign -1, 0, or 1");
+        goto done;
+    }
+    if (!p1_character_build(
+            list, (uint32_t) weight_value, (int) sign_value,
+            group, character, &presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct character Hecke presentation");
+        goto done;
+    }
+    if (!p1_heilbronn_cremona(
+            (ulong) prime_value, &heilbronn, &heilbronn_count))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct Cremona-Heilbronn representatives");
+        goto done;
+    }
+    gr_mat_init(matrix, (slong) presentation.dimension,
+        (slong) presentation.dimension, presentation.context);
+    matrix_initialized = 1;
+    fmpz_init(integer_coefficient);
+    qqbar_init(root_value);
+    qqbar_init(scaled);
+    qqbar_init(term);
+    scalars_initialized = 1;
+    root_order = p1_character_root_order(group);
+    for (size_t source = 0; source < presentation.dimension; source++)
+    {
+        size_t generator = presentation.basis_generators[source];
+        uint32_t i = (uint32_t) (generator / list->count);
+        sagejs_p1_pair pair = list->pairs[generator % list->count];
+        for (size_t h = 0; h < heilbronn_count; h++)
+        {
+            int64_t a = heilbronn[h].a;
+            int64_t b = heilbronn[h].b;
+            int64_t c = heilbronn[h].c;
+            int64_t d = heilbronn[h].d;
+            __int128 image_u = (__int128) pair.u * a
+                + (__int128) pair.v * c;
+            __int128 image_v = (__int128) pair.u * b
+                + (__int128) pair.v * d;
+            sagejs_p1_pair normalized;
+            uint32_t scalar;
+            size_t image_coset;
+            ulong value_exponent;
+            if (!p1_normalize_pair(
+                    list->level,
+                    (int64_t) (image_u % list->level),
+                    (int64_t) (image_v % list->level),
+                    &normalized, &scalar))
+                continue;
+            image_coset = p1_index_normalized(list, normalized);
+            if (image_coset >= list->count)
+                continue;
+            value_exponent = p1_character_exponent(
+                group, character, scalar, root_order);
+            if (value_exponent == ULONG_MAX)
+                continue;
+            qqbar_root_of_unity(
+                root_value, (slong) value_exponent, root_order);
+            for (uint32_t target_degree = 0;
+                target_degree + 2 <= (uint32_t) weight_value;
+                target_degree++)
+            {
+                size_t image_generator =
+                    (size_t) target_degree * list->count + image_coset;
+                p1_monomial_matrix_coefficient(
+                    integer_coefficient, i,
+                    (uint32_t) weight_value - 2,
+                    target_degree, a, b, c, d);
+                if (fmpz_is_zero(integer_coefficient))
+                    continue;
+                qqbar_mul_fmpz(scaled, root_value, integer_coefficient);
+                for (size_t target = 0;
+                    target < presentation.dimension; target++)
+                {
+                    qqbar_mul(
+                        term, scaled,
+                        p1_gr_entry_src(presentation.reduction,
+                            (slong) image_generator, (slong) target,
+                            presentation.context));
+                    qqbar_add(
+                        p1_gr_entry(matrix, (slong) source,
+                            (slong) target, presentation.context),
+                        p1_gr_entry(matrix, (slong) source,
+                            (slong) target, presentation.context),
+                        term);
+                }
+            }
+        }
+    }
+    result = dirichlet_char_is_real(group, character)
+        ? sagejs_qq_matrix_from_qqbar_gr_mat(
+            env, matrix, presentation.context)
+        : sagejs_qqbar_matrix_from_gr_mat(
+            env, matrix, presentation.context);
+
+done:
+    if (scalars_initialized)
+    {
+        qqbar_clear(term);
+        qqbar_clear(scaled);
+        qqbar_clear(root_value);
+        fmpz_clear(integer_coefficient);
+    }
+    if (matrix_initialized)
+        gr_mat_clear(matrix, presentation.context);
+    free(heilbronn);
+    p1_character_presentation_clear(&presentation);
+    if (character_initialized)
+        dirichlet_char_clear(character);
     return result;
 }
 

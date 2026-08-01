@@ -13,6 +13,8 @@ napi_value sagejs_qqbar_root_of_unity(
     napi_env env, napi_callback_info info);
 napi_value sagejs_cyclotomic_root_coefficients(
     napi_env env, napi_callback_info info);
+napi_value sagejs_cyclotomic_element_coefficients(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_add(napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_sub(napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_mul(napi_env env, napi_callback_info info);

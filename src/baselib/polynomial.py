@@ -983,7 +983,7 @@ def _approximate_term_precedes(left: Any, right: Any) -> bool:
 @runtime.callable_instance_class
 @runtime.lightweight_math_class
 class ApproximatePolynomialElement(sage.Element):
-    """A sparse polynomial over an approximate real field."""
+    """A sparse polynomial over a generic exact or approximate field."""
 
     def __init__(
         self,
@@ -1106,6 +1106,22 @@ class ApproximatePolynomialElement(sage.Element):
                 answer = degree
         return answer
 
+    def coefficients(self) -> list[Any]:
+        if self._parent.ngens() != 1:
+            raise TypeError('coefficients() requires a univariate polynomial')
+        if len(self._terms) == 0:
+            return []
+        answer = [
+            self._parent.base_ring()(0)
+            for _index in range(self.degree() + 1)
+        ]
+        for coefficient, exponents in self._terms:
+            answer[exponents[0]] = coefficient
+        return answer
+
+    def list(self) -> list[Any]:
+        return self.coefficients()
+
     def factor(self) -> sage.Factorization:
         if self._parent.ngens() != 1 or self.degree() != 2:
             raise NotImplementedError(
@@ -1155,9 +1171,23 @@ class ApproximatePolynomialElement(sage.Element):
         base = self._parent.base_ring()
         zero = base(0)
         one = base(1)
+        ordered_coefficients = base._kind in ['RealField', 'RDF']
         terms = []
         for coefficient, exponents in ordered:
-            negative = coefficient < zero
+            original_text = str(coefficient)
+            internal_sum = (
+                ' + ' in original_text
+                or ' - ' in original_text[1:]
+            )
+            has_monomial = any(exponent != 0 for exponent in exponents)
+            negative = (
+                (ordered_coefficients and coefficient < zero)
+                or (
+                    not ordered_coefficients
+                    and original_text.startswith('-')
+                    and (not has_monomial or not internal_sum)
+                )
+            )
             magnitude = -coefficient if negative else coefficient
             pieces = []
             for index in range(len(exponents)):
@@ -1172,9 +1202,20 @@ class ApproximatePolynomialElement(sage.Element):
             if monomial and magnitude == one:
                 text = monomial
             elif monomial:
-                text = str(magnitude) + '*' + monomial
+                coefficient_text = str(magnitude)
+                if (
+                    not ordered_coefficients
+                    and (' + ' in coefficient_text
+                        or ' - ' in coefficient_text)
+                ):
+                    coefficient_text = '(' + coefficient_text + ')'
+                text = coefficient_text + '*' + monomial
             else:
                 text = str(magnitude)
+                if negative and (
+                    ' + ' in text or ' - ' in text
+                ):
+                    text = '(' + text + ')'
             if len(terms) == 0:
                 terms.append(('-' if negative else '') + text)
             elif negative:
@@ -1189,7 +1230,7 @@ class ApproximatePolynomialElement(sage.Element):
 
 @runtime.callable_instance_class
 class ApproximatePolynomialRingParent(sage.Parent):
-    """A cached sparse polynomial parent over an approximate real field."""
+    """A cached sparse polynomial parent over a generic field."""
 
     def __init__(
         self,
@@ -2094,10 +2135,10 @@ def PolynomialRing(
     Construct a univariate or multivariate polynomial ring.
 
     Coefficient rings currently include `ZZ`, `QQ`, prime and extension
-    finite fields, `Zmod(n)`, and approximate real fields. Exact arithmetic
-    is backed by FLINT; approximate real polynomials use a small sparse
-    coefficient layer. A comma-separated name list constructs a multivariate
-    ring.
+    finite fields, `Zmod(n)`, exact algebraic fields, and approximate real
+    fields. Exact integer, rational, and finite-field arithmetic is backed by
+    FLINT; algebraic and approximate coefficients use a small sparse layer.
+    A comma-separated name list constructs a multivariate ring.
 
     ### Examples
 
@@ -2134,11 +2175,13 @@ def PolynomialRing(
         and base is not sage.QQ
         and base._kind not in [
             'GF', 'GF_EXTENSION', 'ZMOD', 'RealField', 'RDF',
+            'AA', 'QQBAR', 'CyclotomicField',
         ]
     ):
         raise TypeError(
             'the prototype currently supports polynomial rings over ' +
-            'ZZ, QQ, finite fields, Zmod, and approximate real fields')
+            'ZZ, QQ, finite fields, Zmod, algebraic fields, and '
+            'approximate real fields')
     if (
         not isinstance(variable, str)
         or not runtime.regexp(
@@ -2155,7 +2198,9 @@ def PolynomialRing(
     cache_key = variable + ('|sparse' if sparse else '|dense')
     parent = by_variable.get(cache_key)
     if parent is runtime.undefined:
-        if base._kind in ['RealField', 'RDF']:
+        if base._kind in [
+            'RealField', 'RDF', 'AA', 'QQBAR', 'CyclotomicField',
+        ]:
             parent = ApproximatePolynomialRingParent(
                 base, [variable], order, sparse)
         else:

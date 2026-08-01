@@ -28,7 +28,8 @@ def _is_extension_field_base(value: object) -> bool:
 
 
 def _is_algebraic_base(value: object) -> bool:
-    return getattr(value, '_kind', None) in ['AA', 'QQBAR']
+    return getattr(value, '_kind', None) in [
+        'AA', 'QQBAR', 'CyclotomicField']
 
 
 def _is_approximate_base(value: object) -> bool:
@@ -1760,10 +1761,6 @@ class Matrix(sage.Element):
         cached = self._charpoly_cache.get(variable)
         if cached is not runtime.undefined:
             return cached
-        if _is_algebraic_base(self.base_ring()):
-            raise NotImplementedError(
-                'characteristic polynomials over AA and QQbar '
-                'are not available yet')
         ring = sage.PolynomialRing(self.base_ring(), variable)
         backend = runtime.flint_backend()
         if _is_extension_field_base(self.base_ring()):

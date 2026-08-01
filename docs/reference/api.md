@@ -809,21 +809,28 @@ Construct a modular-symbol Hecke module.
 Weight-2 full `Gamma_0(N)` spaces with sign zero provide exact matrices
 for every Hecke operator `T_n`. Prime operators are assembled natively
 from a minimal Manin presentation; general indices use multiplicativity
-and the weight-2 prime-power recurrence. Additional guided-tour models
-cover selected higher-weight, character, and cuspidal examples.
+and the weight-2 prime-power recurrence. Higher even weights over `QQ`
+use exact triple Manin symbols `(i,u,v)` and construct sign `0`, `+1`,
+or `-1` directly; prime Hecke operators use Cremona--Heilbronn matrices
+and composite indices use multiplicativity and prime-power recurrences.
+Passing a Dirichlet character constructs the exact character quotient
+over its cyclotomic value field. The native presentation incorporates
+character normalization scalars, parity, sign relations, boundary maps,
+and the nebentypus factor in the Hecke recurrence.
 
 ### Metadata
 
 - Kind: `function`
 - Module: `sage.modular.modsym.modsym`
-- Tags: number theory, modular symbols, modular forms, Hecke operators, q-expansions
-- Backends: FLINT, Sage.js portable C modular-symbol core, Sage.js native P1List and Manin presentation
-- Sage compatibility: partial — Weight-2 Gamma0 spaces expose native P1 representatives and exact T_n matrices for arbitrary positive indices in the full sign-zero space. Selected higher-weight, Gamma1, character, and cuspidal guided-tour models provide further bases, characteristic polynomials, and q-expansions.
-- Limitations: The general native engine currently covers full weight-2 Gamma0 spaces with sign zero and trivial character. General-weight and character Manin relations are not yet built. Boundary maps, star eigenspaces, and cuspidal restriction remain future work.
+- Tags: number theory, modular symbols, modular forms, Dirichlet characters, Hecke operators, q-expansions
+- Backends: FLINT, FLINT generic-ring exact algebraic matrices, Sage.js portable C modular-symbol core, Sage.js native P1List and Manin presentation
+- Sage compatibility: partial — Gamma0 spaces with trivial or Dirichlet character use exact Manin presentations in weights at least two. The native engine constructs all three signs, boundary and cuspidal spaces, diamond operators, and exact T_n matrices with the Sage-compatible nebentypus recurrence. Gamma1 and q-expansion coverage remains more selective.
+- Limitations: The full star matrix of a sign-zero character space is not yet exposed; construct sign=1 or sign=-1 directly. Arbitrary rational-path elements with nonconstant coefficient polynomials are not yet exposed in character spaces. Large character value fields currently use general qqbar elimination and need a specialized cyclotomic-number-field performance path.
 
 ### Provenance
 
 - `sage-derived` — [SageMath modular symbols API and guided tour](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — Author-owned original Magma Geometry/ModSym implementation, especially core.m, boundary.m, and operators.m
 - `software-derived` — [PARI/GP well-formed fundamental domain and path reduction strategy](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
 - `sagejs-original` — Portable preallocated C Hecke assembler, strict-Python Hecke algebra integration, and FLINT matrix boundary
 
@@ -922,9 +929,9 @@ sage: M.hecke_matrix(6).trace()
 - Module: `sage.modular.modsym.space`
 - Tags: number theory, modular symbols, Hecke operators, exact matrices
 - Backends: Sage.js portable C modular-symbol core, FLINT integer and rational matrices
-- Sage compatibility: compatible — Full weight-2 Gamma0 sign-zero spaces support exact T_n matrices for every positive index.
-- Algorithm: Native prime Hecke matrices, multiplicativity, Up powers, and the weight-2 good-prime recurrence
-- Limitations: The general engine currently requires weight-2 Gamma0 spaces with trivial character; ambient, cuspidal, and star-eigenspace restrictions are supported.
+- Sage compatibility: compatible — Full weight-2 Gamma0 sign-zero spaces support exact T_n matrices for every positive index. Higher-weight Gamma0 spaces over QQ support all signs and exact T_n matrices.
+- Algorithm: Native prime Hecke matrices, Cremona-Heilbronn representatives, multiplicativity, Up powers, and the weight-k good-prime recurrence
+- Limitations: The native engine currently requires Gamma0 spaces with trivial character over QQ; ambient, cuspidal, and directly constructed signed restrictions are supported.
 
 ### Provenance
 
@@ -1171,6 +1178,29 @@ sage: P1List(11).hecke_matrix(2)
 - `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
 - `sagejs-original` — Portable preallocated path reducer and batched row-major Hecke assembler
 
+## `P1List.higher_weight_presentation`
+
+```sage
+higher_weight_presentation(weight, sign=0)
+```
+
+Return the exact triple-Manin-symbol presentation over `QQ`.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.manin_symbol_list`
+- Tags: number theory, modular symbols, higher weight, Manin symbols, exact linear algebra
+- Backends: Sage.js native signed union-find, FLINT sparse rational matrices
+- Sage compatibility: extension — Exposes the internal exact quotient and reduction matrix used by higher-weight Gamma0 modular symbols.
+- Algorithm: Triple (i,u,v) generators; signed two-term union-find; binomial order-three relations; exact sparse FLINT RREF
+- Limitations: Very large presentations need the planned fully sparse reduction-map representation to avoid dense output.
+
+### Provenance
+
+- `literature-implemented` — [William Stein, Computing with Modular Symbols](https://wstein.org/books/modform/modform/modular_symbols.html)
+- `sage-derived` — [SageMath manin_symbol_list and relation_matrix](https://github.com/sagemath/sage/tree/develop/src/sage/modular/modsym); license GPL-2.0-or-later
+
 ## `PermutationGroup`
 
 ```sage
@@ -1254,10 +1284,10 @@ PolynomialRing(base, variable=None, names=None, sparse=False, implementation=Non
 Construct a univariate or multivariate polynomial ring.
 
 Coefficient rings currently include `ZZ`, `QQ`, prime and extension
-finite fields, `Zmod(n)`, and approximate real fields. Exact arithmetic
-is backed by FLINT; approximate real polynomials use a small sparse
-coefficient layer. A comma-separated name list constructs a multivariate
-ring.
+finite fields, `Zmod(n)`, exact algebraic fields, and approximate real
+fields. Exact integer, rational, and finite-field arithmetic is backed by
+FLINT; algebraic and approximate coefficients use a small sparse layer.
+A comma-separated name list constructs a multivariate ring.
 
 ### Examples
 

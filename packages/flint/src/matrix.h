@@ -4,6 +4,7 @@
 #include <node_api.h>
 #include <flint/flint.h>
 #include <flint/fmpq_mat.h>
+#include <flint/gr_mat.h>
 
 napi_value sagejs_zz_matrix_from_slong_entries(
     napi_env env,
@@ -13,6 +14,14 @@ napi_value sagejs_zz_matrix_from_slong_entries(
 napi_value sagejs_qq_matrix_from_fmpq_mat(
     napi_env env,
     const fmpq_mat_t entries);
+napi_value sagejs_qqbar_matrix_from_gr_mat(
+    napi_env env,
+    const gr_mat_t entries,
+    const gr_ctx_t context);
+napi_value sagejs_qq_matrix_from_qqbar_gr_mat(
+    napi_env env,
+    const gr_mat_t entries,
+    const gr_ctx_t context);
 
 napi_value sagejs_zz_matrix(napi_env env, napi_callback_info info);
 napi_value sagejs_qq_matrix(napi_env env, napi_callback_info info);

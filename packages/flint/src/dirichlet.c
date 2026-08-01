@@ -242,6 +242,23 @@ static int initialized_character(
     return 1;
 }
 
+int sagejs_dirichlet_character_init_native(
+    napi_env env,
+    napi_value group_value,
+    napi_value index_value,
+    const dirichlet_group_struct **group,
+    dirichlet_char_t character)
+{
+    sagejs_dirichlet_group_value *wrapped = unwrap_group(
+        env, group_value);
+
+    if (wrapped == NULL ||
+        !initialized_character(env, character, wrapped, index_value))
+        return 0;
+    *group = wrapped->value;
+    return 1;
+}
+
 static void acb_from_complex(
     acb_t result, const sagejs_complex *value, mpfr_prec_t precision)
 {

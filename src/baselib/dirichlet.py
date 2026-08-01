@@ -52,7 +52,12 @@ def _format_cyclotomic_polynomial(
     terms = []
     index = len(coefficients) - 1
     while index >= 0:
-        coefficient = runtime.integer_bigint(coefficients[index])
+        raw_coefficient = coefficients[index]
+        if isinstance(raw_coefficient, (list, tuple)):
+            coefficient = sage.QQ(
+                raw_coefficient[0]) / sage.QQ(raw_coefficient[1])
+        else:
+            coefficient = sage.QQ(raw_coefficient)
         if coefficient != 0:
             absolute = -coefficient if coefficient < 0 else coefficient
             if index == 0:
@@ -73,16 +78,19 @@ def _format_cyclotomic_polynomial(
 
 @runtime.lightweight_math_class
 class CyclotomicElement(sage.Element):
-    """Zero or a root of unity in a FLINT-backed cyclotomic field."""
+    """An exact element of a FLINT-backed cyclotomic field."""
 
     def __init__(
         self,
         parent: CyclotomicFieldParent,
-        exponent: Any,
+        exponent: Any = None,
+        native_value: Any = None,
     ) -> None:
         self._parent = parent
         self._exponent = exponent
-        if exponent is None:
+        if native_value is not None:
+            self._native = native_value
+        elif exponent is None:
             self._native = runtime.flint_backend().qqbarFromRational(
                 runtime.bigint(0), runtime.bigint(1))
         else:
@@ -98,44 +106,76 @@ class CyclotomicElement(sage.Element):
     def _new_root(self, exponent: Any) -> CyclotomicElement:
         return self._parent._root(exponent)
 
+    def _new(self, native_value: Any) -> CyclotomicElement:
+        return self._parent._from_native(native_value)
+
+    def _add_(
+        self, other: CyclotomicElement,
+    ) -> CyclotomicElement:
+        if self.is_zero():
+            return other
+        if other.is_zero():
+            return self
+        return self._new(runtime.flint_backend().qqbarAdd(
+            self._native, other._native))
+
+    def _sub_(
+        self, other: CyclotomicElement,
+    ) -> CyclotomicElement:
+        if other.is_zero():
+            return self
+        if self._eq_(other):
+            return self._parent.zero()
+        return self._new(runtime.flint_backend().qqbarSub(
+            self._native, other._native))
+
     def _mul_(
         self, other: CyclotomicElement,
     ) -> CyclotomicElement:
+        if self._exponent is not None and other._exponent is not None:
+            return self._new_root(
+                runtime.integer_bigint(self._exponent)
+                + runtime.integer_bigint(other._exponent))
         if self.is_zero() or other.is_zero():
             return self._parent.zero()
-        return self._new_root(
-            runtime.integer_bigint(self._exponent)
-            + runtime.integer_bigint(other._exponent)
-        )
+        return self._new(runtime.flint_backend().qqbarMul(
+            self._native, other._native))
 
     def _truediv_(
         self, other: CyclotomicElement,
     ) -> CyclotomicElement:
+        if self._exponent is not None and other._exponent is not None:
+            return self._new_root(
+                runtime.integer_bigint(self._exponent)
+                - runtime.integer_bigint(other._exponent))
         if other.is_zero():
             raise ZeroDivisionError('division by zero')
         if self.is_zero():
             return self
-        return self._new_root(
-            runtime.integer_bigint(self._exponent)
-            - runtime.integer_bigint(other._exponent)
-        )
+        return self._new(runtime.flint_backend().qqbarDiv(
+            self._native, other._native))
 
     def _eq_(self, other: CyclotomicElement) -> bool:
-        return self._exponent == other._exponent
+        return runtime.flint_backend().qqbarEqual(
+            self._native, other._native)
+
+    def __add__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('add', self, other)
+
+    def __radd__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('add', other, self)
+
+    def __sub__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('sub', self, other)
+
+    def __rsub__(self, other: object) -> Any:
+        return runtime.coercion_model.binOp('sub', other, self)
 
     def __mul__(self, other: object) -> Any:
         if isinstance(other, CyclotomicElement):
             if other._parent is not self._parent:
-                return False
+                raise TypeError('incompatible cyclotomic fields')
             return self._mul_(other)
-        if runtime.is_exact_integer(other):
-            integer = runtime.integer_bigint(other)
-            if integer == 0:
-                return self._parent.zero()
-            if integer == 1:
-                return self
-            if integer == -1:
-                return -self
         return runtime.coercion_model.binOp('mul', self, other)
 
     def __rmul__(self, other: object) -> Any:
@@ -150,39 +190,28 @@ class CyclotomicElement(sage.Element):
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, CyclotomicElement):
-            return (
-                other._parent is self._parent
-                and self._eq_(other)
-            )
-        if runtime.is_exact_integer(other):
-            integer = runtime.integer_bigint(other)
-            if integer == 0:
-                return self.is_zero()
-            if integer == 1:
-                return self.is_one()
-            if integer == -1:
-                return (
-                    not self.is_zero()
-                    and self._parent._order % runtime.bigint(2) == 0
-                    and runtime.integer_bigint(self._exponent)
-                        == self._parent._order // runtime.bigint(2)
-                )
-        return False
+            return self._eq_(other)
+        try:
+            return self._eq_(self._parent(other))
+        except Exception:
+            return False
 
     def __neg__(self) -> CyclotomicElement:
-        if self.is_zero():
-            return self
-        if self._parent._order % runtime.bigint(2) != 0:
-            raise NotImplementedError(
-                'negation in odd-order cyclotomic fields '
-                'is not yet represented')
-        return self._new_root(
-            runtime.integer_bigint(self._exponent)
-            + self._parent._order // runtime.bigint(2)
-        )
+        if (
+            self._exponent is not None
+            and self._parent._order % runtime.bigint(2) == 0
+        ):
+            return self._new_root(
+                runtime.integer_bigint(self._exponent)
+                + self._parent._order // runtime.bigint(2))
+        return self._new(
+            runtime.flint_backend().qqbarNeg(self._native))
 
     def __pow__(self, exponent: Any) -> CyclotomicElement:
         exponent = runtime.integer_bigint(exponent)
+        if self._exponent is not None:
+            return self._new_root(
+                runtime.integer_bigint(self._exponent) * exponent)
         if self.is_zero():
             if exponent < 0:
                 raise ZeroDivisionError(
@@ -190,22 +219,24 @@ class CyclotomicElement(sage.Element):
             if exponent == 0:
                 return self._parent.one()
             return self
-        return self._new_root(
-            runtime.integer_bigint(self._exponent) * exponent)
+        return self._new(runtime.flint_backend().qqbarPow(
+            self._native, exponent))
 
     def is_zero(self) -> bool:
-        return self._exponent is None
+        return runtime.flint_backend().qqbarEqual(
+            self._native, self._parent.zero()._native)
 
     def is_one(self) -> bool:
-        return (
-            self._exponent is not None
-            and runtime.integer_bigint(self._exponent) == 0
-        )
+        return runtime.flint_backend().qqbarEqual(
+            self._native, self._parent.one()._native)
 
     def multiplicative_order(self) -> Any:
         if self.is_zero():
             raise ArithmeticError(
                 'zero does not have a multiplicative order')
+        if self._exponent is None:
+            raise ArithmeticError(
+                'multiplicative order is only available for roots of unity')
         exponent = runtime.integer_bigint(self._exponent)
         if exponent == 0:
             return 1
@@ -235,12 +266,9 @@ class CyclotomicElement(sage.Element):
     minimal_polynomial = minpoly
 
     def __repr__(self) -> str:
-        if self.is_zero():
-            return '0'
         coefficients = (
-            runtime.flint_backend().cyclotomicRootCoefficients(
-                runtime.integer_bigint(self._exponent),
-                self._parent._order,
+            runtime.flint_backend().cyclotomicElementCoefficients(
+                self._native, self._parent._order,
             )
         )
         return _format_cyclotomic_polynomial(
@@ -271,6 +299,12 @@ class CyclotomicFieldParent(sage.Parent):
         )
         self._roots = runtime.map()
         self._zero = CyclotomicElement(self, None)
+        runtime.coercion_model.register(sage.ZZ, self, self)
+        runtime.coercion_model.register(sage.QQ, self, self)
+
+    def _from_native(self, native_value: Any) -> CyclotomicElement:
+        return CyclotomicElement(
+            self, None, native_value=native_value)
 
     def _root(self, exponent: Any) -> CyclotomicElement:
         exponent = runtime.normalize_integer(
@@ -285,16 +319,33 @@ class CyclotomicFieldParent(sage.Parent):
         if isinstance(value, CyclotomicElement):
             if value._parent is self:
                 return value
-            raise TypeError('incompatible cyclotomic fields')
-        value = runtime.integer_bigint(value)
-        if value == 0:
-            return self.zero()
-        if value == 1:
-            return self.one()
-        if value == -1 and self._order % runtime.bigint(2) == 0:
-            return self._root(self._order // runtime.bigint(2))
-        raise NotImplementedError(
-            'general cyclotomic-field coercion is not yet implemented')
+            return self._from_native(value._native)
+        if hasattr(value, '_native'):
+            return self._from_native(runtime.reflect.get(value, '_native'))
+        if isinstance(value, sage.Rational):
+            if value._denominator == 1:
+                integer = value._numerator
+                if integer == 0:
+                    return self.zero()
+                if integer == 1:
+                    return self.one()
+                if integer == -1 and self._order % runtime.bigint(2) == 0:
+                    return self._root(self._order // runtime.bigint(2))
+            return self._from_native(
+                runtime.flint_backend().qqbarFromRational(
+                    value._numerator, value._denominator))
+        if runtime.is_exact_integer(value):
+            integer = runtime.integer_bigint(value)
+            if integer == 0:
+                return self.zero()
+            if integer == 1:
+                return self.one()
+            if integer == -1 and self._order % runtime.bigint(2) == 0:
+                return self._root(self._order // runtime.bigint(2))
+            return self._from_native(
+                runtime.flint_backend().qqbarFromRational(
+                    integer, runtime.bigint(1)))
+        raise TypeError('unable to coerce value into ' + str(self))
 
     def gen(self, index: int = 0) -> CyclotomicElement:
         if runtime.integer_bigint(index) != 0:
