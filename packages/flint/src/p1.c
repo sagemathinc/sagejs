@@ -2403,7 +2403,7 @@ static int p1_character_build(
         }
     }
     if (free_count > (size_t) WORD_MAX ||
-        (free_count != 0 && generators >
+        (free_count != 0 && free_count >
             SAGEJS_MANIN_MAX_DENSE_CELLS / free_count))
         goto done;
     if (generators != 0 &&
@@ -2546,6 +2546,9 @@ static int p1_character_build(
                 answer->context, &answer->cyclotomic_quotient);
         if (!multimodular_status)
         {
+            if (free_count != 0 && generators >
+                SAGEJS_MANIN_MAX_DENSE_CELLS / free_count)
+                goto done;
             gr_mat_init(relations,
                 (slong) generators, (slong) free_count,
                 answer->context);

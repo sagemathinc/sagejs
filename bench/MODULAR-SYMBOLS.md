@@ -157,6 +157,29 @@ Magma here. Its complete cuspidal step is now faster than Magma in this
 snapshot and over 1,600 times faster than SageMath. Exact order-5 Hecke
 assembly is about twice as fast as Magma and 39 times faster than SageMath.
 
+A larger prime-level probe at 10061 exposed and then removed an obsolete
+pre-reduction allocation guard. The sparse reducer's actual dense result is
+bounded by the square of the two-term quotient size, not by the much larger
+product of all original generators with that quotient. The corrected guard
+permits the sparse path while retaining the 20-million-cell cap; only the
+non-real exact fallback checks the larger source allocation. One warm-process
+comparison after this change was:
+
+| character | stage | Sage.js | Magma |
+| --- | ---: | ---: | ---: |
+| quadratic | space | 0.69 | 1.40 |
+| quadratic | cuspidal | 0.02 | 0.14 |
+| quadratic | `T_2` | 0.31 | 2.64 |
+| order 5 | space | 5.17 | 1.54 |
+| order 5 | cuspidal | 0.15 | 0.18 |
+| order 5 | `T_2` | 10.07 | 9.60 |
+
+The matching dimensions were 840/838 for the quadratic ambient/cuspidal
+spaces and 839/837 for order 5; the `T_2` trace fingerprints also agreed.
+This isolates non-real presentation construction as the next large-character
+optimization target. The downstream cuspidal and Hecke paths are already
+competitive at this scale.
+
 The dashboard separates the following operations because conflating them
 would give misleading performance numbers:
 

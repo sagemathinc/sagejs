@@ -195,6 +195,18 @@ test("Dirichlet-character Manin symbols, signs, boundaries, and Hecke", async ()
       (
         await session.evaluate(
           [
+            "e = DirichletGroup(10061).gen()^5030",
+            "M = ModularSymbols(e,2,sign=1)",
+            "[M.dimension(),M.cuspidal_subspace().dimension()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[840, 838]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
             "e = list(DirichletGroup(13))[2]",
             "P = ModularSymbols(e,2,sign=1)",
             "[P.character() == e, " +
