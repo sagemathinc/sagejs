@@ -1,5 +1,5 @@
 /*
- * Sparse exact rational row reduction for thin arithmetic matrices.
+ * Sparse exact row reduction over Q and algebraic numbers.
  *
  * Copyright (C) 2026 Sage.js contributors
  * License: GPL-3.0-only
@@ -13,6 +13,8 @@
 #include <flint/fmpq.h>
 #include <flint/fmpq_mat.h>
 #include <flint/fmpq_vec.h>
+#include <flint/gr_mat.h>
+#include <flint/qqbar.h>
 
 #include "sparse_rational.h"
 
@@ -280,6 +282,262 @@ done:
     free(workspace_columns);
     if (workspace_values != NULL)
         _fmpq_vec_clear(workspace_values,
+            (slong) (columns == 0 ? 1 : columns));
+    return status;
+}
+
+typedef struct
+{
+    size_t length;
+    size_t capacity;
+    size_t *columns;
+    qqbar_ptr values;
+} sagejs_sparse_arow;
+
+static void sparse_arow_clear(sagejs_sparse_arow *row)
+{
+    free(row->columns);
+    if (row->values != NULL)
+        _qqbar_vec_clear(row->values, (slong) row->capacity);
+    memset(row, 0, sizeof(*row));
+}
+
+static int sparse_arow_reserve(
+    sagejs_sparse_arow *row, size_t capacity)
+{
+    size_t next;
+    size_t *columns;
+    qqbar_ptr values;
+
+    if (capacity <= row->capacity)
+        return 1;
+    next = row->capacity == 0 ? 4 : row->capacity;
+    while (next < capacity)
+    {
+        if (next > SIZE_MAX / 2 || next > (size_t) WORD_MAX / 2)
+            return 0;
+        next *= 2;
+    }
+    columns = malloc(next * sizeof(*columns));
+    values = _qqbar_vec_init((slong) next);
+    if (columns == NULL || values == NULL)
+    {
+        free(columns);
+        if (values != NULL)
+            _qqbar_vec_clear(values, (slong) next);
+        return 0;
+    }
+    for (size_t item = 0; item < row->length; item++)
+    {
+        columns[item] = row->columns[item];
+        qqbar_set(values + item, row->values + item);
+    }
+    free(row->columns);
+    if (row->values != NULL)
+        _qqbar_vec_clear(row->values, (slong) row->capacity);
+    row->columns = columns;
+    row->values = values;
+    row->capacity = next;
+    return 1;
+}
+
+static qqbar_srcptr sparse_arow_entry(
+    const sagejs_sparse_arow *row, size_t column)
+{
+    size_t left = 0, right = row->length;
+    while (left < right)
+    {
+        size_t middle = left + (right - left) / 2;
+        if (row->columns[middle] < column)
+            left = middle + 1;
+        else
+            right = middle;
+    }
+    return left < row->length && row->columns[left] == column
+        ? row->values + left : NULL;
+}
+
+/* Replace left by left - coefficient * right. */
+static int sparse_arow_axpy(
+    sagejs_sparse_arow *left,
+    const sagejs_sparse_arow *right,
+    const qqbar_t coefficient,
+    size_t *workspace_columns,
+    qqbar_ptr workspace_values,
+    size_t workspace_capacity,
+    qqbar_t temporary)
+{
+    size_t i = 0, j = 0, used = 0;
+
+    while (i < left->length || j < right->length)
+    {
+        size_t column;
+        if (used >= workspace_capacity)
+            return 0;
+        if (j == right->length ||
+            (i < left->length && left->columns[i] < right->columns[j]))
+        {
+            column = left->columns[i];
+            qqbar_set(workspace_values + used, left->values + i++);
+        }
+        else if (i == left->length || right->columns[j] < left->columns[i])
+        {
+            column = right->columns[j];
+            qqbar_mul(workspace_values + used,
+                coefficient, right->values + j++);
+            qqbar_neg(workspace_values + used, workspace_values + used);
+        }
+        else
+        {
+            column = left->columns[i];
+            qqbar_set(workspace_values + used, left->values + i++);
+            qqbar_mul(temporary, coefficient, right->values + j++);
+            qqbar_sub(workspace_values + used,
+                workspace_values + used, temporary);
+        }
+        if (!qqbar_is_zero(workspace_values + used))
+            workspace_columns[used++] = column;
+    }
+    if (!sparse_arow_reserve(left, used))
+        return 0;
+    for (size_t item = 0; item < used; item++)
+    {
+        left->columns[item] = workspace_columns[item];
+        qqbar_set(left->values + item, workspace_values + item);
+    }
+    left->length = used;
+    return 1;
+}
+
+static int sparse_arow_compare(const void *left, const void *right)
+{
+    const sagejs_sparse_arow *a = left;
+    const sagejs_sparse_arow *b = right;
+    size_t ca = a->length == 0 ? SIZE_MAX : a->columns[0];
+    size_t cb = b->length == 0 ? SIZE_MAX : b->columns[0];
+    return ca < cb ? -1 : ca > cb;
+}
+
+int sagejs_qqbar_gr_mat_rref_sparse(
+    gr_mat_t output, slong *rank_out,
+    const gr_mat_t source, gr_ctx_t context)
+{
+    slong row_count = gr_mat_nrows(source, context);
+    slong column_count = gr_mat_ncols(source, context);
+    size_t rows = (size_t) row_count, columns = (size_t) column_count;
+    sagejs_sparse_arow *pivots = NULL;
+    sagejs_sparse_arow working = {0};
+    size_t *pivot_by_column = NULL, *workspace_columns = NULL;
+    qqbar_ptr workspace_values = NULL;
+    qqbar_t coefficient, temporary;
+    size_t rank = 0;
+    int status = 0;
+
+    if (rank_out == NULL || row_count < 0 || column_count < 0)
+        return 0;
+    *rank_out = 0;
+    qqbar_init(coefficient);
+    qqbar_init(temporary);
+    pivots = calloc(rows == 0 ? 1 : rows, sizeof(*pivots));
+    pivot_by_column = malloc(
+        (columns == 0 ? 1 : columns) * sizeof(*pivot_by_column));
+    workspace_columns = malloc(
+        (columns == 0 ? 1 : columns) * sizeof(*workspace_columns));
+    workspace_values = _qqbar_vec_init(
+        (slong) (columns == 0 ? 1 : columns));
+    if (pivots == NULL || pivot_by_column == NULL ||
+        workspace_columns == NULL || workspace_values == NULL)
+        goto done;
+    for (size_t column = 0; column < columns; column++)
+        pivot_by_column[column] = SIZE_MAX;
+
+    for (size_t source_row = 0; source_row < rows; source_row++)
+    {
+        size_t count = 0;
+        working.length = 0;
+        for (size_t column = 0; column < columns; column++)
+            count += !qqbar_is_zero((qqbar_srcptr) gr_mat_entry_srcptr(
+                source, (slong) source_row, (slong) column, context));
+        if (!sparse_arow_reserve(&working, count))
+            goto done;
+        for (size_t column = 0; column < columns; column++)
+        {
+            qqbar_srcptr value = (qqbar_srcptr) gr_mat_entry_srcptr(
+                source, (slong) source_row, (slong) column, context);
+            if (!qqbar_is_zero(value))
+            {
+                working.columns[working.length] = column;
+                qqbar_set(working.values + working.length++, value);
+            }
+        }
+        while (working.length != 0)
+        {
+            size_t pivot_column = working.columns[0];
+            size_t pivot = pivot_by_column[pivot_column];
+            if (pivot == SIZE_MAX)
+            {
+                qqbar_set(coefficient, working.values);
+                for (size_t item = 0; item < working.length; item++)
+                    qqbar_div(working.values + item,
+                        working.values + item, coefficient);
+                pivots[rank] = working;
+                memset(&working, 0, sizeof(working));
+                pivot_by_column[pivot_column] = rank++;
+                break;
+            }
+            qqbar_set(coefficient, working.values);
+            if (!sparse_arow_axpy(
+                    &working, &pivots[pivot], coefficient,
+                    workspace_columns, workspace_values, columns,
+                    temporary))
+                goto done;
+        }
+    }
+
+    qsort(pivots, rank, sizeof(*pivots), sparse_arow_compare);
+    for (size_t cursor = rank; cursor > 0; cursor--)
+    {
+        size_t row = cursor - 1;
+        size_t pivot_column = pivots[row].columns[0];
+        for (size_t earlier = 0; earlier < row; earlier++)
+        {
+            qqbar_srcptr entry = sparse_arow_entry(
+                &pivots[earlier], pivot_column);
+            if (entry != NULL)
+            {
+                qqbar_set(coefficient, entry);
+                if (!sparse_arow_axpy(
+                        &pivots[earlier], &pivots[row], coefficient,
+                        workspace_columns, workspace_values, columns,
+                        temporary))
+                    goto done;
+            }
+        }
+    }
+
+    if (gr_mat_zero(output, context) != GR_SUCCESS)
+        goto done;
+    for (size_t row = 0; row < rank; row++)
+        for (size_t item = 0; item < pivots[row].length; item++)
+            qqbar_set((qqbar_ptr) gr_mat_entry_ptr(
+                output, (slong) row,
+                (slong) pivots[row].columns[item], context),
+                pivots[row].values + item);
+    *rank_out = (slong) rank;
+    status = 1;
+
+done:
+    qqbar_clear(coefficient);
+    qqbar_clear(temporary);
+    sparse_arow_clear(&working);
+    if (pivots != NULL)
+        for (size_t row = 0; row < rows; row++)
+            sparse_arow_clear(&pivots[row]);
+    free(pivots);
+    free(pivot_by_column);
+    free(workspace_columns);
+    if (workspace_values != NULL)
+        _qqbar_vec_clear(workspace_values,
             (slong) (columns == 0 ? 1 : columns));
     return status;
 }

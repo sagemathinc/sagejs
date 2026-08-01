@@ -2639,9 +2639,9 @@ static int p1_character_build(
         gr_mat_init(reduced, (slong) generators, (slong) free_count,
             answer->context);
         reduced_initialized = 1;
-        if (gr_mat_rref(
-                &rank_slong, reduced, relations,
-                answer->context) != GR_SUCCESS)
+        if (!sagejs_qqbar_gr_mat_rref_sparse(
+                reduced, &rank_slong, relations,
+                answer->context))
             goto done;
     }
     if (rank_slong < 0 || (size_t) rank_slong > free_count)

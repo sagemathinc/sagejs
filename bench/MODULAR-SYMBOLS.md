@@ -34,22 +34,24 @@ stage) illustrates the current performance boundary:
 
 | character | stage | Sage.js | SageMath | Magma |
 | --- | ---: | ---: | ---: | ---: |
-| quadratic | space | 0.84 | 0.40 | 0.36 |
+| quadratic | space | 0.89 | 0.40 | 0.36 |
 | quadratic | cuspidal | 0.58 | 0.67 | 0.03 |
 | quadratic | `T_2` | 0.03 | 0.10 | 0.28 |
-| order 5 | space | 64.31 | 8.01 | 0.41 |
-| order 5 | cuspidal | 7.41 | 69.26 | 0.04 |
-| order 5 | `T_2` | 2.47 | 15.27 | 0.77 |
+| order 5 | space | 3.48 | 7.97 | 0.40 |
+| order 5 | cuspidal | 7.33 | 55.40 | 0.05 |
+| order 5 | `T_2` | 2.45 | 15.41 | 0.76 |
 
 All rows passed the independent dimension or trace-fingerprint checks. These
 numbers are a reproducible development snapshot, not portable performance
 claims. Sage.js retains the exact native character presentation behind the
 high-level presentation object, so `T_2` reuses its basis and reduction map
 instead of reconstructing them. Quadratic presentations specialize their
-rational relations to the sparse `fmpq` reducer. The remaining construction
-bottleneck is therefore sharply isolated: reducing the order-5 relations over
-an exact cyclotomic field. Sage.js's exact order-5 cuspidal kernel and Hecke
-assembly are already substantially faster than SageMath's at this level.
+rational relations to the sparse `fmpq` reducer, while non-real characters use
+a sparse exact `qqbar` reducer instead of FLINT's dense generic-ring RREF.
+Sage.js's exact order-5 construction, cuspidal kernel, and Hecke assembly are
+all substantially faster than SageMath's at this level. The remaining space
+construction gap relative to Magma is now isolated to cyclotomic field
+arithmetic rather than sparsity or redundant work.
 
 The dashboard separates the following operations because conflating them
 would give misleading performance numbers:
@@ -167,9 +169,10 @@ normalization scalar from the character included in every projective-coset
 lookup. A weighted union/find eliminates monomial two-term and signed-star
 relations while storing root-of-unity exponents, so these relations require
 no general algebraic-number arithmetic. The surviving order-three relations
-are reduced exactly by FLINT's generic-ring matrix layer over a cyclotomic
-field. Real-valued characters instead extract the rational relation matrix
-and use Sage.js's sparse `fmpq` elimination. The native presentation is owned
+are reduced by Sage.js's sparse exact `qqbar` elimination over the cyclotomic
+field; this avoids materializing or reducing a dense algebraic-number matrix.
+Real-valued characters instead extract the rational relation matrix and use
+the sparse `fmpq` reducer. The native presentation is owned
 by a finalizable opaque Node object and retained with the visible basis and
 reduction matrix; subsequent Hecke calls reuse it after validating its level,
 weight, sign, and character. The retained reduction map then drives exact
