@@ -98,7 +98,10 @@ container deployment, and the evaluated TypeScript-to-native alternatives.
 A [`flint-wasm`](packages/flint-wasm/README.md) proof of concept links
 CoWasm's FLINT, GMP, and MPFR archives into a 4.7 MiB browser module. The real
 Sage.js evaluator compiles source in a nested worker and runs
-arbitrary-precision factorization in an interruptible outer worker.
+arbitrary-precision factorization in an interruptible outer worker. Native and
+WASM builds also share the same host-neutral `P1List` and weight-2
+modular-symbol presentation core, establishing the adapter pattern for deeper
+mathematics in the browser.
 
 ## Documentation
 

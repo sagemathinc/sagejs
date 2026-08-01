@@ -131,10 +131,39 @@ export async function instantiateFlintFactor(source) {
     return BigInt(readCString(memory, outputPointer, outputCapacity));
   }
 
+  function modularSymbolsWeight2Info(level) {
+    if (!Number.isInteger(level) || level <= 0 || level > 0x7fffffff) {
+      throw new RangeError(
+        "modular-symbol level must be between 1 and 2147483647",
+      );
+    }
+    const status = instance.exports.sagejs_modsym_weight2_init(level);
+    if (status !== 0) {
+      throw new Error(
+        `unable to construct weight-2 modular symbols (status ${status})`,
+      );
+    }
+    try {
+      return Object.freeze({
+        level,
+        p1Count: Number(instance.exports.sagejs_modsym_p1_count()),
+        dimension: Number(instance.exports.sagejs_modsym_dimension()),
+        fareyCusps: Number(instance.exports.sagejs_modsym_farey_cusps()),
+        p1Checksum: BigInt.asUintN(
+          64,
+          instance.exports.sagejs_modsym_p1_checksum(),
+        ),
+      });
+    } finally {
+      instance.exports.sagejs_modsym_clear();
+    }
+  }
+
   return Object.freeze({
     factor,
     isPrime,
     nextPrime,
+    modularSymbolsWeight2Info,
     ...createPortablePolynomialBackend(),
     ...createPortableMatrixBackend(),
   });

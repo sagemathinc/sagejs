@@ -57,6 +57,27 @@ test("tests primality and finds proven next primes", () => {
   );
 });
 
+test("shares the native P1 and weight-2 modular-symbol core", () => {
+  assert.deepEqual(flint.modularSymbolsWeight2Info(389), {
+    level: 389,
+    p1Count: 390,
+    dimension: 65,
+    fareyCusps: 131,
+    p1Checksum: 15155406781064202873n,
+  });
+  assert.deepEqual(flint.modularSymbolsWeight2Info(1000), {
+    level: 1000,
+    p1Count: 1800,
+    dimension: 301,
+    fareyCusps: 601,
+    p1Checksum: 4376806799976598043n,
+  });
+  assert.throws(
+    () => flint.modularSymbolsWeight2Info(0),
+    /level must be between/,
+  );
+});
+
 test("provides exact portable polynomial construction and arithmetic", () => {
   const x = flint.qqPolyGen();
   const two = flint.qqPolyConstant(2n, 1n);

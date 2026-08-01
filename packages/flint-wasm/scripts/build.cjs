@@ -128,6 +128,12 @@ const exportNames = [
   "sagejs_factor",
   "sagejs_is_prime",
   "sagejs_next_prime",
+  "sagejs_modsym_weight2_init",
+  "sagejs_modsym_clear",
+  "sagejs_modsym_p1_count",
+  "sagejs_modsym_dimension",
+  "sagejs_modsym_farey_cusps",
+  "sagejs_modsym_p1_checksum",
 ];
 
 run(clang, [
@@ -140,7 +146,11 @@ run(clang, [
   "-Wextra",
   "-Werror",
   ...includeArguments,
+  `-I${path.join(repositoryRoot, "packages", "flint", "src")}`,
   path.join(packageRoot, "src", "factor.c"),
+  path.join(packageRoot, "src", "modsym.c"),
+  path.join(repositoryRoot, "packages", "flint", "src", "p1_core.c"),
+  path.join(repositoryRoot, "packages", "flint", "src", "modsym_core.c"),
   path.join(packageRoot, "src", "wasi-stubs.c"),
   ...libraryArguments,
   "-lflint",

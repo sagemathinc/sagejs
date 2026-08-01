@@ -3,7 +3,8 @@
 This package links CoWasm's WebAssembly builds of FLINT, GMP, and MPFR into a
 small, browser-compatible Sage.js evaluator. It currently compiles and
 evaluates Sage source and exposes integer factorization, primality testing,
-and proven next-prime searches through a narrow C ABI. The factorization ABI
+proven next-prime searches, and a first modular-symbol core through a narrow C
+ABI. The factorization ABI
 returns the same structured `{ sign, factors }` result as the
 native Node-API add-on, so the ordinary Sage.js baselib constructs and
 displays `IntegerFactorization` objects unchanged. A small exact JavaScript
@@ -17,6 +18,20 @@ Hermite form, and composite-ring Howell forms and module kernels. Its public
 contract matches
 the native FLINT matrix backend, so Sage-facing matrix code and serialized
 results do not depend on the host.
+
+The native and WASM builds now compile the same host-neutral `P1List` and
+weight-2 `Gamma0(N)` Manin-presentation sources. The initial WASM adapter
+exposes a compact correctness and introspection call:
+
+```js
+flint.modularSymbolsWeight2Info(389)
+// { level: 389, p1Count: 390, dimension: 65, ... }
+```
+
+The P1 checksum is checked against the Node build at prime and composite
+levels. This is intentionally the first adapter slice, not yet the complete
+high-level `ModularSymbols` API: Hecke matrices, boundaries, higher weights,
+and character presentations need structured linear-memory adapters next.
 
 The JavaScript loader has no host Node.js dependency. Its browser bundle uses
 CoWasm's `wasi-js` with `@cowasm/memfs`, so FLINT can create, seek, reopen, and
@@ -141,7 +156,9 @@ worker and therefore requires a Content Security Policy that permits dynamic
 code generation there. Removing that restriction will require a different
 generated-module/runtime boundary; it is not a WASM or FLINT limitation.
 
-This direct ABI is intentionally a baseline. A Node-API compatibility layer
+This direct ABI is intentionally a baseline. Host-neutral mathematical C lives
+under `packages/flint/src`, while Node-API and WASM files are thin adapters.
+A Node-API compatibility layer
 such as `napi-wasm` or `emnapi` could potentially reuse more of the existing
 native add-on, but it would also ship and execute an additional emulation
 layer. Once more FLINT operations are exposed, the two approaches can be

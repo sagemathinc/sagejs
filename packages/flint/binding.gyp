@@ -15,6 +15,7 @@
         "src/floating.c",
         "src/matrix.c",
         "src/modsym_core.c",
+        "src/p1_core.c",
         "src/multivariate.c",
         "src/p1.c",
         "src/sparse_rational.c"
