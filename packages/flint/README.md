@@ -1,7 +1,7 @@
 # `@sagemath/sagejs-flint`
 
 This experimental package binds native
-[FLINT 3.5](https://flintlib.org/) exact arithmetic directly to Node through
+[FLINT 3.6](https://flintlib.org/) exact arithmetic directly to Node through
 the stable C Node-API. It is deliberately separate from `@sagemath/sagejs`:
 loading the language must not initialize native mathematics libraries.
 
@@ -141,7 +141,7 @@ rather than adding it to the factor list.
 ## Build
 
 The current prototype supports x86-64 Linux hosts with a C compiler and
-`make`. GMP 6.3.0, MPFR 4.2.2, MPC 1.4.1, FLINT 3.5.0, `ffpoly` 1.2.7, and
+`make`. GMP 6.3.0, MPFR 4.2.2, MPC 1.4.1, FLINT 3.6.0, `ffpoly` 1.2.7, and
 smalljac 4.1.3 are downloaded, verified by SHA-256, and built as
 position-independent static libraries. The x86-64 restriction comes from the
 current `ffpoly` release's assembly implementation; a future portable backend

@@ -5,7 +5,7 @@ const test = require("node:test");
 const flint = require("..");
 
 test("native FLINT arithmetic and exact algebra", () => {
-assert.equal(flint.version(), "3.5.0");
+assert.equal(flint.version(), "3.6.0");
 assert.equal(flint.nativeAbiVersion(), 1);
 assert.equal(flint.mpfrVersion(), "4.2.2");
 assert.equal(flint.mpcVersion(), "1.4.1");
