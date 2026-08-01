@@ -277,6 +277,25 @@ try {
     await runSource("a = 12\nfactor(a)", "2^2 * 3");
     await runSource("factor(a^2)", "2^4 * 3^2");
     await runSource(
+      "P = P1List(11)\n" +
+        "print(len(P), P.normalize_with_scalar(3,7), P.apply_S(0))\n" +
+        "M = ModularSymbols(11)\n" +
+        "print(M.dimension(), M.cuspidal_subspace().dimension())\n" +
+        "print(M.hecke_matrix(2))\n" +
+        "print(M.star_involution().matrix())",
+      "12 (1, 6, 3) 1\n" +
+        "3 2\n" +
+        "[ 3  0 -1]\n[ 0 -2  0]\n[ 0  0 -2]\n" +
+        "[ 1  0  0]\n[ 0 -1  1]\n[ 0  0  1]\n",
+    );
+    await runSource(
+      "for s in [-1,1]:\n" +
+        "    M = ModularSymbols(37,2,sign=s)\n" +
+        "    print(s, M.dimension(), " +
+        "M.cuspidal_subspace().dimension(), M.hecke_matrix(2).trace())",
+      "-1 2 2 -2\n1 3 2 1\n",
+    );
+    await runSource(
       "for n in [2025..2050]:\n    print(factor(n))",
       factorLoopOutput,
     );

@@ -19,9 +19,9 @@ contract matches
 the native FLINT matrix backend, so Sage-facing matrix code and serialized
 results do not depend on the host.
 
-The native and WASM builds now compile the same host-neutral `P1List` and
-weight-2 `Gamma0(N)` Manin-presentation sources. The initial WASM adapter
-exposes a compact correctness and introspection call:
+The native and WASM builds compile the same host-neutral `P1List` and
+weight-2 `Gamma0(N)` Manin-presentation sources. The compact correctness and
+introspection call remains useful:
 
 ```js
 flint.modularSymbolsWeight2Info(389)
@@ -29,9 +29,22 @@ flint.modularSymbolsWeight2Info(389)
 ```
 
 The P1 checksum is checked against the Node build at prime and composite
-levels. This is intentionally the first adapter slice, not yet the complete
-high-level `ModularSymbols` API: Hecke matrices, boundaries, higher weights,
-and character presentations need structured linear-memory adapters next.
+levels. The WASM adapter now also owns persistent, independently usable P1
+objects and transfers exact matrices from linear memory in one batch. Thus
+the ordinary Sage-facing `P1List(N)` and weight-2 `ModularSymbols(N)` APIs run
+unchanged in the browser, including normalization and `S`, `R`, `I`, and
+translation actions; minimal Manin presentations; rational path reduction;
+boundary and cuspidal subspaces; signed star eigenspaces; and exact prime
+Hecke matrices. The headless-browser suite exercises all of those layers
+through the public evaluator instead of calling a private smoke-test ABI.
+
+The exact matrices currently become portable JavaScript matrix objects after
+their entries cross the C ABI. This is deliberately correct and debuggable,
+but it is not the eventual scalable representation for thousands-dimensional
+signed spaces: a subsequent layer will keep FLINT matrix handles inside WASM
+and transfer only requested entries or serialized results. Higher-weight and
+Dirichlet-character Manin presentations also still require host-neutral core
+extraction from the Node adapter.
 
 The JavaScript loader has no host Node.js dependency. Its browser bundle uses
 CoWasm's `wasi-js` with `@cowasm/memfs`, so FLINT can create, seek, reopen, and

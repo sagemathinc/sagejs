@@ -833,6 +833,44 @@ export function createPortableMatrixBackend() {
       left.kind, left.rows, right.cols, entries, left.modulus);
   }
 
+  function matrixSparseLeftMul(left, right) {
+    [left, right] = requireSameKind(left, right);
+    if (left.cols !== right.rows) {
+      throw new RangeError(
+        "matrix dimensions are incompatible for multiplication",
+      );
+    }
+    const zero = left.kind === "QQ" ? rational(0n) : 0n;
+    const entries = Array.from(
+      { length: left.rows * right.cols }, () => zero,
+    );
+    for (let row = 0; row < left.rows; row += 1) {
+      for (let inner = 0; inner < left.cols; inner += 1) {
+        const a = left.entries[row * left.cols + inner];
+        const aIsZero = left.kind === "QQ" ? isZero(a) : a === 0n;
+        if (aIsZero) continue;
+        for (let col = 0; col < right.cols; col += 1) {
+          const b = right.entries[inner * right.cols + col];
+          const bIsZero = left.kind === "QQ" ? isZero(b) : b === 0n;
+          if (bIsZero) continue;
+          const index = row * right.cols + col;
+          if (left.kind === "ZZ") {
+            entries[index] += a * b;
+          } else if (left.kind === "QQ") {
+            entries[index] = add(entries[index], mul(a, b));
+          } else {
+            entries[index] = modular(
+              entries[index] + a * b, left.modulus,
+            );
+          }
+        }
+      }
+    }
+    return make(
+      left.kind, left.rows, right.cols, entries, left.modulus,
+    );
+  }
+
   function matrixNeg(matrix) {
     matrix = requireMatrix(matrix);
     return make(
@@ -1179,6 +1217,62 @@ export function createPortableMatrixBackend() {
     return matrixRref(raw);
   }
 
+  function matrixPivots(matrix) {
+    matrix = requireMatrix(matrix);
+    const pivots = [];
+    let previous = -1;
+    for (let row = 0; row < matrix.rows; row += 1) {
+      let pivot = -1;
+      for (let col = previous + 1; col < matrix.cols; col += 1) {
+        const value = matrix.entries[row * matrix.cols + col];
+        if (matrix.kind === "QQ" ? !isZero(value) : value !== 0n) {
+          pivot = col;
+          break;
+        }
+      }
+      if (pivot < 0) break;
+      pivots.push(pivot);
+      previous = pivot;
+    }
+    return pivots;
+  }
+
+  function matrixSelectRows(matrix, indices) {
+    matrix = requireMatrix(matrix);
+    const rows = Array.from(indices, (index) => Number(index));
+    for (const row of rows) {
+      if (!Number.isSafeInteger(row) || row < 0 || row >= matrix.rows) {
+        throw new RangeError("matrix row index is out of range");
+      }
+    }
+    const entries = rows.flatMap((row) =>
+      matrix.entries.slice(row * matrix.cols, (row + 1) * matrix.cols));
+    return make(matrix.kind, rows.length, matrix.cols, entries, matrix.modulus);
+  }
+
+  function matrixSelectColumns(matrix, indices) {
+    matrix = requireMatrix(matrix);
+    const columns = Array.from(indices, (index) => Number(index));
+    for (const column of columns) {
+      if (
+        !Number.isSafeInteger(column) ||
+        column < 0 ||
+        column >= matrix.cols
+      ) {
+        throw new RangeError("matrix column index is out of range");
+      }
+    }
+    const entries = [];
+    for (let row = 0; row < matrix.rows; row += 1) {
+      for (const column of columns) {
+        entries.push(matrix.entries[row * matrix.cols + column]);
+      }
+    }
+    return make(
+      matrix.kind, matrix.rows, columns.length, entries, matrix.modulus,
+    );
+  }
+
   function matrixCharpoly(matrix) {
     matrix = requireMatrix(matrix);
     if (matrix.rows !== matrix.cols) {
@@ -1393,6 +1487,10 @@ export function createPortableMatrixBackend() {
     matrixHermiteTransform,
     matrixSmith,
     matrixRightKernel,
+    matrixPivots,
+    matrixSelectRows,
+    matrixSelectColumns,
+    matrixSparseLeftMul,
     matrixCharpoly,
     matrixSolve,
     matrixInverse,

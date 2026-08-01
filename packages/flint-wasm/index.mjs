@@ -44,6 +44,12 @@ export async function instantiateFlintFactor(source) {
   });
   const memory = instance.exports.memory;
   wasi.initialize(instance);
+  const polynomialBackend = createPortablePolynomialBackend();
+  const matrixBackend = createPortableMatrixBackend();
+
+  // WebAssembly i32 results reach JavaScript as signed numbers even when the
+  // C declaration is uint32_t/size_t. Normalize handles, pointers, and sizes.
+  const uint32 = (value) => Number(value) >>> 0;
 
   const inputPointer = Number(instance.exports.sagejs_factor_input());
   const inputCapacity = Number(
@@ -146,9 +152,9 @@ export async function instantiateFlintFactor(source) {
     try {
       return Object.freeze({
         level,
-        p1Count: Number(instance.exports.sagejs_modsym_p1_count()),
-        dimension: Number(instance.exports.sagejs_modsym_dimension()),
-        fareyCusps: Number(instance.exports.sagejs_modsym_farey_cusps()),
+        p1Count: uint32(instance.exports.sagejs_modsym_p1_count()),
+        dimension: uint32(instance.exports.sagejs_modsym_dimension()),
+        fareyCusps: uint32(instance.exports.sagejs_modsym_farey_cusps()),
         p1Checksum: BigInt.asUintN(
           64,
           instance.exports.sagejs_modsym_p1_checksum(),
@@ -159,13 +165,266 @@ export async function instantiateFlintFactor(source) {
     }
   }
 
+  const p1Objects = new WeakSet();
+  const p1Finalizer = typeof FinalizationRegistry === "undefined"
+    ? undefined
+    : new FinalizationRegistry((handle) => {
+        instance.exports.sagejs_p1_destroy(handle);
+      });
+
+  function p1Object(value) {
+    if (!p1Objects.has(value)) {
+      throw new TypeError("expected a Sage.js WASM P1List");
+    }
+    return value;
+  }
+
+  function wasmInt64(value, description) {
+    let answer;
+    try {
+      answer = BigInt(value);
+    } catch {
+      throw new TypeError(`${description} must be an integer`);
+    }
+    if (answer < -(1n << 63n) || answer >= (1n << 63n)) {
+      throw new RangeError(`${description} must fit in a signed 64-bit word`);
+    }
+    return answer;
+  }
+
+  function p1Index(value, p1) {
+    if (!Number.isSafeInteger(value) || value < 0 || value >= p1.count) {
+      throw new RangeError("P1List index is out of range");
+    }
+    return value;
+  }
+
+  function p1List(level) {
+    if (!Number.isInteger(level) || level <= 0 || level > 0x7fffffff) {
+      throw new RangeError("P1List level must be between 1 and 2147483647");
+    }
+    const handle = uint32(instance.exports.sagejs_p1_create(level));
+    if (handle === 0) {
+      throw new Error("unable to construct the WASM P1List");
+    }
+    const value = Object.freeze({
+      handle,
+      level,
+      count: uint32(instance.exports.sagejs_p1_count(handle)),
+    });
+    p1Objects.add(value);
+    p1Finalizer?.register(value, handle);
+    return value;
+  }
+
+  function p1ListLevel(value) {
+    return p1Object(value).level;
+  }
+
+  function p1ListCount(value) {
+    return p1Object(value).count;
+  }
+
+  function unpackPair(packed) {
+    packed = BigInt.asUintN(64, packed);
+    return [
+      Number((packed >> 32n) & 0xffffffffn),
+      Number(packed & 0xffffffffn),
+    ];
+  }
+
+  function p1ListEntry(value, index) {
+    const p1 = p1Object(value);
+    return unpackPair(instance.exports.sagejs_p1_entry(
+      p1.handle, p1Index(index, p1),
+    ));
+  }
+
+  function p1ListNormalize(value, u, v, withScalar) {
+    const p1 = p1Object(value);
+    const status = instance.exports.sagejs_p1_normalize(
+      p1.handle,
+      wasmInt64(u, "projective numerator"),
+      wasmInt64(v, "projective denominator"),
+      withScalar ? 1 : 0,
+    );
+    if (status !== 1) {
+      throw new Error("unable to normalize a WASM P1List pair");
+    }
+    const answer = [
+      uint32(instance.exports.sagejs_p1_normalized_u()),
+      uint32(instance.exports.sagejs_p1_normalized_v()),
+    ];
+    if (withScalar) {
+      answer.push(uint32(instance.exports.sagejs_p1_normalized_scalar()));
+    }
+    return answer;
+  }
+
+  function p1ListIndex(value, u, v) {
+    const p1 = p1Object(value);
+    const answer = uint32(instance.exports.sagejs_p1_index(
+      p1.handle,
+      wasmInt64(u, "projective numerator"),
+      wasmInt64(v, "projective denominator"),
+    ));
+    return answer === 0xffffffff ? -1 : answer;
+  }
+
+  function p1Action(value, index, action) {
+    const p1 = p1Object(value);
+    const answer = uint32(instance.exports.sagejs_p1_apply(
+      p1.handle, p1Index(index, p1), action,
+    ));
+    if (answer === 0xffffffff) {
+      throw new Error("unable to apply a WASM P1List action");
+    }
+    return answer;
+  }
+
+  const presentationNames = [
+    "level",
+    "projectiveCosets",
+    "cusps",
+    "interiorPaths",
+    "e1",
+    "e2",
+    "torsion2",
+    "torsion3",
+    "generators",
+    "relations",
+    "dimension",
+  ];
+
+  function p1ListManinPresentationInfo(value) {
+    const p1 = p1Object(value);
+    const result = {};
+    for (let field = 0; field < presentationNames.length; field += 1) {
+      const number = uint32(
+        instance.exports.sagejs_p1_presentation_field(p1.handle, field),
+      );
+      if (number === 0xffffffff) {
+        throw new Error("unable to construct minimal Manin presentation");
+      }
+      result[presentationNames[field]] = number;
+    }
+    return Object.freeze(result);
+  }
+
+  function readIntegerMatrix(operation) {
+    const rows = uint32(instance.exports.sagejs_p1_matrix_rows());
+    const columns = uint32(instance.exports.sagejs_p1_matrix_columns());
+    const length = rows * columns;
+    if (!Number.isSafeInteger(length)) {
+      throw new RangeError(`${operation} matrix is too large`);
+    }
+    const pointer = uint32(instance.exports.sagejs_p1_matrix_data());
+    if (length !== 0 && pointer === 0) {
+      throw new Error(`unable to construct ${operation} matrix`);
+    }
+    const view = new Int32Array(memory.buffer, pointer, length);
+    return matrixBackend.zzMatrix(
+      rows, columns, Array.from(view, (entry) => BigInt(entry)),
+    );
+  }
+
+  function runMatrixOperation(value, operation, invoke) {
+    const p1 = p1Object(value);
+    if (invoke(p1.handle) !== 1) {
+      throw new Error(`unable to construct ${operation}`);
+    }
+    return readIntegerMatrix(operation);
+  }
+
+  function p1ListHeckeMatrix(value, prime) {
+    prime = wasmInt64(prime, "weight-2 Hecke index");
+    if (prime < 2n || prime > 0x7fffffffn || !isPrime(prime)) {
+      throw new RangeError(
+        "weight-2 Hecke index must be a prime fitting in 31 bits",
+      );
+    }
+    return runMatrixOperation(value, "exact weight-2 Hecke matrix",
+      (handle) => instance.exports.sagejs_p1_hecke_matrix(
+        handle, Number(prime),
+      ));
+  }
+
+  function p1ListBoundaryData(value) {
+    const matrix = runMatrixOperation(value, "weight-2 boundary map",
+      (handle) => instance.exports.sagejs_p1_boundary_data(handle));
+    const count = uint32(instance.exports.sagejs_p1_cusp_count());
+    const cusps = Array.from({ length: count }, (_, index) => [
+      instance.exports.sagejs_p1_cusp_numerator(index),
+      instance.exports.sagejs_p1_cusp_denominator(index),
+    ]);
+    return Object.freeze({ matrix, cusps: Object.freeze(cusps) });
+  }
+
+  function p1ListCuspidalBasis(value) {
+    return runMatrixOperation(value, "exact cuspidal cycle basis",
+      (handle) => instance.exports.sagejs_p1_cuspidal_basis(handle));
+  }
+
+  function p1ListStarMatrix(value) {
+    return runMatrixOperation(value, "weight-2 star involution",
+      (handle) => instance.exports.sagejs_p1_star_matrix(handle));
+  }
+
+  function p1ListStarEigenspaceBasis(value, sign) {
+    if (sign !== -1 && sign !== 1) {
+      throw new RangeError("star eigenspace sign must be -1 or 1");
+    }
+    const star = matrixBackend.zzMatrixToQQ(p1ListStarMatrix(value));
+    const entries = [];
+    for (let row = 0; row < star.rows; row += 1) {
+      for (let column = 0; column < star.cols; column += 1) {
+        entries.push([row === column ? BigInt(sign) : 0n, 1n]);
+      }
+    }
+    const scalar = matrixBackend.qqMatrix(star.rows, star.cols, entries);
+    const relation = matrixBackend.matrixSub(star, scalar);
+    // The native star matrix stores a column action.  Its right kernel gives
+    // row coordinates for the transposed action used by Matrix/ModSym.
+    const matrix = matrixBackend.matrixRightKernel(relation);
+    return Object.freeze({ dimension: matrix.rows, matrix });
+  }
+
+  function p1ListReducePath(value, startNumerator, startDenominator,
+    stopNumerator, stopDenominator) {
+    return runMatrixOperation(value, "exact weight-2 path reduction",
+      (handle) => instance.exports.sagejs_p1_reduce_path(
+        handle,
+        wasmInt64(startNumerator, "start numerator"),
+        wasmInt64(startDenominator, "start denominator"),
+        wasmInt64(stopNumerator, "stop numerator"),
+        wasmInt64(stopDenominator, "stop denominator"),
+      ));
+  }
+
   return Object.freeze({
     factor,
     isPrime,
     nextPrime,
     modularSymbolsWeight2Info,
-    ...createPortablePolynomialBackend(),
-    ...createPortableMatrixBackend(),
+    p1List,
+    p1ListLevel,
+    p1ListCount,
+    p1ListEntry,
+    p1ListNormalize,
+    p1ListIndex,
+    p1ListApplyI: (value, index) => p1Action(value, index, 0),
+    p1ListApplyS: (value, index) => p1Action(value, index, 1),
+    p1ListApplyR: (value, index) => p1Action(value, index, 2),
+    p1ListApplyT: (value, index) => p1Action(value, index, 3),
+    p1ListManinPresentationInfo,
+    p1ListHeckeMatrix,
+    p1ListBoundaryData,
+    p1ListCuspidalBasis,
+    p1ListStarMatrix,
+    p1ListStarEigenspaceBasis,
+    p1ListReducePath,
+    ...polynomialBackend,
+    ...matrixBackend,
   });
 }
 

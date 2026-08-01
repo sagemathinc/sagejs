@@ -78,6 +78,78 @@ test("shares the native P1 and weight-2 modular-symbol core", () => {
   );
 });
 
+test("exposes persistent P1 objects and exact weight-2 matrices", () => {
+  const p1 = flint.p1List(11);
+  const other = flint.p1List(13);
+  assert.equal(flint.p1ListLevel(p1), 11);
+  assert.equal(flint.p1ListCount(p1), 12);
+  assert.equal(flint.p1ListCount(other), 14);
+  assert.equal(flint.modularSymbolsWeight2Info(389).dimension, 65);
+  assert.equal(flint.p1ListCount(p1), 12);
+  assert.deepEqual(flint.p1ListEntry(p1, 0), [0, 1]);
+  assert.deepEqual(flint.p1ListNormalize(p1, 3, 7, true), [1, 6, 3]);
+  assert.equal(flint.p1ListIndex(p1, 3, 7), 7);
+  for (let index = 0; index < flint.p1ListCount(p1); index += 1) {
+    assert.equal(
+      flint.p1ListApplyS(p1, flint.p1ListApplyS(p1, index)),
+      index,
+    );
+    assert.equal(
+      flint.p1ListApplyR(
+        p1,
+        flint.p1ListApplyR(p1, flint.p1ListApplyR(p1, index)),
+      ),
+      index,
+    );
+  }
+  assert.deepEqual(flint.p1ListManinPresentationInfo(p1), {
+    level: 11,
+    projectiveCosets: 12,
+    cusps: 5,
+    interiorPaths: 6,
+    e1: 3,
+    e2: 3,
+    torsion2: 0,
+    torsion3: 0,
+    generators: 3,
+    relations: 1,
+    dimension: 3,
+  });
+
+  const hecke = flint.p1ListHeckeMatrix(p1, 2n);
+  assert.deepEqual(hecke.entries, [
+    3n, 0n, 0n,
+    1n, -2n, 0n,
+    1n, 0n, -2n,
+  ]);
+  const boundary = flint.p1ListBoundaryData(p1);
+  assert.deepEqual(boundary.cusps, [[1n, 0n], [0n, 1n]]);
+  assert.deepEqual(boundary.matrix.entries, [1n, -1n, 0n, 0n, 0n, 0n]);
+  assert.deepEqual(
+    flint.p1ListCuspidalBasis(p1).entries,
+    [0n, 1n, 0n, 0n, 0n, 1n],
+  );
+  const star = flint.p1ListStarMatrix(p1);
+  assert.deepEqual(star.entries, [
+    1n, 0n, 0n,
+    0n, 0n, 1n,
+    0n, 1n, 0n,
+  ]);
+  for (const [sign, dimension] of [[1, 2], [-1, 1]]) {
+    const eigenspace = flint.p1ListStarEigenspaceBasis(p1, sign);
+    assert.equal(eigenspace.dimension, dimension);
+    const columns = flint.matrixTranspose(eigenspace.matrix);
+    assert.ok(flint.matrixEqual(
+      flint.matrixMul(flint.zzMatrixToQQ(star), columns),
+      flint.matrixScalarMul(columns, BigInt(sign), 1n),
+    ));
+  }
+  assert.deepEqual(
+    flint.p1ListReducePath(p1, 0, 1, 1, 0).entries,
+    [-1n, 0n, 0n],
+  );
+});
+
 test("provides exact portable polynomial construction and arithmetic", () => {
   const x = flint.qqPolyGen();
   const two = flint.qqPolyConstant(2n, 1n);

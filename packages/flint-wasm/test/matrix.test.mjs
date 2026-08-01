@@ -157,3 +157,24 @@ test("solves rational systems exactly and rejects singular matrices", () => {
     /singular/,
   );
 });
+
+test("selects matrix coordinates used by modular-symbol subspaces", () => {
+  const source = matrix.zzMatrix(
+    3, 4,
+    [1n, 0n, 2n, 0n, 0n, 1n, 3n, 4n, 0n, 0n, 0n, 0n],
+  );
+  assert.deepEqual(matrix.matrixPivots(matrix.matrixRref(source)), [0, 1]);
+  assert.deepEqual(
+    matrix.matrixSelectRows(source, [1, 0]).entries,
+    [0n, 1n, 3n, 4n, 1n, 0n, 2n, 0n],
+  );
+  assert.deepEqual(
+    matrix.matrixSelectColumns(source, [3, 1]).entries,
+    [0n, 0n, 4n, 1n, 0n, 0n],
+  );
+  const left = matrix.zzMatrix(1, 3, [1n, 0n, -1n]);
+  assert.deepEqual(
+    matrix.matrixSparseLeftMul(left, source).entries,
+    [1n, 0n, 2n, 0n],
+  );
+});
