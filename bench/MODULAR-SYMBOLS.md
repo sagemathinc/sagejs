@@ -34,12 +34,12 @@ stage) illustrates the current performance boundary:
 
 | character | stage | Sage.js | SageMath | Magma |
 | --- | ---: | ---: | ---: | ---: |
-| quadratic | space | 1.06 | 0.46 | 0.37 |
-| quadratic | cuspidal | 0.15 | 0.73 | 0.03 |
-| quadratic | `T_2` | 0.04 | 0.12 | 0.29 |
-| order 5 | space | 0.75 | 8.56 | 0.43 |
-| order 5 | cuspidal | 0.18 | 72.44 | 0.04 |
-| order 5 | `T_2` | 2.66 | 15.71 | 0.81 |
+| quadratic | space | 0.95 | 0.40 | 0.38 |
+| quadratic | cuspidal | 0.12 | 0.67 | 0.03 |
+| quadratic | `T_2` | 0.03 | 0.10 | 0.29 |
+| order 5 | space | 0.69 | 7.97 | 0.43 |
+| order 5 | cuspidal | 0.16 | 73.02 | 0.04 |
+| order 5 | `T_2` | 1.02 | 15.55 | 0.80 |
 
 All rows passed the independent dimension or trace-fingerprint checks. These
 numbers are a reproducible development snapshot, not portable performance
@@ -51,8 +51,9 @@ certified multimodular cyclotomic RREF and retain its factorized native result;
 the full generator-to-basis matrix is materialized only when explicitly
 requested. Sage.js's exact order-5 construction is within a factor of two of
 Magma here. Its thin boundary kernel is within a factor of five of Magma and
-about 390 times faster than SageMath in this snapshot; Hecke assembly remains
-the next character-space optimization target.
+about 450 times faster than SageMath in this snapshot. Exact order-5 Hecke
+assembly and cuspidal restriction are within 30 percent of Magma and about 15
+times faster than SageMath.
 
 The dashboard separates the following operations because conflating them
 would give misleading performance numbers:
@@ -197,6 +198,10 @@ For a thin boundary matrix, algebraic kernel reduction scans columns in reverse
 and chooses the rightmost independent columns. The corresponding free-variable
 vectors are already in canonical RREF after reversing back, avoiding a second
 large algebraic RREF. Ambient spaces also bypass identity-matrix products.
+Restriction of Hecke operators keeps this RREF basis sparse and selects only
+the ambient pivot columns needed for subspace coordinates. The native algebraic
+sparse product then scales with the nonzero entries in the basis instead of
+treating the nearly-identity basis as a dense cyclotomic matrix.
 Regression cases cover quadratic, cubic, quartic, and sextic characters,
 both parities, weights 2 through 4, all three signs, bad-prime and composite
 Hecke operators, and characteristic polynomials over exact cyclotomic fields.

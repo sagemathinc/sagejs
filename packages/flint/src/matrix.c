@@ -1179,7 +1179,8 @@ napi_value sagejs_matrix_sparse_left_mul(
         return NULL;
     if (left->kind != right->kind ||
         (left->kind != SAGEJS_MATRIX_ZZ &&
-         left->kind != SAGEJS_MATRIX_QQ))
+         left->kind != SAGEJS_MATRIX_QQ &&
+         left->kind != SAGEJS_MATRIX_QQBAR))
     {
         napi_throw_type_error(env, NULL,
             "sparse-left multiplication requires a common exact base ring");
@@ -1213,7 +1214,7 @@ napi_value sagejs_matrix_sparse_left_mul(
                         fmpz_mat_entry(right->integer, index, col));
             }
     }
-    else
+    else if (left->kind == SAGEJS_MATRIX_QQ)
     {
         fmpq_t product;
         fmpq_init(product);
@@ -1237,6 +1238,36 @@ napi_value sagejs_matrix_sparse_left_mul(
                 }
             }
         fmpq_clear(product);
+    }
+    else
+    {
+        qqbar_t product;
+        qqbar_init(product);
+        for (slong row = 0; row < rows; row++)
+            for (slong index = 0; index < inner; index++)
+            {
+                qqbar_srcptr coefficient =
+                    (qqbar_srcptr) gr_mat_entry_ptr(
+                        left->algebraic, row, index,
+                        left->algebraic_context);
+                if (qqbar_is_zero(coefficient))
+                    continue;
+                for (slong col = 0; col < cols; col++)
+                {
+                    qqbar_ptr target =
+                        (qqbar_ptr) gr_mat_entry_ptr(
+                            answer->algebraic, row, col,
+                            answer->algebraic_context);
+                    qqbar_mul(
+                        product,
+                        coefficient,
+                        (qqbar_srcptr) gr_mat_entry_ptr(
+                            right->algebraic, index, col,
+                            right->algebraic_context));
+                    qqbar_add(target, target, product);
+                }
+            }
+        qqbar_clear(product);
     }
     return wrap_matrix(env, answer);
 }

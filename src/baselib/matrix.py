@@ -1235,7 +1235,7 @@ class Matrix(sage.Element):
         if self.ncols() != other.nrows():
             raise ValueError('matrix and matrix dimensions are incompatible')
         base = _common_base(self.base_ring(), other.base_ring())
-        if base not in [sage.ZZ, sage.QQ]:
+        if base not in [sage.ZZ, sage.QQ] and not _is_algebraic_base(base):
             return self * other
         left = self.change_ring(base)
         right = other.change_ring(base)

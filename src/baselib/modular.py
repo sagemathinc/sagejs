@@ -2884,8 +2884,9 @@ class ModularSymbolsSpace(sage.Parent):
         if self.is_ambient():
             return defining_matrix
         basis = self.basis_matrix()
-        image = basis._sparse_left_multiply(defining_matrix)
-        return image.matrix_from_columns(list(basis.pivots()))
+        pivot_columns = list(basis.pivots())
+        return basis._sparse_left_multiply(
+            defining_matrix.matrix_from_columns(pivot_columns))
 
     def star_involution(self) -> ModularSymbolsLinearOperator:
         """Return complex conjugation on this modular-symbol space."""
