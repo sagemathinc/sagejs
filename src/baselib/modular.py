@@ -3026,6 +3026,15 @@ class ModularSymbolsSpace(sage.Parent):
         sage: [A.dimension() for A in M.decomposition()]
         [1, 1, 2, 3, 6, 20]
         ```
+
+        Exact decomposition also works over cyclotomic character fields:
+
+        ```sage
+        sage: G = DirichletGroup(37)
+        sage: M = ModularSymbols(G.0, 5)
+        sage: [A.dimension() for A in M.decomposition(bound=2)]
+        [1, 1, 24]
+        ```
         """
         if not anemic:
             raise NotImplementedError(
@@ -3158,6 +3167,36 @@ class ModularSymbolsSpace(sage.Parent):
             # old factors immediately (at level 1000, T_3 + 2*T_7 does).
             operator_specs.append([
                 [good_primes[0], 1], [good_primes[1], 2]])
+        if len(good_primes) >= 3:
+            # Prime-power levels can have persistent collisions for one or
+            # two individual Hecke operators.  A few small primitive-element
+            # combinations separate the same commutative Hecke algebra while
+            # retaining exact, readily reproducible arithmetic.
+            operator_specs.append([
+                [good_primes[0], 1],
+                [good_primes[1], 2],
+                [good_primes[2], 4],
+            ])
+            operator_specs.append([
+                [good_primes[0], 1],
+                [good_primes[1], 3],
+                [good_primes[2], 9],
+            ])
+        if len(good_primes) >= 4:
+            operator_specs.append([
+                [good_primes[0], 1],
+                [good_primes[1], 2],
+                [good_primes[2], 4],
+                [good_primes[3], 8],
+            ])
+        if len(good_primes) >= 5:
+            operator_specs.append([
+                [good_primes[0], 1],
+                [good_primes[1], 2],
+                [good_primes[2], 4],
+                [good_primes[3], 8],
+                [good_primes[4], 16],
+            ])
         for hecke_prime in good_primes:
             operator_specs.append([[hecke_prime, 1]])
         if len(good_primes) >= 2:
@@ -4219,7 +4258,11 @@ _modular_symbols_decomposition_doc['sage_compatibility'] = {
 }
 _modular_symbols_decomposition_doc['backends'] = [
     'Sage.js portable C modular-symbol core',
-    'FLINT exact matrices, characteristic polynomials, and factorization',
+    (
+        'FLINT exact matrices, characteristic polynomials, rational '
+        'factorization, and Trager number-field factorization'
+    ),
+    'Completely split-prime cyclotomic kernels with exact CRT certificates',
 ]
 _modular_symbols_decomposition_doc['limitations'] = [
     'Only anemic decomposition by Hecke operators coprime to the level.',

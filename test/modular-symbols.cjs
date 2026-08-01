@@ -690,6 +690,34 @@ test("new submodules and simple Hecke decomposition", async () => {
       ).repr,
       "[24, True, [2, 2, 2, 2, 4, 4, 4, 4], 24, True]",
     );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "M = ModularSymbols(400, 2, sign=1)",
+            "N = M.new_submodule()",
+            "[N.dimension(), N.cuspidal_subspace().dimension()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[8, 8]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "G = DirichletGroup(37)",
+            "M = ModularSymbols(G.0, 5)",
+            "F = list(M.hecke_matrix(2).charpoly().factor())",
+            "D = M.decomposition(bound=2)",
+            "[[(f.degree(), e) for f, e in F], " +
+              "[A.dimension() for A in D], " +
+              "sum(A.dimension() for A in D)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[(1, 1), (1, 1), (12, 2)], [1, 1, 24], 26]",
+    );
   } finally {
     await session.close();
   }

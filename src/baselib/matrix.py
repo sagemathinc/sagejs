@@ -61,6 +61,10 @@ def _is_base_ring(value: object) -> bool:
     )
 
 
+def _cyclotomic_order(value: Any) -> Any:
+    return value.zeta_order()
+
+
 def _canonical_base(base: sage.Parent) -> sage.Parent:
     if base is sage.ZZ or getattr(base, '_kind', None) == 'ZZ':
         return sage.ZZ
@@ -956,6 +960,9 @@ class Matrix(sage.Element):
         self._charpoly_cache = runtime.map()
         self._minpoly_cache = runtime.map()
 
+    def _new(self, native_value: Any) -> Matrix:
+        return Matrix(self._parent, native_value)
+
     def base_ring(self) -> sage.Parent:
         return self._parent.base_ring()
 
@@ -1580,12 +1587,34 @@ class Matrix(sage.Element):
 
     def right_kernel(self) -> VectorSubspaceParent:
         if self._right_kernel_cache is runtime.undefined:
-            nullity = self.ncols() - self.rank()
             backend = runtime.flint_backend()
             if _is_extension_field_base(self.base_ring()):
+                nullity = self.ncols() - self.rank()
                 native_value = backend.fqMatrixRightKernel(
                     self._native)
+            elif getattr(
+                self.base_ring(), '_kind', None
+            ) == 'CyclotomicField':
+                cyclotomic_order = int(
+                    _cyclotomic_order(self.base_ring()))
+                if cyclotomic_order in [3, 4, 6]:
+                    # FLINT's direct qqbar elimination is already effective
+                    # in quadratic fields and avoids translating legacy
+                    # order-3 character presentations through a larger
+                    # cyclotomic coordinate cache.
+                    nullity = self.ncols() - self.rank()
+                    native_value = backend.matrixRightKernel(
+                        self._native)
+                else:
+                    native_result = backend.cyclotomicMatrixRightKernel(
+                        self._native,
+                        runtime.integer_bigint(cyclotomic_order),
+                    )
+                    native_value = native_result[0]
+                    nullity = int(native_result[1])
+                    self._rank_cache = self.ncols() - nullity
             else:
+                nullity = self.ncols() - self.rank()
                 native_value = backend.matrixRightKernel(
                     self._native)
             basis = Matrix(
@@ -1593,6 +1622,11 @@ class Matrix(sage.Element):
                     self.base_ring(), nullity, self.ncols()),
                 native_value,
             )
+            # Native kernel constructors return the canonical RREF basis.
+            # Recording that fact avoids recomputing an expensive echelon
+            # form merely to discover its pivot columns when this basis is
+            # used to define a modular-symbol subspace.
+            basis._rref_cache = basis
             self._right_kernel_cache = VectorSubspaceParent(
                 VectorSpace(self.base_ring(), self.ncols()),
                 basis,

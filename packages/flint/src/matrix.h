@@ -65,6 +65,10 @@ napi_value sagejs_matrix_hermite_transform(
     napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_smith(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_right_kernel(napi_env env, napi_callback_info info);
+napi_value sagejs_cyclotomic_matrix_right_kernel(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_cyclotomic_matrix_poly_evaluate(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_charpoly(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_solve(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_inverse(napi_env env, napi_callback_info info);

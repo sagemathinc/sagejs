@@ -923,12 +923,21 @@ sage: [A.dimension() for A in M.decomposition()]
 [1, 1, 2, 3, 6, 20]
 ```
 
+Exact decomposition also works over cyclotomic character fields:
+
+```sage
+sage: G = DirichletGroup(37)
+sage: M = ModularSymbols(G.0, 5)
+sage: [A.dimension() for A in M.decomposition(bound=2)]
+[1, 1, 24]
+```
+
 ### Metadata
 
 - Kind: `method`
 - Module: `sage.modular.modsym.space`
 - Tags: number theory, modular symbols, decomposition, simple factors, Hecke modules, newforms
-- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices, characteristic polynomials, and factorization
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices, characteristic polynomials, rational factorization, and Trager number-field factorization, Completely split-prime cyclotomic kernels with exact CRT certificates
 - Sage compatibility: partial — Anemic decomposition by good Hecke operators follows SageMath. Bad-prime refinement is not yet implemented.
 - Algorithm: Successive good-prime Hecke characteristic-polynomial factorization and exact factor kernels
 - Limitations: Only anemic decomposition by Hecke operators coprime to the level. Correctness is certified by irreducible restricted characteristic polynomials; unresolved repeated factors remain grouped if the requested bound is too small.

@@ -1072,6 +1072,36 @@ class ApproximatePolynomialElement(sage.Element):
             raise TypeError(
                 'polynomial evaluation needs one value per generator')
         base = self._parent.base_ring()
+        if (
+            self._parent.ngens() == 1
+            and hasattr(values[0], 'nrows')
+            and hasattr(values[0], 'ncols')
+        ):
+            value = values[0]
+            if value.nrows() != value.ncols():
+                raise TypeError(
+                    'polynomial evaluation requires a square matrix')
+            if getattr(
+                value.base_ring(), '_kind', None
+            ) == 'CyclotomicField':
+                native_coefficients = []
+                for coefficient in self.coefficients():
+                    native_coefficients.append(coefficient._native)
+                backend = runtime.flint_backend()
+                return value._new(
+                    backend.cyclotomicMatrixPolyEvaluate(
+                        value._native, native_coefficients))
+            matrix_parent = value.parent()
+            identity = matrix_parent.identity_matrix()
+            coefficients = self.coefficients()
+            if len(coefficients) == 0:
+                return matrix_parent.zero_matrix()
+            answer = identity * coefficients[-1]
+            index = len(coefficients) - 2
+            while index >= 0:
+                answer = answer * value + identity * coefficients[index]
+                index -= 1
+            return answer
         answer = base(0)
         for coefficient, exponents in self._terms:
             term = coefficient
@@ -1123,6 +1153,36 @@ class ApproximatePolynomialElement(sage.Element):
         return self.coefficients()
 
     def factor(self) -> sage.Factorization:
+        if (
+            self._parent.ngens() == 1
+            and self._parent.base_ring()._kind == 'CyclotomicField'
+        ):
+            base = self._parent.base_ring()
+            coefficients = self.coefficients()
+            native_coefficients = []
+            for coefficient in coefficients:
+                native_coefficients.append(coefficient._native)
+            result = runtime.flint_backend().cyclotomicPolyFactor(
+                base.gen()._native, native_coefficients)
+            factors = []
+            for native_coefficients, exponent in result.factors:
+                terms = []
+                for index in range(len(native_coefficients)):
+                    coefficient = base._from_native(
+                        native_coefficients[index])
+                    if not coefficient.is_zero():
+                        terms.append([coefficient, [index]])
+                factors.append([
+                    ApproximatePolynomialElement(self._parent, terms),
+                    exponent,
+                ])
+            return sage.Factorization(
+                factors,
+                base._from_native(result.unit),
+                False,
+                False,
+                False,
+            )
         if self._parent.ngens() != 1 or self.degree() != 2:
             raise NotImplementedError(
                 'approximate factorization currently supports quadratics')

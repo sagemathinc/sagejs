@@ -43,7 +43,7 @@ void sagejs_cyclotomic_matrix_clear(sagejs_cyclotomic_matrix *matrix)
 
 #define SAGEJS_CYCLOTOMIC_MAX_ORDER 256
 #define SAGEJS_CYCLOTOMIC_MAX_DEGREE 64
-#define SAGEJS_CYCLOTOMIC_MAX_PRIMES 12
+#define SAGEJS_CYCLOTOMIC_MAX_PRIMES 64
 #define SAGEJS_CYCLOTOMIC_PRIME_START UWORD(1000000000)
 
 typedef struct
@@ -679,6 +679,127 @@ static int candidate_to_qqbar(
     return 1;
 }
 
+/*
+ * Certify a reconstructed RREF directly over the number field.  The height
+ * bound above is deliberately conservative and can require many unnecessary
+ * CRT primes for matrices obtained by evaluating Hecke polynomials.  If R is
+ * the candidate RREF and P lists its pivot columns, every source row v must
+ * satisfy
+ *
+ *                 v = (v[P[0]], ..., v[P[r-1]]) R.
+ *
+ * This identity is an exact certificate of equality of row spaces once the
+ * modular computations have established the candidate rank and pivot set.
+ */
+static void source_entry_polynomial(
+    fmpq_poly_t output,
+    size_t row,
+    size_t column,
+    const sagejs_cyclotomic_term *terms,
+    size_t term_count)
+{
+    fmpq_t coefficient;
+
+    fmpq_poly_zero(output);
+    fmpq_init(coefficient);
+    for (size_t item = 0; item < term_count; item++)
+    {
+        const sagejs_cyclotomic_term *term = terms + item;
+        if (term->row != row || term->column != column)
+            continue;
+        fmpq_poly_get_coeff_fmpq(
+            coefficient, output, (slong) term->exponent);
+        fmpq_add_fmpz(coefficient, coefficient, &term->coefficient);
+        fmpq_poly_set_coeff_fmpq(
+            output, (slong) term->exponent, coefficient);
+    }
+    fmpq_clear(coefficient);
+}
+
+static int candidate_certifies_source(
+    const fmpq *candidate,
+    size_t rank,
+    size_t rows,
+    size_t columns,
+    const size_t *pivots,
+    const sagejs_cyclotomic_term *terms,
+    size_t term_count,
+    ulong order)
+{
+    size_t free_count = columns - rank;
+    fmpq_poly_struct *multipliers = NULL;
+    fmpq_poly_t cyclotomic, expected, actual, coefficient, product;
+    fmpz_poly_t cyclotomic_integer;
+    int status = 0;
+
+    multipliers = malloc((rank == 0 ? 1 : rank) * sizeof(*multipliers));
+    if (multipliers == NULL)
+        return 0;
+    for (size_t pivot = 0; pivot < rank; pivot++)
+        fmpq_poly_init(multipliers + pivot);
+    fmpz_poly_init(cyclotomic_integer);
+    fmpq_poly_init(cyclotomic);
+    fmpq_poly_init(expected);
+    fmpq_poly_init(actual);
+    fmpq_poly_init(coefficient);
+    fmpq_poly_init(product);
+    fmpz_poly_cyclotomic(cyclotomic_integer, order);
+    fmpq_poly_set_fmpz_poly(cyclotomic, cyclotomic_integer);
+
+    for (size_t row = 0; row < rows; row++)
+    {
+        size_t pivot_cursor = 0, target = 0;
+        for (size_t pivot = 0; pivot < rank; pivot++)
+        {
+            source_entry_polynomial(multipliers + pivot,
+                row, pivots[pivot], terms, term_count);
+            fmpq_poly_rem(multipliers + pivot,
+                multipliers + pivot, cyclotomic);
+        }
+        for (size_t column = 0; column < columns; column++)
+        {
+            if (pivot_cursor < rank && pivots[pivot_cursor] == column)
+            {
+                pivot_cursor++;
+                continue;
+            }
+            source_entry_polynomial(
+                expected, row, column, terms, term_count);
+            fmpq_poly_rem(expected, expected, cyclotomic);
+            fmpq_poly_zero(actual);
+            for (size_t pivot = 0; pivot < rank; pivot++)
+            {
+                fmpq_poly_zero(coefficient);
+                for (size_t power = 0;
+                    power < (size_t) n_euler_phi(order); power++)
+                    fmpq_poly_set_coeff_fmpq(
+                        coefficient, (slong) power,
+                        candidate +
+                            (power * rank + pivot) * free_count + target);
+                fmpq_poly_mul(product, multipliers + pivot, coefficient);
+                fmpq_poly_add(actual, actual, product);
+            }
+            fmpq_poly_rem(actual, actual, cyclotomic);
+            if (!fmpq_poly_equal(actual, expected))
+                goto done;
+            target++;
+        }
+    }
+    status = 1;
+
+done:
+    fmpq_poly_clear(product);
+    fmpq_poly_clear(coefficient);
+    fmpq_poly_clear(actual);
+    fmpq_poly_clear(expected);
+    fmpq_poly_clear(cyclotomic);
+    fmpz_poly_clear(cyclotomic_integer);
+    for (size_t pivot = 0; pivot < rank; pivot++)
+        fmpq_poly_clear(multipliers + pivot);
+    free(multipliers);
+    return status;
+}
+
 int sagejs_cyclotomic_rref_multimodular(
     gr_mat_t output,
     slong *rank_out,
@@ -829,6 +950,7 @@ int sagejs_cyclotomic_rref_multimodular(
 
         if (accepted >= 2)
         {
+            int reconstructed, converted, proven, certified;
             if (candidate == NULL)
             {
                 candidate = _fmpq_vec_init((slong)
@@ -837,14 +959,19 @@ int sagejs_cyclotomic_rref_multimodular(
             }
             if (candidate == NULL)
                 goto done;
-            if (reconstruct_candidate(
-                    candidate, coefficient_count, residues, modulus) &&
-                height_proves_reconstruction(
+            reconstructed = reconstruct_candidate(
+                candidate, coefficient_count, residues, modulus);
+            converted = reconstructed && candidate_to_qqbar(
+                output, candidate, target_rank, columns, target_pivots,
+                degree, order, context);
+            proven = converted && height_proves_reconstruction(
                 candidate, coefficient_count, columns,
-                    scaled_source_bound, modulus) &&
-                candidate_to_qqbar(
-                    output, candidate, target_rank, columns, target_pivots,
-                    degree, order, context))
+                scaled_source_bound, modulus);
+            certified = converted && rows <= 64 && columns <= 64 &&
+                candidate_certifies_source(
+                    candidate, target_rank, rows, columns, target_pivots,
+                    terms, term_count, order);
+            if (converted && (proven || certified))
             {
                 if (coordinates != NULL)
                 {

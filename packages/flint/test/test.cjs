@@ -259,6 +259,32 @@ assert.equal(
   true,
 );
 assert.equal(flint.qqbarToString(flint.qqbarI(), 16), "I");
+const cyclotomicFactorization = flint.cyclotomicPolyFactor(
+  flint.qqbarI(),
+  [
+    flint.qqbarFromRational(1n, 1n),
+    flint.qqbarFromRational(0n, 1n),
+    flint.qqbarFromRational(1n, 1n),
+  ],
+);
+assert.equal(
+  flint.qqbarEqual(
+    cyclotomicFactorization.unit,
+    flint.qqbarFromRational(1n, 1n),
+  ),
+  true,
+);
+assert.deepEqual(
+  cyclotomicFactorization.factors.map(([coefficients, exponent]) => [
+    coefficients.length,
+    exponent,
+    flint.qqbarEqual(
+      flint.qqbarMul(coefficients[0], coefficients[0]),
+      flint.qqbarFromRational(-1n, 1n),
+    ),
+  ]),
+  [[2, 1, true], [2, 1, true]],
+);
 assert.throws(
   () => flint.qqbarDiv(algebraicTwo, flint.qqbarFromRational(0n, 1n)),
   /division by zero/,

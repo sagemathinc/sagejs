@@ -31,6 +31,7 @@
 
 #include "algebraic.h"
 #include "charpoly.h"
+#include "cyclotomic_rref.h"
 #include "matrix.h"
 #include "sparse_rational.h"
 
@@ -1409,6 +1410,227 @@ fail:
     return 1;
 }
 
+napi_value sagejs_cyclotomic_matrix_poly_evaluate(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    sagejs_matrix *source, *answer = NULL;
+    uint32_t length;
+    napi_value item;
+    qqbar_srcptr coefficient;
+    fmpq *coefficient_coordinates = NULL;
+    fmpz_poly_t cyclotomic_integer;
+    fmpq_poly_t expression, defining;
+    nf_t number_field;
+    nf_elem_t coefficient_nf;
+    gr_ctx_t number_field_context;
+    gr_mat_t source_nf, current_nf, next_nf;
+    qqbar_t root, value;
+    slong size;
+    size_t degree, coordinate_count, matrix_coordinate_count = 0;
+    int scalar_initialized = 0, number_field_initialized = 0;
+    int matrices_initialized = 0;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL || !check_napi(env,
+            napi_get_array_length(env, args[1], &length)))
+        return NULL;
+    if (source->kind != SAGEJS_MATRIX_QQBAR ||
+        source->cyclotomic_coordinates == NULL ||
+        matrix_nrows(source) != matrix_ncols(source) || length == 0)
+    {
+        napi_throw_type_error(env, NULL,
+            "cyclotomic polynomial evaluation requires a square "
+            "cyclotomic matrix and a nonempty coefficient array");
+        return NULL;
+    }
+    size = matrix_nrows(source);
+    degree = source->cyclotomic_degree;
+    if ((size_t) length > SIZE_MAX / degree)
+        goto allocation_failure;
+    coordinate_count = (size_t) length * degree;
+    coefficient_coordinates = _fmpq_vec_init(
+        (slong) (coordinate_count == 0 ? 1 : coordinate_count));
+    if (coefficient_coordinates == NULL)
+        goto allocation_failure;
+    fmpz_poly_init(cyclotomic_integer);
+    fmpq_poly_init(expression);
+    fmpq_poly_init(defining);
+    qqbar_init(root);
+    qqbar_init(value);
+    scalar_initialized = 1;
+    qqbar_root_of_unity(root, 1, source->cyclotomic_order);
+    for (uint32_t index = 0; index < length; index++)
+    {
+        int expressed;
+        if (!check_napi(env, napi_get_element(env, args[1], index, &item)) ||
+            (coefficient = sagejs_qqbar_unwrap(env, item)) == NULL)
+            goto cleanup;
+        fmpq_poly_zero(expression);
+        expressed = qqbar_is_zero(coefficient);
+        for (slong bits = 128; bits <= 8192 && !expressed; bits *= 2)
+            expressed = qqbar_express_in_field(
+                expression, root, coefficient, bits, 0, bits);
+        if (!expressed)
+        {
+            napi_throw_range_error(env, NULL,
+                "polynomial coefficient is not in the cyclotomic field");
+            goto cleanup;
+        }
+        for (size_t power = 0; power < degree; power++)
+            fmpq_poly_get_coeff_fmpq(
+                coefficient_coordinates + (size_t) index * degree + power,
+                    expression, (slong) power);
+    }
+
+    fmpz_poly_cyclotomic(cyclotomic_integer, source->cyclotomic_order);
+    fmpq_poly_set_fmpz_poly(defining, cyclotomic_integer);
+    nf_init(number_field, defining);
+    number_field_initialized = 1;
+    nf_elem_init(coefficient_nf, number_field);
+    _gr_ctx_init_nf_from_ref(number_field_context, number_field);
+    gr_mat_init(source_nf, size, size, number_field_context);
+    gr_mat_init(current_nf, size, size, number_field_context);
+    gr_mat_init(next_nf, size, size, number_field_context);
+    matrices_initialized = 1;
+    if (gr_mat_zero(current_nf, number_field_context) != GR_SUCCESS)
+        goto arithmetic_failure;
+    for (slong row = 0; row < size; row++)
+        for (slong column = 0; column < size; column++)
+        {
+            fmpq_poly_zero(expression);
+            for (size_t power = 0; power < degree; power++)
+                fmpq_poly_set_coeff_fmpq(
+                    expression, (slong) power,
+                    source->cyclotomic_coordinates +
+                        ((size_t) row * (size_t) size +
+                            (size_t) column) * degree + power);
+            nf_elem_set_fmpq_poly(
+                (nf_elem_struct *) gr_mat_entry_ptr(
+                    source_nf, row, column, number_field_context),
+                expression, number_field);
+        }
+    fmpq_poly_zero(expression);
+    for (size_t power = 0; power < degree; power++)
+        fmpq_poly_set_coeff_fmpq(
+            expression, (slong) power,
+            coefficient_coordinates +
+                ((size_t) length - 1) * degree + power);
+    nf_elem_set_fmpq_poly(coefficient_nf, expression, number_field);
+    for (slong diagonal = 0; diagonal < size; diagonal++)
+        nf_elem_set(
+            (nf_elem_struct *) gr_mat_entry_ptr(
+                current_nf, diagonal, diagonal, number_field_context),
+            coefficient_nf, number_field);
+
+    for (slong index = (slong) length - 2; index >= 0; index--)
+    {
+        if (gr_mat_mul(next_nf, current_nf,
+                source_nf, number_field_context) != GR_SUCCESS)
+            goto arithmetic_failure;
+        fmpq_poly_zero(expression);
+        for (size_t power = 0; power < degree; power++)
+            fmpq_poly_set_coeff_fmpq(
+                expression, (slong) power,
+                coefficient_coordinates + (size_t) index * degree + power);
+        nf_elem_set_fmpq_poly(coefficient_nf, expression, number_field);
+        for (slong diagonal = 0; diagonal < size; diagonal++)
+        {
+            nf_elem_struct *entry = (nf_elem_struct *) gr_mat_entry_ptr(
+                next_nf, diagonal, diagonal, number_field_context);
+            nf_elem_add(entry, entry, coefficient_nf, number_field);
+        }
+        gr_mat_swap(current_nf, next_nf, number_field_context);
+    }
+
+    answer = new_qqbar_matrix(env, size, size, 0);
+    if (answer == NULL)
+        goto cleanup;
+    if ((size_t) size != 0 && (size_t) size > SIZE_MAX / (size_t) size)
+        goto allocation_failure;
+    matrix_coordinate_count =
+        (size_t) size * (size_t) size * degree;
+    answer->cyclotomic_coordinates = _fmpq_vec_init(
+        (slong) (matrix_coordinate_count == 0
+            ? 1 : matrix_coordinate_count));
+    if (answer->cyclotomic_coordinates == NULL)
+        goto allocation_failure;
+    answer->cyclotomic_order = source->cyclotomic_order;
+    answer->cyclotomic_degree = degree;
+    for (slong row = 0; row < size; row++)
+        for (slong column = 0; column < size; column++)
+        {
+            fmpq_poly_zero(expression);
+            nf_elem_get_fmpq_poly(
+                expression,
+                (const nf_elem_struct *) gr_mat_entry_ptr(
+                    current_nf, row, column, number_field_context),
+                number_field);
+            for (size_t power = 0; power < degree; power++)
+                fmpq_poly_get_coeff_fmpq(
+                    answer->cyclotomic_coordinates +
+                        ((size_t) row * (size_t) size +
+                            (size_t) column) * degree + power,
+                    expression, (slong) power);
+            qqbar_evaluate_fmpq_poly(value, expression, root);
+            qqbar_set((qqbar_ptr) gr_mat_entry_ptr(
+                answer->algebraic, row, column,
+                answer->algebraic_context), value);
+        }
+    gr_mat_clear(next_nf, number_field_context);
+    gr_mat_clear(current_nf, number_field_context);
+    gr_mat_clear(source_nf, number_field_context);
+    matrices_initialized = 0;
+    nf_elem_clear(coefficient_nf, number_field);
+    nf_clear(number_field);
+    number_field_initialized = 0;
+    qqbar_clear(value);
+    qqbar_clear(root);
+    fmpq_poly_clear(defining);
+    fmpq_poly_clear(expression);
+    fmpz_poly_clear(cyclotomic_integer);
+    scalar_initialized = 0;
+    _fmpq_vec_clear(coefficient_coordinates,
+        (slong) (coordinate_count == 0 ? 1 : coordinate_count));
+    return wrap_matrix(env, answer);
+
+allocation_failure:
+    napi_throw_error(env, NULL,
+        "unable to allocate cyclotomic polynomial matrix coordinates");
+    goto cleanup;
+arithmetic_failure:
+    napi_throw_error(env, NULL,
+        "FLINT cyclotomic polynomial matrix evaluation failed");
+cleanup:
+    if (answer != NULL)
+        finalize_matrix(env, answer, NULL);
+    if (matrices_initialized)
+    {
+        gr_mat_clear(next_nf, number_field_context);
+        gr_mat_clear(current_nf, number_field_context);
+        gr_mat_clear(source_nf, number_field_context);
+    }
+    if (number_field_initialized)
+    {
+        nf_elem_clear(coefficient_nf, number_field);
+        nf_clear(number_field);
+    }
+    if (scalar_initialized)
+    {
+        qqbar_clear(value);
+        qqbar_clear(root);
+        fmpq_poly_clear(defining);
+        fmpq_poly_clear(expression);
+        fmpz_poly_clear(cyclotomic_integer);
+    }
+    if (coefficient_coordinates != NULL)
+        _fmpq_vec_clear(coefficient_coordinates,
+            (slong) (coordinate_count == 0 ? 1 : coordinate_count));
+    return NULL;
+}
+
 napi_value sagejs_matrix_sparse_left_mul(
     napi_env env, napi_callback_info info)
 {
@@ -1780,6 +2002,26 @@ napi_value sagejs_matrix_neg(napi_env env, napi_callback_info info)
                 "FLINT algebraic matrix negation failed");
             return NULL;
         }
+        if (source->cyclotomic_coordinates != NULL)
+        {
+            size_t degree = source->cyclotomic_degree;
+            size_t count = (size_t) matrix_nrows(source) *
+                (size_t) matrix_ncols(source) * degree;
+            answer->cyclotomic_coordinates = _fmpq_vec_init(
+                (slong) (count == 0 ? 1 : count));
+            if (answer->cyclotomic_coordinates == NULL)
+            {
+                finalize_matrix(env, answer, NULL);
+                napi_throw_error(env, NULL,
+                    "unable to preserve negated cyclotomic coordinates");
+                return NULL;
+            }
+            answer->cyclotomic_order = source->cyclotomic_order;
+            answer->cyclotomic_degree = degree;
+            for (size_t index = 0; index < count; index++)
+                fmpq_neg(answer->cyclotomic_coordinates + index,
+                    source->cyclotomic_coordinates + index);
+        }
     }
     else
         nmod_mat_neg(answer->modular, source->modular);
@@ -1979,6 +2221,36 @@ napi_value sagejs_matrix_transpose(
             napi_throw_error(env, NULL,
                 "FLINT algebraic matrix transpose failed");
             return NULL;
+        }
+        if (source->cyclotomic_coordinates != NULL &&
+            source->cyclotomic_degree > 2)
+        {
+            size_t degree = source->cyclotomic_degree;
+            size_t count = (size_t) matrix_nrows(source) *
+                (size_t) matrix_ncols(source) * degree;
+            answer->cyclotomic_coordinates = _fmpq_vec_init(
+                (slong) (count == 0 ? 1 : count));
+            if (answer->cyclotomic_coordinates == NULL)
+            {
+                finalize_matrix(env, answer, NULL);
+                napi_throw_error(env, NULL,
+                    "unable to preserve transposed cyclotomic coordinates");
+                return NULL;
+            }
+            answer->cyclotomic_order = source->cyclotomic_order;
+            answer->cyclotomic_degree = degree;
+            for (slong row = 0; row < matrix_nrows(source); row++)
+                for (slong column = 0;
+                    column < matrix_ncols(source); column++)
+                    for (size_t power = 0; power < degree; power++)
+                        fmpq_set(answer->cyclotomic_coordinates +
+                                ((size_t) column *
+                                    (size_t) matrix_nrows(source) +
+                                    (size_t) row) * degree + power,
+                            source->cyclotomic_coordinates +
+                                ((size_t) row *
+                                    (size_t) matrix_ncols(source) +
+                                    (size_t) column) * degree + power);
         }
     }
     else
@@ -3108,6 +3380,287 @@ napi_value sagejs_matrix_right_kernel(
 }
 
 /*
+ * Compute a right kernel using completely split primes and exact CRT
+ * reconstruction in Q(zeta_order).  Generic qqbar elimination is an
+ * important fallback, but it can suffer catastrophic coefficient growth on
+ * matrices which are already known to lie in a modest cyclotomic field.
+ */
+napi_value sagejs_cyclotomic_matrix_right_kernel(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result = NULL;
+    sagejs_matrix *source;
+    ulong order;
+    size_t degree, cell_count, coordinate_count, term_count = 0;
+    size_t kernel_coordinate_count = 0;
+    fmpq *coordinates = NULL;
+    sagejs_cyclotomic_term *terms = NULL;
+    gr_mat_t reduced, kernel;
+    int reduced_initialized = 0, kernel_initialized = 0;
+    slong rows, columns, rank = 0, nullity = 0;
+    size_t *pivots = NULL, *free_columns = NULL;
+    sagejs_cyclotomic_matrix reduced_coordinates = {0};
+    fmpq *kernel_coordinates = NULL;
+    fmpz_t row_denominator, scale, bound, absolute;
+    fmpq_poly_t expression;
+    qqbar_t root;
+    int scalar_initialized = 0;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL || !bigint_to_ulong(env, args[1], &order))
+        return NULL;
+    if (source->kind != SAGEJS_MATRIX_QQBAR || order < 3)
+    {
+        napi_throw_type_error(env, NULL,
+            "expected an algebraic matrix and a cyclotomic order");
+        return NULL;
+    }
+    rows = matrix_nrows(source);
+    columns = matrix_ncols(source);
+    degree = (size_t) n_euler_phi(order);
+    if (degree == 0 ||
+        (rows != 0 && (size_t) columns > SIZE_MAX / (size_t) rows))
+    {
+        napi_throw_range_error(env, NULL,
+            "cyclotomic matrix dimensions are too large");
+        return NULL;
+    }
+    cell_count = (size_t) rows * (size_t) columns;
+    if (cell_count > SIZE_MAX / degree ||
+        cell_count * degree > (size_t) WORD_MAX)
+    {
+        napi_throw_range_error(env, NULL,
+            "cyclotomic matrix dimensions are too large");
+        return NULL;
+    }
+    coordinate_count = cell_count * degree;
+    coordinates = _fmpq_vec_init(
+        (slong) (coordinate_count == 0 ? 1 : coordinate_count));
+    terms = malloc(
+        (coordinate_count == 0 ? 1 : coordinate_count) * sizeof(*terms));
+    if (coordinates == NULL || terms == NULL)
+    {
+        napi_throw_error(env, NULL,
+            "unable to allocate cyclotomic kernel coordinates");
+        goto cleanup_uninitialized;
+    }
+    fmpz_init(row_denominator);
+    fmpz_init(scale);
+    fmpz_init_set_ui(bound, 0);
+    fmpz_init(absolute);
+    fmpq_poly_init(expression);
+    qqbar_init(root);
+    scalar_initialized = 1;
+    qqbar_root_of_unity(root, 1, order);
+
+    if (source->cyclotomic_coordinates != NULL &&
+        source->cyclotomic_order == order &&
+        source->cyclotomic_degree == degree)
+    {
+        for (size_t index = 0; index < coordinate_count; index++)
+            fmpq_set(coordinates + index,
+                source->cyclotomic_coordinates + index);
+    }
+    else
+    {
+        for (slong row = 0; row < rows; row++)
+            for (slong column = 0; column < columns; column++)
+            {
+                qqbar_srcptr value = (qqbar_srcptr) gr_mat_entry_ptr(
+                    source->algebraic, row, column,
+                    source->algebraic_context);
+                int expressed = qqbar_is_zero(value);
+                fmpq_poly_zero(expression);
+                for (slong bits = 128;
+                    bits <= 8192 && !expressed; bits *= 2)
+                    expressed = qqbar_express_in_field(
+                        expression, root, value, bits, 0, bits);
+                if (!expressed)
+                {
+                    napi_throw_range_error(env, NULL,
+                        "matrix entry is not in the cyclotomic field");
+                    goto cleanup;
+                }
+                for (size_t power = 0; power < degree; power++)
+                    fmpq_poly_get_coeff_fmpq(
+                        coordinates +
+                            ((size_t) row * (size_t) columns +
+                                (size_t) column) * degree + power,
+                        expression, (slong) power);
+            }
+    }
+    for (slong row = 0; row < rows; row++)
+    {
+        fmpz_one(row_denominator);
+        for (slong column = 0; column < columns; column++)
+            for (size_t power = 0; power < degree; power++)
+                fmpz_lcm(row_denominator, row_denominator,
+                    fmpq_denref(coordinates +
+                        ((size_t) row * (size_t) columns +
+                            (size_t) column) * degree + power));
+        for (slong column = 0; column < columns; column++)
+            for (size_t power = 0; power < degree; power++)
+            {
+                const fmpq *value = coordinates +
+                    ((size_t) row * (size_t) columns +
+                        (size_t) column) * degree + power;
+                if (fmpq_is_zero(value))
+                    continue;
+                fmpz_divexact(scale,
+                    row_denominator, fmpq_denref(value));
+                fmpz_mul(scale, scale, fmpq_numref(value));
+                terms[term_count].row = (size_t) row;
+                terms[term_count].column = (size_t) column;
+                terms[term_count].exponent = (ulong) power;
+                fmpz_init_set(&terms[term_count].coefficient, scale);
+                fmpz_abs(absolute, scale);
+                fmpz_add(bound, bound, absolute);
+                term_count++;
+            }
+    }
+
+    gr_mat_init(reduced, rows, columns, source->algebraic_context);
+    reduced_initialized = 1;
+    if (!sagejs_cyclotomic_rref_multimodular(
+            reduced, &rank,
+            (size_t) rows, (size_t) columns,
+            terms, term_count, order, bound,
+            source->algebraic_context, &reduced_coordinates))
+    {
+        napi_throw_error(env, NULL,
+            "cyclotomic multimodular kernel reconstruction failed");
+        goto cleanup;
+    }
+    if (rank < 0 || rank > columns)
+    {
+        napi_throw_error(env, NULL, "invalid cyclotomic matrix rank");
+        goto cleanup;
+    }
+    nullity = columns - rank;
+    pivots = malloc((rank == 0 ? 1 : (size_t) rank) * sizeof(*pivots));
+    free_columns = malloc(
+        (nullity == 0 ? 1 : (size_t) nullity) * sizeof(*free_columns));
+    if (pivots == NULL || free_columns == NULL)
+    {
+        napi_throw_error(env, NULL,
+            "unable to allocate cyclotomic kernel pivots");
+        goto cleanup;
+    }
+    {
+        slong pivot_count = 0, free_count = 0;
+        for (slong column = 0; column < columns; column++)
+        {
+            int is_pivot = pivot_count < rank &&
+                !qqbar_is_zero((qqbar_srcptr) gr_mat_entry_ptr(
+                    reduced, pivot_count, column,
+                    source->algebraic_context));
+            if (is_pivot)
+                pivots[pivot_count++] = (size_t) column;
+            else
+                free_columns[free_count++] = (size_t) column;
+        }
+        if (pivot_count != rank || free_count != nullity)
+        {
+            napi_throw_error(env, NULL,
+                "unable to identify cyclotomic kernel pivots");
+            goto cleanup;
+        }
+    }
+    gr_mat_init(kernel, nullity, columns, source->algebraic_context);
+    kernel_initialized = 1;
+    if (gr_mat_zero(kernel, source->algebraic_context) != GR_SUCCESS)
+        goto cleanup;
+    for (slong row = 0; row < nullity; row++)
+    {
+        qqbar_one((qqbar_ptr) gr_mat_entry_ptr(
+            kernel, row, (slong) free_columns[row],
+            source->algebraic_context));
+        for (slong pivot = 0; pivot < rank; pivot++)
+            qqbar_neg(
+                (qqbar_ptr) gr_mat_entry_ptr(
+                    kernel, row, (slong) pivots[pivot],
+                    source->algebraic_context),
+                (qqbar_srcptr) gr_mat_entry_ptr(
+                    reduced, pivot, (slong) free_columns[row],
+                    source->algebraic_context));
+    }
+    if ((size_t) nullity != 0 &&
+        (size_t) columns > SIZE_MAX / (size_t) nullity)
+        goto cleanup;
+    {
+        napi_value matrix_value, nullity_value;
+        kernel_coordinate_count =
+            (size_t) nullity * (size_t) columns * degree;
+        kernel_coordinates = _fmpq_vec_init(
+            (slong) (kernel_coordinate_count == 0
+                ? 1 : kernel_coordinate_count));
+        if (kernel_coordinates == NULL)
+            goto cleanup;
+        for (slong row = 0; row < nullity; row++)
+        {
+            fmpq_one(kernel_coordinates +
+                ((size_t) row * (size_t) columns + free_columns[row])
+                    * degree);
+            for (slong pivot = 0; pivot < rank; pivot++)
+                for (size_t power = 0; power < degree; power++)
+                    fmpq_neg(
+                        kernel_coordinates +
+                            ((size_t) row * (size_t) columns +
+                                pivots[pivot]) * degree + power,
+                        reduced_coordinates.coefficients +
+                            (power * (size_t) rank + (size_t) pivot) *
+                                (size_t) nullity + (size_t) row);
+        }
+        matrix_value = sagejs_qqbar_matrix_from_cyclotomic_gr_mat(
+            env, kernel, source->algebraic_context,
+            order, degree, kernel_coordinates);
+        if (matrix_value == NULL ||
+            !check_napi(env, napi_create_array_with_length(
+                env, 2, &result)) ||
+            !check_napi(env, napi_set_element(
+                env, result, 0, matrix_value)) ||
+            !check_napi(env, napi_create_int64(
+                env, nullity, &nullity_value)) ||
+            !check_napi(env, napi_set_element(
+                env, result, 1, nullity_value)))
+            result = NULL;
+    }
+
+cleanup:
+    if (kernel_coordinates != NULL)
+        _fmpq_vec_clear(kernel_coordinates,
+            (slong) (kernel_coordinate_count == 0
+                ? 1 : kernel_coordinate_count));
+    free(free_columns);
+    free(pivots);
+    sagejs_cyclotomic_matrix_clear(&reduced_coordinates);
+    if (kernel_initialized)
+        gr_mat_clear(kernel, source->algebraic_context);
+    if (reduced_initialized)
+        gr_mat_clear(reduced, source->algebraic_context);
+    if (scalar_initialized)
+    {
+        qqbar_clear(root);
+        fmpq_poly_clear(expression);
+        fmpz_clear(absolute);
+        fmpz_clear(bound);
+        fmpz_clear(scale);
+        fmpz_clear(row_denominator);
+    }
+    for (size_t item = 0; item < term_count; item++)
+        fmpz_clear(&terms[item].coefficient);
+cleanup_uninitialized:
+    free(terms);
+    if (coordinates != NULL)
+        _fmpq_vec_clear(coordinates,
+            (slong) (coordinate_count == 0 ? 1 : coordinate_count));
+    return result;
+}
+
+/*
  * Compute a cyclotomic characteristic polynomial through completely split
  * word primes.  Clearing one common denominator makes every lifted
  * coefficient integral; (1+B)^n is a deliberately conservative coefficient
@@ -3370,7 +3923,11 @@ static int matrix_charpoly_cyclotomic(
     if (source->cyclotomic_coordinates == NULL ||
         source->cyclotomic_order < 3 || degree == 0)
         return 0;
-    if (matrix_charpoly_cyclotomic_multimodular(&multimodular, source))
+    /* The split-prime interpolation path is aimed at genuinely higher
+       coefficient degree.  Direct FLINT number-field arithmetic is both
+       simpler and faster for quadratic cyclotomic fields. */
+    if (degree > 2 &&
+        matrix_charpoly_cyclotomic_multimodular(&multimodular, source))
     {
         qqbar_init(root);
         qqbar_init(value);

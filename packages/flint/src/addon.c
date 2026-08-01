@@ -30,6 +30,7 @@
 #include "floating.h"
 #include "matrix.h"
 #include "multivariate.h"
+#include "number_field_factor.h"
 #include "p1.h"
 
 #if ULONG_MAX != UINT64_MAX
@@ -2786,6 +2787,9 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"cyclotomicElementCoefficients", NULL,
             sagejs_cyclotomic_element_coefficients,
             NULL, NULL, NULL, napi_default, NULL},
+        {"cyclotomicPolyFactor", NULL,
+            sagejs_cyclotomic_poly_factor,
+            NULL, NULL, NULL, napi_default, NULL},
         {"qqbarAdd", NULL, sagejs_qqbar_add,
             NULL, NULL, NULL, napi_default, NULL},
         {"qqbarSub", NULL, sagejs_qqbar_sub,
@@ -2984,6 +2988,12 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"matrixSmith", NULL, sagejs_matrix_smith, NULL, NULL, NULL,
             napi_default, NULL},
         {"matrixRightKernel", NULL, sagejs_matrix_right_kernel,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"cyclotomicMatrixRightKernel", NULL,
+            sagejs_cyclotomic_matrix_right_kernel,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"cyclotomicMatrixPolyEvaluate", NULL,
+            sagejs_cyclotomic_matrix_poly_evaluate,
             NULL, NULL, NULL, napi_default, NULL},
         {"matrixCharpoly", NULL, sagejs_matrix_charpoly,
             NULL, NULL, NULL, napi_default, NULL},
