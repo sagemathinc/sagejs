@@ -31,6 +31,8 @@ napi_value sagejs_p1list_higher_weight_hecke_matrix(
     napi_env env, napi_callback_info info);
 napi_value sagejs_p1list_character_presentation(
     napi_env env, napi_callback_info info);
+napi_value sagejs_character_presentation_reduction(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_p1list_character_hecke_matrix(
     napi_env env, napi_callback_info info);
 napi_value sagejs_p1list_reduce_path(

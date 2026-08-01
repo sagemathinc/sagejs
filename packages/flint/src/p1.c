@@ -17,6 +17,7 @@
 #include <flint/ulong_extras.h>
 
 #include "dirichlet.h"
+#include "cyclotomic_rref.h"
 #include "matrix.h"
 #include "modsym_core.h"
 #include "p1.h"
@@ -88,14 +89,23 @@ typedef struct
     uint32_t level;
     uint32_t weight;
     int sign;
+    int character_is_real;
     ulong character_index;
+    ulong root_order;
     size_t generators;
     size_t two_term_generators;
+    size_t rank;
     size_t dimension;
     size_t *basis_generators;
+    size_t *generator_columns;
+    ulong *generator_exponents;
+    size_t *pivot_rows;
+    size_t *free_columns;
     gr_ctx_t context;
+    gr_mat_t quotient_relations;
     gr_mat_t reduction;
     int context_initialized;
+    int quotient_relations_initialized;
     int reduction_initialized;
 } sagejs_character_presentation;
 
@@ -2292,10 +2302,11 @@ static void p1_root_union(
 }
 
 static ulong p1_character_root_order(
-    const dirichlet_group_struct *group)
+    const dirichlet_group_struct *group,
+    const dirichlet_char_t character)
 {
-    ulong exponent = group->expo;
-    return (exponent & 1UL) == 0 ? exponent : 2 * exponent;
+    ulong order = dirichlet_order_char(group, character);
+    return (order & 1UL) == 0 ? order : 2 * order;
 }
 
 static ulong p1_character_exponent(
@@ -2305,9 +2316,13 @@ static ulong p1_character_exponent(
     ulong root_order)
 {
     ulong exponent = dirichlet_chi(group, character, residue % group->q);
+    __uint128_t scaled;
     if (exponent == DIRICHLET_CHI_NULL)
         return ULONG_MAX;
-    return (ulong) (((__uint128_t) exponent * root_order) / group->expo);
+    scaled = (__uint128_t) exponent * root_order;
+    if (scaled % group->expo != 0)
+        return ULONG_MAX;
+    return (ulong) (scaled / group->expo);
 }
 
 static qqbar_ptr p1_gr_entry(
@@ -2328,8 +2343,15 @@ static void p1_character_presentation_clear(
     sagejs_character_presentation *presentation)
 {
     free(presentation->basis_generators);
+    free(presentation->generator_columns);
+    free(presentation->generator_exponents);
+    free(presentation->pivot_rows);
+    free(presentation->free_columns);
     if (presentation->reduction_initialized)
         gr_mat_clear(presentation->reduction, presentation->context);
+    if (presentation->quotient_relations_initialized)
+        gr_mat_clear(
+            presentation->quotient_relations, presentation->context);
     if (presentation->context_initialized)
         gr_ctx_clear(presentation->context);
     memset(presentation, 0, sizeof(*presentation));
@@ -2385,10 +2407,14 @@ static int p1_character_relation_add(
     ulong value_exponent,
     p1_root_union_find *sets,
     const size_t *root_column,
-    gr_ctx_t context)
+    gr_ctx_t context,
+    int materialize_exact,
+    sagejs_cyclotomic_term *terms,
+    size_t term_capacity,
+    size_t *term_count,
+    fmpz_t source_coefficient_bound)
 {
     size_t root = p1_root_find(sets, original);
-    qqbar_t root_value, coefficient;
     ulong exponent;
 
     if (sets->killed[root])
@@ -2397,16 +2423,67 @@ static int p1_character_relation_add(
         return 0;
     exponent = p1_add_exponents(
         value_exponent, sets->exponent[original], sets->root_order);
+    if (*term_count >= term_capacity)
+        return 0;
+    terms[*term_count].row = row;
+    terms[*term_count].column = root_column[root];
+    terms[*term_count].exponent = exponent;
+    fmpz_init_set(&terms[*term_count].coefficient, integer_coefficient);
+    {
+        fmpz_t absolute;
+        fmpz_init(absolute);
+        fmpz_abs(absolute, integer_coefficient);
+        fmpz_add(source_coefficient_bound,
+            source_coefficient_bound, absolute);
+        fmpz_clear(absolute);
+    }
+    (*term_count)++;
+    if (materialize_exact)
+    {
+        qqbar_t root_value, coefficient;
+        qqbar_init(root_value);
+        qqbar_init(coefficient);
+        qqbar_root_of_unity(
+            root_value, (slong) exponent, sets->root_order);
+        qqbar_mul_fmpz(coefficient, root_value, integer_coefficient);
+        qqbar_add(
+            p1_gr_entry(relations, (slong) row,
+                (slong) root_column[root], context),
+            p1_gr_entry(relations, (slong) row,
+                (slong) root_column[root], context),
+            coefficient);
+        qqbar_clear(coefficient);
+        qqbar_clear(root_value);
+    }
+    return 1;
+}
+
+static int p1_character_materialize_relations(
+    gr_mat_t relations,
+    const sagejs_cyclotomic_term *terms,
+    size_t term_count,
+    ulong root_order,
+    gr_ctx_t context)
+{
+    qqbar_t root_value, coefficient;
+
+    if (gr_mat_zero(relations, context) != GR_SUCCESS)
+        return 0;
     qqbar_init(root_value);
     qqbar_init(coefficient);
-    qqbar_root_of_unity(root_value, (slong) exponent, sets->root_order);
-    qqbar_mul_fmpz(coefficient, root_value, integer_coefficient);
-    qqbar_add(
-        p1_gr_entry(relations, (slong) row,
-            (slong) root_column[root], context),
-        p1_gr_entry(relations, (slong) row,
-            (slong) root_column[root], context),
-        coefficient);
+    for (size_t item = 0; item < term_count; item++)
+    {
+        const sagejs_cyclotomic_term *term = terms + item;
+        qqbar_root_of_unity(
+            root_value, (slong) term->exponent, root_order);
+        qqbar_mul_fmpz(coefficient, root_value, &term->coefficient);
+        qqbar_add(
+            p1_gr_entry(relations, (slong) term->row,
+                (slong) term->column, context),
+            p1_gr_entry(relations, (slong) term->row,
+                (slong) term->column, context),
+            coefficient);
+    }
     qqbar_clear(coefficient);
     qqbar_clear(root_value);
     return 1;
@@ -2425,12 +2502,17 @@ static int p1_character_build(
     size_t *root_column = NULL, *column_root = NULL, *pivot_row = NULL;
     size_t *free_column = NULL;
     p1_root_union_find sets = {0};
-    gr_mat_t relations, reduced;
+    gr_mat_t relations, reduced, fallback_reduced;
     int relations_initialized = 0, reduced_initialized = 0;
+    int fallback_reduced_initialized = 0;
     fmpq_mat_t rational_relations, rational_reduced;
     int rational_relations_initialized = 0;
     int rational_reduced_initialized = 0;
     int character_is_real;
+    sagejs_cyclotomic_term *cyclotomic_terms = NULL;
+    size_t cyclotomic_term_capacity = 0, cyclotomic_term_count = 0;
+    fmpz_t source_coefficient_bound;
+    int source_coefficient_bound_initialized = 0;
     slong rank_slong = 0;
     fmpz_t binomial, one;
     qqbar_t root_value, temporary;
@@ -2447,7 +2529,8 @@ static int p1_character_build(
     if (generators > (size_t) WORD_MAX)
         return 0;
     sets.count = generators;
-    sets.root_order = p1_character_root_order(group);
+    sets.root_order = p1_character_root_order(group, character);
+    answer->root_order = sets.root_order;
     sets.parent = malloc(generators * sizeof(*sets.parent));
     sets.exponent = malloc(generators * sizeof(*sets.exponent));
     sets.killed = calloc(generators, sizeof(*sets.killed));
@@ -2532,11 +2615,25 @@ static int p1_character_build(
         (free_count != 0 && generators >
             SAGEJS_MANIN_MAX_DENSE_CELLS / free_count))
         goto done;
+    if (generators != 0 &&
+        (size_t) weight + 1 > SIZE_MAX / generators)
+        goto done;
+    cyclotomic_term_capacity = generators * ((size_t) weight + 1);
+    cyclotomic_terms = calloc(
+        cyclotomic_term_capacity == 0 ? 1 : cyclotomic_term_capacity,
+        sizeof(*cyclotomic_terms));
+    if (cyclotomic_terms == NULL)
+        goto done;
+    fmpz_init(source_coefficient_bound);
+    source_coefficient_bound_initialized = 1;
     gr_ctx_init_complex_qqbar(answer->context);
     answer->context_initialized = 1;
-    gr_mat_init(relations, (slong) generators, (slong) free_count,
-        answer->context);
-    relations_initialized = 1;
+    if (character_is_real)
+    {
+        gr_mat_init(relations, (slong) generators, (slong) free_count,
+            answer->context);
+        relations_initialized = 1;
+    }
     fmpz_init(binomial);
     fmpz_init_set_ui(one, 1);
 
@@ -2570,7 +2667,10 @@ static int p1_character_build(
                 t_exponent == ULONG_MAX || tt_exponent == ULONG_MAX ||
                 !p1_character_relation_add(
                     relations, row, row, one, 0,
-                    &sets, root_column, answer->context))
+                    &sets, root_column, answer->context,
+                    character_is_real,
+                    cyclotomic_terms, cyclotomic_term_capacity,
+                    &cyclotomic_term_count, source_coefficient_bound))
                 goto relation_done;
             for (uint32_t j = 0; j <= a; j++)
             {
@@ -2581,7 +2681,10 @@ static int p1_character_build(
                         relations, row,
                         (size_t) j * cosets + t_coset,
                         binomial, t_exponent,
-                        &sets, root_column, answer->context))
+                        &sets, root_column, answer->context,
+                        character_is_real,
+                        cyclotomic_terms, cyclotomic_term_capacity,
+                        &cyclotomic_term_count, source_coefficient_bound))
                     goto relation_done;
             }
             for (uint32_t j = 0; j <= i; j++)
@@ -2594,7 +2697,10 @@ static int p1_character_build(
                         (size_t) (weight - 2 - i + j) * cosets
                             + tt_coset,
                         binomial, tt_exponent,
-                        &sets, root_column, answer->context))
+                        &sets, root_column, answer->context,
+                        character_is_real,
+                        cyclotomic_terms, cyclotomic_term_capacity,
+                        &cyclotomic_term_count, source_coefficient_bound))
                     goto relation_done;
             }
         }
@@ -2636,13 +2742,42 @@ static int p1_character_build(
     }
     else
     {
-        gr_mat_init(reduced, (slong) generators, (slong) free_count,
+        gr_mat_init(reduced, (slong) free_count, (slong) free_count,
             answer->context);
         reduced_initialized = 1;
-        if (!sagejs_qqbar_gr_mat_rref_sparse(
-                reduced, &rank_slong, relations,
-                answer->context))
-            goto done;
+        int multimodular_status = sagejs_cyclotomic_rref_multimodular(
+                reduced, &rank_slong,
+                generators, free_count,
+                cyclotomic_terms, cyclotomic_term_count,
+                sets.root_order, source_coefficient_bound,
+                answer->context);
+        if (!multimodular_status)
+        {
+            gr_mat_init(relations,
+                (slong) generators, (slong) free_count,
+                answer->context);
+            relations_initialized = 1;
+            gr_mat_init(fallback_reduced,
+                (slong) generators, (slong) free_count,
+                answer->context);
+            fallback_reduced_initialized = 1;
+            if (!p1_character_materialize_relations(
+                    relations, cyclotomic_terms,
+                    cyclotomic_term_count, sets.root_order,
+                    answer->context) ||
+                !sagejs_qqbar_gr_mat_rref_sparse(
+                    fallback_reduced, &rank_slong, relations,
+                    answer->context))
+                goto done;
+            for (slong row = 0; row < rank_slong; row++)
+                for (size_t column = 0; column < free_count; column++)
+                    qqbar_set(p1_gr_entry(
+                        reduced, row, (slong) column,
+                        answer->context),
+                        p1_gr_entry_src(fallback_reduced,
+                            row, (slong) column,
+                            answer->context));
+        }
     }
     if (rank_slong < 0 || (size_t) rank_slong > free_count)
         goto done;
@@ -2690,6 +2825,38 @@ static int p1_character_build(
             }
         if (next != dimension)
             goto done;
+    }
+    if (!character_is_real)
+    {
+        answer->generator_columns = malloc(
+            generators * sizeof(*answer->generator_columns));
+        answer->generator_exponents = malloc(
+            generators * sizeof(*answer->generator_exponents));
+        if (answer->generator_columns == NULL ||
+            answer->generator_exponents == NULL)
+            goto done;
+        for (size_t original = 0; original < generators; original++)
+        {
+            size_t root = p1_root_find(&sets, original);
+            answer->generator_columns[original] = sets.killed[root]
+                ? SIZE_MAX : root_column[root];
+            answer->generator_exponents[original] =
+                sets.exponent[original];
+        }
+        answer->pivot_rows = pivot_row;
+        answer->free_columns = free_column;
+        pivot_row = NULL;
+        free_column = NULL;
+        answer->rank = rank;
+        answer->quotient_relations[0] = reduced[0];
+        answer->quotient_relations_initialized = 1;
+        reduced_initialized = 0;
+        memset(reduced, 0, sizeof(*reduced));
+        answer->generators = generators;
+        answer->two_term_generators = free_count;
+        answer->dimension = dimension;
+        status = 1;
+        goto done;
     }
     if (dimension != 0 && generators >
         SAGEJS_MANIN_MAX_DENSE_CELLS / dimension)
@@ -2769,10 +2936,18 @@ done:
         gr_mat_clear(relations, answer->context);
     if (reduced_initialized)
         gr_mat_clear(reduced, answer->context);
+    if (fallback_reduced_initialized)
+        gr_mat_clear(fallback_reduced, answer->context);
     if (rational_relations_initialized)
         fmpq_mat_clear(rational_relations);
     if (rational_reduced_initialized)
         fmpq_mat_clear(rational_reduced);
+    if (cyclotomic_terms != NULL)
+        for (size_t item = 0; item < cyclotomic_term_count; item++)
+            fmpz_clear(&cyclotomic_terms[item].coefficient);
+    free(cyclotomic_terms);
+    if (source_coefficient_bound_initialized)
+        fmpz_clear(source_coefficient_bound);
     free(sets.parent);
     free(sets.exponent);
     free(sets.killed);
@@ -2857,7 +3032,7 @@ done:
 napi_value sagejs_p1list_character_presentation(
     napi_env env, napi_callback_info info)
 {
-    napi_value arguments[5], result = NULL, reduction = NULL, generators;
+    napi_value arguments[5], result = NULL, generators;
     sagejs_p1list_value *list;
     sagejs_character_presentation *presentation = NULL;
     const dirichlet_group_struct *group = NULL;
@@ -2902,13 +3077,10 @@ napi_value sagejs_p1list_character_presentation(
     presentation->level = list->level;
     presentation->weight = (uint32_t) weight_value;
     presentation->sign = (int) sign_value;
+    presentation->character_is_real =
+        dirichlet_char_is_real(group, character);
     presentation->character_index = character_index;
-    reduction = dirichlet_char_is_real(group, character)
-        ? sagejs_qq_matrix_from_qqbar_gr_mat(
-            env, presentation->reduction, presentation->context)
-        : sagejs_qqbar_matrix_from_gr_mat(
-            env, presentation->reduction, presentation->context);
-    if (presentation->dimension > UINT32_MAX || reduction == NULL ||
+    if (presentation->dimension > UINT32_MAX ||
         !p1_check_napi(env, napi_create_array_with_length(
             env, presentation->dimension, &generators)))
         goto done;
@@ -2929,8 +3101,6 @@ napi_value sagejs_p1list_character_presentation(
         !p1_napi_set_size(env, result, "dimension", presentation->dimension) ||
         !p1_check_napi(env, napi_set_named_property(
             env, result, "basisGenerators", generators)) ||
-        !p1_check_napi(env, napi_set_named_property(
-            env, result, "reduction", reduction)) ||
         !p1_check_napi(env, napi_type_tag_object(
             env, result, &sagejs_character_presentation_type_tag)) ||
         !p1_check_napi(env, napi_wrap(
@@ -2945,6 +3115,95 @@ done:
     if (character_initialized)
         dirichlet_char_clear(character);
     return result;
+}
+
+static int p1_character_ensure_reduction(
+    sagejs_character_presentation *presentation)
+{
+    qqbar_t root_value, temporary;
+
+    if (presentation->reduction_initialized)
+        return 1;
+    if (!presentation->quotient_relations_initialized)
+        return 0;
+    gr_mat_init(presentation->reduction,
+        (slong) presentation->generators,
+        (slong) presentation->dimension,
+        presentation->context);
+    presentation->reduction_initialized = 1;
+    qqbar_init(root_value);
+    qqbar_init(temporary);
+    for (size_t original = 0;
+        original < presentation->generators; original++)
+    {
+        size_t column = presentation->generator_columns[original];
+        if (column == SIZE_MAX)
+            continue;
+        qqbar_root_of_unity(root_value,
+            (slong) presentation->generator_exponents[original],
+            presentation->root_order);
+        if (presentation->pivot_rows[column] == SIZE_MAX)
+        {
+            size_t target = 0;
+            while (target < presentation->dimension &&
+                presentation->free_columns[target] != column)
+                target++;
+            if (target == presentation->dimension)
+                goto failure;
+            qqbar_set(p1_gr_entry(presentation->reduction,
+                (slong) original, (slong) target,
+                presentation->context), root_value);
+        }
+        else
+        {
+            size_t row = presentation->pivot_rows[column];
+            for (size_t target = 0;
+                target < presentation->dimension; target++)
+            {
+                qqbar_mul(temporary,
+                    p1_gr_entry_src(presentation->quotient_relations,
+                        (slong) row,
+                        (slong) presentation->free_columns[target],
+                        presentation->context), root_value);
+                qqbar_neg(p1_gr_entry(presentation->reduction,
+                    (slong) original, (slong) target,
+                    presentation->context), temporary);
+            }
+        }
+    }
+    qqbar_clear(temporary);
+    qqbar_clear(root_value);
+    return 1;
+
+failure:
+    qqbar_clear(temporary);
+    qqbar_clear(root_value);
+    gr_mat_clear(presentation->reduction, presentation->context);
+    presentation->reduction_initialized = 0;
+    return 0;
+}
+
+napi_value sagejs_character_presentation_reduction(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[1];
+    sagejs_character_presentation *presentation;
+
+    if (!p1_arguments(env, info, 1, arguments) ||
+        (presentation = p1_character_presentation_unwrap(
+            env, arguments[0])) == NULL)
+        return NULL;
+    if (!p1_character_ensure_reduction(presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to materialize character reduction matrix");
+        return NULL;
+    }
+    return presentation->character_is_real
+        ? sagejs_qq_matrix_from_qqbar_gr_mat(
+            env, presentation->reduction, presentation->context)
+        : sagejs_qqbar_matrix_from_gr_mat(
+            env, presentation->reduction, presentation->context);
 }
 
 static void p1_monomial_matrix_coefficient(
@@ -3293,7 +3552,7 @@ napi_value sagejs_p1list_character_hecke_matrix(
     qqbar_init(scaled);
     qqbar_init(term);
     scalars_initialized = 1;
-    root_order = p1_character_root_order(group);
+    root_order = p1_character_root_order(group, character);
     for (size_t source = 0; source < presentation->dimension; source++)
     {
         size_t generator = presentation->basis_generators[source];
@@ -3341,20 +3600,71 @@ napi_value sagejs_p1list_character_hecke_matrix(
                 if (fmpz_is_zero(integer_coefficient))
                     continue;
                 qqbar_mul_fmpz(scaled, root_value, integer_coefficient);
-                for (size_t target = 0;
-                    target < presentation->dimension; target++)
+                if (presentation->quotient_relations_initialized)
                 {
-                    qqbar_mul(
-                        term, scaled,
-                        p1_gr_entry_src(presentation->reduction,
-                            (slong) image_generator, (slong) target,
-                            presentation->context));
-                    qqbar_add(
-                        p1_gr_entry(matrix, (slong) source,
-                            (slong) target, presentation->context),
-                        p1_gr_entry(matrix, (slong) source,
-                            (slong) target, presentation->context),
-                        term);
+                    size_t column =
+                        presentation->generator_columns[image_generator];
+                    if (column == SIZE_MAX)
+                        continue;
+                    qqbar_root_of_unity(term,
+                        (slong) presentation->generator_exponents[
+                            image_generator],
+                        presentation->root_order);
+                    qqbar_mul(scaled, scaled, term);
+                    if (presentation->pivot_rows[column] == SIZE_MAX)
+                    {
+                        size_t target = 0;
+                        while (target < presentation->dimension &&
+                            presentation->free_columns[target] != column)
+                            target++;
+                        if (target >= presentation->dimension)
+                            goto done;
+                        qqbar_add(
+                            p1_gr_entry(matrix, (slong) source,
+                                (slong) target, presentation->context),
+                            p1_gr_entry(matrix, (slong) source,
+                                (slong) target, presentation->context),
+                            scaled);
+                    }
+                    else
+                    {
+                        size_t row = presentation->pivot_rows[column];
+                        for (size_t target = 0;
+                            target < presentation->dimension; target++)
+                        {
+                            qqbar_mul(term, scaled,
+                                p1_gr_entry_src(
+                                    presentation->quotient_relations,
+                                    (slong) row,
+                                    (slong) presentation->free_columns[target],
+                                    presentation->context));
+                            qqbar_sub(
+                                p1_gr_entry(matrix, (slong) source,
+                                    (slong) target,
+                                    presentation->context),
+                                p1_gr_entry(matrix, (slong) source,
+                                    (slong) target,
+                                    presentation->context),
+                                term);
+                        }
+                    }
+                }
+                else
+                {
+                    for (size_t target = 0;
+                        target < presentation->dimension; target++)
+                    {
+                        qqbar_mul(term, scaled,
+                            p1_gr_entry_src(presentation->reduction,
+                                (slong) image_generator, (slong) target,
+                                presentation->context));
+                        qqbar_add(
+                            p1_gr_entry(matrix, (slong) source,
+                                (slong) target, presentation->context),
+                            p1_gr_entry(matrix, (slong) source,
+                                (slong) target, presentation->context),
+                            term);
+                    }
                 }
             }
         }

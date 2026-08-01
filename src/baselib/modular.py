@@ -1844,6 +1844,7 @@ class HigherWeightManinPresentation:
         sign: int,
         raw: Any,
         base_ring: Any = None,
+        lazy_reduction: bool = False,
     ) -> None:
         self._projective_line = projective_line
         self._native = raw
@@ -1856,11 +1857,14 @@ class HigherWeightManinPresentation:
         self._two_term_generators = runtime.number(
             runtime.reflect.get(raw, 'twoTermGenerators'))
         self._base_ring = sage.QQ if base_ring is None else base_ring
-        self._reduction = Matrix(  # type: ignore[name-defined]  # noqa: F821
-            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
-                self._base_ring, self._generators, self._dimension),
-            runtime.reflect.get(raw, 'reduction'),
-        )
+        self._reduction = None
+        self._lazy_reduction = lazy_reduction
+        if not lazy_reduction:
+            self._reduction = Matrix(  # type: ignore[name-defined]  # noqa: F821
+                MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                    self._base_ring, self._generators, self._dimension),
+                runtime.reflect.get(raw, 'reduction'),
+            )
         self._basis_generators = [
             runtime.number(value)
             for value in runtime.reflect.get(raw, 'basisGenerators')
@@ -1879,6 +1883,14 @@ class HigherWeightManinPresentation:
 
     def reduction_matrix(self) -> Any:
         """Map every `(i,u,v)` generator to quotient coordinates."""
+        if self._reduction is None and self._lazy_reduction:
+            raw = runtime.flint_backend().characterPresentationReduction(
+                self._native)
+            self._reduction = Matrix(  # type: ignore[name-defined]  # noqa: F821
+                MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                    self._base_ring, self._generators, self._dimension),
+                raw,
+            )
         return self._reduction
 
     def basis_generators(self) -> list[int]:
@@ -2086,7 +2098,7 @@ class P1List:
                 self._native, weight, sign,
                 character._parent._native, character._index)
             cached = HigherWeightManinPresentation(
-                self, weight, sign, raw, base_ring)
+                self, weight, sign, raw, base_ring, True)
             self._character_presentation_cache.set(key, cached)
         return cached
 

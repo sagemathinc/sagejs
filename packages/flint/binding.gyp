@@ -9,6 +9,7 @@
         "src/addon.c",
         "src/algebraic.c",
         "src/charpoly.c",
+        "src/cyclotomic_rref.c",
         "src/dirichlet.c",
         "src/extension_field.c",
         "src/floating.c",

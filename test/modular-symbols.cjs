@@ -177,11 +177,13 @@ test("Dirichlet-character Manin symbols, signs, boundaries, and Hecke", async ()
               "identity_matrix(P.base_ring(),P.dimension())*e(2), " +
               "P.star_involution_matrix() == " +
               "identity_matrix(P.base_ring(),P.dimension()), " +
-              "P.manin_presentation().dimension() == P.dimension()]",
+              "P.manin_presentation().dimension() == P.dimension(), " +
+              "P.manin_presentation().reduction_matrix().rank() == " +
+              "P.dimension()]",
           ].join("\n"),
         )
       ).repr,
-      "[True, True, True, True]",
+      "[True, True, True, True, True]",
     );
   } finally {
     await session.close();

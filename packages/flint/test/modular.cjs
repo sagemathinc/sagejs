@@ -76,6 +76,8 @@ test("native character Manin presentations retain cyclotomic scalars", () => {
     [14, 4],
   );
   global.gc();
+  const reduction = flint.characterPresentationReduction(full);
+  assert.equal(flint.matrixRank(reduction), 4);
   const t2 = flint.p1ListCharacterHeckeMatrix(
     p1, 2, 0, 2, group, 2n, full,
   );
