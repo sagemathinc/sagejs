@@ -72,10 +72,10 @@ A signed weight-6, level-1000 snapshot after that change gives:
 | case | stage | Sage.js | PARI/GP | Magma |
 | --- | ---: | ---: | ---: | ---: |
 | plus | space | 9.00 s | 25.52 s | 39.05 s |
-| plus | cusp | 2.30 s | timeout | 0.09 s |
+| plus | cusp | 0.167 s | timeout | 0.09 s |
 | plus | `T_2` | 0.085 s | timeout | 9.62 s |
 | minus | space | 17.54 s | timeout | 46.19 s |
-| minus | cusp | 2.20 s | timeout | 0.08 s |
+| minus | cusp | 0.141 s | timeout | 0.08 s |
 | minus | `T_2` | 0.072 s | timeout | 7.58 s |
 
 Every completed dimension and trace fingerprint agreed. PARI/GP exceeded the
@@ -86,6 +86,17 @@ level 1000 and weight 4 improved from over one minute and roughly 750 MB to
 error, but its 113-second construction shows the next boundary: the quotient
 RREF itself becomes large and dense even though its input and retained maps
 are sparse.
+
+The cuspidal timings above include a subsequent ambient-space optimization:
+the higher-weight path now takes the kernel of the boundary matrix directly.
+Previously it first constructed a large identity basis and multiplied that
+identity by the boundary matrix, which accounted for about 2.2 seconds at
+level 1000. A further scaling probe gave 16.86 seconds for the level-1201,
+weight-8 plus space and 88 ms for `T_2`, versus Magma's 34.91 and 55.20
+seconds. At prime level 2003 and weight 4, Magma still constructs the signed
+spaces 3--5 times faster, while Sage.js computes the tested Hecke operators
+roughly 150 times faster. These results identify presentation construction,
+not Hecke assembly, as the next signed-space optimization target.
 
 Dirichlet-character spaces have a separate three-system dashboard:
 
