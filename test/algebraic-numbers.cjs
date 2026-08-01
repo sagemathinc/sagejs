@@ -76,6 +76,22 @@ test("FLINT-backed AA, QQbar, polynomial roots, and eigenspaces", async () => {
       ).repr,
       "True",
     );
+    assert.equal(
+      (
+        await session.evaluate(
+          "K = CyclotomicField(5)\n" +
+            "z = K.gen()\n" +
+            "A = matrix(K, [[1,z,0,1+z,2,z^2]," +
+            "[0,1,1,z,1-z,z^3]])\n" +
+            "B = A.right_kernel_matrix()\n" +
+            "[B.nrows(), B.ncols(), B.rank(), " +
+            "(A*B.transpose()).is_zero(), B == B.rref(), " +
+            "B.matrix_from_columns([0,1,2,3])]",
+        )
+      ).repr,
+      "[4, 6, 4, True, True, [1 0 0 0]\n[0 1 0 0]\n" +
+        "[0 0 1 0]\n[0 0 0 1]]",
+    );
   } finally {
     await session.close();
   }

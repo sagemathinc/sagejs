@@ -3188,12 +3188,17 @@ class ModularSymbolsSpace(sage.Parent):
             return self._cuspidal_cache
         if self._supports_native_character():
             if self._cuspidal_cache is None:
-                restricted_boundary = (
-                    self.basis_matrix()._sparse_left_multiply(
-                        self.ambient_module()._boundary_matrix()))
-                coefficients = restricted_boundary.left_kernel_matrix()
-                basis = coefficients._sparse_left_multiply(
-                    self.basis_matrix())
+                if self.is_ambient():
+                    basis = (
+                        self.ambient_module()._boundary_matrix()
+                        .left_kernel_matrix())
+                else:
+                    restricted_boundary = (
+                        self.basis_matrix()._sparse_left_multiply(
+                            self.ambient_module()._boundary_matrix()))
+                    coefficients = restricted_boundary.left_kernel_matrix()
+                    basis = coefficients._sparse_left_multiply(
+                        self.basis_matrix())
                 basis._rref_cache = basis
                 kind = 'Cuspidal'
                 if self._sign == 1:

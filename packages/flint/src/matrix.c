@@ -2276,6 +2276,138 @@ napi_value sagejs_matrix_right_kernel(
     }
     if (source->kind == SAGEJS_MATRIX_QQBAR)
     {
+        /*
+         * A wide matrix occurs naturally as the transpose of a thin
+         * boundary map.  gr_mat_nullspace returns a perfectly good basis,
+         * but putting its (large) nullspace into canonical row echelon form
+         * can cost vastly more than reducing the original thin matrix.
+         *
+         * Reduce with the columns reversed instead.  Its pivot columns are
+         * the rightmost possible independent columns in the original
+         * ordering.  The usual free-variable kernel vectors therefore have
+         * their leading 1 before every nonzero dependent coordinate after
+         * reversing back, so they are already the canonical RREF basis.
+         */
+        if (rows < cols)
+        {
+            sagejs_matrix *reduced;
+            slong *pivots;
+            slong pivot_row;
+            slong reverse_col;
+            slong answer_row;
+
+            reduced = new_matrix_like(env, source, rows, cols);
+            if (reduced == NULL)
+                return NULL;
+            for (row = 0; row < rows; row++)
+            {
+                for (col = 0; col < cols; col++)
+                {
+                    qqbar_set(
+                        (qqbar_ptr) gr_mat_entry_ptr(
+                            reduced->algebraic,
+                            row,
+                            col,
+                            reduced->algebraic_context),
+                        (qqbar_srcptr) gr_mat_entry_ptr(
+                            source->algebraic,
+                            row,
+                            cols - 1 - col,
+                            source->algebraic_context));
+                }
+            }
+            if (gr_mat_rref(
+                &rank,
+                reduced->algebraic,
+                reduced->algebraic,
+                reduced->algebraic_context) != GR_SUCCESS)
+            {
+                finalize_matrix(env, reduced, NULL);
+                napi_throw_error(env, NULL,
+                    "FLINT algebraic matrix RREF failed");
+                return NULL;
+            }
+            nullity = cols - rank;
+            answer = new_matrix_like(env, source, nullity, cols);
+            pivots = rank == 0 ? NULL : malloc(rank * sizeof(*pivots));
+            if (answer == NULL || (rank != 0 && pivots == NULL))
+            {
+                free(pivots);
+                finalize_matrix(env, reduced, NULL);
+                if (answer != NULL)
+                    finalize_matrix(env, answer, NULL);
+                if (answer == NULL)
+                    return NULL;
+                napi_throw_error(env, NULL,
+                    "unable to allocate algebraic kernel pivots");
+                return NULL;
+            }
+            for (pivot_row = 0; pivot_row < rank; pivot_row++)
+            {
+                pivots[pivot_row] = -1;
+                for (col = 0; col < cols; col++)
+                {
+                    if (!qqbar_is_zero(
+                        (qqbar_srcptr) gr_mat_entry_ptr(
+                            reduced->algebraic,
+                            pivot_row,
+                            col,
+                            reduced->algebraic_context)))
+                    {
+                        pivots[pivot_row] = col;
+                        break;
+                    }
+                }
+                if (pivots[pivot_row] < 0)
+                {
+                    free(pivots);
+                    finalize_matrix(env, reduced, NULL);
+                    finalize_matrix(env, answer, NULL);
+                    napi_throw_error(env, NULL,
+                        "inconsistent algebraic matrix rank");
+                    return NULL;
+                }
+            }
+            answer_row = 0;
+            for (reverse_col = cols; reverse_col-- > 0;)
+            {
+                int is_pivot = 0;
+                for (pivot_row = 0; pivot_row < rank; pivot_row++)
+                {
+                    if (pivots[pivot_row] == reverse_col)
+                    {
+                        is_pivot = 1;
+                        break;
+                    }
+                }
+                if (is_pivot)
+                    continue;
+                qqbar_one(
+                    (qqbar_ptr) gr_mat_entry_ptr(
+                        answer->algebraic,
+                        answer_row,
+                        cols - 1 - reverse_col,
+                        answer->algebraic_context));
+                for (pivot_row = 0; pivot_row < rank; pivot_row++)
+                {
+                    qqbar_neg(
+                        (qqbar_ptr) gr_mat_entry_ptr(
+                            answer->algebraic,
+                            answer_row,
+                            cols - 1 - pivots[pivot_row],
+                            answer->algebraic_context),
+                        (qqbar_srcptr) gr_mat_entry_ptr(
+                            reduced->algebraic,
+                            pivot_row,
+                            reverse_col,
+                            reduced->algebraic_context));
+                }
+                answer_row++;
+            }
+            free(pivots);
+            finalize_matrix(env, reduced, NULL);
+            return wrap_matrix(env, answer);
+        }
         gr_mat_t basis_columns;
 
         gr_mat_init(

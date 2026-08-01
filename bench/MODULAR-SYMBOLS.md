@@ -34,12 +34,12 @@ stage) illustrates the current performance boundary:
 
 | character | stage | Sage.js | SageMath | Magma |
 | --- | ---: | ---: | ---: | ---: |
-| quadratic | space | 0.86 | 0.39 | 0.36 |
-| quadratic | cuspidal | 0.58 | 0.67 | 0.03 |
-| quadratic | `T_2` | 0.03 | 0.10 | 0.28 |
-| order 5 | space | 0.66 | 7.91 | 0.41 |
-| order 5 | cuspidal | 7.36 | 55.16 | 0.04 |
-| order 5 | `T_2` | 2.37 | 15.23 | 0.77 |
+| quadratic | space | 1.06 | 0.46 | 0.37 |
+| quadratic | cuspidal | 0.15 | 0.73 | 0.03 |
+| quadratic | `T_2` | 0.04 | 0.12 | 0.29 |
+| order 5 | space | 0.75 | 8.56 | 0.43 |
+| order 5 | cuspidal | 0.18 | 72.44 | 0.04 |
+| order 5 | `T_2` | 2.66 | 15.71 | 0.81 |
 
 All rows passed the independent dimension or trace-fingerprint checks. These
 numbers are a reproducible development snapshot, not portable performance
@@ -50,8 +50,9 @@ rational relations to the sparse `fmpq` reducer. Non-real presentations use
 certified multimodular cyclotomic RREF and retain its factorized native result;
 the full generator-to-basis matrix is materialized only when explicitly
 requested. Sage.js's exact order-5 construction is within a factor of two of
-Magma here, and its construction, cuspidal kernel, and Hecke assembly are all
-substantially faster than SageMath's.
+Magma here. Its thin boundary kernel is within a factor of five of Magma and
+about 390 times faster than SageMath in this snapshot; Hecke assembly remains
+the next character-space optimization target.
 
 The dashboard separates the following operations because conflating them
 would give misleading performance numbers:
@@ -183,7 +184,6 @@ The much larger public generator-to-basis matrix is produced lazily by
 `reduction_matrix()`. The native presentation is owned by a finalizable opaque
 Node object and validated by level, weight, sign, and character on reuse.
 Composite Hecke operators use multiplicativity and
-composite operators use multiplicativity and
 
 ```text
 T_(p^r) = T_p T_(p^(r-1)) - chi(p) p^(k-1) T_(p^(r-2)).
@@ -193,6 +193,10 @@ Boundary classification follows the character-sensitive cusp equivalence
 test in SageMath and the original Magma modular-symbol implementation. It
 records both the equivalence scalar and cusps killed by a stabilizer on which
 the character is nontrivial. The kernel gives the exact cuspidal subspace.
+For a thin boundary matrix, algebraic kernel reduction scans columns in reverse
+and chooses the rightmost independent columns. The corresponding free-variable
+vectors are already in canonical RREF after reversing back, avoiding a second
+large algebraic RREF. Ambient spaces also bypass identity-matrix products.
 Regression cases cover quadratic, cubic, quartic, and sextic characters,
 both parities, weights 2 through 4, all three signs, bad-prime and composite
 Hecke operators, and characteristic polynomials over exact cyclotomic fields.

@@ -1420,9 +1420,12 @@ class Matrix(sage.Element):
             base = sage.QQ
             if _is_approximate_base(self.base_ring()):
                 base = self.base_ring()
-            if getattr(
-                self.base_ring(), '_kind', None
-            ) in ['GF', 'GF_EXTENSION', 'AA', 'QQBAR']:
+            if (
+                _is_algebraic_base(self.base_ring())
+                or getattr(
+                    self.base_ring(), '_kind', None
+                ) in ['GF', 'GF_EXTENSION']
+            ):
                 base = self.base_ring()
             backend = runtime.flint_backend()
             if _is_extension_field_base(self.base_ring()):
