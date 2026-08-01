@@ -47,6 +47,7 @@ const dependencies = [
     name: "gmp",
     version: "6.3.0",
     url: "https://gmplib.org/download/gmp/gmp-6.3.0.tar.xz",
+    mirrors: ["https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz"],
     sha256: "a3c2b80201b89e68616f4ad30bc66aee4927c3ce50e33929ca819d5c43538898",
     archive: process.env.SAGEJS_GMP_TARBALL,
   },
@@ -112,24 +113,56 @@ async function obtainArchive(dependency) {
     ? resolve(dependency.archive)
     : join(downloads, basename(dependency.url));
 
-  if (!existsSync(path)) {
-    process.stdout.write(`Downloading ${dependency.url}\n`);
-    const response = await fetch(dependency.url);
-    if (!response.ok) {
+  if (existsSync(path)) {
+    const actual = digest(path);
+    if (actual === dependency.sha256) return path;
+    if (dependency.archive) {
       throw new Error(
-        `download failed: ${response.status} ${response.statusText}`
+        `${dependency.name} archive SHA-256 is ${actual}, expected ${dependency.sha256}`
       );
     }
-    writeFileSync(path, Buffer.from(await response.arrayBuffer()));
+    process.stdout.write(
+      `Discarding corrupt cached ${dependency.name} archive (${actual})\n`
+    );
+    rmSync(path, { force: true });
   }
 
-  const actual = digest(path);
-  if (actual !== dependency.sha256) {
-    throw new Error(
-      `${dependency.name} archive SHA-256 is ${actual}, expected ${dependency.sha256}`
-    );
+  const urls = [dependency.url, ...(dependency.mirrors || [])];
+  const failures = [];
+  for (const url of urls) {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        process.stdout.write(
+          `Downloading ${url} (attempt ${attempt}/3)\n`
+        );
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`${response.status} ${response.statusText}`);
+        }
+        const contents = Buffer.from(await response.arrayBuffer());
+        const actual = createHash("sha256").update(contents).digest("hex");
+        if (actual !== dependency.sha256) {
+          throw new Error(
+            `SHA-256 is ${actual}, expected ${dependency.sha256}`
+          );
+        }
+        writeFileSync(path, contents);
+        return path;
+      } catch (error) {
+        const message = `${url} attempt ${attempt}: ${error.message || error}`;
+        failures.push(message);
+        process.stderr.write(`${message}\n`);
+        if (attempt < 3) {
+          await new Promise((resolveDelay) =>
+            setTimeout(resolveDelay, 1000 * 2 ** (attempt - 1))
+          );
+        }
+      }
+    }
   }
-  return path;
+  throw new Error(
+    `unable to download verified ${dependency.name} archive:\n${failures.join("\n")}`
+  );
 }
 
 function extract(archive, dependency) {

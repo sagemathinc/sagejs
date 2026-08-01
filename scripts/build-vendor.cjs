@@ -38,8 +38,9 @@ copyFileSync(
 
 function buildParser(name, sourceDirectory) {
   execFileSync(
-    join(root, "node_modules", ".bin", "tree-sitter"),
+    process.execPath,
     [
+      require.resolve("tree-sitter-cli/cli.js"),
       "build",
       "--wasm",
       "--output",
