@@ -83,6 +83,46 @@ fundamental-domain, path-reduction, and Hecke-assembly code lives in
 Node adapter supplies only a projective-coset lookup callback and wraps the
 finished row-major buffer. This is the intended boundary for a WASM adapter.
 
+Higher-weight `Gamma0(N)` spaces use the classical triple presentation
+`(i,u,v) = [X^i Y^(k-2-i),(u,v)]`.  The conventions and regression corpus
+were checked independently against:
+
+- William Stein, *Modular Forms, a Computational Approach*, the chapter
+  [Computing with Modular Symbols](https://wstein.org/books/modform/modform/modular_symbols.html);
+- SageMath's `sage.modular.modsym.manin_symbol_list` and
+  `relation_matrix` implementations;
+- the original Magma `Geometry/ModSym` implementation written by William
+  Stein, especially `core.m` and `operators.m`.
+
+The native implementation does not form a large sign-zero space and then
+take a dense star eigenspace.  It first eliminates the monomial two-term
+relations
+
+```text
+x + x*S = 0,                 x - sign*x*I = 0
+```
+
+with a signed union/find.  It then expands only the order-three relation
+`x + x*T + x*T^2 = 0` using exact binomial coefficients and applies FLINT's
+sparse rational elimination.  The retained reduction matrix sends every
+triple generator to the quotient basis. Prime Hecke operators generate
+Cremona's continued-fraction Heilbronn representatives once, then apply the
+entire batch natively, including non-primitive-image zero terms at bad primes.
+Composite indices use Hecke multiplicativity and the exact weight-`k`
+prime-power recurrence. Levels 3, 11, 12, and 37, weights 4 and 6, and all
+three signs are tested against Sage using complete factorizations of the
+`T_2` characteristic polynomial, not only dimensions or traces.
+
+Higher-weight boundary maps lift only the two extreme monomials to cusp
+classes, as in the original Magma implementation: `X^(k-2)` contributes the
+image of infinity and `Y^(k-2)` subtracts the image of zero. Cremona's cusp
+equivalence criterion and the sign relation produce the correct boundary
+quotient even at nonsquarefree levels. Its exact kernel is the cuspidal
+subspace, and the native Hecke matrices restrict to that kernel. Arbitrary
+rational paths with polynomial coefficients remain an explicit unsupported
+operation; Sage.js raises `NotImplementedError` rather than silently applying
+the weight-2 path reducer.
+
 The same retained E1 endpoints now define the exact boundary map. Rational
 cusps are classified under `Gamma0(N)` using Cremona's equivalence criterion,
 and each basis path maps to its endpoint divisor.  Since this is an oriented

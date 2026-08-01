@@ -9,12 +9,14 @@
 
 #include <flint/fmpq.h>
 #include <flint/fmpq_vec.h>
+#include <flint/fmpz.h>
 #include <flint/nmod_mat.h>
 #include <flint/ulong_extras.h>
 
 #include "matrix.h"
 #include "modsym_core.h"
 #include "p1.h"
+#include "sparse_rational.h"
 
 /*
  * Sage-compatible P^1(Z/NZ) representatives and weight-2 Manin relations.
@@ -23,6 +25,8 @@
  * the count-first, allocate-once layout is informed by William Stein's
  * later JSage/Zig implementation.  See bench/MODULAR-SYMBOLS.md for exact
  * source revisions, mathematical conventions, and comparative benchmarks.
+ * The higher-weight triple presentation follows Stein's published modular
+ * symbols chapter and was cross-checked against his Sage and Magma sources.
  */
 
 #define SAGEJS_P1_MAGIC UINT64_C(0x534147454A535031)
@@ -61,6 +65,16 @@ typedef struct
 } sagejs_manin_relations_value;
 
 typedef sagejs_modsym_presentation sagejs_manin_presentation_info;
+
+typedef struct
+{
+    size_t generators;
+    size_t two_term_generators;
+    size_t dimension;
+    size_t *basis_generators;
+    fmpq_mat_t reduction;
+    int reduction_initialized;
+} sagejs_higher_weight_presentation;
 
 static const napi_type_tag sagejs_p1_type_tag = {
     UINT64_C(0x690d50401f624373),
@@ -1818,6 +1832,696 @@ done:
     if (basis_initialized)
         fmpq_mat_clear(basis);
     free(entries);
+    return result;
+}
+
+/*
+ * General weight Gamma0 Manin symbols.
+ *
+ * A generator is (i, u, v), representing X^i Y^(weight-2-i) and a
+ * projective coset.  S and (when requested) the star relation are monomial,
+ * so a signed union/find removes them before any matrix is allocated.  The
+ * remaining T relation is then reduced exactly over QQ.  This is the same
+ * two-stage presentation used by Sage and by William Stein's original Magma
+ * implementation, with the expensive arithmetic delegated to FLINT.
+ */
+typedef struct
+{
+    size_t *parent;
+    signed char *coefficient;
+    unsigned char *killed;
+    size_t count;
+} p1_signed_union_find;
+
+static size_t p1_signed_find(p1_signed_union_find *sets, size_t value)
+{
+    size_t parent = sets->parent[value];
+    if (parent != value)
+    {
+        size_t root = p1_signed_find(sets, parent);
+        sets->coefficient[value] *= sets->coefficient[parent];
+        sets->parent[value] = root;
+    }
+    return sets->parent[value];
+}
+
+/* Impose left + relation_coefficient * right = 0. */
+static void p1_signed_union(
+    p1_signed_union_find *sets,
+    size_t left,
+    size_t right,
+    int relation_coefficient)
+{
+    size_t left_root = p1_signed_find(sets, left);
+    size_t right_root = p1_signed_find(sets, right);
+    int left_scale = sets->coefficient[left];
+    int right_scale = sets->coefficient[right];
+    int root_scale = -relation_coefficient * right_scale * left_scale;
+
+    if (left_root == right_root)
+    {
+        if (left_scale + relation_coefficient * right_scale != 0)
+            sets->killed[left_root] = 1;
+        return;
+    }
+    sets->parent[left_root] = right_root;
+    sets->coefficient[left_root] = (signed char) root_scale;
+    sets->killed[right_root] |= sets->killed[left_root];
+}
+
+static void p1_higher_weight_clear(
+    sagejs_higher_weight_presentation *presentation)
+{
+    free(presentation->basis_generators);
+    if (presentation->reduction_initialized)
+        fmpq_mat_clear(presentation->reduction);
+    memset(presentation, 0, sizeof(*presentation));
+}
+
+static int p1_relation_add_fmpz(
+    fmpq_mat_t relations,
+    size_t row,
+    size_t original,
+    const fmpz_t coefficient,
+    p1_signed_union_find *sets,
+    const size_t *root_column)
+{
+    size_t root = p1_signed_find(sets, original);
+    fmpz_t scaled;
+
+    if (sets->killed[root])
+        return 1;
+    if (root_column[root] == SIZE_MAX)
+        return 0;
+    fmpz_init(scaled);
+    fmpz_set(scaled, coefficient);
+    if (sets->coefficient[original] < 0)
+        fmpz_neg(scaled, scaled);
+    fmpq_add_fmpz(
+        fmpq_mat_entry(relations, (slong) row,
+            (slong) root_column[root]),
+        fmpq_mat_entry(relations, (slong) row,
+            (slong) root_column[root]),
+        scaled);
+    fmpz_clear(scaled);
+    return 1;
+}
+
+static int p1_relation_add_si(
+    fmpq_mat_t relations,
+    size_t row,
+    size_t original,
+    int coefficient,
+    p1_signed_union_find *sets,
+    const size_t *root_column)
+{
+    fmpz_t value;
+    int status;
+    fmpz_init_set_si(value, coefficient);
+    status = p1_relation_add_fmpz(
+        relations, row, original, value, sets, root_column);
+    fmpz_clear(value);
+    return status;
+}
+
+static int p1_higher_weight_build(
+    const sagejs_p1list_value *list,
+    uint32_t weight,
+    int sign,
+    sagejs_higher_weight_presentation *answer)
+{
+    size_t cosets = list->count;
+    size_t generators, free_count = 0, rank, dimension;
+    size_t *root_column = NULL, *column_root = NULL, *pivot_row = NULL;
+    size_t *free_column = NULL;
+    p1_signed_union_find sets = {0};
+    fmpq_mat_t relations, reduced;
+    int relations_initialized = 0, reduced_initialized = 0;
+    slong rank_slong = 0;
+    fmpz_t binomial;
+    int status = 0;
+
+    memset(answer, 0, sizeof(*answer));
+    if (weight < 2 || (sign != -1 && sign != 0 && sign != 1) ||
+        cosets == 0 || (size_t) (weight - 1) > SIZE_MAX / cosets)
+        return 0;
+    generators = (size_t) (weight - 1) * cosets;
+    if (generators > (size_t) WORD_MAX)
+        return 0;
+    sets.count = generators;
+    sets.parent = malloc(generators * sizeof(*sets.parent));
+    sets.coefficient = malloc(generators * sizeof(*sets.coefficient));
+    sets.killed = calloc(generators, sizeof(*sets.killed));
+    root_column = malloc(generators * sizeof(*root_column));
+    column_root = malloc(generators * sizeof(*column_root));
+    if (sets.parent == NULL || sets.coefficient == NULL ||
+        sets.killed == NULL || root_column == NULL || column_root == NULL)
+        goto done;
+    for (size_t generator = 0; generator < generators; generator++)
+    {
+        sets.parent[generator] = generator;
+        sets.coefficient[generator] = 1;
+        root_column[generator] = SIZE_MAX;
+    }
+
+    /* x + xS = 0, where S(i,u,v)=(-1)^i(w-i,v,-u). */
+    for (uint32_t i = 0; i + 2 <= weight; i++)
+        for (size_t coset = 0; coset < cosets; coset++)
+        {
+            sagejs_p1_pair pair = list->pairs[coset];
+            size_t image_coset = p1_apply_pair(
+                list, pair.v, -(int64_t) pair.u);
+            size_t source = (size_t) i * cosets + coset;
+            size_t image = (size_t) (weight - 2 - i) * cosets
+                + image_coset;
+            if (image_coset >= cosets)
+                goto done;
+            p1_signed_union(
+                &sets, source, image, (i & 1U) ? -1 : 1);
+        }
+
+    /* x - sign*xI = 0, I(i,u,v)=(-1)^i(i,-u,v). */
+    if (sign != 0)
+        for (uint32_t i = 0; i + 2 <= weight; i++)
+            for (size_t coset = 0; coset < cosets; coset++)
+            {
+                sagejs_p1_pair pair = list->pairs[coset];
+                size_t image_coset = p1_apply_pair(
+                    list, -(int64_t) pair.u, pair.v);
+                size_t source = (size_t) i * cosets + coset;
+                size_t image = (size_t) i * cosets + image_coset;
+                int image_coefficient = (i & 1U) ? -1 : 1;
+                if (image_coset >= cosets)
+                    goto done;
+                p1_signed_union(
+                    &sets, source, image, -sign * image_coefficient);
+            }
+
+    for (size_t generator = 0; generator < generators; generator++)
+    {
+        size_t root = p1_signed_find(&sets, generator);
+        if (!sets.killed[root] && root_column[root] == SIZE_MAX)
+        {
+            root_column[root] = free_count;
+            column_root[free_count++] = root;
+        }
+    }
+    if (free_count > (size_t) WORD_MAX ||
+        (free_count != 0 && generators >
+            SAGEJS_MANIN_MAX_DENSE_CELLS / free_count))
+        goto done;
+    fmpq_mat_init(relations, (slong) generators, (slong) free_count);
+    relations_initialized = 1;
+    fmpz_init(binomial);
+
+    /* x + xT + xT^2 = 0 using Sage/Magma's historical T convention. */
+    for (uint32_t i = 0; i + 2 <= weight; i++)
+        for (size_t coset = 0; coset < cosets; coset++)
+        {
+            size_t row = (size_t) i * cosets + coset;
+            sagejs_p1_pair pair = list->pairs[coset];
+            size_t t_coset = p1_apply_pair(
+                list, pair.v,
+                -(int64_t) pair.u - (int64_t) pair.v);
+            size_t tt_coset = p1_apply_pair(
+                list,
+                -(int64_t) pair.u - (int64_t) pair.v,
+                pair.u);
+            uint32_t a = weight - 2 - i;
+            if (t_coset >= cosets || tt_coset >= cosets ||
+                !p1_relation_add_si(
+                    relations, row, row, 1, &sets, root_column))
+                goto relation_done;
+            for (uint32_t j = 0; j <= a; j++)
+            {
+                fmpz_bin_uiui(binomial, a, j);
+                if (((weight - 2 + j) & 1U) != 0)
+                    fmpz_neg(binomial, binomial);
+                if (!p1_relation_add_fmpz(
+                        relations, row,
+                        (size_t) j * cosets + t_coset,
+                        binomial, &sets, root_column))
+                    goto relation_done;
+            }
+            for (uint32_t j = 0; j <= i; j++)
+            {
+                fmpz_bin_uiui(binomial, i, j);
+                if (((weight - 2 - i + j) & 1U) != 0)
+                    fmpz_neg(binomial, binomial);
+                if (!p1_relation_add_fmpz(
+                        relations, row,
+                        (size_t) (weight - 2 - i + j) * cosets
+                            + tt_coset,
+                        binomial, &sets, root_column))
+                    goto relation_done;
+            }
+        }
+    fmpz_clear(binomial);
+
+    fmpq_mat_init(reduced, (slong) generators, (slong) free_count);
+    reduced_initialized = 1;
+    if (sagejs_fmpq_mat_prefers_sparse_rref(relations))
+    {
+        if (!sagejs_fmpq_mat_rref_sparse(
+                reduced, &rank_slong, relations))
+            goto done;
+    }
+    else
+    {
+        rank_slong = fmpq_mat_rref(reduced, relations);
+    }
+    if (rank_slong < 0 || (size_t) rank_slong > free_count)
+        goto done;
+    rank = (size_t) rank_slong;
+    dimension = free_count - rank;
+    pivot_row = malloc(
+        (free_count == 0 ? 1 : free_count) * sizeof(*pivot_row));
+    free_column = malloc(
+        (dimension == 0 ? 1 : dimension) * sizeof(*free_column));
+    answer->basis_generators = malloc(
+        (dimension == 0 ? 1 : dimension)
+            * sizeof(*answer->basis_generators));
+    if (pivot_row == NULL || free_column == NULL ||
+        answer->basis_generators == NULL)
+        goto done;
+    for (size_t column = 0; column < free_count; column++)
+        pivot_row[column] = SIZE_MAX;
+    {
+        size_t pivot_column = 0;
+        for (size_t row = 0; row < rank; row++)
+        {
+            while (pivot_column < free_count && fmpq_is_zero(
+                fmpq_mat_entry(reduced, (slong) row,
+                    (slong) pivot_column)))
+                pivot_column++;
+            if (pivot_column >= free_count)
+                goto done;
+            pivot_row[pivot_column] = row;
+            pivot_column++;
+        }
+    }
+    {
+        size_t next = 0;
+        for (size_t column = 0; column < free_count; column++)
+            if (pivot_row[column] == SIZE_MAX)
+            {
+                free_column[next] = column;
+                answer->basis_generators[next] = column_root[column];
+                next++;
+            }
+        if (next != dimension)
+            goto done;
+    }
+    if (dimension != 0 && generators >
+        SAGEJS_MANIN_MAX_DENSE_CELLS / dimension)
+        goto done;
+    fmpq_mat_init(
+        answer->reduction, (slong) generators, (slong) dimension);
+    answer->reduction_initialized = 1;
+    for (size_t original = 0; original < generators; original++)
+    {
+        size_t root = p1_signed_find(&sets, original);
+        size_t column;
+        int scale = sets.coefficient[original];
+        if (sets.killed[root])
+            continue;
+        column = root_column[root];
+        if (pivot_row[column] == SIZE_MAX)
+        {
+            size_t target = 0;
+            while (target < dimension && free_column[target] != column)
+                target++;
+            if (target == dimension)
+                goto done;
+            fmpq_set_si(
+                fmpq_mat_entry(answer->reduction,
+                    (slong) original, (slong) target), scale, 1);
+        }
+        else
+        {
+            size_t row = pivot_row[column];
+            for (size_t target = 0; target < dimension; target++)
+            {
+                fmpq_neg(
+                    fmpq_mat_entry(answer->reduction,
+                        (slong) original, (slong) target),
+                    fmpq_mat_entry(reduced, (slong) row,
+                        (slong) free_column[target]));
+                if (scale < 0)
+                    fmpq_neg(
+                        fmpq_mat_entry(answer->reduction,
+                            (slong) original, (slong) target),
+                        fmpq_mat_entry(answer->reduction,
+                            (slong) original, (slong) target));
+            }
+        }
+    }
+    answer->generators = generators;
+    answer->two_term_generators = free_count;
+    answer->dimension = dimension;
+    status = 1;
+    goto done;
+
+relation_done:
+    fmpz_clear(binomial);
+done:
+    if (relations_initialized)
+        fmpq_mat_clear(relations);
+    if (reduced_initialized)
+        fmpq_mat_clear(reduced);
+    free(sets.parent);
+    free(sets.coefficient);
+    free(sets.killed);
+    free(root_column);
+    free(column_root);
+    free(pivot_row);
+    free(free_column);
+    if (!status)
+        p1_higher_weight_clear(answer);
+    return status;
+}
+
+static int p1_napi_set_size(
+    napi_env env, napi_value object, const char *name, size_t value)
+{
+    napi_value number;
+    return value <= (size_t) INT64_MAX &&
+        p1_check_napi(env, napi_create_int64(env, (int64_t) value, &number)) &&
+        p1_check_napi(env, napi_set_named_property(env, object, name, number));
+}
+
+napi_value sagejs_p1list_higher_weight_presentation(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[3], result = NULL, reduction = NULL, generators;
+    sagejs_p1list_value *list;
+    sagejs_higher_weight_presentation presentation = {0};
+    int64_t weight_value, sign_value;
+
+    if (!p1_arguments(env, info, 3, arguments) ||
+        (list = p1_unwrap(env, arguments[0])) == NULL ||
+        !p1_safe_integer(env, arguments[1], &weight_value) ||
+        !p1_safe_integer(env, arguments[2], &sign_value))
+        return NULL;
+    if (weight_value < 2 || weight_value > UINT32_MAX ||
+        (sign_value != -1 && sign_value != 0 && sign_value != 1))
+    {
+        napi_throw_range_error(env, NULL,
+            "higher-weight presentation requires weight >= 2 and sign -1, 0, or 1");
+        return NULL;
+    }
+    if (!p1_higher_weight_build(
+            list, (uint32_t) weight_value, (int) sign_value,
+            &presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct exact higher-weight Manin presentation");
+        return NULL;
+    }
+    reduction = sagejs_qq_matrix_from_fmpq_mat(
+        env, presentation.reduction);
+    if (presentation.dimension > UINT32_MAX || reduction == NULL ||
+        !p1_check_napi(env, napi_create_array_with_length(
+            env, presentation.dimension, &generators)))
+        goto done;
+    for (size_t index = 0; index < presentation.dimension; index++)
+    {
+        napi_value value;
+        if (!p1_check_napi(env, napi_create_int64(
+                env, (int64_t) presentation.basis_generators[index],
+                &value)) ||
+            !p1_check_napi(env, napi_set_element(
+                env, generators, (uint32_t) index, value)))
+            goto done;
+    }
+    if (!p1_check_napi(env, napi_create_object(env, &result)) ||
+        !p1_napi_set_size(env, result, "generators", presentation.generators) ||
+        !p1_napi_set_size(env, result, "twoTermGenerators",
+            presentation.two_term_generators) ||
+        !p1_napi_set_size(env, result, "dimension", presentation.dimension) ||
+        !p1_check_napi(env, napi_set_named_property(
+            env, result, "basisGenerators", generators)) ||
+        !p1_check_napi(env, napi_set_named_property(
+            env, result, "reduction", reduction)))
+        result = NULL;
+
+done:
+    p1_higher_weight_clear(&presentation);
+    return result;
+}
+
+static void p1_monomial_matrix_coefficient(
+    fmpz_t result,
+    uint32_t i,
+    uint32_t weight_degree,
+    uint32_t target,
+    int64_t a,
+    int64_t b,
+    int64_t c,
+    int64_t d)
+{
+    fmpz_t left_binomial, right_binomial, term, power;
+    uint32_t right_degree = weight_degree - i;
+    fmpz_zero(result);
+    fmpz_init(left_binomial);
+    fmpz_init(right_binomial);
+    fmpz_init(term);
+    fmpz_init(power);
+    for (uint32_t left_x = 0; left_x <= i; left_x++)
+    {
+        uint32_t right_x;
+        if (target < left_x)
+            continue;
+        right_x = target - left_x;
+        if (right_x > right_degree)
+            continue;
+        fmpz_bin_uiui(left_binomial, i, left_x);
+        fmpz_bin_uiui(right_binomial, right_degree, right_x);
+        fmpz_mul(term, left_binomial, right_binomial);
+        fmpz_set_si(power, a);
+        fmpz_pow_ui(power, power, left_x);
+        fmpz_mul(term, term, power);
+        fmpz_set_si(power, b);
+        fmpz_pow_ui(power, power, i - left_x);
+        fmpz_mul(term, term, power);
+        fmpz_set_si(power, c);
+        fmpz_pow_ui(power, power, right_x);
+        fmpz_mul(term, term, power);
+        fmpz_set_si(power, d);
+        fmpz_pow_ui(power, power, right_degree - right_x);
+        fmpz_mul(term, term, power);
+        fmpz_add(result, result, term);
+    }
+    fmpz_clear(left_binomial);
+    fmpz_clear(right_binomial);
+    fmpz_clear(term);
+    fmpz_clear(power);
+}
+
+typedef struct
+{
+    int64_t a, b, c, d;
+} p1_matrix_four;
+
+static int64_t p1_round_quotient(int64_t numerator, int64_t denominator)
+{
+    uint64_t absolute_numerator = numerator < 0
+        ? (uint64_t) (-numerator) : (uint64_t) numerator;
+    uint64_t absolute_denominator = denominator < 0
+        ? (uint64_t) (-denominator) : (uint64_t) denominator;
+    uint64_t quotient = (
+        absolute_numerator + absolute_denominator / 2)
+        / absolute_denominator;
+    return (numerator < 0) == (denominator < 0)
+        ? (int64_t) quotient : -(int64_t) quotient;
+}
+
+/* Cremona's continued-fraction Heilbronn representatives for T_p. */
+static int p1_heilbronn_cremona(
+    ulong prime, p1_matrix_four **matrices_out, size_t *count_out)
+{
+    p1_matrix_four *matrices = NULL;
+    size_t count = 1, position = 0;
+
+    if (matrices_out == NULL || count_out == NULL ||
+        prime < 2 || prime > INT32_MAX || !n_is_prime(prime))
+        return 0;
+    if (prime == 2)
+        count = 4;
+    else
+    {
+        int64_t half = (int64_t) prime / 2;
+        for (int64_t r = -half; r <= half; r++)
+        {
+            int64_t a = -(int64_t) prime, b = r;
+            count++;
+            while (b != 0)
+            {
+                int64_t q = p1_round_quotient(a, b);
+                int64_t c = a - b * q;
+                a = -b;
+                b = c;
+                count++;
+            }
+        }
+    }
+    if (count > SIZE_MAX / sizeof(*matrices))
+        return 0;
+    matrices = malloc(count * sizeof(*matrices));
+    if (matrices == NULL)
+        return 0;
+    matrices[position++] = (p1_matrix_four) {1, 0, 0, (int64_t) prime};
+    if (prime == 2)
+    {
+        matrices[position++] = (p1_matrix_four) {2, 0, 0, 1};
+        matrices[position++] = (p1_matrix_four) {2, 1, 0, 1};
+        matrices[position++] = (p1_matrix_four) {1, 0, 1, 2};
+    }
+    else
+    {
+        int64_t half = (int64_t) prime / 2;
+        for (int64_t r = -half; r <= half; r++)
+        {
+            int64_t x1 = (int64_t) prime, x2 = -r;
+            int64_t y1 = 0, y2 = 1;
+            int64_t a = -(int64_t) prime, b = r;
+            matrices[position++] = (p1_matrix_four) {x1, x2, y1, y2};
+            while (b != 0)
+            {
+                int64_t q = p1_round_quotient(a, b);
+                int64_t c = a - b * q;
+                int64_t x3, y3;
+                a = -b;
+                b = c;
+                x3 = q * x2 - x1;
+                x1 = x2;
+                x2 = x3;
+                y3 = q * y2 - y1;
+                y1 = y2;
+                y2 = y3;
+                matrices[position++] = (p1_matrix_four) {x1, x2, y1, y2};
+            }
+        }
+    }
+    if (position != count)
+    {
+        free(matrices);
+        return 0;
+    }
+    *matrices_out = matrices;
+    *count_out = count;
+    return 1;
+}
+
+napi_value sagejs_p1list_higher_weight_hecke_matrix(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[4], result = NULL;
+    sagejs_p1list_value *list;
+    sagejs_higher_weight_presentation presentation = {0};
+    int64_t weight_value, sign_value, prime_value;
+    fmpq_mat_t matrix;
+    int matrix_initialized = 0;
+    fmpz_t coefficient;
+    fmpq_t scaled;
+    p1_matrix_four *heilbronn = NULL;
+    size_t heilbronn_count = 0;
+
+    if (!p1_arguments(env, info, 4, arguments) ||
+        (list = p1_unwrap(env, arguments[0])) == NULL ||
+        !p1_safe_integer(env, arguments[1], &weight_value) ||
+        !p1_safe_integer(env, arguments[2], &sign_value) ||
+        !p1_safe_integer(env, arguments[3], &prime_value))
+        return NULL;
+    if (weight_value < 2 || weight_value > UINT32_MAX ||
+        (sign_value != -1 && sign_value != 0 && sign_value != 1) ||
+        prime_value < 2 || prime_value > INT32_MAX ||
+        !n_is_prime((ulong) prime_value))
+    {
+        napi_throw_range_error(env, NULL,
+            "higher-weight native Hecke requires a 31-bit prime and sign -1, 0, or 1");
+        return NULL;
+    }
+    if (!p1_higher_weight_build(
+            list, (uint32_t) weight_value, (int) sign_value,
+            &presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct higher-weight Hecke presentation");
+        return NULL;
+    }
+    if (!p1_heilbronn_cremona(
+            (ulong) prime_value, &heilbronn, &heilbronn_count))
+    {
+        p1_higher_weight_clear(&presentation);
+        napi_throw_error(env, NULL,
+            "unable to construct Cremona-Heilbronn representatives");
+        return NULL;
+    }
+    fmpq_mat_init(matrix, (slong) presentation.dimension,
+        (slong) presentation.dimension);
+    matrix_initialized = 1;
+    fmpz_init(coefficient);
+    fmpq_init(scaled);
+    for (size_t source = 0; source < presentation.dimension; source++)
+    {
+        size_t generator = presentation.basis_generators[source];
+        uint32_t i = (uint32_t) (generator / list->count);
+        sagejs_p1_pair pair = list->pairs[generator % list->count];
+        for (size_t h = 0; h < heilbronn_count; h++)
+        {
+            int64_t a = heilbronn[h].a;
+            int64_t b = heilbronn[h].b;
+            int64_t c = heilbronn[h].c;
+            int64_t d = heilbronn[h].d;
+            __int128 image_u = (__int128) pair.u * a
+                + (__int128) pair.v * c;
+            __int128 image_v = (__int128) pair.u * b
+                + (__int128) pair.v * d;
+            size_t image_coset = p1_apply_pair(
+                list,
+                (int64_t) (image_u % list->level),
+                (int64_t) (image_v % list->level));
+            /* At a bad prime, non-primitive images represent zero. */
+            if (image_coset >= list->count)
+                continue;
+            for (uint32_t target_degree = 0;
+                target_degree + 2 <= (uint32_t) weight_value;
+                target_degree++)
+            {
+                size_t image_generator =
+                    (size_t) target_degree * list->count + image_coset;
+                p1_monomial_matrix_coefficient(
+                    coefficient, i, (uint32_t) weight_value - 2,
+                    target_degree, a, b, c, d);
+                if (fmpz_is_zero(coefficient))
+                    continue;
+                for (size_t target = 0;
+                    target < presentation.dimension; target++)
+                {
+                    fmpq_mul_fmpz(
+                        scaled,
+                        fmpq_mat_entry(presentation.reduction,
+                            (slong) image_generator, (slong) target),
+                        coefficient);
+                    fmpq_add(
+                        fmpq_mat_entry(matrix,
+                            (slong) source, (slong) target),
+                        fmpq_mat_entry(matrix,
+                            (slong) source, (slong) target),
+                        scaled);
+                }
+            }
+        }
+    }
+    result = sagejs_qq_matrix_from_fmpq_mat(env, matrix);
+
+    fmpq_clear(scaled);
+    fmpz_clear(coefficient);
+    if (matrix_initialized)
+        fmpq_mat_clear(matrix);
+    free(heilbronn);
+    p1_higher_weight_clear(&presentation);
     return result;
 }
 

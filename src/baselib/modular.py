@@ -1130,6 +1130,41 @@ class ManinSymbolBasisElement:
     toString = __repr__
 
 
+class HigherWeightManinSymbolBasisElement:
+
+    def __init__(
+        self,
+        degree: int,
+        weight: int,
+        u: int,
+        v: int,
+    ) -> None:
+        self._degree = degree
+        self._weight = weight
+        self._u = u
+        self._v = v
+
+    def __repr__(self) -> str:
+        x_degree = self._degree
+        y_degree = self._weight - 2 - x_degree
+        factors = []
+        if x_degree == 1:
+            factors.append('X')
+        elif x_degree > 1:
+            factors.append('X^' + str(x_degree))
+        if y_degree == 1:
+            factors.append('Y')
+        elif y_degree > 1:
+            factors.append('Y^' + str(y_degree))
+        polynomial = '*'.join(factors) if factors else '1'
+        return (
+            '[' + polynomial + ',(' + str(self._u)
+            + ',' + str(self._v) + ')]')
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class ModularCusp:
 
     def __init__(self, numerator: Any, denominator: Any = 1) -> None:
@@ -1183,6 +1218,120 @@ class ModularCusp:
 
     __str__ = __repr__
     toString = __repr__
+
+
+def _integer_xgcd(left: int, right: int) -> tuple[int, int, int]:
+    old_r, r = left, right
+    old_s, s = 1, 0
+    old_t, t = 0, 1
+    while r != 0:
+        quotient = old_r // r
+        old_r, r = r, old_r - quotient * r
+        old_s, s = s, old_s - quotient * s
+        old_t, t = t, old_t - quotient * t
+    if old_r < 0:
+        return -old_r, -old_s, -old_t
+    return old_r, old_s, old_t
+
+
+def _lift_gamma0_coset(u: int, v: int, level: int) -> list[int]:
+    """Lift a projective bottom row to an `SL(2,ZZ)` matrix."""
+    c = u
+    d = v
+    common, z1, z2 = _integer_xgcd(c, d)
+    if common == 1:
+        return [z2, -z1, c, d]
+    if c == 0:
+        c += level
+    if d == 0:
+        d += level
+    multiplier = c
+    while True:
+        common = runtime.number(runtime.bigint_gcd(
+            runtime.bigint(multiplier), runtime.bigint(d)))
+        if common == 1:
+            break
+        multiplier //= common
+    while True:
+        common = runtime.number(runtime.bigint_gcd(
+            runtime.bigint(multiplier), runtime.bigint(level)))
+        if common == 1:
+            break
+        multiplier //= common
+    d += level * multiplier
+    common, z1, z2 = _integer_xgcd(c, d)
+    if common != 1:
+        raise ArithmeticError('unable to lift Gamma0 projective coset')
+    return [z2, -z1, c, d]
+
+
+def _inverse_mod_integer(value: int, modulus: int) -> int:
+    common, inverse, _other = _integer_xgcd(value, modulus)
+    if common != 1:
+        raise ArithmeticError('inverse modulo a non-coprime modulus')
+    return inverse % modulus
+
+
+def _gamma0_cusp_equivalent(
+    left: ModularCusp,
+    right: ModularCusp,
+    level: int,
+) -> bool:
+    u1 = left.numerator()
+    v1 = left.denominator()
+    u2 = right.numerator()
+    v2 = right.denominator()
+
+    def cusp_inverse(u: int, v: int) -> int:
+        if u == 0 and v == 1:
+            return 0
+        if v in [0, 1]:
+            return 1
+        return _inverse_mod_integer(u, abs(v))
+
+    s1 = cusp_inverse(u1, v1)
+    s2 = cusp_inverse(u2, v2)
+    common = runtime.number(runtime.bigint_gcd(
+        runtime.bigint(v1 * v2), runtime.bigint(level)))
+    return (s1 * v2 - s2 * v1) % common == 0
+
+
+class _HigherWeightCuspClassifier:
+
+    def __init__(self, level: int, sign: int) -> None:
+        self.level = level
+        self.sign = sign
+        self.known: list[ModularCusp] = []
+        self.killed: list[bool] = []
+
+    def classify(self, cusp: ModularCusp) -> tuple[int, int]:
+        for index, known in enumerate(self.known):
+            if _gamma0_cusp_equivalent(known, cusp, self.level):
+                return (0 if self.killed[index] else 1), index
+        if self.sign != 0:
+            negative = -cusp
+            for index, known in enumerate(self.known):
+                if _gamma0_cusp_equivalent(
+                    known, negative, self.level,
+                ):
+                    return (
+                        0 if self.killed[index] else self.sign), index
+        killed = (
+            self.sign == -1
+            and _gamma0_cusp_equivalent(cusp, -cusp, self.level)
+        )
+        self.known.append(cusp)
+        self.killed.append(killed)
+        return (0 if killed else 1), len(self.known) - 1
+
+    def compact(self) -> tuple[list[ModularCusp], list[int]]:
+        cusps = []
+        indices = [-1 for _ in self.known]
+        for old_index, cusp in enumerate(self.known):
+            if not self.killed[old_index]:
+                indices[old_index] = len(cusps)
+                cusps.append(cusp)
+        return cusps, indices
 
 
 class BoundarySymbolElement:
@@ -1616,6 +1765,64 @@ class ManinRelations:
     toString = __repr__
 
 
+class HigherWeightManinPresentation:
+    """Exact `Gamma_0(N)` quotient on triple Manin symbols over `QQ`."""
+
+    def __init__(
+        self,
+        projective_line: P1List,
+        weight: int,
+        sign: int,
+        raw: Any,
+    ) -> None:
+        self._projective_line = projective_line
+        self._weight = weight
+        self._sign = sign
+        self._generators = runtime.number(
+            runtime.reflect.get(raw, 'generators'))
+        self._dimension = runtime.number(
+            runtime.reflect.get(raw, 'dimension'))
+        self._two_term_generators = runtime.number(
+            runtime.reflect.get(raw, 'twoTermGenerators'))
+        self._reduction = Matrix(  # type: ignore[name-defined]  # noqa: F821
+            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                sage.QQ, self._generators, self._dimension),
+            runtime.reflect.get(raw, 'reduction'),
+        )
+        self._basis_generators = [
+            runtime.number(value)
+            for value in runtime.reflect.get(raw, 'basisGenerators')
+        ]
+
+    def dimension(self) -> int:
+        return self._dimension
+
+    quotient_dimension = dimension
+
+    def ngens(self) -> int:
+        return self._generators
+
+    def two_term_generators(self) -> int:
+        return self._two_term_generators
+
+    def reduction_matrix(self) -> Any:
+        """Map every `(i,u,v)` generator to quotient coordinates."""
+        return self._reduction
+
+    def basis_generators(self) -> list[int]:
+        """Return original triple indices chosen as the quotient basis."""
+        return list(self._basis_generators)
+
+    def __repr__(self) -> str:
+        return (
+            'Higher-weight Manin presentation with '
+            + str(self._generators) + ' triple generators and dimension '
+            + str(self._dimension) + ' over Rational Field')
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class P1List:
     """
     The projective line `P^1(Z/NZ)` with Sage-compatible representatives.
@@ -1642,6 +1849,8 @@ class P1List:
         self._boundary_data_cache = None
         self._cuspidal_basis_cache = None
         self._star_eigenspace_basis_cache = [None, None]
+        self._higher_weight_presentation_cache = runtime.map()
+        self._higher_weight_hecke_cache = runtime.map()
 
     def N(self) -> int:
         return self._level
@@ -1730,6 +1939,57 @@ class P1List:
         if self._manin_presentation_cache is None:
             self._manin_presentation_cache = ManinPresentation(self)
         return self._manin_presentation_cache
+
+    def higher_weight_presentation(
+        self,
+        weight: Any,
+        sign: Any = 0,
+    ) -> Any:
+        """Return the exact triple-Manin-symbol presentation over `QQ`."""
+        weight = _positive_integer(weight, 'modular-symbol weight')
+        if weight < 2:
+            raise ValueError('modular-symbol weight must be at least 2')
+        sign = _exact_integer(sign, 'sign')
+        if sign not in [-1, 0, 1]:
+            raise ValueError('sign must be -1, 0, or 1')
+        key = str(weight) + ':' + str(sign)
+        cached = self._higher_weight_presentation_cache.get(key)
+        if cached is runtime.undefined:
+            raw = runtime.flint_backend().p1ListHigherWeightPresentation(
+                self._native, weight, sign)
+            cached = HigherWeightManinPresentation(
+                self, weight, sign, raw)
+            self._higher_weight_presentation_cache.set(key, cached)
+        return cached
+
+    def higher_weight_hecke_matrix(
+        self,
+        weight: Any,
+        sign: Any,
+        prime: Any,
+    ) -> Any:
+        """Return `T_p` from the exact higher-weight Manin presentation."""
+        weight = _positive_integer(weight, 'modular-symbol weight')
+        sign = _exact_integer(sign, 'sign')
+        prime = _positive_integer(prime, 'Hecke prime')
+        if not sage.is_prime(prime):
+            raise ValueError('Hecke index must be prime')
+        key = (
+            str(weight) + ':' + str(sign) + ':' + str(prime))
+        cached = self._higher_weight_hecke_cache.get(key)
+        if cached is not runtime.undefined:
+            return cached
+        dimension = self.higher_weight_presentation(
+            weight, sign).dimension()
+        native = runtime.flint_backend().p1ListHigherWeightHeckeMatrix(
+            self._native, weight, sign, prime)
+        cached = Matrix(  # type: ignore[name-defined]  # noqa: F821
+            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                sage.QQ, dimension, dimension),
+            native,
+        )
+        self._higher_weight_hecke_cache.set(key, cached)
+        return cached
 
     def _hecke_matrix(
         self,
@@ -1938,6 +2198,9 @@ class HeckeOperator:
         ):
             return self._space._native_weight2_hecke_matrix(
                 self._index)
+        if self._space._supports_native_higher_weight():
+            return self._space._native_higher_weight_hecke_matrix(
+                self._index)
         raise NotImplementedError(
             'the requested Hecke matrix is not in the implemented '
             'modular-symbol models')
@@ -2054,15 +2317,38 @@ class ModularSymbolsSpace(sage.Parent):
             else:
                 cusp_dimension = dimension_cusp_forms(group, weight)
                 eis_dimension = dimension_eis(group, weight)
-            self._dimension = 2 * cusp_dimension + eis_dimension
+            if sign == 1:
+                self._dimension = cusp_dimension + eis_dimension
+            elif sign == -1:
+                self._dimension = cusp_dimension
+            else:
+                self._dimension = 2 * cusp_dimension + eis_dimension
             self._is_cuspidal = False
         else:
             if character is not None:
                 cusp_dimension = dimension_cusp_forms(character, weight)
             else:
                 cusp_dimension = dimension_cusp_forms(group, weight)
-            self._dimension = 2 * cusp_dimension
+            self._dimension = (
+                cusp_dimension if sign != 0 else 2 * cusp_dimension)
             self._is_cuspidal = True
+        if (
+            ambient is None
+            and character is None
+            and group._family == 'Gamma0'
+            and weight > 2
+            and base_ring is sage.QQ
+            and not (
+                group.level() == 1
+                and weight == 12
+                and sign == 0
+            )
+        ):
+            # In higher weight the Eisenstein symbols need not all have
+            # positive star sign (nonsquarefree levels already show this).
+            # The exact signed Manin presentation is authoritative.
+            self._dimension = self.p1list().higher_weight_presentation(
+                weight, sign).dimension()
 
     def _model_key(self) -> str:
         suffix = '-cusp' if self._is_cuspidal else ''
@@ -2080,6 +2366,19 @@ class ModularSymbolsSpace(sage.Parent):
             self._character is None
             and self._group._family == 'Gamma0'
             and self._weight == 2
+        )
+
+    def _supports_native_higher_weight(self) -> bool:
+        return (
+            self._character is None
+            and self._group._family == 'Gamma0'
+            and self._weight > 2
+            and self._base is sage.QQ
+            and not (
+                self.level() == 1
+                and self._weight == 12
+                and self._sign == 0
+            )
         )
 
     def ambient_module(self) -> ModularSymbolsSpace:
@@ -2147,6 +2446,31 @@ class ModularSymbolsSpace(sage.Parent):
                 result.append(ModularSymbolElement(
                     self, rows[index], label))
             return runtime.math_tuple(result)
+        if self._supports_native_higher_weight() and self.is_ambient():
+            projective_line = self.p1list()
+            presentation = projective_line.higher_weight_presentation(
+                self.weight(), self.sign())
+            basis_generators = presentation.basis_generators()
+            if len(basis_generators) != self.dimension():
+                raise ArithmeticError(
+                    'higher-weight presentation dimension disagrees '
+                    'with the modular-form dimension formula')
+            result = []
+            for index, generator in enumerate(basis_generators):
+                degree = generator // len(projective_line)
+                pair = projective_line.__getitem__(
+                    generator % len(projective_line))
+                u = pair[0]
+                v = pair[1]
+                coordinates = [0 for _ in range(self.dimension())]
+                coordinates[index] = 1
+                result.append(ModularSymbolElement(
+                    self,
+                    coordinates,
+                    HigherWeightManinSymbolBasisElement(
+                        degree, self.weight(), u, v),
+                ))
+            return runtime.math_tuple(result)
         key = self._model_key()
         if key == 'gamma0-1-12':
             return runtime.math_tuple([
@@ -2194,19 +2518,24 @@ class ModularSymbolsSpace(sage.Parent):
         if (
             self._character is not None
             or self._group._family != 'Gamma0'
-            or self._weight != 2
         ):
             raise NotImplementedError(
-                'native P1 lists currently model weight-2 Gamma0 spaces')
+                'native P1 lists currently model Gamma0 spaces')
         if self._p1list_cache is None:
             self._p1list_cache = P1List(self.level())
         return self._p1list_cache
 
     def manin_relations(self, modulus: Any = 65521) -> ManinRelations:
+        if self.weight() != 2:
+            raise NotImplementedError(
+                'higher-weight relations are represented by '
+                'M.p1list().higher_weight_presentation(weight, sign)')
         return self.p1list().manin_relations(modulus)
 
     def _boundary_data(self) -> Any:
         ambient = self.ambient_module()
+        if ambient.weight() != 2:
+            return ambient._higher_weight_boundary_data()
         if ambient._boundary_data_cache is None:
             raw_matrix, cusps = ambient.p1list().boundary_data()
             defining_matrix = raw_matrix.change_ring(ambient.base_ring())
@@ -2216,6 +2545,54 @@ class ModularSymbolsSpace(sage.Parent):
             boundary_space = BoundarySymbolsSpace(ambient, cusps)
             ambient._boundary_data_cache = runtime.math_tuple([
                 defining_matrix, boundary_space])
+        return ambient._boundary_data_cache
+
+    def _higher_weight_boundary_data(self) -> Any:
+        ambient = self.ambient_module()
+        if ambient._boundary_data_cache is not None:
+            return ambient._boundary_data_cache
+        projective_line = ambient.p1list()
+        presentation = projective_line.higher_weight_presentation(
+            ambient.weight(), ambient.sign())
+        classifier = _HigherWeightCuspClassifier(
+            ambient.level(), ambient.sign())
+        sparse_rows = []
+        weight_degree = ambient.weight() - 2
+        for generator in presentation.basis_generators():
+            degree = generator // len(projective_line)
+            pair = projective_line.__getitem__(
+                generator % len(projective_line))
+            lift = _lift_gamma0_coset(
+                runtime.number(pair[0]),
+                runtime.number(pair[1]),
+                ambient.level(),
+            )
+            row = []
+            if degree == weight_degree:
+                coefficient, cusp_index = classifier.classify(
+                    ModularCusp(lift[0], lift[2]))
+                if coefficient != 0:
+                    row.append((cusp_index, coefficient))
+            if degree == 0:
+                coefficient, cusp_index = classifier.classify(
+                    ModularCusp(lift[1], lift[3]))
+                if coefficient != 0:
+                    row.append((cusp_index, -coefficient))
+            sparse_rows.append(row)
+        cusps, compact_indices = classifier.compact()
+        rows = []
+        for sparse_row in sparse_rows:
+            row = [0 for _ in cusps]
+            for old_index, coefficient in sparse_row:
+                new_index = compact_indices[old_index]
+                if new_index >= 0:
+                    row[new_index] += coefficient
+            rows.append(row)
+        defining_matrix = matrix(  # type: ignore[name-defined]  # noqa: F821
+            ambient.base_ring(), rows)
+        boundary_space = BoundarySymbolsSpace(ambient, cusps)
+        ambient._boundary_data_cache = runtime.math_tuple([
+            defining_matrix, boundary_space])
         return ambient._boundary_data_cache
 
     def _boundary_matrix(self) -> Any:
@@ -2263,6 +2640,10 @@ class ModularSymbolsSpace(sage.Parent):
         Continued-fraction reduction happens in one native call.
         """
         ambient = self.ambient_module()
+        if ambient.weight() != 2:
+            raise NotImplementedError(
+                'arbitrary-path reduction with polynomial coefficients '
+                'is not implemented yet')
         native_coordinates = ambient.p1list().reduce_path(start, stop)
         change = ambient._ambient_change_of_basis()
         if change is None:
@@ -2296,6 +2677,11 @@ class ModularSymbolsSpace(sage.Parent):
 
     def star_involution(self) -> ModularSymbolsLinearOperator:
         """Return complex conjugation on this modular-symbol space."""
+        if self._supports_native_higher_weight() and self.sign() != 0:
+            defining_matrix = identity_matrix(  # type: ignore[name-defined]  # noqa: F821
+                self.base_ring(), self.dimension()) * self.sign()
+            return ModularSymbolsLinearOperator(
+                self, defining_matrix, 'Star involution')
         ambient_matrix = self._full_star_matrix()
         return ModularSymbolsLinearOperator(
             self,
@@ -2336,6 +2722,19 @@ class ModularSymbolsSpace(sage.Parent):
         if cached is not None:
             return cached
         ambient = self.ambient_module()
+        if ambient._supports_native_higher_weight():
+            if ambient.sign() == sign:
+                return self
+            if ambient.sign() == -sign:
+                return self._new_coordinate_subspace(
+                    matrix(  # type: ignore[name-defined]  # noqa: F821
+                        self.base_ring(), 0, ambient.dimension()),
+                    'Plus' if sign == 1 else 'Minus',
+                    sign,
+                )
+            raise NotImplementedError(
+                'construct the desired higher-weight sign directly with '
+                'ModularSymbols(N, k, sign=sign)')
         change = ambient._ambient_change_of_basis()
         if self.is_ambient() and change is None:
             basis = ambient.p1list().star_eigenspace_basis(
@@ -2414,6 +2813,40 @@ class ModularSymbolsSpace(sage.Parent):
             ).transpose()
         return self._restrict_ambient_matrix(result)
 
+    def _native_higher_weight_hecke_matrix(self, index: int) -> Any:
+        ambient = self.ambient_module()
+        result = None
+        for prime, exponent in sage.factor(index):
+            p = runtime.number(prime)
+            e = runtime.number(exponent)
+            prime_matrix = ambient.p1list().higher_weight_hecke_matrix(
+                ambient.weight(), ambient.sign(), p)
+            if e == 1:
+                prime_power = prime_matrix
+            elif ambient.level() % p == 0:
+                prime_power = prime_matrix ** e
+            else:
+                previous = prime_matrix ** 0
+                current = prime_matrix
+                recurrence_coefficient = (
+                    sage.ZZ(p) ** (ambient.weight() - 1))
+                for _power in range(2, e + 1):
+                    following = (
+                        prime_matrix * current
+                        - previous * recurrence_coefficient
+                    )
+                    previous = current
+                    current = following
+                prime_power = current
+            result = (
+                prime_power if result is None
+                else result * prime_power)
+        if result is None:
+            prime_matrix = ambient.p1list().higher_weight_hecke_matrix(
+                ambient.weight(), ambient.sign(), 2)
+            result = prime_matrix ** 0
+        return self._restrict_ambient_matrix(result)
+
     def hecke_matrix(self, index: Any) -> Any:
         r"""
         Return the exact matrix of the Hecke operator `T_index`.
@@ -2468,6 +2901,23 @@ class ModularSymbolsSpace(sage.Parent):
                     # RREF coefficient rows acting on an RREF row basis
                     # preserve the latter's ordered pivot columns.
                     basis._rref_cache = basis
+                kind = 'Cuspidal'
+                if self._sign == 1:
+                    kind += ' Plus'
+                elif self._sign == -1:
+                    kind += ' Minus'
+                self._cuspidal_cache = self._new_coordinate_subspace(
+                    basis, kind)
+            return self._cuspidal_cache
+        if self._supports_native_higher_weight():
+            if self._cuspidal_cache is None:
+                restricted_boundary = (
+                    self.basis_matrix()._sparse_left_multiply(
+                        self.ambient_module()._boundary_matrix()))
+                coefficients = restricted_boundary.left_kernel_matrix()
+                basis = coefficients._sparse_left_multiply(
+                    self.basis_matrix())
+                basis._rref_cache = basis
                 kind = 'Cuspidal'
                 if self._sign == 1:
                     kind += ' Plus'
@@ -2559,8 +3009,10 @@ def ModularSymbols(
     Weight-2 full `Gamma_0(N)` spaces with sign zero provide exact matrices
     for every Hecke operator `T_n`. Prime operators are assembled natively
     from a minimal Manin presentation; general indices use multiplicativity
-    and the weight-2 prime-power recurrence. Additional guided-tour models
-    cover selected higher-weight, character, and cuspidal examples.
+    and the weight-2 prime-power recurrence. Higher even weights over `QQ`
+    use exact triple Manin symbols `(i,u,v)` and construct sign `0`, `+1`,
+    or `-1` directly; prime Hecke operators use Cremona--Heilbronn matrices
+    and composite indices use multiplicativity and prime-power recurrences.
     """
     weight = _positive_integer(weight, 'weight')
     sign = _exact_integer(sign, 'sign')
@@ -2935,7 +3387,8 @@ runtime.register_doc(
             'status': 'compatible',
             'notes': (
                 'Full weight-2 Gamma0 sign-zero spaces support exact T_n '
-                'matrices for every positive index.'
+                'matrices for every positive index. Higher-weight Gamma0 '
+                'spaces over QQ support all signs and exact T_n matrices.'
             ),
         },
         'provenance': [
@@ -2957,15 +3410,87 @@ runtime.register_doc(
         ],
         'implementation': {
             'algorithm': (
-                'Native prime Hecke matrices, multiplicativity, Up powers, '
-                'and the weight-2 good-prime recurrence'
+                'Native prime Hecke matrices, Cremona-Heilbronn '
+                'representatives, multiplicativity, Up powers, and the '
+                'weight-k good-prime recurrence'
             ),
         },
         'limitations': [
             (
-                'The general engine currently requires weight-2 Gamma0 '
-                'spaces with trivial character; ambient, cuspidal, and '
-                'star-eigenspace restrictions are supported.'
+                'The native engine currently requires Gamma0 spaces with '
+                'trivial character over QQ; ambient, cuspidal, and directly '
+                'constructed signed restrictions are supported.'
+            ),
+        ],
+    },
+)
+
+_p1list_higher_presentation_method = runtime.reflect.get(
+    _p1list_prototype, 'higher_weight_presentation')
+runtime.register_doc(
+    'P1List.higher_weight_presentation',
+    _p1list_higher_presentation_method,
+    {
+        'kind': 'method',
+        'module': 'sage.modular.modsym.manin_symbol_list',
+        'tags': [
+            'number theory',
+            'modular symbols',
+            'higher weight',
+            'Manin symbols',
+            'exact linear algebra',
+        ],
+        'backends': [
+            'Sage.js native signed union-find',
+            'FLINT sparse rational matrices',
+        ],
+        'sage_compatibility': {
+            'status': 'extension',
+            'notes': (
+                'Exposes the internal exact quotient and reduction matrix '
+                'used by higher-weight Gamma0 modular symbols.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'literature-implemented',
+                'source': (
+                    'William Stein, Computing with Modular Symbols'
+                ),
+                'url': (
+                    'https://wstein.org/books/modform/modform/'
+                    'modular_symbols.html'
+                ),
+            },
+            {
+                'kind': 'sage-derived',
+                'source': (
+                    'SageMath manin_symbol_list and relation_matrix'
+                ),
+                'url': (
+                    'https://github.com/sagemath/sage/tree/develop/'
+                    'src/sage/modular/modsym'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'author-owned-reference',
+                'source': (
+                    'William Stein original Magma Geometry/ModSym '
+                    'implementation'
+                ),
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Triple (i,u,v) generators; signed two-term union-find; '
+                'binomial order-three relations; exact sparse FLINT RREF'
+            ),
+        },
+        'limitations': [
+            (
+                'Very large presentations need the planned fully sparse '
+                'reduction-map representation to avoid dense output.'
             ),
         ],
     },

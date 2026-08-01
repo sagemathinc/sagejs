@@ -97,6 +97,105 @@ test("Gamma1 and character cuspidal modular-symbol models", async () => {
   }
 });
 
+test("higher-weight Gamma0 Manin symbols, signs, and Hecke", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "data = []",
+            "for N,k in [(3,6),(11,4),(12,4),(37,4)]:",
+            "    for sign in [0,1,-1]:",
+            "        M = ModularSymbols(N,k,sign=sign)",
+            "        data.append((N,k,sign,M.dimension(), " +
+              "M.hecke_matrix(2).charpoly().factor()))",
+            "data",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(3, 6, 0, 4, (x + 6)^2 * (x - 33)^2), " +
+        "(3, 6, 1, 3, (x + 6) * (x - 33)^2), " +
+        "(3, 6, -1, 1, x + 6), " +
+        "(11, 4, 0, 6, (x - 9)^2 * (x^2 - 2*x - 2)^2), " +
+        "(11, 4, 1, 4, (x - 9)^2 * (x^2 - 2*x - 2)), " +
+        "(11, 4, -1, 2, x^2 - 2*x - 2), " +
+        "(12, 4, 0, 12, x^6 * (x + 2)^2 * (x - 1)^2 * " +
+          "(x - 8)^2), " +
+        "(12, 4, 1, 9, x^4 * (x + 2) * (x - 1)^2 * " +
+          "(x - 8)^2), " +
+        "(12, 4, -1, 3, x^2 * (x + 2)), " +
+        "(37, 4, 0, 20, (x - 9)^2 * " +
+          "(x^4 + 6*x^3 - x^2 - 16*x + 6)^2 * " +
+          "(x^5 - 4*x^4 - 21*x^3 + 74*x^2 + 102*x - 296)^2), " +
+        "(37, 4, 1, 11, (x - 9)^2 * " +
+          "(x^4 + 6*x^3 - x^2 - 16*x + 6) * " +
+          "(x^5 - 4*x^4 - 21*x^3 + 74*x^2 + 102*x - 296)), " +
+        "(37, 4, -1, 9, " +
+          "(x^4 + 6*x^3 - x^2 - 16*x + 6) * " +
+          "(x^5 - 4*x^4 - 21*x^3 + 74*x^2 + 102*x - 296))]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "P = ModularSymbols(37,4,sign=1)",
+            "N = ModularSymbols(37,4,sign=-1)",
+            "[len(P.basis()), P.basis()[0], " +
+              "P.star_involution().matrix() == identity_matrix(QQ,11), " +
+              "N.star_involution().matrix() == -identity_matrix(QQ,9)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[11, [X^2,(0,1)], True, True]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "[ModularSymbols(100,4,sign=s).dimension() " +
+            "for s in [0,1,-1]]",
+        )
+      ).repr,
+      "[90, 48, 42]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "M = ModularSymbols(11,4,sign=1)",
+            "T2 = M.hecke_matrix(2)",
+            "[M.hecke_matrix(3).charpoly().factor(), " +
+              "M.hecke_matrix(4) == T2*T2 - identity_matrix(QQ,4)*8, " +
+              "M.hecke_matrix(6) == T2*M.hecke_matrix(3)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(x - 28)^2 * (x^2 + 2*x - 47), True, True]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "data = []",
+            "for N,sign in [(12,0),(12,1),(12,-1)," +
+              "(100,0),(100,1),(100,-1)]:",
+            "    M = ModularSymbols(N,4,sign=sign)",
+            "    C = M.cuspidal_subspace()",
+            "    data.append((N,sign,M.boundary_map().matrix().rank()," +
+              "C.dimension()))",
+            "data",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(12, 0, 6, 6), (12, 1, 6, 3), (12, -1, 0, 3), " +
+        "(100, 0, 18, 72), (100, 1, 12, 36), " +
+        "(100, -1, 6, 36)]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("native P1List representatives, normalization, and actions", async () => {
   const session = await createSage();
   try {
