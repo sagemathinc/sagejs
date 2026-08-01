@@ -25,6 +25,7 @@
 
 #include "algebraic.h"
 #include "matrix.h"
+#include "sparse_rational.h"
 
 typedef enum
 {
@@ -2472,9 +2473,26 @@ napi_value sagejs_matrix_right_kernel(
         slong free_col;
         slong basis_row;
         int is_pivot;
+        int sparse_reduced;
 
         fmpq_mat_init(reduced, rows, cols);
-        rank = fmpq_mat_rref(reduced, source->rational);
+        sparse_reduced = sagejs_fmpq_mat_prefers_sparse_rref(
+            source->rational);
+        if (sparse_reduced)
+        {
+            if (!sagejs_fmpq_mat_rref_sparse(
+                    reduced, &rank, source->rational))
+            {
+                fmpq_mat_clear(reduced);
+                napi_throw_error(env, NULL,
+                    "unable to allocate sparse rational kernel workspace");
+                return NULL;
+            }
+        }
+        else
+        {
+            rank = fmpq_mat_rref(reduced, source->rational);
+        }
         nullity = cols - rank;
         answer = new_matrix(env, SAGEJS_MATRIX_QQ, nullity, cols);
         if (answer == NULL)
@@ -2525,7 +2543,25 @@ napi_value sagejs_matrix_right_kernel(
             }
             basis_row++;
         }
-        fmpq_mat_rref(answer->rational, answer->rational);
+        if (sagejs_fmpq_mat_prefers_sparse_rref(answer->rational))
+        {
+            slong basis_rank;
+            if (!sagejs_fmpq_mat_rref_sparse(
+                    answer->rational, &basis_rank, answer->rational) ||
+                basis_rank != nullity)
+            {
+                free(pivots);
+                fmpq_mat_clear(reduced);
+                finalize_matrix(env, answer, NULL);
+                napi_throw_error(env, NULL,
+                    "sparse rational kernel normalization failed");
+                return NULL;
+            }
+        }
+        else
+        {
+            fmpq_mat_rref(answer->rational, answer->rational);
+        }
         free(pivots);
         fmpq_mat_clear(reduced);
         return wrap_matrix(env, answer);

@@ -2446,21 +2446,21 @@ class ModularSymbolsSpace(sage.Parent):
             if self._cuspidal_cache is None:
                 ambient = self.ambient_module()
                 change = ambient._ambient_change_of_basis()
-                if change is None:
-                    ambient_cusp_basis = (
-                        ambient.p1list().cuspidal_basis_matrix()
-                        .change_ring(ambient.base_ring()))
-                    # Fundamental cycles are emitted in reverse-greedy RREF.
-                    ambient_cusp_basis._rref_cache = ambient_cusp_basis
-                else:
-                    ambient_cusp_basis = (
-                        ambient._boundary_matrix().left_kernel_matrix())
                 if self.is_ambient():
-                    basis = ambient_cusp_basis
+                    if change is None:
+                        basis = (
+                            ambient.p1list().cuspidal_basis_matrix()
+                            .change_ring(ambient.base_ring()))
+                        # Fundamental cycles are emitted in reverse-greedy
+                        # RREF.
+                        basis._rref_cache = basis
+                    else:
+                        basis = (
+                            ambient._boundary_matrix().left_kernel_matrix())
                 else:
                     restricted_boundary = (
-                        self.basis_matrix()
-                        * self.ambient_module()._boundary_matrix())
+                        self.basis_matrix()._sparse_left_multiply(
+                            self.ambient_module()._boundary_matrix()))
                     coefficients = (
                         restricted_boundary.left_kernel_matrix())
                     basis = coefficients._sparse_left_multiply(

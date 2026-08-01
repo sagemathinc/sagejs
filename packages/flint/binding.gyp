@@ -14,7 +14,8 @@
         "src/matrix.c",
         "src/modsym_core.c",
         "src/multivariate.c",
-        "src/p1.c"
+        "src/p1.c",
+        "src/sparse_rational.c"
       ],
       "include_dirs": ["<(native_prefix)/include", "include"],
       "libraries": [

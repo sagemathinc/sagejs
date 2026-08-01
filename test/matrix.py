@@ -195,6 +195,29 @@ assert rational_kernel.basis_matrix() == matrix(
     ],
 )
 
+# Thin sparse rational matrices use exact sparse elimination internally.
+def sparse_rational_entry(row, col):
+    if col == row:
+        return QQ(row + 1, row + 2)
+    if col == 20 + row:
+        return 2
+    if col == 299 - row:
+        return -3
+    return 0
+
+
+sparse_rational_matrix = matrix(
+    QQ,
+    20,
+    300,
+    sparse_rational_entry,
+)
+sparse_rational_kernel = sparse_rational_matrix.right_kernel_matrix()
+assert sparse_rational_kernel.dimensions() == (280, 300)
+assert sparse_rational_matrix * sparse_rational_kernel.T == zero_matrix(
+    QQ, 20, 280)
+assert sparse_rational_kernel == sparse_rational_kernel.rref()
+
 left_line = matrix(ZZ, [[0], [1]]).kernel()
 slanted_line = matrix(ZZ, [[2], [-1]]).kernel()
 line_sum = left_line + slanted_line

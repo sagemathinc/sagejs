@@ -342,6 +342,19 @@ test("boundary maps, cuspidal spaces, star eigenspaces, and elements", async () 
       ).repr,
       "[(-1, 147, 131, 0, 2), (1, 154, 131, 0, 2)]",
     );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "P = ModularSymbols(389, 2, sign=1)",
+            "A = P.ambient_module()",
+            "S = P.cuspidal_subspace()",
+            "[S.dimension(), A.p1list()._cuspidal_basis_cache is None]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[32, True]",
+    );
   } finally {
     await session.close();
   }

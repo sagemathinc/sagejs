@@ -104,9 +104,17 @@ signed-space construction.
 
 Restricting the boundary map to that signed basis computes signed-cuspidal
 spaces without a generic large-subspace intersection. Sparse-left exact
-products skip the overwhelmingly zero coefficient entries. Native pivot
-extraction and row/column selection keep large restricted Hecke matrices
-inside FLINT instead of transferring each entry through the language
+products skip the overwhelmingly zero coefficient entries. The resulting
+boundary matrices are thin and sparse (at level 10,000 the plus boundary has
+1504 rows, 180 columns, and about 1.3% density), so the matrix kernel layer
+selects an exact sparse `fmpq` RREF instead of applying dense rational RREF
+twice. This is a general matrix optimization, not a modular-symbol heuristic;
+dense inputs continue to use FLINT's dense algorithms. Signed subspaces also
+avoid constructing the full ambient cuspidal cycle basis, since only their
+restricted boundary kernel is needed.
+
+Native pivot extraction and row/column selection keep large restricted Hecke
+matrices inside FLINT instead of transferring each entry through the language
 boundary. Arbitrary rational paths can also be reduced to genuine coordinate
 elements, on which boundary, star, and Hecke actions agree with the row-action
 matrices exposed by Sage.
