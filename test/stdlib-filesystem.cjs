@@ -27,12 +27,12 @@ async function testFilesystemModules() {
         "(root / 'src' / 'main.py').write_text('print(1)\\n')",
         "(root / 'src' / 'nested' / 'data.txt').write_text('data')",
         "(root / '.hidden.py').write_text('hidden')",
-        "print(sorted(str(path.relative_to(root)) for path in root.rglob('*.py')))",
-        "print(glob.glob('**/*.txt', root_dir=root, recursive=True))",
-        "print(glob.glob('*.py', root_dir=root), glob.glob('*.py', root_dir=root, include_hidden=True))",
+        "print(sorted(path.relative_to(root).as_posix() for path in root.rglob('*.py')))",
+        "print([Path(path).as_posix() for path in glob.glob('**/*.txt', root_dir=root, recursive=True)])",
+        "print([Path(path).as_posix() for path in glob.glob('*.py', root_dir=root)], [Path(path).as_posix() for path in glob.glob('*.py', root_dir=root, include_hidden=True)])",
         "source = root / 'src' / 'main.py'",
         "print(source.name, source.stem, source.suffix, source.parent.name, source.read_text().strip())",
-        "print(source.with_suffix('.sage').name, source.relative_to(root))",
+        "print(source.with_suffix('.sage').name, source.relative_to(root).as_posix())",
         "destination = Path('copied')",
         "shutil.copytree(root / 'src', destination)",
         "print(sorted(path.name for path in destination.iterdir()))",
@@ -121,4 +121,3 @@ testFilesystemModules()
     console.error(error);
     process.exitCode = 1;
   });
-
