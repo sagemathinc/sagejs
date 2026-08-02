@@ -1274,6 +1274,35 @@ Plot list data with a logarithmic vertical axis.
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `list_plot3d`
+
+```sage
+list_plot3d(values, interpolation_type='default', point_list=None, **options)
+```
+
+Plot a matrix, rectangular array, or list of `(x, y, z)` samples.
+
+Rectangular data preserves its exact grid.  Scattered samples use
+Plotly's planar Delaunay triangulation; one or two samples become a point
+or line exactly as in Sage.  The `default` and `linear` interpolation
+modes are currently supported; higher-order Clough--Tocher and spline
+interpolation report that they are not implemented instead of silently
+returning a different surface.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, surfaces
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `log2`
 
 ```sage
@@ -2800,6 +2829,28 @@ Plot the region where one or more boolean functions are true.
 ### References
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `revolution_plot3d`
+
+```sage
+revolution_plot3d(curve, trange, phirange=None, parallel_axis='z', axis=None, print_vector=False, show_curve=False, **options)
+```
+
+Revolve a function or parametric curve around a coordinate axis.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, surfaces
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
 ## `scatter_plot`
 

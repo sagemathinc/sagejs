@@ -589,6 +589,87 @@ class Mesh3d(GraphicPrimitive3d):
     __str__ = __repr__
     toString = __repr__
 
+    def _wireframe_coordinates(self) -> Any:
+        """Return depth-separated line segments for all distinct edges."""
+        vertex_count = len(self.vertices)
+        normals = [[0.0, 0.0, 0.0] for _index in range(vertex_count)]
+        edges = {}
+        for face in self.faces:
+            if len(face) < 3:
+                continue
+            origin_index = int(face[0])
+            origin = self.vertices[origin_index]
+            for index in range(1, len(face) - 1):
+                left_index = int(face[index])
+                right_index = int(face[index + 1])
+                left = self.vertices[left_index]
+                right = self.vertices[right_index]
+                tangent_left = [
+                    left[coordinate] - origin[coordinate]
+                    for coordinate in range(3)
+                ]
+                tangent_right = [
+                    right[coordinate] - origin[coordinate]
+                    for coordinate in range(3)
+                ]
+                normal = _cross_product(tangent_left, tangent_right)
+                for vertex_index in (
+                    origin_index, left_index, right_index
+                ):
+                    for coordinate in range(3):
+                        normals[vertex_index][coordinate] += normal[coordinate]
+            for index in range(len(face)):
+                left_index = int(face[index])
+                right_index = int(face[(index + 1) % len(face)])
+                lower = min(left_index, right_index)
+                upper = max(left_index, right_index)
+                key = str(lower) + ':' + str(upper)
+                if key not in edges:
+                    edges[key] = [left_index, right_index]
+
+        minimum = list(self.vertices[0])
+        maximum = list(self.vertices[0])
+        for vertex in self.vertices:
+            for coordinate in range(3):
+                minimum[coordinate] = min(
+                    minimum[coordinate], vertex[coordinate])
+                maximum[coordinate] = max(
+                    maximum[coordinate], vertex[coordinate])
+        diagonal = runtime.math.sqrt(sum(
+            (maximum[index] - minimum[index]) ** 2
+            for index in range(3)
+        ))
+        relative_offset = float(_g3d_option_get(
+            self._options, 'mesh_offset', 0.0001))
+        offset = relative_offset * (diagonal if diagonal > 0 else 1)
+        for vertex_index in range(vertex_count):
+            normal_length = runtime.math.sqrt(
+                _dot_product(normals[vertex_index], normals[vertex_index]))
+            if normal_length <= 1e-15:
+                normals[vertex_index] = [0, 0, 1]
+            else:
+                normals[vertex_index] = [
+                    value / normal_length
+                    for value in normals[vertex_index]
+                ]
+
+        mesh_x = []
+        mesh_y = []
+        mesh_z = []
+        for sign in (-1, 1):
+            for key in edges:
+                edge = edges[key]
+                for vertex_index in edge:
+                    vertex = self.vertices[vertex_index]
+                    normal = normals[vertex_index]
+                    mesh_x.append(vertex[0] + sign * offset * normal[0])
+                    mesh_y.append(vertex[1] + sign * offset * normal[1])
+                    mesh_z.append(vertex[2] + sign * offset * normal[2])
+                mesh_x.append(None)
+                mesh_y.append(None)
+                mesh_z.append(None)
+        return runtime.math_tuple([mesh_x, mesh_y, mesh_z])
+
     def _plotly_traces(self) -> list[Any]:
         xdata = [point[0] for point in self.vertices]
         ydata = [point[1] for point in self.vertices]
@@ -643,7 +724,66 @@ class Mesh3d(GraphicPrimitive3d):
         legend_label = _g3d_option_get(options, 'legend_label')
         if legend_label is not None:
             runtime.reflect.set(trace, 'name', str(legend_label))
-        return [trace]
+        traces = [trace]
+        if bool(_g3d_option_get(options, 'mesh', False)):
+            wireframe = self._wireframe_coordinates()
+            traces.append(_g3d_native_record(
+                type='scatter3d',
+                mode='lines',
+                x=wireframe[0],
+                y=wireframe[1],
+                z=wireframe[2],
+                line=_g3d_native_record(
+                    color=_g3d_color_value(
+                        _g3d_option_get(options, 'mesh_color', 'black')),
+                    width=float(_g3d_option_get(
+                        options,
+                        'mesh_thickness',
+                        _g3d_option_get(options, 'thickness', 1),
+                    )),
+                ),
+                opacity=float(_g3d_option_get(options, 'opacity', 1)),
+                hoverinfo='skip',
+                showlegend=False,
+            ))
+        return traces
+
+
+class ScatteredSurface3d(GraphicPrimitive3d):
+    """A surface triangulated from scattered ``(x, y, z)`` samples."""
+
+    def __init__(
+        self,
+        points: Sequence[tuple[float, float, float]],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive3d.__init__(self, options)
+        self.points = list(points)
+
+    def __repr__(self) -> str:
+        return (
+            '3D surface triangulated from ' +
+            str(len(self.points)) + ' points'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_traces(self) -> list[Any]:
+        options = self._options
+        color = _g3d_option_get(options, 'color', 'steelblue')
+        return [_g3d_native_record(
+            type='mesh3d',
+            x=[point[0] for point in self.points],
+            y=[point[1] for point in self.points],
+            z=[point[2] for point in self.points],
+            alphahull=-1,
+            delaunayaxis='z',
+            color=_g3d_color_value(color),
+            opacity=float(_g3d_option_get(options, 'opacity', 1)),
+            flatshading=False,
+            showlegend=False,
+        )]
 
 
 class Text3d(GraphicPrimitive3d):
@@ -755,6 +895,115 @@ class Surface3d(GraphicPrimitive3d):
     __str__ = __repr__
     toString = __repr__
 
+    def _wireframe_coordinates(self) -> Any:
+        """Return a two-sided, depth-separated copy of the sample grid."""
+        row_count = len(self.xdata)
+        column_count = 0 if row_count == 0 else len(self.xdata[0])
+        mesh_x = []
+        mesh_y = []
+        mesh_z = []
+        if row_count == 0 or column_count == 0:
+            return runtime.math_tuple([mesh_x, mesh_y, mesh_z])
+
+        minimum = [
+            self.xdata[0][0], self.ydata[0][0], self.zdata[0][0]]
+        maximum = list(minimum)
+        for row_index in range(row_count):
+            for column_index in range(column_count):
+                point = [
+                    self.xdata[row_index][column_index],
+                    self.ydata[row_index][column_index],
+                    self.zdata[row_index][column_index],
+                ]
+                for coordinate in range(3):
+                    minimum[coordinate] = min(
+                        minimum[coordinate], point[coordinate])
+                    maximum[coordinate] = max(
+                        maximum[coordinate], point[coordinate])
+        diagonal = runtime.math.sqrt(sum(
+            (maximum[index] - minimum[index]) ** 2
+            for index in range(3)
+        ))
+        relative_offset = float(_g3d_option_get(
+            self._options, 'mesh_offset', 0.0001))
+        offset = relative_offset * (diagonal if diagonal > 0 else 1)
+
+        offset_x = []
+        offset_y = []
+        offset_z = []
+        for row_index in range(row_count):
+            xrow = []
+            yrow = []
+            zrow = []
+            before_row = max(0, row_index - 1)
+            after_row = min(row_count - 1, row_index + 1)
+            for column_index in range(column_count):
+                before_column = max(0, column_index - 1)
+                after_column = min(column_count - 1, column_index + 1)
+                tangent_u = [
+                    self.xdata[row_index][after_column] -
+                    self.xdata[row_index][before_column],
+                    self.ydata[row_index][after_column] -
+                    self.ydata[row_index][before_column],
+                    self.zdata[row_index][after_column] -
+                    self.zdata[row_index][before_column],
+                ]
+                tangent_v = [
+                    self.xdata[after_row][column_index] -
+                    self.xdata[before_row][column_index],
+                    self.ydata[after_row][column_index] -
+                    self.ydata[before_row][column_index],
+                    self.zdata[after_row][column_index] -
+                    self.zdata[before_row][column_index],
+                ]
+                normal = _cross_product(tangent_u, tangent_v)
+                normal_length = runtime.math.sqrt(
+                    _dot_product(normal, normal))
+                if normal_length <= 1e-15:
+                    normal = [0, 0, 1]
+                    normal_length = 1
+                xrow.append(offset * normal[0] / normal_length)
+                yrow.append(offset * normal[1] / normal_length)
+                zrow.append(offset * normal[2] / normal_length)
+            offset_x.append(xrow)
+            offset_y.append(yrow)
+            offset_z.append(zrow)
+
+        # Plotly renders each WebGL trace with its own depth buffer behavior.
+        # Drawing the grid exactly on the surface can therefore erase every
+        # line through z-fighting.  Put the same tiny grid on both sides of
+        # the surface so it remains visible from either camera direction.
+        for sign in (-1, 1):
+            for row_index in range(row_count):
+                for column_index in range(column_count):
+                    mesh_x.append(
+                        self.xdata[row_index][column_index] +
+                        sign * offset_x[row_index][column_index])
+                    mesh_y.append(
+                        self.ydata[row_index][column_index] +
+                        sign * offset_y[row_index][column_index])
+                    mesh_z.append(
+                        self.zdata[row_index][column_index] +
+                        sign * offset_z[row_index][column_index])
+                mesh_x.append(None)
+                mesh_y.append(None)
+                mesh_z.append(None)
+            for column_index in range(column_count):
+                for row_index in range(row_count):
+                    mesh_x.append(
+                        self.xdata[row_index][column_index] +
+                        sign * offset_x[row_index][column_index])
+                    mesh_y.append(
+                        self.ydata[row_index][column_index] +
+                        sign * offset_y[row_index][column_index])
+                    mesh_z.append(
+                        self.zdata[row_index][column_index] +
+                        sign * offset_z[row_index][column_index])
+                mesh_x.append(None)
+                mesh_y.append(None)
+                mesh_z.append(None)
+        return runtime.math_tuple([mesh_x, mesh_y, mesh_z])
+
     def _plotly_traces(self) -> list[Any]:
         options = self._options
         color = _g3d_option_get(options, 'color', 'steelblue')
@@ -773,27 +1022,10 @@ class Surface3d(GraphicPrimitive3d):
             runtime.reflect.set(trace, 'name', str(legend_label))
         traces = [trace]
         if bool(_g3d_option_get(options, 'mesh', False)):
-            mesh_x = []
-            mesh_y = []
-            mesh_z = []
-            row_count = len(self.xdata)
-            column_count = 0 if row_count == 0 else len(self.xdata[0])
-            for row_index in range(row_count):
-                for column_index in range(column_count):
-                    mesh_x.append(self.xdata[row_index][column_index])
-                    mesh_y.append(self.ydata[row_index][column_index])
-                    mesh_z.append(self.zdata[row_index][column_index])
-                mesh_x.append(None)
-                mesh_y.append(None)
-                mesh_z.append(None)
-            for column_index in range(column_count):
-                for row_index in range(row_count):
-                    mesh_x.append(self.xdata[row_index][column_index])
-                    mesh_y.append(self.ydata[row_index][column_index])
-                    mesh_z.append(self.zdata[row_index][column_index])
-                mesh_x.append(None)
-                mesh_y.append(None)
-                mesh_z.append(None)
+            wireframe = self._wireframe_coordinates()
+            mesh_x = wireframe[0]
+            mesh_y = wireframe[1]
+            mesh_z = wireframe[2]
             traces.append(_g3d_native_record(
                 type='scatter3d',
                 mode='lines',
@@ -1658,6 +1890,242 @@ def cylindrical_plot3d(
     )
 
 
+def list_plot3d(
+    values: Any,
+    interpolation_type: str = 'default',
+    point_list: Any = None,
+    **options: Any,
+) -> Graphics3d:
+    r"""
+    Plot a matrix, rectangular array, or list of ``(x, y, z)`` samples.
+
+    Rectangular data preserves its exact grid.  Scattered samples use
+    Plotly's planar Delaunay triangulation; one or two samples become a point
+    or line exactly as in Sage.  The ``default`` and ``linear`` interpolation
+    modes are currently supported; higher-order Clough--Tocher and spline
+    interpolation report that they are not implemented instead of silently
+    returning a different surface.
+    """
+    is_matrix = (
+        hasattr(values, 'nrows') and hasattr(values, 'ncols'))
+    if is_matrix:
+        row_count = int(values.nrows())
+        column_count = int(values.ncols())
+        rows = [
+            [float(values[row, column]) for column in range(column_count)]
+            for row in range(row_count)
+        ]
+    else:
+        rows = list(values)
+        if len(rows) == 0:
+            return Graphics3d()
+        is_points = bool(point_list) or isinstance(rows[0], tuple)
+        if is_points:
+            points = [_g3d_point(point_value) for point_value in rows]
+            if len(points) == 1:
+                return point3d(points[0], **options)
+            if len(points) == 2:
+                return line3d(points, **options)
+            for left_index in range(len(points)):
+                for right_index in range(left_index + 1, len(points)):
+                    if (
+                        points[left_index][0] == points[right_index][0]
+                        and points[left_index][1] == points[right_index][1]
+                        and points[left_index][2] != points[right_index][2]
+                    ):
+                        raise ValueError(
+                            'points with same x,y coordinates and different '
+                            'z coordinates were given. Interpolation cannot '
+                            'handle this.')
+            if interpolation_type not in (
+                'default', 'linear', 'clough', 'spline'):
+                raise ValueError('unknown interpolation type')
+            if interpolation_type in ('clough', 'spline'):
+                raise NotImplementedError(
+                    interpolation_type + ' list_plot3d interpolation is not '
+                    'implemented yet')
+            defaults = {
+                'color': 'steelblue',
+                'opacity': 1,
+            }
+            actual_options = _g3d_copy_options(options)
+            if (
+                _g3d_option_has(actual_options, 'alpha')
+                and not _g3d_option_has(actual_options, 'opacity')
+            ):
+                actual_options['opacity'] = _g3d_option_pop(
+                    actual_options, 'alpha')
+            if (
+                _g3d_option_has(actual_options, 'rgbcolor')
+                and not _g3d_option_has(actual_options, 'color')
+            ):
+                actual_options['color'] = _g3d_option_pop(
+                    actual_options, 'rgbcolor')
+            _g3d_option_update(defaults, actual_options)
+            graphics_options = _g3d_graphics_options(defaults)
+            graphic = Graphics3d()
+            graphic.set_extra_kwds(graphics_options)
+            graphic.add_primitive(ScatteredSurface3d(points, defaults))
+            return graphic
+        rows = [list(row) for row in rows]
+        row_count = len(rows)
+        column_count = len(rows[0])
+        for row in rows:
+            if len(row) != column_count:
+                raise ValueError('all rows must have the same length')
+        rows = [
+            [float(value) for value in row]
+            for row in rows
+        ]
+    if interpolation_type not in ('default', 'linear'):
+        if interpolation_type in ('clough', 'spline'):
+            raise NotImplementedError(
+                interpolation_type + ' list_plot3d interpolation is not '
+                'implemented yet')
+        raise ValueError('unknown interpolation type')
+    if row_count == 0 or column_count == 0:
+        return Graphics3d()
+    if row_count == 1 and column_count == 1:
+        return point3d((0, 0, rows[0][0]), **options)
+    xdata = [
+        [float(row) for _column in range(column_count)]
+        for row in range(row_count)
+    ]
+    ydata = [
+        [float(column) for column in range(column_count)]
+        for _row in range(row_count)
+    ]
+    defaults = {
+        'color': 'steelblue',
+        'opacity': 1,
+        'mesh': False,
+        'dots': False,
+        'legend_label': None,
+    }
+    actual_options = _g3d_copy_options(options)
+    if (
+        _g3d_option_has(actual_options, 'alpha')
+        and not _g3d_option_has(actual_options, 'opacity')
+    ):
+        actual_options['opacity'] = _g3d_option_pop(actual_options, 'alpha')
+    if (
+        _g3d_option_has(actual_options, 'rgbcolor')
+        and not _g3d_option_has(actual_options, 'color')
+    ):
+        actual_options['color'] = _g3d_option_pop(actual_options, 'rgbcolor')
+    _g3d_option_update(defaults, actual_options)
+    graphics_options = _g3d_graphics_options(defaults)
+    graphic = Graphics3d()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(Surface3d(xdata, ydata, rows, defaults))
+    return graphic
+
+
+def revolution_plot3d(
+    curve: Any,
+    trange: Any,
+    phirange: Any = None,
+    parallel_axis: str = 'z',
+    axis: Any = None,
+    print_vector: bool = False,
+    show_curve: bool = False,
+    **options: Any,
+) -> Graphics3d:
+    r"""Revolve a function or parametric curve around a coordinate axis."""
+    if parallel_axis not in ('x', 'y', 'z'):
+        raise ValueError("parallel_axis must be either 'x', 'y', or 'z'")
+    tvariable, _tmin, _tmax = _g3d_range(trange)
+    axis_values = [0, 0] if axis is None else list(axis)
+    if len(axis_values) != 2:
+        raise ValueError('axis must contain exactly two coordinates')
+    first_axis_coordinate = float(axis_values[0])
+    second_axis_coordinate = float(axis_values[1])
+    if phirange is None:
+        actual_phirange = runtime.math_tuple(
+            [0.0, 2.0 * runtime.math.PI])
+    else:
+        phi_values = list(phirange)
+        if len(phi_values) not in (2, 3):
+            raise ValueError(
+                'phirange must contain two endpoints or a variable and two '
+                'endpoints')
+        actual_phirange = phirange
+    _phivariable, phimin, phimax = _g3d_range(actual_phirange)
+    surface_trange = runtime.math_tuple([_tmin, _tmax])
+    surface_phirange = runtime.math_tuple([phimin, phimax])
+    if isinstance(curve, (list, tuple)):
+        components = list(curve)
+        if len(components) == 2:
+            components = [components[0], 0, components[1]]
+        elif len(components) != 3:
+            raise ValueError('curve must have two or three components')
+    else:
+        def curve_parameter(value: Any) -> Any:
+            return value
+
+        components = [curve_parameter, 0, curve]
+    variables = [] if tvariable is None else [tvariable]
+    callables = [
+        _g3d_component_callable(component, variables)
+        for component in components
+    ]
+
+    def revolved_coordinate(index: int) -> Any:
+        def evaluated(tvalue: Any, phi: Any) -> float:
+            xvalue = float(callables[0](tvalue))
+            yvalue = float(callables[1](tvalue))
+            zvalue = float(callables[2](tvalue))
+            cosine = runtime.math.cos(float(phi))
+            sine = runtime.math.sin(float(phi))
+            if parallel_axis == 'z':
+                dx = xvalue - first_axis_coordinate
+                dy = yvalue - second_axis_coordinate
+                transformed = [
+                    dx * cosine - dy * sine + first_axis_coordinate,
+                    dx * sine + dy * cosine + second_axis_coordinate,
+                    zvalue,
+                ]
+            elif parallel_axis == 'x':
+                dy = yvalue - first_axis_coordinate
+                dz = zvalue - second_axis_coordinate
+                transformed = [
+                    xvalue,
+                    dy * cosine - dz * sine + first_axis_coordinate,
+                    dy * sine + dz * cosine + second_axis_coordinate,
+                ]
+            else:
+                dx = xvalue - first_axis_coordinate
+                dz = zvalue - second_axis_coordinate
+                transformed = [
+                    dx * cosine - dz * sine + first_axis_coordinate,
+                    yvalue,
+                    dx * sine + dz * cosine + second_axis_coordinate,
+                ]
+            return transformed[index]
+
+        return evaluated
+
+    parametrization = [
+        revolved_coordinate(0),
+        revolved_coordinate(1),
+        revolved_coordinate(2),
+    ]
+    if print_vector:
+        print(
+            'surface of revolution around the ' + parallel_axis +
+            '-parallel axis through ' + str(tuple(axis_values)))
+    answer = _g3d_surface(
+        parametrization, surface_trange, surface_phirange, **options)
+    if show_curve:
+        answer = answer + parametric_plot3d(
+            components,
+            trange,
+            thickness=2,
+            rgbcolor=(1, 0, 0),
+        )
+    return answer
+
+
 def parametric_plot3d(
     functions: Sequence[Any],
     urange: Any,
@@ -1967,6 +2435,10 @@ for _doc_name, _doc_function, _doc_tags in [
      ['surfaces', 'coordinate transforms']),
     ('cylindrical_plot3d', cylindrical_plot3d,
      ['surfaces', 'coordinate transforms']),
+    ('list_plot3d', list_plot3d,
+     ['surfaces', 'data plots', 'interpolation']),
+    ('revolution_plot3d', revolution_plot3d,
+     ['surfaces', 'surfaces of revolution']),
     ('parametric_plot3d', parametric_plot3d, ['parametric plots']),
     ('sphere', sphere, ['shapes']),
 ]:

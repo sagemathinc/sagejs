@@ -47,7 +47,9 @@ async function main() {
     });
     assert.equal(surface.display?.data.data[1].type, "scatter3d");
     assert.equal(surface.display?.data.data[1].mode, "lines");
-    assert.equal(surface.display?.data.data[1].x.length, 24);
+    assert.equal(surface.display?.data.data[1].x.length, 48);
+    assert.ok(surface.display?.data.data[1].z[0] < 0);
+    assert.ok(surface.display?.data.data[1].z[24] > 0);
     assert.equal(surface.display?.data.data[1].line.color, "black");
     assert.equal(surface.display?.data.data[1].line.width, 1);
     assert.equal(surface.display?.data.data[1].opacity, 0.8);
@@ -258,6 +260,22 @@ async function main() {
       { x: 1, y: 1, z: 1 },
     );
 
+    const meshedIcosahedron = await session.evaluate(
+      "icosahedron(color='green', figsize=10, mesh=True, thickness=5)",
+    );
+    assert.deepEqual(
+      meshedIcosahedron.display?.data.data.map((trace) => trace.type),
+      ["mesh3d", "scatter3d"],
+    );
+    assert.equal(meshedIcosahedron.display?.data.data[0].color, "green");
+    assert.equal(
+      meshedIcosahedron.display?.data.data[1].line.color,
+      "black",
+    );
+    assert.equal(meshedIcosahedron.display?.data.data[1].line.width, 5);
+    assert.equal(meshedIcosahedron.display?.data.layout.width, 1000);
+    assert.equal(meshedIcosahedron.display?.data.layout.height, 750);
+
     assert.equal(
       (await session.evaluate(
         "[len(tetrahedron()[0].faces),len(cube()[0].faces)," +
@@ -336,6 +354,104 @@ async function main() {
     await assert.rejects(
       session.evaluate("Spherical('radius',['azimuth','height'])"),
       /variables were specified incorrectly/,
+    );
+
+    const listedGrid = await session.evaluate(
+      "list_plot3d([[1,2,3],[4,5,6]], color='gold', mesh=True)",
+    );
+    assert.deepEqual(listedGrid.display?.data.data[0].x, [
+      [0, 0, 0],
+      [1, 1, 1],
+    ]);
+    assert.deepEqual(listedGrid.display?.data.data[0].y, [
+      [0, 1, 2],
+      [0, 1, 2],
+    ]);
+    assert.deepEqual(listedGrid.display?.data.data[0].z, [
+      [1, 2, 3],
+      [4, 5, 6],
+    ]);
+    assert.equal(listedGrid.display?.data.data[0].colorscale[0][1], "gold");
+    assert.equal(listedGrid.display?.data.data[1].type, "scatter3d");
+
+    const listedMatrix = await session.evaluate(
+      "list_plot3d(matrix([[1,2],[3,4]]))",
+    );
+    assert.deepEqual(listedMatrix.display?.data.data[0].z, [
+      [1, 2],
+      [3, 4],
+    ]);
+
+    const listedPoints = await session.evaluate(
+      "list_plot3d([(0,0,0),(1,0,1),(0,1,2)], color='red')",
+    );
+    assert.equal(listedPoints.display?.data.data[0].type, "mesh3d");
+    assert.deepEqual(listedPoints.display?.data.data[0].x, [0, 1, 0]);
+    assert.equal(listedPoints.display?.data.data[0].alphahull, -1);
+    assert.equal(listedPoints.display?.data.data[0].delaunayaxis, "z");
+    assert.equal(listedPoints.display?.data.data[0].color, "red");
+    assert.equal(
+      (await session.evaluate("len(list_plot3d([]))")).repr,
+      "0",
+    );
+    assert.equal(
+      (await session.evaluate("list_plot3d([(1,2,3)])[0]")).repr,
+      "3D point set defined by 1 point(s)",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "list_plot3d([[0,0,0],[1,0,1],[0,1,2]], point_list=True)[0]",
+      )).repr,
+      "3D surface triangulated from 3 points",
+    );
+    await assert.rejects(
+      session.evaluate("list_plot3d([(0,0,1),(0,0,2),(1,0,0)])"),
+      /same x,y coordinates and different z coordinates/,
+    );
+    await assert.rejects(
+      session.evaluate(
+        "list_plot3d([(0,0,0),(1,0,1),(0,1,2)], " +
+          "interpolation_type='clough')",
+      ),
+      /clough list_plot3d interpolation is not implemented yet/,
+    );
+
+    const revolution = await session.evaluate(
+      "t=var('t'); revolution_plot3d(t^2,(t,0,1),plot_points=(3,3))",
+    );
+    assert.deepEqual(revolution.display?.data.data[0].x[0], [0, 0.5, 1]);
+    assert.deepEqual(revolution.display?.data.data[0].z, [
+      [0, 0.25, 1],
+      [0, 0.25, 1],
+      [0, 0.25, 1],
+    ]);
+    assert.ok(
+      Math.abs(revolution.display?.data.data[0].x[1][2] + 1) < 1e-12,
+    );
+    const translatedRevolution = await session.evaluate(
+      "revolution_plot3d((t,0,t),(t,0,1),parallel_axis='x'," +
+        "axis=(1,2),plot_points=(2,3),show_curve=True)",
+    );
+    assert.deepEqual(
+      translatedRevolution.display?.data.data.map((trace) => trace.type),
+      ["surface", "scatter3d"],
+    );
+    assert.deepEqual(translatedRevolution.display?.data.data[0].x, [
+      [0, 1],
+      [0, 1],
+      [0, 1],
+    ]);
+    assert.equal(translatedRevolution.display?.data.data[1].line.color,
+      "rgb(255,0,0)");
+    assert.match(
+      (await session.evaluate("list_plot3d.__doc__")).repr,
+      /matrix, rectangular array/,
+    );
+    await assert.rejects(
+      session.evaluate(
+        "revolution_plot3d(t,(t,0,1),parallel_axis='diagonal')",
+      ),
+      /parallel_axis must be either/,
     );
 
     await assert.rejects(
