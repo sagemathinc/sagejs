@@ -150,9 +150,18 @@ def _g3d_parse_figsize(figsize: Any) -> tuple[float, float]:
 
 
 def _g3d_point(value: Any) -> tuple[float, float, float]:
-    if not isinstance(value, (list, tuple)) or len(value) != 3:
+    if isinstance(value, (list, tuple)):
+        coordinates = list(value)
+    elif hasattr(value, '__iter__'):
+        coordinates = list(value)
+    else:
+        raise ValueError(
+            'points must have exactly three coordinates')
+    if len(coordinates) != 3:
         raise ValueError('points must have exactly three coordinates')
-    return float(value[0]), float(value[1]), float(value[2])
+    return (
+        float(coordinates[0]), float(coordinates[1]),
+        float(coordinates[2]))
 
 
 def _g3d_normalize_points(
@@ -448,6 +457,54 @@ class GraphicPrimitive3d:
 
     __str__ = __repr__
     toString = __repr__
+
+
+def _g3d_translated_values(values: Any, offset: float) -> Any:
+    """Translate a flat or rectangular Plotly coordinate collection."""
+    if isinstance(values, (list, tuple)):
+        return [
+            _g3d_translated_values(value, offset)
+            for value in values
+        ]
+    if values is None:
+        return None
+    return float(values) + offset
+
+
+class TranslatedPrimitive3d(GraphicPrimitive3d):
+    """A renderer-independent translation of a 3D primitive."""
+
+    def __init__(
+        self,
+        primitive: GraphicPrimitive3d,
+        offset: tuple[float, float, float],
+    ) -> None:
+        GraphicPrimitive3d.__init__(self, primitive.options())
+        self.primitive = primitive
+        self.offset = offset
+
+    def __repr__(self) -> str:
+        return 'Translated ' + repr(self.primitive)
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_traces(self) -> list[Any]:
+        traces = self.primitive._plotly_traces()
+        coordinate_names = ['x', 'y', 'z']
+        for trace in traces:
+            for index in range(3):
+                name = coordinate_names[index]
+                if runtime.reflect.has(trace, name):
+                    runtime.reflect.set(
+                        trace,
+                        name,
+                        _g3d_translated_values(
+                            runtime.reflect.get(trace, name),
+                            self.offset[index],
+                        ),
+                    )
+        return traces
 
 
 @runtime.sequence_class
@@ -1182,6 +1239,36 @@ class Graphics3d:
         if isinstance(other, Graphics3d):
             return other + self
         raise TypeError('can only add Graphics3d to Graphics3d')
+
+    def translate(self, *offset: Any) -> Graphics3d:
+        r"""
+        Return a copy translated by a three-dimensional vector.
+
+        The vector may be supplied either as one iterable or as three
+        positional coordinates.  Translation applies to every primitive in
+        a composite graphic, including surfaces, meshes and their visible
+        wireframes.
+
+        EXAMPLES::
+
+            sage: shifted = icosahedron().translate((0, 0, 0.5))
+            sage: shifted
+            Graphics3d Object
+            sage: line3d([(0, 0, 0), (1, 2, 3)]).translate(4, 5, 6)
+            Graphics3d Object
+        """
+        if len(offset) == 1:
+            vector_value = offset[0]
+        else:
+            vector_value = offset
+        vector = _g3d_point(vector_value)
+        answer = Graphics3d()
+        answer.set_extra_kwds(self._extra_kwds)
+        answer._show_legend = self._show_legend
+        for primitive in self._objects:
+            answer.add_primitive(
+                TranslatedPrimitive3d(primitive, vector))
+        return answer
 
     def _plotly_layout(self) -> Any:
         options = self._extra_kwds
