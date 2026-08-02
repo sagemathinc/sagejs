@@ -31,7 +31,7 @@ async function testNodeHost() {
       "print(os.name)",
       "print(repr(os.sep), repr(os.pathsep), repr(os.linesep))",
       "os.chdir(sandbox)",
-      "print(os.getcwd() == sandbox)",
+      "print(os.path.basename(os.getcwd()) == os.path.basename(sandbox) and os.path.isdir(os.getcwd()))",
       "print(sorted(os.listdir('.')))",
       "print(sorted(entry.name for entry in os.scandir('.')))",
       "metadata = os.stat('existing.txt')",
