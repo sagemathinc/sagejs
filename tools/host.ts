@@ -12,6 +12,7 @@ import * as nodeOs from "node:os";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
 import { spawnSync } from "node:child_process";
+import { Worker } from "node:worker_threads";
 
 import type { SageLanguageMode } from "./kernel-evaluator";
 import { NodeMultiprocessingAdapter } from "./multiprocessing-host";
@@ -32,6 +33,123 @@ interface HostFailure {
 type HostResult =
   | { ok: true; value: unknown }
   | { ok: false; error: HostFailure };
+
+const synchronousWorkerPrelude = String.raw`
+const { workerData } = require("node:worker_threads");
+const control = new Int32Array(workerData.shared, 0, 2);
+const output = new Uint8Array(workerData.shared, 8);
+function finish(value) {
+  let encoded;
+  try { encoded = Buffer.from(JSON.stringify({ ok: true, value })); }
+  catch (error) { encoded = Buffer.from(JSON.stringify({ ok: false, error: { code: error.code, message: error.message } })); }
+  if (encoded.length > output.length) encoded = Buffer.from(JSON.stringify({ ok: false, error: { code: "ENOBUFS", message: "synchronous host response exceeded buffer" } }));
+  output.set(encoded.subarray(0, output.length));
+  Atomics.store(control, 1, Math.min(encoded.length, output.length));
+  Atomics.store(control, 0, 1);
+  Atomics.notify(control, 0);
+}
+function fail(error) { finish({ __sagejs_error__: { code: error && error.code, message: error && error.message ? error.message : String(error) } }); }
+`;
+
+function synchronousWorkerRequest(
+  source: string,
+  data: Record<string, unknown>,
+  timeout = 30_000,
+): unknown {
+  const maximum = 64 * 1024 * 1024;
+  const shared = new SharedArrayBuffer(8 + maximum);
+  const control = new Int32Array(shared, 0, 2);
+  const worker = new Worker(synchronousWorkerPrelude + source, {
+    eval: true,
+    workerData: { ...data, shared },
+  });
+  const result = Atomics.wait(control, 0, 0, timeout);
+  void worker.terminate();
+  if (result === "timed-out") {
+    const error = new Error("synchronous host operation timed out") as NodeJS.ErrnoException;
+    error.code = "ETIMEDOUT";
+    throw error;
+  }
+  const length = Atomics.load(control, 1);
+  const encoded = Buffer.from(new Uint8Array(shared, 8, length)).toString("utf8");
+  const payload = JSON.parse(encoded) as {
+    ok: boolean;
+    value?: unknown;
+    error?: { code?: string; message?: string };
+  };
+  if (!payload.ok) {
+    const error = new Error(payload.error?.message ?? "host worker failed") as NodeJS.ErrnoException;
+    error.code = payload.error?.code;
+    throw error;
+  }
+  const value = payload.value as { __sagejs_error__?: { code?: string; message?: string } };
+  if (value?.__sagejs_error__) {
+    const error = new Error(value.__sagejs_error__.message ?? "host worker failed") as NodeJS.ErrnoException;
+    error.code = value.__sagejs_error__.code;
+    throw error;
+  }
+  return value;
+}
+
+const httpWorkerSource = String.raw`
+const http = require("node:http");
+const https = require("node:https");
+function perform(url, redirects) {
+  const target = new URL(url);
+  const transport = target.protocol === "https:" ? https : http;
+  const headers = Object.fromEntries(workerData.headers || []);
+  const request = transport.request(target, { method: workerData.method, headers }, response => {
+    const chunks = [];
+    response.on("data", chunk => chunks.push(chunk));
+    response.on("end", () => {
+      const status = response.statusCode || 0;
+      const location = response.headers.location;
+      if (location && status >= 300 && status < 400 && redirects < 10) {
+        perform(new URL(location, target).href, redirects + 1);
+        return;
+      }
+      const responseHeaders = [];
+      for (const [name, value] of Object.entries(response.headers)) {
+        if (Array.isArray(value)) for (const item of value) responseHeaders.push([name, item]);
+        else if (value !== undefined) responseHeaders.push([name, String(value)]);
+      }
+      finish({ status, reason: response.statusMessage || "", url: target.href, headers: responseHeaders, body: Buffer.concat(chunks).toString("base64") });
+    });
+  });
+  request.on("error", fail);
+  request.setTimeout(workerData.timeout, () => { const error = new Error("request timed out"); error.code = "ETIMEDOUT"; request.destroy(error); });
+  if (workerData.body) request.write(Buffer.from(workerData.body));
+  request.end();
+}
+perform(workerData.url, 0);
+`;
+
+const dnsWorkerSource = String.raw`
+require("node:dns").lookup(workerData.hostname, { family: workerData.family || 0 }, (error, address, family) => {
+  if (error) fail(error); else finish({ address, family });
+});
+`;
+
+const tcpWorkerSource = String.raw`
+const net = require("node:net");
+const chunks = [];
+let total = 0;
+let completed = false;
+const socket = net.createConnection({ host: workerData.host, port: workerData.port }, () => {
+  if (workerData.payload) socket.write(Buffer.from(workerData.payload));
+});
+function done() {
+  if (completed) return;
+  completed = true;
+  const body = Buffer.concat(chunks, total).subarray(0, workerData.maximum);
+  finish({ body: body.toString("base64") });
+  socket.destroy();
+}
+socket.on("data", chunk => { chunks.push(chunk); total += chunk.length; if (total >= workerData.maximum) done(); else setImmediate(done); });
+socket.on("end", done);
+socket.on("error", fail);
+socket.setTimeout(workerData.timeout, () => { const error = new Error("socket timed out"); error.code = "ETIMEDOUT"; socket.destroy(error); });
+`;
 
 function failure(error: unknown): HostResult {
   const value = error as NodeJS.ErrnoException & {
@@ -392,6 +510,49 @@ export class NodeHostAdapter {
                   : Buffer.from(result.stderr ?? ""),
               ),
             },
+          };
+        }
+        case "httpRequest": {
+          const timeout = Number(args[4] ?? 30_000);
+          return {
+            ok: true,
+            value: synchronousWorkerRequest(
+              httpWorkerSource,
+              {
+                method: String(args[0] ?? "GET"),
+                url: String(args[1]),
+                headers: args[2] ?? [],
+                body: args[3] ?? null,
+                timeout,
+              },
+              timeout + 1_000,
+            ),
+          };
+        }
+        case "dnsLookup": {
+          return {
+            ok: true,
+            value: synchronousWorkerRequest(
+              dnsWorkerSource,
+              { hostname: String(args[0]), family: Number(args[1] ?? 0) },
+            ),
+          };
+        }
+        case "tcpExchange": {
+          const timeout = Number(args[4] ?? 30_000);
+          return {
+            ok: true,
+            value: synchronousWorkerRequest(
+              tcpWorkerSource,
+              {
+                host: String(args[0]),
+                port: Number(args[1]),
+                payload: args[2] ?? [],
+                maximum: Number(args[3] ?? 65_536),
+                timeout,
+              },
+              timeout + 1_000,
+            ),
           };
         }
         case "environmentEntries":

@@ -105,11 +105,35 @@ agent and research pipelines. Live interactive pipes and signaling are a
 future backend extension behind the same public API. Importing `subprocess`
 without a process capability is safe; execution raises `NotImplementedError`.
 
+## URLs and networking
+
+`urllib.parse` is portable and includes structured URL parsing, joining,
+defragmenting, quoting, query-string encoding, and query-string decoding.
+`urllib.request` adds synchronous HTTP and HTTPS requests, redirects, request
+headers and bodies, response metadata, HTTP errors with readable bodies,
+openers, and file retrieval. `http.client` exposes the familiar buffered
+`HTTPConnection` and `HTTPSConnection` request/response interface.
+
+The initial `socket` module covers address lookup, IPv4 byte conversion,
+byte-order helpers, `getaddrinfo`, and the common TCP
+`connect`/`sendall`/`recv` client pattern. A socket exchange is currently
+buffered and one-shot rather than a persistent bidirectional stream; server
+sockets, UDP, TLS socket wrapping, and asynchronous readiness are explicit
+future extensions.
+
+Node hosts provide DNS, HTTP, HTTPS, and TCP through explicit worker-backed
+capabilities. The evaluator may wait synchronously without blocking the host
+event loop, so a local server and a Sage.js session can coexist in one Node
+process. Imports and pure URL work remain safe in browser and WebAssembly
+embeddings; attempting network I/O there raises `NotImplementedError` unless
+the embedding installs an equivalent capability.
+
 ## Conformance strategy
 
 The semantic source is CPython. The path corpus and tests are derived from
 CPython's library sources and focused tests, initially covering path handling,
-file I/O, JSON, CSV, Base64, zlib/gzip, and hashlib, at revision
+file I/O, JSON, CSV, Base64, zlib/gzip, hashlib, URL handling, HTTP clients,
+and sockets, at revision
 `7b4165b3b07638d8aeab79a880c52f2b51c56f37` (Python
 3.15 development, PSF-2.0). Focused Sage.js tests run on Linux, macOS, and
 native Windows CI:
