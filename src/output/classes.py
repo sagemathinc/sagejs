@@ -513,7 +513,11 @@ def print_class(output):
 
     if defined_methods['__next__']:
         class_def('next', False)
-        output.print('ρσ_python_iterator_next')
+        # Built-in classes are emitted before the internal runtime adapter is
+        # initialized.  Resolve it when iteration starts instead of capturing
+        # its temporarily undefined value while the baselib is loading.
+        output.print(
+            'function(){return ρσ_python_iterator_next.call(this)}')
         output.end_statement()
 
     native_list_parent = native_storage_parent in (

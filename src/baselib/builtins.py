@@ -69,6 +69,10 @@ _builtins_descriptor_cache = runtime.reflect.construct(
 _builtins_descriptor_epoch = 0
 
 
+def _builtins_as_any(value: Any) -> Any:
+    return value
+
+
 def cached_function(
     func: Any,
 ) -> Any:
@@ -4963,46 +4967,367 @@ def ρσ_min(*positional: Any, **keywords: Any) -> Any:
     return _builtins_extreme(positional, keywords, False)
 
 
-class _BuiltinTextFile:
+def _builtins_host_property(
+    value: Any,
+    key: _Str,
+    fallback: Any = None,
+) -> Any:
+    answer = runtime.reflect.get(value, key)
+    return fallback if answer is runtime.undefined else answer
 
-    def __init__(self, filename: _Str) -> None:
-        filesystem = runtime.require_module('fs')
-        self._data = runtime.string(
-            filesystem.readFileSync(filename, 'utf8'))
+
+def _builtins_raise_host_error(error: Any) -> None:
+    code = _builtins_host_property(error, 'code', 'EIO')
+    filename = _builtins_host_property(error, 'path', None)
+    destination = _builtins_host_property(error, 'dest', None)
+    if code == 'ENOENT':
+        raise FileNotFoundError(
+            2, 'No such file or directory', filename, destination)
+    if code in ('EACCES', 'EPERM'):
+        raise PermissionError(13, 'Permission denied', filename, destination)
+    if code == 'EEXIST':
+        raise FileExistsError(17, 'File exists', filename, destination)
+    if code == 'ENOTDIR':
+        raise NotADirectoryError(20, 'Not a directory', filename, destination)
+    if code == 'EISDIR':
+        raise IsADirectoryError(21, 'Is a directory', filename, destination)
+    if code == 'EINVAL':
+        raise OSError(22, 'Invalid argument', filename, destination)
+    errno_value = _builtins_host_property(error, 'errno', 5)
+    if errno_value is None or errno_value < 0:
+        errno_value = 5
+    message = runtime.string(
+        _builtins_host_property(error, 'message', code))
+    raise OSError(errno_value, message, filename, destination)
+
+
+def _builtins_host_call(operation: _Str, *args: Any) -> Any:
+    host = runtime.reflect.get(runtime.global_object, '__sagejs_host__')
+    if host is runtime.undefined:
+        raise NotImplementedError(
+            'open() is unavailable without a host filesystem capability')
+    method = runtime.reflect.get(host, 'call')
+    result = runtime.reflect.apply(method, host, [operation, list(args)])
+    if not _builtins_host_property(result, 'ok', False):
+        _builtins_raise_host_error(
+            _builtins_host_property(result, 'error'))
+    return _builtins_host_property(result, 'value')
+
+
+def _builtins_file_path(filename: Any) -> _Str:
+    if runtime.strict_equal(runtime.jstype(filename), 'string'):
+        return filename
+    method = getattr(filename, '__fspath__', None)
+    if method is None:
+        raise TypeError(
+            'expected str, bytes or os.PathLike object, not '
+            + type(filename).__name__)
+    answer = method()
+    if not runtime.strict_equal(runtime.jstype(answer), 'string'):
+        raise TypeError('__fspath__() must return str')
+    return answer
+
+
+@runtime.sequence_class
+class _BuiltinFile:
+
+    def __init__(
+        self,
+        filename: Any,
+        mode: _Str,
+        encoding: Any,
+        errors: Any,
+        newline: Any,
+    ) -> None:
+        self.name = _builtins_file_path(filename)
+        self.mode = mode
+        self.closed = False
+        self._binary = 'b' in mode
+        self._readable = mode[0] == 'r' or '+' in mode
+        self._writable = mode[0] in ('w', 'a', 'x') or '+' in mode
+        self._append = mode[0] == 'a'
+        self.encoding = None if self._binary else encoding
+        self.errors = None if self._binary else errors
+        self.newlines = None
+        self._newline = newline
         self._position = 0
+        self._dirty = False
+        self._data = _builtins_as_any(None)
 
-    def __enter__(self) -> _BuiltinTextFile:
+        empty = bytes() if self._binary else ''
+        if mode[0] == 'w':
+            self._data = empty
+            self._dirty = True
+            self._flush_to_host(False)
+        elif mode[0] == 'x':
+            self._data = empty
+            self._dirty = True
+            self._flush_to_host(True)
+        else:
+            try:
+                self._data = self._read_from_host()
+            except FileNotFoundError:
+                if mode[0] != 'a':
+                    raise
+                self._data = empty
+                self._dirty = True
+                self._flush_to_host(False)
+        if self._append:
+            self._position = len(self._data)
+
+    def _check_open(self) -> None:
+        if self.closed:
+            raise ValueError('I/O operation on closed file')
+
+    def _check_readable(self) -> None:
+        self._check_open()
+        if not self._readable:
+            raise OSError('File not open for reading')
+
+    def _check_writable(self) -> None:
+        self._check_open()
+        if not self._writable:
+            raise OSError('File not open for writing')
+
+    def _read_from_host(self) -> Any:
+        value = _builtins_host_call(
+            'readFile', self.name, self._binary, self.encoding)
+        if self._binary:
+            return bytes(value)
+        text = runtime.string(value)
+        if self._newline is None:
+            while '\r\n' in text:
+                text = text.replace('\r\n', '\n')
+            while '\r' in text:
+                text = text.replace('\r', '\n')
+        return text
+
+    def _write_data(self) -> Any:
+        if self._binary:
+            return list(self._data)
+        return self._data
+
+    def _flush_to_host(self, exclusive: _Bool = False) -> None:
+        if not self._dirty and not exclusive:
+            return
+        _builtins_host_call(
+            'writeFile',
+            self.name,
+            self._write_data(),
+            self._binary,
+            exclusive,
+            self.encoding,
+        )
+        self._dirty = False
+
+    def __enter__(self) -> _BuiltinFile:
+        self._check_open()
         return self
 
     def __exit__(self, *_args: Any) -> _Bool:
+        self.close()
         return False
 
-    def close(self) -> None:
-        pass
+    def __iter__(self) -> _BuiltinFile:
+        self._check_open()
+        return self
 
-    def readline(self) -> _Str:
-        if self._position >= len(self._data):
-            return ''
-        newline = self._data.find('\n', self._position)
-        if newline == -1:
-            answer = self._data[self._position:]
-            self._position = len(self._data)
-            return answer
-        answer = self._data[self._position:newline + 1]
-        self._position = newline + 1
+    def __next__(self) -> Any:
+        answer = self.readline()
+        if answer == '' or answer == bytes():
+            raise StopIteration
         return answer
+
+    def readable(self) -> _Bool:
+        self._check_open()
+        return self._readable
+
+    def writable(self) -> _Bool:
+        self._check_open()
+        return self._writable
+
+    def seekable(self) -> _Bool:
+        self._check_open()
+        return True
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        if self._writable:
+            self._flush_to_host()
+        self.closed = True
+
+    def flush(self) -> None:
+        self._check_open()
+        if self._writable:
+            self._flush_to_host()
+
+    def tell(self) -> _Int:
+        self._check_open()
+        return self._position
+
+    def seek(self, offset: _Int, whence: _Int = 0) -> _Int:
+        self._check_open()
+        if whence == 0:
+            position = offset
+        elif whence == 1:
+            position = self._position + offset
+        elif whence == 2:
+            position = len(self._data) + offset
+        else:
+            raise ValueError('invalid whence')
+        if position < 0:
+            raise ValueError('negative seek position')
+        self._position = position
+        return position
+
+    def read(self, size: Any = -1) -> Any:
+        self._check_readable()
+        if size is None or size < 0:
+            end = len(self._data)
+        else:
+            end = min(len(self._data), self._position + size)
+        answer = self._data[self._position:end]
+        self._position = end
+        return answer
+
+    def readline(self, size: Any = -1) -> Any:
+        self._check_readable()
+        if self._position >= len(self._data):
+            return bytes() if self._binary else ''
+        delimiter = _builtins_as_any(
+            bytes([10]) if self._binary else '\n')
+        newline = self._data.find(delimiter, self._position)
+        end = len(self._data) if newline < 0 else newline + 1
+        if size is not None and size >= 0:
+            end = min(end, self._position + size)
+        answer = self._data[self._position:end]
+        self._position = end
+        return answer
+
+    def readlines(self, hint: _Int = -1) -> list[Any]:
+        self._check_readable()
+        answer = []
+        total = 0
+        while True:
+            line = self.readline()
+            if line == '' or line == bytes():
+                break
+            answer.append(line)
+            total += len(line)
+            if hint > 0 and total >= hint:
+                break
+        return answer
+
+    def _translated_text(self, text: _Str) -> _Str:
+        newline = self._newline
+        if newline is None:
+            description = _builtins_host_call('describe')
+            newline = _builtins_host_property(
+                description, 'linesep', '\n')
+        if newline not in ('', '\n'):
+            translated = ''
+            remainder = text
+            while '\n' in remainder:
+                position = remainder.find('\n')
+                translated += remainder[:position] + newline
+                remainder = remainder[position + 1:]
+            return translated + remainder
+        return text
+
+    def write(self, value: Any) -> _Int:
+        self._check_writable()
+        data = _builtins_as_any(None)
+        if self._binary:
+            if not isinstance(value, (bytes, bytearray, memoryview)):
+                raise TypeError('a bytes-like object is required')
+            data = bytes(value)
+        else:
+            if not runtime.strict_equal(runtime.jstype(value), 'string'):
+                raise TypeError('write() argument must be str')
+            data = self._translated_text(value)
+        if self._append:
+            self._position = len(self._data)
+        if self._position > len(self._data):
+            padding = _builtins_as_any(
+                bytes([0]) if self._binary else '\x00')
+            self._data += padding * (self._position - len(self._data))
+        end = self._position + len(data)
+        suffix = _builtins_as_any(
+            self._data[end:] if end < len(self._data) else data[:0],
+        )
+        self._data = (
+            _builtins_as_any(self._data[:self._position])
+            + _builtins_as_any(data)
+            + suffix
+        )
+        self._position = end
+        self._dirty = True
+        self._flush_to_host()
+        return len(value)
+
+    def writelines(self, lines: Any) -> None:
+        for line in lines:
+            self.write(line)
+
+    def truncate(self, size: Any = None) -> _Int:
+        self._check_writable()
+        if size is None:
+            size = self._position
+        if size < 0:
+            raise ValueError('negative size value')
+        if size < len(self._data):
+            self._data = self._data[:size]
+        elif size > len(self._data):
+            padding = bytes([0]) if self._binary else '\x00'
+            self._data += padding * (size - len(self._data))
+        self._dirty = True
+        self._flush_to_host()
+        return size
 
 
 def ρσ_open(
-    filename: _Str,
+    filename: Any,
     mode: _Str = 'r',
-    *_args: Any,
-    **_kwargs: Any,
-) -> _BuiltinTextFile:
-    if mode not in ('r', 'rt'):
-        raise NotImplementedError(
-            'open() currently supports text reading only')
-    return _BuiltinTextFile(filename)
+    buffering: _Int = -1,
+    encoding: Any = None,
+    errors: Any = None,
+    newline: Any = None,
+    closefd: _Bool = True,
+    opener: Any = None,
+) -> _BuiltinFile:
+    valid_modes = (
+        'r', 'rb', 'rt', 'r+', 'rb+', 'r+b',
+        'w', 'wb', 'wt', 'w+', 'wb+', 'w+b',
+        'a', 'ab', 'at', 'a+', 'ab+', 'a+b',
+        'x', 'xb', 'xt', 'x+', 'xb+', 'x+b'
+    )
+    if not runtime.strict_equal(runtime.jstype(mode), 'string'):
+        raise TypeError('open() argument mode must be str')
+    if mode not in valid_modes:
+        raise ValueError('invalid mode: ' + repr(mode))
+    binary = 'b' in mode
+    if binary and encoding is not None:
+        raise ValueError("binary mode doesn't take an encoding argument")
+    if binary and errors is not None:
+        raise ValueError("binary mode doesn't take an errors argument")
+    if binary and newline is not None:
+        raise ValueError("binary mode doesn't take a newline argument")
+    if not binary and buffering == 0:
+        raise ValueError("can't have unbuffered text I/O")
+    if newline not in (None, '', '\n', '\r', '\r\n'):
+        raise ValueError('illegal newline value: ' + repr(newline))
+    if not closefd:
+        raise ValueError('Cannot use closefd=False with file name')
+    if opener is not None:
+        raise NotImplementedError('custom openers are not supported')
+    if encoding is None:
+        encoding = 'utf8'
+    if errors is None:
+        errors = 'strict'
+    if errors not in ('strict', 'ignore', 'replace'):
+        raise ValueError('unsupported error handler: ' + repr(errors))
+    return _BuiltinFile(filename, mode, encoding, errors, newline)
 
 
 round = ρσ_round

@@ -91,6 +91,8 @@ def write_imports(module, output):
             'Object.defineProperties(ρσ_modules.builtins, {'
             'abs:{enumerable:true,get:function(){return abs},'
             'set:function(value){abs=value}},'
+            'open:{enumerable:true,get:function(){return ρσ_open},'
+            'set:function(value){ρσ_open=value}},'
             '__build_class__:{enumerable:true,'
             'get:function(){return __build_class__},'
             'set:function(value){__build_class__=value}},'

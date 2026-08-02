@@ -59,6 +59,9 @@ try {
       "print(sum(values.values()))",
       "print(type(started))",
       "print(time.time() >= started)",
+      "with open('portable-data.txt', 'w') as output:",
+      "    output.write('sea file io\\n')",
+      "print(open('portable-data.txt').read().strip())",
       "with Pool(2) as workers:",
       "    print(workers.map(square, [7, 8, 9]))",
       "",
@@ -66,7 +69,7 @@ try {
   );
   assert.equal(
     run(pythonExecutable, pythonProgram),
-    "55\n<class 'float'>\nTrue\n[49, 64, 81]",
+    "55\n<class 'float'>\nTrue\nsea file io\n[49, 64, 81]",
   );
 
   const missingBackendProgram = join(

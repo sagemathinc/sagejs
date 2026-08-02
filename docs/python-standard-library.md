@@ -38,6 +38,21 @@ Node filesystem errors are translated into `FileNotFoundError`,
 `FileExistsError`, `PermissionError`, `IsADirectoryError`, and
 `NotADirectoryError`, retaining `errno`, `filename`, and destination metadata.
 
+## Built-in file I/O
+
+The built-in `open()` uses the same evaluator-local filesystem capability as
+`os`. Text modes `r`, `w`, `a`, and `x`, their `+` variants, and corresponding
+binary modes are available. File objects support context managers, iteration,
+`read`, `readline`, `readlines`, `write`, `writelines`, `seek`, `tell`,
+`truncate`, `flush`, and `close`. UTF-8 is the default text encoding and
+ordinary newline translation follows the host platform.
+
+The initial implementation is synchronous and buffered in memory. It is
+appropriate for source, configuration, interchange, and ordinary research
+data files; streaming multi-gigabyte datasets and custom codecs remain future
+work. Browser and WebAssembly embeddings without a filesystem capability can
+still compile code using `open`, but calling it raises `NotImplementedError`.
+
 ## Conformance strategy
 
 The semantic source is CPython. The path corpus and tests are derived from

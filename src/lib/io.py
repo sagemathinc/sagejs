@@ -1,8 +1,14 @@
-"""In-memory text and binary streams.
+"""In-memory text and binary streams, plus the host-backed ``open``.
 
-This is the portable core of Python's :mod:`io` interface.  Node-backed file
-streams can build on the same ``IOBase`` contract later.
+This is the portable core of Python's :mod:`io` interface.  The built-in
+``open`` uses an embedding-provided filesystem capability and is re-exported
+here just as it is by CPython's :mod:`io` module.
 """
+
+import builtins
+
+
+open = builtins.open
 
 
 class IOBase:

@@ -17,6 +17,7 @@ const integration = [
   "test/cli-smoke.cjs",
   "test/time-module.cjs",
   "test/os-module.cjs",
+  "test/file-io.cjs",
   "test/multiprocessing-module.cjs",
   "test/numpy-module.cjs",
   "test/kernel.cjs",

@@ -222,6 +222,34 @@ export class NodeHostAdapter {
             Number(args[1] ?? fs.constants.F_OK),
           );
           return { ok: true, value: true };
+        case "readFile": {
+          const filename = this.resolve(args[0]);
+          if (Boolean(args[1])) {
+            return {
+              ok: true,
+              value: Array.from(fs.readFileSync(filename)),
+            };
+          }
+          return {
+            ok: true,
+            value: fs.readFileSync(filename, {
+              encoding: String(args[2] ?? "utf8") as BufferEncoding,
+            }),
+          };
+        }
+        case "writeFile": {
+          const filename = this.resolve(args[0]);
+          const binary = Boolean(args[2]);
+          const exclusive = Boolean(args[3]);
+          const data = binary
+            ? Buffer.from(args[1] as number[])
+            : String(args[1]);
+          fs.writeFileSync(filename, data, {
+            encoding: String(args[4] ?? "utf8") as BufferEncoding,
+            flag: exclusive ? "wx" : "w",
+          });
+          return { ok: true, value: null };
+        }
         case "environmentEntries":
           return { ok: true, value: Object.entries(this.environment) };
         case "setEnv": {
