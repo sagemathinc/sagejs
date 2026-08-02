@@ -3203,22 +3203,50 @@ def ρσ_ellipsis_range(*specification: Any) -> list[Any]:
         last = result[-1]
         if len(result) >= 2:
             step = ρσ_operator_sub_exact(last, result[-2])
+            step_type = runtime.jstype(step)
+            if step_type in ('object', 'function'):
+                simplify_method = runtime.reflect.get(step, 'simplify')
+                if runtime.jstype(simplify_method) == 'function':
+                    step = runtime.reflect.apply(simplify_method, step, [])
         elif runtime.strict_equal(runtime.jstype(last), 'bigint'):
             step = runtime.bigint(1)
         else:
             step = 1
-        if runtime.equals(step, 0):
-            raise ValueError('ellipsis range step must not be zero')
+        native_step = runtime.jstype(step) in ('number', 'bigint')
+        numeric_step = 0.0
+        if native_step:
+            if runtime.equals(step, 0):
+                raise ValueError('ellipsis range step must not be zero')
+        else:
+            # Symbolic constants and exact rationals deliberately keep their
+            # exact values in the result.  Their comparison operators can,
+            # however, produce symbolic relations rather than native booleans,
+            # so use numerical approximations only to control iteration.
+            numeric_step = float(step)
+            if numeric_step == 0:
+                raise ValueError('ellipsis range step must not be zero')
 
         current = ρσ_operator_add_exact(last, step)
-        if step > 0:
-            while current <= value:
-                result.append(current)
-                current = ρσ_operator_add_exact(current, step)
+        if native_step:
+            if step > 0:
+                while current <= value:
+                    result.append(current)
+                    current = ρσ_operator_add_exact(current, step)
+            else:
+                while current >= value:
+                    result.append(current)
+                    current = ρσ_operator_add_exact(current, step)
         else:
-            while current >= value:
-                result.append(current)
-                current = ρσ_operator_add_exact(current, step)
+            numeric_endpoint = float(value)
+            tolerance = abs(numeric_step) * 1e-12 + 1e-15
+            if numeric_step > 0:
+                while float(current) <= numeric_endpoint + tolerance:
+                    result.append(current)
+                    current = ρσ_operator_add_exact(current, step)
+            else:
+                while float(current) >= numeric_endpoint - tolerance:
+                    result.append(current)
+                    current = ρσ_operator_add_exact(current, step)
         saw_ellipsis = False
 
     if saw_ellipsis:
