@@ -13,7 +13,10 @@ const strictBaselibModules = strictModules.filter((path) =>
   path.startsWith("src/baselib/"),
 );
 const verbatimExpression =
-  /\bv(?:'[^']*'|"[^"]*"|'''[\s\S]*?'''|"""[\s\S]*?""")/;
+  /(?<!['"])\bv(?:'[^']*'|"[^"]*"|'''[\s\S]*?'''|"""[\s\S]*?""")/;
+
+assert.match("answer = v'nativeCall()'", verbatimExpression);
+assert.doesNotMatch("answer = {'v': 'triangle-down'}", verbatimExpression);
 const topLevelModules = readdirSync(join(root, "src", "baselib"))
   .filter((name) => name.endsWith(".py"))
   .map((name) => `src/baselib/${name}`)
