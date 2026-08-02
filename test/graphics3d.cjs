@@ -19,7 +19,7 @@ async function main() {
     );
     assert.equal(surface.repr, "Graphics3d Object");
     assert.equal(surface.display?.mime, "application/vnd.plotly.v1+json");
-    assert.equal(surface.display?.data.data.length, 1);
+    assert.equal(surface.display?.data.data.length, 2);
     assert.deepEqual(surface.display?.data.data[0], {
       type: "surface",
       x: [
@@ -44,11 +44,13 @@ async function main() {
       showscale: false,
       opacity: 0.8,
       showlegend: false,
-      contours: {
-        x: { show: true, highlight: false, color: "black" },
-        y: { show: true, highlight: false, color: "black" },
-      },
     });
+    assert.equal(surface.display?.data.data[1].type, "scatter3d");
+    assert.equal(surface.display?.data.data[1].mode, "lines");
+    assert.equal(surface.display?.data.data[1].x.length, 24);
+    assert.equal(surface.display?.data.data[1].line.color, "black");
+    assert.equal(surface.display?.data.data[1].line.width, 1);
+    assert.equal(surface.display?.data.data[1].opacity, 0.8);
     assert.equal(surface.display?.data.layout.title.text, "A saddle");
     assert.equal(surface.display?.data.layout.scene.xaxis.title.text, "u");
     assert.equal(surface.display?.data.layout.scene.yaxis.title.text, "v");
@@ -77,10 +79,10 @@ async function main() {
     assert.equal(composed.repr, "Graphics3d Object");
     assert.deepEqual(
       composed.display?.data.data.map((trace) => trace.type),
-      ["surface", "surface"],
+      ["surface", "scatter3d", "surface"],
     );
-    assert.equal(composed.display?.data.data[1].colorscale[0][1], "red");
-    assert.equal(composed.display?.data.data[1].opacity, 0.5);
+    assert.equal(composed.display?.data.data[2].colorscale[0][1], "red");
+    assert.equal(composed.display?.data.data[2].opacity, 0.5);
     assert.deepEqual(
       composed.display?.data.layout.scene.aspectratio,
       { x: 1, y: 1, z: 1 },
@@ -279,6 +281,61 @@ async function main() {
     assert.match(
       (await session.evaluate("dodecahedron.__doc__")).repr,
       /regular dodecahedron/,
+    );
+
+    const spherical = await session.evaluate(
+      [
+        "theta, phi = var('theta phi')",
+        "spherical_plot3d(2, (theta,0,2*pi), (phi,0,pi),",
+        "    plot_points=(3,3), color='cyan')",
+      ].join("\n"),
+    );
+    assert.equal(spherical.display?.data.data[0].type, "surface");
+    assert.equal(
+      spherical.display?.data.data[0].x[0].every(
+        (value) => Math.abs(value) < 1e-12,
+      ),
+      true,
+    );
+    assert.ok(Math.abs(spherical.display?.data.data[0].x[1][0] - 2) < 1e-12);
+    assert.ok(Math.abs(spherical.display?.data.data[0].x[1][1] + 2) < 1e-12);
+    assert.ok(Math.abs(spherical.display?.data.data[0].z[0][0] - 2) < 1e-12);
+    assert.ok(Math.abs(spherical.display?.data.data[0].z[2][0] + 2) < 1e-12);
+
+    const transformed = await session.evaluate(
+      [
+        "C = Cylindrical('radius', ['azimuth','height'])",
+        "plot3d(2, (theta,0,pi), (z,-1,1), transformation=C,",
+        "    plot_points=(3,2))",
+      ].join("\n"),
+    );
+    assert.deepEqual(transformed.display?.data.data[0].z, [
+      [-1, -1, -1],
+      [1, 1, 1],
+    ]);
+    assert.ok(Math.abs(transformed.display?.data.data[0].x[0][0] - 2) < 1e-12);
+    assert.ok(Math.abs(transformed.display?.data.data[0].x[0][2] + 2) < 1e-12);
+    assert.equal(
+      (await session.evaluate("C")).repr,
+      "Cylindrical coordinate transform (radius in terms of azimuth, height)",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "r=var('r'); Spherical('radius',['azimuth','inclination'])." +
+          "transform(radius=r,azimuth=theta,inclination=phi)",
+      )).repr,
+      "(r*sin(phi)*cos(theta), r*sin(phi)*sin(theta), r*cos(phi))",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "SphericalElevation('radius',['azimuth','elevation'])." +
+          "transform(radius=r,azimuth=theta,elevation=phi)",
+      )).repr,
+      "(r*cos(phi)*cos(theta), r*sin(theta)*cos(phi), r*sin(phi))",
+    );
+    await assert.rejects(
+      session.evaluate("Spherical('radius',['azimuth','height'])"),
+      /variables were specified incorrectly/,
     );
 
     await assert.rejects(

@@ -310,6 +310,28 @@ Gröbner bases. General primary decomposition is not yet implemented.
 - `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
 - `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
 
+## `cylindrical_plot3d`
+
+```sage
+cylindrical_plot3d(function_value, urange, vrange, **options)
+```
+
+Plot a radial function in cylindrical coordinates.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, surfaces
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `density_plot`
 
 ```sage
@@ -2957,6 +2979,28 @@ Return a sphere of radius `size` centered at `center`.
 - Kind: `function`
 - Module: `sage.plot.plot3d`
 - Tags: graphics, 3D graphics, shapes
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `spherical_plot3d`
+
+```sage
+spherical_plot3d(function_value, urange, vrange, **options)
+```
+
+Plot a radial function in spherical coordinates.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, surfaces
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering

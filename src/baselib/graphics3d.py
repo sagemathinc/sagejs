@@ -239,6 +239,22 @@ def _g3d_finite_value(value: Any) -> float:
     return numeric
 
 
+def _g3d_sin(value: Any) -> Any:
+    if runtime.jstype(value) == 'number':
+        return runtime.math.sin(value)
+    function_value = runtime.reflect.get(runtime.global_object, 'sin')
+    return runtime.reflect.apply(
+        function_value, runtime.undefined, [value])
+
+
+def _g3d_cos(value: Any) -> Any:
+    if runtime.jstype(value) == 'number':
+        return runtime.math.cos(value)
+    function_value = runtime.reflect.get(runtime.global_object, 'cos')
+    return runtime.reflect.apply(
+        function_value, runtime.undefined, [value])
+
+
 def _g3d_component_callable(
     component: Any,
     variables: Sequence[Any],
@@ -288,6 +304,130 @@ def _g3d_variables(
         raise ValueError(
             '3D plot expression has more variables than plot ranges')
     return discovered
+
+
+class _Coordinates:
+    """A Sage-compatible coordinate transformation for ``plot3d``."""
+
+    coordinate_names = ('x', 'y', 'z')
+    coordinate_name = 'Coordinates'
+
+    def __init__(self, dep_var: Any, indep_vars: Any) -> None:
+        self.dep_var = str(dep_var)
+        self.indep_vars = [str(value) for value in indep_vars]
+        if len(self.indep_vars) != 2:
+            raise ValueError(
+                'a coordinate transformation needs two independent variables')
+        supplied = set(self.indep_vars + [self.dep_var])
+        expected = set(self.coordinate_names)
+        if supplied != expected:
+            difference = list(supplied.symmetric_difference(expected))
+            raise ValueError(
+                'variables were specified incorrectly for this coordinate '
+                'system; incorrect variables were ' + str(difference))
+
+    def to_cartesian(
+        self,
+        function_value: Any,
+        params: Any = None,
+    ) -> Any:
+        if callable(function_value):
+            def component(index: int) -> Any:
+                def transformed(uvalue: Any, vvalue: Any) -> float:
+                    function_result = runtime.reflect.apply(
+                        function_value,
+                        runtime.undefined,
+                        [uvalue, vvalue],
+                    )
+                    coordinates = {
+                        self.dep_var: float(function_result),
+                        self.indep_vars[0]: float(uvalue),
+                        self.indep_vars[1]: float(vvalue),
+                    }
+                    transform_method = runtime.reflect.get(self, 'transform')
+                    return float(transform_method(**coordinates)[index])
+
+                return transformed
+
+            return runtime.math_tuple([
+                component(0), component(1), component(2)])
+        if params is None or len(params) != 2:
+            raise ValueError(
+                'symbolic coordinate transforms require two parameters')
+        coordinates = {
+            self.dep_var: function_value,
+            self.indep_vars[0]: params[0],
+            self.indep_vars[1]: params[1],
+        }
+        transform_method = runtime.reflect.get(self, 'transform')
+        return transform_method(**coordinates)
+
+    def __repr__(self) -> str:
+        return (
+            self.coordinate_name + ' coordinate transform (' +
+            self.dep_var + ' in terms of ' +
+            ', '.join(self.indep_vars) + ')'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class Spherical(_Coordinates):
+    """Spherical coordinates using azimuth and polar inclination."""
+
+    coordinate_names = ('radius', 'azimuth', 'inclination')
+    coordinate_name = 'Spherical'
+
+    def transform(
+        self,
+        radius: Any = None,
+        azimuth: Any = None,
+        inclination: Any = None,
+    ) -> Any:
+        return runtime.math_tuple([
+            radius * _g3d_sin(inclination) * _g3d_cos(azimuth),
+            radius * _g3d_sin(inclination) * _g3d_sin(azimuth),
+            radius * _g3d_cos(inclination),
+        ])
+
+
+class SphericalElevation(_Coordinates):
+    """Spherical coordinates using azimuth and elevation."""
+
+    coordinate_names = ('radius', 'azimuth', 'elevation')
+    coordinate_name = 'SphericalElevation'
+
+    def transform(
+        self,
+        radius: Any = None,
+        azimuth: Any = None,
+        elevation: Any = None,
+    ) -> Any:
+        return runtime.math_tuple([
+            radius * _g3d_cos(elevation) * _g3d_cos(azimuth),
+            radius * _g3d_cos(elevation) * _g3d_sin(azimuth),
+            radius * _g3d_sin(elevation),
+        ])
+
+
+class Cylindrical(_Coordinates):
+    """Cylindrical coordinates using radius, azimuth, and height."""
+
+    coordinate_names = ('radius', 'azimuth', 'height')
+    coordinate_name = 'Cylindrical'
+
+    def transform(
+        self,
+        radius: Any = None,
+        azimuth: Any = None,
+        height: Any = None,
+    ) -> Any:
+        return runtime.math_tuple([
+            radius * _g3d_cos(azimuth),
+            radius * _g3d_sin(azimuth),
+            height,
+        ])
 
 
 class GraphicPrimitive3d:
@@ -631,28 +771,48 @@ class Surface3d(GraphicPrimitive3d):
         )
         if legend_label is not None:
             runtime.reflect.set(trace, 'name', str(legend_label))
-        if bool(_g3d_option_get(options, 'mesh', False)):
-            runtime.reflect.set(
-                trace,
-                'contours',
-                _g3d_native_record(
-                    x=_g3d_native_record(
-                        show=True,
-                        highlight=False,
-                        color=_g3d_color_value(
-                            _g3d_option_get(
-                                options, 'mesh_color', 'black')),
-                    ),
-                    y=_g3d_native_record(
-                        show=True,
-                        highlight=False,
-                        color=_g3d_color_value(
-                            _g3d_option_get(
-                                options, 'mesh_color', 'black')),
-                    ),
-                ),
-            )
         traces = [trace]
+        if bool(_g3d_option_get(options, 'mesh', False)):
+            mesh_x = []
+            mesh_y = []
+            mesh_z = []
+            row_count = len(self.xdata)
+            column_count = 0 if row_count == 0 else len(self.xdata[0])
+            for row_index in range(row_count):
+                for column_index in range(column_count):
+                    mesh_x.append(self.xdata[row_index][column_index])
+                    mesh_y.append(self.ydata[row_index][column_index])
+                    mesh_z.append(self.zdata[row_index][column_index])
+                mesh_x.append(None)
+                mesh_y.append(None)
+                mesh_z.append(None)
+            for column_index in range(column_count):
+                for row_index in range(row_count):
+                    mesh_x.append(self.xdata[row_index][column_index])
+                    mesh_y.append(self.ydata[row_index][column_index])
+                    mesh_z.append(self.zdata[row_index][column_index])
+                mesh_x.append(None)
+                mesh_y.append(None)
+                mesh_z.append(None)
+            traces.append(_g3d_native_record(
+                type='scatter3d',
+                mode='lines',
+                x=mesh_x,
+                y=mesh_y,
+                z=mesh_z,
+                line=_g3d_native_record(
+                    color=_g3d_color_value(
+                        _g3d_option_get(options, 'mesh_color', 'black')),
+                    width=float(_g3d_option_get(
+                        options,
+                        'mesh_thickness',
+                        _g3d_option_get(options, 'thickness', 1),
+                    )),
+                ),
+                opacity=float(_g3d_option_get(options, 'opacity', 1)),
+                hoverinfo='skip',
+                showlegend=False,
+            ))
         if bool(_g3d_option_get(options, 'dots', False)):
             flat_x = []
             flat_y = []
@@ -1427,9 +1587,6 @@ def plot3d(
     if adaptive:
         raise NotImplementedError(
             'adaptive plot3d refinement is not implemented yet')
-    if transformation is not None:
-        raise NotImplementedError(
-            'plot3d coordinate transformations are not implemented yet')
     uvariable, _umin, _umax = _g3d_range(urange)
     vvariable, _vmin, _vmax = _g3d_range(vrange)
     variables = _g3d_variables(
@@ -1438,6 +1595,14 @@ def plot3d(
         2,
     )
     evaluated = _g3d_component_callable(func, variables)
+
+    if transformation is not None:
+        if not hasattr(transformation, 'to_cartesian'):
+            raise TypeError(
+                'transformation must be a Sage coordinate transformation')
+        transformed = transformation.to_cartesian(evaluated, variables)
+        return _g3d_surface(
+            transformed, urange, vrange, **options)
 
     def first_coordinate(u: float, _v: float) -> float:
         return u
@@ -1453,6 +1618,42 @@ def plot3d(
         ),
         urange,
         vrange,
+        **options,
+    )
+
+
+def spherical_plot3d(
+    function_value: Any,
+    urange: Any,
+    vrange: Any,
+    **options: Any,
+) -> Graphics3d:
+    """Plot a radial function in spherical coordinates."""
+    transformation = Spherical(
+        'radius', ['azimuth', 'inclination'])
+    return plot3d(
+        function_value,
+        urange,
+        vrange,
+        transformation=transformation,
+        **options,
+    )
+
+
+def cylindrical_plot3d(
+    function_value: Any,
+    urange: Any,
+    vrange: Any,
+    **options: Any,
+) -> Graphics3d:
+    """Plot a radial function in cylindrical coordinates."""
+    transformation = Cylindrical(
+        'radius', ['azimuth', 'height'])
+    return plot3d(
+        function_value,
+        urange,
+        vrange,
+        transformation=transformation,
         **options,
     )
 
@@ -1762,6 +1963,10 @@ for _doc_name, _doc_function, _doc_tags in [
     ('dodecahedron', dodecahedron, ['shapes', 'platonic solids']),
     ('icosahedron', icosahedron, ['shapes', 'platonic solids']),
     ('plot3d', plot3d, ['surfaces']),
+    ('spherical_plot3d', spherical_plot3d,
+     ['surfaces', 'coordinate transforms']),
+    ('cylindrical_plot3d', cylindrical_plot3d,
+     ['surfaces', 'coordinate transforms']),
     ('parametric_plot3d', parametric_plot3d, ['parametric plots']),
     ('sphere', sphere, ['shapes']),
 ]:
