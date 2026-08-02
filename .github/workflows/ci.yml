@@ -65,8 +65,17 @@ jobs:
 
       - name: Run compiler compatibility diagnostics
         id: compiler
-        continue-on-error: true
-        run: pnpm test:compiler
+        run: |
+          set +e
+          pnpm test:compiler
+          status=$?
+          set -e
+          if [[ "$status" -eq 0 ]]; then
+            result="passed"
+          else
+            result="known failures (exit $status)"
+          fi
+          echo "result=$result" >> "$GITHUB_OUTPUT"
 
       - name: Run unit, host integration, and native tests
         run: |
@@ -76,8 +85,17 @@ jobs:
 
       - name: Run Sage tutorial compatibility diagnostics
         id: tutorial
-        continue-on-error: true
-        run: pnpm test:tutorial
+        run: |
+          set +e
+          pnpm test:tutorial
+          status=$?
+          set -e
+          if [[ "$status" -eq 0 ]]; then
+            result="passed"
+          else
+            result="known failures (exit $status)"
+          fi
+          echo "result=$result" >> "$GITHUB_OUTPUT"
 
       - name: Build and relocation-test both SEA executables
         env:
@@ -92,8 +110,8 @@ jobs:
 
           | Suite | Outcome |
           | --- | --- |
-          | Compiler corpus | **${{ steps.compiler.outcome }}** |
-          | Sage tutorial | **${{ steps.tutorial.outcome }}** |
+          | Compiler corpus | **${{ steps.compiler.outputs.result }}** |
+          | Sage tutorial | **${{ steps.tutorial.outputs.result }}** |
 
           These broad compatibility suites already contain failures on the
           baseline that introduced CI. They remain visible and non-blocking
