@@ -199,6 +199,41 @@ control points followed by its new endpoint.
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `bezier3d`
+
+```sage
+bezier3d(path, **options)
+```
+
+Draw a three-dimensional Bézier path.
+
+The first curve contains both endpoints. Later curves inherit their
+starting point from the previous curve. Each curve may have zero, one,
+or two control points, matching Sage's `bezier3d` path convention.
+
+### Examples
+
+```sage
+sage: path = [[(0,0,0), (.5,.1,.2), (.75,3,-1), (1,1,0)],
+....:         [(.5,1,.2), (1,.5,0)], [(.7,.2,.5)]]
+sage: bezier3d(path, color='green')
+Graphics3d Object
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, curves
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `circle`
 
 ```sage
@@ -2349,6 +2384,41 @@ values are omitted, matching Sage's masked-vector behavior.
 ### References
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `plot_vector_field3d`
+
+```sage
+plot_vector_field3d(functions, xrange, yrange, zrange, plot_points=5, colors='jet', center_arrows=False, **options)
+```
+
+Plot a sampled vector field in three-dimensional space.
+
+Vectors are normalized by the largest sampled norm, as in Sage. A single
+Plotly cone trace keeps even fairly dense fields responsive. Set
+`center_arrows=True` to center each arrow at its sample point.
+
+### Examples
+
+```sage
+sage: x, y, z = var('x y z')
+sage: plot_vector_field3d((x*cos(z), -y*cos(z), sin(z)),
+....:     (x,0,pi), (y,0,pi), (z,0,pi), plot_points=4)
+Graphics3d Object
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, vector fields
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
 ## `plot3d`
 

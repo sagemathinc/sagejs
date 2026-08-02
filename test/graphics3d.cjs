@@ -127,6 +127,49 @@ async function main() {
     assert.equal(curve.display?.data.data[0].line.color, "green");
     assert.equal(curve.display?.data.data[0].line.width, 4);
 
+    const bezierCurve = await session.evaluate(
+      [
+        "bezier3d([[(0,0,0),(1,0,0),(1,1,0),(0,1,1)],",
+        "          [(0,0,1)]],",
+        "         plot_points=3, color='purple', thickness=5)",
+      ].join("\n"),
+    );
+    assert.deepEqual(
+      bezierCurve.display?.data.data.map((trace) => trace.type),
+      ["scatter3d", "scatter3d"],
+    );
+    assert.deepEqual(bezierCurve.display?.data.data[0].x, [0, 0.75, 0]);
+    assert.deepEqual(bezierCurve.display?.data.data[0].y, [0, 0.5, 1]);
+    assert.deepEqual(bezierCurve.display?.data.data[0].z, [0, 0.125, 1]);
+    assert.deepEqual(bezierCurve.display?.data.data[1].z, [1, 1]);
+    assert.equal(bezierCurve.display?.data.data[0].line.color, "purple");
+    assert.equal(bezierCurve.display?.data.data[0].line.width, 5);
+
+    const vectorField = await session.evaluate(
+      [
+        "x, y, z = var('x y z')",
+        "plot_vector_field3d((1, 2, 2),",
+        "    (x,0,1), (y,0,1), (z,0,1),",
+        "    plot_points=2, colors='red', center_arrows=True)",
+      ].join("\n"),
+    );
+    const vectorTrace = vectorField.display?.data.data[0];
+    assert.equal(vectorTrace.type, "cone");
+    assert.equal(vectorTrace.x.length, 8);
+    assert.equal(vectorTrace.anchor, "center");
+    assert.equal(vectorTrace.sizemode, "raw");
+    assert.deepEqual(vectorTrace.u, Array(8).fill(1 / 3));
+    assert.deepEqual(vectorTrace.v, Array(8).fill(2 / 3));
+    assert.deepEqual(vectorTrace.w, Array(8).fill(2 / 3));
+    assert.deepEqual(vectorTrace.colorscale, [[0, "red"], [1, "red"]]);
+    assert.equal(
+      (await session.evaluate(
+        "plot_vector_field3d((1,0,0),(x,0,1),(y,0,1),(z,0,1)," +
+          "plot_points=2)[0]",
+      )).repr,
+      "3D vector field with 8 vectors",
+    );
+
     const parametricSurface = await session.evaluate(
       [
         "p = parametric_plot3d(",

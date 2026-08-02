@@ -926,6 +926,65 @@ class Arrowhead3d(GraphicPrimitive3d):
         )]
 
 
+class VectorField3d(GraphicPrimitive3d):
+    """A sampled three-dimensional vector field rendered as Plotly cones."""
+
+    def __init__(
+        self,
+        points: Sequence[tuple[float, float, float]],
+        vectors: Sequence[tuple[float, float, float]],
+        magnitudes: Sequence[float],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive3d.__init__(self, options)
+        self.points = list(points)
+        self.vectors = list(vectors)
+        self.magnitudes = list(magnitudes)
+
+    def __repr__(self) -> str:
+        return (
+            '3D vector field with ' + str(len(self.points)) +
+            ' vectors'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_traces(self) -> list[Any]:
+        options = self._options
+        colors = _g3d_option_get(options, 'colors', 'jet')
+        if isinstance(colors, str) and colors.lower() in {
+            'blackbody', 'bluered', 'blues', 'cividis', 'earth',
+            'electric', 'greens', 'greys', 'hot', 'jet', 'picnic',
+            'portland', 'rainbow', 'rdbu', 'reds', 'viridis',
+            'ylgnbu', 'ylorrd',
+        }:
+            colorscale = colors
+        else:
+            colorscale = _g3d_colorscale(colors)
+        anchor = (
+            'center'
+            if bool(_g3d_option_get(options, 'center_arrows', False))
+            else 'tail'
+        )
+        return [_g3d_native_record(
+            type='cone',
+            x=[point[0] for point in self.points],
+            y=[point[1] for point in self.points],
+            z=[point[2] for point in self.points],
+            u=[vector[0] for vector in self.vectors],
+            v=[vector[1] for vector in self.vectors],
+            w=[vector[2] for vector in self.vectors],
+            anchor=anchor,
+            sizemode='raw',
+            sizeref=float(_g3d_option_get(options, 'scale', 1)),
+            colorscale=colorscale,
+            showscale=bool(_g3d_option_get(options, 'colorbar', False)),
+            opacity=float(_g3d_option_get(options, 'opacity', 1)),
+            showlegend=False,
+        )]
+
+
 class Surface3d(GraphicPrimitive3d):
     """A rectangular sampled parametric surface."""
 
@@ -1583,6 +1642,202 @@ def arrow3d(
         head_options['color'] = _g3d_option_get(head_options, 'rgbcolor')
     graphic.add_primitive(
         Arrowhead3d(start_point, end_point, head_options))
+    return graphic
+
+
+def bezier3d(path: Any, **options: Any) -> Graphics3d:
+    r"""
+    Draw a three-dimensional Bézier path.
+
+    The first curve contains both endpoints. Later curves inherit their
+    starting point from the previous curve. Each curve may have zero, one,
+    or two control points, matching Sage's `bezier3d` path convention.
+
+    ### Examples
+
+    ```sage
+    sage: path = [[(0,0,0), (.5,.1,.2), (.75,3,-1), (1,1,0)],
+    ....:         [(.5,1,.2), (1,.5,0)], [(.7,.2,.5)]]
+    sage: bezier3d(path, color='green')
+    Graphics3d Object
+    ```
+    """
+    curves = [list(curve) for curve in path]
+    if len(curves) == 0 or len(curves[0]) < 2:
+        raise ValueError(
+            'the first bezier3d curve requires at least two points')
+    plot_points = int(_g3d_option_pop(options, 'plot_points', 40))
+    if plot_points < 2:
+        raise ValueError('plot_points must be at least 2')
+    normalized = [
+        [_g3d_point(point_value) for point_value in curve]
+        for curve in curves
+    ]
+
+    def cubic_point(
+        start: tuple[float, float, float],
+        control1: tuple[float, float, float],
+        control2: tuple[float, float, float],
+        end: tuple[float, float, float],
+        parameter: float,
+    ) -> tuple[float, float, float]:
+        complement = 1.0 - parameter
+        coefficients = (
+            complement * complement * complement,
+            3.0 * parameter * complement * complement,
+            3.0 * parameter * parameter * complement,
+            parameter * parameter * parameter
+        )
+        values = [
+            coefficients[0] * start[index] +
+            coefficients[1] * control1[index] +
+            coefficients[2] * control2[index] +
+            coefficients[3] * end[index]
+            for index in range(3)
+        ]
+        return (values[0], values[1], values[2])
+
+    result = Graphics3d()
+    previous = normalized[0][0]
+    for index in range(len(normalized)):
+        curve = normalized[index]
+        if index == 0:
+            start = curve[0]
+            controls = curve[1:-1]
+            end = curve[-1]
+        else:
+            if len(curve) == 0:
+                raise ValueError('a bezier3d curve may not be empty')
+            start = previous
+            controls = curve[:-1]
+            end = curve[-1]
+        if len(controls) == 0:
+            segment = line3d([start, end], **options)
+        else:
+            if len(controls) > 2:
+                raise ValueError(
+                    'a bezier3d curve has at most two control points')
+            control1 = controls[0]
+            control2 = controls[-1]
+            points = [
+                tuple(cubic_point(
+                    start, control1, control2, end, parameter))
+                for parameter in _g3d_linspace(0.0, 1.0, plot_points)
+            ]
+            segment = line3d(points, **options)
+        result = result + segment
+        previous = end
+    return result
+
+
+def plot_vector_field3d(
+    functions: Sequence[Any],
+    xrange: Any,
+    yrange: Any,
+    zrange: Any,
+    plot_points: Any = 5,
+    colors: Any = 'jet',
+    center_arrows: bool = False,
+    **options: Any,
+) -> Graphics3d:
+    r"""
+    Plot a sampled vector field in three-dimensional space.
+
+    Vectors are normalized by the largest sampled norm, as in Sage. A single
+    Plotly cone trace keeps even fairly dense fields responsive. Set
+    `center_arrows=True` to center each arrow at its sample point.
+
+    ### Examples
+
+    ```sage
+    sage: x, y, z = var('x y z')
+    sage: plot_vector_field3d((x*cos(z), -y*cos(z), sin(z)),
+    ....:     (x,0,pi), (y,0,pi), (z,0,pi), plot_points=4)
+    Graphics3d Object
+    ```
+    """
+    components = list(functions)
+    if len(components) != 3:
+        raise ValueError(
+            'plot_vector_field3d requires exactly three components')
+    parsed_ranges = [
+        _g3d_range(xrange), _g3d_range(yrange), _g3d_range(zrange)]
+    variables = _g3d_variables(
+        components,
+        [range_value[0] for range_value in parsed_ranges],
+        3,
+    )
+    callables = [
+        _g3d_component_callable(component, variables)
+        for component in components
+    ]
+    counts = _g3d_plot_points(plot_points, 5, 3)
+    coordinates = [
+        _g3d_linspace(
+            parsed_ranges[index][1],
+            parsed_ranges[index][2],
+            counts[index],
+        )
+        for index in range(3)
+    ]
+    points = []
+    vectors = []
+    magnitudes = []
+    maximum = 0.0
+    for xvalue in coordinates[0]:
+        for yvalue in coordinates[1]:
+            for zvalue in coordinates[2]:
+                point_value = (xvalue, yvalue, zvalue)
+                vector_value = (
+                    _g3d_finite_value(callables[0](*point_value)),
+                    _g3d_finite_value(callables[1](*point_value)),
+                    _g3d_finite_value(callables[2](*point_value))
+                )
+                magnitude = runtime.math.sqrt(
+                    vector_value[0] * vector_value[0] +
+                    vector_value[1] * vector_value[1] +
+                    vector_value[2] * vector_value[2]
+                )
+                points.append(point_value)
+                vectors.append(vector_value)
+                magnitudes.append(magnitude)
+                maximum = max(maximum, magnitude)
+    if maximum > 0:
+        scaled_vectors = [
+            (
+                vector[0] / maximum,
+                vector[1] / maximum,
+                vector[2] / maximum
+            )
+            for vector in vectors
+        ]
+        scaled_magnitudes = [value / maximum for value in magnitudes]
+    else:
+        scaled_vectors = vectors
+        scaled_magnitudes = magnitudes
+
+    options = _g3d_copy_options(options)
+    defaults = {
+        'colors': colors,
+        'center_arrows': bool(center_arrows),
+        'opacity': 1,
+        'scale': 1,
+        'colorbar': False,
+        'aspect_ratio': [1, 1, 1],
+    }
+    if (
+        _g3d_option_has(options, 'alpha')
+        and not _g3d_option_has(options, 'opacity')
+    ):
+        options['opacity'] = _g3d_option_pop(options, 'alpha')
+    if _g3d_option_has(options, 'color'):
+        defaults['colors'] = _g3d_option_pop(options, 'color')
+    _g3d_option_update(defaults, options)
+    graphics_options = _g3d_graphics_options(defaults)
+    graphic = Graphics3d()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(VectorField3d(
+        points, scaled_vectors, scaled_magnitudes, defaults))
     return graphic
 
 
@@ -2511,6 +2766,9 @@ for _doc_name, _doc_function, _doc_tags in [
     ('polygons3d', polygons3d, ['polygons', 'meshes']),
     ('text3d', text3d, ['text']),
     ('arrow3d', arrow3d, ['arrows']),
+    ('bezier3d', bezier3d, ['curves', 'Bézier paths']),
+    ('plot_vector_field3d', plot_vector_field3d,
+     ['vector fields']),
     ('frame3d', frame3d, ['frames']),
     ('tetrahedron', tetrahedron, ['shapes', 'platonic solids']),
     ('cube', cube, ['shapes', 'platonic solids']),
