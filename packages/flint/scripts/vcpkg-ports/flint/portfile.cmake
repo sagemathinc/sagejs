@@ -7,13 +7,15 @@ vcpkg_from_github(
     REF v${VERSION}
     SHA512 f1057affd37d2460522fbd4620454616571d3a8220d53fa6ee668d8cec25f7996275ec00decaf4b4d9a799db117419192b68f4c3b720f094d12d9b4cf2aa977a
     HEAD_REF master
+    PATCHES
+        force-cblas-module.patch
 )
 
 if(VCPKG_TARGET_IS_WINDOWS)
     vcpkg_find_acquire_program(PYTHON3)
-    # FLINT ships its own FindCBLAS module. CMake's implicit prefix search
-    # does not reliably find the static OpenBLAS import library under vcpkg,
-    # so bind all three cache entries to this triplet's installed dependency.
+    # The overlay patch forces FLINT's FindCBLAS module instead of vcpkg's
+    # config-package preference. Bind its cache entries to this triplet's
+    # installed static OpenBLAS dependency.
     vcpkg_cmake_configure(
         SOURCE_PATH "${SOURCE_PATH}"
         DISABLE_PARALLEL_CONFIGURE

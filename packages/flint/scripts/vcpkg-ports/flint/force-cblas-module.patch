@@ -1,0 +1,16 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a802d2502..94956da98 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -117,7 +117,10 @@ if (WITH_NTL)
+ endif()
+ find_package(Python REQUIRED)
+ 
+-find_package(CBLAS)
++# vcpkg prefers config packages, but OpenBLAS's config does not define the
++# CBLAS_FOUND variable used below. Force FLINT's bundled FindCBLAS module so
++# the installed header and static import library control FLINT_USES_BLAS.
++find_package(CBLAS MODULE)
+ set(FLINT_USES_BLAS ${CBLAS_FOUND})
+ 
+ if(CMAKE_BUILD_TYPE STREQUAL Debug)
