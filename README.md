@@ -99,11 +99,25 @@ build/sea/sagejs program.sage      # Linux/macOS: no Node or checkout
 build\sea\sagejs.exe program.sage  # Windows: no Node or checkout
 
 pnpm test:unit                     # fast JavaScript/runtime regression tier
+pnpm test:startup                  # enforce the 300 ms startup budget
 pnpm test:native                   # FLINT and native integration tests
 pnpm test:tutorial                 # complete Sage tutorial compatibility
 pnpm test:sea                      # rebuild and relocation-test both SEAs
 pnpm test                          # full compiler, CLI, upstream, and CoWasm suite
 ```
+
+Startup speed is a tested compatibility property. `pnpm test:startup`
+interleaves eleven fresh Sage.js processes with eleven bare Node processes,
+checks that each Sage.js process evaluates `2^100`, and requires the median
+startup-and-evaluation time to remain below 300 ms. It only normalizes downward
+when contemporaneous bare-Node launches prove that the host is under load; a
+1.5-second raw median remains an unconditional failure. `pnpm test:sea` applies
+the same gate to the standalone executable. This catches architectural startup
+regressions portably, though no user-space test can force an operating system
+to discard its filesystem cache. The sample count, normalized budget, reference
+Node launch time, and hard ceiling can be overridden with
+`SAGEJS_STARTUP_SAMPLES`, `SAGEJS_STARTUP_BUDGET_MS`,
+`SAGEJS_STARTUP_REFERENCE_NODE_MS`, and `SAGEJS_STARTUP_HARD_LIMIT_MS`.
 
 See [`TESTING.md`](TESTING.md) for the test tiers and
 [`DISTRIBUTION.md`](DISTRIBUTION.md) for native, SEA, and WebAssembly

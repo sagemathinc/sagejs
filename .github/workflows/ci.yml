@@ -57,6 +57,9 @@ jobs:
           SAGEJS_BUILD_JOBS: "4"
         run: pnpm bootstrap
 
+      - name: Enforce the development startup budget
+        run: pnpm test:startup:run
+
       - name: Validate parallel project contracts
         run: pnpm parallel:check -- --all
 
@@ -179,6 +182,9 @@ jobs:
           SAGEJS_BUILD_JOBS: "4"
         run: pnpm bootstrap
 
+      - name: Enforce the development startup budget
+        run: pnpm test:startup:run
+
       - name: Run strict baselib checks
         run: pnpm test:baselib:strict
 
@@ -257,6 +263,9 @@ jobs:
         run: |
           pnpm --dir packages/flint build
           pnpm build
+
+      - name: Enforce the development startup budget
+        run: pnpm test:startup:run
 
       - name: Run portable tests
         run: pnpm test:portable
@@ -340,6 +349,9 @@ jobs:
         run: |
           pnpm --dir packages/flint build
           pnpm build
+
+      - name: Enforce the development startup budget
+        run: pnpm test:startup:run
 
       - name: Run portable, host integration, and native tests
         run: |

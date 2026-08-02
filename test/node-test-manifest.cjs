@@ -5,6 +5,7 @@ const unit = [
   "test/completer.cjs",
   "test/module-cache.cjs",
   "test/runtime-cache.cjs",
+  "test/startup-budget.cjs",
   "test/typed-math-lowering.cjs",
   "test/runtime-intrinsics.cjs",
   "test/baselib-boundaries.cjs",
