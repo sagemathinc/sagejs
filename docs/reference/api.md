@@ -43,6 +43,35 @@ The coordinate ring is a FLINT-backed multivariate polynomial ring.
 - `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
 - `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
 
+## `animate`
+
+```sage
+animate(frames, **options)
+```
+
+Animate an iterable of Sage graphics or plottable symbolic objects.
+
+The optional `delay` is measured in hundredths of a second, matching
+SageMath.  `iterations=0` denotes unrestricted interactive replay.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
 ## `arc`
 
 ```sage
@@ -134,6 +163,28 @@ Draw an arrow from `start` to `end` in three dimensions.
 - Kind: `function`
 - Module: `sage.plot.plot3d`
 - Tags: graphics, 3D graphics, arrows
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `axes`
+
+```sage
+axes(scale=1, radius=None, **options)
+```
+
+Create the three positive coordinate axes as 3D arrows.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, axes
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -249,6 +300,32 @@ Return a circle centered at `center` with the given radius.
 - Tags: graphics, plotting, 2D graphics
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `Color`
+
+```sage
+Color(red='#0000ff', green=None, blue=None, space='rgb')
+```
+
+A Sage-compatible RGB color with color-space conversions.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics, 3D graphics, colors
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — Sage RGB, HSV, HLS, and HSL construction and conversion are supported with portable CSS color output.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
 
 ### Provenance
@@ -937,6 +1014,28 @@ Compile a symbolic expression to a hot JavaScript numeric function.
 
 - [Cortex Compute Engine](https://cortexjs.io/compute-engine/).
 
+## `frame_labels`
+
+```sage
+frame_labels(lower_left, upper_right, label_lower_left, label_upper_right, eps=1, **options)
+```
+
+Draw Sage-style endpoint and midpoint labels around a 3D frame.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, frames
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `frame3d`
 
 ```sage
@@ -1080,6 +1179,136 @@ Common Sage options include `bins`, `range`, `density`, `cumulative`,
 sage: histogram([1, 1, 2, 3], bins=3)
 Graphics object consisting of 1 graphics primitive
 ```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `hue`
+
+```sage
+hue(value, saturation=1, brightness=1)
+```
+
+Return an RGB triple from hue, saturation, and brightness.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `hyperbolic_arc`
+
+```sage
+hyperbolic_arc(a, b, model='UHP', **options)
+```
+
+Plot the hyperbolic geodesic from `a` to `b`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `hyperbolic_polygon`
+
+```sage
+hyperbolic_polygon(points, model='UHP', resolution=100, **options)
+```
+
+Plot a polygon whose sides are hyperbolic geodesics.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `hyperbolic_regular_polygon`
+
+```sage
+hyperbolic_regular_polygon(sides, i_angle, center=None, **options)
+```
+
+Plot a regular hyperbolic polygon in the upper-half-plane model.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `hyperbolic_triangle`
+
+```sage
+hyperbolic_triangle(a, b, c, model='UHP', **options)
+```
+
+Plot a hyperbolic triangle with vertices `a`, `b`, and `c`.
 
 ### Metadata
 
@@ -2956,6 +3185,32 @@ status, matching Python's interactive convenience function.
 
 - `software-derived` — [Python site.Quitter interactive API](https://docs.python.org/3/library/constants.html); license PSF-2.0
 
+## `rainbow`
+
+```sage
+rainbow(count, format='hex')
+```
+
+Return `count` evenly spaced hues as hex strings or RGB tuples.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
 ## `random_matrix`
 
 ```sage
@@ -3039,6 +3294,76 @@ Revolve a function or parametric curve around a coordinate axis.
 - Kind: `function`
 - Module: `sage.plot.plot3d`
 - Tags: graphics, 3D graphics, surfaces
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `rgbcolor`
+
+```sage
+rgbcolor(value, space='rgb')
+```
+
+Convert a Sage color specification to an RGB triple.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `ruler`
+
+```sage
+ruler(start, end, ticks=4, sub_ticks=4, absolute=False, snap=False, **options)
+```
+
+Draw a three-dimensional ruler with labeled major and minor ticks.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, frames
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `ruler_frame`
+
+```sage
+ruler_frame(lower_left, upper_right, ticks=4, sub_ticks=4, **options)
+```
+
+Draw three axis-aligned rulers from the lower frame corner.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, frames
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
