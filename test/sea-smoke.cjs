@@ -136,6 +136,8 @@ try {
         "from multiprocessing import Pool",
         "def phi(n):",
         "    return euler_phi(n)",
+        "def modular_dimension(n):",
+        "    return str(dimension_modular_forms(n, 8))",
         "print(factor(2026))",
         "R = RealField(100)",
         "print(R('1.25') * R('2.5'))",
@@ -146,6 +148,7 @@ try {
         "print(plot3d(u^2-v^2, (u,-1,1), (v,-1,1), plot_points=2))",
         "with Pool(2) as workers:",
         "    print(workers.map(phi, [1009, 1013, 1019]))",
+        "    print(workers.map(modular_dimension, [3, 5, 7]))",
         "",
       ].join("\n"),
     );
@@ -157,7 +160,8 @@ try {
         "2*x*cos(x^2)\n" +
         "-0.7568024953079282\n" +
         "Graphics3d Object\n" +
-        "[1008, 1012, 1018]",
+        "[1008, 1012, 1018]\n" +
+        "['3', '5', '5']",
     );
   }
 } finally {

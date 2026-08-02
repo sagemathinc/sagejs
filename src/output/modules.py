@@ -146,8 +146,9 @@ def write_main_name(output, filename=None):
         output.newline()
 
 
-def bind_module_namespace(module, output):
+def bind_module_namespace(module, output, hidden_names=None):
     """Expose module locals through a live Python module object."""
+    hidden_names = hidden_names or []
     module_id = module.module_id
     names = []
     seen = {}
@@ -196,6 +197,19 @@ def bind_module_namespace(module, output):
         output.print('},set:function(value){')
         output.print_name(name)
         output.print('=value}}')
+    wrote_property = names.length > 0
+    for entry in hidden_names:
+        name = entry.name if entry.name else entry
+        if seen[name]:
+            continue
+        if wrote_property:
+            output.comma()
+        wrote_property = True
+        output.print_string(name)
+        output.colon()
+        output.print('{enumerable:false,get:function(){return ')
+        output.print_name(name)
+        output.print('}}')
     output.print('})')
     output.end_statement()
 
@@ -304,6 +318,7 @@ def print_top_level(self, output):
 
                 prologue(self, output)
                 write_imports(self, output)
+                set_module_name(self.module_id)
                 output.newline()
                 output.indent()
 
@@ -315,7 +330,8 @@ def print_top_level(self, output):
                         output.newline()
                         write_numeric_literal_pool(numeric_literal_pool, output)
                         declare_vars(self.localvars, output)
-                        bind_module_namespace(self, output)
+                        bind_module_namespace(
+                            self, output, numeric_literal_pool)
                         display_body(self.body, True, output)
                         output.newline()
                         write_docstrings()
@@ -340,11 +356,12 @@ def print_top_level(self, output):
         if is_main:
             prologue(self, output)
             write_imports(self, output)
+            set_module_name(self.module_id)
             write_main_name(output, self.filename)
 
         write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)
-        bind_module_namespace(self, output)
+        bind_module_namespace(self, output, numeric_literal_pool)
         display_body(self.body, True, output)
         if self.comments_after and self.comments_after.length:
             output_comments(self.comments_after, output)
@@ -362,7 +379,7 @@ def print_module(self, output):
     def output_module(output):
         write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)
-        bind_module_namespace(self, output)
+        bind_module_namespace(self, output, numeric_literal_pool)
         display_body(self.body, True, output)
         declare_exports(self.module_id, self.exports, output, self.docstrings)
 

@@ -559,8 +559,11 @@ try {
       "import os",
       "def square(n):",
       "    return n*n",
+      "def modular_dimension(n):",
+      "    return str(dimension_modular_forms(n, 8))",
       "with Pool(2) as workers:",
       "    print(workers.map(square, [3, 5, 7]))",
+      "    print(workers.map(modular_dimension, [3, 5, 7]))",
       "print(os.cpu_count() >= 1)",
       "",
     ].join("\n"),
@@ -580,7 +583,10 @@ try {
   assert.match(run(["--python", pythonFile]), /^7\s*$/);
   assert.match(run(["--sage", pythonFile]), /^32\s*$/);
   assert.equal(run([loadingFile]).trim(), "49");
-  assert.equal(run([multiprocessingFile]).trim(), "[9, 25, 49]\nTrue");
+  assert.equal(
+    run([multiprocessingFile]).trim(),
+    "[9, 25, 49]\n['3', '5', '5']\nTrue",
+  );
   assert.match(
     run(["compile", "--omit-baselib", sageFile]),
     /var ρσ_const_0 = Integer\("2"\),\s+ρσ_const_1 = Integer\("5"\)/,

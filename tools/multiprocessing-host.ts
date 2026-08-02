@@ -73,11 +73,22 @@ function referencedBindings(
   const bindings: Record<string, EncodedValue> = {};
   const globals = Reflect.get(callable, "__globals__");
   const getitem = Reflect.get(globalThis, "ρσ_getitem");
-  const names = source.match(/[A-Za-z_$\u0370-\u03ff][A-Za-z0-9_$\u0370-\u03ff]*/g) ?? [];
+  const names =
+    source.match(
+      /[A-Za-z_$\u0370-\u03ff][A-Za-z0-9_$\u0370-\u03ff]*/g,
+    ) ?? [];
   for (const name of new Set(names)) {
     let value: unknown;
     if (globals !== null && typeof globals === "object") {
       value = Reflect.get(globals, name);
+      const liveScope = Reflect.get(globals, "_scope");
+      if (
+        value === undefined &&
+        liveScope !== null &&
+        typeof liveScope === "object"
+      ) {
+        value = Reflect.get(liveScope, name);
+      }
       if (value === undefined && typeof getitem === "function") {
         try {
           value = Reflect.apply(getitem, undefined, [globals, name]);
@@ -86,7 +97,10 @@ function referencedBindings(
         }
       }
     }
-    if (value === undefined && name.startsWith("ρσ_kernel_")) {
+    if (
+      value === undefined &&
+      (name.startsWith("ρσ_kernel_") || name.includes("ρσ_const_"))
+    ) {
       value = Reflect.get(globalThis, name);
     }
     if (value === undefined || value === callable) continue;
