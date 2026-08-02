@@ -2012,6 +2012,45 @@ Return complex conjugation on this modular-symbol space.
 - William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
 - John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
 
+## `multi_graphics`
+
+```sage
+multi_graphics(graphics_list)
+```
+
+Draw graphics at arbitrary positions on one common canvas.
+
+Each entry is either a `Graphics` object at Sage's default full-canvas
+position or `(graphic, (left, bottom, width, height))`, with coordinates
+expressed as fractions of the canvas.
+
+### Examples
+
+```sage
+sage: g1 = plot(sin(x), (x, -pi, pi))
+sage: g2 = circle((0, 0), 1, color='red')
+sage: multi_graphics([g1, (g2, (0.2, 0.55, 0.3, 0.3))])
+Multigraphics with 2 elements
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
 ## `next_prime`
 
 ```sage

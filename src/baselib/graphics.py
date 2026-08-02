@@ -2041,6 +2041,168 @@ def text(
 
 
 @runtime.sequence_class
+class MultiGraphics:
+    """Several graphics drawn at arbitrary positions on one canvas."""
+
+    def __init__(self, graphics_list: Any) -> None:
+        self._glist: list[Graphics] = []
+        self._positions: list[tuple[float, float, float, float]] = []
+        for item in graphics_list:
+            if isinstance(item, Graphics):
+                self.append(item)
+            elif isinstance(item, (list, tuple)) and len(item) == 2:
+                self.append(item[0], item[1])
+            elif (
+                isinstance(item, (list, tuple))
+                and len(item) == 5
+                and isinstance(item[0], Graphics)
+            ):
+                # Sage tuple lowering currently flattens the nested position
+                # in ``(graphic, (left, bottom, width, height))``.
+                self.append(item[0], item[1:])
+            else:
+                raise TypeError(
+                    'a Graphics object or pair (Graphics, position) is expected')
+
+    def __len__(self) -> int:
+        return len(self._glist)
+
+    def __iter__(self) -> Iterator[Graphics]:
+        return iter(self._glist)
+
+    def __getitem__(self, index: int) -> Graphics:
+        return self._glist[index]
+
+    def __setitem__(self, index: int, graphic: Graphics) -> None:
+        if not isinstance(graphic, Graphics):
+            raise TypeError('a Graphics object is expected')
+        self._glist[index] = graphic
+
+    def __repr__(self) -> str:
+        count = len(self._glist)
+        suffix = '' if count == 1 else 's'
+        return 'Multigraphics with ' + str(count) + ' element' + suffix
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def append(
+        self,
+        graphic: Graphics,
+        pos: Any = None,
+    ) -> None:
+        """Append a graphic at `(left, bottom, width, height)`."""
+        if not isinstance(graphic, Graphics):
+            raise TypeError('a Graphics object is expected')
+        if pos is None:
+            position = (0.125, 0.11, 0.775, 0.77)
+        else:
+            values = list(pos)
+            if len(values) != 4:
+                raise TypeError('pos must be a 4-tuple')
+            position = (
+                float(values[0]), float(values[1]),
+                float(values[2]), float(values[3])
+            )
+        if position[2] <= 0 or position[3] <= 0:
+            raise ValueError('graphics position width and height must be positive')
+        self._glist.append(graphic)
+        self._positions.append(position)
+
+    def position(self, index: int) -> Any:
+        """Return `(left, bottom, width, height)` for one element."""
+        return tuple(self._positions[index])
+
+    def plotly(self) -> Any:
+        """Return a Plotly figure with independently positioned axes."""
+        traces = []
+        layout = _native_record(
+            autosize=True,
+            showlegend=False,
+            annotations=[],
+        )
+        annotations = runtime.reflect.get(layout, 'annotations')
+        for index in range(len(self._glist)):
+            graphic = self._glist[index]
+            left, bottom, width, height = self._positions[index]
+            suffix = '' if index == 0 else str(index + 1)
+            xreference = 'x' + suffix
+            yreference = 'y' + suffix
+            xlayout_name = 'xaxis' + suffix
+            ylayout_name = 'yaxis' + suffix
+            local_layout = graphic._plotly_layout()
+            xaxis = runtime.reflect.get(local_layout, 'xaxis')
+            yaxis = runtime.reflect.get(local_layout, 'yaxis')
+            runtime.reflect.set(xaxis, 'domain', [left, left + width])
+            runtime.reflect.set(yaxis, 'domain', [bottom, bottom + height])
+            runtime.reflect.set(xaxis, 'anchor', yreference)
+            runtime.reflect.set(yaxis, 'anchor', xreference)
+            runtime.reflect.set(layout, xlayout_name, xaxis)
+            runtime.reflect.set(layout, ylayout_name, yaxis)
+            for primitive in graphic:
+                trace = primitive._plotly_trace()
+                runtime.reflect.set(trace, 'xaxis', xreference)
+                runtime.reflect.set(trace, 'yaxis', yreference)
+                traces.append(trace)
+            if runtime.reflect.has(local_layout, 'title'):
+                title = runtime.reflect.get(local_layout, 'title')
+                annotations.append(_native_record(
+                    text=str(runtime.reflect.get(title, 'text')),
+                    x=left + width / 2.0,
+                    y=bottom + height,
+                    xref='paper',
+                    yref='paper',
+                    xanchor='center',
+                    yanchor='bottom',
+                    showarrow=False,
+                ))
+            if bool(_option_get(
+                graphic.get_extra_kwds(), 'show_legend',
+                graphic._show_legend
+            )):
+                runtime.reflect.set(layout, 'showlegend', True)
+        return _native_record(
+            data=traces,
+            layout=layout,
+            config=_native_record(displaylogo=False, responsive=True),
+        )
+
+    def _rich_repr_(self) -> Any:
+        return _native_record(mime=_PLOTLY_MIME, data=self.plotly())
+
+    def save(self, filename: Any, **options: Any) -> MultiGraphics:
+        """Save through the host graphics hook when one is installed."""
+        hook = runtime.reflect.get(
+            runtime.global_object, '__sagejs_graphics_save_hook__')
+        if hook is runtime.undefined:
+            raise NotImplementedError(
+                'graphics file export is not available in this host')
+        runtime.reflect.apply(
+            hook, runtime.undefined, [self, filename, options])
+        return self
+
+
+def multi_graphics(graphics_list: Any) -> MultiGraphics:
+    r"""
+    Draw graphics at arbitrary positions on one common canvas.
+
+    Each entry is either a `Graphics` object at Sage's default full-canvas
+    position or `(graphic, (left, bottom, width, height))`, with coordinates
+    expressed as fractions of the canvas.
+
+    ### Examples
+
+    ```sage
+    sage: g1 = plot(sin(x), (x, -pi, pi))
+    sage: g2 = circle((0, 0), 1, color='red')
+    sage: multi_graphics([g1, (g2, (0.2, 0.55, 0.3, 0.3))])
+    Multigraphics with 2 elements
+    ```
+    """
+    return MultiGraphics(graphics_list)
+
+
+@runtime.sequence_class
 class GraphicsArray:
     """A rectangular array of independently rendered graphics objects."""
 
@@ -3854,6 +4016,8 @@ for _doc_name, _doc_function, _doc_tags in [
      ['2D graphics', 'logarithmic axes']),
     ('list_plot_semilogy', list_plot_semilogy,
      ['2D graphics', 'logarithmic axes']),
+    ('multi_graphics', multi_graphics,
+     ['2D graphics', 'composition', 'insets']),
     ('graphics_array', graphics_array, ['2D graphics', 'composition']),
 ]:
     runtime.register_doc(

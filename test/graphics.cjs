@@ -196,6 +196,45 @@ async function main() {
       "Graphics object consisting of 1 graphics primitive",
     );
 
+    const insets = await session.evaluate(
+      [
+        "background = plot(sin(x), (x,-pi,pi), title='background')",
+        "inset = circle((0,0), 1, color='red', axes=False)",
+        "panels = multi_graphics([",
+        "    background, (inset, (0.6,0.55,0.3,0.3))",
+        "])",
+        "panels",
+      ].join("\n"),
+    );
+    assert.equal(insets.repr, "Multigraphics with 2 elements");
+    assert.equal(insets.display?.data.data.length, 2);
+    assert.equal(insets.display?.data.data[0].xaxis, "x");
+    assert.equal(insets.display?.data.data[1].xaxis, "x2");
+    assert.deepEqual(insets.display?.data.layout.xaxis.domain, [0.125, 0.9]);
+    assert.deepEqual(insets.display?.data.layout.yaxis.domain, [0.11, 0.88]);
+    assert.ok(Math.abs(insets.display?.data.layout.xaxis2.domain[0] - 0.6) < 1e-14);
+    assert.ok(Math.abs(insets.display?.data.layout.xaxis2.domain[1] - 0.9) < 1e-14);
+    assert.ok(Math.abs(insets.display?.data.layout.yaxis2.domain[0] - 0.55) < 1e-14);
+    assert.ok(Math.abs(insets.display?.data.layout.yaxis2.domain[1] - 0.85) < 1e-14);
+    assert.equal(insets.display?.data.layout.xaxis2.anchor, "y2");
+    assert.equal(insets.display?.data.layout.yaxis2.anchor, "x2");
+    assert.equal(insets.display?.data.layout.annotations[0].text, "background");
+    assert.equal((await session.evaluate("len(panels)")).repr, "2");
+    assert.equal(
+      (await session.evaluate("panels.position(1)")).repr,
+      "(0.6, 0.55, 0.3, 0.3)",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "panels.append(point((0,0)),(0.1,0.1,0.2,0.2)); len(panels)",
+      )).repr,
+      "3",
+    );
+    await assert.rejects(
+      session.evaluate("multi_graphics([[circle((0,0),1),[0,0,1]]])"),
+      /pos must be a 4-tuple/,
+    );
+
     const polygonPlot = await session.evaluate(
       "polygon([(0, 0), (1, 0), (0, 1)], color='green')",
     );
