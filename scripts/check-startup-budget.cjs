@@ -8,6 +8,19 @@ const { performance } = require("node:perf_hooks");
 
 const ROOT = resolve(__dirname, "..");
 const EXPECTED = "1267650600228229401496703205376";
+const PACKAGE_GRAPH = require("../architecture/package-graph.json");
+
+function startupDefaults(sea = false) {
+  const name = sea ? "sea-cli" : "development-cli";
+  const budget = PACKAGE_GRAPH.startup_budgets[name];
+  if (!budget) throw new Error(`missing startup budget ${name}`);
+  return {
+    budgetMs: budget.normalized_median_ms,
+    hardLimitMs: budget.hard_limit_ms,
+    referenceNodeMs: budget.reference_node_ms,
+    samples: budget.samples,
+  };
+}
 
 function positiveNumber(value, name, fallback) {
   if (value === undefined || value === "") return fallback;
@@ -125,21 +138,24 @@ function targetCommand({ executable, sea }) {
 
 function run(argv = process.argv.slice(2), environment = process.env) {
   const parsed = parseArguments(argv);
-  const samples = sampleCount(parsed.samples ?? environment.SAGEJS_STARTUP_SAMPLES);
+  const defaults = startupDefaults(parsed.sea);
+  const samples = sampleCount(
+    parsed.samples ?? environment.SAGEJS_STARTUP_SAMPLES ?? defaults.samples,
+  );
   const budgetMs = positiveNumber(
     environment.SAGEJS_STARTUP_BUDGET_MS,
     "SAGEJS_STARTUP_BUDGET_MS",
-    300,
+    defaults.budgetMs,
   );
   const referenceNodeMs = positiveNumber(
     environment.SAGEJS_STARTUP_REFERENCE_NODE_MS,
     "SAGEJS_STARTUP_REFERENCE_NODE_MS",
-    30,
+    defaults.referenceNodeMs,
   );
   const hardLimitMs = positiveNumber(
     environment.SAGEJS_STARTUP_HARD_LIMIT_MS,
     "SAGEJS_STARTUP_HARD_LIMIT_MS",
-    1500,
+    defaults.hardLimitMs,
   );
   const target = targetCommand(parsed);
   const nodeTimes = [];
@@ -219,4 +235,5 @@ module.exports = {
   parseArguments,
   positiveNumber,
   sampleCount,
+  startupDefaults,
 };

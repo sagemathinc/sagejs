@@ -1,8 +1,8 @@
 """Python-compatible immutable byte strings.
 
-Sage.js stores bytes as a compact binary JavaScript string plus numeric
-properties.  The latter make the compiler's fast ``value[index]`` path behave
-like Python, while the methods below provide the Python data model.
+Byte values are kept in one dense JavaScript array.  Indexing is routed through
+the Python data model, so mirroring every byte as an object property would only
+waste time and memory for large binary payloads.
 """
 
 from __future__ import annotations
@@ -34,6 +34,17 @@ def _byte_values_from_binary_string(value: _Str) -> list[_Int]:
 
 
 def _encode_utf8(value: _Str) -> list[_Int]:
+    encoder_class = runtime.reflect.get(
+        runtime.global_object, 'TextEncoder')
+    if encoder_class is not runtime.undefined:
+        encoder = runtime.reflect.construct(encoder_class, [])
+        encoded = runtime.reflect.apply(
+            runtime.reflect.get(encoder, 'encode'), encoder, [value])
+        return runtime.reflect.apply(
+            runtime.reflect.get(runtime.array, 'from'),
+            runtime.array,
+            [encoded],
+        )
     answer = []
     for character in value:
         code = ord(character)
@@ -61,6 +72,25 @@ def _encode_utf8(value: _Str) -> list[_Int]:
 
 
 def _decode_utf8(values: list[_Int], errors: _Str) -> _Str:
+    decoder_class = runtime.reflect.get(
+        runtime.global_object, 'TextDecoder')
+    uint8_array = runtime.reflect.get(
+        runtime.global_object, 'Uint8Array')
+    if (
+        decoder_class is not runtime.undefined
+        and uint8_array is not runtime.undefined
+        and errors in ('strict', 'replace')
+    ):
+        decoder = runtime.reflect.construct(
+            decoder_class,
+            ['utf-8', {'fatal': errors == 'strict'}],
+        )
+        encoded = runtime.reflect.construct(uint8_array, [values])
+        try:
+            return runtime.reflect.apply(
+                runtime.reflect.get(decoder, 'decode'), decoder, [encoded])
+        except Exception:
+            raise ValueError('invalid UTF-8 sequence')  # noqa: B904
     answer = ''
     index = 0
     while index < len(values):
@@ -142,21 +172,13 @@ def _normalise_bound(
     return answer
 
 
+@runtime.sequence_class
 class SageBytes:
 
     def __init__(self, values: list[_Int]) -> None:
         if isinstance(values, SageBytes):
             values = values._values[:]
         self._values = values
-        for index, value in enumerate(values):
-            runtime.object.defineProperty(
-                self,
-                str(index),
-                {
-                    'value': value,
-                    'enumerable': True,
-                },
-            )
 
     @property
     def length(self) -> _Int:

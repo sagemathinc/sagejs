@@ -8,11 +8,7 @@ import {
 
 import type { SageLanguageMode } from "./kernel-evaluator";
 import { multiprocessingWorkerPath } from "./resources";
-
-interface EncodedSequence {
-  __sagejs_multiprocessing__: "list" | "tuple";
-  items: EncodedValue[];
-}
+import type { SagePacket } from "./serialization";
 
 interface EncodedFunction {
   __sagejs_multiprocessing__: "function";
@@ -20,14 +16,15 @@ interface EncodedFunction {
   bindings: Record<string, EncodedValue>;
 }
 
-type EncodedValue =
-  | null
-  | boolean
-  | string
-  | number
-  | bigint
-  | EncodedSequence
-  | EncodedFunction;
+type EncodedValue = SagePacket | EncodedFunction;
+
+function isEncodedFunction(value: EncodedValue): value is EncodedFunction {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    Reflect.get(value, "__sagejs_multiprocessing__") === "function"
+  );
+}
 
 interface CallableSpec {
   module?: string;
@@ -63,6 +60,14 @@ class MultiprocessingRemoteError extends Error {
     this.remoteMessage = error.message;
     this.remoteStack = error.stack;
   }
+}
+
+let serializationModule: typeof import("./serialization") | undefined;
+
+function serialization(): typeof import("./serialization") {
+  // Keep serialization and all mathematical codecs off the cold-start path.
+  // This module is first loaded only when a Pool or explicit serializer is used.
+  return serializationModule ??= require("./serialization");
 }
 
 function referencedBindings(
@@ -117,21 +122,6 @@ function referencedBindings(
 }
 
 function encode(value: unknown, ancestors = new Set<unknown>()): EncodedValue {
-  if (
-    value === null ||
-    typeof value === "boolean" ||
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "bigint"
-  ) {
-    return value as null | boolean | string | number | bigint;
-  }
-  if (Array.isArray(value)) {
-    return {
-      __sagejs_multiprocessing__: Object.isFrozen(value) ? "tuple" : "list",
-      items: value.map((item) => encode(item, ancestors)),
-    };
-  }
   if (typeof value === "function") {
     if (ancestors.has(value)) {
       throw new TypeError("multiprocessing cannot serialize recursive closures");
@@ -149,29 +139,19 @@ function encode(value: unknown, ancestors = new Set<unknown>()): EncodedValue {
       ),
     };
   }
-  throw new TypeError(
-    "multiprocessing cannot yet serialize this value; supported values are " +
-      "None, booleans, strings, numbers, exact integers, and nested sequences",
-  );
+  return serialization().encode(value);
 }
 
 function decode(value: EncodedValue): unknown {
-  if (
-    value !== null &&
-    typeof value === "object" &&
-    (value.__sagejs_multiprocessing__ === "list" ||
-      value.__sagejs_multiprocessing__ === "tuple")
-  ) {
-    const items = value.items.map(decode);
-    if (value.__sagejs_multiprocessing__ === "tuple") {
-      const makeTuple = Reflect.get(globalThis, "ρσ_math_tuple");
-      if (typeof makeTuple === "function") {
-        return Reflect.apply(makeTuple, undefined, [items]);
-      }
-    }
-    return items;
+  if (isEncodedFunction(value)) return value;
+  return serialization().decode(value as SagePacket);
+}
+
+function packetBuffers(value: EncodedValue): ArrayBuffer[] {
+  if (isEncodedFunction(value)) {
+    return Object.values(value.bindings).flatMap(packetBuffers);
   }
-  return value;
+  return (value as SagePacket).buffers;
 }
 
 function callableSpec(callable: unknown): CallableSpec {
@@ -298,12 +278,20 @@ class SynchronousWorkerPool {
       if (!Array.isArray(rawArguments)) {
         throw new TypeError("Pool.starmap() arguments must be sequences");
       }
-      this.workers[index % this.workers.length].port.postMessage({
+      const args = rawArguments.map((argument) => encode(argument));
+      const message = {
         type: "task",
         id: index,
         callable: target,
-        args: rawArguments.map((argument) => encode(argument)),
-      });
+        args,
+      };
+      const transferList = [
+        ...args.flatMap(packetBuffers),
+      ];
+      this.workers[index % this.workers.length].port.postMessage(
+        message,
+        transferList,
+      );
     }
 
     this.waitUntil(() => {

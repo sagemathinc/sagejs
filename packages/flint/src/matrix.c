@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <node_api.h>
 #include <sagejs/native.h>
@@ -884,6 +885,408 @@ napi_value sagejs_zmod_matrix(napi_env env, napi_callback_info info)
 {
     return modular_matrix_from_entries(
         env, info, SAGEJS_MATRIX_ZMOD);
+}
+
+static int packed_width(napi_env env, napi_value value, size_t *width)
+{
+    uint32_t raw;
+
+    if (!check_napi(env, napi_get_value_uint32(env, value, &raw)))
+        return 0;
+    if (raw != 1 && raw != 2 && raw != 4)
+    {
+        napi_throw_range_error(env, NULL,
+            "packed matrix entry width must be 1, 2, or 4 bytes");
+        return 0;
+    }
+    *width = (size_t) raw;
+    return 1;
+}
+
+static ulong read_packed_entry(const uint8_t *source, size_t width)
+{
+    ulong value = source[0];
+
+    if (width >= 2)
+        value |= (ulong) source[1] << 8;
+    if (width == 4)
+    {
+        value |= (ulong) source[2] << 16;
+        value |= (ulong) source[3] << 24;
+    }
+    return value;
+}
+
+static void write_packed_entry(uint8_t *target, size_t width, ulong value)
+{
+    target[0] = (uint8_t) value;
+    if (width >= 2)
+        target[1] = (uint8_t) (value >> 8);
+    if (width == 4)
+    {
+        target[2] = (uint8_t) (value >> 16);
+        target[3] = (uint8_t) (value >> 24);
+    }
+}
+
+static napi_value modular_matrix_from_packed(
+    napi_env env,
+    napi_callback_info info,
+    sagejs_matrix_kind kind)
+{
+    napi_value args[5];
+    napi_typedarray_type array_type;
+    napi_value array_buffer;
+    sagejs_matrix *matrix;
+    slong rows;
+    slong cols;
+    ulong modulus;
+    size_t width;
+    size_t byte_length;
+    size_t byte_offset;
+    size_t entry_count;
+    void *raw_data;
+    uint8_t *data;
+
+    if (!require_arguments(env, info, 5, args) ||
+        !value_to_dimension(env, args[0], &rows) ||
+        !value_to_dimension(env, args[1], &cols) ||
+        !packed_width(env, args[3], &width) ||
+        !bigint_to_ulong(env, args[4], &modulus))
+        return NULL;
+    if (!check_napi(env, napi_get_typedarray_info(
+        env, args[2], &array_type, &byte_length, &raw_data,
+        &array_buffer, &byte_offset)))
+        return NULL;
+    if (array_type != napi_uint8_array)
+    {
+        napi_throw_type_error(env, NULL,
+            "packed matrix entries must be a Uint8Array");
+        return NULL;
+    }
+    if (rows != 0 && (size_t) cols > SIZE_MAX / (size_t) rows)
+    {
+        napi_throw_range_error(env, NULL, "matrix is too large");
+        return NULL;
+    }
+    entry_count = (size_t) rows * (size_t) cols;
+    if (entry_count > SIZE_MAX / width || byte_length != entry_count * width)
+    {
+        napi_throw_range_error(env, NULL,
+            "packed matrix entry count does not match its dimensions");
+        return NULL;
+    }
+    matrix = new_nmod_matrix(env, kind, rows, cols, modulus);
+    if (matrix == NULL)
+        return NULL;
+    data = (uint8_t *) raw_data;
+    for (size_t index = 0; index < entry_count; index++)
+        nmod_mat_entry(
+            matrix->modular,
+            (slong) (index / (size_t) cols),
+            (slong) (index % (size_t) cols)) =
+            read_packed_entry(data + index * width, width) % modulus;
+    return wrap_matrix(env, matrix);
+}
+
+napi_value sagejs_nmod_matrix_packed(
+    napi_env env, napi_callback_info info)
+{
+    return modular_matrix_from_packed(env, info, SAGEJS_MATRIX_NMOD);
+}
+
+napi_value sagejs_zmod_matrix_packed(
+    napi_env env, napi_callback_info info)
+{
+    return modular_matrix_from_packed(env, info, SAGEJS_MATRIX_ZMOD);
+}
+
+napi_value sagejs_matrix_export_packed(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value array_buffer;
+    napi_value result;
+    sagejs_matrix *matrix;
+    slong rows;
+    slong cols;
+    size_t width;
+    size_t entry_count;
+    size_t byte_length;
+    uint8_t *data;
+
+    if (!require_arguments(env, info, 2, args) ||
+        !packed_width(env, args[1], &width))
+        return NULL;
+    matrix = unwrap_matrix(env, args[0]);
+    if (matrix == NULL)
+        return NULL;
+    if (!matrix_is_modular(matrix))
+    {
+        napi_throw_type_error(env, NULL,
+            "only machine-word modular matrices have a packed encoding");
+        return NULL;
+    }
+    rows = nmod_mat_nrows(matrix->modular);
+    cols = nmod_mat_ncols(matrix->modular);
+    if (rows != 0 && (size_t) cols > SIZE_MAX / (size_t) rows)
+    {
+        napi_throw_range_error(env, NULL, "matrix is too large");
+        return NULL;
+    }
+    entry_count = (size_t) rows * (size_t) cols;
+    if (entry_count > SIZE_MAX / width)
+    {
+        napi_throw_range_error(env, NULL, "packed matrix is too large");
+        return NULL;
+    }
+    byte_length = entry_count * width;
+    if (!check_napi(env, napi_create_arraybuffer(
+        env, byte_length, (void **) &data, &array_buffer)) ||
+        !check_napi(env, napi_create_typedarray(
+            env, napi_uint8_array, byte_length, array_buffer, 0, &result)))
+        return NULL;
+    for (size_t index = 0; index < entry_count; index++)
+        write_packed_entry(
+            data + index * width,
+            width,
+            nmod_mat_entry(
+                matrix->modular,
+                (slong) (index / (size_t) cols),
+                (slong) (index % (size_t) cols)));
+    return result;
+}
+
+static void write_uint32_le(uint8_t *target, uint32_t value)
+{
+    target[0] = (uint8_t) value;
+    target[1] = (uint8_t) (value >> 8);
+    target[2] = (uint8_t) (value >> 16);
+    target[3] = (uint8_t) (value >> 24);
+}
+
+static uint32_t read_uint32_le(const uint8_t *source)
+{
+    return (uint32_t) source[0] |
+        (uint32_t) source[1] << 8 |
+        (uint32_t) source[2] << 16 |
+        (uint32_t) source[3] << 24;
+}
+
+napi_value sagejs_zz_matrix_export_packed(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value array_buffer;
+    napi_value result;
+    sagejs_matrix *matrix;
+    slong rows;
+    slong cols;
+    size_t entry_count;
+    size_t byte_length = 0;
+    size_t maximum_words = 0;
+    size_t offset = 0;
+    ulong *words = NULL;
+    uint8_t *data;
+    fmpz_t magnitude;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    matrix = unwrap_matrix(env, args[0]);
+    if (matrix == NULL)
+        return NULL;
+    if (matrix->kind != SAGEJS_MATRIX_ZZ)
+    {
+        napi_throw_type_error(env, NULL,
+            "packed integer export requires a ZZ matrix");
+        return NULL;
+    }
+    rows = fmpz_mat_nrows(matrix->integer);
+    cols = fmpz_mat_ncols(matrix->integer);
+    if (rows != 0 && (size_t) cols > SIZE_MAX / (size_t) rows)
+    {
+        napi_throw_range_error(env, NULL, "matrix is too large");
+        return NULL;
+    }
+    entry_count = (size_t) rows * (size_t) cols;
+    for (size_t index = 0; index < entry_count; index++)
+    {
+        const fmpz *entry = fmpz_mat_entry(
+            matrix->integer,
+            (slong) (index / (size_t) cols),
+            (slong) (index % (size_t) cols));
+        size_t bytes = (size_t) (fmpz_bits(entry) + 7) / 8;
+        size_t word_count = (bytes + sizeof(ulong) - 1) / sizeof(ulong);
+
+        if (bytes > UINT32_C(0x7fffffff) || byte_length > SIZE_MAX - 4 - bytes)
+        {
+            napi_throw_range_error(env, NULL,
+                "integer matrix packed representation is too large");
+            return NULL;
+        }
+        byte_length += 4 + bytes;
+        if (word_count > maximum_words)
+            maximum_words = word_count;
+    }
+    if (maximum_words != 0)
+    {
+        words = malloc(maximum_words * sizeof(ulong));
+        if (words == NULL)
+        {
+            napi_throw_error(env, NULL,
+                "unable to allocate packed integer matrix workspace");
+            return NULL;
+        }
+    }
+    if (!check_napi(env, napi_create_arraybuffer(
+        env, byte_length, (void **) &data, &array_buffer)) ||
+        !check_napi(env, napi_create_typedarray(
+            env, napi_uint8_array, byte_length, array_buffer, 0, &result)))
+    {
+        free(words);
+        return NULL;
+    }
+    fmpz_init(magnitude);
+    for (size_t index = 0; index < entry_count; index++)
+    {
+        const fmpz *entry = fmpz_mat_entry(
+            matrix->integer,
+            (slong) (index / (size_t) cols),
+            (slong) (index % (size_t) cols));
+        size_t bytes = (size_t) (fmpz_bits(entry) + 7) / 8;
+        size_t word_count = (bytes + sizeof(ulong) - 1) / sizeof(ulong);
+        uint32_t header = (uint32_t) bytes;
+
+        if (fmpz_sgn(entry) < 0)
+            header |= UINT32_C(0x80000000);
+        write_uint32_le(data + offset, header);
+        offset += 4;
+        if (bytes != 0)
+        {
+            fmpz_abs(magnitude, entry);
+            fmpz_get_ui_array(words, (slong) word_count, magnitude);
+            for (size_t byte = 0; byte < bytes; byte++)
+                data[offset + byte] = (uint8_t)
+                    (words[byte / sizeof(ulong)] >>
+                     (8 * (byte % sizeof(ulong))));
+            offset += bytes;
+        }
+    }
+    fmpz_clear(magnitude);
+    free(words);
+    return result;
+}
+
+napi_value sagejs_zz_matrix_packed(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[3];
+    napi_typedarray_type array_type;
+    napi_value array_buffer;
+    sagejs_matrix *matrix;
+    slong rows;
+    slong cols;
+    size_t entry_count;
+    size_t byte_length;
+    size_t byte_offset;
+    size_t offset = 0;
+    size_t maximum_words = 0;
+    void *raw_data;
+    uint8_t *data;
+    ulong *words = NULL;
+
+    if (!require_arguments(env, info, 3, args) ||
+        !value_to_dimension(env, args[0], &rows) ||
+        !value_to_dimension(env, args[1], &cols))
+        return NULL;
+    if (!check_napi(env, napi_get_typedarray_info(
+        env, args[2], &array_type, &byte_length, &raw_data,
+        &array_buffer, &byte_offset)))
+        return NULL;
+    if (array_type != napi_uint8_array)
+    {
+        napi_throw_type_error(env, NULL,
+            "packed integer matrix entries must be a Uint8Array");
+        return NULL;
+    }
+    if (rows != 0 && (size_t) cols > SIZE_MAX / (size_t) rows)
+    {
+        napi_throw_range_error(env, NULL, "matrix is too large");
+        return NULL;
+    }
+    entry_count = (size_t) rows * (size_t) cols;
+    data = (uint8_t *) raw_data;
+    for (size_t index = 0; index < entry_count; index++)
+    {
+        uint32_t header;
+        size_t bytes;
+        size_t word_count;
+
+        if (byte_length - offset < 4)
+            goto invalid;
+        header = read_uint32_le(data + offset);
+        offset += 4;
+        bytes = (size_t) (header & UINT32_C(0x7fffffff));
+        if (bytes > byte_length - offset)
+            goto invalid;
+        word_count = (bytes + sizeof(ulong) - 1) / sizeof(ulong);
+        if (word_count > maximum_words)
+            maximum_words = word_count;
+        offset += bytes;
+    }
+    if (offset != byte_length)
+        goto invalid;
+    if (maximum_words != 0)
+    {
+        words = calloc(maximum_words, sizeof(ulong));
+        if (words == NULL)
+        {
+            napi_throw_error(env, NULL,
+                "unable to allocate packed integer matrix workspace");
+            return NULL;
+        }
+    }
+    matrix = new_matrix(env, SAGEJS_MATRIX_ZZ, rows, cols);
+    if (matrix == NULL)
+    {
+        free(words);
+        return NULL;
+    }
+    offset = 0;
+    for (size_t index = 0; index < entry_count; index++)
+    {
+        uint32_t header = read_uint32_le(data + offset);
+        size_t bytes = (size_t) (header & UINT32_C(0x7fffffff));
+        size_t word_count = (bytes + sizeof(ulong) - 1) / sizeof(ulong);
+        fmpz *entry = fmpz_mat_entry(
+            matrix->integer,
+            (slong) (index / (size_t) cols),
+            (slong) (index % (size_t) cols));
+
+        offset += 4;
+        if (word_count != 0)
+            memset(words, 0, word_count * sizeof(ulong));
+        for (size_t byte = 0; byte < bytes; byte++)
+            words[byte / sizeof(ulong)] |=
+                (ulong) data[offset + byte] <<
+                (8 * (byte % sizeof(ulong)));
+        if (word_count == 0)
+            fmpz_zero(entry);
+        else
+        {
+            fmpz_set_ui_array(entry, words, (slong) word_count);
+            if ((header & UINT32_C(0x80000000)) != 0)
+                fmpz_neg(entry, entry);
+        }
+        offset += bytes;
+    }
+    free(words);
+    return wrap_matrix(env, matrix);
+
+invalid:
+    napi_throw_range_error(env, NULL,
+        "invalid packed integer matrix representation");
+    return NULL;
 }
 
 static napi_value modular_matrix_random(

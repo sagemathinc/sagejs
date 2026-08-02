@@ -13,6 +13,7 @@ const unit = [
   "test/magma.cjs",
   "test/foreign-languages.cjs",
   "test/parallel-development.cjs",
+  "test/package-graph.cjs",
 ];
 
 const integration = [
@@ -26,6 +27,7 @@ const integration = [
   "test/network-modules.cjs",
   "test/stdlib-utilities.cjs",
   "test/multiprocessing-module.cjs",
+  "test/serialization.cjs",
   "test/numpy-module.cjs",
   "test/kernel.cjs",
   "test/graphics.cjs",

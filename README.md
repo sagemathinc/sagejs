@@ -1,6 +1,12 @@
 # Sage.js
 
-**Open research mathematics, native to Node.**
+> **Sage.js is open, portable, high-performance software for exploring
+> research mathematics, discovering patterns, testing conjectures, developing
+> algorithms, and producing reproducible computational evidence for formal
+> proof.**
+
+> **Start instantly. Run anywhere. Scale from a laptop to a cluster. Reproduce
+> every result.**
 
 [![Sage.js CI](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml/badge.svg)](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml)
 
@@ -132,6 +138,11 @@ interface. Coordinated development efforts use isolated worktrees,
 machine-readable task contracts,
 exclusive path claims, and validation receipts as described in
 [`PARALLEL-DEVELOPMENT.md`](PARALLEL-DEVELOPMENT.md).
+Durable results and worker-thread messages use the safe, versioned protocol in
+[`SERIALIZATION.md`](SERIALIZATION.md). The mechanically checked logical and
+workspace package graph, lazy-loading policy, source budgets, and startup
+budgets are defined in
+[`PACKAGE-ARCHITECTURE.md`](PACKAGE-ARCHITECTURE.md).
 
 Tagged releases publish ready-to-run `sagejs` and `sagepython` archives for
 Linux x64, Linux arm64, and Windows x64. They require no Node.js, compiler, or

@@ -573,6 +573,14 @@ export class NodeHostAdapter {
           return { ok: true, value: nodeOs.availableParallelism() };
         case "urandom":
           return { ok: true, value: Array.from(crypto.randomBytes(Number(args[0]))) };
+        case "serializationDumps": {
+          const serializer = require("./serialization") as typeof import("./serialization");
+          return { ok: true, value: serializer.dumps(args[0]) };
+        }
+        case "serializationLoads": {
+          const serializer = require("./serialization") as typeof import("./serialization");
+          return { ok: true, value: serializer.loads(String(args[0])) };
+        }
         case "multiprocessingCreatePool":
           return {
             ok: true,

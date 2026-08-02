@@ -30,7 +30,8 @@
     "./kernel": {
       "types": "./dist/tools/kernel.d.ts",
       "default": "./dist/tools/kernel.js"
-    }
+    },
+    "./serialization": "./dist/tools/serialization.js"
   },
   "bin": {
     "sagejs": "bin/sagejs",
@@ -59,12 +60,15 @@
     "JUPYTER.md",
     "MAGMA.md",
     "MISSION.md",
+    "PACKAGE-ARCHITECTURE.md",
     "PLOTTING.md",
     "POLYGLOT.md",
     "TESTING.md",
+    "SERIALIZATION.md",
     "pyrightconfig.json",
     "TYPING.md",
     "docs",
+    "architecture",
     ".agents",
     "index.cjs"
   ],
@@ -83,13 +87,14 @@
     "docs:generate": "pnpm run build && node scripts/generate-docs.cjs",
     "docs:check": "pnpm run build && node scripts/generate-docs.cjs --check",
     "baselib:status": "node scripts/baselib-status.cjs",
+    "architecture:check": "node scripts/check-package-graph.cjs",
     "parallel:new": "node scripts/parallel-development.cjs new",
     "parallel:check": "node scripts/parallel-development.cjs check",
     "parallel:status": "node scripts/parallel-development.cjs status",
     "parallel:run": "node scripts/parallel-development.cjs run",
     "clean": "node scripts/clean.cjs",
     "start": "node bin/sagejs",
-    "test": "pnpm run build && pnpm run test:startup:run && pnpm run test:baselib:strict && pnpm run test:compiler && pnpm run test:cli && pnpm run test:upstream:run && pnpm run test:cowasm:run",
+    "test": "pnpm run architecture:check && pnpm run build && pnpm run test:startup:run && pnpm run test:baselib:strict && pnpm run test:compiler && pnpm run test:cli && pnpm run test:upstream:run && pnpm run test:cowasm:run",
     "test:baselib:strict": "node scripts/check-strict-baselib.cjs",
     "test:compiler": "node scripts/run-compiler-tests.cjs",
     "test:portable": "node scripts/run-test-tier.cjs portable",
@@ -98,6 +103,7 @@
     "test:integration": "node scripts/run-test-tier.cjs integration",
     "test:stdlib": "pnpm run build && node test/os-module.cjs && node test/file-io.cjs && node test/stdlib-data.cjs && node test/stdlib-filesystem.cjs && node test/subprocess-module.cjs && node test/network-modules.cjs && node test/stdlib-utilities.cjs",
     "test:multiprocessing": "pnpm run build && node --test test/multiprocessing-module.cjs",
+    "test:serialization": "pnpm run build && node --test test/serialization.cjs",
     "test:cli": "node scripts/run-test-tier.cjs all",
     "test:jupyter": "pnpm run build && python3 scripts/test-jupyter-kernel.py",
     "test:upstream": "pnpm run build && pnpm run test:upstream:run",

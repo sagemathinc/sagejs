@@ -448,6 +448,43 @@ class MatrixSpaceParent(sage.Parent):
 
     zero = zero_matrix
 
+    def _from_native(self, native_value: Any) -> Matrix:
+        """Construct an element from a trusted native matrix handle."""
+        return Matrix(self, native_value)
+
+    def _from_packed_residues(
+        self,
+        entries: Any,
+        width: int,
+    ) -> Matrix:
+        """Construct a modular matrix from packed little-endian residues."""
+        backend = runtime.flint_backend()
+        if getattr(self._base, '_kind', None) == 'ZMOD':
+            native = backend.zmodMatrixPacked(
+                self._rows,
+                self._cols,
+                entries,
+                width,
+                self._base._modulus,
+            )
+        else:
+            native = backend.nmodMatrixPacked(
+                self._rows,
+                self._cols,
+                entries,
+                width,
+                self._base._modulus,
+            )
+        return Matrix(self, native)
+
+    def _from_packed_integers(self, entries: Any) -> Matrix:
+        """Construct an integer matrix from packed signed magnitudes."""
+        return Matrix(
+            self,
+            runtime.flint_backend().zzMatrixPacked(
+                self._rows, self._cols, entries),
+        )
+
     def identity_matrix(self) -> Matrix:
         if self._rows != self._cols:
             raise TypeError('identity matrix must be square')
@@ -962,6 +999,15 @@ class Matrix(sage.Element):
 
     def _new(self, native_value: Any) -> Matrix:
         return Matrix(self._parent, native_value)
+
+    def _packed_residues(self, width: int) -> Any:
+        """Return modular entries as packed little-endian residues."""
+        return runtime.flint_backend().matrixExportPacked(
+            self._native, width)
+
+    def _packed_integers(self) -> Any:
+        """Return ZZ entries as packed signed little-endian magnitudes."""
+        return runtime.flint_backend().zzMatrixExportPacked(self._native)
 
     def base_ring(self) -> sage.Parent:
         return self._parent.base_ring()

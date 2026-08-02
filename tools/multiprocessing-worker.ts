@@ -3,11 +3,8 @@ import { runInThisContext } from "node:vm";
 
 import type { SageLanguageMode } from "./kernel-evaluator";
 import { createTaskEvaluator } from "./task-evaluator";
-
-interface EncodedSequence {
-  __sagejs_multiprocessing__: "list" | "tuple";
-  items: EncodedValue[];
-}
+import { decode as decodePacket, encode as encodePacket } from "./serialization";
+import type { SagePacket } from "./serialization";
 
 interface EncodedFunction {
   __sagejs_multiprocessing__: "function";
@@ -15,14 +12,15 @@ interface EncodedFunction {
   bindings: Record<string, EncodedValue>;
 }
 
-type EncodedValue =
-  | null
-  | boolean
-  | string
-  | number
-  | bigint
-  | EncodedSequence
-  | EncodedFunction;
+type EncodedValue = SagePacket | EncodedFunction;
+
+function isEncodedFunction(value: EncodedValue): value is EncodedFunction {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    Reflect.get(value, "__sagejs_multiprocessing__") === "function"
+  );
+}
 
 interface CallableSpec {
   module?: string;
@@ -62,26 +60,7 @@ function errorValue(error: unknown) {
 }
 
 function decode(value: EncodedValue): unknown {
-  if (
-    value !== null &&
-    typeof value === "object" &&
-    (value.__sagejs_multiprocessing__ === "list" ||
-      value.__sagejs_multiprocessing__ === "tuple")
-  ) {
-    const items = value.items.map(decode);
-    if (value.__sagejs_multiprocessing__ === "tuple") {
-      const makeTuple = Reflect.get(globalThis, "ρσ_math_tuple");
-      if (typeof makeTuple === "function") {
-        return Reflect.apply(makeTuple, undefined, [items]);
-      }
-    }
-    return items;
-  }
-  if (
-    value !== null &&
-    typeof value === "object" &&
-    value.__sagejs_multiprocessing__ === "function"
-  ) {
+  if (isEncodedFunction(value)) {
     const names = Object.keys(value.bindings);
     const factory = runInThisContext(
       `(function(${names.join(",")}) { return (${value.source}); })`,
@@ -93,29 +72,11 @@ function decode(value: EncodedValue): unknown {
       names.map((name) => decode(value.bindings[name])),
     );
   }
-  return value;
+  return decodePacket(value as SagePacket);
 }
 
-function encode(value: unknown): EncodedValue {
-  if (
-    value === null ||
-    typeof value === "boolean" ||
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "bigint"
-  ) {
-    return value as null | boolean | string | number | bigint;
-  }
-  if (Array.isArray(value)) {
-    return {
-      __sagejs_multiprocessing__: Object.isFrozen(value) ? "tuple" : "list",
-      items: value.map(encode),
-    };
-  }
-  throw new TypeError(
-    "multiprocessing cannot yet serialize this result; supported values are " +
-      "None, booleans, strings, numbers, exact integers, and nested sequences",
-  );
+function encode(value: unknown): SagePacket {
+  return encodePacket(value);
 }
 
 try {
@@ -166,12 +127,13 @@ port.on("message", (message: TaskMessage | { type: "close" }) => {
       },
       message.args.map(decode),
     );
+    const value = encode(result);
     port.postMessage({
       type: "result",
       id: message.id,
       ok: true,
-      value: encode(result),
-    });
+      value,
+    }, value.buffers);
   } catch (error) {
     port.postMessage({
       type: "result",

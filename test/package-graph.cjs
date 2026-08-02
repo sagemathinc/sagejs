@@ -1,0 +1,48 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const test = require("node:test");
+const { readFileSync } = require("node:fs");
+const { join, resolve } = require("node:path");
+
+const {
+  assertDag,
+  pythonImports,
+  validateManifest,
+} = require("../scripts/check-package-graph.cjs");
+
+const root = resolve(__dirname, "..");
+
+test("the checked-in package graph owns every Python source and respects budgets", () => {
+  const manifest = JSON.parse(
+    readFileSync(join(root, "architecture/package-graph.json"), "utf8"),
+  );
+  const result = validateManifest(manifest, root);
+  assert.equal(
+    result.ownership.get("src/lib/sagejs_serialization.py"),
+    "python-stdlib",
+  );
+  assert.equal(result.ownership.get("src/baselib/modular.py"), "modular-forms");
+});
+
+test("dependency cycles are rejected with their path", () => {
+  assert.throws(
+    () => assertDag([
+      { id: "a", depends_on: ["b"] },
+      { id: "b", depends_on: ["c"] },
+      { id: "c", depends_on: ["a"] },
+    ], "test graph"),
+    /a -> b -> c -> a/,
+  );
+});
+
+test("Python import extraction ignores prose and understands aliases", () => {
+  assert.deepEqual(
+    pythonImports([
+      "from urllib.parse import quote",
+      "import os, json as json_module",
+      "from the complete runtime argument signature.",
+    ].join("\n")),
+    ["urllib.parse", "os", "json"],
+  );
+});

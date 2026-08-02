@@ -51,23 +51,29 @@ Sage.js reports this model as:
 'sagejs-worker'
 ```
 
-## Current serialization boundary
+## Serialization boundary
 
 Functions and arguments cross an isolation boundary, much like Python's
 `spawn` start method. Module functions and self-contained top-level functions
 are supported. Closures and functions depending on mutable interactive globals
 are not yet portable.
 
-The initial deterministic serializer supports:
+Arguments and results use
+[`Sage.js serialization v1`](../SERIALIZATION.md), the same safe protocol used
+for durable research results. It supports:
 
 - `None`, booleans, strings, floating-point numbers, and exact integers;
-- nested lists and tuples.
+- recursive containers, dictionaries, nested lists and tuples, and shared
+  references;
+- `ZZ`, `QQ`, prime finite fields, `Zmod(n)`, and their elements;
+- univariate polynomials, vectors, and dense matrices; and
+- packed transferable buffers for matrices over small finite rings.
 
-Support for dictionaries, Sage mathematical parents/elements, user-defined
-classes, shared memory, queues, asynchronous results, and individual
-`Process` objects will be added through an explicit reduce/reconstruct
-registry. Unsupported values fail clearly instead of silently losing their
-mathematical type.
+Functions remain a separate task description rather than serialized data.
+Support for additional mathematical domains, user-defined classes, shared
+memory, queues, asynchronous results, and individual `Process` objects will
+be added through explicit registries. Unsupported values fail clearly instead
+of silently losing their mathematical type.
 
 In browser or WASM embeddings without a worker host capability, importing
 `multiprocessing` remains safe and constructing a pool raises

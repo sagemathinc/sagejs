@@ -1273,6 +1273,41 @@ assert.equal(
 
 const residueMatrix = flint.zmodMatrix(
   2, 2, [2n, 3n, 3n, 2n], 36n);
+const packedFinite = flint.matrixExportPacked(
+  flint.nmodMatrix(2, 3, [1n, 2n, 250n, 3n, 4n, 5n], 251n),
+  1,
+);
+assert.deepEqual(Array.from(packedFinite), [1, 2, 250, 3, 4, 5]);
+assert.equal(
+  flint.matrixEqual(
+    flint.nmodMatrixPacked(2, 3, packedFinite, 1, 251n),
+    flint.nmodMatrix(2, 3, [1n, 2n, 250n, 3n, 4n, 5n], 251n),
+  ),
+  true,
+);
+const packedResidues = new Uint8Array([1, 0, 255, 1, 0, 2, 255, 2]);
+const packedResidueMatrix = flint.zmodMatrixPacked(
+  2, 2, packedResidues, 2, 1000n);
+assert.deepEqual(
+  Array.from(flint.matrixExportPacked(packedResidueMatrix, 2)),
+  Array.from(packedResidues),
+);
+const packedIntegerSource = flint.zzMatrix(2, 3, [
+  0n,
+  1n,
+  -1n,
+  2n ** 80n + 7n,
+  -(2n ** 130n + 9n),
+  255n,
+]);
+const packedIntegerBytes = flint.zzMatrixExportPacked(packedIntegerSource);
+assert.equal(
+  flint.matrixEqual(
+    flint.zzMatrixPacked(2, 3, packedIntegerBytes),
+    packedIntegerSource,
+  ),
+  true,
+);
 assert.equal(
   flint.matrixEqual(
     flint.zmodMatrixRandom(2, 3, 36n, 9n, 10n),
