@@ -165,7 +165,7 @@ def _marker_value(marker: str) -> str:
 
 def _parse_figsize(figsize: Any) -> tuple[float, float]:
     r"""
-    Normalize Sage's figure-size option to ``(width, height)`` in inches.
+    Normalize Sage's figure-size option to `(width, height)` in inches.
 
     A single positive number is the width and uses Sage/matplotlib's default
     4:3 aspect ratio.  A pair specifies both dimensions explicitly.
@@ -1522,7 +1522,7 @@ def _graphics_options(options: dict[str, Any]) -> dict[str, Any]:
 
 
 def line(points: Any, **options: Any) -> Graphics:
-    """Return a graphics object containing a line through ``points``."""
+    """Return a graphics object containing a line through `points`."""
     options = _copy_options(options)
     normalized = _normalize_points(points)
     defaults = {
@@ -1579,7 +1579,7 @@ def circle(
     radius: Any,
     **options: Any,
 ) -> Graphics:
-    """Return a circle centered at ``center`` with the given radius."""
+    """Return a circle centered at `center` with the given radius."""
     options = _copy_options(options)
     if not _option_has(options, 'aspect_ratio'):
         options['aspect_ratio'] = 1.0
@@ -1777,7 +1777,7 @@ def arrow(
     headpoint: Any,
     **options: Any,
 ) -> Graphics:
-    """Return a directed line segment from ``tailpoint`` to ``headpoint``."""
+    """Return a directed line segment from `tailpoint` to `headpoint`."""
     options = _copy_options(options)
     tail = _point_pair(tailpoint)
     head = _point_pair(headpoint)
@@ -1909,7 +1909,7 @@ def scatter_plot(datalist: Any, **options: Any) -> Graphics:
 
 
 def polygon(points: Any, **options: Any) -> Graphics:
-    """Return a filled polygon through ``points``."""
+    """Return a filled polygon through `points`."""
     options = _copy_options(options)
     normalized = _normalize_points(points)
     defaults = {
@@ -2074,6 +2074,20 @@ def graphics_array(
     rows: Any = None,
     columns: Any = None,
 ) -> GraphicsArray:
+    r"""
+    Arrange several two-dimensional graphics objects in a rectangular grid.
+
+    The input may already be a nested list of rows. For a flat list, specify
+    either `rows` or `columns`; omitting both creates one horizontal row.
+
+    ### Examples
+
+    ```sage
+    sage: G = graphics_array([plot(sin(x), (x, 0, 2*pi)), circle((0, 0), 1)])
+    sage: G.nrows(), G.ncols()
+    (1, 2)
+    ```
+    """
     values = list(graphics)
     if len(values) and isinstance(values[0], (list, tuple)):
         return GraphicsArray(values)
@@ -3071,7 +3085,7 @@ def plot_slope_field(
     **options: Any,
 ) -> Graphics:
     r"""
-    Plot short normalized line segments with slope ``function_value``.
+    Plot short normalized line segments with slope `function_value`.
     """
     xvariable = _plot_variable([xrange])
     yvariable = _plot_variable([yrange])
@@ -3105,8 +3119,8 @@ def streamline_plot(
     Plot integral curves of a vector field or first-order slope field.
 
     Streamlines are integrated in both directions with a deterministic
-    midpoint method.  ``density`` controls seed count and integration step;
-    ``start_points`` supplies explicit seeds.
+    midpoint method.  `density` controls seed count and integration step;
+    `start_points` supplies explicit seeds.
     """
     defaults = {
         'plot_points': 20,
@@ -3243,7 +3257,7 @@ def list_plot(
     plotjoined: bool = False,
     **options: Any,
 ) -> Graphics:
-    """Plot a sequence of y-values or a sequence of ``(x, y)`` pairs."""
+    """Plot a sequence of y-values or a sequence of `(x, y)` pairs."""
     options = _copy_options(options)
     values = list(data)
     if len(values) == 0:

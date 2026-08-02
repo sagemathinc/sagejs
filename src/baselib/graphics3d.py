@@ -130,7 +130,7 @@ def _g3d_colorscale(color: Any) -> Any:
 
 
 def _g3d_parse_figsize(figsize: Any) -> tuple[float, float]:
-    """Normalize Sage's ``figsize`` value to dimensions in inches."""
+    """Normalize Sage's `figsize` value to dimensions in inches."""
     if isinstance(figsize, (list, tuple)):
         if len(figsize) != 2:
             raise ValueError(
@@ -316,7 +316,7 @@ def _g3d_variables(
 
 
 class _Coordinates:
-    """A Sage-compatible coordinate transformation for ``plot3d``."""
+    """A Sage-compatible coordinate transformation for `plot3d`."""
 
     coordinate_names = ('x', 'y', 'z')
     coordinate_name = 'Coordinates'
@@ -807,7 +807,7 @@ class Mesh3d(GraphicPrimitive3d):
 
 
 class ScatteredSurface3d(GraphicPrimitive3d):
-    """A surface triangulated from scattered ``(x, y, z)`` samples."""
+    """A surface triangulated from scattered `(x, y, z)` samples."""
 
     def __init__(
         self,
@@ -1391,7 +1391,7 @@ class Graphics3d:
 
 
 def line3d(points: Any, **options: Any) -> Graphics3d:
-    """Return a line through three-dimensional ``points``."""
+    """Return a line through three-dimensional `points`."""
     options = _g3d_copy_options(options)
     normalized = _g3d_normalize_points(points)
     arrow_head = bool(_g3d_option_pop(options, 'arrow_head', False))
@@ -1560,7 +1560,7 @@ def arrow3d(
     head_len: Any = None,
     **options: Any,
 ) -> Graphics3d:
-    """Draw an arrow from ``start`` to ``end`` in three dimensions."""
+    """Draw an arrow from `start` to `end` in three dimensions."""
     start_point = _g3d_point(start)
     end_point = _g3d_point(end)
     if start_point == end_point:
@@ -1642,7 +1642,7 @@ def tetrahedron(
     size: Any = 1,
     **options: Any,
 ) -> Graphics3d:
-    """Return a regular tetrahedron centered at ``center``."""
+    """Return a regular tetrahedron centered at `center`."""
     square_root_two = runtime.math.sqrt(2.0)
     square_root_six = runtime.math.sqrt(6.0)
     vertices = [
@@ -1663,7 +1663,7 @@ def cube(
     frame_color: Any = None,
     **options: Any,
 ) -> Graphics3d:
-    """Return a cube centered at ``center`` with side length ``size``."""
+    """Return a cube centered at `center` with side length `size`."""
     vertices = [
         [-0.5, -0.5, -0.5], [-0.5, -0.5, 0.5],
         [-0.5, 0.5, -0.5], [-0.5, 0.5, 0.5],
@@ -1708,7 +1708,7 @@ def octahedron(
     size: Any = 1,
     **options: Any,
 ) -> Graphics3d:
-    """Return a regular octahedron centered at ``center``."""
+    """Return a regular octahedron centered at `center`."""
     vertices = [
         [1, 0, 0], [-1, 0, 0],
         [0, 1, 0], [0, -1, 0],
@@ -1754,7 +1754,7 @@ def icosahedron(
     size: Any = 1,
     **options: Any,
 ) -> Graphics3d:
-    """Return a regular icosahedron centered at ``center``."""
+    """Return a regular icosahedron centered at `center`."""
     geometry = _icosahedron_geometry()
     return _solid_mesh(
         geometry[0], geometry[1], center, size, **options)
@@ -1780,7 +1780,7 @@ def dodecahedron(
     size: Any = 1,
     **options: Any,
 ) -> Graphics3d:
-    """Return a regular dodecahedron centered at ``center``."""
+    """Return a regular dodecahedron centered at `center`."""
     geometry = _icosahedron_geometry()
     ico_vertices = geometry[0]
     ico_faces = geometry[1]
@@ -1984,11 +1984,11 @@ def list_plot3d(
     **options: Any,
 ) -> Graphics3d:
     r"""
-    Plot a matrix, rectangular array, or list of ``(x, y, z)`` samples.
+    Plot a matrix, rectangular array, or list of `(x, y, z)` samples.
 
     Rectangular data preserves its exact grid.  Scattered samples use
     Plotly's planar Delaunay triangulation; one or two samples become a point
-    or line exactly as in Sage.  The ``default`` and ``linear`` interpolation
+    or line exactly as in Sage.  The `default` and `linear` interpolation
     modes are currently supported; higher-order Clough--Tocher and spline
     interpolation report that they are not implemented instead of silently
     returning a different surface.
@@ -2350,7 +2350,7 @@ def sphere(
     size: Any = 1,
     **options: Any,
 ) -> Graphics3d:
-    """Return a sphere of radius ``size`` centered at ``center``."""
+    """Return a sphere of radius `size` centered at `center`."""
     coordinates = _g3d_point(center)
     radius = float(size)
     if radius <= 0:

@@ -903,6 +903,19 @@ backend supports it.
 graphics_array(graphics, rows=None, columns=None)
 ```
 
+Arrange several two-dimensional graphics objects in a rectangular grid.
+
+The input may already be a nested list of rows. For a flat list, specify
+either `rows` or `columns`; omitting both creates one horizontal row.
+
+### Examples
+
+```sage
+sage: G = graphics_array([plot(sin(x), (x, 0, 2*pi)), circle((0, 0), 1)])
+sage: G.nrows(), G.ncols()
+(1, 2)
+```
+
 ### Metadata
 
 - Kind: `function`
