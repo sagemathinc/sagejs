@@ -14,6 +14,7 @@ from typing import Any, Callable, Iterator, Sequence
 import sagejs.runtime as runtime
 
 _PLOTLY_MIME = 'application/vnd.plotly.v1+json'
+_PI = 3.141592653589793
 _GRAPHICS_OPTION_NAMES = [
     'aspect_ratio',
     'axes',
@@ -1841,6 +1842,220 @@ def bezier_path(path: Any, **options: Any) -> Graphics:
     if bool(_option_pop(options, 'fill', False)):
         return polygon(sampled, **options)
     return line(sampled, **options)
+
+
+def _hyperbolic_point(value: Any) -> tuple[float, float]:
+    if isinstance(value, (list, tuple)):
+        return _point_pair(value)
+    try:
+        return _complex_numeric_parts(value)
+    except Exception:
+        if hasattr(value, '_plot_complex_callable'):
+            evaluator = value._plot_complex_callable([])
+            return _complex_numeric_parts(evaluator(0.0, 0.0))
+        cdf = runtime.reflect.get(runtime.global_object, 'CDF')
+        if cdf is runtime.undefined:
+            raise
+        numeric = runtime.reflect.apply(
+            cdf, runtime.undefined, [value])
+        return _complex_numeric_parts(numeric)
+
+
+def _hyperbolic_geodesic_points(
+    start: Any,
+    end: Any,
+    model: str,
+    resolution: int,
+) -> list[tuple[float, float]]:
+    a = _hyperbolic_point(start)
+    b = _hyperbolic_point(end)
+    if resolution < 2:
+        raise ValueError('resolution must be at least 2')
+    normalized_model = str(model).upper()
+    if normalized_model not in ('UHP', 'PD', 'KM'):
+        raise ValueError("model must be 'UHP', 'PD', or 'KM'")
+    if normalized_model == 'UHP':
+        if a[1] < 0 or b[1] < 0:
+            raise ValueError('UHP points must have nonnegative imaginary part')
+        if abs(a[0] - b[0]) < 1e-14:
+            return [a, b]
+        center_x = (
+            a[0] * a[0] + a[1] * a[1]
+            - b[0] * b[0] - b[1] * b[1]
+        ) / (2.0 * (a[0] - b[0]))
+        center_y = 0.0
+    elif normalized_model == 'KM':
+        if a[0] * a[0] + a[1] * a[1] > 1.0 + 1e-12:
+            raise ValueError('KM points must lie in the unit disk')
+        if b[0] * b[0] + b[1] * b[1] > 1.0 + 1e-12:
+            raise ValueError('KM points must lie in the unit disk')
+        return [a, b]
+    else:
+        if a[0] * a[0] + a[1] * a[1] > 1.0 + 1e-12:
+            raise ValueError('PD points must lie in the unit disk')
+        if b[0] * b[0] + b[1] * b[1] > 1.0 + 1e-12:
+            raise ValueError('PD points must lie in the unit disk')
+        determinant = a[0] * b[1] - a[1] * b[0]
+        if abs(determinant) < 1e-14:
+            return [a, b]
+        anorm = a[0] * a[0] + a[1] * a[1] + 1.0
+        bnorm = b[0] * b[0] + b[1] * b[1] + 1.0
+        center_x = (
+            anorm * b[1] - a[1] * bnorm
+        ) / (2.0 * determinant)
+        center_y = (
+            a[0] * bnorm - anorm * b[0]
+        ) / (2.0 * determinant)
+
+    radius = runtime.math.sqrt(
+        (a[0] - center_x) * (a[0] - center_x)
+        + (a[1] - center_y) * (a[1] - center_y))
+    start_angle = runtime.math.atan2(a[1] - center_y, a[0] - center_x)
+    end_angle = runtime.math.atan2(b[1] - center_y, b[0] - center_x)
+    delta = end_angle - start_angle
+    while delta > _PI:
+        delta -= 2.0 * _PI
+    while delta < -_PI:
+        delta += 2.0 * _PI
+    if normalized_model == 'PD':
+        middle_angle = start_angle + delta / 2.0
+        middle_x = center_x + radius * runtime.math.cos(middle_angle)
+        middle_y = center_y + radius * runtime.math.sin(middle_angle)
+        if middle_x * middle_x + middle_y * middle_y > 1.0 + 1e-10:
+            if delta >= 0:
+                delta -= 2.0 * _PI
+            else:
+                delta += 2.0 * _PI
+    points = []
+    for index in range(resolution + 1):
+        angle = start_angle + delta * index / float(resolution)
+        points.append(runtime.math_tuple([
+            center_x + radius * runtime.math.cos(angle),
+            center_y + radius * runtime.math.sin(angle),
+        ]))
+    return points
+
+
+def hyperbolic_arc(
+    a: Any,
+    b: Any,
+    model: str = 'UHP',
+    **options: Any,
+) -> Graphics:
+    r"""Plot the hyperbolic geodesic from `a` to `b`."""
+    options = _copy_options(options)
+    resolution = int(_option_pop(options, 'resolution', 100))
+    points = _hyperbolic_geodesic_points(a, b, model, resolution)
+    answer = line(points, **options)
+    if str(model).upper() in ('PD', 'KM'):
+        answer = answer + circle(
+            (0, 0), 1, axes=False, color='black')
+        answer.set_aspect_ratio(1)
+    return answer
+
+
+def hyperbolic_polygon(
+    points: Any,
+    model: str = 'UHP',
+    resolution: int = 100,
+    **options: Any,
+) -> Graphics:
+    r"""Plot a polygon whose sides are hyperbolic geodesics."""
+    vertices = list(points)
+    if len(vertices) == 0:
+        raise ValueError('cannot plot the empty polygon')
+    if len(vertices) < 2:
+        raise ValueError('a hyperbolic polygon needs at least two vertices')
+    sampled = []
+    for index in range(len(vertices)):
+        edge = _hyperbolic_geodesic_points(
+            vertices[index],
+            vertices[(index + 1) % len(vertices)],
+            model,
+            int(resolution),
+        )
+        if len(sampled):
+            sampled.extend(edge[1:])
+        else:
+            sampled.extend(edge)
+    options = _copy_options(options)
+    fill = bool(_option_pop(options, 'fill', False))
+    if fill:
+        answer = polygon(sampled, **options)
+    else:
+        answer = line(sampled, **options)
+    if str(model).upper() in ('PD', 'KM'):
+        answer = answer + circle((0, 0), 1, color='black')
+        answer.set_aspect_ratio(1)
+    return answer
+
+
+def hyperbolic_triangle(
+    a: Any,
+    b: Any,
+    c: Any,
+    model: str = 'UHP',
+    **options: Any,
+) -> Graphics:
+    """Plot a hyperbolic triangle with vertices `a`, `b`, and `c`."""
+    return hyperbolic_polygon([a, b, c], model=model, **options)
+
+
+def hyperbolic_regular_polygon(
+    sides: int,
+    i_angle: Any,
+    center: Any = None,
+    **options: Any,
+) -> Graphics:
+    r"""Plot a regular hyperbolic polygon in the upper-half-plane model."""
+    count = int(sides)
+    angle = float(i_angle)
+    if count <= 2:
+        raise ValueError('degenerated polygons (sides<=2) are not supported')
+    if angle <= 0 or angle >= _PI:
+        raise ValueError('interior angle must be in the interval (0, pi)')
+    if _PI * (count - 2) - count * angle <= 0:
+        raise ValueError(
+            'there exists no hyperbolic regular compact polygon '
+            'with these parameters')
+    if center is None:
+        center_point = (0.0, 1.0)
+    else:
+        center_point = _hyperbolic_point(center)
+    if center_point[1] <= 0:
+        raise ValueError('center must lie in the upper half plane')
+    beta = 2.0 * _PI / count
+    cotangent = runtime.math.cos(angle / 2.0) / runtime.math.sin(
+        angle / 2.0)
+    radius = runtime.math.acosh(
+        cotangent * (1.0 + runtime.math.cos(beta))
+        / runtime.math.sin(beta))
+    initial_y = runtime.math.exp(radius)
+    vertices = []
+    for index in range(count):
+        theta = index * beta
+        cosine = runtime.math.cos(theta / 2.0)
+        sine = runtime.math.sin(theta / 2.0)
+        numerator_real = sine
+        numerator_imaginary = cosine * initial_y
+        denominator_real = cosine
+        denominator_imaginary = -sine * initial_y
+        denominator_norm = (
+            denominator_real * denominator_real
+            + denominator_imaginary * denominator_imaginary)
+        real_part = (
+            numerator_real * denominator_real
+            + numerator_imaginary * denominator_imaginary
+        ) / denominator_norm
+        imaginary_part = (
+            numerator_imaginary * denominator_real
+            - numerator_real * denominator_imaginary
+        ) / denominator_norm
+        vertices.append(runtime.math_tuple([
+            center_point[0] + center_point[1] * real_part,
+            center_point[1] * imaginary_part,
+        ]))
+    return hyperbolic_polygon(vertices, model='UHP', **options)
 
 
 def arrow(
@@ -4394,6 +4609,14 @@ for _doc_name, _doc_function, _doc_tags in [
      ['2D graphics', 'composition', 'insets']),
     ('graphics_array', graphics_array, ['2D graphics', 'composition']),
     ('animate', animate, ['2D graphics', '3D graphics', 'animation']),
+    ('hyperbolic_arc', hyperbolic_arc,
+     ['2D graphics', 'hyperbolic geometry']),
+    ('hyperbolic_polygon', hyperbolic_polygon,
+     ['2D graphics', 'hyperbolic geometry']),
+    ('hyperbolic_triangle', hyperbolic_triangle,
+     ['2D graphics', 'hyperbolic geometry']),
+    ('hyperbolic_regular_polygon', hyperbolic_regular_polygon,
+     ['2D graphics', 'hyperbolic geometry']),
 ]:
     runtime.register_doc(
         _doc_name,

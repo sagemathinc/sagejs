@@ -132,6 +132,23 @@ async function main() {
     assert.equal(animated3d.display?.data.frames.length, 2);
     assert.equal(animated3d.display?.data.frames[0].data[0].type, "surface");
 
+    const hyperbolic = await session.evaluate(
+      [
+        "hyperbolic_triangle(0.3+0.3*I, 0.8*I, -0.5-0.5*I,",
+        "                    model='PD', color='magenta', fill=True)",
+      ].join("\n"),
+    );
+    assert.equal(hyperbolic.display?.data.data.length, 2);
+    assert.equal(hyperbolic.display?.data.data[0].fill, "toself");
+    assert.equal(hyperbolic.display?.data.data[0].fillcolor, "magenta");
+    assert.equal(hyperbolic.display?.data.data[1].line.color, "black");
+    assert.equal(hyperbolic.display?.data.layout.yaxis.scaleanchor, "x");
+    assert.equal(
+      (await session.evaluate("len(hyperbolic_regular_polygon(5,pi/2))"))
+        .repr,
+      "1",
+    );
+
     const resized = await session.evaluate(
       "show(line([(0,0), (1,1)]), figsize=[4, 2])",
     );
