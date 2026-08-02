@@ -1,5 +1,6 @@
 """Small runtime used by the experimental Wolfram Language frontend."""
 
+import math
 from typing import Any, Callable
 
 import sagejs as sage
@@ -130,6 +131,36 @@ def thickness(value: Any) -> _GraphicsDirective:
     return _GraphicsDirective({'thickness': float(value)})
 
 
+def point_size(value: Any) -> _GraphicsDirective:
+    return _GraphicsDirective({'size': max(1.0, 100.0 * float(value))})
+
+
+def rgb_color(red: Any, green: Any, blue: Any, alpha: Any = 1) -> _GraphicsDirective:
+    color = (float(red), float(green), float(blue))
+    return _GraphicsDirective({
+        'color': color,
+        'rgbcolor': color,
+        'opacity': float(alpha),
+        'alpha': float(alpha),
+    })
+
+
+def gray_level(value: Any, alpha: Any = 1) -> _GraphicsDirective:
+    component = float(value)
+    return rgb_color(component, component, component, alpha)
+
+
+def hue_color(value: Any, saturation: Any = 1, brightness: Any = 1,
+              alpha: Any = 1) -> _GraphicsDirective:
+    color = sage.hue(value, saturation, brightness)
+    return _GraphicsDirective({
+        'color': color,
+        'rgbcolor': color,
+        'opacity': float(alpha),
+        'alpha': float(alpha),
+    })
+
+
 def directive(*values: Any) -> _GraphicsDirective:
     options = {}
     for value in values:
@@ -146,10 +177,21 @@ def _style_graphic(graphic: Any, options: dict[str, Any]) -> Any:
     if not options:
         return graphic
     for primitive in graphic:
-        if hasattr(primitive, '_options'):
-            for name in options:
-                primitive._options[name] = options[name]
+        target = primitive
+        while target is not None:
+            if hasattr(target, '_options'):
+                for name in options:
+                    target._options[name] = options[name]
+            if hasattr(target, 'primitive'):
+                target = target.primitive
+            else:
+                target = None
     return graphic
+
+
+def style(graphic: Any, *directives: Any) -> Any:
+    combined = directive(*directives)
+    return _style_graphic(graphic, combined.options)
 
 
 def _combine_graphics(items: Any) -> Any:
@@ -243,6 +285,121 @@ def wolfram_sphere(center: Any = (0, 0, 0), radius: Any = 1) -> Any:
     return sage.sphere(center, radius)
 
 
+def _oriented_surface(graphic: Any, start: Any, end: Any) -> Any:
+    first = [float(value) for value in start]
+    second = [float(value) for value in end]
+    vector = [second[index] - first[index] for index in range(3)]
+    length = math.sqrt(sum(value * value for value in vector))
+    if length == 0:
+        raise ValueError("solid endpoints must be distinct")
+    cosine = max(-1.0, min(1.0, vector[2] / length))
+    angle = math.acos(cosine)
+    axis = (-vector[1], vector[0], 0.0)
+    if abs(axis[0]) + abs(axis[1]) < 1e-14:
+        if vector[2] < 0:
+            graphic = graphic.rotateX(math.pi)
+    else:
+        graphic = graphic.rotate(axis, angle)
+    return graphic.translate(first)
+
+
+def cylinder(bounds: Any = ((0, 0, 0), (0, 0, 1)), radius: Any = 1) -> Any:
+    values = list(bounds)
+    if len(values) != 2:
+        raise ValueError("Cylinder requires two endpoints")
+    first = values[0]
+    second = values[1]
+    length = math.sqrt(sum(
+        float(second[index] - first[index]) ** 2 for index in range(3)))
+    radius_value = float(radius)
+
+    def cylinder_x(u: float, _v: float) -> float:
+        return radius_value * math.cos(u)
+
+    def cylinder_y(u: float, _v: float) -> float:
+        return radius_value * math.sin(u)
+
+    def cylinder_z(_u: float, v: float) -> float:
+        return v
+
+    surface = sage.parametric_plot3d(
+        (cylinder_x, cylinder_y, cylinder_z),
+        (0, 2 * math.pi),
+        (0, length),
+        plot_points=(33, 9),
+    )
+    lower = []
+    upper = []
+    for index in range(32):
+        angle = 2 * math.pi * index / 32.0
+        lower.append((float(radius) * math.cos(angle),
+                      float(radius) * math.sin(angle), 0))
+        upper.append((float(radius) * math.cos(angle),
+                      float(radius) * math.sin(angle), length))
+    surface += sage.polygon3d(lower)
+    surface += sage.polygon3d(upper)
+    return _oriented_surface(surface, first, second)
+
+
+def cone(bounds: Any = ((0, 0, 0), (0, 0, 1)), radius: Any = 1) -> Any:
+    values = list(bounds)
+    if len(values) != 2:
+        raise ValueError("Cone requires two endpoints")
+    first = values[0]
+    second = values[1]
+    length = math.sqrt(sum(
+        float(second[index] - first[index]) ** 2 for index in range(3)))
+    radius_value = float(radius)
+
+    def cone_x(u: float, v: float) -> float:
+        return radius_value * (1.0 - v / length) * math.cos(u)
+
+    def cone_y(u: float, v: float) -> float:
+        return radius_value * (1.0 - v / length) * math.sin(u)
+
+    def cone_z(_u: float, v: float) -> float:
+        return v
+
+    surface = sage.parametric_plot3d(
+        (cone_x, cone_y, cone_z),
+        (0, 2 * math.pi),
+        (0, length),
+        plot_points=(33, 9),
+    )
+    base = []
+    for index in range(32):
+        angle = 2 * math.pi * index / 32.0
+        base.append((radius_value * math.cos(angle),
+                     radius_value * math.sin(angle), 0))
+    surface += sage.polygon3d(base)
+    return _oriented_surface(surface, first, second)
+
+
+def torus(center: Any = (0, 0, 0), radii: Any = (1, 0.25)) -> Any:
+    if isinstance(radii, (list, tuple)):
+        major = float(radii[0])
+        minor = float(radii[1])
+    else:
+        major = float(radii)
+        minor = major / 4.0
+
+    def torus_x(u: float, v: float) -> float:
+        return (major + minor * math.cos(v)) * math.cos(u)
+
+    def torus_y(u: float, v: float) -> float:
+        return (major + minor * math.cos(v)) * math.sin(u)
+
+    def torus_z(_u: float, v: float) -> float:
+        return minor * math.sin(v)
+
+    return sage.parametric_plot3d(
+        (torus_x, torus_y, torus_z),
+        (0, 2 * math.pi),
+        (0, 2 * math.pi),
+        plot_points=(41, 17),
+    ).translate(center)
+
+
 def cuboid(bounds: Any = ((0, 0, 0), (1, 1, 1))) -> Any:
     values = list(bounds)
     if len(values) != 2:
@@ -281,7 +438,15 @@ Arrow = wolfram_arrow
 Text = wolfram_text
 Sphere = wolfram_sphere
 Cuboid = cuboid
+Cylinder = cylinder
+Cone = cone
+Torus = torus
 ImageSize = image_size
 Opacity = opacity
 Thickness = thickness
+PointSize = point_size
+RGBColor = rgb_color
+GrayLevel = gray_level
+Hue = hue_color
 Directive = directive
+Style = style

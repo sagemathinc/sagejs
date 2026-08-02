@@ -357,19 +357,27 @@ class SageLowerer {
     const graphicsHeads: Record<string, string> = {
       Arrow: "Arrow",
       Circle: "Circle",
+      Cone: "Cone",
       Cuboid: "Cuboid",
+      Cylinder: "Cylinder",
       Disk: "Disk",
       Directive: "Directive",
       Graphics: "Graphics",
       Graphics3D: "Graphics3D",
+      GrayLevel: "GrayLevel",
+      Hue: "Hue",
       Line: "Line",
       Point: "Point",
+      PointSize: "PointSize",
       Polygon: "Polygon",
       Rectangle: "Rectangle",
+      RGBColor: "RGBColor",
       Opacity: "Opacity",
       Sphere: "Sphere",
       Text: "Text",
       Thickness: "Thickness",
+      Torus: "Torus",
+      Style: "Style",
     };
     if (graphicsHeads[head]) {
       return `_wolfram.${graphicsHeads[head]}(${

@@ -308,6 +308,37 @@ async function main() {
     assert.equal(wolframPrimitives3d.display?.data.data.length, 2);
     assert.equal(wolframPrimitives3d.display?.data.data[0].type, "surface");
     assert.equal(wolframPrimitives3d.display?.data.data[0].opacity, 0.4);
+    const wolframColorDirectives = await session.evaluate(
+      "Graphics[{RGBColor[.2,.4,.8],PointSize[.15]," +
+        "Point[{{0,0},{1,1}}]}]",
+      { language: "wolfram" },
+    );
+    assert.equal(
+      wolframColorDirectives.display?.data.data[0].marker.color,
+      "rgb(51,102,204)",
+    );
+    assert.equal(wolframColorDirectives.display?.data.data[0].marker.size, 15);
+    const wolframCylinder = await session.evaluate(
+      "Graphics3D[{RGBColor[.8,.2,.1,.5]," +
+        "Cylinder[{{0,0,0},{1,1,2}},.3]}]",
+      { language: "wolfram" },
+    );
+    assert.deepEqual(
+      wolframCylinder.display?.data.data.map((trace) => trace.type),
+      ["surface", "mesh3d", "mesh3d"],
+    );
+    assert.equal(wolframCylinder.display?.data.data[0].opacity, 0.5);
+    const wolframSolids = await session.evaluate(
+      "Graphics3D[{Green,Cone[{{0,0,0},{0,0,2}},.5]," +
+        "Blue,Torus[{2,0,0},{1,.2}]}]",
+      { language: "wolfram" },
+    );
+    assert.deepEqual(
+      wolframSolids.display?.data.data.map((trace) => trace.type),
+      ["surface", "mesh3d", "surface"],
+    );
+    assert.equal(wolframSolids.display?.data.data[0].colorscale[0][1], "green");
+    assert.equal(wolframSolids.display?.data.data[2].colorscale[0][1], "blue");
 
     const labels = await session.evaluate(
       [
