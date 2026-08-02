@@ -39,10 +39,13 @@ def _raise_host_error(operation, error):
     }
     if code in messages:
         default_errno, message, exception_class = messages[code]
+        # Node's numeric errno values are platform-private (for example,
+        # Windows reports -4058 for ENOENT).  Python errno values are stable.
+        errno_value = default_errno
     else:
         default_errno, message, exception_class = (5, str(_property(error, 'message', code)), OSError)
-    if errno_value is None:
-        errno_value = default_errno
+        if errno_value is None:
+            errno_value = default_errno
     filename = _property(error, 'path', None)
     destination = _property(error, 'dest', None)
     raise exception_class(errno_value, message, filename, destination)
