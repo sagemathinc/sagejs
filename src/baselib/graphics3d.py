@@ -2091,6 +2091,177 @@ def frame3d(
     return answer
 
 
+def frame_labels(
+    lower_left: Any,
+    upper_right: Any,
+    label_lower_left: Any,
+    label_upper_right: Any,
+    eps: Any = 1,
+    **options: Any,
+) -> Graphics3d:
+    """Draw Sage-style endpoint and midpoint labels around a 3D frame."""
+    lower = _g3d_point(lower_left)
+    upper = _g3d_point(upper_right)
+    label_lower = _g3d_point(label_lower_left)
+    label_upper = _g3d_point(label_upper_right)
+    if any(label_upper[index] <= label_lower[index] for index in range(3)):
+        raise ValueError(
+            'ensure the upper right labels are above and to the right of '
+            'the lower left labels')
+    distance = float(eps)
+    color = _g3d_option_get(options, 'color', (0.3, 0.3, 0.3))
+    text_options = _g3d_copy_options(options)
+    text_options['color'] = color
+    answer = Graphics3d()
+    for index in range(3):
+        midpoint = (label_lower[index] + label_upper[index]) / 2.0
+        values = [label_lower[index], midpoint, label_upper[index]]
+        for position_index in range(3):
+            fraction = position_index / 2.0
+            xvalue = lower[0] + fraction * (upper[0] - lower[0])
+            yvalue = lower[1] + fraction * (upper[1] - lower[1])
+            zvalue = lower[2] + fraction * (upper[2] - lower[2])
+            if index == 0:
+                position = (xvalue, lower[1] - distance, lower[2])
+            elif index == 1:
+                position = (upper[0] + distance, yvalue, lower[2])
+            else:
+                position = (lower[0] - distance, lower[1], zvalue)
+            answer += text3d(str(values[position_index]), position,
+                             **text_options)
+    return answer
+
+
+def ruler(
+    start: Any,
+    end: Any,
+    ticks: int = 4,
+    sub_ticks: int = 4,
+    absolute: bool = False,
+    snap: bool = False,
+    **options: Any,
+) -> Graphics3d:
+    """Draw a three-dimensional ruler with labeled major and minor ticks."""
+    if ticks <= 0 or sub_ticks <= 0:
+        raise ValueError('ticks and sub_ticks must be positive')
+    start_point = list(_g3d_point(start))
+    end_point = list(_g3d_point(end))
+    direction = [
+        end_point[index] - start_point[index]
+        for index in range(3)
+    ]
+    distance = runtime.math.sqrt(sum(value * value for value in direction))
+    if distance == 0:
+        raise ValueError('a ruler must have distinct start and end points')
+    direction = [value / distance for value in direction]
+    one_tick = distance / float(ticks) * 1.414
+    unit = 10 ** runtime.math.floor(
+        runtime.math.log(distance / float(ticks)) / runtime.math.log(10))
+    if unit * 5 < one_tick:
+        unit *= 5
+    elif unit * 2 < one_tick:
+        unit *= 2
+    if direction[0] != 0:
+        tick_vector = _cross_product(
+            direction, (0, 0, -distance / 30.0))
+    elif direction[1] != 0:
+        tick_vector = _cross_product(
+            direction, (0, 0, distance / 30.0))
+    else:
+        tick_vector = (distance / 30.0, 0, 0)
+    if snap:
+        for index in range(3):
+            start_point[index] = unit * runtime.math.floor(
+                start_point[index] / unit + 1e-5)
+            end_point[index] = unit * runtime.math.ceil(
+                end_point[index] / unit - 1e-5)
+        direction = [
+            end_point[index] - start_point[index]
+            for index in range(3)
+        ]
+        distance = runtime.math.sqrt(
+            sum(value * value for value in direction))
+        direction = [value / distance for value in direction]
+    first_tick = 0.0
+    offset = 0.0
+    if absolute:
+        nonzero = sum(1 for value in direction if abs(value) > 1e-12)
+        if nonzero != 1:
+            raise ValueError(
+                'absolute rulers only valid for axis-aligned paths')
+        axis = max(range(3), key=lambda index: abs(direction[index]))
+        offset = start_point[axis]
+        first_tick = unit * runtime.math.ceil(offset / unit - 1e-5) - offset
+    answer = line3d([start_point, end_point], **options)
+    current_distance = first_tick
+    while current_distance <= distance + unit / float(sub_ticks + 1):
+        base = [
+            start_point[index] + direction[index] * current_distance
+            for index in range(3)
+        ]
+        tick_end = [
+            base[index] + tick_vector[index]
+            for index in range(3)
+        ]
+        answer += line3d([base, tick_end], **options)
+        label_position = [
+            base[index] - tick_vector[index]
+            for index in range(3)
+        ]
+        answer += text3d(
+            str(current_distance + offset), label_position, **options)
+        for minor_index in range(1, sub_ticks):
+            minor_distance = current_distance + unit * minor_index / sub_ticks
+            if minor_distance >= distance:
+                break
+            minor_base = [
+                start_point[index] + direction[index] * minor_distance
+                for index in range(3)
+            ]
+            minor_end = [
+                minor_base[index] + tick_vector[index] / 2.0
+                for index in range(3)
+            ]
+            answer += line3d([minor_base, minor_end], **options)
+        current_distance += unit
+    return answer
+
+
+def ruler_frame(
+    lower_left: Any,
+    upper_right: Any,
+    ticks: int = 4,
+    sub_ticks: int = 4,
+    **options: Any,
+) -> Graphics3d:
+    """Draw three axis-aligned rulers from the lower frame corner."""
+    lower = _g3d_point(lower_left)
+    upper = _g3d_point(upper_right)
+    return (
+        ruler(lower, (upper[0], lower[1], lower[2]),
+              ticks=ticks, sub_ticks=sub_ticks, absolute=True, **options)
+        + ruler(lower, (lower[0], upper[1], lower[2]),
+                ticks=ticks, sub_ticks=sub_ticks, absolute=True, **options)
+        + ruler(lower, (lower[0], lower[1], upper[2]),
+                ticks=ticks, sub_ticks=sub_ticks, absolute=True, **options)
+    )
+
+
+def axes(
+    scale: Any = 1,
+    radius: Any = None,
+    **options: Any,
+) -> Graphics3d:
+    """Create the three positive coordinate axes as 3D arrows."""
+    length = float(scale)
+    head_size = length / 100.0 if radius is None else float(radius)
+    return (
+        arrow3d((0, 0, 0), (length, 0, 0), head_len=head_size, **options)
+        + arrow3d((0, 0, 0), (0, length, 0), head_len=head_size, **options)
+        + arrow3d((0, 0, 0), (0, 0, length), head_len=head_size, **options)
+    )
+
+
 def _solid_mesh(
     vertices: Any,
     faces: Any,
@@ -2993,6 +3164,10 @@ for _doc_name, _doc_function, _doc_tags in [
     ('plot_vector_field3d', plot_vector_field3d,
      ['vector fields']),
     ('frame3d', frame3d, ['frames']),
+    ('frame_labels', frame_labels, ['frames', 'labels']),
+    ('ruler', ruler, ['frames', 'rulers']),
+    ('ruler_frame', ruler_frame, ['frames', 'rulers']),
+    ('axes', axes, ['axes', 'arrows']),
     ('tetrahedron', tetrahedron, ['shapes', 'platonic solids']),
     ('cube', cube, ['shapes', 'platonic solids']),
     ('octahedron', octahedron, ['shapes', 'platonic solids']),

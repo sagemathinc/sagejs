@@ -392,6 +392,32 @@ async function main() {
     assert.equal(methodShown3d.display?.data.layout.height, 300);
     assert.equal(methodShown3d.display?.data.layout.scene.xaxis.visible, false);
     assert.equal(methodShown3d.display?.data.layout.title.text, "solid");
+    const coordinateAxes = await session.evaluate("axes(2,color='black')");
+    assert.deepEqual(
+      coordinateAxes.display?.data.data.map((trace) => trace.type),
+      ["scatter3d", "cone", "scatter3d", "cone", "scatter3d", "cone"],
+    );
+    assert.equal(coordinateAxes.display?.data.data[0].line.color, "black");
+    const ruledFrame = await session.evaluate(
+      "ruler_frame((0,0,0),(1,1,1),ticks=2,sub_ticks=1,color='red')",
+    );
+    assert.ok(ruledFrame.display?.data.data.length >= 9);
+    assert.ok(
+      ruledFrame.display?.data.data.some((trace) => trace.type === "scatter3d"),
+    );
+    const frameLabelGraphic = await session.evaluate(
+      "frame_labels((0,0,0),(1,1,1),(0,0,0),(1,1,1))",
+    );
+    assert.equal(frameLabelGraphic.display?.data.data.length, 9);
+    assert.ok(
+      frameLabelGraphic.display?.data.data.every(
+        (trace) => trace.mode === "text",
+      ),
+    );
+    await assert.rejects(
+      session.evaluate("ruler((0,0,0),(1,1,0),absolute=True)"),
+      /axis-aligned/,
+    );
     const translatedSurface = await session.evaluate(
       "plot3d(lambda u,v: u+v, (0,1), (0,1), plot_points=2)." +
         "translate((1,2,3))",
