@@ -88,11 +88,13 @@ test("FLINT-backed AA, QQbar, polynomial roots, and eigenspaces", async () => {
             "R = matrix(K, [[z,1],[2,1-z],[0,z^3],[1,0]])\n" +
             "[B.nrows(), B.ncols(), B.rank(), " +
             "(A*B.transpose()).is_zero(), B == B.rref(), " +
+            "B.pivots(), " +
             "B.matrix_from_columns([0,1,2,3]), " +
             "L._sparse_left_multiply(R) == L*R]",
         )
       ).repr,
-      "[4, 6, 4, True, True, [1 0 0 0]\n[0 1 0 0]\n" +
+      "[4, 6, 4, True, True, (0, 1, 2, 3), " +
+        "[1 0 0 0]\n[0 1 0 0]\n" +
         "[0 0 1 0]\n[0 0 0 1], True]",
     );
   } finally {

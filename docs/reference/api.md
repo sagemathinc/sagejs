@@ -384,6 +384,29 @@ sage: 10 * E([0,0])
 
 - `sage-derived` — [SageMath elliptic curves API](https://doc.sagemath.org/html/en/reference/arithmetic_curves/); license GPL-2.0-or-later
 
+## `exit`
+
+```sage
+quit(code=None)
+```
+
+Exit the current Sage.js or Python session.
+
+`quit()` exits successfully. An integer argument becomes the process exit
+status, matching Python's interactive convenience function.
+
+### Metadata
+
+- Kind: `function`
+- Module: `builtins`
+- Tags: runtime, interactive, process
+- Backends: Sage.js runtime
+- Sage compatibility: compatible — Raises SystemExit with the optional supplied status.
+
+### Provenance
+
+- `software-derived` — [Python site.Quitter interactive API](https://docs.python.org/3/library/constants.html); license PSF-2.0
+
 ## `factor`
 
 ```sage
@@ -1522,6 +1545,29 @@ Construct a capped-relative p-adic field.
 ### Provenance
 
 - `sage-derived` — [SageMath p-adic factory API](https://doc.sagemath.org/html/en/reference/padics/); license GPL-2.0-or-later
+
+## `quit`
+
+```sage
+quit(code=None)
+```
+
+Exit the current Sage.js or Python session.
+
+`quit()` exits successfully. An integer argument becomes the process exit
+status, matching Python's interactive convenience function.
+
+### Metadata
+
+- Kind: `function`
+- Module: `builtins`
+- Tags: runtime, interactive, process
+- Backends: Sage.js runtime
+- Sage compatibility: compatible — Raises SystemExit with the optional supplied status.
+
+### Provenance
+
+- `software-derived` — [Python site.Quitter interactive API](https://docs.python.org/3/library/constants.html); license PSF-2.0
 
 ## `random_matrix`
 

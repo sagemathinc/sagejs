@@ -68,9 +68,10 @@ jobs:
         continue-on-error: true
         run: pnpm test:compiler
 
-      - name: Run unit and native integration tests
+      - name: Run unit, host integration, and native tests
         run: |
           pnpm test:unit
+          pnpm test:integration
           pnpm test:native
 
       - name: Run Sage tutorial compatibility diagnostics
@@ -97,7 +98,7 @@ jobs:
           These broad compatibility suites already contain failures on the
           baseline that introduced CI. They remain visible and non-blocking
           while those existing failures are triaged; bootstrap, strict baselib,
-          unit, native, and SEA tests are blocking.
+          unit, host integration, native, and SEA tests are blocking.
           EOF
 
       - name: Package the Linux x64 SEA distribution
@@ -163,9 +164,10 @@ jobs:
       - name: Run strict baselib checks
         run: pnpm test:baselib:strict
 
-      - name: Run unit and native integration tests
+      - name: Run unit, host integration, and native tests
         run: |
           pnpm test:unit
+          pnpm test:integration
           pnpm test:native
 
       - name: Build and relocation-test both SEA executables
@@ -238,9 +240,10 @@ jobs:
           pnpm --dir packages/flint build
           pnpm build
 
-      - name: Run portable and native integration tests
+      - name: Run portable, host integration, and native tests
         run: |
           pnpm test:portable
+          pnpm test:integration
           pnpm test:native
 
       - name: Build and relocation-test both Windows SEA executables
@@ -314,9 +317,10 @@ jobs:
           pnpm --dir packages/flint build
           pnpm build
 
-      - name: Run portable and native integration tests
+      - name: Run portable, host integration, and native tests
         run: |
           pnpm test:portable
+          pnpm test:integration
           pnpm test:native
 
       - name: Build and relocation-test both macOS SEA executables

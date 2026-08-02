@@ -3513,7 +3513,16 @@ napi_value sagejs_cyclotomic_matrix_right_kernel(
                     row_denominator, fmpq_denref(value));
                 fmpz_mul(scale, scale, fmpq_numref(value));
                 terms[term_count].row = (size_t) row;
-                terms[term_count].column = (size_t) column;
+                /*
+                 * Reduce with columns reversed.  Choosing the rightmost
+                 * possible pivots in the original ordering makes the
+                 * free-variable kernel vectors an RREF basis after mapping
+                 * the coordinates back.  This is the same normalization as
+                 * the generic qqbar kernel above, without a second expensive
+                 * elimination over algebraic numbers.
+                 */
+                terms[term_count].column =
+                    (size_t) (columns - 1 - column);
                 terms[term_count].exponent = (ulong) power;
                 fmpz_init_set(&terms[term_count].coefficient, scale);
                 fmpz_abs(absolute, scale);
@@ -3573,19 +3582,36 @@ napi_value sagejs_cyclotomic_matrix_right_kernel(
     kernel_initialized = 1;
     if (gr_mat_zero(kernel, source->algebraic_context) != GR_SUCCESS)
         goto cleanup;
-    for (slong row = 0; row < nullity; row++)
     {
-        qqbar_one((qqbar_ptr) gr_mat_entry_ptr(
-            kernel, row, (slong) free_columns[row],
-            source->algebraic_context));
-        for (slong pivot = 0; pivot < rank; pivot++)
-            qqbar_neg(
-                (qqbar_ptr) gr_mat_entry_ptr(
-                    kernel, row, (slong) pivots[pivot],
-                    source->algebraic_context),
-                (qqbar_srcptr) gr_mat_entry_ptr(
-                    reduced, pivot, (slong) free_columns[row],
-                    source->algebraic_context));
+        slong answer_row = 0;
+        slong free_cursor = nullity;
+        for (slong reverse_column = columns;
+            reverse_column-- > 0;)
+        {
+            if (free_cursor == 0 ||
+                free_columns[free_cursor - 1] != (size_t) reverse_column)
+                continue;
+            free_cursor--;
+            qqbar_one((qqbar_ptr) gr_mat_entry_ptr(
+                kernel, answer_row, columns - 1 - reverse_column,
+                source->algebraic_context));
+            for (slong pivot = 0; pivot < rank; pivot++)
+                qqbar_neg(
+                    (qqbar_ptr) gr_mat_entry_ptr(
+                        kernel, answer_row,
+                        columns - 1 - (slong) pivots[pivot],
+                        source->algebraic_context),
+                    (qqbar_srcptr) gr_mat_entry_ptr(
+                        reduced, pivot, reverse_column,
+                        source->algebraic_context));
+            answer_row++;
+        }
+        if (answer_row != nullity || free_cursor != 0)
+        {
+            napi_throw_error(env, NULL,
+                "unable to normalize cyclotomic kernel basis");
+            goto cleanup;
+        }
     }
     if ((size_t) nullity != 0 &&
         (size_t) columns > SIZE_MAX / (size_t) nullity)
@@ -3599,20 +3625,38 @@ napi_value sagejs_cyclotomic_matrix_right_kernel(
                 ? 1 : kernel_coordinate_count));
         if (kernel_coordinates == NULL)
             goto cleanup;
-        for (slong row = 0; row < nullity; row++)
         {
-            fmpq_one(kernel_coordinates +
-                ((size_t) row * (size_t) columns + free_columns[row])
-                    * degree);
-            for (slong pivot = 0; pivot < rank; pivot++)
-                for (size_t power = 0; power < degree; power++)
-                    fmpq_neg(
-                        kernel_coordinates +
-                            ((size_t) row * (size_t) columns +
-                                pivots[pivot]) * degree + power,
-                        reduced_coordinates.coefficients +
-                            (power * (size_t) rank + (size_t) pivot) *
-                                (size_t) nullity + (size_t) row);
+            slong answer_row = 0;
+            slong free_cursor = nullity;
+            for (slong reverse_column = columns;
+                reverse_column-- > 0;)
+            {
+                slong free_index;
+                if (free_cursor == 0 ||
+                    free_columns[free_cursor - 1] !=
+                        (size_t) reverse_column)
+                    continue;
+                free_cursor--;
+                free_index = free_cursor;
+                fmpq_one(kernel_coordinates +
+                    ((size_t) answer_row * (size_t) columns +
+                        (size_t) (columns - 1 - reverse_column)) * degree);
+                for (slong pivot = 0; pivot < rank; pivot++)
+                    for (size_t power = 0; power < degree; power++)
+                        fmpq_neg(
+                            kernel_coordinates +
+                                ((size_t) answer_row * (size_t) columns +
+                                    (size_t) (columns - 1 -
+                                        (slong) pivots[pivot])) * degree +
+                                    power,
+                            reduced_coordinates.coefficients +
+                                (power * (size_t) rank + (size_t) pivot) *
+                                    (size_t) nullity +
+                                    (size_t) free_index);
+                answer_row++;
+            }
+            if (answer_row != nullity || free_cursor != 0)
+                goto cleanup;
         }
         matrix_value = sagejs_qqbar_matrix_from_cyclotomic_gr_mat(
             env, kernel, source->algebraic_context,
