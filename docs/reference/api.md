@@ -2073,6 +2073,32 @@ Plot functions with a logarithmic vertical axis.
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `plot_slope_field`
+
+```sage
+plot_slope_field(function_value, xrange, yrange, **options)
+```
+
+Plot short normalized line segments with slope `function_value`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
 ## `plot_step_function`
 
 ```sage
@@ -2080,6 +2106,35 @@ plot_step_function(values, vertical_lines=True, **options)
 ```
 
 Plot the step function defined by a sequence of `(x, y)` pairs.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `plot_vector_field`
+
+```sage
+plot_vector_field(functions, xrange, yrange, **options)
+```
+
+Plot a two-dimensional vector field on a rectangular sample grid.
+
+The two components may be symbolic expressions or callables.  Invalid
+values are omitted, matching Sage's masked-vector behavior.
 
 ### Metadata
 
@@ -2734,6 +2789,36 @@ Return a sphere of radius `size` centered at `center`.
 
 - `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
 - `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `streamline_plot`
+
+```sage
+streamline_plot(functions, xrange, yrange, **options)
+```
+
+Plot integral curves of a vector field or first-order slope field.
+
+Streamlines are integrated in both directions with a deterministic
+midpoint method.  `density` controls seed count and integration step;
+`start_points` supplies explicit seeds.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
 ## `sudoku`
 

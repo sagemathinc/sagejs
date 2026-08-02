@@ -359,6 +359,86 @@ async function main() {
     assert.equal(matrixPlot.display?.data.layout.yaxis.autorange, "reversed");
     assert.equal(matrixPlot.display?.data.layout.xaxis.visible, true);
 
+    const vectorField = await session.evaluate(
+      "plot_vector_field((x,y), (x,-1,1), (y,-1,1), " +
+        "plot_points=2, color='navy')",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "plot_vector_field((x,y),(x,-1,1),(y,-1,1),plot_points=2)[0]",
+      )).repr,
+      "PlotField defined by a 2 x 2 vector grid",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "plot_vector_field((x,y),(x,-1,1),(y,-1,1)," +
+          "plot_points=2)[0].xpos_array",
+      )).repr,
+      "[-1, -1, 1, 1]",
+    );
+    assert.equal(vectorField.display?.data.data[0].mode, "lines+markers");
+    assert.equal(vectorField.display?.data.data[0].line.color, "navy");
+    assert.equal(vectorField.display?.data.data[0].x.length, 12);
+    assert.deepEqual(
+      vectorField.display?.data.data[0].marker.symbol.slice(0, 3),
+      ["circle", "arrow", "circle"],
+    );
+    assert.equal(vectorField.display?.data.layout.xaxis.showline, true);
+
+    const slopeField = await session.evaluate(
+      "plot_slope_field(x+y, (x,0,1), (y,0,1), plot_points=2)",
+    );
+    assert.equal(slopeField.display?.data.data[0].mode, "lines");
+    assert.equal(
+      (await session.evaluate(
+        "v=plot_slope_field(x+y,(x,0,1),(y,0,1)," +
+          "plot_points=2)[0].yvec_array; " +
+          "v[0]==0 and abs(v[1]-0.7071067811865476)<1e-12 and " +
+          "abs(v[3]-0.8944271909999159)<1e-12",
+      )).repr,
+      "True",
+    );
+
+    const maskedField = await session.evaluate(
+      "plot_vector_field((-x/sqrt(x^2+y^2),-y/sqrt(x^2+y^2)), " +
+        "(x,-1,1),(y,-1,1),plot_points=3)",
+    );
+    assert.equal(maskedField.display?.data.data[0].x.length, 24);
+
+    const streamlines = await session.evaluate(
+      "streamline_plot((1,0), (x,0,1), (y,0,1), plot_points=4, " +
+        "start_points=[(.5,.5)], color='green')",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "streamline_plot((1,0),(x,0,1),(y,0,1),plot_points=4," +
+          "start_points=[(.5,.5)])[0]",
+      )).repr,
+      "StreamlinePlot defined by a 4 x 4 vector grid",
+    );
+    assert.equal(streamlines.display?.data.data[0].line.color, "green");
+    assert.equal(streamlines.display?.data.data[0].x.length, 10);
+    assert.equal(
+      streamlines.display?.data.data[0].y.slice(0, 9).every(
+        (value) => Math.abs(value - 0.5) < 1e-12,
+      ),
+      true,
+    );
+    assert.equal(streamlines.display?.data.data[0].marker.size[4], 7);
+
+    const slopeStreamlines = await session.evaluate(
+      "streamline_plot(x+y, (x,-1,1), (y,-1,1), " +
+        "plot_points=4, density=.5)",
+    );
+    assert.equal(slopeStreamlines.display?.data.data[0].type, "scatter");
+    await assert.rejects(
+      session.evaluate(
+        "streamline_plot((x,y),(x,-1,1),(y,-1,1)," +
+          "start_points=[(2,0)])",
+      ),
+      /start_points must lie inside/,
+    );
+
     assert.equal((await session.evaluate("line2d is line")).repr, "True");
     assert.equal((await session.evaluate("point2d is point")).repr, "True");
     assert.match(
@@ -368,6 +448,14 @@ async function main() {
     assert.match(
       (await session.evaluate("implicit_plot.__doc__")).repr,
       /plane curve/,
+    );
+    assert.match(
+      (await session.evaluate("plot_vector_field.__doc__")).repr,
+      /two-dimensional vector field/,
+    );
+    assert.match(
+      (await session.evaluate("streamline_plot.__doc__")).repr,
+      /integral curves/,
     );
 
     const plain = await session.evaluate("factor(12)");

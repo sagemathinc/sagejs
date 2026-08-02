@@ -776,6 +776,204 @@ class Density(GraphicPrimitive):
         return trace
 
 
+class PlotField(GraphicPrimitive):
+    """A sampled two-dimensional vector field."""
+
+    def __init__(
+        self,
+        xpos_array: Sequence[float],
+        ypos_array: Sequence[float],
+        xvec_array: Sequence[Any],
+        yvec_array: Sequence[Any],
+        grid_shape: tuple[int, int],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive.__init__(self, options)
+        self.xpos_array = list(xpos_array)
+        self.ypos_array = list(ypos_array)
+        self.xvec_array = list(xvec_array)
+        self.yvec_array = list(yvec_array)
+        self.xdata = self.xpos_array
+        self.ydata = self.ypos_array
+        self.grid_shape = grid_shape
+
+    def __repr__(self) -> str:
+        return (
+            'PlotField defined by a ' + str(self.grid_shape[0]) +
+            ' x ' + str(self.grid_shape[1]) + ' vector grid'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_trace(self) -> Any:
+        options = self._options
+        maximum_length = 0.0
+        for index in range(len(self.xvec_array)):
+            xvector = self.xvec_array[index]
+            yvector = self.yvec_array[index]
+            if xvector is None or yvector is None:
+                continue
+            length = runtime.math.sqrt(
+                xvector * xvector + yvector * yvector)
+            if length > maximum_length:
+                maximum_length = length
+
+        xcount, ycount = self.grid_shape
+        xspacing = 1.0
+        yspacing = 1.0
+        if xcount > 1:
+            xspacing = (
+                max(self.xpos_array) - min(self.xpos_array)
+            ) / float(xcount - 1)
+        if ycount > 1:
+            yspacing = (
+                max(self.ypos_array) - min(self.ypos_array)
+            ) / float(ycount - 1)
+        spacing = min(abs(xspacing), abs(yspacing))
+        scale = 0.0
+        if maximum_length > 0:
+            scale = 0.75 * spacing / maximum_length
+        pivot = str(_option_get(options, 'pivot', 'tail'))
+        if pivot == 'middle':
+            pivot_offset = 0.5
+        elif pivot == 'tip':
+            pivot_offset = 1.0
+        else:
+            pivot_offset = 0.0
+
+        xdata = []
+        ydata = []
+        marker_sizes = []
+        marker_symbols = []
+        for index in range(len(self.xpos_array)):
+            xvector = self.xvec_array[index]
+            yvector = self.yvec_array[index]
+            if xvector is None or yvector is None:
+                continue
+            dx = xvector * scale
+            dy = yvector * scale
+            xstart = self.xpos_array[index] - pivot_offset * dx
+            ystart = self.ypos_array[index] - pivot_offset * dy
+            xdata.extend([xstart, xstart + dx, None])
+            ydata.extend([ystart, ystart + dy, None])
+            marker_sizes.extend([0, 8, 0])
+            marker_symbols.extend(['circle', 'arrow', 'circle'])
+
+        color = _option_get(
+            options, 'rgbcolor', _option_get(options, 'color', 'blue'))
+        line_style = _native_record(
+            color=_color_value(color),
+            width=float(_option_get(options, 'thickness', 1)),
+        )
+        head_length = float(_option_get(options, 'headlength', 5))
+        head_axis_length = float(
+            _option_get(options, 'headaxislength', 4.5))
+        has_heads = head_length > 1e-8 and head_axis_length != 0
+        trace = _native_record(
+            type='scatter',
+            mode='lines+markers' if has_heads else 'lines',
+            x=xdata,
+            y=ydata,
+            line=line_style,
+            opacity=float(_option_get(options, 'alpha', 1)),
+            showlegend=_option_get(options, 'legend_label') is not None,
+        )
+        if has_heads:
+            head_width = float(_option_get(options, 'headwidth', 3))
+            marker_size = max(4.0, 2.5 * head_width)
+            marker_sizes = [
+                marker_size if size else 0 for size in marker_sizes
+            ]
+            runtime.reflect.set(
+                trace,
+                'marker',
+                _native_record(
+                    color=_color_value(color),
+                    size=marker_sizes,
+                    symbol=marker_symbols,
+                    angleref='previous',
+                ),
+            )
+        legend_label = _option_get(options, 'legend_label')
+        if legend_label is not None:
+            runtime.reflect.set(trace, 'name', str(legend_label))
+        return trace
+
+
+class StreamlinePlot(GraphicPrimitive):
+    """A sampled vector field together with integrated streamlines."""
+
+    def __init__(
+        self,
+        xpos_array: Sequence[float],
+        ypos_array: Sequence[float],
+        xvec_array: Sequence[Sequence[Any]],
+        yvec_array: Sequence[Sequence[Any]],
+        paths: Sequence[Sequence[tuple[float, float]]],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive.__init__(self, options)
+        self.xpos_array = list(xpos_array)
+        self.ypos_array = list(ypos_array)
+        self.xvec_array = [list(row) for row in xvec_array]
+        self.yvec_array = [list(row) for row in yvec_array]
+        self.paths = [list(path) for path in paths]
+        self.xdata = self.xpos_array
+        self.ydata = self.ypos_array
+
+    def __repr__(self) -> str:
+        return (
+            'StreamlinePlot defined by a ' + str(len(self.xpos_array)) +
+            ' x ' + str(len(self.ypos_array)) + ' vector grid'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_trace(self) -> Any:
+        options = self._options
+        xdata = []
+        ydata = []
+        marker_sizes = []
+        marker_symbols = []
+        for path in self.paths:
+            middle = len(path) // 2
+            for index in range(len(path)):
+                xdata.append(path[index][0])
+                ydata.append(path[index][1])
+                marker_sizes.append(7 if index == middle else 0)
+                marker_symbols.append('arrow' if index == middle else 'circle')
+            xdata.append(None)
+            ydata.append(None)
+            marker_sizes.append(0)
+            marker_symbols.append('circle')
+        color = _option_get(
+            options, 'rgbcolor', _option_get(options, 'color', 'blue'))
+        trace = _native_record(
+            type='scatter',
+            mode='lines+markers',
+            x=xdata,
+            y=ydata,
+            line=_native_record(
+                color=_color_value(color),
+                width=float(_option_get(options, 'thickness', 1)),
+            ),
+            marker=_native_record(
+                color=_color_value(color),
+                size=marker_sizes,
+                symbol=marker_symbols,
+                angleref='previous',
+            ),
+            opacity=float(_option_get(options, 'alpha', 1)),
+            showlegend=_option_get(options, 'legend_label') is not None,
+        )
+        legend_label = _option_get(options, 'legend_label')
+        if legend_label is not None:
+            runtime.reflect.set(trace, 'name', str(legend_label))
+        return trace
+
+
 @runtime.sequence_class
 class Text(GraphicPrimitive):
     """A text label positioned in two-dimensional coordinates."""
@@ -2166,6 +2364,162 @@ def _sample_grid_2d(
     return xvalues, yvalues, zvalues
 
 
+def _finite_or_none(value: Any) -> Any:
+    try:
+        numeric = float(value)
+    except Exception:
+        return None
+    if not runtime.number.isFinite(numeric):
+        return None
+    return numeric
+
+
+def _sample_vector_grid_2d(
+    functions: Any,
+    xrange: Any,
+    yrange: Any,
+    plot_points: Any,
+) -> list[Any]:
+    values = list(functions)
+    if len(values) != 2:
+        raise ValueError('a vector field requires exactly two functions')
+    xminimum, xmaximum = _plot_range([xrange])
+    yminimum, ymaximum = _plot_range([yrange])
+    xvariable = _plot_variable([xrange])
+    yvariable = _plot_variable([yrange])
+    xfunction = _plot_callable_2d(values[0], xvariable, yvariable)
+    yfunction = _plot_callable_2d(values[1], xvariable, yvariable)
+    xcount, ycount = _grid_counts_2d(plot_points, 20)
+    xstep = (xmaximum - xminimum) / float(xcount - 1)
+    ystep = (ymaximum - yminimum) / float(ycount - 1)
+    xpos_array = []
+    ypos_array = []
+    xvec_array = []
+    yvec_array = []
+    for xindex in range(xcount):
+        xvalue = (
+            xmaximum
+            if xindex == xcount - 1
+            else xminimum + xindex * xstep
+        )
+        for yindex in range(ycount):
+            yvalue = (
+                ymaximum
+                if yindex == ycount - 1
+                else yminimum + yindex * ystep
+            )
+            xpos_array.append(xvalue)
+            ypos_array.append(yvalue)
+            try:
+                xvector = _finite_or_none(xfunction(xvalue, yvalue))
+            except Exception:
+                xvector = None
+            try:
+                yvector = _finite_or_none(yfunction(xvalue, yvalue))
+            except Exception:
+                yvector = None
+            if xvector is None or yvector is None:
+                xvector = None
+                yvector = None
+            xvec_array.append(xvector)
+            yvec_array.append(yvector)
+    return [
+        xpos_array,
+        ypos_array,
+        xvec_array,
+        yvec_array,
+        runtime.math_tuple([xcount, ycount]),
+    ]
+
+
+def _stream_vector_callables(
+    functions: Any,
+    xvariable: Any,
+    yvariable: Any,
+) -> tuple[Any, Any]:
+    if isinstance(functions, (list, tuple)):
+        values = list(functions)
+        if len(values) != 2:
+            raise ValueError(
+                'a streamline vector field requires exactly two functions')
+        return runtime.math_tuple([
+            _plot_callable_2d(values[0], xvariable, yvariable),
+            _plot_callable_2d(values[1], xvariable, yvariable),
+        ])
+    slope = _plot_callable_2d(functions, xvariable, yvariable)
+
+    def horizontal(xvalue: Any, yvalue: Any) -> float:
+        current = float(slope(xvalue, yvalue))
+        return 1.0 / runtime.math.sqrt(current * current + 1.0)
+
+    def vertical(xvalue: Any, yvalue: Any) -> float:
+        current = float(slope(xvalue, yvalue))
+        return current / runtime.math.sqrt(current * current + 1.0)
+
+    return runtime.math_tuple([horizontal, vertical])
+
+
+def _stream_direction(
+    xfunction: Any,
+    yfunction: Any,
+    xvalue: float,
+    yvalue: float,
+) -> Any:
+    try:
+        xvector = _finite_or_none(xfunction(xvalue, yvalue))
+        yvector = _finite_or_none(yfunction(xvalue, yvalue))
+    except Exception:
+        return None
+    if xvector is None or yvector is None:
+        return None
+    length = runtime.math.sqrt(
+        xvector * xvector + yvector * yvector)
+    if length <= 1e-15:
+        return None
+    return runtime.math_tuple([xvector / length, yvector / length])
+
+
+def _integrate_streamline_direction(
+    seed: tuple[float, float],
+    direction_sign: float,
+    xfunction: Any,
+    yfunction: Any,
+    bounds: tuple[float, float, float, float],
+    step: float,
+    maximum_steps: int,
+) -> list[tuple[float, float]]:
+    xmin, xmax, ymin, ymax = bounds
+    xvalue = seed[0]
+    yvalue = seed[1]
+    answer = []
+    for _index in range(maximum_steps):
+        direction = _stream_direction(
+            xfunction, yfunction, xvalue, yvalue)
+        if direction is None:
+            break
+        midpoint_x = (
+            xvalue + direction_sign * step * direction[0] / 2.0)
+        midpoint_y = (
+            yvalue + direction_sign * step * direction[1] / 2.0)
+        middle_direction = _stream_direction(
+            xfunction, yfunction, midpoint_x, midpoint_y)
+        if middle_direction is None:
+            break
+        candidate_x = (
+            xvalue + direction_sign * step * middle_direction[0])
+        candidate_y = (
+            yvalue + direction_sign * step * middle_direction[1])
+        if (
+            candidate_x < xmin or candidate_x > xmax
+            or candidate_y < ymin or candidate_y > ymax
+        ):
+            break
+        xvalue = candidate_x
+        yvalue = candidate_y
+        answer.append(runtime.math_tuple([xvalue, yvalue]))
+    return answer
+
+
 def _evaluate_plot_function(
     func: Callable[[float], Any],
     x_value: float,
@@ -2672,6 +3026,197 @@ def matrix_plot(
     return graphic
 
 
+def plot_vector_field(
+    functions: Any,
+    xrange: Any,
+    yrange: Any,
+    **options: Any,
+) -> Graphics:
+    r"""
+    Plot a two-dimensional vector field on a rectangular sample grid.
+
+    The two components may be symbolic expressions or callables.  Invalid
+    values are omitted, matching Sage's masked-vector behavior.
+    """
+    defaults = {
+        'plot_points': 20,
+        'frame': True,
+        'pivot': 'tail',
+        'headwidth': 3,
+        'headlength': 5,
+        'headaxislength': 4.5,
+        'color': 'blue',
+        'alpha': 1,
+    }
+    _option_update(defaults, _copy_options(options))
+    plot_points = _option_get(defaults, 'plot_points', 20)
+    sampled = _sample_vector_grid_2d(
+        functions, xrange, yrange, plot_points)
+    graphics_options = _graphics_options(defaults)
+    graphic = Graphics()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(
+        PlotField(
+            sampled[0], sampled[1], sampled[2], sampled[3], sampled[4],
+            defaults,
+        )
+    )
+    return graphic
+
+
+def plot_slope_field(
+    function_value: Any,
+    xrange: Any,
+    yrange: Any,
+    **options: Any,
+) -> Graphics:
+    r"""
+    Plot short normalized line segments with slope ``function_value``.
+    """
+    xvariable = _plot_variable([xrange])
+    yvariable = _plot_variable([yrange])
+    slope = _plot_callable_2d(function_value, xvariable, yvariable)
+
+    def horizontal(xvalue: Any, yvalue: Any) -> float:
+        current = float(slope(xvalue, yvalue))
+        return 1.0 / runtime.math.sqrt(current * current + 1.0)
+
+    def vertical(xvalue: Any, yvalue: Any) -> float:
+        current = float(slope(xvalue, yvalue))
+        return current / runtime.math.sqrt(current * current + 1.0)
+
+    slope_options = {
+        'headaxislength': 0,
+        'headlength': 1e-9,
+        'pivot': 'middle',
+    }
+    _option_update(slope_options, _copy_options(options))
+    return plot_vector_field(
+        (horizontal, vertical), xrange, yrange, **slope_options)
+
+
+def streamline_plot(
+    functions: Any,
+    xrange: Any,
+    yrange: Any,
+    **options: Any,
+) -> Graphics:
+    r"""
+    Plot integral curves of a vector field or first-order slope field.
+
+    Streamlines are integrated in both directions with a deterministic
+    midpoint method.  ``density`` controls seed count and integration step;
+    ``start_points`` supplies explicit seeds.
+    """
+    defaults = {
+        'plot_points': 20,
+        'density': 1.0,
+        'frame': True,
+        'color': 'blue',
+        'alpha': 1,
+    }
+    _option_update(defaults, _copy_options(options))
+    plot_points = _option_get(defaults, 'plot_points', 20)
+    xcount, ycount = _grid_counts_2d(plot_points, 20)
+    xmin, xmax = _plot_range([xrange])
+    ymin, ymax = _plot_range([yrange])
+    xvariable = _plot_variable([xrange])
+    yvariable = _plot_variable([yrange])
+    xfunction, yfunction = _stream_vector_callables(
+        functions, xvariable, yvariable)
+    xstep = (xmax - xmin) / float(xcount - 1)
+    ystep = (ymax - ymin) / float(ycount - 1)
+    xpos_array = [
+        xmax if index == xcount - 1 else xmin + index * xstep
+        for index in range(xcount)
+    ]
+    ypos_array = [
+        ymax if index == ycount - 1 else ymin + index * ystep
+        for index in range(ycount)
+    ]
+    xvec_array = []
+    yvec_array = []
+    for yvalue in ypos_array:
+        xrow = []
+        yrow = []
+        for xvalue in xpos_array:
+            try:
+                xvector = _finite_or_none(xfunction(xvalue, yvalue))
+            except Exception:
+                xvector = None
+            try:
+                yvector = _finite_or_none(yfunction(xvalue, yvalue))
+            except Exception:
+                yvector = None
+            if xvector is None or yvector is None:
+                xvector = None
+                yvector = None
+            xrow.append(xvector)
+            yrow.append(yvector)
+        xvec_array.append(xrow)
+        yvec_array.append(yrow)
+
+    density = _option_get(defaults, 'density', 1.0)
+    if isinstance(density, (list, tuple)):
+        if len(density) != 2:
+            raise ValueError('density must be a number or a pair')
+        xdensity = float(density[0])
+        ydensity = float(density[1])
+    else:
+        xdensity = float(density)
+        ydensity = float(density)
+    if xdensity <= 0 or ydensity <= 0:
+        raise ValueError('density must be positive')
+    start_points = _option_get(defaults, 'start_points')
+    seeds = []
+    if start_points is not None:
+        seeds = [_point_pair(point_value) for point_value in start_points]
+    else:
+        xseed_count = max(2, int(6 * xdensity + 0.5))
+        yseed_count = max(2, int(6 * ydensity + 0.5))
+        for index in range(xseed_count):
+            coordinate = xmin + (
+                (xmax - xmin) * index / float(xseed_count - 1))
+            seeds.append(runtime.math_tuple([coordinate, ymin]))
+            seeds.append(runtime.math_tuple([coordinate, ymax]))
+        for index in range(1, yseed_count - 1):
+            coordinate = ymin + (
+                (ymax - ymin) * index / float(yseed_count - 1))
+            seeds.append(runtime.math_tuple([xmin, coordinate]))
+            seeds.append(runtime.math_tuple([xmax, coordinate]))
+
+    integration_density = max(xdensity, ydensity)
+    step = 0.35 * min(abs(xstep), abs(ystep)) / integration_density
+    maximum_steps = int(
+        8 * (xcount + ycount) * integration_density)
+    bounds = runtime.math_tuple([xmin, xmax, ymin, ymax])
+    paths = []
+    for seed in seeds:
+        if (
+            seed[0] < xmin or seed[0] > xmax
+            or seed[1] < ymin or seed[1] > ymax
+        ):
+            raise ValueError('start_points must lie inside the plot ranges')
+        backward = _integrate_streamline_direction(
+            seed, -1.0, xfunction, yfunction, bounds, step, maximum_steps)
+        forward = _integrate_streamline_direction(
+            seed, 1.0, xfunction, yfunction, bounds, step, maximum_steps)
+        path = list(reversed(backward))
+        path.append(runtime.math_tuple([seed[0], seed[1]]))
+        path.extend(forward)
+        if len(path) > 1:
+            paths.append(path)
+
+    graphics_options = _graphics_options(defaults)
+    graphic = Graphics()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(
+        StreamlinePlot(
+            xpos_array, ypos_array, xvec_array, yvec_array, paths, defaults)
+    )
+    return graphic
+
+
 def show(
     value: Any,
     *others: Any,
@@ -2908,6 +3453,12 @@ for _doc_name, _doc_function, _doc_tags in [
     ('implicit_plot', implicit_plot, ['2D graphics', 'implicit curves']),
     ('region_plot', region_plot, ['2D graphics', 'regions']),
     ('matrix_plot', matrix_plot, ['2D graphics', 'matrices']),
+    ('plot_vector_field', plot_vector_field,
+     ['2D graphics', 'vector fields']),
+    ('plot_slope_field', plot_slope_field,
+     ['2D graphics', 'differential equations']),
+    ('streamline_plot', streamline_plot,
+     ['2D graphics', 'vector fields', 'differential equations']),
     ('plot_step_function', plot_step_function, ['2D graphics', 'data']),
     ('plot_loglog', plot_loglog, ['2D graphics', 'logarithmic axes']),
     ('plot_semilogx', plot_semilogx, ['2D graphics', 'logarithmic axes']),
