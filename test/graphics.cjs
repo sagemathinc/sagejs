@@ -80,6 +80,58 @@ async function main() {
     assert.equal(renderElement.style.height, "375px");
     assert.equal(renderElement.style.maxWidth, "100%");
     assert.equal(renderedFigure.layout.width, 500);
+
+    const animated = await session.evaluate(
+      [
+        "motion = animate([circle((k,0),0.25, color='red')",
+        "                  for k in range(3)],",
+        "                 xmin=-1, xmax=3, ymin=-1, ymax=1)",
+        "motion",
+      ].join("\n"),
+    );
+    assert.equal(animated.repr, "Animation with 3 frames");
+    assert.equal(animated.display?.data.frames.length, 3);
+    assert.equal(animated.display?.data.frames[1].name, "1");
+    assert.ok(animated.display?.data.frames[1].data[0].x[0] > 1);
+    assert.equal(
+      animated.display?.data.layout.updatemenus[0].buttons[0].label,
+      "Play",
+    );
+    assert.equal(
+      animated.display?.data.layout.updatemenus[0].buttons[0].args[1]
+        .frame.duration,
+      200,
+    );
+    assert.equal(animated.display?.data.layout.sliders[0].steps.length, 3);
+    assert.equal((await session.evaluate("len(motion)")).repr, "3");
+    assert.equal(
+      (await session.evaluate("motion[1]")).repr,
+      "Graphics object consisting of 1 graphics primitive",
+    );
+    assert.equal(
+      (await session.evaluate("motion[:2]")).repr,
+      "Animation with 2 frames",
+    );
+    assert.equal(
+      (await session.evaluate("len(motion * motion[:1])")).repr,
+      "4",
+    );
+    assert.match(plotlyHtmlFallback(animated.display?.data), /Plotly\.addFrames/);
+    let addedFrames;
+    await renderSageDisplay({ style: {} }, animated.display, {
+      async react() {},
+      async addFrames(_element, frames) {
+        addedFrames = frames;
+      },
+    });
+    assert.equal(addedFrames.length, 3);
+
+    const animated3d = await session.evaluate(
+      "animate([sphere((k,0,0),0.5) for k in range(2)])",
+    );
+    assert.equal(animated3d.display?.data.frames.length, 2);
+    assert.equal(animated3d.display?.data.frames[0].data[0].type, "surface");
+
     const resized = await session.evaluate(
       "show(line([(0,0), (1,1)]), figsize=[4, 2])",
     );

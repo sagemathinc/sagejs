@@ -2203,6 +2203,245 @@ def multi_graphics(graphics_list: Any) -> MultiGraphics:
 
 
 @runtime.sequence_class
+class Animation:
+    r"""
+    A sequence of two- or three-dimensional graphics frames.
+
+    Sage.js renders animations as native Plotly frames.  Consequently an
+    animation remains interactive in notebooks and exported HTML files: it
+    has play/pause buttons, a frame slider, and no ImageMagick dependency.
+
+    ### Examples
+
+    ```sage
+    sage: a = animate([circle((k, 0), 0.25) for k in range(3)],
+    ....:             xmin=-1, xmax=3, ymin=-1, ymax=1)
+    sage: a
+    Animation with 3 frames
+    sage: len(a)
+    3
+    sage: a[1]
+    Graphics object consisting of 1 graphics primitive
+    ```
+    """
+
+    def __init__(self, frames: Any = None, **options: Any) -> None:
+        self._frames = [] if frames is None else list(frames)
+        self._kwds = _copy_options(options)
+
+    def __len__(self) -> int:
+        return len(self._frames)
+
+    def __iter__(self) -> Iterator[Any]:
+        return iter(self._frames)
+
+    def __getitem__(self, index: Any) -> Any:
+        if isinstance(index, slice):
+            options = self._kwds
+            start, stop, step = index.indices(len(self._frames))
+            frames = [self._frames[position] for position in range(
+                start, stop, step)]
+            return Animation(frames, **options)
+        return self._frames[index]
+
+    def __repr__(self) -> str:
+        return 'Animation with ' + str(len(self._frames)) + ' frames'
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _combine_kwds(self, other: Animation) -> dict[str, Any]:
+        combined = _copy_options(self._kwds)
+        _option_update(combined, other._kwds)
+        for name in ('xmin', 'ymin'):
+            values = []
+            if _option_has(self._kwds, name):
+                values.append(_option_get(self._kwds, name))
+            if _option_has(other._kwds, name):
+                values.append(_option_get(other._kwds, name))
+            if len(values):
+                combined[name] = min(values)
+        for name in ('xmax', 'ymax'):
+            values = []
+            if _option_has(self._kwds, name):
+                values.append(_option_get(self._kwds, name))
+            if _option_has(other._kwds, name):
+                values.append(_option_get(other._kwds, name))
+            if len(values):
+                combined[name] = max(values)
+        return combined
+
+    def __add__(self, other: Any) -> Animation:
+        if not isinstance(other, Animation):
+            other = Animation(other)
+        common = min(len(self), len(other))
+        frames = [
+            self._frames[index] + other._frames[index]
+            for index in range(common)
+        ]
+        frames += self._frames[common:]
+        frames += other._frames[common:]
+        options = self._combine_kwds(other)
+        return Animation(frames, **options)
+
+    def __mul__(self, other: Any) -> Animation:
+        if not isinstance(other, Animation):
+            other = Animation(other)
+        options = self._combine_kwds(other)
+        return Animation(self._frames + other._frames, **options)
+
+    def _graphic(self, frame: Any) -> Any:
+        if hasattr(frame, 'plotly'):
+            graphic = frame
+            if len(self._kwds) and hasattr(graphic, 'set_extra_kwds'):
+                graphic.set_extra_kwds(self._kwds)
+            return graphic
+        plot_options = _copy_options(self._kwds)
+        xmin = _option_pop(plot_options, 'xmin', -1)
+        xmax = _option_pop(plot_options, 'xmax', 1)
+        return plot(frame, xmin, xmax, **plot_options)
+
+    def plotly(
+        self,
+        delay: int = 20,
+        iterations: int = 0,
+        **options: Any,
+    ) -> Any:
+        """Return a Plotly animation figure with play/pause controls."""
+        if len(self._frames) == 0:
+            raise ValueError('an animation must contain at least one frame')
+        if delay < 0:
+            raise ValueError('delay must be nonnegative')
+        if iterations < 0:
+            raise ValueError('iterations must be nonnegative')
+        if len(options):
+            _option_update(self._kwds, options)
+
+        figures = [self._graphic(frame).plotly() for frame in self._frames]
+        initial = figures[0]
+        duration = int(delay) * 10
+        plotly_frames = []
+        slider_steps = []
+        for index in range(len(figures)):
+            name = str(index)
+            figure = figures[index]
+            plotly_frames.append(_native_record(
+                name=name,
+                data=runtime.reflect.get(figure, 'data'),
+                layout=runtime.reflect.get(figure, 'layout'),
+            ))
+            slider_steps.append(_native_record(
+                label=name,
+                method='animate',
+                args=[
+                    [name],
+                    _native_record(
+                        mode='immediate',
+                        frame=_native_record(duration=duration, redraw=True),
+                        transition=_native_record(duration=0),
+                    ),
+                ],
+            ))
+
+        layout = runtime.reflect.get(initial, 'layout')
+        runtime.reflect.set(layout, 'updatemenus', [_native_record(
+            type='buttons',
+            direction='left',
+            x=0,
+            y=0,
+            xanchor='left',
+            yanchor='top',
+            pad=_native_record(t=55, r=10),
+            showactive=False,
+            buttons=[
+                _native_record(
+                    label='Play',
+                    method='animate',
+                    args=[
+                        None,
+                        _native_record(
+                            mode='immediate',
+                            fromcurrent=True,
+                            frame=_native_record(
+                                duration=duration, redraw=True),
+                            transition=_native_record(duration=0),
+                        ),
+                    ],
+                ),
+                _native_record(
+                    label='Pause',
+                    method='animate',
+                    args=[
+                        [None],
+                        _native_record(
+                            mode='immediate',
+                            frame=_native_record(
+                                duration=0, redraw=False),
+                            transition=_native_record(duration=0),
+                        ),
+                    ],
+                ),
+            ],
+        )])
+        runtime.reflect.set(layout, 'sliders', [_native_record(
+            active=0,
+            currentvalue=_native_record(prefix='Frame: '),
+            pad=_native_record(t=40),
+            steps=slider_steps,
+        )])
+        return _native_record(
+            data=runtime.reflect.get(initial, 'data'),
+            layout=layout,
+            config=runtime.reflect.get(initial, 'config'),
+            frames=plotly_frames,
+            animation=_native_record(
+                delay=duration,
+                iterations=int(iterations),
+            ),
+        )
+
+    def _rich_repr_(self) -> Any:
+        delay = int(_option_get(self._kwds, 'delay', 20))
+        iterations = int(_option_get(self._kwds, 'iterations', 0))
+        return _native_record(
+            mime=_PLOTLY_MIME,
+            data=self.plotly(delay=delay, iterations=iterations),
+        )
+
+    def show(
+        self,
+        delay: int = 20,
+        iterations: int = 0,
+        **options: Any,
+    ) -> Animation:
+        self._kwds['delay'] = int(delay)
+        self._kwds['iterations'] = int(iterations)
+        _option_update(self._kwds, options)
+        return self
+
+    def save(self, filename: Any, **options: Any) -> Animation:
+        """Save an animated HTML/JSON file through the host graphics hook."""
+        hook = runtime.reflect.get(
+            runtime.global_object, '__sagejs_graphics_save_hook__')
+        if hook is runtime.undefined:
+            raise NotImplementedError(
+                'graphics file export is not available in this host')
+        runtime.reflect.apply(
+            hook, runtime.undefined, [self, filename, options])
+        return self
+
+
+def animate(frames: Any, **options: Any) -> Animation:
+    r"""
+    Animate an iterable of Sage graphics or plottable symbolic objects.
+
+    The optional `delay` is measured in hundredths of a second, matching
+    SageMath.  `iterations=0` denotes unrestricted interactive replay.
+    """
+    return Animation(frames, **options)
+
+
+@runtime.sequence_class
 class GraphicsArray:
     """A rectangular array of independently rendered graphics objects."""
 
@@ -4154,6 +4393,7 @@ for _doc_name, _doc_function, _doc_tags in [
     ('multi_graphics', multi_graphics,
      ['2D graphics', 'composition', 'insets']),
     ('graphics_array', graphics_array, ['2D graphics', 'composition']),
+    ('animate', animate, ['2D graphics', '3D graphics', 'animation']),
 ]:
     runtime.register_doc(
         _doc_name,

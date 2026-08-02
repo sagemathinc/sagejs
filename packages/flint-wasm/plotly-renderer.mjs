@@ -34,6 +34,13 @@ export async function renderSageDisplay(
     figure.layout ?? {},
     figure.config ?? {},
   );
+  if (
+    Array.isArray(figure.frames) &&
+    figure.frames.length > 0 &&
+    typeof plotly.addFrames === "function"
+  ) {
+    await plotly.addFrames(element, figure.frames);
+  }
   return element;
 }
 

@@ -101,12 +101,16 @@ function standaloneHtml(figure: unknown): string {
 <script>${plotlySource}</script>
 <script>
 const figure = ${figureJson};
-Plotly.newPlot(
+Promise.resolve(Plotly.newPlot(
   document.getElementById("sagejs-plot"),
   figure.data || [],
   figure.layout || {},
   figure.config || {}
-);
+)).then(() => {
+  if (Array.isArray(figure.frames) && figure.frames.length && Plotly.addFrames) {
+    return Plotly.addFrames(document.getElementById("sagejs-plot"), figure.frames);
+  }
+});
 </script>
 </body>
 </html>

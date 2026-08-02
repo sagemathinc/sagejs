@@ -140,12 +140,16 @@ html,body{width:100%;margin:0}
   const target = document.getElementById(${JSON.stringify(id)});
   if (globalThis.Plotly) {
     target.textContent = "";
-    Plotly.newPlot(
+    Promise.resolve(Plotly.newPlot(
       target,
       figure.data || [],
       figure.layout || {},
       figure.config || {}
-    );
+    )).then(() => {
+      if (Array.isArray(figure.frames) && figure.frames.length && Plotly.addFrames) {
+        return Plotly.addFrames(target, figure.frames);
+      }
+    });
   }
 }
 </script>
