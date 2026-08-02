@@ -103,16 +103,31 @@ function htmlJson(value: unknown): string {
     .replaceAll("\u2029", "\\u2029");
 }
 
-function plotlyHtmlFallback(figure: unknown): string {
+function plotlyLayoutDimension(
+  figure: unknown,
+  name: "width" | "height",
+): number | undefined {
+  if (figure === null || typeof figure !== "object") return undefined;
+  const layout = Reflect.get(figure, "layout");
+  if (layout === null || typeof layout !== "object") return undefined;
+  const numeric = Number(Reflect.get(layout, name));
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : undefined;
+}
+
+export function plotlyHtmlFallback(figure: unknown): string {
   const id = `sagejs-plotly-${randomUUID()}`;
   const figureJson = htmlJson(figure);
+  const width = plotlyLayoutDimension(figure, "width");
+  const height = plotlyLayoutDimension(figure, "height");
+  const cssWidth = width === undefined ? "100%" : `${width}px`;
+  const cssHeight = height === undefined ? "450px" : `${height}px`;
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <style>
 html,body{width:100%;margin:0}
-#${id}{width:100%;min-height:450px}
+#${id}{width:${cssWidth};height:${cssHeight};max-width:100%}
 </style>
 <script src="${PLOTLY_CDN}" charset="utf-8"
   onerror="document.getElementById('${id}').textContent='Plotly.js could not be loaded from the CDN.'"></script>

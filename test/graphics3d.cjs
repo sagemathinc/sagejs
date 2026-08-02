@@ -54,6 +54,12 @@ async function main() {
     assert.equal(surface.display?.data.layout.scene.yaxis.title.text, "v");
     assert.equal(surface.display?.data.layout.scene.zaxis.title.text, "z");
     assert.equal(surface.display?.data.layout.scene.xaxis.visible, false);
+    const sizedSurface = await session.evaluate(
+      "plot3d(lambda u,v: u+v, (-1,1), (-1,1), " +
+        "plot_points=2, figsize=5)",
+    );
+    assert.equal(sizedSurface.display?.data.layout.width, 500);
+    assert.equal(sizedSurface.display?.data.layout.height, 375);
     assert.equal((await session.evaluate("len(g)")).repr, "1");
     assert.equal(
       (await session.evaluate("g[0]")).repr,

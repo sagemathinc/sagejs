@@ -18,6 +18,7 @@ _GRAPHICS_OPTION_NAMES = [
     'aspect_ratio',
     'axes',
     'axes_labels',
+    'figsize',
     'frame',
     'gridlines',
     'scale',
@@ -123,6 +124,56 @@ def _dash_value(linestyle: str) -> str:
         'dotted': 'dot',
     }
     return _option_get(styles, linestyle, linestyle)
+
+
+def _marker_value(marker: str) -> str:
+    markers = {
+        'o': 'circle',
+        's': 'square',
+        '^': 'triangle-up',
+        'v': 'triangle-down',
+        '<': 'triangle-left',
+        '>': 'triangle-right',
+        'd': 'diamond',
+        'D': 'diamond',
+        '+': 'cross',
+        'x': 'x',
+        '*': 'star',
+        '.': 'circle',
+    }
+    return _option_get(markers, marker, marker)
+
+
+def _parse_figsize(figsize: Any) -> tuple[float, float]:
+    r"""
+    Normalize Sage's figure-size option to ``(width, height)`` in inches.
+
+    A single positive number is the width and uses Sage/matplotlib's default
+    4:3 aspect ratio.  A pair specifies both dimensions explicitly.
+
+    EXAMPLES::
+
+        sage: _parse_figsize([5, 4])
+        (5.0, 4.0)
+        sage: _parse_figsize(5)
+        (5.0, 3.75)
+    """
+    if isinstance(figsize, (list, tuple)):
+        if len(figsize) != 2:
+            raise ValueError(
+                'figsize should be a positive number or a list of two '
+                'positive numbers, not ' + str(figsize))
+        width = float(figsize[0])
+        height = float(figsize[1])
+        if width <= 0 or height <= 0:
+            raise ValueError(
+                'figsize should be positive numbers, not ' +
+                str(width) + ' and ' + str(height))
+        return width, height
+    width = float(figsize)
+    if width <= 0:
+        raise ValueError('figsize should be positive, not ' + str(width))
+    return width, 0.75 * width
 
 
 def _point_pair(point_value: Any) -> tuple[float, float]:
@@ -293,7 +344,8 @@ class Point(GraphicPrimitive):
         marker = _native_record(
             color=_color_value(color),
             size=float(_option_get(options, 'size', 10)),
-            symbol=str(_option_get(options, 'marker', 'circle')),
+            symbol=_marker_value(
+                str(_option_get(options, 'marker', 'circle'))),
         )
         if _option_has(options, 'markeredgecolor'):
             runtime.reflect.set(
@@ -412,26 +464,70 @@ class Histogram(GraphicPrimitive):
         trace = _native_record(
             type='histogram',
             x=self.values,
-            marker=_native_record(color=_color_value(color)),
+            marker=_native_record(
+                color=_color_value(color),
+                line=_native_record(
+                    color=_color_value(
+                        _option_get(options, 'edgecolor', color)),
+                    width=float(_option_get(options, 'linewidth', 1)),
+                ),
+            ),
             opacity=float(_option_get(options, 'alpha', 1)),
-            showlegend=False,
+            showlegend=_option_get(options, 'label') is not None,
         )
-        bins = int(_option_get(options, 'bins', 0))
-        if bins > 0 and len(self.values):
-            minimum = min(self.values)
-            maximum = max(self.values)
-            if maximum > minimum:
-                runtime.reflect.set(
-                    trace,
-                    'xbins',
-                    _native_record(
-                        start=minimum,
-                        end=maximum,
-                        size=(maximum - minimum) / bins,
-                    ),
-                )
-        if _option_get(options, 'normalize', False):
+        label = _option_get(options, 'label')
+        if label is not None:
+            runtime.reflect.set(trace, 'name', str(label))
+        bins_option = _option_get(options, 'bins', 10)
+        minimum = min(self.values) if len(self.values) else 0.0
+        maximum = max(self.values) if len(self.values) else 1.0
+        range_option = _option_get(options, 'range')
+        if isinstance(range_option, (list, tuple)) and len(range_option) == 2:
+            minimum = float(range_option[0])
+            maximum = float(range_option[1])
+        if isinstance(bins_option, (list, tuple)):
+            edges = [float(value) for value in bins_option]
+            if len(edges) >= 2:
+                minimum = edges[0]
+                maximum = edges[-1]
+                size = (maximum - minimum) / float(len(edges) - 1)
+            else:
+                size = 0.0
+        else:
+            bins = int(bins_option)
+            size = 0.0
+            if bins > 0 and maximum > minimum:
+                size = (maximum - minimum) / bins
+        if size > 0 and len(self.values):
+            runtime.reflect.set(
+                trace,
+                'xbins',
+                _native_record(
+                    start=minimum,
+                    end=maximum,
+                    size=size,
+                ),
+            )
+        if (
+            _option_get(options, 'normalize', False)
+            or _option_get(options, 'density', False)
+        ):
             runtime.reflect.set(trace, 'histnorm', 'probability density')
+        cumulative = _option_get(options, 'cumulative', False)
+        if cumulative:
+            runtime.reflect.set(
+                trace,
+                'cumulative',
+                _native_record(
+                    enabled=True,
+                    direction=(
+                        'decreasing'
+                        if isinstance(cumulative, (int, float))
+                        and cumulative < 0
+                        else 'increasing'
+                    ),
+                ),
+            )
         return trace
 
 
@@ -728,6 +824,12 @@ class Graphics:
                 'x',
             )
             runtime.reflect.set(yaxis, 'scaleratio', float(ratio))
+
+        figsize = _option_get(options, 'figsize')
+        if figsize is not None:
+            width, height = _parse_figsize(figsize)
+            runtime.reflect.set(layout, 'width', int(width * 100))
+            runtime.reflect.set(layout, 'height', int(height * 100))
         return layout
 
     def plotly(self) -> Any:
@@ -939,6 +1041,59 @@ def bar_chart(values: Any, **options: Any) -> Graphics:
     graphic.add_primitive(
         Bar([float(value) for value in values], defaults))
     return graphic
+
+
+def histogram(datalist: Any, **options: Any) -> Graphics:
+    r"""
+    Compute and draw a histogram of numerical data.
+
+    Common Sage options include `bins`, `range`, `density`, `cumulative`,
+    `color`, `edgecolor`, `alpha`, and `label`.
+
+    ### Examples
+
+    ```sage
+    sage: histogram([1, 1, 2, 3], bins=3)
+    Graphics object consisting of 1 graphics primitive
+    ```
+    """
+    options = _copy_options(options)
+    values = list(datalist)
+    if len(values) and isinstance(values[0], (list, tuple)):
+        answer = Graphics()
+        for dataset in values:
+            answer = answer + histogram(dataset, **options)
+        return answer
+    defaults = {
+        'alpha': 1,
+        'rgbcolor': [0, 0, 1],
+        'edgecolor': 'black',
+        'bins': 10,
+    }
+    if _option_has(options, 'color') and not _option_has(options, 'rgbcolor'):
+        options['rgbcolor'] = _option_pop(options, 'color')
+    _option_update(defaults, options)
+    graphics_options = _graphics_options(defaults)
+    graphic = Graphics()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(
+        Histogram([float(value) for value in values], defaults))
+    return graphic
+
+
+def scatter_plot(datalist: Any, **options: Any) -> Graphics:
+    r"""Return a Sage-compatible scatter plot of `(x, y)` points."""
+    options = _copy_options(options)
+    if _option_has(options, 'markersize') and not _option_has(options, 'size'):
+        options['size'] = _option_pop(options, 'markersize')
+    if _option_has(options, 'facecolor') and not _option_has(options, 'color'):
+        options['color'] = _option_pop(options, 'facecolor')
+    if (
+        _option_has(options, 'edgecolor')
+        and not _option_has(options, 'markeredgecolor')
+    ):
+        options['markeredgecolor'] = _option_pop(options, 'edgecolor')
+    return point(datalist, **options)
 
 
 def polygon(points: Any, **options: Any) -> Graphics:
@@ -1605,6 +1760,36 @@ def parametric_plot(
     return line(points, **options)
 
 
+def polar_plot(
+    funcs: Any,
+    *range_args: Any,
+    **options: Any,
+) -> Graphics:
+    r"""
+    Plot one or more functions in polar coordinates.
+
+    The input function gives the radius `r` as a function of angle `theta`.
+    All adaptive sampling and line options accepted by `plot` are supported.
+    """
+    radial = plot(funcs, *range_args, **options)
+    answer = Graphics()
+    for primitive in radial:
+        if not isinstance(primitive, Line):
+            continue
+        points = []
+        for index in range(len(primitive.xdata)):
+            theta = primitive.xdata[index]
+            radius = primitive.ydata[index]
+            points.append((
+                radius * runtime.math.cos(theta),
+                radius * runtime.math.sin(theta)
+            ))
+        primitive_options = primitive.options()
+        answer = answer + line(points, **primitive_options)
+    answer.set_extra_kwds(radial.get_extra_kwds())
+    return answer
+
+
 def contour_plot(
     function_value: Any,
     xrange: Any,
@@ -1702,6 +1887,97 @@ def list_plot(
     return point(points, **options)
 
 
+def plot_step_function(
+    values: Any,
+    vertical_lines: bool = True,
+    **options: Any,
+) -> Graphics:
+    r"""Plot the step function defined by a sequence of `(x, y)` pairs."""
+    points = sorted([_point_pair(value) for value in values])
+    if len(points) <= 1:
+        return line([], **options)
+    if vertical_lines:
+        path = []
+        for index in range(len(points)):
+            path.append(points[index])
+            if index + 1 < len(points):
+                path.append((points[index + 1][0], points[index][1]))
+        return line(path, **options)
+    answer = Graphics()
+    for index in range(len(points) - 1):
+        answer = answer + line(
+            [points[index], (points[index + 1][0], points[index][1])],
+            **options,
+        )
+    return answer
+
+
+def plot_loglog(
+    funcs: Any,
+    *range_args: Any,
+    **options: Any,
+) -> Graphics:
+    """Plot functions with logarithmic horizontal and vertical axes."""
+    options['scale'] = 'loglog'
+    return plot(funcs, *range_args, **options)
+
+
+def plot_semilogx(
+    funcs: Any,
+    *range_args: Any,
+    **options: Any,
+) -> Graphics:
+    """Plot functions with a logarithmic horizontal axis."""
+    options['scale'] = 'semilogx'
+    return plot(funcs, *range_args, **options)
+
+
+def plot_semilogy(
+    funcs: Any,
+    *range_args: Any,
+    **options: Any,
+) -> Graphics:
+    """Plot functions with a logarithmic vertical axis."""
+    options['scale'] = 'semilogy'
+    return plot(funcs, *range_args, **options)
+
+
+def list_plot_loglog(
+    data: Any,
+    plotjoined: bool = False,
+    **options: Any,
+) -> Graphics:
+    """Plot list data with logarithmic horizontal and vertical axes."""
+    options['scale'] = 'loglog'
+    return list_plot(data, plotjoined=plotjoined, **options)
+
+
+def list_plot_semilogx(
+    data: Any,
+    plotjoined: bool = False,
+    **options: Any,
+) -> Graphics:
+    """Plot list data with a logarithmic horizontal axis."""
+    options['scale'] = 'semilogx'
+    return list_plot(data, plotjoined=plotjoined, **options)
+
+
+def list_plot_semilogy(
+    data: Any,
+    plotjoined: bool = False,
+    **options: Any,
+) -> Graphics:
+    """Plot list data with a logarithmic vertical axis."""
+    options['scale'] = 'semilogy'
+    return list_plot(data, plotjoined=plotjoined, **options)
+
+
+line2d = line
+arrow2d = arrow
+point2d = point
+polygon2d = polygon
+
+
 def _graphics_doc(
     tags: list[str],
     compatibility_notes: str,
@@ -1776,3 +2052,47 @@ runtime.register_doc(
         ),
     ),
 )
+
+for _doc_name, _doc_function, _doc_tags in [
+    ('line', line, ['2D graphics', 'lines']),
+    ('line2d', line2d, ['2D graphics', 'lines']),
+    ('arrow', arrow, ['2D graphics', 'arrows']),
+    ('arrow2d', arrow2d, ['2D graphics', 'arrows']),
+    ('point', point, ['2D graphics', 'points']),
+    ('points', points, ['2D graphics', 'points']),
+    ('point2d', point2d, ['2D graphics', 'points']),
+    ('polygon', polygon, ['2D graphics', 'polygons']),
+    ('polygon2d', polygon2d, ['2D graphics', 'polygons']),
+    ('circle', circle, ['2D graphics', 'circles']),
+    ('text', text, ['2D graphics', 'labels']),
+    ('bar_chart', bar_chart, ['2D graphics', 'charts']),
+    ('histogram', histogram, ['2D graphics', 'statistics']),
+    ('scatter_plot', scatter_plot, ['2D graphics', 'statistics']),
+    ('list_plot', list_plot, ['2D graphics', 'data']),
+    ('parametric_plot', parametric_plot, ['2D graphics', 'parametric']),
+    ('polar_plot', polar_plot, ['2D graphics', 'polar coordinates']),
+    ('contour_plot', contour_plot, ['2D graphics', 'contours']),
+    ('plot_step_function', plot_step_function, ['2D graphics', 'data']),
+    ('plot_loglog', plot_loglog, ['2D graphics', 'logarithmic axes']),
+    ('plot_semilogx', plot_semilogx, ['2D graphics', 'logarithmic axes']),
+    ('plot_semilogy', plot_semilogy, ['2D graphics', 'logarithmic axes']),
+    ('list_plot_loglog', list_plot_loglog,
+     ['2D graphics', 'logarithmic axes']),
+    ('list_plot_semilogx', list_plot_semilogx,
+     ['2D graphics', 'logarithmic axes']),
+    ('list_plot_semilogy', list_plot_semilogy,
+     ['2D graphics', 'logarithmic axes']),
+    ('graphics_array', graphics_array, ['2D graphics', 'composition']),
+]:
+    runtime.register_doc(
+        _doc_name,
+        _doc_function,
+        _graphics_doc(
+            _doc_tags,
+            (
+                'The Sage call form and core rendering semantics are '
+                'supported; remaining specialized options are tracked by '
+                'the graphics compatibility corpus.'
+            ),
+        ),
+    )

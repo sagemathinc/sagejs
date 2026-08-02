@@ -129,6 +129,26 @@ def _g3d_colorscale(color: Any) -> Any:
     return [[0, normalized], [1, normalized]]
 
 
+def _g3d_parse_figsize(figsize: Any) -> tuple[float, float]:
+    """Normalize Sage's ``figsize`` value to dimensions in inches."""
+    if isinstance(figsize, (list, tuple)):
+        if len(figsize) != 2:
+            raise ValueError(
+                'figsize should be a positive number or a list of two '
+                'positive numbers, not ' + str(figsize))
+        width = float(figsize[0])
+        height = float(figsize[1])
+        if width <= 0 or height <= 0:
+            raise ValueError(
+                'figsize should be positive numbers, not ' +
+                str(width) + ' and ' + str(height))
+        return width, height
+    width = float(figsize)
+    if width <= 0:
+        raise ValueError('figsize should be positive, not ' + str(width))
+    return width, 0.75 * width
+
+
 def _g3d_point(value: Any) -> tuple[float, float, float]:
     if not isinstance(value, (list, tuple)) or len(value) != 3:
         raise ValueError('points must have exactly three coordinates')
@@ -684,9 +704,10 @@ class Graphics3d:
             )
 
         figsize = _g3d_option_get(options, 'figsize')
-        if isinstance(figsize, (list, tuple)) and len(figsize) == 2:
-            runtime.reflect.set(layout, 'width', int(float(figsize[0]) * 80))
-            runtime.reflect.set(layout, 'height', int(float(figsize[1]) * 80))
+        if figsize is not None:
+            width, height = _g3d_parse_figsize(figsize)
+            runtime.reflect.set(layout, 'width', int(width * 100))
+            runtime.reflect.set(layout, 'height', int(height * 100))
         return layout
 
     def plotly(self) -> Any:
@@ -1163,3 +1184,56 @@ runtime.register_doc(
         ],
     },
 )
+
+
+def _graphics3d_doc(tags: list[str], notes: str) -> Any:
+    return {
+        'kind': 'function',
+        'module': 'sage.plot.plot3d',
+        'tags': ['graphics', '3D graphics'] + tags,
+        'backends': ['Plotly', 'Sage.js rectangular sampler'],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': notes,
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath 3D plotting API and object model',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/plot3d/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'library-backed',
+                'source': 'Plotly.js',
+                'url': 'https://plotly.com/javascript/3d-charts/',
+            },
+        ],
+        'implementation': {
+            'algorithm': 'Semantic 3D primitives with Plotly rendering',
+        },
+        'limitations': [],
+    }
+
+
+for _doc_name, _doc_function, _doc_tags in [
+    ('line3d', line3d, ['lines']),
+    ('point3d', point3d, ['points']),
+    ('plot3d', plot3d, ['surfaces']),
+    ('parametric_plot3d', parametric_plot3d, ['parametric plots']),
+    ('sphere', sphere, ['shapes']),
+]:
+    runtime.register_doc(
+        _doc_name,
+        _doc_function,
+        _graphics3d_doc(
+            _doc_tags,
+            (
+                'The Sage call form and core rendering semantics are '
+                'supported; remaining specialized options are tracked by '
+                'the graphics compatibility corpus.'
+            ),
+        ),
+    )

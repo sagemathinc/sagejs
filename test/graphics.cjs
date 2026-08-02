@@ -4,8 +4,12 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+const { plotlyHtmlFallback } = require("../dist/tools/jupyter-kernel.js");
 
 async function main() {
+  const { renderSageDisplay } = await import(
+    "../packages/flint-wasm/plotly-renderer.mjs"
+  );
   const session = await createSage();
   try {
     const composed = await session.evaluate(
@@ -57,6 +61,34 @@ async function main() {
     assert.equal(sampled.display?.data.layout.title.text, "Squares");
     assert.equal(sampled.display?.data.layout.xaxis.title.text, "x");
     assert.equal(sampled.display?.data.layout.yaxis.title.text, "x^2");
+
+    const sized = await session.evaluate(
+      "plot(x^2, (x, 0, 1), figsize=5)",
+    );
+    assert.equal(sized.display?.data.layout.width, 500);
+    assert.equal(sized.display?.data.layout.height, 375);
+    const sizedHtml = plotlyHtmlFallback(sized.display?.data);
+    assert.match(sizedHtml, /width:500px;height:375px;max-width:100%/);
+    const renderElement = { style: {} };
+    let renderedFigure;
+    await renderSageDisplay(renderElement, sized.display, {
+      async react(_element, data, layout, config) {
+        renderedFigure = { data, layout, config };
+      },
+    });
+    assert.equal(renderElement.style.width, "500px");
+    assert.equal(renderElement.style.height, "375px");
+    assert.equal(renderElement.style.maxWidth, "100%");
+    assert.equal(renderedFigure.layout.width, 500);
+    const resized = await session.evaluate(
+      "show(line([(0,0), (1,1)]), figsize=[4, 2])",
+    );
+    assert.equal(resized.display?.data.layout.width, 400);
+    assert.equal(resized.display?.data.layout.height, 200);
+    await assert.rejects(
+      session.evaluate("plot(x, (x, 0, 1), figsize=0)"),
+      /figsize should be positive/,
+    );
 
     const listed = await session.evaluate(
       "list_plot([1, 4, 9], plotjoined=True)",
@@ -147,6 +179,50 @@ async function main() {
     );
     assert.equal(histogram.display?.data.data[0].type, "histogram");
     assert.deepEqual(histogram.display?.data.data[0].x, [1, 1, 2, 3]);
+
+    const directHistogram = await session.evaluate(
+      "histogram([1, 1, 2, 3], bins=2, density=True, " +
+        "cumulative=True, color='teal', label='samples')",
+    );
+    assert.equal(directHistogram.display?.data.data[0].histnorm,
+      "probability density");
+    assert.equal(directHistogram.display?.data.data[0].cumulative.enabled,
+      true);
+    assert.equal(directHistogram.display?.data.data[0].showlegend, true);
+
+    const scattered = await session.evaluate(
+      "scatter_plot([(0,1), (2,3)], marker='s', markersize=20, " +
+        "facecolor='pink', edgecolor='black')",
+    );
+    assert.equal(scattered.display?.data.data[0].marker.symbol, "square");
+    assert.equal(scattered.display?.data.data[0].marker.size, 20);
+    assert.equal(scattered.display?.data.data[0].marker.color, "pink");
+
+    const stepped = await session.evaluate(
+      "plot_step_function([(2, 4), (0, 1), (1, 3)])",
+    );
+    assert.deepEqual(stepped.display?.data.data[0].x, [0, 1, 1, 2, 2]);
+    assert.deepEqual(stepped.display?.data.data[0].y, [1, 1, 3, 3, 4]);
+
+    const logarithmic = await session.evaluate(
+      "list_plot_loglog([(1,1), (10,100)], plotjoined=True)",
+    );
+    assert.equal(logarithmic.display?.data.layout.xaxis.type, "log");
+    assert.equal(logarithmic.display?.data.layout.yaxis.type, "log");
+
+    const polar = await session.evaluate(
+      "polar_plot(lambda t: 1, (0, pi/2), plot_points=2, " +
+        "adaptive_recursion=0, randomize=False)",
+    );
+    assert.ok(Math.abs(polar.display?.data.data[0].x[0] - 1) < 1e-12);
+    assert.ok(Math.abs(polar.display?.data.data[0].y[1] - 1) < 1e-12);
+
+    assert.equal((await session.evaluate("line2d is line")).repr, "True");
+    assert.equal((await session.evaluate("point2d is point")).repr, "True");
+    assert.match(
+      (await session.evaluate("histogram.__doc__")).repr,
+      /Compute and draw a histogram/,
+    );
 
     const plain = await session.evaluate("factor(12)");
     assert.equal(plain.display, undefined);

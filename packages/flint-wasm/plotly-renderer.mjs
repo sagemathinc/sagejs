@@ -20,6 +20,14 @@ export async function renderSageDisplay(
     throw new Error("Plotly.js is required to render this Sage.js display");
   }
   const figure = display.data;
+  const style = element?.style;
+  if (style) {
+    const width = Number(figure?.layout?.width);
+    const height = Number(figure?.layout?.height);
+    if (Number.isFinite(width) && width > 0) style.width = `${width}px`;
+    if (Number.isFinite(height) && height > 0) style.height = `${height}px`;
+    style.maxWidth = "100%";
+  }
   await plotly.react(
     element,
     figure.data ?? [],

@@ -21,6 +21,10 @@ export interface PlotlyRenderer {
   purge?(element: Element): void;
 }
 
+export interface PlotlyRenderElement extends Element {
+  style?: CSSStyleDeclaration;
+}
+
 export interface PlotlyImageOptions {
   filename?: string;
   format?: "png" | "jpeg" | "jpg" | "webp" | "svg";
@@ -30,13 +34,13 @@ export interface PlotlyImageOptions {
 }
 
 export function renderSageDisplay(
-  element: Element,
+  element: PlotlyRenderElement,
   display: SageDisplayData,
   plotly?: PlotlyRenderer,
 ): Promise<Element>;
 
 export function clearSageDisplay(
-  element: Element,
+  element: PlotlyRenderElement,
   plotly?: PlotlyRenderer,
 ): void;
 
