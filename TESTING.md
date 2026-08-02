@@ -14,6 +14,21 @@ pnpm test:integration
 pnpm test:native
 ```
 
+For a focused change, `pnpm test:changed` examines the diff from `origin/main`
+and runs a deterministic conservative subset. Use `--base REF` to select a
+different merge base or `--list` to inspect the commands without running them.
+Native-source changes rebuild the addon before its tests.
+
+Parallel project work records reproducible final checks with:
+
+```sh
+pnpm parallel:run -- PROJECT_ID -- pnpm test:native
+```
+
+The receipt contains the exact command, result, duration, host platform,
+commit, and workspace fingerprint. See
+[`PARALLEL-DEVELOPMENT.md`](PARALLEL-DEVELOPMENT.md).
+
 - `test:unit` covers JavaScript and TypeScript components without starting the
   full evaluator.
 - `test:compiler` compiles every top-level `test/*.py` file into an isolated VM

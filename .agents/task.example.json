@@ -1,0 +1,39 @@
+{
+  "$schema": "./task.schema.json",
+  "schema_version": 1,
+  "id": "modsym-decomposition",
+  "title": "Fast newspace decomposition",
+  "lane": "modular-forms",
+  "status": "active",
+  "owner": "agent-or-human-name",
+  "objective": "Implement and benchmark newspace decomposition at composite levels.",
+  "base_commit": "full-git-commit-written-by-parallel:new",
+  "claims": [
+    "src/baselib/modular.py",
+    "packages/flint/src/p1.c",
+    "packages/flint/src/p1.h",
+    "bench/modular-symbols-decomposition.sage",
+    "test/modular-symbols-decomposition.cjs"
+  ],
+  "dependencies": [],
+  "references": [
+    "https://wstein.org/books/modform/"
+  ],
+  "platforms": {
+    "linux-x64": "required",
+    "linux-arm64": "required",
+    "windows-x64": "required",
+    "macos-arm64": "required"
+  },
+  "validation": [
+    "pnpm test:baselib:strict",
+    "pnpm test:native",
+    "pnpm bench:modular-symbols"
+  ],
+  "runs": [],
+  "handoff": {
+    "summary": "",
+    "risks": [],
+    "next_steps": []
+  }
+}

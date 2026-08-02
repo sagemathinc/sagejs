@@ -17,6 +17,23 @@
 - Commit coherent completed work and push each commit to GitHub promptly.
 - Do not commit `*.chat` files or generated build artifacts that are already ignored.
 
+## Parallel projects
+
+- Use `pnpm parallel:new` for work explicitly assigned as one lane in a
+  multi-project effort. Each project gets its own branch, Git worktree, and
+  `.agents/tasks/<id>.json` contract.
+- Claim the narrowest files or directories that contain the implementation.
+  Do not edit outside those claims; coordinate shared API, package, CI, and
+  registry changes through the integration lane.
+- Run `pnpm parallel:check` before coding and before handoff. Use
+  `pnpm test:changed` for the deterministic checks implied by the diff and
+  `pnpm parallel:run` to record final validation receipts.
+- Set the contract to `review` only after filling in its handoff summary,
+  risks, and next steps. Validation receipts must describe the current
+  workspace, not an earlier revision.
+- See `PARALLEL-DEVELOPMENT.md` and `.agents/lanes.json` for the complete
+  workflow and machine-readable lane boundaries.
+
 ## Git
 
 - By default, agents should auto-commit completed change-sets after relevant validation passes.

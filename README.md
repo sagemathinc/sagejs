@@ -107,7 +107,10 @@ pnpm test                          # full compiler, CLI, upstream, and CoWasm su
 
 See [`TESTING.md`](TESTING.md) for the test tiers and
 [`DISTRIBUTION.md`](DISTRIBUTION.md) for native, SEA, and WebAssembly
-distribution details.
+distribution details. Large coordinated efforts use isolated worktrees,
+machine-readable task contracts, exclusive path claims, and validation
+receipts as described in
+[`PARALLEL-DEVELOPMENT.md`](PARALLEL-DEVELOPMENT.md).
 
 Tagged releases publish ready-to-run `sagejs` and `sagepython` archives for
 Linux x64, Linux arm64, and Windows x64. They require no Node.js, compiler, or

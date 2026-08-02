@@ -10,6 +10,7 @@ const unit = [
   "test/documentation.cjs",
   "test/magma.cjs",
   "test/foreign-languages.cjs",
+  "test/parallel-development.cjs",
 ];
 
 const integration = [

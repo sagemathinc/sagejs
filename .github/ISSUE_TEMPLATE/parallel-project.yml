@@ -1,0 +1,67 @@
+name: Parallel development project
+description: Propose a bounded project suitable for an independent worktree and agent or contributor.
+title: "[parallel] "
+labels: ["parallel-project"]
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Concrete outcome
+      description: Describe what will exist and work when this project is complete.
+      placeholder: Compute and decompose weight-2 new spaces efficiently at composite levels.
+    validations:
+      required: true
+  - type: dropdown
+    id: lane
+    attributes:
+      label: Lane
+      options:
+        - compiler-runtime
+        - arithmetic-algebra
+        - elliptic-curves
+        - modular-forms
+        - symbolic
+        - graphics
+        - combinatorics-groups
+        - polyglot
+        - documentation-compat
+        - distribution
+        - integration
+    validations:
+      required: true
+  - type: textarea
+    id: claims
+    attributes:
+      label: Exclusive write claims
+      description: List the narrow implementation paths this project owns. Tests, benchmarks, and docs must also be listed.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: oracle
+    attributes:
+      label: Correctness oracle and references
+      description: Name the Sage/Magma/PARI cases, papers, source revisions, or datasets that define correctness.
+    validations:
+      required: true
+  - type: textarea
+    id: benchmark
+    attributes:
+      label: Baseline and performance target
+      description: Give exact commands and representative parameters, or explain why this is not a performance project.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and shared interfaces
+      description: Identify prerequisite projects and any shared API work that must be queued for integration.
+  - type: checkboxes
+    id: platform
+    attributes:
+      label: Platform contract
+      options:
+        - label: Native Windows x64 is supported, or a correct tested capability fallback is explicit.
+          required: true
+        - label: Linux x64, Linux arm64, and macOS arm64 implications are recorded.
+          required: true

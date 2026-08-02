@@ -57,6 +57,9 @@ jobs:
           SAGEJS_BUILD_JOBS: "4"
         run: pnpm bootstrap
 
+      - name: Validate parallel project contracts
+        run: pnpm parallel:check -- --all
+
       - name: Run strict baselib checks
         run: pnpm test:baselib:strict
 

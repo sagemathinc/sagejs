@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "collateral_claims": [
+    "test/",
+    "bench/",
+    "docs/",
+    "upstream-tests/sage/"
+  ],
+  "lanes": [
+    {
+      "id": "compiler-runtime",
+      "description": "Parser, compiler, runtime, modes, kernels, and language semantics",
+      "allowed_claims": ["src/runtime/", "src/tree_sitter/", "src/output/", "tools/", "bootstrap/"],
+      "required_checks": ["pnpm build", "pnpm test:compiler", "pnpm test:integration"]
+    },
+    {
+      "id": "arithmetic-algebra",
+      "description": "Exact arithmetic, fields, polynomials, matrices, and coercion",
+      "allowed_claims": ["src/baselib/algebra.py", "src/baselib/exact_rational.py", "src/baselib/factorization.py", "src/baselib/finite_fields.py", "src/baselib/matrix.py", "src/baselib/number_fields.py", "src/baselib/padics.py", "src/baselib/polynomial.py", "src/baselib/real_complex.py", "src/baselib/series.py", "packages/flint/src/algebraic", "packages/flint/src/extension_field", "packages/flint/src/floating", "packages/flint/src/matrix", "packages/flint/src/multivariate", "packages/flint/src/number_field_factor", "packages/flint/src/sparse_rational"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:native"]
+    },
+    {
+      "id": "elliptic-curves",
+      "description": "Elliptic curves, point counting, databases, and arithmetic",
+      "allowed_claims": ["src/baselib/elliptic_curves.py", "packages/flint/src/addon.c", "packages/flint/src/addon.h", "packages/flint/scripts/", "packages/flint/README.md"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:native", "pnpm bench:elliptic-curves"]
+    },
+    {
+      "id": "modular-forms",
+      "description": "Dirichlet characters, modular symbols, modular forms, and Hecke algorithms",
+      "allowed_claims": ["src/baselib/dirichlet.py", "src/baselib/modular.py", "src/lib/sage/modular/", "packages/flint/src/charpoly", "packages/flint/src/cyclotomic_rref", "packages/flint/src/dirichlet", "packages/flint/src/modsym_core", "packages/flint/src/p1", "packages/flint/src/sparse_rational"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:native", "pnpm bench:modular-symbols"]
+    },
+    {
+      "id": "symbolic",
+      "description": "Symbolic expressions, simplification, calculus, and equation solving",
+      "allowed_claims": ["src/baselib/symbolic.py", "src/baselib/builtins.py"],
+      "required_checks": ["pnpm build", "pnpm test:compiler", "pnpm test:integration"]
+    },
+    {
+      "id": "graphics",
+      "description": "Two- and three-dimensional graphics and rendering",
+      "allowed_claims": ["src/baselib/graphics.py", "src/baselib/graphics3d.py", "PLOTTING.md"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:integration"]
+    },
+    {
+      "id": "combinatorics-groups",
+      "description": "Groups, combinatorics, iterators, and discrete structures",
+      "allowed_claims": ["src/baselib/groups.py", "src/baselib/containers.py", "src/baselib/itertools.py"],
+      "required_checks": ["pnpm test:baselib:strict", "pnpm test:compiler"]
+    },
+    {
+      "id": "polyglot",
+      "description": "Magma, Maple, MATLAB, Wolfram, and foreign-language frontends",
+      "allowed_claims": ["tools/foreign/", "tools/magma/", "tools/maple/", "tools/matlab/", "tools/wolfram/", "FOREIGN-LANGUAGES.md", "MAGMA.md", "POLYGLOT.md"],
+      "required_checks": ["pnpm build", "pnpm test:integration", "pnpm bench:polyglot"]
+    },
+    {
+      "id": "documentation-compat",
+      "description": "DocSpec, searchable documentation, tutorials, and compatibility corpora",
+      "allowed_claims": ["DOCUMENTATION.md", "DOCSPEC.md", "src/baselib/builtins.py", "scripts/generate-docs.cjs", "scripts/extract-sage", "scripts/run-sage", "tools/docs.ts", "tools/documentation.ts"],
+      "required_checks": ["pnpm docs:check", "pnpm test:tutorial"]
+    },
+    {
+      "id": "distribution",
+      "description": "Native dependencies, WASM, SEA, installers, CI, and supported platforms",
+      "allowed_claims": ["packages/flint/", "packages/flint-wasm/", "scripts/bootstrap.cjs", "scripts/build-sea.cjs", "scripts/release-macos.sh", "scripts/macos-entitlements.plist", ".github/", "DISTRIBUTION.md", "WINDOWS.md"],
+      "required_checks": ["pnpm test:portable", "pnpm test:native", "pnpm test:sea"]
+    },
+    {
+      "id": "integration",
+      "description": "Shared APIs, repository-wide refactors, release integration, and merge coordination",
+      "allowed_claims": ["AGENTS.md", "README.md", "HACKING.md", "TESTING.md", "PARALLEL-DEVELOPMENT.md", "package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "pyrightconfig.json", "scripts/", ".agents/", ".github/"],
+      "required_checks": ["pnpm test:portable", "pnpm test:baselib:strict"]
+    }
+  ]
+}

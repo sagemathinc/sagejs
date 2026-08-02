@@ -1,5 +1,24 @@
 # Developing Sage.js
 
+## Parallel projects
+
+For a coordinated multi-agent or multi-contributor effort, do not share one
+checkout. Use the repository's task-contract and worktree tooling:
+
+```sh
+pnpm parallel:new -- PROJECT_ID LANE \
+  --objective "A concrete completed outcome" \
+  --claim path/to/implementation \
+  --claim test/focused-regression.cjs
+```
+
+The command creates an isolated branch and worktree, validates exclusive write
+claims against a machine-readable lane, and records platform and validation
+requirements. `pnpm parallel:status` gives the coordinator a live dashboard
+and rejects overlapping active claims. See
+[`PARALLEL-DEVELOPMENT.md`](PARALLEL-DEVELOPMENT.md) before creating several
+projects at once.
+
 ## Source layout
 
 - `src/` contains the self-hosting compiler and small Python-like standard
