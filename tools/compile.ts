@@ -23,6 +23,7 @@ import {
   isForeignSyntaxError,
   selectedForeignLanguage,
 } from "./foreign";
+import { installNodeHost } from "./host";
 
 const PyLang = createCompiler();
 
@@ -167,6 +168,10 @@ export default async function Compile({
     if (argv.execute) {
       // @ts-ignore
       global.require = runtimeRequire;
+      const uninstallNodeHost = installNodeHost(
+        globalThis,
+        argv.sage ? "sage" : "python",
+      );
       try {
         runInThisContext(output);
       } catch (error) {
@@ -182,6 +187,8 @@ export default async function Compile({
         }
         console.error(String(code));
         process.exit(1);
+      } finally {
+        uninstallNodeHost();
       }
     }
   }

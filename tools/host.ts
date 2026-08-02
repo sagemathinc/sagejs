@@ -11,9 +11,16 @@ import * as fs from "node:fs";
 import * as nodeOs from "node:os";
 import * as path from "node:path";
 
+import type { SageLanguageMode } from "./kernel-evaluator";
+import { NodeMultiprocessingAdapter } from "./multiprocessing-host";
+
 interface HostFailure {
   code?: string;
   errno?: number;
+  name?: string;
+  remoteName?: string;
+  remoteMessage?: string;
+  remoteStack?: string;
   message: string;
   syscall?: string;
   path?: string;
@@ -25,11 +32,20 @@ type HostResult =
   | { ok: false; error: HostFailure };
 
 function failure(error: unknown): HostResult {
-  const value = error as NodeJS.ErrnoException & { dest?: string };
+  const value = error as NodeJS.ErrnoException & {
+    dest?: string;
+    remoteName?: string;
+    remoteMessage?: string;
+    remoteStack?: string;
+  };
   return {
     ok: false,
     error: {
       code: value?.code,
+      name: value?.name,
+      remoteName: value?.remoteName,
+      remoteMessage: value?.remoteMessage,
+      remoteStack: value?.remoteStack,
       errno: typeof value?.errno === "number" ? Math.abs(value.errno) : undefined,
       message: value?.message ?? String(error),
       syscall: value?.syscall,
@@ -65,8 +81,10 @@ function statValue(value: fs.BigIntStats) {
 export class NodeHostAdapter {
   private currentDirectory = process.cwd();
   private readonly environment: Record<string, string> = Object.create(null);
+  private readonly multiprocessing: NodeMultiprocessingAdapter;
 
-  constructor() {
+  constructor(mode: SageLanguageMode = "sage") {
+    this.multiprocessing = new NodeMultiprocessingAdapter(mode);
     for (const [key, value] of Object.entries(process.env)) {
       if (value !== undefined) this.environment[key] = value;
     }
@@ -222,6 +240,27 @@ export class NodeHostAdapter {
           return { ok: true, value: nodeOs.availableParallelism() };
         case "urandom":
           return { ok: true, value: Array.from(crypto.randomBytes(Number(args[0]))) };
+        case "multiprocessingCreatePool":
+          return {
+            ok: true,
+            value: this.multiprocessing.createPool(Number(args[0])),
+          };
+        case "multiprocessingMap":
+          return {
+            ok: true,
+            value: this.multiprocessing.map(
+              Number(args[0]),
+              args[1],
+              args[2] as unknown[],
+              Boolean(args[3]),
+            ),
+          };
+        case "multiprocessingClosePool":
+          this.multiprocessing.closePool(Number(args[0]));
+          return { ok: true, value: null };
+        case "multiprocessingCloseAllPools":
+          this.multiprocessing.close();
+          return { ok: true, value: null };
         default:
           return {
             ok: false,
@@ -238,12 +277,17 @@ export class NodeHostAdapter {
   }
 }
 
-export function installNodeHost(target: object = globalThis): () => void {
+export function installNodeHost(
+  target: object = globalThis,
+  mode: SageLanguageMode = "sage",
+): () => void {
   const property = "__sagejs_host__";
   const hadPrevious = Reflect.has(target, property);
   const previous = Reflect.get(target, property);
-  Reflect.set(target, property, new NodeHostAdapter());
+  const adapter = new NodeHostAdapter(mode);
+  Reflect.set(target, property, adapter);
   return () => {
+    adapter.call("multiprocessingCloseAllPools");
     if (hadPrevious) Reflect.set(target, property, previous);
     else Reflect.deleteProperty(target, property);
   };

@@ -50,18 +50,23 @@ try {
     pythonProgram,
     [
       "import time",
+      "from multiprocessing import Pool",
+      "def square(n):",
+      "    return n*n",
       "values = {n: n * n for n in range(6)}",
       "started = time.time()",
       "time.sleep(0.005)",
       "print(sum(values.values()))",
       "print(type(started))",
       "print(time.time() >= started)",
+      "with Pool(2) as workers:",
+      "    print(workers.map(square, [7, 8, 9]))",
       "",
     ].join("\n"),
   );
   assert.equal(
     run(pythonExecutable, pythonProgram),
-    "55\n<class 'float'>\nTrue",
+    "55\n<class 'float'>\nTrue\n[49, 64, 81]",
   );
 
   const missingBackendProgram = join(
@@ -128,6 +133,9 @@ try {
     writeFileSync(
       mathProgram,
       [
+        "from multiprocessing import Pool",
+        "def phi(n):",
+        "    return euler_phi(n)",
         "print(factor(2026))",
         "R = RealField(100)",
         "print(R('1.25') * R('2.5'))",
@@ -136,6 +144,8 @@ try {
         "print(fast_callable(sin(x^2), vars=[x])(2))",
         "u, v = var('u v')",
         "print(plot3d(u^2-v^2, (u,-1,1), (v,-1,1), plot_points=2))",
+        "with Pool(2) as workers:",
+        "    print(workers.map(phi, [1009, 1013, 1019]))",
         "",
       ].join("\n"),
     );
@@ -146,7 +156,8 @@ try {
         "x\n" +
         "2*x*cos(x^2)\n" +
         "-0.7568024953079282\n" +
-        "Graphics3d Object",
+        "Graphics3d Object\n" +
+        "[1008, 1012, 1018]",
     );
   }
 } finally {

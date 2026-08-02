@@ -539,6 +539,7 @@ try {
   const pythonFile = join(temporary, "example.py");
   const loadedFile = join(temporary, "loaded example.sage");
   const loadingFile = join(temporary, "loading-example.sage");
+  const multiprocessingFile = join(temporary, "multiprocessing-example.py");
   writeFileSync(sageFile, "print(2^5)\n", "utf8");
   writeFileSync(pythonFile, "print(2^5)\n", "utf8");
   writeFileSync(
@@ -547,6 +548,20 @@ try {
       "loaded_value = 17",
       "def loaded_square(n):",
       "    return n^2",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  writeFileSync(
+    multiprocessingFile,
+    [
+      "from multiprocessing import Pool",
+      "import os",
+      "def square(n):",
+      "    return n*n",
+      "with Pool(2) as workers:",
+      "    print(workers.map(square, [3, 5, 7]))",
+      "print(os.cpu_count() >= 1)",
       "",
     ].join("\n"),
     "utf8",
@@ -565,6 +580,7 @@ try {
   assert.match(run(["--python", pythonFile]), /^7\s*$/);
   assert.match(run(["--sage", pythonFile]), /^32\s*$/);
   assert.equal(run([loadingFile]).trim(), "49");
+  assert.equal(run([multiprocessingFile]).trim(), "[9, 25, 49]\nTrue");
   assert.match(
     run(["compile", "--omit-baselib", sageFile]),
     /var ρσ_const_0 = Integer\("2"\),\s+ρσ_const_1 = Integer\("5"\)/,

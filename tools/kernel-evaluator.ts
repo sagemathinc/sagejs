@@ -177,7 +177,7 @@ export function createKernelEvaluator({
   // These hooks are consulted dynamically by the generated baselib.
   global.require = runtimeRequire as NodeJS.Require;
   installNodeGraphicsSaveHook();
-  const uninstallNodeHost = installNodeHost(globalThis);
+  const uninstallNodeHost = installNodeHost(globalThis, mode);
   global.__sagejs_output_write__ = (text: unknown) => {
     onOutput(String(text));
   };

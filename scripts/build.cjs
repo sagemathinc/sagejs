@@ -30,5 +30,6 @@ cpSync(
   join(dist, "tools", "kernel.d.ts"),
 );
 run(process.execPath, [join(root, "bin", "sagejs"), "self", "--complete"]);
+run(process.execPath, [join(root, "scripts", "build-task-runtime.cjs")]);
 run(process.execPath, [join(root, "scripts", "build-vendor.cjs")]);
 run(process.execPath, [join(root, "scripts", "build-module-cache.cjs")]);

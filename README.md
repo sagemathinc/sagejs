@@ -110,7 +110,10 @@ See [`TESTING.md`](TESTING.md) for the test tiers and
 distribution details. Python interoperability and the host-capability design
 are documented in
 [`docs/python-standard-library.md`](docs/python-standard-library.md). Large
-coordinated efforts use isolated worktrees, machine-readable task contracts,
+CPU-bound Python/Sage computations can use persistent isolated evaluators
+through the initial [`multiprocessing.Pool`](docs/python-multiprocessing.md)
+interface. Coordinated development efforts use isolated worktrees,
+machine-readable task contracts,
 exclusive path claims, and validation receipts as described in
 [`PARALLEL-DEVELOPMENT.md`](PARALLEL-DEVELOPMENT.md).
 

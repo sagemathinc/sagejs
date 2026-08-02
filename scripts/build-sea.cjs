@@ -17,6 +17,10 @@ const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
 const bundle = join(outputDirectory, "entry.cjs");
 const configFilename = join(outputDirectory, "sea-config.json");
+const multiprocessingWorkerBundle = join(
+  outputDirectory,
+  "multiprocessing-worker.cjs",
+);
 const flintAddon = join(
   root,
   "packages",
@@ -144,6 +148,13 @@ function buildExecutable(name, withFlint) {
       "compiler",
       "baselib-plain-pretty.js",
     ),
+    "compiler/task-runtime.js": join(
+      root,
+      "dist",
+      "compiler",
+      "task-runtime.js",
+    ),
+    "worker/multiprocessing-worker.cjs": multiprocessingWorkerBundle,
     ...collectStandardLibraryAssets(),
     ...collectStandardLibraryCacheAssets(),
     "vendor/plotly.min.js": require.resolve(
@@ -219,6 +230,18 @@ mkdirSync(outputDirectory, { recursive: true });
 buildSync({
   entryPoints: [join(root, "dist", "tools", "sea-entry.js")],
   outfile: bundle,
+  bundle: true,
+  platform: "node",
+  format: "cjs",
+  target: "node22",
+  sourcemap: false,
+  minify: false,
+  external: ["plotly.js-dist-min/plotly.min.js"],
+});
+
+buildSync({
+  entryPoints: [join(root, "dist", "tools", "multiprocessing-worker.js")],
+  outfile: multiprocessingWorkerBundle,
   bundle: true,
   platform: "node",
   format: "cjs",
