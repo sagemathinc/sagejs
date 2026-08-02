@@ -89,6 +89,22 @@ lookup, ignore patterns, and disk usage. Their pure path components remain
 browser-safe; concrete host operations use the same evaluator-local current
 directory as `os` and `open`.
 
+## Child processes
+
+`subprocess` provides `run`, `Popen`, `call`, `check_call`, `check_output`,
+`getoutput`, and `getstatusoutput`, together with `PIPE`, `STDOUT`, `DEVNULL`,
+`CompletedProcess`, `CalledProcessError`, and `TimeoutExpired`. Arguments,
+input, output/error capture and merging, text encodings, environment
+replacement, working directories, exit checks, timeouts, and missing-command
+errors follow Python's contracts on Linux, macOS, and Windows.
+
+The initial Node backend executes eagerly with `spawnSync` and buffers child
+output (up to 64 MiB), so `Popen.poll`, `wait`, and `communicate` expose an
+already-completed process. This is deterministic and sufficient for most
+agent and research pipelines. Live interactive pipes and signaling are a
+future backend extension behind the same public API. Importing `subprocess`
+without a process capability is safe; execution raises `NotImplementedError`.
+
 ## Conformance strategy
 
 The semantic source is CPython. The path corpus and tests are derived from

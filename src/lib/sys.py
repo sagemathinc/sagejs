@@ -54,6 +54,7 @@ maxsize = int('9223372036854775807')
 # generally use ``sys.version_info`` for feature checks, but ``version`` is a
 # standard public attribute and must at least be a string.
 version = 'Sage.js'
+executable = process.execPath
 modules = runtime.modules
 
 

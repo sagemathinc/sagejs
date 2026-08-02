@@ -20,6 +20,7 @@ const integration = [
   "test/file-io.cjs",
   "test/stdlib-data.cjs",
   "test/stdlib-filesystem.cjs",
+  "test/subprocess-module.cjs",
   "test/multiprocessing-module.cjs",
   "test/numpy-module.cjs",
   "test/kernel.cjs",

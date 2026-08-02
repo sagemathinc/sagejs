@@ -11,6 +11,7 @@ import * as fs from "node:fs";
 import * as nodeOs from "node:os";
 import * as path from "node:path";
 import * as zlib from "node:zlib";
+import { spawnSync } from "node:child_process";
 
 import type { SageLanguageMode } from "./kernel-evaluator";
 import { NodeMultiprocessingAdapter } from "./multiprocessing-host";
@@ -123,6 +124,7 @@ export class NodeHostAdapter {
               curdir: ".",
               pardir: "..",
               tempdir: nodeOs.tmpdir(),
+              executable: process.execPath,
             },
           };
         case "uname":
@@ -344,6 +346,53 @@ export class NodeHostAdapter {
           hash.update(data);
           const digest = hash.digest();
           return { ok: true, value: Array.from(digest) };
+        }
+        case "subprocessRun": {
+          const command = (args[0] as unknown[]).map(String);
+          if (command.length === 0) {
+            throw new TypeError("subprocess command must not be empty");
+          }
+          const cwd = args[1] == null ? this.currentDirectory : this.resolve(args[1]);
+          const environment = args[2] == null
+            ? { ...this.environment }
+            : Object.fromEntries(args[2] as [string, string][]);
+          const input = args[3] == null
+            ? undefined
+            : Buffer.from(args[3] as number[]);
+          const timeout = args[4] == null ? undefined : Number(args[4]);
+          const shell = Boolean(args[5]);
+          const executable = args[6] == null ? undefined : String(args[6]);
+          const maxBuffer = args[7] == null ? 64 * 1024 * 1024 : Number(args[7]);
+          const result = spawnSync(executable ?? command[0], command.slice(1), {
+            cwd,
+            env: environment,
+            input,
+            timeout,
+            shell,
+            encoding: null,
+            maxBuffer,
+            windowsHide: true,
+          });
+          return {
+            ok: true,
+            value: {
+              pid: result.pid,
+              status: result.status,
+              signal: result.signal,
+              errorCode: (result.error as NodeJS.ErrnoException | undefined)?.code,
+              errorMessage: result.error?.message,
+              stdout: Array.from(
+                Buffer.isBuffer(result.stdout)
+                  ? result.stdout
+                  : Buffer.from(result.stdout ?? ""),
+              ),
+              stderr: Array.from(
+                Buffer.isBuffer(result.stderr)
+                  ? result.stderr
+                  : Buffer.from(result.stderr ?? ""),
+              ),
+            },
+          };
         }
         case "environmentEntries":
           return { ok: true, value: Object.entries(this.environment) };
