@@ -4049,7 +4049,25 @@ return {completion:completion,namespace:ρσ_modules[module_id]};
                                 'symbolic function arguments must '
                                 'be distinct')
                         seen_arguments[argument.name] = True
-                        symbolic_arguments.push(argument)
+                        # Sage implicitly creates variables appearing in a
+                        # symbolic function definition. Calling var() while
+                        # evaluating the first argument both returns the
+                        # expression and publishes it before the right-hand
+                        # side is evaluated, e.g. ``g(z) = z^2``.
+                        symbolic_arguments.push(AST_Call({
+                            'start': argument.start,
+                            'end': argument.end,
+                            'expression': AST_SymbolRef({
+                                'name': 'var',
+                                'start': argument.start,
+                                'end': argument.end,
+                            }),
+                            'args': [AST_String({
+                                'value': argument.name,
+                                'start': argument.start,
+                                'end': argument.end,
+                            })],
+                        }))
                     if (
                         left.args.kwargs.length
                         or left.args.kwarg_items.length

@@ -401,6 +401,19 @@ assert.deepEqual(
     .split("\n"),
   ["x |--> x^2", "9", "x |--> 2*x"],
 );
+assert.deepEqual(
+  run(
+    [],
+    "g(z) = z^2\nprint(g, parent(z))\n" +
+      "h(u,v) = u^2 + v^2\nprint(h, h(3,4), parent(u), parent(v))\n",
+  )
+    .trim()
+    .split("\n"),
+  [
+    "z |--> z^2 Symbolic Ring",
+    "(u, v) |--> u^2 + v^2 25 Symbolic Ring Symbolic Ring",
+  ],
+);
 assert.match(
   run(["--python"], "f(x) = x**2\n"),
   /cannot assign to a function call/,

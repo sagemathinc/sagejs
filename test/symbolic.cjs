@@ -53,6 +53,15 @@ async function main() {
       (await session.evaluate("g(x) = x^2\ng")).repr,
       "x |--> x^2",
     );
+    assert.equal(
+      (
+        await session.evaluate(
+          "fresh_symbol(tau) = tau^2\n" +
+            "(fresh_symbol, parent(tau), fresh_symbol(5))",
+        )
+      ).repr,
+      "(tau |--> tau^2, Symbolic Ring, 25)",
+    );
     assert.equal((await session.evaluate("g(3)")).repr, "9");
     assert.equal(
       (await session.evaluate("g.derivative()")).repr,
