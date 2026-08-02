@@ -195,6 +195,8 @@ def style(graphic: Any, *directives: Any) -> Any:
 
 
 def _combine_graphics(items: Any) -> Any:
+    if not isinstance(items, (list, tuple)):
+        return items
     result = 0
     style = {}
     for item in items:
@@ -375,10 +377,12 @@ def cone(bounds: Any = ((0, 0, 0), (0, 0, 1)), radius: Any = 1) -> Any:
     return _oriented_surface(surface, first, second)
 
 
-def torus(center: Any = (0, 0, 0), radii: Any = (1, 0.25)) -> Any:
+def torus(center: Any = (0, 0, 0), radii: Any = (0.5, 1)) -> Any:
     if isinstance(radii, (list, tuple)):
-        major = float(radii[0])
-        minor = float(radii[1])
+        if len(radii) != 2:
+            raise ValueError("Torus radii must contain inner and outer radii")
+        minor = float(radii[0])
+        major = float(radii[1])
     else:
         major = float(radii)
         minor = major / 4.0

@@ -330,6 +330,15 @@ async function main() {
     assert.equal(wolframPrimitives3d.display?.data.data.length, 2);
     assert.equal(wolframPrimitives3d.display?.data.data[0].type, "surface");
     assert.equal(wolframPrimitives3d.display?.data.data[0].opacity, 0.4);
+    const wolframBareTorus = await session.evaluate(
+      "Graphics3D[Torus[]]",
+      { language: "wolfram" },
+    );
+    assert.equal(wolframBareTorus.display?.data.data.length, 1);
+    assert.equal(wolframBareTorus.display?.data.data[0].type, "surface");
+    assert.ok(
+      Math.abs(wolframBareTorus.display?.data.data[0].x[0][0] - 1.5) < 1e-12,
+    );
     const wolframColorDirectives = await session.evaluate(
       "Graphics[{RGBColor[.2,.4,.8],PointSize[.15]," +
         "Point[{{0,0},{1,1}}]}]",
