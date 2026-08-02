@@ -148,6 +148,23 @@ async function main() {
         .repr,
       "1",
     );
+    assert.equal(
+      (await session.evaluate("Color('purple')")).repr,
+      "RGB color (0.5019607843137255, 0, 0.5019607843137255)",
+    );
+    assert.equal(
+      (await session.evaluate("Color('#8000ff').html_color()"))
+        .repr,
+      "'#8000ff'",
+    );
+    assert.equal(
+      (await session.evaluate("rainbow(7)")).repr,
+      "['#ff0000', '#ffda00', '#48ff00', '#00ff91', '#0091ff', '#4800ff', '#ff00da']",
+    );
+    const namedColor = await session.evaluate(
+      "plot(x, (x,0,1), color=colors.royalblue)",
+    );
+    assert.equal(namedColor.display?.data.data[0].line.color, "rgb(65,105,225)");
 
     const resized = await session.evaluate(
       "show(line([(0,0), (1,1)]), figsize=[4, 2])",

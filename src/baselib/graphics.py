@@ -111,6 +111,8 @@ def _option_update(target: Any, source: Any) -> None:
 
 
 def _color_value(color: Any) -> str:
+    if hasattr(color, 'rgb'):
+        color = color.rgb()
     if isinstance(color, str):
         return color
     if isinstance(color, (list, tuple)) and len(color) in (3, 4):
@@ -1644,6 +1646,272 @@ def hue(
         (v, p, q),
     ]
     return runtime.math_tuple(list(choices[sector % 6]))
+
+
+_NAMED_COLORS = {
+    'black': '#000000', 'silver': '#c0c0c0', 'gray': '#808080',
+    'grey': '#808080', 'white': '#ffffff', 'maroon': '#800000',
+    'red': '#ff0000', 'purple': '#800080', 'fuchsia': '#ff00ff',
+    'green': '#008000', 'lime': '#00ff00', 'olive': '#808000',
+    'yellow': '#ffff00', 'navy': '#000080', 'blue': '#0000ff',
+    'teal': '#008080', 'aqua': '#00ffff', 'orange': '#ffa500',
+    'pink': '#ffc0cb', 'brown': '#a52a2a', 'cyan': '#00ffff',
+    'magenta': '#ff00ff', 'violet': '#ee82ee', 'indigo': '#4b0082',
+    'gold': '#ffd700', 'goldenrod': '#daa520', 'khaki': '#f0e68c',
+    'coral': '#ff7f50', 'salmon': '#fa8072', 'tomato': '#ff6347',
+    'orchid': '#da70d6', 'plum': '#dda0dd', 'turquoise': '#40e0d0',
+    'steelblue': '#4682b4', 'royalblue': '#4169e1',
+    'skyblue': '#87ceeb', 'deepskyblue': '#00bfff',
+    'forestgreen': '#228b22', 'seagreen': '#2e8b57',
+    'springgreen': '#00ff7f', 'yellowgreen': '#9acd32',
+    'darkred': '#8b0000', 'darkgreen': '#006400',
+    'darkblue': '#00008b', 'darkorange': '#ff8c00',
+    'darkviolet': '#9400d3', 'lightblue': '#add8e6',
+    'lightgreen': '#90ee90', 'lightgray': '#d3d3d3',
+    'lightgrey': '#d3d3d3', 'transparent': '#000000',
+}
+
+
+def _color_mod_one(value: Any) -> float:
+    numeric = float(value)
+    if numeric == 1.0:
+        return 1.0
+    result = numeric % 1.0
+    return result + 1.0 if result < 0 else result
+
+
+def _html_rgb(value: str) -> tuple[float, float, float]:
+    text_value = runtime.reflect.apply(
+        runtime.reflect.get(runtime.string_class.prototype, 'toLowerCase'),
+        value,
+        [],
+    )
+    if text_value[0:1] != '#':
+        if not _option_has(_NAMED_COLORS, text_value):
+            raise ValueError("unknown color '" + text_value + "'")
+        text_value = _option_get(_NAMED_COLORS, text_value)
+    digits = text_value[1:]
+    if len(digits) == 3:
+        digits = (
+            digits[0] + digits[0] + digits[1] + digits[1]
+            + digits[2] + digits[2])
+    if len(digits) != 6:
+        raise ValueError('HTML colors must contain three or six hex digits')
+    return runtime.math_tuple([
+        int(digits[0:2], 16) / 255.0,
+        int(digits[2:4], 16) / 255.0,
+        int(digits[4:6], 16) / 255.0,
+    ])
+
+
+def _hls_to_rgb(
+    hue_value: float,
+    lightness: float,
+    saturation: float,
+) -> tuple[float, float, float]:
+    if saturation == 0:
+        return runtime.math_tuple([lightness, lightness, lightness])
+    if lightness <= 0.5:
+        maximum = lightness * (1.0 + saturation)
+    else:
+        maximum = lightness + saturation - lightness * saturation
+    minimum = 2.0 * lightness - maximum
+
+    def component(offset: float) -> float:
+        position = (hue_value + offset) % 1.0
+        if position < 1.0 / 6.0:
+            return minimum + (maximum - minimum) * position * 6.0
+        if position < 0.5:
+            return maximum
+        if position < 2.0 / 3.0:
+            return minimum + (
+                maximum - minimum) * (2.0 / 3.0 - position) * 6.0
+        return minimum
+
+    return runtime.math_tuple([
+        component(1.0 / 3.0), component(0), component(-1.0 / 3.0)])
+
+
+def rgbcolor(value: Any, space: str = 'rgb') -> tuple[float, float, float]:
+    """Convert a Sage color specification to an RGB triple."""
+    if hasattr(value, 'rgb'):
+        return value.rgb()
+    if runtime.jstype(value) == 'string':
+        return _html_rgb(value)
+    values = list(value)
+    if len(values) != 3:
+        raise ValueError('a color must contain exactly three components')
+    components = [_color_mod_one(component) for component in values]
+    normalized_space = runtime.reflect.apply(
+        runtime.reflect.get(runtime.string_class.prototype, 'toLowerCase'),
+        space,
+        [],
+    )
+    if normalized_space == 'rgb':
+        return runtime.math_tuple(components)
+    if normalized_space == 'hsv':
+        return hue(components[0], components[1], components[2])
+    if normalized_space == 'hls':
+        return _hls_to_rgb(components[0], components[1], components[2])
+    if normalized_space == 'hsl':
+        return _hls_to_rgb(components[0], components[2], components[1])
+    raise ValueError("space must be one of 'rgb', 'hsv', 'hsl', 'hls'")
+
+
+@runtime.sequence_class
+class Color:
+    """A Sage-compatible RGB color with color-space conversions."""
+
+    def __init__(
+        self,
+        red: Any = '#0000ff',
+        green: Any = None,
+        blue: Any = None,
+        space: str = 'rgb',
+    ) -> None:
+        if green is None and blue is None:
+            self._rgb = rgbcolor(red, space)
+        else:
+            self._rgb = rgbcolor([red, green, blue], space)
+
+    def __repr__(self) -> str:
+        return 'RGB color ' + str(self._rgb)
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def __len__(self) -> int:
+        return 3
+
+    def __iter__(self) -> Iterator[float]:
+        return iter(self._rgb)
+
+    def __getitem__(self, index: int) -> float:
+        return self._rgb[index]
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Color) and self._rgb == other._rgb
+
+    def rgb(self) -> tuple[float, float, float]:
+        return self._rgb
+
+    def hsv(self) -> tuple[float, float, float]:
+        red, green, blue = self._rgb
+        maximum = max(red, green, blue)
+        minimum = min(red, green, blue)
+        difference = maximum - minimum
+        saturation = 0.0 if maximum == 0 else difference / maximum
+        if difference == 0:
+            hue_value = 0.0
+        elif maximum == red:
+            hue_value = ((green - blue) / difference) % 6.0
+        elif maximum == green:
+            hue_value = (blue - red) / difference + 2.0
+        else:
+            hue_value = (red - green) / difference + 4.0
+        return runtime.math_tuple([
+            hue_value / 6.0, saturation, maximum])
+
+    def hls(self) -> tuple[float, float, float]:
+        hue_value, _saturation, _value = self.hsv()
+        maximum = max(self._rgb)
+        minimum = min(self._rgb)
+        lightness = (maximum + minimum) / 2.0
+        difference = maximum - minimum
+        if difference == 0:
+            saturation = 0.0
+        elif lightness <= 0.5:
+            saturation = difference / (maximum + minimum)
+        else:
+            saturation = difference / (2.0 - maximum - minimum)
+        return runtime.math_tuple([hue_value, lightness, saturation])
+
+    def hsl(self) -> tuple[float, float, float]:
+        hue_value, lightness, saturation = self.hls()
+        return runtime.math_tuple([hue_value, saturation, lightness])
+
+    def html_color(self) -> str:
+        digits = []
+        for component in self._rgb:
+            text_value = hex(int(component * 255))[2:]
+            digits.append(('0' + text_value)[-2:])
+        return '#' + ''.join(digits)
+
+    def blend(self, color: Any, fraction: Any = 0.5) -> Color:
+        other = rgbcolor(color)
+        amount = float(fraction)
+        return Color([
+            (1.0 - amount) * self._rgb[index] + amount * other[index]
+            for index in range(3)
+        ])
+
+    def lighter(self, fraction: Any = 1.0 / 3.0) -> Color:
+        return self.blend((1, 1, 1), fraction)
+
+    def darker(self, fraction: Any = 1.0 / 3.0) -> Color:
+        return self.blend((0, 0, 0), fraction)
+
+    def __add__(self, other: Any) -> Color:
+        return self.blend(other)
+
+    __radd__ = __add__
+
+    def __mul__(self, scalar: Any) -> Color:
+        return Color([
+            component * float(scalar) for component in self._rgb])
+
+    __rmul__ = __mul__
+
+    def __truediv__(self, scalar: Any) -> Color:
+        return Color([
+            component / float(scalar) for component in self._rgb])
+
+
+class ColorsDict(dict):  # pyright: ignore[reportMissingTypeArgument]
+    """Named Sage colors, accessible by key or attribute."""
+
+    def __getattr__(self, name: str) -> Color:
+        if name in self:
+            return self[name]
+        raise AttributeError("unknown color '" + name + "'")
+
+
+colors = ColorsDict()
+for _color_name in _NAMED_COLORS:
+    colors[_color_name] = Color(_option_get(_NAMED_COLORS, _color_name))
+    runtime.reflect.set(
+        runtime.global_object, _color_name, colors[_color_name])
+
+
+def rainbow(count: int, format: str = 'hex') -> list[Any]:
+    """Return `count` evenly spaced hues as hex strings or RGB tuples."""
+    size = int(count)
+    values = [hue(index / float(size)) for index in range(size)]
+    if format == 'rgbtuple':
+        return values
+    if format == 'hex':
+        return [Color(value).html_color() for value in values]
+    raise ValueError("format must be 'hex' or 'rgbtuple'")
+
+
+class Colormaps(dict):  # pyright: ignore[reportMissingTypeArgument]
+    """Small portable collection of common Plotly-compatible colormaps."""
+
+    def __getattr__(self, name: str) -> Any:
+        if name in self:
+            return self[name]
+        raise AttributeError("unknown colormap '" + name + "'")
+
+
+colormaps = Colormaps()
+colormaps['gray'] = ['black', 'white']
+colormaps['Greys'] = ['black', 'white']
+colormaps['viridis'] = [
+    '#440154', '#3b528b', '#21918c', '#5ec962', '#fde725']
+colormaps['plasma'] = [
+    '#0d0887', '#7e03a8', '#cc4778', '#f89540', '#f0f921']
+colormaps['inferno'] = [
+    '#000004', '#420a68', '#932667', '#dd513a', '#fca50a', '#fcffa4']
 
 
 def circle(
@@ -4557,6 +4825,17 @@ runtime.register_doc(
         ),
     ),
 )
+runtime.register_doc(
+    'Color',
+    Color,
+    _graphics_doc(
+        ['2D graphics', '3D graphics', 'colors'],
+        (
+            'Sage RGB, HSV, HLS, and HSL construction and conversion are '
+            'supported with portable CSS color output.'
+        ),
+    ),
+)
 
 for _doc_name, _doc_function, _doc_tags in [
     ('line', line, ['2D graphics', 'lines']),
@@ -4617,6 +4896,9 @@ for _doc_name, _doc_function, _doc_tags in [
      ['2D graphics', 'hyperbolic geometry']),
     ('hyperbolic_regular_polygon', hyperbolic_regular_polygon,
      ['2D graphics', 'hyperbolic geometry']),
+    ('rgbcolor', rgbcolor, ['2D graphics', 'colors']),
+    ('hue', hue, ['2D graphics', 'colors']),
+    ('rainbow', rainbow, ['2D graphics', 'colors']),
 ]:
     runtime.register_doc(
         _doc_name,
