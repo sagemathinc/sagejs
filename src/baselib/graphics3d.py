@@ -471,6 +471,106 @@ def _g3d_translated_values(values: Any, offset: float) -> Any:
     return float(values) + offset
 
 
+def _g3d_transform_coordinates(
+    xvalues: Any,
+    yvalues: Any,
+    zvalues: Any,
+    matrix: Any,
+    offset: Any,
+) -> tuple[Any, Any, Any]:
+    """Apply one affine transform to parallel Plotly coordinate arrays."""
+    if isinstance(xvalues, (list, tuple)):
+        transformed_x = []
+        transformed_y = []
+        transformed_z = []
+        for index in range(len(xvalues)):
+            xpart, ypart, zpart = _g3d_transform_coordinates(
+                xvalues[index], yvalues[index], zvalues[index],
+                matrix, offset)
+            transformed_x.append(xpart)
+            transformed_y.append(ypart)
+            transformed_z.append(zpart)
+        return transformed_x, transformed_y, transformed_z
+    xvalue = float(xvalues)
+    yvalue = float(yvalues)
+    zvalue = float(zvalues)
+    return runtime.math_tuple([
+        matrix[0][0] * xvalue + matrix[0][1] * yvalue
+        + matrix[0][2] * zvalue + offset[0],
+        matrix[1][0] * xvalue + matrix[1][1] * yvalue
+        + matrix[1][2] * zvalue + offset[1],
+        matrix[2][0] * xvalue + matrix[2][1] * yvalue
+        + matrix[2][2] * zvalue + offset[2],
+    ])
+
+
+def _g3d_flatten_numeric(values: Any) -> list[float]:
+    if isinstance(values, (list, tuple)):
+        result = []
+        for value in values:
+            result += _g3d_flatten_numeric(value)
+        return result
+    if values is None:
+        return []
+    return [float(values)]
+
+
+class TransformedPrimitive3d(GraphicPrimitive3d):
+    """A renderer-independent affine transform of a 3D primitive."""
+
+    def __init__(
+        self,
+        primitive: GraphicPrimitive3d,
+        matrix: Any,
+        offset: Any,
+    ) -> None:
+        GraphicPrimitive3d.__init__(self, primitive.options())
+        self.primitive = primitive
+        self.matrix = matrix
+        self.offset = offset
+
+    def __repr__(self) -> str:
+        return 'Transformed ' + repr(self.primitive)
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_traces(self) -> list[Any]:
+        traces = self.primitive._plotly_traces()
+        for trace in traces:
+            if (
+                runtime.reflect.has(trace, 'x')
+                and runtime.reflect.has(trace, 'y')
+                and runtime.reflect.has(trace, 'z')
+            ):
+                transformed = _g3d_transform_coordinates(
+                    runtime.reflect.get(trace, 'x'),
+                    runtime.reflect.get(trace, 'y'),
+                    runtime.reflect.get(trace, 'z'),
+                    self.matrix,
+                    self.offset,
+                )
+                runtime.reflect.set(trace, 'x', transformed[0])
+                runtime.reflect.set(trace, 'y', transformed[1])
+                runtime.reflect.set(trace, 'z', transformed[2])
+            if (
+                runtime.reflect.has(trace, 'u')
+                and runtime.reflect.has(trace, 'v')
+                and runtime.reflect.has(trace, 'w')
+            ):
+                transformed_vectors = _g3d_transform_coordinates(
+                    runtime.reflect.get(trace, 'u'),
+                    runtime.reflect.get(trace, 'v'),
+                    runtime.reflect.get(trace, 'w'),
+                    self.matrix,
+                    (0, 0, 0),
+                )
+                runtime.reflect.set(trace, 'u', transformed_vectors[0])
+                runtime.reflect.set(trace, 'v', transformed_vectors[1])
+                runtime.reflect.set(trace, 'w', transformed_vectors[2])
+        return traces
+
+
 class TranslatedPrimitive3d(GraphicPrimitive3d):
     """A renderer-independent translation of a 3D primitive."""
 
@@ -1328,6 +1428,129 @@ class Graphics3d:
             answer.add_primitive(
                 TranslatedPrimitive3d(primitive, vector))
         return answer
+
+    def transform(self, **options: Any) -> Graphics3d:
+        r"""Apply Sage's scale, rotation, and translation transformation."""
+        scale_value = _g3d_option_get(options, 'scale', (1, 1, 1))
+        if isinstance(scale_value, (list, tuple)):
+            if len(scale_value) == 1:
+                uniform_scale = float(scale_value[0])
+                scale = [uniform_scale, uniform_scale, uniform_scale]
+            elif len(scale_value) == 3:
+                scale = [
+                    float(scale_value[0]),
+                    float(scale_value[1]),
+                    float(scale_value[2]),
+                ]
+            else:
+                raise ValueError('scale must be a number or three coordinates')
+        else:
+            uniform_scale = float(scale_value)
+            scale = [uniform_scale, uniform_scale, uniform_scale]
+
+        matrix = [
+            [scale[0], 0.0, 0.0],
+            [0.0, scale[1], 0.0],
+            [0.0, 0.0, scale[2]],
+        ]
+        rotation = _g3d_option_get(options, 'rot')
+        if rotation is not None:
+            if not isinstance(rotation, (list, tuple)) or len(rotation) != 4:
+                raise ValueError('rot must contain an axis and an angle')
+            axis_x = float(rotation[0])
+            axis_y = float(rotation[1])
+            axis_z = float(rotation[2])
+            length = runtime.math.sqrt(
+                axis_x * axis_x + axis_y * axis_y + axis_z * axis_z)
+            if length == 0:
+                raise ValueError('rotation axis must be nonzero')
+            axis_x /= length
+            axis_y /= length
+            axis_z /= length
+            angle = float(rotation[3])
+            cosine = runtime.math.cos(angle)
+            sine = runtime.math.sin(angle)
+            complement = 1.0 - cosine
+            rotation_matrix = [
+                [
+                    cosine + axis_x * axis_x * complement,
+                    axis_x * axis_y * complement - axis_z * sine,
+                    axis_x * axis_z * complement + axis_y * sine,
+                ],
+                [
+                    axis_y * axis_x * complement + axis_z * sine,
+                    cosine + axis_y * axis_y * complement,
+                    axis_y * axis_z * complement - axis_x * sine,
+                ],
+                [
+                    axis_z * axis_x * complement - axis_y * sine,
+                    axis_z * axis_y * complement + axis_x * sine,
+                    cosine + axis_z * axis_z * complement,
+                ],
+            ]
+            matrix = [
+                [sum(rotation_matrix[row][inner] * matrix[inner][column]
+                     for inner in range(3))
+                 for column in range(3)]
+                for row in range(3)
+            ]
+
+        translation = _g3d_option_get(
+            options, 'trans', _g3d_option_get(options, 'translation', (0, 0, 0)))
+        offset = _g3d_point(translation)
+        answer = Graphics3d()
+        answer.set_extra_kwds(self._extra_kwds)
+        answer._show_legend = self._show_legend
+        for primitive in self._objects:
+            answer.add_primitive(
+                TransformedPrimitive3d(primitive, matrix, offset))
+        return answer
+
+    def scale(self, *factors: Any) -> Graphics3d:
+        """Scale uniformly or independently in the three coordinates."""
+        if len(factors) == 1:
+            scale_value = factors[0]
+        else:
+            scale_value = factors
+        return self.transform(scale=scale_value)
+
+    def rotate(self, axis: Any, theta: Any) -> Graphics3d:
+        """Rotate by `theta` radians about `axis`."""
+        vector = _g3d_point(axis)
+        return self.transform(rot=(vector[0], vector[1], vector[2], theta))
+
+    def rotateX(self, theta: Any) -> Graphics3d:
+        return self.rotate((1, 0, 0), theta)
+
+    def rotateY(self, theta: Any) -> Graphics3d:
+        return self.rotate((0, 1, 0), theta)
+
+    def rotateZ(self, theta: Any) -> Graphics3d:
+        return self.rotate((0, 0, 1), theta)
+
+    def bounding_box(self) -> Any:
+        """Return lower and upper corners containing all rendered vertices."""
+        coordinates = [[], [], []]
+        for primitive in self._objects:
+            for trace in primitive._plotly_traces():
+                for index, name in enumerate(('x', 'y', 'z')):
+                    if runtime.reflect.has(trace, name):
+                        coordinates[index] += _g3d_flatten_numeric(
+                            runtime.reflect.get(trace, name))
+        if any(len(values) == 0 for values in coordinates):
+            return runtime.math_tuple([
+                runtime.math_tuple([0.0, 0.0, 0.0]),
+                runtime.math_tuple([0.0, 0.0, 0.0]),
+            ])
+        return runtime.math_tuple([
+            runtime.math_tuple([min(values) for values in coordinates]),
+            runtime.math_tuple([max(values) for values in coordinates]),
+        ])
+
+    def show(self, **options: Any) -> Graphics3d:
+        """Apply display options and return this rich-display object."""
+        self.set_extra_kwds(_g3d_graphics_options(options))
+        return self
 
     def _plotly_layout(self) -> Any:
         options = self._extra_kwds

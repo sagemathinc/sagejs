@@ -358,6 +358,40 @@ async function main() {
     assert.deepEqual(translatedArrow.display?.data.data[1].y, [7]);
     assert.deepEqual(translatedArrow.display?.data.data[1].z, [9]);
     assert.deepEqual(translatedArrow.display?.data.data[1].u, [1 / 14 ** 0.5]);
+    const affineLine = await session.evaluate(
+      "line3d([(1,0,0),(0,1,0)])." +
+        "transform(scale=(2,3,4), rot=(0,0,1,pi/2), trans=(5,6,7))",
+    );
+    assert.ok(Math.abs(affineLine.display?.data.data[0].x[0] - 5) < 1e-12);
+    assert.ok(Math.abs(affineLine.display?.data.data[0].y[0] - 8) < 1e-12);
+    assert.equal(affineLine.display?.data.data[0].z[0], 7);
+    assert.ok(Math.abs(affineLine.display?.data.data[0].x[1] - 2) < 1e-12);
+    assert.ok(Math.abs(affineLine.display?.data.data[0].y[1] - 6) < 1e-12);
+    const rotatedLine = await session.evaluate(
+      "line3d([(1,0,0),(0,1,0)]).rotateZ(pi/2)",
+    );
+    assert.ok(Math.abs(rotatedLine.display?.data.data[0].x[0]) < 1e-12);
+    assert.ok(Math.abs(rotatedLine.display?.data.data[0].y[0] - 1) < 1e-12);
+    const scaledSphere = await session.evaluate(
+      "sphere((0,0,0),1,plot_points=5).scale(2,3,4)",
+    );
+    assert.equal(
+      Math.max(...scaledSphere.display?.data.data[0].z.flat()),
+      4,
+    );
+    assert.equal(
+      (await session.evaluate(
+        "line3d([(1,2,3),(-1,-2,-3)]).bounding_box()",
+      )).repr,
+      "((-1, -2, -3), (1, 2, 3))",
+    );
+    const methodShown3d = await session.evaluate(
+      "icosahedron().show(axes=False, figsize=(4,3), title='solid')",
+    );
+    assert.equal(methodShown3d.display?.data.layout.width, 400);
+    assert.equal(methodShown3d.display?.data.layout.height, 300);
+    assert.equal(methodShown3d.display?.data.layout.scene.xaxis.visible, false);
+    assert.equal(methodShown3d.display?.data.layout.title.text, "solid");
     const translatedSurface = await session.evaluate(
       "plot3d(lambda u,v: u+v, (0,1), (0,1), plot_points=2)." +
         "translate((1,2,3))",
