@@ -11,6 +11,10 @@ arguments_.delete("--");
 const withoutSea = arguments_.delete("--without-sea");
 const help = arguments_.delete("--help") || arguments_.delete("-h");
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
+const pnpmCommand =
+  process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "pnpm";
+const pnpmPrefixArguments =
+  process.platform === "win32" ? ["/d", "/s", "/c", "pnpm.cmd"] : [];
 
 if (help) {
   process.stdout.write(`Usage: pnpm bootstrap [--without-sea]
@@ -77,9 +81,13 @@ function smoke(command, args, label) {
   process.stdout.write(`${label}: ${answer}\n`);
 }
 
-function commandAvailable(command) {
-  const result = spawnSync(command, ["--version"], { stdio: "ignore" });
+function commandAvailable(command, args = ["--version"]) {
+  const result = spawnSync(command, args, { stdio: "ignore" });
   return !result.error && result.status === 0;
+}
+
+function runPnpm(args) {
+  run(pnpmCommand, [...pnpmPrefixArguments, ...args]);
 }
 
 function step(number, description) {
@@ -111,11 +119,23 @@ function checkPrerequisites() {
   }
 
   const requiredCommands = process.platform === "win32"
-    ? ["git", "python", "cmake", "pnpm"]
-    : ["git", "cc", "c++", "make", "python3", "m4", "tar", "xz", "pnpm"];
+    ? ["git", "python", "cmake"]
+    : [
+        "git",
+        "cc",
+        "c++",
+        "make",
+        "python3",
+        "m4",
+        "tar",
+        "xz",
+      ];
   const missing = requiredCommands.filter(
     (command) => !commandAvailable(command),
   );
+  if (!commandAvailable(pnpmCommand, [...pnpmPrefixArguments, "--version"])) {
+    missing.push("pnpm");
+  }
   if (missing.length !== 0) {
     throw new Error(
       `missing build tools: ${missing.join(", ")}\n` +
@@ -127,9 +147,13 @@ function checkPrerequisites() {
         "Install pnpm 11.9.0 using the instructions at https://pnpm.io/installation",
     );
   }
-  const pnpmVersion = spawnSync("pnpm", ["--version"], {
-    encoding: "utf8",
-  }).stdout.trim();
+  const pnpmVersion = spawnSync(
+    pnpmCommand,
+    [...pnpmPrefixArguments, "--version"],
+    {
+      encoding: "utf8",
+    },
+  ).stdout.trim();
   if (!versionAtLeast(pnpmVersion, "11.9.0")) {
     throw new Error(
       `pnpm 11.9.0 or newer is required; found ${pnpmVersion}. ` +
@@ -146,7 +170,7 @@ function main() {
   run("git", ["submodule", "update", "--init", "--recursive"]);
 
   step(3, "Installing the pinned pnpm dependency graph");
-  run("pnpm", ["install", "--frozen-lockfile"]);
+  runPnpm(["install", "--frozen-lockfile"]);
 
   step(
     4,
@@ -154,10 +178,10 @@ function main() {
       ? "Building GMP, MPFR, MPC, FLINT, ffpoly, smalljac, and the Node addon"
       : "Building GMP, MPFR, MPC, FLINT, and the Node addon",
   );
-  run("pnpm", ["--dir", "packages/flint", "build"]);
+  runPnpm(["--dir", "packages/flint", "build"]);
 
   step(5, "Building the Sage.js compiler, runtime, and standard library");
-  run("pnpm", ["run", "build"]);
+  runPnpm(["run", "build"]);
 
   if (!withoutSea) {
     step(6, "Building the self-contained mathematics executable");

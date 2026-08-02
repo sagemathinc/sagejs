@@ -258,11 +258,15 @@ jobs:
           pnpm --dir packages/flint build
           pnpm build
 
-      - name: Run portable, host integration, and native tests
-        run: |
-          pnpm test:portable
-          pnpm test:integration
-          pnpm test:native
+      - name: Run portable tests
+        run: pnpm test:portable
+
+      - name: Run host integration tests
+        timeout-minutes: 30
+        run: pnpm test:integration
+
+      - name: Run native addon tests
+        run: pnpm test:native
 
       - name: Build and relocation-test both Windows SEA executables
         env:
