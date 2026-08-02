@@ -128,6 +128,22 @@ process. Imports and pure URL work remain safe in browser and WebAssembly
 embeddings; attempting network I/O there raises `NotImplementedError` unless
 the embedding installs an equivalent capability.
 
+## Portable utility modules
+
+The host-independent layer includes the collection types most often used by
+Python algorithms: `deque`, `OrderedDict`, `defaultdict`, `Counter`,
+`ChainMap`, and `namedtuple`. `functools` provides reduction, partial
+application, wrapper metadata, bounded and unbounded memoization,
+`cached_property`, comparison adapters, and total-ordering support.
+
+`statistics` covers arithmetic, floating, geometric, harmonic, grouped, and
+median averages; modes and multimodes; sample and population variance and
+standard deviation; quantiles; covariance, correlation, and linear
+regression. `bisect` and `heapq` provide their standard mutable-sequence
+algorithms, while `contextlib` provides generator context managers,
+decorators, closing, null contexts, and exception suppression. These modules
+contain ordinary portable Python and require no host capability.
+
 ## Conformance strategy
 
 The semantic source is CPython. The path corpus and tests are derived from

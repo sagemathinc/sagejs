@@ -97,6 +97,38 @@ class deque:
     def clear(self) -> None:
         self._values.clear()
 
+    def count(self, value: Any) -> int:
+        return sum(1 for item in self._values if item == value)
+
+    def index(self, value: Any, start: int = 0, stop: Any = None) -> int:
+        if stop is None:
+            stop = len(self._values)
+        for position in range(start, stop):
+            if self._values[position] == value:
+                return position
+        raise ValueError(repr(value) + ' is not in deque')
+
+    def insert(self, index: int, value: Any) -> None:
+        if self.maxlen is not None and len(self._values) >= self.maxlen:
+            raise IndexError('deque already at its maximum size')
+        self._values.insert(index, value)
+
+    def remove(self, value: Any) -> None:
+        self._values.pypop(self.index(value))
+
+    def reverse(self) -> None:
+        self._values.reverse()
+
+    def rotate(self, count: int = 1) -> None:
+        length = len(self._values)
+        if length == 0:
+            return
+        count %= length
+        self._values[:] = self._values[-count:] + self._values[:-count]
+
+    def copy(self) -> Any:
+        return type(self)(self._values, self.maxlen)
+
     def __repr__(self) -> str:
         suffix = ''
         if self.maxlen is not None:
@@ -148,6 +180,29 @@ class OrderedDict:
     def items(self) -> Any:
         return self._data.items()
 
+    def get(self, key: Any, fallback: Any = None) -> Any:
+        return self._data.get(key, fallback)
+
+    def setdefault(self, key: Any, value: Any = None) -> Any:
+        if key not in self._data:
+            self._data.__setitem__(key, value)
+        return self._data.__getitem__(key)
+
+    def pop(self, key: Any, *fallback: Any) -> Any:
+        if key in self._data:
+            value = self._data.__getitem__(key)
+            self._data.__delitem__(key)
+            return value
+        if fallback:
+            return fallback[0]
+        raise KeyError(key)
+
+    def clear(self) -> None:
+        self._data.clear()
+
+    def copy(self) -> Any:
+        return type(self)(self.items())
+
     def update(
         self,
         iterable: Any = runtime.undefined,
@@ -176,6 +231,187 @@ class OrderedDict:
     __str__ = __repr__
     toString = __repr__
     inspect = __repr__
+
+
+class defaultdict(OrderedDict):
+
+    def __init__(self, default_factory: Any = None, *args: Any, **keywords: Any) -> None:
+        if default_factory is not None and not callable(default_factory):
+            raise TypeError('first argument must be callable or None')
+        self.default_factory = default_factory
+        OrderedDict.__init__(self, *args, **keywords)
+
+    def __missing__(self, key: Any) -> Any:
+        if self.default_factory is None:
+            raise KeyError(key)
+        value = self.default_factory()
+        self._data.__setitem__(key, value)
+        return value
+
+    def __getitem__(self, key: Any) -> Any:
+        if key not in self._data:
+            return self.__missing__(key)
+        return self._data.__getitem__(key)
+
+    def __repr__(self) -> str:
+        return 'defaultdict(' + repr(self.default_factory) + ', ' + repr(self._data) + ')'
+
+    __str__ = __repr__
+    toString = __repr__
+    inspect = __repr__
+
+
+class Counter(OrderedDict):
+
+    def __init__(self, iterable: Any = runtime.undefined, **keywords: Any) -> None:
+        self._data = dict()
+        if iterable is not runtime.undefined:
+            self.update(iterable)
+        self.update(keywords)
+
+    def __missing__(self, key: Any) -> int:
+        return 0
+
+    def __getitem__(self, key: Any) -> Any:
+        if key in self._data:
+            return self._data.__getitem__(key)
+        return 0
+
+    def update(self, iterable: Any = runtime.undefined, **keywords: Any) -> None:
+        if iterable is not runtime.undefined:
+            if hasattr(iterable, 'items'):
+                for key, value in iterable.items():
+                    self._data.__setitem__(key, self.__getitem__(key) + value)
+            else:
+                for key in iterable:
+                    self._data.__setitem__(key, self.__getitem__(key) + 1)
+        for key, value in keywords.items():
+            self._data.__setitem__(key, self.__getitem__(key) + value)
+
+    def subtract(self, iterable: Any = runtime.undefined, **keywords: Any) -> None:
+        if iterable is not runtime.undefined:
+            if hasattr(iterable, 'items'):
+                for key, value in iterable.items():
+                    self._data.__setitem__(key, self.__getitem__(key) - value)
+            else:
+                for key in iterable:
+                    self._data.__setitem__(key, self.__getitem__(key) - 1)
+        for key, value in keywords.items():
+            self._data.__setitem__(key, self.__getitem__(key) - value)
+
+    def elements(self) -> Iterator[Any]:
+        for key, count in self._data.items():
+            for _index in range(max(0, int(count))):
+                yield key
+
+    def total(self) -> Any:
+        return sum(self._data.values())
+
+    def most_common(self, count: Any = None) -> list[Any]:
+        pairs = list(self._data.items())
+        pairs.sort(key=lambda pair: pair[1], reverse=True)
+        if count is not None:
+            pairs = pairs[:count]
+        return [runtime.math_tuple([key, value]) for key, value in pairs]
+
+    def __repr__(self) -> str:
+        return 'Counter(' + repr(self._data) + ')'
+
+    __str__ = __repr__
+    toString = __repr__
+    inspect = __repr__
+
+    def _combine(self, other: Any, operation: Any) -> Any:
+        answer = Counter()
+        keys = list(self._data)
+        for key in other:
+            if key not in self._data:
+                keys.append(key)
+        for key in keys:
+            value = operation(self.__getitem__(key), other.__getitem__(key))
+            if value > 0:
+                answer.__setitem__(key, value)
+        return answer
+
+    def __add__(self, other: Any) -> Any:
+        return self._combine(other, lambda left, right: left + right)
+
+    def __sub__(self, other: Any) -> Any:
+        return self._combine(other, lambda left, right: left - right)
+
+    def __and__(self, other: Any) -> Any:
+        return self._combine(other, min)
+
+    def __or__(self, other: Any) -> Any:
+        return self._combine(other, max)
+
+    def __pos__(self) -> Any:
+        return Counter({key: value for key, value in self._data.items() if value > 0})
+
+    def __neg__(self) -> Any:
+        return Counter({key: -value for key, value in self._data.items() if value < 0})
+
+
+class ChainMap:
+
+    def __init__(self, *maps: Any) -> None:
+        self.maps = list(maps) if maps else [dict()]
+
+    def __getitem__(self, key: Any) -> Any:
+        for mapping in self.maps:
+            if key in mapping:
+                return mapping.__getitem__(key)
+        raise KeyError(key)
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        self.maps[0].__setitem__(key, value)
+
+    def __delitem__(self, key: Any) -> None:
+        if key not in self.maps[0]:
+            raise KeyError(key)
+        self.maps[0].__delitem__(key)
+
+    def __contains__(self, key: Any) -> bool:
+        return any(key in mapping for mapping in self.maps)
+
+    def __iter__(self) -> Iterator[Any]:
+        seen = set()
+        for mapping in reversed(self.maps):
+            for key in mapping:
+                if key not in seen:
+                    seen.add(key)
+                    yield key
+
+    def __len__(self) -> int:
+        return len(list(self))
+
+    def get(self, key: Any, fallback: Any = None) -> Any:
+        try:
+            return self[key]
+        except KeyError:
+            return fallback
+
+    def keys(self) -> Any:
+        return list(self)
+
+    def values(self) -> Any:
+        return [self.__getitem__(key) for key in self]
+
+    def items(self) -> Any:
+        return [runtime.math_tuple([key, self.__getitem__(key)]) for key in self]
+
+    def new_child(self, mapping: Any = None, **keywords: Any) -> Any:
+        if mapping is None:
+            mapping = dict()
+        mapping.update(keywords)
+        return type(self)(mapping, *self.maps)
+
+    @property
+    def parents(self) -> Any:
+        return type(self)(*self.maps[1:])
+
+    def __repr__(self) -> str:
+        return 'ChainMap(' + ', '.join(repr(mapping) for mapping in self.maps) + ')'
 
 
 def _normalize_field_names(field_names: Any) -> list[str]:
