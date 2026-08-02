@@ -206,7 +206,9 @@ const PYTHON_KEYWORDS = new Set([
 
 class SageLowerer {
   private readonly names = new Map<string, string>();
+  private readonly plotVariables = new Set<string>();
   private readonly directHeads: Record<string, string> = {
+    Abs: "abs",
     Cos: "cos",
     Exp: "exp",
     Log: "log",
@@ -219,7 +221,7 @@ class SageLowerer {
   };
 
   program(program: WolframProgram, captureResult = false): string {
-    const lines = ["import wolfram as _wolfram"];
+    const statements: string[] = [];
     const lastIndex = program.body.length - 1;
     program.body.forEach((expression, index) => {
       const asResult = captureResult &&
@@ -229,8 +231,13 @@ class SageLowerer {
           expression.kind === "binary" &&
           (expression.operator === "=" || expression.operator === ":=")
         );
-      lines.push(this.statement(expression, asResult));
+      statements.push(this.statement(expression, asResult));
     });
+    const lines = ["import wolfram as _wolfram"];
+    if (this.plotVariables.size) {
+      lines.push(`var('${[...this.plotVariables].join(",")}')`);
+    }
+    lines.push(...statements);
     return `${lines.join("\n")}\n`;
   }
 
@@ -314,6 +321,62 @@ class SageLowerer {
     const head = expression.head.name;
     if (head === "Table") return this.table(expression);
     if (head === "Plot") return this.plot(expression);
+    if (head === "ParametricPlot") {
+      return this.singleRangePlot(expression, "parametric_plot", head);
+    }
+    if (head === "PolarPlot") {
+      return this.singleRangePlot(expression, "polar_plot", head);
+    }
+    if (head === "ListPlot") {
+      return this.listPlot(expression, "list_plot", false);
+    }
+    if (head === "ListLinePlot") {
+      return this.listPlot(expression, "list_plot", true);
+    }
+    if (head === "DensityPlot") {
+      return this.doubleRangePlot(expression, "density_plot", head);
+    }
+    if (head === "ContourPlot") {
+      return this.doubleRangePlot(expression, "contour_plot", head);
+    }
+    if (head === "RegionPlot") {
+      return this.doubleRangePlot(expression, "region_plot", head);
+    }
+    if (head === "Plot3D") {
+      return this.doubleRangePlot(expression, "plot3d", head);
+    }
+    if (head === "ParametricPlot3D") {
+      return this.parametricPlot3d(expression);
+    }
+    if (head === "ContourPlot3D") {
+      return this.tripleRangePlot(expression, "implicit_plot3d", head);
+    }
+    if (head === "ListPlot3D") {
+      return this.listPlot(expression, "list_plot3d", false);
+    }
+    const graphicsHeads: Record<string, string> = {
+      Arrow: "Arrow",
+      Circle: "Circle",
+      Cuboid: "Cuboid",
+      Disk: "Disk",
+      Directive: "Directive",
+      Graphics: "Graphics",
+      Graphics3D: "Graphics3D",
+      Line: "Line",
+      Point: "Point",
+      Polygon: "Polygon",
+      Rectangle: "Rectangle",
+      Opacity: "Opacity",
+      Sphere: "Sphere",
+      Text: "Text",
+      Thickness: "Thickness",
+    };
+    if (graphicsHeads[head]) {
+      return `_wolfram.${graphicsHeads[head]}(${
+        expression.arguments.map((argument) => this.expression(argument))
+          .join(", ")
+      })`;
+    }
     const direct = this.directHeads[head];
     const target = direct ?? (
       ["Dimensions", "FactorInteger", "Head", "Length", "Prime", "Range"]
@@ -330,13 +393,14 @@ class SageLowerer {
   private iterator(
     expression: CallExpression,
     operation: string,
+    index = 1,
   ): {
     variable: string;
     start: string;
     stop: string;
     step: string;
   } {
-    const iterator = expression.arguments[1];
+    const iterator = expression.arguments[index];
     if (
       !iterator ||
       iterator.kind !== "list" ||
@@ -349,8 +413,10 @@ class SageLowerer {
         expression.span,
       );
     }
+    const variable = this.name(iterator.elements[0].name);
+    this.plotVariables.add(variable);
     return {
-      variable: this.name(iterator.elements[0].name),
+      variable,
       start: this.expression(iterator.elements[1]),
       stop: this.expression(iterator.elements[2]),
       step: iterator.elements[3]
@@ -382,18 +448,197 @@ class SageLowerer {
     const iterator = this.iterator(expression, "Plot");
     return `plot(${this.expression(expression.arguments[0])}, (${
       iterator.variable
-    }, ${iterator.start}, ${iterator.stop}))`;
+    }, ${iterator.start}, ${iterator.stop})${
+      this.plotOptions(expression.arguments.slice(2))
+    })`;
+  }
+
+  private singleRangePlot(
+    expression: CallExpression,
+    target: string,
+    operation: string,
+  ): string {
+    if (expression.arguments.length < 2) {
+      throw new WolframSyntaxError(
+        `${operation} currently requires an expression and a range`,
+        expression.span,
+      );
+    }
+    const iterator = this.iterator(expression, operation);
+    return `${target}(${this.expression(expression.arguments[0])}, (${
+      iterator.variable
+    }, ${iterator.start}, ${iterator.stop})${
+      this.plotOptions(expression.arguments.slice(2))
+    })`;
+  }
+
+  private doubleRangePlot(
+    expression: CallExpression,
+    target: string,
+    operation: string,
+  ): string {
+    if (expression.arguments.length < 3) {
+      throw new WolframSyntaxError(
+        `${operation} currently requires an expression and two ranges`,
+        expression.span,
+      );
+    }
+    const first = this.iterator(expression, operation, 1);
+    const second = this.iterator(expression, operation, 2);
+    return `${target}(${this.expression(expression.arguments[0])}, (${
+      first.variable
+    }, ${first.start}, ${first.stop}), (${second.variable}, ${second.start}, ${
+      second.stop
+    })${this.plotOptions(expression.arguments.slice(3))})`;
+  }
+
+  private tripleRangePlot(
+    expression: CallExpression,
+    target: string,
+    operation: string,
+  ): string {
+    if (expression.arguments.length < 4) {
+      throw new WolframSyntaxError(
+        `${operation} currently requires an expression and three ranges`,
+        expression.span,
+      );
+    }
+    const first = this.iterator(expression, operation, 1);
+    const second = this.iterator(expression, operation, 2);
+    const third = this.iterator(expression, operation, 3);
+    return `${target}(${this.expression(expression.arguments[0])}, (${
+      first.variable
+    }, ${first.start}, ${first.stop}), (${second.variable}, ${second.start}, ${
+      second.stop
+    }), (${third.variable}, ${third.start}, ${third.stop})${
+      this.plotOptions(expression.arguments.slice(4))
+    })`;
+  }
+
+  private parametricPlot3d(expression: CallExpression): string {
+    if (expression.arguments.length < 2) {
+      throw new WolframSyntaxError(
+        "ParametricPlot3D currently requires coordinates and a range",
+        expression.span,
+      );
+    }
+    const first = this.iterator(expression, "ParametricPlot3D", 1);
+    let ranges = `(${first.variable}, ${first.start}, ${first.stop})`;
+    let optionStart = 2;
+    const secondCandidate = expression.arguments[2];
+    if (
+      secondCandidate?.kind === "list" &&
+      secondCandidate.elements[0]?.kind === "symbol"
+    ) {
+      const second = this.iterator(expression, "ParametricPlot3D", 2);
+      ranges += `, (${second.variable}, ${second.start}, ${second.stop})`;
+      optionStart = 3;
+    }
+    return `parametric_plot3d(${
+      this.expression(expression.arguments[0])
+    }, ${ranges}${this.plotOptions(expression.arguments.slice(optionStart))})`;
+  }
+
+  private listPlot(
+    expression: CallExpression,
+    target: string,
+    joined: boolean,
+  ): string {
+    if (expression.arguments.length < 1) {
+      throw new WolframSyntaxError(
+        "list plotting requires data",
+        expression.span,
+      );
+    }
+    const joinedOption = joined ? ", plotjoined=True" : "";
+    return `${target}(${this.expression(expression.arguments[0])}${
+      joinedOption
+    }${this.plotOptions(expression.arguments.slice(1))})`;
+  }
+
+  private plotOptions(options: WolframExpression[]): string {
+    const keywordMap: Record<string, string> = {
+      AspectRatio: "aspect_ratio",
+      Axes: "axes",
+      AxesLabel: "axes_labels",
+      ColorFunction: "cmap",
+      Contours: "contours",
+      Filling: "fill",
+      Frame: "frame",
+      ImageSize: "figsize",
+      Joined: "plotjoined",
+      MaxRecursion: "adaptive_recursion",
+      Mesh: "mesh",
+      Opacity: "opacity",
+      PlotLabel: "title",
+      PlotPoints: "plot_points",
+      PlotStyle: "color",
+    };
+    const lowered: string[] = [];
+    for (const option of options) {
+      if (
+        option.kind !== "binary" ||
+        !["->", ":>"].includes(option.operator) ||
+        option.left.kind !== "symbol"
+      ) {
+        continue;
+      }
+      const name = option.left.name;
+      if (name === "PlotRange" && option.right.kind === "list") {
+        const elements = option.right.elements;
+        if (
+          elements.length === 2 &&
+          elements[0].kind === "list" &&
+          elements[1].kind === "list"
+        ) {
+          const xvalues = elements[0].elements;
+          const yvalues = elements[1].elements;
+          if (xvalues.length === 2 && yvalues.length === 2) {
+            lowered.push(`xmin=${this.expression(xvalues[0])}`);
+            lowered.push(`xmax=${this.expression(xvalues[1])}`);
+            lowered.push(`ymin=${this.expression(yvalues[0])}`);
+            lowered.push(`ymax=${this.expression(yvalues[1])}`);
+          }
+        } else if (elements.length === 2) {
+          lowered.push(`ymin=${this.expression(elements[0])}`);
+          lowered.push(`ymax=${this.expression(elements[1])}`);
+        }
+        continue;
+      }
+      const keyword = keywordMap[name];
+      if (!keyword) continue;
+      let value = this.expression(option.right);
+      if (name === "ImageSize") value = `_wolfram.ImageSize(${value})`;
+      lowered.push(`${keyword}=${value}`);
+    }
+    return lowered.length ? `, ${lowered.join(", ")}` : "";
   }
 
   private expression(expression: WolframExpression): string {
     switch (expression.kind) {
       case "symbol": {
         const constants: Record<string, string> = {
+          All: "'all'",
+          Automatic: "'automatic'",
+          Black: "'black'",
+          Blue: "'blue'",
+          Brown: "'brown'",
+          Cyan: "'cyan'",
           E: "e",
           False: "False",
+          Gray: "'gray'",
+          Green: "'green'",
+          Magenta: "'magenta'",
+          None: "False",
           Null: "None",
+          Orange: "'orange'",
           Pi: "pi",
+          Pink: "'pink'",
+          Purple: "'purple'",
+          Red: "'red'",
           True: "True",
+          White: "'white'",
+          Yellow: "'yellow'",
         };
         return constants[expression.name] ?? this.name(expression.name);
       }

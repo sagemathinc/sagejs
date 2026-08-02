@@ -114,3 +114,174 @@ Length = length
 Prime = prime
 Range = wolfram_range
 Table = table
+
+
+class _GraphicsDirective:
+    def __init__(self, options: dict[str, Any]) -> None:
+        self.options = options
+
+
+def opacity(value: Any) -> _GraphicsDirective:
+    return _GraphicsDirective({
+        'opacity': float(value), 'alpha': float(value)})
+
+
+def thickness(value: Any) -> _GraphicsDirective:
+    return _GraphicsDirective({'thickness': float(value)})
+
+
+def directive(*values: Any) -> _GraphicsDirective:
+    options = {}
+    for value in values:
+        if isinstance(value, _GraphicsDirective):
+            for name in value.options:
+                options[name] = value.options[name]
+        elif isinstance(value, str):
+            options['color'] = value
+            options['rgbcolor'] = value
+    return _GraphicsDirective(options)
+
+
+def _style_graphic(graphic: Any, options: dict[str, Any]) -> Any:
+    if not options:
+        return graphic
+    for primitive in graphic:
+        if hasattr(primitive, '_options'):
+            for name in options:
+                primitive._options[name] = options[name]
+    return graphic
+
+
+def _combine_graphics(items: Any) -> Any:
+    result = 0
+    style = {}
+    for item in items:
+        if isinstance(item, str):
+            style['color'] = item
+            style['rgbcolor'] = item
+            continue
+        if isinstance(item, _GraphicsDirective):
+            for name in item.options:
+                style[name] = item.options[name]
+            continue
+        if isinstance(item, (list, tuple)):
+            item = _combine_graphics(item)
+        if item == 0:
+            continue
+        item = _style_graphic(item, style)
+        result = result + item
+    return result
+
+
+def graphics(items: Any) -> Any:
+    """Combine Wolfram two-dimensional graphics primitives."""
+    return _combine_graphics(items)
+
+
+def graphics3d(items: Any) -> Any:
+    """Combine Wolfram three-dimensional graphics primitives."""
+    return _combine_graphics(items)
+
+
+def wolfram_line(points: Any) -> Any:
+    values = list(points)
+    if len(values) and len(values[0]) == 3:
+        return sage.line3d(values)
+    return sage.line(values)
+
+
+def wolfram_point(points: Any) -> Any:
+    values = list(points)
+    candidate = values
+    if len(values) and not isinstance(values[0], (list, tuple)):
+        candidate = [values]
+    if len(candidate) and len(candidate[0]) == 3:
+        return sage.point3d(candidate)
+    return sage.point(candidate)
+
+
+def wolfram_polygon(points: Any) -> Any:
+    values = list(points)
+    if len(values) and len(values[0]) == 3:
+        return sage.polygon3d(values)
+    return sage.polygon(values)
+
+
+def wolfram_circle(center: Any = (0, 0), radius: Any = 1) -> Any:
+    return sage.circle(center, radius)
+
+
+def wolfram_disk(center: Any = (0, 0), radius: Any = 1) -> Any:
+    return sage.disk(center, radius, (0, 6.283185307179586))
+
+
+def wolfram_rectangle(lower: Any, upper: Any) -> Any:
+    return sage.polygon([
+        lower,
+        (upper[0], lower[1]),
+        upper,
+        (lower[0], upper[1]),
+    ])
+
+
+def wolfram_arrow(points: Any) -> Any:
+    values = list(points)
+    if len(values) != 2:
+        raise ValueError("Arrow currently requires two endpoints")
+    if len(values[0]) == 3:
+        return sage.arrow3d(values[0], values[1])
+    return sage.arrow(values[0], values[1])
+
+
+def wolfram_text(value: Any, position: Any) -> Any:
+    if len(position) == 3:
+        return sage.text3d(value, position)
+    return sage.text(value, position)
+
+
+def wolfram_sphere(center: Any = (0, 0, 0), radius: Any = 1) -> Any:
+    return sage.sphere(center, radius)
+
+
+def cuboid(bounds: Any = ((0, 0, 0), (1, 1, 1))) -> Any:
+    values = list(bounds)
+    if len(values) != 2:
+        raise ValueError("Cuboid requires lower and upper corners")
+    lower = values[0]
+    upper = values[1]
+    widths = [float(upper[index] - lower[index]) for index in range(3)]
+    if not (widths[0] == widths[1] and widths[1] == widths[2]):
+        raise NotImplementedError(
+            "non-cubic Wolfram Cuboid dimensions are not implemented yet")
+    center = tuple([
+        (float(lower[index]) + float(upper[index])) / 2.0
+        for index in range(3)
+    ])
+    return sage.cube(center, widths[0])
+
+
+def image_size(value: Any) -> Any:
+    """Convert Wolfram pixel dimensions to Sage's inch-based figsize."""
+    if isinstance(value, (list, tuple)):
+        if len(value) != 2:
+            raise ValueError("ImageSize must be a number or a pair")
+        return [float(value[0]) / 100.0, float(value[1]) / 100.0]
+    return float(value) / 100.0
+
+
+Graphics = graphics
+Graphics3D = graphics3d
+Line = wolfram_line
+Point = wolfram_point
+Polygon = wolfram_polygon
+Circle = wolfram_circle
+Disk = wolfram_disk
+Rectangle = wolfram_rectangle
+Arrow = wolfram_arrow
+Text = wolfram_text
+Sphere = wolfram_sphere
+Cuboid = cuboid
+ImageSize = image_size
+Opacity = opacity
+Thickness = thickness
+Directive = directive

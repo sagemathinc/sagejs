@@ -259,6 +259,55 @@ async function main() {
       { language: "wolfram" },
     );
     assert.equal(wolframShow.display?.data.data.length, 2);
+    const wolframStyledPlot = await session.evaluate(
+      'Plot[Sin[t],{t,0,Pi},PlotStyle->Red,Frame->True,PlotLabel->"sine"]',
+      { language: "wolfram" },
+    );
+    assert.equal(wolframStyledPlot.display?.data.data[0].line.color, "red");
+    assert.equal(wolframStyledPlot.display?.data.layout.xaxis.showline, true);
+    assert.equal(wolframStyledPlot.display?.data.layout.title.text, "sine");
+    const wolframParametric = await session.evaluate(
+      "ParametricPlot[{Cos[t],Sin[t]},{t,0,2 Pi}]",
+      { language: "wolfram" },
+    );
+    assert.equal(wolframParametric.display?.data.data[0].type, "scatter");
+    assert.ok(wolframParametric.display?.data.data[0].x.length >= 100);
+    const wolframDensity = await session.evaluate(
+      "DensityPlot[Sin[u v],{u,-2,2},{v,-2,2},PlotPoints->15]",
+      { language: "wolfram" },
+    );
+    assert.equal(wolframDensity.display?.data.data[0].type, "heatmap");
+    assert.equal(wolframDensity.display?.data.data[0].z.length, 15);
+    const wolframSurface = await session.evaluate(
+      "Plot3D[Sin[u v],{u,-2,2},{v,-2,2},PlotPoints->12]",
+      { language: "wolfram" },
+    );
+    assert.equal(wolframSurface.display?.data.data[0].type, "surface");
+    assert.equal(wolframSurface.display?.data.data[0].z.length, 12);
+    const wolframCurve3d = await session.evaluate(
+      "ParametricPlot3D[{Cos[t],Sin[t],t/10},{t,0,4 Pi}]",
+      { language: "wolfram" },
+    );
+    assert.equal(wolframCurve3d.display?.data.data[0].type, "scatter3d");
+    const wolframPrimitives = await session.evaluate(
+      [
+        "Graphics[{Red,Thickness[4],Circle[{0,0},1],",
+        "          Blue,Opacity[.3],Disk[{1,0},.5]}]",
+      ].join("\n"),
+      { language: "wolfram" },
+    );
+    assert.equal(wolframPrimitives.display?.data.data.length, 2);
+    assert.equal(wolframPrimitives.display?.data.data[0].line.color, "red");
+    assert.equal(wolframPrimitives.display?.data.data[0].line.width, 4);
+    assert.equal(wolframPrimitives.display?.data.data[1].fillcolor, "blue");
+    assert.equal(wolframPrimitives.display?.data.data[1].opacity, 0.3);
+    const wolframPrimitives3d = await session.evaluate(
+      "Graphics3D[{Red,Opacity[.4],Sphere[],Blue,Sphere[{1,0,0},.5]}]",
+      { language: "wolfram" },
+    );
+    assert.equal(wolframPrimitives3d.display?.data.data.length, 2);
+    assert.equal(wolframPrimitives3d.display?.data.data[0].type, "surface");
+    assert.equal(wolframPrimitives3d.display?.data.data[0].opacity, 0.4);
 
     const labels = await session.evaluate(
       [

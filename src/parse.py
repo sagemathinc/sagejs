@@ -340,6 +340,20 @@ SAGEJS_PUBLIC_INTRINSICS = {
     'is_prime': 'ρσ_is_prime',
     'parent': 'parent',
     'prime_divisors': 'ρσ_prime_divisors',
+    'arrow': 'arrow',
+    'arrow3d': 'arrow3d',
+    'circle': 'circle',
+    'cube': 'cube',
+    'disk': 'disk',
+    'line': 'line',
+    'line3d': 'line3d',
+    'point': 'point',
+    'point3d': 'point3d',
+    'polygon': 'polygon',
+    'polygon3d': 'polygon3d',
+    'sphere': 'sphere',
+    'text': 'text',
+    'text3d': 'text3d',
 }
 
 INTRINSIC_MODULES = {
