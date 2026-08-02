@@ -17,6 +17,7 @@ Start with:
 - [Embedding](../EMBEDDING.md)
 - [Jupyter](../JUPYTER.md)
 - [Polyglot execution](../POLYGLOT.md)
+- [Python standard library compatibility](python-standard-library.md)
 - [Plotting](../PLOTTING.md)
 
 The Markdown sources are intentionally ordinary files: they render on GitHub

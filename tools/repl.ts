@@ -26,6 +26,7 @@ import {
   standardLibraryCacheDirectory,
 } from "./resources";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
+import { installNodeHost } from "./host";
 import {
   createForeignFrontend,
   ForeignFrontend,
@@ -266,6 +267,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     // @ts-ignore
     global.require = runtimeRequire;
     installNodeGraphicsSaveHook();
+    installNodeHost(globalThis);
     // @ts-ignore
     global.__sagejs_sage_mode__ = !!options.sage;
 

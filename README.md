@@ -107,9 +107,11 @@ pnpm test                          # full compiler, CLI, upstream, and CoWasm su
 
 See [`TESTING.md`](TESTING.md) for the test tiers and
 [`DISTRIBUTION.md`](DISTRIBUTION.md) for native, SEA, and WebAssembly
-distribution details. Large coordinated efforts use isolated worktrees,
-machine-readable task contracts, exclusive path claims, and validation
-receipts as described in
+distribution details. Python interoperability and the host-capability design
+are documented in
+[`docs/python-standard-library.md`](docs/python-standard-library.md). Large
+coordinated efforts use isolated worktrees, machine-readable task contracts,
+exclusive path claims, and validation receipts as described in
 [`PARALLEL-DEVELOPMENT.md`](PARALLEL-DEVELOPMENT.md).
 
 Tagged releases publish ready-to-run `sagejs` and `sagepython` archives for

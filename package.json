@@ -96,6 +96,7 @@
     "test:changed": "node scripts/parallel-development.cjs changed",
     "test:unit": "node scripts/run-test-tier.cjs unit",
     "test:integration": "node scripts/run-test-tier.cjs integration",
+    "test:stdlib": "pnpm run build && node test/os-module.cjs",
     "test:cli": "node scripts/run-test-tier.cjs all",
     "test:jupyter": "pnpm run build && python3 scripts/test-jupyter-kernel.py",
     "test:upstream": "pnpm run build && pnpm run test:upstream:run",

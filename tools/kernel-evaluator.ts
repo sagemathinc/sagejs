@@ -9,6 +9,7 @@ import {
 } from "./resources";
 import { getImportDirs, importPath, libraryPath } from "./utils";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
+import { installNodeHost } from "./host";
 import {
   DocumentationCatalog,
   documentationCatalogFromRegistry,
@@ -176,6 +177,7 @@ export function createKernelEvaluator({
   // These hooks are consulted dynamically by the generated baselib.
   global.require = runtimeRequire as NodeJS.Require;
   installNodeGraphicsSaveHook();
+  const uninstallNodeHost = installNodeHost(globalThis);
   global.__sagejs_output_write__ = (text: unknown) => {
     onOutput(String(text));
   };
@@ -478,6 +480,7 @@ export function createKernelEvaluator({
     },
 
     close(): void {
+      uninstallNodeHost();
       delete global.__sagejs_output_write__;
       delete global.__sagejs_interrupt_state__;
       delete global.__sagejs_graphics_save_hook__;

@@ -127,6 +127,36 @@ class OSError(Exception):
     def __init__(self, *args: object) -> None:
         Exception.__init__(self, *args)
         self.errno = args[0] if len(args) > 0 else None
+        self.strerror = args[1] if len(args) > 1 else None
+        self.filename = args[2] if len(args) > 2 else None
+        self.filename2 = args[3] if len(args) > 3 else None
+        if self.errno is not None and self.strerror is not None:
+            message = '[Errno ' + str(self.errno) + '] ' + str(self.strerror)
+            if self.filename is not None:
+                message += ': ' + runtime.repr(self.filename)
+            if self.filename2 is not None:
+                message += ' -> ' + runtime.repr(self.filename2)
+            self.message = message
+
+
+class FileNotFoundError(OSError):
+    pass
+
+
+class FileExistsError(OSError):
+    pass
+
+
+class PermissionError(OSError):
+    pass
+
+
+class IsADirectoryError(OSError):
+    pass
+
+
+class NotADirectoryError(OSError):
+    pass
 
 
 class IndentationError(runtime.syntax_error):
@@ -194,6 +224,11 @@ for _exception_class in [
     ImportError,
     MemoryError,
     OSError,
+    FileNotFoundError,
+    FileExistsError,
+    PermissionError,
+    IsADirectoryError,
+    NotADirectoryError,
     IndentationError,
     NotImplementedError,
     UnicodeDecodeError,
