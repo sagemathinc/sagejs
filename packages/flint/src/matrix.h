@@ -34,6 +34,10 @@ napi_value sagejs_zz_matrix(napi_env env, napi_callback_info info);
 napi_value sagejs_qq_matrix(napi_env env, napi_callback_info info);
 napi_value sagejs_nmod_matrix(napi_env env, napi_callback_info info);
 napi_value sagejs_zmod_matrix(napi_env env, napi_callback_info info);
+napi_value sagejs_nmod_matrix_random(
+    napi_env env, napi_callback_info info);
+napi_value sagejs_zmod_matrix_random(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_acb_matrix(napi_env env, napi_callback_info info);
 napi_value sagejs_qqbar_matrix(napi_env env, napi_callback_info info);
 napi_value sagejs_zz_matrix_to_qq(napi_env env, napi_callback_info info);

@@ -886,6 +886,56 @@ napi_value sagejs_zmod_matrix(napi_env env, napi_callback_info info)
         env, info, SAGEJS_MATRIX_ZMOD);
 }
 
+static napi_value modular_matrix_random(
+    napi_env env,
+    napi_callback_info info,
+    sagejs_matrix_kind kind)
+{
+    napi_value args[5];
+    sagejs_matrix *matrix;
+    slong rows;
+    slong cols;
+    slong row;
+    slong col;
+    ulong modulus;
+    ulong seed1;
+    ulong seed2;
+    flint_rand_t state;
+
+    if (!require_arguments(env, info, 5, args) ||
+        !value_to_dimension(env, args[0], &rows) ||
+        !value_to_dimension(env, args[1], &cols) ||
+        !bigint_to_ulong(env, args[2], &modulus) ||
+        !bigint_to_ulong(env, args[3], &seed1) ||
+        !bigint_to_ulong(env, args[4], &seed2))
+        return NULL;
+    matrix = new_nmod_matrix(env, kind, rows, cols, modulus);
+    if (matrix == NULL)
+        return NULL;
+    flint_rand_init(state);
+    if (seed1 == 0 && seed2 == 0)
+        seed2 = 1;
+    flint_rand_set_seed(state, seed1, seed2);
+    for (row = 0; row < rows; row++)
+        for (col = 0; col < cols; col++)
+            nmod_mat_entry(matrix->modular, row, col) =
+                n_randint(state, modulus);
+    flint_rand_clear(state);
+    return wrap_matrix(env, matrix);
+}
+
+napi_value sagejs_nmod_matrix_random(
+    napi_env env, napi_callback_info info)
+{
+    return modular_matrix_random(env, info, SAGEJS_MATRIX_NMOD);
+}
+
+napi_value sagejs_zmod_matrix_random(
+    napi_env env, napi_callback_info info)
+{
+    return modular_matrix_random(env, info, SAGEJS_MATRIX_ZMOD);
+}
+
 static void acb_set_mpc_exact(acb_t target, const mpc_t source)
 {
     arf_t part;

@@ -5,6 +5,21 @@ import { createPortableMatrixBackend } from "../portable-matrix.mjs";
 
 const matrix = createPortableMatrixBackend();
 
+test("generates deterministic modular matrices in bulk", () => {
+  const finite = matrix.nmodMatrixRandom(3, 4, 7n, 2026n, 31415n);
+  assert.deepEqual(
+    finite.entries,
+    matrix.nmodMatrixRandom(3, 4, 7n, 2026n, 31415n).entries,
+  );
+  assert.equal(
+    finite.entries.every((entry) => 0n <= entry && entry < 7n),
+    true,
+  );
+  const residue = matrix.zmodMatrixRandom(2, 3, 36n, 9n, 10n);
+  assert.equal(residue.kind, "ZMOD");
+  assert.equal(residue.entries.length, 6);
+});
+
 test("provides the exact matrix backend contract without native code", () => {
   const value = matrix.zzMatrix(2, 2, [1n, 2n, 3n, 4n]);
   assert.equal(matrix.matrixEntry(value, 0, 1), 2n);

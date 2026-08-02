@@ -1196,6 +1196,23 @@ for (const vectors of [
 
 const finiteMatrix = flint.nmodMatrix(
   2, 2, [1n, 2n, 3n, 4n], 5n);
+const finiteRandom = flint.nmodMatrixRandom(3, 4, 7n, 2026n, 31415n);
+assert.equal(
+  flint.matrixEqual(
+    finiteRandom,
+    flint.nmodMatrixRandom(3, 4, 7n, 2026n, 31415n),
+  ),
+  true,
+);
+assert.equal(
+  [0, 1, 2].every((row) =>
+    [0, 1, 2, 3].every((col) => {
+      const entry = flint.matrixEntry(finiteRandom, row, col);
+      return 0n <= entry && entry < 7n;
+    }),
+  ),
+  true,
+);
 assert.equal(flint.matrixEntry(finiteMatrix, 1, 0), 3n);
 assert.equal(flint.matrixDet(finiteMatrix), 3n);
 assert.equal(flint.matrixRank(finiteMatrix), 2);
@@ -1234,6 +1251,13 @@ assert.equal(
 
 const residueMatrix = flint.zmodMatrix(
   2, 2, [2n, 3n, 3n, 2n], 36n);
+assert.equal(
+  flint.matrixEqual(
+    flint.zmodMatrixRandom(2, 3, 36n, 9n, 10n),
+    flint.zmodMatrixRandom(2, 3, 36n, 9n, 10n),
+  ),
+  true,
+);
 assert.equal(flint.matrixDet(residueMatrix), 31n);
 assert.deepEqual(
   flint.matrixCharpoly(residueMatrix), [31n, 32n, 1n]);

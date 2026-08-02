@@ -1308,15 +1308,19 @@ class Matrix(sage.Element):
             raise ArithmeticError('matrix must be square')
         if exponent < 0:
             return self.inverse() ** (-exponent)
-        answer = identity_matrix(
-            self.base_ring(), self.nrows())
+        if exponent == 0:
+            return identity_matrix(
+                self.base_ring(), self.nrows())
+        answer = None
         power = self
         while exponent:
             if exponent % 2:
-                answer = answer * power
+                answer = (
+                    power if answer is None else answer * power)
             exponent //= 2
             if exponent:
                 power = power * power
+        assert answer is not None
         return answer
 
     def __rpow__(self, base: Any) -> Matrix:
@@ -2753,6 +2757,30 @@ def random_matrix(
                 raise ValueError('y must be greater than x')
         elif lower <= 0:
             raise ValueError('x must be positive when y is omitted')
+
+    if (
+        modular_ring
+        and lower is None
+        and density == 1
+        and distribution in (None, 'uniform')
+    ):
+        backend = runtime.flint_backend()
+        method_name = (
+            'zmodMatrixRandom'
+            if getattr(base, '_kind', None) == 'ZMOD'
+            else 'nmodMatrixRandom'
+        )
+        random_method = runtime.reflect.get(backend, method_name)
+        if runtime.jstype(random_method) == 'function':
+            seed1 = _random_int(0, 4294967295)
+            seed2 = _random_int(0, 4294967295)
+            native_value = runtime.reflect.apply(
+                random_method,
+                backend,
+                [rows, cols, base._modulus, seed1, seed2],
+            )
+            return Matrix(
+                MatrixSpace(base, rows, cols), native_value)
 
     values = [0 for _ in range(rows * cols)]
     if density == 1:

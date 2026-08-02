@@ -758,6 +758,40 @@ export function createPortableMatrixBackend() {
     );
   }
 
+  function modularMatrixRandom(
+    kind,
+    rows,
+    cols,
+    modulus,
+    seed1,
+    seed2,
+  ) {
+    modulus = BigInt(modulus);
+    const mask = (1n << 64n) - 1n;
+    let state = (
+      (BigInt(seed1) << 32n) ^ BigInt(seed2)
+    ) & mask;
+    if (state === 0n) state = 1n;
+    const entries = [];
+    for (let index = 0; index < rows * cols; index += 1) {
+      state = (
+        state * 6364136223846793005n + 1442695040888963407n
+      ) & mask;
+      entries.push(state % modulus);
+    }
+    return make(kind, rows, cols, entries, modulus);
+  }
+
+  function nmodMatrixRandom(rows, cols, modulus, seed1, seed2) {
+    return modularMatrixRandom(
+      "GF", rows, cols, modulus, seed1, seed2);
+  }
+
+  function zmodMatrixRandom(rows, cols, modulus, seed1, seed2) {
+    return modularMatrixRandom(
+      "ZMOD", rows, cols, modulus, seed1, seed2);
+  }
+
   function zzMatrixToQQ(matrix) {
     matrix = requireMatrix(matrix);
     if (matrix.kind !== "ZZ") {
@@ -1470,6 +1504,8 @@ export function createPortableMatrixBackend() {
     qqMatrix,
     nmodMatrix,
     zmodMatrix,
+    nmodMatrixRandom,
+    zmodMatrixRandom,
     zzMatrixToQQ,
     matrixAdd,
     matrixSub,

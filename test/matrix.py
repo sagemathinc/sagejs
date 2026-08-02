@@ -323,6 +323,10 @@ assert finite.base_ring() is F5
 assert finite.list() == [F5(1), F5(2), F5(3), F5(4)]
 assert finite + finite == matrix(F5, [[2, 4], [1, 3]])
 assert finite - finite == zero_matrix(F5, 2)
+assert finite ** 0 == identity_matrix(F5, 2)
+assert finite ** 1 == finite
+assert finite ** 2 == finite * finite
+assert finite ** 5 == finite * finite * finite * finite * finite
 assert -finite == matrix(F5, [[4, 3], [2, 1]])
 assert 3 * finite == matrix(F5, [[3, 1], [4, 2]])
 assert finite / 2 == matrix(F5, [[3, 1], [4, 2]])
