@@ -342,8 +342,23 @@ class SageLowerer {
     if (head === "RegionPlot") {
       return this.doubleRangePlot(expression, "region_plot", head);
     }
+    if (head === "StreamPlot") {
+      return this.doubleRangePlot(expression, "streamline_plot", head);
+    }
+    if (head === "VectorPlot") {
+      return this.doubleRangePlot(expression, "plot_vector_field", head);
+    }
     if (head === "Plot3D") {
       return this.doubleRangePlot(expression, "plot3d", head);
+    }
+    if (head === "SphericalPlot3D") {
+      return this.doubleRangePlot(expression, "spherical_plot3d", head);
+    }
+    if (head === "VectorPlot3D") {
+      return this.tripleRangePlot(expression, "plot_vector_field3d", head);
+    }
+    if (head === "RevolutionPlot3D") {
+      return this.singleRangePlot(expression, "revolution_plot3d", head);
     }
     if (head === "ParametricPlot3D") {
       return this.parametricPlot3d(expression);

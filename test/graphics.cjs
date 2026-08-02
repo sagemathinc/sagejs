@@ -284,6 +284,28 @@ async function main() {
     );
     assert.equal(wolframSurface.display?.data.data[0].type, "surface");
     assert.equal(wolframSurface.display?.data.data[0].z.length, 12);
+    const wolframVectorPlot = await session.evaluate(
+      "VectorPlot[{-v,u},{u,-1,1},{v,-1,1},PlotPoints->3]",
+      { language: "wolfram" },
+    );
+    assert.equal(wolframVectorPlot.display?.data.data[0].type, "scatter");
+    assert.equal(wolframVectorPlot.display?.data.data[0].x.length, 27);
+    const wolframStreamPlot = await session.evaluate(
+      "StreamPlot[{1,u},{u,0,1},{v,0,1},PlotPoints->4]",
+      { language: "wolfram" },
+    );
+    assert.equal(wolframStreamPlot.display?.data.data[0].type, "scatter");
+    const wolframVectorPlot3d = await session.evaluate(
+      "VectorPlot3D[{u,v,w},{u,-1,1},{v,-1,1},{w,-1,1},PlotPoints->2]",
+      { language: "wolfram" },
+    );
+    assert.equal(wolframVectorPlot3d.display?.data.data[0].type, "cone");
+    assert.equal(wolframVectorPlot3d.display?.data.data[0].x.length, 8);
+    const wolframRevolution = await session.evaluate(
+      "RevolutionPlot3D[{2+Cos[t],Sin[t]},{t,0,2 Pi},PlotPoints->8]",
+      { language: "wolfram" },
+    );
+    assert.equal(wolframRevolution.display?.data.data[0].type, "surface");
     const wolframCurve3d = await session.evaluate(
       "ParametricPlot3D[{Cos[t],Sin[t],t/10},{t,0,4 Pi}]",
       { language: "wolfram" },
