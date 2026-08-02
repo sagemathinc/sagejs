@@ -43,6 +43,192 @@ The coordinate ring is a FLINT-backed multivariate polynomial ring.
 - `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
 - `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
 
+## `arc`
+
+```sage
+arc(center, r1, r2=None, angle=0, sector=None, **options)
+```
+
+Return a circular or elliptical arc over an angular sector.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `arrow`
+
+```sage
+arrow(tailpoint, headpoint, **options)
+```
+
+Return a directed line segment from `tailpoint` to `headpoint`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `arrow2d`
+
+```sage
+arrow(tailpoint, headpoint, **options)
+```
+
+Return a directed line segment from `tailpoint` to `headpoint`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `bar_chart`
+
+```sage
+bar_chart(values, **options)
+```
+
+Return a graphics object containing a vertical bar chart.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `bezier_path`
+
+```sage
+bezier_path(path, **options)
+```
+
+Return the Bézier path described by Sage's list-of-curves format.
+
+The first curve contains both endpoints. Each later curve inherits its
+first endpoint from the preceding curve and supplies zero, one, or two
+control points followed by its new endpoint.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `circle`
+
+```sage
+circle(center, radius, **options)
+```
+
+Return a circle centered at `center` with the given radius.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `contour_plot`
+
+```sage
+contour_plot(function_value, xrange, yrange, **options)
+```
+
+Plot a sampled scalar function as a filled contour grid.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
 ## `Curve`
 
 ```sage
@@ -79,6 +265,32 @@ Gröbner bases. General primary decomposition is not yet implemented.
 
 - `sage-derived` — [SageMath schemes and plane curves API](https://doc.sagemath.org/html/en/reference/curves/); license GPL-2.0-or-later
 - `library-backed` — [FLINT multivariate polynomial arithmetic](https://flintlib.org/doc/)
+
+## `density_plot`
+
+```sage
+density_plot(function_value, xrange, yrange, **options)
+```
+
+Plot the values of a function of two variables as a color density.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
 ## `dimension_cusp_forms`
 
@@ -232,6 +444,32 @@ group.
 
 - The FLINT contributors, [FLINT Dirichlet characters](https://flintlib.org/doc/dirichlet.html).
 
+## `disk`
+
+```sage
+disk(center, radius, angle, **options)
+```
+
+Return a filled or outlined circular/elliptical sector.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
 ## `EisensteinForms`
 
 ```sage
@@ -353,6 +591,32 @@ This optional argument is a convenient Sage.js extension: SageMath's
 
 - `sage-derived` — [SageMath Eisenstein subspace API](https://doc.sagemath.org/html/en/reference/modfrm/); license GPL-2.0-or-later
 - `sagejs-original` — Precision-aware retained-parent basis elements
+
+## `ellipse`
+
+```sage
+ellipse(center, r1, r2, angle=0, **options)
+```
+
+Return an optionally rotated ellipse centered at `(x, y)`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
 ## `EllipticCurve`
 
@@ -523,6 +787,30 @@ backend supports it.
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `graphics_array`
+
+```sage
+graphics_array(graphics, rows=None, columns=None)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
 ## `help`
 
 ```sage
@@ -542,6 +830,68 @@ Print concise Python-style help derived from Sage.js metadata.
 ### Provenance
 
 - `sagejs-original`
+
+## `histogram`
+
+```sage
+histogram(datalist, **options)
+```
+
+Compute and draw a histogram of numerical data.
+
+Common Sage options include `bins`, `range`, `density`, `cumulative`,
+`color`, `edgecolor`, `alpha`, and `label`.
+
+### Examples
+
+```sage
+sage: histogram([1, 1, 2, 3], bins=3)
+Graphics object consisting of 1 graphics primitive
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `implicit_plot`
+
+```sage
+implicit_plot(function_value, xrange, yrange, **options)
+```
+
+Plot the plane curve where a function is zero or an equality holds.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
 ## `implicit_plot3d`
 
@@ -613,6 +963,184 @@ Return whether `value` is prime, using FLINT's primality test.
 ### References
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `line`
+
+```sage
+line(points, **options)
+```
+
+Return a graphics object containing a line through `points`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `line2d`
+
+```sage
+line(points, **options)
+```
+
+Return a graphics object containing a line through `points`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `line3d`
+
+```sage
+line3d(points, **options)
+```
+
+Return a line through three-dimensional `points`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, lines
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `list_plot`
+
+```sage
+list_plot(data, plotjoined=False, **options)
+```
+
+Plot a sequence of y-values or a sequence of `(x, y)` pairs.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `list_plot_loglog`
+
+```sage
+list_plot_loglog(data, plotjoined=False, **options)
+```
+
+Plot list data with logarithmic horizontal and vertical axes.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `list_plot_semilogx`
+
+```sage
+list_plot_semilogx(data, plotjoined=False, **options)
+```
+
+Plot list data with a logarithmic horizontal axis.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `list_plot_semilogy`
+
+```sage
+list_plot_semilogy(data, plotjoined=False, **options)
+```
+
+Plot list data with a logarithmic vertical axis.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
 ## `log2`
 
@@ -743,6 +1271,32 @@ sage: A.rref()
 ### References
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `matrix_plot`
+
+```sage
+matrix_plot(matrix_value, xrange=None, yrange=None, **options)
+```
+
+Plot a matrix or rectangular array as a color-valued grid.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
 ## `MatrixGroup`
 
@@ -1319,6 +1873,54 @@ Return the exact triple-Manin-symbol presentation over `QQ`.
 - `literature-implemented` — [William Stein, Computing with Modular Symbols](https://wstein.org/books/modform/modform/modular_symbols.html)
 - `sage-derived` — [SageMath manin_symbol_list and relation_matrix](https://github.com/sagemath/sage/tree/develop/src/sage/modular/modsym); license GPL-2.0-or-later
 
+## `parametric_plot`
+
+```sage
+parametric_plot(functions, *range_args, **options)
+```
+
+Plot a two-component parametric plane curve.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `parametric_plot3d`
+
+```sage
+parametric_plot3d(functions, urange, vrange=None, plot_points='automatic', **options)
+```
+
+Plot a parametric space curve or parametric surface.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, parametric plots
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `PermutationGroup`
 
 ```sage
@@ -1382,6 +1984,313 @@ host with a supported Plotly export route.
 - Tags: graphics, plotting, 2D graphics, adaptive sampling
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — Core Sage call forms and common options are supported; the complete Sage plotting option and primitive catalog is larger.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `plot_loglog`
+
+```sage
+plot_loglog(funcs, *range_args, **options)
+```
+
+Plot functions with logarithmic horizontal and vertical axes.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `plot_semilogx`
+
+```sage
+plot_semilogx(funcs, *range_args, **options)
+```
+
+Plot functions with a logarithmic horizontal axis.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `plot_semilogy`
+
+```sage
+plot_semilogy(funcs, *range_args, **options)
+```
+
+Plot functions with a logarithmic vertical axis.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `plot_step_function`
+
+```sage
+plot_step_function(values, vertical_lines=True, **options)
+```
+
+Plot the step function defined by a sequence of `(x, y)` pairs.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `plot3d`
+
+```sage
+plot3d(func, urange, vrange, adaptive=False, transformation=None, **options)
+```
+
+Plot a function of two variables as a three-dimensional surface.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, surfaces
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `point`
+
+```sage
+point(points, **options)
+```
+
+Return a graphics object containing one or more points.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `point2d`
+
+```sage
+point(points, **options)
+```
+
+Return a graphics object containing one or more points.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `point3d`
+
+```sage
+point3d(points, **options)
+```
+
+Return one or more points in three-dimensional space.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, points
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `points`
+
+```sage
+point(points, **options)
+```
+
+Return a graphics object containing one or more points.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `polar_plot`
+
+```sage
+polar_plot(funcs, *range_args, **options)
+```
+
+Plot one or more functions in polar coordinates.
+
+The input function gives the radius `r` as a function of angle `theta`.
+All adaptive sampling and line options accepted by `plot` are supported.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `polygon`
+
+```sage
+polygon(points, **options)
+```
+
+Return a filled polygon through `points`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `polygon2d`
+
+```sage
+polygon(points, **options)
+```
+
+Return a filled polygon through `points`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
 
 ### Provenance
@@ -1613,6 +2522,58 @@ implemented.
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `region_plot`
+
+```sage
+region_plot(functions, xrange, yrange, **options)
+```
+
+Plot the region where one or more boolean functions are true.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `scatter_plot`
+
+```sage
+scatter_plot(datalist, **options)
+```
+
+Return a Sage-compatible scatter plot of `(x, y)` points.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
 ## `search_doc`
 
 ```sage
@@ -1752,6 +2713,28 @@ sage: Sp(4, GF(7)).order()
 
 - `sage-derived` — [SageMath finite groups API](https://doc.sagemath.org/html/en/reference/groups/); license GPL-2.0-or-later
 
+## `sphere`
+
+```sage
+sphere(center=[0, 0, 0], size=1, **options)
+```
+
+Return a sphere of radius `size` centered at `center`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, shapes
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `sudoku`
 
 ```sage
@@ -1794,6 +2777,32 @@ sage: sudoku(A)[0]
 ### References
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
+## `text`
+
+```sage
+text(string, position, **options)
+```
+
+Return a graphics object containing a positioned text label.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
 ## `var`
 

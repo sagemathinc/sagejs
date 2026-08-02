@@ -642,20 +642,138 @@ class Contour(GraphicPrimitive):
 
     def _plotly_trace(self) -> Any:
         options = self._options
-        return _native_record(
+        contours = _native_record(
+            coloring=(
+                'fill'
+                if bool(_option_get(options, 'fill', True))
+                else 'lines'
+            ),
+        )
+        levels = _option_get(options, 'contours')
+        if isinstance(levels, (list, tuple)) and len(levels):
+            numeric_levels = [float(value) for value in levels]
+            runtime.reflect.set(contours, 'start', min(numeric_levels))
+            runtime.reflect.set(contours, 'end', max(numeric_levels))
+            if len(numeric_levels) > 1:
+                runtime.reflect.set(
+                    contours,
+                    'size',
+                    (max(numeric_levels) - min(numeric_levels)) /
+                    float(len(numeric_levels) - 1),
+                )
+            else:
+                runtime.reflect.set(contours, 'size', 1)
+        color = _option_get(
+            options, 'color', _option_get(options, 'rgbcolor', 'blue'))
+        trace = _native_record(
             type='contour',
             x=self.xdata,
             y=self.ydata,
             z=self.zdata,
             showscale=bool(_option_get(options, 'colorbar', True)),
-            contours=_native_record(
-                coloring=(
-                    'fill'
-                    if bool(_option_get(options, 'fill', True))
-                    else 'lines'
-                ),
+            autocontour=levels is None,
+            contours=contours,
+            line=_native_record(
+                color=_color_value(color),
+                width=float(_option_get(
+                    options, 'linewidth',
+                    _option_get(options, 'thickness', 1))),
+                dash=_dash_value(str(_option_get(
+                    options, 'linestyle', '-'))),
             ),
+            opacity=float(_option_get(options, 'alpha', 1)),
         )
+        if bool(_option_get(options, 'fill', True)):
+            runtime.reflect.set(
+                trace,
+                'colorscale',
+                _plotly_colorscale(_option_get(options, 'cmap', color)),
+            )
+        legend_label = _option_get(options, 'legend_label')
+        if legend_label is not None:
+            runtime.reflect.set(trace, 'showlegend', True)
+            runtime.reflect.set(trace, 'name', str(legend_label))
+        return trace
+
+
+def _plotly_colorscale(cmap: Any) -> Any:
+    if isinstance(cmap, (list, tuple)):
+        colors = list(cmap)
+        if len(colors) == 0:
+            colors = ['black', 'white']
+        if len(colors) == 1:
+            colors.append(colors[0])
+        answer = []
+        denominator = float(len(colors) - 1)
+        for index in range(len(colors)):
+            answer.append([
+                index / denominator,
+                _color_value(colors[index]),
+            ])
+        return answer
+    aliases = {
+        'gray': 'Greys',
+        'grey': 'Greys',
+        'Greys_r': 'Greys',
+    }
+    return _option_get(aliases, str(cmap), str(cmap))
+
+
+class Density(GraphicPrimitive):
+    """A rectangular scalar grid rendered as a heatmap."""
+
+    def __init__(
+        self,
+        xdata: Sequence[float],
+        ydata: Sequence[float],
+        zdata: Sequence[Sequence[float]],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive.__init__(self, options)
+        self.xdata = list(xdata)
+        self.ydata = list(ydata)
+        self.zdata = [list(row) for row in zdata]
+
+    def __repr__(self) -> str:
+        rows = len(self.zdata)
+        columns = 0 if rows == 0 else len(self.zdata[0])
+        return (
+            'DensityPlot defined by a ' + str(rows) + ' x ' +
+            str(columns) + ' data grid'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_trace(self) -> Any:
+        options = self._options
+        colorscale = _option_get(options, 'colorscale')
+        if colorscale is None:
+            colorscale = _plotly_colorscale(
+                _option_get(options, 'cmap', 'Greys'))
+        interpolation = _option_get(options, 'interpolation', 'catrom')
+        if interpolation in ('none', 'nearest', False):
+            smoothing = False
+        else:
+            smoothing = 'best'
+        trace = _native_record(
+            type='heatmap',
+            x=self.xdata,
+            y=self.ydata,
+            z=self.zdata,
+            colorscale=colorscale,
+            showscale=bool(_option_get(options, 'colorbar', False)),
+            opacity=float(_option_get(options, 'alpha', 1)),
+            zsmooth=smoothing,
+            hoverongaps=False,
+        )
+        if _option_get(options, 'vmin') is not None:
+            runtime.reflect.set(
+                trace, 'zmin', float(_option_get(options, 'vmin')))
+        if _option_get(options, 'vmax') is not None:
+            runtime.reflect.set(
+                trace, 'zmax', float(_option_get(options, 'vmax')))
+        return trace
 
 
 @runtime.sequence_class
@@ -1976,6 +2094,78 @@ def _finite_value(value: Any) -> float:
     return numeric
 
 
+def _plot_callable_2d(
+    function_value: Any,
+    xvariable: Any,
+    yvariable: Any,
+) -> Any:
+    current = function_value
+    if hasattr(current, '_plot_fast_callable'):
+        variables = [
+            variable
+            for variable in [xvariable, yvariable]
+            if variable is not None
+        ]
+        current = current._plot_fast_callable(variables)
+    if callable(current):
+        return current
+    numeric = float(current)
+
+    def constant(_xvalue: Any, _yvalue: Any) -> float:
+        return numeric
+
+    return constant
+
+
+def _grid_counts_2d(value: Any, default_value: int) -> tuple[int, int]:
+    if value is None or value == 'automatic':
+        xcount = default_value
+        ycount = default_value
+    elif isinstance(value, (list, tuple)):
+        if len(value) != 2:
+            raise ValueError('plot_points must have two entries')
+        xcount = int(value[0])
+        ycount = int(value[1])
+    else:
+        xcount = int(value)
+        ycount = int(value)
+    if xcount < 2 or ycount < 2:
+        raise ValueError('plot_points must be at least 2')
+    return xcount, ycount
+
+
+def _sample_grid_2d(
+    function_value: Any,
+    xrange: Any,
+    yrange: Any,
+    plot_points: Any,
+) -> tuple[list[float], list[float], list[list[float]]]:
+    xminimum, xmaximum = _plot_range([xrange])
+    yminimum, ymaximum = _plot_range([yrange])
+    xvariable = _plot_variable([xrange])
+    yvariable = _plot_variable([yrange])
+    current = _plot_callable_2d(
+        function_value, xvariable, yvariable)
+    xcount, ycount = _grid_counts_2d(plot_points, 50)
+    xstep = (xmaximum - xminimum) / float(xcount - 1)
+    ystep = (ymaximum - yminimum) / float(ycount - 1)
+    xvalues = [
+        xmaximum if index == xcount - 1 else xminimum + index * xstep
+        for index in range(xcount)
+    ]
+    yvalues = [
+        ymaximum if index == ycount - 1 else yminimum + index * ystep
+        for index in range(ycount)
+    ]
+    zvalues = []
+    for yvalue in yvalues:
+        row = []
+        for xvalue in xvalues:
+            row.append(_finite_value(current(xvalue, yvalue)))
+        zvalues.append(row)
+    return xvalues, yvalues, zvalues
+
+
 def _evaluate_plot_function(
     func: Callable[[float], Any],
     x_value: float,
@@ -2293,50 +2483,192 @@ def contour_plot(
     **options: Any,
 ) -> Graphics:
     """Plot a sampled scalar function as a filled contour grid."""
+    options = _copy_options(options)
+    plot_points = _option_pop(options, 'plot_points', 50)
+    xvalues, yvalues, zvalues = _sample_grid_2d(
+        function_value, xrange, yrange, plot_points)
+    defaults = {
+        'fill': True,
+        'colorbar': True,
+        'cmap': 'Viridis',
+        'alpha': 1,
+    }
+    _option_update(defaults, options)
+    graphics_options = _graphics_options(defaults)
+    graphic = Graphics()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(
+        Contour(xvalues, yvalues, zvalues, defaults))
+    return graphic
+
+
+def density_plot(
+    function_value: Any,
+    xrange: Any,
+    yrange: Any,
+    **options: Any,
+) -> Graphics:
+    r"""Plot the values of a function of two variables as a color density."""
+    options = _copy_options(options)
+    plot_points = _option_pop(options, 'plot_points', 25)
+    xvalues, yvalues, zvalues = _sample_grid_2d(
+        function_value, xrange, yrange, plot_points)
+    defaults = {
+        'cmap': 'Greys',
+        'interpolation': 'catrom',
+        'colorbar': False,
+        'alpha': 1,
+    }
+    _option_update(defaults, options)
+    graphics_options = _graphics_options(defaults)
+    graphic = Graphics()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(Density(xvalues, yvalues, zvalues, defaults))
+    return graphic
+
+
+def implicit_plot(
+    function_value: Any,
+    xrange: Any,
+    yrange: Any,
+    **options: Any,
+) -> Graphics:
+    r"""
+    Plot the plane curve where a function is zero or an equality holds.
+    """
+    if hasattr(function_value, '_plot_zero_set_expression'):
+        function_value = function_value._plot_zero_set_expression()
+    options = _copy_options(options)
+    options['contours'] = [0]
+    options['colorbar'] = False
+    if not _option_has(options, 'fill'):
+        options['fill'] = False
+    if _option_has(options, 'fillcolor') and not _option_has(options, 'cmap'):
+        fillcolor = _option_get(options, 'fillcolor')
+        options['cmap'] = [fillcolor, fillcolor]
+    return contour_plot(function_value, xrange, yrange, **options)
+
+
+def region_plot(
+    functions: Any,
+    xrange: Any,
+    yrange: Any,
+    **options: Any,
+) -> Graphics:
+    r"""Plot the region where one or more boolean functions are true."""
+    options = _copy_options(options)
+    plot_points = _option_pop(options, 'plot_points', 100)
     xminimum, xmaximum = _plot_range([xrange])
     yminimum, ymaximum = _plot_range([yrange])
     xvariable = _plot_variable([xrange])
     yvariable = _plot_variable([yrange])
-    count = int(_option_pop(options, 'plot_points', 50))
-    if count < 2:
-        raise ValueError('plot_points must be at least 2')
-    current = function_value
-    if hasattr(current, '_plot_fast_callable'):
-        variables = [
-            variable
-            for variable in [xvariable, yvariable]
-            if variable is not None
-        ]
-        current = current._plot_fast_callable(variables)
-    if not callable(current):
-        raise TypeError('contour_plot() requires a callable function')
-    xstep = (xmaximum - xminimum) / float(count - 1)
-    ystep = (ymaximum - yminimum) / float(count - 1)
+    if isinstance(functions, (list, tuple)):
+        function_values = list(functions)
+    else:
+        function_values = [functions]
+    callables = [
+        _plot_callable_2d(value, xvariable, yvariable)
+        for value in function_values
+    ]
+    xcount, ycount = _grid_counts_2d(plot_points, 100)
+    xstep = (xmaximum - xminimum) / float(xcount - 1)
+    ystep = (ymaximum - yminimum) / float(ycount - 1)
     xvalues = [
-        (
-            xmaximum
-            if index == count - 1
-            else xminimum + index * xstep
-        )
-        for index in range(count)
+        xmaximum if index == xcount - 1 else xminimum + index * xstep
+        for index in range(xcount)
     ]
     yvalues = [
-        (
-            ymaximum
-            if index == count - 1
-            else yminimum + index * ystep
-        )
-        for index in range(count)
+        ymaximum if index == ycount - 1 else yminimum + index * ystep
+        for index in range(ycount)
     ]
     zvalues = []
     for yvalue in yvalues:
         row = []
         for xvalue in xvalues:
-            row.append(_finite_value(current(xvalue, yvalue)))
+            inside = True
+            for current in callables:
+                if not bool(current(xvalue, yvalue)):
+                    inside = False
+                    break
+            row.append(1.0 if inside else 0.0)
         zvalues.append(row)
+    incolor = _option_pop(options, 'incol', 'blue')
+    outcolor = _option_pop(options, 'outcol', 'rgba(0,0,0,0)')
+    if outcolor is None:
+        outcolor = 'rgba(0,0,0,0)'
+    defaults = {
+        'colorscale': [
+            [0, _color_value(outcolor)],
+            [0.499999, _color_value(outcolor)],
+            [0.5, _color_value(incolor)],
+            [1, _color_value(incolor)],
+        ],
+        'interpolation': 'nearest',
+        'colorbar': False,
+        'alpha': 1,
+        'aspect_ratio': 1,
+    }
+    _option_update(defaults, options)
+    graphics_options = _graphics_options(defaults)
     graphic = Graphics()
-    graphic.add_primitive(
-        Contour(xvalues, yvalues, zvalues, options))
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(Density(xvalues, yvalues, zvalues, defaults))
+    return graphic
+
+
+def matrix_plot(
+    matrix_value: Any,
+    xrange: Any = None,
+    yrange: Any = None,
+    **options: Any,
+) -> Graphics:
+    r"""Plot a matrix or rectangular array as a color-valued grid."""
+    if hasattr(matrix_value, 'nrows') and hasattr(matrix_value, 'ncols'):
+        row_count = int(matrix_value.nrows())
+        column_count = int(matrix_value.ncols())
+        values = [
+            [float(matrix_value[row, column])
+             for column in range(column_count)]
+            for row in range(row_count)
+        ]
+    else:
+        values = [
+            [float(value) for value in row]
+            for row in matrix_value
+        ]
+        row_count = len(values)
+        column_count = 0 if row_count == 0 else len(values[0])
+    if xrange is None:
+        xvalues = [float(index) for index in range(column_count)]
+    else:
+        xmin, xmax = _plot_range([xrange])
+        xvalues = [
+            xmin + (xmax - xmin) * index / max(1, column_count - 1)
+            for index in range(column_count)
+        ]
+    if yrange is None:
+        yvalues = [float(index) for index in range(row_count)]
+    else:
+        ymin, ymax = _plot_range([yrange])
+        yvalues = [
+            ymin + (ymax - ymin) * index / max(1, row_count - 1)
+            for index in range(row_count)
+        ]
+    defaults = {
+        'cmap': 'Greys',
+        'colorbar': False,
+        'interpolation': 'nearest',
+        'axes': False,
+        'frame': True,
+        'flip_y': True,
+        'ticks_integer': True,
+        'aspect_ratio': 1,
+    }
+    _option_update(defaults, _copy_options(options))
+    graphics_options = _graphics_options(defaults)
+    graphic = Graphics()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(Density(xvalues, yvalues, values, defaults))
     return graphic
 
 
@@ -2572,6 +2904,10 @@ for _doc_name, _doc_function, _doc_tags in [
     ('parametric_plot', parametric_plot, ['2D graphics', 'parametric']),
     ('polar_plot', polar_plot, ['2D graphics', 'polar coordinates']),
     ('contour_plot', contour_plot, ['2D graphics', 'contours']),
+    ('density_plot', density_plot, ['2D graphics', 'scalar fields']),
+    ('implicit_plot', implicit_plot, ['2D graphics', 'implicit curves']),
+    ('region_plot', region_plot, ['2D graphics', 'regions']),
+    ('matrix_plot', matrix_plot, ['2D graphics', 'matrices']),
     ('plot_step_function', plot_step_function, ['2D graphics', 'data']),
     ('plot_loglog', plot_loglog, ['2D graphics', 'logarithmic axes']),
     ('plot_semilogx', plot_semilogx, ['2D graphics', 'logarithmic axes']),

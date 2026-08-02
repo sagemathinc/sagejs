@@ -298,11 +298,76 @@ async function main() {
     assert.ok(Math.abs(polar.display?.data.data[0].x[0] - 1) < 1e-12);
     assert.ok(Math.abs(polar.display?.data.data[0].y[1] - 1) < 1e-12);
 
+    const density = await session.evaluate(
+      "x,y=var('x y'); density_plot(x-y, (x,0,1), (y,0,1), " +
+        "plot_points=(3,2), cmap='Viridis')",
+    );
+    assert.equal(density.display?.data.data[0].type, "heatmap");
+    assert.deepEqual(density.display?.data.data[0].x, [0, 0.5, 1]);
+    assert.deepEqual(density.display?.data.data[0].y, [0, 1]);
+    assert.deepEqual(density.display?.data.data[0].z, [
+      [0, 0.5, 1],
+      [-1, -0.5, 0],
+    ]);
+    assert.equal(density.display?.data.data[0].colorscale, "Viridis");
+    assert.equal(density.display?.data.data[0].zsmooth, "best");
+    assert.equal(
+      (await session.evaluate(
+        "density_plot(x-y,(x,0,1),(y,0,1),plot_points=2)[0]",
+      )).repr,
+      "DensityPlot defined by a 2 x 2 data grid",
+    );
+
+    const contour = await session.evaluate(
+      "contour_plot(x^2+y^2, (x,-1,1), (y,-1,1), " +
+        "plot_points=3, contours=[0,1], fill=False, color='red')",
+    );
+    const contourTrace = contour.display?.data.data[0];
+    assert.equal(contourTrace.type, "contour");
+    assert.equal(contourTrace.autocontour, false);
+    assert.equal(contourTrace.contours.start, 0);
+    assert.equal(contourTrace.contours.end, 1);
+    assert.equal(contourTrace.contours.size, 1);
+    assert.equal(contourTrace.contours.coloring, "lines");
+    assert.equal(contourTrace.line.color, "red");
+
+    const implicit = await session.evaluate(
+      "implicit_plot(x^2+y^2-1, (x,-1,1), (y,-1,1), plot_points=3)",
+    );
+    assert.equal(implicit.display?.data.data[0].contours.start, 0);
+    assert.equal(implicit.display?.data.data[0].contours.end, 0);
+    assert.equal(implicit.display?.data.data[0].contours.coloring, "lines");
+    assert.equal(implicit.display?.data.data[0].showscale, false);
+
+    const region = await session.evaluate(
+      "region_plot([x>=0,y>=0], (x,-1,1), (y,-1,1), " +
+        "plot_points=3, incol='orange')",
+    );
+    assert.equal(region.display?.data.data[0].type, "heatmap");
+    assert.deepEqual(region.display?.data.data[0].z, [
+      [0, 0, 0],
+      [0, 1, 1],
+      [0, 1, 1],
+    ]);
+    assert.equal(region.display?.data.data[0].colorscale[2][1], "orange");
+
+    const matrixPlot = await session.evaluate(
+      "matrix_plot(matrix([[1,2],[3,4]]))",
+    );
+    assert.equal(matrixPlot.display?.data.data[0].type, "heatmap");
+    assert.deepEqual(matrixPlot.display?.data.data[0].z, [[1, 2], [3, 4]]);
+    assert.equal(matrixPlot.display?.data.layout.yaxis.autorange, "reversed");
+    assert.equal(matrixPlot.display?.data.layout.xaxis.visible, true);
+
     assert.equal((await session.evaluate("line2d is line")).repr, "True");
     assert.equal((await session.evaluate("point2d is point")).repr, "True");
     assert.match(
       (await session.evaluate("histogram.__doc__")).repr,
       /Compute and draw a histogram/,
+    );
+    assert.match(
+      (await session.evaluate("implicit_plot.__doc__")).repr,
+      /plane curve/,
     );
 
     const plain = await session.evaluate("factor(12)");
