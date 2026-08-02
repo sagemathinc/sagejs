@@ -2559,6 +2559,124 @@ def _complex_numeric_parts(value: Any) -> tuple[float, float]:
     return (real_part, imaginary_part)
 
 
+def _complex_from_parts(
+    real: float,
+    imaginary: float,
+    constructor: Any,
+) -> Any:
+    return runtime.reflect.apply(
+        constructor, runtime.undefined, [real, imaginary])
+
+
+def _complex_tree_function(
+    name: str,
+    value: Any,
+    constructor: Any,
+) -> Any:
+    parts = _complex_numeric_parts(value)
+    real = parts[0]
+    imaginary = parts[1]
+    if name == 'Exp':
+        scale = runtime.math.exp(real)
+        return _complex_from_parts(
+            scale * runtime.math.cos(imaginary),
+            scale * runtime.math.sin(imaginary), constructor)
+    if name in ('Ln', 'Log'):
+        return _complex_from_parts(
+            runtime.math.log(runtime.math.hypot(real, imaginary)),
+            runtime.math.atan2(imaginary, real), constructor)
+    if name == 'Sqrt':
+        magnitude = runtime.math.hypot(real, imaginary)
+        output_real = runtime.math.sqrt(max(0.0, (magnitude + real) / 2.0))
+        output_imaginary = runtime.math.sqrt(
+            max(0.0, (magnitude - real) / 2.0))
+        if imaginary < 0:
+            output_imaginary = -output_imaginary
+        return _complex_from_parts(
+            output_real, output_imaginary, constructor)
+    if name in ('Sin', 'Cos', 'Tan'):
+        sine = _complex_from_parts(
+            runtime.math.sin(real) * runtime.math.cosh(imaginary),
+            runtime.math.cos(real) * runtime.math.sinh(imaginary),
+            constructor,
+        )
+        cosine = _complex_from_parts(
+            runtime.math.cos(real) * runtime.math.cosh(imaginary),
+            -runtime.math.sin(real) * runtime.math.sinh(imaginary),
+            constructor,
+        )
+        if name == 'Sin':
+            return sine
+        if name == 'Cos':
+            return cosine
+        return sine / cosine
+    if name == 'Abs':
+        return _complex_from_parts(
+            runtime.math.hypot(real, imaginary), 0.0, constructor)
+    raise NotImplementedError(
+        'complex symbolic evaluation does not support ' + name)
+
+
+def _complex_tree_evaluate(
+    tree: Any,
+    variable_name: str,
+    argument: Any,
+    constructor: Any,
+) -> Any:
+    if isinstance(tree, str):
+        if tree == variable_name:
+            return argument
+        constants = {
+            'Pi': runtime.math.PI,
+            'ExponentialE': runtime.math.E,
+        }
+        if tree == 'ImaginaryUnit':
+            return _complex_from_parts(0.0, 1.0, constructor)
+        if tree in constants:
+            return _complex_from_parts(constants[tree], 0.0, constructor)
+        raise ValueError('unknown symbolic variable ' + tree)
+    if not runtime.array.isArray(tree):
+        return _complex_from_parts(float(tree), 0.0, constructor)
+    if len(tree) == 0:
+        raise ValueError('empty symbolic expression tree')
+    head = str(tree[0])
+    if head == 'Rational' and len(tree) == 3:
+        return _complex_from_parts(
+            float(tree[1]) / float(tree[2]), 0.0, constructor)
+    operands = [
+        _complex_tree_evaluate(
+            tree[index], variable_name, argument, constructor)
+        for index in range(1, len(tree))
+    ]
+    if head == 'Add':
+        result = _complex_from_parts(0.0, 0.0, constructor)
+        for operand in operands:
+            result = result + operand
+        return result
+    if head == 'Multiply':
+        result = _complex_from_parts(1.0, 0.0, constructor)
+        for operand in operands:
+            result = result * operand
+        return result
+    if head == 'Negate':
+        return -operands[0]
+    if head == 'Subtract':
+        return operands[0] - operands[1]
+    if head == 'Divide':
+        return operands[0] / operands[1]
+    if head == 'Power':
+        exponent_tree = tree[2]
+        if runtime.is_exact_integer(exponent_tree):
+            return operands[0] ** int(exponent_tree)
+        logarithm = _complex_tree_function('Log', operands[0], constructor)
+        return _complex_tree_function(
+            'Exp', operands[1] * logarithm, constructor)
+    if len(operands) == 1:
+        return _complex_tree_function(head, operands[0], constructor)
+    raise NotImplementedError(
+        'complex symbolic evaluation does not support ' + head)
+
+
 def _complex_lightness(
     magnitude: float,
     argument: float,
@@ -3372,15 +3490,22 @@ def complex_plot(
         if len(variables) > 1:
             raise ValueError(
                 'complex_plot function must have at most one variable')
-    if hasattr(function_value, '_plot_fast_callable'):
-        evaluator = function_value._plot_fast_callable(variables)
+    cdf_function = runtime.reflect.get(runtime.global_object, 'CDF')
+    if hasattr(function_value, '_tree'):
+        expression_tree = function_value._tree
+        variable_name = '' if len(variables) == 0 else str(variables[0])
+
+        def symbolic_evaluator(value: Any) -> Any:
+            return _complex_tree_evaluate(
+                expression_tree, variable_name, value, cdf_function)
+        evaluator = symbolic_evaluator
     elif callable(function_value):
         evaluator = function_value
     else:
-        def evaluator(_value: Any) -> Any:
+        def constant_evaluator(_value: Any) -> Any:
             return function_value
+        evaluator = constant_evaluator
 
-    cdf_function = runtime.reflect.get(runtime.global_object, 'CDF')
     sampled = []
     for yvalue in yvalues:
         row = []

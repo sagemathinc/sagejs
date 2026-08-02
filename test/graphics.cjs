@@ -398,6 +398,29 @@ async function main() {
       )).repr,
       "ComplexPlot defined by a 3 x 3 data grid",
     );
+    const symbolicComplex = await session.evaluate(
+      [
+        "z = var('z')",
+        "complex_plot(z^5+z-1+1/z,(-3,3),(-3,3),",
+        "             plot_points=5,interpolation='nearest')",
+      ].join("\n"),
+    );
+    const callableComplex = await session.evaluate(
+      "complex_plot(lambda z:z^5+z-1+1/z,(-3,3),(-3,3)," +
+        "plot_points=5,interpolation='nearest')",
+    );
+    assert.deepEqual(
+      symbolicComplex.display?.data.data[0].z,
+      callableComplex.display?.data.data[0].z,
+    );
+    assert.notDeepEqual(
+      symbolicComplex.display?.data.data[0].z[0][0],
+      [255, 255, 255],
+    );
+    const symbolicSine = await session.evaluate(
+      "complex_plot(sin(z),(-1,1),(-1,1),plot_points=3)",
+    );
+    assert.deepEqual(symbolicSine.display?.data.data[0].z[1][1], [0, 0, 0]);
     assert.equal(
       (await session.evaluate(
         "complex_to_rgb([[0,1]],contoured=True)[0][0] == [1,0,0] " +
