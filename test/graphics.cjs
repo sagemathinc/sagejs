@@ -90,6 +90,62 @@ async function main() {
       /figsize should be positive/,
     );
 
+    const layoutOptions = await session.evaluate(
+      [
+        "layout_plot = line([(-1,0), (1,2)], legend_label='L')",
+        "layout_plot.show(",
+        "    axes=False, frame=True, axes_labels=['u','v'],",
+        "    axes_labels_size=2, fontsize=12,",
+        "    xmin=-2, xmax=3, ymin=-1, ymax=4, flip_x=True,",
+        "    ticks=[[-1,0,1], [0,2]],",
+        "    tick_formatter=[['minus','zero','plus'], ['low','high']],",
+        "    gridlines=[[-0.5,0.5], [1]],",
+        "    gridlinesstyle={'color':'gray','linestyle':':'},",
+        "    title='Layout', title_pos=(0.25,0.9),",
+        "    transparent=True, show_legend=True,",
+        "    legend_options={'loc':'lower left','back_color':'yellow',",
+        "                    'title':'Legend'},",
+        "    figsize=(4,2), dpi=120)",
+      ].join("\n"),
+    );
+    const layout = layoutOptions.display?.data.layout;
+    assert.equal(layout.width, 480);
+    assert.equal(layout.height, 240);
+    assert.equal(layout.xaxis.visible, true);
+    assert.equal(layout.xaxis.showline, true);
+    assert.equal(layout.xaxis.zeroline, false);
+    assert.deepEqual(layout.xaxis.range, [3, -2]);
+    assert.deepEqual(layout.xaxis.tickvals, [-1, 0, 1]);
+    assert.deepEqual(layout.xaxis.ticktext, ["minus", "zero", "plus"]);
+    assert.equal(layout.xaxis.title.font.size, 24);
+    assert.equal(layout.shapes.length, 3);
+    assert.equal(layout.shapes[0].line.dash, "dot");
+    assert.equal(layout.title.x, 0.25);
+    assert.equal(layout.paper_bgcolor, "rgba(0,0,0,0)");
+    assert.equal(layout.legend.x, 0);
+    assert.equal(layout.legend.y, 0);
+    assert.equal(layout.legend.bgcolor, "yellow");
+    assert.equal(layout.legend.title.text, "Legend");
+
+    const graphicsMethods = await session.evaluate(
+      [
+        "gm = line([(0,0),(1,1)])",
+        "gm.fontsize(14)",
+        "gm.axes_labels_size(1.5)",
+        "gm.axes_labels(['horizontal','vertical'])",
+        "gm.set_flip(flip_y=True)",
+        "gm.set_legend_options(loc='upper left')",
+        "gm",
+      ].join("\n"),
+    );
+    assert.equal(graphicsMethods.display?.data.layout.font.size, 14);
+    assert.equal(
+      graphicsMethods.display?.data.layout.yaxis.autorange,
+      "reversed",
+    );
+    assert.equal(graphicsMethods.display?.data.layout.legend.x, 0);
+    assert.equal(graphicsMethods.display?.data.layout.legend.y, 1);
+
     const listed = await session.evaluate(
       "list_plot([1, 4, 9], plotjoined=True)",
     );

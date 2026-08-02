@@ -18,11 +18,30 @@ _GRAPHICS_OPTION_NAMES = [
     'aspect_ratio',
     'axes',
     'axes_labels',
+    'axes_labels_size',
+    'axes_pad',
+    'base',
+    'dpi',
+    'fig_tight',
     'figsize',
+    'flip_x',
+    'flip_y',
+    'fontsize',
     'frame',
     'gridlines',
+    'gridlinesstyle',
+    'hgridlinesstyle',
+    'legend_options',
     'scale',
+    'show_legend',
+    'tick_formatter',
+    'ticks',
+    'ticks_integer',
     'title',
+    'title_pos',
+    'transparent',
+    'typeset',
+    'vgridlinesstyle',
     'xmin',
     'xmax',
     'ymin',
@@ -199,6 +218,75 @@ def _normalize_points(points: Any) -> list[tuple[float, float]]:
     ):
         values = [values]
     return [_point_pair(value) for value in values]
+
+
+def _axis_pair(value: Any) -> tuple[Any, Any]:
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        return value[0], value[1]
+    return value, None
+
+
+def _apply_axis_ticks(
+    axis: Any,
+    ticks: Any,
+    formatter: Any,
+    integer_ticks: bool,
+) -> None:
+    if isinstance(ticks, (list, tuple)):
+        values = [float(value) for value in ticks]
+        runtime.reflect.set(axis, 'tickmode', 'array')
+        runtime.reflect.set(axis, 'tickvals', values)
+        if isinstance(formatter, (list, tuple)):
+            if len(formatter) != len(values):
+                raise ValueError(
+                    'tick label list must have the same length as ticks')
+            runtime.reflect.set(
+                axis, 'ticktext', [str(value) for value in formatter])
+        elif callable(formatter):
+            runtime.reflect.set(
+                axis,
+                'ticktext',
+                [str(formatter(value)) for value in values],
+            )
+    elif ticks is not None:
+        spacing = float(ticks)
+        if spacing <= 0:
+            raise ValueError('tick spacing must be positive')
+        runtime.reflect.set(axis, 'dtick', spacing)
+    elif integer_ticks:
+        runtime.reflect.set(axis, 'dtick', 1)
+
+
+def _grid_line_style(options: Any) -> Any:
+    return _native_record(
+        color=_color_value(
+            _option_get(options, 'color',
+                        _option_get(options, 'rgbcolor', '#d9d9d9'))),
+        width=float(
+            _option_get(options, 'linewidth',
+                        _option_get(options, 'thickness', 1))),
+        dash=_dash_value(str(_option_get(options, 'linestyle', '-'))),
+    )
+
+
+def _legend_position(location: Any) -> Any:
+    positions = {
+        'upper right': [1.0, 1.0, 'right', 'top'],
+        'upper left': [0.0, 1.0, 'left', 'top'],
+        'lower left': [0.0, 0.0, 'left', 'bottom'],
+        'lower right': [1.0, 0.0, 'right', 'bottom'],
+        'right': [1.0, 0.5, 'right', 'middle'],
+        'center left': [0.0, 0.5, 'left', 'middle'],
+        'center right': [1.0, 0.5, 'right', 'middle'],
+        'lower center': [0.5, 0.0, 'center', 'bottom'],
+        'upper center': [0.5, 1.0, 'center', 'top'],
+        'center': [0.5, 0.5, 'center', 'middle'],
+        'best': [1.0, 1.0, 'right', 'top'],
+    }
+    if isinstance(location, (list, tuple)) and len(location) == 2:
+        return runtime.math_tuple([
+            float(location[0]), float(location[1]), 'left', 'bottom'])
+    return _option_get(positions, str(location), positions['best'])
 
 
 class GraphicPrimitive:
@@ -628,6 +716,9 @@ class Graphics:
         self._objects: list[GraphicPrimitive] = []
         self._extra_kwds: dict[str, Any] = {}
         self._show_legend = False
+        self._legend_opts: dict[str, Any] = {}
+        self._fontsize = 10
+        self._axes_labels_size = 1.6
 
     def __len__(self) -> int:
         return len(self._objects)
@@ -656,7 +747,19 @@ class Graphics:
 
     def set_extra_kwds(self, keywords: dict[str, Any]) -> None:
         for key in keywords:
-            self._extra_kwds[key] = keywords[key]
+            value = keywords[key]
+            if key == 'fontsize' and value is not None:
+                self._fontsize = int(value)
+            elif key == 'axes_labels_size' and value is not None:
+                self._axes_labels_size = float(value)
+            elif key == 'legend_options' and value is not None:
+                copied_legend_options = _copy_options(value)
+                for legend_name in copied_legend_options:
+                    self._legend_opts[legend_name] = copied_legend_options[
+                        legend_name]
+            elif key == 'show_legend' and value is not None:
+                self._show_legend = bool(value)
+            self._extra_kwds[key] = value
 
     def get_extra_kwds(self) -> dict[str, Any]:
         return _copy_options(self._extra_kwds)
@@ -666,6 +769,69 @@ class Graphics:
             return self._show_legend
         self._show_legend = bool(show)
         return self._show_legend
+
+    def set_legend_options(self, **options: Any) -> dict[str, Any]:
+        """Update legend display options and return their current values."""
+        for name in options:
+            self._legend_opts[name] = options[name]
+        return _copy_options(self._legend_opts)
+
+    def fontsize(self, size: Any = None) -> int:
+        """Get or set the base font size used for ticks and axis labels."""
+        if size is None:
+            return self._fontsize
+        numeric = int(size)
+        if numeric <= 0:
+            raise ValueError('fontsize must be positive')
+        self._fontsize = numeric
+        self._extra_kwds['fontsize'] = numeric
+        return numeric
+
+    def axes_labels_size(self, size: Any = None) -> float:
+        """Get or set the axis-label scale relative to tick labels."""
+        if size is None:
+            return self._axes_labels_size
+        numeric = float(size)
+        if numeric <= 0:
+            raise ValueError('axes_labels_size must be positive')
+        self._axes_labels_size = numeric
+        self._extra_kwds['axes_labels_size'] = numeric
+        return numeric
+
+    def axes_labels(self, labels: Any = None) -> Any:
+        """Get or set the pair of horizontal and vertical axis labels."""
+        if labels is None:
+            return _option_get(self._extra_kwds, 'axes_labels')
+        values = list(labels)
+        if len(values) != 2:
+            raise ValueError('axes_labels must contain exactly two labels')
+        normalized = runtime.math_tuple([str(values[0]), str(values[1])])
+        self._extra_kwds['axes_labels'] = normalized
+        return normalized
+
+    def set_flip(
+        self,
+        flip_x: Any = None,
+        flip_y: Any = None,
+    ) -> None:
+        """Set horizontal or vertical axis reversal."""
+        if flip_x is not None:
+            self._extra_kwds['flip_x'] = bool(flip_x)
+        if flip_y is not None:
+            self._extra_kwds['flip_y'] = bool(flip_y)
+
+    def flip(
+        self,
+        flip_x: bool = False,
+        flip_y: bool = False,
+    ) -> None:
+        """Toggle horizontal or vertical axis reversal."""
+        if flip_x:
+            self._extra_kwds['flip_x'] = not bool(
+                _option_get(self._extra_kwds, 'flip_x', False))
+        if flip_y:
+            self._extra_kwds['flip_y'] = not bool(
+                _option_get(self._extra_kwds, 'flip_y', False))
 
     def set_aspect_ratio(self, ratio: Any) -> None:
         if ratio in ('auto', 'automatic'):
@@ -737,6 +903,20 @@ class Graphics:
         answer.set_extra_kwds(self._extra_kwds)
         answer.set_extra_kwds(other._extra_kwds)
         answer._show_legend = self._show_legend or other._show_legend
+        answer._legend_opts = _copy_options(self._legend_opts)
+        _option_update(answer._legend_opts, other._legend_opts)
+        answer._fontsize = other._fontsize
+        answer._axes_labels_size = other._axes_labels_size
+        if (
+            bool(_option_get(self._extra_kwds, 'flip_x', False))
+            or bool(_option_get(other._extra_kwds, 'flip_x', False))
+        ):
+            answer._extra_kwds['flip_x'] = True
+        if (
+            bool(_option_get(self._extra_kwds, 'flip_y', False))
+            or bool(_option_get(other._extra_kwds, 'flip_y', False))
+        ):
+            answer._extra_kwds['flip_y'] = True
         return answer
 
     def __radd__(self, other: object) -> Graphics:
@@ -750,23 +930,45 @@ class Graphics:
         options = self._extra_kwds
         xaxis = _native_object()
         yaxis = _native_object()
+        font_size = int(_option_get(options, 'fontsize', self._fontsize))
         layout = _native_record(
             autosize=True,
-            showlegend=self._show_legend,
+            showlegend=bool(_option_get(
+                options, 'show_legend', self._show_legend)),
+            font=_native_record(size=font_size),
             xaxis=xaxis,
             yaxis=yaxis,
         )
         title = _option_get(options, 'title')
         if title is not None:
-            runtime.reflect.set(
-                layout, 'title', _native_record(text=str(title)))
+            title_record = _native_record(text=str(title))
+            title_position = _option_get(options, 'title_pos')
+            if isinstance(title_position, (list, tuple)):
+                if len(title_position) != 2:
+                    raise ValueError('title_pos must contain two numbers')
+                runtime.reflect.set(
+                    title_record, 'x', float(title_position[0]))
+                runtime.reflect.set(
+                    title_record, 'y', float(title_position[1]))
+                runtime.reflect.set(title_record, 'xref', 'paper')
+                runtime.reflect.set(title_record, 'yref', 'paper')
+                runtime.reflect.set(title_record, 'xanchor', 'center')
+            runtime.reflect.set(layout, 'title', title_record)
 
         axes_labels = _option_get(options, 'axes_labels')
         if isinstance(axes_labels, (list, tuple)) and len(axes_labels) == 2:
+            label_scale = float(_option_get(
+                options, 'axes_labels_size', self._axes_labels_size))
             runtime.reflect.set(
-                xaxis, 'title', _native_record(text=str(axes_labels[0])))
+                xaxis, 'title', _native_record(
+                    text=str(axes_labels[0]),
+                    font=_native_record(size=font_size * label_scale),
+                ))
             runtime.reflect.set(
-                yaxis, 'title', _native_record(text=str(axes_labels[1])))
+                yaxis, 'title', _native_record(
+                    text=str(axes_labels[1]),
+                    font=_native_record(size=font_size * label_scale),
+                ))
 
         if _option_has(options, 'xmin') or _option_has(options, 'xmax'):
             runtime.reflect.set(
@@ -804,17 +1006,89 @@ class Graphics:
             )
 
         axes = bool(_option_get(options, 'axes', True))
-        runtime.reflect.set(xaxis, 'visible', axes)
-        runtime.reflect.set(yaxis, 'visible', axes)
-        if bool(_option_get(options, 'gridlines', False)):
-            runtime.reflect.set(xaxis, 'showgrid', True)
-            runtime.reflect.set(yaxis, 'showgrid', True)
+        frame = bool(_option_get(options, 'frame', False))
+        for axis in (xaxis, yaxis):
+            runtime.reflect.set(axis, 'visible', axes or frame)
+            runtime.reflect.set(axis, 'showline', frame)
+            runtime.reflect.set(axis, 'mirror', frame)
+            runtime.reflect.set(axis, 'zeroline', axes)
+            runtime.reflect.set(axis, 'ticks', 'outside' if frame else '')
+
+        gridlines = _option_get(options, 'gridlines', False)
+        xgrid, ygrid = _axis_pair(gridlines)
+        if gridlines is True or gridlines in ('automatic', 'major', 'minor'):
+            xgrid = gridlines
+            ygrid = gridlines
+        for axis, grid_value in [(xaxis, xgrid), (yaxis, ygrid)]:
+            enabled = bool(
+                grid_value is True
+                or grid_value in ('automatic', 'major', 'minor')
+            )
+            runtime.reflect.set(axis, 'showgrid', enabled)
+            if grid_value == 'minor':
+                runtime.reflect.set(
+                    axis, 'minor', _native_record(showgrid=True))
+
+        shapes = []
+        grid_style = _copy_options(
+            _option_get(options, 'gridlinesstyle', {}))
+        vertical_style = _copy_options(grid_style)
+        horizontal_style = _copy_options(grid_style)
+        _option_update(
+            vertical_style,
+            _option_get(options, 'vgridlinesstyle', {}),
+        )
+        _option_update(
+            horizontal_style,
+            _option_get(options, 'hgridlinesstyle', {}),
+        )
+        if isinstance(xgrid, (list, tuple)):
+            for value in xgrid:
+                coordinate = value[0] if isinstance(value, (list, tuple)) else value
+                shapes.append(_native_record(
+                    type='line', x0=float(coordinate), x1=float(coordinate),
+                    y0=0, y1=1, yref='paper',
+                    line=_grid_line_style(vertical_style),
+                    layer='below',
+                ))
+        if isinstance(ygrid, (list, tuple)):
+            for value in ygrid:
+                coordinate = value[0] if isinstance(value, (list, tuple)) else value
+                shapes.append(_native_record(
+                    type='line', y0=float(coordinate), y1=float(coordinate),
+                    x0=0, x1=1, xref='paper',
+                    line=_grid_line_style(horizontal_style),
+                    layer='below',
+                ))
+        if len(shapes):
+            runtime.reflect.set(layout, 'shapes', shapes)
 
         scale = str(_option_get(options, 'scale', 'linear'))
         if scale in ('loglog', 'semilogx'):
             runtime.reflect.set(xaxis, 'type', 'log')
         if scale in ('loglog', 'semilogy'):
             runtime.reflect.set(yaxis, 'type', 'log')
+
+        ticks = _option_get(options, 'ticks')
+        xticks, yticks = _axis_pair(ticks)
+        formatter = _option_get(options, 'tick_formatter')
+        xformatter, yformatter = _axis_pair(formatter)
+        integer_ticks = bool(_option_get(options, 'ticks_integer', False))
+        _apply_axis_ticks(xaxis, xticks, xformatter, integer_ticks)
+        _apply_axis_ticks(yaxis, yticks, yformatter, integer_ticks)
+
+        if bool(_option_get(options, 'flip_x', False)):
+            if runtime.reflect.has(xaxis, 'range'):
+                runtime.reflect.set(
+                    xaxis, 'range', list(reversed(runtime.reflect.get(xaxis, 'range'))))
+            else:
+                runtime.reflect.set(xaxis, 'autorange', 'reversed')
+        if bool(_option_get(options, 'flip_y', False)):
+            if runtime.reflect.has(yaxis, 'range'):
+                runtime.reflect.set(
+                    yaxis, 'range', list(reversed(runtime.reflect.get(yaxis, 'range'))))
+            else:
+                runtime.reflect.set(yaxis, 'autorange', 'reversed')
 
         ratio = _option_get(options, 'aspect_ratio', 'automatic')
         if ratio not in ('auto', 'automatic'):
@@ -828,8 +1102,51 @@ class Graphics:
         figsize = _option_get(options, 'figsize')
         if figsize is not None:
             width, height = _parse_figsize(figsize)
-            runtime.reflect.set(layout, 'width', int(width * 100))
-            runtime.reflect.set(layout, 'height', int(height * 100))
+            dpi = float(_option_get(options, 'dpi', 100))
+            if dpi <= 0:
+                raise ValueError('dpi must be positive')
+            runtime.reflect.set(layout, 'width', int(width * dpi))
+            runtime.reflect.set(layout, 'height', int(height * dpi))
+
+        if bool(_option_get(options, 'transparent', False)):
+            runtime.reflect.set(layout, 'paper_bgcolor', 'rgba(0,0,0,0)')
+            runtime.reflect.set(layout, 'plot_bgcolor', 'rgba(0,0,0,0)')
+
+        legend_options = _copy_options(self._legend_opts)
+        supplied_legend_options = _copy_options(
+            _option_get(options, 'legend_options', {}))
+        _option_update(
+            legend_options,
+            supplied_legend_options,
+        )
+        for option_name in runtime.object.keys(options):
+            if option_name[:7] == 'legend_':
+                legend_options[option_name[7:]] = _option_get(
+                    options, option_name)
+        if len(runtime.object.keys(legend_options)):
+            location = _option_get(legend_options, 'loc', 'best')
+            position = _legend_position(location)
+            legend = _native_record(
+                x=position[0],
+                y=position[1],
+                xanchor=position[2],
+                yanchor=position[3],
+                bgcolor=_color_value(
+                    _option_get(legend_options, 'back_color', 'white')),
+                font=_native_record(
+                    family=str(_option_get(
+                        legend_options, 'font_family', 'sans-serif')),
+                    size=_option_get(
+                        legend_options, 'font_size', font_size),
+                ),
+            )
+            legend_title = _option_get(legend_options, 'title')
+            if legend_title is not None:
+                runtime.reflect.set(
+                    legend, 'title', _native_record(text=str(legend_title)))
+            if int(_option_get(legend_options, 'ncol', 1)) > 1:
+                runtime.reflect.set(legend, 'orientation', 'h')
+            runtime.reflect.set(layout, 'legend', legend)
         return layout
 
     def plotly(self) -> Any:
@@ -878,6 +1195,12 @@ def _graphics_options(options: dict[str, Any]) -> dict[str, Any]:
     answer = {}
     for name in _GRAPHICS_OPTION_NAMES:
         if _option_has(options, name):
+            answer[name] = _option_pop(options, name)
+    for name in list(runtime.object.keys(options)):
+        if (
+            name[:7] == 'legend_'
+            and name not in ('legend_label', 'legend_color')
+        ):
             answer[name] = _option_pop(options, name)
     return answer
 
