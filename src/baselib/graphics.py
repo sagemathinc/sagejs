@@ -941,6 +941,9 @@ def circle(
     **options: Any,
 ) -> Graphics:
     """Return a circle centered at ``center`` with the given radius."""
+    options = _copy_options(options)
+    if not _option_has(options, 'aspect_ratio'):
+        options['aspect_ratio'] = 1.0
     coordinates = _point_pair(center)
     numeric_radius = float(radius)
     if numeric_radius < 0:
@@ -958,6 +961,176 @@ def circle(
     if bool(_option_pop(options, 'fill', False)):
         return polygon(points[:-1], **options)
     return line(points, **options)
+
+
+def _ellipse_points(
+    center: Any,
+    r1: Any,
+    r2: Any,
+    angle: Any,
+    sector: Any,
+    count: int,
+) -> list[tuple[float, float]]:
+    coordinates = _point_pair(center)
+    radius1 = float(r1)
+    radius2 = float(r2)
+    if radius1 <= 0 or radius2 <= 0:
+        raise ValueError('ellipse radii must be positive')
+    angles = list(sector)
+    if len(angles) != 2:
+        raise ValueError('the sector must consist of two angles')
+    start = float(angles[0])
+    end = float(angles[1])
+    rotation = float(angle)
+    cosine_rotation = runtime.math.cos(rotation)
+    sine_rotation = runtime.math.sin(rotation)
+    points = []
+    for index in range(count + 1):
+        parameter = start + (end - start) * index / count
+        local_x = radius1 * runtime.math.cos(parameter)
+        local_y = radius2 * runtime.math.sin(parameter)
+        points.append((
+            coordinates[0] +
+            local_x * cosine_rotation - local_y * sine_rotation,
+            coordinates[1] +
+            local_x * sine_rotation + local_y * cosine_rotation
+        ))
+    return points
+
+
+def ellipse(
+    center: Any,
+    r1: Any,
+    r2: Any,
+    angle: Any = 0,
+    **options: Any,
+) -> Graphics:
+    r"""Return an optionally rotated ellipse centered at `(x, y)`."""
+    options = _copy_options(options)
+    if not _option_has(options, 'aspect_ratio'):
+        options['aspect_ratio'] = 1.0
+    count = int(_option_pop(options, 'plot_points', 100))
+    if count < 4:
+        raise ValueError('ellipse plot_points must be at least 4')
+    points = _ellipse_points(
+        center, r1, r2, angle,
+        (0.0, 2.0 * runtime.math.PI), count)
+    fill = bool(_option_pop(options, 'fill', False))
+    if _option_has(options, 'rgbcolor'):
+        options['color'] = _option_get(options, 'rgbcolor')
+    elif fill and _option_has(options, 'facecolor'):
+        options['color'] = _option_pop(options, 'facecolor')
+    elif not fill and _option_has(options, 'edgecolor'):
+        options['color'] = _option_pop(options, 'edgecolor')
+    if fill:
+        return polygon(points[:-1], **options)
+    return line(points, **options)
+
+
+def arc(
+    center: Any,
+    r1: Any,
+    r2: Any = None,
+    angle: Any = 0.0,
+    sector: Any = None,
+    **options: Any,
+) -> Graphics:
+    r"""Return a circular or elliptical arc over an angular sector."""
+    options = _copy_options(options)
+    if not _option_has(options, 'aspect_ratio'):
+        options['aspect_ratio'] = 1.0
+    if r2 is None:
+        r2 = r1
+    if sector is None:
+        sector = (0.0, 2.0 * runtime.math.PI)
+    count = int(_option_pop(options, 'plot_points', 75))
+    if count < 2:
+        raise ValueError('arc plot_points must be at least 2')
+    return line(
+        _ellipse_points(center, r1, r2, angle, sector, count),
+        **options,
+    )
+
+
+def disk(
+    center: Any,
+    radius: Any,
+    angle: Any,
+    **options: Any,
+) -> Graphics:
+    r"""Return a filled or outlined circular/elliptical sector."""
+    options = _copy_options(options)
+    coordinates = _point_pair(center)
+    if isinstance(radius, (list, tuple)):
+        if len(radius) != 2:
+            raise ValueError('disk radius must be a number or a pair')
+        r1 = radius[0]
+        r2 = radius[1]
+    else:
+        r1 = radius
+        r2 = radius
+    if not _option_has(options, 'aspect_ratio'):
+        options['aspect_ratio'] = 1.0
+    count = int(_option_pop(options, 'plot_points', 75))
+    arc_points = _ellipse_points(center, r1, r2, 0.0, angle, count)
+    fill = bool(_option_pop(options, 'fill', True))
+    if fill:
+        return polygon([coordinates] + arc_points, **options)
+    return line(arc_points, **options)
+
+
+def _bezier_point(
+    controls: Sequence[tuple[float, float]],
+    parameter: float,
+) -> tuple[float, float]:
+    points = list(controls)
+    while len(points) > 1:
+        next_points = []
+        for index in range(len(points) - 1):
+            next_points.append((
+                (1.0 - parameter) * points[index][0] +
+                parameter * points[index + 1][0],
+                (1.0 - parameter) * points[index][1] +
+                parameter * points[index + 1][1]
+            ))
+        points = next_points
+    return points[0]
+
+
+def bezier_path(path: Any, **options: Any) -> Graphics:
+    r"""
+    Return the Bézier path described by Sage's list-of-curves format.
+
+    The first curve contains both endpoints. Each later curve inherits its
+    first endpoint from the preceding curve and supplies zero, one, or two
+    control points followed by its new endpoint.
+    """
+    curves = [list(curve) for curve in path]
+    if len(curves) == 0 or len(curves[0]) < 2:
+        raise ValueError('a Bezier path needs an initial curve and endpoints')
+    count = int(_option_pop(options, 'plot_points', 25))
+    if count < 2:
+        raise ValueError('Bezier plot_points must be at least 2')
+    sampled = []
+    previous = None
+    for curve_index in range(len(curves)):
+        curve = [_point_pair(value) for value in curves[curve_index]]
+        if curve_index == 0:
+            controls = curve
+        else:
+            if previous is None:
+                raise ValueError('invalid Bezier path')
+            controls = [previous] + curve
+        if len(controls) < 2 or len(controls) > 4:
+            raise ValueError('Bezier curves support zero, one, or two controls')
+        for index in range(count + 1):
+            if curve_index > 0 and index == 0:
+                continue
+            sampled.append(_bezier_point(controls, index / count))
+        previous = controls[-1]
+    if bool(_option_pop(options, 'fill', False)):
+        return polygon(sampled, **options)
+    return line(sampled, **options)
 
 
 def arrow(
@@ -2064,6 +2237,10 @@ for _doc_name, _doc_function, _doc_tags in [
     ('polygon', polygon, ['2D graphics', 'polygons']),
     ('polygon2d', polygon2d, ['2D graphics', 'polygons']),
     ('circle', circle, ['2D graphics', 'circles']),
+    ('ellipse', ellipse, ['2D graphics', 'ellipses']),
+    ('arc', arc, ['2D graphics', 'ellipses']),
+    ('disk', disk, ['2D graphics', 'regions']),
+    ('bezier_path', bezier_path, ['2D graphics', 'curves']),
     ('text', text, ['2D graphics', 'labels']),
     ('bar_chart', bar_chart, ['2D graphics', 'charts']),
     ('histogram', histogram, ['2D graphics', 'statistics']),

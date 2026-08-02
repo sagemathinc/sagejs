@@ -198,6 +198,31 @@ async function main() {
     assert.equal(scattered.display?.data.data[0].marker.size, 20);
     assert.equal(scattered.display?.data.data[0].marker.color, "pink");
 
+    const geometric = await session.evaluate(
+      [
+        "e = ellipse((1,2), 3, 1, angle=pi/2, color='red')",
+        "a = arc((0,0), 2, 1, sector=(0,pi/2))",
+        "d = disk((0,0), (2,1), (0,pi/2), color='gold')",
+        "e + a + d",
+      ].join("\n"),
+    );
+    assert.equal(geometric.display?.data.data.length, 3);
+    assert.equal(geometric.display?.data.data[2].fill, "toself");
+    assert.equal(geometric.display?.data.layout.yaxis.scaleanchor, "x");
+    assert.ok(
+      Math.abs(geometric.display?.data.data[0].x[0] - 1) < 1e-12,
+    );
+    assert.ok(
+      Math.abs(geometric.display?.data.data[0].y[0] - 5) < 1e-12,
+    );
+
+    const bezier = await session.evaluate(
+      "bezier_path([[(0,0), (1,1), (2,0)], [(3,-1), (4,0)]], " +
+        "plot_points=2)",
+    );
+    assert.deepEqual(bezier.display?.data.data[0].x, [0, 1, 2, 3, 4]);
+    assert.deepEqual(bezier.display?.data.data[0].y, [0, 0.5, 0, -0.5, 0]);
+
     const stepped = await session.evaluate(
       "plot_step_function([(2, 4), (0, 1), (1, 3)])",
     );
