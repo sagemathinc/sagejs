@@ -28,7 +28,7 @@ async function main() {
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
     }
-    if (current !== generated) {
+    if (current.replace(/\r\n/g, "\n") !== generated) {
       console.error(
         "generated API documentation is stale; run pnpm docs:generate",
       );

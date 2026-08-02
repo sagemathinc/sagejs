@@ -470,7 +470,13 @@ export class SageSession extends EventEmitter {
     // runInThisContext({ breakOnSigint: true }) turns SIGINT into an
     // exception in the worker currently evaluating Python. If the worker is
     // still compiling, it observes the shared request before entering the VM.
-    if (Atomics.load(state, 1) !== 0) {
+    // Windows cannot deliver a POSIX SIGINT to one worker thread. Calling
+    // process.kill(process.pid, "SIGINT") there terminates the process group,
+    // including an embedding application or the Node test runner. Cooperative
+    // loops and waits have already observed the shared request above; send the
+    // VM signal only on POSIX, then use worker replacement as the portable
+    // fallback for an uncooperative evaluation.
+    if (process.platform !== "win32" && Atomics.load(state, 1) !== 0) {
       process.kill(process.pid, "SIGINT");
     }
     if (await waitForSettlement(225)) return;

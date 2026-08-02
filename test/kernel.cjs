@@ -21,8 +21,9 @@ const {
   renderDocumentationMarkdown,
 } = require("../dist/tools/documentation.js");
 
-async function main() {
+async function main(t) {
   const session = await createSage();
+  t.after(() => session.close());
   const streamed = [];
   session.on("stdout", (text) => streamed.push(text));
 
@@ -62,7 +63,7 @@ async function main() {
     readFileSync(
       join(__dirname, "..", "docs", "reference", "api.md"),
       "utf8",
-    ),
+    ).replace(/\r\n/g, "\n"),
     renderDocumentationMarkdown(documentation),
     "generated API documentation is stale; run pnpm docs:generate",
   );
@@ -217,7 +218,14 @@ imported_method = ImportedMethod()
   const interrupted = session.evaluate("while True:\n    pass");
   setTimeout(() => void session.interrupt(), 50);
   await assert.rejects(interrupted, SageSessionInterruptedError);
-  assert.equal((await session.evaluate("value")).repr, "12");
+  if (process.platform === "win32") {
+    // Windows has no thread-directed POSIX SIGINT. An uncooperative loop is
+    // interrupted by replacing its worker, so state from that worker is lost.
+    await assert.rejects(session.evaluate("value"), /value is not defined/);
+    await session.evaluate("value = 12");
+  } else {
+    assert.equal((await session.evaluate("value")).repr, "12");
+  }
   assert.equal((await session.evaluate("2^10")).repr, "1024");
 
   await assert.rejects(
@@ -256,6 +264,7 @@ imported_method = ImportedMethod()
   await assert.rejects(session.evaluate("1 + 1"), SageSessionClosedError);
 
   const python = await createSage({ mode: "python" });
+  t.after(() => python.close());
   assert.equal((await python.evaluate("2^3")).repr, "1");
   assert.equal((await python.evaluate("2**3")).repr, "8");
   await python.evaluate("def pooled_constant():\n    return 2\n");
