@@ -199,6 +199,88 @@ async function main() {
       2,
     );
 
+    const polygonMesh = await session.evaluate(
+      "polygon3d([(0,0,0),(1,0,0),(0,1,0)], " +
+        "color='red', opacity=.5)",
+    );
+    assert.equal(polygonMesh.display?.data.data[0].type, "mesh3d");
+    assert.deepEqual(polygonMesh.display?.data.data[0].i, [0]);
+    assert.deepEqual(polygonMesh.display?.data.data[0].j, [1]);
+    assert.deepEqual(polygonMesh.display?.data.data[0].k, [2]);
+    assert.equal(polygonMesh.display?.data.data[0].color, "red");
+    assert.equal(polygonMesh.display?.data.data[0].opacity, 0.5);
+    assert.equal(
+      (await session.evaluate(
+        "polygon3d([(0,0,0),(1,0,0),(0,1,0)])[0]",
+      )).repr,
+      "3D mesh with 3 vertices and 1 faces",
+    );
+
+    const label3d = await session.evaluate(
+      "text3d('Sage', (1,2,3), color='green', fontsize=20)",
+    );
+    assert.equal(label3d.display?.data.data[0].mode, "text");
+    assert.deepEqual(label3d.display?.data.data[0].text, ["Sage"]);
+    assert.equal(label3d.display?.data.data[0].textfont.color, "green");
+    assert.equal(label3d.display?.data.data[0].textfont.size, 20);
+
+    const directed = await session.evaluate(
+      "arrow3d((0,0,0),(1,2,3),color='orange',head_len=.3)",
+    );
+    assert.deepEqual(
+      directed.display?.data.data.map((trace) => trace.type),
+      ["scatter3d", "cone"],
+    );
+    assert.equal(directed.display?.data.data[1].anchor, "tip");
+    assert.equal(directed.display?.data.data[1].sizeref, 0.3);
+    assert.equal(directed.display?.data.data[1].colorscale[0][1], "orange");
+    const arrowLine = await session.evaluate(
+      "line3d([(0,0,0),(1,0,0)],arrow_head=True,color='purple')",
+    );
+    assert.deepEqual(
+      arrowLine.display?.data.data.map((trace) => trace.type),
+      ["scatter3d", "cone"],
+    );
+
+    const coloredCube = await session.evaluate(
+      "cube((1,2,3),size=2,color=['red','green','blue'])",
+    );
+    assert.equal(coloredCube.display?.data.data[0].type, "mesh3d");
+    assert.equal(coloredCube.display?.data.data[0].facecolor.length, 12);
+    assert.equal(coloredCube.display?.data.data[0].facecolor[0], "red");
+    assert.equal(coloredCube.display?.data.data[0].facecolor[2], "green");
+    assert.equal(Math.min(...coloredCube.display?.data.data[0].x), 0);
+    assert.equal(Math.max(...coloredCube.display?.data.data[0].x), 2);
+    assert.deepEqual(
+      coloredCube.display?.data.layout.scene.aspectratio,
+      { x: 1, y: 1, z: 1 },
+    );
+
+    assert.equal(
+      (await session.evaluate(
+        "[len(tetrahedron()[0].faces),len(cube()[0].faces)," +
+          "len(octahedron()[0].faces),len(dodecahedron()[0].faces)," +
+          "len(icosahedron()[0].faces)]",
+      )).repr,
+      "[4, 6, 8, 12, 20]",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "[len(tetrahedron()[0].vertices),len(cube()[0].vertices)," +
+          "len(octahedron()[0].vertices),len(dodecahedron()[0].vertices)," +
+          "len(icosahedron()[0].vertices)]",
+      )).repr,
+      "[4, 8, 6, 20, 12]",
+    );
+    assert.equal(
+      (await session.evaluate("len(frame3d((0,0,0),(1,1,1)))")).repr,
+      "12",
+    );
+    assert.match(
+      (await session.evaluate("dodecahedron.__doc__")).repr,
+      /regular dodecahedron/,
+    );
+
     await assert.rejects(
       session.evaluate(
         "plot3d(lambda u,v: u+v, (-1,1), (-1,1), adaptive=True)",

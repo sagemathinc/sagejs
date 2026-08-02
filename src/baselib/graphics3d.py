@@ -427,6 +427,168 @@ class Point3d(GraphicPrimitive3d):
         return [trace]
 
 
+class Mesh3d(GraphicPrimitive3d):
+    """An indexed collection of polygonal faces in three-space."""
+
+    def __init__(
+        self,
+        vertices: Sequence[tuple[float, float, float]],
+        faces: Sequence[Sequence[int]],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive3d.__init__(self, options)
+        self.vertices = list(vertices)
+        self.faces = [list(face) for face in faces]
+
+    def __repr__(self) -> str:
+        return (
+            '3D mesh with ' + str(len(self.vertices)) + ' vertices and ' +
+            str(len(self.faces)) + ' faces'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_traces(self) -> list[Any]:
+        xdata = [point[0] for point in self.vertices]
+        ydata = [point[1] for point in self.vertices]
+        zdata = [point[2] for point in self.vertices]
+        triangles_i = []
+        triangles_j = []
+        triangles_k = []
+        face_indices = []
+        for face_index in range(len(self.faces)):
+            face = self.faces[face_index]
+            if len(face) < 3:
+                continue
+            for index in range(1, len(face) - 1):
+                triangles_i.append(int(face[0]))
+                triangles_j.append(int(face[index]))
+                triangles_k.append(int(face[index + 1]))
+                face_indices.append(face_index)
+        options = self._options
+        color = _g3d_option_get(
+            options, 'color',
+            _g3d_option_get(options, 'rgbcolor', [0, 0, 1]))
+        trace = _g3d_native_record(
+            type='mesh3d',
+            x=xdata,
+            y=ydata,
+            z=zdata,
+            i=triangles_i,
+            j=triangles_j,
+            k=triangles_k,
+            flatshading=bool(
+                _g3d_option_get(options, 'threejs_flat_shading', True)),
+            opacity=float(_g3d_option_get(options, 'opacity', 1)),
+            showlegend=_g3d_option_get(options, 'legend_label') is not None,
+        )
+        is_face_colors = (
+            isinstance(color, (list, tuple))
+            and len(color) > 0
+            and isinstance(color[0], (str, list, tuple))
+        )
+        if is_face_colors:
+            colors = list(color)
+            runtime.reflect.set(
+                trace,
+                'facecolor',
+                [
+                    _g3d_color_value(colors[index % len(colors)])
+                    for index in face_indices
+                ],
+            )
+        else:
+            runtime.reflect.set(trace, 'color', _g3d_color_value(color))
+        legend_label = _g3d_option_get(options, 'legend_label')
+        if legend_label is not None:
+            runtime.reflect.set(trace, 'name', str(legend_label))
+        return [trace]
+
+
+class Text3d(GraphicPrimitive3d):
+    """A text label positioned in three-dimensional coordinates."""
+
+    def __init__(
+        self,
+        string: str,
+        position: tuple[float, float, float],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive3d.__init__(self, options)
+        self.string = str(string)
+        self.position = position
+
+    def __repr__(self) -> str:
+        return '3D text "' + self.string + '"'
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_traces(self) -> list[Any]:
+        options = self._options
+        color = _g3d_option_get(options, 'color', [0, 0, 1])
+        return [_g3d_native_record(
+            type='scatter3d',
+            mode='text',
+            x=[self.position[0]],
+            y=[self.position[1]],
+            z=[self.position[2]],
+            text=[self.string],
+            textfont=_g3d_native_record(
+                color=_g3d_color_value(color),
+                size=float(_g3d_option_get(options, 'fontsize', 14)),
+            ),
+            opacity=float(_g3d_option_get(options, 'opacity', 1)),
+            showlegend=False,
+        )]
+
+
+class Arrowhead3d(GraphicPrimitive3d):
+    """A Plotly cone used as the head of a three-dimensional arrow."""
+
+    def __init__(
+        self,
+        start: tuple[float, float, float],
+        end: tuple[float, float, float],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive3d.__init__(self, options)
+        self.start = start
+        self.end = end
+
+    def _plotly_traces(self) -> list[Any]:
+        dx = self.end[0] - self.start[0]
+        dy = self.end[1] - self.start[1]
+        dz = self.end[2] - self.start[2]
+        length = runtime.math.sqrt(dx * dx + dy * dy + dz * dz)
+        if length <= 0:
+            return []
+        options = self._options
+        color = _g3d_option_get(
+            options, 'color',
+            _g3d_option_get(options, 'rgbcolor', [0, 0, 1]))
+        head_length = _g3d_option_get(options, 'head_len')
+        if head_length is None:
+            head_length = 0.25 * length
+        return [_g3d_native_record(
+            type='cone',
+            x=[self.end[0]],
+            y=[self.end[1]],
+            z=[self.end[2]],
+            u=[dx / length],
+            v=[dy / length],
+            w=[dz / length],
+            anchor='tip',
+            sizemode='absolute',
+            sizeref=float(head_length),
+            colorscale=_g3d_colorscale(color),
+            showscale=False,
+            opacity=float(_g3d_option_get(options, 'opacity', 1)),
+            showlegend=False,
+        )]
+
+
 class Surface3d(GraphicPrimitive3d):
     """A rectangular sampled parametric surface."""
 
@@ -753,6 +915,7 @@ def line3d(points: Any, **options: Any) -> Graphics3d:
     """Return a line through three-dimensional ``points``."""
     options = _g3d_copy_options(options)
     normalized = _g3d_normalize_points(points)
+    arrow_head = bool(_g3d_option_pop(options, 'arrow_head', False))
     defaults = {
         'opacity': 1,
         'rgbcolor': [0, 0, 1],
@@ -779,6 +942,9 @@ def line3d(points: Any, **options: Any) -> Graphics3d:
         [value[2] for value in normalized],
         defaults,
     ))
+    if arrow_head and len(normalized) >= 2:
+        graphic.add_primitive(Arrowhead3d(
+            normalized[-2], normalized[-1], defaults))
     return graphic
 
 
@@ -814,6 +980,370 @@ def point3d(points: Any, **options: Any) -> Graphics3d:
         defaults,
     ))
     return graphic
+
+
+def _g3d_mesh(
+    faces: Any,
+    points: Any,
+    **options: Any,
+) -> Graphics3d:
+    normalized = [_g3d_point(point_value) for point_value in points]
+    normalized_faces = [
+        [int(index) for index in face] for face in faces
+    ]
+    if len(normalized) == 0:
+        raise ValueError('a 3D mesh requires at least one vertex')
+    for face in normalized_faces:
+        if len(face) < 3:
+            raise ValueError('each 3D mesh face needs at least three vertices')
+        for index in face:
+            if index < 0 or index >= len(normalized):
+                raise IndexError('3D mesh face index is out of range')
+    options = _g3d_copy_options(options)
+    defaults = {
+        'color': [0, 0, 1],
+        'opacity': 1,
+        'legend_label': None,
+        'threejs_flat_shading': True,
+    }
+    if (
+        _g3d_option_has(options, 'alpha')
+        and not _g3d_option_has(options, 'opacity')
+    ):
+        options['opacity'] = _g3d_option_pop(options, 'alpha')
+    if (
+        _g3d_option_has(options, 'rgbcolor')
+        and not _g3d_option_has(options, 'color')
+    ):
+        options['color'] = _g3d_option_pop(options, 'rgbcolor')
+    _g3d_option_update(defaults, options)
+    graphics_options = _g3d_graphics_options(defaults)
+    graphic = Graphics3d()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(Mesh3d(
+        normalized, normalized_faces, defaults))
+    return graphic
+
+
+def polygon3d(points: Any, **options: Any) -> Graphics3d:
+    """Draw a single polygon with vertices in three-dimensional space."""
+    normalized = list(points)
+    return _g3d_mesh(
+        [list(range(len(normalized)))], normalized, **options)
+
+
+def polygons3d(
+    faces: Any,
+    points: Any,
+    **options: Any,
+) -> Graphics3d:
+    """Draw an indexed union of polygons in three-dimensional space."""
+    return _g3d_mesh(faces, points, **options)
+
+
+def text3d(
+    string: Any,
+    position: Any,
+    **options: Any,
+) -> Graphics3d:
+    """Display text at a point in three-dimensional space."""
+    defaults = {
+        'color': [0, 0, 1],
+        'opacity': 1,
+        'fontsize': 14,
+    }
+    options = _g3d_copy_options(options)
+    if (
+        _g3d_option_has(options, 'alpha')
+        and not _g3d_option_has(options, 'opacity')
+    ):
+        options['opacity'] = _g3d_option_pop(options, 'alpha')
+    if (
+        _g3d_option_has(options, 'rgbcolor')
+        and not _g3d_option_has(options, 'color')
+    ):
+        options['color'] = _g3d_option_pop(options, 'rgbcolor')
+    _g3d_option_update(defaults, options)
+    graphics_options = _g3d_graphics_options(defaults)
+    graphic = Graphics3d()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(
+        Text3d(str(string), _g3d_point(position), defaults))
+    return graphic
+
+
+def arrow3d(
+    start: Any,
+    end: Any,
+    width: Any = 1,
+    radius: Any = None,
+    head_radius: Any = None,
+    head_len: Any = None,
+    **options: Any,
+) -> Graphics3d:
+    """Draw an arrow from ``start`` to ``end`` in three dimensions."""
+    start_point = _g3d_point(start)
+    end_point = _g3d_point(end)
+    if start_point == end_point:
+        raise ValueError('an arrow must have distinct start and end points')
+    options = _g3d_copy_options(options)
+    if not _g3d_option_has(options, 'thickness'):
+        options['thickness'] = float(width)
+    if radius is not None:
+        options['radius'] = float(radius)
+    if head_radius is not None:
+        options['head_radius'] = float(head_radius)
+    if head_len is not None:
+        options['head_len'] = float(head_len)
+    graphic = line3d([start_point, end_point], **options)
+    head_options = _g3d_copy_options(options)
+    if (
+        _g3d_option_has(head_options, 'rgbcolor')
+        and not _g3d_option_has(head_options, 'color')
+    ):
+        head_options['color'] = _g3d_option_get(head_options, 'rgbcolor')
+    graphic.add_primitive(
+        Arrowhead3d(start_point, end_point, head_options))
+    return graphic
+
+
+def frame3d(
+    lower_left: Any,
+    upper_right: Any,
+    **options: Any,
+) -> Graphics3d:
+    """Draw the twelve edges of an axis-aligned three-dimensional frame."""
+    lower = _g3d_point(lower_left)
+    upper = _g3d_point(upper_right)
+    vertices = []
+    for xvalue in (lower[0], upper[0]):
+        for yvalue in (lower[1], upper[1]):
+            for zvalue in (lower[2], upper[2]):
+                vertices.append(runtime.math_tuple(
+                    [xvalue, yvalue, zvalue]))
+    edges = [
+        [0, 1], [0, 2], [0, 4],
+        [1, 3], [1, 5], [2, 3],
+        [2, 6], [3, 7], [4, 5],
+        [4, 6], [5, 7], [6, 7],
+    ]
+    answer = Graphics3d()
+    for edge in edges:
+        answer = answer + line3d(
+            [vertices[edge[0]], vertices[edge[1]]], **options)
+    return answer
+
+
+def _solid_mesh(
+    vertices: Any,
+    faces: Any,
+    center: Any,
+    size: Any,
+    **options: Any,
+) -> Graphics3d:
+    center_point = _g3d_point(center)
+    scale = float(size)
+    if scale <= 0:
+        raise ValueError('solid size must be positive')
+    transformed = [
+        runtime.math_tuple([
+            center_point[0] + scale * float(vertex[0]),
+            center_point[1] + scale * float(vertex[1]),
+            center_point[2] + scale * float(vertex[2]),
+        ])
+        for vertex in vertices
+    ]
+    if not _g3d_option_has(options, 'aspect_ratio'):
+        options['aspect_ratio'] = [1, 1, 1]
+    return _g3d_mesh(faces, transformed, **options)
+
+
+def tetrahedron(
+    center: Any = _SPHERE_DEFAULT_CENTER,
+    size: Any = 1,
+    **options: Any,
+) -> Graphics3d:
+    """Return a regular tetrahedron centered at ``center``."""
+    square_root_two = runtime.math.sqrt(2.0)
+    square_root_six = runtime.math.sqrt(6.0)
+    vertices = [
+        [0, 0, 1],
+        [2 * square_root_two / 3, 0, -1 / 3],
+        [-square_root_two / 3, square_root_six / 3, -1 / 3],
+        [-square_root_two / 3, -square_root_six / 3, -1 / 3],
+    ]
+    faces = [[0, 1, 2], [1, 3, 2], [0, 2, 3], [0, 3, 1]]
+    return _solid_mesh(vertices, faces, center, size, **options)
+
+
+def cube(
+    center: Any = _SPHERE_DEFAULT_CENTER,
+    size: Any = 1,
+    color: Any = None,
+    frame_thickness: Any = 0,
+    frame_color: Any = None,
+    **options: Any,
+) -> Graphics3d:
+    """Return a cube centered at ``center`` with side length ``size``."""
+    vertices = [
+        [-0.5, -0.5, -0.5], [-0.5, -0.5, 0.5],
+        [-0.5, 0.5, -0.5], [-0.5, 0.5, 0.5],
+        [0.5, -0.5, -0.5], [0.5, -0.5, 0.5],
+        [0.5, 0.5, -0.5], [0.5, 0.5, 0.5],
+    ]
+    faces = [
+        [0, 1, 3, 2], [4, 6, 7, 5],
+        [0, 4, 5, 1], [2, 3, 7, 6],
+        [0, 2, 6, 4], [1, 5, 7, 3],
+    ]
+    if color is not None:
+        options['color'] = color
+    answer = _solid_mesh(vertices, faces, center, size, **options)
+    if float(frame_thickness) > 0:
+        coordinates = _g3d_point(center)
+        half = float(size) / 2.0
+        actual_frame_color = 'black'
+        if frame_color is not None:
+            actual_frame_color = frame_color
+        frame_lower = runtime.math_tuple([
+            coordinates[0] - half,
+            coordinates[1] - half,
+            coordinates[2] - half,
+        ])
+        frame_upper = runtime.math_tuple([
+            coordinates[0] + half,
+            coordinates[1] + half,
+            coordinates[2] + half,
+        ])
+        answer = answer + frame3d(
+            frame_lower,
+            frame_upper,
+            thickness=float(frame_thickness),
+            color=actual_frame_color,
+        )
+    return answer
+
+
+def octahedron(
+    center: Any = _SPHERE_DEFAULT_CENTER,
+    size: Any = 1,
+    **options: Any,
+) -> Graphics3d:
+    """Return a regular octahedron centered at ``center``."""
+    vertices = [
+        [1, 0, 0], [-1, 0, 0],
+        [0, 1, 0], [0, -1, 0],
+        [0, 0, 1], [0, 0, -1],
+    ]
+    faces = [
+        [0, 2, 4], [2, 1, 4], [1, 3, 4], [3, 0, 4],
+        [2, 0, 5], [1, 2, 5], [3, 1, 5], [0, 3, 5],
+    ]
+    return _solid_mesh(vertices, faces, center, size, **options)
+
+
+def _icosahedron_geometry() -> Any:
+    golden_ratio = (1.0 + runtime.math.sqrt(5.0)) / 2.0
+    normalization = runtime.math.sqrt(1.0 + golden_ratio * golden_ratio)
+    raw_vertices = [
+        [-1, golden_ratio, 0], [1, golden_ratio, 0],
+        [-1, -golden_ratio, 0], [1, -golden_ratio, 0],
+        [0, -1, golden_ratio], [0, 1, golden_ratio],
+        [0, -1, -golden_ratio], [0, 1, -golden_ratio],
+        [golden_ratio, 0, -1], [golden_ratio, 0, 1],
+        [-golden_ratio, 0, -1], [-golden_ratio, 0, 1],
+    ]
+    vertices = [
+        [
+            vertex[0] / normalization,
+            vertex[1] / normalization,
+            vertex[2] / normalization,
+        ]
+        for vertex in raw_vertices
+    ]
+    faces = [
+        [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11],
+        [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+        [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9],
+        [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+    ]
+    return [vertices, faces]
+
+
+def icosahedron(
+    center: Any = _SPHERE_DEFAULT_CENTER,
+    size: Any = 1,
+    **options: Any,
+) -> Graphics3d:
+    """Return a regular icosahedron centered at ``center``."""
+    geometry = _icosahedron_geometry()
+    return _solid_mesh(
+        geometry[0], geometry[1], center, size, **options)
+
+
+def _cross_product(left: Any, right: Any) -> list[float]:
+    return [
+        left[1] * right[2] - left[2] * right[1],
+        left[2] * right[0] - left[0] * right[2],
+        left[0] * right[1] - left[1] * right[0],
+    ]
+
+
+def _dot_product(left: Any, right: Any) -> float:
+    return (
+        left[0] * right[0] + left[1] * right[1] +
+        left[2] * right[2]
+    )
+
+
+def dodecahedron(
+    center: Any = _SPHERE_DEFAULT_CENTER,
+    size: Any = 1,
+    **options: Any,
+) -> Graphics3d:
+    """Return a regular dodecahedron centered at ``center``."""
+    geometry = _icosahedron_geometry()
+    ico_vertices = geometry[0]
+    ico_faces = geometry[1]
+    vertices = []
+    for face in ico_faces:
+        centroid = [
+            sum(ico_vertices[index][coordinate] for index in face) / 3.0
+            for coordinate in range(3)
+        ]
+        length = runtime.math.sqrt(_dot_product(centroid, centroid))
+        vertices.append([
+            centroid[0] / length,
+            centroid[1] / length,
+            centroid[2] / length,
+        ])
+    faces = []
+    for vertex_index in range(len(ico_vertices)):
+        adjacent = [
+            face_index
+            for face_index in range(len(ico_faces))
+            if vertex_index in ico_faces[face_index]
+        ]
+        normal = ico_vertices[vertex_index]
+        reference = [1, 0, 0] if abs(normal[0]) < 0.9 else [0, 1, 0]
+        tangent = _cross_product(normal, reference)
+        tangent_length = runtime.math.sqrt(_dot_product(tangent, tangent))
+        tangent = [value / tangent_length for value in tangent]
+        second_tangent = _cross_product(normal, tangent)
+
+        def face_angle(
+            face_index: int,
+            first_direction: Any = tangent,
+            second_direction: Any = second_tangent,
+        ) -> float:
+            point_value = vertices[face_index]
+            return runtime.math.atan2(
+                _dot_product(point_value, second_direction),
+                _dot_product(point_value, first_direction),
+            )
+
+        faces.append(sorted(adjacent, key=face_angle))
+    return _solid_mesh(vertices, faces, center, size, **options)
 
 
 def _g3d_surface(
@@ -1221,6 +1751,16 @@ def _graphics3d_doc(tags: list[str], notes: str) -> Any:
 for _doc_name, _doc_function, _doc_tags in [
     ('line3d', line3d, ['lines']),
     ('point3d', point3d, ['points']),
+    ('polygon3d', polygon3d, ['polygons', 'meshes']),
+    ('polygons3d', polygons3d, ['polygons', 'meshes']),
+    ('text3d', text3d, ['text']),
+    ('arrow3d', arrow3d, ['arrows']),
+    ('frame3d', frame3d, ['frames']),
+    ('tetrahedron', tetrahedron, ['shapes', 'platonic solids']),
+    ('cube', cube, ['shapes', 'platonic solids']),
+    ('octahedron', octahedron, ['shapes', 'platonic solids']),
+    ('dodecahedron', dodecahedron, ['shapes', 'platonic solids']),
+    ('icosahedron', icosahedron, ['shapes', 'platonic solids']),
     ('plot3d', plot3d, ['surfaces']),
     ('parametric_plot3d', parametric_plot3d, ['parametric plots']),
     ('sphere', sphere, ['shapes']),

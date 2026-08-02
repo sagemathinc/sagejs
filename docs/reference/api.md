@@ -121,6 +121,28 @@ Return a directed line segment from `tailpoint` to `headpoint`.
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `arrow3d`
+
+```sage
+arrow3d(start, end, width=1, radius=None, head_radius=None, head_len=None, **options)
+```
+
+Draw an arrow from `start` to `end` in three dimensions.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, arrows
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `bar_chart`
 
 ```sage
@@ -228,6 +250,28 @@ Plot a sampled scalar function as a filled contour grid.
 ### References
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `cube`
+
+```sage
+cube(center=[0, 0, 0], size=1, color=None, frame_thickness=0, frame_color=None, **options)
+```
+
+Return a cube centered at `center` with side length `size`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, shapes
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
 ## `Curve`
 
@@ -469,6 +513,28 @@ Return a filled or outlined circular/elliptical sector.
 ### References
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `dodecahedron`
+
+```sage
+dodecahedron(center=[0, 0, 0], size=1, **options)
+```
+
+Return a regular dodecahedron centered at `center`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, shapes
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
 ## `EisensteinForms`
 
@@ -740,6 +806,28 @@ Compile a symbolic expression to a hot JavaScript numeric function.
 
 - [Cortex Compute Engine](https://cortexjs.io/compute-engine/).
 
+## `frame3d`
+
+```sage
+frame3d(lower_left, upper_right, **options)
+```
+
+Draw the twelve edges of an axis-aligned three-dimensional frame.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, frames
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `GF`
 
 ```sage
@@ -866,6 +954,28 @@ Graphics object consisting of 1 graphics primitive
 ### References
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `icosahedron`
+
+```sage
+icosahedron(center=[0, 0, 0], size=1, **options)
+```
+
+Return a regular icosahedron centered at `center`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, shapes
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
 ## `implicit_plot`
 
@@ -1777,6 +1887,28 @@ Construct the exact simple field `QQ[a]/(polynomial)`.
 - `sage-derived` — [SageMath number field API](https://doc.sagemath.org/html/en/reference/number_fields/); license GPL-2.0-or-later
 - `library-backed` — [FLINT polynomial arithmetic](https://flintlib.org/doc/)
 
+## `octahedron`
+
+```sage
+octahedron(center=[0, 0, 0], size=1, **options)
+```
+
+Return a regular octahedron centered at `center`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, shapes
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `P1List`
 
 ```sage
@@ -2357,6 +2489,50 @@ Return a filled polygon through `points`.
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `polygon3d`
+
+```sage
+polygon3d(points, **options)
+```
+
+Draw a single polygon with vertices in three-dimensional space.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, polygons
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
+## `polygons3d`
+
+```sage
+polygons3d(faces, points, **options)
+```
+
+Draw an indexed union of polygons in three-dimensional space.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, polygons
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `PolynomialRing`
 
 ```sage
@@ -2863,6 +3039,28 @@ sage: sudoku(A)[0]
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `tetrahedron`
+
+```sage
+tetrahedron(center=[0, 0, 0], size=1, **options)
+```
+
+Return a regular tetrahedron centered at `center`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, shapes
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `text`
 
 ```sage
@@ -2888,6 +3086,28 @@ Return a graphics object containing a positioned text label.
 ### References
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `text3d`
+
+```sage
+text3d(string, position, **options)
+```
+
+Display text at a point in three-dimensional space.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, text
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
 
 ## `var`
 
