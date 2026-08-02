@@ -122,6 +122,7 @@ export class NodeHostAdapter {
               devnull: process.platform === "win32" ? "nul" : "/dev/null",
               curdir: ".",
               pardir: "..",
+              tempdir: nodeOs.tmpdir(),
             },
           };
         case "uname":
@@ -215,6 +216,37 @@ export class NodeHostAdapter {
           return { ok: true, value: null };
         case "readlink":
           return { ok: true, value: fs.readlinkSync(this.resolve(args[0])) };
+        case "symlink":
+          fs.symlinkSync(
+            String(args[0]),
+            this.resolve(args[1]),
+            args[2] === undefined ? undefined : String(args[2]) as fs.symlink.Type,
+          );
+          return { ok: true, value: null };
+        case "link":
+          fs.linkSync(this.resolve(args[0]), this.resolve(args[1]));
+          return { ok: true, value: null };
+        case "chmod":
+          fs.chmodSync(this.resolve(args[0]), Number(args[1]));
+          return { ok: true, value: null };
+        case "utime":
+          fs.utimesSync(
+            this.resolve(args[0]), Number(args[1]), Number(args[2]));
+          return { ok: true, value: null };
+        case "statfs": {
+          const value = fs.statfsSync(this.resolve(args[0] ?? "."), {
+            bigint: true,
+          });
+          return {
+            ok: true,
+            value: {
+              blocks: value.blocks,
+              bfree: value.bfree,
+              bavail: value.bavail,
+              bsize: value.bsize,
+            },
+          };
+        }
         case "realpath":
           return { ok: true, value: fs.realpathSync(this.resolve(args[0])) };
         case "access":
@@ -223,6 +255,18 @@ export class NodeHostAdapter {
             Number(args[1] ?? fs.constants.F_OK),
           );
           return { ok: true, value: true };
+        case "openFd":
+          return {
+            ok: true,
+            value: fs.openSync(
+              this.resolve(args[0]),
+              String(args[1] ?? "r"),
+              args[2] === undefined ? 0o666 : Number(args[2]),
+            ),
+          };
+        case "closeFd":
+          fs.closeSync(Number(args[0]));
+          return { ok: true, value: null };
         case "readFile": {
           const filename = this.resolve(args[0]);
           if (Boolean(args[1])) {

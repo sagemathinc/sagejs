@@ -72,6 +72,23 @@ The current zlib streaming objects buffer input until `flush(Z_FINISH)`;
 incremental low-latency streaming and parameterized/keyed BLAKE2 are explicit
 future extensions rather than silently approximate implementations.
 
+## High-level filesystem modules
+
+`pathlib` provides host `Path` objects plus portable `PurePath`,
+`PurePosixPath`, and `PureWindowsPath` semantics. Concrete paths cover common
+metadata queries, text and binary convenience I/O, directory iteration,
+recursive globbing and walking, creation and removal, links, renaming,
+resolution, and path transformations.
+
+The `fnmatch` and `glob` modules support character classes, hidden-file rules,
+`root_dir`, and recursive `**`. `tempfile` provides secure `mkstemp` and
+`mkdtemp`, named and ordinary temporary files, spooled-file compatibility,
+and automatically cleaned temporary directories. `shutil` includes streaming
+and metadata-preserving copies, recursive copy/removal, moves, executable
+lookup, ignore patterns, and disk usage. Their pure path components remain
+browser-safe; concrete host operations use the same evaluator-local current
+directory as `os` and `open`.
+
 ## Conformance strategy
 
 The semantic source is CPython. The path corpus and tests are derived from

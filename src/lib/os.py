@@ -78,6 +78,7 @@ if _description is None:
     devnull = '/dev/null'
     curdir = '.'
     pardir = '..'
+    tempdir = '/tmp'
 else:
     name = _property(_description, 'name')
     sep = _property(_description, 'sep')
@@ -87,6 +88,7 @@ else:
     devnull = _property(_description, 'devnull')
     curdir = _property(_description, 'curdir')
     pardir = _property(_description, 'pardir')
+    tempdir = _property(_description, 'tempdir')
 
 extsep = '.'
 
@@ -302,6 +304,39 @@ def readlink(pathname, *, dir_fd=None):
     return _host_call('readlink', fspath(pathname))
 
 
+def symlink(src, dst, target_is_directory=False, *, dir_fd=None):
+    if dir_fd is not None:
+        raise NotImplementedError('dir_fd is not supported')
+    kind = 'dir' if target_is_directory else 'file'
+    _host_call('symlink', fspath(src), fspath(dst), kind)
+
+
+def link(src, dst, *, src_dir_fd=None, dst_dir_fd=None, follow_symlinks=True):
+    if src_dir_fd is not None or dst_dir_fd is not None or not follow_symlinks:
+        raise NotImplementedError('extended hard-link options are not supported')
+    _host_call('link', fspath(src), fspath(dst))
+
+
+def chmod(pathname, mode, *, dir_fd=None, follow_symlinks=True):
+    if dir_fd is not None or not follow_symlinks:
+        raise NotImplementedError('extended chmod options are not supported')
+    _host_call('chmod', fspath(pathname), mode)
+
+
+def utime(pathname, times=None, *, ns=None, dir_fd=None, follow_symlinks=True):
+    if dir_fd is not None or not follow_symlinks:
+        raise NotImplementedError('extended utime options are not supported')
+    if times is not None and ns is not None:
+        raise ValueError('utime: you may specify either times or ns but not both')
+    if ns is not None:
+        times = (ns[0] / 1000000000, ns[1] / 1000000000)
+    if times is None:
+        import time
+        current = time.time()
+        times = (current, current)
+    _host_call('utime', fspath(pathname), times[0], times[1])
+
+
 def _realpath(pathname):
     return _host_call('realpath', fspath(pathname))
 
@@ -320,6 +355,10 @@ def access(pathname, mode, *, dir_fd=None, effective_ids=False, follow_symlinks=
         return True
     except OSError:
         return False
+
+
+def close(fd):
+    _host_call('closeFd', fd)
 
 
 def walk(top, topdown=True, onerror=None, followlinks=False):
@@ -457,3 +496,5 @@ if name == 'nt':
     path = ntpath
 else:
     path = posixpath
+
+defpath = path.defpath

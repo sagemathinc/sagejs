@@ -19,6 +19,7 @@ const integration = [
   "test/os-module.cjs",
   "test/file-io.cjs",
   "test/stdlib-data.cjs",
+  "test/stdlib-filesystem.cjs",
   "test/multiprocessing-module.cjs",
   "test/numpy-module.cjs",
   "test/kernel.cjs",

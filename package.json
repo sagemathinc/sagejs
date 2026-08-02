@@ -96,7 +96,7 @@
     "test:changed": "node scripts/parallel-development.cjs changed",
     "test:unit": "node scripts/run-test-tier.cjs unit",
     "test:integration": "node scripts/run-test-tier.cjs integration",
-    "test:stdlib": "pnpm run build && node test/os-module.cjs && node test/file-io.cjs && node test/stdlib-data.cjs",
+    "test:stdlib": "pnpm run build && node test/os-module.cjs && node test/file-io.cjs && node test/stdlib-data.cjs && node test/stdlib-filesystem.cjs",
     "test:multiprocessing": "pnpm run build && node --test test/multiprocessing-module.cjs",
     "test:cli": "node scripts/run-test-tier.cjs all",
     "test:jupyter": "pnpm run build && python3 scripts/test-jupyter-kernel.py",

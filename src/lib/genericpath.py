@@ -63,6 +63,13 @@ def isdir(path):
         return False
 
 
+def islink(path):
+    try:
+        return _property(_host_call('lstat', path), 'isSymbolicLink')
+    except OSError:
+        return False
+
+
 def getsize(filename):
     return _property(_host_call('stat', filename), 'size')
 

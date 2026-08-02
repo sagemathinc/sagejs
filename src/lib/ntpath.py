@@ -22,6 +22,7 @@ exists = genericpath.exists
 lexists = genericpath.lexists
 isfile = genericpath.isfile
 isdir = genericpath.isdir
+islink = genericpath.islink
 getsize = genericpath.getsize
 getmtime = genericpath.getmtime
 getatime = genericpath.getatime
