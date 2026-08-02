@@ -3491,7 +3491,14 @@ def complex_plot(
             raise ValueError(
                 'complex_plot function must have at most one variable')
     cdf_function = runtime.reflect.get(runtime.global_object, 'CDF')
-    if hasattr(function_value, '_tree'):
+    coordinate_evaluator = None
+
+    def missing_evaluator(_value: Any) -> Any:
+        raise RuntimeError('complex plot evaluator was not initialized')
+    evaluator = missing_evaluator
+    if hasattr(function_value, '_plot_complex_callable'):
+        coordinate_evaluator = function_value._plot_complex_callable(variables)
+    elif hasattr(function_value, '_tree'):
         expression_tree = function_value._tree
         variable_name = '' if len(variables) == 0 else str(variables[0])
 
@@ -3511,12 +3518,15 @@ def complex_plot(
         row = []
         for xvalue in xvalues:
             try:
-                argument = runtime.reflect.apply(
-                    cdf_function,
-                    runtime.undefined,
-                    [xvalue, yvalue],
-                )
-                row.append(evaluator(argument))
+                if coordinate_evaluator is not None:
+                    row.append(coordinate_evaluator(xvalue, yvalue))
+                else:
+                    argument = runtime.reflect.apply(
+                        cdf_function,
+                        runtime.undefined,
+                        [xvalue, yvalue],
+                    )
+                    row.append(evaluator(argument))
             except Exception:
                 row.append(None)
         sampled.append(row)

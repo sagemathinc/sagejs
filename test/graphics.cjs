@@ -421,6 +421,16 @@ async function main() {
       "complex_plot(sin(z),(-1,1),(-1,1),plot_points=3)",
     );
     assert.deepEqual(symbolicSine.display?.data.data[0].z[1][1], [0, 0, 0]);
+    const complexCompilationStarted = performance.now();
+    const largeSymbolicComplex = await session.evaluate(
+      "q=var('q'); f=sum((n*n+1)*q^n for n in range(100)); " +
+        "complex_plot(f,(-3,3),(-3,3),plot_points=50)",
+    );
+    assert.ok(
+      performance.now() - complexCompilationStarted < 5000,
+      "degree-99 symbolic complex plot should use compiled machine arithmetic",
+    );
+    assert.equal(largeSymbolicComplex.display?.data.data[0].z.length, 50);
     assert.equal(
       (await session.evaluate(
         "complex_to_rgb([[0,1]],contoured=True)[0][0] == [1,0,0] " +

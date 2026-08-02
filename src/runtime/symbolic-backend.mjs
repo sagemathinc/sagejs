@@ -34,6 +34,164 @@ function checkedCompilation(expression, variables) {
   return result;
 }
 
+function complexAdd(left, right) {
+  return [left[0] + right[0], left[1] + right[1]];
+}
+
+function complexSubtract(left, right) {
+  return [left[0] - right[0], left[1] - right[1]];
+}
+
+function complexMultiply(left, right) {
+  return [
+    left[0] * right[0] - left[1] * right[1],
+    left[0] * right[1] + left[1] * right[0],
+  ];
+}
+
+function complexDivide(left, right) {
+  const denominator = right[0] * right[0] + right[1] * right[1];
+  return [
+    (left[0] * right[0] + left[1] * right[1]) / denominator,
+    (left[1] * right[0] - left[0] * right[1]) / denominator,
+  ];
+}
+
+function complexPowerInteger(value, exponent) {
+  let power = Math.trunc(Number(exponent));
+  if (power === 0) return [1, 0];
+  let base = value;
+  let result = [1, 0];
+  const negative = power < 0;
+  if (negative) power = -power;
+  while (power > 0) {
+    if (power % 2 === 1) result = complexMultiply(result, base);
+    power = Math.floor(power / 2);
+    if (power > 0) base = complexMultiply(base, base);
+  }
+  return negative ? complexDivide([1, 0], result) : result;
+}
+
+function complexExp(value) {
+  const scale = Math.exp(value[0]);
+  return [scale * Math.cos(value[1]), scale * Math.sin(value[1])];
+}
+
+function complexLog(value) {
+  return [Math.log(Math.hypot(value[0], value[1])), Math.atan2(value[1], value[0])];
+}
+
+function complexPower(left, right) {
+  return complexExp(complexMultiply(right, complexLog(left)));
+}
+
+function complexSqrt(value) {
+  const magnitude = Math.hypot(value[0], value[1]);
+  const real = Math.sqrt(Math.max(0, (magnitude + value[0]) / 2));
+  let imaginary = Math.sqrt(Math.max(0, (magnitude - value[0]) / 2));
+  if (value[1] < 0) imaginary = -imaginary;
+  return [real, imaginary];
+}
+
+function complexSin(value) {
+  return [
+    Math.sin(value[0]) * Math.cosh(value[1]),
+    Math.cos(value[0]) * Math.sinh(value[1]),
+  ];
+}
+
+function complexCos(value) {
+  return [
+    Math.cos(value[0]) * Math.cosh(value[1]),
+    -Math.sin(value[0]) * Math.sinh(value[1]),
+  ];
+}
+
+function compileComplexNode(tree, variableIndices) {
+  if (typeof tree === "number" || typeof tree === "bigint") {
+    const value = Number(tree);
+    return () => [value, 0];
+  }
+  if (typeof tree === "string") {
+    if (variableIndices.has(tree)) {
+      const index = variableIndices.get(tree);
+      return (variables) => variables[index];
+    }
+    if (tree === "Pi") return () => [Math.PI, 0];
+    if (tree === "ExponentialE") return () => [Math.E, 0];
+    if (tree === "ImaginaryUnit") return () => [0, 1];
+    throw new TypeError(`unknown symbolic variable ${tree}`);
+  }
+  if (!Array.isArray(tree) || tree.length === 0) {
+    throw new TypeError("invalid symbolic expression tree");
+  }
+  const [head, ...operandTrees] = tree;
+  if (head === "Rational" && tree.length === 3) {
+    const value = Number(tree[1]) / Number(tree[2]);
+    return () => [value, 0];
+  }
+  const operands = operandTrees.map((operand) =>
+    compileComplexNode(operand, variableIndices));
+  if (head === "Add") {
+    return (variables) => {
+      let result = [0, 0];
+      for (const operand of operands) result = complexAdd(result, operand(variables));
+      return result;
+    };
+  }
+  if (head === "Multiply") {
+    return (variables) => {
+      let result = [1, 0];
+      for (const operand of operands) result = complexMultiply(result, operand(variables));
+      return result;
+    };
+  }
+  if (head === "Negate") return (variables) => {
+    const value = operands[0](variables);
+    return [-value[0], -value[1]];
+  };
+  if (head === "Subtract") return (variables) =>
+    complexSubtract(operands[0](variables), operands[1](variables));
+  if (head === "Divide") return (variables) =>
+    complexDivide(operands[0](variables), operands[1](variables));
+  if (head === "Power") {
+    const exponent = operandTrees[1];
+    if (typeof exponent === "number" || typeof exponent === "bigint") {
+      return (variables) =>
+        complexPowerInteger(operands[0](variables), exponent);
+    }
+    return (variables) =>
+      complexPower(operands[0](variables), operands[1](variables));
+  }
+  if (head === "Exp") return (variables) => complexExp(operands[0](variables));
+  if (head === "Ln" || head === "Log") {
+    return (variables) => complexLog(operands[0](variables));
+  }
+  if (head === "Sqrt") return (variables) => complexSqrt(operands[0](variables));
+  if (head === "Sin") return (variables) => complexSin(operands[0](variables));
+  if (head === "Cos") return (variables) => complexCos(operands[0](variables));
+  if (head === "Tan") return (variables) =>
+    complexDivide(complexSin(operands[0](variables)), complexCos(operands[0](variables)));
+  if (head === "Abs") return (variables) => {
+    const value = operands[0](variables);
+    return [Math.hypot(value[0], value[1]), 0];
+  };
+  throw new TypeError(`complex compilation does not support ${head}`);
+}
+
+function compileComplexExpression(expression, variables) {
+  const indices = new Map(variables.map((name, index) => [String(name), index]));
+  const evaluate = compileComplexNode(expression, indices);
+  return (...coordinates) => {
+    const values = [];
+    for (let index = 0; index < variables.length; index += 1) {
+      values.push([Number(coordinates[2 * index]), Number(coordinates[2 * index + 1])]);
+    }
+    const result = evaluate(values);
+    return Object.freeze({ real: result[0], imag: result[1] });
+  };
+}
+
 function machineText(value, digits) {
   if (!Number.isFinite(value)) return String(value);
   let text = value.toPrecision(digits);
@@ -158,6 +316,10 @@ export function createSymbolicBackend() {
         "_SYS",
         `"use strict"; return (${result.code});`,
       )(result.run.SYS);
+    },
+
+    compileComplex(expression, variables) {
+      return compileComplexExpression(expression, variables);
     },
   });
 }

@@ -896,6 +896,15 @@ class Expression(sage.Element):
             variables = [variable]
         return fast_callable(self, vars=variables)
 
+    def _plot_complex_callable(self, variable: Any) -> Any:
+        """Compile to a machine-complex function accepting `(real, imag)`."""
+        if isinstance(variable, (list, tuple)):
+            variables = list(variable)
+        else:
+            variables = [variable]
+        names = [_symbol_name(value) for value in variables]
+        return _call_backend('compileComplex', [self._tree, names])
+
     def _plot_zero_set_expression(self) -> Expression:
         """Normalize a relation to the scalar function defining its zero set."""
         if (
