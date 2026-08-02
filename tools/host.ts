@@ -10,6 +10,7 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as nodeOs from "node:os";
 import * as path from "node:path";
+import * as zlib from "node:zlib";
 
 import type { SageLanguageMode } from "./kernel-evaluator";
 import { NodeMultiprocessingAdapter } from "./multiprocessing-host";
@@ -249,6 +250,56 @@ export class NodeHostAdapter {
             flag: exclusive ? "wx" : "w",
           });
           return { ok: true, value: null };
+        }
+        case "compressData": {
+          const format = String(args[0]);
+          const data = Buffer.from(args[1] as number[]);
+          const level = Number(args[2] ?? -1);
+          const options = level < 0 ? undefined : { level };
+          let compressed: Buffer;
+          if (format === "gzip") compressed = zlib.gzipSync(data, options);
+          else if (format === "deflate") {
+            compressed = zlib.deflateSync(data, options);
+          } else if (format === "deflateRaw") {
+            compressed = zlib.deflateRawSync(data, options);
+          } else if (format === "brotli") {
+            compressed = zlib.brotliCompressSync(data);
+          } else {
+            throw new Error(`unsupported compression format: ${format}`);
+          }
+          return { ok: true, value: Array.from(compressed) };
+        }
+        case "decompressData": {
+          const format = String(args[0]);
+          const data = Buffer.from(args[1] as number[]);
+          let decompressed: Buffer;
+          if (format === "gzip") decompressed = zlib.gunzipSync(data);
+          else if (format === "deflate") {
+            decompressed = zlib.inflateSync(data);
+          } else if (format === "deflateRaw") {
+            decompressed = zlib.inflateRawSync(data);
+          } else if (format === "brotli") {
+            decompressed = zlib.brotliDecompressSync(data);
+          } else {
+            throw new Error(`unsupported compression format: ${format}`);
+          }
+          return { ok: true, value: Array.from(decompressed) };
+        }
+        case "hashData": {
+          const requested = String(args[0]).replaceAll("_", "-");
+          const algorithm = requested === "blake2b"
+            ? "blake2b512"
+            : requested === "blake2s"
+              ? "blake2s256"
+              : requested;
+          const data = Buffer.from(args[1] as number[]);
+          const length = args[2] === undefined ? undefined : Number(args[2]);
+          const hash = length === undefined
+            ? crypto.createHash(algorithm)
+            : crypto.createHash(algorithm, { outputLength: length });
+          hash.update(data);
+          const digest = hash.digest();
+          return { ok: true, value: Array.from(digest) };
         }
         case "environmentEntries":
           return { ok: true, value: Object.entries(this.environment) };

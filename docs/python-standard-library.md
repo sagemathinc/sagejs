@@ -53,11 +53,31 @@ data files; streaming multi-gigabyte datasets and custom codecs remain future
 work. Browser and WebAssembly embeddings without a filesystem capability can
 still compile code using `open`, but calling it raises `NotImplementedError`.
 
+## Data, encoding, hashing, and compression
+
+The portable library includes exact-integer `json` encoding and decoding,
+including hooks, custom numeric parsers, encoder defaults, indentation, and
+file-object `load`/`dump`; `csv` readers, writers, dictionary adapters, and
+dialects; and Base16, Base32, Base64, and URL-safe encodings.
+
+Node hosts additionally provide `zlib`, `gzip`, and `hashlib` through explicit
+compression and cryptographic capabilities. Gzip files support binary and
+text context-manager I/O. Hash objects support incremental updates, copies,
+binary and hexadecimal digests, SHA-2, SHA-3, SHAKE, BLAKE2, MD5, and SHA-1.
+The pure checksums `zlib.crc32` and `zlib.adler32` remain portable. Embeddings
+without the relevant host capability raise `NotImplementedError` only when a
+host-backed operation is called.
+
+The current zlib streaming objects buffer input until `flush(Z_FINISH)`;
+incremental low-latency streaming and parameterized/keyed BLAKE2 are explicit
+future extensions rather than silently approximate implementations.
+
 ## Conformance strategy
 
 The semantic source is CPython. The path corpus and tests are derived from
-CPython's `Lib/genericpath.py`, `Lib/posixpath.py`, `Lib/ntpath.py`, and their
-tests at revision `7b4165b3b07638d8aeab79a880c52f2b51c56f37` (Python
+CPython's library sources and focused tests, initially covering path handling,
+file I/O, JSON, CSV, Base64, zlib/gzip, and hashlib, at revision
+`7b4165b3b07638d8aeab79a880c52f2b51c56f37` (Python
 3.15 development, PSF-2.0). Focused Sage.js tests run on Linux, macOS, and
 native Windows CI:
 
