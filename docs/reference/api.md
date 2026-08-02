@@ -260,6 +260,80 @@ Return a circle centered at `center` with the given radius.
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `complex_plot`
+
+```sage
+complex_plot(function_value, x_range, y_range, contoured=False, tiled=False, cmap=None, contour_type='logarithmic', contour_base=None, dark_rate=0.5, nphases=10, **options)
+```
+
+Plot a complex function using Sage's domain-coloring convention.
+
+Function argument is represented by hue and magnitude by lightness.
+`contoured=True` adds magnitude contours; `tiled=True` also adds evenly
+spaced phase contours.
+
+### Examples
+
+```sage
+sage: complex_plot(lambda z: z^5 + z - 1 + 1/z,
+....:              (-3, 3), (-3, 3))
+Graphics object consisting of 1 graphics primitive
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `complex_to_rgb`
+
+```sage
+complex_to_rgb(z_values, contoured=False, tiled=False, contour_type='logarithmic', contour_base=None, dark_rate=0.5, nphases=10)
+```
+
+Convert a rectangular grid of complex values to Sage domain colors.
+
+Argument determines hue. Magnitude determines lightness, either smoothly
+or through optional logarithmic/linear contours and phase tiles.
+
+### Examples
+
+```sage
+sage: complex_to_rgb([[0, 1, 10]])[0]
+[[0.0, 0.0, 0.0], [0.771725..., 0.0, 0.0], ...]
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
 ## `contour_plot`
 
 ```sage

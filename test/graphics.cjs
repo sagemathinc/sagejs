@@ -318,6 +318,65 @@ async function main() {
       "DensityPlot defined by a 2 x 2 data grid",
     );
 
+    const complexColors = await session.evaluate(
+      "complex_to_rgb([[0,1,1000,1j]])",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "abs(complex_to_rgb([[0,1,1000]])[0][1][0] - " +
+          "0.7717256838378089) < 1e-14",
+      )).repr,
+      "True",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "abs(complex_to_rgb([[0,1,1000]])[0][2][1] - " +
+          "0.6442117699635515) < 1e-14",
+      )).repr,
+      "True",
+    );
+    assert.match(complexColors.repr, /0\.3858628419189044/);
+
+    const complexDomain = await session.evaluate(
+      "complex_plot(lambda z:z,(-1,1),(-1,1)," +
+        "plot_points=3,interpolation='nearest')",
+    );
+    const complexTrace = complexDomain.display?.data.data[0];
+    assert.equal(complexTrace.type, "image");
+    assert.equal(complexTrace.colormodel, "rgb");
+    assert.equal(complexTrace.x0, -1);
+    assert.equal(complexTrace.y0, 1);
+    assert.equal(complexTrace.dx, 1);
+    assert.equal(complexTrace.dy, -1);
+    assert.equal(complexTrace.zsmooth, false);
+    assert.deepEqual(complexTrace.z[1][1], [0, 0, 0]);
+    assert.deepEqual(complexTrace.z[1][2], [197, 0, 0]);
+    assert.equal(complexDomain.display?.data.layout.xaxis.range[0], -1);
+    assert.equal(complexDomain.display?.data.layout.yaxis.scaleanchor, "x");
+    assert.equal(
+      (await session.evaluate(
+        "complex_plot(lambda z:z,(-1,1),(-1,1),plot_points=3)[0]",
+      )).repr,
+      "ComplexPlot defined by a 3 x 3 data grid",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "complex_to_rgb([[0,1]],contoured=True)[0][0] == [1,0,0] " +
+          "and complex_to_rgb([[0,1]],tiled=True)[0][0] == [1,0,0]",
+      )).repr,
+      "True",
+    );
+    await assert.rejects(
+      session.evaluate(
+        "complex_to_rgb([[1]],contour_type='geometric')",
+      ),
+      /contour_type must be linear or logarithmic/,
+    );
+    await assert.rejects(
+      session.evaluate("complex_to_rgb([[1]],contour_base=0)"),
+      /contour_base must be positive/,
+    );
+
     const contour = await session.evaluate(
       "contour_plot(x^2+y^2, (x,-1,1), (y,-1,1), " +
         "plot_points=3, contours=[0,1], fill=False, color='red')",

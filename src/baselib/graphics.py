@@ -776,6 +776,77 @@ class Density(GraphicPrimitive):
         return trace
 
 
+class ComplexPlot(GraphicPrimitive):
+    """A domain-colored rectangular grid of complex function values."""
+
+    def __init__(
+        self,
+        rgb_data: Sequence[Sequence[Sequence[float]]],
+        x_range: tuple[float, float],
+        y_range: tuple[float, float],
+        options: dict[str, Any],
+    ) -> None:
+        GraphicPrimitive.__init__(self, options)
+        self.rgb_data = [
+            [list(pixel) for pixel in row] for row in rgb_data]
+        self.x_range = x_range
+        self.y_range = y_range
+        self.ydata = [y_range[0], y_range[1]]
+        self.xdata = [x_range[0], x_range[1]]
+
+    def __repr__(self) -> str:
+        rows = len(self.rgb_data)
+        columns = 0 if rows == 0 else len(self.rgb_data[0])
+        return (
+            'ComplexPlot defined by a ' + str(columns) + ' x ' +
+            str(rows) + ' data grid'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+    def _plotly_trace(self) -> Any:
+        rows = len(self.rgb_data)
+        columns = 0 if rows == 0 else len(self.rgb_data[0])
+        xstep = (
+            1.0 if columns < 2 else
+            (self.x_range[1] - self.x_range[0]) / (columns - 1)
+        )
+        ystep = (
+            1.0 if rows < 2 else
+            (self.y_range[1] - self.y_range[0]) / (rows - 1)
+        )
+        pixels = [
+            [
+                [
+                    int(runtime.math.round(
+                        max(0.0, min(1.0, component)) * 255.0))
+                    for component in pixel
+                ]
+                for pixel in row
+            ]
+            for row in reversed(self.rgb_data)
+        ]
+        interpolation = str(_option_get(
+            self._options, 'interpolation', 'catrom')).lower()
+        return _native_record(
+            type='image',
+            z=pixels,
+            colormodel='rgb',
+            x0=self.x_range[0],
+            y0=self.y_range[1],
+            dx=xstep,
+            dy=-ystep,
+            zsmooth=(
+                False
+                if interpolation in ('none', 'nearest')
+                else 'best'
+            ),
+            opacity=float(_option_get(self._options, 'alpha', 1)),
+            hoverinfo='skip',
+        )
+
+
 class PlotField(GraphicPrimitive):
     """A sampled two-dimensional vector field."""
 
@@ -2306,6 +2377,198 @@ def _finite_value(value: Any) -> float:
     return numeric
 
 
+def _complex_numeric_parts(value: Any) -> tuple[float, float]:
+    if runtime.jstype(value) == 'number':
+        return (float(value), 0.0)
+    real_value = runtime.reflect.get(value, 'real')
+    imaginary_value = runtime.reflect.get(value, 'imag')
+    if runtime.jstype(real_value) == 'function':
+        real_value = runtime.reflect.apply(real_value, value, [])
+    if runtime.jstype(imaginary_value) == 'function':
+        imaginary_value = runtime.reflect.apply(
+            imaginary_value, value, [])
+    real_part = float(real_value)
+    imaginary_part = float(imaginary_value)
+    if (
+        not runtime.number.isFinite(real_part)
+        or not runtime.number.isFinite(imaginary_part)
+    ):
+        raise ValueError('complex plot function returned a non-finite value')
+    return (real_part, imaginary_part)
+
+
+def _complex_lightness(
+    magnitude: float,
+    argument: float,
+    contoured: bool,
+    tiled: bool,
+    contour_type: str,
+    contour_base: float,
+    dark_rate: float,
+    nphases: int,
+) -> float:
+    if tiled:
+        if magnitude < 1e-10:
+            return 0.0
+        magnitude_remainder = (
+            runtime.math.log(magnitude) /
+            runtime.math.log(contour_base)
+        ) % 1.0
+        argument_remainder = (
+            nphases * argument / (2.0 * runtime.math.PI)
+        ) % 1.0
+        if magnitude_remainder < 0:
+            magnitude_remainder += 1.0
+        if argument_remainder < 0:
+            argument_remainder += 1.0
+        return (
+            0.15 - magnitude_remainder / 4.0 -
+            argument_remainder / 4.0
+        )
+    if contoured:
+        if contour_type == 'logarithmic':
+            if magnitude < 1e-10:
+                return 0.0
+            remainder = (
+                runtime.math.log(magnitude) /
+                runtime.math.log(contour_base)
+            ) % 1.0
+        else:
+            remainder = (magnitude / contour_base) % 1.0
+        if remainder < 0:
+            remainder += 1.0
+        return 0.15 - remainder / 2.0
+    return (
+        runtime.math.atan(
+            runtime.math.log(
+                runtime.math.pow(magnitude, dark_rate) + 1.0)) *
+        (4.0 / runtime.math.PI) - 1.0
+    )
+
+
+def _complex_hue_rgb(
+    argument: float,
+    lightness: float,
+) -> list[float]:
+    if lightness < 0:
+        bottom = 0.0
+        top = 1.0 + lightness
+    else:
+        bottom = lightness
+        top = 1.0
+    hue_value = 3.0 * argument / runtime.math.PI
+    if hue_value < 0:
+        hue_value += 6.0
+    hue_index = int(hue_value)
+    if hue_index == 0:
+        return [
+            top,
+            bottom + hue_value * (top - bottom),
+            bottom,
+        ]
+    if hue_index == 1:
+        return [
+            bottom + (2.0 - hue_value) * (top - bottom),
+            top,
+            bottom,
+        ]
+    if hue_index == 2:
+        return [
+            bottom,
+            top,
+            bottom + (hue_value - 2.0) * (top - bottom),
+        ]
+    if hue_index == 3:
+        return [
+            bottom,
+            bottom + (4.0 - hue_value) * (top - bottom),
+            top,
+        ]
+    if hue_index == 4:
+        return [
+            bottom + (hue_value - 4.0) * (top - bottom),
+            bottom,
+            top,
+        ]
+    return [
+        top,
+        bottom,
+        bottom + (6.0 - hue_value) * (top - bottom),
+    ]
+
+
+def complex_to_rgb(
+    z_values: Any,
+    contoured: bool = False,
+    tiled: bool = False,
+    contour_type: str = 'logarithmic',
+    contour_base: Any = None,
+    dark_rate: float = 0.5,
+    nphases: int = 10,
+) -> list[list[list[float]]]:
+    r"""
+    Convert a rectangular grid of complex values to Sage domain colors.
+
+    Argument determines hue. Magnitude determines lightness, either smoothly
+    or through optional logarithmic/linear contours and phase tiles.
+
+    ### Examples
+
+    ```sage
+    sage: complex_to_rgb([[0, 1, 10]])[0]
+    [[0.0, 0.0, 0.0], [0.771725..., 0.0, 0.0], ...]
+    ```
+    """
+    contour_type = str(contour_type).lower()
+    if contour_type not in ('linear', 'logarithmic'):
+        raise ValueError(
+            'contour_type must be linear or logarithmic')
+    if contour_base is None:
+        contour_base_value = (
+            10.0 if contour_type == 'linear' else 2.0)
+    else:
+        contour_base_value = float(contour_base)
+    if contour_base_value <= 0:
+        raise ValueError('contour_base must be positive')
+    dark_rate_value = float(dark_rate)
+    if dark_rate_value <= 0:
+        raise ValueError('dark_rate must be positive')
+    phase_count = int(nphases)
+    if phase_count <= 0:
+        raise ValueError('nphases must be positive')
+
+    rows = [list(row) for row in z_values]
+    if len(rows) == 0:
+        return []
+    column_count = len(rows[0])
+    answer = []
+    for row in rows:
+        if len(row) != column_count:
+            raise ValueError('complex value grid must be rectangular')
+        output_row = []
+        for value in row:
+            try:
+                parts = _complex_numeric_parts(value)
+                magnitude = runtime.math.hypot(parts[0], parts[1])
+                argument = runtime.math.atan2(parts[1], parts[0])
+                lightness = _complex_lightness(
+                    magnitude,
+                    argument,
+                    bool(contoured),
+                    bool(tiled),
+                    contour_type,
+                    contour_base_value,
+                    dark_rate_value,
+                    phase_count,
+                )
+                output_row.append(
+                    _complex_hue_rgb(argument, lightness))
+            except Exception:
+                output_row.append([1.0, 1.0, 1.0])
+        answer.append(output_row)
+    return answer
+
+
 def _plot_callable_2d(
     function_value: Any,
     xvariable: Any,
@@ -2895,6 +3158,110 @@ def density_plot(
     return graphic
 
 
+def complex_plot(
+    function_value: Any,
+    x_range: Any,
+    y_range: Any,
+    contoured: bool = False,
+    tiled: bool = False,
+    cmap: Any = None,
+    contour_type: str = 'logarithmic',
+    contour_base: Any = None,
+    dark_rate: float = 0.5,
+    nphases: int = 10,
+    **options: Any,
+) -> Graphics:
+    r"""
+    Plot a complex function using Sage's domain-coloring convention.
+
+    Function argument is represented by hue and magnitude by lightness.
+    `contoured=True` adds magnitude contours; `tiled=True` also adds evenly
+    spaced phase contours.
+
+    ### Examples
+
+    ```sage
+    sage: complex_plot(lambda z: z^5 + z - 1 + 1/z,
+    ....:              (-3, 3), (-3, 3))
+    Graphics object consisting of 1 graphics primitive
+    ```
+    """
+    if cmap is not None:
+        raise NotImplementedError(
+            'named complex_plot colormaps are not implemented yet')
+    xmin, xmax = _plot_range(x_range)
+    ymin, ymax = _plot_range(y_range)
+    plot_points = _option_pop(options, 'plot_points', 100)
+    counts = _grid_counts_2d(plot_points, 100)
+    xstep = (xmax - xmin) / float(counts[0] - 1)
+    ystep = (ymax - ymin) / float(counts[1] - 1)
+    xvalues = [
+        xmax if index == counts[0] - 1 else xmin + index * xstep
+        for index in range(counts[0])
+    ]
+    yvalues = [
+        ymax if index == counts[1] - 1 else ymin + index * ystep
+        for index in range(counts[1])
+    ]
+
+    variables = []
+    if hasattr(function_value, 'variables'):
+        variables = list(function_value.variables())
+        if len(variables) > 1:
+            raise ValueError(
+                'complex_plot function must have at most one variable')
+    if hasattr(function_value, '_plot_fast_callable'):
+        evaluator = function_value._plot_fast_callable(variables)
+    elif callable(function_value):
+        evaluator = function_value
+    else:
+        def evaluator(_value: Any) -> Any:
+            return function_value
+
+    cdf_function = runtime.reflect.get(runtime.global_object, 'CDF')
+    sampled = []
+    for yvalue in yvalues:
+        row = []
+        for xvalue in xvalues:
+            try:
+                argument = runtime.reflect.apply(
+                    cdf_function,
+                    runtime.undefined,
+                    [xvalue, yvalue],
+                )
+                row.append(evaluator(argument))
+            except Exception:
+                row.append(None)
+        sampled.append(row)
+    rgb_data = complex_to_rgb(
+        sampled,
+        contoured=contoured,
+        tiled=tiled,
+        contour_type=contour_type,
+        contour_base=contour_base,
+        dark_rate=dark_rate,
+        nphases=nphases,
+    )
+
+    options = _copy_options(options)
+    defaults = {
+        'interpolation': 'catrom',
+        'alpha': 1,
+        'aspect_ratio': 1,
+    }
+    _option_update(defaults, options)
+    graphics_options = _graphics_options(defaults)
+    graphics_options['xmin'] = xmin
+    graphics_options['xmax'] = xmax
+    graphics_options['ymin'] = ymin
+    graphics_options['ymax'] = ymax
+    graphic = Graphics()
+    graphic.set_extra_kwds(graphics_options)
+    graphic.add_primitive(ComplexPlot(
+        rgb_data, (xmin, xmax), (ymin, ymax), defaults))
+    return graphic
+
+
 def implicit_plot(
     function_value: Any,
     xrange: Any,
@@ -3464,6 +3831,10 @@ for _doc_name, _doc_function, _doc_tags in [
     ('polar_plot', polar_plot, ['2D graphics', 'polar coordinates']),
     ('contour_plot', contour_plot, ['2D graphics', 'contours']),
     ('density_plot', density_plot, ['2D graphics', 'scalar fields']),
+    ('complex_plot', complex_plot,
+     ['2D graphics', 'complex analysis', 'domain coloring']),
+    ('complex_to_rgb', complex_to_rgb,
+     ['2D graphics', 'complex analysis', 'domain coloring']),
     ('implicit_plot', implicit_plot, ['2D graphics', 'implicit curves']),
     ('region_plot', region_plot, ['2D graphics', 'regions']),
     ('matrix_plot', matrix_plot, ['2D graphics', 'matrices']),
