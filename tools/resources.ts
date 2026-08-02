@@ -16,7 +16,9 @@ import { getAsset, getAssetKeys, isSea } from "node:sea";
 
 const VIRTUAL_ROOT = normalize("/__sagejs_sea__");
 const COMPILER_ASSET = "compiler/compiler.js";
+const COMPILER_CACHE_ASSET = "runtime-cache/compiler.bin";
 const BASELIB_ASSET = "compiler/baselib-plain-pretty.js";
+const RUNTIME_BOOTSTRAP_PREFIX = "runtime-cache/runtime-bootstrap-";
 const TASK_RUNTIME_ASSET = "compiler/task-runtime.js";
 const FLINT_ASSET = "native/sagejs_flint.node";
 const PLOTLY_ASSET = "vendor/plotly.min.js";
@@ -26,6 +28,13 @@ const VENDOR_ASSET_PREFIX = "vendor/";
 let flintModule: unknown;
 let nativeTemporaryDirectory: string | undefined;
 let multiprocessingWorkerFilename: string | undefined;
+let seaAssetKeys: Set<string> | undefined;
+
+function hasAsset(key: string): boolean {
+  if (!isSea()) return false;
+  seaAssetKeys ??= new Set(getAssetKeys());
+  return seaAssetKeys.has(key);
+}
 
 function assetText(key: string): string {
   return Buffer.from(getAsset(key)).toString("utf8");
@@ -66,7 +75,7 @@ export function standardLibraryCacheDirectory(fallback: string): string {
 export function readResourceText(filename: string): string {
   if (isSea()) {
     const key = assetKeyForVirtualPath(filename);
-    if (key && getAssetKeys().includes(key)) return assetText(key);
+    if (key && hasAsset(key)) return assetText(key);
   }
   return readFileSync(filename, "utf8");
 }
@@ -89,8 +98,43 @@ export function readCompilerSource(fallbackFilename: string): string {
   return isSea() ? assetText(COMPILER_ASSET) : readResourceText(fallbackFilename);
 }
 
+export function readCompilerCachedData(
+  fallbackFilename: string,
+): Uint8Array | undefined {
+  if (isSea()) {
+    return hasAsset(COMPILER_CACHE_ASSET)
+      ? assetBytes(COMPILER_CACHE_ASSET)
+      : undefined;
+  }
+  return existsSync(fallbackFilename)
+    ? new Uint8Array(readFileSync(fallbackFilename))
+    : undefined;
+}
+
 export function readBaselibSource(fallbackFilename: string): string {
   return isSea() ? assetText(BASELIB_ASSET) : readResourceText(fallbackFilename);
+}
+
+export function readRuntimeBootstrapSource(
+  mode: "sage" | "python",
+  fallbackFilename: string,
+): string | undefined {
+  const key = `${RUNTIME_BOOTSTRAP_PREFIX}${mode}.js`;
+  if (isSea()) return hasAsset(key) ? assetText(key) : undefined;
+  return existsSync(fallbackFilename)
+    ? readFileSync(fallbackFilename, "utf8")
+    : undefined;
+}
+
+export function readRuntimeBootstrapCachedData(
+  mode: "sage" | "python",
+  fallbackFilename: string,
+): Uint8Array | undefined {
+  const key = `${RUNTIME_BOOTSTRAP_PREFIX}${mode}.bin`;
+  if (isSea()) return hasAsset(key) ? assetBytes(key) : undefined;
+  return existsSync(fallbackFilename)
+    ? new Uint8Array(readFileSync(fallbackFilename))
+    : undefined;
 }
 
 export function readTaskRuntimeSource(fallbackFilename: string): string {
@@ -105,7 +149,7 @@ export function readPlotlySource(fallbackFilename: string): string {
 
 export function multiprocessingWorkerPath(fallbackFilename: string): string {
   if (!isSea()) return fallbackFilename;
-  if (!getAssetKeys().includes(MULTIPROCESSING_WORKER_ASSET)) {
+  if (!hasAsset(MULTIPROCESSING_WORKER_ASSET)) {
     throw new Error("multiprocessing worker is missing from this executable");
   }
   if (multiprocessingWorkerFilename) return multiprocessingWorkerFilename;
@@ -126,7 +170,7 @@ export function multiprocessingWorkerPath(fallbackFilename: string): string {
 
 function loadEmbeddedFlint(): unknown {
   if (flintModule !== undefined) return flintModule;
-  if (!getAssetKeys().includes(FLINT_ASSET)) {
+  if (!hasAsset(FLINT_ASSET)) {
     throw new Error(
       "This Sage.js executable was built without the optional FLINT mathematics backend",
     );

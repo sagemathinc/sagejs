@@ -10,9 +10,14 @@
 
 import { join, relative } from "path";
 import { writeFileSync as writefile } from "fs";
-import { createContext, runInContext } from "vm";
+import { createContext, Script } from "vm";
 import { sha1sum } from "./utils";
-import { readCompilerSource, readResourceText, runtimeRequire } from "./resources";
+import {
+  readCompilerCachedData,
+  readCompilerSource,
+  readResourceText,
+  runtimeRequire,
+} from "./resources";
 
 export type Compiler = any; // for now
 
@@ -35,6 +40,14 @@ export default function createCompiler(options: Options = {}): Compiler {
   let compiler_dir = join(base, "dist/compiler");
   const compiler_file = join(compiler_dir, "compiler.js");
   const compilerjs = readCompilerSource(compiler_file);
-  runInContext(compilerjs, compiler_context, relative(base, compiler_file));
+  const filename = relative(base, compiler_file);
+  const cachedData = readCompilerCachedData(
+    join(base, "dist", "runtime-cache", "compiler.bin"),
+  );
+  const script = new Script(compilerjs, {
+    filename,
+    cachedData,
+  });
+  script.runInContext(compiler_context);
   return compiler_exports;
 }

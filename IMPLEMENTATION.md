@@ -150,6 +150,13 @@ standard-library caches, while the REPL maintains the same cache format for
 user modules. This is the Sage.js counterpart of CPython bytecode caching:
 source remains authoritative, and generated JavaScript is disposable.
 
+Cold builds also generate V8 cached data for the self-hosted compiler and
+separate Sage/Python base-runtime initializers. The executable and development
+CLI run the cached initializer once, then compile only the user's program.
+V8 validates cached data against its own version and architecture; an npm
+install running another compatible Node release rejects the cache and safely
+compiles the bundled source instead.
+
 Measure three different things rather than blending them:
 
 1. cold process startup and first computation;

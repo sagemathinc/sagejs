@@ -12,7 +12,6 @@ import {
   getImportDirs,
   colored,
   importPath,
-  libraryPath,
   pathExists,
 } from "./utils";
 import Completer from "./completer";
@@ -21,10 +20,10 @@ import createCompiler from "./compiler";
 import { arch } from "os";
 import { expandSageLoads, parseLoadDirective } from "./sage-source";
 import {
-  readBaselibSource,
   runtimeRequire,
   standardLibraryCacheDirectory,
 } from "./resources";
+import { runRuntimeBootstrap } from "./runtime-bootstrap";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
 import { installNodeHost } from "./host";
 import {
@@ -171,9 +170,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   const foreignLanguage = selectedForeignLanguage(options);
   const sourceLanguage =
     foreignLanguage ?? (options.sage ? "sage" : "python");
-  const PyLang = createCompiler({
-    console: options.console,
-  });
+  const PyLang = createCompiler({ console: options.console });
   const foreignFrontendPromise = foreignLanguage
     ? createForeignFrontend(foreignLanguage)
     : undefined;
@@ -239,9 +236,9 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     );
   }
 
-  function printAST(ast, keepBaselib?: boolean) {
+  function printAST(ast) {
     const output = new PyLang.OutputStream({
-      omit_baselib: !keepBaselib,
+      omit_baselib: true,
       write_name: false,
       private_scope: false,
       beautify: true,
@@ -255,9 +252,6 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       numeric_literal_pool_prefix:
         `ρσ_repl_${numericLiteralPoolCounter++}_`,
       module_cache_dir: moduleCacheDir,
-      baselib_plain: keepBaselib
-        ? readBaselibSource(join(libraryPath, "baselib-plain-pretty.js"))
-        : undefined,
     });
     ast.print(output);
     return output.get();
@@ -268,13 +262,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     global.require = runtimeRequire;
     installNodeGraphicsSaveHook();
     installNodeHost(globalThis, options.sage ? "sage" : "python");
-    // @ts-ignore
-    global.__sagejs_sage_mode__ = !!options.sage;
-
-    // and get all the code and name.
-    runInThisContext(printAST(PyLang.parse("(def ():\n yield 1\n)"), true));
-    // @ts-ignore
-    delete global.__sagejs_sage_mode__;
+    runRuntimeBootstrap(PyLang, options.sage ? "sage" : "python");
     runInThisContext('var __name__ = "__repl__"; show_js=false;');
   }
 

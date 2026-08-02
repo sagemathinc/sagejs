@@ -3,11 +3,11 @@ import { runInThisContext } from "vm";
 
 import createCompiler from "./compiler";
 import {
-  readBaselibSource,
   runtimeRequire,
   standardLibraryCacheDirectory,
 } from "./resources";
-import { getImportDirs, importPath, libraryPath } from "./utils";
+import { getImportDirs, importPath } from "./utils";
+import { runRuntimeBootstrap } from "./runtime-bootstrap";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
 import { installNodeHost } from "./host";
 import {
@@ -108,7 +108,6 @@ export function createKernelEvaluator({
   const precompiledModuleCacheDir = standardLibraryCacheDirectory(
     join(__dirname, "..", "module-cache"),
   );
-  const defaultSage = mode === "sage";
   let toplevel;
   let finalStatementIsAssignment = false;
   let sourceEndsWithSemicolon = false;
@@ -146,11 +145,10 @@ export function createKernelEvaluator({
 
   function outputJavaScript(
     ast,
-    includeBaselib = false,
     language: SageLanguageMode = mode,
   ): string {
     const output = new compiler.OutputStream({
-      omit_baselib: !includeBaselib,
+      omit_baselib: true,
       write_name: false,
       private_scope: false,
       beautify: true,
@@ -163,12 +161,7 @@ export function createKernelEvaluator({
       pool_numeric_literals: true,
       numeric_literal_pool_prefix:
         `ρσ_kernel_${numericLiteralPoolCounter++}_`,
-      module_registry: includeBaselib
-        ? ""
-        : "__sagejs_kernel_modules__",
-      baselib_plain: includeBaselib
-        ? readBaselibSource(join(libraryPath, "baselib-plain-pretty.js"))
-        : undefined,
+      module_registry: "__sagejs_kernel_modules__",
     });
     ast.print(output);
     return output.get();
@@ -182,15 +175,8 @@ export function createKernelEvaluator({
     onOutput(String(text));
   };
   global.__sagejs_interrupt_state__ = interruptState;
-  global.__sagejs_sage_mode__ = defaultSage;
-
-  const initialization = compiler.parse("", {
-    filename: "<kernel-init>",
-    basedir: process.cwd(),
-  });
-  runInThisContext(outputJavaScript(initialization, true));
+  runRuntimeBootstrap(compiler, mode);
   global.__sagejs_kernel_modules__ = global.ρσ_modules;
-  delete global.__sagejs_sage_mode__;
   runInThisContext('var __name__ = "__embedded__"; show_js = false;');
 
   function compile(
@@ -209,7 +195,7 @@ export function createKernelEvaluator({
       finalStatement.body instanceof compiler.AST_Assign;
     sourceEndsWithSemicolon = source.trimEnd().endsWith(";");
     scopedFlagsByLanguage.set(language, { ...toplevel.scoped_flags });
-    const javascript = outputJavaScript(toplevel, false, language);
+    const javascript = outputJavaScript(toplevel, language);
 
     if (classes) {
       const exported = new Set(toplevel.exports);

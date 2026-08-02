@@ -863,6 +863,12 @@ pnpm bench:cold
 pnpm bench:arithmetic
 ```
 
+`pnpm build` generates architecture- and V8-specific caches for the compiler
+and Sage/Python base runtimes. They accelerate the first calculation but are
+never authoritative: Node rejects an incompatible cache and recompiles the
+bundled source. `pnpm bench:cold` reports bare Node startup, first Sage.js
+evaluation, first import, and native-library loading separately.
+
 The arithmetic benchmark runs identical source through Sage.js and an
 installed Sagelite. On the initial x86-64 development machine, repeated small
 rational operations and degree-64 polynomial additions were about five to six

@@ -165,6 +165,36 @@ function buildExecutable(name, withFlint) {
       "compiler",
       "task-runtime.js",
     ),
+    "runtime-cache/compiler.bin": join(
+      root,
+      "dist",
+      "runtime-cache",
+      "compiler.bin",
+    ),
+    "runtime-cache/runtime-bootstrap-sage.js": join(
+      root,
+      "dist",
+      "runtime-cache",
+      "runtime-bootstrap-sage.js",
+    ),
+    "runtime-cache/runtime-bootstrap-sage.bin": join(
+      root,
+      "dist",
+      "runtime-cache",
+      "runtime-bootstrap-sage.bin",
+    ),
+    "runtime-cache/runtime-bootstrap-python.js": join(
+      root,
+      "dist",
+      "runtime-cache",
+      "runtime-bootstrap-python.js",
+    ),
+    "runtime-cache/runtime-bootstrap-python.bin": join(
+      root,
+      "dist",
+      "runtime-cache",
+      "runtime-bootstrap-python.bin",
+    ),
     "worker/multiprocessing-worker.cjs": multiprocessingWorkerBundle,
     ...collectStandardLibraryAssets(),
     ...collectStandardLibraryCacheAssets(),
@@ -211,6 +241,8 @@ function buildExecutable(name, withFlint) {
         main: bundle,
         output,
         disableExperimentalSEAWarning: true,
+        // User snapshots currently add more deserialization time than the
+        // cached runtime saves, and cannot contain the compiler's vm.Context.
         useSnapshot: false,
         useCodeCache: true,
         assets,

@@ -24,8 +24,7 @@ import {
   selectedForeignLanguage,
 } from "./foreign";
 import { installNodeHost } from "./host";
-
-const PyLang = createCompiler();
+import { runRuntimeBootstrap } from "./runtime-bootstrap";
 
 // TODO
 type Parsed = any;
@@ -99,6 +98,7 @@ export default async function Compile({
   src_path: string;
   lib_path: string;
 }): Promise<void> {
+  const PyLang = createCompiler();
   const foreignLanguage = selectedForeignLanguage(argv);
   const foreignFrontend: ForeignFrontend | undefined = foreignLanguage
     ? await createForeignFrontend(foreignLanguage)
@@ -166,12 +166,6 @@ export default async function Compile({
       console.log(output);
     }
     if (argv.execute) {
-      // @ts-ignore
-      global.require = runtimeRequire;
-      const uninstallNodeHost = installNodeHost(
-        globalThis,
-        argv.sage ? "sage" : "python",
-      );
       try {
         runInThisContext(output);
       } catch (error) {
@@ -187,8 +181,6 @@ export default async function Compile({
         }
         console.error(String(code));
         process.exit(1);
-      } finally {
-        uninstallNodeHost();
       }
     }
   }
@@ -290,6 +282,16 @@ export default async function Compile({
       : baselib;
   }
 
+  // One-shot execution can initialize the base runtime from build-time V8
+  // cached data, then compile only the user's program.  Explicit JavaScript
+  // output remains standalone and therefore retains its embedded baselib.
+  const useCachedRuntime =
+    !!argv.execute && !argv.omit_baselib && !argv.output;
+  if (useCachedRuntime) {
+    outputOptions.omit_baselib = true;
+    delete outputOptions.baselib_plain;
+  }
+
   if (files.filter((el) => el == "-").length > 1) {
     console.error(
       "ERROR: Can only read a single file from STDIN (two or more dashes specified)"
@@ -297,12 +299,29 @@ export default async function Compile({
     process.exit(1);
   }
 
-  if (files.length > 0) {
-    for (const filename of files) {
-      await compileSingleFile(await readWholeFile(filename), filename);
+  let uninstallNodeHost: (() => void) | undefined;
+  if (argv.execute) {
+    // @ts-ignore
+    global.require = runtimeRequire;
+    uninstallNodeHost = installNodeHost(
+      globalThis,
+      argv.sage ? "sage" : "python",
+    );
+    if (useCachedRuntime) {
+      runRuntimeBootstrap(PyLang, argv.sage ? "sage" : "python");
     }
-  } else {
-    await compileSingleFile(await readWholeFile());
+  }
+
+  try {
+    if (files.length > 0) {
+      for (const filename of files) {
+        await compileSingleFile(await readWholeFile(filename), filename);
+      }
+    } else {
+      await compileSingleFile(await readWholeFile());
+    }
+  } finally {
+    uninstallNodeHost?.();
   }
 
   if (argv.stats) {
