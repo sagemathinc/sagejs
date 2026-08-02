@@ -49,7 +49,11 @@ try {
   writeFileSync(
     pythonProgram,
     [
-      "import time",
+      "import time, json, gzip, hashlib, subprocess",
+      "import socket, urllib.parse, urllib.request, http.client",
+      "import bisect, heapq, statistics",
+      "from collections import Counter",
+      "from functools import lru_cache",
       "from multiprocessing import Pool",
       "def square(n):",
       "    return n*n",
@@ -62,6 +66,12 @@ try {
       "with open('portable-data.txt', 'w') as output:",
       "    output.write('sea file io\\n')",
       "print(open('portable-data.txt').read().strip())",
+      "print(json.loads('{\"n\":12345678901234567890}')['n'])",
+      "print(gzip.decompress(gzip.compress(b'sea')), hashlib.sha256(b'sea').hexdigest()[:8])",
+      "print(urllib.parse.urljoin('https://example/a/', '../b'))",
+      "print(Counter('mississippi').most_common(2))",
+      "heap = [5, 1, 3]; heapq.heapify(heap); print([heapq.heappop(heap) for _ in range(3)])",
+      "print(statistics.mean([2, 4, 6]), bisect.bisect([1, 3, 5], 3))",
       "with Pool(2) as workers:",
       "    print(workers.map(square, [7, 8, 9]))",
       "",
@@ -69,7 +79,14 @@ try {
   );
   assert.equal(
     run(pythonExecutable, pythonProgram),
-    "55\n<class 'float'>\nTrue\nsea file io\n[49, 64, 81]",
+    "55\n<class 'float'>\nTrue\nsea file io\n" +
+      "12345678901234567890\n" +
+      "b'sea' 4a69f19c\n" +
+      "https://example/b\n" +
+      "[('i', 4), ('s', 4)]\n" +
+      "[1, 3, 5]\n" +
+      "4 2\n" +
+      "[49, 64, 81]",
   );
 
   const missingBackendProgram = join(

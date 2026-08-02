@@ -115,9 +115,20 @@ function seaBuilderExecutable() {
 function collectStandardLibraryAssets() {
   const directory = join(root, "src", "lib");
   const assets = {};
-  for (const filename of readdirSync(directory)) {
-    if (!filename.endsWith(".py")) continue;
-    assets[`lib/${filename}`] = join(directory, filename);
+  const visit = (current, prefix = "") => {
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const relativeName = prefix ? `${prefix}/${entry.name}` : entry.name;
+      const filename = join(current, entry.name);
+      if (entry.isDirectory()) {
+        visit(filename, relativeName);
+      } else if (entry.isFile() && entry.name.endsWith(".py")) {
+        assets[`lib/${relativeName}`] = filename;
+      }
+    }
+  };
+  visit(directory);
+  if (!("lib/urllib/parse.py" in assets)) {
+    throw new Error("recursive standard-library packaging omitted urllib.parse");
   }
   return assets;
 }

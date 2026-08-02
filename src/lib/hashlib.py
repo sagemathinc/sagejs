@@ -63,14 +63,14 @@ class _Hash:
             raise TypeError('digest() missing required argument: length')
         if not is_shake and length is not None:
             raise TypeError('digest() takes no arguments')
-        arguments = [
+        values = [
             'hashData',
             self.name,
             list(b''.join(self._parts)),
         ]
         if length is not None:
-            arguments.append(length)
-        return bytes(os._host_call(*arguments))
+            values.append(length)
+        return bytes(os._host_call(*values))
 
     def hexdigest(self, length=None):
         data = self.digest(length) if length is not None else self.digest()
