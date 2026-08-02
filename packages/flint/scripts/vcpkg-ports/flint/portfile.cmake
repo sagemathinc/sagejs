@@ -13,18 +13,13 @@ vcpkg_from_github(
 
 if(VCPKG_TARGET_IS_WINDOWS)
     vcpkg_find_acquire_program(PYTHON3)
-    # The overlay patch forces FLINT's FindCBLAS module instead of vcpkg's
-    # config-package preference. Bind its cache entries to this triplet's
-    # installed static OpenBLAS dependency.
+    # The overlay recognizes vcpkg's canonical CBLAS::CBLAS imported target,
+    # while the explicit manifest dependency guarantees it is installed first.
     vcpkg_cmake_configure(
         SOURCE_PATH "${SOURCE_PATH}"
         DISABLE_PARALLEL_CONFIGURE
         OPTIONS
             "-DPython_EXECUTABLE=${PYTHON3}"
-            -DVCPKG_LOCK_FIND_PACKAGE_CBLAS=OFF
-            "-DCBLAS_ROOT=${CURRENT_INSTALLED_DIR}"
-            "-DCBLAS_INCLUDE_DIR=${CURRENT_INSTALLED_DIR}/include"
-            "-DCBLAS_LIBRARY=${CURRENT_INSTALLED_DIR}/lib/openblas.lib"
             -DWITH_NTL=OFF
     )
     vcpkg_cmake_install()
