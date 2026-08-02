@@ -49,3 +49,13 @@ console.log(
   `${factorialElapsed.toFixed(2).padStart(10)} ms`,
   `(${factorial.toString().length} digits)`
 );
+
+console.log(`CBLAS acceleration`.padEnd(28), String(flint.blasEnabled()));
+for (const [dimension, iterations] of [[300, 5], [1000, 3]]) {
+  const matrix = flint.nmodMatrixRandom(
+    dimension, dimension, 7n, BigInt(dimension), 20260802n,
+  );
+  measure(`GF(7) ${dimension}x${dimension} square`, iterations, () => {
+    flint.matrixMul(matrix, matrix);
+  });
+}

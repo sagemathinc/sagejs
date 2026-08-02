@@ -7,6 +7,7 @@ const flint = require("..");
 test("native FLINT arithmetic and exact algebra", () => {
 assert.equal(flint.version(), "3.6.0");
 assert.equal(flint.nativeAbiVersion(), 1);
+assert.equal(flint.blasEnabled(), true);
 assert.equal(flint.mpfrVersion(), "4.2.2");
 assert.equal(
   flint.mpcVersion(),
@@ -1214,6 +1215,27 @@ assert.equal(
   true,
 );
 assert.equal(flint.matrixEntry(finiteMatrix, 1, 0), 3n);
+
+// Exercise the CBLAS implementation directly as well as FLINT's ordinary
+// dispatcher. This makes a build that silently drops BLAS support fail on
+// every supported native platform instead of merely becoming much slower.
+const finiteBlasLeft = flint.nmodMatrixRandom(
+  128, 128, 7n, 20260802n, 1n,
+);
+const finiteBlasRight = flint.nmodMatrixRandom(
+  128, 128, 7n, 20260802n, 2n,
+);
+const finiteBlasProduct = flint.matrixMulBlas(
+  finiteBlasLeft, finiteBlasRight,
+);
+assert.notEqual(finiteBlasProduct, null);
+assert.equal(
+  flint.matrixEqual(
+    finiteBlasProduct,
+    flint.matrixMul(finiteBlasLeft, finiteBlasRight),
+  ),
+  true,
+);
 assert.equal(flint.matrixDet(finiteMatrix), 3n);
 assert.equal(flint.matrixRank(finiteMatrix), 2);
 assert.deepEqual(flint.matrixCharpoly(finiteMatrix), [3n, 0n, 1n]);

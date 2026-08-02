@@ -175,8 +175,8 @@ function main() {
   step(
     4,
     process.platform === "linux" && process.arch === "x64"
-      ? "Building GMP, MPFR, MPC, FLINT, ffpoly, smalljac, and the Node addon"
-      : "Building GMP, MPFR, MPC, FLINT, and the Node addon",
+      ? "Building GMP, MPFR, MPC, OpenBLAS, FLINT, ffpoly, smalljac, and the Node addon"
+      : "Building GMP, MPFR, MPC, OpenBLAS, FLINT, and the Node addon",
   );
   runPnpm(["--dir", "packages/flint", "build"]);
 

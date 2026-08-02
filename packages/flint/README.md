@@ -14,6 +14,12 @@ Exact matrices support native addition, multiplication, determinant, rank,
 rational and prime-field RREF, integer Hermite form, inverse, and linear
 solving; integer systems canonically produce rational answers when division
 is required.
+Large machine-word finite-field and suitable integer matrix products dispatch
+through FLINT to a statically linked OpenBLAS. Unix release builds contain a
+small runtime-dispatched set of x86-64 or arm64 kernels; native Windows uses a
+portable MSVC-compatible x86-64 kernel. `blasEnabled()` reports whether that
+acceleration survived configuration and linking, and the native test suite
+requires it on every supported platform.
 Characteristic polynomials and canonical saturated integer or rational kernel
 bases also execute in FLINT; Sage.js wraps each kernel basis as a genuine
 free-submodule or vector-subspace parent.
@@ -141,13 +147,15 @@ rather than adding it to the factor list.
 ## Build
 
 The native package is validated on x86-64 and arm64 Linux, Apple Silicon
-macOS, and x86-64 Windows. Linux and macOS download SHA-256-verified GMP 6.3.0, MPFR
-4.2.2, MPC 1.4.1, and FLINT 3.6.0 and build position-independent static
-libraries. Linux x64 additionally builds `ffpoly` 1.2.7 and smalljac 4.1.3.
+macOS, and x86-64 Windows. Linux and macOS download SHA-256-verified GMP 6.3.0,
+MPFR 4.2.2, MPC 1.4.1, OpenBLAS 0.3.33, and FLINT 3.6.0 and build
+position-independent static libraries. Linux x64 additionally builds
+`ffpoly` 1.2.7 and smalljac 4.1.3.
 Windows uses a pinned vcpkg baseline to build static GMP 6.3.0, MPFR 4.2.2,
-MPC 1.3.1, FLINT 3.6.0, and pthreads4w with the dynamic MSVC runtime. The
-Node addon uses clang-cl because its machine-word kernels rely on portable
-128-bit integer operations. Windows does not require WSL, MSYS2, or MinGW.
+MPC 1.3.1, OpenBLAS 0.3.33, FLINT 3.6.0, and pthreads4w with the dynamic MSVC
+runtime. The Node addon uses clang-cl because its machine-word kernels rely on
+portable 128-bit integer operations. Windows does not require WSL, MSYS2, or
+MinGW.
 
 The current `ffpoly` release's assembly implementation is Linux x64-specific.
 On Linux arm64, macOS, and Windows, `smalljacVersion()` returns `null` and the
@@ -171,6 +179,12 @@ on the build host:
 ```sh
 SAGEJS_BUILD_JOBS=16 pnpm --dir packages/flint build
 ```
+
+OpenBLAS is threaded independently of the dependency build. Its usual
+`OPENBLAS_NUM_THREADS` environment variable controls the maximum number of
+threads used by a running Sage.js process; setting it to `1` is useful for
+worker-thread workloads that already parallelize across many independent
+matrix products.
 
 For development, an existing compatible prefix can skip the dependency build:
 

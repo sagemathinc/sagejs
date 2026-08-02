@@ -44,6 +44,7 @@ napi_value sagejs_zz_matrix_to_qq(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_add(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_sub(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_mul(napi_env env, napi_callback_info info);
+napi_value sagejs_matrix_mul_blas(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_sparse_left_mul(
     napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_select_rows(

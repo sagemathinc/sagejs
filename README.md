@@ -46,14 +46,14 @@ sudo apt-get install build-essential git python3 m4 xz-utils
 ```
 
 A system GMP installation is **not** required. Linux and macOS download and
-build SHA-256-pinned GMP, MPFR, MPC, and FLINT releases. Linux x64 also builds
-ffpoly and smalljac; Windows installs the same core stack from a pinned vcpkg
-baseline. Every platform statically links its libraries into the native addon
-and SEA. The ffpoly/smalljac accelerator still contains x86-64 GNU assembly,
-so Linux arm64, macOS, and Windows currently use the tested portable
-elliptic-curve point-count fallback behind the same API. Downloads and builds
-are cached under `packages/flint/.native`, making later bootstrap runs
-incremental.
+build SHA-256-pinned GMP, MPFR, MPC, OpenBLAS, and FLINT releases. Linux x64
+also builds ffpoly and smalljac; Windows installs the same core stack from a
+pinned vcpkg baseline. Every platform statically links its libraries into the
+native addon and SEA. The ffpoly/smalljac accelerator still contains x86-64
+GNU assembly, so Linux arm64, macOS, and Windows currently use the tested
+portable elliptic-curve point-count fallback behind the same API. Downloads
+and builds are cached under `packages/flint/.native`, making later bootstrap
+runs incremental.
 
 On Apple Silicon macOS, install the Xcode Command Line Tools and Homebrew
 packages `node`, `pnpm`, `m4`, and `xz`. The native libraries target macOS 13
@@ -82,6 +82,8 @@ SAGEJS_BUILD_JOBS=16 pnpm bootstrap
 
 The value must be a positive integer. More jobs increase peak memory use, and
 the GMP validation suite remains part of every genuinely cold build.
+OpenBLAS uses its own threads at runtime; set `OPENBLAS_NUM_THREADS=1` when
+parallelizing independent calculations with Sage.js worker threads.
 
 Sage.js development itself supports Node.js 22.22.2 or newer. On Node 22–24,
 build everything except the standalone SEA with:
@@ -250,8 +252,7 @@ pnpm dlx @sagemath/sagejs
 
 For portable deployment, Sage.js can produce a single native executable with
 the compiler and standard library embedded. A mathematics variant also embeds
-the FLINT addon and statically linked GMP, MPFR, MPC, and FLINT; on one x86-64
-Linux host it was about 164 MB uncompressed and 34 MB after `xz -9`.
+the FLINT addon and statically linked GMP, MPFR, MPC, OpenBLAS, and FLINT.
 [`DISTRIBUTION.md`](DISTRIBUTION.md) documents the reproducible SEA builds,
 the smaller FLINT-free `sagepython` artifact, browser/WebWorker plans,
 container deployment, and the evaluated TypeScript-to-native alternatives.

@@ -255,7 +255,7 @@ jobs:
           path: |
             packages/flint/.native/vcpkg
             packages/flint/.native/vcpkg-installed
-          key: windows-x64-native-${{ hashFiles('packages/flint/vcpkg.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/scripts/triplets/*.cmake', 'packages/flint/binding.gyp', 'pnpm-lock.yaml') }}
+          key: windows-x64-native-${{ hashFiles('packages/flint/vcpkg.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/scripts/triplets/*.cmake', 'packages/flint/scripts/vcpkg-ports/**/*', 'packages/flint/binding.gyp', 'pnpm-lock.yaml') }}
 
       - name: Build the compiler and native mathematics stack
         env:

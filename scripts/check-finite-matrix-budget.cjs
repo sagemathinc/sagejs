@@ -30,6 +30,9 @@ function nativeSample(seed) {
 }
 
 async function run(environment = process.env) {
+  if (!flint.blasEnabled()) {
+    throw new Error("native FLINT was built without CBLAS acceleration");
+  }
   const samples = Math.floor(positiveNumber(
     environment.SAGEJS_FINITE_MATRIX_SAMPLES,
     "SAGEJS_FINITE_MATRIX_SAMPLES",
@@ -39,7 +42,7 @@ async function run(environment = process.env) {
   const budgetMs = positiveNumber(
     environment.SAGEJS_FINITE_MATRIX_BUDGET_MS,
     "SAGEJS_FINITE_MATRIX_BUDGET_MS",
-    100,
+    50,
   );
   const referenceNativeMs = positiveNumber(
     environment.SAGEJS_FINITE_MATRIX_REFERENCE_MS,
@@ -49,7 +52,7 @@ async function run(environment = process.env) {
   const hardLimitMs = positiveNumber(
     environment.SAGEJS_FINITE_MATRIX_HARD_LIMIT_MS,
     "SAGEJS_FINITE_MATRIX_HARD_LIMIT_MS",
-    750,
+    300,
   );
 
   nativeSample(1);

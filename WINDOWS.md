@@ -12,7 +12,7 @@ The completed Windows distribution will provide:
 - `sagejs.exe` and `sagepython.exe` built by Node's SEA toolchain;
 - a native Node-API mathematics addon built with clang-cl and linked against
   MSVC-runtime-compatible libraries;
-- GMP, MPFR, MPC, and FLINT built from pinned source releases;
+- GMP, MPFR, MPC, OpenBLAS, and FLINT built from pinned source releases;
 - ordinary `pnpm bootstrap` support from a contributor checkout;
 - a downloadable release requiring no Node.js, pnpm, Python, compiler, WSL, or
   package manager on the user's computer;
@@ -78,7 +78,7 @@ It covers all of these promotion criteria:
 1. pinned dependency installation;
 2. compiler and standard-library build;
 3. portable unit tests;
-4. native GMP/MPFR/MPC/FLINT addon build and tests;
+4. native GMP/MPFR/MPC/OpenBLAS/FLINT addon build and tests;
 5. `sagepython.exe` and `sagejs.exe` construction;
 6. relocation tests from a clean temporary directory;
 7. release archive construction with licenses and SHA-256 checksum.

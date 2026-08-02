@@ -4,7 +4,7 @@ Sage.js has two distinct portability layers:
 
 1. the language runtime, compiler, baselib, and JavaScript-backed standard
    library; and
-2. native mathematical kernels such as GMP, MPFR, MPC, and FLINT.
+2. native mathematical kernels such as GMP, MPFR, MPC, OpenBLAS, and FLINT.
 
 Keeping that boundary explicit gives us useful distributions before the full
 mathematical library exists. It also prevents browser portability from
@@ -20,7 +20,7 @@ variants:
 | Artifact | Contents | Intended use |
 |---|---|---|
 | `build/sea/sagepython` | Python/Sage.js compiler, baselib, and standard library; no FLINT addon | The small language runtime, compatibility testing, and portable demos |
-| `build/sea/sagejs` | Everything above plus the native FLINT addon and statically linked GMP, MPFR, MPC, and FLINT | Self-contained native research mathematics |
+| `build/sea/sagejs` | Everything above plus the native FLINT addon and statically linked GMP, MPFR, MPC, OpenBLAS, and FLINT | Self-contained native research mathematics |
 
 Build both with:
 

@@ -73,6 +73,13 @@ const dependencies = [
     archive: process.env.SAGEJS_MPC_TARBALL,
   },
   {
+    name: "openblas",
+    version: "0.3.33",
+    url: "https://github.com/OpenMathLib/OpenBLAS/releases/download/v0.3.33/OpenBLAS-0.3.33.tar.gz",
+    sha256: "6761af1d9f5d353ab4f0b7497be2643313b36c8f31caec0144bfef198e71e6ab",
+    archive: process.env.SAGEJS_OPENBLAS_TARBALL,
+  },
+  {
     name: "flint",
     version: "3.6.0",
     url: "https://flintlib.org/download/flint-3.6.0.tar.gz",
@@ -196,6 +203,7 @@ function buildWindowsDependencies() {
       `--x-manifest-root=${packageRoot}`,
       `--x-install-root=${installRoot}`,
       `--overlay-triplets=${join(packageRoot, "scripts", "triplets")}`,
+      `--overlay-ports=${join(packageRoot, "scripts", "vcpkg-ports")}`,
     ],
     {
       cwd: packageRoot,
@@ -331,6 +339,34 @@ function buildMpc(source) {
   run("make", ["install"], { cwd: source });
 }
 
+function buildOpenBlas(source) {
+  const options = [
+    "NOFORTRAN=1",
+    "NO_LAPACK=1",
+    "NO_LAPACKE=1",
+    "NO_SHARED=1",
+    "ONLY_CBLAS=1",
+    "NO_EXPRECISION=1",
+    "USE_THREAD=1",
+    "NUM_THREADS=64",
+    "DYNAMIC_ARCH=1",
+    "CFLAGS=-O3 -fPIC",
+  ];
+  if (process.arch === "x64") {
+    options.push(
+      "DYNAMIC_LIST=NEHALEM SANDYBRIDGE HASWELL ZEN",
+    );
+  } else if (process.arch === "arm64") {
+    options.push(
+      process.platform === "darwin"
+        ? "DYNAMIC_LIST=CORTEXA53 NEOVERSEN1 VORTEXM4"
+        : "DYNAMIC_LIST=CORTEXA53 NEOVERSEN1 NEOVERSEV1 NEOVERSEN2",
+    );
+  }
+  run("make", [`-j${jobs}`, "libs", ...options], { cwd: source });
+  run("make", [`PREFIX=${prefix}`, "install", ...options], { cwd: source });
+}
+
 function buildFlint(source) {
   run(
     "./configure",
@@ -341,6 +377,7 @@ function buildFlint(source) {
       "--with-pic",
       `--with-gmp=${prefix}`,
       `--with-mpfr=${prefix}`,
+      `--with-blas=${prefix}`,
     ],
     {
       cwd: source,
@@ -437,6 +474,9 @@ async function main() {
     gmp: dependencies.find(({ name }) => name === "gmp").version,
     mpc: dependencies.find(({ name }) => name === "mpc").version,
     mpfr: dependencies.find(({ name }) => name === "mpfr").version,
+    openblas:
+      dependencies.find(({ name }) => name === "openblas").version,
+    openblasBuild: "threaded-cblas-dynamic-v1",
     ...(smalljacAccelerator
       ? {
           smalljac:
@@ -451,6 +491,7 @@ async function main() {
     existsSync(join(prefix, "lib", "libflint.a")) &&
     existsSync(join(prefix, "lib", "libmpc.a")) &&
     existsSync(join(prefix, "lib", "libmpfr.a")) &&
+    existsSync(join(prefix, "lib", "libopenblas.a")) &&
     (!smalljacAccelerator ||
       (existsSync(join(prefix, "lib", "libff_poly.a")) &&
         existsSync(join(prefix, "lib", "libsmalljac.a")))) &&
@@ -479,6 +520,7 @@ async function main() {
   buildGmp(source("gmp"));
   buildMpfr(source("mpfr"));
   buildMpc(source("mpc"));
+  buildOpenBlas(source("openblas"));
   buildFlint(source("flint"));
   if (smalljacAccelerator) {
     buildFfpoly(source("ffpoly"));

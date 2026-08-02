@@ -31,6 +31,7 @@
             "<(native_prefix)/lib/libsmalljac.a",
             "<(native_prefix)/lib/libff_poly.a",
             "<(native_prefix)/lib/libflint.a",
+            "<(native_prefix)/lib/libopenblas.a",
             "<(native_prefix)/lib/libmpc.a",
             "<(native_prefix)/lib/libmpfr.a",
             "<(native_prefix)/lib/libgmp.a",
@@ -54,6 +55,7 @@
         ["OS=='linux' and target_arch=='arm64'", {
           "libraries": [
             "<(native_prefix)/lib/libflint.a",
+            "<(native_prefix)/lib/libopenblas.a",
             "<(native_prefix)/lib/libmpc.a",
             "<(native_prefix)/lib/libmpfr.a",
             "<(native_prefix)/lib/libgmp.a",
@@ -77,6 +79,7 @@
         ["OS=='mac'", {
           "libraries": [
             "<(native_prefix)/lib/libflint.a",
+            "<(native_prefix)/lib/libopenblas.a",
             "<(native_prefix)/lib/libmpc.a",
             "<(native_prefix)/lib/libmpfr.a",
             "<(native_prefix)/lib/libgmp.a"
@@ -96,6 +99,7 @@
           "defines": ["_CRT_SECURE_NO_WARNINGS"],
           "libraries": [
             "<(native_prefix)/lib/flint.lib",
+            "<(native_prefix)/lib/openblas.lib",
             "<(native_prefix)/lib/mpc.lib",
             "<(native_prefix)/lib/mpfr.lib",
             "<(native_prefix)/lib/gmp.lib",

@@ -2814,6 +2814,23 @@ static napi_value smalljac_version_value(
 #endif
 }
 
+static napi_value blas_enabled(napi_env env, napi_callback_info info)
+{
+    napi_value result;
+    (void) info;
+
+    if (!check_napi(env, napi_get_boolean(
+        env,
+#if FLINT_USES_BLAS
+        true,
+#else
+        false,
+#endif
+        &result)))
+        return NULL;
+    return result;
+}
+
 static napi_value initialize(napi_env env, napi_value exports)
 {
 #ifdef _WIN32
@@ -3017,6 +3034,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"matrixMul", NULL, sagejs_matrix_mul, NULL, NULL, NULL,
             napi_default, NULL},
+        {"matrixMulBlas", NULL, sagejs_matrix_mul_blas,
+            NULL, NULL, NULL, napi_default, NULL},
         {"matrixSparseLeftMul", NULL, sagejs_matrix_sparse_left_mul,
          NULL, NULL, NULL, napi_default, NULL},
         {"matrixSelectRows", NULL, sagejs_matrix_select_rows,
@@ -3361,6 +3380,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             napi_default, NULL},
         {"smalljacVersion", NULL, smalljac_version_value,
             NULL, NULL, NULL, napi_default, NULL},
+        {"blasEnabled", NULL, blas_enabled, NULL, NULL, NULL,
+            napi_default, NULL},
         {"version", NULL, version, NULL, NULL, NULL, napi_default, NULL},
     };
 

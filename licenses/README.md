@@ -6,6 +6,9 @@ terms; see `PYLANG-BSD-3-CLAUSE.txt` and individual source headers.
 
 The combined Sage.js distribution is released under GPL-3.0-only.
 
+The native mathematics addon statically links OpenBLAS; see
+`OPENBLAS-BSD-3-CLAUSE.txt` for its required copyright and license notice.
+
 The generated distribution bundles the MIT-licensed `numpy-ts`, Cortex
 Compute Engine, `tree-sitter-magma`, `tree-sitter-wolfram`, and
 `tree-sitter-matlab` backends; see `NUMPY-TS-MIT.txt`,

@@ -1282,6 +1282,47 @@ napi_value sagejs_matrix_mul(napi_env env, napi_callback_info info)
     return matrix_binary(env, info, MATRIX_MUL);
 }
 
+napi_value sagejs_matrix_mul_blas(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    napi_value result;
+    sagejs_matrix *left;
+    sagejs_matrix *right;
+    sagejs_matrix *answer;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    left = unwrap_matrix(env, args[0]);
+    right = unwrap_matrix(env, args[1]);
+    if (left == NULL || right == NULL)
+        return NULL;
+    if (!matrix_is_modular(left) || left->kind != right->kind ||
+        matrix_modulus(left) != matrix_modulus(right))
+    {
+        napi_throw_type_error(env, NULL,
+            "BLAS multiplication requires matrices over the same word modulus");
+        return NULL;
+    }
+    if (matrix_ncols(left) != matrix_nrows(right))
+    {
+        napi_throw_range_error(env, NULL,
+            "matrix dimensions are incompatible for multiplication");
+        return NULL;
+    }
+    answer = new_matrix_like(
+        env, left, matrix_nrows(left), matrix_ncols(right));
+    if (answer == NULL)
+        return NULL;
+    if (!nmod_mat_mul_blas(answer->modular, left->modular, right->modular))
+    {
+        finalize_matrix(env, answer, NULL);
+        if (!check_napi(env, napi_get_null(env, &result)))
+            return NULL;
+        return result;
+    }
+    return wrap_matrix(env, answer);
+}
+
 static int matrix_sparse_left_cyclotomic(
     sagejs_matrix *answer,
     const sagejs_matrix *left,
