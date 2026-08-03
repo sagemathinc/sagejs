@@ -334,11 +334,21 @@ class EllipticCurveParent(sage.Parent):
 
     def _contains_coordinates(self, x_value: Any, y_value: Any) -> bool:
         a1, a2, a3, a4, a6 = self._ainvs
-        return (
+        left = (
             y_value ** 2 + a1 * x_value * y_value + a3 * y_value
-            == x_value ** 3 + a2 * x_value ** 2
+        )
+        right = (
+            x_value ** 3 + a2 * x_value ** 2
             + a4 * x_value + a6
         )
+        if getattr(self._base, '_kind', None) in ['RDF', 'RealField']:
+            left_float = float(left)
+            right_float = float(right)
+            scale = max(1.0, abs(left_float), abs(right_float))
+            precision = min(53, int(_untyped(self._base).precision()))
+            tolerance = 64.0 * 2.0 ** (-precision) * scale
+            return abs(left_float - right_float) <= tolerance
+        return left == right
 
     def __call__(
         self,
@@ -376,6 +386,13 @@ class EllipticCurveParent(sage.Parent):
         x_value: Any,
         all: bool = False,
     ) -> Any:
+        x_parent = runtime.coercion_model.parentOf(x_value)
+        if (
+            getattr(x_parent, '_kind', None) in ['RDF', 'RealField']
+            and getattr(self._base, '_kind', None)
+            not in ['RDF', 'RealField']
+        ):
+            return self.base_extend(x_parent).lift_x(x_value, all)
         x_value = self._base(x_value)
         a1, a2, a3, a4, a6 = self._ainvs
         if a1 != 0 or a3 != 0:
@@ -389,6 +406,9 @@ class EllipticCurveParent(sage.Parent):
         elif getattr(self._base, '_kind', None) in [
             'RDF', 'RealField',
         ]:
+            if right < 0:
+                raise ValueError(
+                    'the x-coordinate does not lift over the base ring')
             y_value = self._base(
                 runtime.math.sqrt(float(right)))
         else:

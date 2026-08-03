@@ -1836,7 +1836,7 @@ class Matrix(sage.Element):
             for value in native_values
         ]
 
-    def _exact_eigenvectors(
+    def _exact_eigenspaces_data(
         self,
         left: bool,
     ) -> list[Any]:
@@ -1852,9 +1852,23 @@ class Matrix(sage.Element):
             ):
                 multiplicity += 1
             scalar_parent = runtime.reflect.get(value, '_parent')
-            if not _is_algebraic_base(scalar_parent):
+            scalar = value
+            if (
+                _is_algebraic_base(scalar_parent)
+                and runtime.flint_backend().qqbarIsRational(
+                    runtime.reflect.get(value, '_native'))
+            ):
+                text = str(value)
+                pieces = text.split('/')
                 scalar_parent = sage.QQ
-            scalar = scalar_parent(value)
+                scalar = runtime.rational_class(
+                    int(pieces[0]),
+                    int(pieces[1]) if len(pieces) == 2 else 1,
+                )
+                value = scalar
+            elif not _is_algebraic_base(scalar_parent):
+                scalar_parent = sage.QQ
+                scalar = scalar_parent(value)
             source = self.change_ring(scalar_parent)
             shifted = (
                 source
@@ -1867,10 +1881,25 @@ class Matrix(sage.Element):
                 space = shifted.right_kernel()
             answer.append(runtime.math_tuple([
                 value,
-                space.basis(),
+                space,
                 multiplicity,
             ]))
             index += multiplicity
+        return answer
+
+    def _exact_eigenvectors(
+        self,
+        left: bool,
+    ) -> list[Any]:
+        answer = []
+        for value, space, multiplicity in self._exact_eigenspaces_data(
+            left
+        ):
+            answer.append(runtime.math_tuple([
+                value,
+                space.basis(),
+                multiplicity,
+            ]))
         return answer
 
     def _approximate_eigenvectors(
@@ -1913,6 +1942,115 @@ class Matrix(sage.Element):
         if _is_approximate_base(self.base_ring()):
             return self._approximate_eigenvectors(False)
         return self._exact_eigenvectors(False)
+
+    def _eigenspaces(self, left: bool) -> list[Any]:
+        if not _is_approximate_base(self.base_ring()):
+            answer = []
+            for value, space, _multiplicity in (
+                self._exact_eigenspaces_data(left)
+            ):
+                answer.append(runtime.math_tuple([value, space]))
+            return answer
+        if left:
+            vectors = self.eigenvectors_left()
+        else:
+            vectors = self.eigenvectors_right()
+        answer = []
+        for value, basis, _multiplicity in vectors:
+            base = runtime.coercion_model.parentOf(value)
+            basis_matrix = matrix(
+                base, 1, self.nrows(), list(basis))
+            answer.append(runtime.math_tuple([
+                value,
+                VectorSubspaceParent(
+                    VectorSpace(base, self.nrows()),
+                    basis_matrix,
+                ),
+            ]))
+        return answer
+
+    def eigenspaces_left(self) -> list[Any]:
+        return self._eigenspaces(True)
+
+    def eigenspaces_right(self) -> list[Any]:
+        return self._eigenspaces(False)
+
+    def is_diagonalizable(
+        self,
+        base_field: Any = None,
+    ) -> bool:
+        if not self.is_square():
+            return False
+        if base_field is None and self.base_ring() is sage.ZZ:
+            source = self.change_ring(sage.QQ)
+        elif base_field is None:
+            source = self
+        else:
+            source = self.change_ring(base_field)
+        dimension = 0
+        if not _is_approximate_base(source.base_ring()):
+            spaces = source._exact_eigenspaces_data(False)
+            for value, space, _multiplicity in spaces:
+                if (
+                    runtime.coercion_model.parentOf(value)
+                    is not source.base_ring()
+                ):
+                    return False
+                dimension += space.dimension()
+            return dimension == source.nrows()
+        for value, basis, _multiplicity in source.eigenvectors_right():
+            if (
+                runtime.coercion_model.parentOf(value)
+                is not source.base_ring()
+            ):
+                return False
+            dimension += len(basis)
+        return dimension == source.nrows()
+
+    def diagonalization(
+        self,
+        base_field: Any = None,
+    ) -> Any:
+        if not self.is_square():
+            raise ArithmeticError('only valid for square matrix')
+        if base_field is None and self.base_ring() is sage.ZZ:
+            source = self.change_ring(sage.QQ)
+        elif base_field is None:
+            source = self
+        else:
+            source = self.change_ring(base_field)
+        values = []
+        columns = []
+        if _is_approximate_base(source.base_ring()):
+            raise NotImplementedError(
+                'approximate matrix diagonalization is not implemented')
+        for value, space, _multiplicity in (
+            source._exact_eigenspaces_data(False)
+        ):
+            if (
+                runtime.coercion_model.parentOf(value)
+                is not source.base_ring()
+            ):
+                raise ValueError(
+                    'matrix is not diagonalizable over its base field')
+            basis_matrix = space.basis_matrix()
+            for basis_index in range(basis_matrix.nrows()):
+                values.append(value)
+                columns.append([
+                    basis_matrix[basis_index, coordinate]
+                    for coordinate in range(basis_matrix.ncols())
+                ])
+        if len(columns) != source.nrows():
+            raise ValueError(
+                'matrix is not diagonalizable over its base field')
+        entries = []
+        for row in range(source.nrows()):
+            for col in range(source.ncols()):
+                entries.append(columns[col][row])
+        change = matrix(
+            source.base_ring(), source.nrows(), source.ncols(), entries)
+        diagonal = diagonal_matrix(source.base_ring(), values)
+        return runtime.math_tuple([diagonal, change])
 
     def charpoly(
         self,

@@ -207,6 +207,39 @@ async function main() {
     assert.equal(
       (
         await session.evaluate(
+          "x=var('x')\n" +
+            "y=function('y')(x)\n" +
+            "desolve(diff(y,x)+y-1,y,ics=[10,2])",
+        )
+      ).repr,
+      "(e^10 + e^x)*e^(-x)",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "x=var('x')\n" +
+            "y=function('y')(x)\n" +
+            "de=diff(y,x,2)-y==x\n" +
+            "desolve(de,y)",
+        )
+      ).repr,
+      "_K2*e^(-x) + _K1*e^x - x",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "x=var('x')\n" +
+            "y=function('y')(x)\n" +
+            "de=diff(y,x,2)-y==x\n" +
+            "f=desolve(de,y,ics=[10,2,1])\n" +
+            "(f(x=10), derivative(f,x)(x=10))",
+        )
+      ).repr,
+      "(2, 1)",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
           "s=var('s')\n" +
             "f=t^2*exp(t)-sin(t)\n" +
             "f.laplace(t,s).simplify_rational()",

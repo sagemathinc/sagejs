@@ -40,6 +40,35 @@ test("exact elliptic-curve arithmetic and invariants", async () => {
   }
 });
 
+test("real lift_x uses Sage-compatible coercion and tolerant membership", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "E = EllipticCurve([-1,0])",
+            "P = E.base_extend(RR).lift_x(RR(-0.5))",
+            "Q = E.lift_x(-0.5)",
+            "[parent(P).base_ring(), parent(Q).base_ring(), " +
+              "abs(float(P[1]^2 - (P[0]^3-P[0]))) < 1e-14]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[Real Field with 53 bits of precision, " +
+        "Real Field with 53 bits of precision, True]",
+    );
+    await assert.rejects(
+      session.evaluate(
+        "EllipticCurve([-1,0]).lift_x(QQ(-1)/2)",
+      ),
+      /does not lift over the base ring/,
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("rational elliptic point orders use Mazur's certified bound", async () => {
   const session = await createSage();
   try {

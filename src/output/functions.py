@@ -762,9 +762,16 @@ def print_function_call(self, output):
                     output.print(".call")
         else:
             if not is_repeatable:
-                output.print('ρσ_expr_temp')
                 if is_node_type(self.expression, AST_Dot):
+                    output.print('ρσ_expr_temp')
                     print_getattr(self.expression, output, True)
+                elif no_call and not self.direct_call:
+                    output.print(
+                        '(ρσ_expr_temp?.__call__?.bind('
+                        'ρσ_expr_temp) ?? ρσ_expr_temp)'
+                    )
+                else:
+                    output.print('ρσ_expr_temp')
             elif (not is_new and not self.direct_call
                   and is_node_type(self.expression, AST_SymbolRef)):
                 # Easy special case where we can make the __call__

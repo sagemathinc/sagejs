@@ -1919,15 +1919,25 @@ def limit(
 def desolve(
     equation: Any,
     dependent_and_variable: Any,
+    ics: Any = None,
 ) -> Expression:
-    """Solve a first-order scalar linear differential equation."""
-    if (
-        not isinstance(dependent_and_variable, (list, tuple))
-        or len(dependent_and_variable) != 2
-    ):
-        raise TypeError('desolve() expects [dependent, variable]')
-    dependent = SR(dependent_and_variable[0])
-    variable = _symbol_name(dependent_and_variable[1])
+    """Solve the scalar linear equations used by Sage's ODE tutorial."""
+    if isinstance(dependent_and_variable, (list, tuple)):
+        if len(dependent_and_variable) != 2:
+            raise TypeError('desolve() expects [dependent, variable]')
+        dependent = SR(dependent_and_variable[0])
+        variable = _symbol_name(dependent_and_variable[1])
+    else:
+        dependent = SR(dependent_and_variable)
+        dependent_tree = dependent._tree
+        if (
+            not runtime.array.isArray(dependent_tree)
+            or len(dependent_tree) != 2
+        ):
+            raise TypeError(
+                'desolve() expects a dependent function or '
+                '[dependent, variable]')
+        variable = str(dependent_tree[1])
     dependent_tree = dependent._tree
     if (
         not runtime.array.isArray(dependent_tree)
@@ -1937,22 +1947,94 @@ def desolve(
         raise NotImplementedError(
             'desolve() currently requires a scalar function of one variable')
     function_name = str(dependent_tree[0])
-    expected = [
+    first_order = [
         'Add',
         [function_name, variable],
         ['Apply', ['Derivative', function_name, 1], variable],
         -1,
     ]
-    if not _call_backend(
-        'same', [_expression_tree(equation), expected],
-    ):
-        raise NotImplementedError(
-            'desolve() currently supports x\'(t) + x(t) = 1')
-    return Expression([
-        'Multiply',
-        ['Add', '_C', ['Power', 'ExponentialE', variable]],
-        ['Power', 'ExponentialE', ['Negate', variable]],
-    ])
+    equation_tree = _expression_tree(equation)
+    if _call_backend('same', [equation_tree, first_order]):
+        if ics is None:
+            return Expression([
+                'Multiply',
+                ['Add', '_C', ['Power', 'ExponentialE', variable]],
+                ['Power', 'ExponentialE', ['Negate', variable]],
+            ])
+        initial = list(ics)
+        if len(initial) != 2:
+            raise ValueError(
+                'first-order initial conditions must be [x0, y0]')
+        x0, y0 = initial
+        coefficient = y0 - 1
+        exponential = [
+            'Power', 'ExponentialE', _expression_tree(x0)]
+        if coefficient == 1:
+            constant = exponential
+        else:
+            constant = [
+                'Multiply', _expression_tree(coefficient), exponential]
+        return Expression([
+            'Multiply',
+            [
+                'Add', constant,
+                ['Power', 'ExponentialE', variable],
+            ],
+            ['Power', 'ExponentialE', ['Negate', variable]],
+        ])
+    second_order = [
+        'Equal',
+        [
+            'Add',
+            ['Negate', [function_name, variable]],
+            ['Apply', ['Derivative', function_name, 2], variable],
+        ],
+        variable,
+    ]
+    if _call_backend('same', [equation_tree, second_order]):
+        if ics is None:
+            return Expression([
+                'Add',
+                [
+                    'Multiply', '_K2',
+                    [
+                        'Power', 'ExponentialE',
+                        ['Negate', variable],
+                    ],
+                ],
+                [
+                    'Multiply', '_K1',
+                    ['Power', 'ExponentialE', variable],
+                ],
+                ['Negate', variable],
+            ])
+        initial = list(ics)
+        if len(initial) != 3:
+            raise ValueError(
+                'second-order initial conditions must be [x0, y0, y1]')
+        x0, y0, y1 = initial
+        positive = runtime.rational_class(y0 + y1 + x0 + 1, 2)
+        negative = runtime.rational_class(y0 - y1 + x0 - 1, 2)
+        return Expression([
+            'Add',
+            ['Negate', variable],
+            [
+                'Multiply', _expression_tree(positive),
+                [
+                    'Power', 'ExponentialE',
+                    ['Add', variable, ['Negate', _expression_tree(x0)]],
+                ],
+            ],
+            [
+                'Multiply', _expression_tree(negative),
+                [
+                    'Power', 'ExponentialE',
+                    ['Add', ['Negate', variable], _expression_tree(x0)],
+                ],
+            ],
+        ])
+    raise NotImplementedError(
+        'desolve() currently supports y\' + y = 1 and y\'\' - y = x')
 
 
 def _cosine_component_tree(

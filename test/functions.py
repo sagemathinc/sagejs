@@ -38,6 +38,18 @@ assrt.equal(sub(1, 2), -1)
 assrt.equal(mul(2, 2), 4)
 
 
+class ReturnedCallable:
+    def __call__(self, value=0):
+        return value
+
+
+def returned_callable():
+    return ReturnedCallable()
+
+
+assrt.equal(returned_callable()(value=7), 7)
+
+
 # for some reason input to throws must be of type block, hence the 'def' wrapper
 def divtest():
     div(6, 3)  # noqa: undef

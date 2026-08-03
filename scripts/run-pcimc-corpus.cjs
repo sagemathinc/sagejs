@@ -97,6 +97,7 @@ async function main() {
   if (!options.only && !options.file) {
     for (const id of [
       ...Object.keys(expectations.skip ?? {}),
+      ...Object.keys(expectations.run ?? {}),
       ...Object.keys(expectations.xfail ?? {}),
     ]) {
       if (!knownIds.has(id)) {
@@ -140,7 +141,9 @@ async function main() {
           cell.classification === "executable"
             ? undefined
             : cell.classification;
-        const reason = expectations.skip?.[cell.id] ?? automaticSkip;
+        const reason =
+          expectations.skip?.[cell.id] ??
+          (expectations.run?.[cell.id] ? undefined : automaticSkip);
         if (reason) {
           record(document, cell, "skip", undefined, reason);
           if (options.verbose) {

@@ -24,6 +24,41 @@ test("FLINT-backed exact and approximate spectral linear algebra", async () => {
       ).repr,
       "[(4, [(1, 1)], 1), (-2, [(1, -1)], 1)]",
     );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "A=matrix(QQ,3,[-1,2,2,2,2,-1,2,-1,2])",
+            "[(v, V.dimension(), V.base_ring()) " +
+              "for v, V in A.eigenspaces_left()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(3, 2, Rational Field), (-3, 1, Rational Field)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "A=matrix(QQ,3,[-1,2,2,2,2,-1,2,-1,2])",
+            "D,P=A.diagonalization()",
+            "[A.is_diagonalizable(), A*P == P*D, D.diagonal()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[True, True, [3, 3, -3]]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "A=matrix(QQ, [[0,-1],[1,0]])",
+            "A.is_diagonalizable()",
+          ].join("\n"),
+        )
+      ).repr,
+      "False",
+    );
 
     const realEigenvalues = JSON.parse(
       (
