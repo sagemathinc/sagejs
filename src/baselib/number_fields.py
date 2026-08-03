@@ -749,6 +749,11 @@ class NumberFieldParent(sage.Parent):
         self._polynomial = polynomial
         self._variable = name
         self._kind = 'NumberField'
+        self._construction = {
+            'kind': 'NumberField',
+            'polynomial': polynomial,
+            'name': name,
+        }
         self._name = (
             'Number Field in ' + name
             + ' with defining polynomial ' + str(polynomial)
@@ -785,6 +790,12 @@ class NumberFieldParent(sage.Parent):
             return NumberFieldElement(
                 self, [sage.QQ(item) for item in value.coefficients()])
         return NumberFieldElement(self, [sage.QQ(value)])
+
+    def _from_coefficients(
+        self, coefficients: list[Any],
+    ) -> NumberFieldElement:
+        """Construct an element from its canonical power-basis coordinates."""
+        return NumberFieldElement(self, coefficients)
 
     def gen(self, index: int = 0) -> NumberFieldElement:
         if int(index) != 0:
@@ -974,6 +985,10 @@ class QuadraticField_class(sage.Parent):
         self._name = 'Number Field in i with defining polynomial x^2 + 1'
         self._kind = 'QuadraticField'
         self._discriminant = -1
+        self._construction = {
+            'kind': 'QuadraticField',
+            'discriminant': -1,
+        }
         self._generator = GaussianInteger(self, 0, 1)
 
     def __call__(

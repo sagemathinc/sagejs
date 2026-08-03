@@ -76,9 +76,13 @@ in `test/serialization.cjs` fixes the byte-level format across platforms.
 - Exact integers, non-finite floating-point values, binary data, nested
   containers, recursive lists, and shared references round trip exactly.
 - Mathematical parents are explicit records and are interned on loading.
-- Initial mathematical codecs cover `ZZ`, `QQ`, prime finite fields,
-  `Zmod(n)`, their scalar elements, univariate polynomials, vectors, and dense
-  matrices.
+- Mathematical codecs cover `ZZ`, `QQ`, prime finite fields, `Zmod(n)`, their
+  scalar elements, univariate polynomials, vectors, and dense matrices.
+- Research-object codecs cover extension number fields, quadratic and
+  cyclotomic fields and their elements; elliptic curves and points; congruence
+  subgroups; Dirichlet groups and characters; and ambient or coordinate
+  subspace modular-symbol spaces and elements. Shared parents remain shared
+  after loading.
 - Dense matrices over prime fields and residue rings of order at most
   `2^32` use packed little-endian transferable buffers instead of one object
   per entry.
@@ -145,6 +149,5 @@ existing `(type, version)` pair is forbidden. Incompatible payload changes use
 a new codec version; incompatible envelope changes use a new schema version.
 Golden fixtures should accompany every long-lived mathematical codec.
 
-The next additions should prioritize research result types: extension and
-number fields, ideals, elliptic curves and points, modular-symbol subspaces,
-Hecke data, decompositions, and proof certificates.
+The next additions should prioritize ideals, Hecke operators and eigenvalue
+data, decomposition certificates, and explicit proof certificates.

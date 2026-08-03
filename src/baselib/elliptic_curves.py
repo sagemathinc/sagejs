@@ -212,11 +212,18 @@ class EllipticCurveParent(sage.Parent):
             raise ValueError(
                 'an elliptic curve needs two or five coefficients')
         self._base = base
+        self._kind = 'EllipticCurve'
         self._ainvs = runtime.math_tuple(
             [base(value) for value in coefficients])
         self._conductor = conductor_value
         self._rank = rank_value
         self._label = label
+        self._construction = {
+            'kind': 'EllipticCurve',
+            'base': base,
+            'ainvs': self._ainvs,
+            'label': label,
+        }
         if self.discriminant() == 0:
             raise ValueError('elliptic curve is singular')
 

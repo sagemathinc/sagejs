@@ -31,6 +31,18 @@ test("the checked-in package graph owns every Python source and respects budgets
     result.typescriptOwnership.get("tools/serialization-codecs/linear-algebra.ts"),
     "linear-algebra",
   );
+  assert.equal(
+    result.typescriptOwnership.get("tools/serialization-codecs/number-fields.ts"),
+    "arithmetic",
+  );
+  assert.equal(
+    result.typescriptOwnership.get("tools/serialization-codecs/elliptic-curves.ts"),
+    "elliptic-curves",
+  );
+  assert.equal(
+    result.typescriptOwnership.get("tools/serialization-codecs/modular-forms.ts"),
+    "modular-forms",
+  );
 });
 
 test("dependency cycles are rejected with their path", () => {

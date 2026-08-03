@@ -15,6 +15,10 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
+def _untyped(value: Any) -> Any:
+    return value
+
+
 def _euler_phi(value: int) -> int:
     result = value
     for prime, _exponent in sage.factor(value):
@@ -305,6 +309,10 @@ class CyclotomicFieldParent(sage.Parent):
             _euler_phi(runtime.number(order)))
         self._variable = 'zeta' + str(order)
         self._kind = 'CyclotomicField'
+        self._construction = {
+            'kind': 'CyclotomicField',
+            'order': runtime.normalize_integer(order),
+        }
         self._name = (
             'Cyclotomic Field of order ' + str(order)
             + ' and degree ' + str(self._degree)
@@ -358,6 +366,29 @@ class CyclotomicFieldParent(sage.Parent):
                 runtime.flint_backend().qqbarFromRational(
                     integer, runtime.bigint(1)))
         raise TypeError('unable to coerce value into ' + str(self))
+
+    def _from_coefficients(
+        self, coefficients: list[Any],
+    ) -> CyclotomicElement:
+        """Construct from power-basis coefficients in the cyclotomic generator."""
+        result = self.zero()
+        generator = self.gen()
+        for exponent, coefficient in enumerate(coefficients):
+            rational = sage.QQ(coefficient)
+            if rational != 0:
+                result += self(rational) * generator ** exponent
+        return result
+
+    def _serialization_coefficients(
+        self, value: CyclotomicElement,
+    ) -> list[Any]:
+        """Return canonical rational power-basis coordinates for storage."""
+        pairs = runtime.flint_backend().cyclotomicElementCoefficients(
+            value._native, self._order)
+        return [
+            _untyped(sage.QQ)(pair[0], pair[1])
+            for pair in pairs
+        ]
 
     def gen(self, index: int = 0) -> CyclotomicElement:
         if runtime.integer_bigint(index) != 0:
@@ -863,6 +894,10 @@ class DirichletGroup_class(sage.Parent):
         self._native = runtime.flint_backend().dirichletGroup(modulus)
         data = runtime.flint_backend().dirichletGroupData(self._native)
         self._kind = 'DirichletGroup'
+        self._construction = {
+            'kind': 'DirichletGroup',
+            'modulus': runtime.normalize_integer(modulus),
+        }
         self._modulus = modulus
         self._size = runtime.integer_bigint(
             _native_field(data, 'size'))

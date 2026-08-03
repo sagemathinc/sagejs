@@ -54,7 +54,13 @@ class CongruenceSubgroup:
 
     def __init__(self, family: str, level: int) -> None:
         self._family = family
+        self._kind = 'CongruenceSubgroup'
         self._level = level
+        self._construction = {
+            'kind': 'CongruenceSubgroup',
+            'family': family,
+            'level': level,
+        }
         if family == 'Gamma0':
             index = level
             for prime in _factor_primes(level):
@@ -2447,6 +2453,7 @@ class ModularSymbolsSpace(sage.Parent):
         subspace_kind: Any = None,
     ) -> None:
         self._group = group
+        self._kind = 'ModularSymbols'
         self._weight = weight
         self._sign = sign
         self._base = base_ring
@@ -2720,6 +2727,14 @@ class ModularSymbolsSpace(sage.Parent):
         if not self.is_ambient() and coordinates not in self.free_module():
             raise ValueError('modular symbol is not in this subspace')
         return ModularSymbolElement(self, coordinates)
+
+    def _from_serialized_element(
+        self, coordinates: Any, label: Any = None,
+    ) -> ModularSymbolElement:
+        """Reconstruct an element while retaining an optional basis label."""
+        element = self(coordinates)
+        element._label = label
+        return element
 
     def p1list(self) -> P1List:
         if self._group._family != 'Gamma0':

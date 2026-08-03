@@ -14,17 +14,62 @@ const sage = process.env.SAGELITE_SAGE || defaultSage;
 const prefix = `/tmp/sagejs-serialization-benchmark-${process.pid}`;
 const samples = Number(process.env.SAGEJS_SERIALIZATION_SAMPLES || 5);
 const cases = [
-  ["ZZ-100", "random_matrix(ZZ, 100)"],
-  ["QQ-1000", "random_matrix(QQ, 1000)"],
-  ["GF7-1000", "random_matrix(GF(7), 1000)"],
+  {
+    name: "ZZ-100",
+    setup: ["A = random_matrix(ZZ, 100)"],
+    check: "B == A",
+  },
+  {
+    name: "QQ-1000",
+    setup: ["A = random_matrix(QQ, 1000)"],
+    check: "B == A",
+  },
+  {
+    name: "GF7-1000",
+    setup: ["A = random_matrix(GF(7), 1000)"],
+    check: "B == A",
+  },
+  {
+    name: "number-field",
+    setup: [
+      "R.<x> = QQ[]",
+      "K.<a> = NumberField(x^3 - x + 1)",
+      "A = [K, (a^2 + 1/3)/(a - 2)]",
+    ],
+    check: "B[0].defining_polynomial() == A[0].defining_polynomial() and str(B[1]) == str(A[1])",
+  },
+  {
+    name: "elliptic-curve",
+    setup: [
+      "E = EllipticCurve([0, 0, 1, -1, 0])",
+      "A = [E, E([0, 0]), E(0)]",
+    ],
+    check: "B[0].ainvs() == A[0].ainvs() and str(B[1:]) == str(A[1:])",
+  },
+  {
+    name: "modsym-factor",
+    setup: [
+      "M = ModularSymbols(389, 2, sign=1)",
+      "A = M.decomposition()[3]",
+    ],
+    check: "B.basis_matrix() == A.basis_matrix()",
+  },
+  {
+    name: "character-space",
+    setup: [
+      "G = DirichletGroup(37)",
+      "A = ModularSymbols(G.gen(), 5)",
+    ],
+    check: "B.dimension() == A.dimension() and B.character() == A.character()",
+  },
 ];
 
 function program(runtime) {
   const lines = ["from time import time"];
   if (runtime === "sagejs") lines.push("from sagejs_serialization import dump, load");
-  for (const [name, expression] of cases) {
+  for (const { name, setup, check } of cases) {
     const filename = `${prefix}-${runtime}-${name}`;
-    lines.push(`A = ${expression}`);
+    lines.push(...setup);
     lines.push(`for sample in range(${samples}):`);
     lines.push("    t = time()");
     if (runtime === "sagejs") {
@@ -42,7 +87,7 @@ function program(runtime) {
       lines.push(`    B = load('${filename}.sobj')`);
     }
     lines.push(`    print('RESULT ${name} load', time() - t)`);
-    lines.push("    assert B == A");
+    lines.push(`    assert ${check}`);
   }
   return `${lines.join("\n")}\n`;
 }
@@ -88,7 +133,7 @@ try {
   ];
   console.log("case operation runtime".padEnd(34), "median", "vs SageMath");
   console.log("-".repeat(62));
-  for (const [name] of cases) {
+  for (const { name } of cases) {
     for (const operation of ["save", "load"]) {
       const key = `${name} ${operation}`;
       const sageMedian = median(results[1][1].get(key));
@@ -103,7 +148,7 @@ try {
     }
   }
 } finally {
-  for (const [name] of cases) {
+  for (const { name } of cases) {
     for (const runtime of ["sagejs", "sage"]) {
       for (const suffix of ["", ".sobj"]) {
         const filename = `${prefix}-${runtime}-${name}${suffix}`;

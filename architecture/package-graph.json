@@ -60,7 +60,10 @@
         "src/baselib/zeta_data.py",
         "src/baselib/zz_introspection.py"
       ],
-      "typescript_files": ["tools/serialization-codecs/arithmetic.ts"],
+      "typescript_files": [
+        "tools/serialization-codecs/arithmetic.ts",
+        "tools/serialization-codecs/number-fields.ts"
+      ],
       "prefixes": []
     },
     {
@@ -98,6 +101,7 @@
       "max_source_bytes": 27000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": ["src/baselib/elliptic_curves.py"],
+      "typescript_files": ["tools/serialization-codecs/elliptic-curves.ts"],
       "prefixes": []
     },
     {
@@ -107,6 +111,7 @@
       "max_source_bytes": 230000,
       "depends_on": ["core-runtime", "arithmetic", "linear-algebra"],
       "files": ["src/baselib/dirichlet.py", "src/baselib/modular.py"],
+      "typescript_files": ["tools/serialization-codecs/modular-forms.ts"],
       "prefixes": []
     },
     {

@@ -109,11 +109,66 @@ test("multiprocessing transports mathematical arguments and results", async (t) 
     "from multiprocessing import Pool",
     "def square(A):",
     "    return A*A",
+    "def double_point(P):",
+    "    return P + P",
+    "def square_algebraic(a):",
+    "    return a*a",
     "values = [matrix(GF(7), 2, [1,2,3,4]), matrix(GF(7), 2, [4,3,2,1])]",
     "with Pool(2) as pool:",
     "    answer = pool.map(square, values)",
     "print(answer == [A*A for A in values])",
     "print(all(A.base_ring() is GF(7) for A in answer))",
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^3 - x + 1)",
+    "E = EllipticCurve([0, 0, 1, -1, 0])",
+    "P = E([0, 0])",
+    "with Pool(2) as pool:",
+    "    algebraic = pool.map(square_algebraic, [a + 1/3])[0]",
+    "    point = pool.map(double_point, [P])[0]",
+    "print(algebraic._coefficients == ((a + 1/3)^2)._coefficients)",
+    "print(list(point) == list(P + P))",
   ].join("\n"));
-  assert.equal(result.stdout.trim(), "True\nTrue");
+  assert.equal(result.stdout.trim(), "True\nTrue\nTrue\nTrue");
+});
+
+test("research number-theory objects retain exact parents and subspaces", async (t) => {
+  const session = await createSage({ mode: "sage" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "from sagejs_serialization import dumps, loads",
+    "R.<x> = QQ[]",
+    "K.<a> = NumberField(x^3 - x + 1)",
+    "alpha = (a^2 + 1/3) / (a - 2)",
+    "C = CyclotomicField(12)",
+    "zeta = C.gen() + C(1/3)",
+    "QF.<i> = QuadraticField(-1)",
+    "gaussian = QF(7, -11)",
+    "E = EllipticCurve([0, 0, 1, -1, 0])",
+    "P = E([0, 0])",
+    "O = E(0)",
+    "G = DirichletGroup(37)",
+    "chi = G.gen()",
+    "M = ModularSymbols(389, 2, sign=1)",
+    "factor_space = M.decomposition()[3]",
+    "symbol = factor_space.gen(0)",
+    "CM = ModularSymbols(chi, 5)",
+    "value = {'K': K, 'alpha': alpha, 'C': C, 'zeta': zeta, 'QF': QF, 'gaussian': gaussian, 'E': E, 'P': P, 'O': O, 'G': G, 'chi': chi, 'space': factor_space, 'symbol': symbol, 'character_space': CM}",
+    "answer = loads(dumps(value))",
+    "print(answer['alpha']._coefficients == alpha._coefficients, answer['alpha'].parent() is answer['K'])",
+    "print(answer['zeta'] == zeta, answer['zeta'].parent() is answer['C'])",
+    "print(list(answer['gaussian']) == list(gaussian), answer['gaussian'].parent() is answer['QF'])",
+    "print(answer['P'] == answer['E']([0,0]), answer['O'].is_zero())",
+    "print(answer['P'].parent() is answer['E'], answer['E'].ainvs() == E.ainvs())",
+    "print(answer['chi'] == chi, answer['chi']._parent is DirichletGroup(37))",
+    "print(answer['space'].basis_matrix() == factor_space.basis_matrix())",
+    "print(answer['symbol'].parent() is answer['space'], answer['symbol'].vector() == symbol.vector())",
+    "print(answer['character_space'].dimension() == CM.dimension(), answer['character_space'].character() == chi)",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "True True", "True True", "True True", "True True", "True True",
+      "True True", "True", "True True", "True True",
+    ].join("\n"),
+  );
 });

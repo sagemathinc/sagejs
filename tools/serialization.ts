@@ -78,6 +78,12 @@ function ensureBuiltinCodecs(): void {
   require("./serialization-codecs/arithmetic").registerArithmeticCodecs();
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require("./serialization-codecs/linear-algebra").registerLinearAlgebraCodecs();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("./serialization-codecs/number-fields").registerNumberFieldCodecs();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("./serialization-codecs/elliptic-curves").registerEllipticCurveCodecs();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("./serialization-codecs/modular-forms").registerModularFormsCodecs();
 }
 
 function isUint8Array(value: unknown): value is Uint8Array {
@@ -709,6 +715,14 @@ function callPython(value: unknown, args: unknown[]): unknown {
 function callGlobal(name: string, args: unknown[]): unknown {
   return callPython(Reflect.get(globalThis, name), args);
 }
+
+/** Trusted constructor helpers for package-owned codec implementations. */
+export const codecRuntime = {
+  invoke,
+  callMethod,
+  callPython,
+  callGlobal,
+};
 
 function field(value: unknown, name: string): unknown {
   if (value === null || value === undefined) return undefined;
