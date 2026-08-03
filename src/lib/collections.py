@@ -597,11 +597,16 @@ class ChainMap:
     def __init__(self, *maps: Any) -> None:
         self.maps = list(maps) if maps else [dict()]
 
+    def __missing__(self, key: Any) -> Any:
+        raise KeyError(key)
+
     def __getitem__(self, key: Any) -> Any:
         for mapping in self.maps:
-            if key in mapping:
+            try:
                 return mapping.__getitem__(key)
-        raise KeyError(key)
+            except KeyError:
+                pass
+        return self.__missing__(key)
 
     def __setitem__(self, key: Any, value: Any) -> None:
         self.maps[0].__setitem__(key, value)

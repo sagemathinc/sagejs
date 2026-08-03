@@ -107,6 +107,8 @@ Status meanings:
     with identity, ordering, and non-positive-count filtering preserved.
     `collections.defaultdict.copy` now preserves the default factory, shallow
     value sharing, independent key storage, and the concrete subclass.
+    `collections.ChainMap` lookups now invoke child mapping `__missing__`
+    behavior and fall back through the chain's overridable `__missing__` hook.
     `most_common` now rejects non-integer limits and normalizes non-positive
     limits instead of relying on JavaScript slice coercion, while `fromkeys`
     reports its intentionally undefined semantics. `collections.deque` now
