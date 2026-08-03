@@ -66,12 +66,51 @@ def heapify(heap):
         _siftdown(heap, position)
 
 
+class _MergeEntry:
+    def __init__(self, value, key_value, order, iterator, reverse):
+        self.value = value
+        self.key_value = key_value
+        self.order = order
+        self.iterator = iterator
+        self.reverse = reverse
+
+    def __lt__(self, other):
+        if self.reverse:
+            if other.key_value < self.key_value:
+                return True
+            if self.key_value < other.key_value:
+                return False
+        else:
+            if self.key_value < other.key_value:
+                return True
+            if other.key_value < self.key_value:
+                return False
+        return self.order < other.order
+
+
 def merge(*iterables, key=None, reverse=False):
-    values = []
-    for iterable in iterables:
-        values.extend(iterable)
-    values.sort(key=key, reverse=reverse)
-    return iter(values)
+    heap = []
+    for order, iterable in enumerate(iterables):
+        iterator = iter(iterable)
+        try:
+            value = next(iterator)
+        except StopIteration:
+            continue
+        key_value = value if key is None else key(value)
+        heappush(
+            heap,
+            _MergeEntry(value, key_value, order, iterator, reverse))
+
+    while heap:
+        entry = heap[0]
+        yield entry.value
+        try:
+            entry.value = next(entry.iterator)
+        except StopIteration:
+            heappop(heap)
+            continue
+        entry.key_value = entry.value if key is None else key(entry.value)
+        heapreplace(heap, entry)
 
 
 def nsmallest(count, iterable, key=None):
@@ -80,4 +119,3 @@ def nsmallest(count, iterable, key=None):
 
 def nlargest(count, iterable, key=None):
     return sorted(iterable, key=key, reverse=True)[:count]
-

@@ -76,7 +76,8 @@ Status meanings:
 16. **ready — common pure utility modules.** Expand `functools`, `itertools`,
     `collections`, `statistics`, `bisect`, `heapq`, `operator`, `textwrap`, and
     `re` only through differential tests, keeping them lazy at startup. The
-    CPython 3.14 `operator` function and callable-getter APIs are done.
+    CPython 3.14 `operator` function and callable-getter APIs and streaming
+    `heapq.merge` are done.
 
 ## Graphics and foreign-language compatibility
 
