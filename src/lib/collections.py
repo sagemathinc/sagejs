@@ -386,7 +386,7 @@ class Counter(OrderedDict):
 
     def elements(self) -> Iterator[Any]:
         for key, count in self._data.items():
-            for _index in range(max(0, int(count))):
+            for _index in range(max(0, _as_index(count))):
                 yield key
 
     def total(self) -> Any:

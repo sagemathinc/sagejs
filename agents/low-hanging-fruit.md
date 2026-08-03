@@ -95,7 +95,8 @@ Status meanings:
     `functools.total_ordering` now derives comparisons from any of CPython's
     four supported ordering roots and rejects classes without one.
     `collections.Counter` now compares counts with CPython's missing-as-zero
-    equality and subset/superset semantics.
+    equality and subset/superset semantics. Its `elements` iterator now accepts
+    `__index__` counts and rejects non-integral counts instead of truncating them.
 
 ## Graphics and foreign-language compatibility
 
