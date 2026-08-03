@@ -687,6 +687,26 @@ class ChainMap:
         for key, value in keywords.items():
             self.__setitem__(key, value)
 
+    def __ior__(self, other: Any) -> Any:
+        self.maps[0].update(other)
+        return self
+
+    def __or__(self, other: Any) -> Any:
+        if not isinstance(other, (dict, OrderedDict, ChainMap)):
+            return NotImplemented
+        answer = self.copy()
+        answer.maps[0].update(other)
+        return answer
+
+    def __ror__(self, other: Any) -> Any:
+        if not isinstance(other, (dict, OrderedDict, ChainMap)):
+            return NotImplemented
+        merged = dict()
+        merged.update(other)
+        for mapping in reversed(self.maps):
+            merged.update(mapping)
+        return type(self)(merged)
+
     def keys(self) -> Any:
         return list(self)
 
