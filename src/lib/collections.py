@@ -193,10 +193,15 @@ class deque:
     def count(self, value: Any) -> int:
         return sum(1 for item in self._values if item == value)
 
-    def index(self, value: Any, start: int = 0, stop: Any = None) -> int:
+    def index(
+        self,
+        value: Any,
+        start: int = 0,
+        stop: Any = runtime.undefined,
+    ) -> int:
         length = len(self._values)
         start = _as_index(start, slice_bound=True)
-        if stop is None:
+        if stop is runtime.undefined:
             stop = length
         else:
             stop = _as_index(stop, slice_bound=True)

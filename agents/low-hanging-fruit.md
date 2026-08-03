@@ -122,6 +122,9 @@ Status meanings:
     `collections.deque` in-place concatenation now accepts arbitrary iterables,
     preserves identity and bounds, and safely snapshots self-extension from
     either end.
+    `collections.deque.index` now distinguishes an omitted stop bound from an
+    explicit `None`, rejecting the latter like CPython instead of searching to
+    the end.
     `most_common` now rejects non-integer limits and normalizes non-positive
     limits instead of relying on JavaScript slice coercion, while `fromkeys`
     reports its intentionally undefined semantics. `collections.deque` now
