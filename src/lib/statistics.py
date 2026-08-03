@@ -185,13 +185,48 @@ def covariance(x, y):
     return sum((a - xmean) * (b - ymean) for a, b in zip(x, y)) / (len(x) - 1)
 
 
+def _rank(values, start=1):
+    indexed = sorted((value, index) for index, value in enumerate(values))
+    answer = [0] * len(indexed)
+    position = 0
+    while position < len(indexed):
+        end = position + 1
+        while end < len(indexed) and indexed[end][0] == indexed[position][0]:
+            end += 1
+        rank = start + (position + end - 1) / 2
+        for ranked_position in range(position, end):
+            answer[indexed[ranked_position][1]] = rank
+        position = end
+    return answer
+
+
 def correlation(x, y, *, method='linear'):
-    if method != 'linear':
-        raise NotImplementedError('only linear correlation is currently supported')
     x = list(x)
     y = list(y)
-    numerator = covariance(x, y)
-    return numerator / (stdev(x) * stdev(y))
+    length = len(x)
+    if len(y) != length:
+        raise StatisticsError(
+            'correlation requires that both inputs have same number of data points')
+    if length < 2:
+        raise StatisticsError('correlation requires at least two data points')
+    if method not in ('linear', 'ranked'):
+        raise ValueError('Unknown method: ' + repr(method))
+    if method == 'ranked':
+        start = (length - 1) / -2
+        x = _rank(x, start)
+        y = _rank(y, start)
+    else:
+        xmean = mean(x)
+        ymean = mean(y)
+        x = [value - xmean for value in x]
+        y = [value - ymean for value in y]
+    numerator = sum(a * b for a, b in zip(x, y))
+    x_square_sum = sum(value * value for value in x)
+    y_square_sum = sum(value * value for value in y)
+    denominator = math.sqrt(x_square_sum * y_square_sum)
+    if denominator == 0:
+        raise StatisticsError('at least one of the inputs is constant')
+    return numerator / denominator
 
 
 LinearRegression = namedtuple('LinearRegression', 'slope intercept')

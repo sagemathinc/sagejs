@@ -94,6 +94,9 @@ Status meanings:
     indexed deletion, including negative and `__index__`-coerced positions.
     `functools.total_ordering` now derives comparisons from any of CPython's
     four supported ordering roots and rejects classes without one.
+    `statistics.correlation` now supports Spearman ranked correlation with
+    averaged ties and reports CPython-compatible validation errors for
+    mismatched, constant, and unknown-method inputs.
     `collections.OrderedDict` now compares order-sensitively with its own type,
     compares like a mapping with other mappings, supports reverse iteration,
     implements `move_to_end` in both directions, and rejects extra `pop`
