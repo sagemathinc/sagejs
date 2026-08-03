@@ -68,7 +68,11 @@ def _same_call(left_args, left_keywords, right_args, right_keywords, typed):
     if list(left_keywords.items()) != list(right_keywords.items()):
         return False
     if typed:
-        return [type(value) for value in left_args] == [type(value) for value in right_args]
+        if [type(value) for value in left_args] != [type(value) for value in right_args]:
+            return False
+        return [type(value) for value in left_keywords.values()] == [
+            type(value) for value in right_keywords.values()
+        ]
     return True
 
 
@@ -76,6 +80,11 @@ def lru_cache(maxsize=128, typed=False):
     if callable(maxsize):
         function = maxsize
         return lru_cache()(function)
+    if maxsize is not None and not isinstance(maxsize, int):
+        raise TypeError(
+            'Expected first argument to be an integer, a callable, or None')
+    if maxsize is not None and maxsize < 0:
+        maxsize = 0
 
     def decorate(function):
         entries = []
