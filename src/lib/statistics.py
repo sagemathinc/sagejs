@@ -140,25 +140,37 @@ def stdev(data, xbar=None):
 
 
 def quantiles(data, *, n=4, method='exclusive'):
-    values = sorted(_values(data))
     if n < 1:
         raise StatisticsError('n must be at least 1')
-    if len(values) < 2:
-        raise StatisticsError('must have at least two data points')
-    answer = []
-    for index in range(1, n):
-        if method == 'inclusive':
-            position = index * (len(values) - 1) / n
-        elif method == 'exclusive':
-            position = index * (len(values) + 1) / n - 1
-            position = min(len(values) - 1, max(0, position))
-        else:
-            raise ValueError("Unknown method: " + repr(method))
-        lower = int(math.floor(position))
-        upper = int(math.ceil(position))
-        fraction = position - lower
-        answer.append(values[lower] + fraction * (values[upper] - values[lower]))
-    return answer
+    values = sorted(data)
+    length = len(values)
+    if length < 2:
+        if length == 1:
+            return values * (n - 1)
+        raise StatisticsError('must have at least one data point')
+    if method == 'inclusive':
+        scale = length - 1
+        answer = []
+        for index in range(1, n):
+            position, remainder = divmod(index * scale, n)
+            answer.append(
+                (values[position] * (n - remainder)
+                 + values[position + 1] * remainder) / n
+            )
+        return answer
+    if method == 'exclusive':
+        scale = length + 1
+        answer = []
+        for index in range(1, n):
+            position = index * scale // n
+            position = min(length - 1, max(1, position))
+            remainder = index * scale - position * n
+            answer.append(
+                (values[position - 1] * (n - remainder)
+                 + values[position] * remainder) / n
+            )
+        return answer
+    raise ValueError("Unknown method: " + repr(method))
 
 
 def covariance(x, y):

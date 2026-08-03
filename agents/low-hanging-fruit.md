@@ -84,9 +84,11 @@ Status meanings:
     now validates and normalizes `lru_cache` capacities and includes keyword
     argument types in typed cache keys. `statistics.harmonic_mean` now validates
     weighted inputs and ignores zero-valued data carrying zero weight, matching
-    CPython's weighted edge-case semantics. `heapq.nsmallest` and `nlargest`
-    now use the public `n` parameter name and return immediately for
-    non-positive counts without consuming their inputs.
+    CPython's weighted edge-case semantics. `statistics.quantiles` now uses
+    exact-index interpolation for inclusive and exclusive cut points, including
+    extrapolated small-sample tails and singleton samples. `heapq.nsmallest`
+    and `nlargest` now use the public `n` parameter name and return immediately
+    for non-positive counts without consuming their inputs.
 
 ## Graphics and foreign-language compatibility
 
