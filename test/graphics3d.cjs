@@ -262,6 +262,28 @@ async function main() {
       )).repr,
       "3D mesh with 3 vertices and 1 faces",
     );
+    const indexedMesh = await session.evaluate(
+      [
+        "S = IndexFaceSet([",
+        "  [(1,0,0),(0,1,0),(0,0,1)],",
+        "  [(1,0,0),(0,1,0),(0,0,0)]],",
+        "  enclosed=True, texture_list=['red','blue'], mesh=True)",
+        "S",
+      ].join("\n"),
+    );
+    assert.equal(indexedMesh.repr, "Graphics3d Object");
+    assert.deepEqual(
+      indexedMesh.display?.data.data.map((trace) => trace.type),
+      ["mesh3d", "scatter3d"],
+    );
+    assert.deepEqual(indexedMesh.display?.data.data[0].facecolor, ["red", "blue"]);
+    assert.equal(
+      (await session.evaluate(
+        "(S.index_faces(),len(S.vertex_list()),len(S.face_list())," +
+          "len(S.edge_list()),S.is_enclosed(),S.has_local_colors())",
+      )).repr,
+      "([[0, 1, 2], [0, 1, 3]], 4, 2, 5, True, True)",
+    );
 
     const label3d = await session.evaluate(
       "text3d('Sage', (1,2,3), color='green', fontsize=20)",

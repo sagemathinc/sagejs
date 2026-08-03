@@ -1786,6 +1786,136 @@ def _g3d_mesh(
     return graphic
 
 
+class IndexFaceSet(Graphics3d):
+    r"""A Sage-compatible indexed collection of polygonal faces.
+
+    Faces may be specified either by indices into `point_list` or directly as
+    lists of three-dimensional points.  The latter form automatically shares
+    equal vertices, matching Sage's constructor.
+
+    EXAMPLES::
+
+        sage: S = IndexFaceSet([[(1,0,0), (0,1,0), (0,0,1)]])
+        sage: S.index_faces()
+        [[0, 1, 2]]
+        sage: S.vertex_list()
+        [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)]
+    """
+
+    def __init__(
+        self,
+        faces: Any,
+        point_list: Any = None,
+        enclosed: bool = False,
+        texture_list: Any = None,
+        **options: Any,
+    ) -> None:
+        face_values = [list(face) for face in faces]
+        if point_list is None:
+            vertices = []
+            indexed_faces = []
+            point_indices = {}
+            for face in face_values:
+                indexed_face = []
+                for point_value in face:
+                    point = _g3d_point(point_value)
+                    key = (
+                        str(point[0]) + ':' + str(point[1]) + ':' +
+                        str(point[2])
+                    )
+                    if key not in point_indices:
+                        point_indices[key] = len(vertices)
+                        vertices.append(point)
+                    indexed_face.append(point_indices[key])
+                indexed_faces.append(indexed_face)
+        else:
+            vertices = [_g3d_point(point) for point in point_list]
+            indexed_faces = [
+                [int(index) for index in face] for face in face_values
+            ]
+        actual_options = _g3d_copy_options(options)
+        self._texture_list = None
+        if texture_list is not None:
+            textures = list(texture_list)
+            if len(textures) != len(indexed_faces):
+                raise ValueError(
+                    'texture_list must contain one texture for every face')
+            face_colors = []
+            for texture in textures:
+                color = texture
+                if hasattr(texture, 'color'):
+                    color = texture.color
+                    if callable(color):
+                        color = color()
+                elif hasattr(texture, 'rgbcolor'):
+                    color = texture.rgbcolor
+                    if callable(color):
+                        color = color()
+                face_colors.append(color)
+            actual_options['color'] = face_colors
+            self._texture_list = face_colors
+        built = _g3d_mesh(indexed_faces, vertices, **actual_options)
+        Graphics3d.__init__(self)
+        self.set_extra_kwds(built.get_extra_kwds())
+        for primitive in built:
+            self.add_primitive(primitive)
+        mesh = built[0]
+        if not isinstance(mesh, Mesh3d):
+            raise RuntimeError('IndexFaceSet did not produce a mesh')
+        self._mesh = mesh
+        self._enclosed = bool(enclosed)
+
+    def index_faces(self) -> list[list[int]]:
+        """Return faces as lists of indices into `vertex_list()`."""
+        return [list(face) for face in self._mesh.faces]
+
+    def face_list(self, render_params: Any = None) -> Any:
+        """Return every face as a list of three-dimensional vertices."""
+        if render_params is not None:
+            raise NotImplementedError(
+                'transformed IndexFaceSet render parameters are unsupported')
+        return [
+            [self._mesh.vertices[index] for index in face]
+            for face in self._mesh.faces
+        ]
+
+    def vertex_list(self) -> Any:
+        """Return the shared list of vertices."""
+        return list(self._mesh.vertices)
+
+    def faces(self) -> Any:
+        return iter(self.face_list())
+
+    def vertices(self) -> Any:
+        return iter(self.vertex_list())
+
+    def edge_list(self) -> Any:
+        """Return each unoriented mesh edge exactly once."""
+        edges = {}
+        for face in self._mesh.faces:
+            for position in range(len(face)):
+                left = int(face[position])
+                right = int(face[(position + 1) % len(face)])
+                lower = min(left, right)
+                upper = max(left, right)
+                key = str(lower) + ':' + str(upper)
+                if key not in edges:
+                    edges[key] = runtime.math_tuple([
+                        self._mesh.vertices[left],
+                        self._mesh.vertices[right],
+                    ])
+        return [edges[key] for key in edges]
+
+    def edges(self) -> Any:
+        return iter(self.edge_list())
+
+    def is_enclosed(self) -> bool:
+        return self._enclosed
+
+    def has_local_colors(self) -> bool:
+        return self._texture_list is not None
+
+
 def polygon3d(points: Any, **options: Any) -> Graphics3d:
     """Draw a single polygon with vertices in three-dimensional space."""
     normalized = list(points)
@@ -3154,6 +3284,7 @@ def _graphics3d_doc(tags: list[str], notes: str) -> Any:
 
 
 for _doc_name, _doc_function, _doc_tags in [
+    ('IndexFaceSet', IndexFaceSet, ['polygons', 'meshes', 'data structures']),
     ('line3d', line3d, ['lines']),
     ('point3d', point3d, ['points']),
     ('polygon3d', polygon3d, ['polygons', 'meshes']),

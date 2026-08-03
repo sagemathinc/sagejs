@@ -90,6 +90,8 @@ Status meanings:
 19. **ready — Sage graphics primitives long tail.** Port missing pure-Python
     constructors and docstrings from the GPL-compatible Sage source, using
     Plotly rendering and image-based smoke tests for representative scenes.
+    The public `IndexFaceSet` constructor, topology accessors, direct/indexed
+    face forms, and per-face colors are done.
 20. **ready — Mathematica graphics directives.** Support nested directives and
     options such as colors, opacity, thickness, edge forms, lighting, plot
     range, axes, and boxed state consistently in `Graphics` and `Graphics3D`.

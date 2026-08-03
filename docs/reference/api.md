@@ -1462,6 +1462,40 @@ cubes refinements.
 
 - [Plotly.js 3D Isosurface Plots](https://plotly.com/javascript/3d-isosurface-plots/).
 
+## `IndexFaceSet`
+
+```sage
+IndexFaceSet(faces, point_list=None, enclosed=False, texture_list=None, **options)
+```
+
+A Sage-compatible indexed collection of polygonal faces.
+
+Faces may be specified either by indices into `point_list` or directly as
+lists of three-dimensional points.  The latter form automatically shares
+equal vertices, matching Sage's constructor.
+
+### Examples
+
+    sage: S = IndexFaceSet([[(1,0,0), (0,1,0), (0,0,1)]])
+    sage: S.index_faces()
+    [[0, 1, 2]]
+    sage: S.vertex_list()
+    [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)]
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot.plot3d`
+- Tags: graphics, 3D graphics, polygons
+- Backends: Plotly, Sage.js rectangular sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Semantic 3D primitives with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath 3D plotting API and object model](https://doc.sagemath.org/html/en/reference/plot3d/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/3d-charts/)
+
 ## `is_prime`
 
 ```sage
