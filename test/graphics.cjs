@@ -591,6 +591,28 @@ async function main() {
     assert.equal(complexDomain.display?.data.layout.yaxis.scaleanchor, "x");
     assert.equal(
       (await session.evaluate(
+        "len(colors) >= 50 and len(colormaps) >= 9 and " +
+          "colors['red'].rgb() == (1,0,0)",
+      )).repr,
+      "True",
+    );
+    assert.equal(
+      (await session.evaluate(
+        "max(abs(complex_to_cmap_rgb([[1]],cmap='viridis')[0][0][i] - " +
+          "[0.0998703826143047,0.43882440845679327," +
+          "0.4236925323031108][i]) for i in range(3)) < 1e-14",
+      )).repr,
+      "True",
+    );
+    const viridisComplex = await session.evaluate(
+      "complex_plot(lambda z:z,(-1,1),(-1,1),plot_points=3," +
+        "cmap='viridis',interpolation='nearest')",
+    );
+    const viridisPixels = viridisComplex.display?.data.data[0].z;
+    assert.deepEqual(viridisPixels[1][1], [0, 0, 0]);
+    assert.deepEqual(viridisPixels[1][2], [25, 112, 108]);
+    assert.equal(
+      (await session.evaluate(
         "complex_plot(lambda z:z,(-1,1),(-1,1),plot_points=3)[0]",
       )).repr,
       "ComplexPlot defined by a 3 x 3 data grid",

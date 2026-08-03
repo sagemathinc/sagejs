@@ -82,7 +82,8 @@ Status meanings:
 17. **measure — Sage 2D graphics option matrix.** Harvest upstream examples by
     primitive and option, compare normalized Plotly specs, and implement one
     bounded option family at a time: axes/frame, aspect ratio, legends,
-    labels, ticks, scales, fills, and regions.
+    labels, ticks, scales, fills, and regions. Named/custom `complex_plot`
+    colormaps and correct indexed/attribute color-map access are done.
 18. **ready — Sage 3D transformations and composition.** Complete translate,
     scale, rotate, texture/material propagation, mesh/wireframe styling,
     opacity, aspect ratio, and camera behavior across every primitive.

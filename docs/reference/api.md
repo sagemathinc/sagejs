@@ -375,6 +375,47 @@ Graphics object consisting of 1 graphics primitive
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `complex_to_cmap_rgb`
+
+```sage
+complex_to_cmap_rgb(z_values, cmap='turbo', contoured=False, tiled=False, contour_type='logarithmic', contour_base=None, dark_rate=0.5, nphases=10)
+```
+
+Convert complex values to RGB using a Sage-compatible colormap.
+
+The argument selects a point in the colormap and the magnitude controls
+lightness.  Common matplotlib names such as `'viridis'`, `'plasma'`,
+`'inferno'`, `'cividis'`, `'turbo'`, `'twilight'`, and `'hsv'`
+are built in without importing matplotlib.  A list of colors or a callable
+returning an RGB(A) tuple is also accepted.
+
+### Examples
+
+```sage
+sage: complex_to_cmap_rgb([[0, 1]], cmap='viridis')[0][0]
+[0.0, 0.0, 0.0]
+sage: len(complex_to_cmap_rgb([[1 + I]], cmap='plasma')[0][0])
+3
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.plot`
+- Tags: graphics, plotting, 2D graphics
+- Backends: Plotly, Sage.js adaptive sampler
+- Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
+- Algorithm: Sage-compatible semantic graphics with Plotly rendering
+
+### Provenance
+
+- `sage-derived` — [SageMath plotting API and object model](https://doc.sagemath.org/html/en/reference/plotting/); license GPL-2.0-or-later
+- `library-backed` — [Plotly.js](https://plotly.com/javascript/)
+
+### References
+
+- [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
 ## `complex_to_rgb`
 
 ```sage

@@ -1876,9 +1876,13 @@ class ColorsDict(dict):  # pyright: ignore[reportMissingTypeArgument]
         raise AttributeError("unknown color '" + name + "'")
 
 
-colors = ColorsDict()
+_color_values = {}
 for _color_name in _NAMED_COLORS:
-    colors[_color_name] = Color(_option_get(_NAMED_COLORS, _color_name))
+    _color_values[_color_name] = Color(
+        _option_get(_NAMED_COLORS, _color_name))
+colors = ColorsDict(_color_values)
+for _color_name in _NAMED_COLORS:
+    colors[_color_name] = _option_get(_color_values, _color_name)
     runtime.reflect.set(
         runtime.global_object, _color_name, colors[_color_name])
 
@@ -1903,15 +1907,30 @@ class Colormaps(dict):  # pyright: ignore[reportMissingTypeArgument]
         raise AttributeError("unknown colormap '" + name + "'")
 
 
-colormaps = Colormaps()
-colormaps['gray'] = ['black', 'white']
-colormaps['Greys'] = ['black', 'white']
-colormaps['viridis'] = [
-    '#440154', '#3b528b', '#21918c', '#5ec962', '#fde725']
-colormaps['plasma'] = [
-    '#0d0887', '#7e03a8', '#cc4778', '#f89540', '#f0f921']
-colormaps['inferno'] = [
-    '#000004', '#420a68', '#932667', '#dd513a', '#fca50a', '#fcffa4']
+_COLORMAP_VALUES = {
+    'gray': ['black', 'white'],
+    'Greys': ['black', 'white'],
+    'viridis': [
+        '#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'],
+    'plasma': [
+        '#0d0887', '#7e03a8', '#cc4778', '#f89540', '#f0f921'],
+    'inferno': [
+        '#000004', '#420a68', '#932667', '#dd513a', '#fca50a', '#fcffa4'],
+    'cividis': [
+        '#00224e', '#31446b', '#666970', '#958f78', '#c8b866', '#fee838'],
+    'turbo': [
+        '#30123b', '#4662d7', '#28bbec', '#3fe43b', '#f9e721', '#f66b19',
+        '#7a0403'],
+    'twilight': [
+        '#e2d9e2', '#6276ba', '#221f3b', '#8b173d', '#d08b73', '#e2d9e2'],
+    'hsv': [
+        '#ff0000', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff',
+        '#ff0000'],
+}
+colormaps = Colormaps(_COLORMAP_VALUES)
+for _colormap_name in _COLORMAP_VALUES:
+    colormaps[_colormap_name] = _option_get(
+        _COLORMAP_VALUES, _colormap_name)
 
 
 def circle(
@@ -3571,6 +3590,178 @@ def complex_to_rgb(
     return answer
 
 
+def _complex_normalize_colormap(
+    colors_value: Any,
+    reverse: bool,
+) -> list[list[float]]:
+    """Normalize an iterable of Sage colors to RGB stops."""
+    if len(colors_value) == 0:
+        raise ValueError('a colormap must contain at least one color')
+    colors = [list(rgbcolor(value)) for value in colors_value]
+    if len(colors) == 1:
+        colors.append(list(colors[0]))
+    if reverse:
+        colors.reverse()
+    return colors
+
+
+def _complex_colormap_colors(cmap: Any) -> Any:
+    """Return a callable or normalized RGB stops for a colormap."""
+    if callable(cmap) and not isinstance(cmap, (list, tuple)):
+        return cmap
+    if not isinstance(cmap, str):
+        return _complex_normalize_colormap(list(cmap), False)
+    name = cmap
+    reverse = False
+    if name.endswith('_r'):
+        reverse = True
+        name = name[:-2]
+    if name == 'matplotlib':
+        # Sage's special ``matplotlib`` wheel is HSV shifted so that a
+        # positive real value is red.  It remains cyclic at the cut.
+        return _complex_normalize_colormap([
+            '#00ffff', '#0000ff', '#ff00ff', '#ff0000', '#ffff00',
+            '#00ff00', '#00ffff',
+        ], reverse)
+    key = name
+    if key not in _COLORMAP_VALUES:
+        lowered = name.lower()
+        if lowered in _COLORMAP_VALUES:
+            key = lowered
+        elif name == 'Greys' and 'Greys' in _COLORMAP_VALUES:
+            key = 'Greys'
+        else:
+            raise ValueError("unknown colormap '" + name + "'")
+    return _complex_normalize_colormap(
+        list(_option_get(_COLORMAP_VALUES, key)), reverse)
+
+
+def _complex_colormap_sample(cmap: Any, position: float) -> list[float]:
+    """Sample a normalized colormap or user callable at `position`."""
+    normalized = max(0.0, min(1.0, float(position)))
+    if callable(cmap) and not isinstance(cmap, (list, tuple)):
+        color_value = cmap(normalized)
+        values = runtime.list_constructor(color_value)
+        if len(values) < 3:
+            raise ValueError('a colormap callable must return an RGB color')
+        return [float(values[0]), float(values[1]), float(values[2])]
+    colors = cmap
+    scaled = normalized * float(len(colors) - 1)
+    left = min(int(scaled), len(colors) - 2)
+    fraction = scaled - float(left)
+    return [
+        (1.0 - fraction) * float(colors[left][index])
+        + fraction * float(colors[left + 1][index])
+        for index in range(3)
+    ]
+
+
+def _complex_adjust_colormap_lightness(
+    rgb: Any,
+    delta: float,
+    contoured: bool,
+    tiled: bool,
+    dark_rate: float,
+) -> list[float]:
+    """Apply Sage's smooth or HLS contour lightness adjustment."""
+    if contoured or tiled:
+        hue_value, lightness, saturation = Color(rgb).hls()
+        lightness = max(
+            0.0, min(1.0, lightness + float(dark_rate) * delta))
+        return list(_hls_to_rgb(hue_value, lightness, saturation))
+    if delta >= 0:
+        return [
+            (1.0 - delta) * float(component) + delta
+            for component in rgb
+        ]
+    return [(1.0 + delta) * float(component) for component in rgb]
+
+
+def complex_to_cmap_rgb(
+    z_values: Any,
+    cmap: Any = 'turbo',
+    contoured: bool = False,
+    tiled: bool = False,
+    contour_type: str = 'logarithmic',
+    contour_base: Any = None,
+    dark_rate: float = 0.5,
+    nphases: int = 10,
+) -> list[list[list[float]]]:
+    r"""Convert complex values to RGB using a Sage-compatible colormap.
+
+    The argument selects a point in the colormap and the magnitude controls
+    lightness.  Common matplotlib names such as ``'viridis'``, ``'plasma'``,
+    ``'inferno'``, ``'cividis'``, ``'turbo'``, ``'twilight'``, and ``'hsv'``
+    are built in without importing matplotlib.  A list of colors or a callable
+    returning an RGB(A) tuple is also accepted.
+
+    ### Examples
+
+    ```sage
+    sage: complex_to_cmap_rgb([[0, 1]], cmap='viridis')[0][0]
+    [0.0, 0.0, 0.0]
+    sage: len(complex_to_cmap_rgb([[1 + I]], cmap='plasma')[0][0])
+    3
+    ```
+    """
+    contour_kind = str(contour_type).lower()
+    if contour_kind not in ('linear', 'logarithmic'):
+        raise ValueError('contour_type must be linear or logarithmic')
+    if contour_base is None:
+        contour_base_value = 10.0 if contour_kind == 'linear' else 2.0
+    else:
+        contour_base_value = float(contour_base)
+    if contour_base_value <= 0:
+        raise ValueError('contour_base must be positive')
+    dark_rate_value = float(dark_rate)
+    if dark_rate_value <= 0:
+        raise ValueError('dark_rate must be positive')
+    phase_count = int(nphases)
+    if phase_count <= 0:
+        raise ValueError('nphases must be positive')
+    color_source = _complex_colormap_colors(cmap)
+    rows = [list(row) for row in z_values]
+    if len(rows) == 0:
+        return []
+    column_count = len(rows[0])
+    answer = []
+    for row in rows:
+        if len(row) != column_count:
+            raise ValueError('complex value grid must be rectangular')
+        output_row = []
+        for value in row:
+            try:
+                real, imaginary = _complex_numeric_parts(value)
+                magnitude = runtime.math.hypot(real, imaginary)
+                argument = runtime.math.atan2(imaginary, real)
+                lightness = _complex_lightness(
+                    magnitude,
+                    argument,
+                    bool(contoured),
+                    bool(tiled),
+                    contour_kind,
+                    contour_base_value,
+                    dark_rate_value,
+                    phase_count,
+                )
+                base_color = _complex_colormap_sample(
+                    color_source,
+                    (argument + runtime.math.PI) /
+                    (2.0 * runtime.math.PI),
+                )
+                output_row.append(_complex_adjust_colormap_lightness(
+                    base_color,
+                    lightness,
+                    bool(contoured),
+                    bool(tiled),
+                    dark_rate_value,
+                ))
+            except Exception:
+                output_row.append([1.0, 1.0, 1.0])
+        answer.append(output_row)
+    return answer
+
+
 def _plot_callable_2d(
     function_value: Any,
     xvariable: Any,
@@ -4188,9 +4379,6 @@ def complex_plot(
     Graphics object consisting of 1 graphics primitive
     ```
     """
-    if cmap is not None:
-        raise NotImplementedError(
-            'named complex_plot colormaps are not implemented yet')
     xmin, xmax = _plot_range(x_range)
     ymin, ymax = _plot_range(y_range)
     plot_points = _option_pop(options, 'plot_points', 100)
@@ -4252,15 +4440,27 @@ def complex_plot(
             except Exception:
                 row.append(None)
         sampled.append(row)
-    rgb_data = complex_to_rgb(
-        sampled,
-        contoured=contoured,
-        tiled=tiled,
-        contour_type=contour_type,
-        contour_base=contour_base,
-        dark_rate=dark_rate,
-        nphases=nphases,
-    )
+    if cmap is None:
+        rgb_data = complex_to_rgb(
+            sampled,
+            contoured=contoured,
+            tiled=tiled,
+            contour_type=contour_type,
+            contour_base=contour_base,
+            dark_rate=dark_rate,
+            nphases=nphases,
+        )
+    else:
+        rgb_data = complex_to_cmap_rgb(
+            sampled,
+            cmap=cmap,
+            contoured=contoured,
+            tiled=tiled,
+            contour_type=contour_type,
+            contour_base=contour_base,
+            dark_rate=dark_rate,
+            nphases=nphases,
+        )
 
     options = _copy_options(options)
     defaults = {
@@ -4865,6 +5065,8 @@ for _doc_name, _doc_function, _doc_tags in [
      ['2D graphics', 'complex analysis', 'domain coloring']),
     ('complex_to_rgb', complex_to_rgb,
      ['2D graphics', 'complex analysis', 'domain coloring']),
+    ('complex_to_cmap_rgb', complex_to_cmap_rgb,
+     ['2D graphics', 'complex analysis', 'domain coloring', 'colormaps']),
     ('implicit_plot', implicit_plot, ['2D graphics', 'implicit curves']),
     ('region_plot', region_plot, ['2D graphics', 'regions']),
     ('matrix_plot', matrix_plot, ['2D graphics', 'matrices']),
