@@ -380,6 +380,39 @@ assert finite_kernel.dimension() == 2
 assert finite_singular * finite_kernel.basis_matrix().T == (
     zero_matrix(F5, 2, 2)
 )
+
+# Sage enumerates a finite kernel by treating basis coefficients as a
+# mixed-radix counter, with the coefficient of the first basis vector varying
+# fastest.  In particular, index zero is the zero vector rather than a basis
+# generator.
+binary_kernel_source = matrix(
+    F2, [[1, 0, 0, 1], [0, 1, 0, 1]])
+binary_kernel = binary_kernel_source.right_kernel()
+binary_basis_0, binary_basis_1 = binary_kernel.basis()
+assert binary_kernel.cardinality() == 4
+assert binary_kernel.order() == 4
+assert len(binary_kernel) == 4
+assert list(binary_kernel) == [
+    binary_kernel.zero(),
+    binary_basis_0,
+    binary_basis_1,
+    binary_basis_0 + binary_basis_1,
+]
+assert binary_kernel[0] == binary_kernel.zero()
+assert binary_kernel[1] == binary_basis_0
+assert binary_kernel[-1] == binary_basis_0 + binary_basis_1
+assert binary_kernel[1:] == list(binary_kernel)[1:]
+assert binary_kernel[::-1] == list(reversed(list(binary_kernel)))
+assert all(
+    binary_kernel_source * element == vector(F2, [0, 0])
+    for element in binary_kernel
+)
+assert matrix(ZZ, [[2, 3, 5, 7]]) * vector(
+    ZZ, list(binary_kernel[1])) == vector(ZZ, [12])
+
+trivial_binary_kernel = identity_matrix(F2, 2).right_kernel()
+assert list(trivial_binary_kernel) == [vector(F2, [0, 0])]
+assert trivial_binary_kernel[:] == [vector(F2, [0, 0])]
 assert finite_singular.left_kernel().dimension() == 1
 assert finite_singular.left_kernel_matrix() == (
     finite_singular.left_kernel().basis_matrix()

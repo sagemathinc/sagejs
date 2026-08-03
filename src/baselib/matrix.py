@@ -799,6 +799,8 @@ class Vector(sage.Element):
 @runtime.callable_instance_class
 class VectorSubspaceParent(sage.Parent):
 
+    __sagejs_sequence_proxy__ = True
+
     def __init__(
         self,
         ambient: VectorSpaceParent,
@@ -810,6 +812,7 @@ class VectorSubspaceParent(sage.Parent):
         self._basis_matrix = basis
         self._defining_matrix = defining_matrix
         self._left_kernel = left_kernel
+        self._enumeration_elements: Any = None
         self._construction = {
             'kind': 'vector-subspace',
             'ambient': ambient,
@@ -846,6 +849,72 @@ class VectorSubspaceParent(sage.Parent):
 
     def zero(self) -> Vector:
         return self._ambient(0)
+
+    def _finite_field_order(self) -> int:
+        if getattr(self.base_ring(), '_kind', None) not in [
+            'GF', 'GF_EXTENSION'
+        ]:
+            raise TypeError(
+                'vector-space enumeration requires a finite base field')
+        return int(_untyped(self.base_ring()).order())
+
+    def _finite_field_elements(self) -> list[Any]:
+        self._finite_field_order()
+        if self._enumeration_elements is None:
+            self._enumeration_elements = list(
+                _untyped(self.base_ring()))
+        return self._enumeration_elements
+
+    def cardinality(self) -> int:
+        return self._finite_field_order() ** self.dimension()
+
+    order = cardinality
+
+    def __len__(self) -> int:
+        return self.cardinality()
+
+    def _finite_element(self, index: int) -> Vector:
+        if not runtime.is_exact_integer(index):
+            raise TypeError('vector-space indices must be integers or slices')
+        index = int(index)
+        size = self.cardinality()
+        if index < 0:
+            index += size
+        if index < 0 or index >= size:
+            raise IndexError('vector-space index out of range')
+        if self.dimension() == 0:
+            return self.zero()
+
+        coefficients = self._finite_field_elements()
+        radix = len(coefficients)
+        entries = [
+            _untyped(self.base_ring()).zero()
+            for _position in range(self.degree())
+        ]
+        position = index
+        for basis_index in range(self.dimension()):
+            coefficient = coefficients[position % radix]
+            position //= radix
+            if coefficient == 0:
+                continue
+            basis_vector = self._basis_matrix.row(basis_index)
+            for entry_index in range(self.degree()):
+                entries[entry_index] += (
+                    basis_vector[entry_index] * coefficient)
+        return self._ambient(entries)
+
+    def __iter__(self) -> Iterator[Vector]:
+        for index in range(self.cardinality()):
+            yield self._finite_element(index)
+
+    def __getitem__(self, index: Any) -> Any:
+        if hasattr(index, '__sagejs_slice__'):
+            start, stop, step = index.indices(self.cardinality())
+            return [
+                self._finite_element(position)
+                for position in range(start, stop, step)
+            ]
+        return self._finite_element(index)
 
     def __contains__(self, value: object) -> bool:
         try:

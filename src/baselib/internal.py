@@ -375,6 +375,41 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
             return target.__getitem__(runtime.math_tuple(indices))
         if runtime.strict_equal(property_name, 'length'):
             return target.__len__()
+        if runtime.strict_equal(property_name, 'slice'):
+            existing_slice = runtime.reflect.get(
+                target, property_name, receiver)
+            if _internal_type_is(
+                runtime.jstype(existing_slice), 'function'
+            ):
+                return existing_slice
+
+            def slice_items(
+                start: Any = runtime.undefined,
+                stop: Any = runtime.undefined,
+            ) -> list[Any]:
+                length = target.__len__()
+                if start is runtime.undefined:
+                    start = 0
+                else:
+                    start = int(start)
+                    if start < 0:
+                        start = max(length + start, 0)
+                    else:
+                        start = min(start, length)
+                if stop is runtime.undefined:
+                    stop = length
+                else:
+                    stop = int(stop)
+                    if stop < 0:
+                        stop = max(length + stop, 0)
+                    else:
+                        stop = min(stop, length)
+                return [
+                    target.__getitem__(index)
+                    for index in range(start, stop)
+                ]
+
+            return slice_items
         value = runtime.reflect.get(target, property_name, receiver)
         if (
             value is runtime.undefined
@@ -482,6 +517,18 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
             )
         runtime.reflect.apply(
             target_class, callable_instance, call_args)
+        if (
+            runtime.strict_equal(
+                _internal_get_member(
+                    callable_instance, '__sagejs_sequence_proxy__'),
+                True,
+            )
+            and _internal_member_is_function(
+                callable_instance, '__getitem__')
+            and _internal_member_is_function(
+                callable_instance, '__len__')
+        ):
+            return ρσ_sequence_proxy(callable_instance)
         return callable_instance
 
     def call_class(
