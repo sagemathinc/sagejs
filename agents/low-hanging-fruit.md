@@ -145,7 +145,8 @@ Status meanings:
     index support with CPython-compatible `TypeError` behavior.
     `functools.partial` now exposes its function, positional arguments, and
     keyword mapping through read-only attributes while preserving mutation of
-    the keyword mapping itself.
+    the keyword mapping itself. Nested partials now flatten to the underlying
+    callable with concatenated arguments and merged keyword snapshots.
 
 ## Graphics and foreign-language compatibility
 

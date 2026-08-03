@@ -25,6 +25,12 @@ class partial:
     def __init__(self, function, *args, **keywords):
         if not callable(function):
             raise TypeError('the first argument must be callable')
+        if isinstance(function, partial):
+            args = function.args + tuple(args)
+            combined = dict(function.keywords)
+            combined.update(keywords)
+            keywords = combined
+            function = function.func
         runtime.object.defineProperty(self, 'func', {'value': function})
         runtime.object.defineProperty(self, 'args', {'value': tuple(args)})
         runtime.object.defineProperty(
