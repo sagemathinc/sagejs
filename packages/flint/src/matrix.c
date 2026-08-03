@@ -1936,6 +1936,54 @@ napi_value sagejs_matrix_add(napi_env env, napi_callback_info info)
     return matrix_binary(env, info, MATRIX_ADD);
 }
 
+napi_value sagejs_matrix_augment(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    sagejs_matrix *left, *right, *answer;
+    slong rows, left_columns, right_columns;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    left = unwrap_matrix(env, args[0]);
+    right = unwrap_matrix(env, args[1]);
+    if (left == NULL || right == NULL)
+        return NULL;
+    rows = matrix_nrows(left);
+    left_columns = matrix_ncols(left);
+    right_columns = matrix_ncols(right);
+    if (matrix_nrows(right) != rows)
+    {
+        napi_throw_range_error(env, NULL,
+            "matrix row counts must agree for augmentation");
+        return NULL;
+    }
+    if (left->kind != right->kind ||
+        (left->kind != SAGEJS_MATRIX_ZZ &&
+         left->kind != SAGEJS_MATRIX_QQ))
+    {
+        napi_throw_type_error(env, NULL,
+            "native matrix augmentation requires matching ZZ or QQ matrices");
+        return NULL;
+    }
+    if (right_columns > WORD_MAX - left_columns)
+    {
+        napi_throw_range_error(env, NULL,
+            "augmented matrix has too many columns");
+        return NULL;
+    }
+    answer = new_matrix(
+        env, left->kind, rows, left_columns + right_columns);
+    if (answer == NULL)
+        return NULL;
+    if (left->kind == SAGEJS_MATRIX_ZZ)
+        fmpz_mat_concat_horizontal(
+            answer->integer, left->integer, right->integer);
+    else
+        fmpq_mat_concat_horizontal(
+            answer->rational, left->rational, right->rational);
+    return wrap_matrix(env, answer);
+}
+
 napi_value sagejs_matrix_sub(napi_env env, napi_callback_info info)
 {
     return matrix_binary(env, info, MATRIX_SUB);

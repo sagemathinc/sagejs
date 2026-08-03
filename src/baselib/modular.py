@@ -2247,6 +2247,37 @@ class P1List:
         return self._hecke_matrix(
             prime, self.manin_presentation().dimension())
 
+    def degeneracy_matrix(
+        self,
+        target: P1List,
+        index: Any = 1,
+    ) -> Any:
+        r"""Return a weight-2 level-lowering degeneracy matrix.
+
+        Rows act on the right, so the result has one row for each basis
+        vector at this level and one column for each basis vector at the
+        target level.
+        """
+        if not isinstance(target, P1List):
+            raise TypeError('degeneracy-map target must be a P1List')
+        index = _positive_integer(index, 'degeneracy index')
+        if self.N() % target.N() != 0:
+            raise ValueError('target level must divide the source level')
+        quotient = self.N() // target.N()
+        if quotient % index != 0:
+            raise ValueError(
+                'degeneracy index must divide the quotient of levels')
+        source_dimension = self.manin_presentation().dimension()
+        target_dimension = target.manin_presentation().dimension()
+        native = runtime.flint_backend().p1ListDegeneracyMatrix(
+            self._native, target._native, runtime.bigint(index))
+        column_action = Matrix(  # type: ignore[name-defined]  # noqa: F821
+            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                sage.ZZ, target_dimension, source_dimension),
+            native,
+        )
+        return column_action.transpose()
+
     def boundary_data(self) -> Any:
         """Return the native E1 boundary matrix and cusp representatives."""
         if self._boundary_data_cache is None:
@@ -3198,11 +3229,11 @@ class ModularSymbolsSpace(sage.Parent):
     def new_submodule(self, prime: Any = None) -> ModularSymbolsSpace:
         r"""Return the new, or `p`-new, submodule of this space.
 
-        For weight 2, trivial character and sign 1, the implementation uses
-        lower-level new Hecke polynomials with their exact degeneracy
-        multiplicities.  This is the characteristic-polynomial quotient
-        strategy used by eclib: it avoids constructing a large stack of
-        degeneracy matrices, then recovers the new space as a Hecke kernel.
+        For weight 2, trivial character and sign 1, this computes the
+        intersection of the kernels of the two level-lowering degeneracy
+        maps to level `N/p`, for every prime `p` dividing `N`.  All maps are
+        assembled natively and horizontally joined before taking one exact
+        kernel, following the optimized Magma modular-symbols algorithm.
 
         ```sage
         sage: M = ModularSymbols(1000, 2, sign=1)
@@ -3223,18 +3254,18 @@ class ModularSymbolsSpace(sage.Parent):
                 'trivial character, sign 1, and rational coefficients')
         selected = None if prime is None else _positive_integer(
             prime, 'new-submodule prime')
-        if selected is not None and self.level() % selected != 0:
-            raise ValueError('p must divide the level')
+        if selected is not None:
+            if not sage.is_prime(selected):
+                raise ValueError('p must be prime')
+            if self.level() % selected != 0:
+                raise ValueError('p must divide the level')
         key = 'all' if selected is None else str(selected)
         cached = self._new_submodule_cache.get(key)
         if cached is not runtime.undefined:
             return cached
-        if selected is not None:
-            raise NotImplementedError(
-                'individual p-new submodules are not yet implemented')
 
         level = self.level()
-        if sage.is_prime(level):
+        if selected is None and sage.is_prime(level):
             self._new_submodule_cache.set(key, self)
             return self
         cusp = self.cuspidal_subspace()
@@ -3242,110 +3273,34 @@ class ModularSymbolsSpace(sage.Parent):
             self._new_submodule_cache.set(key, cusp)
             return cusp
 
-        divisors = []
-        candidate = 1
-        while candidate * candidate <= level:
-            if level % candidate == 0:
-                divisors.append(candidate)
-                if candidate * candidate != level:
-                    divisors.append(level // candidate)
-            candidate += 1
-        divisors.sort()
-        proper = [divisor for divisor in divisors if divisor < level]
-        lower_data = []
-        for lower_level in proper:
-            lower = ModularSymbols(lower_level, 2, sign=1)
-            lower_new = lower.new_submodule().cuspidal_subspace()
-            if lower_new.dimension() == 0:
+        primes = (
+            [selected] if selected is not None else
+            [runtime.number(value[0]) for value in sage.factor(level)])
+        ambient = self.ambient_module()
+        restricted_maps = []
+        for lowering_prime in primes:
+            lower_level = level // lowering_prime
+            lower = ModularSymbols(lower_level, 2)
+            if lower.dimension() == 0:
                 continue
-            multiplicity = 1
-            for _q, exponent in sage.factor(level // lower_level):
-                multiplicity *= runtime.number(exponent) + 1
-            lower_data.append([lower_new, multiplicity])
-
-        good_primes = self._good_hecke_primes(
-            self._default_decomposition_bound())
-        operator_specs = []
-        if len(good_primes) >= 2:
-            # A small deterministic combination usually separates new and
-            # old factors immediately (at level 1000, T_3 + 2*T_7 does).
-            operator_specs.append([
-                [good_primes[0], 1], [good_primes[1], 2]])
-        if len(good_primes) >= 3:
-            # Prime-power levels can have persistent collisions for one or
-            # two individual Hecke operators.  A few small primitive-element
-            # combinations separate the same commutative Hecke algebra while
-            # retaining exact, readily reproducible arithmetic.
-            operator_specs.append([
-                [good_primes[0], 1],
-                [good_primes[1], 2],
-                [good_primes[2], 4],
-            ])
-            operator_specs.append([
-                [good_primes[0], 1],
-                [good_primes[1], 3],
-                [good_primes[2], 9],
-            ])
-        if len(good_primes) >= 4:
-            operator_specs.append([
-                [good_primes[0], 1],
-                [good_primes[1], 2],
-                [good_primes[2], 4],
-                [good_primes[3], 8],
-            ])
-        if len(good_primes) >= 5:
-            operator_specs.append([
-                [good_primes[0], 1],
-                [good_primes[1], 2],
-                [good_primes[2], 4],
-                [good_primes[3], 8],
-                [good_primes[4], 16],
-            ])
-        for hecke_prime in good_primes:
-            operator_specs.append([[hecke_prime, 1]])
-        if len(good_primes) >= 2:
-            operator_specs.append([
-                [good_primes[0], 1], [good_primes[1], -1]])
-
-        for specification in operator_specs:
-            full_operator = None
-            for hecke_prime, coefficient in specification:
-                term = cusp.hecke_matrix(hecke_prime) * coefficient
-                full_operator = (
-                    term if full_operator is None
-                    else full_operator + term)
-            if full_operator is None:
-                continue
-            full_polynomial = full_operator.charpoly()
-            old_polynomial = full_polynomial.parent()(1)
-            for lower_new, multiplicity in lower_data:
-                lower_operator = None
-                for hecke_prime, coefficient in specification:
-                    term = lower_new.hecke_matrix(
-                        hecke_prime) * coefficient
-                    lower_operator = (
-                        term if lower_operator is None
-                        else lower_operator + term)
-                if lower_operator is None:
-                    continue
-                lower_polynomial = lower_operator.charpoly()
-                old_polynomial *= lower_polynomial ** multiplicity
-            try:
-                new_polynomial = full_polynomial // old_polynomial
-            except Exception:
-                continue
-            local_basis = new_polynomial(
-                full_operator).left_kernel_matrix()
-            new_degree = len(new_polynomial.coefficients()) - 1
-            if local_basis.nrows() != new_degree:
-                continue
-            answer = cusp._subspace_from_local_basis(
-                local_basis, 'New', self)
+            for degeneracy_index in [1, lowering_prime]:
+                ambient_map = ambient.p1list().degeneracy_matrix(
+                    lower.p1list(), degeneracy_index).change_ring(
+                        self.base_ring())
+                restricted_maps.append(
+                    cusp.basis_matrix()._sparse_left_multiply(ambient_map))
+        if len(restricted_maps) == 0:
+            answer = self if selected is not None else cusp
             self._new_submodule_cache.set(key, answer)
             return answer
-        raise ArithmeticError(
-            'unable to find a good Hecke operator separating new and old '
-            'subspaces')
+        combined = restricted_maps[0]
+        for defining_map in restricted_maps[1:]:
+            combined = combined.augment(defining_map)
+        coefficients = combined.left_kernel_matrix()
+        answer = cusp._subspace_from_local_basis(
+            coefficients, 'New', self)
+        self._new_submodule_cache.set(key, answer)
+        return answer
 
     new_subspace = new_submodule
 
@@ -4311,26 +4266,29 @@ runtime.register_doc(
 _modular_symbols_new_doc = _modular_symbols_method_doc(
     ['new subspaces', 'oldforms', 'Hecke modules', 'exact linear algebra'],
     (
-        'Lower-level new Hecke characteristic polynomials with exact '
-        'degeneracy multiplicities, polynomial quotient, and Hecke kernel'
+        'One exact kernel of horizontally joined level-lowering '
+        'degeneracy matrices'
     ),
 )
 _modular_symbols_new_doc['sage_compatibility'] = {
     'status': 'partial',
     'notes': (
-        'The no-argument weight-2 Gamma0 sign-1 operation follows SageMath. '
-        'Individual p-new submodules and other weights, signs, characters, '
-        'or coefficient fields are not yet implemented.'
+        'The weight-2 Gamma0 sign-1 cuspidal new and individual p-new '
+        'operations follow SageMath. At composite level, calling this on '
+        'the full space returns its cuspidal new part. Other weights, signs, '
+        'characters, or coefficient fields are not yet implemented.'
     ),
 }
 _modular_symbols_new_doc['backends'] = [
     'Sage.js portable C modular-symbol core',
-    'FLINT exact matrices and characteristic polynomials',
+    'FLINT exact matrices, native horizontal concatenation, and kernels',
 ]
 _modular_symbols_new_doc['provenance'].append({
-    'kind': 'software-derived',
-    'source': 'eclib newspace.cc characteristic-polynomial strategy',
-    'url': 'https://github.com/JohnCremona/eclib',
+    'kind': 'sage-derived',
+    'source': 'SageMath degeneracy-lowering new-submodule algorithm',
+    'url': (
+        'https://github.com/sagemath/sage/blob/develop/src/sage/'
+        'modular/hecke/ambient_module.py'),
     'license': 'GPL-2.0-or-later',
 })
 _modular_symbols_new_doc['limitations'] = [
@@ -4338,7 +4296,6 @@ _modular_symbols_new_doc['limitations'] = [
         'Currently implemented for weight 2, Gamma0, trivial character, '
         'sign 1, and rational coefficients.'
     ),
-    'Individual p-new submodules are not yet implemented.',
 ]
 runtime.register_doc(
     'ModularSymbolsSpace.new_submodule',

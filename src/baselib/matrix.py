@@ -2134,6 +2134,19 @@ class Matrix(sage.Element):
             self.base_ring(), other.base_ring())
         left = self.change_ring(base)
         right = other.change_ring(base)
+        if base is sage.ZZ or base is sage.QQ:
+            answer = Matrix(
+                MatrixSpace(
+                    base,
+                    left.nrows(),
+                    left.ncols() + right.ncols(),
+                ),
+                runtime.flint_backend().matrixAugment(
+                    left._native, right._native),
+            )
+            if subdivide:
+                answer._col_subdivisions = [left.ncols()]
+            return answer
         entries = []
         for row in range(left.nrows()):
             entries.extend(left.row(row))

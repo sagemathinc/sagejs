@@ -2146,11 +2146,11 @@ new_submodule(prime=None)
 
 Return the new, or `p`-new, submodule of this space.
 
-For weight 2, trivial character and sign 1, the implementation uses
-lower-level new Hecke polynomials with their exact degeneracy
-multiplicities.  This is the characteristic-polynomial quotient
-strategy used by eclib: it avoids constructing a large stack of
-degeneracy matrices, then recovers the new space as a Hecke kernel.
+For weight 2, trivial character and sign 1, this computes the
+intersection of the kernels of the two level-lowering degeneracy
+maps to level `N/p`, for every prime `p` dividing `N`.  All maps are
+assembled natively and horizontally joined before taking one exact
+kernel, following the optimized Magma modular-symbols algorithm.
 
 ```sage
 sage: M = ModularSymbols(1000, 2, sign=1)
@@ -2166,17 +2166,17 @@ sage: [A.dimension() for A in N.decomposition()]
 - Kind: `method`
 - Module: `sage.modular.modsym.space`
 - Tags: number theory, modular symbols, new subspaces, oldforms, Hecke modules, exact linear algebra
-- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices and characteristic polynomials
-- Sage compatibility: partial — The no-argument weight-2 Gamma0 sign-1 operation follows SageMath. Individual p-new submodules and other weights, signs, characters, or coefficient fields are not yet implemented.
-- Algorithm: Lower-level new Hecke characteristic polynomials with exact degeneracy multiplicities, polynomial quotient, and Hecke kernel
-- Limitations: Currently implemented for weight 2, Gamma0, trivial character, sign 1, and rational coefficients. Individual p-new submodules are not yet implemented.
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices, native horizontal concatenation, and kernels
+- Sage compatibility: partial — The weight-2 Gamma0 sign-1 cuspidal new and individual p-new operations follow SageMath. At composite level, calling this on the full space returns its cuspidal new part. Other weights, signs, characters, or coefficient fields are not yet implemented.
+- Algorithm: One exact kernel of horizontally joined level-lowering degeneracy matrices
+- Limitations: Currently implemented for weight 2, Gamma0, trivial character, sign 1, and rational coefficients.
 
 ### Provenance
 
 - `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
 - `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
 - `sagejs-original` — Portable preallocated coordinate and subspace adapter
-- `software-derived` — [eclib newspace.cc characteristic-polynomial strategy](https://github.com/JohnCremona/eclib); license GPL-2.0-or-later
+- `sage-derived` — [SageMath degeneracy-lowering new-submodule algorithm](https://github.com/sagemath/sage/blob/develop/src/sage/modular/hecke/ambient_module.py); license GPL-2.0-or-later
 
 ### References
 

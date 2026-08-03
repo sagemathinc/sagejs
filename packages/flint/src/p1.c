@@ -758,6 +758,76 @@ napi_value sagejs_p1list_hecke_matrix(
     return result;
 }
 
+napi_value sagejs_p1list_degeneracy_matrix(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[3], result;
+    sagejs_p1list_value *source, *target;
+    sagejs_manin_presentation_info source_presentation;
+    sagejs_manin_presentation_info target_presentation;
+    sagejs_modsym_presentation_view source_view, target_view;
+    slong *entries;
+    ulong index;
+    size_t source_dimension, target_dimension;
+    int source_initialized = 0, target_initialized = 0;
+
+    if (!p1_arguments(env, info, 3, arguments) ||
+        (source = p1_unwrap(env, arguments[0])) == NULL ||
+        (target = p1_unwrap(env, arguments[1])) == NULL ||
+        !p1_bigint_to_ulong(env, arguments[2], &index))
+        return NULL;
+    if (index == 0 || index > INT32_MAX ||
+        source->level % target->level != 0 ||
+        (source->level / target->level) % index != 0)
+    {
+        napi_throw_range_error(env, NULL,
+            "degeneracy index must divide the quotient of source and target levels");
+        return NULL;
+    }
+    if (!p1_manin_presentation_build(source, &source_presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct source Manin presentation");
+        return NULL;
+    }
+    source_initialized = 1;
+    if (!p1_manin_presentation_build(target, &target_presentation))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct target Manin presentation");
+        goto done;
+    }
+    target_initialized = 1;
+    source_view = p1_presentation_view(source, &source_presentation);
+    target_view = p1_presentation_view(target, &target_presentation);
+    entries = sagejs_modsym_weight2_degeneracy_matrix(
+        &source_view, &target_view, index,
+        &source_dimension, &target_dimension);
+    if (entries == NULL || source_dimension > (size_t) WORD_MAX ||
+        target_dimension > (size_t) WORD_MAX)
+    {
+        free(entries);
+        napi_throw_error(env, NULL,
+            "unable to construct exact weight-2 degeneracy matrix");
+        goto done;
+    }
+    result = sagejs_zz_matrix_from_slong_entries(
+        env, (slong) target_dimension, (slong) source_dimension, entries);
+    free(entries);
+    if (target_initialized)
+        p1_manin_presentation_clear(&target_presentation);
+    if (source_initialized)
+        p1_manin_presentation_clear(&source_presentation);
+    return result;
+
+done:
+    if (target_initialized)
+        p1_manin_presentation_clear(&target_presentation);
+    if (source_initialized)
+        p1_manin_presentation_clear(&source_presentation);
+    return NULL;
+}
+
 static napi_value p1_cusp_array(
     napi_env env,
     const sagejs_modsym_cusp *cusps,

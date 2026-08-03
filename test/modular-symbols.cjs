@@ -664,6 +664,23 @@ test("new submodules and simple Hecke decomposition", async () => {
       (
         await session.evaluate(
           [
+            "A = ModularSymbols(22, 2)",
+            "B = ModularSymbols(11, 2)",
+            "d1 = A.p1list().degeneracy_matrix(B.p1list(), 1)",
+            "d2 = A.p1list().degeneracy_matrix(B.p1list(), 2)",
+            "TA = A.p1list().hecke_matrix(3).transpose()",
+            "TB = B.p1list().hecke_matrix(3).transpose()",
+            "[d1.nrows(), d1.ncols(), d1.rank(), d2.rank(), " +
+              "TA*d1 == d1*TB, TA*d2 == d2*TB]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[7, 3, 3, 3, True, True]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
             "M = ModularSymbols(389, 2, sign=1)",
             "D = M.decomposition()",
             "[M.new_submodule() is M, D is M.decomposition(), " +
@@ -682,13 +699,15 @@ test("new submodules and simple Hecke decomposition", async () => {
             "N = M.new_submodule()",
             "D = N.decomposition()",
             "[N.dimension(), N is M.new_subspace(), " +
+              "M.new_submodule(2).dimension(), " +
+              "M.new_submodule(5).dimension(), " +
               "[A.dimension() for A in D], " +
               "sum(A.dimension() for A in D), " +
               "all(A.ambient_module() is M.ambient_module() for A in D)]",
           ].join("\n"),
         )
       ).repr,
-      "[24, True, [2, 2, 2, 2, 4, 4, 4, 4], 24, True]",
+      "[24, True, 37, 96, [2, 2, 2, 2, 4, 4, 4, 4], 24, True]",
     );
     assert.equal(
       (
@@ -701,6 +720,19 @@ test("new submodules and simple Hecke decomposition", async () => {
         )
       ).repr,
       "[8, 8]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "M = ModularSymbols(5000, 2, sign=1)",
+            "N = M.new_submodule()",
+            "[M.dimension(), M.cuspidal_subspace().dimension(), " +
+              "N.dimension()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[754, 691, 120]",
     );
     assert.equal(
       (

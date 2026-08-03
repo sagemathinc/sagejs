@@ -17,6 +17,8 @@ napi_value sagejs_p1list_manin_presentation_info(
     napi_env env, napi_callback_info info);
 napi_value sagejs_p1list_hecke_matrix(
     napi_env env, napi_callback_info info);
+napi_value sagejs_p1list_degeneracy_matrix(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_p1list_boundary_data(
     napi_env env, napi_callback_info info);
 napi_value sagejs_p1list_cuspidal_basis(

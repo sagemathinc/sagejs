@@ -82,6 +82,17 @@ slong *sagejs_modsym_weight2_hecke_matrix(
     size_t *dimension);
 
 /*
+ * Return the column-action matrix of the index-t level-lowering degeneracy
+ * map.  Rows are target coordinates and columns are source coordinates.
+ */
+slong *sagejs_modsym_weight2_degeneracy_matrix(
+    const sagejs_modsym_presentation_view *source,
+    const sagejs_modsym_presentation_view *target,
+    ulong index,
+    size_t *source_dimension,
+    size_t *target_dimension);
+
+/*
  * Return the boundary map with one row per E1 basis path and one column per
  * Gamma0 cusp class. The caller owns both the matrix and cusp buffers.
  */

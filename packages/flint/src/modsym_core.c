@@ -1298,3 +1298,161 @@ fail:
     *dimension = 0;
     return NULL;
 }
+
+static int degeneracy_add_merel_term(
+    const sagejs_modsym_presentation_view *target,
+    int64_t u,
+    int64_t v,
+    int64_t a,
+    int64_t b,
+    int64_t c,
+    int64_t d,
+    ulong index,
+    slong *vector)
+{
+    __int128 transformed_u = (__int128) u * a + (__int128) v * c;
+    __int128 transformed_v = (__int128) u * b + (__int128) v * d;
+    int64_t reduced_u, reduced_v;
+    size_t coset;
+
+    if (transformed_u < INT64_MIN || transformed_u > INT64_MAX ||
+        transformed_v < INT64_MIN || transformed_v > INT64_MAX)
+        return 0;
+    reduced_u = (int64_t) transformed_u;
+    reduced_v = (int64_t) transformed_v;
+    if (index != 1)
+    {
+        int64_t divisor = (int64_t) index;
+        if (reduced_u % divisor != 0 || reduced_v % divisor != 0)
+            return 1;
+        reduced_u /= divisor;
+        reduced_v /= divisor;
+    }
+    coset = target->coset_index(
+        target->coset_context, reduced_u, reduced_v);
+    return reduce_coset(target, coset, 1, vector);
+}
+
+static int degeneracy_add_merel_operator(
+    const sagejs_modsym_presentation_view *target,
+    int64_t u,
+    int64_t v,
+    ulong index,
+    slong *vector)
+{
+    int64_t n = (int64_t) index;
+
+    /* Merel's determinant-n Heilbronn matrices, in his reduced ordering. */
+    for (int64_t a = 1; a <= n; a++)
+    {
+        int64_t quotient = n / a;
+        if (quotient * a == n)
+        {
+            int64_t d = quotient;
+            for (int64_t b = 0; b < a; b++)
+                if (!degeneracy_add_merel_term(
+                        target, u, v, a, b, 0, d, index, vector))
+                    return 0;
+            for (int64_t c = 1; c < d; c++)
+                if (!degeneracy_add_merel_term(
+                        target, u, v, a, 0, c, d, index, vector))
+                    return 0;
+        }
+        for (int64_t d = quotient + 1; d <= n; d++)
+        {
+            int64_t bc = a * d - n;
+            for (int64_t c = bc / a + 1; c < d; c++)
+            {
+                if (bc % c == 0 &&
+                    !degeneracy_add_merel_term(
+                        target, u, v, a, bc / c, c, d,
+                        index, vector))
+                    return 0;
+            }
+        }
+    }
+    return 1;
+}
+
+slong *sagejs_modsym_weight2_degeneracy_matrix(
+    const sagejs_modsym_presentation_view *source,
+    const sagejs_modsym_presentation_view *target,
+    ulong index,
+    size_t *source_dimension,
+    size_t *target_dimension)
+{
+    const sagejs_modsym_presentation *source_presentation;
+    const sagejs_modsym_presentation *target_presentation;
+    slong *entries = NULL, *vector = NULL;
+    size_t cells;
+
+    if (source_dimension == NULL || target_dimension == NULL)
+        return NULL;
+    *source_dimension = 0;
+    *target_dimension = 0;
+    if (source == NULL || target == NULL ||
+        source->presentation == NULL || target->presentation == NULL ||
+        source->coset_index == NULL || target->coset_index == NULL ||
+        index == 0 || index > INT32_MAX ||
+        source->level % target->level != 0 ||
+        (source->level / target->level) % index != 0)
+        return NULL;
+    source_presentation = source->presentation;
+    target_presentation = target->presentation;
+    *source_dimension = source_presentation->e1;
+    *target_dimension = target_presentation->e1;
+    if (*target_dimension != 0 &&
+        *source_dimension > SIZE_MAX / *target_dimension)
+        goto fail;
+    cells = *source_dimension * *target_dimension;
+    entries = calloc(cells == 0 ? 1 : cells, sizeof(*entries));
+    vector = calloc(*target_dimension == 0 ? 1 : *target_dimension,
+        sizeof(*vector));
+    if (entries == NULL || vector == NULL)
+        goto fail;
+
+    for (size_t column = 0; column < *source_dimension; column++)
+    {
+        const sagejs_modsym_cusp *start =
+            &source_presentation->e1_start[column];
+        const sagejs_modsym_cusp *stop =
+            &source_presentation->e1_stop[column];
+        __int128 determinant =
+            (__int128) start->numerator * stop->denominator
+            - (__int128) stop->numerator * start->denominator;
+        int64_t u = start->denominator;
+        int64_t v = stop->denominator;
+
+        if (determinant != 1 && determinant != -1)
+            goto fail;
+        if (determinant < 0)
+            u = -u;
+        memset(vector, 0, *target_dimension * sizeof(*vector));
+        if (index == 1)
+        {
+            /* The first lowering map preserves the represented path. */
+            if (!reduce_path(
+                    target,
+                    start->numerator, start->denominator,
+                    stop->numerator, stop->denominator,
+                    1, vector))
+                goto fail;
+        }
+        else if (!degeneracy_add_merel_operator(
+                     target, u, v, index, vector))
+        {
+            goto fail;
+        }
+        for (size_t row = 0; row < *target_dimension; row++)
+            entries[row * *source_dimension + column] = vector[row];
+    }
+    free(vector);
+    return entries;
+
+fail:
+    free(vector);
+    free(entries);
+    *source_dimension = 0;
+    *target_dimension = 0;
+    return NULL;
+}
