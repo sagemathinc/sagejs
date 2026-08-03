@@ -77,7 +77,9 @@ Status meanings:
     `collections`, `statistics`, `bisect`, `heapq`, `operator`, `textwrap`, and
     `re` only through differential tests, keeping them lazy at startup. The
     CPython 3.14 `operator` function and callable-getter APIs and streaming
-    `heapq.merge` are done.
+    `heapq.merge` are done. `bisect` now enforces CPython-compatible integer
+    bounds, including `__index__` coercion and argument parsing before key
+    calls.
 
 ## Graphics and foreign-language compatibility
 
