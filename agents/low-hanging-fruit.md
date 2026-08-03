@@ -143,6 +143,9 @@ Status meanings:
     identity-preserving in-place repetition.
     `operator.index` now validates the `__index__` result and reports missing
     index support with CPython-compatible `TypeError` behavior.
+    `functools.partial` now exposes its function, positional arguments, and
+    keyword mapping through read-only attributes while preserving mutation of
+    the keyword mapping itself.
 
 ## Graphics and foreign-language compatibility
 
