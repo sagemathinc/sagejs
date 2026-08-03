@@ -187,12 +187,126 @@ def cmp_to_key(comparison):
     return lambda obj: _KeyWrapper(obj, comparison)
 
 
+def _gt_from_lt(self, other):
+    answer = self.__lt__(other)
+    if answer is NotImplemented:
+        return answer
+    return not answer and self != other
+
+
+def _le_from_lt(self, other):
+    answer = self.__lt__(other)
+    if answer is NotImplemented:
+        return answer
+    return answer or self == other
+
+
+def _ge_from_lt(self, other):
+    answer = self.__lt__(other)
+    if answer is NotImplemented:
+        return answer
+    return not answer
+
+
+def _ge_from_le(self, other):
+    answer = self.__le__(other)
+    if answer is NotImplemented:
+        return answer
+    return not answer or self == other
+
+
+def _lt_from_le(self, other):
+    answer = self.__le__(other)
+    if answer is NotImplemented:
+        return answer
+    return answer and self != other
+
+
+def _gt_from_le(self, other):
+    answer = self.__le__(other)
+    if answer is NotImplemented:
+        return answer
+    return not answer
+
+
+def _lt_from_gt(self, other):
+    answer = self.__gt__(other)
+    if answer is NotImplemented:
+        return answer
+    return not answer and self != other
+
+
+def _ge_from_gt(self, other):
+    answer = self.__gt__(other)
+    if answer is NotImplemented:
+        return answer
+    return answer or self == other
+
+
+def _le_from_gt(self, other):
+    answer = self.__gt__(other)
+    if answer is NotImplemented:
+        return answer
+    return not answer
+
+
+def _le_from_ge(self, other):
+    answer = self.__ge__(other)
+    if answer is NotImplemented:
+        return answer
+    return not answer or self == other
+
+
+def _gt_from_ge(self, other):
+    answer = self.__ge__(other)
+    if answer is NotImplemented:
+        return answer
+    return answer and self != other
+
+
+def _lt_from_ge(self, other):
+    answer = self.__ge__(other)
+    if answer is NotImplemented:
+        return answer
+    return not answer
+
+
+_ORDERING_CONVERSIONS = {
+    '__lt__': (
+        ('__gt__', _gt_from_lt),
+        ('__le__', _le_from_lt),
+        ('__ge__', _ge_from_lt),
+    ),
+    '__le__': (
+        ('__ge__', _ge_from_le),
+        ('__lt__', _lt_from_le),
+        ('__gt__', _gt_from_le),
+    ),
+    '__gt__': (
+        ('__lt__', _lt_from_gt),
+        ('__ge__', _ge_from_gt),
+        ('__le__', _le_from_gt),
+    ),
+    '__ge__': (
+        ('__le__', _le_from_ge),
+        ('__gt__', _gt_from_ge),
+        ('__lt__', _lt_from_ge),
+    ),
+}
+
+
 def total_ordering(cls):
-    if hasattr(cls, '__lt__') and hasattr(cls, '__eq__'):
-        if not hasattr(cls, '__le__'):
-            setattr(cls, '__le__', lambda self, other: self < other or self == other)
-        if not hasattr(cls, '__gt__'):
-            setattr(cls, '__gt__', lambda self, other: not (self < other or self == other))
-        if not hasattr(cls, '__ge__'):
-            setattr(cls, '__ge__', lambda self, other: not self < other)
+    roots = {
+        operation for operation in _ORDERING_CONVERSIONS
+        if getattr(cls, operation, None)
+        is not getattr(object, operation, None)
+    }
+    if not roots:
+        raise ValueError(
+            'must define at least one ordering operation: < > <= >=')
+    root = max(roots)
+    for operation, function in _ORDERING_CONVERSIONS[root]:
+        if operation not in roots:
+            function.__name__ = operation
+            setattr(cls, operation, runtime.native_method(function))
     return cls

@@ -92,6 +92,8 @@ Status meanings:
     `update_wrapper` now merges the configured wrapper attributes and preserves
     custom function metadata like CPython. `collections.deque` now supports
     indexed deletion, including negative and `__index__`-coerced positions.
+    `functools.total_ordering` now derives comparisons from any of CPython's
+    four supported ordering roots and rejects classes without one.
 
 ## Graphics and foreign-language compatibility
 
