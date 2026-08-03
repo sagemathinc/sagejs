@@ -112,6 +112,11 @@ assert rectangular.image() == rectangular.row_space()
 assert rectangular.column_space().basis_matrix() == identity_matrix(ZZ, 2)
 assert rectangular.stack(vector(ZZ, [2, 3, 4])) == matrix(
     ZZ, [[0, 1, 2], [1, 2, 3], [2, 3, 4]])
+assert matrix(QQ, [[QQ(1, 2), QQ(2, 3)]]).stack(
+    matrix(ZZ, [[3, 4], [5, 6]])) == matrix(
+        QQ, [[QQ(1, 2), QQ(2, 3)], [3, 4], [5, 6]])
+assert matrix(ZZ, 0, 3).stack(rectangular) == rectangular
+assert rectangular.stack(matrix(ZZ, 0, 3)) == rectangular
 assert rectangular.augment(vector(ZZ, [5, 6])) == matrix(
     ZZ, [[0, 1, 2, 5], [1, 2, 3, 6]])
 assert rectangular.matrix_from_rows([1, 0]) == matrix(

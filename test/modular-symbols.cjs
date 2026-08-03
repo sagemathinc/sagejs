@@ -713,6 +713,23 @@ test("new submodules and simple Hecke decomposition", async () => {
       (
         await session.evaluate(
           [
+            "dimensions = []",
+            "for sign in [-1, 0, 1]:",
+            "    M = ModularSymbols(1000, 2, sign=sign)",
+            "    S = M.cuspidal_subspace()",
+            "    dimensions.append((sign, S.new_submodule().dimension(), " +
+              "S.new_submodule(2).dimension(), " +
+              "S.new_submodule(5).dimension()))",
+            "dimensions",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(-1, 24, 37, 96), (0, 48, 74, 192), (1, 24, 37, 96)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
             "M = ModularSymbols(400, 2, sign=1)",
             "N = M.new_submodule()",
             "[N.dimension(), N.cuspidal_subspace().dimension()]",

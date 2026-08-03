@@ -2107,6 +2107,19 @@ class Matrix(sage.Element):
             self.base_ring(), other.base_ring())
         top = self.change_ring(base)
         bottom = other.change_ring(base)
+        if base is sage.ZZ or base is sage.QQ:
+            answer = Matrix(
+                MatrixSpace(
+                    base,
+                    top.nrows() + bottom.nrows(),
+                    top.ncols(),
+                ),
+                runtime.flint_backend().matrixStack(
+                    top._native, bottom._native),
+            )
+            if subdivide:
+                answer._row_subdivisions = [top.nrows()]
+            return answer
         answer = matrix(
             base,
             top.nrows() + bottom.nrows(),

@@ -3229,7 +3229,7 @@ class ModularSymbolsSpace(sage.Parent):
     def new_submodule(self, prime: Any = None) -> ModularSymbolsSpace:
         r"""Return the new, or `p`-new, submodule of this space.
 
-        For weight 2, trivial character and sign 1, this computes the
+        For weight 2, trivial character and any sign, this computes the
         intersection of the kernels of the two level-lowering degeneracy
         maps to level `N/p`, for every prime `p` dividing `N`.  All maps are
         assembled natively and horizontally joined before taking one exact
@@ -3246,12 +3246,11 @@ class ModularSymbolsSpace(sage.Parent):
         """
         if not (
             self._supports_native_weight2()
-            and self.sign() == 1
             and self.base_ring() is sage.QQ
         ):
             raise NotImplementedError(
                 'new submodules currently require weight 2, Gamma0, '
-                'trivial character, sign 1, and rational coefficients')
+                'trivial character, and rational coefficients')
         selected = None if prime is None else _positive_integer(
             prime, 'new-submodule prime')
         if selected is not None:
@@ -4273,10 +4272,10 @@ _modular_symbols_new_doc = _modular_symbols_method_doc(
 _modular_symbols_new_doc['sage_compatibility'] = {
     'status': 'partial',
     'notes': (
-        'The weight-2 Gamma0 sign-1 cuspidal new and individual p-new '
-        'operations follow SageMath. At composite level, calling this on '
-        'the full space returns its cuspidal new part. Other weights, signs, '
-        'characters, or coefficient fields are not yet implemented.'
+        'The weight-2 Gamma0 cuspidal new and individual p-new operations '
+        'follow SageMath in all three signs. At composite level, calling '
+        'this on the full space returns its cuspidal new part. Other '
+        'weights, characters, or coefficient fields are not yet implemented.'
     ),
 }
 _modular_symbols_new_doc['backends'] = [

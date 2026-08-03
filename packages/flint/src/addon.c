@@ -3057,6 +3057,8 @@ static napi_value initialize(napi_env env, napi_value exports)
          NULL, NULL, NULL, napi_default, NULL},
         {"matrixAugment", NULL, sagejs_matrix_augment,
          NULL, NULL, NULL, napi_default, NULL},
+        {"matrixStack", NULL, sagejs_matrix_stack,
+         NULL, NULL, NULL, napi_default, NULL},
         {"matrixSelectRows", NULL, sagejs_matrix_select_rows,
          NULL, NULL, NULL, napi_default, NULL},
         {"matrixSelectColumns", NULL, sagejs_matrix_select_columns,

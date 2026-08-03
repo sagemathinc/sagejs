@@ -1984,6 +1984,53 @@ napi_value sagejs_matrix_augment(napi_env env, napi_callback_info info)
     return wrap_matrix(env, answer);
 }
 
+napi_value sagejs_matrix_stack(napi_env env, napi_callback_info info)
+{
+    napi_value args[2];
+    sagejs_matrix *top, *bottom, *answer;
+    slong top_rows, bottom_rows, columns;
+
+    if (!require_arguments(env, info, 2, args))
+        return NULL;
+    top = unwrap_matrix(env, args[0]);
+    bottom = unwrap_matrix(env, args[1]);
+    if (top == NULL || bottom == NULL)
+        return NULL;
+    top_rows = matrix_nrows(top);
+    bottom_rows = matrix_nrows(bottom);
+    columns = matrix_ncols(top);
+    if (matrix_ncols(bottom) != columns)
+    {
+        napi_throw_range_error(env, NULL,
+            "matrix column counts must agree for stacking");
+        return NULL;
+    }
+    if (top->kind != bottom->kind ||
+        (top->kind != SAGEJS_MATRIX_ZZ &&
+         top->kind != SAGEJS_MATRIX_QQ))
+    {
+        napi_throw_type_error(env, NULL,
+            "native matrix stacking requires matching ZZ or QQ matrices");
+        return NULL;
+    }
+    if (bottom_rows > WORD_MAX - top_rows)
+    {
+        napi_throw_range_error(env, NULL,
+            "stacked matrix has too many rows");
+        return NULL;
+    }
+    answer = new_matrix(env, top->kind, top_rows + bottom_rows, columns);
+    if (answer == NULL)
+        return NULL;
+    if (top->kind == SAGEJS_MATRIX_ZZ)
+        fmpz_mat_concat_vertical(
+            answer->integer, top->integer, bottom->integer);
+    else
+        fmpq_mat_concat_vertical(
+            answer->rational, top->rational, bottom->rational);
+    return wrap_matrix(env, answer);
+}
+
 napi_value sagejs_matrix_sub(napi_env env, napi_callback_info info)
 {
     return matrix_binary(env, info, MATRIX_SUB);
