@@ -75,8 +75,8 @@ class deque:
     def __setitem__(self, index: int, value: Any) -> None:
         self._values[self._bound_index(index)] = value
 
-    def __delitem__(self, _index: Any) -> None:
-        raise TypeError('sequence index must be integer, not slice')
+    def __delitem__(self, index: int) -> None:
+        self._values.pypop(self._bound_index(index))
 
     def __invert__(self) -> None:
         raise TypeError("bad operand type for unary ~: 'deque'")

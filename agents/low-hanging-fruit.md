@@ -90,7 +90,8 @@ Status meanings:
     and `nlargest` now use the public `n` parameter name and return immediately
     for non-positive counts without consuming their inputs. `functools`
     `update_wrapper` now merges the configured wrapper attributes and preserves
-    custom function metadata like CPython.
+    custom function metadata like CPython. `collections.deque` now supports
+    indexed deletion, including negative and `__index__`-coerced positions.
 
 ## Graphics and foreign-language compatibility
 
