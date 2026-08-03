@@ -88,7 +88,9 @@ Status meanings:
     exact-index interpolation for inclusive and exclusive cut points, including
     extrapolated small-sample tails and singleton samples. `heapq.nsmallest`
     and `nlargest` now use the public `n` parameter name and return immediately
-    for non-positive counts without consuming their inputs.
+    for non-positive counts without consuming their inputs. `functools`
+    `update_wrapper` now merges the configured wrapper attributes and preserves
+    custom function metadata like CPython.
 
 ## Graphics and foreign-language compatibility
 

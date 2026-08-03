@@ -39,17 +39,23 @@ class partial:
 
 
 def update_wrapper(wrapper, wrapped, assigned=('__module__', '__name__', '__qualname__', '__doc__', '__annotations__'), updated=('__dict__',)):
-    del updated
     for attribute in assigned:
-        if hasattr(wrapped, attribute):
-            try:
-                setattr(wrapper, attribute, getattr(wrapped, attribute))
-            except Exception:
-                pass
-    try:
-        wrapper.__wrapped__ = wrapped
-    except Exception:
-        pass
+        try:
+            value = getattr(wrapped, attribute)
+        except AttributeError:
+            pass
+        else:
+            setattr(wrapper, attribute, value)
+    for attribute in updated:
+        source = getattr(wrapped, attribute, {})
+        if attribute == '__dict__':
+            # Sage.js exposes object namespaces as snapshot dictionaries, so
+            # update the destination object rather than the snapshot.
+            for name, value in source.items():
+                setattr(wrapper, name, value)
+        else:
+            getattr(wrapper, attribute).update(source)
+    wrapper.__wrapped__ = wrapped
     return wrapper
 
 
