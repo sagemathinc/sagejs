@@ -1793,13 +1793,15 @@ class IndexFaceSet(Graphics3d):
     lists of three-dimensional points.  The latter form automatically shares
     equal vertices, matching Sage's constructor.
 
-    EXAMPLES::
+    ### Examples
 
-        sage: S = IndexFaceSet([[(1,0,0), (0,1,0), (0,0,1)]])
-        sage: S.index_faces()
-        [[0, 1, 2]]
-        sage: S.vertex_list()
-        [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)]
+    ```sage
+    sage: S = IndexFaceSet([[(1,0,0), (0,1,0), (0,0,1)]])
+    sage: S.index_faces()
+    [[0, 1, 2]]
+    sage: S.vertex_list()
+    [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)]
+    ```
     """
 
     def __init__(

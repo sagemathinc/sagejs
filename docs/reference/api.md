@@ -384,7 +384,7 @@ complex_to_cmap_rgb(z_values, cmap='turbo', contoured=False, tiled=False, contou
 Convert complex values to RGB using a Sage-compatible colormap.
 
 The argument selects a point in the colormap and the magnitude controls
-lightness.  Common matplotlib names such as `'viridis'`, `'plasma'`,
+lightness. Common matplotlib names such as `'viridis'`, `'plasma'`,
 `'inferno'`, `'cividis'`, `'turbo'`, `'twilight'`, and `'hsv'`
 are built in without importing matplotlib.  A list of colors or a callable
 returning an RGB(A) tuple is also accepted.
@@ -1476,11 +1476,13 @@ equal vertices, matching Sage's constructor.
 
 ### Examples
 
-    sage: S = IndexFaceSet([[(1,0,0), (0,1,0), (0,0,1)]])
-    sage: S.index_faces()
-    [[0, 1, 2]]
-    sage: S.vertex_list()
-    [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)]
+```sage
+sage: S = IndexFaceSet([[(1,0,0), (0,1,0), (0,0,1)]])
+sage: S.index_faces()
+[[0, 1, 2]]
+sage: S.vertex_list()
+[(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)]
+```
 
 ### Metadata
 

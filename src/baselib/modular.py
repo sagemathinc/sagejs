@@ -3120,10 +3120,10 @@ class ModularSymbolsSpace(sage.Parent):
     ) -> ModularSymbolsDegeneracyMap:
         r"""Return an exact level-lowering degeneracy map.
 
-        ``codomain`` may be a modular-symbol space or its level. The target
+        `codomain` may be a modular-symbol space or its level. The target
         must divide this space's level; level-raising maps are not yet
-        implemented. The returned morphism exposes ``matrix()``, ``rank()``,
-        ``kernel()``, ``image()``, and evaluation on modular symbols.
+        implemented. The returned morphism exposes `matrix()`, `rank()`,
+        `kernel()`, `image()`, and evaluation on modular symbols.
 
         ```sage
         sage: M = ModularSymbols(22, 2, sign=1)
@@ -3407,7 +3407,7 @@ class ModularSymbolsSpace(sage.Parent):
     def new_submodule(self, prime: Any = None) -> ModularSymbolsSpace:
         r"""Return the new, or `p`-new, submodule of this space.
 
-        For trivial-character Gamma0 spaces over ``QQ``, this computes the
+        For trivial-character Gamma0 spaces over `QQ`, this computes the
         intersection of the kernels of the two level-lowering degeneracy
         maps to level `N/p`, for every prime `p` dividing `N`.  All maps are
         assembled natively and horizontally joined before taking one exact

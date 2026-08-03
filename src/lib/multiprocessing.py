@@ -120,11 +120,11 @@ class Pool:
         self._check_running()
         if kwds is None:
             kwds = {}
-        arguments = list(args)
-        keyword_arguments = dict(kwds)
+        positional_values = list(args)
+        keyword_values = dict(kwds)
         return list(_host_call(
             'multiprocessingMap', self._pool_id, _apply_call,
-            [[func, arguments, keyword_arguments]], True
+            [[func, positional_values, keyword_values]], True
         ))[0]
 
     def starmap(self, func, iterable, chunksize=None):

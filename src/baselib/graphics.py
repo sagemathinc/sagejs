@@ -3690,8 +3690,8 @@ def complex_to_cmap_rgb(
     r"""Convert complex values to RGB using a Sage-compatible colormap.
 
     The argument selects a point in the colormap and the magnitude controls
-    lightness.  Common matplotlib names such as ``'viridis'``, ``'plasma'``,
-    ``'inferno'``, ``'cividis'``, ``'turbo'``, ``'twilight'``, and ``'hsv'``
+    lightness. Common matplotlib names such as `'viridis'`, `'plasma'`,
+    `'inferno'`, `'cividis'`, `'turbo'`, `'twilight'`, and `'hsv'`
     are built in without importing matplotlib.  A list of colors or a callable
     returning an RGB(A) tuple is also accepted.
 
