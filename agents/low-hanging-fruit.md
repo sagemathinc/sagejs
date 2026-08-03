@@ -19,7 +19,7 @@ Status meanings:
    degeneracy kernels already used for sign 1. Check full-new and `p`-new
    dimensions against SageMath at prime powers and levels with several prime
    factors.
-2. **ready — expose degeneracy maps on modular-symbol spaces.** Lift the native
+2. **done — expose degeneracy maps on modular-symbol spaces.** Lift the native
    ambient map through source and target basis matrices and support the common
    Sage call forms. Verify dimensions, composition, and Hecke equivariance.
 3. **done — higher-weight Gamma0 degeneracy kernels.** Generalize the native

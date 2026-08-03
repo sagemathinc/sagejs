@@ -787,6 +787,30 @@ test("new submodules and simple Hecke decomposition", async () => {
       (
         await session.evaluate(
           [
+            "M = ModularSymbols(22, 2, sign=1)",
+            "d = M.degeneracy_map(11, 1)",
+            "S = M.cuspidal_subspace()",
+            "ds = S.degeneracy_map(11, 1)",
+            "T22 = M.hecke_matrix(3)",
+            "T11 = d.codomain().hecke_matrix(3)",
+            "H = ModularSymbols(22, 4, sign=-1)",
+            "dh = H.degeneracy_map(11, 1)",
+            "[d.matrix().dimensions(), d.rank(), " +
+              "d.kernel().dimension(), d.image().dimension(), " +
+              "ds.matrix().dimensions(), ds.rank(), " +
+              "T22*d.matrix() == d.matrix()*T11, " +
+              "dh.matrix().dimensions(), dh.rank(), " +
+              "H.hecke_matrix(3)*dh.matrix() == " +
+                "dh.matrix()*dh.codomain().hecke_matrix(3)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(5, 2), 2, 3, 2, (2, 2), 1, True, (7, 2), 2, True]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
             "M = ModularSymbols(400, 2, sign=1)",
             "N = M.new_submodule()",
             "[N.dimension(), N.cuspidal_subspace().dimension()]",

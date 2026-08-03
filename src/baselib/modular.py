@@ -1751,6 +1751,61 @@ class ModularSymbolsLinearOperator:
     toString = __repr__
 
 
+class ModularSymbolsDegeneracyMap:
+
+    def __init__(
+        self,
+        domain: ModularSymbolsSpace,
+        codomain: ModularSymbolsSpace,
+        defining_matrix: Any,
+        ambient_matrix: Any,
+        index: int,
+    ) -> None:
+        self._domain = domain
+        self._codomain = codomain
+        self._matrix = defining_matrix
+        self._ambient_matrix = ambient_matrix
+        self._index = index
+
+    def domain(self) -> ModularSymbolsSpace:
+        return self._domain
+
+    def codomain(self) -> ModularSymbolsSpace:
+        return self._codomain
+
+    def matrix(self) -> Any:
+        return self._matrix
+
+    def rank(self) -> int:
+        return self._matrix.rank()
+
+    def kernel(self) -> ModularSymbolsSpace:
+        local_basis = self._matrix.left_kernel_matrix()
+        return self._domain._subspace_from_local_basis(
+            local_basis, 'Kernel')
+
+    def image(self) -> ModularSymbolsSpace:
+        local_basis = self._matrix.row_space().basis_matrix()
+        return self._codomain._subspace_from_local_basis(
+            local_basis, 'Image')
+
+    def __call__(self, element: Any) -> ModularSymbolElement:
+        symbol = self._domain(element)
+        image = symbol.vector() * self._ambient_matrix
+        return self._codomain(image)
+
+    def __repr__(self) -> str:
+        return (
+            'Degeneracy map of index ' + str(self._index)
+            + ' defined by the matrix\n' + str(self._matrix)
+            + '\nDomain: ' + str(self._domain)
+            + '\nCodomain: ' + str(self._codomain)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 class ManinPresentation:
     """
     A minimal weight-2 `Gamma_0(N)` modular-symbol presentation.
@@ -3058,6 +3113,80 @@ class ModularSymbolsSpace(sage.Parent):
                 self, self.boundary_space(), defining_matrix)
         return self._boundary_map_cache
 
+    def degeneracy_map(
+        self,
+        codomain: Any,
+        index: Any = 1,
+    ) -> ModularSymbolsDegeneracyMap:
+        r"""Return an exact level-lowering degeneracy map.
+
+        ``codomain`` may be a modular-symbol space or its level. The target
+        must divide this space's level; level-raising maps are not yet
+        implemented. The returned morphism exposes ``matrix()``, ``rank()``,
+        ``kernel()``, ``image()``, and evaluation on modular symbols.
+
+        ```sage
+        sage: M = ModularSymbols(22, 2, sign=1)
+        sage: d = M.degeneracy_map(11, 1)
+        sage: (d.matrix().dimensions(), d.rank())
+        ((5, 2), 2)
+        ```
+        """
+        index = _positive_integer(index, 'degeneracy index')
+        if runtime.is_exact_integer(codomain):
+            target = ModularSymbols(  # type: ignore[name-defined]  # noqa: F821
+                codomain,
+                self.weight(),
+                sign=self.sign(),
+                base_ring=self.base_ring(),
+            )
+        elif isinstance(codomain, ModularSymbolsSpace):
+            target = codomain
+        else:
+            raise TypeError(
+                'degeneracy-map codomain must be a level or modular-symbol '
+                'space')
+        if self._character is not None or target._character is not None:
+            raise NotImplementedError(
+                'explicit degeneracy maps for character spaces are not yet '
+                'implemented')
+        if (
+            self.weight() != target.weight()
+            or self.sign() != target.sign()
+            or self.base_ring() is not target.base_ring()
+            or self._group._family != 'Gamma0'
+            or target._group._family != 'Gamma0'
+        ):
+            raise ValueError(
+                'degeneracy-map domain and codomain must have matching '
+                'Gamma0 weight, sign, and base ring')
+        if self.level() % target.level() != 0:
+            raise NotImplementedError(
+                'level-raising degeneracy maps are not yet implemented')
+        quotient = self.level() // target.level()
+        if quotient % index != 0:
+            raise ValueError(
+                'degeneracy index must divide the quotient of levels')
+        source_ambient = self.ambient_module()
+        target_ambient = target.ambient_module()
+        if source_ambient._supports_native_weight2():
+            ambient_matrix = (
+                source_ambient._native_weight2_degeneracy_matrix(
+                    target_ambient, index))
+        elif source_ambient._supports_native_higher_weight():
+            ambient_matrix = (
+                source_ambient.p1list().higher_weight_degeneracy_matrix(
+                    target_ambient.p1list(), self.weight(), self.sign(),
+                    index))
+        else:
+            raise NotImplementedError(
+                'degeneracy maps require a native Gamma0 Manin '
+                'presentation over QQ')
+        images = self.basis_matrix()._sparse_left_multiply(ambient_matrix)
+        defining_matrix = target.basis_matrix().solve_left(images)
+        return ModularSymbolsDegeneracyMap(
+            self, target, defining_matrix, ambient_matrix, index)
+
     def cusps(self) -> list[ModularCusp]:
         return self.boundary_space().cusps()
 
@@ -3356,9 +3485,8 @@ class ModularSymbolsSpace(sage.Parent):
                 continue
             for degeneracy_index in [1, lowering_prime]:
                 if ambient._supports_native_weight2():
-                    ambient_map = ambient.p1list().degeneracy_matrix(
-                        lower.p1list(), degeneracy_index).change_ring(
-                            self.base_ring())
+                    ambient_map = ambient._native_weight2_degeneracy_matrix(
+                        lower.ambient_module(), degeneracy_index)
                 else:
                     ambient_map = (
                         ambient.p1list().higher_weight_degeneracy_matrix(
@@ -3484,6 +3612,24 @@ class ModularSymbolsSpace(sage.Parent):
                 * change_of_basis
             ).transpose()
         return self._restrict_ambient_matrix(result)
+
+    def _native_weight2_degeneracy_matrix(
+        self,
+        target: ModularSymbolsSpace,
+        index: int,
+    ) -> Any:
+        """Return a row-action lowering map in ambient space coordinates."""
+        source = self.ambient_module()
+        target = target.ambient_module()
+        result = source.p1list().degeneracy_matrix(
+            target.p1list(), index).change_ring(source.base_ring())
+        source_change = source._ambient_change_of_basis()
+        target_change = target._ambient_change_of_basis()
+        if source_change is not None:
+            result = source_change.transpose() * result
+        if target_change is not None:
+            result = result * target_change.inverse().transpose()
+        return result
 
     def _native_higher_weight_hecke_matrix(self, index: int) -> Any:
         ambient = self.ambient_module()
@@ -4340,6 +4486,27 @@ runtime.register_doc(
     ),
 )
 
+_modular_symbols_degeneracy_doc = _modular_symbols_method_doc(
+    ['degeneracy maps', 'oldforms', 'Hecke modules', 'exact linear algebra'],
+    'Native Merel-Heilbronn lowering followed by exact basis restriction',
+)
+_modular_symbols_degeneracy_doc['sage_compatibility'] = {
+    'status': 'partial',
+    'notes': (
+        'Exact level-lowering Gamma0 maps over QQ follow SageMath in every '
+        'weight at least two and all three signs. Level raising and explicit '
+        'character-valued maps are not yet implemented.'
+    ),
+}
+_modular_symbols_degeneracy_doc['limitations'] = [
+    'Level-raising and character-valued degeneracy maps are not yet exposed.',
+]
+runtime.register_doc(
+    'ModularSymbolsSpace.degeneracy_map',
+    runtime.reflect.get(_modular_symbols_space_prototype, 'degeneracy_map'),
+    _modular_symbols_degeneracy_doc,
+)
+
 _modular_symbols_new_doc = _modular_symbols_method_doc(
     ['new subspaces', 'oldforms', 'Hecke modules', 'exact linear algebra'],
     (
@@ -4373,8 +4540,8 @@ _modular_symbols_new_doc['provenance'].append({
 })
 _modular_symbols_new_doc['limitations'] = [
     (
-        'Currently implemented for weight 2, Gamma0, trivial character, '
-        'sign 1, and rational coefficients.'
+        'Imprimitive character spaces still need cyclotomic degeneracy '
+        'matrices when their character descends to a lower level.'
     ),
 ]
 runtime.register_doc(

@@ -2042,6 +2042,47 @@ sage: [A.dimension() for A in M.decomposition(bound=2)]
 - William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
 - John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
 
+## `ModularSymbolsSpace.degeneracy_map`
+
+```sage
+degeneracy_map(codomain, index=1)
+```
+
+Return an exact level-lowering degeneracy map.
+
+`codomain` may be a modular-symbol space or its level. The target
+must divide this space's level; level-raising maps are not yet
+implemented. The returned morphism exposes `matrix()`, `rank()`,
+`kernel()`, `image()`, and evaluation on modular symbols.
+
+```sage
+sage: M = ModularSymbols(22, 2, sign=1)
+sage: d = M.degeneracy_map(11, 1)
+sage: (d.matrix().dimensions(), d.rank())
+((5, 2), 2)
+```
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.modular.modsym.space`
+- Tags: number theory, modular symbols, degeneracy maps, oldforms, Hecke modules, exact linear algebra
+- Backends: Sage.js portable C modular-symbol core, FLINT exact matrices
+- Sage compatibility: partial — Exact level-lowering Gamma0 maps over QQ follow SageMath in every weight at least two and all three signs. Level raising and explicit character-valued maps are not yet implemented.
+- Algorithm: Native Merel-Heilbronn lowering followed by exact basis restriction
+- Limitations: Level-raising and character-valued degeneracy maps are not yet exposed.
+
+### Provenance
+
+- `sage-derived` — [SageMath modular-symbol API](https://doc.sagemath.org/html/en/reference/modsym/); license GPL-2.0-or-later
+- `software-derived` — [PARI/GP src/basemath/modsym.c](https://pari.math.u-bordeaux.fr/); revision 0f5a08ee7e; license GPL-2.0-or-later
+- `sagejs-original` — Portable preallocated coordinate and subspace adapter
+
+### References
+
+- William Stein, [Modular Forms: A Computational Approach](https://wstein.org/books/modform/).
+- John Cremona, [Algorithms for Modular Elliptic Curves](https://johncremona.github.io/book/fulltext/).
+
 ## `ModularSymbolsSpace.hecke_matrix`
 
 ```sage
@@ -2169,7 +2210,7 @@ sage: [A.dimension() for A in N.decomposition()]
 - Backends: Sage.js portable C modular-symbol core, FLINT exact matrices, native horizontal concatenation, and kernels
 - Sage compatibility: partial — Gamma0 cuspidal new and individual p-new operations over QQ follow SageMath in every weight at least two and all three signs. Primitive nebentypus spaces, and p-new spaces where the character cannot descend, are recognized over their exact character fields. At composite trivial-character level, calling this on the full space returns its cuspidal new part. Degeneracy matrices for imprimitive characters that descend are not yet implemented.
 - Algorithm: One exact kernel of horizontally joined level-lowering degeneracy matrices
-- Limitations: Currently implemented for weight 2, Gamma0, trivial character, sign 1, and rational coefficients.
+- Limitations: Imprimitive character spaces still need cyclotomic degeneracy matrices when their character descends to a lower level.
 
 ### Provenance
 
