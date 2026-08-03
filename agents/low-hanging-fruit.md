@@ -111,10 +111,11 @@ Status meanings:
 24. **ready — worker-transfer serialization.** Use the serialization registry
     for zero-copy or single-copy worker messages where possible, with ownership
     and mutation semantics tested explicitly.
-25. **ready — startup import accounting.** Record which modules load for empty
-    CLI, one exact integer expression, and first use of major packages. Enforce
-    both normalized timing and an import-count/byte budget so busy CI machines
-    do not create flaky failures.
+25. **done — normalized startup guardrail.** Fresh-process medians are compared
+    with contemporaneous bare Node startup, with a 300 ms normalized budget
+    and a separate catastrophic raw ceiling so loaded CI does not create flaky
+    failures. The final overnight run measured 236.6 ms normalized. Import
+    accounting for first use of each major package remains a separate measure.
 26. **ready — package-boundary enforcement expansion.** Require every new
     package and native capability to declare its dependency layer, lazy-load
     behavior, serialization types, browser behavior, and Windows status.
