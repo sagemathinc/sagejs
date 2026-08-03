@@ -365,24 +365,24 @@ export function createKernelEvaluator({
       } finally {
         if (interruptState) Atomics.store(interruptState, 1, 0);
       }
+      const publishResult =
+        !suppressResult &&
+        !finalStatementIsAssignment &&
+        !sourceEndsWithSemicolon &&
+        value !== undefined &&
+        value !== null;
       const repr =
-        suppressResult ||
-        finalStatementIsAssignment ||
-        sourceEndsWithSemicolon ||
-        value === undefined
+        !publishResult
           ? ""
           : String(global.ρσ_repr(value));
+      const display = publishResult ? richDisplay(value) : undefined;
+      if (publishResult) global._ = value;
       const durationMs = performance.now() - started;
       if (timed) onOutput(`Wall time: ${durationMs.toFixed(3)}ms\n`);
       return {
         repr,
         durationMs,
-        display:
-          suppressResult ||
-          finalStatementIsAssignment ||
-          sourceEndsWithSemicolon
-            ? undefined
-            : richDisplay(value),
+        display,
       };
     },
 

@@ -27,7 +27,9 @@ _FUNCTION_NAMES = {
 _CONSTANT_NAMES = {
     "ExponentialE": "e",
     "ImaginaryUnit": "I",
+    "NegativeInfinity": "-Infinity",
     "Pi": "pi",
+    "PositiveInfinity": "+Infinity",
 }
 
 
@@ -616,6 +618,16 @@ class Expression(sage.Element):
         lower: Any = runtime.undefined,
         upper: Any = runtime.undefined,
     ) -> Expression:
+        if (
+            isinstance(variable, (list, tuple))
+            and lower is runtime.undefined
+            and upper is runtime.undefined
+        ):
+            bounds = list(variable)
+            if len(bounds) != 3:
+                raise TypeError(
+                    'integration range must be (variable, lower, upper)')
+            variable, lower, upper = bounds
         name = _symbol_name(variable)
         if (lower is runtime.undefined) != (upper is runtime.undefined):
             raise TypeError(
@@ -635,6 +647,15 @@ class Expression(sage.Element):
                 'integrate',
                 [self._tree, name, lower_tree, upper_tree],
             ))
+
+    integral = integrate
+
+    def limit(
+        self,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Expression:
+        return limit(self, *args, **kwargs)
 
     def find_root(
         self,
@@ -1545,6 +1566,60 @@ def integral(
 ) -> Expression:
     return SR(expression).integrate(
         variable, lower, upper)
+
+
+def limit(
+    expression: Any,
+    *args: Any,
+    **kwargs: Any,
+) -> Expression:
+    """Return a symbolic limit using Sage-compatible argument forms."""
+    dir = None
+    if runtime.reflect.has(kwargs, 'dir'):
+        dir = runtime.reflect.get(kwargs, 'dir')
+        runtime.reflect.deleteProperty(kwargs, 'dir')
+    taylor = False
+    if runtime.reflect.has(kwargs, 'taylor'):
+        taylor = bool(runtime.reflect.get(kwargs, 'taylor'))
+        runtime.reflect.deleteProperty(kwargs, 'taylor')
+    algorithm = 'maxima'
+    if runtime.reflect.has(kwargs, 'algorithm'):
+        algorithm = str(runtime.reflect.get(kwargs, 'algorithm'))
+        runtime.reflect.deleteProperty(kwargs, 'algorithm')
+    if taylor:
+        raise NotImplementedError(
+            'limit(..., taylor=True) is not implemented')
+    if algorithm not in ('maxima', 'sagejs'):
+        raise NotImplementedError(
+            "limit algorithm '" + str(algorithm) + "' is not implemented")
+    keyword_names = runtime.object.keys(kwargs)
+    if len(args) == 2 and len(keyword_names) == 0:
+        variable, point = args
+    elif len(args) == 0 and len(keyword_names) == 1:
+        variable = Expression(keyword_names[0])
+        point = runtime.reflect.get(kwargs, keyword_names[0])
+    else:
+        raise TypeError(
+            'limit() expects (expression, variable, point) or '
+            '(expression, variable=point)')
+    direction = runtime.undefined
+    if dir is not None:
+        direction_name = str(dir).lower()
+        if direction_name in ('plus', '+', 'right', 'above'):
+            direction = 1
+        elif direction_name in ('minus', '-', 'left', 'below'):
+            direction = -1
+        else:
+            raise ValueError('direction must be plus, minus, left, or right')
+    return Expression(_call_backend(
+        'limit',
+        [
+            _expression_tree(expression),
+            _symbol_name(variable),
+            _expression_tree(point),
+            direction,
+        ],
+    ))
 
 
 def desolve(

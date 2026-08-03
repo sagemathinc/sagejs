@@ -31,6 +31,38 @@ async function main() {
       (await session.evaluate("(x^2).integrate(x, 0, 1)")).repr,
       "1/3",
     );
+    assert.equal(
+      (await session.evaluate("(x^2).integral((x, 0, 1))")).repr,
+      "1/3",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "integral(log(x)*x, (x, 2, 10))",
+        )
+      ).repr,
+      "-24 - 2*log(2) + 50*log(10)",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "limit(sin(2*x)/tan(3*x), x=0)",
+        )
+      ).repr,
+      "2/3",
+    );
+    assert.equal(
+      (await session.evaluate("(sin(x)/x).limit(x, 0)")).repr,
+      "1",
+    );
+    assert.equal(
+      (await session.evaluate("limit(1/x, x=0, dir='right')")).repr,
+      "+Infinity",
+    );
+    await assert.rejects(
+      session.evaluate("limit(sin(x)/x, x=0, algorithm='sympy')"),
+      /limit algorithm 'sympy' is not implemented/,
+    );
     assert.ok(
       Math.abs(
         Number((await session.evaluate("(x^2 - 2).find_root(1, 2)")).repr) -

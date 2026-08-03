@@ -4,9 +4,6 @@
     "book/07-Computing_DL.md:216": "This verification uses `x`, which is defined only inside the preceding automatically skipped timing benchmark."
   },
   "xfail": {
-    "book/02-Python.md:3271": "General symbolic limits are not implemented; this requires a limit algorithm in the symbolic backend.",
-    "book/02-Python.md:3311": "Definite symbolic integration of logarithmic expressions is not yet supported by the symbolic integration bridge.",
-    "book/02-Python.md:3317": "Notebook last-result state (`_`) is not persisted between kernel evaluations; the preceding definite integral also remains unsupported.",
     "book/02-Python.md:3327": "Numerical quadrature (`numerical_integral`) is not implemented; this needs an adaptive integration backend and error estimate.",
     "book/02-Python.md:3411": "Exact matrix left-eigenspace decomposition is not implemented.",
     "book/02-Python.md:3417": "Exact matrix diagonalizability testing is not implemented.",
@@ -19,8 +16,6 @@
     "book/03-Number_Theory.md:617": "This comparison depends on `test_1`, defined only by an automatically skipped benchmark cell.",
     "book/16-Elliptic_Curves.md:102": "Approximate real elliptic-curve point construction uses exact membership equality; it needs a precision-aware tolerance.",
     "book/16-Elliptic_Curves.md:266": "Approximate real secant-line points need precision-aware elliptic-curve membership instead of exact equality.",
-    "book/16-Elliptic_Curves.md:386": "Lifting a rational x-coordinate with irrational y requires an algebraic/real base extension that Sage.js does not yet infer automatically.",
-    "book/16-Elliptic_Curves.md:69": "Implicit symbolic curve plotting still leaks an unresolved notebook-result placeholder during evaluation.",
-    "book/16-Elliptic_Curves.md:76": "Implicit symbolic cusp plotting still leaks an unresolved notebook-result placeholder during evaluation."
+    "book/16-Elliptic_Curves.md:386": "Lifting a rational x-coordinate with irrational y requires an algebraic/real base extension that Sage.js does not yet infer automatically."
   }
 }

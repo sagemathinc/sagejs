@@ -238,6 +238,12 @@ export function createSymbolicBackend() {
       return boxed(["Integrate", expression, range]).evaluate().json;
     },
 
+    limit(expression, variable, point, direction) {
+      const operands = ["Limit", expression, variable, point];
+      if (direction !== undefined) operands.push(direction);
+      return boxed(operands).evaluate().json;
+    },
+
     simplify(expression) {
       return boxed(expression).simplify().json;
     },

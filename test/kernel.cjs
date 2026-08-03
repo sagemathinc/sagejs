@@ -69,9 +69,12 @@ async function main(t) {
   );
 
   assert.equal((await session.eval("value^2")).repr, "144");
+  assert.equal((await session.evaluate("_")).repr, "144");
   assert.equal((await session.evaluate("assigned = 17")).repr, "");
+  assert.equal((await session.evaluate("_")).repr, "144");
   assert.equal((await session.evaluate("assigned")).repr, "17");
   assert.equal((await session.evaluate("assigned + 1;")).repr, "");
+  assert.equal((await session.evaluate("_")).repr, "17");
   const timed = await session.evaluate("%time timed_value = 2^20");
   assert.equal(timed.repr, "");
   assert.match(timed.stdout, /^Wall time: [0-9.]+ms\n$/);

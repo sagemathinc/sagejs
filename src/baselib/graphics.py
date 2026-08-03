@@ -3812,6 +3812,33 @@ def _sample_grid_2d(
     yminimum, ymaximum = _plot_range([yrange])
     xvariable = _plot_variable([xrange])
     yvariable = _plot_variable([yrange])
+    if (
+        (xvariable is None or yvariable is None)
+        and hasattr(function_value, 'variables')
+    ):
+        symbolic_variables = list(function_value.variables())
+        if xvariable is None and yvariable is None:
+            if len(symbolic_variables) != 2:
+                raise ValueError(
+                    'two-variable symbolic plots require explicit variables '
+                    'unless the expression has exactly two variables')
+            xvariable, yvariable = symbolic_variables
+        elif xvariable is None:
+            remaining = [
+                variable for variable in symbolic_variables
+                if variable != yvariable
+            ]
+            if len(remaining) != 1:
+                raise ValueError('could not infer the x-axis variable')
+            xvariable = remaining[0]
+        elif yvariable is None:
+            remaining = [
+                variable for variable in symbolic_variables
+                if variable != xvariable
+            ]
+            if len(remaining) != 1:
+                raise ValueError('could not infer the y-axis variable')
+            yvariable = remaining[0]
     current = _plot_callable_2d(
         function_value, xvariable, yvariable)
     xcount, ycount = _grid_counts_2d(plot_points, 50)

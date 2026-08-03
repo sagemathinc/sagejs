@@ -689,6 +689,18 @@ async function main() {
     assert.equal(implicit.display?.data.data[0].contours.coloring, "lines");
     assert.equal(implicit.display?.data.data[0].showscale, false);
 
+    const inferredImplicit = await session.evaluate(
+      "implicit_plot(y^2 == x^3, (-0.2,2), (-3,3), plot_points=3)",
+    );
+    assert.equal(
+      inferredImplicit.repr,
+      "Graphics object consisting of 1 graphics primitive",
+    );
+    const inferredValues = inferredImplicit.display?.data.data[0].z;
+    assert.equal(inferredValues.length, 3);
+    assert.equal(inferredValues[0].length, 3);
+    assert.ok(Math.abs(inferredValues[1][2] + 8) < 1e-12);
+
     const region = await session.evaluate(
       "region_plot([x>=0,y>=0], (x,-1,1), (y,-1,1), " +
         "plot_points=3, incol='orange')",
