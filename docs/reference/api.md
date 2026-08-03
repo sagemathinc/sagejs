@@ -1918,6 +1918,33 @@ conjugacy classes using the conjugation action of the generators.
 
 - `sage-derived` — [SageMath finite groups API](https://doc.sagemath.org/html/en/reference/groups/); license GPL-2.0-or-later
 
+## `Mod`
+
+```sage
+Mod(value, modulus)
+```
+
+Construct `value` in the ring of integers modulo `modulus`.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.rings.finite_rings.integer_mod`
+- Tags: rings, finite fields, residue rings, modular arithmetic, element construction
+- Backends: FLINT
+- Sage compatibility: partial — The supported arithmetic is Sage-compatible; the current constructor requires modulus at least 2.
+- Algorithm: FLINT finite-field and modular arithmetic
+- Limitations: Moduli 0 and 1 are not currently constructed.
+
+### Provenance
+
+- `sage-derived` — [SageMath finite rings API](https://doc.sagemath.org/html/en/reference/finite_rings/); license GPL-2.0-or-later
+- `library-backed` — [FLINT finite-field and modular arithmetic](https://flintlib.org/doc/)
+
+### References
+
+- The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
+
 ## `ModularForms`
 
 ```sage

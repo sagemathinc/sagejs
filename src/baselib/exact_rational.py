@@ -52,6 +52,16 @@ class Rational(runtime.element):
     def __float__(self) -> float:
         return float(self._numerator) / float(self._denominator)
 
+    def n(
+        self,
+        prec: Any = None,
+        digits: Any = None,
+    ) -> float:
+        del prec, digits
+        return float(self)
+
+    numerical_approx = n
+
     def _add_(self, other: Rational) -> Rational:
         left_numerator = self._numerator
         left_denominator = self._denominator

@@ -1013,6 +1013,11 @@ def _dict_normalize_key(key: Any) -> Any:
         return key
     if runtime.is_exact_integer(key):
         return runtime.normalize_integer(runtime.bigint(key))
+    structural_key = _get_member(key, '__sagejs_dict_key__')
+    if runtime.strict_equal(
+        runtime.jstype(structural_key), 'function'
+    ):
+        return structural_key()
     return key
 
 
@@ -1238,6 +1243,9 @@ class SageDict:
                     self.__setitem__(pair[0], pair[1])
             elif isinstance(iterable, runtime.map_class):
                 for pair in iterable.entries():
+                    self.__setitem__(pair[0], pair[1])
+            elif hasattr(iterable, 'items'):
+                for pair in iterable.items():
                     self.__setitem__(pair[0], pair[1])
             elif runtime.array.isArray(iterable):
                 for pair in iterable:

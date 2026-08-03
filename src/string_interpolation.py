@@ -79,9 +79,12 @@ def render_markup(markup):
         pos += 1
     fmtspec = markup[pos:]
     prefix = ''
-    if key.endsWith('='):
+    debug_key = key.trimEnd()
+    if debug_key.endsWith('='):
         prefix = key
-        key = key[:-1]
+        key = debug_key[:-1]
+        if not fmtspec:
+            fmtspec = '!r'
     return (
         'ρσ_str.format(' + render_format_string(prefix, fmtspec)
         + ', (' + key + '))'

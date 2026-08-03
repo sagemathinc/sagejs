@@ -1179,6 +1179,9 @@ def log(value: Any, base: Any = None) -> Any:
     return (natural / denominator).simplify()
 
 
+ln = log
+
+
 log2 = Expression(['Ln', 2])
 
 runtime.register_doc(
@@ -1239,6 +1242,8 @@ def ceil(value: Any) -> Any:
 
 
 def sqrt(value: Any) -> Any:
+    if hasattr(value, 'sqrt') and callable(value.sqrt):
+        return value.sqrt()
     return _symbolic_function("Sqrt", value, runtime.math.sqrt)
 
 
@@ -1527,6 +1532,9 @@ def diff(
     degree: int = 1,
 ) -> Expression:
     return SR(expression).derivative(variable, degree)
+
+
+derivative = diff
 
 
 def integral(

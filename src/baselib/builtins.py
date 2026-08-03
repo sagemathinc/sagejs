@@ -4168,7 +4168,16 @@ def ρσ_factor(value: Any) -> Any:
     )
 
 
-def ρσ_gcd(left: Any, right: Any) -> Any:
+def ρσ_gcd(
+    left: Any,
+    right: Any = runtime.undefined,
+) -> Any:
+    if right is runtime.undefined:
+        values = list(left)
+        answer = runtime.bigint(0)
+        for value in values:
+            answer = runtime.integer_bigint(ρσ_gcd(answer, value))
+        return runtime.normalize_integer(answer)
     if (
         (
             runtime.strict_equal(runtime.jstype(left), 'number')
@@ -4268,6 +4277,122 @@ def ρσ_prime_range(
 
 def ρσ_prime_divisors(value: Any) -> Any:
     return [pair[0] for pair in ρσ_factor(value)]
+
+
+prime_factors = ρσ_prime_divisors
+
+
+def power_mod(base: Any, exponent: Any, modulus: Any) -> Any:
+    base = runtime.integer_bigint(base)
+    exponent = runtime.integer_bigint(exponent)
+    modulus = runtime.integer_bigint(modulus)
+    if modulus <= runtime.bigint(0):
+        raise ValueError('modulus must be positive')
+    if exponent < runtime.bigint(0):
+        base = runtime.modular_inverse(base, modulus)
+        exponent = runtime.native_neg(exponent)
+    return runtime.normalize_integer(
+        runtime.modular_power(base, exponent, modulus))
+
+
+def random_prime(
+    upper_bound: Any,
+    proof: Any = True,
+    lbound: Any = 2,
+) -> Any:
+    del proof
+    upper = runtime.integer_bigint(upper_bound)
+    lower = runtime.integer_bigint(lbound)
+    if lower < runtime.bigint(2):
+        lower = runtime.bigint(2)
+    if lower > upper:
+        raise ValueError('the lower bound must not exceed the upper bound')
+    span = runtime.native_add(
+        runtime.native_sub(upper, lower), runtime.bigint(1))
+    start = runtime.native_add(
+        lower,
+        runtime.bigint(runtime.math.floor(
+            runtime.math.random() * runtime.number(span)
+        )),
+    )
+    answer = runtime.flint_backend().nextPrime(
+        runtime.native_sub(start, runtime.bigint(1)))
+    if answer > upper:
+        answer = runtime.flint_backend().nextPrime(
+            runtime.native_sub(lower, runtime.bigint(1)))
+    if answer > upper:
+        raise ValueError('no prime in the specified interval')
+    return runtime.normalize_integer(answer)
+
+
+def legendre_symbol(numerator: Any, prime: Any) -> _Int:
+    value = runtime.integer_bigint(numerator)
+    modulus = runtime.integer_bigint(prime)
+    if (
+        modulus <= runtime.bigint(2)
+        or runtime.native_mod(modulus, runtime.bigint(2)) == 0
+        or not runtime.flint_backend().isPrime(modulus)
+    ):
+        raise ValueError('the second argument must be an odd prime')
+    value = runtime.native_mod(value, modulus)
+    if value == runtime.bigint(0):
+        return 0
+    residue = runtime.modular_power(
+        value,
+        runtime.native_div(
+            runtime.native_sub(modulus, runtime.bigint(1)),
+            runtime.bigint(2),
+        ),
+        modulus,
+    )
+    return 1 if residue == runtime.bigint(1) else -1
+
+
+def discrete_log(
+    target: Any,
+    base: Any,
+    ord: Any = runtime.undefined,
+    operation: Any = '*',
+) -> Any:
+    if operation != '*':
+        raise NotImplementedError(
+            'only multiplicative discrete logarithms are implemented')
+    if ord is runtime.undefined or ord is None:
+        if not _builtins_member_is_function(
+            base, 'multiplicative_order'
+        ):
+            raise TypeError(
+                'the base does not provide a multiplicative order')
+        ord = _builtins_call_member(
+            base, 'multiplicative_order', [])
+    order = runtime.integer_bigint(ord)
+    if order <= runtime.bigint(0):
+        raise ValueError('the order must be positive')
+    step = runtime.bigint(
+        runtime.math.ceil(runtime.math.sqrt(runtime.number(order))))
+    table = dict()
+    current = base ** runtime.bigint(0)
+    index = runtime.bigint(0)
+    while index < step:
+        if current not in table:
+            table.__setitem__(
+                current, runtime.normalize_integer(index))
+        current = current * base
+        index += runtime.bigint(1)
+    factor = base ** runtime.native_neg(step)
+    current = target
+    giant_index = runtime.bigint(0)
+    while giant_index <= step:
+        if current in table:
+            answer = runtime.native_add(
+                runtime.native_mul(giant_index, step),
+                runtime.integer_bigint(table.__getitem__(current)),
+            )
+            if answer < order:
+                return runtime.normalize_integer(answer)
+        current = current * factor
+        giant_index += runtime.bigint(1)
+    raise ValueError('no discrete logarithm found')
 
 
 def ρσ_divisors(value: Any) -> Any:
@@ -4461,7 +4586,32 @@ def valuation(value: Any, prime: Any) -> Any:
     return exponent
 
 
-def xgcd(left: Any, right: Any) -> Any:
+def xgcd(
+    left: Any,
+    right: Any = runtime.undefined,
+) -> Any:
+    if right is runtime.undefined:
+        values = list(left)
+        if len(values) == 0:
+            return runtime.math_tuple([0])
+        gcd_value = runtime.integer_bigint(values[0])
+        coefficients = [runtime.bigint(1)]
+        for value in values[1:]:
+            next_gcd, left_coefficient, right_coefficient = xgcd(
+                gcd_value, value)
+            left_coefficient = runtime.integer_bigint(left_coefficient)
+            coefficients = [
+                runtime.native_mul(coefficient, left_coefficient)
+                for coefficient in coefficients
+            ]
+            coefficients.append(
+                runtime.integer_bigint(right_coefficient))
+            gcd_value = runtime.integer_bigint(next_gcd)
+        return runtime.math_tuple(
+            [runtime.normalize_integer(gcd_value)] + [
+                runtime.normalize_integer(coefficient)
+                for coefficient in coefficients
+            ])
     if not runtime.is_exact_integer(left) or not runtime.is_exact_integer(right):
         raise TypeError('xgcd() arguments must be integers')
     a = runtime.integer_bigint(left)
@@ -4572,9 +4722,28 @@ def prime_to_m_part(value: Any, m: Any) -> Any:
 def crt(
     left_value: Any,
     right_value: Any,
-    left_modulus: Any,
-    right_modulus: Any,
+    left_modulus: Any = runtime.undefined,
+    right_modulus: Any = runtime.undefined,
 ) -> Any:
+    if (
+        left_modulus is runtime.undefined
+        and right_modulus is runtime.undefined
+    ):
+        values = list(left_value)
+        moduli = list(right_value)
+        if len(values) != len(moduli):
+            raise ValueError('CRT lists must have the same length')
+        if len(values) == 0:
+            return 0
+        result = values[0]
+        modulus = moduli[0]
+        for index in range(1, len(values)):
+            result = crt(
+                result, values[index], modulus, moduli[index])
+            modulus = runtime.normalize_integer(
+                runtime.integer_bigint(modulus)
+                * runtime.integer_bigint(moduli[index]))
+        return result
     gcd_value, left_coefficient, right_coefficient = xgcd(
         left_modulus, right_modulus)
     if gcd_value != 1:
@@ -4839,20 +5008,94 @@ def random() -> _Float:
 
 
 def randint(start: Any, stop: Any) -> Any:
-    start = runtime.number(start)
-    stop = runtime.number(stop)
-    if stop < start:
+    lower = runtime.integer_bigint(start)
+    upper = runtime.integer_bigint(stop)
+    if upper < lower:
         raise ValueError('empty range for randint()')
+    span = runtime.native_add(
+        runtime.native_sub(upper, lower), runtime.bigint(1))
     return runtime.normalize_integer(
-        runtime.math.floor(
-            _sage_random_float() * (stop - start + 1)
-        )
-        + start
-    )
+        runtime.native_add(
+            lower,
+            runtime.bigint(runtime.math.floor(
+                _sage_random_float() * runtime.number(span)
+            )),
+        ))
+
+
+def randrange(
+    start: Any,
+    stop: Any = runtime.undefined,
+    step: Any = 1,
+) -> Any:
+    if stop is runtime.undefined:
+        stop = start
+        start = 0
+    values = range(start, stop, step)
+    if len(values) == 0:
+        raise ValueError('empty range for randrange()')
+    return values[randint(0, len(values) - 1)]
+
+
+def choice(values: Any) -> Any:
+    if len(values) == 0:
+        raise IndexError('cannot choose from an empty sequence')
+    return values[randint(0, len(values) - 1)]
+
+
+def sample(values: Any, k: Any) -> Any:
+    pool = list(values)
+    count = runtime.number(runtime.integer_bigint(k))
+    if count < 0 or count > len(pool):
+        raise ValueError('sample larger than population or negative')
+    answer = []
+    for _index in range(count):
+        chosen = randint(0, len(pool) - 1)
+        answer.append(pool.pop(chosen))
+    return answer
 
 
 def primes(stop: Any) -> Any:
     return ρσ_prime_range(stop)
+
+
+class _Primes:
+
+    def slice(
+        self,
+        start: Any = 0,
+        stop: Any = runtime.undefined,
+    ) -> Any:
+        if stop is runtime.undefined:
+            stop = start
+            start = 0
+        if start < 0 or stop < 0:
+            raise ValueError('Primes slices need nonnegative bounds')
+        values = []
+        candidate = runtime.bigint(1)
+        for position in range(int(stop)):
+            candidate = runtime.flint_backend().nextPrime(candidate)
+            if position >= start:
+                values.append(runtime.normalize_integer(candidate))
+        return values
+
+    def __getitem__(self, index: Any) -> Any:
+        if not isinstance(index, slice):
+            raise TypeError('Primes indices must be slices')
+        start = 0 if index.start is None else int(index.start)
+        stop = index.stop
+        step = 1 if index.step is None else int(index.step)
+        if stop is None or start < 0 or stop < 0 or step <= 0:
+            raise ValueError(
+                'Primes slices need finite nonnegative bounds')
+        values = self.slice(start, stop)
+        if step == 1:
+            return values
+        return values[0:len(values):step]
+
+
+def Primes() -> _Primes:
+    return _Primes()
 
 
 def cartesian_product_iterator(factors: Any) -> Iterator[Any]:
@@ -4939,6 +5182,58 @@ def _builtins_integer_is_square(self: Any) -> _Bool:
             runtime.bigint(2),
         )
     return runtime.native_mul(estimate, estimate) == value
+
+
+def _builtins_integer_digits(
+    self: Any,
+    base: Any = 10,
+    digits: Any = runtime.undefined,
+    padto: Any = 0,
+) -> Any:
+    value = runtime.bigint(self)
+    radix = runtime.integer_bigint(base)
+    padding = runtime.integer_bigint(padto)
+    if radix < runtime.bigint(2):
+        raise ValueError('base must be at least 2')
+    if padding < runtime.bigint(0):
+        raise ValueError('padto must be nonnegative')
+    negative = value < runtime.bigint(0)
+    if negative:
+        value = runtime.native_neg(value)
+    answer = []
+    while value != runtime.bigint(0):
+        digit = runtime.native_mod(value, radix)
+        value = runtime.native_div(value, radix)
+        if negative:
+            digit = runtime.native_neg(digit)
+        normalized = runtime.normalize_integer(digit)
+        if digits is runtime.undefined:
+            answer.append(normalized)
+        else:
+            index = runtime.number(
+                runtime.native_neg(digit) if digit < 0 else digit)
+            if index >= len(digits):
+                raise ValueError(
+                    'the digit alphabet is smaller than the base')
+            answer.append(digits[index])
+    while runtime.bigint(len(answer)) < padding:
+        answer.append(0 if digits is runtime.undefined else digits[0])
+    return answer
+
+
+def _builtins_integer_bits(self: Any) -> Any:
+    return _builtins_integer_digits(self, 2)
+
+
+def _builtins_integer_nbits(self: Any) -> _Int:
+    value = runtime.bigint(self)
+    if value < runtime.bigint(0):
+        value = runtime.native_neg(value)
+    count = 0
+    while value != runtime.bigint(0):
+        value = runtime.native_div(value, runtime.bigint(2))
+        count += 1
+    return count
 
 
 def _builtins_extreme(
@@ -5759,6 +6054,9 @@ next = ρσ_next
 reversed = ρσ_reversed
 len = ρσ_len
 range = ρσ_range
+# Sage's xsrange is the lazy counterpart of srange. The runtime range already
+# provides the compatible lazy behavior for exact integer bounds.
+xsrange = range
 getattr = ρσ_getattr
 setattr = ρσ_setattr
 delattr = ρσ_delattr
@@ -5880,6 +6178,12 @@ _integer_is_one_native = runtime.native_method(
     _builtins_integer_is_one)
 _integer_is_square_native = runtime.native_method(
     _builtins_integer_is_square)
+_integer_digits_native = runtime.native_method(
+    _builtins_integer_digits)
+_integer_bits_native = runtime.native_method(
+    _builtins_integer_bits)
+_integer_nbits_native = runtime.native_method(
+    _builtins_integer_nbits)
 runtime.reflect.set(
     runtime.reflect.get(runtime.number, 'prototype'),
     'is_irreducible',
@@ -5909,6 +6213,36 @@ runtime.reflect.set(
     runtime.reflect.get(runtime.bigint, 'prototype'),
     'is_square',
     _integer_is_square_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.number, 'prototype'),
+    'digits',
+    _integer_digits_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.bigint, 'prototype'),
+    'digits',
+    _integer_digits_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.number, 'prototype'),
+    'bits',
+    _integer_bits_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.bigint, 'prototype'),
+    'bits',
+    _integer_bits_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.number, 'prototype'),
+    'nbits',
+    _integer_nbits_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.bigint, 'prototype'),
+    'nbits',
+    _integer_nbits_native,
 )
 runtime.reflect.set(runtime.global_object, 'true', True)
 runtime.reflect.set(runtime.global_object, 'false', False)

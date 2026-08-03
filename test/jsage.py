@@ -12,6 +12,10 @@ assrt.equal(2^3, 8)
 assrt.equal(2^^3, 1)
 assrt.equal(2**3, 8)
 
+augmented_power = 2
+augmented_power ^= 3
+assrt.equal(augmented_power, 8)
+
 # ^ really **is** exponentiation, not xor, since the tokenizer does it.
 # This means the precedence is correct (i.e., very high).
 assrt.equal(2^3 + 1, 9)

@@ -168,6 +168,13 @@ class FiniteFieldElement(sage.Element):
 
     integer_representation = lift
 
+    def __sagejs_dict_key__(self) -> Any:
+        key = self._parent._dict_keys.get(self._value)
+        if key is runtime.undefined:
+            key = runtime.object.create(None)
+            self._parent._dict_keys.set(self._value, key)
+        return key
+
     def is_zero(self) -> bool:
         return self._value == runtime.bigint(0)
 
@@ -178,6 +185,86 @@ class FiniteFieldElement(sage.Element):
         return runtime.bigint_gcd(
             self._value, self._parent._modulus
         ) == runtime.bigint(1)
+
+    def multiplicative_order(self) -> int:
+        if not self.is_unit():
+            raise ArithmeticError(
+                'multiplicative order is only defined for units')
+        if self._parent.is_field():
+            order = runtime.native_sub(
+                self._parent._modulus, runtime.bigint(1))
+        else:
+            order = self._parent._modulus
+            for prime, _exponent in sage.factor(order):
+                prime = runtime.integer_bigint(prime)
+                order = runtime.native_mul(
+                    runtime.native_div(order, prime),
+                    runtime.native_sub(prime, runtime.bigint(1)),
+                )
+        for prime, _exponent in sage.factor(order):
+            prime = runtime.integer_bigint(prime)
+            while runtime.native_mod(order, prime) == 0:
+                candidate = runtime.native_div(order, prime)
+                if self ** candidate != self._parent.one():
+                    break
+                order = candidate
+        return runtime.normalize_integer(order)
+
+    order = multiplicative_order
+
+    def sqrt(self) -> FiniteFieldElement:
+        if not self._parent.is_field():
+            candidate = runtime.bigint(0)
+            while candidate < self._parent._modulus:
+                if runtime.native_mod(
+                    runtime.native_mul(candidate, candidate),
+                    self._parent._modulus,
+                ) == self._value:
+                    return self._new_reduced(candidate)
+                candidate += runtime.bigint(1)
+            raise ValueError('not a square')
+        prime = self._parent._modulus
+        if self.is_zero():
+            return self
+        if prime == runtime.bigint(2):
+            return self
+        if not self.is_square():
+            raise ValueError('not a square')
+        if runtime.native_mod(prime, runtime.bigint(4)) == 3:
+            return self ** runtime.native_div(
+                runtime.native_add(prime, runtime.bigint(1)),
+                runtime.bigint(4),
+            )
+        odd_part = runtime.native_sub(prime, runtime.bigint(1))
+        power_of_two = 0
+        while runtime.native_mod(odd_part, runtime.bigint(2)) == 0:
+            odd_part = runtime.native_div(odd_part, runtime.bigint(2))
+            power_of_two += 1
+        nonresidue = self._parent(2)
+        while nonresidue.is_square():
+            nonresidue = nonresidue + 1
+        c = nonresidue ** odd_part
+        root = self ** runtime.native_div(
+            runtime.native_add(odd_part, runtime.bigint(1)),
+            runtime.bigint(2),
+        )
+        remainder = self ** odd_part
+        active_power = power_of_two
+        while not remainder.is_one():
+            index = 1
+            square = remainder * remainder
+            while not square.is_one():
+                square = square * square
+                index += 1
+            adjustment = c ** (
+                runtime.bigint(1) << runtime.bigint(
+                    active_power - index - 1)
+            )
+            root = root * adjustment
+            c = adjustment * adjustment
+            remainder = remainder * c
+            active_power = index
+        return root
 
     def modulus(self) -> int:
         return runtime.normalize_integer(self._parent._modulus)
@@ -456,6 +543,8 @@ class FiniteField_prime_modn(sage.Parent):
         self._modulus = order
         self._order = order
         self._generator = generator
+        self._dict_keys = runtime.reflect.construct(
+            runtime.map_class, [])
 
     def __call__(self, value: Any = 0) -> FiniteFieldElement:
         return _new_prime_field_element(self, value)
@@ -489,6 +578,35 @@ class FiniteField_prime_modn(sage.Parent):
         if index != runtime.bigint(0):
             raise IndexError('only one generator')
         return _new_prime_field_element(self, self._generator)
+
+    def random_element(self) -> FiniteFieldElement:
+        value = runtime.bigint(runtime.math.floor(
+            runtime.math.random() * runtime.number(self._order)))
+        return self(value)
+
+    def multiplicative_generator(self) -> FiniteFieldElement:
+        if self._order == runtime.bigint(2):
+            return self(1)
+        group_order = runtime.native_sub(
+            self._order, runtime.bigint(1))
+        primes = [pair[0] for pair in sage.factor(group_order)]
+        candidate = runtime.bigint(2)
+        while candidate < self._order:
+            element = self(candidate)
+            primitive = True
+            for prime in primes:
+                if (
+                    element ** runtime.native_div(
+                        group_order, runtime.integer_bigint(prime))
+                ).is_one():
+                    primitive = False
+                    break
+            if primitive:
+                return element
+            candidate += runtime.bigint(1)
+        raise ValueError('no multiplicative generator found')
+
+    primitive_element = multiplicative_generator
 
     def _first_ngens(self, count: int) -> list[FiniteFieldElement]:
         count = runtime.integer_bigint(count)
@@ -529,6 +647,8 @@ class IntegerModRing(sage.Parent):
         self._elementType = IntegerModElement
         self._modulus = order
         self._order = order
+        self._dict_keys = runtime.reflect.construct(
+            runtime.map_class, [])
 
     def __call__(self, value: Any = 0) -> IntegerModElement:
         if (
@@ -561,6 +681,40 @@ class IntegerModRing(sage.Parent):
 
     def one(self) -> IntegerModElement:
         return IntegerModElement(self, runtime.bigint(1))
+
+    def random_element(self) -> IntegerModElement:
+        value = runtime.bigint(runtime.math.floor(
+            runtime.math.random() * runtime.number(self._order)))
+        return self(value)
+
+    def unit_group(self) -> list[IntegerModElement]:
+        """Return an iterable list of units, not Sage's abstract group."""
+        return [element for element in self if element.is_unit()]
+
+    def multiplicative_generator(self) -> IntegerModElement:
+        if not self.is_field():
+            raise ValueError(
+                'generators are currently implemented for prime moduli')
+        if self._order == runtime.bigint(2):
+            return self(1)
+        group_order = runtime.native_sub(
+            self._order, runtime.bigint(1))
+        primes = [pair[0] for pair in sage.factor(group_order)]
+        candidate = runtime.bigint(2)
+        while candidate < self._order:
+            element = self(candidate)
+            primitive = True
+            for prime in primes:
+                if (
+                    element ** runtime.native_div(
+                        group_order, runtime.integer_bigint(prime))
+                ).is_one():
+                    primitive = False
+                    break
+            if primitive:
+                return element
+            candidate += runtime.bigint(1)
+        raise ValueError('no multiplicative generator found')
 
     def __iter__(self) -> Iterator[IntegerModElement]:
         value = runtime.bigint(0)
@@ -966,6 +1120,11 @@ def Zmod(order: Any) -> IntegerModRing:
 Integers = Zmod
 
 
+def Mod(value: Any, modulus: Any) -> IntegerModElement:
+    """Construct `value` in the ring of integers modulo `modulus`."""
+    return Zmod(modulus)(value)
+
+
 runtime.set_class_repr(
     FiniteFieldElement, "<class 'FiniteFieldElement'>")
 runtime.set_class_repr(
@@ -1082,6 +1241,20 @@ runtime.register_doc(
     _finite_field_doc(
         'sage.rings.finite_rings.integer_mod_ring',
         ['residue rings', 'modular arithmetic'],
+        'partial',
+        (
+            'The supported arithmetic is Sage-compatible; the current '
+            'constructor requires modulus at least 2.'
+        ),
+        ['Moduli 0 and 1 are not currently constructed.'],
+    ),
+)
+runtime.register_doc(
+    'Mod',
+    Mod,
+    _finite_field_doc(
+        'sage.rings.finite_rings.integer_mod',
+        ['residue rings', 'modular arithmetic', 'element construction'],
         'partial',
         (
             'The supported arithmetic is Sage-compatible; the current '

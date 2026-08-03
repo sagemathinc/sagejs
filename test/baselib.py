@@ -19,6 +19,17 @@ assrt.deepEqual(q, t)
 assrt.deepEqual(['a', 'b'], list('ab'))
 assrt.ok(q is not list(q))
 assrt.deepEqual(q, list(q))
+
+
+class MappingLike:
+    def items(self):
+        return [('a', 1), ('b', 2)]
+
+
+mapping_copy = dict(MappingLike())
+assrt.equal(len(mapping_copy), 2)
+assrt.equal(mapping_copy.__getitem__('a'), 1)
+assrt.equal(mapping_copy.__getitem__('b'), 2)
 assrt.ok(isinstance([], (String, list)))
 assrt.ok(isinstance(1, int))
 assrt.ok(not isinstance(r"%js new Number(1)", int))
@@ -54,6 +65,18 @@ assrt.equal(bin(3), '0b11')
 assrt.equal(bin(-3), '-0b11')
 assrt.equal(hex(10), '0xa')
 assrt.equal(hex(-10), '-0xa')
+assrt.deepEqual((550).digits(base=8), [6, 4, 0, 1])
+assrt.deepEqual((41943).digits(16), [7, 13, 3, 10])
+assrt.deepEqual(
+    (41943).digits(base=16, digits='0123456789ABCDEF'),
+    ['7', 'D', '3', 'A'],
+)
+assrt.deepEqual((5).digits(base=2, padto=5), [1, 0, 1, 0, 0])
+assrt.deepEqual((0).digits(), [])
+assrt.deepEqual((41943).bits(), (41943).digits(base=2))
+assrt.equal((0).nbits(), 0)
+assrt.equal((255).nbits(), 8)
+assrt.equal((BigInt(2) ** BigInt(200)).nbits(), 201)
 t = []
 for i in s:
     t.push(i)
@@ -68,6 +91,8 @@ for c, i in enumerate(m):
     t.push([c, i])
 assrt.deepEqual(t, [[0, 'a']])
 assrt.deepEqual(['y', 'x'], [x for x in reversed('xy')])
+assrt.deepEqual(list(xsrange(2, 9, 2)), [2, 4, 6, 8])
+assrt.deepEqual(list(xsrange(3)), [0, 1, 2])
 
 # Test that the iterator created by iter() is itself iterable
 assrt.deepEqual(s, set(iter(s)))
@@ -131,6 +156,13 @@ assrt.throws(floata, ValueError)
 assrt.equal(int(2 * 1e-7), 0)
 assrt.equal(int(10 * 1e-7), 0)
 assrt.equal(float(3 * 1e-7), 3e-7)
+assrt.ok(2 <= randrange(2, 20) < 20)
+assrt.ok(choice([1, 3, 5]) in [1, 3, 5])
+sampled = sample(list(range(20)), k=3)
+assrt.equal(len(sampled), 3)
+assrt.equal(len(set(sampled)), 3)
+assrt.equal(len(Primes()[0:10]), 10)
+assrt.deepEqual(Primes()[0:5], [2, 3, 5, 7, 11])
 
 # sum()
 assrt.equal(6, sum([1, 2, 3]))

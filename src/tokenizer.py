@@ -265,6 +265,8 @@ def tokenizer(
         if S['exponent'] and type == 'operator':
             if value == '^':
                 value = '**'
+            elif value == '^=':
+                value = '**='
             elif value == '^^':
                 value = '^'
         S['regex_allowed'] = (
@@ -607,10 +609,10 @@ def tokenizer(
             following_position += 1
 
         prefix_end = following_position
-        while 'bvrufBVRUF'.includes(
-            charAt(S['text'], prefix_end)
-        ):
+        following_prefix = charAt(S['text'], prefix_end)
+        while following_prefix and 'bvrufBVRUF'.includes(following_prefix):
             prefix_end += 1
+            following_prefix = charAt(S['text'], prefix_end)
         following_quote = charAt(S['text'], prefix_end)
         adjacent_string = (
             (not saw_newline or S['delimiter_depth'] > 0)

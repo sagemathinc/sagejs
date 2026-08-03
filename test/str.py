@@ -47,6 +47,12 @@ def test_interpolation():
     ae(f'{a}\\{b[0]}', '1\\x')
     ae(f'x\n\ny', 'x\n\ny')
     ae(f'{a=}', 'a=1')
+    ae(f'{a = }', 'a = 1')
+    ae(f'{a   =   }', 'a   =   1')
+    debug_string = 'x'
+    ae(f'{debug_string = }', "debug_string = 'x'")
+    ae(f'{debug_string = !s}', 'debug_string = x')
+    ae(f'{debug_string = :>3}', 'debug_string =   x')
     somevar = {'x': 1}
     ae(f'{somevar.x=}', 'somevar.x=1')
 
@@ -203,3 +209,6 @@ ae('{{}}'.format(), '{}')
 ae('{x}}}'.format(x=1), '1}')
 a = 1
 ae(f'{{ {a} }}', '{ 1 }')
+# Keep an interpolated assignment at end-of-file: the tokenizer must stop
+# looking for an adjacent string prefix when it reaches EOF.
+terminal_interpolation = f'{a}'

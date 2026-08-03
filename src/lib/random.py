@@ -61,6 +61,13 @@ def choice(seq):
         raise IndexError()
 
 
+def choices(population, weights=None, cum_weights=None, k=1):
+    if weights is not None or cum_weights is not None:
+        raise NotImplementedError(
+            'weighted random choices are not implemented')
+    return [choice(population) for _ in range(k)]
+
+
 # uses Fisher-Yates algorithm to shuffle an array
 def shuffle(x, random_f=random):
     x = list(x)

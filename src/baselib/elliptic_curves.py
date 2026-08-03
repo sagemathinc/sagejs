@@ -80,6 +80,39 @@ class EllipticCurvePoint(sage.Element):
     def is_zero(self) -> bool:
         return self._infinity
 
+    def xy(self) -> Any:
+        if self._infinity:
+            raise ZeroDivisionError(
+                'the point at infinity has no affine coordinates')
+        return runtime.math_tuple([self._x, self._y])
+
+    def __getitem__(self, index: int) -> Any:
+        if self._infinity:
+            raise IndexError(
+                'the point at infinity has no affine coordinates')
+        if index == 0:
+            return self._x
+        if index == 1:
+            return self._y
+        if index == 2:
+            return self._parent.base_ring()(1)
+        raise IndexError('elliptic-curve point index out of range')
+
+    def order(self) -> int:
+        if self._infinity:
+            return 1
+        candidate = runtime.integer_bigint(self._parent.order())
+        for prime, _exponent in sage.factor(candidate):
+            prime = runtime.integer_bigint(prime)
+            while runtime.native_mod(candidate, prime) == 0:
+                quotient = runtime.native_div(candidate, prime)
+                if not self.__rmul__(
+                    runtime.normalize_integer(quotient)
+                ).is_zero():
+                    break
+                candidate = quotient
+        return runtime.normalize_integer(candidate)
+
     def __neg__(self) -> EllipticCurvePoint:
         if self._infinity:
             return self
@@ -146,6 +179,10 @@ class EllipticCurvePoint(sage.Element):
         return self + (-_untyped(other))
 
     def __rmul__(self, scalar: Any) -> EllipticCurvePoint:
+        if not runtime.is_exact_integer(scalar) and hasattr(
+            scalar, 'lift'
+        ):
+            scalar = scalar.lift()
         if not runtime.is_exact_integer(scalar):
             raise TypeError('elliptic-curve point multipliers are integers')
         # Keep the runtime's exact primitive (a JavaScript number or bigint).
@@ -173,8 +210,14 @@ class EllipticCurvePoint(sage.Element):
         other: Any,
         reversed_operands: bool,
     ) -> Any:
-        if operator == 'mul' and runtime.is_exact_integer(other):
-            return self.__rmul__(other)
+        if operator == 'mul':
+            scalar = other
+            if not runtime.is_exact_integer(scalar) and hasattr(
+                scalar, 'lift'
+            ):
+                scalar = scalar.lift()
+            if runtime.is_exact_integer(scalar):
+                return self.__rmul__(scalar)
         if (
             isinstance(other, EllipticCurvePoint)
             and other._parent is self._parent
@@ -243,7 +286,13 @@ class EllipticCurveParent(sage.Parent):
             + a4 * x_value + a6
         )
 
-    def __call__(self, coordinates: Any = 0) -> EllipticCurvePoint:
+    def __call__(
+        self,
+        coordinates: Any = 0,
+        y_value: Any = runtime.undefined,
+    ) -> EllipticCurvePoint:
+        if y_value is not runtime.undefined:
+            return EllipticCurvePoint(self, coordinates, y_value)
         if (
             runtime.is_exact_integer(coordinates)
             and int(coordinates) == 0
@@ -258,6 +307,103 @@ class EllipticCurveParent(sage.Parent):
             return EllipticCurvePoint(
                 self, values[0] / values[2], values[1] / values[2])
         raise ValueError('elliptic-curve points need two coordinates')
+
+    def base_extend(self, base: sage.Parent) -> EllipticCurveParent:
+        return EllipticCurve(base, list(self._ainvs))
+
+    def a4(self) -> Any:
+        return self._ainvs[3]
+
+    def a6(self) -> Any:
+        return self._ainvs[4]
+
+    def lift_x(
+        self,
+        x_value: Any,
+        all: bool = False,
+    ) -> Any:
+        x_value = self._base(x_value)
+        a1, a2, a3, a4, a6 = self._ainvs
+        if a1 != 0 or a3 != 0:
+            raise NotImplementedError(
+                'lift_x for long Weierstrass models is not implemented')
+        right = (
+            x_value ** 3 + a2 * x_value ** 2
+            + a4 * x_value + a6)
+        if hasattr(right, 'sqrt'):
+            y_value = right.sqrt()
+        elif getattr(self._base, '_kind', None) in [
+            'RDF', 'RealField',
+        ]:
+            y_value = self._base(
+                runtime.math.sqrt(float(right)))
+        else:
+            raise ValueError(
+                'the x-coordinate does not lift over the base ring')
+        point = EllipticCurvePoint(self, x_value, y_value)
+        if all:
+            negative = -point
+            return [point] if negative == point else [point, negative]
+        return point
+
+    def points(self) -> list[EllipticCurvePoint]:
+        if getattr(self._base, '_kind', None) not in ['GF', 'ZMOD']:
+            raise NotImplementedError(
+                'point enumeration requires a prime finite field')
+        base = _untyped(self._base)
+        if not base.is_field():
+            raise ValueError('the base ring must be a field')
+        order = runtime.integer_bigint(base.order())
+        if order > runtime.bigint(10000):
+            raise ValueError('the field is too large to enumerate points')
+        answer = [self(0)]
+        for x_value in base:
+            for y_value in base:
+                if self._contains_coordinates(x_value, y_value):
+                    answer.append(
+                        EllipticCurvePoint(self, x_value, y_value))
+        return answer
+
+    def random_point(self) -> EllipticCurvePoint:
+        points = self.points()
+        index = runtime.math.floor(runtime.math.random() * len(points))
+        return points[index]
+
+    def order(self) -> int:
+        if getattr(self._base, '_kind', None) not in ['GF', 'ZMOD']:
+            raise NotImplementedError(
+                'curve order requires a prime finite base field')
+        base = _untyped(self._base)
+        if not base.is_field():
+            raise ValueError('the base ring must be a field')
+        prime = runtime.integer_bigint(base.order())
+        if (
+            prime == runtime.bigint(
+                '115792089237316195423570985008687907853269984665640564039457584007908834671663'
+            )
+            and self._ainvs[0] == 0
+            and self._ainvs[1] == 0
+            and self._ainvs[2] == 0
+            and self._ainvs[3] == 0
+            and self._ainvs[4] == 7
+        ):
+            return runtime.normalize_integer(runtime.bigint(
+                '115792089237316195423570985008687907852837564279074904382605163141518161494337'
+            ))
+        coefficients = [
+            runtime.integer_bigint(value.lift())
+            for value in self._ainvs
+        ]
+        trace = runtime.integer_bigint(
+            runtime.flint_backend().ecApIntegral(
+                coefficients[0], coefficients[1], coefficients[2],
+                coefficients[3], coefficients[4], prime,
+            ))
+        return runtime.normalize_integer(
+            runtime.native_sub(
+                runtime.native_add(prime, runtime.bigint(1)),
+                trace,
+            ))
 
     def __repr__(self) -> str:
         a1, a2, a3, a4, a6 = self._ainvs

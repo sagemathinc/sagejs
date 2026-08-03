@@ -133,6 +133,10 @@ async function main(t) {
     "help(b.q_expansion)",
   );
   assert.equal(
+    rewriteQuestionMarkHelp("is_prime??", "sage"),
+    "help(is_prime)",
+  );
+  assert.equal(
     rewriteQuestionMarkHelp("value ? other", "sage"),
     "value ? other",
   );

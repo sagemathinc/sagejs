@@ -142,6 +142,10 @@ class IntegerRing(Ring):
         self._kind = 'ZZ'
 
     def __call__(self, value: object) -> Any:
+        if not is_exact_integer(value) and hasattr(value, 'lift'):
+            lift = _untyped(value).lift
+            if callable(lift):
+                value = lift()
         return normalize_integer(value)
 
 

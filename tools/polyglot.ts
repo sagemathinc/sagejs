@@ -106,7 +106,7 @@ export function rewriteQuestionMarkHelp(
 ): string {
   if (language !== "sage" && language !== "python") return source;
   const match = source.match(
-    /(^|\n)([ \t]*)([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\?[ \t]*$/,
+    /(^|\n)([ \t]*)([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\?\??[ \t]*$/,
   );
   if (!match || match.index === undefined) return source;
   const start = match.index + match[1].length;
