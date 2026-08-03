@@ -392,7 +392,7 @@ export class NodeHostAdapter {
           if (Boolean(args[1])) {
             return {
               ok: true,
-              value: Array.from(fs.readFileSync(filename)),
+              value: fs.readFileSync(filename),
             };
           }
           return {
@@ -580,6 +580,17 @@ export class NodeHostAdapter {
         case "serializationLoads": {
           const serializer = require("./serialization") as typeof import("./serialization");
           return { ok: true, value: serializer.loads(String(args[0])) };
+        }
+        case "serializationPack": {
+          const serializer = require("./serialization") as typeof import("./serialization");
+          return { ok: true, value: serializer.pack(args[0]) };
+        }
+        case "serializationUnpack": {
+          const serializer = require("./serialization") as typeof import("./serialization");
+          const source = args[0] === null || args[0] === undefined
+            ? args[0]
+            : Reflect.get(Object(args[0]), "_values") ?? args[0];
+          return { ok: true, value: serializer.unpack(source as number[]) };
         }
         case "multiprocessingCreatePool":
           return {

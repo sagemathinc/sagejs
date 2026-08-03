@@ -485,6 +485,14 @@ class MatrixSpaceParent(sage.Parent):
                 self._rows, self._cols, entries),
         )
 
+    def _from_packed_rationals(self, entries: Any) -> Matrix:
+        """Construct a rational matrix from packed numerator/denominator data."""
+        return Matrix(
+            self,
+            runtime.flint_backend().qqMatrixPacked(
+                self._rows, self._cols, entries),
+        )
+
     def identity_matrix(self) -> Matrix:
         if self._rows != self._cols:
             raise TypeError('identity matrix must be square')
@@ -1008,6 +1016,10 @@ class Matrix(sage.Element):
     def _packed_integers(self) -> Any:
         """Return ZZ entries as packed signed little-endian magnitudes."""
         return runtime.flint_backend().zzMatrixExportPacked(self._native)
+
+    def _packed_rationals(self) -> Any:
+        """Return QQ entries as packed numerator/denominator magnitudes."""
+        return runtime.flint_backend().qqMatrixExportPacked(self._native)
 
     def base_ring(self) -> sage.Parent:
         return self._parent.base_ring()

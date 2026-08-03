@@ -232,7 +232,12 @@ class SageBytes:
             other = SageBytes(other._bytes_values())
         if not isinstance(other, SageBytes):
             raise TypeError("can't concat bytes to this value")
-        return SageBytes(self._values + other._values)
+        answer = []
+        for value in self._values:
+            answer.append(value)
+        for value in other._values:
+            answer.append(value)
+        return SageBytes(answer)
 
     def __mul__(self, count: Any) -> SageBytes:
         count = _coerce_index(count)
@@ -287,10 +292,21 @@ class SageBytes:
 
     def __eq__(self, other: object) -> _Bool:
         if isinstance(other, SageMemoryView):
-            return self._values == other._values()
+            other_values = other._values()
+            if len(self._values) != len(other_values):
+                return False
+            for index in range(len(self._values)):
+                if self._values[index] != other_values[index]:
+                    return False
+            return True
         if not isinstance(other, SageBytes):
             return False
-        return self._values == other._values
+        if len(self._values) != len(other._values):
+            return False
+        for index in range(len(self._values)):
+            if self._values[index] != other._values[index]:
+                return False
+        return True
 
     def _compare(self, other: Any) -> _Int:
         if isinstance(other, SageMemoryView):
@@ -1299,6 +1315,17 @@ def _construct_bytes(
         if encoding is not runtime.undefined or errors is not runtime.undefined:
             raise TypeError('encoding without a string argument')
         return source
+    uint8_array = runtime.reflect.get(
+        runtime.global_object, 'Uint8Array')
+    if (
+        uint8_array is not runtime.undefined
+        and runtime.instance_of(source, uint8_array)
+    ):
+        if encoding is not runtime.undefined or errors is not runtime.undefined:
+            raise TypeError('encoding without a string argument')
+        # Preserve the dense typed array.  This is the zero-per-byte boundary
+        # used by SagePack and native file/network APIs.
+        return SageBytes(source)
     if runtime.strict_equal(runtime.jstype(source), 'string'):
         if encoding is runtime.undefined:
             raise TypeError('string argument without an encoding')

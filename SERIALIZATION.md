@@ -11,22 +11,26 @@ The stable schema identifier is:
 https://sagejs.org/serialization/v1
 ```
 
-## Two representations, one object graph
+## Three representations, one object graph
 
 `encode(value)` returns structured-clone-compatible records and out-of-band
 `ArrayBuffer` blocks. Worker threads transfer those buffers without base64
-expansion. `dumps(value)` writes the identical records as deterministic UTF-8
-JSON, with buffers encoded as base64 for files and databases.
+expansion. `pack(value)` puts the identical graph into the binary SagePack v1
+container for durable files. `dumps(value)` remains deterministic UTF-8 JSON,
+with buffers encoded as base64, for interoperability and readable fixtures.
 
 ```js
-const { encode, decode, dumps, loads } =
+const { encode, decode, pack, unpack, dumps, loads } =
   require("@sagemath/sagejs/serialization");
 
 const packet = encode(value);
 worker.postMessage(packet, packet.buffers); // zero-copy buffer ownership move
 
-const bytesForStorage = dumps(value);
-const restored = loads(bytesForStorage);
+const bytesForStorage = pack(value);
+const restored = unpack(bytesForStorage);
+
+const portableJson = dumps(value); // backward-compatible JSON API
+const restoredFromJson = loads(portableJson);
 ```
 
 From Sage/Python source:
@@ -44,6 +48,29 @@ with open('result.sagepack', 'wb') as output:
 `multiprocessing.Pool` uses structured-clone packets automatically. Users do
 not need to call the serializer around pool arguments or results.
 
+The Python-facing `dump/dumps` APIs write binary SagePack v1. `load/loads`
+auto-detect and continue to read the earlier serialization-v1 JSON form.
+
+## Binary SagePack v1 envelope
+
+All integers are unsigned little-endian. The durable container is:
+
+```text
+8 bytes   magic: "SAGEPK1\0"
+u32       envelope version (1)
+u32       UTF-8 metadata byte length
+u32       binary buffer count
+u32       flags (0)
+u64[]     byte length of each binary buffer
+bytes     deterministic JSON metadata (schema, version, root, objects)
+bytes[]   raw binary buffers in table order
+```
+
+V1 is limited to 4 GiB. Readers reject an unknown version or flags, malformed
+UTF-8/JSON, invalid references, impossible lengths, truncation, and trailing
+bytes before constructing mathematical values. A checked SHA-256 golden vector
+in `test/serialization.cjs` fixes the byte-level format across platforms.
+
 ## V1 guarantees
 
 - Exact integers, non-finite floating-point values, binary data, nested
@@ -58,6 +85,10 @@ not need to call the serializer around pool arguments or results.
 - Dense `ZZ` matrices use one packed signed-magnitude buffer. Zero and small
   entries require only a four-byte length/sign header plus their significant
   bytes; arbitrary-size entries remain exact.
+- Dense `QQ` matrices use a native FLINT export/import path containing packed
+  canonical numerator/denominator magnitudes. Rational vectors use the same
+  portable entry format. Neither representation creates one JSON object per
+  coefficient.
 - Plain-object keys are sorted so repeated dumps of the same object graph are
   byte-for-byte deterministic. Mapping insertion order remains semantically
   significant and is preserved.
@@ -70,14 +101,15 @@ The portable JSON representation is intended for interoperability and stable
 fixtures, not hand editing. Code should use the public API rather than depend
 on record layout details beyond the schema identifier.
 
-The durable representation currently pays JSON framing and base64 expansion;
-worker-thread packets do not. On the reference Linux builder, a random
-100-by-100 `ZZ` matrix encodes/decodes in roughly 8/2 ms, while SageMath
-10.9 `save/load` takes roughly 2.4/2.0 ms for the same shape. A million-entry
-`GF(7)` matrix encodes/decodes in roughly 60/12 ms. These figures are
-directional, not test thresholds, but establish the baseline for a future
-binary durable container which can remove the JSON/base64 cost without
-changing the v1 object graph.
+On the reference Linux builder, a random 100-by-100 `ZZ` matrix packs/unpacks
+in roughly 6/3 ms, while SageMath 10.9 `save/load` takes roughly 2.2/1.5 ms.
+A random 1000-by-1000 `QQ` matrix packs/unpacks in roughly 51/47 ms, versus
+roughly 189/172 ms for SageMath. These are directional measurements, not test
+thresholds. Reproduce the cross-runtime comparison with:
+
+```sh
+pnpm bench:serialization
+```
 
 ## Codec registry
 
@@ -99,7 +131,10 @@ const unregister = registerCodec({
 ```
 
 Type names and payload versions are permanent public data contracts. A package
-owns the codecs for its mathematical objects. Decoders may call trusted local
+owns and lazily registers the codecs for its mathematical objects;
+serialization does not load those codec modules during startup. The package
+graph checker mechanically verifies ownership of codec registration files.
+Decoders may call trusted local
 constructors registered in code, but serialized input cannot select or supply
 code to execute.
 

@@ -64,6 +64,21 @@ export class SageSerializationError extends Error {
 
 const codecs: SageCodec[] = [];
 const codecsByType = new Map<string, SageCodec>();
+let builtinCodecsLoaded = false;
+
+/**
+ * Load codecs owned by the mathematical packages on first use.  Keeping this
+ * edge lazy is important: importing the serialization core must never pull
+ * arithmetic or linear algebra onto a CLI startup path.
+ */
+function ensureBuiltinCodecs(): void {
+  if (builtinCodecsLoaded) return;
+  builtinCodecsLoaded = true;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("./serialization-codecs/arithmetic").registerArithmeticCodecs();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("./serialization-codecs/linear-algebra").registerLinearAlgebraCodecs();
+}
 
 function isUint8Array(value: unknown): value is Uint8Array {
   return Object.prototype.toString.call(value) === "[object Uint8Array]";
@@ -225,8 +240,9 @@ export function encode(value: unknown): SagePacket {
       );
     }
 
-    // Sage parents are callable-instance functions.  Give explicitly
-    // registered data codecs a chance before rejecting arbitrary functions.
+    // Sage parents are callable-instance functions.  Load their package-owned
+    // codecs only after all core container types have been ruled out.
+    ensureBuiltinCodecs();
     for (const codec of codecs) {
       if (codec.test(item)) {
         return record(object, codec.type, codec.version, () =>
@@ -453,6 +469,7 @@ export function decode(packet: SagePacket): unknown {
       return result;
     }
 
+    if (!codecsByType.has(record.type)) ensureBuiltinCodecs();
     const codec = codecsByType.get(record.type);
     if (!codec) {
       throw new SageSerializationError(`no decoder is registered for ${record.type}`);
@@ -537,6 +554,147 @@ export function loads(source: string): unknown {
     ...portable,
     buffers: portable.buffers.map(base64ToBytes),
   } as SagePacket);
+}
+
+const SAGEPACK_MAGIC = Uint8Array.from([83, 65, 71, 69, 80, 75, 49, 0]);
+const SAGEPACK_HEADER_BYTES = 24;
+const SAGEPACK_ENVELOPE_VERSION = 1;
+const SAGEPACK_MAX_BYTES = 4 * 1024 * 1024 * 1024;
+
+function portableMetadata(packet: SagePacket): string {
+  return JSON.stringify({
+    schema: packet.schema,
+    version: packet.version,
+    root: packet.root,
+    objects: packet.objects,
+  });
+}
+
+function inputBytes(source: ArrayBuffer | ArrayBufferView | number[]): Uint8Array {
+  if (source instanceof ArrayBuffer) return new Uint8Array(source);
+  if (ArrayBuffer.isView(source)) {
+    return new Uint8Array(source.buffer, source.byteOffset, source.byteLength);
+  }
+  if (Array.isArray(source)) return Uint8Array.from(source);
+  throw new TypeError("SagePack input must be bytes or an ArrayBuffer");
+}
+
+function readLength(view: DataView, offset: number): number {
+  const low = view.getUint32(offset, true);
+  const high = view.getUint32(offset + 4, true);
+  const value = high * 0x1_0000_0000 + low;
+  if (!Number.isSafeInteger(value) || value > SAGEPACK_MAX_BYTES) {
+    throw new SageSerializationError("SagePack buffer exceeds the 4 GiB v1 limit");
+  }
+  return value;
+}
+
+function writeLength(view: DataView, offset: number, value: number): void {
+  view.setUint32(offset, value >>> 0, true);
+  view.setUint32(offset + 4, Math.floor(value / 0x1_0000_0000), true);
+}
+
+/**
+ * Pack a value into the deterministic binary SagePack v1 container.
+ *
+ * Object metadata is UTF-8 JSON, followed by unexpanded binary blocks.  The
+ * fixed header and length table make truncation, trailing bytes, and absurd
+ * allocations detectable before decoding any mathematical object.
+ */
+export function pack(value: unknown): Uint8Array {
+  const packet = encode(value);
+  const metadata = new TextEncoder().encode(portableMetadata(packet));
+  if (metadata.byteLength > 0xffff_ffff || packet.buffers.length > 0xffff_ffff) {
+    throw new SageSerializationError("SagePack metadata exceeds the v1 limit");
+  }
+  const tableBytes = packet.buffers.length * 8;
+  let total = SAGEPACK_HEADER_BYTES + tableBytes + metadata.byteLength;
+  for (const buffer of packet.buffers) {
+    total += buffer.byteLength;
+    if (!Number.isSafeInteger(total) || total > SAGEPACK_MAX_BYTES) {
+      throw new SageSerializationError("SagePack exceeds the 4 GiB v1 limit");
+    }
+  }
+  const result = new Uint8Array(total);
+  result.set(SAGEPACK_MAGIC, 0);
+  const view = new DataView(result.buffer);
+  view.setUint32(8, SAGEPACK_ENVELOPE_VERSION, true);
+  view.setUint32(12, metadata.byteLength, true);
+  view.setUint32(16, packet.buffers.length, true);
+  view.setUint32(20, 0, true);
+  let tableOffset = SAGEPACK_HEADER_BYTES;
+  for (const buffer of packet.buffers) {
+    writeLength(view, tableOffset, buffer.byteLength);
+    tableOffset += 8;
+  }
+  let offset = SAGEPACK_HEADER_BYTES + tableBytes;
+  result.set(metadata, offset);
+  offset += metadata.byteLength;
+  for (const buffer of packet.buffers) {
+    result.set(new Uint8Array(buffer), offset);
+    offset += buffer.byteLength;
+  }
+  return result;
+}
+
+/** Load a binary SagePack v1 container without importing or executing code. */
+export function unpack(source: ArrayBuffer | ArrayBufferView | number[]): unknown {
+  const bytes = inputBytes(source);
+  if (bytes.byteLength < SAGEPACK_HEADER_BYTES) {
+    throw new SageSerializationError("SagePack is truncated");
+  }
+  for (let index = 0; index < SAGEPACK_MAGIC.length; index += 1) {
+    if (bytes[index] !== SAGEPACK_MAGIC[index]) {
+      throw new SageSerializationError("invalid SagePack magic");
+    }
+  }
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (view.getUint32(8, true) !== SAGEPACK_ENVELOPE_VERSION) {
+    throw new SageSerializationError("unsupported SagePack envelope version");
+  }
+  const metadataLength = view.getUint32(12, true);
+  const bufferCount = view.getUint32(16, true);
+  if (view.getUint32(20, true) !== 0) {
+    throw new SageSerializationError("unsupported SagePack flags");
+  }
+  const tableBytes = bufferCount * 8;
+  const payloadOffset = SAGEPACK_HEADER_BYTES + tableBytes;
+  if (!Number.isSafeInteger(payloadOffset) || payloadOffset > bytes.byteLength) {
+    throw new SageSerializationError("SagePack length table is truncated");
+  }
+  let expected = payloadOffset + metadataLength;
+  const lengths = new Array<number>(bufferCount);
+  for (let index = 0; index < bufferCount; index += 1) {
+    const length = readLength(view, SAGEPACK_HEADER_BYTES + index * 8);
+    lengths[index] = length;
+    expected += length;
+    if (!Number.isSafeInteger(expected) || expected > SAGEPACK_MAX_BYTES) {
+      throw new SageSerializationError("SagePack exceeds the 4 GiB v1 limit");
+    }
+  }
+  if (expected !== bytes.byteLength) {
+    throw new SageSerializationError(
+      expected > bytes.byteLength ? "SagePack is truncated" : "SagePack has trailing data",
+    );
+  }
+  let metadata: Omit<SagePacket, "buffers">;
+  try {
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(
+      bytes.subarray(payloadOffset, payloadOffset + metadataLength),
+    );
+    metadata = JSON.parse(text);
+  } catch (error) {
+    throw new SageSerializationError(
+      `invalid SagePack metadata: ${(error as Error).message}`,
+    );
+  }
+  let offset = payloadOffset + metadataLength;
+  const buffers = lengths.map((length) => {
+    const buffer = bytes.slice(offset, offset + length).buffer;
+    offset += length;
+    return buffer;
+  });
+  return decode({ ...metadata, buffers } as SagePacket);
 }
 
 function callMethod(value: unknown, name: string, args: unknown[] = []): unknown {
@@ -749,6 +907,65 @@ function compactIntegerMatrixNative(value: unknown): {
   return { bytes: bytes as Uint8Array, count: rows * cols };
 }
 
+function compactRationalMatrixNative(value: unknown): {
+  bytes: Uint8Array;
+  count: number;
+} | undefined {
+  const exporter = Reflect.get(Object(value), "_packed_rationals");
+  if (typeof exporter !== "function") return undefined;
+  const rows = Number(callMethod(value, "nrows"));
+  const cols = Number(callMethod(value, "ncols"));
+  const bytes = invoke(exporter, value, []);
+  if (
+    !isUint8Array(bytes) ||
+    Number(Reflect.get(Object(bytes), "byteLength")) < rows * cols * 8
+  ) {
+    throw new SageSerializationError("native packed rational matrix export returned invalid data");
+  }
+  return { bytes: bytes as Uint8Array, count: rows * cols };
+}
+
+function compactRationals(entries: unknown[]): Uint8Array | undefined {
+  const records: { negative: boolean; bytes: number[] }[] = [];
+  let length = 0;
+  for (const entry of entries) {
+    const rational = parentKind(Reflect.get(Object(entry), "_parent")) === "QQ"
+      ? entry
+      : undefined;
+    if (rational === undefined) return undefined;
+    const parts = [
+      BigInt(Reflect.get(Object(rational), "_numerator")),
+      BigInt(Reflect.get(Object(rational), "_denominator")),
+    ];
+    if (parts[1] <= 0n) return undefined;
+    for (let part = 0; part < 2; part += 1) {
+      const negative = part === 0 && parts[part] < 0n;
+      let magnitude = parts[part] < 0n ? -parts[part] : parts[part];
+      const bytes: number[] = [];
+      while (magnitude !== 0n) {
+        bytes.push(Number(magnitude & 255n));
+        magnitude >>= 8n;
+      }
+      records.push({ negative, bytes });
+      length += 4 + bytes.length;
+    }
+  }
+  const result = new Uint8Array(length);
+  const view = new DataView(result.buffer);
+  let offset = 0;
+  for (const record of records) {
+    view.setUint32(
+      offset,
+      record.bytes.length | (record.negative ? 0x8000_0000 : 0),
+      true,
+    );
+    offset += 4;
+    result.set(record.bytes, offset);
+    offset += record.bytes.length;
+  }
+  return result;
+}
+
 function encodeElement(value: unknown, context: EncodeContext): WireValue {
   const kind = supportedElementKind(value)!;
   const parent = Reflect.get(Object(value), "_parent");
@@ -778,10 +995,14 @@ function encodeElement(value: unknown, context: EncodeContext): WireValue {
     const compactIntegers = parentKind(base) === "ZZ"
       ? compactIntegerMatrixNative(value)
       : undefined;
+    const compactRationals = parentKind(base) === "QQ"
+      ? compactRationalMatrixNative(value)
+      : undefined;
     const compactNative = ["GF", "ZMOD"].includes(parentKind(base) ?? "")
       ? compactMatrixNative(value, base)
       : undefined;
-    const entries = compactNative === undefined && compactIntegers === undefined
+    const entries = compactNative === undefined && compactIntegers === undefined &&
+      compactRationals === undefined
       ? callMethod(value, "list") as unknown[]
       : undefined;
     const compactResidueEntries = compactNative === undefined && entries !== undefined &&
@@ -796,13 +1017,30 @@ function encodeElement(value: unknown, context: EncodeContext): WireValue {
     return context.encode({
       kind,
       parent,
-      entries: compactIntegers?.bytes ?? compact?.bytes ?? entries,
-      entryEncoding: compactIntegers === undefined ? "" : "fmpz-le-v1",
+      entries: compactIntegers?.bytes ?? compactRationals?.bytes ?? compact?.bytes ?? entries,
+      entryEncoding: compactIntegers !== undefined
+        ? "fmpz-le-v1"
+        : compactRationals !== undefined
+          ? "fmpq-le-v1"
+          : "",
       entryWidth: compact?.width ?? 0,
-      entryCount: compactIntegers?.count ?? compact?.count ?? entries!.length,
+      entryCount: compactIntegers?.count ?? compactRationals?.count ??
+        compact?.count ?? entries!.length,
     });
   }
   const entries = callMethod(value, "list") as unknown[];
+  if (kind === "vector" && parentKind(callMethod(value, "base_ring")) === "QQ") {
+    const packed = compactRationals(entries);
+    if (packed !== undefined) {
+      return context.encode({
+        kind,
+        parent,
+        entries: packed,
+        entryEncoding: "fmpq-le-v1",
+        entryCount: entries.length,
+      });
+    }
+  }
   return context.encode({ kind, parent, entries });
 }
 
@@ -859,6 +1097,45 @@ function unpackIntegers(bytes: Uint8Array, count: number): bigint[] {
   return entries;
 }
 
+function unpackRationals(bytes: Uint8Array, count: number): unknown[] {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const entries = new Array<unknown>(count);
+  let offset = 0;
+  for (let index = 0; index < count; index += 1) {
+    const parts = new Array<bigint>(2);
+    for (let part = 0; part < 2; part += 1) {
+      if (bytes.byteLength - offset < 4) {
+        throw new SageSerializationError("packed rational data is truncated");
+      }
+      const header = view.getUint32(offset, true);
+      offset += 4;
+      if (part === 1 && (header & 0x8000_0000) !== 0) {
+        throw new SageSerializationError("packed rational denominator is negative");
+      }
+      const length = header & 0x7fff_ffff;
+      if (length > bytes.byteLength - offset) {
+        throw new SageSerializationError("packed rational data is truncated");
+      }
+      let magnitude = 0n;
+      for (let byte = length - 1; byte >= 0; byte -= 1) {
+        magnitude = (magnitude << 8n) | BigInt(bytes[offset + byte]);
+      }
+      parts[part] = part === 0 && (header & 0x8000_0000) !== 0
+        ? -magnitude
+        : magnitude;
+      offset += length;
+    }
+    if (parts[1] === 0n) {
+      throw new SageSerializationError("packed rational denominator is zero");
+    }
+    entries[index] = callPython(Reflect.get(globalThis, "QQ"), parts);
+  }
+  if (offset !== bytes.byteLength) {
+    throw new SageSerializationError("packed rational data has trailing bytes");
+  }
+  return entries;
+}
+
 function decodeElement(payload: WireValue, context: DecodeContext): unknown {
   const data = context.decode(payload) as Record<string, unknown>;
   if (data.kind === "rational") {
@@ -880,6 +1157,15 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
           unpackIntegers(data.entries, Number(data.entryCount)),
         ]);
       }
+      if (data.entryEncoding === "fmpq-le-v1") {
+        const fromPackedRationals = Reflect.get(Object(parent), "_from_packed_rationals");
+        if (typeof fromPackedRationals === "function") {
+          return invoke(fromPackedRationals, parent, [data.entries]);
+        }
+        return callPython(parent, [
+          unpackRationals(data.entries, Number(data.entryCount)),
+        ]);
+      }
       const fromPacked = Reflect.get(Object(parent), "_from_packed_residues");
       if (typeof fromPacked === "function") {
         return invoke(fromPacked, parent, [
@@ -893,22 +1179,54 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
       : data.entries as unknown[];
     return callPython(data.parent, [entries]);
   }
-  if (data.kind === "vector") return callPython(data.parent, [data.entries]);
+  if (data.kind === "vector") {
+    const entries = data.entries instanceof Uint8Array &&
+      data.entryEncoding === "fmpq-le-v1"
+      ? unpackRationals(data.entries, Number(data.entryCount))
+      : data.entries;
+    return callPython(data.parent, [entries]);
+  }
   throw new SageSerializationError(`unsupported mathematical element ${String(data.kind)}`);
 }
 
-registerCodec({
+export const sageArithmeticParentCodec: SageCodec = {
   type: "sage.parent",
   version: 1,
-  test: isSupportedParent,
+  test: (value) => {
+    const kind = parentKind(value);
+    return ["ZZ", "QQ", "GF", "ZMOD"].includes(kind ?? "") ||
+      String(field(construction(value), "kind") ?? "") === "polynomial";
+  },
   encode: encodeParent,
   decode: decodeParent,
-});
+};
 
-registerCodec({
+export const sageArithmeticElementCodec: SageCodec = {
   type: "sage.element",
   version: 1,
-  test: (value) => supportedElementKind(value) !== undefined,
+  test: (value) => ["rational", "residue", "polynomial"].includes(
+    supportedElementKind(value) ?? "",
+  ),
   encode: encodeElement,
   decode: decodeElement,
-});
+};
+
+export const sageLinearAlgebraParentCodec: SageCodec = {
+  type: "sage.linear_algebra.parent",
+  version: 1,
+  test: (value) => ["matrix", "vector"].includes(
+    String(field(construction(value), "kind") ?? ""),
+  ),
+  encode: encodeParent,
+  decode: decodeParent,
+};
+
+export const sageLinearAlgebraElementCodec: SageCodec = {
+  type: "sage.linear_algebra.element",
+  version: 1,
+  test: (value) => ["matrix", "vector"].includes(
+    supportedElementKind(value) ?? "",
+  ),
+  encode: encodeElement,
+  decode: decodeElement,
+};

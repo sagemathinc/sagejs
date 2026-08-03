@@ -28,6 +28,13 @@ function ownerOf(filename, packages) {
   );
 }
 
+function typescriptOwnerOf(filename, packages) {
+  return packages.filter((component) =>
+    (component.typescript_files ?? []).includes(filename) ||
+    (component.typescript_prefixes ?? []).some((prefix) => filename.startsWith(prefix)),
+  );
+}
+
 function assertDag(nodes, label) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   if (byId.size !== nodes.length) throw new Error(`${label} has duplicate ids`);
@@ -106,10 +113,28 @@ function validateManifest(manifest, root = ROOT) {
     }
     ownership.set(filename, owners[0].id);
   }
+  const typescriptOwnership = new Map();
+  for (const directory of manifest.policy.owned_typescript_roots ?? []) {
+    for (const filename of allFiles(join(root, directory)).filter(
+      (name) => name.endsWith(".ts") || name.endsWith(".js"),
+    )) {
+      const owners = typescriptOwnerOf(filename, packages);
+      if (owners.length !== 1) {
+        throw new Error(
+          `${filename} must have exactly one TypeScript package owner; found ` +
+          (owners.map((owner) => owner.id).join(", ") || "none"),
+        );
+      }
+      typescriptOwnership.set(filename, owners[0].id);
+    }
+  }
 
   for (const component of packages) {
     let bytes = 0;
     for (const [filename, owner] of ownership) {
+      if (owner === component.id) bytes += statSync(join(root, filename)).size;
+    }
+    for (const [filename, owner] of typescriptOwnership) {
       if (owner === component.id) bytes += statSync(join(root, filename)).size;
     }
     if (bytes > component.max_source_bytes) {
@@ -177,7 +202,7 @@ function validateManifest(manifest, root = ROOT) {
       throw new Error(`${name}.samples must be an odd integer of at least 3`);
     }
   }
-  return { packages, ownership, workspaceById };
+  return { packages, ownership, typescriptOwnership, workspaceById };
 }
 
 function run() {

@@ -5132,7 +5132,7 @@ class _BuiltinFile:
 
     def _write_data(self) -> Any:
         if self._binary:
-            return list(self._data)
+            return runtime.reflect.get(self._data, '_values')
         return self._data
 
     def _flush_to_host(self, exclusive: _Bool = False) -> None:
@@ -5281,6 +5281,12 @@ class _BuiltinFile:
                 bytes([0]) if self._binary else '\x00')
             self._data += padding * (self._position - len(self._data))
         end = self._position + len(data)
+        if self._binary and self._position == 0 and end >= len(self._data):
+            self._data = data
+            self._position = end
+            self._dirty = True
+            self._flush_to_host()
+            return len(value)
         suffix = _builtins_as_any(
             self._data[end:] if end < len(self._data) else data[:0],
         )

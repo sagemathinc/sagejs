@@ -1289,6 +1289,267 @@ invalid:
     return NULL;
 }
 
+/*
+ * Packed QQ entries are a numerator signed-magnitude record followed by a
+ * positive denominator magnitude record.  Each record starts with a 32-bit
+ * little-endian byte length; the numerator uses the high bit as its sign.
+ * FLINT stores canonical fmpq values, so importing canonicalizes once in C.
+ */
+napi_value sagejs_qq_matrix_export_packed(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value array_buffer;
+    napi_value result;
+    sagejs_matrix *matrix;
+    slong rows;
+    slong cols;
+    size_t entry_count;
+    size_t byte_length = 0;
+    size_t maximum_words = 0;
+    size_t offset = 0;
+    ulong *words = NULL;
+    uint8_t *data;
+    fmpz_t magnitude;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    matrix = unwrap_matrix(env, args[0]);
+    if (matrix == NULL)
+        return NULL;
+    if (matrix->kind != SAGEJS_MATRIX_QQ)
+    {
+        napi_throw_type_error(env, NULL,
+            "packed rational export requires a QQ matrix");
+        return NULL;
+    }
+    rows = fmpq_mat_nrows(matrix->rational);
+    cols = fmpq_mat_ncols(matrix->rational);
+    if (rows != 0 && (size_t) cols > SIZE_MAX / (size_t) rows)
+    {
+        napi_throw_range_error(env, NULL, "matrix is too large");
+        return NULL;
+    }
+    entry_count = (size_t) rows * (size_t) cols;
+    for (size_t index = 0; index < entry_count; index++)
+    {
+        const fmpq *entry = fmpq_mat_entry(
+            matrix->rational,
+            (slong) (index / (size_t) cols),
+            (slong) (index % (size_t) cols));
+        const fmpz *parts[2] = {fmpq_numref(entry), fmpq_denref(entry)};
+
+        for (size_t part = 0; part < 2; part++)
+        {
+            size_t bytes = (size_t) (fmpz_bits(parts[part]) + 7) / 8;
+            size_t word_count =
+                (bytes + sizeof(ulong) - 1) / sizeof(ulong);
+            if (bytes > UINT32_C(0x7fffffff) ||
+                byte_length > SIZE_MAX - 4 - bytes)
+            {
+                napi_throw_range_error(env, NULL,
+                    "rational matrix packed representation is too large");
+                return NULL;
+            }
+            byte_length += 4 + bytes;
+            if (word_count > maximum_words)
+                maximum_words = word_count;
+        }
+    }
+    if (maximum_words != 0)
+    {
+        words = malloc(maximum_words * sizeof(ulong));
+        if (words == NULL)
+        {
+            napi_throw_error(env, NULL,
+                "unable to allocate packed rational matrix workspace");
+            return NULL;
+        }
+    }
+    if (!check_napi(env, napi_create_arraybuffer(
+        env, byte_length, (void **) &data, &array_buffer)) ||
+        !check_napi(env, napi_create_typedarray(
+            env, napi_uint8_array, byte_length, array_buffer, 0, &result)))
+    {
+        free(words);
+        return NULL;
+    }
+    fmpz_init(magnitude);
+    for (size_t index = 0; index < entry_count; index++)
+    {
+        const fmpq *entry = fmpq_mat_entry(
+            matrix->rational,
+            (slong) (index / (size_t) cols),
+            (slong) (index % (size_t) cols));
+        const fmpz *parts[2] = {fmpq_numref(entry), fmpq_denref(entry)};
+
+        for (size_t part = 0; part < 2; part++)
+        {
+            size_t bytes = (size_t) (fmpz_bits(parts[part]) + 7) / 8;
+            size_t word_count =
+                (bytes + sizeof(ulong) - 1) / sizeof(ulong);
+            uint32_t header = (uint32_t) bytes;
+
+            if (part == 0 && fmpz_sgn(parts[part]) < 0)
+                header |= UINT32_C(0x80000000);
+            write_uint32_le(data + offset, header);
+            offset += 4;
+            if (bytes != 0)
+            {
+                fmpz_abs(magnitude, parts[part]);
+                fmpz_get_ui_array(words, (slong) word_count, magnitude);
+                for (size_t byte = 0; byte < bytes; byte++)
+                    data[offset + byte] = (uint8_t)
+                        (words[byte / sizeof(ulong)] >>
+                         (8 * (byte % sizeof(ulong))));
+                offset += bytes;
+            }
+        }
+    }
+    fmpz_clear(magnitude);
+    free(words);
+    return result;
+}
+
+napi_value sagejs_qq_matrix_packed(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[3];
+    napi_typedarray_type array_type;
+    napi_value array_buffer;
+    sagejs_matrix *matrix;
+    slong rows;
+    slong cols;
+    size_t entry_count;
+    size_t byte_length;
+    size_t byte_offset;
+    size_t offset = 0;
+    size_t maximum_words = 0;
+    void *raw_data;
+    uint8_t *data;
+    ulong *words = NULL;
+    fmpz_t numerator;
+    fmpz_t denominator;
+
+    if (!require_arguments(env, info, 3, args) ||
+        !value_to_dimension(env, args[0], &rows) ||
+        !value_to_dimension(env, args[1], &cols))
+        return NULL;
+    if (!check_napi(env, napi_get_typedarray_info(
+        env, args[2], &array_type, &byte_length, &raw_data,
+        &array_buffer, &byte_offset)))
+        return NULL;
+    if (array_type != napi_uint8_array)
+    {
+        napi_throw_type_error(env, NULL,
+            "packed rational matrix entries must be a Uint8Array");
+        return NULL;
+    }
+    if (rows != 0 && (size_t) cols > SIZE_MAX / (size_t) rows)
+    {
+        napi_throw_range_error(env, NULL, "matrix is too large");
+        return NULL;
+    }
+    entry_count = (size_t) rows * (size_t) cols;
+    data = (uint8_t *) raw_data;
+    for (size_t index = 0; index < entry_count; index++)
+    {
+        for (size_t part = 0; part < 2; part++)
+        {
+            uint32_t header;
+            size_t bytes;
+            size_t word_count;
+            if (byte_length - offset < 4)
+                goto invalid;
+            header = read_uint32_le(data + offset);
+            offset += 4;
+            if (part == 1 && (header & UINT32_C(0x80000000)) != 0)
+                goto invalid;
+            bytes = (size_t) (header & UINT32_C(0x7fffffff));
+            if (bytes > byte_length - offset)
+                goto invalid;
+            word_count = (bytes + sizeof(ulong) - 1) / sizeof(ulong);
+            if (word_count > maximum_words)
+                maximum_words = word_count;
+            offset += bytes;
+        }
+    }
+    if (offset != byte_length)
+        goto invalid;
+    if (maximum_words != 0)
+    {
+        words = calloc(maximum_words, sizeof(ulong));
+        if (words == NULL)
+        {
+            napi_throw_error(env, NULL,
+                "unable to allocate packed rational matrix workspace");
+            return NULL;
+        }
+    }
+    matrix = new_matrix(env, SAGEJS_MATRIX_QQ, rows, cols);
+    if (matrix == NULL)
+    {
+        free(words);
+        return NULL;
+    }
+    fmpz_init(numerator);
+    fmpz_init(denominator);
+    offset = 0;
+    for (size_t index = 0; index < entry_count; index++)
+    {
+        fmpz *parts[2] = {numerator, denominator};
+        for (size_t part = 0; part < 2; part++)
+        {
+            uint32_t header = read_uint32_le(data + offset);
+            size_t bytes =
+                (size_t) (header & UINT32_C(0x7fffffff));
+            size_t word_count =
+                (bytes + sizeof(ulong) - 1) / sizeof(ulong);
+            offset += 4;
+            if (word_count != 0)
+                memset(words, 0, word_count * sizeof(ulong));
+            for (size_t byte = 0; byte < bytes; byte++)
+                words[byte / sizeof(ulong)] |=
+                    (ulong) data[offset + byte] <<
+                    (8 * (byte % sizeof(ulong)));
+            if (word_count == 0)
+                fmpz_zero(parts[part]);
+            else
+            {
+                fmpz_set_ui_array(parts[part], words, (slong) word_count);
+                if (part == 0 &&
+                    (header & UINT32_C(0x80000000)) != 0)
+                    fmpz_neg(parts[part], parts[part]);
+            }
+            offset += bytes;
+        }
+        if (fmpz_is_zero(denominator))
+        {
+            fmpz_clear(numerator);
+            fmpz_clear(denominator);
+            finalize_matrix(env, matrix, NULL);
+            free(words);
+            goto invalid;
+        }
+        fmpq_set_fmpz_frac(
+            fmpq_mat_entry(
+                matrix->rational,
+                (slong) (index / (size_t) cols),
+                (slong) (index % (size_t) cols)),
+            numerator,
+            denominator);
+    }
+    fmpz_clear(numerator);
+    fmpz_clear(denominator);
+    free(words);
+    return wrap_matrix(env, matrix);
+
+invalid:
+    napi_throw_range_error(env, NULL,
+        "invalid packed rational matrix representation");
+    return NULL;
+}
+
 static napi_value modular_matrix_random(
     napi_env env,
     napi_callback_info info,

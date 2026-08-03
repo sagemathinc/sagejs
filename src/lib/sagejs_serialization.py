@@ -24,22 +24,25 @@ def _host_call(operation, *args):
 
 
 def dumps(value):
-    """Return a portable Sage.js serialization v1 byte string.
+    """Return a portable binary SagePack v1 byte string.
 
-    The result is deterministic UTF-8 JSON with binary blocks represented as
-    base64.  Worker-thread transport uses the same object records with
-    transferable binary blocks and does not pay this base64 cost.
+    The result has deterministic UTF-8 object metadata and unexpanded binary
+    blocks.  It contains data only and loading it never executes code.
     """
-    return bytes(_host_call('serializationDumps', value), 'utf-8')
+    return bytes(_host_call('serializationPack', value))
 
 
 def loads(source):
-    """Load a value written by :func:`dumps` without executing code."""
+    """Load binary SagePack v1 or legacy serialization-v1 JSON safely."""
     if isinstance(source, bytes) or isinstance(source, bytearray):
-        source = bytes(source).decode('utf-8')
-    if not isinstance(source, str):
+        raw = bytes(source)
+        if raw[:8] == b'SAGEPK1\x00':
+            return _host_call('serializationUnpack', raw)
+        source = raw.decode('utf-8')
+    if isinstance(source, str):
+        return _host_call('serializationLoads', source)
+    else:
         raise TypeError('loads() requires bytes, bytearray, or str')
-    return _host_call('serializationLoads', source)
 
 
 def dump(value, file):

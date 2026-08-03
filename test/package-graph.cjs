@@ -23,6 +23,14 @@ test("the checked-in package graph owns every Python source and respects budgets
     "python-stdlib",
   );
   assert.equal(result.ownership.get("src/baselib/modular.py"), "modular-forms");
+  assert.equal(
+    result.typescriptOwnership.get("tools/serialization-codecs/arithmetic.ts"),
+    "arithmetic",
+  );
+  assert.equal(
+    result.typescriptOwnership.get("tools/serialization-codecs/linear-algebra.ts"),
+    "linear-algebra",
+  );
 });
 
 test("dependency cycles are rejected with their path", () => {

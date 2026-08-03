@@ -1308,6 +1308,27 @@ assert.equal(
   ),
   true,
 );
+const packedRationalSource = flint.qqMatrix(2, 3, [
+  [0n, 1n],
+  [1n, 3n],
+  [-1n, 5n],
+  [2n ** 80n + 7n, 11n],
+  [-(2n ** 130n + 9n), 37n],
+  [255n, 257n],
+]);
+const packedRationalBytes = flint.qqMatrixExportPacked(packedRationalSource);
+assert.equal(
+  flint.matrixEqual(
+    flint.qqMatrixPacked(2, 3, packedRationalBytes),
+    packedRationalSource,
+  ),
+  true,
+);
+assert.throws(
+  () => flint.qqMatrixPacked(
+    2, 3, packedRationalBytes.subarray(0, packedRationalBytes.length - 1)),
+  /invalid packed rational matrix representation/,
+);
 assert.equal(
   flint.matrixEqual(
     flint.zmodMatrixRandom(2, 3, 36n, 9n, 10n),

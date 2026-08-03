@@ -18,6 +18,7 @@ The check is part of `pnpm test` and the fast unit tier. It rejects:
 - unknown dependencies and dependency cycles;
 - dependencies which point upward or sideways through the layer graph;
 - Python source files with no owner or multiple owners;
+- package codec registration files with no owner or multiple owners;
 - imports across undeclared logical package boundaries;
 - undeclared dependencies between pnpm workspace packages;
 - invalid startup budgets; and
@@ -78,6 +79,8 @@ evolve independently without hidden constants in test code.
 Packages own their public mathematical types, benchmarks, and serialization
 codecs. Shared registries expose small registration APIs; domain packages must
 not modify central switch statements whenever a new object type appears.
+Codec modules under `tools/serialization-codecs` are explicitly assigned to
+their logical package and loaded only when a non-core object is serialized.
 
 The core runtime may depend on no mathematical domain. Arithmetic may depend
 only on the core. Higher domains depend downward through declared interfaces.
