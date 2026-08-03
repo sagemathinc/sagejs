@@ -101,7 +101,7 @@
     "test:changed": "node scripts/parallel-development.cjs changed",
     "test:unit": "node scripts/run-test-tier.cjs unit",
     "test:integration": "node scripts/run-test-tier.cjs integration",
-    "test:stdlib": "pnpm run build && node test/os-module.cjs && node test/file-io.cjs && node test/stdlib-data.cjs && node test/stdlib-filesystem.cjs && node test/subprocess-module.cjs && node test/network-modules.cjs && node test/stdlib-utilities.cjs",
+    "test:stdlib": "pnpm run build && node test/os-module.cjs && node test/file-io.cjs && node test/stdlib-data.cjs && node test/stdlib-filesystem.cjs && node test/subprocess-module.cjs && node test/network-modules.cjs && node test/stdlib-utilities.cjs && node test/operator-module.cjs",
     "test:multiprocessing": "pnpm run build && node --test test/multiprocessing-module.cjs",
     "test:serialization": "pnpm run build && node --test test/serialization.cjs",
     "test:cli": "node scripts/run-test-tier.cjs all",
