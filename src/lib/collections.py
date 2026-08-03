@@ -320,6 +320,9 @@ class Counter(OrderedDict):
             return self._data.__getitem__(key)
         return 0
 
+    def copy(self) -> Any:
+        return type(self)(self)
+
     def __eq__(self, other: Any) -> Any:
         if not isinstance(other, Counter):
             return NotImplemented

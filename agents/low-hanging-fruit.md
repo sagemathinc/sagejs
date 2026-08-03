@@ -97,6 +97,8 @@ Status meanings:
     `collections.Counter` now compares counts with CPython's missing-as-zero
     equality and subset/superset semantics. Its `elements` iterator now accepts
     `__index__` counts and rejects non-integral counts instead of truncating them.
+    Copies now preserve their key/count mapping instead of counting item pairs
+    as new elements.
 
 ## Graphics and foreign-language compatibility
 
