@@ -98,7 +98,9 @@ Status meanings:
     equality and subset/superset semantics. Its `elements` iterator now accepts
     `__index__` counts and rejects non-integral counts instead of truncating them.
     Copies now preserve their key/count mapping instead of counting item pairs
-    as new elements.
+    as new elements. Counter arithmetic now rejects unsupported binary operands
+    through `NotImplemented` and implements the four in-place multiset operators
+    with identity, ordering, and non-positive-count filtering preserved.
 
 ## Graphics and foreign-language compatibility
 

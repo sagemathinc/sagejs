@@ -422,16 +422,57 @@ class Counter(OrderedDict):
         return answer
 
     def __add__(self, other: Any) -> Any:
+        if not isinstance(other, Counter):
+            return NotImplemented
         return self._combine(other, lambda left, right: left + right)
 
     def __sub__(self, other: Any) -> Any:
+        if not isinstance(other, Counter):
+            return NotImplemented
         return self._combine(other, lambda left, right: left - right)
 
     def __and__(self, other: Any) -> Any:
+        if not isinstance(other, Counter):
+            return NotImplemented
         return self._combine(other, min)
 
     def __or__(self, other: Any) -> Any:
+        if not isinstance(other, Counter):
+            return NotImplemented
         return self._combine(other, max)
+
+    def _keep_positive(self) -> Any:
+        nonpositive = [
+            key for key, count in self._data.items()
+            if not count > 0
+        ]
+        for key in nonpositive:
+            self._data.__delitem__(key)
+        return self
+
+    def __iadd__(self, other: Any) -> Any:
+        for key, count in other.items():
+            self._data.__setitem__(key, self.__getitem__(key) + count)
+        return self._keep_positive()
+
+    def __isub__(self, other: Any) -> Any:
+        for key, count in other.items():
+            self._data.__setitem__(key, self.__getitem__(key) - count)
+        return self._keep_positive()
+
+    def __iand__(self, other: Any) -> Any:
+        for key, count in self._data.items():
+            other_count = other.__getitem__(key)
+            if other_count < count:
+                self._data.__setitem__(key, other_count)
+        return self._keep_positive()
+
+    def __ior__(self, other: Any) -> Any:
+        for key, other_count in other.items():
+            count = self.__getitem__(key)
+            if other_count > count:
+                self._data.__setitem__(key, other_count)
+        return self._keep_positive()
 
     def __pos__(self) -> Any:
         return Counter({key: value for key, value in self._data.items() if value > 0})
