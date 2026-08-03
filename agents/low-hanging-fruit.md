@@ -101,6 +101,9 @@ Status meanings:
     as new elements. Counter arithmetic now rejects unsupported binary operands
     through `NotImplemented` and implements the four in-place multiset operators
     with identity, ordering, and non-positive-count filtering preserved.
+    `most_common` now rejects non-integer limits and normalizes non-positive
+    limits instead of relying on JavaScript slice coercion, while `fromkeys`
+    reports its intentionally undefined semantics.
 
 ## Graphics and foreign-language compatibility
 

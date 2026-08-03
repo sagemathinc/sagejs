@@ -315,6 +315,13 @@ class Counter(OrderedDict):
     def __missing__(self, key: Any) -> int:
         return 0
 
+    @classmethod
+    def fromkeys(cls, iterable: Any, value: Any = None) -> Any:
+        del cls, iterable, value
+        raise NotImplementedError(
+            'Counter.fromkeys() is undefined.  '
+            'Use Counter(iterable) instead.')
+
     def __getitem__(self, key: Any) -> Any:
         if key in self._data:
             return self._data.__getitem__(key)
@@ -399,7 +406,18 @@ class Counter(OrderedDict):
         pairs = list(self._data.items())
         pairs.sort(key=lambda pair: pair[1], reverse=True)
         if count is not None:
-            pairs = pairs[:count]
+            if (
+                count is not True
+                and count is not False
+                and not isinstance(count, int)
+            ):
+                raise TypeError(
+                    "'" + _type_name(count)
+                    + "' object cannot be interpreted as an integer")
+            if count <= 0:
+                pairs = []
+            else:
+                pairs = pairs[:count]
         return [runtime.math_tuple([key, value]) for key, value in pairs]
 
     def __repr__(self) -> str:
