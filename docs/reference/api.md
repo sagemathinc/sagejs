@@ -3211,9 +3211,9 @@ prime_pi(value)
 
 Return the number of primes less than or equal to `value`.
 
-Results are exact.  The current implementation incrementally caches
-primes supplied by FLINT, which is efficient for repeated calls over
-increasing moderate bounds.
+Results are exact.  Moderate bounds are served by an incremental prime
+cache, while large isolated bounds use Lehmer's combinatorial algorithm.
+As in Sage, inputs are limited to integers below `2^63`.
 
 ### Examples
 
@@ -3222,10 +3222,9 @@ sage: prime_pi(10)
 4
 sage: prime_pi(100)
 25
+sage: prime_pi(10^12)
+37607912018
 ```
-
-For very large isolated bounds, a future direct FLINT prime-counting
-backend may be preferable to enumerating all preceding primes.
 
 ### Metadata
 
@@ -3234,8 +3233,8 @@ backend may be preferable to enumerating all preceding primes.
 - Tags: arithmetic, primes, prime counting
 - Backends: FLINT
 - Sage compatibility: compatible — Matches the documented SageMath result for the supported integer inputs.
-- Algorithm: Incremental prime enumeration and caching over FLINT
-- Limitations: Large isolated bounds currently enumerate all preceding primes.
+- Algorithm: Lehmer prime counting with incremental enumeration for small bounds
+- Limitations: Like Sage primecountpy, inputs at or above 2^63 are not supported.
 
 ### Provenance
 

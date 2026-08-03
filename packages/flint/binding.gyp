@@ -18,6 +18,7 @@
         "src/modsym_core.c",
         "src/number_field_factor.c",
         "src/p1_core.c",
+        "src/prime_count.c",
         "src/multivariate.c",
         "src/p1.c",
         "src/sparse_rational.c"

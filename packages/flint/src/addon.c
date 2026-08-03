@@ -40,6 +40,7 @@
 #include "multivariate.h"
 #include "number_field_factor.h"
 #include "p1.h"
+#include "prime_count.h"
 
 #if FLINT_BITS != 64
 #error "The initial Sage.js FLINT bridge requires 64-bit FLINT limbs"
@@ -1094,6 +1095,33 @@ static napi_value next_prime(napi_env env, napi_callback_info info)
     result = fmpz_to_bigint(env, answer);
     fmpz_clear(value);
     fmpz_clear(answer);
+    return result;
+}
+
+static napi_value prime_pi_count(napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    ulong value;
+    uint64_t count;
+
+    if (!require_arguments(env, info, 1, args) ||
+        !bigint_to_ulong(env, args[0], &value))
+        return NULL;
+    if ((uint64_t) value > INT64_MAX)
+    {
+        napi_throw_range_error(
+            env, NULL, "prime_pi requires an integer below 2^63");
+        return NULL;
+    }
+    if (!sagejs_prime_pi((uint64_t) value, &count))
+    {
+        napi_throw_error(
+            env, NULL, "unable to allocate prime-counting tables");
+        return NULL;
+    }
+    if (!check_napi(env, napi_create_bigint_uint64(env, count, &result)))
+        return NULL;
     return result;
 }
 
@@ -3178,6 +3206,8 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"isPrime", NULL, is_prime, NULL, NULL, NULL,
             napi_default, NULL},
         {"nextPrime", NULL, next_prime, NULL, NULL, NULL,
+            napi_default, NULL},
+        {"primePi", NULL, prime_pi_count, NULL, NULL, NULL,
             napi_default, NULL},
         {"wordPrimitiveRootPrime", NULL, word_primitive_root_prime,
             NULL, NULL, NULL, napi_default, NULL},

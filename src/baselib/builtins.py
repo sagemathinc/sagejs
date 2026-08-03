@@ -4462,9 +4462,9 @@ def prime_pi(value: Any) -> Any:
     r"""
     Return the number of primes less than or equal to `value`.
 
-    Results are exact.  The current implementation incrementally caches
-    primes supplied by FLINT, which is efficient for repeated calls over
-    increasing moderate bounds.
+    Results are exact.  Moderate bounds are served by an incremental prime
+    cache, while large isolated bounds use Lehmer's combinatorial algorithm.
+    As in Sage, inputs are limited to integers below `2^63`.
 
     ### Examples
 
@@ -4473,10 +4473,9 @@ def prime_pi(value: Any) -> Any:
     4
     sage: prime_pi(100)
     25
+    sage: prime_pi(10^12)
+    37607912018
     ```
-
-    For very large isolated bounds, a future direct FLINT prime-counting
-    backend may be preferable to enumerating all preceding primes.
     """
     global _prime_pi_checked_through, _prime_pi_primes
     if _prime_pi_primes is None:
@@ -4486,6 +4485,11 @@ def prime_pi(value: Any) -> Any:
     if value < 2:
         return 0
     upper = runtime.integer_bigint(value)
+    if upper >= runtime.bigint('9223372036854775808'):
+        raise OverflowError('prime_pi requires an integer below 2^63')
+    if upper >= runtime.bigint(1000000):
+        return runtime.normalize_integer(
+            runtime.flint_backend().primePi(upper))
     if upper > _prime_pi_checked_through:
         candidate = runtime.flint_backend().nextPrime(
             runtime.bigint(_prime_pi_checked_through))
@@ -6161,11 +6165,11 @@ runtime.register_doc(
     prime_pi,
     _builtins_arithmetic_doc(
         ['primes', 'prime counting'],
-        'Incremental prime enumeration and caching over FLINT',
+        'Lehmer prime counting with incremental enumeration for small bounds',
         [
             (
-                'Large isolated bounds currently enumerate all '
-                'preceding primes.'
+                'Like Sage primecountpy, inputs at or above 2^63 are not '
+                'supported.'
             ),
         ],
     ),

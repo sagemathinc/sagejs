@@ -238,6 +238,16 @@ assrt.deepEqual(prime_divisors(360), [2, 3, 5])
 assrt.deepEqual(divisors(12), [1, 2, 3, 4, 6, 12])
 assrt.equal(prod([2, 3, 5]), 30)
 assrt.equal(prime_pi(100), 25)
+assrt.equal(prime_pi(10**6), 78498)
+assrt.equal(prime_pi(10**12), 37607912018)
+assrt.equal(prime_pi(1000000.9), 78498)
+
+
+def prime_pi_too_large():
+    prime_pi(BigInt('9223372036854775808'))
+
+
+assrt.throws(prime_pi_too_large, OverflowError)
 assrt.equal(Integer(97).is_irreducible(), True)
 assrt.equal(Integer(1).is_one(), True)
 assrt.equal(Integer(2).is_one(), False)

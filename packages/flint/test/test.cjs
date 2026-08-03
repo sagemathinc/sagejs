@@ -613,6 +613,10 @@ assert.equal(
   flint.nextPrime(2n ** 256n),
   115792089237316195423570985008687907853269984665640564039457584007913129640233n,
 );
+assert.equal(flint.primePi(0n), 0n);
+assert.equal(flint.primePi(100n), 25n);
+assert.equal(flint.primePi(1000000000000n), 37607912018n);
+assert.throws(() => flint.primePi(2n ** 63n), /below 2\^63/);
 assert.equal(flint.wordPrimitiveRootPrime(2n), 1n);
 assert.equal(flint.wordPrimitiveRootPrime(1009n), 11n);
 
