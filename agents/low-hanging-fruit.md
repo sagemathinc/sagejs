@@ -116,6 +116,9 @@ Status meanings:
     avoids triggering child `defaultdict` factories. Mapping unions now
     preserve concrete subclasses, child-map sharing, and CPython's left/right
     precedence and in-place mutation behavior.
+    `collections.OrderedDict` mapping unions now preserve operand precedence,
+    insertion order, concrete subclasses, and `defaultdict` factories across
+    ordinary, reflected, and in-place operations.
     `most_common` now rejects non-integer limits and normalizes non-positive
     limits instead of relying on JavaScript slice coercion, while `fromkeys`
     reports its intentionally undefined semantics. `collections.deque` now

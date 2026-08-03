@@ -341,6 +341,26 @@ class OrderedDict:
         for key in keywords:
             self._data.__setitem__(key, keywords[key])
 
+    def __ior__(self, other: Any) -> Any:
+        self.update(other)
+        return self
+
+    def __or__(self, other: Any) -> Any:
+        if not isinstance(other, (dict, OrderedDict)):
+            return NotImplemented
+        answer = self.copy()
+        answer.update(other)
+        return answer
+
+    def __ror__(self, other: Any) -> Any:
+        if not isinstance(other, (dict, OrderedDict)):
+            return NotImplemented
+        answer = self.copy()
+        answer.clear()
+        answer.update(other)
+        answer.update(self)
+        return answer
+
     def popitem(self, last: bool = True) -> Any:
         if len(self._data) == 0:
             raise KeyError('dictionary is empty')
