@@ -623,10 +623,18 @@ class Counter(OrderedDict):
         return self._keep_positive()
 
     def __pos__(self) -> Any:
-        return Counter({key: value for key, value in self._data.items() if value > 0})
+        answer = Counter()
+        for key, value in self._data.items():
+            if value > 0:
+                answer.__setitem__(key, value)
+        return answer
 
     def __neg__(self) -> Any:
-        return Counter({key: -value for key, value in self._data.items() if value < 0})
+        answer = Counter()
+        for key, value in self._data.items():
+            if value < 0:
+                answer.__setitem__(key, -value)
+        return answer
 
 
 class ChainMap:

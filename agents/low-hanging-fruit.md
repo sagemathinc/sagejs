@@ -128,6 +128,9 @@ Status meanings:
     `collections.deque` in-place concatenation now accepts arbitrary iterables,
     preserves identity and bounds, and safely snapshots self-extension from
     either end.
+    `collections.Counter` unary multiset operators now preserve count
+    magnitudes and insertion order while filtering counts by sign, without
+    mutating the source or preserving its subclass.
     `collections.deque.index` now distinguishes an omitted stop bound from an
     explicit `None`, rejecting the latter like CPython instead of searching to
     the end.
