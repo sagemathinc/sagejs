@@ -102,6 +102,32 @@ test("mathematical values round trip through durable storage", async (t) => {
   );
 });
 
+test("global save/load and dumps/loads use SagePack files", async (t) => {
+  const session = await createSage({ mode: "sage" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "import os",
+    "from pathlib import Path",
+    "A = matrix(ZZ, 2, [1, -2, 3, 2^100])",
+    "payload = dumps(A)",
+    "print(payload[:8] == b'SAGEPK1\\x00', loads(payload) == A)",
+    "base = '/tmp/sagejs-global-save-test'",
+    "print(save(A, base) is None)",
+    "print(os.path.exists(base + '.sobj'), load(base) == A)",
+    "other = Path('/tmp/sagejs-global-save-other.sobj')",
+    "save(A + A, other)",
+    "answer = load(base, other)",
+    "print(answer == [A, A + A])",
+    "print(open(base + '.sobj', 'rb').read(8) == b'SAGEPK1\\x00')",
+    "os.remove(base + '.sobj')",
+    "os.remove(other)",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    "True True\nTrue\nTrue True\nTrue\nTrue",
+  );
+});
+
 test("multiprocessing transports mathematical arguments and results", async (t) => {
   const session = await createSage({ mode: "sage" });
   t.after(() => session.close());
@@ -149,10 +175,15 @@ test("research number-theory objects retain exact parents and subspaces", async 
     "G = DirichletGroup(37)",
     "chi = G.gen()",
     "M = ModularSymbols(389, 2, sign=1)",
-    "factor_space = M.decomposition()[3]",
+    "decomposition = M.decomposition()",
+    "factor_space = decomposition[3]",
     "symbol = factor_space.gen(0)",
+    "hecke = factor_space.T(2)",
+    "hecke_matrix = hecke.matrix()",
+    "star = factor_space.star_involution()",
     "CM = ModularSymbols(chi, 5)",
-    "value = {'K': K, 'alpha': alpha, 'C': C, 'zeta': zeta, 'QF': QF, 'gaussian': gaussian, 'E': E, 'P': P, 'O': O, 'G': G, 'chi': chi, 'space': factor_space, 'symbol': symbol, 'character_space': CM}",
+    "ideal = QF.primes_of_bounded_norm(20)[0]",
+    "value = {'K': K, 'alpha': alpha, 'C': C, 'zeta': zeta, 'QF': QF, 'gaussian': gaussian, 'ideal': ideal, 'E': E, 'P': P, 'O': O, 'G': G, 'chi': chi, 'space': factor_space, 'symbol': symbol, 'hecke': hecke, 'star': star, 'decomposition': decomposition, 'character_space': CM}",
     "answer = loads(dumps(value))",
     "print(answer['alpha']._coefficients == alpha._coefficients, answer['alpha'].parent() is answer['K'])",
     "print(answer['zeta'] == zeta, answer['zeta'].parent() is answer['C'])",
@@ -163,12 +194,17 @@ test("research number-theory objects retain exact parents and subspaces", async 
     "print(answer['space'].basis_matrix() == factor_space.basis_matrix())",
     "print(answer['symbol'].parent() is answer['space'], answer['symbol'].vector() == symbol.vector())",
     "print(answer['character_space'].dimension() == CM.dimension(), answer['character_space'].character() == chi)",
+    "print(list(answer['ideal'].gens_reduced()[0]) == list(ideal.gens_reduced()[0]), answer['ideal']._parent is answer['QF'])",
+    "print(answer['hecke'].matrix() == hecke_matrix, answer['hecke']._space is answer['space'])",
+    "print(answer['star'].matrix() == star.matrix(), answer['star']._space is answer['space'])",
+    "print(answer['decomposition'][3] is answer['space'], len(answer['decomposition']) == len(decomposition))",
   ].join("\n"));
   assert.equal(
     result.stdout.trim(),
     [
       "True True", "True True", "True True", "True True", "True True",
-      "True True", "True", "True True", "True True",
+      "True True", "True", "True True", "True True", "True True",
+      "True True", "True True", "True True",
     ].join("\n"),
   );
 });

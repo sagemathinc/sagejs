@@ -64,6 +64,8 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
         ambientSpace: ambient ? null : callMethod(value, "ambient_module"),
         basis: ambient ? null : callMethod(value, "basis_matrix"),
         subspaceKind: ambient ? null : Reflect.get(Object(value), "_subspace_kind"),
+        dimension: callMethod(value, "dimension"),
+        isCuspidal: Reflect.get(Object(value), "_is_cuspidal"),
       });
     }
     default:
@@ -82,12 +84,13 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
         : callGlobal("DirichletGroup", [data.modulus, data.base, data.zeta]);
     case "ModularSymbols":
       if (data.ambient) {
-        const definition = data.character === null ? data.group : data.character;
-        return callGlobal("ModularSymbols", [
-          definition,
+        return callMethod(data.group, "_from_serialized_modular_symbols", [
+          data.character,
           data.weight,
           data.sign,
           data.base,
+          data.dimension,
+          data.isCuspidal,
         ]);
       }
       return callMethod(data.ambientSpace, "_new_coordinate_subspace", [
@@ -98,6 +101,49 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
     default:
       throw new SageSerializationError(
         `unsupported modular-forms parent ${String(data.kind)}`,
+      );
+  }
+}
+
+function encodeOperator(value: unknown, context: EncodeContext): WireValue {
+  switch (kind(value)) {
+    case "HeckeOperator":
+      return context.encode({
+        kind: "HeckeOperator",
+        space: Reflect.get(Object(value), "_space"),
+        index: Reflect.get(Object(value), "_index"),
+        matrix: Reflect.get(Object(value), "_matrix_cache"),
+      });
+    case "ModularSymbolsLinearOperator":
+      return context.encode({
+        kind: "ModularSymbolsLinearOperator",
+        space: Reflect.get(Object(value), "_space"),
+        matrix: Reflect.get(Object(value), "_matrix"),
+        name: Reflect.get(Object(value), "_name"),
+        ambientMatrix: Reflect.get(Object(value), "_ambient_matrix"),
+      });
+    default:
+      throw new SageSerializationError("unsupported modular-symbol operator");
+  }
+}
+
+function decodeOperator(payload: WireValue, context: DecodeContext): unknown {
+  const data = context.decode(payload) as Record<string, unknown>;
+  switch (data.kind) {
+    case "HeckeOperator":
+      return callMethod(data.space, "_from_serialized_hecke_operator", [
+        data.index,
+        data.matrix,
+      ]);
+    case "ModularSymbolsLinearOperator":
+      return callMethod(data.space, "_from_serialized_linear_operator", [
+        data.matrix,
+        data.name,
+        data.ambientMatrix,
+      ]);
+    default:
+      throw new SageSerializationError(
+        `unsupported modular-symbol operator ${String(data.kind)}`,
       );
   }
 }
@@ -160,6 +206,16 @@ const elementCodec: SageCodec = {
   decode: decodeElement,
 };
 
+const operatorCodec: SageCodec = {
+  type: "sage.modular_forms.operator",
+  version: 1,
+  test: (value) => ["HeckeOperator", "ModularSymbolsLinearOperator"].includes(
+    kind(value) ?? "",
+  ),
+  encode: encodeOperator,
+  decode: decodeOperator,
+};
+
 let registered = false;
 
 export function registerModularFormsCodecs(): void {
@@ -167,4 +223,5 @@ export function registerModularFormsCodecs(): void {
   registered = true;
   registerCodec(parentCodec);
   registerCodec(elementCodec);
+  registerCodec(operatorCodec);
 }

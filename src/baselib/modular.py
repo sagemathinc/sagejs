@@ -100,6 +100,29 @@ class CongruenceSubgroup:
         ) // 12
         runtime.object.freeze(self)
 
+    def _from_serialized_modular_symbols(
+        self,
+        character: Any,
+        weight: Any,
+        sign: Any,
+        base_ring: Any,
+        dimension: Any,
+        is_cuspidal: Any,
+    ) -> Any:
+        """Trusted fast constructor used only by the SagePack codec."""
+        return ModularSymbolsSpace(
+            self,
+            _positive_integer(weight, 'weight'),
+            _exact_integer(sign, 'sign'),
+            base_ring,
+            character,
+            None,
+            None,
+            None,
+            dimension,
+            is_cuspidal,
+        )
+
     def level(self) -> int:
         return self._level
 
@@ -1671,6 +1694,7 @@ class ModularSymbolsLinearOperator:
         name: str,
         ambient_matrix: Any = None,
     ) -> None:
+        self._kind = 'ModularSymbolsLinearOperator'
         self._space = space
         self._matrix = defining_matrix
         self._name = name
@@ -2316,10 +2340,12 @@ class HeckeOperator:
         space: ModularSymbolsSpace,
         index: int,
     ) -> None:
+        self._kind = 'HeckeOperator'
         self._space = space
         self._index = index
+        self._matrix_cache = None
 
-    def matrix(self) -> Any:
+    def _compute_matrix(self) -> Any:
         key = self._space._model_key()
         if (
             key == 'gamma0-1-12'
@@ -2366,6 +2392,11 @@ class HeckeOperator:
         raise NotImplementedError(
             'the requested Hecke matrix is not in the implemented '
             'modular-symbol models')
+
+    def matrix(self) -> Any:
+        if self._matrix_cache is None:
+            self._matrix_cache = self._compute_matrix()
+        return self._matrix_cache
 
     def __call__(self, element: Any) -> ModularSymbolElement:
         symbol = self._space(element)
@@ -2451,6 +2482,8 @@ class ModularSymbolsSpace(sage.Parent):
         ambient: Any = None,
         basis_matrix: Any = None,
         subspace_kind: Any = None,
+        serialized_dimension: Any = None,
+        serialized_is_cuspidal: Any = False,
     ) -> None:
         self._group = group
         self._kind = 'ModularSymbols'
@@ -2470,7 +2503,11 @@ class ModularSymbolsSpace(sage.Parent):
         self._minus_cache = None
         self._new_submodule_cache = runtime.map()
         self._decomposition_cache = runtime.map()
-        if basis_matrix is not None:
+        if serialized_dimension is not None:
+            self._dimension = _exact_nonnegative_integer(
+                serialized_dimension, 'serialized dimension')
+            self._is_cuspidal = bool(serialized_is_cuspidal)
+        elif basis_matrix is not None:
             self._dimension = basis_matrix.nrows()
             self._is_cuspidal = (
                 subspace_kind is not None
@@ -2498,7 +2535,8 @@ class ModularSymbolsSpace(sage.Parent):
                 cusp_dimension if sign != 0 else 2 * cusp_dimension)
             self._is_cuspidal = True
         if (
-            ambient is None
+            serialized_dimension is None
+            and ambient is None
             and group._family == 'Gamma0'
             and (
                 (
@@ -2735,6 +2773,22 @@ class ModularSymbolsSpace(sage.Parent):
         element = self(coordinates)
         element._label = label
         return element
+
+    def _from_serialized_hecke_operator(
+        self, index: Any, matrix_value: Any = None,
+    ) -> HeckeOperator:
+        operator = self.T(index)
+        operator._matrix_cache = matrix_value
+        return operator
+
+    def _from_serialized_linear_operator(
+        self,
+        matrix_value: Any,
+        name: str,
+        ambient_matrix: Any = None,
+    ) -> ModularSymbolsLinearOperator:
+        return ModularSymbolsLinearOperator(
+            self, matrix_value, name, ambient_matrix)
 
     def p1list(self) -> P1List:
         if self._group._family != 'Gamma0':

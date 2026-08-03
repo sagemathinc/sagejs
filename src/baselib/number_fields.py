@@ -968,7 +968,9 @@ class GaussianPrimeIdeal:
     """The principal prime ideal represented by one Gaussian prime."""
 
     def __init__(self, generator: GaussianInteger) -> None:
+        self._kind = 'GaussianPrimeIdeal'
         self._generator = generator
+        self._parent = generator.parent()
 
     def gens_reduced(self) -> tuple[GaussianInteger]:
         return runtime.math_tuple([self._generator])
@@ -1002,6 +1004,11 @@ class QuadraticField_class(sage.Parent):
 
     def gen(self) -> GaussianInteger:
         return self._generator
+
+    def _from_serialized_prime_ideal(
+        self, generator: GaussianInteger,
+    ) -> GaussianPrimeIdeal:
+        return GaussianPrimeIdeal(self(generator))
 
     def _first_ngens(self, count: int) -> list[GaussianInteger]:
         if count != 1:

@@ -45,6 +45,16 @@ with open('result.sagepack', 'wb') as output:
     dump(A, output)
 ```
 
+The Sage-compatible forms are also global. A missing ``.sobj`` suffix is
+added automatically:
+
+```python
+save(A, 'result')                 # writes result.sobj
+B = load('result')                # reads result.sobj
+data = dumps(A)                   # binary SagePack bytes
+B = loads(data)
+```
+
 `multiprocessing.Pool` uses structured-clone packets automatically. Users do
 not need to call the serializer around pool arguments or results.
 
@@ -83,6 +93,9 @@ in `test/serialization.cjs` fixes the byte-level format across platforms.
   subgroups; Dirichlet groups and characters; and ambient or coordinate
   subspace modular-symbol spaces and elements. Shared parents remain shared
   after loading.
+- Gaussian prime ideals, modular-symbol decomposition graphs, cached Hecke
+  operators, and explicit modular-symbol linear operators retain their parent
+  graph and already-computed matrices.
 - Dense matrices over prime fields and residue rings of order at most
   `2^32` use packed little-endian transferable buffers instead of one object
   per entry.
@@ -109,7 +122,10 @@ On the reference Linux builder, a random 100-by-100 `ZZ` matrix packs/unpacks
 in roughly 6/3 ms, while SageMath 10.9 `save/load` takes roughly 2.2/1.5 ms.
 A random 1000-by-1000 `QQ` matrix packs/unpacks in roughly 51/47 ms, versus
 roughly 189/172 ms for SageMath. These are directional measurements, not test
-thresholds. Reproduce the cross-runtime comparison with:
+thresholds. A fresh process loads the level-37, weight-5 order-36 character
+modular-symbol space in a median 17 ms on the same builder; its saved dimension
+avoids rebuilding the character Manin presentation merely to restore the
+parent. Reproduce the cross-runtime comparison with:
 
 ```sh
 pnpm bench:serialization

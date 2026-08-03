@@ -103,6 +103,18 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
   }
 }
 
+function encodeIdeal(value: unknown, context: EncodeContext): WireValue {
+  return context.encode({
+    parent: Reflect.get(Object(value), "_parent"),
+    generator: Reflect.get(Object(value), "_generator"),
+  });
+}
+
+function decodeIdeal(payload: WireValue, context: DecodeContext): unknown {
+  const data = context.decode(payload) as Record<string, unknown>;
+  return callMethod(data.parent, "_from_serialized_prime_ideal", [data.generator]);
+}
+
 export const numberFieldParentCodec: SageCodec = {
   type: "sage.number_fields.parent",
   version: 1,
@@ -123,11 +135,20 @@ export const numberFieldElementCodec: SageCodec = {
   decode: decodeElement,
 };
 
+export const numberFieldIdealCodec: SageCodec = {
+  type: "sage.number_fields.ideal",
+  version: 1,
+  test: (value) => kind(value) === "GaussianPrimeIdeal",
+  encode: encodeIdeal,
+  decode: decodeIdeal,
+};
+
 let registered = false;
 
 export function registerNumberFieldCodecs(): void {
   if (registered) return;
   registered = true;
   registerCodec(numberFieldParentCodec);
+  registerCodec(numberFieldIdealCodec);
   registerCodec(numberFieldElementCodec);
 }

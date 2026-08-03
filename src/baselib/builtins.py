@@ -5364,6 +5364,105 @@ def ρσ_open(
     return _BuiltinFile(filename, mode, encoding, errors, newline)
 
 
+def dumps(value: Any, compress: _Bool = True, **keywords: Any) -> bytes:
+    r"""Return ``value`` as safe binary SagePack data.
+
+    This is Sage.js's data-only counterpart to Sage's global ``dumps``.  The
+    ``compress`` argument is accepted for source compatibility; SagePack v1
+    stores compact native binary blocks without an additional compression
+    layer.  Pickle-specific keyword arguments are intentionally unsupported.
+    """
+    if len(keywords) != 0:
+        name = next(iter(keywords))
+        raise TypeError("dumps() got an unexpected keyword argument '" + name + "'")
+    return bytes(_builtins_host_call('serializationPack', value))
+
+
+def loads(
+    source: Any,
+    compress: _Bool = True,
+    **keywords: Any,
+) -> Any:
+    r"""Restore one value from binary SagePack or legacy v1 JSON data.
+
+    Loading never imports a constructor selected by the input and never
+    executes serialized code.
+    """
+    if len(keywords) != 0:
+        name = next(iter(keywords))
+        raise TypeError("loads() got an unexpected keyword argument '" + name + "'")
+    if isinstance(source, bytes) or isinstance(source, bytearray):
+        raw = bytes(source)
+        magic = bytes([83, 65, 71, 69, 80, 75, 49, 0])
+        if raw[:8] == magic:
+            return _builtins_host_call('serializationUnpack', raw)
+        source = raw.decode('utf-8')
+    if isinstance(source, str):
+        return _builtins_host_call('serializationLoads', source)
+    raise TypeError('loads() requires bytes, bytearray, or str')
+
+
+def _builtins_sobj_filename(filename: Any) -> _Str:
+    path = _builtins_file_path(filename)
+    return path if path.endswith('.sobj') else path + '.sobj'
+
+
+def save(
+    value: Any,
+    filename: Any,
+    compress: _Bool = True,
+    **keywords: Any,
+) -> None:
+    r"""Save ``value`` to a Sage object file.
+
+    Generic mathematical objects are written as safe binary SagePack data and
+    ``.sobj`` is appended when needed, matching Sage's common filename
+    convention.  Objects with their own ``save`` method still handle explicit
+    non-``.sobj`` extensions such as ``.png``.
+    """
+    path = _builtins_file_path(filename)
+    separator = max(path.rfind('/'), path.rfind('\\'))
+    dot = path.rfind('.')
+    extension = '' if dot <= separator else path[dot:]
+    method = getattr(value, 'save', None)
+    if extension != '' and extension != '.sobj' and method is not None:
+        method(path, **keywords)
+        return None
+    if len(keywords) != 0:
+        name = next(iter(keywords))
+        raise TypeError("save() got an unexpected keyword argument '" + name + "'")
+    target = _builtins_sobj_filename(path)
+    with ρσ_open(target, 'wb') as output:
+        output.write(dumps(value, compress=compress))
+    return None
+
+
+def load(
+    *filenames: Any,
+    **keywords: Any,
+) -> Any:
+    r"""Load one or more safe Sage object files.
+
+    ``.sobj`` is appended to each filename when absent.  Multiple filenames
+    return a list, as in Sage.  Loading source files and remote URLs is outside
+    this data-only persistence API.
+    """
+    if len(filenames) == 0:
+        raise TypeError('load() needs at least one filename')
+    compress = _builtins_pop_keyword(keywords, 'compress', True)
+    # Accepted for Sage source compatibility. Local SagePack reads are quiet.
+    _builtins_pop_keyword(keywords, 'verbose', True)
+    if len(keywords) != 0:
+        name = next(iter(keywords))
+        raise TypeError("load() got an unexpected keyword argument '" + name + "'")
+    answers = []
+    for filename in filenames:
+        target = _builtins_sobj_filename(filename)
+        with ρσ_open(target, 'rb') as input_file:
+            answers.append(loads(input_file.read(), compress=compress))
+    return answers[0] if len(answers) == 1 else answers
+
+
 round = ρσ_round
 max = ρσ_max
 min = ρσ_min
