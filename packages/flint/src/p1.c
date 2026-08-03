@@ -3527,6 +3527,82 @@ static int p1_heilbronn_cremona(
     return 1;
 }
 
+static int p1_matrix_four_append(
+    p1_matrix_four **matrices,
+    size_t *count,
+    size_t *capacity,
+    p1_matrix_four value)
+{
+    p1_matrix_four *resized;
+    size_t next_capacity;
+
+    if (*count == *capacity)
+    {
+        next_capacity = *capacity == 0 ? 16 : 2 * *capacity;
+        if (next_capacity < *capacity ||
+            next_capacity > SIZE_MAX / sizeof(**matrices))
+            return 0;
+        resized = realloc(*matrices, next_capacity * sizeof(**matrices));
+        if (resized == NULL)
+            return 0;
+        *matrices = resized;
+        *capacity = next_capacity;
+    }
+    (*matrices)[(*count)++] = value;
+    return 1;
+}
+
+/* Merel's determinant-n Heilbronn matrices in reduced ordering. */
+static int p1_heilbronn_merel(
+    ulong index, p1_matrix_four **matrices_out, size_t *count_out)
+{
+    p1_matrix_four *matrices = NULL;
+    size_t count = 0, capacity = 0;
+    int64_t n;
+
+    if (matrices_out == NULL || count_out == NULL ||
+        index == 0 || index > INT32_MAX)
+        return 0;
+    n = (int64_t) index;
+    for (int64_t a = 1; a <= n; a++)
+    {
+        int64_t quotient = n / a;
+        if (quotient * a == n)
+        {
+            int64_t d = quotient;
+            for (int64_t b = 0; b < a; b++)
+                if (!p1_matrix_four_append(
+                        &matrices, &count, &capacity,
+                        (p1_matrix_four) {a, b, 0, d}))
+                    goto fail;
+            for (int64_t c = 1; c < d; c++)
+                if (!p1_matrix_four_append(
+                        &matrices, &count, &capacity,
+                        (p1_matrix_four) {a, 0, c, d}))
+                    goto fail;
+        }
+        for (int64_t d = quotient + 1; d <= n; d++)
+        {
+            int64_t bc = a * d - n;
+            for (int64_t c = bc / a + 1; c < d; c++)
+            {
+                if (bc % c == 0 &&
+                    !p1_matrix_four_append(
+                        &matrices, &count, &capacity,
+                        (p1_matrix_four) {a, bc / c, c, d}))
+                    goto fail;
+            }
+        }
+    }
+    *matrices_out = matrices;
+    *count_out = count;
+    return 1;
+
+fail:
+    free(matrices);
+    return 0;
+}
+
 napi_value sagejs_p1list_higher_weight_hecke_matrix(
     napi_env env, napi_callback_info info)
 {
@@ -3654,6 +3730,172 @@ napi_value sagejs_p1list_higher_weight_hecke_matrix(
                             (slong) source, (slong) target),
                             fmpq_mat_entry(matrix,
                                 (slong) source, (slong) target), scaled);
+                    }
+                }
+            }
+        }
+    }
+    result = sagejs_qq_matrix_from_fmpq_mat(env, matrix);
+
+done:
+    fmpq_clear(scaled);
+    fmpz_clear(coefficient);
+    if (matrix_initialized)
+        fmpq_mat_clear(matrix);
+    free(heilbronn);
+    free(target_by_column);
+    return result;
+}
+
+napi_value sagejs_p1list_higher_weight_degeneracy_matrix(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[7], result = NULL;
+    sagejs_p1list_value *source_list, *target_list;
+    sagejs_higher_weight_presentation *source, *target;
+    int64_t weight_value, sign_value, index_value;
+    fmpq_mat_t matrix;
+    int matrix_initialized = 0;
+    fmpz_t coefficient;
+    fmpq_t scaled;
+    p1_matrix_four *heilbronn = NULL;
+    size_t heilbronn_count = 0;
+    size_t *target_by_column = NULL;
+
+    if (!p1_arguments(env, info, 7, arguments) ||
+        (source_list = p1_unwrap(env, arguments[0])) == NULL ||
+        (target_list = p1_unwrap(env, arguments[1])) == NULL ||
+        !p1_safe_integer(env, arguments[2], &weight_value) ||
+        !p1_safe_integer(env, arguments[3], &sign_value) ||
+        !p1_safe_integer(env, arguments[4], &index_value) ||
+        (source = p1_higher_weight_unwrap(env, arguments[5])) == NULL ||
+        (target = p1_higher_weight_unwrap(env, arguments[6])) == NULL)
+        return NULL;
+    if (weight_value < 2 || weight_value > UINT32_MAX ||
+        (sign_value != -1 && sign_value != 0 && sign_value != 1) ||
+        index_value < 1 || index_value > INT32_MAX ||
+        source_list->level % target_list->level != 0 ||
+        (source_list->level / target_list->level) %
+            (uint32_t) index_value != 0 ||
+        source->level != source_list->level ||
+        target->level != target_list->level ||
+        source->weight != (uint32_t) weight_value ||
+        target->weight != (uint32_t) weight_value ||
+        source->sign != (int) sign_value ||
+        target->sign != (int) sign_value)
+    {
+        napi_throw_range_error(env, NULL,
+            "higher-weight degeneracy requires matching weight and sign, a lower target level, and an index dividing the level quotient");
+        return NULL;
+    }
+    if (!p1_heilbronn_merel(
+            (ulong) index_value, &heilbronn, &heilbronn_count))
+    {
+        napi_throw_error(env, NULL,
+            "unable to construct Merel-Heilbronn representatives");
+        return NULL;
+    }
+    fmpq_mat_init(matrix, (slong) source->dimension,
+        (slong) target->dimension);
+    matrix_initialized = 1;
+    fmpz_init(coefficient);
+    fmpq_init(scaled);
+    target_by_column = malloc(
+        (target->two_term_generators == 0
+            ? 1 : target->two_term_generators) *
+            sizeof(*target_by_column));
+    if (target_by_column == NULL)
+        goto done;
+    for (size_t column = 0;
+        column < target->two_term_generators; column++)
+        target_by_column[column] = SIZE_MAX;
+    for (size_t basis_index = 0;
+        basis_index < target->dimension; basis_index++)
+        target_by_column[target->free_columns[basis_index]] = basis_index;
+
+    for (size_t source_row = 0;
+        source_row < source->dimension; source_row++)
+    {
+        size_t generator = source->basis_generators[source_row];
+        uint32_t source_degree =
+            (uint32_t) (generator / source_list->count);
+        sagejs_p1_pair pair =
+            source_list->pairs[generator % source_list->count];
+        for (size_t h = 0; h < heilbronn_count; h++)
+        {
+            int64_t a = heilbronn[h].a;
+            int64_t b = heilbronn[h].b;
+            int64_t c = heilbronn[h].c;
+            int64_t d = heilbronn[h].d;
+            __int128 image_u = (__int128) pair.u * a
+                + (__int128) pair.v * c;
+            __int128 image_v = (__int128) pair.u * b
+                + (__int128) pair.v * d;
+            size_t image_coset;
+
+            if (index_value != 1)
+            {
+                if (image_u % index_value != 0 ||
+                    image_v % index_value != 0)
+                    continue;
+                image_u /= index_value;
+                image_v /= index_value;
+            }
+            image_coset = p1_apply_pair(
+                target_list,
+                (int64_t) (image_u % target_list->level),
+                (int64_t) (image_v % target_list->level));
+            if (image_coset >= target_list->count)
+                continue;
+            for (uint32_t target_degree = 0;
+                target_degree + 2 <= (uint32_t) weight_value;
+                target_degree++)
+            {
+                size_t image_generator =
+                    (size_t) target_degree * target_list->count
+                    + image_coset;
+                size_t column = target->generator_columns[image_generator];
+                int generator_coefficient =
+                    target->generator_coefficients[image_generator];
+                if (column == SIZE_MAX)
+                    continue;
+                p1_monomial_matrix_coefficient(
+                    coefficient, source_degree,
+                    (uint32_t) weight_value - 2, target_degree,
+                    a, b, c, d);
+                if (fmpz_is_zero(coefficient))
+                    continue;
+                if (target->pivot_rows[column] == SIZE_MAX)
+                {
+                    size_t target_column = target_by_column[column];
+                    if (target_column == SIZE_MAX)
+                        goto done;
+                    if (generator_coefficient < 0)
+                        fmpz_neg(coefficient, coefficient);
+                    fmpq_add_fmpz(fmpq_mat_entry(matrix,
+                        (slong) source_row, (slong) target_column),
+                        fmpq_mat_entry(matrix,
+                            (slong) source_row, (slong) target_column),
+                        coefficient);
+                }
+                else
+                {
+                    size_t relation_row = target->pivot_rows[column];
+                    for (size_t target_column = 0;
+                        target_column < target->dimension; target_column++)
+                    {
+                        fmpq_mul_fmpz(scaled,
+                            fmpq_mat_entry(target->quotient_relations,
+                                (slong) relation_row,
+                                (slong) target->free_columns[target_column]),
+                            coefficient);
+                        if (generator_coefficient > 0)
+                            fmpq_neg(scaled, scaled);
+                        fmpq_add(fmpq_mat_entry(matrix,
+                            (slong) source_row, (slong) target_column),
+                            fmpq_mat_entry(matrix,
+                                (slong) source_row, (slong) target_column),
+                            scaled);
                     }
                 }
             }

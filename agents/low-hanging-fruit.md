@@ -22,7 +22,7 @@ Status meanings:
 2. **ready — expose degeneracy maps on modular-symbol spaces.** Lift the native
    ambient map through source and target basis matrices and support the common
    Sage call forms. Verify dimensions, composition, and Hecke equivariance.
-3. **measure — higher-weight Gamma0 degeneracy kernels.** Generalize the native
+3. **done — higher-weight Gamma0 degeneracy kernels.** Generalize the native
    Manin-symbol map to the polynomial coefficient module, beginning over QQ.
    Compare signs 0, -1, and 1 with Sage and Magma before optimizing.
 4. **measure — Dirichlet-character newspaces.** Implement lowering exactly

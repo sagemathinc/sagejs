@@ -730,6 +730,46 @@ test("new submodules and simple Hecke decomposition", async () => {
       (
         await session.evaluate(
           [
+            "A = P1List(22)",
+            "B = P1List(11)",
+            "higher_degeneracy = []",
+            "for sign in [-1, 0, 1]:",
+            "    d = A.higher_weight_degeneracy_matrix(B, 4, sign, 1)",
+            "    TA = A.higher_weight_hecke_matrix(4, sign, 3)",
+            "    TB = B.higher_weight_hecke_matrix(4, sign, 3)",
+            "    higher_degeneracy.append((sign, d.dimensions(), " +
+              "d.rank(), TA*d == d*TB))",
+            "higher_degeneracy",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(-1, (7, 2), 2, True), (0, (18, 6), 6, True), " +
+        "(1, (11, 4), 4, True)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "higher_new = []",
+            "for level, weight in [(12, 4), (50, 4), (100, 8)]:",
+            "    dimensions = []",
+            "    for sign in [-1, 0, 1]:",
+            "        S = ModularSymbols(level, weight, sign=sign).cuspidal_subspace()",
+            "        dimensions.append(S.new_submodule().dimension())",
+            "    higher_new.append((level, weight, dimensions))",
+            "M = ModularSymbols(100, 4, sign=1).cuspidal_subspace()",
+            "[higher_new, M.new_submodule(2).dimension(), " +
+              "M.new_submodule(5).dimension()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[(12, 4, [1, 2, 1]), (50, 4, [5, 10, 5]), " +
+        "(100, 8, [11, 22, 11])], 7, 24]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
             "M = ModularSymbols(400, 2, sign=1)",
             "N = M.new_submodule()",
             "[N.dimension(), N.cuspidal_subspace().dimension()]",

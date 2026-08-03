@@ -2146,7 +2146,7 @@ new_submodule(prime=None)
 
 Return the new, or `p`-new, submodule of this space.
 
-For weight 2, trivial character and any sign, this computes the
+For trivial-character Gamma0 spaces over `QQ`, this computes the
 intersection of the kernels of the two level-lowering degeneracy
 maps to level `N/p`, for every prime `p` dividing `N`.  All maps are
 assembled natively and horizontally joined before taking one exact
@@ -2167,7 +2167,7 @@ sage: [A.dimension() for A in N.decomposition()]
 - Module: `sage.modular.modsym.space`
 - Tags: number theory, modular symbols, new subspaces, oldforms, Hecke modules, exact linear algebra
 - Backends: Sage.js portable C modular-symbol core, FLINT exact matrices, native horizontal concatenation, and kernels
-- Sage compatibility: partial — The weight-2 Gamma0 cuspidal new and individual p-new operations follow SageMath in all three signs. At composite level, calling this on the full space returns its cuspidal new part. Other weights, characters, or coefficient fields are not yet implemented.
+- Sage compatibility: partial — Gamma0 cuspidal new and individual p-new operations over QQ follow SageMath in every weight at least two and all three signs. At composite level, calling this on the full space returns its cuspidal new part. Characters and other coefficient fields are not yet implemented.
 - Algorithm: One exact kernel of horizontally joined level-lowering degeneracy matrices
 - Limitations: Currently implemented for weight 2, Gamma0, trivial character, sign 1, and rational coefficients.
 

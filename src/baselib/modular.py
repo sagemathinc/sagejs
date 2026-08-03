@@ -2006,6 +2006,7 @@ class P1List:
         self._star_eigenspace_basis_cache = [None, None]
         self._higher_weight_presentation_cache = runtime.map()
         self._higher_weight_hecke_cache = runtime.map()
+        self._higher_weight_degeneracy_cache = runtime.map()
         self._character_presentation_cache = runtime.map()
         self._character_hecke_cache = runtime.map()
 
@@ -2146,6 +2147,54 @@ class P1List:
             native,
         )
         self._higher_weight_hecke_cache.set(key, cached)
+        return cached
+
+    def higher_weight_degeneracy_matrix(
+        self,
+        target: P1List,
+        weight: Any,
+        sign: Any,
+        index: Any = 1,
+    ) -> Any:
+        r"""Return an exact higher-weight level-lowering degeneracy matrix.
+
+        Rows act on the right. Polynomial action by Merel's determinant-
+        ``index`` Heilbronn operator and reduction into the target Manin
+        quotient both happen natively over ``QQ``.
+        """
+        if not isinstance(target, P1List):
+            raise TypeError('degeneracy-map target must be a P1List')
+        weight = _positive_integer(weight, 'modular-symbol weight')
+        sign = _exact_integer(sign, 'sign')
+        index = _positive_integer(index, 'degeneracy index')
+        if sign not in [-1, 0, 1]:
+            raise ValueError('sign must be -1, 0, or 1')
+        if self.N() % target.N() != 0:
+            raise ValueError('target level must divide the source level')
+        quotient = self.N() // target.N()
+        if quotient % index != 0:
+            raise ValueError(
+                'degeneracy index must divide the quotient of levels')
+        key = (
+            str(target.N()) + ':' + str(weight) + ':' + str(sign)
+            + ':' + str(index))
+        cached = self._higher_weight_degeneracy_cache.get(key)
+        if cached is not runtime.undefined:
+            return cached
+        source_presentation = self.higher_weight_presentation(weight, sign)
+        target_presentation = target.higher_weight_presentation(weight, sign)
+        native = runtime.flint_backend().p1ListHigherWeightDegeneracyMatrix(
+            self._native, target._native, weight, sign, index,
+            source_presentation._native, target_presentation._native)
+        cached = Matrix(  # type: ignore[name-defined]  # noqa: F821
+            MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+                sage.QQ,
+                source_presentation.dimension(),
+                target_presentation.dimension(),
+            ),
+            native,
+        )
+        self._higher_weight_degeneracy_cache.set(key, cached)
         return cached
 
     def character_presentation(
@@ -3229,7 +3278,7 @@ class ModularSymbolsSpace(sage.Parent):
     def new_submodule(self, prime: Any = None) -> ModularSymbolsSpace:
         r"""Return the new, or `p`-new, submodule of this space.
 
-        For weight 2, trivial character and any sign, this computes the
+        For trivial-character Gamma0 spaces over ``QQ``, this computes the
         intersection of the kernels of the two level-lowering degeneracy
         maps to level `N/p`, for every prime `p` dividing `N`.  All maps are
         assembled natively and horizontally joined before taking one exact
@@ -3245,12 +3294,15 @@ class ModularSymbolsSpace(sage.Parent):
         ```
         """
         if not (
-            self._supports_native_weight2()
+            (
+                self._supports_native_weight2()
+                or self._supports_native_higher_weight()
+            )
             and self.base_ring() is sage.QQ
         ):
             raise NotImplementedError(
-                'new submodules currently require weight 2, Gamma0, '
-                'trivial character, and rational coefficients')
+                'new submodules currently require Gamma0, trivial '
+                'character, weight at least 2, and rational coefficients')
         selected = None if prime is None else _positive_integer(
             prime, 'new-submodule prime')
         if selected is not None:
@@ -3279,13 +3331,23 @@ class ModularSymbolsSpace(sage.Parent):
         restricted_maps = []
         for lowering_prime in primes:
             lower_level = level // lowering_prime
-            lower = ModularSymbols(lower_level, 2)
+            if ambient._supports_native_weight2():
+                lower = ModularSymbols(lower_level, 2)
+            else:
+                lower = ModularSymbols(
+                    lower_level, self.weight(), sign=self.sign())
             if lower.dimension() == 0:
                 continue
             for degeneracy_index in [1, lowering_prime]:
-                ambient_map = ambient.p1list().degeneracy_matrix(
-                    lower.p1list(), degeneracy_index).change_ring(
-                        self.base_ring())
+                if ambient._supports_native_weight2():
+                    ambient_map = ambient.p1list().degeneracy_matrix(
+                        lower.p1list(), degeneracy_index).change_ring(
+                            self.base_ring())
+                else:
+                    ambient_map = (
+                        ambient.p1list().higher_weight_degeneracy_matrix(
+                            lower.p1list(), self.weight(), self.sign(),
+                            degeneracy_index))
                 restricted_maps.append(
                     cusp.basis_matrix()._sparse_left_multiply(ambient_map))
         if len(restricted_maps) == 0:
@@ -4272,10 +4334,11 @@ _modular_symbols_new_doc = _modular_symbols_method_doc(
 _modular_symbols_new_doc['sage_compatibility'] = {
     'status': 'partial',
     'notes': (
-        'The weight-2 Gamma0 cuspidal new and individual p-new operations '
-        'follow SageMath in all three signs. At composite level, calling '
-        'this on the full space returns its cuspidal new part. Other '
-        'weights, characters, or coefficient fields are not yet implemented.'
+        'Gamma0 cuspidal new and individual p-new operations over QQ follow '
+        'SageMath in every weight at least two and all three signs. At '
+        'composite level, calling this on the full space returns its '
+        'cuspidal new part. Characters and other coefficient fields are not '
+        'yet implemented.'
     ),
 }
 _modular_symbols_new_doc['backends'] = [
