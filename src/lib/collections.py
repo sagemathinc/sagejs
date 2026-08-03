@@ -133,6 +133,10 @@ class deque:
         self.extend(values)
         return self
 
+    def __iadd__(self, iterable: Any) -> Any:
+        self.extend(iterable)
+        return self
+
     def __invert__(self) -> None:
         raise TypeError("bad operand type for unary ~: 'deque'")
 
@@ -162,10 +166,14 @@ class deque:
         self._values.insert(0, value)
 
     def extend(self, iterable: Any) -> None:
+        if iterable is self:
+            iterable = list(self._values)
         for value in iterable:
             self.append(value)
 
     def extendleft(self, iterable: Any) -> None:
+        if iterable is self:
+            iterable = list(self._values)
         for value in iterable:
             self.appendleft(value)
 

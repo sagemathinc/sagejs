@@ -119,6 +119,9 @@ Status meanings:
     `collections.OrderedDict` mapping unions now preserve operand precedence,
     insertion order, concrete subclasses, and `defaultdict` factories across
     ordinary, reflected, and in-place operations.
+    `collections.deque` in-place concatenation now accepts arbitrary iterables,
+    preserves identity and bounds, and safely snapshots self-extension from
+    either end.
     `most_common` now rejects non-integer limits and normalizes non-positive
     limits instead of relying on JavaScript slice coercion, while `fromkeys`
     reports its intentionally undefined semantics. `collections.deque` now
