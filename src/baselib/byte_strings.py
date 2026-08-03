@@ -175,6 +175,11 @@ def _normalise_bound(
 @runtime.sequence_class
 class SageBytes:
 
+    # Sequence instances are proxy-backed so dense byte storage can still use
+    # Python indexing.  Resolve methods through that proxy as well, preserving
+    # identity when an immutable operation returns ``self``.
+    from __python__ import no_bound_methods  # type: ignore
+
     def __init__(self, values: list[_Int]) -> None:
         if isinstance(values, SageBytes):
             values = values._values[:]
