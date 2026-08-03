@@ -597,6 +597,11 @@ class ChainMap:
     def __init__(self, *maps: Any) -> None:
         self.maps = list(maps) if maps else [dict()]
 
+    def copy(self) -> Any:
+        return type(self)(self.maps[0].copy(), *self.maps[1:])
+
+    __copy__ = copy
+
     def __missing__(self, key: Any) -> Any:
         raise KeyError(key)
 
@@ -613,7 +618,8 @@ class ChainMap:
 
     def __delitem__(self, key: Any) -> None:
         if key not in self.maps[0]:
-            raise KeyError(key)
+            raise KeyError(
+                'Key not found in the first mapping: ' + repr(key))
         self.maps[0].__delitem__(key)
 
     def __contains__(self, key: Any) -> bool:
@@ -630,11 +636,52 @@ class ChainMap:
     def __len__(self) -> int:
         return len(list(self))
 
+    def __bool__(self) -> bool:
+        return any(self.maps)
+
     def get(self, key: Any, fallback: Any = None) -> Any:
+        if key in self:
+            return self.__getitem__(key)
+        return fallback
+
+    def setdefault(self, key: Any, fallback: Any = None) -> Any:
         try:
-            return self[key]
+            return self.__getitem__(key)
         except KeyError:
-            return fallback
+            self.__setitem__(key, fallback)
+        return fallback
+
+    def pop(self, key: Any, *fallback: Any) -> Any:
+        try:
+            return self.maps[0].pop(key, *fallback)
+        except KeyError:
+            raise KeyError(
+                'Key not found in the first mapping: ' + repr(key))
+
+    def popitem(self) -> Any:
+        mapping = self.maps[0]
+        if len(mapping) == 0:
+            raise KeyError('No keys found in the first mapping.')
+        key = list(mapping)[-1]
+        value = mapping.__getitem__(key)
+        mapping.__delitem__(key)
+        return runtime.math_tuple([key, value])
+
+    def clear(self) -> None:
+        self.maps[0].clear()
+
+    def update(
+        self,
+        iterable: Any = runtime.undefined,
+        **keywords: Any,
+    ) -> None:
+        if iterable is not runtime.undefined:
+            if hasattr(iterable, 'items'):
+                iterable = iterable.items()
+            for key, value in iterable:
+                self.__setitem__(key, value)
+        for key, value in keywords.items():
+            self.__setitem__(key, value)
 
     def keys(self) -> Any:
         return list(self)
@@ -656,7 +703,10 @@ class ChainMap:
         return type(self)(*self.maps[1:])
 
     def __repr__(self) -> str:
-        return 'ChainMap(' + ', '.join(repr(mapping) for mapping in self.maps) + ')'
+        return (
+            type(self).__name__ + '('
+            + ', '.join(repr(mapping) for mapping in self.maps) + ')'
+        )
 
 
 def _normalize_field_names(field_names: Any) -> list[str]:

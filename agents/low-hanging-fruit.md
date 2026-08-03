@@ -109,6 +109,9 @@ Status meanings:
     value sharing, independent key storage, and the concrete subclass.
     `collections.ChainMap` lookups now invoke child mapping `__missing__`
     behavior and fall back through the chain's overridable `__missing__` hook.
+    Its core mapping helpers now preserve first-map-only mutation, including
+    `clear`, `pop`, `popitem`, `setdefault`, `update`, and copying, while `get`
+    avoids triggering child `defaultdict` factories.
     `most_common` now rejects non-integer limits and normalizes non-positive
     limits instead of relying on JavaScript slice coercion, while `fromkeys`
     reports its intentionally undefined semantics. `collections.deque` now
