@@ -96,7 +96,8 @@ Status meanings:
     four supported ordering roots and rejects classes without one.
     `collections.OrderedDict` now compares order-sensitively with its own type,
     compares like a mapping with other mappings, supports reverse iteration,
-    and implements `move_to_end` in both directions.
+    implements `move_to_end` in both directions, and rejects extra `pop`
+    defaults before mutating the mapping.
     `collections.Counter` now compares counts with CPython's missing-as-zero
     equality and subset/superset semantics. Its `elements` iterator now accepts
     `__index__` counts and rejects non-integral counts instead of truncating them.

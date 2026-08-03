@@ -306,6 +306,10 @@ class OrderedDict:
         return self._data.__getitem__(key)
 
     def pop(self, key: Any, *fallback: Any) -> Any:
+        if len(fallback) > 1:
+            raise TypeError(
+                'pop() takes at most 2 arguments ('
+                + str(len(fallback) + 1) + ' given)')
         if key in self._data:
             value = self._data.__getitem__(key)
             self._data.__delitem__(key)
