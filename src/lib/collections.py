@@ -108,6 +108,27 @@ class deque:
             return NotImplemented
         return self._values >= other._values
 
+    def __add__(self, other: Any) -> Any:
+        if not isinstance(other, deque):
+            other_name = 'list' if isinstance(other, list) else _type_name(other)
+            raise TypeError(
+                'can only concatenate deque (not "'
+                + other_name + '") to deque')
+        return type(self)(self._values + other._values, self.maxlen)
+
+    def __mul__(self, count: Any) -> Any:
+        count = _as_index(count)
+        return type(self)(self._values * max(0, count), self.maxlen)
+
+    __rmul__ = __mul__
+
+    def __imul__(self, count: Any) -> Any:
+        count = _as_index(count)
+        values = self._values * max(0, count)
+        self.clear()
+        self.extend(values)
+        return self
+
     def __invert__(self) -> None:
         raise TypeError("bad operand type for unary ~: 'deque'")
 

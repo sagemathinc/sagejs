@@ -105,7 +105,9 @@ Status meanings:
     limits instead of relying on JavaScript slice coercion, while `fromkeys`
     reports its intentionally undefined semantics. `collections.deque` now
     implements CPython-compatible equality and lexicographic ordering against
-    other deques, independent of `maxlen`.
+    other deques, independent of `maxlen`. Deque concatenation and repetition
+    now preserve the left operand's type and bound, including reflected and
+    identity-preserving in-place repetition.
 
 ## Graphics and foreign-language compatibility
 
