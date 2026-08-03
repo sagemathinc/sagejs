@@ -40,6 +40,46 @@ test("exact elliptic-curve arithmetic and invariants", async () => {
   }
 });
 
+test("rational elliptic point orders use Mazur's certified bound", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "torsion_curves = [",
+            "    [1, 0, 1, -171, -874],",
+            "    [0, 1, 1, -9, -15],",
+            "    [1, 1, 1, -80, 242],",
+            "    [0, -1, 1, -10, -20],",
+            "    [1, 0, 1, 4, -6],",
+            "    [1, -1, 1, -3, 3],",
+            "    [1, 1, 1, 35, -28],",
+            "    [1, -1, 1, -14, 29],",
+            "    [1, 0, 0, -45, 81],",
+            "    [1, -1, 1, -122, 1721],",
+            "]",
+            "torsion_points = [[15,-8], [5,9], [5,-2], [5,5], [9,23], " +
+              "[-1,2], [2,6], [-3,7], [0,9], [-9,49]]",
+            "orders = [EllipticCurve(torsion_curves[k])(torsion_points[k]).order() " +
+              "for k in range(10)]",
+            "finite = [EllipticCurve(torsion_curves[k])(torsion_points[k]).has_finite_order() " +
+              "for k in range(10)]",
+            "expected = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12]",
+            "E = EllipticCurve([-2, 0])",
+            "P = E((-1, 1))",
+            "[orders == expected, all(finite), P.order(), P.order() == Infinity, " +
+              "P.has_finite_order(), E(0).additive_order()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[True, True, +Infinity, True, False, 1]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("elliptic-curve coefficients, labels, and bundled Cremona data", async () => {
   const session = await createSage();
   try {

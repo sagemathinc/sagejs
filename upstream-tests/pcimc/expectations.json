@@ -25,7 +25,6 @@
     "book/16-Elliptic_Curves.md:266": "Approximate real secant-line points need precision-aware elliptic-curve membership instead of exact equality.",
     "book/16-Elliptic_Curves.md:386": "Lifting a rational x-coordinate with irrational y requires an algebraic/real base extension that Sage.js does not yet infer automatically.",
     "book/16-Elliptic_Curves.md:69": "Implicit symbolic curve plotting still leaks an unresolved notebook-result placeholder during evaluation.",
-    "book/16-Elliptic_Curves.md:76": "Implicit symbolic cusp plotting still leaks an unresolved notebook-result placeholder during evaluation.",
-    "book/16-Elliptic_Curves.md:773": "Determining that a rational elliptic-curve point has infinite order requires Mordell–Weil/torsion algorithms not yet implemented."
+    "book/16-Elliptic_Curves.md:76": "Implicit symbolic cusp plotting still leaks an unresolved notebook-result placeholder during evaluation."
   }
 }

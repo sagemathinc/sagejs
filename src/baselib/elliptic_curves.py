@@ -15,6 +15,27 @@ def _untyped(value: Any) -> Any:
     return value
 
 
+class _EllipticPositiveInfinity:
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, _EllipticPositiveInfinity):
+            return True
+        return (
+            runtime.jstype(other) == 'number'
+            and not runtime.number.isFinite(other)
+            and _untyped(other) > 0
+        )
+
+    def __repr__(self) -> str:
+        return '+Infinity'
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+_elliptic_positive_infinity = _EllipticPositiveInfinity()
+
+
 _CREMONA_CURVES = {
     '37a': [[0, 0, 1, -1, 0], 37, 1],
     '37a1': [[0, 0, 1, -1, 0], 37, 1],
@@ -98,9 +119,37 @@ class EllipticCurvePoint(sage.Element):
             return self._parent.base_ring()(1)
         raise IndexError('elliptic-curve point index out of range')
 
-    def order(self) -> int:
+    def _rational_order(self) -> Any:
+        # By Mazur's theorem, the order of a rational torsion point is one of
+        # 1, ..., 10 or 12.  Exact addition through that bound therefore
+        # certifies infinite order when no allowed multiple vanishes.  PARI's
+        # ellorder_Q uses the same bound, with reduction modulo a good prime as
+        # a speed prefilter before its final exact verification.
+        multiple = self
+        for candidate in range(2, 11):
+            multiple = multiple + self
+            if multiple.is_zero():
+                return candidate
+        # Eleven is excluded over QQ, but advancing through it lets us test
+        # the remaining possible order twelve with one final exact addition.
+        multiple = multiple + self
+        multiple = multiple + self
+        if multiple.is_zero():
+            return 12
+        return _elliptic_positive_infinity
+
+    def order(self, algorithm: Any = None) -> Any:
         if self._infinity:
             return 1
+        base = self._parent.base_ring()
+        if base is sage.QQ or getattr(base, '_kind', None) == 'QQ':
+            if algorithm not in [
+                None, 'pari', 'generic', 'generic_small', 'hybrid'
+            ]:
+                raise NotImplementedError(
+                    'unknown rational point-order algorithm ' +
+                    repr(algorithm))
+            return self._rational_order()
         candidate = runtime.integer_bigint(self._parent.order())
         for prime, _exponent in sage.factor(candidate):
             prime = runtime.integer_bigint(prime)
@@ -112,6 +161,11 @@ class EllipticCurvePoint(sage.Element):
                     break
                 candidate = quotient
         return runtime.normalize_integer(candidate)
+
+    additive_order = order
+
+    def has_finite_order(self) -> bool:
+        return self.order() != _elliptic_positive_infinity
 
     def __neg__(self) -> EllipticCurvePoint:
         if self._infinity:
