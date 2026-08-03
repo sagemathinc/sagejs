@@ -28,8 +28,11 @@ with Pool(4) as workers:
     print(workers.map(phi, [1009, 1013, 1019, 1021]))
 ```
 
-`Pool.map` and `Pool.starmap` are synchronous, preserve input order, propagate
-worker exceptions, and reuse isolated Sage.js evaluators for repeated maps.
+`Pool.apply`, `Pool.map`, `Pool.starmap`, `Pool.imap`, and
+`Pool.imap_unordered` are available. They propagate worker exceptions and
+reuse isolated Sage.js evaluators for repeated calls. The initial `imap`
+implementation computes its submitted batch before returning the iterator;
+streaming submission belongs to the planned asynchronous pool protocol.
 `close`, `terminate`, `join`, and the context-manager protocol are available.
 `cpu_count()` reports the host's available parallelism.
 Creating a worker initializes an isolated Sage.js evaluator, so reuse one pool

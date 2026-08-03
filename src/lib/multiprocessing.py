@@ -1,8 +1,9 @@
 """Process-like parallelism backed by Sage.js worker threads.
 
 The initial Sage.js implementation provides the familiar synchronous
-``Pool.map`` and ``Pool.starmap`` interfaces.  Workers are persistent isolated
-Sage.js evaluators in one operating-system process.  This is well suited to
+``Pool.apply``, ``Pool.map``, ``Pool.starmap``, ``Pool.imap``, and
+``Pool.imap_unordered`` interfaces. Workers are persistent isolated Sage.js
+evaluators in one operating-system process. This is well suited to
 CPU-bound research computations and avoids exposing Node.js primitives to
 Python code.
 
@@ -69,6 +70,11 @@ def cpu_count():
     return os.cpu_count()
 
 
+def _apply_call(func, args, kwds):
+    """Worker-side adapter for ``Pool.apply`` keyword arguments."""
+    return func(*args, **kwds)
+
+
 class Pool:
     """A persistent pool of isolated Sage.js worker evaluators.
 
@@ -109,6 +115,18 @@ class Pool:
             'multiprocessingMap', self._pool_id, func, values, False
         ))
 
+    def apply(self, func, args=(), kwds=None):
+        """Apply ``func`` once in a worker and return its result."""
+        self._check_running()
+        if kwds is None:
+            kwds = {}
+        arguments = list(args)
+        keyword_arguments = dict(kwds)
+        return list(_host_call(
+            'multiprocessingMap', self._pool_id, _apply_call,
+            [[func, arguments, keyword_arguments]], True
+        ))[0]
+
     def starmap(self, func, iterable, chunksize=None):
         """Apply ``func(*args)`` to each argument sequence in order."""
         self._check_running()
@@ -118,6 +136,27 @@ class Pool:
         return list(_host_call(
             'multiprocessingMap', self._pool_id, func, values, True
         ))
+
+    def imap(self, func, iterable, chunksize=1):
+        """Return an ordered iterator of worker results.
+
+        The current synchronous host computes the submitted batch before the
+        iterator is returned. Iteration order and exceptions match CPython;
+        streaming submission is reserved for the asynchronous pool layer.
+        """
+        if chunksize < 1:
+            raise ValueError('Chunksize must be 1+, not ' + repr(chunksize))
+        return iter(self.map(func, iterable, chunksize))
+
+    def imap_unordered(self, func, iterable, chunksize=1):
+        """Return an iterator of worker results in an unspecified order.
+
+        Ordered output is a valid unspecified order and keeps the initial
+        synchronous worker protocol deterministic.
+        """
+        if chunksize < 1:
+            raise ValueError('Chunksize must be 1+, not ' + repr(chunksize))
+        return iter(self.map(func, iterable, chunksize))
 
     def close(self):
         """Finish outstanding work and release the workers."""

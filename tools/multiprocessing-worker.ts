@@ -10,6 +10,7 @@ interface EncodedFunction {
   __sagejs_multiprocessing__: "function";
   source: string;
   bindings: Record<string, EncodedValue>;
+  metadata: Record<string, EncodedValue>;
 }
 
 type EncodedValue = SagePacket | EncodedFunction;
@@ -66,11 +67,15 @@ function decode(value: EncodedValue): unknown {
       `(function(${names.join(",")}) { return (${value.source}); })`,
       { filename: "<multiprocessing-dependency>" },
     ) as (...values: unknown[]) => unknown;
-    return Reflect.apply(
+    const callable = Reflect.apply(
       factory,
       undefined,
       names.map((name) => decode(value.bindings[name])),
     );
+    for (const [name, property] of Object.entries(value.metadata ?? {})) {
+      Reflect.set(callable as object, name, decode(property));
+    }
+    return callable;
   }
   return decodePacket(value as SagePacket);
 }

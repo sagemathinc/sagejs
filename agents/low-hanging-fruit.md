@@ -69,9 +69,10 @@ Status meanings:
     iteration, newline handling, encodings, context-manager behavior, and
     exception attributes using CPython's focused IO tests.
 15. **ready — `multiprocessing` API long tail.** Add `imap`, unordered results,
-    async results, initializers, timeouts, worker exceptions, and robust pool
-    shutdown over worker threads. Preserve Python-facing semantics while
-    documenting the intentional shared-process model.
+   async results, initializers, timeouts, worker exceptions, and robust pool
+   shutdown over worker threads. Preserve Python-facing semantics while
+   documenting the intentional shared-process model. Synchronous `apply`,
+   `imap`, and `imap_unordered` are done; async results and initializers remain.
 16. **ready — common pure utility modules.** Expand `functools`, `itertools`,
     `collections`, `statistics`, `bisect`, `heapq`, `operator`, `textwrap`, and
     `re` only through differential tests, keeping them lazy at startup.

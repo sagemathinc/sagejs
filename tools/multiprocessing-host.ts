@@ -14,6 +14,7 @@ interface EncodedFunction {
   __sagejs_multiprocessing__: "function";
   source: string;
   bindings: Record<string, EncodedValue>;
+  metadata: Record<string, EncodedValue>;
 }
 
 type EncodedValue = SagePacket | EncodedFunction;
@@ -129,6 +130,19 @@ function encode(value: unknown, ancestors = new Set<unknown>()): EncodedValue {
     const nestedAncestors = new Set(ancestors);
     nestedAncestors.add(value);
     const source = Function.prototype.toString.call(value);
+    const metadata: Record<string, EncodedValue> = {};
+    for (const name of [
+      "__argnames__",
+      "__defaults__",
+      "__handles_kwarg_interpolation__",
+      "__kwonly__",
+      "__varkw__",
+    ]) {
+      const property = Reflect.get(value, name);
+      if (property !== undefined) {
+        metadata[name] = encode(property, nestedAncestors);
+      }
+    }
     return {
       __sagejs_multiprocessing__: "function",
       source,
@@ -137,6 +151,7 @@ function encode(value: unknown, ancestors = new Set<unknown>()): EncodedValue {
         source,
         nestedAncestors,
       ),
+      metadata,
     };
   }
   return serialization().encode(value);
@@ -149,7 +164,10 @@ function decode(value: EncodedValue): unknown {
 
 function packetBuffers(value: EncodedValue): ArrayBuffer[] {
   if (isEncodedFunction(value)) {
-    return Object.values(value.bindings).flatMap(packetBuffers);
+    return [
+      ...Object.values(value.bindings).flatMap(packetBuffers),
+      ...Object.values(value.metadata).flatMap(packetBuffers),
+    ];
   }
   return (value as SagePacket).buffers;
 }
