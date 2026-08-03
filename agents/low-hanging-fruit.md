@@ -27,7 +27,8 @@ Status meanings:
    Compare signs 0, -1, and 1 with Sage and Magma before optimizing.
 4. **measure — Dirichlet-character newspaces.** Implement lowering exactly
    when the character descends to the target level; reject the other cases
-   explicitly. Test over cyclotomic fields of several degrees.
+   explicitly. Test over cyclotomic fields of several degrees. Primitive
+   characters and individual primes with no lower-level character are done.
 5. **ready — decomposition refinement at bad primes.** Split repeated anemic
    constituents using `U_p` and diamond operators, preserving the fast good-
    prime path.

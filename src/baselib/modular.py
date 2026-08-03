@@ -3293,16 +3293,6 @@ class ModularSymbolsSpace(sage.Parent):
         [2, 2, 2, 2, 4, 4, 4, 4]
         ```
         """
-        if not (
-            (
-                self._supports_native_weight2()
-                or self._supports_native_higher_weight()
-            )
-            and self.base_ring() is sage.QQ
-        ):
-            raise NotImplementedError(
-                'new submodules currently require Gamma0, trivial '
-                'character, weight at least 2, and rational coefficients')
         selected = None if prime is None else _positive_integer(
             prime, 'new-submodule prime')
         if selected is not None:
@@ -3316,6 +3306,32 @@ class ModularSymbolsSpace(sage.Parent):
             return cached
 
         level = self.level()
+        if self._supports_native_character():
+            conductor = runtime.number(self._character.conductor())
+            if (
+                (selected is None and conductor == level)
+                or (
+                    selected is not None
+                    and (level // selected) % conductor != 0
+                )
+            ):
+                self._new_submodule_cache.set(key, self)
+                return self
+            raise NotImplementedError(
+                'imprimitive-character new submodules require exact '
+                'cyclotomic degeneracy matrices when the character descends '
+                'to a lower level')
+        if not (
+            (
+                self._supports_native_weight2()
+                or self._supports_native_higher_weight()
+            )
+            and self.base_ring() is sage.QQ
+        ):
+            raise NotImplementedError(
+                'new submodules currently require Gamma0, weight at least '
+                '2, and either rational trivial character or primitive '
+                'nebentypus')
         if selected is None and sage.is_prime(level):
             self._new_submodule_cache.set(key, self)
             return self
@@ -4335,10 +4351,12 @@ _modular_symbols_new_doc['sage_compatibility'] = {
     'status': 'partial',
     'notes': (
         'Gamma0 cuspidal new and individual p-new operations over QQ follow '
-        'SageMath in every weight at least two and all three signs. At '
-        'composite level, calling this on the full space returns its '
-        'cuspidal new part. Characters and other coefficient fields are not '
-        'yet implemented.'
+        'SageMath in every weight at least two and all three signs. Primitive '
+        'nebentypus spaces, and p-new spaces where the character cannot '
+        'descend, are recognized over their exact character fields. At '
+        'composite trivial-character level, calling this on the full space '
+        'returns its cuspidal new part. Degeneracy matrices for imprimitive '
+        'characters that descend are not yet implemented.'
     ),
 }
 _modular_symbols_new_doc['backends'] = [
