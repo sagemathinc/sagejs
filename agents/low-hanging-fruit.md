@@ -105,6 +105,8 @@ Status meanings:
     as new elements. Counter arithmetic now rejects unsupported binary operands
     through `NotImplemented` and implements the four in-place multiset operators
     with identity, ordering, and non-positive-count filtering preserved.
+    `collections.defaultdict.copy` now preserves the default factory, shallow
+    value sharing, independent key storage, and the concrete subclass.
     `most_common` now rejects non-integer limits and normalizes non-positive
     limits instead of relying on JavaScript slice coercion, while `fromkeys`
     reports its intentionally undefined semantics. `collections.deque` now

@@ -386,6 +386,9 @@ class defaultdict(OrderedDict):
             return self.__missing__(key)
         return self._data.__getitem__(key)
 
+    def copy(self) -> Any:
+        return type(self)(self.default_factory, self.items())
+
     def __repr__(self) -> str:
         return 'defaultdict(' + repr(self.default_factory) + ', ' + repr(self._data) + ')'
 
