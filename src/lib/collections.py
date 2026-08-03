@@ -237,6 +237,8 @@ class deque:
 @runtime.sequence_class
 class OrderedDict:
 
+    _order_sensitive_equality = True
+
     def __init__(
         self,
         iterable: Any = runtime.undefined,
@@ -253,8 +255,29 @@ class OrderedDict:
     def __iter__(self) -> Iterator[Any]:
         return iter(self._data)
 
+    def __reversed__(self) -> Iterator[Any]:
+        return reversed(list(self._data))
+
     def __contains__(self, key: Any) -> bool:
         return key in self._data
+
+    def __eq__(self, other: Any) -> Any:
+        if isinstance(other, OrderedDict):
+            if (
+                self._order_sensitive_equality
+                and other._order_sensitive_equality
+            ):
+                return list(self.items()) == list(other.items())
+            return self._data == other._data
+        if hasattr(other, 'items'):
+            return self._data == other
+        return NotImplemented
+
+    def __ne__(self, other: Any) -> Any:
+        answer = self.__eq__(other)
+        if answer is NotImplemented:
+            return answer
+        return not answer
 
     def __getitem__(self, key: Any) -> Any:
         return self._data.__getitem__(key)
@@ -319,6 +342,16 @@ class OrderedDict:
         self._data.__delitem__(key)
         return runtime.math_tuple([key, value])
 
+    def move_to_end(self, key: Any, last: bool = True) -> None:
+        if key not in self._data:
+            raise KeyError(key)
+        value = self._data.__getitem__(key)
+        self._data.__delitem__(key)
+        if last:
+            self._data.__setitem__(key, value)
+        else:
+            self._data = dict([(key, value)] + list(self._data.items()))
+
     def __repr__(self) -> str:
         return 'OrderedDict(' + repr(list(self._data.items())) + ')'
 
@@ -328,6 +361,8 @@ class OrderedDict:
 
 
 class defaultdict(OrderedDict):
+
+    _order_sensitive_equality = False
 
     def __init__(self, default_factory: Any = None, *args: Any, **keywords: Any) -> None:
         if default_factory is not None and not callable(default_factory):
