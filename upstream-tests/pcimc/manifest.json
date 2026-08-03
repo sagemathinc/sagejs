@@ -1,0 +1,229 @@
+{
+  "schema": "sagejs.pcimc-manifest/v1",
+  "generatedBy": "scripts/extract-pcimc-corpus.cjs",
+  "source": {
+    "book": {
+      "repository": "https://github.com/lrfinotti/pcimc.git",
+      "revision": "9729e4d74416cd8664863f188c38675735e9c6ff",
+      "license": "GPL-3.0-only"
+    },
+    "homework": {
+      "repository": "https://github.com/lrfinotti/pcimc-hw.git",
+      "revision": "53bacdec1d821c1657ac5c903000be4bdbc6c9c3",
+      "license": "NOASSERTION"
+    },
+    "retrieved": "2026-08-03",
+    "permission": {
+      "status": "explicit",
+      "grantedBy": "Luís Finotti",
+      "granted": "2026-08-03",
+      "scope": "Include all code from the book and homework repositories in the Sage.js test suite.",
+      "evidence": "Author confirmation in the sage-support email thread: Yes, you do have permission."
+    }
+  },
+  "fixture": "cells.json",
+  "summary": {
+    "documents": 27,
+    "bookChapters": 17,
+    "homeworkNotebooks": 10,
+    "cells": 1130,
+    "classifications": {
+      "executable": 938,
+      "notebook-shell": 8,
+      "benchmark": 22,
+      "unsupported-cell-magic": 2,
+      "exercise-template": 160
+    }
+  },
+  "sourceFiles": [
+    {
+      "kind": "book",
+      "path": "00-Intro.md",
+      "sha256": "52362d8d1141ea155b060c3b40348b2927a72c445df21959dc7cda8c5be380a1",
+      "lines": 167,
+      "cells": 0
+    },
+    {
+      "kind": "book",
+      "path": "01-WhatIsCrypto.md",
+      "sha256": "240dd527f635429bc2187106a26189e4beb090bf01597389c935a6c78251f230",
+      "lines": 1060,
+      "cells": 54
+    },
+    {
+      "kind": "book",
+      "path": "02-Python.md",
+      "sha256": "ecac32c0f429c6dad5615d24914024eb7876fd9d5b658297c968cc7c2642c013",
+      "lines": 3573,
+      "cells": 344
+    },
+    {
+      "kind": "book",
+      "path": "03-Number_Theory.md",
+      "sha256": "8dd3952d64ac1c13d97b920f1f00284af34a4e6df67fde3ee27919f8a728e001",
+      "lines": 1889,
+      "cells": 80
+    },
+    {
+      "kind": "book",
+      "path": "04-Modular_Arithmetic.md",
+      "sha256": "e76c82586bc73fc1dd5ce2b627c41d51ba6ab5b5ad65c78d73816baa7bfeddbb",
+      "lines": 862,
+      "cells": 46
+    },
+    {
+      "kind": "book",
+      "path": "05-Powers.md",
+      "sha256": "7937d0c9ed91c921bb73ebbe47c861462c86bc6e2e061787951da72f1b84b542",
+      "lines": 954,
+      "cells": 51
+    },
+    {
+      "kind": "book",
+      "path": "06-DH_and_ElGamal.md",
+      "sha256": "5becdeb2f0f354d2819211fdf54fb5ab69f69c745deb32fe8403e381806b9409",
+      "lines": 873,
+      "cells": 43
+    },
+    {
+      "kind": "book",
+      "path": "07-Computing_DL.md",
+      "sha256": "03f20efb250deb44e2b4173f49af188d3b0148ec8764c881c4117b82c356a5b2",
+      "lines": 318,
+      "cells": 13
+    },
+    {
+      "kind": "book",
+      "path": "08-CRT_Bezout.md",
+      "sha256": "1635168de46bc5a6b98dc715745ccd18ba1377b078a0a5ba3cfbc80a69ae3a87",
+      "lines": 814,
+      "cells": 50
+    },
+    {
+      "kind": "book",
+      "path": "09-Improving_DL.md",
+      "sha256": "2d7a9e5ac80a2165fa1e907e5ab63a343ae0bb3a63e5735f044b0a6bde818409",
+      "lines": 563,
+      "cells": 37
+    },
+    {
+      "kind": "book",
+      "path": "10-RSA.md",
+      "sha256": "309b1cf8cd6dca66da9f3f345cf313986d180f670c903a41b4b54b99856e05c2",
+      "lines": 419,
+      "cells": 11
+    },
+    {
+      "kind": "book",
+      "path": "11-Primality.md",
+      "sha256": "6dff189a31ea0f7d89ce2908cd327c18879328d883525c5d42b2c997b41d0b8f",
+      "lines": 518,
+      "cells": 18
+    },
+    {
+      "kind": "book",
+      "path": "12-Factorization.md",
+      "sha256": "5ee498c597394b1fab60120855597f375c2f94136487779241681582a05d64a1",
+      "lines": 1103,
+      "cells": 60
+    },
+    {
+      "kind": "book",
+      "path": "13-Square_Roots.md",
+      "sha256": "2abeb6d43e479e0322c7b00411e850fd9ddc3025018b68688034b074bd086bf9",
+      "lines": 1341,
+      "cells": 43
+    },
+    {
+      "kind": "book",
+      "path": "14-Quad_Sieve_Index_Calc.md",
+      "sha256": "88b4200607ddff223d2693d1816a95e28accc26e12275458ccad650bf90477c9",
+      "lines": 868,
+      "cells": 28
+    },
+    {
+      "kind": "book",
+      "path": "15-Digital_Signatures.md",
+      "sha256": "1bf366d0d4ce5ea29e1a8fdae88e5c2c01c070d37f85a8fee2818d08c398d794",
+      "lines": 371,
+      "cells": 23
+    },
+    {
+      "kind": "book",
+      "path": "16-Elliptic_Curves.md",
+      "sha256": "bf37020400220e9d18dbdc92acb49ff6aa73f785aadb2e2eb1cdae4af8ba8df7",
+      "lines": 1488,
+      "cells": 69
+    },
+    {
+      "kind": "homework",
+      "path": "hw01.ipynb",
+      "sha256": "620c2b7ebd7cd8dfca71d690de40c7335dfe7d9914073f91507fca8d29072fc3",
+      "lines": 593,
+      "cells": 21
+    },
+    {
+      "kind": "homework",
+      "path": "hw02.ipynb",
+      "sha256": "0d44700f2099018eae9a29c3e370d45e3a574ce6978a52d23f2d02884c027e76",
+      "lines": 470,
+      "cells": 13
+    },
+    {
+      "kind": "homework",
+      "path": "hw03.ipynb",
+      "sha256": "2bcf3819c5e4df233f0e50d2017d8124c742d7f31d825155b47a2bfc5c10efcc",
+      "lines": 539,
+      "cells": 13
+    },
+    {
+      "kind": "homework",
+      "path": "hw04.ipynb",
+      "sha256": "52310bf3c409f5c5b7d272e53e847a1319907551a4fd8916ec3dc479b5fce4c4",
+      "lines": 517,
+      "cells": 13
+    },
+    {
+      "kind": "homework",
+      "path": "hw05.ipynb",
+      "sha256": "d3218668ebc81f60f8683be641c0dae043837e262282015ecbd12bb9e3509c97",
+      "lines": 689,
+      "cells": 19
+    },
+    {
+      "kind": "homework",
+      "path": "hw06.ipynb",
+      "sha256": "8b04e04f7ae1dd02c8934eff22cd9bfc071a41c45e13a2b4a5d940687a926d9d",
+      "lines": 878,
+      "cells": 21
+    },
+    {
+      "kind": "homework",
+      "path": "hw07.ipynb",
+      "sha256": "d4c0b855d09ee635173d09239560323852d05475a7da5bac94a00843c0c7b9e5",
+      "lines": 540,
+      "cells": 13
+    },
+    {
+      "kind": "homework",
+      "path": "hw08.ipynb",
+      "sha256": "1ccdcf0d90ea1bb8dab41eaa9648f64a49b7c226233f1ed0c14d39d58025d487",
+      "lines": 614,
+      "cells": 17
+    },
+    {
+      "kind": "homework",
+      "path": "hw09.ipynb",
+      "sha256": "fb61a73c9465195381468cb80b7a798599b3e9489162f12a137590e9548442b7",
+      "lines": 860,
+      "cells": 19
+    },
+    {
+      "kind": "homework",
+      "path": "hw10.ipynb",
+      "sha256": "1eca5a317ceb253468bfd06281584800ed80e8cbd947799ed84356b968517894",
+      "lines": 539,
+      "cells": 11
+    }
+  ]
+}

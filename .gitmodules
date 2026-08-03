@@ -10,3 +10,9 @@
 [submodule "upstream-tests/tree-sitter-matlab"]
 	path = upstream-tests/tree-sitter-matlab
 	url = https://github.com/acristoffers/tree-sitter-matlab.git
+[submodule "upstream-tests/pcimc/source"]
+	path = upstream-tests/pcimc/source
+	url = https://github.com/lrfinotti/pcimc.git
+[submodule "upstream-tests/pcimc/homework-source"]
+	path = upstream-tests/pcimc/homework-source
+	url = https://github.com/lrfinotti/pcimc-hw.git

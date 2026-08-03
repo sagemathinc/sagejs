@@ -1,0 +1,20 @@
+{
+  "book": {
+    "repository": "https://github.com/lrfinotti/pcimc.git",
+    "revision": "9729e4d74416cd8664863f188c38675735e9c6ff",
+    "license": "GPL-3.0-only"
+  },
+  "homework": {
+    "repository": "https://github.com/lrfinotti/pcimc-hw.git",
+    "revision": "53bacdec1d821c1657ac5c903000be4bdbc6c9c3",
+    "license": "NOASSERTION"
+  },
+  "retrieved": "2026-08-03",
+  "permission": {
+    "status": "explicit",
+    "grantedBy": "Luís Finotti",
+    "granted": "2026-08-03",
+    "scope": "Include all code from the book and homework repositories in the Sage.js test suite.",
+    "evidence": "Author confirmation in the sage-support email thread: Yes, you do have permission."
+  }
+}
