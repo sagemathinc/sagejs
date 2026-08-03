@@ -487,7 +487,12 @@ def print_list_comprehension(self, output):
             # make sure to locally scope loop variables
             for clause in clauses:
                 if is_node_type(clause.init, AST_Array):
-                    for i in clause.init.elements:
+                    # Nested tuple targets are destructuring patterns, not
+                    # tuple-valued variable declarations.  Declare each leaf
+                    # name; printing an inner AST_Array with python_tuples
+                    # enabled would otherwise emit invalid JavaScript such as
+                    # ``var rho_math_tuple([x, y])``.
+                    for i in clause.init.flatten():
                         body_out.comma()
                         i.print(body_out)
                 else:
