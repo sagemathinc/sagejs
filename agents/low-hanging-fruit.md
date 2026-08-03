@@ -141,6 +141,8 @@ Status meanings:
     other deques, independent of `maxlen`. Deque concatenation and repetition
     now preserve the left operand's type and bound, including reflected and
     identity-preserving in-place repetition.
+    `operator.index` now validates the `__index__` result and reports missing
+    index support with CPython-compatible `TypeError` behavior.
 
 ## Graphics and foreign-language compatibility
 

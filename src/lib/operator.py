@@ -19,6 +19,21 @@ __all__ = [
 _missing = object()
 
 
+def _type_name(value):
+    try:
+        name = type(value).__name__
+    except AttributeError:
+        rendered = repr(type(value))
+        if rendered.startswith("<class '") and rendered.endswith("'>"):
+            return rendered[8:-2].rsplit('.', 1)[-1]
+        return rendered
+    if name == 'SageObject':
+        return 'object'
+    if name.startswith('ρσ_'):
+        return name[3:]
+    return name
+
+
 def lt(left, right):
     return left < right
 
@@ -86,7 +101,18 @@ def floordiv(left, right):
 def index(value):
     if isinstance(value, int):
         return int(value)
-    return value.__index__()
+    try:
+        method = value.__index__
+    except AttributeError:
+        raise TypeError(
+            "'" + _type_name(value)
+            + "' object cannot be interpreted as an integer")
+    answer = method()
+    if not isinstance(answer, int):
+        raise TypeError(
+            '__index__ returned non-int (type '
+            + _type_name(answer) + ')')
+    return int(answer)
 
 
 def inv(value):
