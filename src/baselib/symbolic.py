@@ -1568,6 +1568,300 @@ def integral(
         variable, lower, upper)
 
 
+_GAUSS_KRONROD_21_ABSCISSAE = [
+    0.9956571630258081,
+    0.9739065285171717,
+    0.9301574913557082,
+    0.8650633666889845,
+    0.7808177265864169,
+    0.6794095682990244,
+    0.5627571346686047,
+    0.4333953941292472,
+    0.2943928627014602,
+    0.14887433898163122,
+]
+_GAUSS_KRONROD_21_WEIGHTS = [
+    0.011694638867371874,
+    0.03255816230796473,
+    0.054755896574351996,
+    0.07503967481091995,
+    0.0931254545836976,
+    0.10938715880229764,
+    0.12349197626206585,
+    0.13470921731147333,
+    0.14277593857706008,
+    0.14773910490133849,
+]
+_GAUSS_10_WEIGHTS = [
+    0.0,
+    0.06667134430868814,
+    0.0,
+    0.1494513491505806,
+    0.0,
+    0.21908636251598204,
+    0.0,
+    0.26926671930999635,
+    0.0,
+    0.29552422471475287,
+]
+_GAUSS_KRONROD_21_CENTER_WEIGHT = 0.1494455540029169
+_MACHINE_EPSILON = 2.220446049250313e-16
+
+
+def _gauss_kronrod_21(
+    function_value: Callable[[float], float],
+    lower: float,
+    upper: float,
+) -> tuple[float, float]:
+    """Apply the embedded 10/21 Gauss-Kronrod rule to one interval."""
+    center = (lower + upper) / 2.0
+    half_length = (upper - lower) / 2.0
+    absolute_half_length = abs(half_length)
+    center_value = float(function_value(center))
+    kronrod_sum = _GAUSS_KRONROD_21_CENTER_WEIGHT * center_value
+    gauss_sum = 0.0
+    absolute_sum = (
+        _GAUSS_KRONROD_21_CENTER_WEIGHT * abs(center_value))
+    sampled_pairs = []
+    for index in range(len(_GAUSS_KRONROD_21_ABSCISSAE)):
+        displacement = (
+            half_length * _GAUSS_KRONROD_21_ABSCISSAE[index])
+        left_value = float(function_value(center - displacement))
+        right_value = float(function_value(center + displacement))
+        sampled_pairs.append((left_value, right_value))
+        pair_sum = left_value + right_value
+        kronrod_sum += _GAUSS_KRONROD_21_WEIGHTS[index] * pair_sum
+        gauss_sum += _GAUSS_10_WEIGHTS[index] * pair_sum
+        absolute_sum += (
+            _GAUSS_KRONROD_21_WEIGHTS[index]
+            * (abs(left_value) + abs(right_value))
+        )
+    mean = kronrod_sum / 2.0
+    absolute_deviation = (
+        _GAUSS_KRONROD_21_CENTER_WEIGHT * abs(center_value - mean))
+    for index in range(len(sampled_pairs)):
+        absolute_deviation += (
+            _GAUSS_KRONROD_21_WEIGHTS[index]
+            * (
+                abs(sampled_pairs[index][0] - mean)
+                + abs(sampled_pairs[index][1] - mean)
+            )
+        )
+    result = kronrod_sum * half_length
+    gauss_result = gauss_sum * half_length
+    absolute_integral = absolute_sum * absolute_half_length
+    absolute_deviation *= absolute_half_length
+    error = abs(result - gauss_result)
+    if absolute_deviation != 0.0 and error != 0.0:
+        error = absolute_deviation * min(
+            1.0,
+            (200.0 * error / absolute_deviation) ** 1.5,
+        )
+    error = max(
+        error,
+        50.0 * _MACHINE_EPSILON * absolute_integral,
+    )
+    return result, error
+
+
+def _adaptive_numerical_integral(
+    function_value: Callable[[float], float],
+    lower: float,
+    upper: float,
+    max_intervals: int,
+    eps_abs: float,
+    eps_rel: float,
+    adaptive: bool,
+) -> tuple[float, float]:
+    result, error = _gauss_kronrod_21(
+        function_value, lower, upper)
+    if not adaptive:
+        return result, error
+    intervals = [[lower, upper, result, error]]
+    while (
+        runtime.number.isFinite(result)
+        and runtime.number.isFinite(error)
+        and error > max(eps_abs, eps_rel * abs(result))
+        and len(intervals) < max_intervals
+    ):
+        runtime.check_interrupt()
+        worst_index = 0
+        for index in range(1, len(intervals)):
+            if intervals[index][3] > intervals[worst_index][3]:
+                worst_index = index
+        current = intervals.pop(worst_index)
+        midpoint = (current[0] + current[1]) / 2.0
+        if midpoint == current[0] or midpoint == current[1]:
+            intervals.append(current)
+            break
+        left_result, left_error = _gauss_kronrod_21(
+            function_value, current[0], midpoint)
+        right_result, right_error = _gauss_kronrod_21(
+            function_value, midpoint, current[1])
+        result += left_result + right_result - current[2]
+        error += left_error + right_error - current[3]
+        intervals.append([
+            current[0], midpoint, left_result, left_error])
+        intervals.append([
+            midpoint, current[1], right_result, right_error])
+    return result, max(0.0, error)
+
+
+def _numerical_integral_callable(
+    function_value: Any,
+    params: Any,
+) -> Callable[[float], float] | None:
+    parameters = [] if params is None else list(params)
+    if isinstance(function_value, CallableExpression):
+        variables = list(function_value._arguments_tuple())
+    elif isinstance(function_value, Expression):
+        variables = list(function_value.variables())
+    else:
+        variables = None
+    if variables is not None:
+        if len(variables) == 0:
+            return None
+        if len(variables) != len(parameters) + 1:
+            raise ValueError(
+                'The function to be integrated depends on '
+                + str(len(variables)) + ' variables '
+                + str(runtime.math_tuple(variables))
+                + ', and so cannot be integrated in one dimension. '
+                + "Please fix additional variables with the 'params' argument"
+            )
+        if len(parameters):
+            substitutions = runtime.object.create(None)
+            for index in range(len(parameters)):
+                runtime.reflect.set(
+                    substitutions,
+                    _symbol_name(variables[index + 1]),
+                    _expression_tree(parameters[index]),
+                )
+            function_value = Expression(_call_backend(
+                'substitute',
+                [function_value._tree, substitutions],
+            ))
+        return fast_callable(function_value, vars=[variables[0]])
+    if callable(function_value):
+        def evaluate(value: float) -> float:
+            evaluated = runtime.reflect.apply(
+                function_value,
+                runtime.undefined,
+                [value] + parameters,
+            )
+            return float(evaluated)
+        return evaluate
+    return None
+
+
+def numerical_integral(
+    function_value: Any,
+    a: Any,
+    b: Any = None,
+    algorithm: str = 'qag',
+    max_points: int = 87,
+    params: Any = None,
+    eps_abs: float = 1e-6,
+    eps_rel: float = 1e-6,
+    rule: int = 6,
+) -> tuple[float, float]:
+    r"""Numerically integrate a real function and estimate absolute error.
+
+    The default adaptive implementation uses an embedded 10/21-point
+    Gauss-Kronrod pair and QUADPACK-style error rescaling.  Sage's `qag`,
+    `qags`, and non-adaptive `qng` algorithm names are accepted; `qags`
+    currently uses adaptive subdivision without epsilon extrapolation, and
+    every `rule` value uses the same 10/21-point embedded pair.
+    """
+    if b is None or isinstance(a, (list, tuple)):
+        interval = list(a)
+        if len(interval) != 2:
+            raise TypeError('integration interval must contain two endpoints')
+        a, b = interval
+    lower = float(a)
+    upper = float(b)
+    if lower == upper:
+        return runtime.math_tuple([0.0, 0.0])
+    algorithm_name = str(algorithm)
+    if algorithm_name not in ('qag', 'qags', 'qng'):
+        raise TypeError('invalid integration algorithm')
+    interval_limit = int(max_points)
+    if interval_limit < 1:
+        raise ValueError('max_points must be positive')
+    rule_number = int(rule)
+    if rule_number < 1 or rule_number > 6:
+        raise ValueError('rule must be an integer from 1 through 6')
+    absolute_tolerance = float(eps_abs)
+    relative_tolerance = float(eps_rel)
+    if (
+        absolute_tolerance < 0.0
+        or relative_tolerance < 0.0
+        or (absolute_tolerance == 0.0 and relative_tolerance == 0.0)
+    ):
+        raise ValueError('integration tolerances must be nonnegative and nonzero')
+    evaluator = _numerical_integral_callable(function_value, params)
+    if evaluator is None:
+        return runtime.math_tuple([
+            (upper - lower) * float(function_value),
+            0.0,
+        ])
+    finite_lower = runtime.number.isFinite(lower)
+    finite_upper = runtime.number.isFinite(upper)
+    if not finite_lower and not finite_upper:
+        if lower >= 0.0 or upper <= 0.0:
+            raise ValueError('invalid infinite integration interval')
+
+        original_evaluator = evaluator
+
+        def both_infinite(value: float) -> float:
+            denominator = 1.0 - value * value
+            coordinate = value / denominator
+            jacobian = (1.0 + value * value) / (denominator * denominator)
+            return float(original_evaluator(coordinate)) * jacobian
+
+        evaluator = both_infinite
+        lower, upper = -1.0, 1.0
+    elif not finite_upper:
+        if upper < 0.0:
+            raise ValueError('invalid upper integration endpoint')
+        original_evaluator = evaluator
+        finite_start = lower
+
+        def positive_infinite(value: float) -> float:
+            denominator = 1.0 - value
+            coordinate = finite_start + value / denominator
+            return float(original_evaluator(coordinate)) / (denominator ** 2)
+
+        evaluator = positive_infinite
+        lower, upper = 0.0, 1.0
+    elif not finite_lower:
+        if lower > 0.0:
+            raise ValueError('invalid lower integration endpoint')
+        original_evaluator = evaluator
+        finite_end = upper
+
+        def negative_infinite(value: float) -> float:
+            denominator = 1.0 - value
+            coordinate = finite_end - value / denominator
+            return float(original_evaluator(coordinate)) / (denominator ** 2)
+
+        evaluator = negative_infinite
+        lower, upper = 0.0, 1.0
+    result, error = _adaptive_numerical_integral(
+        evaluator,
+        lower,
+        upper,
+        interval_limit,
+        absolute_tolerance,
+        relative_tolerance,
+        algorithm_name != 'qng',
+    )
+    return runtime.math_tuple([result, error])
+
+
+integral_numerical = numerical_integral
+
+
 def limit(
     expression: Any,
     *args: Any,
@@ -2425,6 +2719,52 @@ runtime.register_doc(
             'Many transcendental solution families are not implemented.',
         ],
     ),
+)
+runtime.register_doc(
+    'numerical_integral',
+    numerical_integral,
+    {
+        'kind': 'function',
+        'module': 'sage.symbolic',
+        'tags': [
+            'symbolic mathematics',
+            'calculus',
+            'integration',
+            'numerical',
+        ],
+        'backends': [
+            'Sage.js adaptive quadrature',
+            'Cortex Compute Engine symbolic compiler',
+        ],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': (
+                'Returns a real numerical integral and absolute-error '
+                'estimate using adaptive Gauss-Kronrod quadrature.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath numerical integration API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'calculus/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+        ],
+        'implementation': {
+            'algorithm': (
+                'Adaptive embedded 10/21-point Gauss-Kronrod quadrature '
+                'with QUADPACK-style error rescaling'
+            ),
+        },
+        'limitations': [
+            '`qags` uses adaptive subdivision without epsilon extrapolation.',
+            'Rules 1 through 6 currently use the same 10/21-point pair.',
+        ],
+    },
 )
 runtime.register_doc(
     'fast_callable',

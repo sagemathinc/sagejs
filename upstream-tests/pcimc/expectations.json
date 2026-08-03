@@ -4,7 +4,6 @@
     "book/07-Computing_DL.md:216": "This verification uses `x`, which is defined only inside the preceding automatically skipped timing benchmark."
   },
   "xfail": {
-    "book/02-Python.md:3327": "Numerical quadrature (`numerical_integral`) is not implemented; this needs an adaptive integration backend and error estimate.",
     "book/02-Python.md:3411": "Exact matrix left-eigenspace decomposition is not implemented.",
     "book/02-Python.md:3417": "Exact matrix diagonalizability testing is not implemented.",
     "book/02-Python.md:3423": "Exact matrix diagonalization and change-of-basis output are not implemented.",

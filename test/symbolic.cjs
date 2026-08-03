@@ -46,6 +46,59 @@ async function main() {
     assert.equal(
       (
         await session.evaluate(
+          [
+            "value, error = numerical_integral(exp(x^2), 1, 2)",
+            "(abs(value - 14.989976019600048) < 1e-12, error < 1e-10)",
+          ].join("\n"),
+        )
+      ).repr,
+      "(True, True)",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "quadrature_value, quadrature_error = numerical_integral(",
+            "    lambda t: abs(t - 0.1), 0, 1,",
+            "    eps_abs=1e-12, eps_rel=1e-12)",
+            "(abs(quadrature_value - 0.41) < 1e-12, quadrature_error < 1e-12)",
+          ].join("\n"),
+        )
+      ).repr,
+      "(True, True)",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "parameterized(t, a) = 1/(a + t^2)",
+            "parameter_value = numerical_integral(",
+            "    parameterized, 1, 2, params=[1])[0]",
+            "abs(parameter_value - 0.3217505543966422) < 1e-12",
+          ].join("\n"),
+        )
+      ).repr,
+      "True",
+    );
+    assert.equal(
+      (await session.evaluate("numerical_integral(2, [1,7]) == (12,0)")).repr,
+      "True",
+    );
+    assert.equal(
+      (await session.evaluate("numerical_integral(log, 0, 0) == (0,0)")).repr,
+      "True",
+    );
+    await assert.rejects(
+      session.evaluate("numerical_integral(x, 0, 1, algorithm='unknown')"),
+      /invalid integration algorithm/,
+    );
+    await assert.rejects(
+      session.evaluate("y=var('y'); numerical_integral(x*y, 0, 1)"),
+      /depends on 2 variables/,
+    );
+    assert.equal(
+      (
+        await session.evaluate(
           "limit(sin(2*x)/tan(3*x), x=0)",
         )
       ).repr,

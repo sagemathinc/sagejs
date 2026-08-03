@@ -2473,6 +2473,34 @@ Construct the exact simple field `QQ[a]/(polynomial)`.
 - `sage-derived` — [SageMath number field API](https://doc.sagemath.org/html/en/reference/number_fields/); license GPL-2.0-or-later
 - `library-backed` — [FLINT polynomial arithmetic](https://flintlib.org/doc/)
 
+## `numerical_integral`
+
+```sage
+numerical_integral(function_value, a, b=None, algorithm='qag', max_points=87, params=None, eps_abs=0.000001, eps_rel=0.000001, rule=6)
+```
+
+Numerically integrate a real function and estimate absolute error.
+
+The default adaptive implementation uses an embedded 10/21-point
+Gauss-Kronrod pair and QUADPACK-style error rescaling.  Sage's `qag`,
+`qags`, and non-adaptive `qng` algorithm names are accepted; `qags`
+currently uses adaptive subdivision without epsilon extrapolation, and
+every `rule` value uses the same 10/21-point embedded pair.
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.symbolic`
+- Tags: symbolic mathematics, calculus, integration, numerical
+- Backends: Sage.js adaptive quadrature, Cortex Compute Engine symbolic compiler
+- Sage compatibility: partial — Returns a real numerical integral and absolute-error estimate using adaptive Gauss-Kronrod quadrature.
+- Algorithm: Adaptive embedded 10/21-point Gauss-Kronrod quadrature with QUADPACK-style error rescaling
+- Limitations: `qags` uses adaptive subdivision without epsilon extrapolation. Rules 1 through 6 currently use the same 10/21-point pair.
+
+### Provenance
+
+- `sage-derived` — [SageMath numerical integration API](https://doc.sagemath.org/html/en/reference/calculus/); license GPL-2.0-or-later
+
 ## `octahedron`
 
 ```sage
