@@ -1,10 +1,7 @@
 {
   "fixture": "cells.json",
   "skip": {
-    "book/07-Computing_DL.md:216": "This verification uses `x`, which is defined only inside the preceding automatically skipped timing benchmark.",
-    "book/09-Improving_DL.md:501": "This large Pohlig–Hellman discrete-log subproblem exceeds the 30-second corpus budget; it needs a prime-power digit-lifting implementation instead of generic BSGS.",
-    "book/09-Improving_DL.md:516": "This large Pohlig–Hellman discrete-log subproblem exceeds the bounded corpus runtime with the generic BSGS implementation.",
-    "book/09-Improving_DL.md:534": "This large Pohlig–Hellman discrete-log subproblem exceeds the bounded corpus runtime with the generic BSGS implementation."
+    "book/07-Computing_DL.md:216": "This verification uses `x`, which is defined only inside the preceding automatically skipped timing benchmark."
   },
   "xfail": {
     "book/02-Python.md:3271": "General symbolic limits are not implemented; this requires a limit algorithm in the symbolic backend.",

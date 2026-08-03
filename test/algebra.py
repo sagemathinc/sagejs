@@ -192,6 +192,30 @@ small_random_prime = random_prime(30, lbound=20)
 assrt.ok(is_prime(small_random_prime))
 assrt.ok(20 <= small_random_prime <= 30)
 assrt.equal(discrete_log(GF(101)(2) ** 37, GF(101)(2)), 37)
+assrt.equal(discrete_log(GF(101)(2) ** 37, GF(101)(2), ord=200), 37)
+
+
+def unavailable_discrete_log():
+    discrete_log(GF(101)(2), GF(101)(4))
+
+
+assrt.throws(unavailable_discrete_log, ValueError)
+smooth_field = GF(1009, modulus='primitive')
+smooth_generator = smooth_field.gen()
+assrt.equal(
+    discrete_log(smooth_generator ** 777, smooth_generator),
+    777,
+)
+book_order = BigInt(
+    '22974332779312916308087541215025543130953873335484909873')
+book_prime = BigInt(2) * book_order + BigInt(1)
+book_generator = Mod(3, book_prime)
+book_target = Mod(
+    BigInt(
+        '117619616680834488747814058359345855076997576088312309'),
+    book_prime,
+)
+assrt.equal(discrete_log(book_target, book_generator), 764093480249851)
 large_prime = next_prime(BigInt(2) ** BigInt(256))
 assrt.equal(
     large_prime,

@@ -4348,28 +4348,26 @@ def legendre_symbol(numerator: Any, prime: Any) -> _Int:
     return 1 if residue == runtime.bigint(1) else -1
 
 
-def discrete_log(
-    target: Any,
-    base: Any,
-    ord: Any = runtime.undefined,
-    operation: Any = '*',
-) -> Any:
-    if operation != '*':
-        raise NotImplementedError(
-            'only multiplicative discrete logarithms are implemented')
-    if ord is runtime.undefined or ord is None:
-        if not _builtins_member_is_function(
-            base, 'multiplicative_order'
-        ):
-            raise TypeError(
-                'the base does not provide a multiplicative order')
-        ord = _builtins_call_member(
-            base, 'multiplicative_order', [])
-    order = runtime.integer_bigint(ord)
-    if order <= runtime.bigint(0):
-        raise ValueError('the order must be positive')
-    step = runtime.bigint(
-        runtime.math.ceil(runtime.math.sqrt(runtime.number(order))))
+def _discrete_log_ceil_sqrt(value: Any) -> Any:
+    """Return the exact ceiling of the square root of a positive integer."""
+    lower = runtime.bigint(0)
+    upper = runtime.bigint(1)
+    while runtime.native_mul(upper, upper) < value:
+        lower = upper
+        upper = runtime.native_mul(upper, runtime.bigint(2))
+    while runtime.native_add(lower, runtime.bigint(1)) < upper:
+        middle = runtime.native_div(
+            runtime.native_add(lower, upper), runtime.bigint(2))
+        if runtime.native_mul(middle, middle) < value:
+            lower = middle
+        else:
+            upper = middle
+    return upper
+
+
+def _discrete_log_bsgs(target: Any, base: Any, order: Any) -> Any:
+    """Solve one bounded discrete log using baby-step/giant-step."""
+    step = _discrete_log_ceil_sqrt(order)
     table = dict()
     current = base ** runtime.bigint(0)
     index = runtime.bigint(0)
@@ -4389,10 +4387,90 @@ def discrete_log(
                 runtime.integer_bigint(table.__getitem__(current)),
             )
             if answer < order:
-                return runtime.normalize_integer(answer)
+                return answer
         current = current * factor
         giant_index += runtime.bigint(1)
     raise ValueError('no discrete logarithm found')
+
+
+def discrete_log(
+    target: Any,
+    base: Any,
+    ord: Any = runtime.undefined,
+    operation: Any = '*',
+) -> Any:
+    r"""
+    Return an exponent `x` such that ``base^x == target``.
+
+    The group order is factored and Pohlig–Hellman digit lifting reduces each
+    prime-power component to baby-step/giant-step problems of prime order.
+    This follows Sage's generic multiplicative discrete-log strategy.
+
+    ### Examples
+
+    ```sage
+    sage: g = GF(1009, modulus='primitive').gen()
+    sage: discrete_log(g^777, g)
+    777
+    ```
+    """
+    if operation != '*':
+        raise NotImplementedError(
+            'only multiplicative discrete logarithms are implemented')
+    if ord is runtime.undefined or ord is None:
+        if not _builtins_member_is_function(
+            base, 'multiplicative_order'
+        ):
+            raise TypeError(
+                'the base does not provide a multiplicative order')
+        ord = _builtins_call_member(
+            base, 'multiplicative_order', [])
+    order = runtime.integer_bigint(ord)
+    if order <= runtime.bigint(0):
+        raise ValueError('the order must be positive')
+
+    identity = base ** runtime.bigint(0)
+    factors = []
+    for factor_prime, original_exponent in ρσ_factor(order):
+        prime = runtime.integer_bigint(factor_prime)
+        factor_exponent = original_exponent
+        while factor_exponent > 0:
+            reduced_order = runtime.native_div(order, prime)
+            if base ** reduced_order != identity:
+                break
+            order = reduced_order
+            factor_exponent -= 1
+        if factor_exponent > 0:
+            factors.append((prime, factor_exponent))
+
+    if order == runtime.bigint(1):
+        if target == identity:
+            return 0
+        raise ValueError('no discrete logarithm found')
+
+    residues = []
+    moduli = []
+    for factor_prime, factor_exponent in factors:
+        prime = runtime.integer_bigint(factor_prime)
+        gamma = base ** runtime.native_div(order, prime)
+        residue = runtime.bigint(0)
+        place = runtime.bigint(1)
+        for _digit in range(factor_exponent):
+            next_place = runtime.native_mul(place, prime)
+            corrected = target * (base ** runtime.native_neg(residue))
+            lifted = corrected ** runtime.native_div(order, next_place)
+            coefficient = _discrete_log_bsgs(lifted, gamma, prime)
+            residue = runtime.native_add(
+                residue, runtime.native_mul(coefficient, place))
+            place = next_place
+        residues.append(runtime.normalize_integer(residue))
+        moduli.append(runtime.normalize_integer(place))
+
+    answer = runtime.integer_bigint(crt(residues, moduli))
+    answer = runtime.native_mod(answer, order)
+    if base ** answer != target:
+        raise ValueError('no discrete logarithm found')
+    return runtime.normalize_integer(answer)
 
 
 def ρσ_divisors(value: Any) -> Any:
