@@ -147,6 +147,8 @@ Status meanings:
     keyword mapping through read-only attributes while preserving mutation of
     the keyword mapping itself. Nested partials now flatten to the underlying
     callable with concatenated arguments and merged keyword snapshots.
+    `functools.cached_property` now records its owning attribute through
+    descriptor binding and rejects reuse under a second name.
 
 ## Graphics and foreign-language compatibility
 

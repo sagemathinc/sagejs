@@ -143,12 +143,23 @@ def cache(function):
 class cached_property:
     def __init__(self, function):
         self.func = function
+        # Imported descriptors do not yet receive __set_name__ consistently
+        # from the Sage.js class builder, so retain the usual decorator name
+        # as a fallback while tracking descriptor binding separately.
         self.attrname = getattr(function, '__name__', None)
+        self._bound_name = None
         self.__doc__ = getattr(function, '__doc__', None)
 
     def __set_name__(self, owner, name):
         del owner
-        self.attrname = name
+        if self._bound_name is None:
+            self.attrname = name
+            self._bound_name = name
+        elif name != self._bound_name:
+            raise TypeError(
+                'Cannot assign the same cached_property to two different '
+                "names ('" + self._bound_name + "' and '" + name + "')."
+            )
 
     def __get__(self, instance, owner=None):
         del owner
