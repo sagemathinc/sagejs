@@ -103,7 +103,9 @@ Status meanings:
     with identity, ordering, and non-positive-count filtering preserved.
     `most_common` now rejects non-integer limits and normalizes non-positive
     limits instead of relying on JavaScript slice coercion, while `fromkeys`
-    reports its intentionally undefined semantics.
+    reports its intentionally undefined semantics. `collections.deque` now
+    implements CPython-compatible equality and lexicographic ordering against
+    other deques, independent of `maxlen`.
 
 ## Graphics and foreign-language compatibility
 

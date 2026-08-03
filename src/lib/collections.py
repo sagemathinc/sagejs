@@ -78,6 +78,36 @@ class deque:
     def __delitem__(self, index: int) -> None:
         self._values.pypop(self._bound_index(index))
 
+    def __eq__(self, other: Any) -> Any:
+        if not isinstance(other, deque):
+            return NotImplemented
+        return self._values == other._values
+
+    def __ne__(self, other: Any) -> Any:
+        if not isinstance(other, deque):
+            return NotImplemented
+        return self._values != other._values
+
+    def __lt__(self, other: Any) -> Any:
+        if not isinstance(other, deque):
+            return NotImplemented
+        return self._values < other._values
+
+    def __le__(self, other: Any) -> Any:
+        if not isinstance(other, deque):
+            return NotImplemented
+        return self._values <= other._values
+
+    def __gt__(self, other: Any) -> Any:
+        if not isinstance(other, deque):
+            return NotImplemented
+        return self._values > other._values
+
+    def __ge__(self, other: Any) -> Any:
+        if not isinstance(other, deque):
+            return NotImplemented
+        return self._values >= other._values
+
     def __invert__(self) -> None:
         raise TypeError("bad operand type for unary ~: 'deque'")
 
