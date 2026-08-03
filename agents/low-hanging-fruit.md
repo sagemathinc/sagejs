@@ -79,7 +79,8 @@ Status meanings:
     CPython 3.14 `operator` function and callable-getter APIs and streaming
     `heapq.merge` are done. `bisect` now enforces CPython-compatible integer
     bounds, including `__index__` coercion and argument parsing before key
-    calls.
+    calls. `collections.deque` now enforces integer-only construction and
+    CPython-compatible index coercion and bound normalization.
 
 ## Graphics and foreign-language compatibility
 

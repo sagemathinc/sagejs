@@ -10,6 +10,33 @@ from typing import Any, Iterator
 import sagejs.runtime as runtime
 
 
+def _type_name(value: Any) -> str:
+    name = type(value).__name__
+    if name.startswith('ρσ_'):
+        return name[3:]
+    return name
+
+
+def _as_index(value: Any, *, slice_bound: bool = False) -> int:
+    if value is True or value is False or isinstance(value, int):
+        return int(value)
+    try:
+        method = value.__index__
+    except AttributeError:
+        if slice_bound:
+            raise TypeError(
+                'slice indices must be integers or have an __index__ method')
+        raise TypeError(
+            "'" + _type_name(value)
+            + "' object cannot be interpreted as an integer")
+    answer = method()
+    if not (answer is True or answer is False or isinstance(answer, int)):
+        raise TypeError(
+            '__index__ returned non-int (type '
+            + _type_name(answer) + ')')
+    return int(answer)
+
+
 @runtime.sequence_class
 class deque:
 
@@ -19,6 +46,8 @@ class deque:
         maxlen: Any = None,
     ) -> None:
         if maxlen is not None:
+            if not isinstance(maxlen, int):
+                raise TypeError('an integer is required')
             maxlen = int(maxlen)
             if maxlen < 0:
                 raise ValueError('maxlen must be non-negative')
@@ -33,6 +62,7 @@ class deque:
         return iter(self._values)
 
     def _bound_index(self, index: int) -> int:
+        index = _as_index(index)
         if index < 0:
             index += len(self._values)
         if index < 0 or index >= len(self._values):
@@ -101,8 +131,20 @@ class deque:
         return sum(1 for item in self._values if item == value)
 
     def index(self, value: Any, start: int = 0, stop: Any = None) -> int:
+        length = len(self._values)
+        start = _as_index(start, slice_bound=True)
         if stop is None:
-            stop = len(self._values)
+            stop = length
+        else:
+            stop = _as_index(stop, slice_bound=True)
+        if start < 0:
+            start = max(0, start + length)
+        else:
+            start = min(start, length)
+        if stop < 0:
+            stop = max(0, stop + length)
+        else:
+            stop = min(stop, length)
         for position in range(start, stop):
             if self._values[position] == value:
                 return position
@@ -111,7 +153,7 @@ class deque:
     def insert(self, index: int, value: Any) -> None:
         if self.maxlen is not None and len(self._values) >= self.maxlen:
             raise IndexError('deque already at its maximum size')
-        self._values.insert(index, value)
+        self._values.insert(_as_index(index), value)
 
     def remove(self, value: Any) -> None:
         self._values.pypop(self.index(value))
@@ -120,6 +162,7 @@ class deque:
         self._values.reverse()
 
     def rotate(self, count: int = 1) -> None:
+        count = _as_index(count)
         length = len(self._values)
         if length == 0:
             return
