@@ -632,7 +632,7 @@ class Counter(OrderedDict):
 class ChainMap:
 
     def __init__(self, *maps: Any) -> None:
-        self.maps = list(maps) if maps else [dict()]
+        self.maps = list(maps) if len(maps) != 0 else [dict()]
 
     def copy(self) -> Any:
         return type(self)(self.maps[0].copy(), *self.maps[1:])
@@ -674,7 +674,7 @@ class ChainMap:
         return len(list(self))
 
     def __bool__(self) -> bool:
-        return any(self.maps)
+        return any(len(mapping) != 0 for mapping in self.maps)
 
     def get(self, key: Any, fallback: Any = None) -> Any:
         if key in self:

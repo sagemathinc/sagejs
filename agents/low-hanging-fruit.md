@@ -111,6 +111,9 @@ Status meanings:
     changes from invalidating bounded-deque behavior.
     `collections.ChainMap` lookups now invoke child mapping `__missing__`
     behavior and fall back through the chain's overridable `__missing__` hook.
+    Empty `collections.ChainMap` construction now installs the required first
+    mapping and remains falsey, preserving its invariants under compiled
+    tuple and mapping truthiness.
     Its core mapping helpers now preserve first-map-only mutation, including
     `clear`, `pop`, `popitem`, `setdefault`, `update`, and copying, while `get`
     avoids triggering child `defaultdict` factories. Mapping unions now
