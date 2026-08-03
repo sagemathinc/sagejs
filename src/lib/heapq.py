@@ -113,9 +113,13 @@ def merge(*iterables, key=None, reverse=False):
         heapreplace(heap, entry)
 
 
-def nsmallest(count, iterable, key=None):
-    return sorted(iterable, key=key)[:count]
+def nsmallest(n, iterable, key=None):
+    if n <= 0:
+        return []
+    return sorted(iterable, key=key)[:n]
 
 
-def nlargest(count, iterable, key=None):
-    return sorted(iterable, key=key, reverse=True)[:count]
+def nlargest(n, iterable, key=None):
+    if n <= 0:
+        return []
+    return sorted(iterable, key=key, reverse=True)[:n]
