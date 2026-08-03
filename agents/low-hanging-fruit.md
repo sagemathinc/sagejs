@@ -82,7 +82,9 @@ Status meanings:
     calls. `collections.deque` now enforces integer-only construction and
     CPython-compatible index coercion and bound normalization. `functools`
     now validates and normalizes `lru_cache` capacities and includes keyword
-    argument types in typed cache keys.
+    argument types in typed cache keys. `statistics.harmonic_mean` now validates
+    weighted inputs and ignores zero-valued data carrying zero weight, matching
+    CPython's weighted edge-case semantics.
 
 ## Graphics and foreign-language compatibility
 

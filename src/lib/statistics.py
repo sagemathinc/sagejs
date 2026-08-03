@@ -46,14 +46,28 @@ def harmonic_mean(data, weights=None):
     values = _values(data)
     if any(value < 0 for value in values):
         raise StatisticsError('harmonic mean does not support negative values')
-    if any(value == 0 for value in values):
-        return 0
     if weights is None:
+        if any(value == 0 for value in values):
+            return 0
         return len(values) / sum(1 / value for value in values)
     weights = list(weights)
     if len(values) != len(weights):
-        raise StatisticsError('data and weights must be the same length')
-    return sum(weights) / sum(weight / value for value, weight in zip(values, weights))
+        raise StatisticsError('Number of weights does not match data size')
+    if any(weight < 0 for weight in weights):
+        raise StatisticsError('harmonic mean does not support negative values')
+    total_weight = sum(weights)
+    if total_weight <= 0:
+        raise StatisticsError('Weighted sum must be positive')
+    reciprocal_sum = 0
+    for value, weight in zip(values, weights):
+        if value == 0:
+            if weight:
+                return 0
+        else:
+            reciprocal_sum += weight / value
+    if reciprocal_sum <= 0:
+        raise StatisticsError('Weighted sum must be positive')
+    return total_weight / reciprocal_sum
 
 
 def median(data):
