@@ -94,6 +94,8 @@ Status meanings:
     indexed deletion, including negative and `__index__`-coerced positions.
     `functools.total_ordering` now derives comparisons from any of CPython's
     four supported ordering roots and rejects classes without one.
+    `collections.Counter` now compares counts with CPython's missing-as-zero
+    equality and subset/superset semantics.
 
 ## Graphics and foreign-language compatibility
 

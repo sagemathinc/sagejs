@@ -320,6 +320,48 @@ class Counter(OrderedDict):
             return self._data.__getitem__(key)
         return 0
 
+    def __eq__(self, other: Any) -> Any:
+        if not isinstance(other, Counter):
+            return NotImplemented
+        return all(
+            self.__getitem__(key) == other.__getitem__(key)
+            for counter in (self, other)
+            for key in counter
+        )
+
+    def __ne__(self, other: Any) -> Any:
+        if not isinstance(other, Counter):
+            return NotImplemented
+        return not self == other
+
+    def __le__(self, other: Any) -> Any:
+        if not isinstance(other, Counter):
+            return NotImplemented
+        return all(
+            self.__getitem__(key) <= other.__getitem__(key)
+            for counter in (self, other)
+            for key in counter
+        )
+
+    def __lt__(self, other: Any) -> Any:
+        if not isinstance(other, Counter):
+            return NotImplemented
+        return self <= other and self != other
+
+    def __ge__(self, other: Any) -> Any:
+        if not isinstance(other, Counter):
+            return NotImplemented
+        return all(
+            self.__getitem__(key) >= other.__getitem__(key)
+            for counter in (self, other)
+            for key in counter
+        )
+
+    def __gt__(self, other: Any) -> Any:
+        if not isinstance(other, Counter):
+            return NotImplemented
+        return self >= other and self != other
+
     def update(self, iterable: Any = runtime.undefined, **keywords: Any) -> None:
         if iterable is not runtime.undefined:
             if hasattr(iterable, 'items'):
