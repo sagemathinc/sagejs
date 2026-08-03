@@ -456,3 +456,33 @@ Pollack and Glenn Stevens, *Overconvergent modular symbols and p-adic
 L-functions*, Annales scientifiques de l'École Normale Supérieure 44 (2011),
 1–42. eclib remains an important reference for the specialized
 weight-2/newform pipeline and its linear algebra.
+
+## Durable newform pipeline
+
+`pnpm bench:modular-symbols:checkpoints` benchmarks the research-facing
+weight-2 pipeline, with each stage running in a fresh interpreter:
+
+1. construct `ModularSymbols(N, 2, sign=1)`;
+2. load it and compute the new submodule;
+3. load that and decompose it into Hecke-simple factors;
+4. load those factors and compute matrices for the smallest Hecke prime not
+   dividing the level.
+
+Every stage is saved under `build/modsym-checkpoints`, and `manifest.json`
+records timings, dimensions/traces, file sizes, and SHA-256 digests.  Thus the
+benchmark is also a preemption-safe, auditable computation rather than only a
+single-process timing.  Sage.js and SageMath run by default.  Magma's workspace
+images are process snapshots rather than portable mathematical-object files
+(and older versions can fail to reload package state), so Magma is supported
+as an optional compute-only third comparison:
+
+```bash
+SAGEJS_MODSYM_LEVELS=1000,20000,50000 \
+  SAGEJS_MODSYM_RUNTIMES=sagejs,sage,magma \
+  pnpm bench:modular-symbols:checkpoints
+```
+
+Set `SAGEJS_MODSYM_CHECKPOINT_DIR` to place durable results on another volume.
+Pass `--resume` (or set `SAGEJS_MODSYM_RESUME=1`) to load completed stages and
+continue after interruption; pass `--clean` to begin a fresh sweep.  `SAGELITE_SAGE`
+and `MAGMA` select the comparison executables.

@@ -362,6 +362,7 @@ class SeriesRingParent(sage.Parent):
             'kind': 'laurent_series' if laurent else 'power_series',
             'base': base,
             'variable': variable,
+            'default_precision': default_precision,
         }
         self._polynomial_ring = sage.PolynomialRing(base, variable)
 
@@ -419,6 +420,23 @@ class SeriesRingParent(sage.Parent):
         if shift < 0 and not self._is_laurent:
             target = self._laurent_ring()
         return SeriesElement(target, native_value, shift, precision)
+
+    def _serialization_coefficients(
+        self, value: SeriesElement,
+    ) -> list[Any]:
+        """Return the finite coefficient polynomial used by SagePack."""
+        return self._polynomial_ring._from_native(
+            value._native).coefficients()
+
+    def _from_serialized_series(
+        self,
+        coefficients: list[Any],
+        shift: Any,
+        precision: Any,
+    ) -> SeriesElement:
+        polynomial = self._polynomial_ring._from_coefficients(coefficients)
+        return self._from_native(
+            polynomial._native, int(shift), precision)
 
     def _bigoh(self, precision: int) -> SeriesElement:
         return SeriesElement(

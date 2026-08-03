@@ -732,6 +732,7 @@ class EisensteinSeriesElement(sage.Element):
         index: int,
         precision: int,
     ) -> None:
+        self._kind = 'EisensteinSeriesElement'
         self._parent = parent
         self._index = index
         self._display_precision = precision
@@ -815,6 +816,7 @@ class ModularFormsSubspace(sage.Parent):
         kind: str,
         dimension: int,
     ) -> None:
+        self._kind = 'ModularFormsSubspace'
         self._ambient = ambient
         self._subspace_kind = kind
         self._dimension = dimension
@@ -861,6 +863,7 @@ class EisensteinSubspace(ModularFormsSubspace):
         dimension = dimension_eis(ambient.group(), weight)
         ModularFormsSubspace.__init__(
             self, ambient, 'Eisenstein', dimension)
+        self._kind = 'EisensteinSubspace'
         self._precision = precision
         basis_supported = (
             dimension == 0
@@ -892,6 +895,19 @@ class EisensteinSubspace(ModularFormsSubspace):
                 'q-expansion bases are currently implemented for '
                 'level one and prime Gamma0 level')
         return self._basis
+
+    def _from_serialized_element(
+        self, index: Any, display_precision: Any,
+    ) -> EisensteinSeriesElement:
+        index = _exact_nonnegative_integer(index, 'basis index')
+        if index >= self._dimension:
+            raise IndexError('Eisenstein basis index out of range')
+        return EisensteinSeriesElement(
+            self,
+            index,
+            _exact_nonnegative_integer(
+                display_precision, 'display precision'),
+        )
 
     def precision(self) -> int:
         return self._precision
@@ -974,6 +990,7 @@ class ModularFormsSpace(sage.Parent):
         if group._family != 'Gamma0':
             raise NotImplementedError(
                 'ModularForms currently supports Gamma0')
+        self._kind = 'ModularForms'
         self._group = group
         self._weight = weight
         self._base = base_ring
@@ -1008,6 +1025,24 @@ class ModularFormsSpace(sage.Parent):
 
     def eisenstein_subspace(self) -> EisensteinSubspace:
         return EisensteinSubspace(self, self._precision)
+
+    def _from_serialized_subspace(
+        self,
+        kind: str,
+        dimension: Any,
+        precision: Any = None,
+        eisenstein: Any = False,
+    ) -> ModularFormsSubspace:
+        if bool(eisenstein):
+            return EisensteinSubspace(
+                self,
+                _exact_nonnegative_integer(precision, 'precision'),
+            )
+        return ModularFormsSubspace(
+            self,
+            kind,
+            _exact_nonnegative_integer(dimension, 'dimension'),
+        )
 
     def __repr__(self) -> str:
         return (

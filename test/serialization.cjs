@@ -2,6 +2,9 @@
 
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const test = require("node:test");
 
 const serialization = require("../dist/tools/serialization.js");
@@ -183,7 +186,13 @@ test("research number-theory objects retain exact parents and subspaces", async 
     "star = factor_space.star_involution()",
     "CM = ModularSymbols(chi, 5)",
     "ideal = QF.primes_of_bounded_norm(20)[0]",
-    "value = {'K': K, 'alpha': alpha, 'C': C, 'zeta': zeta, 'QF': QF, 'gaussian': gaussian, 'ideal': ideal, 'E': E, 'P': P, 'O': O, 'G': G, 'chi': chi, 'space': factor_space, 'symbol': symbol, 'hecke': hecke, 'star': star, 'decomposition': decomposition, 'character_space': CM}",
+    "MF = ModularForms(11, 4, prec=20)",
+    "EF = MF.eisenstein_subspace()",
+    "eisenstein = EF.gen(0)",
+    "qexp = eisenstein.q_expansion(30)",
+    "L.<t> = LaurentSeriesRing(QQ, default_prec=17)",
+    "laurent = (t^-2 + 3 + 5*t).add_bigoh(11)",
+    "value = {'K': K, 'alpha': alpha, 'C': C, 'zeta': zeta, 'QF': QF, 'gaussian': gaussian, 'ideal': ideal, 'E': E, 'P': P, 'O': O, 'G': G, 'chi': chi, 'space': factor_space, 'symbol': symbol, 'hecke': hecke, 'star': star, 'decomposition': decomposition, 'character_space': CM, 'MF': MF, 'EF': EF, 'eisenstein': eisenstein, 'qexp': qexp, 'L': L, 'laurent': laurent}",
     "answer = loads(dumps(value))",
     "print(answer['alpha']._coefficients == alpha._coefficients, answer['alpha'].parent() is answer['K'])",
     "print(answer['zeta'] == zeta, answer['zeta'].parent() is answer['C'])",
@@ -198,6 +207,14 @@ test("research number-theory objects retain exact parents and subspaces", async 
     "print(answer['hecke'].matrix() == hecke_matrix, answer['hecke']._space is answer['space'])",
     "print(answer['star'].matrix() == star.matrix(), answer['star']._space is answer['space'])",
     "print(answer['decomposition'][3] is answer['space'], len(answer['decomposition']) == len(decomposition))",
+    "print(answer['EF'].ambient_space() is answer['MF'], answer['EF'].dimension() == EF.dimension())",
+    "print(answer['eisenstein'].parent() is answer['EF'], answer['eisenstein'].q_expansion(30) == qexp)",
+    "print(answer['qexp'].padded_list() == qexp.padded_list(), answer['qexp'].precision_absolute() == 30)",
+    "print(answer['laurent'].padded_list(12) == laurent.padded_list(12), answer['laurent'].parent() is answer['L'])",
+    "signed = ModularSymbols(1000, 2, sign=1)",
+    "signed_data = dumps(signed)",
+    "signed_answer = loads(signed_data)",
+    "print(len(signed_data) < 2048, signed_answer.dimension() == signed.dimension(), signed_answer.sign() == 1)",
   ].join("\n"));
   assert.equal(
     result.stdout.trim(),
@@ -205,6 +222,51 @@ test("research number-theory objects retain exact parents and subspaces", async 
       "True True", "True True", "True True", "True True", "True True",
       "True True", "True", "True True", "True True", "True True",
       "True True", "True True", "True True",
+      "True True", "True True", "True True", "True True",
+      "True True True",
     ].join("\n"),
+  );
+});
+
+test("research SagePack golden vectors are byte-for-byte deterministic", async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "sagejs-golden-"));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const session = await createSage({ mode: "sage" });
+  t.after(() => session.close());
+
+  const series = path.join(directory, "series");
+  const modularForms = path.join(directory, "modforms");
+  const modularSymbols = path.join(directory, "modsym");
+  const result = await session.evaluate([
+    "R.<q> = PowerSeriesRing(QQ, default_prec=13)",
+    "series = (1 + 2*q + 5*q^4).add_bigoh(13)",
+    `save(series, ${JSON.stringify(series)})`,
+    "MF = ModularForms(11, 4, prec=12)",
+    "EF = MF.eisenstein_subspace()",
+    "e = EF.gen(0)",
+    "qexp = e.q_expansion(12)",
+    `save([MF, EF, e, qexp], ${JSON.stringify(modularForms)})`,
+    "M = ModularSymbols(37, 2, sign=1)",
+    "D = M.decomposition()",
+    "packet = [(A, A.T(2)) for A in D]",
+    `save([M, D, packet], ${JSON.stringify(modularSymbols)})`,
+  ].join("\n"));
+  assert.equal(result.stderr || "", "");
+
+  const digest = (filename) => crypto
+    .createHash("sha256")
+    .update(fs.readFileSync(`${filename}.sobj`))
+    .digest("hex");
+  assert.equal(
+    digest(series),
+    "4a1fba24db809f5d147f3e663ef986b74494df899a29830210169a2f8a0484fd",
+  );
+  assert.equal(
+    digest(modularForms),
+    "f6e8c03f908473570e7f3665c6fab00d1da62da224865e2bc4ee9e675a0ddbb2",
+  );
+  assert.equal(
+    digest(modularSymbols),
+    "b2e892adf9b5d4d0cbc8d7294ca9eb6c4cb29a53426348950bc7dad390c878e9",
   );
 });

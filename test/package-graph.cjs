@@ -36,6 +36,10 @@ test("the checked-in package graph owns every Python source and respects budgets
     "arithmetic",
   );
   assert.equal(
+    result.typescriptOwnership.get("tools/serialization-codecs/series.ts"),
+    "arithmetic",
+  );
+  assert.equal(
     result.typescriptOwnership.get("tools/serialization-codecs/elliptic-curves.ts"),
     "elliptic-curves",
   );

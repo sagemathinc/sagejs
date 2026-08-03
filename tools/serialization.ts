@@ -81,6 +81,8 @@ function ensureBuiltinCodecs(): void {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require("./serialization-codecs/number-fields").registerNumberFieldCodecs();
   // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("./serialization-codecs/series").registerSeriesCodecs();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   require("./serialization-codecs/elliptic-curves").registerEllipticCurveCodecs();
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require("./serialization-codecs/modular-forms").registerModularFormsCodecs();

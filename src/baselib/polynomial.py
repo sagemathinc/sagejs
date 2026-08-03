@@ -347,6 +347,21 @@ class PolynomialRingParent(sage.Parent):
     def _from_native(self, native_value: Any) -> PolynomialElement:
         return PolynomialElement(self, native_value)
 
+    def _from_coefficients(
+        self, coefficients: list[Any],
+    ) -> PolynomialElement:
+        """Construct a polynomial from low-to-high coefficients.
+
+        This stays at the mathematical parent boundary instead of exposing a
+        backend-specific native representation.  Portable codecs use it to
+        restore exact polynomials and series.
+        """
+        result = self(0)
+        generator = self.gen()
+        for coefficient in reversed(coefficients):
+            result = result._mul_(generator)._add_(self(coefficient))
+        return result
+
     def gen(self) -> PolynomialElement:
         backend = runtime.flint_backend()
         if self._base is sage.ZZ:

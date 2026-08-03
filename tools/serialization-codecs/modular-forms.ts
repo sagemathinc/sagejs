@@ -53,21 +53,59 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
     }
     case "ModularSymbols": {
       const ambient = Boolean(callMethod(value, "is_ambient"));
+      const subspaceKind = Reflect.get(Object(value), "_subspace_kind");
+      const isCuspidal = Reflect.get(Object(value), "_is_cuspidal");
+      const directAmbient = Reflect.get(Object(value), "_ambient");
+      const canonicalCache = Reflect.get(
+        Object(directAmbient),
+        Reflect.get(Object(value), "_sign") === 1 ? "_plus_cache" : "_minus_cache",
+      );
+      // Weight-2 signed Gamma0 spaces are canonical constructor results, but
+      // internally they are represented by a large sparse basis inside the
+      // sign-zero ambient space.  Persist their construction instead of a
+      // quadratic dense matrix (155 MiB already at level 20,000).
+      const canonicalSigned = !ambient && !Boolean(isCuspidal) &&
+        ["Plus", "Minus"].includes(String(subspaceKind)) &&
+        canonicalCache === value;
       return context.encode({
         kind: "ModularSymbols",
         ambient,
-        group: ambient ? Reflect.get(Object(value), "_group") : null,
-        character: ambient ? Reflect.get(Object(value), "_character") : null,
+        canonicalSigned,
+        group: ambient || canonicalSigned
+          ? Reflect.get(Object(value), "_group")
+          : null,
+        character: ambient || canonicalSigned
+          ? Reflect.get(Object(value), "_character")
+          : null,
         weight: Reflect.get(Object(value), "_weight"),
         sign: Reflect.get(Object(value), "_sign"),
         base: Reflect.get(Object(value), "_base"),
-        ambientSpace: ambient ? null : callMethod(value, "ambient_module"),
-        basis: ambient ? null : callMethod(value, "basis_matrix"),
-        subspaceKind: ambient ? null : Reflect.get(Object(value), "_subspace_kind"),
+        ambientSpace: ambient || canonicalSigned
+          ? null
+          : callMethod(value, "ambient_module"),
+        basis: ambient || canonicalSigned ? null : callMethod(value, "basis_matrix"),
+        subspaceKind: ambient ? null : subspaceKind,
         dimension: callMethod(value, "dimension"),
-        isCuspidal: Reflect.get(Object(value), "_is_cuspidal"),
+        isCuspidal,
       });
     }
+    case "ModularForms":
+      return context.encode({
+        kind: "ModularForms",
+        group: Reflect.get(Object(value), "_group"),
+        weight: Reflect.get(Object(value), "_weight"),
+        base: Reflect.get(Object(value), "_base"),
+        precision: Reflect.get(Object(value), "_precision"),
+      });
+    case "ModularFormsSubspace":
+    case "EisensteinSubspace":
+      return context.encode({
+        kind: kind(value),
+        ambient: Reflect.get(Object(value), "_ambient"),
+        subspaceKind: Reflect.get(Object(value), "_subspace_kind"),
+        dimension: Reflect.get(Object(value), "_dimension"),
+        precision: Reflect.get(Object(value), "_precision"),
+      });
     default:
       throw new SageSerializationError("unsupported modular-forms parent");
   }
@@ -83,6 +121,14 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
         ? callGlobal("DirichletGroup", [data.modulus])
         : callGlobal("DirichletGroup", [data.modulus, data.base, data.zeta]);
     case "ModularSymbols":
+      if (data.canonicalSigned) {
+        return callGlobal("ModularSymbols", [
+          data.character ?? data.group,
+          data.weight,
+          data.sign,
+          data.base,
+        ]);
+      }
       if (data.ambient) {
         return callMethod(data.group, "_from_serialized_modular_symbols", [
           data.character,
@@ -97,6 +143,22 @@ function decodeParent(payload: WireValue, context: DecodeContext): unknown {
         data.basis,
         data.subspaceKind,
         data.sign,
+      ]);
+    case "ModularForms":
+      return callGlobal("ModularForms", [
+        data.group,
+        data.weight,
+        data.base,
+        true,
+        data.precision,
+      ]);
+    case "ModularFormsSubspace":
+    case "EisensteinSubspace":
+      return callMethod(data.ambient, "_from_serialized_subspace", [
+        data.subspaceKind,
+        data.dimension,
+        data.precision,
+        data.kind === "EisensteinSubspace",
       ]);
     default:
       throw new SageSerializationError(
@@ -164,6 +226,13 @@ function encodeElement(value: unknown, context: EncodeContext): WireValue {
         coordinates: callMethod(value, "vector"),
         label: Reflect.get(Object(value), "_label"),
       });
+    case "EisensteinSubspace":
+      return context.encode({
+        kind: "EisensteinSeriesElement",
+        parent,
+        index: Reflect.get(Object(value), "_index"),
+        displayPrecision: Reflect.get(Object(value), "_display_precision"),
+      });
     default:
       throw new SageSerializationError("unsupported modular-forms element");
   }
@@ -179,6 +248,11 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
         data.coordinates,
         data.label,
       ]);
+    case "EisensteinSeriesElement":
+      return callMethod(data.parent, "_from_serialized_element", [
+        data.index,
+        data.displayPrecision,
+      ]);
     default:
       throw new SageSerializationError(
         `unsupported modular-forms element ${String(data.kind)}`,
@@ -189,7 +263,14 @@ function decodeElement(payload: WireValue, context: DecodeContext): unknown {
 const parentCodec: SageCodec = {
   type: "sage.modular_forms.parent",
   version: 1,
-  test: (value) => ["CongruenceSubgroup", "DirichletGroup", "ModularSymbols"].includes(
+  test: (value) => [
+    "CongruenceSubgroup",
+    "DirichletGroup",
+    "ModularSymbols",
+    "ModularForms",
+    "ModularFormsSubspace",
+    "EisensteinSubspace",
+  ].includes(
     kind(value) ?? "",
   ),
   encode: encodeParent,
@@ -199,7 +280,11 @@ const parentCodec: SageCodec = {
 const elementCodec: SageCodec = {
   type: "sage.modular_forms.element",
   version: 1,
-  test: (value) => ["DirichletGroup", "ModularSymbols"].includes(
+  test: (value) => [
+    "DirichletGroup",
+    "ModularSymbols",
+    "EisensteinSubspace",
+  ].includes(
     parentKind(value) ?? "",
   ),
   encode: encodeElement,
