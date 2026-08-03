@@ -471,4 +471,3 @@ configuration.
 - Existing broad Node host: `tools/host.ts`
 - Existing browser/WASM kernel: `packages/flint-wasm/kernel.mjs`
 - Existing browser/WASM architecture notes: `packages/flint-wasm/README.md`
-
