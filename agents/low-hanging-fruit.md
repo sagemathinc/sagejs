@@ -107,6 +107,8 @@ Status meanings:
     with identity, ordering, and non-positive-count filtering preserved.
     `collections.defaultdict.copy` now preserves the default factory, shallow
     value sharing, independent key storage, and the concrete subclass.
+    `collections.deque.maxlen` is now read-only, preventing post-construction
+    changes from invalidating bounded-deque behavior.
     `collections.ChainMap` lookups now invoke child mapping `__missing__`
     behavior and fall back through the chain's overridable `__missing__` hook.
     Its core mapping helpers now preserve first-map-only mutation, including

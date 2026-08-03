@@ -51,9 +51,13 @@ class deque:
             maxlen = int(maxlen)
             if maxlen < 0:
                 raise ValueError('maxlen must be non-negative')
-        self.maxlen = maxlen
+        self._maxlen = maxlen
         self._values = []
         self.extend(iterable)
+
+    @property
+    def maxlen(self) -> Any:
+        return self._maxlen
 
     def __len__(self) -> int:
         return len(self._values)
