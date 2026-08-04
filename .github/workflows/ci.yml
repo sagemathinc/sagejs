@@ -19,7 +19,7 @@ concurrency:
 jobs:
   linux-x64:
     name: Linux x64 native, tests, and SEA
-    runs-on: ubuntu-24.04
+    runs-on: blacksmith-8vcpu-ubuntu-2404
     timeout-minutes: 60
 
     steps:
@@ -54,7 +54,7 @@ jobs:
 
       - name: Bootstrap the complete native system
         env:
-          SAGEJS_BUILD_JOBS: "4"
+          SAGEJS_BUILD_JOBS: "8"
         run: pnpm bootstrap
 
       - name: Enforce the development startup budget
@@ -104,7 +104,7 @@ jobs:
 
       - name: Build and relocation-test both SEA executables
         env:
-          SAGEJS_BUILD_JOBS: "4"
+          SAGEJS_BUILD_JOBS: "8"
         run: pnpm test:sea
 
       - name: Exercise the SEA Jupyter wire protocol
@@ -159,7 +159,7 @@ jobs:
 
   linux-arm64:
     name: Linux arm64 native, tests, and SEA
-    runs-on: ubuntu-24.04-arm
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
     timeout-minutes: 90
 
     steps:
@@ -194,7 +194,7 @@ jobs:
 
       - name: Bootstrap the complete native system
         env:
-          SAGEJS_BUILD_JOBS: "4"
+          SAGEJS_BUILD_JOBS: "8"
         run: pnpm bootstrap
 
       - name: Enforce the development startup budget
@@ -211,7 +211,7 @@ jobs:
 
       - name: Build and relocation-test both SEA executables
         env:
-          SAGEJS_BUILD_JOBS: "4"
+          SAGEJS_BUILD_JOBS: "8"
         run: pnpm test:sea
 
       - name: Package the Linux arm64 SEA distribution
@@ -240,7 +240,7 @@ jobs:
 
   windows-x64:
     name: Windows x64 native, tests, and SEA
-    runs-on: windows-2022
+    runs-on: blacksmith-8vcpu-windows-2025
     timeout-minutes: 120
     permissions:
       contents: read
@@ -281,7 +281,7 @@ jobs:
 
       - name: Build the compiler and native mathematics stack
         env:
-          SAGEJS_BUILD_JOBS: "4"
+          SAGEJS_BUILD_JOBS: "8"
         run: |
           pnpm --dir packages/flint build
           pnpm build
@@ -301,7 +301,7 @@ jobs:
 
       - name: Build and relocation-test both Windows SEA executables
         env:
-          SAGEJS_BUILD_JOBS: "4"
+          SAGEJS_BUILD_JOBS: "8"
         run: pnpm test:sea
 
       - name: Authenticate to Azure Artifact Signing
@@ -365,7 +365,7 @@ jobs:
 
   macos-arm64:
     name: macOS arm64 native, tests, and SEA
-    runs-on: macos-15
+    runs-on: blacksmith-6vcpu-macos-15
     timeout-minutes: 120
 
     steps:
@@ -403,7 +403,7 @@ jobs:
 
       - name: Build the compiler and native mathematics stack
         env:
-          SAGEJS_BUILD_JOBS: "3"
+          SAGEJS_BUILD_JOBS: "6"
         run: |
           pnpm --dir packages/flint build
           pnpm build
@@ -419,7 +419,7 @@ jobs:
 
       - name: Build and relocation-test both macOS SEA executables
         env:
-          SAGEJS_BUILD_JOBS: "3"
+          SAGEJS_BUILD_JOBS: "6"
         run: pnpm test:sea
 
       - name: Import Apple release credentials
