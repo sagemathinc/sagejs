@@ -3,7 +3,10 @@ import { runInThisContext } from "node:vm";
 
 import type { SageLanguageMode } from "./kernel-evaluator";
 import { createTaskEvaluator } from "./task-evaluator";
-import { decode as decodePacket, encode as encodePacket } from "./serialization";
+import {
+  decode as decodePacket,
+  encodeForTransfer as encodePacket,
+} from "./serialization";
 import type { SagePacket } from "./serialization";
 
 interface EncodedFunction {

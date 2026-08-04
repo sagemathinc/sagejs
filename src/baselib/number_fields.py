@@ -539,6 +539,7 @@ class NumberFieldPolynomialQuotient:
 
     def __init__(self, field: NumberFieldParent) -> None:
         self._field = field
+        self._kind = 'NumberFieldPolynomialQuotient'
 
     def __repr__(self) -> str:
         return (

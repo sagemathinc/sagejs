@@ -728,6 +728,7 @@ class MultivariatePolynomialRingParent(sage.Parent):
         variables: list[str],
         order: str = 'degrevlex',
     ) -> None:
+        self._kind = 'MULTIVARIATE_POLYNOMIAL'
         self._base = base
         self._variables = runtime.math_tuple(variables)
         self._order = order
@@ -1438,6 +1439,7 @@ class PolynomialSequence:
         values: Any,
         universe: MultivariatePolynomialRingParent,
     ) -> None:
+        self._kind = 'PolynomialSequence'
         self._values = runtime.math_tuple(values)
         self._universe = universe
         runtime.object.freeze(self)
@@ -1477,6 +1479,7 @@ class PolynomialIdeal:
             raise NotImplementedError(
                 'FLINT ideal arithmetic currently supports QQ')
         self._ring = ring
+        self._kind = 'PolynomialIdeal'
         self._generators = runtime.math_tuple(
             [ring(generator) for generator in generators])
         self._groebner = runtime.undefined

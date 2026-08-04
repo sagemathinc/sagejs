@@ -63,6 +63,7 @@
       "typescript_files": [
         "tools/serialization-codecs/arithmetic.ts",
         "tools/serialization-codecs/number-fields.ts",
+        "tools/serialization-codecs/polynomial.ts",
         "tools/serialization-codecs/series.ts"
       ],
       "prefixes": []

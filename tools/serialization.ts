@@ -40,6 +40,7 @@ export interface SagePacket {
 export interface EncodeContext {
   encode(value: unknown): WireValue;
   buffer(value: ArrayBuffer | ArrayBufferView): WireValue;
+  transferable<T extends ArrayBuffer | ArrayBufferView>(value: T): T;
 }
 
 export interface DecodeContext {
@@ -80,6 +81,8 @@ function ensureBuiltinCodecs(): void {
   require("./serialization-codecs/linear-algebra").registerLinearAlgebraCodecs();
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require("./serialization-codecs/number-fields").registerNumberFieldCodecs();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  require("./serialization-codecs/polynomial").registerPolynomialCodecs();
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   require("./serialization-codecs/series").registerSeriesCodecs();
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -151,17 +154,34 @@ function iterableEntries(value: unknown): [unknown, unknown][] {
   return Array.from(Reflect.apply(entries, value, [])) as [unknown, unknown][];
 }
 
-export function encode(value: unknown): SagePacket {
+function encodePacket(value: unknown, transferOwnedBuffers: boolean): SagePacket {
   const objects: WireRecord[] = [];
   const buffers: ArrayBuffer[] = [];
   const seen = new Map<object, number>();
+  const transferable = new WeakSet<object>();
 
   const context: EncodeContext = {
     encode: encodeValue,
     buffer(bufferValue) {
       const index = buffers.length;
-      buffers.push(exactBuffer(bufferValue));
+      const bytes = bufferValue instanceof ArrayBuffer
+        ? new Uint8Array(bufferValue)
+        : new Uint8Array(
+            bufferValue.buffer,
+            bufferValue.byteOffset,
+            bufferValue.byteLength,
+          );
+      const owned = transferOwnedBuffers && transferable.has(bufferValue) &&
+        bytes.buffer instanceof ArrayBuffer && bytes.byteOffset === 0 &&
+        bytes.byteLength === bytes.buffer.byteLength
+        ? bytes.buffer
+        : exactBuffer(bufferValue);
+      buffers.push(owned);
       return { $buffer: index };
+    },
+    transferable<T extends ArrayBuffer | ArrayBufferView>(bufferValue: T): T {
+      transferable.add(bufferValue);
+      return bufferValue;
     },
   };
 
@@ -205,7 +225,16 @@ export function encode(value: unknown): SagePacket {
         object,
         Object.isFrozen(item) ? "python.tuple" : "python.list",
         1,
-        () => item.map((entry) => encodeValue(entry)) as unknown as WireValue,
+        () => item.map((entry, index) => {
+          try {
+            return encodeValue(entry);
+          } catch (error) {
+            if (error instanceof SageSerializationError) {
+              error.message += ` at sequence index ${index}`;
+            }
+            throw error;
+          }
+        }) as unknown as WireValue,
       );
     }
     if (isUint8Array(item)) {
@@ -253,9 +282,16 @@ export function encode(value: unknown): SagePacket {
     ensureBuiltinCodecs();
     for (const codec of codecs) {
       if (codec.test(item)) {
-        return record(object, codec.type, codec.version, () =>
-          codec.encode(item, context),
-        );
+        return record(object, codec.type, codec.version, () => {
+          try {
+            return codec.encode(item, context);
+          } catch (error) {
+            if (error instanceof SageSerializationError) {
+              error.message += ` while encoding ${codec.type}`;
+            }
+            throw error;
+          }
+        });
       }
     }
 
@@ -266,9 +302,8 @@ export function encode(value: unknown): SagePacket {
         : pythonTypeName(item);
       throw new SageSerializationError(
         `cannot serialize function ${String(representation)}` +
-          (descriptor === undefined
-            ? ""
-            : ` with construction ${String(field(descriptor, "kind"))}`) +
+          ` (kind ${String(parentKind(item) ?? "unknown")}, construction ` +
+          `${String(field(descriptor, "kind") ?? "unknown")})` +
           "; executable code is never part of the v1 data format",
       );
     }
@@ -277,7 +312,16 @@ export function encode(value: unknown): SagePacket {
       return record(object, "javascript.object", 1, () =>
           Object.keys(item)
             .sort()
-            .map((key) => [key, encodeValue(item[key])]) as unknown as WireValue,
+            .map((key) => {
+              try {
+                return [key, encodeValue(item[key])];
+              } catch (error) {
+                if (error instanceof SageSerializationError) {
+                  error.message += ` at property ${key}`;
+                }
+                throw error;
+              }
+            }) as unknown as WireValue,
       );
     }
     throw new SageSerializationError(
@@ -292,6 +336,15 @@ export function encode(value: unknown): SagePacket {
     objects,
     buffers,
   };
+}
+
+export function encode(value: unknown): SagePacket {
+  return encodePacket(value, false);
+}
+
+/** Encode a worker message, moving only buffers explicitly owned by codecs. */
+export function encodeForTransfer(value: unknown): SagePacket {
+  return encodePacket(value, true);
 }
 
 function validatePacket(packet: SagePacket): void {
@@ -1030,10 +1083,15 @@ function encodeElement(value: unknown, context: EncodeContext): WireValue {
         ? { ...compactResidueEntries, count: entries!.length }
         : undefined
     );
+    const encodedEntries = compactIntegers?.bytes ?? compactRationals?.bytes ??
+      compact?.bytes ?? entries;
+    if (encodedEntries instanceof Uint8Array) {
+      context.transferable(encodedEntries);
+    }
     return context.encode({
       kind,
       parent,
-      entries: compactIntegers?.bytes ?? compactRationals?.bytes ?? compact?.bytes ?? entries,
+      entries: encodedEntries,
       entryEncoding: compactIntegers !== undefined
         ? "fmpz-le-v1"
         : compactRationals !== undefined
@@ -1048,6 +1106,7 @@ function encodeElement(value: unknown, context: EncodeContext): WireValue {
   if (kind === "vector" && parentKind(callMethod(value, "base_ring")) === "QQ") {
     const packed = compactRationals(entries);
     if (packed !== undefined) {
+      context.transferable(packed);
       return context.encode({
         kind,
         parent,

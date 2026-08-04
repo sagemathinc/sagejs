@@ -53,6 +53,43 @@ test("serialization v1 preserves graphs, exact integers, and binary blocks", () 
   );
 });
 
+test("worker packets move codec-owned buffers but copy caller-owned bytes", () => {
+  class OwnedPayload {
+    constructor(bytes) {
+      this.bytes = bytes;
+    }
+  }
+  const unregister = serialization.registerCodec({
+    type: "test.owned-buffer",
+    version: 1,
+    test: (value) => value instanceof OwnedPayload,
+    encode: (value, context) => context.encode({
+      bytes: context.transferable(value.bytes),
+    }),
+    decode: (payload, context) => {
+      const data = context.decode(payload);
+      return new OwnedPayload(data.bytes);
+    },
+  });
+  try {
+    const ownedBytes = new Uint8Array([1, 2, 3, 4]);
+    const transferable = serialization.encodeForTransfer(
+      new OwnedPayload(ownedBytes),
+    );
+    assert.equal(transferable.buffers[0], ownedBytes.buffer);
+
+    const durable = serialization.encode(new OwnedPayload(ownedBytes));
+    assert.notEqual(durable.buffers[0], ownedBytes.buffer);
+    assert.deepEqual([...serialization.decode(durable).bytes], [1, 2, 3, 4]);
+
+    const callerOwned = new Uint8Array([5, 6, 7]);
+    const copied = serialization.encodeForTransfer(callerOwned);
+    assert.notEqual(copied.buffers[0], callerOwned.buffer);
+  } finally {
+    unregister();
+  }
+});
+
 test("mathematical values round trip through durable storage", async (t) => {
   const session = await createSage({ mode: "sage" });
   t.after(() => session.close());
@@ -158,6 +195,50 @@ test("multiprocessing transports mathematical arguments and results", async (t) 
     "print(list(point) == list(P + P))",
   ].join("\n"));
   assert.equal(result.stdout.trim(), "True\nTrue\nTrue\nTrue");
+});
+
+test("polynomial, ideal, quotient, and extension-field data round trip", async (t) => {
+  const session = await createSage({ mode: "sage" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "from multiprocessing import Pool",
+    "from sagejs_serialization import dumps, loads",
+    "K.<a> = GF(9)",
+    "alpha = a^2 + 2*a + 1",
+    "U.<t> = K[]",
+    "f = (a + 1)*t^3 + 2*a*t + 1",
+    "R.<x,y> = PolynomialRing(QQ, order='lex')",
+    "g = -1/2*x^3*y + 7*x*y^2 - y + 3/5",
+    "I = R.ideal(x^2 - y, x*y - 1)",
+    "B = I.groebner_basis()",
+    "S.<z> = QQ[]",
+    "N = NumberField(z^2 + z + 1, 'b')",
+    "Q = N.polynomial_quotient_ring()",
+    "answer = loads(dumps([alpha, f, g, I, B, Q]))",
+    "print(answer[0] == alpha, answer[0].parent() is K)",
+    "print(answer[1] == f, answer[1].parent() is U)",
+    "print(answer[2] == g, answer[2].parent() is R)",
+    "print(list(answer[3].gens()) == list(I.gens()), answer[3].ring() is R)",
+    "print(list(answer[4]) == list(B), answer[4].universe() is R)",
+    "print(repr(answer[5]) == repr(Q))",
+    "def return_serialized_polynomial_value(value):",
+    "    return value",
+    "moved = []",
+    "for value in [alpha, g, I, B]:",
+    "    with Pool(1) as pool:",
+    "        moved.append(pool.apply(return_serialized_polynomial_value, (value,)))",
+    "print(moved[0] == alpha, moved[0].parent() is K)",
+    "print(moved[1] == g, moved[1].parent() is R)",
+    "print(list(moved[2].gens()) == list(I.gens()), moved[2].ring() is R)",
+    "print(list(moved[3]) == list(B), moved[3].universe() is R)",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "True True", "True True", "True True", "True True", "True True",
+      "True", "True True", "True True", "True True", "True True",
+    ].join("\n"),
+  );
 });
 
 test("research number-theory objects retain exact parents and subspaces", async (t) => {

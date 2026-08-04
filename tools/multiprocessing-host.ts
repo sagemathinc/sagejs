@@ -168,7 +168,7 @@ function encode(value: unknown, ancestors = new Set<unknown>()): EncodedValue {
       metadata,
     };
   }
-  return serialization().encode(value);
+  return serialization().encodeForTransfer(value);
 }
 
 function decode(value: EncodedValue): unknown {

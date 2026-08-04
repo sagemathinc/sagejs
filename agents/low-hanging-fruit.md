@@ -52,9 +52,12 @@ Status meanings:
 10. **ready — finite-field constructor coverage.** Add explicit modulus
     polynomial construction and serialization round trips where the native
     backend already supports the field.
-11. **ready — polynomial and ideal serialization long tail.** Cover quotient
+11. **done — polynomial and ideal serialization long tail.** Cover quotient
     rings, extension finite fields, multivariate ideals, and Groebner bases
-    with deterministic binary encodings and cross-process tests.
+    with deterministic binary encodings and cross-process tests. SagePack now
+    has package-owned, non-evaluating codecs for canonical extension fields,
+    multivariate polynomial rings and elements, number-field polynomial
+    quotients, ideals, and immutable Groebner-basis sequences.
 
 ## Python language and standard library
 
@@ -185,9 +188,11 @@ Status meanings:
     dense/sparse matrices, polynomials, fields, modular-symbol spaces, graphics,
     and nested containers against Sage `save`/`load`; keep binary bulk data out
     of per-element Python/JavaScript loops.
-24. **ready — worker-transfer serialization.** Use the serialization registry
+24. **done — worker-transfer serialization.** Use the serialization registry
     for zero-copy or single-copy worker messages where possible, with ownership
-    and mutation semantics tested explicitly.
+    and mutation semantics tested explicitly. Worker packets now move fresh
+    codec-owned native buffers without another copy while caller-owned byte
+    arrays retain copy-on-send semantics and remain attached.
 25. **done — normalized startup guardrail.** Fresh-process medians are compared
     with contemporaneous bare Node startup, with a 300 ms normalized budget
     and a separate catastrophic raw ceiling so loaded CI does not create flaky
