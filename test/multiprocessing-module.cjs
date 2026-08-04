@@ -105,6 +105,122 @@ test("warm Pool.map tasks execute concurrently", async (t) => {
   assert.equal(result.stdout.trim(), "True");
 });
 
+test("async pool results support callbacks, errors, and timeouts", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  const result = await session.evaluate(
+    [
+      "from multiprocessing import Pool, TimeoutError",
+      "from time import sleep, time",
+      "callbacks = []",
+      "errors = []",
+      "def square(x):",
+      "    return x*x",
+      "def quotient(x):",
+      "    return 1 // x",
+      "def missing(key):",
+      "    return {}[key]",
+      "def record(value):",
+      "    callbacks.append(value)",
+      "def record_error(error):",
+      "    errors.append(type(error).__name__)",
+      "p = Pool(2)",
+      "started = time()",
+      "one = p.apply_async(sleep, (0.15,), callback=record)",
+      "print(time() - started < 0.1, one.ready())",
+      "try:",
+      "    one.successful()",
+      "except ValueError:",
+      "    print('not-ready')",
+      "try:",
+      "    one.get(0.01)",
+      "except TimeoutError:",
+      "    print('timeout')",
+      "print(one.get(2), one.ready(), one.successful(), callbacks)",
+      "mapped = p.map_async(square, [2, 3, 4], callback=record)",
+      "starred = p.starmap_async(pow, [(2, 5), (3, 3)])",
+      "bad = p.apply_async(quotient, (0,), error_callback=record_error)",
+      "missing_result = p.apply_async(missing, ('x',))",
+      "print(mapped.get(2), starred.get(2))",
+      "try:",
+      "    bad.get(2)",
+      "except ZeroDivisionError as error:",
+      "    print(type(error).__name__, errors)",
+      "try:",
+      "    missing_result.get(2)",
+      "except KeyError as error:",
+      "    print(type(error).__name__)",
+      "p.close()",
+      "p.join()",
+    ].join("\n"),
+  );
+
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "True False",
+      "not-ready",
+      "timeout",
+      "None True True [None]",
+      "[4, 9, 16] [32, 27]",
+      "ZeroDivisionError ['ZeroDivisionError']",
+      "KeyError",
+    ].join("\n"),
+  );
+});
+
+test("pool initializers and shutdown preserve pending result semantics", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  const result = await session.evaluate(
+    [
+      "from multiprocessing import Pool",
+      "from time import sleep, time",
+      "def initialize(value):",
+      "    global worker_offset",
+      "    worker_offset = value",
+      "def add_offset(value):",
+      "    return worker_offset + value",
+      "joined_callbacks = []",
+      "p = Pool(2, initializer=initialize, initargs=(40,))",
+      "print(p.map(add_offset, [1, 2, 3, 4]))",
+      "pending = p.apply_async(add_offset, (5,), callback=joined_callbacks.append)",
+      "started = time()",
+      "p.close()",
+      "print(time() - started < 0.1)",
+      "p.join()",
+      "print(pending.get(), pending.get(), joined_callbacks)",
+      "q = Pool(1)",
+      "cancelled = q.apply_async(sleep, (1,))",
+      "q.terminate()",
+      "q.join()",
+      "try:",
+      "    cancelled.get()",
+      "except RuntimeError as error:",
+      "    print(type(error).__name__, str(error))",
+      "def fail_initializer():",
+      "    raise ValueError('initializer failed')",
+      "try:",
+      "    Pool(1, initializer=fail_initializer)",
+      "except ValueError as error:",
+      "    print(type(error).__name__, str(error))",
+    ].join("\n"),
+  );
+
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "[41, 42, 43, 44]",
+      "True",
+      "45 45 [45]",
+      "RuntimeError multiprocessing pool was terminated",
+      "ValueError initializer failed",
+    ].join("\n"),
+  );
+});
+
 test("multiprocessing imports without a worker host capability", () => {
   const output = [];
   const evaluator = createKernelEvaluator({

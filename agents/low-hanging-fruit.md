@@ -68,11 +68,15 @@ Status meanings:
 14. **ready — file-object compatibility.** Extend buffering, seeking,
     iteration, newline handling, encodings, context-manager behavior, and
     exception attributes using CPython's focused IO tests.
-15. **ready — `multiprocessing` API long tail.** Add `imap`, unordered results,
+15. **done — `multiprocessing` API long tail.** Add `imap`, unordered results,
    async results, initializers, timeouts, worker exceptions, and robust pool
    shutdown over worker threads. Preserve Python-facing semantics while
    documenting the intentional shared-process model. Synchronous `apply`,
-   `imap`, and `imap_unordered` are done; async results and initializers remain.
+   `imap`, and `imap_unordered` are done. `apply_async`, `map_async`, and
+   `starmap_async` now return CPython-style result handles with readiness,
+   success, timeout, callback, and error-callback behavior. Initializers run
+   once in each persistent evaluator, built-in worker exceptions retain their
+   Python types, and close, terminate, and join preserve pending-result state.
 16. **ready — common pure utility modules.** Expand `functools`, `itertools`,
     `collections`, `statistics`, `bisect`, `heapq`, `operator`, `textwrap`, and
     `re` only through differential tests, keeping them lazy at startup. The

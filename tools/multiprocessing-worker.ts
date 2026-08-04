@@ -32,6 +32,7 @@ interface CallableSpec {
 
 interface TaskMessage {
   type: "task";
+  jobId: number;
   id: number;
   callable: CallableSpec;
   args: EncodedValue[];
@@ -92,6 +93,21 @@ try {
       signal();
     },
   });
+  if (workerData.initializer) {
+    evaluator.invoke(
+      {
+        ...workerData.initializer,
+        bindings: workerData.initializer.bindings
+          ? Object.fromEntries(
+              Object.entries(workerData.initializer.bindings).map(
+                ([name, value]) => [name, decode(value as EncodedValue)],
+              ),
+            )
+          : undefined,
+      },
+      ((workerData.initargs as EncodedValue[] | undefined) ?? []).map(decode),
+    );
+  }
   Atomics.store(state, workerIndex + 1, 1);
   port.postMessage({ type: "ready", workerIndex });
   signal();
@@ -135,6 +151,7 @@ port.on("message", (message: TaskMessage | { type: "close" }) => {
     const value = encode(result);
     port.postMessage({
       type: "result",
+      jobId: message.jobId,
       id: message.id,
       ok: true,
       value,
@@ -142,6 +159,7 @@ port.on("message", (message: TaskMessage | { type: "close" }) => {
   } catch (error) {
     port.postMessage({
       type: "result",
+      jobId: message.jobId,
       id: message.id,
       ok: false,
       error: errorValue(error),

@@ -1,11 +1,9 @@
 """Process-like parallelism backed by Sage.js worker threads.
 
-The initial Sage.js implementation provides the familiar synchronous
-``Pool.apply``, ``Pool.map``, ``Pool.starmap``, ``Pool.imap``, and
-``Pool.imap_unordered`` interfaces. Workers are persistent isolated Sage.js
-evaluators in one operating-system process. This is well suited to
-CPU-bound research computations and avoids exposing Node.js primitives to
-Python code.
+Sage.js provides the familiar synchronous and asynchronous ``Pool``
+interfaces. Workers are persistent isolated Sage.js evaluators in one
+operating-system process. This is well suited to CPU-bound research
+computations and avoids exposing Node.js primitives to Python code.
 
 Task functions and values cross an isolation boundary.  Module-level
 functions and self-contained top-level functions work; closures do not yet.
@@ -44,25 +42,135 @@ def _host_call(operation, *args):
             if remote_message is None:
                 remote_message = _property(
                     error, 'message', 'multiprocessing worker failed')
-            if remote_name == 'TypeError':
-                exception_class = TypeError
-            elif remote_name == 'ValueError':
-                exception_class = ValueError
-            elif remote_name == 'ZeroDivisionError':
-                exception_class = ZeroDivisionError
-            elif remote_name == 'NotImplementedError':
-                exception_class = NotImplementedError
-            elif remote_name == 'OSError':
-                exception_class = OSError
-            else:
-                exception_class = RuntimeError
-            if exception_class is RuntimeError and remote_name != 'RuntimeError':
-                remote_message = remote_name + ': ' + remote_message
-            raise exception_class(remote_message)
+            raise _remote_exception(remote_name, remote_message)
         name = _property(error, 'name', 'RuntimeError')
         message = _property(error, 'message', 'multiprocessing worker failed')
-        raise RuntimeError(name + ': ' + message)
+        raise _remote_exception(name, message)
     return _property(result, 'value')
+
+
+def _remote_exception(remote_name, remote_message):
+    if remote_name == 'TypeError':
+        exception_class = TypeError
+    elif remote_name == 'ValueError':
+        exception_class = ValueError
+    elif remote_name == 'ZeroDivisionError':
+        exception_class = ZeroDivisionError
+    elif remote_name == 'NotImplementedError':
+        exception_class = NotImplementedError
+    elif remote_name == 'OSError':
+        exception_class = OSError
+    elif remote_name == 'KeyError':
+        exception_class = KeyError
+    elif remote_name == 'IndexError':
+        exception_class = IndexError
+    elif remote_name == 'AttributeError':
+        exception_class = AttributeError
+    elif remote_name == 'OverflowError':
+        exception_class = OverflowError
+    elif remote_name == 'AssertionError':
+        exception_class = AssertionError
+    elif remote_name == 'ImportError':
+        exception_class = ImportError
+    elif remote_name == 'NameError':
+        exception_class = NameError
+    else:
+        exception_class = RuntimeError
+    if exception_class is RuntimeError and remote_name != 'RuntimeError':
+        remote_message = remote_name + ': ' + remote_message
+    return exception_class(remote_message)
+
+
+class TimeoutError(Exception):
+    """Raised when an asynchronous pool result misses its deadline."""
+
+
+class ApplyResult:
+    """Result handle returned by :meth:`Pool.apply_async`.
+
+    Callbacks run in the parent evaluator when the result is polled, waited
+    for, retrieved, or collected by :meth:`Pool.join`. Sage.js deliberately
+    does not add a Python-visible callback-handler thread.
+    """
+
+    def __init__(self, pool, job_id, single=False, callback=None,
+                 error_callback=None):
+        self._pool = pool
+        self._job_id = job_id
+        self._single = single
+        self._callback = callback
+        self._error_callback = error_callback
+        self._resolved = False
+        self._success = False
+        self._value = None
+
+    def _resolve(self, timeout):
+        if self._resolved:
+            return True
+        if timeout is None:
+            timeout_ms = None
+        else:
+            timeout_ms = max(0, int(float(timeout) * 1000))
+        result = _host_call(
+            'multiprocessingJobResult',
+            self._pool._pool_id,
+            self._job_id,
+            timeout_ms,
+        )
+        if not _property(result, 'ready', False):
+            return False
+        self._success = _property(result, 'ok', False)
+        if self._success:
+            values = list(_property(result, 'value', []))
+            if self._single:
+                self._value = values[0]
+            else:
+                self._value = values
+        else:
+            error = _property(result, 'error')
+            self._value = _remote_exception(
+                _property(error, 'name', 'RuntimeError'),
+                _property(error, 'message', 'multiprocessing worker failed'),
+            )
+        self._resolved = True
+        _host_call(
+            'multiprocessingForgetJob',
+            self._pool._pool_id,
+            self._job_id,
+        )
+        pool = self._pool
+        self._pool = None
+        pool._discard_result(self)
+        if self._success and self._callback is not None:
+            self._callback(self._value)
+        elif not self._success and self._error_callback is not None:
+            self._error_callback(self._value)
+        return True
+
+    def ready(self):
+        return self._resolve(0)
+
+    def successful(self):
+        if not self.ready():
+            raise ValueError(repr(self) + ' not ready')
+        return self._success
+
+    def wait(self, timeout=None):
+        self._resolve(timeout)
+
+    def get(self, timeout=None):
+        if not self._resolve(timeout):
+            raise TimeoutError()
+        if self._success:
+            return self._value
+        raise self._value
+
+
+AsyncResult = ApplyResult
+
+
+class MapResult(ApplyResult):
+    """Result handle returned by :meth:`Pool.map_async`."""
 
 
 def cpu_count():
@@ -78,17 +186,15 @@ def _apply_call(func, args, kwds):
 class Pool:
     """A persistent pool of isolated Sage.js worker evaluators.
 
-    ``processes`` defaults to :func:`cpu_count`.  The API is synchronous and
-    preserves input order, matching Python's ``multiprocessing.Pool`` for the
-    currently implemented methods.
+    ``processes`` defaults to :func:`cpu_count`. Results preserve input order;
+    unordered iterators may return any completion order.
     """
 
     def __init__(self, processes=None, initializer=None, initargs=(),
                  maxtasksperchild=None):
-        if initializer is not None:
-            raise NotImplementedError('Pool initializer is not implemented yet')
         if initargs:
-            raise ValueError('initargs requires an initializer')
+            if initializer is None:
+                raise ValueError('initargs requires an initializer')
         if maxtasksperchild is not None:
             raise NotImplementedError(
                 'Pool maxtasksperchild is not implemented yet'
@@ -98,7 +204,13 @@ class Pool:
         if not isinstance(processes, int) or processes < 1:
             raise ValueError('Number of processes must be at least 1')
         self._processes = processes
-        self._pool_id = _host_call('multiprocessingCreatePool', processes)
+        self._pool_id = _host_call(
+            'multiprocessingCreatePool',
+            processes,
+            initializer,
+            list(initargs),
+        )
+        self._async_results = []
         self._state = 'RUN'
 
     def _check_running(self):
@@ -127,6 +239,61 @@ class Pool:
             [[func, positional_values, keyword_values]], True
         ))[0]
 
+    def _submit(self, func, values, star, single=False, callback=None,
+                error_callback=None):
+        self._check_running()
+        job_id = _host_call(
+            'multiprocessingSubmitMap',
+            self._pool_id,
+            func,
+            values,
+            star,
+        )
+        if single:
+            result_class = ApplyResult
+        else:
+            result_class = MapResult
+        result = result_class(
+            self,
+            job_id,
+            single=single,
+            callback=callback,
+            error_callback=error_callback,
+        )
+        self._async_results.append(result)
+        return result
+
+    def _discard_result(self, result):
+        if result in self._async_results:
+            self._async_results.remove(result)
+
+    def apply_async(self, func, args=(), kwds=None, callback=None,
+                    error_callback=None):
+        """Submit one call and return an :class:`AsyncResult` immediately."""
+        if kwds is None:
+            kwds = {}
+        return self._submit(
+            _apply_call,
+            [[func, list(args), dict(kwds)]],
+            True,
+            single=True,
+            callback=callback,
+            error_callback=error_callback,
+        )
+
+    def map_async(self, func, iterable, chunksize=None, callback=None,
+                  error_callback=None):
+        """Submit an ordered map and return a :class:`MapResult`."""
+        if chunksize is not None and chunksize < 1:
+            raise ValueError('Chunksize must be 1+, not ' + repr(chunksize))
+        return self._submit(
+            func,
+            list(iterable),
+            False,
+            callback=callback,
+            error_callback=error_callback,
+        )
+
     def starmap(self, func, iterable, chunksize=None):
         """Apply ``func(*args)`` to each argument sequence in order."""
         self._check_running()
@@ -136,6 +303,20 @@ class Pool:
         return list(_host_call(
             'multiprocessingMap', self._pool_id, func, values, True
         ))
+
+    def starmap_async(self, func, iterable, chunksize=None, callback=None,
+                      error_callback=None):
+        """Submit ``func(*args)`` calls and return a :class:`MapResult`."""
+        if chunksize is not None and chunksize < 1:
+            raise ValueError('Chunksize must be 1+, not ' + repr(chunksize))
+        values = [list(argument_values) for argument_values in iterable]
+        return self._submit(
+            func,
+            values,
+            True,
+            callback=callback,
+            error_callback=error_callback,
+        )
 
     def imap(self, func, iterable, chunksize=1):
         """Return an ordered iterator of worker results.
@@ -159,23 +340,24 @@ class Pool:
         return iter(self.map(func, iterable, chunksize))
 
     def close(self):
-        """Finish outstanding work and release the workers."""
+        """Stop accepting work; pending tasks finish before :meth:`join`."""
         if self._state == 'RUN':
             _host_call('multiprocessingClosePool', self._pool_id)
             self._state = 'CLOSE'
 
     def terminate(self):
-        """Release the workers.
-
-        The current synchronous API has no outstanding work when this method
-        can run, so termination and orderly close are equivalent.
-        """
-        self.close()
+        """Stop the workers immediately and fail pending result handles."""
+        if self._state != 'TERMINATE':
+            _host_call('multiprocessingTerminatePool', self._pool_id)
+            self._state = 'TERMINATE'
 
     def join(self):
         """Wait for worker shutdown after :meth:`close` or :meth:`terminate`."""
         if self._state == 'RUN':
             raise ValueError('Pool is still running')
+        _host_call('multiprocessingJoinPool', self._pool_id)
+        for result in list(self._async_results):
+            result.wait(0)
 
     def __enter__(self):
         self._check_running()

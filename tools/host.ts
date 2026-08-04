@@ -595,7 +595,11 @@ export class NodeHostAdapter {
         case "multiprocessingCreatePool":
           return {
             ok: true,
-            value: this.multiprocessing.createPool(Number(args[0])),
+            value: this.multiprocessing.createPool(
+              Number(args[0]),
+              args[1],
+              (args[2] as unknown[] | undefined) ?? [],
+            ),
           };
         case "multiprocessingMap":
           return {
@@ -609,6 +613,38 @@ export class NodeHostAdapter {
           };
         case "multiprocessingClosePool":
           this.multiprocessing.closePool(Number(args[0]));
+          return { ok: true, value: null };
+        case "multiprocessingJoinPool":
+          this.multiprocessing.joinPool(Number(args[0]));
+          return { ok: true, value: null };
+        case "multiprocessingSubmitMap":
+          return {
+            ok: true,
+            value: this.multiprocessing.submitMap(
+              Number(args[0]),
+              args[1],
+              args[2] as unknown[],
+              Boolean(args[3]),
+            ),
+          };
+        case "multiprocessingJobResult":
+          return {
+            ok: true,
+            value: this.multiprocessing.jobResult(
+              Number(args[0]),
+              Number(args[1]),
+              args[2] === null || args[2] === undefined
+                ? undefined
+                : Number(args[2]),
+            ),
+          };
+        case "multiprocessingForgetJob":
+          this.multiprocessing.forgetJob(
+            Number(args[0]), Number(args[1]),
+          );
+          return { ok: true, value: null };
+        case "multiprocessingTerminatePool":
+          this.multiprocessing.terminatePool(Number(args[0]));
           return { ok: true, value: null };
         case "multiprocessingCloseAllPools":
           this.multiprocessing.close();
