@@ -285,14 +285,16 @@ jobs:
             -property installationPath
           if (-not $clangInstallation) {
             $setup = Join-Path $installer "setup.exe"
-            & $setup modify `
-              --installPath $installation `
-              --add Microsoft.VisualStudio.Component.VC.Llvm.Clang `
-              --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset `
-              --quiet `
-              --norestart
-            if ($LASTEXITCODE -notin 0, 3010) {
-              throw "Visual Studio clang-cl installation failed with exit code $LASTEXITCODE"
+            $arguments = 'modify --installPath "{0}" --add {1} --add {2} --quiet --norestart' -f `
+              $installation,
+              "Microsoft.VisualStudio.Component.VC.Llvm.Clang",
+              "Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset"
+            $process = Start-Process -FilePath $setup `
+              -ArgumentList $arguments `
+              -Wait `
+              -PassThru
+            if ($process.ExitCode -notin 0, 3010) {
+              throw "Visual Studio clang-cl installation failed with exit code $($process.ExitCode)"
             }
           }
 
