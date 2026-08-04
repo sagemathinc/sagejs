@@ -8,6 +8,22 @@ assrt.equal(parent(BigInt(2)), ZZ)
 assrt.equal(parent(QQ(1, 3)), QQ)
 assrt.equal(factorial(10), 3628800)
 assrt.equal(binomial(10, 3), 120)
+assrt.equal(binomial(-5, -1), 0)
+assrt.equal(binomial(-5, 0), 1)
+assrt.equal(binomial(-5, 1), -5)
+assrt.equal(binomial(-5, 2), 15)
+assrt.equal(binomial(-5, 8), 495)
+assrt.equal(binomial(5, -1), 0)
+assrt.equal(binomial(5, 7), 0)
+huge_binomial_n = factorial(100)
+assrt.equal(
+    binomial(huge_binomial_n, 2),
+    huge_binomial_n * (huge_binomial_n - 1) // 2,
+)
+assrt.equal(
+    binomial(-huge_binomial_n, 2),
+    huge_binomial_n * (huge_binomial_n + 1) // 2,
+)
 assrt.equal(valuation(2 ** 12 * 3, 2), 12)
 assrt.deepEqual(xgcd(12, 15), (3, -1, 1))
 assrt.equal(gcd([12, 18, 30]), 6)

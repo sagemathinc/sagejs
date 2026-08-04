@@ -4629,19 +4629,47 @@ def binomial(n: Any, k: Any) -> Any:
         raise TypeError('binomial() arguments must be integers')
     n_integer = runtime.integer_bigint(n)
     k_integer = runtime.integer_bigint(k)
-    if n_integer < 0:
-        raise NotImplementedError(
-            'negative upper binomial arguments are not implemented')
-    if k_integer < 0 or k_integer > n_integer:
+    if k_integer < 0:
         return 0
-    if n_integer > runtime.bigint(4294967295):
-        raise OverflowError('binomial() argument is too large')
-    return runtime.normalize_integer(
-        runtime.flint_backend().binomial(
-            runtime.number(n_integer),
-            runtime.number(k_integer),
-        )
-    )
+    negative = n_integer < 0
+    if negative:
+        # The generalized integer identity is
+        #   binomial(n, k) = (-1)^k binomial(k - n - 1, k).
+        upper = runtime.native_sub(
+            runtime.native_sub(k_integer, n_integer), runtime.bigint(1))
+        count = k_integer
+    else:
+        if k_integer > n_integer:
+            return 0
+        upper = n_integer
+        complement = runtime.native_sub(n_integer, k_integer)
+        count = k_integer if k_integer <= complement else complement
+
+    if count == 0:
+        return 1
+    word_limit = runtime.bigint(4294967295)
+    if upper <= word_limit:
+        answer = runtime.flint_backend().binomial(
+            runtime.number(upper), runtime.number(count))
+    else:
+        # Large upper arguments with modest k are common in exact work.  Keep
+        # the intermediate quotient integral at every step and avoid coercing
+        # the upper argument through a JavaScript Number.
+        if count > word_limit:
+            raise OverflowError('binomial() lower argument is too large')
+        answer = runtime.bigint(1)
+        first = runtime.native_sub(upper, count)
+        for index in range(1, runtime.number(count) + 1):
+            answer = runtime.native_div(
+                runtime.native_mul(
+                    answer,
+                    runtime.native_add(first, runtime.bigint(index)),
+                ),
+                runtime.bigint(index),
+            )
+    if negative and runtime.native_bitand(k_integer, runtime.bigint(1)) != 0:
+        answer = runtime.native_neg(answer)
+    return runtime.normalize_integer(answer)
 
 
 def valuation(value: Any, prime: Any) -> Any:
