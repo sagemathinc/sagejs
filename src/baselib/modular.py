@@ -3320,19 +3320,57 @@ class ModularSymbolsSpace(sage.Parent):
             index = index * (runtime.number(prime) + 1) // runtime.number(prime)
         return max(7, self.weight() * index // 12)
 
+    def _refine_decomposition_with_operator(
+        self,
+        spaces: list[ModularSymbolsSpace],
+        operator_index: int,
+    ) -> list[ModularSymbolsSpace]:
+        """Split repeated constituents with one commuting Hecke operator."""
+        finished = []
+        remaining = []
+        for space in spaces:
+            if space.dimension() <= 1:
+                finished.append(space)
+                continue
+            operator = space.hecke_matrix(operator_index)
+            factors = list(operator.charpoly().factor())
+            if len(factors) == 1 and factors[0][1] == 1:
+                finished.append(space)
+                continue
+            for factor_value, exponent in factors:
+                local_basis = factor_value(operator).left_kernel_matrix()
+                if local_basis.nrows() == 0:
+                    continue
+                constituent = space._subspace_from_local_basis(
+                    local_basis, 'Hecke')
+                if exponent == 1:
+                    finished.append(constituent)
+                else:
+                    remaining.append(constituent)
+        return finished + remaining
+
+    def _bad_hecke_primes(self) -> list[int]:
+        """Return the prime divisors whose operators are ``U_p``."""
+        return [runtime.number(pair[0]) for pair in sage.factor(self.level())]
+
     def decomposition(
         self,
         bound: Any = None,
         anemic: bool = True,
         **_kwds: Any,
     ) -> list[ModularSymbolsSpace]:
-        r"""Decompose this space into simple modules for good Hecke operators.
+        r"""Decompose this space into simple modules for Hecke operators.
 
         The implementation follows the standard modular-symbol algorithm:
         factor characteristic polynomials of successive `T_p`, and split by
         the left kernels of their irreducible factors.  A constituent whose
         restricted characteristic polynomial is irreducible is certified
         simple as a module for the commutative Hecke algebra.
+
+        With ``anemic=False``, repeated anemic constituents are further split
+        by every bad-prime `U_p`. Diamond operators are already scalar on the
+        fixed-character spaces currently supported by the native engine, so
+        they require no additional kernels.
 
         ```sage
         sage: M = ModularSymbols(389, 2, sign=1)
@@ -3349,16 +3387,12 @@ class ModularSymbolsSpace(sage.Parent):
         [1, 1, 24]
         ```
         """
-        if not anemic:
-            raise NotImplementedError(
-                'non-anemic decomposition using bad-prime operators is not '
-                'implemented')
         if bound is None:
             decomposition_bound = self._default_decomposition_bound()
         else:
             decomposition_bound = _positive_integer(
                 bound, 'decomposition bound')
-        key = str(decomposition_bound) + ':1'
+        key = str(decomposition_bound) + (':1' if anemic else ':0')
         cached = self._decomposition_cache.get(key)
         if cached is not runtime.undefined:
             return cached
@@ -3391,6 +3425,10 @@ class ModularSymbolsSpace(sage.Parent):
             if len(active) == 0:
                 break
         answer = finished + active
+        if not anemic:
+            for prime in self._bad_hecke_primes():
+                answer = self._refine_decomposition_with_operator(
+                    answer, prime)
         for index in range(1, len(answer)):
             item = answer[index]
             position = index
@@ -4558,10 +4596,12 @@ _modular_symbols_decomposition_doc = _modular_symbols_method_doc(
     ),
 )
 _modular_symbols_decomposition_doc['sage_compatibility'] = {
-    'status': 'partial',
+    'status': 'compatible',
     'notes': (
         'Anemic decomposition by good Hecke operators follows SageMath. '
-        'Bad-prime refinement is not yet implemented.'
+        'Passing anemic=False further refines repeated constituents by every '
+        'bad-prime U_p; diamond operators are scalar on fixed-character '
+        'spaces.'
     ),
 }
 _modular_symbols_decomposition_doc['backends'] = [
@@ -4573,7 +4613,6 @@ _modular_symbols_decomposition_doc['backends'] = [
     'Completely split-prime cyclotomic kernels with exact CRT certificates',
 ]
 _modular_symbols_decomposition_doc['limitations'] = [
-    'Only anemic decomposition by Hecke operators coprime to the level.',
     (
         'Correctness is certified by irreducible restricted characteristic '
         'polynomials; unresolved repeated factors remain grouped if the '

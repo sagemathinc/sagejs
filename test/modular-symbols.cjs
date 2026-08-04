@@ -852,3 +852,33 @@ test("new submodules and simple Hecke decomposition", async () => {
     await session.close();
   }
 });
+
+test("bad-prime operators refine repeated anemic constituents", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "data = []",
+            "for level in [28, 44, 45, 60, 100]:",
+            "    M = ModularSymbols(level, 2, sign=1).cuspidal_subspace()",
+            "    anemic = M.decomposition(anemic=True)",
+            "    full = M.decomposition(anemic=False)",
+            "    data.append((level, [A.dimension() for A in anemic], " +
+              "[A.dimension() for A in full], " +
+              "full is M.decomposition(anemic=False)))",
+            "data",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(28, [2], [1, 1], True), " +
+        "(44, [1, 3], [1, 1, 2], True), " +
+        "(45, [1, 2], [1, 1, 1], True), " +
+        "(60, [2, 2, 3], [1, 1, 1, 2, 2], True), " +
+        "(100, [1, 2, 2, 2], [1, 1, 1, 1, 1, 1, 1], True)]",
+    );
+  } finally {
+    await session.close();
+  }
+});

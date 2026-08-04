@@ -29,9 +29,12 @@ Status meanings:
    when the character descends to the target level; reject the other cases
    explicitly. Test over cyclotomic fields of several degrees. Primitive
    characters and individual primes with no lower-level character are done.
-5. **ready — decomposition refinement at bad primes.** Split repeated anemic
+5. **done — decomposition refinement at bad primes.** Split repeated anemic
    constituents using `U_p` and diamond operators, preserving the fast good-
-   prime path.
+   prime path. ``decomposition(anemic=False)`` now refines by every bad-prime
+   `U_p`; fixed-character diamond operators are scalar and therefore need no
+   further kernels. Small composite-level dimensions are checked directly
+   against SageMath.
 6. **measure — modular-symbol benchmark grid.** Maintain deterministic cases
    varying level, factorization pattern, weight, sign, character order,
    coefficient-field degree, Hecke index, cuspidal/new projection, and
