@@ -23,6 +23,37 @@ assert.deepEqual(
   flint.ecAnlistIntegral(0n, 0n, 1n, -1n, 0n, 37n, 12n),
   [0, 1, -2, -3, 2, -2, 6, -1, 0, 6, 4, -5, -6],
 );
+const secp256k1Prime = 2n ** 256n - 2n ** 32n - 977n;
+const secp256k1X =
+  55066263022277343669578718895168534326250603453777594175500187360389116729240n;
+const secp256k1Y =
+  32670510020758816978083085130507043184471273380659243275938904335757337482424n;
+assert.deepEqual(
+  flint.ecScalarMulPrime(
+    0n, 0n, 0n, 0n, 7n,
+    secp256k1X, secp256k1Y, 2n, secp256k1Prime,
+  ),
+  [
+    89565891926547004231252920425935692360644145829622209833684329913297188986597n,
+    12158399299693830322967808612713398636155367887041628176798871954788371653930n,
+  ],
+);
+assert.deepEqual(
+  flint.ecScalarMulPrime(
+    0n, 0n, 0n, 0n, 7n,
+    secp256k1X, secp256k1Y,
+    115792089237316195423570985008687907852837564279074904382605163141518161494337n,
+    secp256k1Prime,
+  ),
+  [],
+);
+assert.deepEqual(
+  flint.ecScalarMulRational(
+    0n, 1n, 0n, 1n, 1n, 1n, -1n, 1n, 0n, 1n,
+    0n, 1n, 0n, 1n, 10n,
+  ),
+  [161n, 16n, -2065n, 64n],
+);
 
 const projectiveLine = flint.p1List(12);
 assert.equal(flint.p1ListLevel(projectiveLine), 12);

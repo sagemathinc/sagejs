@@ -43,6 +43,27 @@ class Rational(runtime.element):
         self._parent = runtime.qq
         runtime.object.freeze(self)
 
+    @staticmethod
+    def _from_reduced(numerator: Any, denominator: Any) -> Rational:
+        """Construct from a trusted canonical numerator/denominator pair.
+
+        Native FLINT boundaries already return a positive denominator and a
+        coprime pair.  Avoiding a second enormous GCD is important when an
+        elliptic-curve multiple has coordinates with thousands of digits.
+        """
+        numerator = runtime.integer_bigint(numerator)
+        denominator = runtime.integer_bigint(denominator)
+        if denominator <= 0:
+            raise ValueError(
+                'a reduced rational must have positive denominator')
+        answer = runtime.object.create(
+            runtime.reflect.get(Rational, 'prototype'))
+        runtime.reflect.set(answer, '_numerator', numerator)
+        runtime.reflect.set(answer, '_denominator', denominator)
+        runtime.reflect.set(answer, '_parent', runtime.qq)
+        runtime.object.freeze(answer)
+        return answer
+
     def numerator(self) -> int:
         return runtime.normalize_integer(self._numerator)
 

@@ -303,6 +303,524 @@ static ulong mul_mod_word(ulong left, ulong right, ulong modulus)
     return (ulong) (((__uint128_t) left * right) % modulus);
 }
 
+static void elliptic_mod_add(
+    fmpz_t result, const fmpz_t left, const fmpz_t right,
+    const fmpz_t modulus)
+{
+    fmpz_add(result, left, right);
+    fmpz_mod(result, result, modulus);
+}
+
+static void elliptic_mod_sub(
+    fmpz_t result, const fmpz_t left, const fmpz_t right,
+    const fmpz_t modulus)
+{
+    fmpz_sub(result, left, right);
+    fmpz_mod(result, result, modulus);
+}
+
+static void elliptic_mod_mul(
+    fmpz_t result, const fmpz_t left, const fmpz_t right,
+    const fmpz_t modulus)
+{
+    fmpz_mul(result, left, right);
+    fmpz_mod(result, result, modulus);
+}
+
+static void elliptic_mod_mul_ui(
+    fmpz_t result, const fmpz_t value, ulong multiplier,
+    const fmpz_t modulus)
+{
+    fmpz_mul_ui(result, value, multiplier);
+    fmpz_mod(result, result, modulus);
+}
+
+static void elliptic_mod_square(
+    fmpz_t result, const fmpz_t value, const fmpz_t modulus)
+{
+    fmpz_mul(result, value, value);
+    fmpz_mod(result, result, modulus);
+}
+
+static void elliptic_jacobian_double(
+    fmpz_t x, fmpz_t y, fmpz_t z,
+    const fmpz_t short_a, const fmpz_t modulus,
+    fmpz_t scratch[12])
+{
+    if (fmpz_is_zero(y) || fmpz_is_zero(z))
+    {
+        fmpz_zero(x);
+        fmpz_one(y);
+        fmpz_zero(z);
+        return;
+    }
+
+    /* scratch: y2, s, z2, z4, m, new_x, y4, new_y, new_z. */
+    elliptic_mod_square(scratch[0], y, modulus);
+    elliptic_mod_mul(scratch[1], x, scratch[0], modulus);
+    elliptic_mod_mul_ui(scratch[1], scratch[1], 4, modulus);
+    elliptic_mod_square(scratch[2], z, modulus);
+    elliptic_mod_square(scratch[3], scratch[2], modulus);
+    elliptic_mod_square(scratch[4], x, modulus);
+    elliptic_mod_mul_ui(scratch[4], scratch[4], 3, modulus);
+    elliptic_mod_mul(scratch[5], short_a, scratch[3], modulus);
+    elliptic_mod_add(scratch[4], scratch[4], scratch[5], modulus);
+    elliptic_mod_square(scratch[5], scratch[4], modulus);
+    elliptic_mod_mul_ui(scratch[6], scratch[1], 2, modulus);
+    elliptic_mod_sub(scratch[5], scratch[5], scratch[6], modulus);
+    elliptic_mod_square(scratch[6], scratch[0], modulus);
+    elliptic_mod_mul_ui(scratch[6], scratch[6], 8, modulus);
+    elliptic_mod_sub(scratch[7], scratch[1], scratch[5], modulus);
+    elliptic_mod_mul(scratch[7], scratch[4], scratch[7], modulus);
+    elliptic_mod_sub(scratch[7], scratch[7], scratch[6], modulus);
+    elliptic_mod_mul(scratch[8], y, z, modulus);
+    elliptic_mod_mul_ui(scratch[8], scratch[8], 2, modulus);
+    fmpz_set(x, scratch[5]);
+    fmpz_set(y, scratch[7]);
+    fmpz_set(z, scratch[8]);
+}
+
+static void elliptic_jacobian_mixed_add(
+    fmpz_t x, fmpz_t y, fmpz_t z,
+    const fmpz_t affine_x, const fmpz_t affine_y,
+    const fmpz_t short_a, const fmpz_t modulus,
+    fmpz_t scratch[12])
+{
+    if (fmpz_is_zero(z))
+    {
+        fmpz_set(x, affine_x);
+        fmpz_set(y, affine_y);
+        fmpz_one(z);
+        return;
+    }
+
+    /* scratch: z2, u, s, h, hh, i, j, r, v, new_x/y/z. */
+    elliptic_mod_square(scratch[0], z, modulus);
+    elliptic_mod_mul(scratch[1], affine_x, scratch[0], modulus);
+    elliptic_mod_mul(scratch[2], affine_y, z, modulus);
+    elliptic_mod_mul(scratch[2], scratch[2], scratch[0], modulus);
+    elliptic_mod_sub(scratch[3], scratch[1], x, modulus);
+    if (fmpz_is_zero(scratch[3]))
+    {
+        if (fmpz_equal(scratch[2], y))
+            elliptic_jacobian_double(
+                x, y, z, short_a, modulus, scratch);
+        else
+        {
+            fmpz_zero(x);
+            fmpz_one(y);
+            fmpz_zero(z);
+        }
+        return;
+    }
+    elliptic_mod_square(scratch[4], scratch[3], modulus);
+    elliptic_mod_mul_ui(scratch[5], scratch[4], 4, modulus);
+    elliptic_mod_mul(scratch[6], scratch[3], scratch[5], modulus);
+    elliptic_mod_sub(scratch[7], scratch[2], y, modulus);
+    elliptic_mod_mul_ui(scratch[7], scratch[7], 2, modulus);
+    elliptic_mod_mul(scratch[8], x, scratch[5], modulus);
+    elliptic_mod_square(scratch[9], scratch[7], modulus);
+    elliptic_mod_sub(scratch[9], scratch[9], scratch[6], modulus);
+    elliptic_mod_mul_ui(scratch[10], scratch[8], 2, modulus);
+    elliptic_mod_sub(scratch[9], scratch[9], scratch[10], modulus);
+    elliptic_mod_sub(scratch[10], scratch[8], scratch[9], modulus);
+    elliptic_mod_mul(scratch[10], scratch[7], scratch[10], modulus);
+    elliptic_mod_mul(scratch[11], y, scratch[6], modulus);
+    elliptic_mod_mul_ui(scratch[11], scratch[11], 2, modulus);
+    elliptic_mod_sub(scratch[10], scratch[10], scratch[11], modulus);
+    elliptic_mod_add(scratch[11], z, scratch[3], modulus);
+    elliptic_mod_square(scratch[11], scratch[11], modulus);
+    elliptic_mod_sub(scratch[11], scratch[11], scratch[0], modulus);
+    elliptic_mod_sub(scratch[11], scratch[11], scratch[4], modulus);
+    fmpz_set(x, scratch[9]);
+    fmpz_set(y, scratch[10]);
+    fmpz_set(z, scratch[11]);
+}
+
+static napi_value elliptic_scalar_mul_prime(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[9];
+    napi_value result = NULL;
+    napi_value coordinate;
+    fmpz_t a1, a2, a3, a4, a6, affine_long_x, affine_long_y;
+    fmpz_t scalar, modulus, b2, b4, c4, short_a;
+    fmpz_t affine_x, affine_y, x, y, z, inverse, temporary;
+    fmpz_t scratch[12];
+    slong index;
+    slong bit;
+
+    fmpz_init(a1); fmpz_init(a2); fmpz_init(a3); fmpz_init(a4);
+    fmpz_init(a6); fmpz_init(affine_long_x); fmpz_init(affine_long_y);
+    fmpz_init(scalar); fmpz_init(modulus); fmpz_init(b2); fmpz_init(b4);
+    fmpz_init(c4); fmpz_init(short_a); fmpz_init(affine_x);
+    fmpz_init(affine_y); fmpz_init(x); fmpz_init(y); fmpz_init(z);
+    fmpz_init(inverse); fmpz_init(temporary);
+    for (index = 0; index < 12; index++)
+        fmpz_init(scratch[index]);
+
+    if (!require_arguments(env, info, 9, args) ||
+        !bigint_to_fmpz(env, args[0], a1) ||
+        !bigint_to_fmpz(env, args[1], a2) ||
+        !bigint_to_fmpz(env, args[2], a3) ||
+        !bigint_to_fmpz(env, args[3], a4) ||
+        !bigint_to_fmpz(env, args[4], a6) ||
+        !bigint_to_fmpz(env, args[5], affine_long_x) ||
+        !bigint_to_fmpz(env, args[6], affine_long_y) ||
+        !bigint_to_fmpz(env, args[7], scalar) ||
+        !bigint_to_fmpz(env, args[8], modulus))
+        goto cleanup;
+    if (fmpz_cmp_ui(modulus, 3) <= 0 || !fmpz_is_probabprime(modulus))
+    {
+        napi_throw_range_error(env, NULL,
+            "modulus must be a prime greater than three");
+        goto cleanup;
+    }
+    if (fmpz_sgn(scalar) < 0)
+    {
+        napi_throw_range_error(env, NULL,
+            "scalar must be nonnegative");
+        goto cleanup;
+    }
+    fmpz_mod(a1, a1, modulus); fmpz_mod(a2, a2, modulus);
+    fmpz_mod(a3, a3, modulus); fmpz_mod(a4, a4, modulus);
+    fmpz_mod(a6, a6, modulus);
+    fmpz_mod(affine_long_x, affine_long_x, modulus);
+    fmpz_mod(affine_long_y, affine_long_y, modulus);
+    if (fmpz_is_zero(scalar))
+    {
+        check_napi(env, napi_create_array_with_length(env, 0, &result));
+        goto cleanup;
+    }
+
+    /* b2, b4 and c4 for the move to short Weierstrass form. */
+    elliptic_mod_square(b2, a1, modulus);
+    elliptic_mod_mul_ui(temporary, a2, 4, modulus);
+    elliptic_mod_add(b2, b2, temporary, modulus);
+    elliptic_mod_mul(b4, a1, a3, modulus);
+    elliptic_mod_mul_ui(temporary, a4, 2, modulus);
+    elliptic_mod_add(b4, b4, temporary, modulus);
+    elliptic_mod_square(c4, b2, modulus);
+    elliptic_mod_mul_ui(temporary, b4, 24, modulus);
+    elliptic_mod_sub(c4, c4, temporary, modulus);
+    fmpz_set_ui(temporary, 48);
+    if (!fmpz_invmod(inverse, temporary, modulus))
+    {
+        napi_throw_error(env, NULL, "48 is not invertible modulo p");
+        goto cleanup;
+    }
+    fmpz_neg(short_a, c4);
+    elliptic_mod_mul(short_a, short_a, inverse, modulus);
+
+    fmpz_set_ui(temporary, 12);
+    fmpz_invmod(inverse, temporary, modulus);
+    elliptic_mod_mul(temporary, b2, inverse, modulus);
+    elliptic_mod_add(affine_x, affine_long_x, temporary, modulus);
+    fmpz_set_ui(temporary, 2);
+    fmpz_invmod(inverse, temporary, modulus);
+    elliptic_mod_mul(temporary, a1, affine_long_x, modulus);
+    elliptic_mod_add(temporary, temporary, a3, modulus);
+    elliptic_mod_mul(temporary, temporary, inverse, modulus);
+    elliptic_mod_add(affine_y, affine_long_y, temporary, modulus);
+
+    fmpz_set(x, affine_x);
+    fmpz_set(y, affine_y);
+    fmpz_one(z);
+    for (bit = (slong) fmpz_bits(scalar) - 2; bit >= 0; bit--)
+    {
+        elliptic_jacobian_double(x, y, z, short_a, modulus, scratch);
+        if (fmpz_tstbit(scalar, (ulong) bit))
+            elliptic_jacobian_mixed_add(
+                x, y, z, affine_x, affine_y,
+                short_a, modulus, scratch);
+    }
+    if (fmpz_is_zero(z))
+    {
+        check_napi(env, napi_create_array_with_length(env, 0, &result));
+        goto cleanup;
+    }
+
+    fmpz_invmod(inverse, z, modulus);
+    elliptic_mod_square(temporary, inverse, modulus);
+    elliptic_mod_mul(x, x, temporary, modulus);
+    elliptic_mod_mul(temporary, temporary, inverse, modulus);
+    elliptic_mod_mul(y, y, temporary, modulus);
+    fmpz_set_ui(temporary, 12);
+    fmpz_invmod(inverse, temporary, modulus);
+    elliptic_mod_mul(temporary, b2, inverse, modulus);
+    elliptic_mod_sub(x, x, temporary, modulus);
+    fmpz_set_ui(temporary, 2);
+    fmpz_invmod(inverse, temporary, modulus);
+    elliptic_mod_mul(temporary, a1, x, modulus);
+    elliptic_mod_add(temporary, temporary, a3, modulus);
+    elliptic_mod_mul(temporary, temporary, inverse, modulus);
+    elliptic_mod_sub(y, y, temporary, modulus);
+
+    if (!check_napi(env, napi_create_array_with_length(env, 2, &result)))
+    {
+        result = NULL;
+        goto cleanup;
+    }
+    coordinate = fmpz_to_bigint(env, x);
+    if (coordinate == NULL ||
+        !check_napi(env, napi_set_element(env, result, 0, coordinate)))
+    {
+        result = NULL;
+        goto cleanup;
+    }
+    coordinate = fmpz_to_bigint(env, y);
+    if (coordinate == NULL ||
+        !check_napi(env, napi_set_element(env, result, 1, coordinate)))
+        result = NULL;
+
+cleanup:
+    for (index = 0; index < 12; index++)
+        fmpz_clear(scratch[index]);
+    fmpz_clear(a1); fmpz_clear(a2); fmpz_clear(a3); fmpz_clear(a4);
+    fmpz_clear(a6); fmpz_clear(affine_long_x); fmpz_clear(affine_long_y);
+    fmpz_clear(scalar); fmpz_clear(modulus); fmpz_clear(b2); fmpz_clear(b4);
+    fmpz_clear(c4); fmpz_clear(short_a); fmpz_clear(affine_x);
+    fmpz_clear(affine_y); fmpz_clear(x); fmpz_clear(y); fmpz_clear(z);
+    fmpz_clear(inverse); fmpz_clear(temporary);
+    return result;
+}
+
+typedef struct
+{
+    fmpq_t x;
+    fmpq_t y;
+    int infinity;
+} elliptic_rational_point;
+
+static void elliptic_rational_point_init(elliptic_rational_point *point)
+{
+    fmpq_init(point->x);
+    fmpq_init(point->y);
+    point->infinity = 1;
+}
+
+static void elliptic_rational_point_clear(elliptic_rational_point *point)
+{
+    fmpq_clear(point->x);
+    fmpq_clear(point->y);
+}
+
+static void elliptic_rational_point_set(
+    elliptic_rational_point *result,
+    const elliptic_rational_point *source)
+{
+    result->infinity = source->infinity;
+    if (!source->infinity)
+    {
+        fmpq_set(result->x, source->x);
+        fmpq_set(result->y, source->y);
+    }
+}
+
+static void elliptic_rational_add(
+    elliptic_rational_point *result,
+    const elliptic_rational_point *left,
+    const elliptic_rational_point *right,
+    const fmpq_t a1, const fmpq_t a2, const fmpq_t a3,
+    const fmpq_t a4, const fmpq_t a6,
+    fmpq_t scratch[10])
+{
+    (void) a6;
+    if (left->infinity)
+    {
+        elliptic_rational_point_set(result, right);
+        return;
+    }
+    if (right->infinity)
+    {
+        elliptic_rational_point_set(result, left);
+        return;
+    }
+
+    if (fmpq_equal(left->x, right->x))
+    {
+        /* Detect inverse points before the tangent calculation. */
+        fmpq_add(scratch[0], left->y, right->y);
+        fmpq_mul(scratch[1], a1, left->x);
+        fmpq_add(scratch[0], scratch[0], scratch[1]);
+        fmpq_add(scratch[0], scratch[0], a3);
+        if (fmpq_is_zero(scratch[0]))
+        {
+            result->infinity = 1;
+            return;
+        }
+
+        /* denominator = 2*y + a1*x + a3 */
+        fmpq_add(scratch[0], left->y, left->y);
+        fmpq_mul(scratch[1], a1, left->x);
+        fmpq_add(scratch[0], scratch[0], scratch[1]);
+        fmpq_add(scratch[0], scratch[0], a3);
+        if (fmpq_is_zero(scratch[0]))
+        {
+            result->infinity = 1;
+            return;
+        }
+
+        /* numerator = 3*x^2 + 2*a2*x + a4 - a1*y */
+        fmpq_mul(scratch[1], left->x, left->x);
+        fmpq_add(scratch[2], scratch[1], scratch[1]);
+        fmpq_add(scratch[2], scratch[2], scratch[1]);
+        fmpq_mul(scratch[3], a2, left->x);
+        fmpq_add(scratch[3], scratch[3], scratch[3]);
+        fmpq_add(scratch[2], scratch[2], scratch[3]);
+        fmpq_add(scratch[2], scratch[2], a4);
+        fmpq_mul(scratch[3], a1, left->y);
+        fmpq_sub(scratch[2], scratch[2], scratch[3]);
+        fmpq_div(scratch[4], scratch[2], scratch[0]);
+
+    }
+    else
+    {
+        fmpq_sub(scratch[0], right->x, left->x);
+        fmpq_sub(scratch[1], right->y, left->y);
+        fmpq_div(scratch[4], scratch[1], scratch[0]);
+    }
+
+    /* x3 = -x1 - x2 - a2 + slope*(slope + a1) */
+    fmpq_add(scratch[6], scratch[4], a1);
+    fmpq_mul(scratch[6], scratch[4], scratch[6]);
+    fmpq_sub(scratch[6], scratch[6], a2);
+    fmpq_sub(scratch[6], scratch[6], left->x);
+    fmpq_sub(scratch[6], scratch[6], right->x);
+
+    /* y3 = -y1 - a3 - a1*x3 + slope*(x1 - x3) */
+    fmpq_sub(scratch[7], left->x, scratch[6]);
+    fmpq_mul(scratch[7], scratch[4], scratch[7]);
+    fmpq_sub(scratch[7], scratch[7], left->y);
+    fmpq_sub(scratch[7], scratch[7], a3);
+    fmpq_mul(scratch[8], a1, scratch[6]);
+    fmpq_sub(scratch[7], scratch[7], scratch[8]);
+    fmpq_set(result->x, scratch[6]);
+    fmpq_set(result->y, scratch[7]);
+    result->infinity = 0;
+}
+
+static int bigint_pair_to_fmpq(
+    napi_env env, napi_value numerator, napi_value denominator,
+    fmpq_t result)
+{
+    if (!bigint_to_fmpz(env, numerator, fmpq_numref(result)) ||
+        !bigint_to_fmpz(env, denominator, fmpq_denref(result)))
+        return 0;
+    if (fmpz_is_zero(fmpq_denref(result)))
+    {
+        napi_throw_range_error(env, NULL,
+            "rational denominator must be nonzero");
+        return 0;
+    }
+    fmpq_canonicalise(result);
+    return 1;
+}
+
+static napi_value elliptic_scalar_mul_rational(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[15];
+    napi_value result = NULL;
+    napi_value value;
+    fmpq_t coefficients[5];
+    fmpq_t scratch[10];
+    fmpz_t scalar;
+    elliptic_rational_point input, answer, summand;
+    slong index;
+    slong bit;
+
+    for (index = 0; index < 5; index++)
+        fmpq_init(coefficients[index]);
+    for (index = 0; index < 10; index++)
+        fmpq_init(scratch[index]);
+    fmpz_init(scalar);
+    elliptic_rational_point_init(&input);
+    elliptic_rational_point_init(&answer);
+    elliptic_rational_point_init(&summand);
+
+    if (!require_arguments(env, info, 15, args))
+        goto cleanup;
+    for (index = 0; index < 5; index++)
+    {
+        if (!bigint_pair_to_fmpq(
+                env, args[2 * index], args[2 * index + 1],
+                coefficients[index]))
+            goto cleanup;
+    }
+    if (!bigint_pair_to_fmpq(env, args[10], args[11], input.x) ||
+        !bigint_pair_to_fmpq(env, args[12], args[13], input.y) ||
+        !bigint_to_fmpz(env, args[14], scalar))
+        goto cleanup;
+    if (fmpz_sgn(scalar) < 0)
+    {
+        napi_throw_range_error(env, NULL,
+            "scalar must be nonnegative");
+        goto cleanup;
+    }
+    input.infinity = 0;
+    elliptic_rational_point_set(&summand, &input);
+    for (bit = 0; bit < (slong) fmpz_bits(scalar); bit++)
+    {
+        if (fmpz_tstbit(scalar, (ulong) bit))
+            elliptic_rational_add(
+                &answer, &answer, &summand,
+                coefficients[0], coefficients[1], coefficients[2],
+                coefficients[3], coefficients[4], scratch);
+        if (bit + 1 < (slong) fmpz_bits(scalar))
+            elliptic_rational_add(
+                &summand, &summand, &summand,
+                coefficients[0], coefficients[1], coefficients[2],
+                coefficients[3], coefficients[4], scratch);
+    }
+    if (answer.infinity)
+    {
+        check_napi(env, napi_create_array_with_length(env, 0, &result));
+        goto cleanup;
+    }
+    if (!check_napi(env, napi_create_array_with_length(env, 4, &result)))
+    {
+        result = NULL;
+        goto cleanup;
+    }
+    value = fmpz_to_bigint(env, fmpq_numref(answer.x));
+    if (value == NULL ||
+        !check_napi(env, napi_set_element(env, result, 0, value)))
+    {
+        result = NULL;
+        goto cleanup;
+    }
+    value = fmpz_to_bigint(env, fmpq_denref(answer.x));
+    if (value == NULL ||
+        !check_napi(env, napi_set_element(env, result, 1, value)))
+    {
+        result = NULL;
+        goto cleanup;
+    }
+    value = fmpz_to_bigint(env, fmpq_numref(answer.y));
+    if (value == NULL ||
+        !check_napi(env, napi_set_element(env, result, 2, value)))
+    {
+        result = NULL;
+        goto cleanup;
+    }
+    value = fmpz_to_bigint(env, fmpq_denref(answer.y));
+    if (value == NULL ||
+        !check_napi(env, napi_set_element(env, result, 3, value)))
+        result = NULL;
+
+cleanup:
+    elliptic_rational_point_clear(&input);
+    elliptic_rational_point_clear(&answer);
+    elliptic_rational_point_clear(&summand);
+    fmpz_clear(scalar);
+    for (index = 0; index < 10; index++)
+        fmpq_clear(scratch[index]);
+    for (index = 0; index < 5; index++)
+        fmpq_clear(coefficients[index]);
+    return result;
+}
+
 static slong elliptic_ap_integral(
     fmpz_t coefficients[5],
     ulong prime,
@@ -3770,6 +4288,10 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"ecAnlistIntegral", NULL, elliptic_anlist_integral,
             NULL, NULL, NULL, napi_default, NULL},
         {"ecApIntegral", NULL, elliptic_ap_smalljac_integral,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"ecScalarMulPrime", NULL, elliptic_scalar_mul_prime,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"ecScalarMulRational", NULL, elliptic_scalar_mul_rational,
             NULL, NULL, NULL, napi_default, NULL},
         {"qqEisensteinSeries", NULL, qq_eisenstein_series,
             NULL, NULL, NULL, napi_default, NULL},

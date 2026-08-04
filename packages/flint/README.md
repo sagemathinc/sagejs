@@ -103,6 +103,21 @@ is based on Kiran Kedlaya and Andrew Sutherland, “Computing L-series of
 hyperelliptic curves,” ANTS VIII (2008), 312–326. The pinned upstream release
 is GPL-2.0-or-later and depends on Andrew Sutherland's `ffpoly` 1.2.7.
 
+Prime-field elliptic-curve scalar multiplication uses a portable native
+Jacobian ladder over arbitrary-size FLINT integers. General Weierstrass models
+are moved exactly to short form in characteristic greater than three, the
+whole ladder stays projective, and a single modular inversion recovers the
+affine result. Characteristics two and three and extension fields retain the
+tested mathematical-library fallback. This boundary avoids hundreds of
+Node-API crossings in cryptographic-size scalar multiplications and is built
+on every supported native platform.
+
+Rational points use a second single-boundary ladder with canonical FLINT
+`fmpq` coordinates and the low-growth field addition formulas. Reduced native
+coordinates are wrapped without repeating their potentially huge GCD. The
+ordinary Python implementation remains the readable correctness fallback and
+the differential-test oracle.
+
 The `nmod_poly` API additionally provides GCD, irreducibility testing,
 factorization, and roots over word-sized prime fields. Factorization returns
 opaque native factors and a separate scalar unit. Sage.js wraps these as

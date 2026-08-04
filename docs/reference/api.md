@@ -956,8 +956,8 @@ sage: 10 * E([0,0])
 - Aliases: `EllipticCurve_from_j`
 - Tags: elliptic curves, number theory, Weierstrass equations, modular forms
 - Backends: Sage.js exact arithmetic
-- Sage compatibility: partial — General Weierstrass construction, rational point arithmetic, basic invariants, small Cremona labels, and coefficient lists are supported.
-- Limitations: General conductors, ranks, descent, and isogeny classes need additional arithmetic algorithms or databases.
+- Sage compatibility: partial — General Weierstrass construction, rational point arithmetic, native projective prime-field scalar multiplication, explicit-kernel normalized Vélu isogenies, basic invariants, global minimal models, complete Tate local data and conductors over QQ, small Cremona labels, and coefficient lists are supported.
+- Limitations: General ranks, descent, isogeny classes, polynomial-kernel Kohel isogenies, duals, and square-root Vélu need additional arithmetic algorithms or databases.
 
 ### Provenance
 
@@ -2470,14 +2470,15 @@ Construct the exact simple field `QQ[a]/(polynomial)`.
 - Module: `sage.rings.number_field.number_field`
 - Tags: number theory, number fields, algebraic numbers, exact arithmetic
 - Backends: Sage.js exact quotient arithmetic, FLINT polynomials
-- Sage compatibility: partial — Simple fields over QQ have exact arithmetic and Sage-style generators. Galois groups are identified natively through degree four. Custom Dirichlet value fields are supported.
-- Limitations: General integral bases, unit groups, nonquadratic class groups, and Galois groups above degree four await further native number-field algorithms.
+- Sage compatibility: partial — Simple fields over QQ have exact arithmetic and Sage-style generators, certified maximal orders, integral bases, field discriminants, and exact HNF ideal lattices. Galois groups are identified natively through degree four.
+- Limitations: General unit groups, nonquadratic class groups, and Galois groups above degree four await further native number-field algorithms. Maximal-order overorder enumeration is correctness-first and can be exponential in the dimension of a large trace radical; machine-sized discriminant primes are currently required.
 
 ### Provenance
 
 - `sage-derived` — [SageMath number field API](https://doc.sagemath.org/html/en/reference/number_fields/); license GPL-2.0-or-later
 - `library-backed` — [FLINT polynomial arithmetic](https://flintlib.org/doc/)
 - `literature-implemented` — [Kappe--Warren criterion for quartic Galois groups](https://doi.org/10.1016/j.aim.2020.107282)
+- `literature-implemented` — Zassenhaus round-two maximal-order algorithm via exact trace radicals and integral overorder enumeration
 
 ## `numerical_integral`
 

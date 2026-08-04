@@ -263,3 +263,91 @@ test("global minimal models drive general conductors and local-data lists", asyn
     await session.close();
   }
 });
+
+test("projective and native prime-field scalar multiplication are exact", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "small = all(n*P == P._affine_scalar_mul(n) ",
+            "    for p in [5,7,11,13,17,19,23] ",
+            "    for E in [EllipticCurve(GF(p),[0,0,0,1,1])] ",
+            "    for P in E.points() for n in range(1,35))",
+            "E = EllipticCurve(GF(2^256-2^32-977), [0,7])",
+            "G = E([",
+            " 55066263022277343669578718895168534326250603453777594175500187360389116729240,",
+            " 32670510020758816978083085130507043184471273380659243275938904335757337482424])",
+            "N = 115792089237316195423570985008687907852837564279074904382605163141518161494337",
+            "[small, (2*G).xy(), (N*G).is_zero()]",
+          ].join("\n"),
+          { timeout: 30_000 },
+        )
+      ).repr,
+      "[True, " +
+        "(89565891926547004231252920425935692360644145829622209833684329913297188986597, " +
+        "12158399299693830322967808612713398636155367887041628176798871954788371653930), " +
+        "True]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("explicit-kernel Velu isogenies match Sage models and maps", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "curves = [",
+            " [1,0,1,-171,-874], [0,1,1,-9,-15],",
+            " [1,1,1,-80,242], [0,-1,1,-10,-20],",
+            " [1,0,1,4,-6], [1,-1,1,-3,3],",
+            " [1,1,1,35,-28], [1,-1,1,-14,29],",
+            " [1,0,0,-45,81], [1,-1,1,-122,1721]]",
+            "points = [[15,-8],[5,9],[5,-2],[5,5],[9,23],",
+            "          [-1,2],[2,6],[-3,7],[0,9],[-9,49]]",
+            "data = []",
+            "for i in range(10):",
+            "    E = EllipticCurve(curves[i])",
+            "    P = E(points[i])",
+            "    phi = E.isogeny(P)",
+            "    data.append([phi.degree(), list(phi.codomain().ainvs()), phi(P).is_zero()])",
+            "F2 = EllipticCurve(GF(2), [0,0,1,0,1])",
+            "phi2 = F2.isogeny(F2([1,1]))",
+            "F31 = EllipticCurve(GF(31), [0,0,0,1,0])",
+            "P31 = F31([2,17])",
+            "phi31 = F31.isogeny(P31)",
+            "finite = [phi2.degree(), list(phi2.codomain().ainvs()),",
+            "          phi31.degree(), list(phi31.codomain().ainvs()),",
+            "          all(phi31(Q+R) == phi31(Q)+phi31(R)",
+            "              for Q in F31.points() for R in F31.points()),",
+            "          F31.isogeny([P31,P31]).kernel_polynomial() == phi31.kernel_polynomial()]",
+            "F7 = EllipticCurve(GF(7), [-1,0])",
+            "full_two = F7.isogeny([F7([0,0]), F7([1,0])])",
+            "finite += [full_two.degree(), list(full_two.codomain().ainvs()),",
+            "           full_two.kernel_polynomial()]",
+            "[data, finite]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[[2, [1, 0, 1, -2731, -55146], True], " +
+        "[3, [0, 1, 1, -769, -8470], True], " +
+        "[4, [1, 1, 1, -2565/16, -27417/64], True], " +
+        "[5, [0, -1, 1, -7820, -263580], True], " +
+        "[6, [1, 0, 1, -2731, -55146], True], " +
+        "[7, [1, -1, 1, -213, -1257], True], " +
+        "[8, [1, 1, 1, -552965/16, -159190297/64], True], " +
+        "[9, [1, -1, 1, -2324, -43091], True], " +
+        "[10, [1, 0, 0, -10055, -390309], True], " +
+        "[12, [1, -1, 1, -210332, -37075319], True]], " +
+        "[3, [0, 0, 1, 0, 0], 8, [0, 0, 0, 10, 28], True, True, " +
+        "4, [0, 0, 0, 5, 0], x^3 + 6*x]]",
+    );
+  } finally {
+    await session.close();
+  }
+});

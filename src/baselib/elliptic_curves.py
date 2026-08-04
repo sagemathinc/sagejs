@@ -736,6 +736,7 @@ class EllipticCurvePoint(sage.Element):
         x_value: Any = None,
         y_value: Any = None,
         infinity: bool = False,
+        check: bool = True,
     ) -> None:
         self._parent = parent
         self._infinity = infinity
@@ -745,7 +746,7 @@ class EllipticCurvePoint(sage.Element):
         else:
             self._x = parent.base_ring()(x_value)
             self._y = parent.base_ring()(y_value)
-            if not parent._contains_coordinates(self._x, self._y):
+            if check and not parent._contains_coordinates(self._x, self._y):
                 raise ValueError('point is not on the elliptic curve')
         runtime.object.freeze(self)
 
@@ -826,6 +827,7 @@ class EllipticCurvePoint(sage.Element):
             self._parent,
             self._x,
             0 - self._y - a1 * self._x - a3,
+            check=False,
         )
 
     def _eq_(self, other: EllipticCurvePoint) -> bool:
@@ -847,7 +849,7 @@ class EllipticCurvePoint(sage.Element):
         if other._infinity:
             return self
         curve = self._parent
-        a1, a2, a3, a4, a6 = curve.ainvs()
+        a1, a2, a3, a4, _a6 = curve.ainvs()
         if self._x == other._x:
             if self._y + other._y + a1 * self._x + a3 == 0:
                 return curve(0)
@@ -858,24 +860,18 @@ class EllipticCurvePoint(sage.Element):
                 3 * self._x ** 2
                 + 2 * a2 * self._x + a4 - a1 * self._y
             ) / denominator
-            intercept = (
-                (-1) * self._x ** 3 + a4 * self._x
-                + 2 * a6 - a3 * self._y
-            ) / denominator
         else:
             denominator = other._x - self._x
             slope = (other._y - self._y) / denominator
-            intercept = (
-                self._y * other._x - other._y * self._x
-            ) / denominator
         x_value = (
             slope ** 2 + a1 * slope - a2
             - self._x - other._x
         )
         y_value = (
-            (-1) * (slope + a1) * x_value - intercept - a3
+            (-1) * self._y - a3 - a1 * x_value
+            + slope * (self._x - x_value)
         )
-        return EllipticCurvePoint(curve, x_value, y_value)
+        return EllipticCurvePoint(curve, x_value, y_value, check=False)
 
     def __add__(self, other: object) -> Any:
         return runtime.coercion_model.binOp('add', self, other)
@@ -896,6 +892,53 @@ class EllipticCurvePoint(sage.Element):
         multiplier = scalar
         if multiplier < 0:
             return (-self).__rmul__(-multiplier)
+        if multiplier == 0 or self._infinity:
+            return self._parent(0)
+        base = self._parent.base_ring()
+        kind = getattr(base, '_kind', None)
+        if base is sage.QQ or kind == 'QQ':
+            return self._native_rational_scalar_mul(multiplier)
+        characteristic = 0
+        if kind in ['GF', 'GF_EXTENSION', 'ZMOD']:
+            characteristic = int(_untyped(base).characteristic())
+        projective_field = kind in ['GF', 'GF_EXTENSION'] or (
+            kind == 'ZMOD' and bool(_untyped(base).is_field())
+        )
+        if projective_field and (
+            characteristic not in [2, 3]
+        ):
+            return self._projective_scalar_mul(multiplier)
+        return self._affine_scalar_mul(multiplier)
+
+    def _native_rational_scalar_mul(
+        self, multiplier: Any,
+    ) -> EllipticCurvePoint:
+        values = []
+        for coefficient in self._parent.ainvs():
+            values.append(runtime.integer_bigint(coefficient._numerator))
+            values.append(runtime.integer_bigint(coefficient._denominator))
+        values.extend([
+            runtime.integer_bigint(self._x._numerator),
+            runtime.integer_bigint(self._x._denominator),
+            runtime.integer_bigint(self._y._numerator),
+            runtime.integer_bigint(self._y._denominator),
+            runtime.integer_bigint(multiplier),
+        ])
+        native = runtime.reflect.apply(
+            runtime.flint_backend().ecScalarMulRational,
+            runtime.undefined,
+            values,
+        )
+        if len(native) == 0:
+            return self._parent(0)
+        rational_class = _untyped(sage.Rational)
+        x_value = rational_class._from_reduced(native[0], native[1])
+        y_value = rational_class._from_reduced(native[2], native[3])
+        return EllipticCurvePoint(
+            self._parent, x_value, y_value, check=False)
+
+    def _affine_scalar_mul(self, multiplier: Any) -> EllipticCurvePoint:
+        """Binary double-and-add fallback in characteristics two and three."""
         answer = self._parent(0)
         summand = self
         while multiplier:
@@ -908,6 +951,128 @@ class EllipticCurvePoint(sage.Element):
             if multiplier:
                 summand = summand + summand
         return answer
+
+    def _projective_scalar_mul(
+        self, multiplier: Any,
+    ) -> EllipticCurvePoint:
+        """Multiply using Jacobian coordinates and one final inversion.
+
+        A general Weierstrass model in characteristic different from two and
+        three is moved to ``Y^2 = X^3 + A*X + B``.  The loop keeps the
+        accumulator in Jacobian coordinates and uses mixed additions by the
+        fixed affine input point.  Consequently a scalar multiplication costs
+        one field inversion instead of one inversion per group operation.
+        """
+        curve = self._parent
+        base = curve.base_ring()
+        a1, a2, a3, _a4, _a6 = curve.ainvs()
+        if getattr(base, '_kind', None) == 'GF':
+            native = runtime.flint_backend().ecScalarMulPrime(
+                runtime.integer_bigint(a1.lift()),
+                runtime.integer_bigint(a2.lift()),
+                runtime.integer_bigint(a3.lift()),
+                runtime.integer_bigint(_a4.lift()),
+                runtime.integer_bigint(_a6.lift()),
+                runtime.integer_bigint(self._x.lift()),
+                runtime.integer_bigint(self._y.lift()),
+                runtime.integer_bigint(multiplier),
+                runtime.integer_bigint(base.order()),
+            )
+            if len(native) == 0:
+                return curve(0)
+            return EllipticCurvePoint(
+                curve, base(native[0]), base(native[1]), check=False)
+        b2 = a1 ** 2 + base(4) * a2
+        short_a = (0 - curve.c4()) / base(48)
+        affine_x = self._x + b2 / base(12)
+        affine_y = self._y + (a1 * self._x + a3) / base(2)
+        zero = base(0)
+        one = base(1)
+
+        # Read the scalar once into little-endian bits.  Processing that list
+        # backwards gives a left-to-right binary ladder whose additions are
+        # all mixed additions by the original affine point.
+        bits = []
+        while multiplier:
+            bits.append(bool(multiplier % 2))
+            multiplier //= 2
+
+        x_value = affine_x
+        y_value = affine_y
+        z_value = one
+        for bit_index in range(len(bits) - 2, -1, -1):
+            if y_value == zero or z_value == zero:
+                x_value, y_value, z_value = zero, one, zero
+            else:
+                y_squared = y_value ** 2
+                s_value = base(4) * x_value * y_squared
+                z_squared = z_value ** 2
+                m_value = (
+                    base(3) * x_value ** 2
+                    + short_a * z_squared ** 2
+                )
+                doubled_x = m_value ** 2 - base(2) * s_value
+                doubled_y = (
+                    m_value * (s_value - doubled_x)
+                    - base(8) * y_squared ** 2
+                )
+                doubled_z = base(2) * y_value * z_value
+                x_value, y_value, z_value = (
+                    doubled_x, doubled_y, doubled_z)
+
+            if bits[bit_index]:
+                if z_value == zero:
+                    x_value, y_value, z_value = affine_x, affine_y, one
+                else:
+                    z_squared = z_value ** 2
+                    u_value = affine_x * z_squared
+                    s_value = affine_y * z_value * z_squared
+                    h_value = u_value - x_value
+                    if h_value == zero:
+                        if s_value == y_value:
+                            y_squared = y_value ** 2
+                            double_s = base(4) * x_value * y_squared
+                            m_value = (
+                                base(3) * x_value ** 2
+                                + short_a * z_squared ** 2
+                            )
+                            x_value = (
+                                m_value ** 2 - base(2) * double_s)
+                            y_value = (
+                                m_value * (double_s - x_value)
+                                - base(8) * y_squared ** 2
+                            )
+                            z_value = base(2) * z_value * s_value
+                        else:
+                            x_value, y_value, z_value = zero, one, zero
+                    else:
+                        h_squared = h_value ** 2
+                        i_value = base(4) * h_squared
+                        j_value = h_value * i_value
+                        r_value = base(2) * (s_value - y_value)
+                        v_value = x_value * i_value
+                        added_x = (
+                            r_value ** 2 - j_value - base(2) * v_value)
+                        added_y = (
+                            r_value * (v_value - added_x)
+                            - base(2) * y_value * j_value
+                        )
+                        added_z = (
+                            (z_value + h_value) ** 2
+                            - z_squared - h_squared
+                        )
+                        x_value, y_value, z_value = (
+                            added_x, added_y, added_z)
+
+        if z_value == zero:
+            return curve(0)
+        inverse_z = one / z_value
+        short_x = x_value * inverse_z ** 2
+        short_y = y_value * inverse_z ** 3
+        long_x = short_x - b2 / base(12)
+        long_y = short_y - (a1 * long_x + a3) / base(2)
+        return EllipticCurvePoint(
+            curve, long_x, long_y, check=False)
 
     def _sage_binop_(
         self,
@@ -1067,7 +1232,8 @@ class EllipticCurveParent(sage.Parent):
         else:
             raise ValueError(
                 'the x-coordinate does not lift over the base ring')
-        point = EllipticCurvePoint(self, x_value, y_value)
+        point = EllipticCurvePoint(
+            self, x_value, y_value, check=False)
         if all:
             negative = -point
             return [point] if negative == point else [point, negative]
@@ -1088,7 +1254,8 @@ class EllipticCurveParent(sage.Parent):
             for y_value in base:
                 if self._contains_coordinates(x_value, y_value):
                     answer.append(
-                        EllipticCurvePoint(self, x_value, y_value))
+                        EllipticCurvePoint(
+                            self, x_value, y_value, check=False))
         return answer
 
     def random_point(self) -> EllipticCurvePoint:
@@ -1346,6 +1513,27 @@ class EllipticCurveParent(sage.Parent):
             'quadratic twists of general long Weierstrass models '
             'need integral minimization')
 
+    def isogeny(
+        self,
+        kernel: Any,
+        codomain: Any = None,
+        degree: Any = None,
+        model: Any = None,
+        check: bool = True,
+        algorithm: Any = None,
+        velu_sqrt_bound: Any = None,
+    ) -> EllipticCurveIsogeny:
+        """Return the normalized Vélu isogeny with an explicit kernel.
+
+        The kernel may be one finite-order point or a list of subgroup
+        generators.  This is the traditional linear-time Vélu algorithm;
+        polynomial-kernel (Kohel) and square-root Vélu algorithms remain
+        separate future extensions.
+        """
+        _ = velu_sqrt_bound
+        return EllipticCurveIsogeny(
+            self, kernel, codomain, degree, model, check, algorithm)
+
     def _coefficient_mod_prime(self, value: Any, prime: int) -> int:
         if hasattr(value, '_numerator'):
             numerator = int(value._numerator % prime)
@@ -1531,6 +1719,248 @@ class EllipticCurveParent(sage.Parent):
         return values
 
 
+class EllipticCurveIsogeny:
+    """A normalized separable isogeny computed by Vélu's formulas.
+
+    The implementation deliberately stores the small collection of kernel
+    representatives modulo negation.  Those records suffice both to derive
+    the codomain and to evaluate the rational map without constructing large
+    symbolic numerator and denominator polynomials.
+    """
+
+    def __init__(
+        self,
+        domain: EllipticCurveParent,
+        kernel: Any,
+        codomain: Any = None,
+        degree: Any = None,
+        model: Any = None,
+        check: bool = True,
+        algorithm: Any = None,
+    ) -> None:
+        if model is not None:
+            raise NotImplementedError(
+                'post-isogeny codomain model selection is not implemented')
+        if algorithm not in [None, 'velu']:
+            raise NotImplementedError(
+                'only explicit-point Vélu kernels are implemented')
+        self._domain = domain
+        self._kernel_points = self._generate_kernel(kernel, check)
+        self._degree = len(self._kernel_points)
+        if degree is not None and int(degree) != self._degree:
+            raise ValueError('the requested degree does not match the kernel')
+
+        base = domain.base_ring()
+        a1, a2, a3, a4, a6 = domain.ainvs()
+        zero = base(0)
+        v_value = zero
+        w_value = zero
+        self._kernel_records = []
+        kernel_x_values = []
+        for point in self._kernel_representatives:
+            if point.is_zero():
+                continue
+            x_value, y_value = point.xy()
+            if self._contains_x(kernel_x_values, x_value):
+                continue
+            gx_value = (
+                (base(3) * x_value + base(2) * a2) * x_value
+                + a4 - a1 * y_value
+            )
+            gy_value = (
+                0 - base(2) * y_value - a1 * x_value - a3)
+            u_value = gy_value ** 2
+            if base(2) * y_value == 0 - a1 * x_value - a3:
+                local_v = gx_value
+            else:
+                local_v = base(2) * gx_value - a1 * gy_value
+            self._kernel_records.append([
+                x_value, y_value, gx_value, gy_value,
+                local_v, u_value,
+            ])
+            kernel_x_values.append(x_value)
+            v_value += local_v
+            w_value += u_value + x_value * local_v
+        computed_codomain = EllipticCurve(base, [
+            a1,
+            a2,
+            a3,
+            a4 - base(5) * v_value,
+            a6 - (a1 ** 2 + base(4) * a2) * v_value
+            - base(7) * w_value,
+        ])
+        if codomain is not None:
+            if not isinstance(codomain, EllipticCurveParent):
+                raise TypeError('codomain must be an elliptic curve')
+            if list(codomain.ainvs()) != list(computed_codomain.ainvs()):
+                raise NotImplementedError(
+                    'post-composition with a codomain isomorphism is not '
+                    'implemented')
+            self._codomain = codomain
+        else:
+            self._codomain = computed_codomain
+
+    @staticmethod
+    def _contains_point(
+        points: list[EllipticCurvePoint], candidate: EllipticCurvePoint,
+    ) -> bool:
+        for point in points:
+            if point == candidate:
+                return True
+        return False
+
+    @staticmethod
+    def _contains_x(values: list[Any], candidate: Any) -> bool:
+        for value in values:
+            if value == candidate:
+                return True
+        return False
+
+    def _cyclic_points(
+        self, generator: EllipticCurvePoint, limit: int,
+    ) -> list[EllipticCurvePoint]:
+        if generator._parent is not self._domain:
+            raise ValueError('kernel points must lie on the isogeny domain')
+        if generator.is_zero():
+            return [self._domain(0)]
+        answer = [self._domain(0)]
+        point = generator
+        while not point.is_zero():
+            if len(answer) >= limit:
+                raise ValueError(
+                    'explicit Vélu kernel exceeds the safety limit')
+            answer.append(point)
+            point = point + generator
+        return answer
+
+    def _generate_kernel(
+        self, kernel: Any, check: bool,
+    ) -> list[EllipticCurvePoint]:
+        if isinstance(kernel, EllipticCurvePoint):
+            generators = [kernel]
+        else:
+            generators = list(kernel)
+            for generator in generators:
+                if not isinstance(generator, EllipticCurvePoint):
+                    raise TypeError(
+                        'polynomial and coefficient-list kernels are not '
+                        'implemented')
+        if check:
+            base = self._domain.base_ring()
+            if base is sage.QQ or getattr(base, '_kind', None) == 'QQ':
+                for generator in generators:
+                    if not generator.has_finite_order():
+                        raise ValueError(
+                            'given kernel contains a point of infinite order')
+
+        subgroup = [self._domain(0)]
+        # Traditional Vélu is linear in the kernel size.  The explicit limit
+        # prevents an accidental infinite-order point from becoming an
+        # unbounded evaluation when checking was disabled.
+        limit = 1000000
+        if len(generators) == 1:
+            cyclic = self._cyclic_points(generators[0], limit)
+            self._kernel_representatives = cyclic[
+                1:len(cyclic) // 2 + 1]
+            return cyclic
+        for generator in generators:
+            cyclic = self._cyclic_points(generator, limit)
+            previous = list(subgroup)
+            combined = []
+            for point in previous:
+                for multiple in cyclic:
+                    candidate = point + multiple
+                    if not self._contains_point(combined, candidate):
+                        combined.append(candidate)
+                    if len(combined) > limit:
+                        raise ValueError(
+                            'explicit Vélu kernel exceeds the safety limit')
+            subgroup = combined
+        representatives = []
+        x_values = []
+        for point in subgroup:
+            if point.is_zero():
+                continue
+            x_value = point.xy()[0]
+            if not self._contains_x(x_values, x_value):
+                representatives.append(point)
+                x_values.append(x_value)
+        self._kernel_representatives = representatives
+        return subgroup
+
+    def domain(self) -> EllipticCurveParent:
+        return self._domain
+
+    def codomain(self) -> EllipticCurveParent:
+        return self._codomain
+
+    def degree(self) -> int:
+        return self._degree
+
+    def is_separable(self) -> bool:
+        return True
+
+    def is_normalized(self) -> bool:
+        return True
+
+    def kernel_points(self) -> list[EllipticCurvePoint]:
+        return list(self._kernel_points)
+
+    def kernel_polynomial(self) -> Any:
+        ring = _untyped(sage.PolynomialRing)(
+            self._domain.base_ring(), 'x')
+        variable = ring.gen()
+        answer = ring(1)
+        for record in self._kernel_records:
+            answer *= variable - record[0]
+        return answer
+
+    def __call__(self, point: Any) -> EllipticCurvePoint:
+        if not isinstance(point, EllipticCurvePoint):
+            point = self._domain(point)
+        if point._parent is not self._domain:
+            raise ValueError('point must lie on the isogeny domain')
+        if point.is_zero():
+            return self._codomain(0)
+        x_value, y_value = point.xy()
+        for record in self._kernel_records:
+            if x_value == record[0]:
+                return self._codomain(0)
+
+        a1, _a2, a3, _a4, _a6 = self._domain.ainvs()
+        image_x = x_value
+        image_y = y_value
+        for record in self._kernel_records:
+            kernel_x, kernel_y, gx_value, gy_value, v_value, u_value = (
+                record)
+            difference = x_value - kernel_x
+            inverse = difference ** (-1)
+            inverse_squared = inverse ** 2
+            inverse_cubed = inverse_squared * inverse
+            image_x += (
+                v_value * inverse + u_value * inverse_squared)
+            y_term_zero = (
+                u_value * (2 * y_value + a1 * x_value + a3))
+            y_term_one = (
+                v_value * (a1 * difference + y_value - kernel_y))
+            y_term_two = a1 * u_value - gx_value * gy_value
+            image_y -= (
+                y_term_zero * inverse_cubed
+                + (y_term_one + y_term_two) * inverse_squared
+            )
+        return EllipticCurvePoint(
+            self._codomain, image_x, image_y, check=False)
+
+    def __repr__(self) -> str:
+        return (
+            'Isogeny of degree ' + str(self._degree) + '\n from '
+            + str(self._domain) + '\n   to ' + str(self._codomain)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 def EllipticCurve(
     data: Any,
     coefficients: Any = None,
@@ -1654,6 +2084,8 @@ runtime.register_doc(
             'status': 'partial',
             'notes': (
                 'General Weierstrass construction, rational point arithmetic, '
+                'native projective prime-field scalar multiplication, '
+                'explicit-kernel normalized Vélu isogenies, '
                 'basic invariants, global minimal models, complete Tate local '
                 'data and conductors over QQ, small Cremona labels, and '
                 'coefficient lists are supported.'
@@ -1680,10 +2112,21 @@ runtime.register_doc(
                 'url': 'https://pari.math.u-bordeaux.fr/',
                 'license': 'GPL-2.0-or-later',
             },
+            {
+                'kind': 'algorithm-derived',
+                'source': 'Vélu and SageMath explicit-kernel isogenies',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'arithmetic_curves/sage/schemes/elliptic_curves/'
+                    'ell_curve_isogeny.html'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
         ],
         'limitations': [
             (
-                'General ranks, descent, and isogeny classes need additional '
+                'General ranks, descent, isogeny classes, polynomial-kernel '
+                'Kohel isogenies, duals, and square-root Vélu need additional '
                 'arithmetic algorithms or databases.'
             ),
         ],
