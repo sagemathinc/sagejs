@@ -106,6 +106,7 @@
     "test:serialization": "pnpm run build && node --test test/serialization.cjs",
     "test:cli": "node scripts/run-test-tier.cjs all",
     "test:jupyter": "pnpm run build && python3 scripts/test-jupyter-kernel.py",
+    "test:jupyter:sea": "python3 scripts/test-jupyter-kernel.py --sea build/sea/sagejs",
     "test:upstream": "pnpm run build && pnpm run test:upstream:run",
     "test:upstream:run": "node test/upstream-doctest-tools.cjs && node scripts/run-sage-doctests.cjs upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.doctests.json --expectations upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.expectations.json",
     "test:matrix:corpus": "pnpm run build && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_integer_dense_core.doctests.json --expectations upstream-tests/sage/matrix/matrix_integer_dense_core.expectations.json && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_modn_dense_core.doctests.json --expectations upstream-tests/sage/matrix/matrix_modn_dense_core.expectations.json",
@@ -183,9 +184,7 @@
     "numpy-ts": "1.6.0",
     "playwright-core": "1.62.0",
     "plotly.js-dist-min": "3.7.0",
-    "web-tree-sitter": "0.26.11"
-  },
-  "optionalDependencies": {
+    "web-tree-sitter": "0.26.11",
     "zeromq": "6.5.0"
   }
 }

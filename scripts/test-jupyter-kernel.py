@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import queue
 import signal
 import subprocess
@@ -71,7 +72,7 @@ def message_of_type(
     )
 
 
-def main() -> None:
+def main(kernel_command: list[str]) -> None:
     with tempfile.TemporaryDirectory(prefix="sagejs-jupyter-test-") as directory:
         connection_file, _ = write_connection_file(
             str(Path(directory) / "kernel.json"),
@@ -80,8 +81,7 @@ def main() -> None:
         )
         process = subprocess.Popen(
             [
-                "node",
-                str(ROOT / "bin" / "sagejs-jupyter"),
+                *kernel_command,
                 "--connection-file",
                 connection_file,
             ],
@@ -411,4 +411,16 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--sea",
+        type=Path,
+        help="test a Sage.js single executable instead of the source launcher",
+    )
+    options = parser.parse_args()
+    command = (
+        [str(options.sea.resolve()), "--jupyter-kernel"]
+        if options.sea
+        else ["node", str(ROOT / "bin" / "sagejs-jupyter")]
+    )
+    main(command)

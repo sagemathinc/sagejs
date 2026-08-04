@@ -10,8 +10,6 @@ import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { Publisher, Reply, Router } from "zeromq";
-
 import {
   createSage,
   SageSession,
@@ -23,6 +21,7 @@ import {
   prepareSubmittedPolyglotCell,
   rewriteQuestionMarkHelp,
 } from "./polyglot";
+import { Publisher, Reply, Router } from "./zeromq-runtime";
 
 const DELIMITER = Buffer.from("<IDS|MSG>");
 const PROTOCOL_VERSION = "5.4";
@@ -756,12 +755,38 @@ function optionValue(args: string[], names: string[]): string | undefined {
   return undefined;
 }
 
-function installKernelSpec(
+export function createKernelSpec(
+  mode: SageLanguageMode,
+  launcher: string[],
+): Record<string, unknown> {
+  return {
+    argv: [
+      ...launcher,
+      "--connection-file",
+      "{connection_file}",
+      "--mode",
+      mode,
+    ],
+    display_name:
+      mode === "sage" ? "Sage.js Polyglot" : "Sage.js (Python mode)",
+    language: mode === "sage" ? "sage" : "python",
+    interrupt_mode: "message",
+    metadata: {
+      debugger: false,
+    },
+  };
+}
+
+function defaultKernelLauncher(): string[] {
+  const root = resolve(join(__dirname, "..", ".."));
+  return [process.execPath, resolve(join(root, "bin", "sagejs-jupyter"))];
+}
+
+export function installKernelSpec(
   mode: SageLanguageMode,
   args: string[],
+  launcher = defaultKernelLauncher(),
 ): void {
-  const root = resolve(join(__dirname, "..", ".."));
-  const launcher = resolve(join(root, "bin", "sagejs-jupyter"));
   const kernelName = mode === "sage" ? "sagejs" : "sagejs-python";
   const temporaryRoot = mkdtempSync(
     join(tmpdir(), "sagejs-kernelspec-"),
@@ -772,25 +797,7 @@ function installKernelSpec(
     writeFileSync(
       join(specDirectory, "kernel.json"),
       `${JSON.stringify(
-        {
-          argv: [
-            process.execPath,
-            launcher,
-            "--connection-file",
-            "{connection_file}",
-            "--mode",
-            mode,
-          ],
-          display_name:
-            mode === "sage"
-              ? "Sage.js Polyglot"
-              : "Sage.js (Python mode)",
-          language: mode === "sage" ? "sage" : "python",
-          interrupt_mode: "message",
-          metadata: {
-            debugger: false,
-          },
-        },
+        createKernelSpec(mode, launcher),
         null,
         2,
       )}\n`,
@@ -804,6 +811,13 @@ function installKernelSpec(
       "--replace",
     ];
     const prefix = optionValue(args, ["--prefix"]);
+    const requestedLocations = Number(Boolean(prefix)) +
+      Number(args.includes("--sys-prefix")) + Number(args.includes("--user"));
+    if (requestedLocations > 1) {
+      throw new Error(
+        "choose only one of --user, --sys-prefix, or --prefix",
+      );
+    }
     if (prefix) installArgs.push("--prefix", prefix);
     else if (args.includes("--sys-prefix")) installArgs.push("--sys-prefix");
     else installArgs.push("--user");
@@ -844,4 +858,21 @@ export async function main(args = process.argv.slice(2)): Promise<void> {
   process.on("SIGTERM", () => void kernel.close());
   await kernel.start();
   await kernel.waitUntilClosed();
+}
+
+export async function runtimeSelfTest(): Promise<string> {
+  const socket = new Router();
+  socket.close();
+  const sage = await createSage();
+  try {
+    const result = await sage.evaluate("2^8");
+    if (result.repr !== "256") {
+      throw new Error(
+        `Jupyter worker returned ${JSON.stringify(result.repr)}, expected 256`,
+      );
+    }
+  } finally {
+    await sage.close();
+  }
+  return "Sage.js Jupyter SEA runtime passed.";
 }

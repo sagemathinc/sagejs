@@ -6,45 +6,61 @@ notebook, and application APIs share one execution model.
 
 ## Install the kernelspec
 
-From a source checkout:
+Install Sage.js first, then ask that same executable to register itself with
+the active Jupyter installation:
 
 ```sh
-pnpm install
-pnpm jupyter:install
+sagejs --install-jupyter-kernel
 ```
 
-This builds Sage.js and installs a user kernelspec named `sagejs`. Start
+This works with both the npm command and the self-contained macOS, Linux, and
+Windows executable. It installs a user kernelspec named `sagejs`; no Python
+package, Jupyter extension, or second Sage.js launcher is required. Start
 JupyterLab or Notebook normally and select **Sage.js Polyglot**:
 
 ```sh
 jupyter lab
 ```
 
-The installer also accepts the standard placement choices:
+The installer invokes the `jupyter` command from `PATH` and accepts its
+standard placement choices:
 
 ```sh
-node bin/sagejs-jupyter --install --user
-node bin/sagejs-jupyter --install --sys-prefix
-node bin/sagejs-jupyter --install --prefix /some/prefix
+sagejs --install-jupyter-kernel --user
+sagejs --install-jupyter-kernel --sys-prefix
+sagejs --install-jupyter-kernel --prefix /some/prefix
 ```
 
 To install a separate kernel which disables Sage syntax and uses Python
 operator semantics:
 
 ```sh
-pnpm jupyter:install:python
+sagejs --install-jupyter-kernel --jupyter-kernel-mode python
 ```
 
 That kernelspec appears as **Sage.js (Python mode)**.
 
-The generated kernelspec records absolute paths to the current Node executable
-and Sage.js checkout. Re-run the installer after moving the checkout or
-changing Node installations. Remove it with:
+The generated kernelspec records the absolute path to the installed Sage.js
+command. A self-contained release launches its internal kernel mode directly;
+an npm or source installation records the Node executable and Jupyter launcher.
+Re-run the installer after moving the executable or changing Node
+installations. Remove it with:
 
 ```sh
 jupyter kernelspec uninstall sagejs
 jupyter kernelspec uninstall sagejs-python
 ```
+
+From a source checkout, build first and invoke the same public CLI:
+
+```sh
+pnpm install
+pnpm build
+node bin/sagejs --install-jupyter-kernel
+```
+
+The older `sagejs-jupyter --install` command and the `pnpm jupyter:install`
+developer shortcut remain supported.
 
 ## Notebook behavior
 
@@ -150,6 +166,13 @@ syntax completeness, errors, interruption recovery, and shutdown:
 
 ```sh
 pnpm test:jupyter
+```
+
+After building the self-contained executable, the same full protocol suite can
+exercise its embedded ZeroMQ transport and worker:
+
+```sh
+pnpm test:jupyter:sea
 ```
 
 The test requires the Python `jupyter_client` package. It is separate from the

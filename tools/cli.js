@@ -146,6 +146,8 @@ function print_top_level_usage() {
 
   console.log(label("Common options:"));
   console.log("  --emit-sage     show Sage source lowered from a foreign language");
+  console.log("  --install-jupyter-kernel");
+  console.log("                  install Sage.js in the current Jupyter environment");
   console.log("  -h, --help      show this help");
   console.log("  -V, --version   show the Sage.js version\n");
 
@@ -155,7 +157,7 @@ function print_top_level_usage() {
   console.log("  " + command(executable + " program.sage"));
   console.log("  " + command(executable + " --wolfram program.wl"));
   console.log("  " + command("echo 'factor(2026)' | " + executable));
-  console.log("  " + command("sagejs-jupyter --install --user\n"));
+  console.log("  " + command(executable + " --install-jupyter-kernel\n"));
 
   console.log(label("Advanced subcommands:"));
   console.log("  docs            search and export installed API documentation");
@@ -274,8 +276,12 @@ function parse_args() {
     ans.mode = all_args[0];
     all_args = all_args.slice(1);
   } else {
-    // this check is not robust, but, it will only fail if the repl mode takes any non-boolean options
-    var has_files =
+    // Jupyter installation is a top-level operation whose placement and mode
+    // options take values. Do not mistake those values for program files.
+    var install_jupyter_kernel = all_args.some(function (arg) {
+      return arg === "--install-jupyter-kernel";
+    });
+    var has_files = !install_jupyter_kernel &&
       all_args.filter(function (a) {
         return a[0] !== "-";
       }).length > 0;
@@ -553,6 +559,43 @@ Print generated Sage source before executing foreign-language input.
 opt("tokens", "", "bool", false, function () {
   /*
 Show every token as they are parsed.
+*/
+});
+
+opt("install_jupyter_kernel", "", "bool", false, function () {
+  /*
+Install Sage.js as a Jupyter kernel for the current user.
+*/
+});
+
+opt(
+  "jupyter_kernel_mode",
+  "",
+  "string",
+  "sage",
+  function () {
+    /*
+Choose Sage/polyglot or Python semantics for the installed Jupyter kernel.
+*/
+  },
+  ["sage", "python"]
+);
+
+opt("user", "", "bool", false, function () {
+  /*
+Install the Jupyter kernelspec for the current user (the default).
+*/
+});
+
+opt("sys_prefix", "", "bool", false, function () {
+  /*
+Install the Jupyter kernelspec under Jupyter's current sys.prefix.
+*/
+});
+
+opt("prefix", "", "string", "", function () {
+  /*
+Install the Jupyter kernelspec under the given prefix.
 */
 });
 

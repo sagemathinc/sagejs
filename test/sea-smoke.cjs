@@ -37,6 +37,15 @@ function run(executable, filename, extraArguments = []) {
   return result.stdout.trim();
 }
 
+function runArguments(executable, arguments_) {
+  const result = spawnSync(executable, arguments_, {
+    cwd: temporaryDirectory,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  return result.stdout.trim();
+}
+
 try {
   // Some filesystems do not preserve an executable bit when an artifact is
   // copied into a test workspace.
@@ -44,6 +53,11 @@ try {
     chmodSync(pythonExecutable, 0o755);
     if (!pythonOnly) chmodSync(mathExecutable, 0o755);
   }
+
+  assert.equal(
+    runArguments(pythonExecutable, ["--jupyter-kernel-self-test"]),
+    "Sage.js Jupyter SEA runtime passed.",
+  );
 
   const pythonProgram = join(temporaryDirectory, "portable.py");
   writeFileSync(

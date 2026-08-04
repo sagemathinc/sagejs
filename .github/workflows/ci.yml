@@ -42,7 +42,7 @@ jobs:
       - name: Install the native toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install --yes build-essential python3 m4 xz-utils
+          sudo apt-get install --yes build-essential python3 python3-jupyter-client m4 xz-utils
 
       - name: Cache downloaded and compiled native dependencies
         uses: actions/cache@v6
@@ -104,6 +104,9 @@ jobs:
         env:
           SAGEJS_BUILD_JOBS: "4"
         run: pnpm test:sea
+
+      - name: Exercise the SEA Jupyter wire protocol
+        run: pnpm test:jupyter:sea
 
       - name: Record non-blocking compatibility status
         if: always()

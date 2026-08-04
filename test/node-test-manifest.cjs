@@ -33,6 +33,7 @@ const integration = [
   "test/serialization.cjs",
   "test/numpy-module.cjs",
   "test/kernel.cjs",
+  "test/jupyter-kernelspec.cjs",
   "test/graphics.cjs",
   "test/graphics3d.cjs",
   "test/graphics-export.cjs",

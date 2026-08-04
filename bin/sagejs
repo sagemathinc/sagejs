@@ -38,6 +38,18 @@ if (
 ) sageMode = true;
 argv.sage = sageMode;
 
+if (argv.install_jupyter_kernel) {
+  const installArguments = ["--mode", argv.jupyter_kernel_mode];
+  if (argv.user) installArguments.push("--user");
+  if (argv.sys_prefix) installArguments.push("--sys-prefix");
+  if (argv.prefix) installArguments.push("--prefix", argv.prefix);
+  load("jupyter-kernel").installKernelSpec(
+    argv.jupyter_kernel_mode,
+    installArguments,
+  );
+  process.exit(0);
+}
+
 const basePath = path.resolve(
   argv.base_path
     ? argv.base_path

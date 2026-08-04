@@ -21,12 +21,16 @@ const BASELIB_ASSET = "compiler/baselib-plain-pretty.js";
 const RUNTIME_BOOTSTRAP_PREFIX = "runtime-cache/runtime-bootstrap-";
 const TASK_RUNTIME_ASSET = "compiler/task-runtime.js";
 const FLINT_ASSET = "native/sagejs_flint.node";
+const ZEROMQ_ASSET = "native/zeromq.node";
 const PLOTLY_ASSET = "vendor/plotly.min.js";
+const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
 const MULTIPROCESSING_WORKER_ASSET = "worker/multiprocessing-worker.cjs";
 const VENDOR_ASSET_PREFIX = "vendor/";
 
 let flintModule: unknown;
+let zeroMQModule: unknown;
 let nativeTemporaryDirectory: string | undefined;
+let kernelWorkerFilename: string | undefined;
 let multiprocessingWorkerFilename: string | undefined;
 let seaAssetKeys: Set<string> | undefined;
 
@@ -168,6 +172,27 @@ export function multiprocessingWorkerPath(fallbackFilename: string): string {
   return multiprocessingWorkerFilename;
 }
 
+export function kernelWorkerPath(fallbackFilename: string): string {
+  if (!isSea()) return fallbackFilename;
+  if (!hasAsset(KERNEL_WORKER_ASSET)) {
+    throw new Error("Jupyter kernel worker is missing from this executable");
+  }
+  if (kernelWorkerFilename) return kernelWorkerFilename;
+  if (!nativeTemporaryDirectory) {
+    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
+  }
+  kernelWorkerFilename = join(
+    nativeTemporaryDirectory,
+    basename(KERNEL_WORKER_ASSET),
+  );
+  writeFileSync(
+    kernelWorkerFilename,
+    Buffer.from(getAsset(KERNEL_WORKER_ASSET)),
+    { mode: 0o700 },
+  );
+  return kernelWorkerFilename;
+}
+
 function loadEmbeddedFlint(): unknown {
   if (flintModule !== undefined) return flintModule;
   if (!hasAsset(FLINT_ASSET)) {
@@ -193,10 +218,74 @@ function loadEmbeddedFlint(): unknown {
   return flintModule;
 }
 
+function loadEmbeddedZeroMQ(): unknown {
+  if (zeroMQModule !== undefined) return zeroMQModule;
+  if (!hasAsset(ZEROMQ_ASSET)) {
+    throw new Error("ZeroMQ is missing from this Sage.js executable");
+  }
+
+  if (!nativeTemporaryDirectory) {
+    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
+  }
+  const addonFilename = join(nativeTemporaryDirectory, basename(ZEROMQ_ASSET));
+  writeFileSync(addonFilename, Buffer.from(getAsset(ZEROMQ_ASSET)), {
+    mode: 0o700,
+  });
+
+  const nativeModule = { exports: {} };
+  process.dlopen(nativeModule, addonFilename);
+  const native = nativeModule.exports as {
+    Socket: new (type: number, options?: unknown) => any;
+  };
+
+  // zeromq.js implements receive iteration in its JavaScript layer rather
+  // than in the Node-API addon. Recreate that small, public behavior here so
+  // the embedded addon has the same semantics as the ordinary npm package.
+  if (!(Symbol.asyncIterator in native.Socket.prototype)) {
+    Object.defineProperty(native.Socket.prototype, Symbol.asyncIterator, {
+      value: function asyncIterator(this: any) {
+        return {
+          next: async () => {
+            if (this.closed) return { done: true };
+            try {
+              return { value: await this.receive(), done: false };
+            } catch (error: any) {
+              if (this.closed && error?.code === "EAGAIN") {
+                return { done: true };
+              }
+              throw error;
+            }
+          },
+        };
+      },
+    });
+  }
+
+  class Publisher extends native.Socket {
+    constructor(options?: unknown) {
+      super(1, options);
+    }
+  }
+  class Reply extends native.Socket {
+    constructor(options?: unknown) {
+      super(4, options);
+    }
+  }
+  class Router extends native.Socket {
+    constructor(options?: unknown) {
+      super(6, options);
+    }
+  }
+
+  zeroMQModule = { Publisher, Reply, Router };
+  return zeroMQModule;
+}
+
 export function runtimeRequire(name: string): unknown {
   if (isSea() && name === "@sagemath/sagejs-flint") {
     return loadEmbeddedFlint();
   }
+  if (isSea() && name === "zeromq") return loadEmbeddedZeroMQ();
   if (name === "numpy-ts") {
     return require("../vendor/numpy-ts.cjs");
   }
@@ -214,6 +303,7 @@ export function cleanNativeResources(): void {
     // Windows can keep a loaded addon locked until process shutdown.
   }
   multiprocessingWorkerFilename = undefined;
+  kernelWorkerFilename = undefined;
   nativeTemporaryDirectory = undefined;
 }
 

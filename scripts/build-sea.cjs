@@ -11,7 +11,7 @@ const {
 } = require("fs");
 const { createHash } = require("crypto");
 const { execFileSync } = require("child_process");
-const { join, relative } = require("path");
+const { dirname, join, relative } = require("path");
 
 const root = join(__dirname, "..");
 const outputDirectory = join(root, "build", "sea");
@@ -21,6 +21,7 @@ const multiprocessingWorkerBundle = join(
   outputDirectory,
   "multiprocessing-worker.cjs",
 );
+const kernelWorkerBundle = join(outputDirectory, "kernel-worker.cjs");
 const flintAddon = join(
   root,
   "packages",
@@ -51,6 +52,44 @@ if (!buildPython && !buildMath) {
 
 function sha256(filename) {
   return createHash("sha256").update(readFileSync(filename)).digest("hex");
+}
+
+function runtimeLibc() {
+  if (process.platform === "darwin") return "libc";
+  if (process.platform === "win32") return "msvc";
+  return process.report.getReport().header.glibcVersionRuntime
+    ? "glibc"
+    : "musl";
+}
+
+function zeroMQAddonFilename() {
+  const packageDirectory = dirname(require.resolve("zeromq/package.json"));
+  const buildDirectory = join(packageDirectory, "build");
+  const manifest = JSON.parse(
+    readFileSync(join(buildDirectory, "manifest.json"), "utf8"),
+  );
+  const candidates = Object.entries(manifest)
+    .map(([serialized, filename]) => ({
+      configuration: JSON.parse(serialized),
+      filename: join(buildDirectory, filename),
+    }))
+    .filter(
+      ({ configuration, filename }) =>
+        configuration.os === process.platform &&
+        configuration.arch === process.arch &&
+        configuration.libc === runtimeLibc() &&
+        existsSync(filename),
+    )
+    .sort(
+      (left, right) =>
+        (right.configuration.abi ?? 0) - (left.configuration.abi ?? 0),
+    );
+  if (candidates.length === 0) {
+    throw new Error(
+      `zeromq has no ${process.platform}/${process.arch}/${runtimeLibc()} addon`,
+    );
+  }
+  return candidates[0].filename;
 }
 
 function seaBuilderExecutable() {
@@ -196,6 +235,8 @@ function buildExecutable(name, withFlint) {
       "runtime-bootstrap-python.bin",
     ),
     "worker/multiprocessing-worker.cjs": multiprocessingWorkerBundle,
+    "worker/kernel-worker.cjs": kernelWorkerBundle,
+    "native/zeromq.node": zeroMQAddonFilename(),
     ...collectStandardLibraryAssets(),
     ...collectStandardLibraryCacheAssets(),
     "vendor/plotly.min.js": require.resolve(
@@ -273,6 +314,18 @@ mkdirSync(outputDirectory, { recursive: true });
 buildSync({
   entryPoints: [join(root, "dist", "tools", "sea-entry.js")],
   outfile: bundle,
+  bundle: true,
+  platform: "node",
+  format: "cjs",
+  target: "node22",
+  sourcemap: false,
+  minify: false,
+  external: ["plotly.js-dist-min/plotly.min.js"],
+});
+
+buildSync({
+  entryPoints: [join(root, "dist", "tools", "kernel-worker.js")],
+  outfile: kernelWorkerBundle,
   bundle: true,
   platform: "node",
   format: "cjs",

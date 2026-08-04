@@ -15,6 +15,11 @@ Compute Engine, `tree-sitter-magma`, `tree-sitter-wolfram`, and
 `CORTEX-COMPUTE-ENGINE-MIT.txt`, `TREE-SITTER-MAGMA-MIT.txt`,
 `TREE-SITTER-WOLFRAM-MIT.txt`, and `TREE-SITTER-MATLAB-MIT.txt`.
 
+The Jupyter kernel bundles the MIT-licensed `zeromq.js` binding and its
+MPL-2.0 `libzmq` binary; see `ZEROMQ-JS-MIT.txt` and
+`LIBZMQ-MPL-2.0-NOTICE.txt`. The libzmq source corresponding to the shipped
+binary is available from the upstream link recorded in that notice.
+
 The mathematical library embeds a generated 15,000-row prefix of SageMath's
 Odlyzko zeta-zero database; see `ODLYZKO-ZETA-NOTICE.md`.
 

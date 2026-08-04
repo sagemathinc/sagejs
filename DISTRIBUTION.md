@@ -19,7 +19,7 @@ variants:
 
 | Artifact | Contents | Intended use |
 |---|---|---|
-| `build/sea/sagepython` | Python/Sage.js compiler, baselib, and standard library; no FLINT addon | The small language runtime, compatibility testing, and portable demos |
+| `build/sea/sagepython` | Python/Sage.js compiler, baselib, standard library, and Jupyter kernel; no FLINT addon | The small language runtime, compatibility testing, and portable demos |
 | `build/sea/sagejs` | Everything above plus the native FLINT addon and statically linked GMP, MPFR, MPC, OpenBLAS, and FLINT | Self-contained native research mathematics |
 
 Build both with:
@@ -52,10 +52,18 @@ The native build downloads checksum-pinned releases of GMP, MPFR, MPC, and
 FLINT; Linux x64 also downloads ffpoly and smalljac. It builds
 position-independent static libraries, tests GMP, and links those libraries
 into the addon. Other platforms retain the same elliptic-curve API using the
-portable point-counting fallback. At runtime the SEA asset API writes the
-addon to a private temporary directory because Node
-loads native addons through a filesystem path. The directory is removed when
-the process exits.
+portable point-counting fallback. At runtime the SEA asset API writes native
+addons and evaluator workers to a private temporary directory because Node
+loads both through filesystem paths. The embedded ZeroMQ Node-API addon
+provides a real Jupyter wire protocol without requiring Node or `node_modules`
+beside the executable. The directory is removed when the process exits.
+
+If `jupyter` is available on `PATH`, either executable can register itself as
+a kernel with no additional Sage.js files:
+
+```sh
+sagejs --install-jupyter-kernel
+```
 
 Run the end-to-end build and relocation smoke test with:
 

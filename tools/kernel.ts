@@ -19,6 +19,7 @@ import {
   SageSourceLanguage,
 } from "./polyglot";
 import { DocumentationCatalog } from "./documentation";
+import { kernelWorkerPath } from "./resources";
 
 export interface SageDisplayData {
   /** MIME type understood by an embedding renderer. */
@@ -143,12 +144,15 @@ export class SageSession extends EventEmitter {
       new SharedArrayBuffer(2 * Int32Array.BYTES_PER_ELEMENT),
     );
     this.interruptState = interruptState;
-    const worker = new Worker(join(__dirname, "kernel-worker.js"), {
-      workerData: {
-        mode: this.mode,
-        interruptBuffer: interruptState.buffer,
+    const worker = new Worker(
+      kernelWorkerPath(join(__dirname, "kernel-worker.js")),
+      {
+        workerData: {
+          mode: this.mode,
+          interruptBuffer: interruptState.buffer,
+        },
       },
-    });
+    );
     this.worker = worker;
 
     worker.on("message", (message) => {

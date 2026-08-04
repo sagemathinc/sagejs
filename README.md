@@ -323,9 +323,11 @@ Sage.js also runs as a polyglot Jupyter kernel with persistent state, streamed
 output, completion, inspection, reliable interruption, and native Plotly
 display for 2D and 3D graphics. Cells marked `%%sage`, `%%python`, `%%magma`,
 `%%matlab`, `%%maple`, or `%%wolfram` share one JavaScript object namespace.
-Run `pnpm jupyter:install`, then select **Sage.js Polyglot** in JupyterLab or
-Notebook. See [`JUPYTER.md`](JUPYTER.md) for installation, behavior, and
-testing details. [`POLYGLOT.md`](POLYGLOT.md) defines the shared-object
+Run `sagejs --install-jupyter-kernel`, then select **Sage.js Polyglot** in
+JupyterLab, CoCalc, or any other Jupyter environment. The command works for
+both npm and self-contained native installations. See
+[`JUPYTER.md`](JUPYTER.md) for installation, behavior, and testing details.
+[`POLYGLOT.md`](POLYGLOT.md) defines the shared-object
 interoperability contract, compatibility matrix, executable corpus, example
 notebook, and frontend-overhead benchmark.
 

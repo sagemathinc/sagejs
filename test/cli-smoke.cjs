@@ -54,7 +54,7 @@ assert.match(help, /With no program, start an interactive Sage calculator/);
 assert.match(help, /\.py files use Python and \.sage files use Sage/);
 assert.match(help, /--python\s+ordinary Python syntax and division/);
 assert.match(help, /--wolfram\s+experimental Wolfram Language frontend/);
-assert.match(help, /sagejs-jupyter --install --user/);
+assert.match(help, /sagejs --install-jupyter-kernel/);
 assert.match(help, /Advanced subcommands:/);
 assert.match(
   run(["compile", "--help"]),

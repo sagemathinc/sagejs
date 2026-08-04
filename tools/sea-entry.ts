@@ -18,7 +18,13 @@ const executableStem = basename(executable, extname(executable)).toLowerCase();
 interface SeaArguments {
   files: string[];
   import_path: string;
-  mode: "compile" | "docs" | "repl";
+  mode:
+    | "compile"
+    | "docs"
+    | "repl"
+    | "jupyter-install"
+    | "jupyter-kernel"
+    | "jupyter-self-test";
   execute: boolean;
   sage: boolean;
   magma: boolean;
@@ -38,6 +44,7 @@ interface SeaArguments {
   kind?: string;
   backend?: string;
   tag?: string;
+  jupyter_args?: string[];
 }
 
 function usage(): void {
@@ -46,6 +53,7 @@ function usage(): void {
 Run Sage.js from a self-contained executable. With no program, start a REPL.
 
   ${executable} docs <search|show|export|coverage> [query]
+  ${executable} --install-jupyter-kernel [--jupyter-kernel-mode sage|python]
 
 Options:
   --python        use Python syntax and division
@@ -56,6 +64,8 @@ Options:
   --wolfram       use the experimental Wolfram Language frontend
   --mathematica   alias for --wolfram
   --emit-sage     print Sage source generated from foreign-language input
+  --install-jupyter-kernel
+                  install this executable as a user Jupyter kernel
   --no-js         hide generated JavaScript in the REPL (default)
   --tokens        display parser tokens
   -h, --help      show this help
@@ -79,6 +89,52 @@ function parseArguments(): SeaArguments {
     tokens: false,
   };
   const rawArguments = process.argv.slice(2);
+  if (rawArguments.includes("--jupyter-kernel-self-test")) {
+    if (rawArguments.length !== 1) {
+      throw new Error("--jupyter-kernel-self-test takes no other arguments");
+    }
+    args.mode = "jupyter-self-test";
+    return args;
+  }
+  if (rawArguments.includes("--jupyter-kernel")) {
+    args.mode = "jupyter-kernel";
+    args.jupyter_args = rawArguments.filter(
+      (argument) => argument !== "--jupyter-kernel",
+    );
+    return args;
+  }
+  if (rawArguments.includes("--install-jupyter-kernel")) {
+    args.mode = "jupyter-install";
+    const jupyterArguments: string[] = [];
+    for (let index = 0; index < rawArguments.length; index += 1) {
+      const argument = rawArguments[index];
+      if (argument === "--install-jupyter-kernel") continue;
+      if (argument === "--jupyter-kernel-mode") {
+        const value = rawArguments[++index];
+        if (value === undefined) {
+          throw new Error("--jupyter-kernel-mode requires sage or python");
+        }
+        jupyterArguments.push("--mode", value);
+      } else if (argument.startsWith("--jupyter-kernel-mode=")) {
+        jupyterArguments.push(
+          "--mode",
+          argument.slice("--jupyter-kernel-mode=".length),
+        );
+      } else if (argument === "--prefix") {
+        const value = rawArguments[++index];
+        if (value === undefined) throw new Error("--prefix requires a value");
+        jupyterArguments.push(argument, value);
+      } else if (argument === "--user" || argument === "--sys-prefix") {
+        jupyterArguments.push(argument);
+      } else {
+        throw new Error(
+          `unknown Jupyter installer option ${JSON.stringify(argument)}`,
+        );
+      }
+    }
+    args.jupyter_args = jupyterArguments;
+    return args;
+  }
   if (rawArguments[0] === "docs") {
     args.mode = "docs";
     const documentationArguments = rawArguments.slice(1);
@@ -185,6 +241,32 @@ const argv = parseArguments();
 const sageMode = argv.sage;
 
 async function main(): Promise<void> {
+  if (argv.mode === "jupyter-install") {
+    const jupyter = await import("./jupyter-kernel.js");
+    const jupyterArguments = argv.jupyter_args ?? [];
+    const modeIndex = jupyterArguments.indexOf("--mode");
+    const mode = (modeIndex >= 0
+      ? jupyterArguments[modeIndex + 1]
+      : "sage") as "sage" | "python";
+    if (mode !== "sage" && mode !== "python") {
+      throw new Error(`unknown Sage.js Jupyter mode ${JSON.stringify(mode)}`);
+    }
+    jupyter.installKernelSpec(mode, jupyterArguments, [
+      process.execPath,
+      "--jupyter-kernel",
+    ]);
+    return;
+  }
+  if (argv.mode === "jupyter-kernel") {
+    const jupyter = await import("./jupyter-kernel.js");
+    await jupyter.main(argv.jupyter_args);
+    return;
+  }
+  if (argv.mode === "jupyter-self-test") {
+    const jupyter = await import("./jupyter-kernel.js");
+    console.log(await jupyter.runtimeSelfTest());
+    return;
+  }
   if (argv.mode === "repl") {
     await Repl({
       show_js: !argv.no_js,
