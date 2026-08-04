@@ -154,6 +154,8 @@ try {
       mathProgram,
       [
         "from multiprocessing import Pool",
+        "from pathlib import Path",
+        "from sagejs_serialization import dumps, loads",
         "def phi(n):",
         "    return euler_phi(n)",
         "def modular_dimension(n):",
@@ -165,7 +167,15 @@ try {
         "print(sin(x^2).derivative(x))",
         "print(fast_callable(sin(x^2), vars=[x])(2))",
         "u, v = var('u v')",
-        "print(plot3d(u^2-v^2, (u,-1,1), (v,-1,1), plot_points=2))",
+        "scene = plot3d(u^2-v^2, (u,-1,1), (v,-1,1), plot_points=2)",
+        "print(scene)",
+        "scene.save('release-smoke.html')",
+        "html = Path('release-smoke.html').read_text()",
+        "print(Path('release-smoke.html').is_file(), 'plotly' in html.lower())",
+        "A = matrix(QQ, [[1/2, 2/3], [3/5, 5/7]])",
+        "payload = dumps({'matrix': A, 'factor': str(factor(2026))})",
+        "restored = loads(payload)",
+        "print(restored['matrix'] == A, restored['factor'] == '2 * 1013', len(payload) < 5000)",
         "with Pool(2) as workers:",
         "    print(workers.map(phi, [1009, 1013, 1019]))",
         "    print(workers.map(modular_dimension, [3, 5, 7]))",
@@ -180,6 +190,8 @@ try {
         "2*x*cos(x^2)\n" +
         "-0.7568024953079282\n" +
         "Graphics3d Object\n" +
+        "True True\n" +
+        "True True True\n" +
         "[1008, 1012, 1018]\n" +
         "['3', '5', '5']",
     );

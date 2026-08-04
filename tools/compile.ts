@@ -24,6 +24,7 @@ import {
   selectedForeignLanguage,
 } from "./foreign";
 import { installNodeHost } from "./host";
+import { installNodeGraphicsSaveHook } from "./graphics-export";
 import { runRuntimeBootstrap } from "./runtime-bootstrap";
 
 // TODO
@@ -303,6 +304,7 @@ export default async function Compile({
   if (argv.execute) {
     // @ts-ignore
     global.require = runtimeRequire;
+    installNodeGraphicsSaveHook();
     uninstallNodeHost = installNodeHost(
       globalThis,
       argv.sage ? "sage" : "python",

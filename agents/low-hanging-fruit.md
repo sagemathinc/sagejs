@@ -227,9 +227,13 @@ Status meanings:
 26. **ready — package-boundary enforcement expansion.** Require every new
     package and native capability to declare its dependency layer, lazy-load
     behavior, serialization types, browser behavior, and Windows status.
-27. **ready — cross-platform release smoke corpus.** Run the same SEA tests on
+27. **done — cross-platform release smoke corpus.** Run the same SEA tests on
     Linux x64/arm64, Windows x64, and macOS arm64, including native arithmetic,
-    filesystem IO, serialization, multiprocessing, and a Plotly export.
+    filesystem IO, serialization, multiprocessing, and a Plotly export. Every
+    platform job runs `test/sea-smoke.cjs` through `pnpm test:sea`; the math
+    binary now verifies a rendered standalone Plotly HTML file and a SagePack
+    round trip containing exact rational matrices and factorizations in
+    addition to the existing native and worker-thread checks.
 28. **measure — reproducible database jobs.** Define a checkpointed job/result
     format for recomputing LMFDB slices in parallel, including inputs, code and
     dependency hashes, mathematical witnesses, timing, and resumable shards.
