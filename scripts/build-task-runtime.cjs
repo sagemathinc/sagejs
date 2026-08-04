@@ -19,6 +19,8 @@ const result = spawnSync(
   ],
   {
     cwd: root,
+    // The standalone compiler embeds lazy library modules required by this
+    // otherwise compact worker runtime.  Workers need no second compiler.
     input: "\n",
     stdio: ["pipe", "inherit", "inherit"],
   },
@@ -26,4 +28,3 @@ const result = spawnSync(
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
 console.log("Built lightweight multiprocessing task runtime");
-

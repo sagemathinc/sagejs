@@ -100,10 +100,19 @@
       "id": "elliptic-curves",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 35000,
+      "max_source_bytes": 56000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": ["src/baselib/elliptic_curves.py"],
       "typescript_files": ["tools/serialization-codecs/elliptic-curves.ts"],
+      "prefixes": []
+    },
+    {
+      "id": "elliptic-curves-advanced",
+      "layer": 4,
+      "startup": "lazy",
+      "max_source_bytes": 30000,
+      "depends_on": ["core-runtime", "arithmetic", "elliptic-curves"],
+      "files": ["src/lib/sagejs_elliptic_advanced.py"],
       "prefixes": []
     },
     {

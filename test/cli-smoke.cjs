@@ -555,6 +555,8 @@ try {
   const loadedFile = join(temporary, "loaded example.sage");
   const loadingFile = join(temporary, "loading-example.sage");
   const multiprocessingFile = join(temporary, "multiprocessing-example.py");
+  const standaloneEllipticFile = join(temporary, "standalone-elliptic.sage");
+  const standaloneEllipticOutput = join(temporary, "standalone-elliptic.js");
   writeFileSync(sageFile, "print(2^5)\n", "utf8");
   writeFileSync(pythonFile, "print(2^5)\n", "utf8");
   writeFileSync(
@@ -565,6 +567,11 @@ try {
       "    return n^2",
       "",
     ].join("\n"),
+    "utf8",
+  );
+  writeFileSync(
+    standaloneEllipticFile,
+    "E = EllipticCurve([-1, 0])\nprint(E.local_data(2).kodaira_symbol())\n",
     "utf8",
   );
   writeFileSync(
@@ -602,6 +609,26 @@ try {
     run([multiprocessingFile]).trim(),
     "[9, 25, 49]\n['3', '5', '5']\nTrue",
   );
+  run([
+    "compile",
+    "--output",
+    standaloneEllipticOutput,
+    standaloneEllipticFile,
+  ]);
+  const standaloneElliptic = spawnSync(
+    process.execPath,
+    [standaloneEllipticOutput],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        NODE_PATH: join(root, "node_modules"),
+      },
+    },
+  );
+  assert.equal(standaloneElliptic.status, 0, standaloneElliptic.stderr);
+  assert.equal(standaloneElliptic.stdout.trim(), "III");
   assert.match(
     run(["compile", "--omit-baselib", sageFile]),
     /var ρσ_const_0 = Integer\("2"\),\s+ρσ_const_1 = Integer\("5"\)/,

@@ -85,6 +85,24 @@ test("Pool.map propagates worker exceptions with their Python type", async (t) =
   );
 });
 
+test("workers include lazily split advanced elliptic algorithms", async (t) => {
+  const session = await createSage();
+  t.after(() => session.close());
+
+  const result = await session.evaluate(
+    [
+      "from multiprocessing import Pool",
+      "def local_reduction(p):",
+      "    E = EllipticCurve([0,-2,0,9,8])",
+      "    d = E.local_data(p)",
+      "    return (str(d.kodaira_symbol()), d.conductor_valuation())",
+      "with Pool(2) as workers:",
+      "    print(workers.map(local_reduction, [2, 13]))",
+    ].join("\n"),
+  );
+  assert.equal(result.stdout.trim(), "[('I1', 1), ('I1', 1)]");
+});
+
 test("warm Pool.map tasks execute concurrently", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());

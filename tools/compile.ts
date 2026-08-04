@@ -226,6 +226,20 @@ export default async function Compile({
       if (argv.sage && !foreignFrontend && filename !== "<stdin>") {
         code = expandSageLoads(code, filename);
       }
+      if (includeAdvancedInStandalone) {
+        code =
+          `import sagejs_elliptic_advanced\n` +
+          `_elliptic_advanced_state["module"] = sagejs_elliptic_advanced\n` +
+          `sagejs_elliptic_advanced._ec_bigint_power = _ec_bigint_power\n` +
+          `sagejs_elliptic_advanced._ec_change_rst = _ec_change_rst\n` +
+          `sagejs_elliptic_advanced._ec_invariants = _ec_invariants\n` +
+          `sagejs_elliptic_advanced._ec_legendre = _ec_legendre\n` +
+          `sagejs_elliptic_advanced._ec_valuation = _ec_valuation\n` +
+          `sagejs_elliptic_advanced._curve_constructor = EllipticCurve\n` +
+          `sagejs_elliptic_advanced._parent_class = EllipticCurveParent\n` +
+          `sagejs_elliptic_advanced._point_class = EllipticCurvePoint\n` +
+          code;
+      }
       try {
         topLevel = parseFile(code, filename);
       } catch (err) {
@@ -288,6 +302,8 @@ export default async function Compile({
   // output remains standalone and therefore retains its embedded baselib.
   const useCachedRuntime =
     !!argv.execute && !argv.omit_baselib && !argv.output;
+  const includeAdvancedInStandalone =
+    !argv.omit_baselib && !useCachedRuntime;
   if (useCachedRuntime) {
     outputOptions.omit_baselib = true;
     delete outputOptions.baselib_plain;

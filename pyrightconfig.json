@@ -28,6 +28,7 @@
     "src/baselib/zeta_data.py",
     "src/baselib/zz_introspection.py",
     "src/lib/sage/__init__.py",
+    "src/lib/sagejs_elliptic_advanced.py",
     "src/lib/sage/modular/__init__.py",
     "src/lib/sage/modular/dims.py",
     "src/lib/magma.py",
