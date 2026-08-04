@@ -268,6 +268,46 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Ensure Visual Studio clang-cl is installed
+        shell: pwsh
+        run: |
+          $installer = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer"
+          $vswhere = Join-Path $installer "vswhere.exe"
+          $installation = [string] (& $vswhere -latest -products * -property installationPath)
+          $installation = $installation.Trim()
+          if (-not $installation) {
+            throw "Visual Studio Build Tools are required on the Windows runner"
+          }
+
+          $clangInstallation = [string] (& $vswhere -latest -products * `
+            -requires `
+              Microsoft.VisualStudio.Component.VC.Llvm.Clang `
+              Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset `
+            -property installationPath)
+          $clangInstallation = $clangInstallation.Trim()
+          if (-not $clangInstallation) {
+            $setup = Join-Path $installer "setup.exe"
+            & $setup modify `
+              --installPath $installation `
+              --add Microsoft.VisualStudio.Component.VC.Llvm.Clang `
+              --add Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset `
+              --quiet `
+              --norestart
+            if ($LASTEXITCODE -notin 0, 3010) {
+              throw "Visual Studio clang-cl installation failed with exit code $LASTEXITCODE"
+            }
+          }
+
+          $clangInstallation = [string] (& $vswhere -latest -products * `
+            -requires `
+              Microsoft.VisualStudio.Component.VC.Llvm.Clang `
+              Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset `
+            -property installationPath)
+          $clangInstallation = $clangInstallation.Trim()
+          if (-not $clangInstallation) {
+            throw "Visual Studio clang-cl installation did not register its MSBuild toolset"
+          }
+
       - name: Install the pinned dependency graph
         run: pnpm install --frozen-lockfile
 
