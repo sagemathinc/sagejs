@@ -124,6 +124,9 @@ async function main() {
     );
     assert.equal((await session.evaluate("x + 1")).repr, "x + 1");
     assert.equal((await session.evaluate("QQ(1, 2)*x")).repr, "1/2*x");
+    assert.equal((await session.evaluate("sqrt(QQ(10))")).repr, "sqrt(10)");
+    assert.equal((await session.evaluate("QQ(9, 4).sqrt()")).repr, "3/2");
+    await assert.rejects(session.evaluate("QQ(10).sqrt()"), /not a square/);
     assert.equal((await session.evaluate("var('x y')")).repr, "(x, y)");
     assert.equal((await session.evaluate("pi")).repr, "pi");
     assert.equal((await session.evaluate("e")).repr, "e");

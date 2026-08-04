@@ -1123,9 +1123,8 @@ sage: K['x']
 Univariate Polynomial Ring in x over Finite Field in a of size 3^2
 ```
 
-Explicit user-supplied modulus polynomials are not implemented yet.
-Passing `modulus='primitive'` requests a primitive generator when the
-backend supports it.
+Extension moduli are irreducible and normalized to monic. Passing
+`modulus='primitive'` uses the backend's primitive Conway polynomial.
 
 ### Metadata
 
@@ -1133,9 +1132,8 @@ backend supports it.
 - Module: `sage.rings.finite_rings.finite_field_constructor`
 - Tags: rings, finite fields, field construction, extension fields
 - Backends: FLINT
-- Sage compatibility: partial — Prime-power construction and standard generator naming are compatible; explicit modulus polynomials remain unsupported.
+- Sage compatibility: partial — Prime-power construction and standard generator naming are compatible, including explicit irreducible modulus polynomials.
 - Algorithm: FLINT finite-field and modular arithmetic
-- Limitations: Explicit user-supplied modulus polynomials are not implemented.
 
 ### Provenance
 

@@ -1264,7 +1264,11 @@ def ceil(value: Any) -> Any:
 
 def sqrt(value: Any) -> Any:
     if hasattr(value, 'sqrt') and callable(value.sqrt):
-        return value.sqrt()
+        try:
+            return value.sqrt()
+        except ValueError:
+            if not isinstance(value, sage.Rational):
+                raise
     return _symbolic_function("Sqrt", value, runtime.math.sqrt)
 
 
