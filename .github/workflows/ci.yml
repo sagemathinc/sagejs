@@ -273,18 +273,16 @@ jobs:
         run: |
           $installer = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer"
           $vswhere = Join-Path $installer "vswhere.exe"
-          $installation = [string] (& $vswhere -latest -products * -property installationPath)
-          $installation = $installation.Trim()
+          $installation = & $vswhere -latest -products * -property installationPath
           if (-not $installation) {
             throw "Visual Studio Build Tools are required on the Windows runner"
           }
 
-          $clangInstallation = [string] (& $vswhere -latest -products * `
+          $clangInstallation = & $vswhere -latest -products * `
             -requires `
               Microsoft.VisualStudio.Component.VC.Llvm.Clang `
               Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset `
-            -property installationPath)
-          $clangInstallation = $clangInstallation.Trim()
+            -property installationPath
           if (-not $clangInstallation) {
             $setup = Join-Path $installer "setup.exe"
             & $setup modify `
@@ -298,12 +296,11 @@ jobs:
             }
           }
 
-          $clangInstallation = [string] (& $vswhere -latest -products * `
+          $clangInstallation = & $vswhere -latest -products * `
             -requires `
               Microsoft.VisualStudio.Component.VC.Llvm.Clang `
               Microsoft.VisualStudio.Component.VC.Llvm.ClangToolset `
-            -property installationPath)
-          $clangInstallation = $clangInstallation.Trim()
+            -property installationPath
           if (-not $clangInstallation) {
             throw "Visual Studio clang-cl installation did not register its MSBuild toolset"
           }
