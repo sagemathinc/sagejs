@@ -7,6 +7,8 @@ const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 
+const { runPnpm } = require("./pnpm-invocation.cjs");
+
 const rootArchive = resolve(process.argv[2] || "build/release/npm/sagejs.tgz");
 const nativeArchive = resolve(
   process.argv[3] || "build/release/npm/sagejs-linux-x64.tgz",
@@ -24,12 +26,10 @@ try {
     join(temporaryRoot, "package.json"),
     `${JSON.stringify(manifest, null, 2)}\n`,
   );
-  const pnpmEntrypoint = process.env.npm_execpath;
-  const command = pnpmEntrypoint ? process.execPath : "pnpm";
-  const arguments_ = pnpmEntrypoint
-    ? [pnpmEntrypoint, "install", "--ignore-scripts"]
-    : ["install", "--ignore-scripts"];
-  execFileSync(command, arguments_, { cwd: temporaryRoot, stdio: "inherit" });
+  runPnpm(["install", "--ignore-scripts"], {
+    cwd: temporaryRoot,
+    stdio: "inherit",
+  });
   const executable = join(temporaryRoot, "node_modules", ".bin", "sagejs");
   const output = execFileSync(executable, ["--jupyter-kernel-self-test"], {
     cwd: temporaryRoot,

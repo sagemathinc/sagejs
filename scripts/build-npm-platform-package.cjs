@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 "use strict";
 
-const { execFileSync } = require("node:child_process");
 const {
   chmodSync,
   copyFileSync,
@@ -13,6 +12,8 @@ const {
   writeFileSync,
 } = require("node:fs");
 const { join, resolve } = require("node:path");
+
+const { runPnpm } = require("./pnpm-invocation.cjs");
 
 const root = resolve(__dirname, "..");
 const platforms = {
@@ -114,10 +115,8 @@ for (const [name, input] of [
   chmodSync(output, 0o755);
 }
 
-const pnpmEntrypoint = process.env.npm_execpath;
-const command = pnpmEntrypoint ? process.execPath : "pnpm";
-const arguments_ = pnpmEntrypoint
-  ? [pnpmEntrypoint, "pack", "--out", archive]
-  : ["pack", "--out", archive];
-execFileSync(command, arguments_, { cwd: packageDirectory, stdio: "inherit" });
+runPnpm(["pack", "--out", archive], {
+  cwd: packageDirectory,
+  stdio: "inherit",
+});
 console.log(`Built ${archive}`);

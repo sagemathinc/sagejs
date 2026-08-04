@@ -14,6 +14,7 @@ const unit = [
   "test/foreign-languages.cjs",
   "test/parallel-development.cjs",
   "test/package-graph.cjs",
+  "test/pnpm-invocation.cjs",
 ];
 
 const integration = [
