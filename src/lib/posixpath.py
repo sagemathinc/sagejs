@@ -28,19 +28,35 @@ getmtime = genericpath.getmtime
 getatime = genericpath.getatime
 getctime = genericpath.getctime
 commonprefix = genericpath.commonprefix
+samefile = genericpath.samefile
+
+
+def _path(path):
+    if isinstance(path, (str, bytes)):
+        return path
+    try:
+        value = path.__fspath__()
+    except AttributeError:
+        raise TypeError('expected str, bytes or os.PathLike object')
+    if not isinstance(value, (str, bytes)):
+        raise TypeError('expected __fspath__() to return str or bytes')
+    return value
 
 
 def normcase(path):
-    return path
+    return _path(path)
 
 
 def isabs(path):
+    path = _path(path)
     return path.startswith(sep)
 
 
 def join(path, *paths):
+    path = _path(path)
     result = path
     for item in paths:
+        item = _path(item)
         if item.startswith(sep) or not result:
             result = item
         elif result.endswith(sep):
@@ -51,6 +67,7 @@ def join(path, *paths):
 
 
 def split(path):
+    path = _path(path)
     index = path.rfind(sep) + 1
     head, tail = path[:index], path[index:]
     if head and head != sep * len(head):
@@ -59,10 +76,12 @@ def split(path):
 
 
 def splitext(path):
+    path = _path(path)
     return genericpath._splitext(path, sep, altsep, extsep)
 
 
 def splitdrive(path):
+    path = _path(path)
     return tuple([path[:0], path])
 
 
@@ -75,6 +94,7 @@ def dirname(path):
 
 
 def normpath(path):
+    path = _path(path)
     if path == '':
         return curdir
     initial_slashes = 1 if path.startswith(sep) else 0
@@ -100,12 +120,14 @@ def normpath(path):
 
 
 def abspath(path):
+    path = _path(path)
     if not isabs(path):
         path = join(genericpath._getcwd(), path)
     return normpath(path)
 
 
 def realpath(path):
+    path = _path(path)
     try:
         return genericpath._realpath(path)
     except NotImplementedError:
@@ -113,10 +135,13 @@ def realpath(path):
 
 
 def relpath(path, start=None):
+    path = _path(path)
     if not path:
         raise ValueError('no path specified')
     if start is None:
         start = curdir
+    else:
+        start = _path(start)
     start_list = [item for item in abspath(start).split(sep) if item]
     path_list = [item for item in abspath(path).split(sep) if item]
     common = 0
@@ -128,7 +153,7 @@ def relpath(path, start=None):
 
 
 def commonpath(paths):
-    paths = list(paths)
+    paths = [_path(path) for path in paths]
     if not paths:
         raise ValueError('commonpath() arg is an empty sequence')
     absolute = [isabs(path) for path in paths]

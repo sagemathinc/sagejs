@@ -25,6 +25,22 @@ class IOBase:
     def flush(self):
         self._check_open()
 
+    def readable(self):
+        self._check_open()
+        return False
+
+    def writable(self):
+        self._check_open()
+        return False
+
+    def seekable(self):
+        self._check_open()
+        return False
+
+    def isatty(self):
+        self._check_open()
+        return False
+
     def __enter__(self):
         self._check_open()
         return self
@@ -41,14 +57,67 @@ class IOBase:
             raise StopIteration
         return line
 
+    def readlines(self, hint=-1):
+        self._check_open()
+        answer = []
+        total = 0
+        for line in self:
+            answer.append(line)
+            total += len(line)
+            if hint > 0 and total >= hint:
+                break
+        return answer
+
+    def writelines(self, lines):
+        self._check_open()
+        for line in lines:
+            self.write(line)
+
 
 class StringIO(IOBase):
-    def __init__(self, initial_value=''):
+    def __init__(self, initial_value='', newline='\n'):
         IOBase.__init__(self)
         if not isinstance(initial_value, str):
             raise TypeError('initial_value must be str or None')
-        self._value = initial_value
+        if newline not in (None, '', '\n', '\r', '\r\n'):
+            raise ValueError('illegal newline value: ' + repr(newline))
+        self._newline = newline
+        self.newlines = None
+        self._value = self._translated(initial_value)
         self._position = 0
+
+    def _translated(self, text):
+        if self._newline is None:
+            had_cr = '\r' in text.replace('\r\n', '')
+            had_lf = '\n' in text.replace('\r\n', '')
+            had_crlf = '\r\n' in text
+            values = []
+            if had_cr:
+                values.append('\r')
+            if had_lf:
+                values.append('\n')
+            if had_crlf:
+                values.append('\r\n')
+            if len(values) == 1:
+                self.newlines = values[0]
+            elif len(values) > 1:
+                self.newlines = tuple(values)
+            return text.replace('\r\n', '\n').replace('\r', '\n')
+        if self._newline not in ('', '\n'):
+            return text.replace('\n', self._newline)
+        return text
+
+    def readable(self):
+        self._check_open()
+        return True
+
+    def writable(self):
+        self._check_open()
+        return True
+
+    def seekable(self):
+        self._check_open()
+        return True
 
     def getvalue(self):
         self._check_open()
@@ -99,6 +168,7 @@ class StringIO(IOBase):
         self._check_open()
         if not isinstance(text, str):
             raise TypeError('string argument expected')
+        text = self._translated(text)
         if self._position > len(self._value):
             self._value += '\x00' * (self._position - len(self._value))
         end = self._position + len(text)
@@ -127,6 +197,24 @@ class BytesIO(IOBase):
     def getvalue(self):
         self._check_open()
         return bytes(self._value)
+
+    def readable(self):
+        self._check_open()
+        return True
+
+    def writable(self):
+        self._check_open()
+        return True
+
+    def seekable(self):
+        self._check_open()
+        return True
+
+    def read1(self, size=-1):
+        return self.read(size)
+
+    def readinto1(self, buffer):
+        return self.readinto(buffer)
 
     def tell(self):
         self._check_open()

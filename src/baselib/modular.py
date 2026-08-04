@@ -3367,7 +3367,7 @@ class ModularSymbolsSpace(sage.Parent):
         restricted characteristic polynomial is irreducible is certified
         simple as a module for the commutative Hecke algebra.
 
-        With ``anemic=False``, repeated anemic constituents are further split
+        With `anemic=False`, repeated anemic constituents are further split
         by every bad-prime `U_p`. Diamond operators are already scalar on the
         fixed-character spaces currently supported by the native engine, so
         they require no additional kernels.

@@ -28,13 +28,28 @@ getmtime = genericpath.getmtime
 getatime = genericpath.getatime
 getctime = genericpath.getctime
 commonprefix = genericpath.commonprefix
+samefile = genericpath.samefile
+
+
+def _path(path):
+    if isinstance(path, (str, bytes)):
+        return path
+    try:
+        value = path.__fspath__()
+    except AttributeError:
+        raise TypeError('expected str, bytes or os.PathLike object')
+    if not isinstance(value, (str, bytes)):
+        raise TypeError('expected __fspath__() to return str or bytes')
+    return value
 
 
 def normcase(path):
+    path = _path(path)
     return path.replace(altsep, sep).lower()
 
 
 def splitdrive(path):
+    path = _path(path)
     normalized = path.replace(altsep, sep)
     if len(normalized) >= 2 and normalized[1] == ':':
         return tuple([path[:2], path[2:]])
@@ -50,13 +65,16 @@ def splitdrive(path):
 
 
 def isabs(path):
+    path = _path(path)
     drive, tail = splitdrive(path)
     return tail.startswith(sep) or tail.startswith(altsep)
 
 
 def join(path, *paths):
+    path = _path(path)
     result_drive, result_path = splitdrive(path)
     for item in paths:
+        item = _path(item)
         drive, tail = splitdrive(item)
         if tail.startswith((sep, altsep)):
             if drive or not result_drive:
@@ -77,6 +95,7 @@ def join(path, *paths):
 
 
 def split(path):
+    path = _path(path)
     drive, tail = splitdrive(path)
     index = max(tail.rfind(sep), tail.rfind(altsep)) + 1
     head, name = tail[:index], tail[index:]
@@ -85,6 +104,7 @@ def split(path):
 
 
 def splitext(path):
+    path = _path(path)
     return genericpath._splitext(path, sep, altsep, extsep)
 
 
@@ -97,6 +117,7 @@ def dirname(path):
 
 
 def normpath(path):
+    path = _path(path)
     if path == '':
         return curdir
     path = path.replace(altsep, sep)
@@ -120,12 +141,14 @@ def normpath(path):
 
 
 def abspath(path):
+    path = _path(path)
     if not isabs(path):
         path = join(genericpath._getcwd(), path)
     return normpath(path)
 
 
 def realpath(path):
+    path = _path(path)
     try:
         return genericpath._realpath(path)
     except NotImplementedError:
@@ -133,10 +156,13 @@ def realpath(path):
 
 
 def relpath(path, start=None):
+    path = _path(path)
     if not path:
         raise ValueError('no path specified')
     if start is None:
         start = curdir
+    else:
+        start = _path(start)
     start_abs = abspath(start)
     path_abs = abspath(path)
     start_drive, start_tail = splitdrive(start_abs)

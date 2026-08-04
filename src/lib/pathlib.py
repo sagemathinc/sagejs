@@ -4,6 +4,7 @@ import os
 import posixpath
 import ntpath
 import fnmatch
+import sagejs.runtime as runtime
 
 
 def _path_text(value):
@@ -317,13 +318,16 @@ class Path(PurePath):
         return self.glob(os.path.join('**', os.fspath(pattern)))
 
     def walk(self, top_down=True, on_error=None, follow_symlinks=False):
-        for root, directories, files in os.walk(
+        for entry in os.walk(
             self,
             topdown=top_down,
             onerror=on_error,
             followlinks=follow_symlinks,
         ):
-            yield type(self)(root), directories, files
+            root = entry[0]
+            directories = entry[1]
+            files = entry[2]
+            yield runtime.math_tuple([type(self)(root), directories, files])
 
     def mkdir(self, mode=0o777, parents=False, exist_ok=False):
         if parents:
@@ -391,9 +395,21 @@ class Path(PurePath):
         return type(self)(str(type(self).home()) + self._path[1:])
 
     def samefile(self, other_path):
-        left = self.resolve(strict=True)
-        right = type(self)(other_path).resolve(strict=True)
-        return left == right
+        return self._module().samefile(self, other_path)
+
+    def is_mount(self):
+        try:
+            current = self.stat()
+            parent = self.parent.stat()
+        except OSError:
+            return False
+        return (
+            current.st_dev != parent.st_dev
+            or (
+                current.st_ino == parent.st_ino
+                and current.st_dev == parent.st_dev
+            )
+        )
 
 
 class PosixPath(Path, PurePosixPath):
@@ -402,4 +418,3 @@ class PosixPath(Path, PurePosixPath):
 
 class WindowsPath(Path, PureWindowsPath):
     _path_module = ntpath
-

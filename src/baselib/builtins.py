@@ -5440,6 +5440,7 @@ class _BuiltinFile:
         self,
         filename: Any,
         mode: _Str,
+        buffering: _Int,
         encoding: Any,
         errors: Any,
         newline: Any,
@@ -5455,6 +5456,9 @@ class _BuiltinFile:
         self.errors = None if self._binary else errors
         self.newlines = None
         self._newline = newline
+        self._buffering = buffering
+        self.line_buffering = not self._binary and buffering == 1
+        self.write_through = self._binary and buffering == 0
         self._position = 0
         self._dirty = False
         self._data = _builtins_as_any(None)
@@ -5500,6 +5504,19 @@ class _BuiltinFile:
         if self._binary:
             return bytes(value)
         text = runtime.string(value)
+        if self._newline is None or self._newline == '':
+            newline_types = []
+            without_pairs = text.replace('\r\n', '')
+            if '\r' in without_pairs:
+                newline_types.append('\r')
+            if '\n' in without_pairs:
+                newline_types.append('\n')
+            if '\r\n' in text:
+                newline_types.append('\r\n')
+            if len(newline_types) == 1:
+                self.newlines = newline_types[0]
+            elif len(newline_types) > 1:
+                self.newlines = tuple(newline_types)
         if self._newline is None:
             while '\r\n' in text:
                 text = text.replace('\r\n', '\n')
@@ -5555,6 +5572,10 @@ class _BuiltinFile:
         self._check_open()
         return True
 
+    def isatty(self) -> _Bool:
+        self._check_open()
+        return False
+
     def close(self) -> None:
         if self.closed:
             return
@@ -5573,6 +5594,9 @@ class _BuiltinFile:
 
     def seek(self, offset: _Int, whence: _Int = 0) -> _Int:
         self._check_open()
+        if not self._binary and whence in (1, 2) and offset != 0:
+            raise OSError(
+                "can't do nonzero cur-relative seeks")
         if whence == 0:
             position = offset
         elif whence == 1:
@@ -5600,10 +5624,24 @@ class _BuiltinFile:
         self._check_readable()
         if self._position >= len(self._data):
             return bytes() if self._binary else ''
-        delimiter = _builtins_as_any(
-            bytes([10]) if self._binary else '\n')
+        delimiter = _builtins_as_any(bytes([10]) if self._binary else '\n')
         newline = self._data.find(delimiter, self._position)
-        end = len(self._data) if newline < 0 else newline + 1
+        delimiter_size = 1
+        if not self._binary and self._newline == '':
+            text_data = runtime.string(self._data)
+            carriage = text_data.find('\r', self._position)
+            if carriage >= 0 and (newline < 0 or carriage < newline):
+                newline = carriage
+                delimiter_size = (
+                    2 if carriage + 1 < len(text_data)
+                    and text_data[carriage + 1] == '\n' else 1)
+        elif not self._binary and self._newline not in (None, '\n'):
+            delimiter = self._newline
+            newline = self._data.find(delimiter, self._position)
+            delimiter_size = len(delimiter)
+        end = (
+            len(self._data) if newline < 0
+            else newline + delimiter_size)
         if size is not None and size >= 0:
             end = min(end, self._position + size)
         answer = self._data[self._position:end]
@@ -5662,7 +5700,8 @@ class _BuiltinFile:
             self._data = data
             self._position = end
             self._dirty = True
-            self._flush_to_host()
+            if self.write_through:
+                self._flush_to_host()
             return len(value)
         suffix = _builtins_as_any(
             self._data[end:] if end < len(self._data) else data[:0],
@@ -5674,7 +5713,14 @@ class _BuiltinFile:
         )
         self._position = end
         self._dirty = True
-        self._flush_to_host()
+        should_flush = self.write_through
+        if (
+            not self._binary and self.line_buffering
+            and '\n' in runtime.string(value)
+        ):
+            should_flush = True
+        if should_flush:
+            self._flush_to_host()
         return len(value)
 
     def writelines(self, lines: Any) -> None:
@@ -5695,6 +5741,17 @@ class _BuiltinFile:
         self._dirty = True
         self._flush_to_host()
         return size
+
+    def readinto(self, buffer: Any) -> _Int:
+        if not self._binary:
+            raise TypeError('readinto() argument must be read-write bytes-like object')
+        data = self.read(len(buffer))
+        for index in range(len(data)):
+            buffer[index] = data[index]
+        return len(data)
+
+    def read1(self, size: Any = -1) -> Any:
+        return self.read(size)
 
 
 def ρσ_open(
@@ -5738,7 +5795,7 @@ def ρσ_open(
         errors = 'strict'
     if errors not in ('strict', 'ignore', 'replace'):
         raise ValueError('unsupported error handler: ' + repr(errors))
-    return _BuiltinFile(filename, mode, encoding, errors, newline)
+    return _BuiltinFile(filename, mode, buffering, encoding, errors, newline)
 
 
 def dumps(value: Any, compress: _Bool = True, **keywords: Any) -> bytes:

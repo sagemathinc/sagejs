@@ -14,6 +14,7 @@ async function testNodeFiles() {
   const sandbox = mkdtempSync(join(tmpdir(), "sagejs-open-"));
   writeFileSync(join(sandbox, "input.txt"), "alpha\r\nbeta\r\n", "utf8");
   writeFileSync(join(sandbox, "input.bin"), Buffer.from([0, 1, 10, 255]));
+  writeFileSync(join(sandbox, "mixed.txt"), "a\r\nb\rc\n", "utf8");
   const session = await createSage({ mode: "python" });
   try {
     const result = await session.evaluate(
@@ -60,6 +61,39 @@ async function testNodeFiles() {
         "    def __fspath__(self):",
         "        return 'input.txt'",
         "print(open(LocalPath()).readline().strip())",
+        "with open('mixed.txt', newline=None) as mixed:",
+        "    print(tuple(mixed), repr(mixed.newlines))",
+        "with open('mixed.txt', newline='') as mixed:",
+        "    print(tuple(mixed), repr(mixed.newlines))",
+        "with open('mixed.txt', newline='\\r') as mixed:",
+        "    print(tuple(mixed), repr(mixed.newlines))",
+        "buffered = open('buffered.txt', 'w')",
+        "buffered.write('pending')",
+        "print(repr(open('buffered.txt').read()))",
+        "buffered.flush()",
+        "print(open('buffered.txt').read())",
+        "buffered.close()",
+        "line_buffered = open('line-buffered.txt', 'w', buffering=1)",
+        "line_buffered.write('first')",
+        "print(repr(open('line-buffered.txt').read()))",
+        "line_buffered.write('\\nsecond')",
+        "print(repr(open('line-buffered.txt').read()), line_buffered.line_buffering)",
+        "line_buffered.close()",
+        "raw = open('raw.bin', 'wb', buffering=0)",
+        "raw.write(b'now')",
+        "print(open('raw.bin', 'rb').read(), raw.write_through)",
+        "raw.close()",
+        "binary = open('input.bin', 'rb')",
+        "target = bytearray(3)",
+        "print(binary.readinto(target), list(target), binary.isatty(), binary.seekable())",
+        "try:",
+        "    open('input.txt').seek(1, 1)",
+        "except OSError as error:",
+        "    print(type(error).__name__, str(error))",
+        "memory_text = io.StringIO('a\\nb')",
+        "memory_bytes = io.BytesIO(b'a\\nb')",
+        "print(memory_text.readable(), memory_text.writable(), memory_text.seekable(), memory_text.isatty(), memory_text.readlines())",
+        "print(memory_bytes.readable(), memory_bytes.writable(), memory_bytes.seekable(), memory_bytes.isatty(), memory_bytes.readlines())",
       ].join("\n"),
     );
     assert.equal(
@@ -86,6 +120,18 @@ async function testNodeFiles() {
         "FileExistsError 17 output.txt",
         "FileNotFoundError 2 missing.txt",
         "alpha",
+        "('a\\n', 'b\\n', 'c\\n') ('\\r', '\\n', '\\r\\n')",
+        "('a\\r\\n', 'b\\r', 'c\\n') ('\\r', '\\n', '\\r\\n')",
+        "('a\\r', '\\nb\\r', 'c\\n') None",
+        "''",
+        "pending",
+        "''",
+        "'first\\nsecond' True",
+        "b'now' True",
+        "3 [0, 1, 10] False True",
+        "OSError can't do nonzero cur-relative seeks",
+        "True True True False ['a\\n', 'b']",
+        "True True True False [b'a\\n', b'b']",
       ].join("\n"),
     );
   } finally {

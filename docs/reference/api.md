@@ -2102,13 +2102,18 @@ Return the exact kernel of the boundary map.
 decomposition(bound=None, anemic=True, **_kwds)
 ```
 
-Decompose this space into simple modules for good Hecke operators.
+Decompose this space into simple modules for Hecke operators.
 
 The implementation follows the standard modular-symbol algorithm:
 factor characteristic polynomials of successive `T_p`, and split by
 the left kernels of their irreducible factors.  A constituent whose
 restricted characteristic polynomial is irreducible is certified
 simple as a module for the commutative Hecke algebra.
+
+With `anemic=False`, repeated anemic constituents are further split
+by every bad-prime `U_p`. Diamond operators are already scalar on the
+fixed-character spaces currently supported by the native engine, so
+they require no additional kernels.
 
 ```sage
 sage: M = ModularSymbols(389, 2, sign=1)
@@ -2131,9 +2136,9 @@ sage: [A.dimension() for A in M.decomposition(bound=2)]
 - Module: `sage.modular.modsym.space`
 - Tags: number theory, modular symbols, decomposition, simple factors, Hecke modules, newforms
 - Backends: Sage.js portable C modular-symbol core, FLINT exact matrices, characteristic polynomials, rational factorization, and Trager number-field factorization, Completely split-prime cyclotomic kernels with exact CRT certificates
-- Sage compatibility: partial — Anemic decomposition by good Hecke operators follows SageMath. Bad-prime refinement is not yet implemented.
+- Sage compatibility: compatible — Anemic decomposition by good Hecke operators follows SageMath. Passing anemic=False further refines repeated constituents by every bad-prime U_p; diamond operators are scalar on fixed-character spaces.
 - Algorithm: Successive good-prime Hecke characteristic-polynomial factorization and exact factor kernels
-- Limitations: Only anemic decomposition by Hecke operators coprime to the level. Correctness is certified by irreducible restricted characteristic polynomials; unresolved repeated factors remain grouped if the requested bound is too small.
+- Limitations: Correctness is certified by irreducible restricted characteristic polynomials; unresolved repeated factors remain grouped if the requested bound is too small.
 
 ### Provenance
 

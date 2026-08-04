@@ -9,6 +9,18 @@ Algorithms and API shape follow CPython's :mod:`genericpath` module.
 import sagejs.runtime as runtime
 
 
+def _fspath(path):
+    if isinstance(path, (str, bytes)):
+        return path
+    try:
+        value = path.__fspath__()
+    except AttributeError:
+        raise TypeError('expected str, bytes or os.PathLike object')
+    if not isinstance(value, (str, bytes)):
+        raise TypeError('expected __fspath__() to return str or bytes')
+    return value
+
+
 def _host_call(operation, *args):
     host = runtime.reflect.get(runtime.global_object, '__sagejs_host__')
     if host is runtime.undefined:
@@ -35,7 +47,7 @@ def _property(value, name):
 
 def exists(path):
     try:
-        _host_call('stat', path)
+        _host_call('stat', _fspath(path))
         return True
     except OSError:
         return False
@@ -43,7 +55,7 @@ def exists(path):
 
 def lexists(path):
     try:
-        _host_call('lstat', path)
+        _host_call('lstat', _fspath(path))
         return True
     except OSError:
         return False
@@ -51,39 +63,48 @@ def lexists(path):
 
 def isfile(path):
     try:
-        return _property(_host_call('stat', path), 'isFile')
+        return _property(_host_call('stat', _fspath(path)), 'isFile')
     except OSError:
         return False
 
 
 def isdir(path):
     try:
-        return _property(_host_call('stat', path), 'isDirectory')
+        return _property(_host_call('stat', _fspath(path)), 'isDirectory')
     except OSError:
         return False
 
 
 def islink(path):
     try:
-        return _property(_host_call('lstat', path), 'isSymbolicLink')
+        return _property(_host_call('lstat', _fspath(path)), 'isSymbolicLink')
     except OSError:
         return False
 
 
 def getsize(filename):
-    return _property(_host_call('stat', filename), 'size')
+    return _property(_host_call('stat', _fspath(filename)), 'size')
 
 
 def getmtime(filename):
-    return _property(_host_call('stat', filename), 'mtime')
+    return _property(_host_call('stat', _fspath(filename)), 'mtime')
 
 
 def getatime(filename):
-    return _property(_host_call('stat', filename), 'atime')
+    return _property(_host_call('stat', _fspath(filename)), 'atime')
 
 
 def getctime(filename):
-    return _property(_host_call('stat', filename), 'ctime')
+    return _property(_host_call('stat', _fspath(filename)), 'ctime')
+
+
+def samefile(filename1, filename2):
+    left = _host_call('stat', _fspath(filename1))
+    right = _host_call('stat', _fspath(filename2))
+    return (
+        _property(left, 'ino') == _property(right, 'ino')
+        and _property(left, 'dev') == _property(right, 'dev')
+    )
 
 
 def _getcwd():
@@ -91,7 +112,7 @@ def _getcwd():
 
 
 def _realpath(path):
-    return _host_call('realpath', path)
+    return _host_call('realpath', _fspath(path))
 
 
 def commonprefix(paths):

@@ -229,6 +229,11 @@ def getcwd():
     return _host_call('getcwd')
 
 
+def getcwdb():
+    """Return the session-local current directory encoded as bytes."""
+    return fsencode(getcwd())
+
+
 def chdir(pathname):
     """Change the current working directory for this Sage.js session."""
     _host_call('chdir', fspath(pathname))
@@ -373,19 +378,22 @@ def walk(top, topdown=True, onerror=None, followlinks=False):
         return
     for entry in entries:
         try:
-            if entry.is_dir(follow_symlinks=followlinks):
+            if entry.is_dir(follow_symlinks=True):
                 directories.append(entry.name)
             else:
                 files.append(entry.name)
         except OSError:
             files.append(entry.name)
     if topdown:
-        yield top, directories, files
+        yield runtime.math_tuple([top, directories, files])
     for directory in directories:
-        for result in walk(path.join(top, directory), topdown, onerror, followlinks):
+        destination = path.join(top, directory)
+        if not followlinks and path.islink(destination):
+            continue
+        for result in walk(destination, topdown, onerror, followlinks):
             yield result
     if not topdown:
-        yield top, directories, files
+        yield runtime.math_tuple([top, directories, files])
 
 
 class _Environ:
@@ -399,6 +407,8 @@ class _Environ:
             self._data[self._key(key)] = [str(key), str(value)]
 
     def _key(self, key):
+        if runtime.jstype(key) != 'string':
+            raise TypeError('str expected, not ' + self._type_name(key))
         value = str(key)
         return value.upper() if name == 'nt' else value
 
@@ -409,10 +419,24 @@ class _Environ:
         return self._data[normalized][1]
 
     def __setitem__(self, key, value):
+        if runtime.jstype(key) != 'string':
+            raise TypeError('str expected, not ' + self._type_name(key))
+        if runtime.jstype(value) != 'string':
+            raise TypeError('str expected, not ' + self._type_name(value))
         key = str(key)
         value = str(value)
         _host_call('setEnv', key, value)
         self._data[self._key(key)] = [key, value]
+
+    def _type_name(self, value):
+        kind = runtime.jstype(value)
+        if kind == 'number':
+            return 'int' if int(value) == value else 'float'
+        if kind == 'boolean':
+            return 'bool'
+        if value is None:
+            return 'NoneType'
+        return kind
 
     def __delitem__(self, key):
         normalized = self._key(key)
@@ -490,6 +514,47 @@ def urandom(size):
     if size < 0:
         raise ValueError('negative argument not allowed')
     return bytes(_host_call('urandom', size))
+
+
+def fsencode(filename):
+    """Encode a path using the portable UTF-8 host boundary."""
+    value = fspath(filename)
+    return value if isinstance(value, bytes) else value.encode('utf-8', 'surrogateescape')
+
+
+def fsdecode(filename):
+    """Decode a path using the portable UTF-8 host boundary."""
+    value = fspath(filename)
+    return value if isinstance(value, str) else value.decode('utf-8', 'surrogateescape')
+
+
+def removedirs(name):
+    """Remove a leaf directory and then empty parent directories."""
+    name = fspath(name)
+    rmdir(name)
+    head, tail = path.split(name)
+    while head and tail:
+        try:
+            rmdir(head)
+        except OSError:
+            break
+        head, tail = path.split(head)
+
+
+def renames(old, new_path):
+    """Rename a path, creating destination parents and pruning old ones."""
+    old = fspath(old)
+    new_path = fspath(new_path)
+    head, tail = path.split(new_path)
+    if head and tail and not path.exists(head):
+        makedirs(head)
+    rename(old, new_path)
+    head, tail = path.split(old)
+    if head and tail:
+        try:
+            removedirs(head)
+        except OSError:
+            pass
 
 
 if name == 'nt':

@@ -67,13 +67,23 @@ Status meanings:
 12. **measure — CPython compatibility harvesting.** Add small, reviewed vectors
     from one CPython stdlib module at a time; classify each failure as compiler,
     runtime, host capability, or deliberate incompatibility.
-13. **ready — `os`, `os.path`, and `pathlib` long tail.** Fill portable path,
+13. **done — `os`, `os.path`, and `pathlib` long tail.** Fill portable path,
     stat, directory-walk, link, permission, and environment behavior using the
     host adapter; keep imports safe in browsers and fail only when a host-only
-    operation is called.
-14. **ready — file-object compatibility.** Extend buffering, seeking,
+    operation is called. Path-like objects now cross every generic path query,
+    hard-link identity uses device/inode semantics, `Path.walk` preserves its
+    three-field records, symlinked directories are classified without being
+    followed by default, and `fsencode`, `fsdecode`, `renames`, `removedirs`,
+    mount detection, and strict string-only environments cover the portable
+    host-facing tail.
+14. **done — file-object compatibility.** Extend buffering, seeking,
     iteration, newline handling, encodings, context-manager behavior, and
-    exception attributes using CPython's focused IO tests.
+    exception attributes using CPython's focused IO tests. Host files now
+    distinguish default, line, and unbuffered writes; report universal newline
+    types; honor every explicit newline delimiter; reject unsupported text
+    seeks; and expose binary `readinto`/`read1` behavior. `StringIO` and
+    `BytesIO` share the readable, writable, seekable, line-iteration, and
+    bulk-line surface.
 15. **done — `multiprocessing` API long tail.** Add `imap`, unordered results,
    async results, initializers, timeouts, worker exceptions, and robust pool
    shutdown over worker threads. Preserve Python-facing semantics while
