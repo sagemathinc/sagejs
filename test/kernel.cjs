@@ -249,10 +249,12 @@ imported_method = ImportedMethod()
   await assert.rejects(sleeping, SageSessionInterruptedError);
   assert.equal((await session.evaluate("preserved")).repr, "41");
 
+  const caughtReady = new Promise((resolve) => session.once("stdout", resolve));
   const caught = session.evaluate(
     [
       "caught = False",
       "try:",
+      "    print('__interrupt_handler_ready__')",
       "    while True:",
       "        pass",
       "except KeyboardInterrupt:",
@@ -260,7 +262,8 @@ imported_method = ImportedMethod()
       "caught",
     ].join("\n"),
   );
-  setTimeout(() => void session.interrupt(), 50);
+  await caughtReady;
+  await session.interrupt();
   assert.equal((await caught).repr, "True");
   assert.equal((await session.evaluate("preserved")).repr, "41");
 
