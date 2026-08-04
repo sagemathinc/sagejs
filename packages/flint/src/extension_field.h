@@ -22,6 +22,8 @@ int sagejs_fq_nmod_mpoly_set_constant(
     const fq_nmod_mpoly_ctx_t polynomial_context);
 
 napi_value sagejs_fq_context(napi_env env, napi_callback_info info);
+napi_value sagejs_fq_context_with_modulus(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_fq_context_modulus(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_from_bigint(napi_env env, napi_callback_info info);
 napi_value sagejs_fq_gen(napi_env env, napi_callback_info info);

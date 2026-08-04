@@ -501,6 +501,23 @@ assert all(value.parent() is F9 for value in random_extension.list())
 assert any(value not in [F9(0), F9(1), F9(2)]
            for value in random_extension.list())
 
+F3t = PolynomialRing(GF(3), 't')
+t3 = F3t.gen()
+F9_explicit = GF(9, 'u', modulus=t3 ** 2 + 1)
+u9 = F9_explicit.gen()
+explicit_extension_matrix = matrix(
+    F9_explicit, [[u9, 1], [1, 0]])
+assert explicit_extension_matrix.base_ring() is F9_explicit
+assert explicit_extension_matrix.det() == F9_explicit(2)
+assert explicit_extension_matrix.inverse() == matrix(
+    F9_explicit, [[0, 1], [1, 2 * u9]])
+assert explicit_extension_matrix * explicit_extension_matrix.inverse() == (
+    identity_matrix(F9_explicit, 2)
+)
+assert explicit_extension_matrix.charpoly()(explicit_extension_matrix) == (
+    zero_matrix(F9_explicit, 2)
+)
+
 R36 = Zmod(36)
 residue_matrix = matrix(R36, [[2, 3], [3, 2]])
 assert residue_matrix.base_ring() is R36

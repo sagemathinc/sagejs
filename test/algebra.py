@@ -307,6 +307,38 @@ assrt.equal(
 assrt.equal(GF(9).variable_name(), 'z2')
 assrt.equal(repr(GF(8, 'b').modulus()), 'x^3 + x + 1')
 
+F3t = PolynomialRing(GF(3), 't')
+t3 = F3t.gen()
+F9_custom = GF(9, 'u', modulus=t3 ** 2 + 1)
+u9 = F9_custom.gen()
+assrt.equal(repr(F9_custom.modulus()), 'x^2 + 1')
+assrt.ok(u9 ** 2 == 2)
+assrt.ok(GF(3)(2) + u9 == u9 + 2)
+assrt.ok(F9_custom is GF(9, 'u', modulus=t3 ** 2 + 1))
+assrt.ok(F9_custom is GF(9, 'u', modulus=2 * t3 ** 2 + 2))
+F9_other = GF(9, 'u', modulus=t3 ** 2 + t3 + 2)
+assrt.ok(F9_other is not F9_custom)
+assrt.ok(F9_other is not GF(9, 'u'))
+assrt.equal(repr(F9_other.modulus()), 'x^2 + x + 2')
+
+ZZt = PolynomialRing(ZZ, 't')
+integer_t = ZZt.gen()
+assrt.ok(
+    GF(9, 'v', modulus=integer_t ** 2 + 1).gen() ** 2 == 2)
+
+def construct_reducible_extension():
+    return GF(9, 'r', modulus=t3 ** 2 + 2)
+
+def construct_wrong_degree_extension():
+    return GF(9, 'r', modulus=t3 ** 3 + t3 + 1)
+
+def put_modulus_on_prime_field():
+    return GF(3, modulus=t3 ** 2 + 1)
+
+assrt.throws(construct_reducible_extension, ValueError)
+assrt.throws(construct_wrong_degree_extension, ValueError)
+assrt.throws(put_modulus_on_prime_field, ValueError)
+
 F65536 = GF(BigInt(2) ** BigInt(16), 'b')
 assrt.equal(
     repr(type(F65536)),

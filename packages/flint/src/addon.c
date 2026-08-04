@@ -4154,6 +4154,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             NULL, NULL, NULL, napi_default, NULL},
         {"fqContext", NULL, sagejs_fq_context, NULL, NULL, NULL,
             napi_default, NULL},
+        {"fqContextWithModulus", NULL, sagejs_fq_context_with_modulus,
+            NULL, NULL, NULL, napi_default, NULL},
         {"fqContextModulus", NULL, sagejs_fq_context_modulus,
             NULL, NULL, NULL, napi_default, NULL},
         {"fqFromBigInt", NULL, sagejs_fq_from_bigint, NULL, NULL, NULL,

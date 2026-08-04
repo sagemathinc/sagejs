@@ -65,6 +65,39 @@ function mark<T>(value: T, marker: string): T {
   return value;
 }
 
+function extensionFieldDescriptor(base: unknown): Record<string, unknown> {
+  const descriptor: Record<string, unknown> = {
+    kind: "GF_EXTENSION",
+    order: callMethod(base, "order"),
+    variable: callMethod(base, "variable_name"),
+  };
+  if (pythonAttribute(base, "_explicitModulus") === true) {
+    const modulus = callMethod(base, "modulus");
+    descriptor.characteristic = callMethod(base, "characteristic");
+    descriptor.modulus = Array.from(
+      callMethod(modulus, "coefficients") as Iterable<unknown>,
+      (coefficient) => callMethod(coefficient, "lift"),
+    );
+  }
+  return descriptor;
+}
+
+function extensionFieldFromDescriptor(
+  data: Record<string, unknown>,
+): unknown {
+  if (!Array.isArray(data.modulus)) {
+    return callGlobal("GF", [data.order, data.variable]);
+  }
+  const primeField = callGlobal("GF", [data.characteristic]);
+  const polynomialRing = callGlobal("PolynomialRing", [primeField, "x"]);
+  const modulus = callMethod(
+    polynomialRing,
+    "_from_coefficients",
+    [data.modulus],
+  );
+  return callGlobal("GF", [data.order, data.variable, modulus]);
+}
+
 function baseDescriptor(base: unknown): Record<string, unknown> {
   const baseKind = kind(base);
   const representation = String(callMethod(base, "__repr__"));
@@ -81,11 +114,7 @@ function baseDescriptor(base: unknown): Record<string, unknown> {
     };
   }
   if (baseKind === "GF_EXTENSION") {
-    return {
-      kind: baseKind,
-      order: callMethod(base, "order"),
-      variable: callMethod(base, "variable_name"),
-    };
+    return extensionFieldDescriptor(base);
   }
   throw new SageSerializationError(`unsupported polynomial base ${representation}`);
 }
@@ -97,7 +126,7 @@ function baseFromDescriptor(data: Record<string, unknown>): unknown {
   if (data.kind === "GF") return callGlobal("GF", [data.order]);
   if (data.kind === "ZMOD") return callGlobal("Zmod", [data.order]);
   if (data.kind === "GF_EXTENSION") {
-    return mark(callGlobal("GF", [data.order, data.variable]), "parent");
+    return mark(extensionFieldFromDescriptor(data), "parent");
   }
   throw new SageSerializationError(`unsupported polynomial base ${String(data.kind)}`);
 }
@@ -251,11 +280,9 @@ function parseMultivariatePolynomial(ring: unknown, source: string): unknown {
 
 function encodeParent(value: unknown, context: EncodeContext): WireValue {
   if (kind(value) === "GF_EXTENSION") {
-    return context.encode({
-      kind: "finite-field-extension",
-      order: callMethod(value, "order"),
-      variable: callMethod(value, "variable_name"),
-    });
+    const descriptor = extensionFieldDescriptor(value);
+    descriptor.kind = "finite-field-extension";
+    return context.encode(descriptor);
   }
   if (kind(value) === "NumberFieldPolynomialQuotient") {
     return context.encode({
@@ -277,7 +304,7 @@ function encodeParent(value: unknown, context: EncodeContext): WireValue {
 function decodeParent(payload: WireValue, context: DecodeContext): unknown {
   const data = context.decode(payload) as Record<string, unknown>;
   if (data.kind === "finite-field-extension") {
-    return callGlobal("GF", [data.order, data.variable]);
+    return extensionFieldFromDescriptor(data);
   }
   if (data.kind === "number-field-quotient") {
     return mark(

@@ -9,6 +9,7 @@
 #include <flint/fmpz.h>
 #include <flint/fmpz_mod.h>
 #include <flint/fmpz_mod_poly.h>
+#include <flint/fmpz_mod_poly_factor.h>
 #include <flint/fq_default.h>
 #include <flint/fq_default_mat.h>
 #include <flint/fq_default_poly.h>
@@ -503,6 +504,140 @@ napi_value sagejs_fq_context(napi_env env, napi_callback_info info)
         return NULL;
     }
     return object;
+}
+
+napi_value sagejs_fq_context_with_modulus(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[3];
+    napi_value object;
+    napi_value coefficient_value;
+    sagejs_fq_context_value *context = NULL;
+    fmpz_t prime;
+    fmpz_t coefficient;
+    fmpz_mod_ctx_t modulus_context;
+    fmpz_mod_poly_t modulus;
+    char *variable = NULL;
+    uint32_t length;
+    uint32_t index;
+    bool is_array;
+
+    if (!require_arguments(env, info, 3, args))
+        return NULL;
+    fmpz_init(prime);
+    if (!bigint_to_fmpz(env, args[0], prime))
+        goto fail_prime;
+    if (!fmpz_is_prime(prime))
+    {
+        napi_throw_range_error(env, NULL,
+            "finite-field characteristic must be prime");
+        goto fail_prime;
+    }
+    if (!check_napi(env, napi_is_array(env, args[1], &is_array)))
+        goto fail_prime;
+    if (!is_array ||
+        !check_napi(env, napi_get_array_length(env, args[1], &length)))
+    {
+        if (is_array)
+            goto fail_prime;
+        napi_throw_type_error(env, NULL,
+            "modulus coefficients must be an array");
+        goto fail_prime;
+    }
+    if (length < 3 || length > (uint32_t) WORD_MAX)
+    {
+        napi_throw_range_error(env, NULL,
+            "modulus degree must be an integer at least 2");
+        goto fail_prime;
+    }
+    variable = value_to_string(env, args[2]);
+    if (variable == NULL)
+        goto fail_prime;
+
+    fmpz_mod_ctx_init(modulus_context, prime);
+    fmpz_mod_poly_init(modulus, modulus_context);
+    fmpz_init(coefficient);
+    for (index = 0; index < length; index++)
+    {
+        if (!check_napi(env,
+                napi_get_element(env, args[1], index, &coefficient_value)) ||
+            !bigint_to_fmpz(env, coefficient_value, coefficient))
+            goto fail_modulus;
+        if (fmpz_sgn(coefficient) < 0 || fmpz_cmp(coefficient, prime) >= 0)
+        {
+            napi_throw_range_error(env, NULL,
+                "modulus coefficients must be normalized modulo "
+                "the characteristic");
+            goto fail_modulus;
+        }
+        fmpz_mod_poly_set_coeff_fmpz(
+            modulus, (slong) index, coefficient, modulus_context);
+    }
+    if (!fmpz_is_one(coefficient))
+    {
+        napi_throw_range_error(env, NULL,
+            "modulus polynomial must be monic");
+        goto fail_modulus;
+    }
+    if (fmpz_mod_poly_degree(modulus, modulus_context) !=
+        (slong) length - 1)
+    {
+        napi_throw_range_error(env, NULL,
+            "modulus polynomial has the wrong degree");
+        goto fail_modulus;
+    }
+    if (!fmpz_mod_poly_is_irreducible(modulus, modulus_context))
+    {
+        napi_throw_range_error(env, NULL,
+            "finite field modulus must be irreducible but it is not");
+        goto fail_modulus;
+    }
+
+    context = calloc(1, sizeof(*context));
+    if (context == NULL)
+    {
+        napi_throw_error(env, NULL,
+            "unable to allocate finite-field context");
+        goto fail_modulus;
+    }
+    fmpz_init_set(context->prime, prime);
+    context->degree = (slong) length - 1;
+    context->variable = variable;
+    variable = NULL;
+    context->references = 1;
+    fq_default_ctx_init_modulus_type(
+        context->value,
+        modulus,
+        modulus_context,
+        context->variable,
+        fmpz_abs_fits_ui(context->prime)
+            ? FQ_DEFAULT_FQ_NMOD
+            : FQ_DEFAULT_FQ);
+    context->magic = SAGEJS_FQ_CONTEXT_MAGIC;
+
+    fmpz_clear(coefficient);
+    fmpz_mod_poly_clear(modulus, modulus_context);
+    fmpz_mod_ctx_clear(modulus_context);
+    fmpz_clear(prime);
+    if (!check_napi(env, napi_create_object(env, &object)) ||
+        !check_napi(env,
+            napi_type_tag_object(env, object, &sagejs_fq_context_type_tag)) ||
+        !check_napi(env,
+            napi_wrap(env, object, context, finalize_context, NULL, NULL)))
+    {
+        finalize_context(env, context, NULL);
+        return NULL;
+    }
+    return object;
+
+fail_modulus:
+    fmpz_clear(coefficient);
+    fmpz_mod_poly_clear(modulus, modulus_context);
+    fmpz_mod_ctx_clear(modulus_context);
+    free(variable);
+fail_prime:
+    fmpz_clear(prime);
+    return NULL;
 }
 
 napi_value sagejs_fq_context_modulus(

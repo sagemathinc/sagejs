@@ -727,6 +727,34 @@ assert.throws(
 assert.throws(() => flint.fqContext(3n, 1, "a"), /degree/);
 assert.throws(() => flint.fqContext(65537n, 2, "a"), /Conway polynomial/);
 
+const fq9Explicit = flint.fqContextWithModulus(
+  3n,
+  [1n, 0n, 1n],
+  "u",
+);
+const fq9ExplicitGen = flint.fqGen(fq9Explicit);
+assert.deepEqual(flint.fqContextModulus(fq9Explicit), [1n, 0n, 1n]);
+assert.equal(
+  flint.fqToString(flint.fqMul(fq9ExplicitGen, fq9ExplicitGen)),
+  "2",
+);
+assert.throws(
+  () => flint.fqContextWithModulus(3n, [2n, 0n, 1n], "u"),
+  /irreducible/,
+);
+assert.throws(
+  () => flint.fqContextWithModulus(3n, [1n, 0n, 2n], "u"),
+  /monic/,
+);
+assert.throws(
+  () => flint.fqContextWithModulus(3n, [3n, 0n, 1n], "u"),
+  /normalized/,
+);
+assert.throws(
+  () => flint.fqContextWithModulus(4n, [1n, 1n, 1n], "u"),
+  /prime/,
+);
+
 const fq9x = flint.fqPolyGen(fq9);
 const fq9a = flint.fqPolyConstant(fq9, fq9gen);
 const fq9onePolynomial = flint.fqPolyConstant(fq9, fq9one);

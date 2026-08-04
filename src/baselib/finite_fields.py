@@ -735,6 +735,7 @@ class FiniteFieldExtensionParent(sage.Parent):
         modulus_coefficients: list[Any],
         prime_subfield: FiniteField_prime_modn,
         element_type: type[FiniteFieldExtensionElement],
+        explicit_modulus: bool = False,
     ) -> None:
         self._name = (
             'Finite Field in ' + variable + ' of size '
@@ -750,6 +751,7 @@ class FiniteFieldExtensionParent(sage.Parent):
         self._prime = prime
         self._degree = degree
         self._variable = variable
+        self._explicitModulus = explicit_modulus
 
     def __call__(
         self, value: Any = 0,
@@ -945,11 +947,47 @@ def _make_extension_field(
     names: Any,
     modulus: Any,
 ) -> FiniteFieldExtensionParent:
-    if modulus is not runtime.undefined and modulus is not None:
-        raise NotImplementedError(
-            'explicit extension-field moduli are not implemented yet')
     variable = _finite_field_name(name, names, degree)
+    prime_field = GF(prime)
+    coefficients = None
+    if (
+        modulus is not runtime.undefined
+        and modulus is not None
+        and modulus != 'primitive'
+    ):
+        if not hasattr(modulus, 'coefficients'):
+            raise TypeError('finite field modulus must be a polynomial')
+        raw_coefficients = modulus.coefficients()
+        if len(raw_coefficients) != degree + 1:
+            raise ValueError(
+                'the degree of the modulus does not equal the degree ' +
+                'of the field')
+        field_coefficients = []
+        for coefficient in raw_coefficients:
+            if (
+                isinstance(coefficient, FiniteFieldElement)
+                and coefficient._parent is not prime_field
+            ):
+                raise TypeError(
+                    'finite-field characteristics do not match')
+            field_coefficients.append(prime_field(coefficient))
+        leading = field_coefficients[degree]
+        if leading.is_zero():
+            raise ValueError(
+                'the degree of the modulus does not equal the degree ' +
+                'of the field')
+        leading_inverse = leading ** -1
+        coefficients = [
+            (coefficient * leading_inverse).lift()
+            for coefficient in field_coefficients
+        ]
+
     key = runtime.string(order) + '|' + variable
+    if coefficients is not None:
+        key += '|mod:' + ','.join([
+            runtime.string(coefficient)
+            for coefficient in coefficients
+        ])
     field = _extension_fields.get(key)
     if field is not runtime.undefined:
         return field
@@ -958,7 +996,14 @@ def _make_extension_field(
     context = runtime.undefined
     missing_conway = False
     try:
-        context = backend.fqContext(prime, degree, variable)
+        if coefficients is None:
+            context = backend.fqContext(prime, degree, variable)
+        else:
+            context = backend.fqContextWithModulus(
+                prime,
+                [runtime.bigint(value) for value in coefficients],
+                variable,
+            )
     except Exception as error:
         message = getattr(error, 'message', '')
         if (
@@ -966,6 +1011,8 @@ def _make_extension_field(
             and runtime.regexp('Conway polynomial').test(message)
         ):
             missing_conway = True
+        elif coefficients is not None:
+            raise ValueError(message)  # noqa: B904
         else:
             raise
     if missing_conway:
@@ -974,7 +1021,6 @@ def _make_extension_field(
             'implemented for this finite field')
 
     modulus_coefficients = backend.fqContextModulus(context)
-    prime_field = GF(prime)
     if order < runtime.bigint(65536):
         parent_type = FiniteField_givaro
         element_type = FiniteField_givaroElement
@@ -994,6 +1040,7 @@ def _make_extension_field(
         modulus_coefficients,
         prime_field,
         element_type,
+        coefficients is not None,
     )
     _extension_fields.set(key, field)
     conversion = _field_coercion(field)
@@ -1027,22 +1074,24 @@ def GF(
     Univariate Polynomial Ring in x over Finite Field in a of size 3^2
     ```
 
-    Explicit user-supplied modulus polynomials are not implemented yet.
-    Passing `modulus='primitive'` requests a primitive generator when the
-    backend supports it.
+    Extension moduli are irreducible and normalized to monic. Passing
+    `modulus='primitive'` uses the backend's primitive Conway polynomial.
     """
     order = runtime.integer_bigint(order)
     if order < runtime.bigint(2):
         raise ValueError(
             'the order of a finite field must be at least 2')
     primitive = modulus == 'primitive'
+    backend = runtime.flint_backend()
+    order_is_prime = backend.isPrime(order)
     if (
-        modulus is not runtime.undefined
+        order_is_prime
+        and modulus is not runtime.undefined
         and modulus is not None
         and not primitive
     ):
-        raise NotImplementedError(
-            'explicit finite-field moduli are not implemented yet')
+        raise ValueError(
+            'a modulus polynomial is only valid for an extension field')
 
     key = runtime.string(order)
     if primitive:
@@ -1051,8 +1100,7 @@ def GF(
     if field is not runtime.undefined:
         return field
 
-    backend = runtime.flint_backend()
-    if not backend.isPrime(order):
+    if not order_is_prime:
         decomposition = backend.factor(order)
         if len(decomposition.factors) != 1:
             raise ValueError(
@@ -1230,9 +1278,10 @@ runtime.register_doc(
         'partial',
         (
             'Prime-power construction and standard generator naming are '
-            'compatible; explicit modulus polynomials remain unsupported.'
+            'compatible, including explicit irreducible modulus '
+            'polynomials.'
         ),
-        ['Explicit user-supplied modulus polynomials are not implemented.'],
+        [],
     ),
 )
 runtime.register_doc(
