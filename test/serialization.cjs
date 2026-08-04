@@ -90,6 +90,31 @@ test("worker packets move codec-owned buffers but copy caller-owned bytes", () =
   }
 });
 
+test("dense matrix codecs stay on native packed-buffer paths", async (t) => {
+  const session = await createSage({ mode: "sage" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "from sagejs_serialization import dumps, loads",
+    "from time import time",
+    "matrices = [",
+    "    matrix(GF(7), 128, 128, lambda i,j: (17*i + 31*j) % 7),",
+    "    matrix(ZZ, 128, 128, lambda i,j: (i-j)^3),",
+    "    matrix(QQ, 128, 128, lambda i,j: (i-j)/(i+j+1)),",
+    "]",
+    "limits = [20000, 130000, 200000]",
+    "start = time()",
+    "for A, limit in zip(matrices, limits):",
+    "    A.list = lambda: 1/0",
+    "    encoded = dumps(A)",
+    "    print(len(encoded) < limit, loads(encoded) == A)",
+    "print(time() - start < 5)",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    "True True\nTrue True\nTrue True\nTrue",
+  );
+});
+
 test("mathematical values round trip through durable storage", async (t) => {
   const session = await createSage({ mode: "sage" });
   t.after(() => session.close());

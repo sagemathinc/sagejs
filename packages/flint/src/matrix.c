@@ -2788,6 +2788,29 @@ static int matrix_entry_is_zero(
     return nmod_mat_entry(matrix->modular, row, col) == 0;
 }
 
+napi_value sagejs_matrix_is_zero(napi_env env, napi_callback_info info)
+{
+    napi_value args[1], result;
+    sagejs_matrix *matrix;
+    int is_zero = 1;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    matrix = unwrap_matrix(env, args[0]);
+    if (matrix == NULL)
+        return NULL;
+    for (slong row = 0; row < matrix_nrows(matrix) && is_zero; row++)
+        for (slong col = 0; col < matrix_ncols(matrix); col++)
+            if (!matrix_entry_is_zero(matrix, row, col))
+            {
+                is_zero = 0;
+                break;
+            }
+    if (!check_napi(env, napi_get_boolean(env, is_zero, &result)))
+        return NULL;
+    return result;
+}
+
 napi_value sagejs_matrix_pivots(napi_env env, napi_callback_info info)
 {
     napi_value args[1], result;

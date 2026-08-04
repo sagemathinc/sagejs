@@ -3096,6 +3096,8 @@ static napi_value initialize(napi_env env, napi_value exports)
          NULL, NULL, NULL, napi_default, NULL},
         {"matrixPivots", NULL, sagejs_matrix_pivots,
          NULL, NULL, NULL, napi_default, NULL},
+        {"matrixIsZero", NULL, sagejs_matrix_is_zero,
+         NULL, NULL, NULL, napi_default, NULL},
         {"matrixNeg", NULL, sagejs_matrix_neg, NULL, NULL, NULL,
             napi_default, NULL},
         {"matrixScalarMul", NULL, sagejs_matrix_scalar_mul,

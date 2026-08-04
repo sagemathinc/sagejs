@@ -68,6 +68,7 @@ napi_value sagejs_matrix_select_rows(
 napi_value sagejs_matrix_select_columns(
     napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_pivots(napi_env env, napi_callback_info info);
+napi_value sagejs_matrix_is_zero(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_neg(napi_env env, napi_callback_info info);
 napi_value sagejs_matrix_scalar_mul(napi_env env, napi_callback_info info);
 napi_value sagejs_acb_matrix_scalar_mul(

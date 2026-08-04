@@ -930,12 +930,7 @@ class VectorSubspaceParent(sage.Parent):
                 if entry != 0:
                     return False
             return True
-        extended = matrix(
-            self.base_ring(),
-            self.dimension() + 1,
-            self.degree(),
-            self._basis_matrix.list() + element.list(),
-        )
+        extended = self._basis_matrix.stack(element)
         return _canonical_row_basis(extended) == self._basis_matrix
 
     def __call__(self, entries: Any = 0) -> Vector:
@@ -965,13 +960,7 @@ class VectorSubspaceParent(sage.Parent):
 
     def __add__(self, other: object) -> VectorSubspaceParent:
         right = self._compatible_space(other)
-        combined = matrix(
-            self.base_ring(),
-            self.dimension() + right.dimension(),
-            self.degree(),
-            self._basis_matrix.list() +
-            right._basis_matrix.list(),
-        )
+        combined = self._basis_matrix.stack(right._basis_matrix)
         return VectorSubspaceParent(
             self._ambient,
             _canonical_row_basis(combined),
@@ -987,15 +976,8 @@ class VectorSubspaceParent(sage.Parent):
                 self._ambient,
                 zero_matrix(self.base_ring(), 0, self.degree()),
             )
-        relation_entries = self._basis_matrix.list()
-        relation_entries.extend(
-            [-entry for entry in right._basis_matrix.list()])
-        relations = matrix(
-            self.base_ring(),
-            self.dimension() + right.dimension(),
-            self.degree(),
-            relation_entries,
-        ).left_kernel().basis_matrix()
+        relations = self._basis_matrix.stack(
+            -right._basis_matrix).left_kernel().basis_matrix()
         coefficient_entries = []
         for row in range(relations.nrows()):
             for col in range(self.dimension()):
@@ -1107,10 +1089,7 @@ class Matrix(sage.Element):
         return self.nrows() == self.ncols()
 
     def is_zero(self) -> bool:
-        for entry in self.list():
-            if entry != 0:
-                return False
-        return True
+        return runtime.flint_backend().matrixIsZero(self._native)
 
     def __bool__(self) -> bool:
         return not self.is_zero()
@@ -2101,13 +2080,14 @@ class Matrix(sage.Element):
             return cached
         size = self.nrows()
         powers = [identity_matrix(self.base_ring(), size)]
+        power_entries = [powers[0].list()]
         entries_per_power = size * size
         for degree in range(size + 1):
             entries = []
             for entry_index in range(entries_per_power):
                 for power_index in range(degree + 1):
                     entries.append(
-                        powers[power_index].list()[entry_index])
+                        power_entries[power_index][entry_index])
             relations = matrix(
                 self.base_ring(),
                 entries_per_power,
@@ -2151,6 +2131,7 @@ class Matrix(sage.Element):
                 self._minpoly_cache.set(variable, answer)
                 return answer
             powers.append(powers[-1] * self)
+            power_entries.append(powers[-1].list())
         raise ArithmeticError(
             'could not determine the minimal polynomial')
 
@@ -2456,12 +2437,7 @@ class Matrix(sage.Element):
         return backend.matrixEqual(left._native, right._native)
 
     def __copy__(self) -> Matrix:
-        answer = matrix(
-            self.base_ring(),
-            self.nrows(),
-            self.ncols(),
-            self.list(),
-        )
+        answer = self.matrix_from_rows(range(self.nrows()))
         answer._row_subdivisions = list(self._row_subdivisions)
         answer._col_subdivisions = list(self._col_subdivisions)
         return answer

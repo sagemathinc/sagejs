@@ -30,6 +30,21 @@ const cases = [
     check: "B == A",
   },
   {
+    name: "QQ-sparse-content",
+    setup: [
+      "A = matrix(QQ, 300, 300, lambda i,j: (i-j)/(i+j+1) if (i+j) % 97 == 0 else 0)",
+    ],
+    check: "B == A",
+  },
+  {
+    name: "polynomial",
+    setup: [
+      "R.<x,y,z> = QQ[]",
+      "A = (x + 2*y - z + 1/7)^12",
+    ],
+    check: "B == A",
+  },
+  {
     name: "number-field",
     setup: [
       "R.<x> = QQ[]",
@@ -62,14 +77,33 @@ const cases = [
     ],
     check: "B.dimension() == A.dimension() and B.character() == A.character()",
   },
+  {
+    name: "graphics",
+    setup: [
+      "x = var('x')",
+      "A = plot(sin(x), (x, -pi, pi), plot_points=1000)",
+    ],
+    sagejsSetup: ["A = A.plotly()"],
+    check: "str(B) == str(A)",
+  },
+  {
+    name: "nested",
+    setup: [
+      "R.<x> = QQ[]",
+      "K.<a> = NumberField(x^3 - x + 1)",
+      "A = {'field': K, 'values': [a^2 + 1/3, matrix(GF(7), 20, 20, lambda i,j: i+j)]}",
+    ],
+    check: "str(B) == str(A)",
+  },
 ];
 
 function program(runtime) {
   const lines = ["from time import time"];
   if (runtime === "sagejs") lines.push("from sagejs_serialization import dump, load");
-  for (const { name, setup, check } of cases) {
+  for (const { name, setup, sagejsSetup, sageSetup, check } of cases) {
     const filename = `${prefix}-${runtime}-${name}`;
     lines.push(...setup);
+    lines.push(...(runtime === "sagejs" ? sagejsSetup ?? [] : sageSetup ?? []));
     lines.push(`for sample in range(${samples}):`);
     lines.push("    t = time()");
     if (runtime === "sagejs") {

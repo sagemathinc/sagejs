@@ -46,9 +46,13 @@ Status meanings:
 7. **done — native vertical matrix concatenation.** Avoid materializing
    ZZ/QQ entries in JavaScript in `Matrix.stack`, matching the native augment
    path.
-8. **ready — audit matrix operations for accidental `.list()` crossings.** Add
-   native ZZ/QQ fast paths for the highest-volume structural operations, with
-   rectangular and empty-matrix tests.
+8. **done — audit matrix operations for accidental `.list()` crossings.** Add
+    native ZZ/QQ fast paths for the highest-volume structural operations, with
+    rectangular and empty-matrix tests. Subspace membership, sums, and
+    intersections now compose native matrices; matrix copies use native row
+    selection; zero testing runs entirely in the FLINT addon; and minimal-
+    polynomial construction materializes each power only once. Empty and
+    duplicate row/column selections and all native base families are covered.
 9. **measure — finite-field linear-algebra cutoff corpus.** Record crossover
    points between classical, packed/BLAS, and asymptotically fast algorithms
    by field size, shape, and architecture. Treat cutoffs as benchmarked data.
@@ -201,10 +205,15 @@ Status meanings:
 
 ## Architecture, performance, and reproducibility
 
-23. **ready — serialization throughput guardrails.** Benchmark representative
+23. **done — serialization throughput guardrails.** Benchmark representative
     dense/sparse matrices, polynomials, fields, modular-symbol spaces, graphics,
     and nested containers against Sage `save`/`load`; keep binary bulk data out
-    of per-element Python/JavaScript loops.
+    of per-element Python/JavaScript loops. The comparison suite now spans
+    dense and sparse-content matrices, multivariate polynomials, number and
+    character fields, modular-symbol factors, Plotly graphics payloads, and
+    nested containers. CI replaces each dense matrix's `.list()` method with a
+    failing sentinel and enforces packed-size and catastrophic-time ceilings,
+    proving ZZ, QQ, and prime-field codecs remain on native bulk exporters.
 24. **done — worker-transfer serialization.** Use the serialization registry
     for zero-copy or single-copy worker messages where possible, with ownership
     and mutation semantics tested explicitly. Worker packets now move fresh

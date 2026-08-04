@@ -22,6 +22,12 @@ assert bool(A)
 assert not bool(zero_matrix(ZZ, 2))
 assert A.is_zero() is False
 assert zero_matrix(ZZ, 2).is_zero() is True
+assert zero_matrix(QQ, 0, 7).is_zero() is True
+assert zero_matrix(GF(7), 3, 5).is_zero() is True
+assert matrix(
+    GF(7), 3, 5,
+    lambda row, col: 1 if (row, col) == (2, 4) else 0,
+).is_zero() is False
 assert identity_matrix(ZZ, 2).is_one() is True
 assert A.is_one() is False
 assert MatrixSpace(ZZ, 2).one() == identity_matrix(ZZ, 2)
@@ -63,10 +69,15 @@ subdivided = matrix(ZZ, 2, 3, range(6))
 subdivided.subdivide(None, 1)
 assert str(subdivided) == '[0|1 2]\n[3|4 5]'
 assert str(subdivided.transpose()) == '[0 3]\n[---]\n[1 4]\n[2 5]'
+subdivided_copy = subdivided.__copy__()
+assert subdivided_copy == subdivided
+assert str(subdivided_copy) == str(subdivided)
 assert A * A == matrix(ZZ, [[7, 10], [15, 22]])
 assert A._sparse_left_multiply(A) == A * A
 assert A.matrix_from_rows([1, 0, 1]) == matrix(ZZ, [[3, 4], [1, 2], [3, 4]])
 assert A.matrix_from_columns([1, 0, 1]) == matrix(ZZ, [[2, 1, 2], [4, 3, 4]])
+assert A.matrix_from_rows([]).dimensions() == (0, 2)
+assert A.matrix_from_columns([]).dimensions() == (2, 0)
 assert A ** 0 == identity_matrix(ZZ, 2)
 assert A ** 3 == matrix(ZZ, [[37, 54], [81, 118]])
 assert -A == matrix(ZZ, [[-1, -2], [-3, -4]])
