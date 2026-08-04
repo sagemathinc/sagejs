@@ -167,9 +167,13 @@ Status meanings:
     bounded option family at a time: axes/frame, aspect ratio, legends,
     labels, ticks, scales, fills, and regions. Named/custom `complex_plot`
     colormaps and correct indexed/attribute color-map access are done.
-18. **ready — Sage 3D transformations and composition.** Complete translate,
+18. **done — Sage 3D transformations and composition.** Complete translate,
     scale, rotate, texture/material propagation, mesh/wireframe styling,
-    opacity, aspect ratio, and camera behavior across every primitive.
+    opacity, aspect ratio, and camera behavior across every primitive. Affine
+    transforms cover both coordinates and direction vectors while preserving
+    per-face colors and trace styling. Plotly scenes now implement Sage's
+    Three.js `projection`, axis-angle `viewpoint`, and positive `zoom` camera
+    options.
 19. **ready — Sage graphics primitives long tail.** Port missing pure-Python
     constructors and docstrings from the GPL-compatible Sage source, using
     Plotly rendering and image-based smoke tests for representative scenes.

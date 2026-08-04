@@ -21,7 +21,10 @@ _GRAPHICS3D_OPTION_NAMES = [
     'axes_labels',
     'figsize',
     'frame',
+    'projection',
     'title',
+    'viewpoint',
+    'zoom',
 ]
 _SPHERE_DEFAULT_CENTER = (0, 0, 0)
 
@@ -491,6 +494,8 @@ def _g3d_transform_coordinates(
             transformed_y.append(ypart)
             transformed_z.append(zpart)
         return transformed_x, transformed_y, transformed_z
+    if xvalues is None or yvalues is None or zvalues is None:
+        return runtime.math_tuple([None, None, None])
     xvalue = float(xvalues)
     yvalue = float(yvalues)
     zvalue = float(zvalues)
@@ -513,6 +518,61 @@ def _g3d_flatten_numeric(values: Any) -> list[float]:
     if values is None:
         return []
     return [float(values)]
+
+
+def _g3d_camera(options: Any) -> Any:
+    """Translate Sage's Three.js camera options to a Plotly camera."""
+    projection = str(_g3d_option_get(
+        options, 'projection', 'perspective')).lower()
+    if projection not in ('perspective', 'orthographic'):
+        raise ValueError(
+            "projection must be 'perspective' or 'orthographic'")
+
+    zoom = float(_g3d_option_get(options, 'zoom', 1))
+    if zoom <= 0:
+        raise ValueError('zoom must be positive')
+
+    viewpoint = _g3d_option_get(options, 'viewpoint')
+    if viewpoint is None or viewpoint is False:
+        eye = [1.25 / zoom, 1.25 / zoom, 1.25 / zoom]
+    else:
+        values = list(viewpoint)
+        if len(values) != 2:
+            raise ValueError(
+                'viewpoint must be of the form [[x, y, z], angle]')
+        axis = _g3d_point(values[0])
+        length = runtime.math.sqrt(
+            axis[0] * axis[0]
+            + axis[1] * axis[1]
+            + axis[2] * axis[2])
+        if length == 0:
+            raise ValueError('viewpoint axis must be nonzero')
+        unit = [value / length for value in axis]
+        # Sage's Three.js renderer applies the inverse axis-angle quaternion
+        # to a camera on the positive z axis.  Rodrigues' formula with the
+        # negative angle gives the same orientation without renderer state.
+        angle = -float(values[1]) * runtime.math.PI / 180
+        sine = runtime.math.sin(angle)
+        cosine = runtime.math.cos(angle)
+        distance = runtime.math.sqrt(3 * 1.25 * 1.25) / zoom
+        vector = [0.0, 0.0, distance]
+        cross = [
+            unit[1] * vector[2] - unit[2] * vector[1],
+            unit[2] * vector[0] - unit[0] * vector[2],
+            unit[0] * vector[1] - unit[1] * vector[0],
+        ]
+        dot = sum(unit[index] * vector[index] for index in range(3))
+        eye = [
+            vector[index] * cosine
+            + cross[index] * sine
+            + unit[index] * dot * (1 - cosine)
+            for index in range(3)
+        ]
+
+    return _g3d_native_record(
+        eye=_g3d_native_record(x=eye[0], y=eye[1], z=eye[2]),
+        projection=_g3d_native_record(type=projection),
+    )
 
 
 class TransformedPrimitive3d(GraphicPrimitive3d):
@@ -1562,6 +1622,7 @@ class Graphics3d:
             yaxis=yaxis,
             zaxis=zaxis,
             dragmode='orbit',
+            camera=_g3d_camera(options),
         )
         layout = _g3d_native_record(
             autosize=True,

@@ -284,6 +284,21 @@ async function main() {
       )).repr,
       "([[0, 1, 2], [0, 1, 3]], 4, 2, 5, True, True)",
     );
+    const transformedIndexedMesh = await session.evaluate(
+      "S.rotateZ(pi/2).scale(2).translate((1,2,3))",
+    );
+    assert.deepEqual(
+      transformedIndexedMesh.display?.data.data.map((trace) => trace.type),
+      ["mesh3d", "scatter3d"],
+    );
+    assert.deepEqual(
+      transformedIndexedMesh.display?.data.data[0].facecolor,
+      ["red", "blue"],
+    );
+    assert.equal(
+      transformedIndexedMesh.display?.data.data[1].line.color,
+      "black",
+    );
 
     const label3d = await session.evaluate(
       "text3d('Sage', (1,2,3), color='green', fontsize=20)",
@@ -389,6 +404,13 @@ async function main() {
     assert.equal(affineLine.display?.data.data[0].z[0], 7);
     assert.ok(Math.abs(affineLine.display?.data.data[0].x[1] - 2) < 1e-12);
     assert.ok(Math.abs(affineLine.display?.data.data[0].y[1] - 6) < 1e-12);
+    const transformedVector = await session.evaluate(
+      "plot_vector_field3d((1,0,0),(x,0,1),(y,0,1),(z,0,1)," +
+        "plot_points=2).rotateZ(pi/2).scale(2,3,4)",
+    );
+    assert.ok(Math.abs(transformedVector.display?.data.data[0].u[0]) < 1e-12);
+    assert.ok(Math.abs(transformedVector.display?.data.data[0].v[0] - 3) < 1e-12);
+    assert.ok(Math.abs(transformedVector.display?.data.data[0].w[0]) < 1e-12);
     const rotatedLine = await session.evaluate(
       "line3d([(1,0,0),(0,1,0)]).rotateZ(pi/2)",
     );
@@ -414,6 +436,22 @@ async function main() {
     assert.equal(methodShown3d.display?.data.layout.height, 300);
     assert.equal(methodShown3d.display?.data.layout.scene.xaxis.visible, false);
     assert.equal(methodShown3d.display?.data.layout.title.text, "solid");
+    const cameraScene = await session.evaluate(
+      "icosahedron().show(projection='orthographic', " +
+        "viewpoint=[[1,0,0],90], zoom=2)",
+    );
+    const camera = cameraScene.display?.data.layout.scene.camera;
+    assert.equal(camera.projection.type, "orthographic");
+    assert.ok(Math.abs(camera.eye.x) < 1e-12);
+    assert.ok(Math.abs(camera.eye.y - 1.0825317547305484) < 1e-12);
+    assert.ok(Math.abs(camera.eye.z) < 1e-12);
+    const defaultCamera = surface.display?.data.layout.scene.camera;
+    assert.deepEqual(defaultCamera.eye, { x: 1.25, y: 1.25, z: 1.25 });
+    assert.equal(defaultCamera.projection.type, "perspective");
+    await assert.rejects(
+      session.evaluate("icosahedron().show(zoom=0)"),
+      /zoom must be positive/,
+    );
     const coordinateAxes = await session.evaluate("axes(2,color='black')");
     assert.deepEqual(
       coordinateAxes.display?.data.data.map((trace) => trace.type),
