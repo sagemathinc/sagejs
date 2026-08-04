@@ -116,6 +116,10 @@ test("dense matrix codecs stay on native packed-buffer paths", async (t) => {
 });
 
 test("mathematical values round trip through durable storage", async (t) => {
+  const filename = path.join(
+    os.tmpdir(),
+    `sagejs-serialization-test-${process.pid}.sagepack`,
+  );
   const session = await createSage({ mode: "sage" });
   t.after(() => session.close());
   const result = await session.evaluate([
@@ -149,7 +153,7 @@ test("mathematical values round trip through durable storage", async (t) => {
     "legacy_json = legacy_json.replace('sage.linear_algebra.element', 'sage.element')",
     "legacy_json = legacy_json.replace('sage.linear_algebra.parent', 'sage.parent')",
     "print(loads(legacy_json) == Q)",
-    "filename = '/tmp/sagejs-serialization-test.sagepack'",
+    `filename = ${JSON.stringify(filename)}`,
     "with open(filename, 'wb') as output:",
     "    dump(Q, output)",
     "with open(filename, 'rb') as input_file:",
@@ -168,6 +172,14 @@ test("mathematical values round trip through durable storage", async (t) => {
 });
 
 test("global save/load and dumps/loads use SagePack files", async (t) => {
+  const base = path.join(
+    os.tmpdir(),
+    `sagejs-global-save-test-${process.pid}`,
+  );
+  const other = path.join(
+    os.tmpdir(),
+    `sagejs-global-save-other-${process.pid}.sobj`,
+  );
   const session = await createSage({ mode: "sage" });
   t.after(() => session.close());
   const result = await session.evaluate([
@@ -176,10 +188,10 @@ test("global save/load and dumps/loads use SagePack files", async (t) => {
     "A = matrix(ZZ, 2, [1, -2, 3, 2^100])",
     "payload = dumps(A)",
     "print(payload[:8] == b'SAGEPK1\\x00', loads(payload) == A)",
-    "base = '/tmp/sagejs-global-save-test'",
+    `base = ${JSON.stringify(base)}`,
     "print(save(A, base) is None)",
     "print(os.path.exists(base + '.sobj'), load(base) == A)",
-    "other = Path('/tmp/sagejs-global-save-other.sobj')",
+    `other = Path(${JSON.stringify(other)})`,
     "save(A + A, other)",
     "answer = load(base, other)",
     "print(answer == [A, A + A])",

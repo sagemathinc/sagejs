@@ -113,7 +113,7 @@ async function testFilesystemModules() {
         "False",
         "('/', 'a', 'b.txt') /a/b.md",
         "C: data.csv C:/Users/research/data.csv",
-        "tree/src tree",
+        `${join("tree", "src")} tree`,
         "TypeError str expected, not int",
         "TypeError str expected, not int",
         "renamed False",
