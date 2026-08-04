@@ -56,13 +56,19 @@ function launchNativeIfInstalled() {
     console.error(`Unable to launch ${executable}: ${error.message}`);
     process.exitCode = 1;
   });
+  const signalHandlers = new Map();
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
-    process.on(signal, () => {
+    const handler = () => {
       if (!child.killed) child.kill(signal);
-    });
+    };
+    signalHandlers.set(signal, handler);
+    process.on(signal, handler);
   }
   child.on("exit", (code, signal) => {
     if (signal && process.platform !== "win32") {
+      for (const [name, handler] of signalHandlers) {
+        process.removeListener(name, handler);
+      }
       process.kill(process.pid, signal);
       return;
     }
