@@ -24,6 +24,8 @@ import sagejs.runtime as runtime
 _backend = runtime.require_module('numpy-ts')
 _native_ndarray = runtime.reflect.get(_backend, 'NDArray')
 _native_linalg = runtime.reflect.get(_backend, 'linalg')
+_array_wrappers = runtime.reflect.construct(
+    runtime.reflect.get(runtime.global_object, 'WeakMap'), [])
 
 
 def _call(name: str, call_args: list[Any]) -> Any:
@@ -73,7 +75,12 @@ def _native_array(value: Any) -> Any:
 
 def _wrap(value: Any) -> Any:
     if _is_native_array(value):
-        return ndarray(_native_value=value)
+        cached = _call_method(_array_wrappers, 'get', [value])
+        if cached is not runtime.undefined:
+            return cached
+        answer = ndarray(_native_value=value)
+        _call_method(_array_wrappers, 'set', [value, answer])
+        return answer
     return value
 
 
@@ -153,6 +160,7 @@ float64 = _ScalarType('float64', float)
 # NumPy's platform integer is 64 bits on the supported Sage.js platforms.
 int_ = int64
 float_ = float64
+newaxis = None
 
 
 def _dtype_name(value: Any) -> str | None:
@@ -212,35 +220,55 @@ def _slice_text(value: slice) -> str:
     return start + ':' + stop + ':' + str(value.step)
 
 
+def _consumed_dimensions(values: list[Any]) -> int:
+    count = 0
+    for value in values:
+        if value is not None and value is not Ellipsis:
+            count += 1
+    return count
+
+
 def _selectors(
     index: Any,
     dimensions: int,
-) -> tuple[list[Any], bool]:
+) -> tuple[list[Any], list[int], bool]:
     values = list(index) if isinstance(index, tuple) else [index]
     if Ellipsis in values:
         if values.count(Ellipsis) > 1:
             raise IndexError(
                 'an index can only have a single ellipsis')
         position = values.index(Ellipsis)
-        missing = dimensions - len(values) + 1
+        consumed = _consumed_dimensions(values)
+        missing = dimensions - consumed
         if missing < 0:
-            missing = 0
+            raise IndexError(
+                'too many indices for array: array is ' +
+                str(dimensions) + '-dimensional')
         values = (
             values[:position] + [slice(None)] * missing
             + values[position + 1:]
         )
+    elif _consumed_dimensions(values) > dimensions:
+        raise IndexError(
+            'too many indices for array: array is ' +
+            str(dimensions) + '-dimensional')
     answer = []
+    new_axes = []
+    result_axis = 0
     all_integers = True
     for value in values:
         if isinstance(value, slice):
             answer.append(_slice_text(value))
+            result_axis += 1
             all_integers = False
         elif value is None:
-            raise NotImplementedError(
-                'newaxis indexing is not implemented')
+            new_axes.append(result_axis)
+            result_axis += 1
+            all_integers = False
         else:
             answer.append(runtime.number(value))
-    return answer, all_integers
+    scalar = all_integers and len(answer) == dimensions
+    return answer, new_axes, scalar
 
 
 def _python_values(value: Any, dtype_name: str) -> Any:
@@ -269,12 +297,14 @@ class ndarray:
     ) -> None:
         if _native_value is not None:
             self._value = _native_value
+            _call_method(_array_wrappers, 'set', [_native_value, self])
             return
         if buffer is not None:
             raise NotImplementedError(
                 'the ndarray buffer constructor is not implemented')
         self._value = _call(
             'zeros', [_shape_list(shape), _dtype_name(dtype)])
+        _call_method(_array_wrappers, 'set', [self._value, self])
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -332,17 +362,23 @@ class ndarray:
         return bool(self.item())
 
     def __getitem__(self, index: Any) -> Any:
-        selectors, all_integers = _selectors(index, self.ndim)
-        if all_integers and len(selectors) == self.ndim:
+        selectors, _new_axes, scalar = _selectors(index, self.ndim)
+        if scalar:
             value = _call_method(self._value, 'get', [selectors])
             return _python_values(value, self.dtype.name)
+        return self._basic_view(index)
+
+    def _basic_view(self, index: Any) -> ndarray:
+        selectors, new_axes, _scalar = _selectors(index, self.ndim)
         slice_selectors = [str(value) for value in selectors]
-        return _wrap(
-            _call_method(self._value, 'slice', slice_selectors))
+        value = _call_method(self._value, 'slice', slice_selectors)
+        for axis in new_axes:
+            value = _call('expand_dims', [value, axis])
+        return _wrap(value)
 
     def __setitem__(self, index: Any, value: Any) -> None:
-        selectors, all_integers = _selectors(index, self.ndim)
-        if all_integers and len(selectors) == self.ndim:
+        selectors, _new_axes, scalar = _selectors(index, self.ndim)
+        if scalar:
             _call_method(
                 self._value, 'set', [selectors, _native(value)])
             return
@@ -425,8 +461,8 @@ class ndarray:
                 'only C-order reshape is implemented')
         if len(shape) == 1 and isinstance(shape[0], (list, tuple)):
             shape = tuple(shape[0])
-        return _wrap(
-            _call('reshape', [self._value, _shape_list(shape)]))
+        return _wrap(_call_method(
+            self._value, 'reshape', _shape_list(shape)))
 
     def transpose(self, *axes: Any) -> ndarray:
         if len(axes) == 0:
@@ -435,6 +471,9 @@ class ndarray:
             axes = tuple(axes[0])
         return _wrap(
             _call('transpose', [self._value, _shape_list(axes)]))
+
+    def squeeze(self, axis: Any = None) -> ndarray:
+        return squeeze(self, axis=axis)
 
     def sum(
         self,
@@ -651,6 +690,73 @@ def reshape(
     order: str = 'C',
 ) -> ndarray:
     return asarray(a).reshape(newshape, order=order)
+
+
+def _axis_values(axis: Any) -> list[Any]:
+    return list(axis) if isinstance(axis, tuple) else [axis]
+
+
+def _normalized_axes(
+    values: list[Any],
+    dimensions: int,
+    duplicate_message: str,
+) -> list[int]:
+    answer = []
+    for value in values:
+        if not runtime.is_exact_integer(value):
+            raise TypeError('integer argument expected')
+        number = runtime.number(value)
+        original = number
+        if number < 0:
+            number += dimensions
+        if number < 0 or number >= dimensions:
+            raise IndexError(
+                'axis ' + str(original) +
+                ' is out of bounds for array of dimension ' +
+                str(dimensions))
+        if number in answer:
+            raise ValueError(duplicate_message)
+        answer.append(number)
+    return answer
+
+
+def expand_dims(a: Any, axis: Any) -> ndarray:
+    """Insert one or several size-one axes without copying data."""
+    value = asarray(a)
+    requested = _axis_values(axis)
+    dimensions = value.ndim + len(requested)
+    axes = _normalized_axes(requested, dimensions, 'repeated axis')
+    index = [
+        None if position in axes else slice(None)
+        for position in range(dimensions)
+    ]
+    return value._basic_view(tuple(index))
+
+
+def squeeze(a: Any, axis: Any = None) -> ndarray:
+    """Remove selected size-one axes without copying data."""
+    value = asarray(a)
+    if axis is None:
+        axes = [
+            position for position in range(value.ndim)
+            if value.shape[position] == 1
+        ]
+    else:
+        axes = _normalized_axes(
+            _axis_values(axis),
+            value.ndim,
+            "duplicate value in 'axis'",
+        )
+    for position in axes:
+        if value.shape[position] != 1:
+            raise ValueError(
+                'cannot select an axis to squeeze out which has size ' +
+                'not equal to one')
+    index = [
+        0 if position in axes else slice(None)
+        for position in range(value.ndim)
+    ]
+    return value._basic_view(tuple(index))
 
 
 def sum(
