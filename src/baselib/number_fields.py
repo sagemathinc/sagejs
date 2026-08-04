@@ -1145,9 +1145,278 @@ def NumberField(
     return NumberFieldParent(polynomial, name)
 
 
+def _quadratic_xgcd(left: Any, right: Any) -> tuple[Any, Any, Any]:
+    old_r = runtime.integer_bigint(left)
+    r = runtime.integer_bigint(right)
+    old_s = runtime.bigint(1)
+    s = runtime.bigint(0)
+    old_t = runtime.bigint(0)
+    t = runtime.bigint(1)
+    while r != 0:
+        quotient = runtime.integer_bigint(old_r // r)
+        old_r, r = r, old_r - quotient * r
+        old_s, s = s, old_s - quotient * s
+        old_t, t = t, old_t - quotient * t
+    if old_r < 0:
+        return -old_r, -old_s, -old_t
+    return old_r, old_s, old_t
+
+
+class QuadraticBinaryForm:
+    """A primitive positive-definite binary quadratic form."""
+
+    def __init__(self, a: Any, b: Any, c: Any) -> None:
+        self._a = runtime.integer_bigint(a)
+        self._b = runtime.integer_bigint(b)
+        self._c = runtime.integer_bigint(c)
+
+    def coefficients(self) -> tuple[Any, Any, Any]:
+        return runtime.math_tuple([
+            runtime.normalize_integer(self._a),
+            runtime.normalize_integer(self._b),
+            runtime.normalize_integer(self._c),
+        ])
+
+    def discriminant(self) -> Any:
+        return runtime.normalize_integer(
+            self._b * self._b
+            - runtime.bigint(4) * self._a * self._c)
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, QuadraticBinaryForm)
+            and self._a == other._a
+            and self._b == other._b
+            and self._c == other._c
+        )
+
+    def __repr__(self) -> str:
+        return 'BinaryQF([' + ', '.join([
+            str(self._a), str(self._b), str(self._c)]) + '])'
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+def _quadratic_form_key(form: QuadraticBinaryForm) -> str:
+    return ','.join([str(form._a), str(form._b), str(form._c)])
+
+
+def _quadratic_reduce(
+    form: QuadraticBinaryForm, discriminant: Any,
+) -> QuadraticBinaryForm:
+    """Return the unique reduced representative of a positive form."""
+    target = runtime.integer_bigint(discriminant)
+    a, b, c = form._a, form._b, form._c
+    while True:
+        quotient = runtime.integer_bigint(
+            (b + a) // (runtime.bigint(2) * a))
+        b -= runtime.bigint(2) * quotient * a
+        c = runtime.integer_bigint(
+            (b * b - target) // (runtime.bigint(4) * a))
+        if a > c:
+            a, b, c = c, -b, a
+            continue
+        if (abs(b) == a or a == c) and b < 0:
+            b = -b
+        answer = QuadraticBinaryForm(a, b, c)
+        if (
+            answer._b * answer._b
+            - runtime.bigint(4) * answer._a * answer._c != target
+        ):
+            raise ArithmeticError('quadratic-form reduction changed discriminant')
+        return answer
+
+
+def _quadratic_compose(
+    left: QuadraticBinaryForm,
+    right: QuadraticBinaryForm,
+    discriminant: Any,
+) -> QuadraticBinaryForm:
+    """Compose forms by multiplying their rank-two integer ideal lattices."""
+    target = runtime.integer_bigint(discriminant)
+    parity = runtime.integer_bigint(target % runtime.bigint(2))
+    theta_norm = runtime.integer_bigint(
+        (parity * parity - target) // runtime.bigint(4))
+    left_t = runtime.integer_bigint(
+        (-left._b - parity) // runtime.bigint(2))
+    right_t = runtime.integer_bigint(
+        (-right._b - parity) // runtime.bigint(2))
+    vectors = [
+        [left._a * right._a, runtime.bigint(0)],
+        [left._a * right_t, left._a],
+        [right._a * left_t, right._a],
+        [
+            left_t * right_t - theta_norm,
+            left_t + right_t + parity,
+        ],
+    ]
+
+    projection_gcd = runtime.bigint(0)
+    lifted_x = runtime.bigint(0)
+    for x_value, y_value in vectors:
+        next_gcd, old_coefficient, new_coefficient = _quadratic_xgcd(
+            projection_gcd, y_value)
+        lifted_x = (
+            old_coefficient * lifted_x + new_coefficient * x_value)
+        projection_gcd = next_gcd
+    if projection_gcd == 0:
+        raise ArithmeticError('quadratic ideal product has rank below two')
+
+    lattice_index = runtime.bigint(0)
+    for left_index in range(len(vectors)):
+        for right_index in range(left_index):
+            minor = abs(
+                vectors[left_index][0] * vectors[right_index][1]
+                - vectors[right_index][0] * vectors[left_index][1]
+            )
+            lattice_index = runtime.bigint_gcd(lattice_index, minor)
+    scale_square = projection_gcd * projection_gcd
+    if (
+        lattice_index % scale_square != 0
+        or lifted_x % projection_gcd != 0
+    ):
+        raise ArithmeticError(
+            'quadratic ideal product did not normalize integrally')
+
+    a = runtime.integer_bigint(lattice_index // scale_square)
+    t_value = runtime.integer_bigint(
+        (lifted_x // projection_gcd) % a)
+    b = -runtime.bigint(2) * t_value - parity
+    numerator = b * b - target
+    if numerator % (runtime.bigint(4) * a) != 0:
+        raise ArithmeticError('quadratic ideal product has invalid norm')
+    return _quadratic_reduce(
+        QuadraticBinaryForm(
+            a, b, numerator // (runtime.bigint(4) * a)), target)
+
+
+def _quadratic_reduced_forms(discriminant: Any) -> list[QuadraticBinaryForm]:
+    target = runtime.integer_bigint(discriminant)
+    if (
+        target >= 0
+        or target % runtime.bigint(4)
+        not in [runtime.bigint(0), runtime.bigint(1)]
+    ):
+        raise ValueError('a negative quadratic discriminant is required')
+    forms = []
+    a = runtime.bigint(1)
+    while runtime.bigint(3) * a * a <= -target:
+        b = -a
+        while b <= a:
+            numerator = b * b - target
+            if numerator % (runtime.bigint(4) * a) == 0:
+                c = numerator // (runtime.bigint(4) * a)
+                if (
+                    a <= c
+                    and not (
+                        (abs(b) == a or a == c) and b < 0
+                    )
+                    and runtime.bigint_gcd(
+                        runtime.bigint_gcd(a, b),
+                        runtime.integer_bigint(c),
+                    ) == runtime.bigint(1)
+                ):
+                    forms.append(QuadraticBinaryForm(a, b, c))
+            b += runtime.bigint(1)
+        a += runtime.bigint(1)
+    return forms
+
+
+def _quadratic_principal_form(discriminant: Any) -> QuadraticBinaryForm:
+    target = runtime.integer_bigint(discriminant)
+    middle = target % runtime.bigint(2)
+    return QuadraticBinaryForm(
+        1, middle,
+        (middle * middle - target) // runtime.bigint(4))
+
+
+def _quadratic_form_power(
+    form: QuadraticBinaryForm,
+    exponent: Any,
+    discriminant: Any,
+) -> QuadraticBinaryForm:
+    power = runtime.integer_bigint(exponent)
+    if power < 0:
+        form = _quadratic_reduce(
+            QuadraticBinaryForm(form._a, -form._b, form._c),
+            discriminant,
+        )
+        power = -power
+    answer = _quadratic_principal_form(discriminant)
+    base = form
+    while power:
+        if power % runtime.bigint(2):
+            answer = _quadratic_compose(answer, base, discriminant)
+        power //= runtime.bigint(2)
+        if power:
+            base = _quadratic_compose(base, base, discriminant)
+    return answer
+
+
+def _quadratic_form_order(
+    form: QuadraticBinaryForm,
+    group_order: int,
+    discriminant: Any,
+) -> int:
+    order = group_order
+    for pair in _untyped(sage.factor)(group_order):
+        prime = int(runtime.number(pair[0]))
+        while (
+            order % prime == 0
+            and _quadratic_form_power(
+                form, order // prime, discriminant
+            ) == _quadratic_principal_form(discriminant)
+        ):
+            order //= prime
+    return order
+
+
+def _quadratic_subgroup(
+    generators: list[QuadraticBinaryForm],
+    discriminant: Any,
+) -> list[QuadraticBinaryForm]:
+    principal = _quadratic_principal_form(discriminant)
+    elements = [principal]
+    seen = runtime.map()
+    seen.set(_quadratic_form_key(principal), True)
+    cursor = 0
+    while cursor < len(elements):
+        current = elements[cursor]
+        cursor += 1
+        for generator in generators:
+            candidate = _quadratic_compose(
+                current, generator, discriminant)
+            key = _quadratic_form_key(candidate)
+            if not seen.has(key):
+                seen.set(key, True)
+                elements.append(candidate)
+    return elements
+
+
+def _quadratic_squarefree_data(
+    radicand: Any,
+) -> tuple[Any, Any]:
+    value = runtime.integer_bigint(radicand)
+    if value >= 0:
+        raise NotImplementedError(
+            'native quadratic class groups currently require '
+            'a negative radicand')
+    squarefree = runtime.bigint(1)
+    scale = runtime.bigint(1)
+    factorization = runtime.flint_backend().factor(-value)
+    for pair in factorization.factors:
+        prime = runtime.integer_bigint(pair[0])
+        exponent = int(pair[1])
+        scale *= prime ** runtime.bigint(exponent // 2)
+        if exponent % 2:
+            squarefree *= prime
+    return -squarefree, scale
+
+
 @runtime.lightweight_math_class
 class GaussianInteger(sage.Element):
-    """An element ``a + b*i`` of the Gaussian integers."""
+    """An exact element ``r + s*a`` of an imaginary quadratic field."""
 
     def __init__(
         self,
@@ -1156,10 +1425,8 @@ class GaussianInteger(sage.Element):
         imag: Any,
     ) -> None:
         self._parent = parent
-        self._real = runtime.normalize_integer(
-            runtime.integer_bigint(real))
-        self._imag = runtime.normalize_integer(
-            runtime.integer_bigint(imag))
+        self._real = sage.QQ(real)
+        self._imag = sage.QQ(imag)
         runtime.object.freeze(self)
 
     def __getitem__(self, index: int) -> Any:
@@ -1173,12 +1440,30 @@ class GaussianInteger(sage.Element):
         return GaussianInteger(
             self._parent, -self._real, -self._imag)
 
+    def _add_(self, other: GaussianInteger) -> GaussianInteger:
+        return GaussianInteger(
+            self._parent,
+            self._real + other._real,
+            self._imag + other._imag,
+        )
+
+    def _sub_(self, other: GaussianInteger) -> GaussianInteger:
+        return GaussianInteger(
+            self._parent,
+            self._real - other._real,
+            self._imag - other._imag,
+        )
+
     def _mul_(self, other: GaussianInteger) -> GaussianInteger:
         return GaussianInteger(
             self._parent,
-            self._real * other._real - self._imag * other._imag,
+            self._real * other._real
+            + self._parent._radicand * self._imag * other._imag,
             self._real * other._imag + self._imag * other._real,
         )
+
+    def _truediv_(self, other: GaussianInteger) -> GaussianInteger:
+        return self * other.inverse()
 
     def _eq_(self, other: GaussianInteger) -> bool:
         return (
@@ -1190,18 +1475,78 @@ class GaussianInteger(sage.Element):
         return runtime.coercion_model.binOp(
             'mul', self, other)
 
+    def __rmul__(self, other: Any) -> Any:
+        return runtime.coercion_model.binOp(
+            'mul', other, self)
+
+    def __add__(self, other: Any) -> Any:
+        return runtime.coercion_model.binOp(
+            'add', self, other)
+
+    def __radd__(self, other: Any) -> Any:
+        return runtime.coercion_model.binOp(
+            'add', other, self)
+
+    def __sub__(self, other: Any) -> Any:
+        return runtime.coercion_model.binOp(
+            'sub', self, other)
+
+    def __truediv__(self, other: Any) -> Any:
+        return runtime.coercion_model.binOp(
+            'truediv', self, other)
+
     def __eq__(self, other: object) -> bool:
         return runtime.coercion_model.equals(self, other)
+
+    def is_zero(self) -> bool:
+        return self._real == 0 and self._imag == 0
+
+    def is_one(self) -> bool:
+        return self._real == 1 and self._imag == 0
+
+    def conjugate(self) -> GaussianInteger:
+        return GaussianInteger(self._parent, self._real, -self._imag)
+
+    def norm(self) -> Any:
+        return (
+            self._real * self._real
+            - self._parent._radicand * self._imag * self._imag
+        )
+
+    def trace(self) -> Any:
+        return 2 * self._real
+
+    def inverse(self) -> GaussianInteger:
+        norm = self.norm()
+        if norm == 0:
+            raise ZeroDivisionError('division by zero')
+        return GaussianInteger(
+            self._parent, self._real / norm, -self._imag / norm)
+
+    def __pow__(self, exponent: Any) -> GaussianInteger:
+        power = runtime.integer_bigint(exponent)
+        if power < 0:
+            return self.inverse() ** (-power)
+        answer = self._parent.one()
+        base = self
+        while power:
+            if power % 2:
+                answer = answer * base
+            power //= 2
+            if power:
+                base = base * base
+        return answer
 
     def __repr__(self) -> str:
         if self._imag == 0:
             return str(self._real)
+        variable = self._parent.variable_name()
         if self._real == 0:
-            return str(self._imag) + '*i'
-        sign = '+' if self._imag > 0 else '-'
+            return str(self._imag) + '*' + variable
+        sign = '+' if self._imag._numerator > 0 else '-'
         return (
             str(self._real) + ' ' + sign + ' ' +
-            str(abs(self._imag)) + '*i'
+            str(abs(self._imag)) + '*' + variable
         )
 
     __str__ = __repr__
@@ -1220,22 +1565,437 @@ class GaussianPrimeIdeal:
         return runtime.math_tuple([self._generator])
 
 
+class QuadraticIdeal:
+    """An integral ideal represented by a reduced quadratic form."""
+
+    def __init__(
+        self,
+        order: QuadraticIntegerRing,
+        form: QuadraticBinaryForm,
+    ) -> None:
+        self._kind = 'QuadraticIdeal'
+        self._parent = order
+        self._order = order
+        self._form = form
+
+    def gens_reduced(self) -> tuple[GaussianInteger, GaussianInteger]:
+        field = self._order.number_field()
+        return runtime.math_tuple([
+            field(self._form._a),
+            field._ideal_second_generator(self._form._b),
+        ])
+
+    gens = gens_reduced
+
+    def norm(self) -> Any:
+        return runtime.normalize_integer(self._form._a)
+
+    absolute_norm = norm
+
+    def ring(self) -> QuadraticIntegerRing:
+        return self._order
+
+    def __repr__(self) -> str:
+        generators = self.gens_reduced()
+        return (
+            'Fractional ideal (' + str(generators[0])
+            + ', ' + str(generators[1]) + ')'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.lightweight_math_class
+class QuadraticClassGroupElement(sage.Element):
+    """An ideal class with a canonical reduced-form representative."""
+
+    def __init__(
+        self,
+        parent: QuadraticClassGroup,
+        form: QuadraticBinaryForm,
+    ) -> None:
+        self._parent = parent
+        self._form = form
+        runtime.object.freeze(self)
+
+    def _mul_(
+        self, other: QuadraticClassGroupElement,
+    ) -> QuadraticClassGroupElement:
+        if (
+            not isinstance(other, QuadraticClassGroupElement)
+            or other._parent is not self._parent
+        ):
+            raise TypeError('ideal classes must have the same parent')
+        return self._parent._from_form(_quadratic_compose(
+            self._form,
+            other._form,
+            self._parent._discriminant,
+        ))
+
+    def __mul__(self, other: Any) -> Any:
+        return runtime.coercion_model.binOp('mul', self, other)
+
+    def _eq_(self, other: QuadraticClassGroupElement) -> bool:
+        return (
+            isinstance(other, QuadraticClassGroupElement)
+            and other._parent is self._parent
+            and other._form == self._form
+        )
+
+    def __eq__(self, other: object) -> bool:
+        return runtime.coercion_model.equals(self, other)
+
+    def __invert__(self) -> QuadraticClassGroupElement:
+        return self._parent._from_form(_quadratic_reduce(
+            QuadraticBinaryForm(
+                self._form._a, -self._form._b, self._form._c),
+            self._parent._discriminant,
+        ))
+
+    inverse = __invert__
+
+    def __pow__(self, exponent: Any) -> QuadraticClassGroupElement:
+        return self._parent._from_form(_quadratic_form_power(
+            self._form, exponent, self._parent._discriminant))
+
+    def is_one(self) -> bool:
+        return self._form == self._parent._principal_form
+
+    is_principal = is_one
+
+    def order(self) -> int:
+        return _quadratic_form_order(
+            self._form,
+            self._parent.order(),
+            self._parent._discriminant,
+        )
+
+    additive_order = order
+
+    def ideal(self) -> QuadraticIdeal:
+        return QuadraticIdeal(
+            self._parent.number_field().ring_of_integers(),
+            self._form,
+        )
+
+    def form(self) -> QuadraticBinaryForm:
+        return self._form
+
+    def __repr__(self) -> str:
+        if self.is_one():
+            return 'Trivial principal fractional ideal class'
+        generators = self.ideal().gens_reduced()
+        return (
+            'Fractional ideal class (' + str(generators[0])
+            + ', ' + str(generators[1]) + ')'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class QuadraticClassGroup:
+    """The ideal class group of an imaginary quadratic maximal order."""
+
+    def __init__(self, field: QuadraticField_class) -> None:
+        self._field = field
+        self._discriminant = runtime.integer_bigint(field.discriminant())
+        self._forms = _quadratic_reduced_forms(self._discriminant)
+        self._principal_form = _quadratic_principal_form(
+            self._discriminant)
+        self._element_cache = runtime.map()
+        self._elements = [self._from_form(form) for form in self._forms]
+        structure = self._compute_structure()
+        self._invariants = structure[0]
+        self._generators = [
+            self._from_form(form) for form in structure[1]]
+
+    def _from_form(
+        self, form: QuadraticBinaryForm,
+    ) -> QuadraticClassGroupElement:
+        key = _quadratic_form_key(form)
+        cached = self._element_cache.get(key)
+        if cached is not runtime.undefined:
+            return cached
+        element = QuadraticClassGroupElement(self, form)
+        self._element_cache.set(key, element)
+        return element
+
+    def _primary_basis(
+        self, prime: int, exponent: int,
+    ) -> tuple[list[int], list[QuadraticBinaryForm]]:
+        primary_order = prime ** exponent
+        projection_power = self.order() // primary_order
+        primary_forms = []
+        seen = runtime.map()
+        for form in self._forms:
+            projected = _quadratic_form_power(
+                form, projection_power, self._discriminant)
+            key = _quadratic_form_key(projected)
+            if not seen.has(key):
+                seen.set(key, True)
+                primary_forms.append(projected)
+        if len(primary_forms) != primary_order:
+            raise ArithmeticError(
+                'quadratic class-group primary projection has wrong order')
+
+        ranks = [0]
+        for level in range(1, exponent + 1):
+            killed = 0
+            bound = prime ** level
+            for form in primary_forms:
+                if _quadratic_form_power(
+                    form, bound, self._discriminant
+                ) == self._principal_form:
+                    killed += 1
+            rank = 0
+            remaining = killed
+            while remaining > 1 and remaining % prime == 0:
+                remaining //= prime
+                rank += 1
+            if remaining != 1:
+                raise ArithmeticError(
+                    'quadratic class-group p-rank is inconsistent')
+            ranks.append(rank)
+
+        factors = []
+        for level in range(1, exponent + 1):
+            at_least = ranks[level] - ranks[level - 1]
+            next_at_least = (
+                ranks[level + 1] - ranks[level]
+                if level < exponent else 0
+            )
+            for _index in range(at_least - next_at_least):
+                factors.append(prime ** level)
+
+        selected = []
+        subgroup = [self._principal_form]
+        for target_order in reversed(factors):
+            chosen = runtime.undefined
+            for candidate in primary_forms:
+                if (
+                    _quadratic_form_order(
+                        candidate,
+                        self.order(),
+                        self._discriminant,
+                    ) != target_order
+                ):
+                    continue
+                candidate_subgroup = _quadratic_subgroup(
+                    selected + [candidate], self._discriminant)
+                if len(candidate_subgroup) == len(subgroup) * target_order:
+                    chosen = candidate
+                    subgroup = candidate_subgroup
+                    break
+            if chosen is runtime.undefined:
+                raise ArithmeticError(
+                    'failed to find independent quadratic class generators')
+            selected.append(chosen)
+        if len(subgroup) != primary_order:
+            raise ArithmeticError(
+                'quadratic class generators do not span a primary part')
+        selected.reverse()
+        return factors, selected
+
+    def _compute_structure(
+        self,
+    ) -> tuple[list[int], list[QuadraticBinaryForm]]:
+        if self.order() == 1:
+            return [], []
+        component_orders = []
+        component_generators = []
+        maximum_rank = 0
+        for pair in _untyped(sage.factor)(self.order()):
+            prime = int(runtime.number(pair[0]))
+            exponent = int(runtime.number(pair[1]))
+            component = self._primary_basis(prime, exponent)
+            component_orders.append(component[0])
+            component_generators.append(component[1])
+            maximum_rank = max(maximum_rank, len(component[0]))
+
+        invariants = []
+        generators = []
+        for position in range(maximum_rank):
+            invariant = 1
+            generator = self._principal_form
+            for index in range(len(component_orders)):
+                offset = maximum_rank - len(component_orders[index])
+                if position >= offset:
+                    local_index = position - offset
+                    invariant *= component_orders[index][local_index]
+                    generator = _quadratic_compose(
+                        generator,
+                        component_generators[index][local_index],
+                        self._discriminant,
+                    )
+            invariants.append(invariant)
+            generators.append(generator)
+        if len(_quadratic_subgroup(
+            generators, self._discriminant
+        )) != self.order():
+            raise ArithmeticError(
+                'quadratic class-group invariant generators do not span')
+        invariants.reverse()
+        generators.reverse()
+        return invariants, generators
+
+    def __len__(self) -> int:
+        return len(self._elements)
+
+    def __iter__(self) -> Any:
+        return iter(self._elements)
+
+    def __getitem__(self, index: int) -> QuadraticClassGroupElement:
+        return self._elements[index]
+
+    def list(self) -> list[QuadraticClassGroupElement]:
+        return list(self._elements)
+
+    def order(self) -> int:
+        return len(self._forms)
+
+    cardinality = order
+
+    def one(self) -> QuadraticClassGroupElement:
+        return self._from_form(self._principal_form)
+
+    def invariants(self) -> 'tuple[Any, ...]':
+        return runtime.math_tuple(list(self._invariants))
+
+    def gens(self) -> 'tuple[Any, ...]':
+        return runtime.math_tuple(list(self._generators))
+
+    def ngens(self) -> int:
+        return len(self._generators)
+
+    def gen(self, index: int = 0) -> QuadraticClassGroupElement:
+        if index < 0 or index >= len(self._generators):
+            raise IndexError('class-group generator index out of range')
+        return self._generators[index]
+
+    def number_field(self) -> QuadraticField_class:
+        return self._field
+
+    def __repr__(self) -> str:
+        structure = ''
+        if len(self._invariants):
+            structure = ' with structure ' + ' x '.join([
+                'C' + str(value) for value in self._invariants])
+        return (
+            'Class group of order ' + str(self.order()) + structure
+            + ' of ' + str(self._field)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class QuadraticIntegerRing(sage.Parent):
+    """The maximal order of an imaginary quadratic number field."""
+
+    def __init__(self, field: QuadraticField_class) -> None:
+        self._field = field
+        self._kind = 'QuadraticOrder'
+        self._construction = runtime.undefined
+        self._name = 'Maximal Order in ' + str(field)
+
+    def __call__(self, value: Any = 0) -> GaussianInteger:
+        element = self._field(value)
+        if element not in self:
+            raise TypeError(
+                str(element) + ' is not integral in ' + str(self._field))
+        return element
+
+    def __contains__(self, value: object) -> bool:
+        try:
+            element = self._field(value)
+        except Exception:
+            return False
+        scale = self._field._root_scale
+        if self._field._squarefree_radicand % 4 == 1:
+            omega_coefficient = runtime.bigint(2) * scale * element._imag
+            constant = element._real - omega_coefficient / 2
+        else:
+            omega_coefficient = scale * element._imag
+            constant = element._real
+        return (
+            constant._denominator == 1
+            and omega_coefficient._denominator == 1
+        )
+
+    def basis(self) -> list[GaussianInteger]:
+        return self._field.integral_basis()
+
+    integral_basis = basis
+
+    def gen(self, index: int = 0) -> GaussianInteger:
+        basis = self.basis()
+        if index < 0 or index >= len(basis):
+            raise IndexError('maximal-order basis index out of range')
+        return basis[index]
+
+    def gens(self) -> 'tuple[Any, ...]':
+        return runtime.math_tuple(self.basis())
+
+    def number_field(self) -> QuadraticField_class:
+        return self._field
+
+    fraction_field = number_field
+
+    def discriminant(self) -> Any:
+        return self._field.discriminant()
+
+    def class_group(self) -> QuadraticClassGroup:
+        return self._field.class_group()
+
+    def class_number(self) -> int:
+        return self._field.class_number()
+
+    def __repr__(self) -> str:
+        return self._name
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 @runtime.callable_instance_class
 class QuadraticField_class(sage.Parent):
-    """The Gaussian quadratic field used by the RH plotting corpus."""
+    """An exact imaginary quadratic field with native class groups."""
 
-    def __init__(self, discriminant: Any) -> None:
-        if discriminant != -1:
-            raise NotImplementedError(
-                'only QuadraticField(-1) is implemented')
-        self._name = 'Number Field in i with defining polynomial x^2 + 1'
+    def __init__(self, radicand: Any, name: str) -> None:
+        if not runtime.is_exact_integer(radicand):
+            raise TypeError('a quadratic radicand must be an exact integer')
+        original = runtime.integer_bigint(radicand)
+        squarefree_data = _quadratic_squarefree_data(original)
+        self._squarefree_radicand = squarefree_data[0]
+        self._root_scale = squarefree_data[1]
+        self._radicand = original
+        self._field_discriminant = (
+            self._squarefree_radicand
+            if self._squarefree_radicand % 4 == 1
+            else runtime.bigint(4) * self._squarefree_radicand
+        )
+        polynomial_ring = _untyped(sage.PolynomialRing)(sage.QQ, 'x')
+        polynomial_generator = polynomial_ring.gen()
+        self._polynomial = polynomial_generator ** 2 - original
+        self._variable = name
+        self._name = (
+            'Number Field in ' + name + ' with defining polynomial '
+            + str(self._polynomial)
+        )
         self._kind = 'QuadraticField'
-        self._discriminant = -1
+        self._discriminant = runtime.normalize_integer(original)
         self._construction = {
             'kind': 'QuadraticField',
-            'discriminant': -1,
+            'discriminant': self._discriminant,
         }
         self._generator = GaussianInteger(self, 0, 1)
+        self._integer_ring = runtime.undefined
+        self._class_group = runtime.undefined
+        runtime.coercion_model.register(sage.ZZ, self, self)
+        runtime.coercion_model.register(sage.QQ, self, self)
 
     def __call__(
         self,
@@ -1243,11 +2003,84 @@ class QuadraticField_class(sage.Parent):
         imag: Any = 0,
     ) -> GaussianInteger:
         if isinstance(real, GaussianInteger):
-            return real
+            if real._parent is self and imag == 0:
+                return real
+            raise TypeError('incompatible quadratic fields')
         return GaussianInteger(self, real, imag)
 
-    def gen(self) -> GaussianInteger:
+    def gen(self, index: int = 0) -> GaussianInteger:
+        if index != 0:
+            raise IndexError('a quadratic field has one generator')
         return self._generator
+
+    def gens(self) -> 'tuple[Any, ...]':
+        return runtime.math_tuple([self.gen()])
+
+    def zero(self) -> GaussianInteger:
+        return self(0)
+
+    def one(self) -> GaussianInteger:
+        return self(1)
+
+    def degree(self) -> int:
+        return 2
+
+    absolute_degree = degree
+
+    def variable_name(self) -> str:
+        return self._variable
+
+    def defining_polynomial(self) -> Any:
+        return self._polynomial
+
+    polynomial = defining_polynomial
+
+    def discriminant(self) -> Any:
+        return runtime.normalize_integer(self._field_discriminant)
+
+    absolute_discriminant = discriminant
+
+    def integral_basis(self) -> list[GaussianInteger]:
+        if self._squarefree_radicand % 4 == 1:
+            return [
+                self(
+                    _untyped(sage.QQ)(1, 2),
+                    _untyped(sage.QQ)(
+                        1, runtime.bigint(2) * self._root_scale),
+                ),
+                self(0, _untyped(sage.QQ)(1, self._root_scale)),
+            ]
+        return [
+            self.one(),
+            self(0, _untyped(sage.QQ)(1, self._root_scale)),
+        ]
+
+    def ring_of_integers(self) -> QuadraticIntegerRing:
+        if self._integer_ring is runtime.undefined:
+            self._integer_ring = QuadraticIntegerRing(self)
+        return self._integer_ring
+
+    maximal_order = ring_of_integers
+
+    def class_group(self) -> QuadraticClassGroup:
+        if self._class_group is runtime.undefined:
+            self._class_group = QuadraticClassGroup(self)
+        return self._class_group
+
+    def class_number(self) -> int:
+        return self.class_group().order()
+
+    def _ideal_second_generator(self, middle: Any) -> GaussianInteger:
+        if self._squarefree_radicand % 4 == 1:
+            sqrt_discriminant_coefficient = _untyped(sage.QQ)(
+                1, self._root_scale)
+        else:
+            sqrt_discriminant_coefficient = _untyped(sage.QQ)(
+                2, self._root_scale)
+        return self(
+            _untyped(sage.QQ)(-runtime.integer_bigint(middle), 2),
+            sqrt_discriminant_coefficient / 2,
+        )
 
     def _from_serialized_prime_ideal(
         self, generator: GaussianInteger,
@@ -1263,6 +2096,10 @@ class QuadraticField_class(sage.Parent):
     def primes_of_bounded_norm(
         self, bound: Any,
     ) -> list[GaussianPrimeIdeal]:
+        if self._radicand != -1:
+            raise NotImplementedError(
+                'primes_of_bounded_norm currently uses the Gaussian '
+                'prime enumeration and requires QuadraticField(-1)')
         limit = runtime.integer_bigint(bound)
         if limit <= 1:
             return []
@@ -1300,10 +2137,33 @@ class QuadraticField_class(sage.Parent):
 
 
 def QuadraticField(
-    discriminant: Any,
+    radicand: Any,
     names: Any = None,
 ) -> QuadraticField_class:
-    return QuadraticField_class(discriminant)
+    r"""Construct an exact imaginary quadratic field.
+
+    Negative radicands support exact field arithmetic, the maximal order,
+    integral bases, discriminants, and finite ideal class groups.
+
+    ### Examples
+
+    ```sage
+    sage: K.<a> = QuadraticField(-23)
+    sage: K.discriminant()
+    -23
+    sage: K.class_group().invariants()
+    (3,)
+    ```
+    """
+    if names is None:
+        name = 'i' if radicand == -1 else 'a'
+    elif runtime.array.isArray(names):
+        if len(names) != 1:
+            raise ValueError('a quadratic field has one generator name')
+        name = str(names[0])
+    else:
+        name = str(names)
+    return QuadraticField_class(radicand, name)
 
 
 runtime.set_class_repr(
@@ -1362,9 +2222,66 @@ runtime.register_doc(
         ],
         'limitations': [
             (
-                'General integral bases, unit groups, class groups, and '
-                'Galois groups above degree four await further native '
-                'number-field algorithms.'
+                'General integral bases, unit groups, nonquadratic class '
+                'groups, and Galois groups above degree four await further '
+                'native number-field algorithms.'
+            ),
+        ],
+    },
+)
+
+runtime.register_doc(
+    'QuadraticField',
+    QuadraticField,
+    {
+        'kind': 'function',
+        'module': 'sage.rings.number_field.number_field',
+        'tags': [
+            'number theory',
+            'quadratic fields',
+            'rings of integers',
+            'ideal class groups',
+            'binary quadratic forms',
+        ],
+        'backends': [
+            'Sage.js exact quadratic arithmetic',
+            'FLINT integer factorization',
+        ],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': (
+                'Negative radicands have exact arithmetic, maximal orders, '
+                'integral bases, field discriminants, class numbers, and '
+                'composable finite class groups with Sage-ordered invariant '
+                'factors.'
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath quadratic number-field and class-group API',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/'
+                    'number_fields/'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'literature-implemented',
+                'source': (
+                    'Gauss reduction and ideal-lattice composition of '
+                    'positive-definite binary quadratic forms'
+                ),
+            },
+        ],
+        'limitations': [
+            (
+                'Real quadratic fields and their unit/regulator algorithms '
+                'are not yet implemented by QuadraticField.'
+            ),
+            (
+                'Class groups currently enumerate every reduced form, so '
+                'large discriminants need a future subexponential backend.'
             ),
         ],
     },

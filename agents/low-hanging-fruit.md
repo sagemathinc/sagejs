@@ -69,20 +69,15 @@ payoffs.
 
 ## Native algebraic-number-theory lane
 
-The first bounded experiment succeeded: Sage.js now identifies every
+The first two bounded experiments succeeded.  Sage.js identifies every
 transitive Galois group of an irreducible polynomial over `QQ` through degree
-four using discriminants, cubic resolvents, and the Kappe--Warren tests, with
-FLINT polynomial factorization underneath.  That result supports extracting
-algorithms individually instead of making PARI's `GEN` stack a foundational
-runtime dependency.
-
-- **ANT-1 / ready / M — imaginary quadratic orders and class groups.**  Start
-  with squarefree negative radicands.  Implement the correct integral basis
-  and field discriminant, enumerate reduced primitive positive-definite binary
-  quadratic forms, and expose `class_number()` plus a genuinely composable
-  finite `class_group()`.  Compare reduced representatives, composition,
-  inverses, and invariant factors with Sage and PARI.  Keep real quadratic
-  units and general number-field ideals out of this slice.
+four using discriminants, cubic resolvents, and the Kappe--Warren tests.  It
+also implements imaginary quadratic maximal orders and class groups using
+reduced positive-definite forms and exact rank-two ideal-lattice composition,
+including non-squarefree input radicands.  The quadratic implementation was
+checked exhaustively for group laws and differentially against Sage, PARI, and
+Magma.  These results support extracting algorithms individually instead of
+making PARI's `GEN` stack a foundational runtime dependency.
 
 - **ANT-2 / measure — Galois groups in degrees five through seven.**  Assemble
   a balanced Sage/PARI corpus for every transitive label and inventory the

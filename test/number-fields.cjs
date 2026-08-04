@@ -164,3 +164,110 @@ test("number fields reject reducible quotients and bound native Galois degree", 
     await session.close();
   }
 });
+
+test("imaginary quadratic maximal orders and class groups match reference data", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "radicands = [-1,-2,-3,-5,-6,-10,-14,-15,-23,-39,-65,",
+            "              -84,-105,-110]",
+            "[(d, QuadraticField(d).discriminant(),",
+            "  QuadraticField(d).class_number(),",
+            "  QuadraticField(d).class_group().invariants())",
+            " for d in radicands]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(-1, -4, 1, ()), (-2, -8, 1, ()), (-3, -3, 1, ()), " +
+        "(-5, -20, 2, (2,)), (-6, -24, 2, (2,)), " +
+        "(-10, -40, 2, (2,)), (-14, -56, 4, (4,)), " +
+        "(-15, -15, 2, (2,)), (-23, -23, 3, (3,)), " +
+        "(-39, -39, 4, (4,)), (-65, -260, 8, (4, 2)), " +
+        "(-84, -84, 4, (2, 2)), (-105, -420, 8, (2, 2, 2)), " +
+        "(-110, -440, 12, (6, 2))]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "K.<a> = QuadraticField(-84)",
+            "O = K.ring_of_integers()",
+            "C = O.class_group()",
+            "[K, K.defining_polynomial(), K.discriminant(),",
+            " K.integral_basis(), [u in O for u in K.integral_basis()],",
+            " C, C.order(), C.invariants(), [g.order() for g in C.gens()]]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[Number Field in a with defining polynomial x^2 + 84, x^2 + 84, " +
+        "-84, [1, 1/2*a], [True, True], Class group of order 4 with " +
+        "structure C2 x C2 of Number Field in a with defining polynomial " +
+        "x^2 + 84, 4, (2, 2), [2, 2]]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "[(d, QuadraticField(d).integral_basis()) " +
+            "for d in [-23, -12, -84]]",
+        )
+      ).repr,
+      "[(-23, [1/2 + 1/2*a, 1*a]), " +
+        "(-12, [1/2 + 1/4*a, 1/2*a]), (-84, [1, 1/2*a])]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("quadratic ideal lattice composition satisfies the full group laws", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "checks = []",
+            "for d in [-14, -23, -65, -84, -105, -110]:",
+            "    C = QuadraticField(d).class_group()",
+            "    elements = C.list()",
+            "    associative = all((x*y)*z == x*(y*z)",
+            "                      for x in elements",
+            "                      for y in elements",
+            "                      for z in elements)",
+            "    inverses = all(x*(~x) == C.one() and (~x)*x == C.one()",
+            "                   for x in elements)",
+            "    orders = all(x^x.order() == C.one() for x in elements)",
+            "    generated = prod(g.order() for g in C.gens()) == C.order()",
+            "    checks.append((d, associative, inverses, orders, generated))",
+            "checks",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(-14, True, True, True, True), (-23, True, True, True, True), " +
+        "(-65, True, True, True, True), (-84, True, True, True, True), " +
+        "(-105, True, True, True, True), " +
+        "(-110, True, True, True, True)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "K.<a> = QuadraticField(-23)",
+            "O = K.maximal_order()",
+            "u = (1+a)/2",
+            "C = K.class_group()",
+            "g = C.gen()",
+            "[u, u in O, u.trace(), u.norm(), g.form().coefficients(),",
+            " g.ideal().norm(), g.order(), g^2 == ~g, g^3 == C.one()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[1/2 + 1/2*a, True, 1, 6, (2, -1, 3), 2, 3, True, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});

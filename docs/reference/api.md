@@ -2471,7 +2471,7 @@ Construct the exact simple field `QQ[a]/(polynomial)`.
 - Tags: number theory, number fields, algebraic numbers, exact arithmetic
 - Backends: Sage.js exact quotient arithmetic, FLINT polynomials
 - Sage compatibility: partial — Simple fields over QQ have exact arithmetic and Sage-style generators. Galois groups are identified natively through degree four. Custom Dirichlet value fields are supported.
-- Limitations: General integral bases, unit groups, class groups, and Galois groups above degree four await further native number-field algorithms.
+- Limitations: General integral bases, unit groups, nonquadratic class groups, and Galois groups above degree four await further native number-field algorithms.
 
 ### Provenance
 
@@ -3339,6 +3339,41 @@ Construct a capped-relative p-adic field.
 ### Provenance
 
 - `sage-derived` — [SageMath p-adic factory API](https://doc.sagemath.org/html/en/reference/padics/); license GPL-2.0-or-later
+
+## `QuadraticField`
+
+```sage
+QuadraticField(radicand, names=None)
+```
+
+Construct an exact imaginary quadratic field.
+
+Negative radicands support exact field arithmetic, the maximal order,
+integral bases, discriminants, and finite ideal class groups.
+
+### Examples
+
+```sage
+sage: K.<a> = QuadraticField(-23)
+sage: K.discriminant()
+-23
+sage: K.class_group().invariants()
+(3,)
+```
+
+### Metadata
+
+- Kind: `function`
+- Module: `sage.rings.number_field.number_field`
+- Tags: number theory, quadratic fields, rings of integers, ideal class groups, binary quadratic forms
+- Backends: Sage.js exact quadratic arithmetic, FLINT integer factorization
+- Sage compatibility: partial — Negative radicands have exact arithmetic, maximal orders, integral bases, field discriminants, class numbers, and composable finite class groups with Sage-ordered invariant factors.
+- Limitations: Real quadratic fields and their unit/regulator algorithms are not yet implemented by QuadraticField. Class groups currently enumerate every reduced form, so large discriminants need a future subexponential backend.
+
+### Provenance
+
+- `sage-derived` — [SageMath quadratic number-field and class-group API](https://doc.sagemath.org/html/en/reference/number_fields/); license GPL-2.0-or-later
+- `literature-implemented` — Gauss reduction and ideal-lattice composition of positive-definite binary quadratic forms
 
 ## `quit`
 
