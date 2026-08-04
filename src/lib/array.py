@@ -28,6 +28,53 @@ _TYPE_INFO = {
 }
 
 
+def _typed_view(name: str, constructor_values: list[Any]) -> Any:
+    constructor = runtime.reflect.get(runtime.global_object, name)
+    return runtime.reflect.construct(constructor, constructor_values)
+
+
+def _native_little_endian() -> bool:
+    words = _typed_view('Uint16Array', [[1]])
+    octets = _typed_view('Uint8Array', [words.buffer])
+    return octets[0] == 1
+
+
+_LITTLE_ENDIAN = _native_little_endian()
+
+
+def _float_to_bytes(value: Any, size: int) -> list[int]:
+    buffer = runtime.reflect.construct(
+        runtime.reflect.get(runtime.global_object, 'ArrayBuffer'), [size])
+    view = _typed_view('DataView', [buffer])
+    method_name = 'setFloat32' if size == 4 else 'setFloat64'
+    runtime.reflect.apply(
+        runtime.reflect.get(view, method_name),
+        view,
+        [
+            0,
+            value if runtime.jstype(value) == 'number' else float(value),
+            _LITTLE_ENDIAN,
+        ],
+    )
+    octets = _typed_view('Uint8Array', [buffer])
+    return [octets[index] for index in range(size)]
+
+
+def _float_from_bytes(raw: Any, offset: int, size: int) -> float:
+    buffer = runtime.reflect.construct(
+        runtime.reflect.get(runtime.global_object, 'ArrayBuffer'), [size])
+    octets = _typed_view('Uint8Array', [buffer])
+    for index in range(size):
+        runtime.reflect.set(octets, index, raw[offset + index])
+    view = _typed_view('DataView', [buffer])
+    method_name = 'getFloat32' if size == 4 else 'getFloat64'
+    return runtime.reflect.apply(
+        runtime.reflect.get(view, method_name),
+        view,
+        [0, _LITTLE_ENDIAN],
+    )
+
+
 def _coerce_integer(value: Any, size: int, signed: bool) -> Any:
     if value is True:
         value = 1
@@ -66,7 +113,11 @@ def _coerce_value(
     floating: bool,
 ) -> Any:
     if floating:
-        return float(value)
+        number = (
+            value if runtime.jstype(value) == 'number' else float(value))
+        if size == 4:
+            return _float_from_bytes(_float_to_bytes(number, size), 0, size)
+        return number
     return _coerce_integer(value, size, signed)
 
 
@@ -97,27 +148,7 @@ class array:
             or isinstance(initializer, bytearray)
             or isinstance(initializer, memoryview)
         ):
-            raw = bytes(initializer)
-            if len(raw) % self.itemsize != 0:
-                raise ValueError(
-                    'bytes length not a multiple of item size')
-            if self._floating:
-                raise NotImplementedError(
-                    'binary float array construction is not implemented')
-            for offset in range(0, len(raw), self.itemsize):
-                value = 0
-                for index in range(self.itemsize - 1, -1, -1):
-                    value = value * 256 + raw[offset + index]
-                if self._signed and raw[offset + self.itemsize - 1] >= 128:
-                    value -= 2 ** (self.itemsize * 8)
-                self._values.append(
-                    _coerce_value(
-                        value,
-                        self.itemsize,
-                        self._signed,
-                        self._floating,
-                    )
-                )
+            self.frombytes(initializer)
             return
         self.extend(initializer)
 
@@ -173,6 +204,43 @@ class array:
         for value in values:
             self.append(value)
 
+    def frombytes(self, source: Any) -> None:
+        raw = bytes(source)
+        if len(raw) % self.itemsize != 0:
+            raise ValueError('bytes length not a multiple of item size')
+        for offset in range(0, len(raw), self.itemsize):
+            if self._floating:
+                self._values.append(
+                    _float_from_bytes(raw, offset, self.itemsize))
+                continue
+            value = 0
+            if _LITTLE_ENDIAN:
+                indices = range(self.itemsize - 1, -1, -1)
+                sign_index = offset + self.itemsize - 1
+            else:
+                indices = range(self.itemsize)
+                sign_index = offset
+            for index in indices:
+                value = value * 256 + raw[offset + index]
+            if self._signed and raw[sign_index] >= 128:
+                value -= 2 ** (self.itemsize * 8)
+            self._values.append(_coerce_integer(
+                value, self.itemsize, self._signed))
+
+    def tobytes(self) -> bytes:
+        return bytes(self._bytes_values())
+
+    def byteswap(self) -> None:
+        if self.itemsize == 1:
+            return
+        raw = self._bytes_values()
+        swapped = []
+        for offset in range(0, len(raw), self.itemsize):
+            for index in range(self.itemsize - 1, -1, -1):
+                swapped.append(raw[offset + index])
+        self._values = []
+        self.frombytes(bytes(swapped))
+
     def __add__(self, other: Any) -> array:
         if not isinstance(other, array) or other.typecode != self.typecode:
             raise TypeError('can only append array to array')
@@ -212,8 +280,14 @@ class array:
         length: Any = runtime.undefined,
     ) -> list[int]:
         if self._floating:
-            raise NotImplementedError(
-                'binary float array conversion is not implemented')
+            if length is runtime.undefined:
+                count = len(self._values) - start
+            else:
+                count = length
+            answer = []
+            for item in self._values[start:start + count]:
+                answer.extend(_float_to_bytes(item, self.itemsize))
+            return answer
         if length is runtime.undefined:
             count = len(self._values) - start
         else:
@@ -225,10 +299,14 @@ class array:
             value = runtime.bigint(item)
             if value < 0:
                 value = runtime.native_add(value, modulus)
+            encoded = []
             for _index in range(self.itemsize):
-                answer.append(runtime.number(
+                encoded.append(runtime.number(
                     runtime.native_bitand(value, runtime.bigint(255))))
                 value = runtime.native_rshift(value, runtime.bigint(8))
+            if not _LITTLE_ENDIAN:
+                encoded.reverse()
+            answer.extend(encoded)
         return answer
 
     def __repr__(self) -> str:

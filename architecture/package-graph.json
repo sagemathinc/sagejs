@@ -138,7 +138,7 @@
       "id": "python-stdlib",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 420000,
+      "max_source_bytes": 425000,
       "depends_on": ["core-runtime"],
       "modules": [
         "aes", "array", "base64", "bisect", "collections", "contextlib",
