@@ -776,40 +776,7 @@ class EllipticCurveParent(sage.Parent):
         x_value: Any,
         all: bool = False,
     ) -> Any:
-        x_parent = runtime.coercion_model.parentOf(x_value)
-        if (
-            getattr(x_parent, '_kind', None) in ['RDF', 'RealField']
-            and getattr(self._base, '_kind', None)
-            not in ['RDF', 'RealField']
-        ):
-            return self.base_extend(x_parent).lift_x(x_value, all)
-        x_value = self._base(x_value)
-        a1, a2, a3, a4, a6 = self._ainvs
-        if a1 != 0 or a3 != 0:
-            raise NotImplementedError(
-                'lift_x for long Weierstrass models is not implemented')
-        right = (
-            x_value ** 3 + a2 * x_value ** 2
-            + a4 * x_value + a6)
-        if hasattr(right, 'sqrt'):
-            y_value = right.sqrt()
-        elif getattr(self._base, '_kind', None) in [
-            'RDF', 'RealField',
-        ]:
-            if right < 0:
-                raise ValueError(
-                    'the x-coordinate does not lift over the base ring')
-            y_value = self._base(
-                runtime.math.sqrt(float(right)))
-        else:
-            raise ValueError(
-                'the x-coordinate does not lift over the base ring')
-        point = EllipticCurvePoint(
-            self, x_value, y_value, check=False)
-        if all:
-            negative = -point
-            return [point] if negative == point else [point, negative]
-        return point
+        return _elliptic_advanced()._ec_lift_x(self, x_value, all)
 
     def points(self) -> list[EllipticCurvePoint]:
         if getattr(self._base, '_kind', None) not in ['GF', 'ZMOD']:

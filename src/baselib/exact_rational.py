@@ -14,6 +14,29 @@ import sagejs.runtime as runtime
 # bootstrapped. The converged compiler lowers both names directly.
 
 
+def _exact_bigint_square_root(value: Any) -> Any:
+    value = runtime.integer_bigint(value)
+    if value < 0:
+        raise ValueError('square root of a negative rational')
+    if value < 2:
+        return value
+    estimate = value
+    candidate = runtime.native_div(
+        runtime.native_add(estimate, runtime.bigint(1)),
+        runtime.bigint(2),
+    )
+    while candidate < estimate:
+        estimate = candidate
+        candidate = runtime.native_div(
+            runtime.native_add(
+                estimate, runtime.native_div(value, estimate)),
+            runtime.bigint(2),
+        )
+    if runtime.native_mul(estimate, estimate) != value:
+        raise ValueError('not a square')
+    return estimate
+
+
 @runtime.bigint_fields('_numerator', '_denominator')
 @runtime.lightweight_math_class
 class Rational(runtime.element):
@@ -69,6 +92,12 @@ class Rational(runtime.element):
 
     def denominator(self) -> int:
         return runtime.normalize_integer(self._denominator)
+
+    def sqrt(self) -> Rational:
+        return Rational(
+            _exact_bigint_square_root(self._numerator),
+            _exact_bigint_square_root(self._denominator),
+        )
 
     def __float__(self) -> float:
         return float(self._numerator) / float(self._denominator)

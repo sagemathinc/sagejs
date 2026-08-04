@@ -69,6 +69,50 @@ test("real lift_x uses Sage-compatible coercion and tolerant membership", async 
   }
 });
 
+test("long Weierstrass lift_x matches Sage root semantics", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "E = EllipticCurve([1,2,3,4,5])",
+            "E5 = EllipticCurve(GF(5), [1,2,3,4,5])",
+            "E7 = EllipticCurve(GF(7), [1,2,3,4,5])",
+            "R = EllipticCurve([1,0,0,-1,0])",
+            "[E.lift_x(1, all=True), E.lift_x(0, all=True), " +
+              "E5.lift_x(1, all=True), E5.lift_x(0, all=True), " +
+              "E7.lift_x(1, all=True), R.lift_x(0, all=True)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[(1 : -6 : 1), (1 : 2 : 1)], [], " +
+        "[(1 : 2 : 1), (1 : 4 : 1)], " +
+        "[(0 : 0 : 1), (0 : 2 : 1)], " +
+        "[(1 : 1 : 1), (1 : 2 : 1)], [(0 : 0 : 1)]]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "E = EllipticCurve([1,2,3,4,5]).base_extend(RR)",
+            "[round(float(P[1]), 12) for P in E.lift_x(RR(1), all=True)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[-6, 2]",
+    );
+    await assert.rejects(
+      session.evaluate(
+        "EllipticCurve(GF(2), [0,0,1,0,0]).lift_x(0)",
+      ),
+      /characteristic 2 is not implemented/,
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("rational elliptic point orders use Mazur's certified bound", async () => {
   const session = await createSage();
   try {

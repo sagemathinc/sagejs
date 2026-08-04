@@ -485,7 +485,64 @@ def _ec_tate_local_data(
     return _ec_tate_large_prime(values, prime)
 
 
-_elliptic_advanced_exports = [_ec_tate_local_data]
+def _ec_lift_x(curve: Any, x_value: Any, all_roots: bool = False) -> Any:
+    x_parent = runtime.coercion_model.parentOf(x_value)
+    base = curve._base
+    if (
+        getattr(x_parent, '_kind', None) in ['RDF', 'RealField']
+        and getattr(base, '_kind', None) not in ['RDF', 'RealField']
+    ):
+        return curve.base_extend(x_parent).lift_x(x_value, all_roots)
+    x_value = base(x_value)
+    a1, a2, a3, a4, a6 = curve._ainvs
+    characteristic = 0
+    if hasattr(base, 'characteristic'):
+        characteristic = base.characteristic()
+    if characteristic == 2 and (a1 != 0 or a3 != 0):
+        raise NotImplementedError(
+            'lift_x for long Weierstrass models in characteristic 2 '
+            'is not implemented')
+    right = x_value ** 3 + a2 * x_value ** 2 + a4 * x_value + a6
+    linear = a1 * x_value + a3
+    if characteristic == 2:
+        discriminant = right
+    else:
+        discriminant = linear ** 2 + base(4) * right
+    try:
+        if hasattr(discriminant, 'sqrt'):
+            square_root = discriminant.sqrt()
+        elif getattr(base, '_kind', None) in ['RDF', 'RealField']:
+            if discriminant < 0:
+                raise ValueError('not a square')
+            square_root = base(runtime.math.sqrt(float(discriminant)))
+        else:
+            raise ValueError('not a square')
+    except ValueError:
+        if all_roots:
+            return []
+        raise ValueError(  # noqa: B904 - compiler lacks ``raise from`` here
+            'the x-coordinate does not lift over the base ring')
+
+    if characteristic == 2:
+        y_value = square_root
+    else:
+        first = (-linear - square_root) / base(2)
+        second = (-linear + square_root) / base(2)
+        if getattr(base, '_kind', None) in ['GF', 'ZMOD']:
+            # Sage orders prime-field lifts by integer y-coordinate,
+            # independent of the square-root backend's choice of sign.
+            y_value = first if first.lift() <= second.lift() else second
+        else:
+            y_value = first if first <= second else second
+    point = runtime.reflect.construct(
+        _point_class, [curve, x_value, y_value, False, False])
+    if all_roots:
+        negative = -point
+        return [point] if negative == point else [point, negative]
+    return point
+
+
+_elliptic_advanced_exports = [_ec_tate_local_data, _ec_lift_x]
 
 
 class EllipticCurveIsogeny:
