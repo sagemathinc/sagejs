@@ -195,3 +195,71 @@ test("smalljac agrees across integral models and bad primes", async () => {
     await session.close();
   }
 });
+
+test("Tate local data covers wild 2- and 3-adic reduction", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "cases = [",
+            " (2,[0,-2,0,-10,-10]), (2,[0,-2,0,-10,-8]),",
+            " (2,[0,-2,0,-9,-5]), (2,[0,-2,0,-4,0]),",
+            " (2,[0,-2,0,-8,4]), (2,[0,-2,0,1,4]),",
+            " (2,[0,-2,0,-3,8]), (2,[0,0,0,-8,0]),",
+            " (2,[0,-2,0,-4,-8]), (3,[0,0,0,-9,-7]),",
+            " (3,[0,0,0,-9,-10]), (3,[0,0,0,-3,7]),",
+            " (3,[0,0,0,-9,0]), (3,[0,0,0,6,-7]),",
+            " (3,[1,-1,0,9,0]), (3,[0,0,1,0,-7]),",
+            " (3,[0,69,1,372,-314]), (3,[1,-10,1,-470,964]) ]",
+            "answer = []",
+            "for p, coefficients in cases:",
+            "    d = EllipticCurve(coefficients).local_data(p)",
+            "    answer.append([p, d.discriminant_valuation(), " +
+              "d.conductor_valuation(), str(d.kodaira_symbol()), " +
+              "d.tamagawa_number(), d.tamagawa_exponent(), " +
+              "d.bad_reduction_type()])",
+            "answer",
+          ].join("\n"),
+        )
+      ).repr,
+      "[[2, 6, 6, 'II', 1, 1, 0], [2, 8, 7, 'III', 2, 2, 0], " +
+        "[2, 4, 2, 'IV', 3, 3, 0], [2, 10, 6, 'I0*', 2, 2, 0], " +
+        "[2, 8, 3, 'I1*', 4, 4, 0], [2, 10, 4, 'I2*', 4, 2, 0], " +
+        "[2, 8, 2, 'IV*', 3, 3, 0], [2, 15, 8, 'III*', 2, 2, 0], " +
+        "[2, 12, 4, 'II*', 1, 1, 0], [3, 3, 3, 'II', 1, 1, 0], " +
+        "[3, 3, 2, 'III', 2, 2, 0], [3, 5, 3, 'IV', 3, 3, 0], " +
+        "[3, 6, 2, 'I0*', 4, 2, 0], [3, 7, 2, 'I1*', 4, 4, 0], " +
+        "[3, 8, 2, 'I2*', 2, 2, 0], [3, 9, 3, 'IV*', 3, 3, 0], " +
+        "[3, 9, 2, 'III*', 2, 2, 0], [3, 13, 5, 'II*', 1, 1, 0]]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("global minimal models drive general conductors and local-data lists", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "E = EllipticCurve([0,-2,0,9,8])",
+            "D = E.local_data()",
+            "[E.global_minimal_model().ainvs(), E.minimal_discriminant(), " +
+              "E.conductor(), E.bad_primes(), E.tamagawa_numbers(), " +
+              "E.tamagawa_product(), [str(d.kodaira_symbol()) for d in D], " +
+              "E.has_nonsplit_multiplicative_reduction(2), " +
+              "E.has_split_multiplicative_reduction(13)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(1, 0, 1, 0, 0), -26, 26, [2, 13], [1, 1], 1, " +
+        "['I1', 'I1'], True, True]",
+    );
+  } finally {
+    await session.close();
+  }
+});
