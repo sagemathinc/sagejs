@@ -76,3 +76,91 @@ test("number-field tutorial invariants and custom Dirichlet values", async () =>
     await session.close();
   }
 });
+
+test("native Galois groups cover every transitive group through degree four", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "polynomials = [",
+            "    x - 1,",
+            "    x^2 - 2,",
+            "    x^3 - 3*x + 1,",
+            "    x^3 - 2,",
+            "    x^4 + x^3 + x^2 + x + 1,",
+            "    x^4 + 1,",
+            "    x^4 - 2,",
+            "    x^4 + 18*x^2 + 8*x + 1,",
+            "    x^4 - x + 1,",
+            "]",
+            "groups = [NumberField(f, 'a').galois_group() " +
+              "for f in polynomials]",
+            "[(G.transitive_label(), G.order(), G.degree(), " +
+              "G.is_galois(), G.is_abelian()) for G in groups]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[('1T1', 1, 1, True, True), ('2T1', 2, 2, True, True), " +
+        "('3T1', 3, 3, True, True), ('3T2', 6, 6, False, False), " +
+        "('4T1', 4, 4, True, True), ('4T2', 4, 4, True, True), " +
+        "('4T3', 8, 8, False, False), " +
+        "('4T4', 12, 12, False, False), " +
+        "('4T5', 24, 24, False, False)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "K = NumberField(x^4 + x^3 + x^2 + x + 1, 'z')",
+            "G = K.galois_group()",
+            "[G, G.transitive_number(), G.pari_label(), " +
+              "G.number_field() is K, G.gens()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[Galois group 4T1 (4) with order 4 of " +
+        "x^4 + x^3 + x^2 + x + 1, 1, 'C(4) = 4', True, " +
+        "((1,2,3,4),)]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "[NumberField(QQ(1,2)*(x^3 - 2), 'a').galois_group()" +
+              ".transitive_label(),",
+            " NumberField(x^4 + QQ(1,2)*x^3 + QQ(1,16), 'b')" +
+              ".galois_group().transitive_label()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "['3T2', '4T5']",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("number fields reject reducible quotients and bound native Galois degree", async () => {
+  const session = await createSage();
+  try {
+    await assert.rejects(
+      session.evaluate(
+        "R.<x> = QQ[]\nNumberField(x^2 - 1, 'a')",
+      ),
+      /defining polynomial \(x\^2 - 1\) must be irreducible/,
+    );
+    await assert.rejects(
+      session.evaluate(
+        "R.<x> = QQ[]\nNumberField(x^5 - 2, 'a').galois_group()",
+      ),
+      /native Galois groups currently support degrees at most 4/,
+    );
+  } finally {
+    await session.close();
+  }
+});

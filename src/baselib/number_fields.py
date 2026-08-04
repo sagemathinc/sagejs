@@ -506,19 +506,255 @@ def _number_field_polynomial(value: Any) -> Any:
     return polynomial
 
 
+def _integer_is_square(value: Any) -> bool:
+    candidate = runtime.integer_bigint(value)
+    zero = runtime.bigint(0)
+    one = runtime.bigint(1)
+    two = runtime.bigint(2)
+    if candidate < zero:
+        return False
+    if candidate < two:
+        return True
+    lower = one
+    upper = two
+    while upper * upper < candidate:
+        lower = upper
+        upper *= two
+    while lower + one < upper:
+        middle = (lower + upper) // two
+        square = middle * middle
+        if square == candidate:
+            return True
+        if square < candidate:
+            lower = middle
+        else:
+            upper = middle
+    return lower * lower == candidate or upper * upper == candidate
+
+
+def _rational_is_square(value: Any) -> bool:
+    rational = sage.QQ(value)
+    return (
+        _integer_is_square(rational._numerator)
+        and _integer_is_square(rational._denominator)
+    )
+
+
+def _determinant(rows: list[list[Any]]) -> Any:
+    size = len(rows)
+    matrix = [[sage.QQ(value) for value in row] for row in rows]
+    answer = sage.QQ(1)
+    for column in range(size):
+        pivot = column
+        while pivot < size and matrix[pivot][column] == 0:
+            pivot += 1
+        if pivot == size:
+            return sage.QQ(0)
+        if pivot != column:
+            temporary = matrix[column]
+            matrix[column] = matrix[pivot]
+            matrix[pivot] = temporary
+            answer = -answer
+        pivot_value = matrix[column][column]
+        answer *= pivot_value
+        for row in range(column + 1, size):
+            if matrix[row][column] == 0:
+                continue
+            factor = matrix[row][column] / pivot_value
+            for index in range(column + 1, size):
+                matrix[row][index] -= factor * matrix[column][index]
+    return answer
+
+
+def _polynomial_discriminant(coefficients: list[Any]) -> Any:
+    degree = len(coefficients) - 1
+    derivative = [
+        sage.QQ(index) * coefficients[index]
+        for index in range(1, len(coefficients))
+    ]
+    derivative_degree = len(derivative) - 1
+    size = degree + derivative_degree
+    polynomial_high = list(reversed(coefficients))
+    derivative_high = list(reversed(derivative))
+    rows = []
+    for shift in range(derivative_degree):
+        rows.append(
+            [sage.QQ(0) for _index in range(shift)]
+            + polynomial_high
+            + [sage.QQ(0) for _index in range(
+                derivative_degree - shift - 1)]
+        )
+    for shift in range(degree):
+        rows.append(
+            [sage.QQ(0) for _index in range(shift)]
+            + derivative_high
+            + [sage.QQ(0) for _index in range(degree - shift - 1)]
+        )
+    if len(rows) != size:
+        raise ArithmeticError('invalid Sylvester matrix')
+    resultant = _determinant(rows)
+    if (degree * (degree - 1) // 2) % 2:
+        resultant = -resultant
+    return resultant / coefficients[-1]
+
+
+def _quartic_resolvent(
+    coefficients: list[Any], variable: str,
+) -> Any:
+    constant, linear, quadratic, cubic, _leading = coefficients
+    ring = _untyped(sage.PolynomialRing)(sage.QQ, variable)
+    return ring._from_coefficients([
+        4 * quadratic * constant
+        - linear * linear
+        - cubic * cubic * constant,
+        cubic * linear - 4 * constant,
+        -quadratic,
+        sage.QQ(1),
+    ])
+
+
+def _quartic_resolvent_shape(resolvent: Any) -> tuple[list[int], Any]:
+    degrees = []
+    rational_root = runtime.undefined
+    factors = _untyped(resolvent.factor())
+    for factor, exponent in factors:
+        factor_coefficients = factor.coefficients()
+        degree = len(factor_coefficients) - 1
+        for _count in range(exponent):
+            degrees.append(degree)
+        if degree == 1:
+            rational_root = (
+                -factor_coefficients[0] / factor_coefficients[1])
+    degrees.sort()
+    return degrees, rational_root
+
+
+def _galois_group_data(
+    coefficients: list[Any], variable: str,
+) -> tuple[int, str, str, list[str]]:
+    """Identify the transitive Galois group in degrees at most four.
+
+    Cubics use the discriminant-square criterion.  Quartics use the cubic
+    resolvent and the Kappe--Warren square tests, so the cyclic and dihedral
+    cases are distinguished exactly over ``QQ``.
+    """
+    degree = len(coefficients) - 1
+    if degree == 1:
+        return 1, 'S1', 'S1', ['(1)']
+    if degree == 2:
+        return 1, 'S2', 'S2', ['(1,2)']
+
+    discriminant = _polynomial_discriminant(coefficients)
+    discriminant_is_square = _rational_is_square(discriminant)
+    if degree == 3:
+        if discriminant_is_square:
+            return 1, 'A3', 'A3', ['(1,2,3)']
+        return 2, 'S3', 'S3', ['(1,2,3)', '(1,2)']
+
+    if degree != 4:
+        raise NotImplementedError(
+            'native Galois groups currently support degrees at most 4')
+    resolvent = _quartic_resolvent(coefficients, variable)
+    factor_degrees, rational_root = _quartic_resolvent_shape(resolvent)
+    if factor_degrees == [3]:
+        if discriminant_is_square:
+            return 4, 'A4', 'A4', [
+                '(1,2,3)', '(1,2)(3,4)']
+        return 5, 'S4', 'S4', ['(1,2,3,4)', '(1,2)']
+    if discriminant_is_square:
+        return 2, '2[x]2', 'E(4) = 2[x]2', [
+            '(1,2)(3,4)', '(1,3)(2,4)']
+    if rational_root is runtime.undefined:
+        raise ArithmeticError(
+            'reducible quartic resolvent has no rational root')
+
+    constant, _linear, quadratic, cubic, _leading = coefficients
+    first_test = (
+        rational_root * rational_root - 4 * constant
+    ) * discriminant
+    second_test = (
+        cubic * cubic - 4 * (quadratic - rational_root)
+    ) * discriminant
+    if (
+        _rational_is_square(first_test)
+        and _rational_is_square(second_test)
+    ):
+        return 1, '4', 'C(4) = 4', ['(1,2,3,4)']
+    return 3, 'D(4)', 'D(4)', ['(1,2,3,4)', '(1,3)']
+
+
 class NumberFieldGaloisGroup:
 
-    def __init__(self, field: NumberFieldParent) -> None:
+    def __init__(
+        self,
+        field: NumberFieldParent,
+        transitive_number: int,
+        display_label: str,
+        pari_label: str,
+        generators: list[str],
+    ) -> None:
         self._field = field
+        self._transitive_number = transitive_number
+        self._display_label = display_label
+        self._pari_label = pari_label
+        permutation_group = runtime.reflect.get(
+            runtime.global_object, 'PermutationGroup')
+        natural_group = permutation_group(generators)
+        self._group = natural_group._regular_action()
 
     def __repr__(self) -> str:
         return (
-            'Galois group 3T2 (S3) with order 6 of '
+            'Galois group ' + str(self._field.degree())
+            + 'T' + str(self._transitive_number)
+            + ' (' + self._display_label + ') with order '
+            + str(self.order()) + ' of '
             + str(self._field.defining_polynomial())
         )
 
     __str__ = __repr__
     toString = __repr__
+
+    def order(self) -> int:
+        return self._group.order()
+
+    cardinality = order
+    easy_order = order
+
+    def degree(self) -> int:
+        return self._group.degree()
+
+    def transitive_number(self) -> int:
+        return self._transitive_number
+
+    def transitive_label(self) -> str:
+        return (
+            str(self._field.degree())
+            + 'T' + str(self._transitive_number)
+        )
+
+    def pari_label(self) -> str:
+        return self._pari_label
+
+    def number_field(self) -> NumberFieldParent:
+        return self._field
+
+    def is_galois(self) -> bool:
+        return self.order() == self._field.degree()
+
+    def gens(self) -> Any:
+        return self._group.gens()
+
+    def is_abelian(self) -> bool:
+        return self._group.is_abelian()
+
+    def center(self) -> Any:
+        return self._group.center()
+
+    def derived_series(self) -> list[Any]:
+        return self._group.derived_series()
+
+    def random_element(self) -> Any:
+        return self._group.random_element()
 
 
 class NumberFieldClassGroup:
@@ -743,6 +979,10 @@ class NumberFieldParent(sage.Parent):
         if len(coefficients) < 2:
             raise ValueError(
                 'a number field needs a nonconstant defining polynomial')
+        if not polynomial.is_irreducible():
+            raise ValueError(
+                'defining polynomial (' + str(polynomial)
+                + ') must be irreducible')
         leading = coefficients[-1]
         self._defining_coefficients = [
             value / leading for value in coefficients]
@@ -851,10 +1091,13 @@ class NumberFieldParent(sage.Parent):
         ]
 
     def galois_group(self) -> NumberFieldGaloisGroup:
-        if not self._is_tutorial_cubic():
-            raise NotImplementedError(
-                'general Galois groups need a number-field backend')
-        return NumberFieldGaloisGroup(self)
+        """Return the native Galois group for a field of degree at most four."""
+        data = _galois_group_data(
+            self._defining_coefficients,
+            self._polynomial._parent.variable_name(),
+        )
+        return NumberFieldGaloisGroup(
+            self, data[0], data[1], data[2], data[3])
 
     def units(self) -> 'tuple[Any, ...]':
         if not self._is_tutorial_cubic():
@@ -1090,7 +1333,8 @@ runtime.register_doc(
             'status': 'partial',
             'notes': (
                 'Simple fields over QQ have exact arithmetic and Sage-style '
-                'generators. Custom Dirichlet value fields are supported.'
+                'generators. Galois groups are identified natively through '
+                'degree four. Custom Dirichlet value fields are supported.'
             ),
         },
         'provenance': [
@@ -1108,11 +1352,19 @@ runtime.register_doc(
                 'source': 'FLINT polynomial arithmetic',
                 'url': 'https://flintlib.org/doc/',
             },
+            {
+                'kind': 'literature-implemented',
+                'source': (
+                    'Kappe--Warren criterion for quartic Galois groups'
+                ),
+                'url': 'https://doi.org/10.1016/j.aim.2020.107282',
+            },
         ],
         'limitations': [
             (
-                'General integral bases, unit groups, Galois groups, and '
-                'class groups await a dedicated number-field backend.'
+                'General integral bases, unit groups, class groups, and '
+                'Galois groups above degree four await further native '
+                'number-field algorithms.'
             ),
         ],
     },

@@ -307,6 +307,27 @@ class PermutationGroupParent(sage.Parent):
 
     cardinality = order
 
+    def degree(self) -> int:
+        return self._degree
+
+    def _regular_action(self) -> PermutationGroupParent:
+        """Return the left regular permutation representation of this group."""
+        positions = runtime.map()
+        for index in range(len(self._elements_mappings)):
+            positions.set(
+                _permutation_key(self._elements_mappings[index]),
+                index + 1,
+            )
+        regular_generators = []
+        for generator in self._generator_mappings:
+            mapping = []
+            for element in self._elements_mappings:
+                product = _permutation_compose(generator, element)
+                mapping.append(positions.get(_permutation_key(product)))
+            regular_generators.append(mapping)
+        return PermutationGroupParent(
+            len(self._elements_mappings), regular_generators)
+
     def is_abelian(self) -> bool:
         generators = list(self.gens())
         for left in generators:

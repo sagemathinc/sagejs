@@ -2470,13 +2470,14 @@ Construct the exact simple field `QQ[a]/(polynomial)`.
 - Module: `sage.rings.number_field.number_field`
 - Tags: number theory, number fields, algebraic numbers, exact arithmetic
 - Backends: Sage.js exact quotient arithmetic, FLINT polynomials
-- Sage compatibility: partial — Simple fields over QQ have exact arithmetic and Sage-style generators. Custom Dirichlet value fields are supported.
-- Limitations: General integral bases, unit groups, Galois groups, and class groups await a dedicated number-field backend.
+- Sage compatibility: partial — Simple fields over QQ have exact arithmetic and Sage-style generators. Galois groups are identified natively through degree four. Custom Dirichlet value fields are supported.
+- Limitations: General integral bases, unit groups, class groups, and Galois groups above degree four await further native number-field algorithms.
 
 ### Provenance
 
 - `sage-derived` — [SageMath number field API](https://doc.sagemath.org/html/en/reference/number_fields/); license GPL-2.0-or-later
 - `library-backed` — [FLINT polynomial arithmetic](https://flintlib.org/doc/)
+- `literature-implemented` — [Kappe--Warren criterion for quartic Galois groups](https://doi.org/10.1016/j.aim.2020.107282)
 
 ## `numerical_integral`
 
