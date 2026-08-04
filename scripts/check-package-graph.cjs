@@ -11,6 +11,10 @@ function readJson(filename) {
   return JSON.parse(readFileSync(filename, "utf8"));
 }
 
+function normalizedSourceBytes(source) {
+  return Buffer.byteLength(source.replaceAll("\r\n", "\n"), "utf8");
+}
+
 function allFiles(directory) {
   const result = [];
   for (const name of readdirSync(directory)) {
@@ -132,10 +136,18 @@ function validateManifest(manifest, root = ROOT) {
   for (const component of packages) {
     let bytes = 0;
     for (const [filename, owner] of ownership) {
-      if (owner === component.id) bytes += statSync(join(root, filename)).size;
+      if (owner === component.id) {
+        bytes += normalizedSourceBytes(
+          readFileSync(join(root, filename), "utf8"),
+        );
+      }
     }
     for (const [filename, owner] of typescriptOwnership) {
-      if (owner === component.id) bytes += statSync(join(root, filename)).size;
+      if (owner === component.id) {
+        bytes += normalizedSourceBytes(
+          readFileSync(join(root, filename), "utf8"),
+        );
+      }
     }
     if (bytes > component.max_source_bytes) {
       throw new Error(
@@ -226,4 +238,9 @@ if (require.main === module) {
   }
 }
 
-module.exports = { assertDag, pythonImports, validateManifest };
+module.exports = {
+  assertDag,
+  normalizedSourceBytes,
+  pythonImports,
+  validateManifest,
+};

@@ -7,6 +7,7 @@ const { join, resolve } = require("node:path");
 
 const {
   assertDag,
+  normalizedSourceBytes,
   pythonImports,
   validateManifest,
 } = require("../scripts/check-package-graph.cjs");
@@ -57,6 +58,13 @@ test("dependency cycles are rejected with their path", () => {
       { id: "c", depends_on: ["a"] },
     ], "test graph"),
     /a -> b -> c -> a/,
+  );
+});
+
+test("source budgets are independent of checkout line endings", () => {
+  assert.equal(
+    normalizedSourceBytes("alpha\nbeta\n"),
+    normalizedSourceBytes("alpha\r\nbeta\r\n"),
   );
 });
 
