@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { dirname, join } = require("node:path");
 const {
   findNativeExecutable,
   nativePackageFor,
@@ -16,9 +17,16 @@ test("native npm package selection follows Node platform names", () => {
 });
 
 test("native executable resolution is optional and command-specific", () => {
+  const linuxPackageJson = join(
+    "fixture",
+    "node_modules",
+    "@sagemath",
+    "sagejs-linux-x64",
+    "package.json",
+  );
   const resolve = (request) => {
     assert.equal(request, "@sagemath/sagejs-linux-x64/package.json");
-    return "/opt/node_modules/@sagemath/sagejs-linux-x64/package.json";
+    return linuxPackageJson;
   };
   assert.equal(
     findNativeExecutable({
@@ -29,18 +37,24 @@ test("native executable resolution is optional and command-specific", () => {
       realpath: (path) => path,
       exists: () => true,
     }),
-    "/opt/node_modules/@sagemath/sagejs-linux-x64/bin/sagepython",
+    join(dirname(linuxPackageJson), "bin", "sagepython"),
+  );
+  const windowsPackageJson = join(
+    "fixture",
+    "node_modules",
+    "sagejs-win32-x64",
+    "package.json",
   );
   assert.equal(
     findNativeExecutable({
       platform: "win32",
       arch: "x64",
       executable: "sagejs",
-      resolve: () => "/opt/node_modules/sagejs-win32-x64/package.json",
+      resolve: () => windowsPackageJson,
       realpath: (path) => path,
       exists: () => true,
     }),
-    "/opt/node_modules/sagejs-win32-x64/bin/sagejs.exe",
+    join(dirname(windowsPackageJson), "bin", "sagejs.exe"),
   );
   assert.equal(
     findNativeExecutable({
