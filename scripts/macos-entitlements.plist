@@ -8,7 +8,7 @@
   <true/>
   <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
   <true/>
-  <!-- sagejs embeds its separately signed Node-API mathematics addon. -->
+  <!-- Sage.js extracts embedded Node-API addons into a private runtime directory. -->
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
 </dict>

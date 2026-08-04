@@ -1,0 +1,6 @@
+#!/usr/bin/env node
+
+"use strict";
+
+process.env.SAGEJS_EXECUTABLE_NAME = "sagepython";
+require("./sagejs");

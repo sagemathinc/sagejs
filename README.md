@@ -13,17 +13,25 @@
 ## Download a standalone executable
 
 The [latest GitHub release](https://github.com/sagemathinc/sagejs/releases/latest)
-contains ready-to-run archives for Linux x64, Linux arm64, and Windows x64.
-They include both `sagejs`, with the native mathematics stack, and
+contains ready-to-run archives for Linux x64, Linux arm64, Windows x64, and
+Apple Silicon macOS. On macOS and Linux, the checksum-verifying installer is:
+
+```sh
+curl -fsSL https://github.com/sagemathinc/sagejs/releases/latest/download/install.sh | sh
+```
+
+It installs into `~/.local/bin` by default. Set `SAGEJS_INSTALL_DIR` to choose
+another directory or `SAGEJS_VERSION=0.2.0` to pin a release. The archives
+include both `sagejs`, with the native mathematics stack, and
 `sagepython`, the lightweight Python-compatible runtime. No Node.js, Python,
 compiler, package manager, or source checkout is needed on the target machine.
 
-After extracting the archive, run `./sagejs` on Linux or `sagejs.exe` on
+After extracting manually, run `./sagejs` on macOS/Linux or `sagejs.exe` on
 Windows. Each archive has a neighboring `.sha256` file. Linux releases are
-built on Ubuntu 24.04; Windows releases are built on Windows Server 2022 and
-are intended for ordinary Windows 10/11 x64 systems. Native macOS is tested on
-every change, but its signed release is produced separately by a maintainer as
-described below.
+built on Ubuntu 24.04. Windows executables are Authenticode-signed and intended
+for ordinary Windows 10/11 x64 systems. macOS executables use the hardened
+runtime, are Developer ID signed, and the downloadable ZIP and PKG are both
+submitted to Apple's notary service; the PKG also carries a stapled ticket.
 
 ## Build the complete system from source
 
@@ -145,23 +153,24 @@ budgets are defined in
 [`PACKAGE-ARCHITECTURE.md`](PACKAGE-ARCHITECTURE.md).
 
 Tagged releases publish ready-to-run `sagejs` and `sagepython` archives for
-Linux x64, Linux arm64, and Windows x64. They require no Node.js, compiler, or
-package manager on the target machine. macOS remains a required native CI
-target. A maintainer with Apple credentials can build, sign, notarize, and
-staple a native installer locally with:
+Linux x64, Linux arm64, Windows x64, and Apple Silicon macOS. They require no
+Node.js, compiler, or package manager on the target machine. Release CI refuses
+to publish unsigned Windows or macOS binaries. A maintainer with Apple
+credentials can reproduce the signed, notarized macOS artifacts locally with:
 
 ```sh
 pnpm release:macos
 # Or also attach it to an existing release:
-pnpm release:macos -- --publish v0.1.1
+pnpm release:macos -- --publish v0.2.0
 ```
 
 The command uses the same credential conventions as CoCalc's macOS release
 tooling: `SAGEJS_MACOS_SIGN_ID`, `SAGEJS_MACOS_INSTALLER_ID`, and
-`SAGEJS_MACOS_NOTARY_PROFILE` (default `notary-profile`). It creates both a
-signed archive and a signed, notarized, stapled installer under
-`build/release`. GitHub does not publish an unsigned macOS artifact or ask
-users to bypass Gatekeeper.
+`SAGEJS_MACOS_NOTARY_PROFILE` (default `notary-profile`). It creates a signed,
+notarized ZIP and a signed, notarized, stapled installer under `build/release`.
+[`RELEASING.md`](RELEASING.md) documents Apple, Windows, npm, and tag secrets
+and the complete release checklist. GitHub does not publish unsigned desktop
+artifacts or ask users to bypass platform security.
 
 The main contributor-facing directories are:
 
@@ -252,10 +261,22 @@ language ecosystems.
 Sage.js development after version 0.1 requires Node.js 22.22.2 or newer.
 
 ```sh
+npm install --global @sagemath/sagejs
+```
+
+Or, with pnpm:
+
+```sh
 pnpm add --global @sagemath/sagejs
 ```
 
-It can also be tried without a global installation:
+The public package keeps the Sage.js library and embedding APIs, while its
+command-line launcher selects an optional package containing the native
+executable for the current operating system and architecture. This is the same
+artifact distributed on GitHub; normal CLI use does not require a compiler or
+local native build. A source-only fallback remains available for unsupported
+platforms and for Sage.js development. It can also be tried without a global
+installation:
 
 ```sh
 pnpm dlx @sagemath/sagejs

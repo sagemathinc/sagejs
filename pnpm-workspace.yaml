@@ -7,3 +7,14 @@ allowBuilds:
   zeromq: true
 minimumReleaseAgeExclude:
   - '@cortex-js/compute-engine@0.98.0'
+supportedArchitectures:
+  os:
+    - current
+    - darwin
+    - linux
+    - win32
+  cpu:
+    - x64
+    - arm64
+  libc:
+    - glibc

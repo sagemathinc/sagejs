@@ -1,0 +1,16 @@
+{
+  "name": "@sagemath/sagejs-darwin-arm64",
+  "version": "0.2.0",
+  "description": "Sage.js native executables for macOS arm64",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sagemathinc/sagejs.git"
+  },
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "files": ["bin", "licenses", "LICENSE", "README.md"],
+  "publishConfig": {
+    "access": "public"
+  }
+}

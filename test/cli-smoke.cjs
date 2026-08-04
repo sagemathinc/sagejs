@@ -6,6 +6,7 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { defaultHistoryFile } = require("../dist/tools/repl.js");
+const packageVersion = require("../package.json").version;
 
 const root = join(__dirname, "..");
 const cli = join(root, "bin", "sagejs");
@@ -47,7 +48,7 @@ function runError(args, input) {
   return result.stderr;
 }
 
-assert.match(run(["--version"]), /^sagejs 0\.1\.1\s*$/);
+assert.equal(run(["--version"]).trim(), `sagejs ${packageVersion}`);
 const help = run(["--help"]);
 assert.match(help, /Sage\.js — research mathematics native to JavaScript/);
 assert.match(help, /With no program, start an interactive Sage calculator/);

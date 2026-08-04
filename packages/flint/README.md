@@ -220,4 +220,4 @@ SAGEJS_FLINT_PREFIX=/path/to/prefix \
 ```
 
 This package is private while the API and prebuilt-binary distribution layout
-are being established. It is not part of the Sage.js 0.1.1 npm package.
+are being established. It is not part of the Sage.js 0.2.0 npm package.

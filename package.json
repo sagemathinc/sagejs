@@ -1,6 +1,6 @@
 {
   "name": "@sagemath/sagejs",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "packageManager": "pnpm@11.9.0",
   "description": "Open research mathematics, native to Node",
   "homepage": "https://github.com/sagemathinc/sagejs#readme",
@@ -36,7 +36,7 @@
   "bin": {
     "sagejs": "bin/sagejs",
     "sagejs-jupyter": "bin/sagejs-jupyter",
-    "sagepython": "bin/sagejs"
+    "sagepython": "bin/sagepython"
   },
   "files": [
     "bin",
@@ -64,13 +64,17 @@
     "PLOTTING.md",
     "POLYGLOT.md",
     "TESTING.md",
+    "RELEASING.md",
     "SERIALIZATION.md",
     "pyrightconfig.json",
     "TYPING.md",
     "docs",
     "architecture",
     ".agents",
-    "index.cjs"
+    "install.sh",
+    "index.cjs",
+    "!**/__pycache__",
+    "!**/*.py[cod]"
   ],
   "engines": {
     "node": ">=22.22.2"
@@ -83,6 +87,8 @@
     "build:sea:math": "pnpm run build && pnpm --dir packages/flint build && node scripts/build-sea.cjs --with-flint",
     "release:macos": "bash scripts/release-macos.sh",
     "release:macos:signed": "bash scripts/release-macos.sh --skip-notarize",
+    "release:windows:sign": "pwsh -File scripts/sign-windows.ps1",
+    "package:native-npm": "node scripts/build-npm-platform-package.cjs",
     "build:wasm": "pnpm run build && pnpm --dir packages/flint-wasm build",
     "docs:generate": "pnpm run build && node scripts/generate-docs.cjs",
     "docs:check": "pnpm run build && node scripts/generate-docs.cjs --check",
@@ -107,6 +113,9 @@
     "test:cli": "node scripts/run-test-tier.cjs all",
     "test:jupyter": "pnpm run build && python3 scripts/test-jupyter-kernel.py",
     "test:jupyter:sea": "python3 scripts/test-jupyter-kernel.py --sea build/sea/sagejs",
+    "test:installer": "node scripts/test-installer.cjs",
+    "test:release": "node scripts/check-release.cjs",
+    "test:npm-package": "node scripts/test-npm-package.cjs",
     "test:upstream": "pnpm run build && pnpm run test:upstream:run",
     "test:upstream:run": "node test/upstream-doctest-tools.cjs && node scripts/run-sage-doctests.cjs upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.doctests.json --expectations upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.expectations.json",
     "test:matrix:corpus": "pnpm run build && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_integer_dense_core.doctests.json --expectations upstream-tests/sage/matrix/matrix_integer_dense_core.expectations.json && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_modn_dense_core.doctests.json --expectations upstream-tests/sage/matrix/matrix_modn_dense_core.expectations.json",
@@ -162,7 +171,7 @@
     "bench:cowasm:ceilings": "node bench/cowasm/direct-ceilings.cjs",
     "bench:native": "node bench/compare-native-compiler.cjs",
     "bench:polyglot": "node bench/polyglot.cjs",
-    "prepack": "pnpm test"
+    "prepack": "node scripts/prepack.cjs"
   },
   "devDependencies": {
     "@astral-sh/ruff-wasm-nodejs": "0.16.0",
@@ -186,5 +195,11 @@
     "plotly.js-dist-min": "3.7.0",
     "web-tree-sitter": "0.26.11",
     "zeromq": "6.5.0"
+  },
+  "optionalDependencies": {
+    "@sagemath/sagejs-darwin-arm64": "workspace:*",
+    "@sagemath/sagejs-linux-arm64": "workspace:*",
+    "@sagemath/sagejs-linux-x64": "workspace:*",
+    "@sagemath/sagejs-win32-x64": "workspace:*"
   }
 }

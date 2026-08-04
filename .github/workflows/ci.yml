@@ -85,6 +85,8 @@ jobs:
           pnpm test:unit
           pnpm test:integration
           pnpm test:native
+          pnpm test:installer
+          pnpm test:release
 
       - name: Run Sage tutorial compatibility diagnostics
         id: tutorial
@@ -135,6 +137,13 @@ jobs:
           cd build/release
           sha256sum sagejs-linux-x64.tar.xz > sagejs-linux-x64.tar.xz.sha256
 
+      - name: Package Linux x64 for npm and the shell installer
+        run: |
+          pnpm package:native-npm linux-x64 build/sea/sagejs build/sea/sagepython
+          SAGEJS_SKIP_PREPACK=1 pnpm pack --out build/release/npm/sagejs.tgz
+          pnpm test:npm-package
+          cp install.sh build/release/install.sh
+
       - name: Upload Linux x64 SEA artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -142,6 +151,9 @@ jobs:
           path: |
             build/release/sagejs-linux-x64.tar.xz
             build/release/sagejs-linux-x64.tar.xz.sha256
+            build/release/install.sh
+            build/release/npm/sagejs.tgz
+            build/release/npm/sagejs-linux-x64.tgz
           if-no-files-found: error
           retention-days: 14
 
@@ -212,6 +224,9 @@ jobs:
           cd build/release
           sha256sum sagejs-linux-arm64.tar.xz > sagejs-linux-arm64.tar.xz.sha256
 
+      - name: Package Linux arm64 for npm
+        run: pnpm package:native-npm linux-arm64 build/sea/sagejs build/sea/sagepython
+
       - name: Upload Linux arm64 SEA artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -219,6 +234,7 @@ jobs:
           path: |
             build/release/sagejs-linux-arm64.tar.xz
             build/release/sagejs-linux-arm64.tar.xz.sha256
+            build/release/npm/sagejs-linux-arm64.tgz
           if-no-files-found: error
           retention-days: 14
 
@@ -226,6 +242,9 @@ jobs:
     name: Windows x64 native, tests, and SEA
     runs-on: windows-2022
     timeout-minutes: 120
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Check out Sage.js and its test corpora
@@ -285,6 +304,38 @@ jobs:
           SAGEJS_BUILD_JOBS: "4"
         run: pnpm test:sea
 
+      - name: Authenticate to Azure Artifact Signing
+        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.SAGEJS_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.SAGEJS_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.SAGEJS_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign with Azure Artifact Signing
+        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: ${{ vars.SAGEJS_ARTIFACT_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ vars.SAGEJS_ARTIFACT_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ vars.SAGEJS_ARTIFACT_SIGNING_PROFILE }}
+          files-folder: ${{ github.workspace }}\build\sea
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Verify Azure-signed Windows executables
+        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE == 'azure'
+        run: pwsh -File scripts/sign-windows.ps1 -VerifyOnly
+
+      - name: Authenticode-sign tagged Windows executables with a PFX
+        if: startsWith(github.ref, 'refs/tags/v') && vars.SAGEJS_WINDOWS_SIGNING_MODE != 'azure'
+        env:
+          SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.SAGEJS_WINDOWS_CERTIFICATE_PFX_BASE64 }}
+          SAGEJS_WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.SAGEJS_WINDOWS_CERTIFICATE_PASSWORD }}
+        run: pnpm release:windows:sign
+
       - name: Package the Windows x64 SEA distribution
         shell: pwsh
         run: |
@@ -298,6 +349,9 @@ jobs:
             "  sagejs-windows-x64.zip" |
             Set-Content "build/release/sagejs-windows-x64.zip.sha256"
 
+      - name: Package Windows x64 for npm
+        run: pnpm package:native-npm windows-x64 build/sea/sagejs.exe build/sea/sagepython.exe
+
       - name: Upload Windows x64 SEA artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -305,6 +359,7 @@ jobs:
           path: |
             build/release/sagejs-windows-x64.zip
             build/release/sagejs-windows-x64.zip.sha256
+            build/release/npm/sagejs-windows-x64.tgz
           if-no-files-found: error
           retention-days: 14
 
@@ -367,8 +422,74 @@ jobs:
           SAGEJS_BUILD_JOBS: "3"
         run: pnpm test:sea
 
+      - name: Import Apple release credentials
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.SAGEJS_APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.SAGEJS_APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_NOTARY_KEY: ${{ secrets.SAGEJS_APPLE_NOTARY_KEY_BASE64 }}
+          APPLE_NOTARY_KEY_ID: ${{ secrets.SAGEJS_APPLE_NOTARY_KEY_ID }}
+          APPLE_NOTARY_ISSUER_ID: ${{ secrets.SAGEJS_APPLE_NOTARY_ISSUER_ID }}
+        run: |
+          for value in APPLE_CERTIFICATE_P12 APPLE_CERTIFICATE_PASSWORD \
+            APPLE_NOTARY_KEY APPLE_NOTARY_KEY_ID APPLE_NOTARY_ISSUER_ID; do
+            [[ -n "${!value}" ]] || { echo "Missing $value" >&2; exit 1; }
+          done
+          certificate="$RUNNER_TEMP/sagejs-developer-id.p12"
+          api_key="$RUNNER_TEMP/AuthKey_${APPLE_NOTARY_KEY_ID}.p8"
+          keychain="$RUNNER_TEMP/sagejs-signing.keychain-db"
+          keychain_password="$(openssl rand -base64 32)"
+          node -e 'require("fs").writeFileSync(process.argv[1], Buffer.from(process.env.APPLE_CERTIFICATE_P12, "base64"))' \
+            "$certificate"
+          node -e 'require("fs").writeFileSync(process.argv[1], Buffer.from(process.env.APPLE_NOTARY_KEY, "base64"))' \
+            "$api_key"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -k "$keychain" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/productsign
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: -s \
+            -k "$keychain_password" "$keychain"
+          security list-keychains -d user -s "$keychain"
+          security default-keychain -d user -s "$keychain"
+          xcrun notarytool store-credentials sagejs-ci-notary \
+            --key "$api_key" \
+            --key-id "$APPLE_NOTARY_KEY_ID" \
+            --issuer "$APPLE_NOTARY_ISSUER_ID"
+
+      - name: Sign, notarize, and package macOS arm64
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          SAGEJS_MACOS_SIGN_ID: ${{ secrets.SAGEJS_MACOS_SIGN_ID }}
+          SAGEJS_MACOS_INSTALLER_ID: ${{ secrets.SAGEJS_MACOS_INSTALLER_ID }}
+          SAGEJS_MACOS_NOTARY_PROFILE: sagejs-ci-notary
+        run: pnpm release:macos -- --skip-build
+
+      - name: Package macOS arm64 for npm
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          pnpm package:native-npm macos-arm64 \
+            build/release/sagejs-macos-arm64/sagejs \
+            build/release/sagejs-macos-arm64/sagepython
+
+      - name: Upload signed macOS arm64 artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: sagejs-macos-arm64
+          path: |
+            build/release/sagejs-macos-arm64.zip
+            build/release/sagejs-macos-arm64.zip.sha256
+            build/release/sagejs-macos-arm64.pkg
+            build/release/sagejs-macos-arm64.pkg.sha256
+            build/release/npm/sagejs-macos-arm64.tgz
+          if-no-files-found: error
+          retention-days: 14
+
   publish-release:
-    name: Publish tagged SEA release
+    name: Publish tagged GitHub and npm release
     if: startsWith(github.ref, 'refs/tags/v')
     needs:
       - linux-x64
@@ -378,8 +499,20 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      id-token: write
 
     steps:
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.9.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+          registry-url: https://registry.npmjs.org
+
       - name: Download the validated release artifacts
         uses: actions/download-artifact@v8
         with:
@@ -393,4 +526,29 @@ jobs:
         run: |
           gh release view "$TAG" >/dev/null 2>&1 || \
             gh release create "$TAG" --verify-tag --generate-notes
-          gh release upload "$TAG" release/* --clobber
+          mapfile -t assets < <(find release -maxdepth 1 -type f -print | sort)
+          [[ ${#assets[@]} -gt 0 ]] || { echo "No release assets" >&2; exit 1; }
+          gh release upload "$TAG" "${assets[@]}" --clobber
+
+      - name: Publish the platform and public npm packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"
+        run: |
+          [[ -n "$NODE_AUTH_TOKEN" ]] || { echo "Missing NPM_TOKEN" >&2; exit 1; }
+          package_version="$(tar -xOzf release/npm/sagejs.tgz package/package.json | \
+            node -e "let text=''; process.stdin.on('data',x=>text+=x); process.stdin.on('end',()=>console.log(JSON.parse(text).version))")"
+          [[ "${GITHUB_REF_NAME}" == "v${package_version}" ]] || {
+            echo "Tag ${GITHUB_REF_NAME} does not match npm version ${package_version}" >&2
+            exit 1
+          }
+          pnpm publish release/npm/sagejs-linux-x64.tgz \
+            --access public --tag linux-x64 --ignore-scripts --no-git-checks
+          pnpm publish release/npm/sagejs-linux-arm64.tgz \
+            --access public --tag linux-arm64 --ignore-scripts --no-git-checks
+          pnpm publish release/npm/sagejs-windows-x64.tgz \
+            --access public --tag windows-x64 --ignore-scripts --no-git-checks
+          pnpm publish release/npm/sagejs-macos-arm64.tgz \
+            --access public --tag macos-arm64 --ignore-scripts --no-git-checks
+          pnpm publish release/npm/sagejs.tgz \
+            --access public --tag latest --ignore-scripts --no-git-checks

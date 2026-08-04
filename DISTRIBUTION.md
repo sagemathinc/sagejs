@@ -162,7 +162,7 @@ confused with packaging the complete dynamic runtime.
 
 | Target | Status | Runtime strategy |
 |---|---|---|
-| npm package | Working | Node + V8 + native Node-API addon |
+| npm package | Working | Small Node dispatcher + platform-native optional package; source/embedding APIs retained |
 | Native single file | Working proof of concept | Node SEA + embedded static-math addon |
 | FLINT-free single file | Working proof of concept | Node SEA, JavaScript language runtime only |
 | Browser demo | Working proof of concept | Web Worker + WASM mathematical backend |

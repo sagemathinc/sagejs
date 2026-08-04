@@ -48,6 +48,19 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+    optionalDependencies:
+      '@sagemath/sagejs-darwin-arm64':
+        specifier: workspace:*
+        version: link:packages/native-darwin-arm64
+      '@sagemath/sagejs-linux-arm64':
+        specifier: workspace:*
+        version: link:packages/native-linux-arm64
+      '@sagemath/sagejs-linux-x64':
+        specifier: workspace:*
+        version: link:packages/native-linux-x64
+      '@sagemath/sagejs-win32-x64':
+        specifier: workspace:*
+        version: link:packages/native-win32-x64
 
   packages/flint:
     devDependencies:
@@ -88,6 +101,14 @@ importers:
       plotly.js-dist-min:
         specifier: 3.7.0
         version: 3.7.0
+
+  packages/native-darwin-arm64: {}
+
+  packages/native-linux-arm64: {}
+
+  packages/native-linux-x64: {}
+
+  packages/native-win32-x64: {}
 
 packages:
 

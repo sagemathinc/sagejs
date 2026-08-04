@@ -17,6 +17,7 @@ const unit = [
 ];
 
 const integration = [
+  "test/native-launcher.cjs",
   "test/cli-smoke.cjs",
   "test/time-module.cjs",
   "test/os-module.cjs",
