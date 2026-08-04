@@ -77,6 +77,73 @@ test("number-field tutorial invariants and custom Dirichlet values", async () =>
   }
 });
 
+test("maximal orders use exact trace-radical enlargements", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "polys = [x^3+x^2-2*x+8, x^3+5*x^2-x+3, " +
+              "x^3+8*x^2+5*x-1, x^3+15*x^2-9*x+13, " +
+              "x^4+x^3-11*x^2+3*x-12, 2*x^3+x+1]",
+            "answer = []",
+            "for f in polys:",
+            "    K = NumberField(f, 'a')",
+            "    O = K.maximal_order()",
+            "    answer.append((O.discriminant(), " +
+              "[b.list() for b in O.basis()], O.is_maximal()))",
+            "answer",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(-503, [[1, 0, 0], [0, 1/2, 1/2], [0, 0, 1]], True), " +
+        "(-31, [[1/4, 0, 3/4], [0, 1/2, 1/2], [0, 0, 1]], True), " +
+        "(49, [[1/7, 6/7, 2/7], [0, 1, 0], [0, 0, 1]], True), " +
+        "(-5292, [[1/6, 1/3, 1/6], [0, 1, 0], [0, 0, 1]], True), " +
+        "(-588204, [[1, 0, 0, 0], [0, 1, 0, 0], " +
+        "[0, 0, 1/3, 2/3], [0, 0, 0, 1]], True), " +
+        "(-116, [[1, 0, 0], [0, 2, 0], [0, 0, 2]], True)]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
+test("number-field ideals are exact HNF lattices", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "K.<a> = NumberField(x^3+x^2-2*x+8)",
+            "O = K.maximal_order()",
+            "I = O.ideal([2,a])",
+            "J = O.ideal([3,a+1])",
+            "L = O.ideal(3)",
+            "[I.gens_reduced(), I.norm(), I.is_integral(), " +
+              "J.gens_reduced(), J.norm(), (I+J).gens_reduced(), " +
+              "(I*J).gens_reduced(), (I*J).norm(), " +
+              "(2*I).gens_reduced(), (2*I).norm(), " +
+              "I.intersection(L).gens_reduced(), " +
+              "I.intersection(L).norm(), (I^2).gens_reduced(), " +
+              "(I^2).norm(), a in I, 1 in I]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(2, a, a^2), 4, True, (1, 1/2*a^2 + 1/2*a, a^2), 1, " +
+        "(1, 1/2*a^2 + 1/2*a, a^2), (2, a, a^2), 4, " +
+        "(4, 2*a, 2*a^2), 32, (6, 3*a, 3*a^2), 108, " +
+        "(4, 2*a, a^2), 16, True, False]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("native Galois groups cover every transitive group through degree four", async () => {
   const session = await createSage();
   try {

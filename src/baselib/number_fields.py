@@ -15,6 +15,13 @@ def _untyped(value: Any) -> Any:
     return value
 
 
+def _nf_global(name: str) -> Any:
+    value = runtime.reflect.get(runtime.global_object, name)
+    if value is runtime.undefined:
+        raise RuntimeError(name + ' is not available in this runtime')
+    return value
+
+
 def _algebraic_from_tree(field: AlgebraicFieldParent, tree: Any) -> Any:
     if runtime.is_exact_integer(tree):
         return field(tree)
@@ -872,6 +879,17 @@ class NumberFieldElement(sage.Element):
             and self._coefficients[0] == 1
         )
 
+    def list(self) -> list[Any]:
+        return _nf_coordinates(self, self._parent.degree())
+
+    def trace(self) -> Any:
+        return _nf_trace(self._parent, self)
+
+    absolute_trace = trace
+
+    def is_integral(self) -> bool:
+        return _nf_is_integral(self._parent, self)
+
     def inverse(self) -> NumberFieldElement:
         if self.is_zero():
             raise ZeroDivisionError('division by zero')
@@ -969,6 +987,508 @@ class NumberFieldElement(sage.Element):
     toString = __repr__
 
 
+def _nf_lcm(left: Any, right: Any) -> Any:
+    left = runtime.integer_bigint(left)
+    right = runtime.integer_bigint(right)
+    if left < 0:
+        left = -left
+    if right < 0:
+        right = -right
+    if left == 0 or right == 0:
+        return runtime.bigint(0)
+    quotient = runtime.native_div(
+        left, runtime.bigint_gcd(left, right))
+    return runtime.native_mul(quotient, right)
+
+
+def _nf_valuation(value: Any, prime: int) -> int:
+    value = runtime.integer_bigint(value)
+    if value < 0:
+        value = -value
+    divisor = runtime.bigint(prime)
+    valuation = 0
+    while value and value % divisor == 0:
+        value //= divisor
+        valuation += 1
+    return valuation
+
+
+def _nf_coordinates(
+    element: NumberFieldElement, degree: int,
+) -> list[Any]:
+    answer = list(element._coefficients)
+    while len(answer) < degree:
+        answer.append(sage.QQ(0))
+    return answer[:degree]
+
+
+def _nf_element_from_row(
+    field: NumberFieldParent, row: list[Any],
+) -> NumberFieldElement:
+    return field._from_coefficients([sage.QQ(value) for value in row])
+
+
+def _nf_canonical_lattice(
+    rows: list[list[Any]], degree: int,
+) -> list[list[Any]]:
+    if len(rows) == 0:
+        return []
+    denominator = runtime.bigint(1)
+    rational_rows = []
+    for row in rows:
+        padded = [sage.QQ(value) for value in row]
+        while len(padded) < degree:
+            padded.append(sage.QQ(0))
+        padded = padded[:degree]
+        rational_rows.append(padded)
+        for value in padded:
+            denominator = _nf_lcm(
+                denominator, value._denominator)
+    integer_rows = []
+    for row in rational_rows:
+        integer_row = []
+        for value in row:
+            scaled = value * denominator
+            if scaled._denominator != 1:
+                raise ArithmeticError(
+                    'failed to clear a lattice denominator')
+            integer_row.append(scaled._numerator)
+        integer_rows.append(integer_row)
+    integer_matrix = _nf_global('matrix')(sage.ZZ, integer_rows)
+    hermite = integer_matrix.hermite_form(include_zero_rows=False)
+    return [
+        [
+            _untyped(sage.QQ)(value, denominator)
+            for value in row
+        ]
+        for row in hermite.rows()
+    ]
+
+
+def _nf_lattice_coordinates(
+    row: list[Any], basis_rows: list[list[Any]],
+) -> Any:
+    if len(basis_rows) == 0:
+        return [] if all(value == 0 for value in row) else None
+    basis_matrix = _nf_global('matrix')(sage.QQ, basis_rows)
+    row_vector = _nf_global('vector')(sage.QQ, row)
+    coordinates = row_vector * basis_matrix.inverse()
+    return list(coordinates)
+
+
+def _nf_row_in_lattice(
+    row: list[Any], basis_rows: list[list[Any]],
+) -> bool:
+    coordinates = _nf_lattice_coordinates(row, basis_rows)
+    if coordinates is None:
+        return False
+    return all(value._denominator == 1 for value in coordinates)
+
+
+def _nf_trace(
+    field: NumberFieldParent, element: NumberFieldElement,
+) -> Any:
+    degree = field.degree()
+    generator = field.gen()
+    power = field.one()
+    answer = sage.QQ(0)
+    for column in range(degree):
+        product = element * power
+        coordinates = _nf_coordinates(product, degree)
+        answer += coordinates[column]
+        power *= generator
+    return answer
+
+
+def _nf_is_integral(
+    field: NumberFieldParent, element: NumberFieldElement,
+) -> bool:
+    # Newton's identities recover the monic characteristic polynomial from
+    # exact power traces.  In characteristic zero an element is integral iff
+    # those coefficients are rational integers.
+    traces = []
+    power = field.one()
+    for _exponent in range(1, field.degree() + 1):
+        power *= element
+        traces.append(_nf_trace(field, power))
+    elementary = [sage.QQ(1)]
+    for degree in range(1, field.degree() + 1):
+        coefficient = sage.QQ(0)
+        for index in range(1, degree + 1):
+            term = elementary[degree - index] * traces[index - 1]
+            coefficient += term if index % 2 else -term
+        coefficient /= degree
+        if coefficient._denominator != 1:
+            return False
+        elementary.append(coefficient)
+    return True
+
+
+def _nf_trace_matrix(
+    field: NumberFieldParent, basis: list[NumberFieldElement],
+) -> list[list[Any]]:
+    return [
+        [_nf_trace(field, left * right) for right in basis]
+        for left in basis
+    ]
+
+
+def _nf_order_closure(
+    field: NumberFieldParent, rows: list[list[Any]],
+) -> list[list[Any]]:
+    degree = field.degree()
+    basis_rows = _nf_canonical_lattice(rows, degree)
+    while True:
+        if len(basis_rows) != degree:
+            raise ValueError('an order lattice must have full rank')
+        basis = [
+            _nf_element_from_row(field, row) for row in basis_rows]
+        missing = runtime.undefined
+        for left_index in range(degree):
+            for right_index in range(left_index, degree):
+                product_row = _nf_coordinates(
+                    basis[left_index] * basis[right_index], degree)
+                if not _nf_row_in_lattice(product_row, basis_rows):
+                    missing = product_row
+                    break
+            if missing is not runtime.undefined:
+                break
+        if missing is runtime.undefined:
+            return basis_rows
+        basis_rows = _nf_canonical_lattice(
+            basis_rows + [missing], degree)
+
+
+def _nf_projective_vectors(
+    kernel_rows: list[list[int]], prime: int,
+) -> Any:
+    dimension = len(kernel_rows)
+    ambient_degree = len(kernel_rows[0]) if dimension else 0
+    for leading in range(dimension):
+        tail_length = dimension - leading - 1
+        total = prime ** tail_length
+        for encoded in range(total):
+            coefficients = [0 for _index in range(dimension)]
+            coefficients[leading] = 1
+            remaining = encoded
+            for index in range(leading + 1, dimension):
+                coefficients[index] = remaining % prime
+                remaining //= prime
+            vector = [0 for _index in range(ambient_degree)]
+            for row_index in range(dimension):
+                coefficient = coefficients[row_index]
+                if coefficient:
+                    for column in range(ambient_degree):
+                        vector[column] = (
+                            vector[column]
+                            + coefficient * kernel_rows[row_index][column]
+                        ) % prime
+            yield vector
+
+
+def _nf_enlarge_order_at_prime(
+    order: NumberFieldOrder, prime: int,
+) -> Any:
+    field = order.number_field()
+    basis = order.basis()
+    trace_rows = _nf_trace_matrix(field, basis)
+    integer_rows = []
+    for row in trace_rows:
+        integer_row = []
+        for value in row:
+            if value._denominator != 1:
+                raise ArithmeticError(
+                    'an integral order has a nonintegral trace pairing')
+            integer_row.append(value._numerator)
+        integer_rows.append(integer_row)
+    residue_matrix = _nf_global('matrix')(
+        _nf_global('GF')(prime), integer_rows)
+    kernel = residue_matrix.right_kernel_matrix()
+    kernel_rows = [
+        [
+            runtime.number(value.lift())
+            for value in row
+        ]
+        for row in kernel.rows()
+    ]
+    if len(kernel_rows) == 0:
+        return None
+    for vector in _nf_projective_vectors(kernel_rows, prime):
+        numerator = field.zero()
+        for index in range(field.degree()):
+            if vector[index]:
+                numerator += field(vector[index]) * basis[index]
+        candidate = numerator / prime
+        if candidate in order:
+            continue
+        if not _nf_is_integral(field, candidate):
+            continue
+        rows = order._basis_rows + [
+            _nf_coordinates(candidate, field.degree())]
+        closed_rows = _nf_order_closure(field, rows)
+        return NumberFieldOrder(field, closed_rows, False)
+    return None
+
+
+class NumberFieldIdeal:
+    """An exact (possibly fractional) ideal stored as a rational HNF lattice."""
+
+    def __init__(
+        self, order: NumberFieldOrder, rows: list[list[Any]],
+    ) -> None:
+        self._order = order
+        self._field = order.number_field()
+        self._basis_rows = _nf_canonical_lattice(
+            rows, self._field.degree())
+        if len(self._basis_rows) not in [0, self._field.degree()]:
+            raise ValueError('a nonzero number-field ideal must have full rank')
+        if len(self._basis_rows):
+            for order_element in order.basis():
+                for ideal_element in self.basis():
+                    row = _nf_coordinates(
+                        order_element * ideal_element,
+                        self._field.degree(),
+                    )
+                    if not _nf_row_in_lattice(row, self._basis_rows):
+                        raise ValueError(
+                            'the specified lattice is not closed under the order')
+
+    def ring(self) -> NumberFieldOrder:
+        return self._order
+
+    def number_field(self) -> NumberFieldParent:
+        return self._field
+
+    def basis(self) -> list[NumberFieldElement]:
+        return [
+            _nf_element_from_row(self._field, row)
+            for row in self._basis_rows
+        ]
+
+    def gens_reduced(self) -> 'tuple[Any, ...]':
+        return runtime.math_tuple(self.basis())
+
+    gens = gens_reduced
+
+    def basis_matrix(self) -> Any:
+        return _nf_global('matrix')(sage.QQ, self._basis_rows)
+
+    def __contains__(self, value: object) -> bool:
+        try:
+            element = self._field(value)
+        except Exception:
+            return False
+        row = _nf_coordinates(element, self._field.degree())
+        return _nf_row_in_lattice(row, self._basis_rows)
+
+    def is_zero(self) -> bool:
+        return len(self._basis_rows) == 0
+
+    def is_integral(self) -> bool:
+        return all(element in self._order for element in self.basis())
+
+    def norm(self) -> Any:
+        if self.is_zero():
+            return 0
+        relative = (
+            self.basis_matrix()
+            * self._order.basis_matrix().inverse()
+        )
+        determinant = relative.determinant()
+        if determinant < 0:
+            determinant = -determinant
+        return determinant
+
+    absolute_norm = norm
+
+    def __add__(self, other: NumberFieldIdeal) -> NumberFieldIdeal:
+        if not isinstance(other, NumberFieldIdeal):
+            return NotImplemented
+        if other._order is not self._order:
+            raise TypeError('ideals must belong to the same order')
+        return NumberFieldIdeal(
+            self._order, self._basis_rows + other._basis_rows)
+
+    def intersection(
+        self, other: NumberFieldIdeal,
+    ) -> NumberFieldIdeal:
+        if other._order is not self._order:
+            raise TypeError('ideals must belong to the same order')
+        if self.is_zero() or other.is_zero():
+            return NumberFieldIdeal(self._order, [])
+        denominator = runtime.bigint(1)
+        for row in self._basis_rows + other._basis_rows:
+            for value in row:
+                denominator = _nf_lcm(
+                    denominator, value._denominator)
+        equations = []
+        degree = self._field.degree()
+        for column in range(degree):
+            equation = []
+            for row in self._basis_rows:
+                equation.append(
+                    (row[column] * denominator)._numerator)
+            for row in other._basis_rows:
+                equation.append(
+                    -(row[column] * denominator)._numerator)
+            equations.append(equation)
+        kernel = _nf_global('matrix')(
+            sage.ZZ, equations).right_kernel_matrix()
+        rows = []
+        for relation in kernel.rows():
+            row = [sage.QQ(0) for _index in range(degree)]
+            for basis_index in range(degree):
+                for column in range(degree):
+                    row[column] += (
+                        relation[basis_index]
+                        * self._basis_rows[basis_index][column]
+                    )
+            rows.append(row)
+        return NumberFieldIdeal(self._order, rows)
+
+    def __mul__(self, other: Any) -> NumberFieldIdeal:
+        if isinstance(other, NumberFieldIdeal):
+            if other._order is not self._order:
+                raise TypeError('ideals must belong to the same order')
+            rows = []
+            for left in self.basis():
+                for right in other.basis():
+                    rows.append(_nf_coordinates(
+                        left * right, self._field.degree()))
+            return NumberFieldIdeal(self._order, rows)
+        scalar = self._field(other)
+        return NumberFieldIdeal(self._order, [
+            _nf_coordinates(scalar * element, self._field.degree())
+            for element in self.basis()
+        ])
+
+    def __rmul__(self, scalar: Any) -> NumberFieldIdeal:
+        return self * scalar
+
+    def __pow__(self, exponent: Any) -> NumberFieldIdeal:
+        power = runtime.integer_bigint(exponent)
+        if power < 0:
+            raise NotImplementedError(
+                'negative ideal powers require ideal inversion')
+        answer = self._order.ideal(1)
+        base = self
+        while power:
+            if power % runtime.bigint(2):
+                answer = answer * base
+            power //= runtime.bigint(2)
+            if power:
+                base = base * base
+        return answer
+
+    def __eq__(self, other: object) -> bool:
+        return (
+            isinstance(other, NumberFieldIdeal)
+            and other._order is self._order
+            and other._basis_rows == self._basis_rows
+        )
+
+    def __repr__(self) -> str:
+        if self.is_zero():
+            return 'Fractional ideal (0)'
+        return 'Fractional ideal (' + ', '.join([
+            str(element) for element in self.basis()]) + ')'
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+@runtime.callable_instance_class
+class NumberFieldOrder(sage.Parent):
+    """A full-rank exact order in a simple number field."""
+
+    def __init__(
+        self,
+        field: NumberFieldParent,
+        rows: list[list[Any]],
+        is_maximal: bool,
+    ) -> None:
+        self._field = field
+        self._basis_rows = _nf_order_closure(field, rows)
+        self._is_maximal = is_maximal
+        self._kind = 'NumberFieldOrder'
+        self._construction = runtime.undefined
+
+    def number_field(self) -> NumberFieldParent:
+        return self._field
+
+    fraction_field = number_field
+
+    def basis(self) -> list[NumberFieldElement]:
+        return [
+            _nf_element_from_row(self._field, row)
+            for row in self._basis_rows
+        ]
+
+    integral_basis = basis
+
+    def basis_matrix(self) -> Any:
+        return _nf_global('matrix')(sage.QQ, self._basis_rows)
+
+    def degree(self) -> int:
+        return self._field.degree()
+
+    def __call__(self, value: Any = 0) -> NumberFieldElement:
+        element = self._field(value)
+        if element not in self:
+            raise TypeError(str(element) + ' is not in this order')
+        return element
+
+    def __contains__(self, value: object) -> bool:
+        try:
+            element = self._field(value)
+        except Exception:
+            return False
+        return _nf_row_in_lattice(
+            _nf_coordinates(element, self.degree()), self._basis_rows)
+
+    def discriminant(self) -> Any:
+        trace_matrix = _nf_global('matrix')(
+            sage.QQ, _nf_trace_matrix(self._field, self.basis()))
+        value = trace_matrix.determinant()
+        if value._denominator != 1:
+            raise ArithmeticError('an order has nonintegral discriminant')
+        return runtime.normalize_integer(value._numerator)
+
+    def is_maximal(self) -> bool:
+        return self._is_maximal
+
+    def ideal(self, *generators: Any) -> NumberFieldIdeal:
+        values = list(generators)
+        if (
+            len(values) == 1
+            and runtime.array.isArray(values[0])
+        ):
+            values = list(values[0])
+        if len(values) == 0:
+            values = [0]
+        elements = [self._field(value) for value in values]
+        if all(element.is_zero() for element in elements):
+            return NumberFieldIdeal(self, [])
+        rows = []
+        for generator in elements:
+            for basis_element in self.basis():
+                rows.append(_nf_coordinates(
+                    generator * basis_element, self.degree()))
+        return NumberFieldIdeal(self, rows)
+
+    def __repr__(self) -> str:
+        label = 'Maximal Order' if self._is_maximal else 'Order'
+        generators = self.basis()[1:]
+        return (
+            label + ' generated by ['
+            + ', '.join([str(value) for value in generators])
+            + '] in ' + str(self._field)
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 @runtime.callable_instance_class
 class NumberFieldParent(sage.Parent):
     """A simple exact number field represented as ``QQ[a]/(f)``."""
@@ -1002,6 +1522,8 @@ class NumberFieldParent(sage.Parent):
         generator_coefficients = [sage.QQ(0), sage.QQ(1)]
         self._generator = NumberFieldElement(
             self, generator_coefficients)
+        self._equation_order_cache = runtime.undefined
+        self._maximal_order_cache = runtime.undefined
         runtime.coercion_model.register(sage.ZZ, self, self)
         runtime.coercion_model.register(sage.QQ, self, self)
 
@@ -1078,17 +1600,80 @@ class NumberFieldParent(sage.Parent):
             == 'x^3 + x^2 - 2*x + 8'
         )
 
-    def integral_basis(self) -> list[NumberFieldElement]:
-        if not self._is_tutorial_cubic():
-            raise NotImplementedError(
-                'general integral bases need a number-field backend')
-        generator = self.gen()
-        return [
-            self.one(),
-            _untyped(sage.QQ)(1, 2) * generator ** 2
-            + _untyped(sage.QQ)(1, 2) * generator,
-            generator ** 2,
+    def _power_basis(self) -> list[NumberFieldElement]:
+        basis = []
+        power = self.one()
+        for _index in range(self.degree()):
+            basis.append(power)
+            power *= self.gen()
+        return basis
+
+    def equation_order(self) -> NumberFieldOrder:
+        if self._equation_order_cache is runtime.undefined:
+            scale = runtime.bigint(1)
+            for coefficient in self._defining_coefficients:
+                scale = _nf_lcm(scale, coefficient._denominator)
+            integral_generator = self(scale) * self.gen()
+            rows = []
+            power = self.one()
+            for _index in range(self.degree()):
+                rows.append(_nf_coordinates(power, self.degree()))
+                power *= integral_generator
+            self._equation_order_cache = NumberFieldOrder(
+                self, rows, False)
+        return self._equation_order_cache
+
+    def order(self, *generators: Any) -> NumberFieldOrder:
+        values = list(generators)
+        if len(values) == 1 and runtime.array.isArray(values[0]):
+            values = list(values[0])
+        elements = [self.one()] + [self(value) for value in values]
+        for element in elements:
+            if not _nf_is_integral(self, element):
+                raise ValueError('order generators must be algebraic integers')
+        rows = [
+            _nf_coordinates(element, self.degree())
+            for element in elements
         ]
+        if len(rows) < self.degree():
+            rows += self.equation_order()._basis_rows
+        return NumberFieldOrder(self, rows, False)
+
+    def maximal_order(self) -> NumberFieldOrder:
+        if self._maximal_order_cache is not runtime.undefined:
+            return self._maximal_order_cache
+        order = self.equation_order()
+        discriminant = runtime.integer_bigint(order.discriminant())
+        for prime_value, exponent_value in sage.factor(abs(discriminant)):
+            exponent = runtime.number(exponent_value)
+            if exponent < 2:
+                continue
+            prime = runtime.normalize_integer(prime_value)
+            if runtime.jstype(prime) != 'number':
+                raise NotImplementedError(
+                    'maximal-order trace-radical enumeration currently '
+                    'requires machine-sized discriminant primes')
+            while _nf_valuation(
+                runtime.integer_bigint(order.discriminant()), prime,
+            ) >= 2:
+                enlarged = _nf_enlarge_order_at_prime(order, prime)
+                if enlarged is None:
+                    break
+                if abs(enlarged.discriminant()) >= abs(order.discriminant()):
+                    raise ArithmeticError(
+                        'an order enlargement did not lower the discriminant')
+                order = enlarged
+        order._is_maximal = True
+        self._maximal_order_cache = order
+        return order
+
+    ring_of_integers = maximal_order
+
+    def ideal(self, *generators: Any) -> NumberFieldIdeal:
+        return self.maximal_order().ideal(*generators)
+
+    def integral_basis(self) -> list[NumberFieldElement]:
+        return self.maximal_order().basis()
 
     def galois_group(self) -> NumberFieldGaloisGroup:
         """Return the native Galois group for a field of degree at most four."""
@@ -1110,10 +1695,7 @@ class NumberFieldParent(sage.Parent):
         return runtime.math_tuple([unit])
 
     def discriminant(self) -> Any:
-        if not self._is_tutorial_cubic():
-            raise NotImplementedError(
-                'general field discriminants need an integral basis')
-        return -503
+        return self.maximal_order().discriminant()
 
     def class_group(self) -> NumberFieldClassGroup:
         if not self._is_tutorial_cubic():
@@ -2337,8 +2919,9 @@ runtime.register_doc(
             'status': 'partial',
             'notes': (
                 'Simple fields over QQ have exact arithmetic and Sage-style '
-                'generators. Galois groups are identified natively through '
-                'degree four. Custom Dirichlet value fields are supported.'
+                'generators, certified maximal orders, integral bases, field '
+                'discriminants, and exact HNF ideal lattices. Galois groups '
+                'are identified natively through degree four.'
             ),
         },
         'provenance': [
@@ -2363,12 +2946,25 @@ runtime.register_doc(
                 ),
                 'url': 'https://doi.org/10.1016/j.aim.2020.107282',
             },
+            {
+                'kind': 'literature-implemented',
+                'source': (
+                    'Zassenhaus round-two maximal-order algorithm via exact '
+                    'trace radicals and integral overorder enumeration'
+                ),
+            },
         ],
         'limitations': [
             (
-                'General integral bases, unit groups, nonquadratic class '
-                'groups, and Galois groups above degree four await further '
-                'native number-field algorithms.'
+                'General unit groups, nonquadratic class groups, and Galois '
+                'groups above degree four await further native number-field '
+                'algorithms.'
+            ),
+            (
+                'Maximal-order overorder enumeration is correctness-first '
+                'and can be exponential in the dimension of a large trace '
+                'radical; machine-sized discriminant primes are currently '
+                'required.'
             ),
         ],
     },
