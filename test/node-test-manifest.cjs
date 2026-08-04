@@ -26,6 +26,7 @@ const integration = [
   "test/subprocess-module.cjs",
   "test/network-modules.cjs",
   "test/stdlib-utilities.cjs",
+  "test/random-module.cjs",
   "test/operator-module.cjs",
   "test/multiprocessing-module.cjs",
   "test/serialization.cjs",

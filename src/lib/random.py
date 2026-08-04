@@ -41,13 +41,57 @@ def random():
     return value / 4294967296
 
 
-# unlike the python version, this DOES build a range object, feel free to reimplement
-def randrange():
-    return choice(range.apply(this, arguments))
+def _type_name(value):
+    value_type = jstype(value)
+    if value_type is 'number':
+        return 'float'
+    if value_type is 'bigint':
+        return 'int'
+    name = type(value).__name__
+    if name.startswith('ρσ_'):
+        return name[3:]
+    return name
+
+
+def _as_index(value):
+    if value is True or value is False or isinstance(value, int):
+        return int(value)
+    if jstype(value) is 'number':
+        raise TypeError(
+            "'" + _type_name(value)
+            + "' object cannot be interpreted as an integer")
+    if not hasattr(value, '__index__'):
+        raise TypeError(
+            "'" + _type_name(value)
+            + "' object cannot be interpreted as an integer")
+    method = getattr(value, '__index__')
+    answer = method()
+    if not (answer is True or answer is False or isinstance(answer, int)):
+        raise TypeError(
+            '__index__ returned non-int (type '
+            + _type_name(answer) + ')')
+    return int(answer)
+
+
+def randrange(start, stop=None, step=1):
+    start = _as_index(start)
+    if stop is None:
+        stop = start
+        start = 0
+    else:
+        stop = _as_index(stop)
+    step = _as_index(step)
+    if step == 0:
+        raise ValueError('zero step for randrange()')
+    values = range(start, stop, step)
+    count = len(values)
+    if count == 0:
+        raise ValueError('empty range for randrange()')
+    return values[Math.floor(random() * count)]
 
 
 def randint(a, b):
-    return int(random() * (b - a + 1) + a)
+    return randrange(a, b + 1)
 
 
 def uniform(a, b):
@@ -58,29 +102,98 @@ def choice(seq):
     if len(seq) > 0:
         return seq[Math.floor(random() * len(seq))]
     else:
-        raise IndexError()
+        raise IndexError('Cannot choose from an empty sequence')
 
 
-def choices(population, weights=None, cum_weights=None, k=1):
-    if weights is not None or cum_weights is not None:
-        raise NotImplementedError(
-            'weighted random choices are not implemented')
-    return [choice(population) for _ in range(k)]
+def _bisect_cumulative(cumulative, value, high):
+    low = 0
+    while low < high:
+        middle = (low + high) // 2
+        if value < cumulative[middle]:
+            high = middle
+        else:
+            low = middle + 1
+    return low
 
 
-# uses Fisher-Yates algorithm to shuffle an array
-def shuffle(x, random_f=random):
-    x = list(x)
-    for i in range(len(x)):
-        j = Math.floor(random_f() * (i + 1))
-        x[i], x[j] = x[j], x[i]
-    return x
+def choices(population, weights=None, *, cum_weights=None, k=1):
+    count = _as_index(k)
+    population_size = len(population)
+    if weights is None and cum_weights is None:
+        if population_size == 0 and count > 0:
+            raise IndexError('list index out of range')
+        return [
+            population[Math.floor(random() * population_size)]
+            for _ in range(count)
+        ]
+    if weights is not None and cum_weights is not None:
+        raise TypeError(
+            'Cannot specify both weights and cumulative weights')
+    if cum_weights is None:
+        cumulative = []
+        total = 0
+        for weight in weights:
+            total += weight
+            cumulative.append(total)
+    else:
+        cumulative = list(cum_weights)
+    if len(cumulative) != population_size:
+        raise ValueError(
+            'The number of weights does not match the population')
+    if population_size == 0:
+        raise IndexError('list index out of range')
+    total = float(cumulative[-1])
+    if total <= 0:
+        raise ValueError('Total of weights must be greater than zero')
+    if total - total != 0:
+        raise ValueError('Total of weights must be finite')
+    high = population_size - 1
+    return [
+        population[_bisect_cumulative(
+            cumulative, random() * total, high)]
+        for _ in range(count)
+    ]
 
 
-# similar to shuffle, but only shuffles a subset and creates a copy
-def sample(population, k):
-    x = list(population)[:]
-    for i in range(len(population) - 1, len(population) - k - 1, -1):
+# Uses Fisher--Yates in place, as CPython does.
+def shuffle(x):
+    if isinstance(x, tuple) or isinstance(x, str) or isinstance(x, range):
+        raise TypeError(
+            "'" + _type_name(x)
+            + "' object does not support item assignment")
+    for i in range(len(x) - 1, 0, -1):
         j = Math.floor(random() * (i + 1))
         x[i], x[j] = x[j], x[i]
-    return x[-k:]
+    return None
+
+
+def sample(population, k, *, counts=None):
+    if isinstance(population, dict) or isinstance(population, set):
+        raise TypeError(
+            'Population must be a sequence.  For dicts or sets, use sorted(d).')
+    count = _as_index(k)
+    pool = list(population)
+    if counts is not None:
+        if len(counts) != len(pool):
+            raise ValueError(
+                'The number of counts does not match the population')
+        cumulative = []
+        total = 0
+        for item_count in counts:
+            total += _as_index(item_count)
+            cumulative.append(total)
+        if total <= 0 or count < 0 or count > total:
+            raise ValueError(
+                'Sample larger than population or is negative')
+        selections = sample(range(total), count)
+        return [
+            pool[_bisect_cumulative(cumulative, selected, len(pool))]
+            for selected in selections
+        ]
+    if count < 0 or count > len(pool):
+        raise ValueError('Sample larger than population or is negative')
+    answer = []
+    for _ in range(count):
+        selected = Math.floor(random() * len(pool))
+        answer.append(pool.pop(selected))
+    return answer

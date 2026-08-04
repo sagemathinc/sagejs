@@ -1,0 +1,87 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const test = require("node:test");
+
+const { createSage } = require("../dist/tools/kernel.js");
+
+test("random core APIs match CPython semantics", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+
+  const result = await session.evaluate(
+    [
+      "import random",
+      "class Draws:",
+      "    def __init__(self, values): self.values = iter(values)",
+      "    def __call__(self): return next(self.values)",
+      "random.random = Draws([0.0, 0.1, 0.29, 0.3, 0.99])",
+      "print(random.choices('abc', weights=[1,2,7], k=5))",
+      "random.random = Draws([0.0, 0.1, 0.29, 0.3, 0.99])",
+      "print(random.choices('abc', cum_weights=[1,3,10], k=5))",
+      "values = [1,2,3,4]",
+      "random.random = Draws([0.0, 0.0, 0.0])",
+      "print(random.shuffle(values) is None, values)",
+      "random.random = Draws([0.0, 0.0, 0.0])",
+      "print(random.sample('abcd', 3))",
+      "random.random = Draws([0.5])",
+      "print(random.randrange(2, 10, 2))",
+      "class IndexTwo:",
+      "    def __index__(self): return 2",
+      "random.random = Draws([0.0, 0.0])",
+      "print(random.sample(['a','b'], IndexTwo()))",
+      "random.random = Draws([0.0, 0.99, 0.49])",
+      "print(random.sample(['a','b'], 3, counts=[2,2]))",
+      "print(random.choices([], k=0))",
+      "cases = [",
+      "    ('ValueError', ValueError, lambda: random.choices([1,2], [1], k=1)),",
+      "    ('TypeError', TypeError, lambda: random.choices([1], [1], cum_weights=[1])),",
+      "    ('ValueError', ValueError, lambda: random.choices([1,2], [0,0])),",
+      "    ('ValueError', ValueError, lambda: random.choices([1,2], [1,1e309])),",
+      "    ('IndexError', IndexError, lambda: random.choices([], [], k=0)),",
+      "    ('TypeError', TypeError, lambda: random.choices([1], k=1.5)),",
+      "    ('TypeError', TypeError, lambda: random.shuffle((1,2))),",
+      "    ('TypeError', TypeError, lambda: random.sample({1,2}, 1)),",
+      "    ('ValueError', ValueError, lambda: random.sample([1], -1)),",
+      "    ('TypeError', TypeError, lambda: random.sample([1], 1.5)),",
+      "    ('ValueError', ValueError, lambda: random.sample([1,2], 1, counts=[1])),",
+      "    ('TypeError', TypeError, lambda: random.randrange(5.5)),",
+      "    ('ValueError', ValueError, lambda: random.randrange(1, 5, 0)),",
+      "    ('ValueError', ValueError, lambda: random.randrange(0)),",
+      "]",
+      "for label, expected, operation in cases:",
+      "    try:",
+      "        operation()",
+      "    except Exception as error:",
+      "        print(label, isinstance(error, expected), str(error))",
+    ].join("\n"),
+  );
+
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "['a', 'b', 'b', 'c', 'c']",
+      "['a', 'b', 'b', 'c', 'c']",
+      "True [2, 3, 4, 1]",
+      "['a', 'b', 'c']",
+      "6",
+      "['a', 'b']",
+      "['a', 'b', 'a']",
+      "[]",
+      "ValueError True The number of weights does not match the population",
+      "TypeError True Cannot specify both weights and cumulative weights",
+      "ValueError True Total of weights must be greater than zero",
+      "ValueError True Total of weights must be finite",
+      "IndexError True list index out of range",
+      "TypeError True 'float' object cannot be interpreted as an integer",
+      "TypeError True 'tuple' object does not support item assignment",
+      "TypeError True Population must be a sequence.  For dicts or sets, use sorted(d).",
+      "ValueError True Sample larger than population or is negative",
+      "TypeError True 'float' object cannot be interpreted as an integer",
+      "ValueError True The number of counts does not match the population",
+      "TypeError True 'float' object cannot be interpreted as an integer",
+      "ValueError True zero step for randrange()",
+      "ValueError True empty range for randrange()",
+    ].join("\n"),
+  );
+});
