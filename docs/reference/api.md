@@ -3366,14 +3366,15 @@ sage: K.class_group().invariants()
 - Kind: `function`
 - Module: `sage.rings.number_field.number_field`
 - Tags: number theory, quadratic fields, rings of integers, ideal class groups, binary quadratic forms
-- Backends: Sage.js exact quadratic arithmetic, FLINT integer factorization
+- Backends: Sage.js exact quadratic arithmetic, FLINT qfb reduced-form sieve and NUCOMP arithmetic
 - Sage compatibility: partial — Negative radicands have exact arithmetic, maximal orders, integral bases, field discriminants, class numbers, and composable finite class groups with Sage-ordered invariant factors.
-- Limitations: Real quadratic fields and their unit/regulator algorithms are not yet implemented by QuadraticField. Class groups currently enumerate every reduced form, so large discriminants need a future subexponential backend.
+- Limitations: Real quadratic fields and their unit/regulator algorithms are not yet implemented by QuadraticField. Certified class numbers currently enumerate every reduced form using FLINT's modular-root sieve, so very large discriminants still need a non-enumerating or subexponential backend.
 
 ### Provenance
 
 - `sage-derived` — [SageMath quadratic number-field and class-group API](https://doc.sagemath.org/html/en/reference/number_fields/); license GPL-2.0-or-later
 - `literature-implemented` — Gauss reduction and ideal-lattice composition of positive-definite binary quadratic forms
+- `library-backed` — [FLINT binary quadratic forms](https://flintlib.org/doc/qfb.html)
 
 ## `quit`
 

@@ -1228,7 +1228,7 @@ def _quadratic_reduce(
         return answer
 
 
-def _quadratic_compose(
+def _quadratic_compose_reference(
     left: QuadraticBinaryForm,
     right: QuadraticBinaryForm,
     discriminant: Any,
@@ -1291,7 +1291,38 @@ def _quadratic_compose(
             a, b, numerator // (runtime.bigint(4) * a)), target)
 
 
-def _quadratic_reduced_forms(discriminant: Any) -> list[QuadraticBinaryForm]:
+def _quadratic_native_method(name: str) -> Any:
+    return runtime.reflect.get(runtime.flint_backend(), name)
+
+
+def _quadratic_form_data(form: QuadraticBinaryForm) -> list[Any]:
+    return [form._a, form._b, form._c]
+
+
+def _quadratic_form_from_data(data: Any) -> QuadraticBinaryForm:
+    return QuadraticBinaryForm(data[0], data[1], data[2])
+
+
+def _quadratic_compose(
+    left: QuadraticBinaryForm,
+    right: QuadraticBinaryForm,
+    discriminant: Any,
+) -> QuadraticBinaryForm:
+    """Compose reduced forms with FLINT NUCOMP when it is available."""
+    native = _quadratic_native_method('qfbNucomp')
+    if runtime.jstype(native) == 'function':
+        data = native(
+            runtime.integer_bigint(discriminant),
+            _quadratic_form_data(left),
+            _quadratic_form_data(right),
+        )
+        return _quadratic_form_from_data(data)
+    return _quadratic_compose_reference(left, right, discriminant)
+
+
+def _quadratic_reduced_forms_reference(
+    discriminant: Any,
+) -> list[QuadraticBinaryForm]:
     target = runtime.integer_bigint(discriminant)
     if (
         target >= 0
@@ -1323,6 +1354,31 @@ def _quadratic_reduced_forms(discriminant: Any) -> list[QuadraticBinaryForm]:
     return forms
 
 
+def _quadratic_native_enumeration_supported(discriminant: Any) -> bool:
+    target = runtime.integer_bigint(discriminant)
+    return (
+        target > -(runtime.bigint(2) ** runtime.bigint(63))
+        and target < 0
+    )
+
+
+def _quadratic_reduced_forms(
+    discriminant: Any,
+) -> list[QuadraticBinaryForm]:
+    """Enumerate reduced forms using FLINT's modular-root sieve."""
+    target = runtime.integer_bigint(discriminant)
+    native = _quadratic_native_method('qfbReducedForms')
+    if (
+        runtime.jstype(native) == 'function'
+        and _quadratic_native_enumeration_supported(target)
+    ):
+        return [
+            _quadratic_form_from_data(data)
+            for data in native(target)
+        ]
+    return _quadratic_reduced_forms_reference(target)
+
+
 def _quadratic_principal_form(discriminant: Any) -> QuadraticBinaryForm:
     target = runtime.integer_bigint(discriminant)
     middle = target % runtime.bigint(2)
@@ -1331,7 +1387,7 @@ def _quadratic_principal_form(discriminant: Any) -> QuadraticBinaryForm:
         (middle * middle - target) // runtime.bigint(4))
 
 
-def _quadratic_form_power(
+def _quadratic_form_power_reference(
     form: QuadraticBinaryForm,
     exponent: Any,
     discriminant: Any,
@@ -1347,11 +1403,37 @@ def _quadratic_form_power(
     base = form
     while power:
         if power % runtime.bigint(2):
-            answer = _quadratic_compose(answer, base, discriminant)
+            answer = _quadratic_compose_reference(
+                answer, base, discriminant)
         power //= runtime.bigint(2)
         if power:
-            base = _quadratic_compose(base, base, discriminant)
+            base = _quadratic_compose_reference(
+                base, base, discriminant)
     return answer
+
+
+def _quadratic_form_power(
+    form: QuadraticBinaryForm,
+    exponent: Any,
+    discriminant: Any,
+) -> QuadraticBinaryForm:
+    """Power a reduced form with FLINT's NUCOMP-based implementation."""
+    power = runtime.integer_bigint(exponent)
+    if power < 0:
+        form = _quadratic_reduce(
+            QuadraticBinaryForm(form._a, -form._b, form._c),
+            discriminant,
+        )
+        power = -power
+    native = _quadratic_native_method('qfbPow')
+    if runtime.jstype(native) == 'function':
+        data = native(
+            runtime.integer_bigint(discriminant),
+            _quadratic_form_data(form),
+            power,
+        )
+        return _quadratic_form_from_data(data)
+    return _quadratic_form_power_reference(form, power, discriminant)
 
 
 def _quadratic_form_order(
@@ -1701,15 +1783,50 @@ class QuadraticClassGroup:
     def __init__(self, field: QuadraticField_class) -> None:
         self._field = field
         self._discriminant = runtime.integer_bigint(field.discriminant())
-        self._forms = _quadratic_reduced_forms(self._discriminant)
+        self._forms = runtime.undefined
+        self._order = runtime.undefined
+        self._native_cyclic_generator = runtime.undefined
+        native = _quadratic_native_method('qfbClassGroupData')
+        if (
+            runtime.jstype(native) == 'function'
+            and _quadratic_native_enumeration_supported(
+                self._discriminant)
+        ):
+            native_data = native(self._discriminant)
+            if native_data is not None:
+                self._order = int(runtime.number(runtime.reflect.get(
+                    native_data, 'classNumber')))
+                generator_data = runtime.reflect.get(
+                    native_data, 'generator')
+                forms_data = runtime.reflect.get(native_data, 'forms')
+                if forms_data is not None:
+                    self._forms = [
+                        _quadratic_form_from_data(data)
+                        for data in forms_data
+                    ]
+                if generator_data is not None:
+                    self._native_cyclic_generator = (
+                        _quadratic_form_from_data(generator_data))
+        if self._order is runtime.undefined:
+            self._forms = _quadratic_reduced_forms(self._discriminant)
+            self._order = len(self._forms)
+        field._class_number = self._order
         self._principal_form = _quadratic_principal_form(
             self._discriminant)
         self._element_cache = runtime.map()
-        self._elements = [self._from_form(form) for form in self._forms]
+        self._elements = runtime.undefined
         structure = self._compute_structure()
         self._invariants = structure[0]
         self._generators = [
             self._from_form(form) for form in structure[1]]
+
+    def _all_forms(self) -> list[QuadraticBinaryForm]:
+        if self._forms is runtime.undefined:
+            self._forms = _quadratic_reduced_forms(self._discriminant)
+            if len(self._forms) != self.order():
+                raise ArithmeticError(
+                    'quadratic form enumeration changed the class number')
+        return self._forms
 
     def _from_form(
         self, form: QuadraticBinaryForm,
@@ -1722,6 +1839,12 @@ class QuadraticClassGroup:
         self._element_cache.set(key, element)
         return element
 
+    def _all_elements(self) -> list[QuadraticClassGroupElement]:
+        if self._elements is runtime.undefined:
+            self._elements = [
+                self._from_form(form) for form in self._all_forms()]
+        return self._elements
+
     def _primary_basis(
         self, prime: int, exponent: int,
     ) -> tuple[list[int], list[QuadraticBinaryForm]]:
@@ -1729,7 +1852,7 @@ class QuadraticClassGroup:
         projection_power = self.order() // primary_order
         primary_forms = []
         seen = runtime.map()
-        for form in self._forms:
+        for form in self._all_forms():
             projected = _quadratic_form_power(
                 form, projection_power, self._discriminant)
             key = _quadratic_form_key(projected)
@@ -1803,6 +1926,13 @@ class QuadraticClassGroup:
     ) -> tuple[list[int], list[QuadraticBinaryForm]]:
         if self.order() == 1:
             return [], []
+        if self._native_cyclic_generator is not runtime.undefined:
+            return [self.order()], [self._native_cyclic_generator]
+        for form in self._all_forms():
+            if _quadratic_form_order(
+                form, self.order(), self._discriminant,
+            ) == self.order():
+                return [self.order()], [form]
         component_orders = []
         component_generators = []
         maximum_rank = 0
@@ -1841,19 +1971,19 @@ class QuadraticClassGroup:
         return invariants, generators
 
     def __len__(self) -> int:
-        return len(self._elements)
+        return self.order()
 
     def __iter__(self) -> Any:
-        return iter(self._elements)
+        return iter(self._all_elements())
 
     def __getitem__(self, index: int) -> QuadraticClassGroupElement:
-        return self._elements[index]
+        return self._all_elements()[index]
 
     def list(self) -> list[QuadraticClassGroupElement]:
-        return list(self._elements)
+        return list(self._all_elements())
 
     def order(self) -> int:
-        return len(self._forms)
+        return self._order
 
     cardinality = order
 
@@ -1994,6 +2124,7 @@ class QuadraticField_class(sage.Parent):
         self._generator = GaussianInteger(self, 0, 1)
         self._integer_ring = runtime.undefined
         self._class_group = runtime.undefined
+        self._class_number = runtime.undefined
         runtime.coercion_model.register(sage.ZZ, self, self)
         runtime.coercion_model.register(sage.QQ, self, self)
 
@@ -2067,8 +2198,21 @@ class QuadraticField_class(sage.Parent):
             self._class_group = QuadraticClassGroup(self)
         return self._class_group
 
-    def class_number(self) -> int:
-        return self.class_group().order()
+    def class_number(self) -> Any:
+        if self._class_number is runtime.undefined:
+            native = _quadratic_native_method('qfbClassNumber')
+            if (
+                runtime.jstype(native) == 'function'
+                and _quadratic_native_enumeration_supported(
+                    self._field_discriminant)
+            ):
+                self._class_number = runtime.normalize_integer(
+                    native(self._field_discriminant))
+            else:
+                self._class_number = len(
+                    _quadratic_reduced_forms_reference(
+                        self._field_discriminant))
+        return self._class_number
 
     def _ideal_second_generator(self, middle: Any) -> GaussianInteger:
         if self._squarefree_radicand % 4 == 1:
@@ -2245,7 +2389,7 @@ runtime.register_doc(
         ],
         'backends': [
             'Sage.js exact quadratic arithmetic',
-            'FLINT integer factorization',
+            'FLINT qfb reduced-form sieve and NUCOMP arithmetic',
         ],
         'sage_compatibility': {
             'status': 'partial',
@@ -2273,6 +2417,11 @@ runtime.register_doc(
                     'positive-definite binary quadratic forms'
                 ),
             },
+            {
+                'kind': 'library-backed',
+                'source': 'FLINT binary quadratic forms',
+                'url': 'https://flintlib.org/doc/qfb.html',
+            },
         ],
         'limitations': [
             (
@@ -2280,8 +2429,10 @@ runtime.register_doc(
                 'are not yet implemented by QuadraticField.'
             ),
             (
-                'Class groups currently enumerate every reduced form, so '
-                'large discriminants need a future subexponential backend.'
+                'Certified class numbers currently enumerate every reduced '
+                'form using FLINT\'s modular-root sieve, so very large '
+                'discriminants still need a non-enumerating or '
+                'subexponential backend.'
             ),
         ],
     },

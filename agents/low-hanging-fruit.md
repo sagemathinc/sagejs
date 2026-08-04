@@ -76,8 +76,13 @@ also implements imaginary quadratic maximal orders and class groups using
 reduced positive-definite forms and exact rank-two ideal-lattice composition,
 including non-squarefree input radicands.  The quadratic implementation was
 checked exhaustively for group laws and differentially against Sage, PARI, and
-Magma.  These results support extracting algorithms individually instead of
-making PARI's `GEN` stack a foundational runtime dependency.
+Magma. FLINT's modular-root reduced-form sieve and NUCOMP/NUDUPL kernels now
+accelerate the readable reference implementation; certified class-number
+timings are competitive with Magma through discriminants around `10^9`, and
+cyclic structure avoids materializing every form in JavaScript. See
+`bench/QUADRATIC-CLASS-GROUPS.md`. These results support extracting algorithms
+individually instead of making PARI's `GEN` stack a foundational runtime
+dependency.
 
 - **ANT-2 / measure — Galois groups in degrees five through seven.**  Assemble
   a balanced Sage/PARI corpus for every transitive label and inventory the

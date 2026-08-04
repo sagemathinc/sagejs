@@ -147,6 +147,7 @@
     "bench:serialization": "node bench/compare-serialization.cjs",
     "bench:finite-fields": "node bench/compare-finite-fields.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",
+    "bench:quadratic-class-groups": "node bench/compare-quadratic-class-groups.cjs",
     "bench:modular-symbols": "node bench/compare-modular-symbols.cjs",
     "bench:modular-symbols:checkpoints": "node bench/modsym-checkpoint-pipeline.cjs",
     "bench:modular-symbols:grid": "node bench/explore-modular-symbols.cjs",

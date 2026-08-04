@@ -243,6 +243,53 @@ assert.deepEqual(flint.factor(2n ** 64n - 1n), {
   ],
 });
 
+assert.deepEqual(flint.qfbReducedForms(-23n), [
+  [1n, 1n, 6n],
+  [2n, -1n, 3n],
+  [2n, 1n, 3n],
+]);
+assert.deepEqual(flint.qfbReducedForms(-84n), [
+  [1n, 0n, 21n],
+  [2n, 2n, 11n],
+  [3n, 0n, 7n],
+  [5n, 4n, 5n],
+]);
+assert.equal(flint.qfbClassNumber(-420n), 8n);
+assert.deepEqual(flint.qfbClassGroupData(-23n), {
+  classNumber: 3n,
+  generator: [2n, -1n, 3n],
+  forms: null,
+});
+assert.deepEqual(flint.qfbClassGroupData(-84n), {
+  classNumber: 4n,
+  generator: null,
+  forms: [
+    [1n, 0n, 21n],
+    [2n, 2n, 11n],
+    [3n, 0n, 7n],
+    [5n, 4n, 5n],
+  ],
+});
+assert.deepEqual(flint.qfbClassGroupData(-4n), {
+  classNumber: 1n,
+  generator: [1n, 0n, 1n],
+  forms: null,
+});
+assert.deepEqual(
+  flint.qfbNucomp(-23n, [2n, -1n, 3n], [2n, -1n, 3n]),
+  [2n, 1n, 3n],
+);
+assert.deepEqual(flint.qfbPow(-23n, [2n, -1n, 3n], 3n), [1n, 1n, 6n]);
+assert.throws(() => flint.qfbReducedForms(-22n), /congruent to 0 or 1/);
+assert.throws(
+  () => flint.qfbNucomp(-23n, [1n, 0n, 1n], [2n, -1n, 3n]),
+  /primitive, reduced/,
+);
+assert.throws(
+  () => flint.qfbPow(-23n, [2n, -1n, 3n], -1n),
+  /nonnegative/,
+);
+
 assert.throws(() => flint.identity(1), /BigInt/);
 assert.throws(() => flint.factor(0n), /factor zero/);
 assert.throws(() => flint.factorial(1n), /Number/);

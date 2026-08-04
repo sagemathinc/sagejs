@@ -26,6 +26,7 @@
 #include <flint/fmpq_poly.h>
 #include <flint/nmod_poly.h>
 #include <flint/nmod_poly_factor.h>
+#include <flint/qfb.h>
 #include <flint/ulong_extras.h>
 #include <sagejs/native.h>
 #ifdef SAGEJS_HAVE_SMALLJAC
@@ -159,6 +160,60 @@ static napi_value fmpz_to_bigint(napi_env env, const fmpz_t value)
         return NULL;
     }
     free(words);
+    return result;
+}
+
+static int value_to_qfb(napi_env env, napi_value value, qfb_t form)
+{
+    bool is_array;
+    uint32_t length;
+    uint32_t index;
+    fmpz *entries[3] = {form->a, form->b, form->c};
+
+    if (!check_napi(env, napi_is_array(env, value, &is_array)))
+        return 0;
+    if (!is_array ||
+        !check_napi(env, napi_get_array_length(env, value, &length)))
+    {
+        if (!is_array)
+            napi_throw_type_error(env, NULL,
+                "quadratic form must be an array");
+        return 0;
+    }
+    if (length != 3)
+    {
+        napi_throw_range_error(env, NULL,
+            "quadratic form must have three coefficients");
+        return 0;
+    }
+    for (index = 0; index < 3; index++)
+    {
+        napi_value coefficient;
+        if (!check_napi(env,
+                napi_get_element(env, value, index, &coefficient)) ||
+            !bigint_to_fmpz(env, coefficient, entries[index]))
+            return 0;
+    }
+    return 1;
+}
+
+static napi_value qfb_to_value(napi_env env, const qfb_t form)
+{
+    napi_value result;
+    napi_value coefficient;
+    const fmpz *entries[3] = {form->a, form->b, form->c};
+    uint32_t index;
+
+    if (!check_napi(env, napi_create_array_with_length(env, 3, &result)))
+        return NULL;
+    for (index = 0; index < 3; index++)
+    {
+        coefficient = fmpz_to_bigint(env, entries[index]);
+        if (coefficient == NULL ||
+            !check_napi(env,
+                napi_set_element(env, result, index, coefficient)))
+            return NULL;
+    }
     return result;
 }
 
@@ -2777,6 +2832,362 @@ static napi_value factor(napi_env env, napi_callback_info info)
     return result;
 }
 
+static int bigint_to_negative_slong(
+    napi_env env,
+    napi_value value,
+    slong *result)
+{
+    int64_t input;
+    bool lossless;
+    napi_valuetype type;
+
+    if (!check_napi(env, napi_typeof(env, value, &type)))
+        return 0;
+    if (type != napi_bigint)
+    {
+        napi_throw_type_error(env, NULL,
+            "quadratic discriminant must be a BigInt");
+        return 0;
+    }
+    if (!check_napi(env,
+        napi_get_value_bigint_int64(env, value, &input, &lossless)))
+        return 0;
+    if (!lossless || input >= 0 || input == INT64_MIN ||
+        (input % 4 != 0 && input % 4 != 1 && input % 4 != -3))
+    {
+        napi_throw_range_error(env, NULL,
+            "quadratic discriminant must be a negative signed word "
+            "congruent to 0 or 1 modulo 4");
+        return 0;
+    }
+    *result = (slong) input;
+    return 1;
+}
+
+static int validate_qfb_input(
+    napi_env env,
+    qfb_t form,
+    const fmpz_t discriminant)
+{
+    fmpz_t actual_discriminant;
+    int valid;
+
+    if (fmpz_sgn(discriminant) >= 0 ||
+        (fmpz_fdiv_ui(discriminant, 4) != 0 &&
+         fmpz_fdiv_ui(discriminant, 4) != 1))
+    {
+        napi_throw_range_error(env, NULL,
+            "quadratic discriminant must be negative and congruent "
+            "to 0 or 1 modulo 4");
+        return 0;
+    }
+    fmpz_init(actual_discriminant);
+    qfb_discriminant(actual_discriminant, form);
+    valid = fmpz_equal(actual_discriminant, discriminant) &&
+        qfb_is_primitive(form) && qfb_is_reduced(form);
+    fmpz_clear(actual_discriminant);
+    if (!valid)
+    {
+        napi_throw_range_error(env, NULL,
+            "quadratic form must be primitive, reduced, and have "
+            "the specified discriminant");
+        return 0;
+    }
+    return 1;
+}
+
+static int compare_qfb_coefficients(const void *left, const void *right)
+{
+    const qfb *left_form = (const qfb *) left;
+    const qfb *right_form = (const qfb *) right;
+    int comparison = fmpz_cmp(left_form->a, right_form->a);
+
+    if (comparison == 0)
+        comparison = fmpz_cmp(left_form->b, right_form->b);
+    if (comparison == 0)
+        comparison = fmpz_cmp(left_form->c, right_form->c);
+    return comparison;
+}
+
+static napi_value qfb_reduced_forms_value(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    napi_value form_value;
+    qfb *forms = NULL;
+    slong discriminant;
+    slong count;
+    slong index;
+
+    if (!require_arguments(env, info, 1, args) ||
+        !bigint_to_negative_slong(env, args[0], &discriminant))
+        return NULL;
+    count = qfb_reduced_forms(&forms, discriminant);
+    if (count < 0 || (uint64_t) count > UINT32_MAX)
+    {
+        if (forms != NULL)
+            qfb_array_clear(&forms, count);
+        napi_throw_range_error(env, NULL,
+            "quadratic class group is too large for a JavaScript array");
+        return NULL;
+    }
+    qsort(forms, (size_t) count, sizeof(qfb), compare_qfb_coefficients);
+    if (!check_napi(env,
+        napi_create_array_with_length(env, (size_t) count, &result)))
+    {
+        qfb_array_clear(&forms, count);
+        return NULL;
+    }
+    for (index = 0; index < count; index++)
+    {
+        form_value = qfb_to_value(env, forms + index);
+        if (form_value == NULL ||
+            !check_napi(env,
+                napi_set_element(
+                    env, result, (uint32_t) index, form_value)))
+        {
+            qfb_array_clear(&forms, count);
+            return NULL;
+        }
+    }
+    qfb_array_clear(&forms, count);
+    return result;
+}
+
+static napi_value qfb_class_number_value(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    qfb *forms = NULL;
+    slong discriminant;
+    slong count;
+
+    if (!require_arguments(env, info, 1, args) ||
+        !bigint_to_negative_slong(env, args[0], &discriminant))
+        return NULL;
+    count = qfb_reduced_forms(&forms, discriminant);
+    qfb_array_clear(&forms, count);
+    if (!check_napi(env,
+        napi_create_bigint_int64(env, (int64_t) count, &result)))
+        return NULL;
+    return result;
+}
+
+static napi_value qfb_class_group_data_value(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    napi_value class_number;
+    napi_value generator;
+    napi_value form_values;
+    qfb *forms = NULL;
+    qfb_t powered;
+    fmpz_t discriminant_value;
+    n_factor_t factorization;
+    slong discriminant;
+    slong count;
+    slong form_index;
+    slong generator_index = -1;
+    int factor_index;
+
+    if (!require_arguments(env, info, 1, args) ||
+        !bigint_to_negative_slong(env, args[0], &discriminant))
+        return NULL;
+    count = qfb_reduced_forms(&forms, discriminant);
+    if (count <= 0)
+    {
+        qfb_array_clear(&forms, count);
+        napi_throw_error(env, NULL,
+            "quadratic discriminant has no reduced primitive forms");
+        return NULL;
+    }
+    qsort(forms, (size_t) count, sizeof(qfb), compare_qfb_coefficients);
+    n_factor_init(&factorization);
+    n_factor(&factorization, (ulong) count, 1);
+    qfb_init(powered);
+    fmpz_init_set_si(discriminant_value, discriminant);
+    for (form_index = 0; form_index < count; form_index++)
+    {
+        int generates = 1;
+        for (factor_index = 0;
+             factor_index < factorization.num;
+             factor_index++)
+        {
+            qfb_pow_ui(
+                powered,
+                forms + form_index,
+                discriminant_value,
+                (ulong) count / factorization.p[factor_index]);
+            if (qfb_is_principal_form(powered, discriminant_value))
+            {
+                generates = 0;
+                break;
+            }
+        }
+        if (!generates)
+            continue;
+        generator_index = form_index;
+        break;
+    }
+
+    if (!check_napi(env, napi_create_object(env, &result)) ||
+        !check_napi(env,
+            napi_create_bigint_int64(env, count, &class_number)) ||
+        !check_napi(env, napi_set_named_property(
+            env, result, "classNumber", class_number)))
+    {
+        result = NULL;
+        goto cleanup_class_group_data;
+    }
+    if (generator_index >= 0)
+    {
+        generator = qfb_to_value(env, forms + generator_index);
+        if (generator == NULL ||
+            !check_napi(env, napi_get_null(env, &form_values)))
+        {
+            result = NULL;
+            goto cleanup_class_group_data;
+        }
+    }
+    else
+    {
+        if ((uint64_t) count > UINT32_MAX ||
+            !check_napi(env, napi_get_null(env, &generator)) ||
+            !check_napi(env, napi_create_array_with_length(
+                env, (size_t) count, &form_values)))
+        {
+            if ((uint64_t) count > UINT32_MAX)
+                napi_throw_range_error(env, NULL,
+                    "quadratic class group is too large for a "
+                    "JavaScript array");
+            result = NULL;
+            goto cleanup_class_group_data;
+        }
+        for (form_index = 0; form_index < count; form_index++)
+        {
+            napi_value form_value = qfb_to_value(env, forms + form_index);
+            if (form_value == NULL || !check_napi(env, napi_set_element(
+                env, form_values, (uint32_t) form_index, form_value)))
+            {
+                result = NULL;
+                goto cleanup_class_group_data;
+            }
+        }
+    }
+    if (!check_napi(env, napi_set_named_property(
+            env, result, "generator", generator)) ||
+        !check_napi(env, napi_set_named_property(
+            env, result, "forms", form_values)))
+        result = NULL;
+
+cleanup_class_group_data:
+    qfb_clear(powered);
+    fmpz_clear(discriminant_value);
+    qfb_array_clear(&forms, count);
+    return result;
+}
+
+static napi_value qfb_nucomp_value(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[3];
+    napi_value result;
+    qfb_t left;
+    qfb_t right;
+    qfb_t composed;
+    fmpz_t discriminant;
+    fmpz_t magnitude;
+    fmpz_t root;
+
+    if (!require_arguments(env, info, 3, args))
+        return NULL;
+    qfb_init(left);
+    qfb_init(right);
+    qfb_init(composed);
+    fmpz_init(discriminant);
+    fmpz_init(magnitude);
+    fmpz_init(root);
+    if (!bigint_to_fmpz(env, args[0], discriminant) ||
+        !value_to_qfb(env, args[1], left) ||
+        !value_to_qfb(env, args[2], right))
+    {
+        result = NULL;
+        goto cleanup_nucomp;
+    }
+    if (!validate_qfb_input(env, left, discriminant) ||
+        !validate_qfb_input(env, right, discriminant))
+    {
+        result = NULL;
+        goto cleanup_nucomp;
+    }
+    fmpz_abs(magnitude, discriminant);
+    fmpz_root(root, magnitude, 4);
+    qfb_nucomp(composed, left, right, discriminant, root);
+    qfb_reduce(composed, composed, discriminant);
+    result = qfb_to_value(env, composed);
+
+cleanup_nucomp:
+    qfb_clear(left);
+    qfb_clear(right);
+    qfb_clear(composed);
+    fmpz_clear(discriminant);
+    fmpz_clear(magnitude);
+    fmpz_clear(root);
+    return result;
+}
+
+static napi_value qfb_pow_value(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[3];
+    napi_value result;
+    qfb_t form;
+    qfb_t powered;
+    fmpz_t discriminant;
+    fmpz_t exponent;
+
+    if (!require_arguments(env, info, 3, args))
+        return NULL;
+    qfb_init(form);
+    qfb_init(powered);
+    fmpz_init(discriminant);
+    fmpz_init(exponent);
+    if (!bigint_to_fmpz(env, args[0], discriminant) ||
+        !value_to_qfb(env, args[1], form) ||
+        !bigint_to_fmpz(env, args[2], exponent))
+    {
+        result = NULL;
+        goto cleanup_pow;
+    }
+    if (!validate_qfb_input(env, form, discriminant) ||
+        fmpz_sgn(exponent) < 0)
+    {
+        if (fmpz_sgn(exponent) < 0)
+            napi_throw_range_error(env, NULL,
+                "quadratic form exponent must be nonnegative");
+        result = NULL;
+        goto cleanup_pow;
+    }
+    qfb_pow(powered, form, discriminant, exponent);
+    qfb_reduce(powered, powered, discriminant);
+    result = qfb_to_value(env, powered);
+
+cleanup_pow:
+    qfb_clear(form);
+    qfb_clear(powered);
+    fmpz_clear(discriminant);
+    fmpz_clear(exponent);
+    return result;
+}
+
 static napi_value version(napi_env env, napi_callback_info info)
 {
     napi_value result;
@@ -2883,6 +3294,16 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"primorial", NULL, primorial, NULL, NULL, NULL, napi_default, NULL},
         {"binomial", NULL, binomial, NULL, NULL, NULL, napi_default, NULL},
         {"factor", NULL, factor, NULL, NULL, NULL, napi_default, NULL},
+        {"qfbReducedForms", NULL, qfb_reduced_forms_value,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qfbClassNumber", NULL, qfb_class_number_value,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qfbClassGroupData", NULL, qfb_class_group_data_value,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qfbNucomp", NULL, qfb_nucomp_value,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"qfbPow", NULL, qfb_pow_value,
+            NULL, NULL, NULL, napi_default, NULL},
         {"qqbarFromRational", NULL, sagejs_qqbar_from_rational,
             NULL, NULL, NULL, napi_default, NULL},
         {"qqbarI", NULL, sagejs_qqbar_i,

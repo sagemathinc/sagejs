@@ -55,6 +55,17 @@ generators, arithmetic, powers, exact division, GCD, degrees, term counts,
 and generator composition for Sage-compatible conversions between parents;
 only pretty-printing crosses polynomial data back into JavaScript.
 
+Imaginary quadratic class groups use FLINT's `qfb` modular-root sieve,
+NUCOMP/NUDUPL arithmetic, and binary powering. Reduced forms cross into
+JavaScript only when the caller needs to enumerate a noncyclic group or asks
+for its complete element list. For a cyclic group, the native boundary returns
+the class number and one generator after verifying its exact order against
+every prime divisor of the group order. The earlier readable rank-two ideal
+lattice composition and elementary reduced-form enumeration remain in the
+Sage.js mathematical layer as ordinary CPython-parseable reference fallbacks.
+See [`bench/QUADRATIC-CLASS-GROUPS.md`](../../bench/QUADRATIC-CLASS-GROUPS.md)
+for proof semantics and timings against PARI and Magma.
+
 Dirichlet groups are retained opaque `dirichlet_group_t` contexts. FLINT
 provides their finite abelian decomposition, Conrey data, conductors, orders,
 parity, primitivity, and character evaluation. The bridge translates Sage's
