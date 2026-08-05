@@ -58,6 +58,17 @@ test("finite permutation and matrix groups", async () => {
       (
         await session.evaluate(
           [
+            "G = PermutationGroup([[(1,2),(3,4)],[(3,4)]])",
+            "[len(list(G)), list(G), G.list() == list(G)]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[4, [(), (1,2)(3,4), (3,4), (1,2)], True]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
             "G = PermutationGroup(['(1,2,3)(4,5)', '(3,4)'])",
             "[G.order(), G.is_abelian(), len(G.center().gens()), " +
               "[H.order() for H in G.derived_series()]]",

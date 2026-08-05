@@ -249,11 +249,23 @@ class PermutationGroupParent(sage.Parent):
         self,
         degree: int,
         generator_mappings: list[list[int]],
+        known_order: int | None = None,
     ) -> None:
         self._degree = degree
         self._generator_mappings = generator_mappings
-        self._elements_mappings = _permutation_closure(
-            degree, generator_mappings)
+        self._known_order = known_order
+        self._elements_mappings = runtime.undefined
+
+    def _enumerate_mappings(self) -> list[list[int]]:
+        if self._elements_mappings is runtime.undefined:
+            self._elements_mappings = _permutation_closure(
+                self._degree, self._generator_mappings)
+            if self._known_order is not None and (
+                len(self._elements_mappings) != self._known_order
+            ):
+                raise ArithmeticError(
+                    'permutation generators do not have the declared order')
+        return self._elements_mappings
 
     def _element(self, mapping: list[int]) -> PermutationGroupElement:
         return PermutationGroupElement(self, mapping)
@@ -303,30 +315,42 @@ class PermutationGroupParent(sage.Parent):
         )
 
     def order(self) -> int:
-        return len(self._elements_mappings)
+        if self._known_order is not None:
+            return self._known_order
+        return len(self._enumerate_mappings())
 
     cardinality = order
 
     def degree(self) -> int:
         return self._degree
 
+    def __iter__(self) -> Any:
+        return iter([
+            self._element(mapping)
+            for mapping in self._enumerate_mappings()
+        ])
+
+    def list(self) -> list[PermutationGroupElement]:
+        return list(self)
+
     def _regular_action(self) -> PermutationGroupParent:
         """Return the left regular permutation representation of this group."""
+        elements = self._enumerate_mappings()
         positions = runtime.map()
-        for index in range(len(self._elements_mappings)):
+        for index in range(len(elements)):
             positions.set(
-                _permutation_key(self._elements_mappings[index]),
+                _permutation_key(elements[index]),
                 index + 1,
             )
         regular_generators = []
         for generator in self._generator_mappings:
             mapping = []
-            for element in self._elements_mappings:
+            for element in elements:
                 product = _permutation_compose(generator, element)
                 mapping.append(positions.get(_permutation_key(product)))
             regular_generators.append(mapping)
         return PermutationGroupParent(
-            len(self._elements_mappings), regular_generators)
+            len(elements), regular_generators, known_order=len(elements))
 
     def is_abelian(self) -> bool:
         generators = list(self.gens())
@@ -338,7 +362,7 @@ class PermutationGroupParent(sage.Parent):
 
     def center(self) -> PermutationSubgroup:
         central = []
-        for mapping in self._elements_mappings:
+        for mapping in self._enumerate_mappings():
             is_central = True
             for generator in self._generator_mappings:
                 left = _permutation_compose(mapping, generator)
@@ -353,11 +377,11 @@ class PermutationGroupParent(sage.Parent):
         return PermutationSubgroup(self, central)
 
     def random_element(self) -> PermutationGroupElement:
-        if len(self._elements_mappings) == 0:
+        elements = self._enumerate_mappings()
+        if len(elements) == 0:
             raise RuntimeError('permutation group has no elements')
-        index = (len(self._elements_mappings) * 5 + 3) % len(
-            self._elements_mappings)
-        return self._element(self._elements_mappings[index])
+        index = (len(elements) * 5 + 3) % len(elements)
+        return self._element(elements[index])
 
     def _derived_subgroup(self) -> PermutationGroupParent:
         commutators = []
@@ -366,7 +390,7 @@ class PermutationGroupParent(sage.Parent):
             [index + 1 for index in range(self._degree)])
         for left in self._generator_mappings:
             left_inverse = _permutation_inverse(left)
-            for right in self._elements_mappings:
+            for right in self._enumerate_mappings():
                 right_inverse = _permutation_inverse(right)
                 commutator = _permutation_compose(
                     _permutation_compose(
