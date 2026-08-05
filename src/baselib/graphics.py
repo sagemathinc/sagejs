@@ -4164,7 +4164,7 @@ def plot(
     funcs: Any,
     *range_args: Any,
     **options: Any,
-) -> Graphics:
+) -> Any:
     r"""
     Plot a callable, symbolic expression, or list of functions on an interval.
 
@@ -4184,6 +4184,8 @@ def plot(
     host with a supported Plotly export route.
     """
     options = _copy_options(options)
+    if hasattr(funcs, 'plot'):
+        return funcs.plot(*range_args, **options)
     xmin, xmax = _plot_range(range_args)
     plot_variable = _plot_variable(range_args)
     plot_points = int(_option_pop(options, 'plot_points', 200))

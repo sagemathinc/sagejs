@@ -192,11 +192,22 @@
         "level": "foundational",
         "label": "Coherent exact graph-theory foundation",
         "summary": "The core Sage graph workflow is usable today, including labeled multigraph semantics, exact structural algorithms, isomorphism certificates, canonical labels, visualization, and the complete small-graph database. Research-scale native kernels and the long tail of Sage algorithms remain explicit next steps.",
+        "score": {
+          "kind": "measured",
+          "value": 18.7,
+          "numerator": 77,
+          "denominator": 411,
+          "unit": "public callable SageMath Graph methods with exact-name Sage.js implementations",
+          "reference": "SageMath 10.9.post1 Graph instance at 09472ff5",
+          "method": "Enumerated every public callable attribute of a SageMath Graph instance and intersected it with the tested Sage.js Graph method surface. Internal test assignment is reported separately as 130 of 130.",
+          "audited": "2026-08-05"
+        },
+        "auditPath": "coverage/graphs.json",
         "includes": ["Graph and DiGraph", "arbitrary vertices and edge labels", "loops and multiedges", "BFS / DFS / components / shortest paths", "diameter / radius / girth / trees / Eulerian tests", "cliques / independent sets / exact coloring", "graph6 and sparse6", "isomorphism certificates and canonical labels", "automorphism groups", "named generators", "Plotly visualization", "1,252 unlabeled graphs through order 7"]
       },
       "summary": "Readable Sage-compatible graph objects, exact foundational algorithms, interactive plots, serialization, and the historic SQLite graph database.",
       "implementation": "Insertion-ordered graph objects with integer-indexed edges and individualization/refinement algorithms; the backend boundary is intentionally ready for igraph and bliss acceleration.",
-      "evidence": "Focused graph regression tests cover semantics and algorithms; every bundled graph6 record is independently available as a correctness corpus.",
+      "evidence": "A source-derived gate assigns all 130 public graph-module functions and aliases to executable semantic tests; the separate SageMath scope audit measures 77 of 411 Graph methods, and every bundled graph6 record remains available as a correctness corpus.",
       "target": "Reach broad Sage graph API coverage, then add igraph/bliss/OGDF-class native performance without changing public semantics.",
       "priority": "now"
     },

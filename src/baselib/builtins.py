@@ -4588,9 +4588,37 @@ def prime_pi(value: Any) -> Any:
     return left
 
 
-def _prime_pi_plot(start: Any, stop: Any, **options: Any) -> Any:
-    plot_function = runtime.reflect.get(runtime.global_object, 'plot')
-    return plot_function(prime_pi, start, stop, **options)
+def _prime_pi_plot(
+    start: Any = 0,
+    stop: Any = 100,
+    vertical_lines: _Bool = True,
+    **options: Any,
+) -> Any:
+    """Draw Sage's prime-counting step function without redispatching plot."""
+    plot_step_function = runtime.reflect.get(
+        runtime.global_object, 'plot_step_function')
+    lower = float(start)
+    upper = float(stop)
+    values = []
+    if upper >= lower:
+        if upper < 2:
+            values = [
+                runtime.math_tuple([lower, 0]),
+                runtime.math_tuple([upper, 0]),
+            ]
+        else:
+            count = prime_pi(lower)
+            values.append(runtime.math_tuple([lower, count]))
+            candidate = runtime.flint_backend().nextPrime(
+                runtime.bigint(runtime.math.floor(lower)))
+            while candidate <= upper:
+                count += 1
+                values.append(runtime.math_tuple([
+                    runtime.normalize_integer(candidate), count]))
+                candidate = runtime.flint_backend().nextPrime(candidate)
+            values.append(runtime.math_tuple([upper, count]))
+    return plot_step_function(
+        values, vertical_lines=vertical_lines, **options)
 
 
 runtime.reflect.set(prime_pi, 'plot', _prime_pi_plot)

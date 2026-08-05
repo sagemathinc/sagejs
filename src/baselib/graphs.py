@@ -191,10 +191,11 @@ class GraphAutomorphism:
         return self._vertices[self._images[index]]
 
     def dict(self) -> dict[Any, Any]:
-        return {
-            self._vertices[index]: self._vertices[self._images[index]]
-            for index in range(len(self._vertices))
-        }
+        answer = dict()
+        for index in range(len(self._vertices)):
+            answer.__setitem__(
+                self._vertices[index], self._vertices[self._images[index]])
+        return answer
 
     def __repr__(self) -> str:
         cycles = []
@@ -973,11 +974,23 @@ class GenericGraph:
                     queue.append(target)
         return distances, parents
 
-    def shortest_path(self, source_vertex: Any, target_vertex: Any, **_options: Any) -> list[Any]:
-        source = self._vertex_index(source_vertex)
-        target = self._vertex_index(target_vertex)
-        if source < 0 or target < 0:
-            raise LookupError('vertex is not in graph')
+    def shortest_path(self, u: Any, v: Any, **_options: Any) -> list[Any]:
+        if u is runtime.undefined:
+            raise TypeError(
+                "GenericGraph.shortest_path() missing 2 required positional "
+                "arguments: 'u' and 'v'")
+        if v is runtime.undefined:
+            raise TypeError(
+                "GenericGraph.shortest_path() missing 1 required positional "
+                "argument: 'v'")
+        source = self._vertex_index(u)
+        target = self._vertex_index(v)
+        if source < 0:
+            raise ValueError(
+                "vertex '" + str(u) + "' is not in the (di)graph")
+        if target < 0:
+            raise ValueError(
+                "vertex '" + str(v) + "' is not in the (di)graph")
         distances, parents = self._shortest_index_data(source)
         if distances[target] < 0:
             return []
@@ -996,15 +1009,15 @@ class GenericGraph:
         return _graph_positive_infinity if len(path) == 0 else len(path) - 1
 
     def distances_all_pairs(self) -> dict[Any, dict[Any, Any]]:
-        answer = {}
+        answer = dict()
         for source in range(self.order()):
             distances, _parents = self._shortest_index_data(source)
-            answer[self._vertices[source]] = {
-                self._vertices[target]: (
+            source_distances = dict()
+            for target in range(self.order()):
+                source_distances.__setitem__(self._vertices[target], (
                     _graph_positive_infinity
-                    if distances[target] < 0 else distances[target])
-                for target in range(self.order())
-            }
+                    if distances[target] < 0 else distances[target]))
+            answer.__setitem__(self._vertices[source], source_distances)
         return answer
 
     def eccentricity(self, vertex: Any = None) -> Any:
@@ -1104,6 +1117,7 @@ class GenericGraph:
 
     def is_bipartite(self, certificate: bool = False) -> Any:
         colors = [-1] * self.order()
+        parents = [-1] * self.order()
         for source in range(self.order()):
             if colors[source] >= 0:
                 continue
@@ -1116,19 +1130,41 @@ class GenericGraph:
                 for target in self._adjacent_indices(current):
                     if colors[target] < 0:
                         colors[target] = 1 - colors[current]
+                        parents[target] = current
                         queue.append(target)
                     elif colors[target] == colors[current]:
                         if certificate:
-                            return False, None
+                            current_path = []
+                            cursor = current
+                            while cursor >= 0:
+                                current_path.append(cursor)
+                                cursor = parents[cursor]
+                            target_path = []
+                            cursor = target
+                            while cursor >= 0:
+                                target_path.append(cursor)
+                                cursor = parents[cursor]
+                            common = current_path[-1]
+                            for candidate in current_path:
+                                if candidate in target_path:
+                                    common = candidate
+                                    break
+                            left_stop = current_path.index(common)
+                            right_stop = target_path.index(common)
+                            cycle_indices = (
+                                current_path[:left_stop + 1]
+                                + list(reversed(target_path[:right_stop])))
+                            cycle = [
+                                self._vertices[index]
+                                for index in cycle_indices]
+                            return runtime.math_tuple([False, cycle])
                         return False
         if certificate:
-            left = [
-                self._vertices[index] for index in range(self.order())
-                if colors[index] == 0]
-            right = [
-                self._vertices[index] for index in range(self.order())
-                if colors[index] == 1]
-            return True, (left, right)
+            color_dict = dict()
+            for index in range(self.order()):
+                color_dict.__setitem__(
+                    self._vertices[index], 1 - colors[index])
+            return runtime.math_tuple([True, color_dict])
         return True
 
     def has_loops(self) -> bool:
@@ -1376,17 +1412,17 @@ class GenericGraph:
         **_options: Any,
     ) -> Any:
         if not isinstance(other, GenericGraph):
-            return (False, None) if certificate else False
+            return runtime.math_tuple([False, None]) if certificate else False
         mappings = self._all_isomorphisms(other, edge_labels, True)
         if len(mappings) == 0:
-            return (False, None) if certificate else False
+            return runtime.math_tuple([False, None]) if certificate else False
         if not certificate:
             return True
-        mapping = {
-            self._vertices[index]: other._vertices[mappings[0][index]]
-            for index in range(self.order())
-        }
-        return True, mapping
+        mapping = dict()
+        for index in range(self.order()):
+            mapping.__setitem__(
+                self._vertices[index], other._vertices[mappings[0][index]])
+        return runtime.math_tuple([True, mapping])
 
     def automorphism_group(
         self, edge_labels: bool = False, **_options: Any,
@@ -1501,9 +1537,10 @@ class GenericGraph:
         for edge in self._edges:
             answer.add_edge(inverse[edge.source], inverse[edge.target], edge.label)
         if certificate:
-            return answer, {
-                self._vertices[index]: inverse[index] for index in range(order)
-            }
+            mapping = dict()
+            for index in range(order):
+                mapping.__setitem__(self._vertices[index], inverse[index])
+            return runtime.math_tuple([answer, mapping])
         return answer
 
     def graph6_string(self) -> str:
@@ -1662,15 +1699,15 @@ class GenericGraph:
                 colors[vertex] = -1
 
         if order == 0:
-            return {}
+            return dict()
         search(0, 0)
-        classes = {}
+        classes = dict()
         palette = ['#377eb8', '#e41a1c', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33']
         for index in range(order):
             key = palette[best[index] % len(palette)] if hex_colors else best[index]
             if key not in classes:
-                classes[key] = []
-            classes[key].append(self._vertices[index])
+                classes.__setitem__(key, [])
+            classes.__getitem__(key).append(self._vertices[index])
         return classes
 
     def chromatic_number(self, **options: Any) -> int:

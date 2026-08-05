@@ -17,6 +17,9 @@ const stdlibCoverage = JSON.parse(
 const graphics3dCoverage = JSON.parse(
   fs.readFileSync(path.join(website, "coverage/graphics-3d.json"), "utf8"),
 );
+const graphCoverage = JSON.parse(
+  fs.readFileSync(path.join(website, "coverage/graphs.json"), "utf8"),
+);
 const competitiveAudit = JSON.parse(
   fs.readFileSync(path.join(website, "competitive-audit.json"), "utf8"),
 );
@@ -121,6 +124,11 @@ test("published coverage scores have explicit denominators or estimate labels", 
   assert.equal(graphics3d.score.value, graphics3dCoverage.metric.percentage);
   assert.equal(graphics3d.auditPath, "coverage/graphics-3d.json");
   assert.deepEqual(graphics3d.facets, graphics3dCoverage.facets.map(({ name, status, detail }) => ({ name, status, detail })));
+  const graphs = payload.capabilities.find((item) => item.id === "graph-theory").coverage;
+  assert.equal(graphs.score.numerator, graphCoverage.metric.numerator);
+  assert.equal(graphs.score.denominator, graphCoverage.metric.denominator);
+  assert.equal(graphs.score.value, graphCoverage.metric.percentage);
+  assert.equal(graphs.auditPath, "coverage/graphs.json");
 });
 
 test("competitive audit covers every capability with a stable work lane", () => {

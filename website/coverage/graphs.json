@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "audited": "2026-08-05",
+  "capability": "graph-theory",
+  "reference": {
+    "system": "SageMath",
+    "version": "10.9.post1",
+    "revision": "09472ff530d280d0c9f44fdc5a9c3e856ed95b37",
+    "source": "public callable attributes of a SageMath Graph instance",
+    "unit": "public Graph methods available in the reference installation"
+  },
+  "metric": {
+    "numerator": 77,
+    "denominator": 411,
+    "percentage": 18.7,
+    "meaning": "Sage.js implements 77 exact-name methods from SageMath's 411-method public Graph surface. This measures API breadth, not semantic depth or performance."
+  },
+  "internalMethodCoverage": {
+    "numerator": 130,
+    "denominator": 130,
+    "percentage": 100,
+    "meaning": "Every public function or alias currently defined by the Sage.js graph module is assigned to an executable semantic test."
+  },
+  "supportedSageMethods": [
+    "add_clique",
+    "add_cycle",
+    "add_edge",
+    "add_edges",
+    "add_path",
+    "add_vertex",
+    "add_vertices",
+    "adjacency_matrix",
+    "allows_loops",
+    "allows_multiple_edges",
+    "automorphism_group",
+    "average_degree",
+    "breadth_first_search",
+    "bridges",
+    "canonical_label",
+    "cartesian_product",
+    "center",
+    "chromatic_number",
+    "clique_maximum",
+    "clique_number",
+    "coloring",
+    "complement",
+    "connected_component_containing_vertex",
+    "connected_components",
+    "copy",
+    "degree",
+    "degree_sequence",
+    "delete_edge",
+    "delete_edges",
+    "delete_vertex",
+    "delete_vertices",
+    "density",
+    "depth_first_search",
+    "diameter",
+    "distance",
+    "eccentricity",
+    "edge_iterator",
+    "edge_label",
+    "edges",
+    "get_pos",
+    "girth",
+    "graph6_string",
+    "has_edge",
+    "has_loops",
+    "has_vertex",
+    "independent_set",
+    "is_bipartite",
+    "is_connected",
+    "is_directed",
+    "is_eulerian",
+    "is_forest",
+    "is_isomorphic",
+    "is_regular",
+    "is_tree",
+    "loop_edges",
+    "min_spanning_tree",
+    "neighbor_iterator",
+    "neighbors",
+    "num_edges",
+    "num_verts",
+    "order",
+    "plot",
+    "radius",
+    "relabel",
+    "set_edge_label",
+    "set_pos",
+    "shortest_path",
+    "show",
+    "size",
+    "sparse6_string",
+    "subgraph",
+    "to_directed",
+    "to_undirected",
+    "vertex_cover",
+    "vertex_iterator",
+    "vertices",
+    "weighted"
+  ],
+  "facets": [
+    {
+      "name": "SageMath public API breadth",
+      "status": "measured",
+      "detail": "77 of 411 callable methods on a SageMath Graph instance have exact-name Sage.js implementations."
+    },
+    {
+      "name": "Implemented API test assignment",
+      "status": "tested",
+      "detail": "130 of 130 public graph-module functions and aliases are assigned to executable semantic tests; the test fails when a new method is left unassigned."
+    },
+    {
+      "name": "Core graph semantics",
+      "status": "tested",
+      "detail": "Mutation, arbitrary vertices, labels, loops, multiedges, traversal, distances, connectivity, transformations, matrices, serialization, and directed algorithms have focused checks."
+    },
+    {
+      "name": "Exact combinatorial algorithms",
+      "status": "tested",
+      "detail": "Isomorphism certificates, canonical labeling, automorphism groups, cliques, independent sets, vertex covers, coloring, spanning trees, and bipartite certificates are regression tested."
+    },
+    {
+      "name": "Generators, database, and plotting",
+      "status": "tested",
+      "detail": "Every implemented named generator, lazy database query operation, and graph-specific Plotly route has an executable test."
+    },
+    {
+      "name": "Research-scale performance",
+      "status": "planned",
+      "detail": "The readable exact implementation is not yet backed by bliss, nauty, igraph, or OGDF-class native kernels, and no competitive performance claim is made."
+    }
+  ],
+  "limitations": [
+    "Method assignment coverage does not imply exhaustive combinations of arguments, error paths, or graph families.",
+    "The SageMath denominator includes specialized algorithms from many optional graph packages; matching all 411 methods is a long-term scope target.",
+    "Performance and memory coverage need reproducible benchmark suites on dedicated hosts."
+  ]
+}
