@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="A living map of what Sage.js implements, how well it works, and what comes next." />
+    <meta name="theme-color" content="#102a43" />
+    <title>Sage.js — implementation dashboard</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#capabilities">Skip to capabilities</a>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Sage.js dashboard home">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span>Sage.js</span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#install">Install</a>
+        <a href="#capabilities">Capabilities</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="https://github.com/sagemathinc/sagejs">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero wrap" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Open research mathematics, native to Node</p>
+          <h1 id="hero-title">See what exists.<br />See how good it is.<br />See what comes next.</h1>
+          <p class="lede">
+            This is the living implementation map for Sage.js: concrete capabilities,
+            evidence about their maturity, and a prioritized research roadmap.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#capabilities">Explore capabilities</a>
+            <a class="button secondary" href="https://github.com/sagemathinc/sagejs">View source</a>
+          </div>
+        </div>
+        <aside class="snapshot" aria-label="Project snapshot">
+          <p class="snapshot-label">Current snapshot</p>
+          <div class="stat-grid">
+            <div><strong id="metric-total">—</strong><span>capabilities</span></div>
+            <div><strong id="metric-available">—</strong><span>available</span></div>
+            <div><strong id="metric-certified">—</strong><span>certified</span></div>
+            <div><strong id="metric-now">—</strong><span>priority now</span></div>
+          </div>
+          <p class="snapshot-date">Evidence reviewed <time id="updated-date">—</time></p>
+        </aside>
+      </section>
+
+      <section class="install-section" id="install" aria-labelledby="install-title">
+        <div class="wrap">
+          <p class="eyebrow light">Start using Sage.js</p>
+          <h2 id="install-title">One command, or one npm package.</h2>
+          <div class="install-grid">
+            <article class="install-card">
+              <div class="install-heading"><span class="number">01</span><h3>Native installer</h3></div>
+              <p>Downloads the release for your platform and verifies its SHA-256 checksum.</p>
+              <div class="command-row">
+                <code>curl -fsSL https://github.com/sagemathinc/sagejs/releases/latest/download/install.sh | sh</code>
+                <button class="copy" data-copy="curl -fsSL https://github.com/sagemathinc/sagejs/releases/latest/download/install.sh | sh" type="button">Copy</button>
+              </div>
+              <p class="fine-print">Native preview v0.1.1 · Linux x64/arm64, Windows x64, macOS arm64</p>
+            </article>
+            <article class="install-card">
+              <div class="install-heading"><span class="number">02</span><h3>npm</h3></div>
+              <p>Installs the Sage.js command line and JavaScript embedding package.</p>
+              <div class="command-row">
+                <code>npm install -g @sagemath/sagejs</code>
+                <button class="copy" data-copy="npm install -g @sagemath/sagejs" type="button">Copy</button>
+              </div>
+              <p class="fine-print">npm preview v0.1.0 · the unified v0.2 release is next</p>
+            </article>
+          </div>
+          <p class="jupyter-note"><code>sagejs --install-jupyter-kernel</code> adds Sage.js to JupyterLab, CoCalc, or another Jupyter environment.</p>
+        </div>
+      </section>
+
+      <section class="dashboard wrap" id="capabilities" aria-labelledby="capabilities-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Implementation map</p>
+            <h2 id="capabilities-title">Capabilities and evidence</h2>
+          </div>
+          <p>“Available” describes scope. “Certified,” “tested,” and “prototype” describe confidence. Every item states both.</p>
+        </div>
+
+        <div class="toolbar" aria-label="Capability filters">
+          <label class="search-label">
+            <span class="visually-hidden">Search capabilities</span>
+            <input id="search" type="search" placeholder="Search mathematics, APIs, or goals…" />
+          </label>
+          <div class="filter-group" id="state-filters" aria-label="Filter by status">
+            <button class="filter active" data-state="all" type="button">All</button>
+            <button class="filter" data-state="available" type="button">Available</button>
+            <button class="filter" data-state="partial" type="button">Partial</button>
+            <button class="filter" data-state="planned" type="button">Planned</button>
+          </div>
+          <label class="select-label">Area
+            <select id="area-filter"><option value="all">All areas</option></select>
+          </label>
+        </div>
+
+        <div class="legend" aria-label="Quality legend">
+          <span><i class="dot certified"></i>Certified: exact semantics cross-checked</span>
+          <span><i class="dot tested"></i>Tested: focused regression coverage</span>
+          <span><i class="dot prototype"></i>Prototype: useful, deliberately narrow</span>
+          <span><i class="dot planned"></i>Planned: designed or prioritized</span>
+        </div>
+
+        <p id="result-count" class="result-count" aria-live="polite"></p>
+        <div id="capability-list" class="capability-list" aria-live="polite"></div>
+        <p id="load-error" class="load-error" hidden>Capability data could not be loaded. Please reload or view the repository copy.</p>
+      </section>
+
+      <section class="roadmap-section" id="roadmap" aria-labelledby="roadmap-title">
+        <div class="wrap">
+          <div class="section-heading light-heading">
+            <div><p class="eyebrow light">Priorities</p><h2 id="roadmap-title">The next research frontier</h2></div>
+            <p>Priority is independent of maturity: mature foundations still need optimization and broader interfaces.</p>
+          </div>
+          <div id="roadmap-columns" class="roadmap-columns"></div>
+        </div>
+      </section>
+
+      <section class="principles wrap" aria-labelledby="principles-title">
+        <p class="eyebrow">How quality is judged</p>
+        <h2 id="principles-title">Readable implementation. Independent truth.</h2>
+        <div class="principle-grid">
+          <article><span>01</span><h3>Sage-compatible semantics</h3><p>SageMath is the default behavioral specification. Intentional differences are documented and tested.</p></article>
+          <article><span>02</span><h3>Multiple mathematical oracles</h3><p>PARI/GP, Magma, Oscar, Hecke, and Nemo provide independent answers and performance reference points.</p></article>
+          <article><span>03</span><h3>Evidence before labels</h3><p>Focused regressions, exhaustive small cases, randomized differential tests, and benchmarks support maturity claims.</p></article>
+          <article><span>04</span><h3>Readable research software</h3><p>Algorithms should be understandable and changeable by mathematicians and agents, with native kernels where speed matters.</p></article>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap footer-inner">
+        <div><strong>Sage.js</strong><p>Open research mathematics, native to Node.</p></div>
+        <div class="footer-links"><a href="https://github.com/sagemathinc/sagejs/issues">Issues</a><a href="https://github.com/sagemathinc/sagejs/blob/main/README.md">Documentation</a><a href="https://github.com/sagemathinc/sagejs/releases">Releases</a></div>
+      </div>
+    </footer>
+  </body>
+</html>

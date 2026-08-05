@@ -1,0 +1,60 @@
+name: Sage.js implementation dashboard
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "website/**"
+      - "test/website.cjs"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sagejs-pages
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate static dashboard
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - name: Check out Sage.js
+        uses: actions/checkout@v7
+
+      - name: Install Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.5.1
+
+      - name: Validate capability data and static assets
+        run: |
+          node --check website/app.js
+          node --test test/website.cjs
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload dashboard artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: website
+
+  deploy:
+    name: Deploy GitHub Pages
+    if: github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy dashboard
+        id: deployment
+        uses: actions/deploy-pages@v4
