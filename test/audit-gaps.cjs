@@ -14,7 +14,7 @@ function gaps(...args) {
 
 test("audit gap queue exposes every stable capability lane", () => {
   const rows = gaps();
-  assert.equal(rows.length, 58);
+  assert.equal(rows.length, 60);
   assert.equal(new Set(rows.map((row) => row.id)).size, rows.length);
   assert.ok(rows.every((row) => row.benchmarkSuites.length > 0));
 });

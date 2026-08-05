@@ -160,7 +160,10 @@ function collectStandardLibraryAssets() {
       const filename = join(current, entry.name);
       if (entry.isDirectory()) {
         visit(filename, relativeName);
-      } else if (entry.isFile() && entry.name.endsWith(".py")) {
+      } else if (
+        entry.isFile() &&
+        (entry.name.endsWith(".py") || relativeName === "sage/graphs/data/graphs.db")
+      ) {
         assets[`lib/${relativeName}`] = filename;
       }
     }

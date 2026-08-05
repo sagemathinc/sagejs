@@ -3,8 +3,12 @@ import { runInThisContext } from "node:vm";
 
 import { installNodeHost } from "./host";
 import type { SageLanguageMode } from "./kernel-evaluator";
-import { readTaskRuntimeSource, runtimeRequire } from "./resources";
-import { libraryPath } from "./utils";
+import {
+  readResourceBytes,
+  readTaskRuntimeSource,
+  runtimeRequire,
+} from "./resources";
+import { importPath, libraryPath } from "./utils";
 
 interface CallableSpec {
   module?: string;
@@ -34,6 +38,8 @@ export function createTaskEvaluator({
   onOutput(text: string): void;
 }): TaskEvaluator {
   global.require = runtimeRequire as NodeJS.Require;
+  global.__sagejs_graph_database_bytes__ = () =>
+    readResourceBytes(join(importPath, "sage", "graphs", "data", "graphs.db"));
   const uninstallNodeHost = installNodeHost(globalThis, mode);
   global.__sagejs_output_write__ = (text: unknown) => onOutput(String(text));
   global.__sagejs_sage_mode__ = mode === "sage";
@@ -78,6 +84,7 @@ export function createTaskEvaluator({
     close(): void {
       uninstallNodeHost();
       delete global.__sagejs_output_write__;
+      delete global.__sagejs_graph_database_bytes__;
     },
   };
 }

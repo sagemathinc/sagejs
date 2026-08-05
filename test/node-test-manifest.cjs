@@ -48,6 +48,7 @@ const integration = [
   "test/approximate-polynomial.cjs",
   "test/padics.cjs",
   "test/groups.cjs",
+  "test/graphs.cjs",
   "test/dirichlet.cjs",
   "test/modular.cjs",
   "test/modular-symbols.cjs",

@@ -96,6 +96,33 @@
       "expected": "(2, [(1, 0, 1, 1), (0, 1, 0, 1)])"
     },
     {
+      "id": "petersen-graph",
+      "capability": "graph-theory",
+      "title": "Isomorphism and automorphisms of the Petersen graph",
+      "language": "sage",
+      "code": "G = graphs.PetersenGraph()\nH = G.relabel({i:(7*i)%10 for i in range(10)}, inplace=False)\n(G.order(), G.size(), G.girth(), G.is_isomorphic(H), G.automorphism_group().order(), G.chromatic_number())",
+      "expected": "(10, 15, 5, True, 120, 3)",
+      "note": "Isomorphism, canonical labeling, certificates, and automorphisms use an exact individualization/refinement search."
+    },
+    {
+      "id": "small-graph-database",
+      "capability": "graph-theory",
+      "title": "Query every small unlabeled graph",
+      "language": "sage",
+      "code": "D = GraphDatabase()\nregular = D.graphs(num_vertices=4, regular=True)\n(D.count(), D.count(num_vertices=7), [G.degree_sequence() for G in regular])",
+      "expected": "(1252, 1044, [[0, 0, 0, 0], [1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]])",
+      "note": "The bundled SQLite database contains every unlabeled graph on one through seven vertices."
+    },
+    {
+      "id": "graph-plot",
+      "capability": "graph-theory",
+      "title": "Interactive graph visualization",
+      "language": "sage",
+      "code": "G = graphs.PetersenGraph()\nG.show(vertex_color='#377eb8', vertex_size=30)",
+      "expected": "GraphPlot object for Petersen graph",
+      "note": "The same rich output works in JupyterLab and CoCalc; graph-specific WebGL rendering is a future scale backend."
+    },
+    {
       "id": "number-field-arithmetic",
       "capability": "number-fields",
       "title": "Exact arithmetic in a number field",

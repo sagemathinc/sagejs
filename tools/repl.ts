@@ -20,6 +20,7 @@ import createCompiler from "./compiler";
 import { arch } from "os";
 import { expandSageLoads, parseLoadDirective } from "./sage-source";
 import {
+  readResourceBytes,
   runtimeRequire,
   standardLibraryCacheDirectory,
 } from "./resources";
@@ -262,6 +263,8 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   async function initContext() {
     // @ts-ignore
     global.require = runtimeRequire;
+    global.__sagejs_graph_database_bytes__ = () =>
+      readResourceBytes(join(importPath, "sage", "graphs", "data", "graphs.db"));
     installNodeGraphicsSaveHook();
     installNodeHost(globalThis, options.sage ? "sage" : "python");
     runRuntimeBootstrap(PyLang, options.sage ? "sage" : "python");

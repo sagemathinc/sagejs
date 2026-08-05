@@ -3,6 +3,7 @@ import { runInThisContext } from "vm";
 
 import createCompiler from "./compiler";
 import {
+  readResourceBytes,
   runtimeRequire,
   standardLibraryCacheDirectory,
 } from "./resources";
@@ -169,6 +170,8 @@ export function createKernelEvaluator({
 
   // These hooks are consulted dynamically by the generated baselib.
   global.require = runtimeRequire as NodeJS.Require;
+  global.__sagejs_graph_database_bytes__ = () =>
+    readResourceBytes(join(importPath, "sage", "graphs", "data", "graphs.db"));
   installNodeGraphicsSaveHook();
   const uninstallNodeHost = installNodeHost(globalThis, mode);
   global.__sagejs_output_write__ = (text: unknown) => {
@@ -470,6 +473,7 @@ export function createKernelEvaluator({
       delete global.__sagejs_output_write__;
       delete global.__sagejs_interrupt_state__;
       delete global.__sagejs_graphics_save_hook__;
+      delete global.__sagejs_graph_database_bytes__;
       delete global.__sagejs_kernel_modules__;
     },
   };

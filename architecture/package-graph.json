@@ -97,6 +97,15 @@
       "prefixes": []
     },
     {
+      "id": "graph-theory",
+      "layer": 3,
+      "startup": "bootstrap",
+      "max_source_bytes": 85000,
+      "depends_on": ["core-runtime", "linear-algebra"],
+      "files": ["src/baselib/graphs.py"],
+      "prefixes": []
+    },
+    {
       "id": "elliptic-curves",
       "layer": 3,
       "startup": "bootstrap",
