@@ -1,7 +1,7 @@
 # Experimental mathematical-language frontends
 
-Sage.js includes small proof-of-concept frontends for Magma, the Wolfram
-Language (Mathematica), MATLAB, and Maple. Each frontend parses its own syntax
+Sage.js includes small proof-of-concept frontends for Magma, Macaulay2, the
+Wolfram Language (Mathematica), MATLAB, and Maple. Each frontend parses its own syntax
 into a typed language-specific AST, lowers that AST to ordinary Sage source,
 and then uses the same Sage.js compiler and mathematical runtime as Sage mode.
 The generated Sage source is an intentional boundary: `--emit-sage` makes the
@@ -26,6 +26,8 @@ sagejs --mathematica examples.wl
 sagejs --matlab examples.m
 sagejs --maple examples.mpl
 sagejs --magma examples.m
+sagejs --macaulay2 examples.m2
+sagejs --m2 examples.m2
 ```
 
 `--mathematica` is an alias for `--wolfram`. File extensions are not used for
@@ -51,6 +53,11 @@ Magma has the broadest initial slice, including type-directed intrinsics,
 polynomial generator declarations, control flow, and `load`/`Attach`; see
 [`MAGMA.md`](MAGMA.md).
 
+The Macaulay2 slice covers arithmetic and adjacency calls, assignments and
+semicolon suppression, polynomial rings such as `R = QQ[x,y]`, ideals,
+Groebner bases, generators, dimensions, degrees, and shared Sage values.
+`--m2` and `%%m2` are aliases for `--macaulay2` and `%%macaulay2`.
+
 ## Parser provenance
 
 - Wolfram syntax uses the official
@@ -59,6 +66,7 @@ polynomial generator declarations, control flow, and `load`/`Attach`; see
 - MATLAB syntax uses `acristoffers/tree-sitter-matlab` pinned at
   `c9ef947ec67fb6b500d5def4f5e09b56990a9f91`.
 - Magma syntax uses `edgarcosta/tree-sitter-magma`; see `MAGMA.md`.
+- Macaulay2 syntax uses `AlexanderGolys/tree-sitter-macaulay2` version 4.0.1.
 - The deliberately small Maple grammar lives in `tools/maple`. It is expanded
   only alongside executable compatibility tests.
 

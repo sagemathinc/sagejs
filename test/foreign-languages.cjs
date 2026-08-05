@@ -139,9 +139,47 @@ function run(language, filename, alias = language) {
       ["[2, 5, 10, 17, 26]", "29", "1", "4", "9", "5"].join("\n"),
     );
 
+    const macaulay2Source = [
+      "R = QQ[x,y];",
+      "I = ideal(x^2-y^3, x*y);",
+      "gens gb I",
+      "factor 2026",
+      "",
+    ].join("\n");
+    const macaulay2Filename = join(temporaryDirectory, "sample.m2");
+    writeFileSync(macaulay2Filename, macaulay2Source);
+    const macaulay2 = await createForeignFrontend("macaulay2");
+    const macaulay2Lowering = macaulay2.lower(macaulay2Source);
+    assert.equal(macaulay2Lowering.ast.kind, "program");
+    assert.match(
+      macaulay2Lowering.source,
+      /R = _m2\.polynomial_ring\(QQ, \("x", "y"\)\)/,
+    );
+    assert.match(macaulay2Lowering.source, /_m2\.gb\(I\)/);
+    const macaulay2Execution = run(
+      "macaulay2",
+      macaulay2Filename,
+    );
+    assert.equal(
+      macaulay2Execution.status,
+      0,
+      macaulay2Execution.stderr,
+    );
+    assert.equal(
+      macaulay2Execution.stdout.trim(),
+      ["(y^3 - x^2, x*y, x^3)", "2 * 1013"].join("\n"),
+    );
+    const m2Execution = run("macaulay2", macaulay2Filename, "m2");
+    assert.equal(m2Execution.status, 0, m2Execution.stderr);
+    assert.equal(m2Execution.stdout, macaulay2Execution.stdout);
+
     assert.throws(
       () => selectedForeignLanguage({ magma: true, matlab: true }),
       /choose only one foreign language frontend/,
+    );
+    assert.equal(
+      selectedForeignLanguage({ macaulay2: true }),
+      "macaulay2",
     );
     assert.throws(
       () => wolfram.lower("Table[x, {x, 1,"),

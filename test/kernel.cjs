@@ -119,6 +119,15 @@ async function main(t) {
       hasMagic: true,
     },
   );
+  assert.deepEqual(
+    parsePolyglotCell("%%m2\nfactor 2026"),
+    {
+      language: "macaulay2",
+      source: "\nfactor 2026",
+      cursorOffset: 4,
+      hasMagic: true,
+    },
+  );
   assert.equal(
     prepareSubmittedPolyglotCell(
       parsePolyglotCell("%%maple\n2 + 2:"),

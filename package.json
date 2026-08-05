@@ -180,6 +180,7 @@
     "esbuild": "0.28.1",
     "pyright": "1.1.411",
     "tree-sitter-cli": "0.26.11",
+    "tree-sitter-macaulay2": "4.0.1",
     "typescript": "^7.0.2"
   },
   "publishConfig": {

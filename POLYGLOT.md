@@ -2,7 +2,7 @@
 
 Sage.js language frontends are views of one live mathematical workspace. They
 do not launch six interpreters or serialize values through an interchange
-format. Sage, Python, Magma, MATLAB, Maple, and Wolfram source are each parsed
+format. Sage, Python, Magma, Macaulay2, MATLAB, Maple, and Wolfram source are each parsed
 and lowered into code for the same JavaScript evaluator, so compatible names
 refer to the same object.
 
@@ -65,25 +65,26 @@ The terms used below are:
   does not yet implement its important operations;
 - **limited** — only a small explicit subset is supported.
 
-| Shared value | Sage / Python | Magma | MATLAB | Maple | Wolfram |
-|---|---|---|---|---|---|
-| Boolean | direct | direct, `Type` | `class` view | `whattype` | `Head` |
-| Exact integer | direct | direct intrinsics | inspect | direct arithmetic | direct number theory |
-| Exact rational | direct | direct | inspect | inspect | inspect |
-| Real / complex | direct | inspect | numeric view | inspect | inspect |
-| String | direct | inspect | `char` view | inspect | inspect |
-| List / tuple | direct | one-based view | one-based scalar view | inspect | `List` inspect |
-| Set / dictionary | direct | inspect | inspect | inspect | inspect |
-| NumPy ndarray | direct | inspect | direct, one-based/column-major view | inspect | dimensions/inspect |
-| Polynomial ring / element | direct | inspect and Sage operations | inspect | inspect | inspect |
-| Symbolic expression | direct | inspect | inspect | inspect | inspect |
-| 2D / 3D graphics | direct and rich display | inspect | inspect | inspect | inspect |
+| Shared value | Sage / Python | Magma | Macaulay2 | MATLAB | Maple | Wolfram |
+|---|---|---|---|---|---|---|
+| Boolean | direct | direct, `Type` | direct | `class` view | `whattype` | `Head` |
+| Exact integer | direct | direct intrinsics | direct arithmetic | inspect | direct arithmetic | direct number theory |
+| Exact rational | direct | direct | direct arithmetic | inspect | inspect | inspect |
+| Real / complex | direct | inspect | inspect | numeric view | inspect | inspect |
+| String | direct | inspect | direct | `char` view | inspect | inspect |
+| List / tuple | direct | one-based view | direct | one-based scalar view | inspect | `List` inspect |
+| Set / dictionary | direct | inspect | inspect | inspect | inspect | inspect |
+| NumPy ndarray | direct | inspect | inspect | direct, one-based/column-major view | inspect | dimensions/inspect |
+| Polynomial ring / element | direct | inspect and Sage operations | direct initial slice | inspect | inspect | inspect |
+| Symbolic expression | direct | inspect | inspect | inspect | inspect | inspect |
+| 2D / 3D graphics | direct and rich display | inspect | inspect | inspect | inspect | inspect |
 
 Frontend-native inspection currently includes:
 
 | Frontend | Operations |
 |---|---|
 | Magma | `Type`, `Parent` |
+| Macaulay2 | `ideal`, `gb`, `gens`, `degree`, `dim` |
 | MATLAB | `size`, `numel`, `class` |
 | Maple | `whattype`, `nops` |
 | Wolfram | `Head`, `Dimensions`, `Length` |

@@ -254,6 +254,12 @@ function buildExecutable(name, withFlint) {
       "vendor",
       "tree-sitter-magma.wasm",
     ),
+    "vendor/tree-sitter-macaulay2.wasm": join(
+      root,
+      "dist",
+      "vendor",
+      "tree-sitter-macaulay2.wasm",
+    ),
     "vendor/tree-sitter-maple.wasm": join(
       root,
       "dist",

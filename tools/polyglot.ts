@@ -15,6 +15,8 @@ const LANGUAGE_ALIASES: Readonly<Record<string, SageSourceLanguage>> = {
   sage: "sage",
   python: "python",
   magma: "magma",
+  macaulay2: "macaulay2",
+  m2: "macaulay2",
   matlab: "matlab",
   maple: "maple",
   wolfram: "wolfram",
@@ -39,7 +41,7 @@ export function parsePolyglotCell(
   defaultLanguage: SageSourceLanguage = "sage",
 ): PolyglotCell {
   const match = source.match(
-    /^[\t ]*%%([A-Za-z]+)[\t ]*(?:(\r?\n)|$)/,
+    /^[\t ]*%%([A-Za-z][A-Za-z0-9]*)[\t ]*(?:(\r?\n)|$)/,
   );
   if (!match) {
     return {

@@ -17,6 +17,8 @@ const explicitLanguageMode =
   argv.python ||
   argv.sage ||
   argv.magma ||
+  argv.macaulay2 ||
+  argv.m2 ||
   argv.maple ||
   argv.matlab ||
   argv.wolfram ||
@@ -31,7 +33,7 @@ if (
 if (argv.python) sageMode = false;
 if (argv.sage) sageMode = true;
 if (
-  argv.magma || argv.maple || argv.matlab ||
+  argv.magma || argv.macaulay2 || argv.m2 || argv.maple || argv.matlab ||
   argv.wolfram || argv.mathematica
 ) sageMode = true;
 argv.sage = sageMode;
@@ -82,6 +84,8 @@ if (argv.mode === "self") {
     show_js: !argv.no_js,
     sage: sageMode,
     magma: !!argv.magma,
+    macaulay2: !!argv.macaulay2,
+    m2: !!argv.m2,
     maple: !!argv.maple,
     matlab: !!argv.matlab,
     wolfram: !!argv.wolfram,

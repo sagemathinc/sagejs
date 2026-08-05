@@ -28,6 +28,8 @@ interface SeaArguments {
   execute: boolean;
   sage: boolean;
   magma: boolean;
+  macaulay2: boolean;
+  m2: boolean;
   maple: boolean;
   matlab: boolean;
   wolfram: boolean;
@@ -59,6 +61,7 @@ Options:
   --python        use Python syntax and division
   --sage          use mathematics-friendly Sage syntax
   --magma         use the experimental Magma language frontend
+  --macaulay2     use the experimental Macaulay2 frontend (--m2 alias)
   --maple         use the experimental Maple language frontend
   --matlab        use the experimental MATLAB language frontend
   --wolfram       use the experimental Wolfram Language frontend
@@ -80,6 +83,8 @@ function parseArguments(): SeaArguments {
     execute: false,
     sage: executableStem !== "sagepython",
     magma: false,
+    macaulay2: false,
+    m2: false,
     maple: false,
     matlab: false,
     wolfram: false,
@@ -193,6 +198,12 @@ function parseArguments(): SeaArguments {
     } else if (!optionsEnded && argument === "--magma") {
       args.sage = true;
       args.magma = true;
+    } else if (!optionsEnded && argument === "--macaulay2") {
+      args.sage = true;
+      args.macaulay2 = true;
+    } else if (!optionsEnded && argument === "--m2") {
+      args.sage = true;
+      args.m2 = true;
     } else if (!optionsEnded && argument === "--maple") {
       args.sage = true;
       args.maple = true;
@@ -272,6 +283,8 @@ async function main(): Promise<void> {
       show_js: !argv.no_js,
       sage: sageMode,
       magma: argv.magma,
+      macaulay2: argv.macaulay2,
+      m2: argv.m2,
       maple: argv.maple,
       matlab: argv.matlab,
       wolfram: argv.wolfram,

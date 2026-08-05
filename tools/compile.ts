@@ -90,6 +90,8 @@ export default async function Compile({
     comments?: string;
     sage?: boolean;
     magma?: boolean;
+    macaulay2?: boolean;
+    m2?: boolean;
     maple?: boolean;
     matlab?: boolean;
     wolfram?: boolean;

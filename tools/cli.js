@@ -139,6 +139,7 @@ function print_top_level_usage() {
   console.log("  --sage          force Sage/Python mathematical syntax");
   console.log("  --python        ordinary Python syntax and division");
   console.log("  --magma         experimental Magma frontend");
+  console.log("  --macaulay2     experimental Macaulay2 frontend (--m2 alias)");
   console.log("  --maple         experimental Maple frontend");
   console.log("  --matlab        experimental MATLAB frontend");
   console.log("  --wolfram       experimental Wolfram Language frontend");
@@ -462,6 +463,18 @@ Parse Magma source and lower it to Sage before compilation.
 */
 });
 
+opt("macaulay2", "", "bool", false, function () {
+  /*
+Parse Macaulay2 source and lower it to Sage before compilation.
+*/
+});
+
+opt("m2", "", "bool", false, function () {
+  /*
+Alias for --macaulay2.
+*/
+});
+
 opt("maple", "", "bool", false, function () {
   /*
 Parse Maple source and lower it to Sage before compilation.
@@ -523,6 +536,18 @@ Use Python-like syntax instead of Sage syntax.
 opt("magma", "", "bool", false, function () {
   /*
 Use the experimental Magma language frontend.
+*/
+});
+
+opt("macaulay2", "", "bool", false, function () {
+  /*
+Use the experimental Macaulay2 language frontend.
+*/
+});
+
+opt("m2", "", "bool", false, function () {
+  /*
+Alias for --macaulay2.
 */
 });
 

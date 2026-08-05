@@ -2,7 +2,7 @@
 
 const { copyFileSync, mkdirSync } = require("node:fs");
 const { execFileSync } = require("node:child_process");
-const { join } = require("node:path");
+const { dirname, join } = require("node:path");
 const { buildSync } = require("esbuild");
 
 const root = join(__dirname, "..");
@@ -55,5 +55,9 @@ buildParser("magma", join(root, "upstream-tests", "tree-sitter-magma"));
 buildParser("wolfram", join(root, "upstream-tests", "tree-sitter-wolfram"));
 buildParser("matlab", join(root, "upstream-tests", "tree-sitter-matlab"));
 buildParser("maple", join(root, "tools", "maple"));
+buildParser(
+  "macaulay2",
+  dirname(require.resolve("tree-sitter-macaulay2/package.json")),
+);
 
 console.log("Bundled NumPy, symbolic, and foreign-language parser backends");

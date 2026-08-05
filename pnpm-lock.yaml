@@ -45,6 +45,9 @@ importers:
       tree-sitter-cli:
         specifier: 0.26.11
         version: 0.26.11
+      tree-sitter-macaulay2:
+        specifier: 4.0.1
+        version: 4.0.1
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -617,6 +620,10 @@ packages:
     resolution: {integrity: sha512-ekZMeaaIzSQTSpr7X2X3iJM7lTzgnx8ahAG9pJfT/7+14mlEM8ZYQ9cgCDvSSRbReFK0oHli3WrZdCiRsgAT9Q==}
     engines: {node: ^18 || ^20 || >= 21}
 
+  node-gyp-build@4.8.4:
+    resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
+    hasBin: true
+
   node-gyp@13.0.1:
     resolution: {integrity: sha512-piOr0S10qy5THB+q5BdqkoOx65XL/tjTMUAit3vciPNp+snTOBnGunWH1Rz7XZUxf2T9uFrfT/Ty4+aC3yPeyg==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
@@ -719,6 +726,15 @@ packages:
     resolution: {integrity: sha512-/hRCA0Ehkgk6B5WTYSiENk1R2Zv3LJcfvL3wjofzx+EYaKySZDu0agGRQcccay9Lg7wxJWsDa9cTRS92wsM5gQ==}
     engines: {node: '>=12.0.0'}
     hasBin: true
+
+  tree-sitter-macaulay2@4.0.1:
+    resolution: {integrity: sha512-bYEJBUGeR7xUDuP9aMkKWtbBf37zd2QmGJoVt25rvsENVGfNYcieQ9M+mIFCtf/X1EYHWG4RbZDDS3fmSS5yBA==}
+    engines: {node: '>=18 <26'}
+    peerDependencies:
+      tree-sitter: ^0.25.0
+    peerDependenciesMeta:
+      tree-sitter:
+        optional: true
 
   typedarray-to-buffer@4.0.0:
     resolution: {integrity: sha512-6dOYeZfS3O9RtRD1caom0sMxgK59b27+IwoNy8RDPsmslSGOyU+mpTamlaIW7aNKi90ZQZ9DFaZL3YRoiSCULQ==}
@@ -1143,6 +1159,8 @@ snapshots:
 
   node-addon-api@8.9.0: {}
 
+  node-gyp-build@4.8.4: {}
+
   node-gyp@13.0.1:
     dependencies:
       env-paths: 2.2.1
@@ -1253,6 +1271,11 @@ snapshots:
       picomatch: 4.0.5
 
   tree-sitter-cli@0.26.11: {}
+
+  tree-sitter-macaulay2@4.0.1:
+    dependencies:
+      node-addon-api: 8.9.0
+      node-gyp-build: 4.8.4
 
   typedarray-to-buffer@4.0.0: {}
 

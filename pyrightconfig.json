@@ -32,6 +32,7 @@
     "src/lib/sage/modular/__init__.py",
     "src/lib/sage/modular/dims.py",
     "src/lib/magma.py",
+    "src/lib/macaulay2.py",
     "src/lib/maple.py",
     "src/lib/matlab.py",
     "src/lib/numpy.py",

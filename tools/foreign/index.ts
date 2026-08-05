@@ -1,4 +1,5 @@
 import { createMagmaFrontend } from "../magma/frontend";
+import { createMacaulay2Frontend } from "../macaulay2/frontend";
 import { createMapleFrontend } from "../maple/frontend";
 import { createMatlabFrontend } from "../matlab/frontend";
 import { createWolframFrontend } from "../wolfram/frontend";
@@ -12,6 +13,8 @@ export type { ForeignFrontend, ForeignLanguage } from "./types";
 
 export interface LanguageFlags {
   magma?: boolean;
+  macaulay2?: boolean;
+  m2?: boolean;
   maple?: boolean;
   matlab?: boolean;
   wolfram?: boolean;
@@ -23,6 +26,7 @@ export function selectedForeignLanguage(
 ): ForeignLanguage | undefined {
   const selected: ForeignLanguage[] = [];
   if (flags.magma) selected.push("magma");
+  if (flags.macaulay2 || flags.m2) selected.push("macaulay2");
   if (flags.maple) selected.push("maple");
   if (flags.matlab) selected.push("matlab");
   if (flags.wolfram || flags.mathematica) selected.push("wolfram");
@@ -42,6 +46,8 @@ export function createForeignFrontend(
   switch (language) {
     case "magma":
       return createMagmaFrontend();
+    case "macaulay2":
+      return createMacaulay2Frontend();
     case "maple":
       return createMapleFrontend();
     case "matlab":

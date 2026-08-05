@@ -1,4 +1,9 @@
-export type ForeignLanguage = "magma" | "wolfram" | "matlab" | "maple";
+export type ForeignLanguage =
+  | "magma"
+  | "macaulay2"
+  | "wolfram"
+  | "matlab"
+  | "maple";
 
 export interface ForeignLowerOptions {
   filename?: string;

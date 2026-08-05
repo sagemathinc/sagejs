@@ -61,6 +61,8 @@ export interface Options {
   mockReadline?: Function; // for mocking readline (for testing only)
   sage?: boolean; // Sage-style mathematical syntax
   magma?: boolean;
+  macaulay2?: boolean;
+  m2?: boolean;
   maple?: boolean;
   matlab?: boolean;
   wolfram?: boolean;
@@ -607,5 +609,7 @@ function foreignDisplayName(language: ForeignLanguage): string {
       return "Maple";
     case "magma":
       return "Magma";
+    case "macaulay2":
+      return "Macaulay2";
   }
 }

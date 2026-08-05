@@ -11,9 +11,11 @@ The native mathematics addon statically links OpenBLAS; see
 
 The generated distribution bundles the MIT-licensed `numpy-ts`, Cortex
 Compute Engine, `tree-sitter-magma`, `tree-sitter-wolfram`, and
-`tree-sitter-matlab` backends; see `NUMPY-TS-MIT.txt`,
+`tree-sitter-matlab` backends, plus the MIT-licensed
+`tree-sitter-macaulay2` grammar; see `NUMPY-TS-MIT.txt`,
 `CORTEX-COMPUTE-ENGINE-MIT.txt`, `TREE-SITTER-MAGMA-MIT.txt`,
-`TREE-SITTER-WOLFRAM-MIT.txt`, and `TREE-SITTER-MATLAB-MIT.txt`.
+`TREE-SITTER-WOLFRAM-MIT.txt`, `TREE-SITTER-MATLAB-MIT.txt`, and
+`TREE-SITTER-MACAULAY2-MIT.txt`.
 
 The Jupyter kernel bundles the MIT-licensed `zeromq.js` binding and its
 MPL-2.0 `libzmq` binary; see `ZEROMQ-JS-MIT.txt` and
