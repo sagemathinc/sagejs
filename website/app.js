@@ -12,6 +12,14 @@ const labels = {
   later: "Later",
 };
 
+const coverageLabels = {
+  broad: "Broad surface",
+  substantial: "Substantial slice",
+  focused: "Focused slice",
+  foundational: "Foundation",
+  planned: "Planned",
+};
+
 const state = { capabilities: [], examples: [], filter: "all", area: "all", query: "" };
 
 function el(tag, className, text) {
@@ -58,8 +66,51 @@ function capabilityPassesFilters(item) {
 function matches(item) {
   if (!capabilityPassesFilters(item)) return false;
   if (!state.query) return true;
-  const text = [item.feature, item.area, item.summary, item.implementation, item.evidence, item.target].join(" ").toLowerCase();
+  const score = item.coverage.score || {};
+  const coverageText = [item.coverage.label, item.coverage.summary, ...item.coverage.includes, score.unit || "", score.reference || "", score.method || ""].join(" ");
+  const text = [item.feature, item.area, item.summary, item.implementation, item.evidence, item.target, coverageText].join(" ").toLowerCase();
   return text.includes(state.query) || examplesFor(item.id).some((example) => exampleText(example).includes(state.query));
+}
+
+function coverageScoreSummary(score) {
+  if (!score) return "Score audit pending";
+  const prefix = score.kind === "estimated" ? "~" : "";
+  return `${prefix}${score.value}% ${score.kind}`;
+}
+
+function coverageScoreBlock(score) {
+  const block = el("div", `coverage-score ${score ? `coverage-score-${score.kind}` : "coverage-score-pending"}`);
+  if (!score) {
+    block.append(el("strong", "", "Not yet measured"), el("span", "", "A denominator-backed surface audit has not yet been completed."));
+    return block;
+  }
+  const prefix = score.kind === "estimated" ? "~" : "";
+  const value = el("strong", "coverage-score-value", `${prefix}${score.value}%`);
+  const description = el("span", "coverage-score-description");
+  if (score.kind === "measured") {
+    description.textContent = `${score.numerator} of ${score.denominator} ${score.unit}`;
+  } else {
+    description.textContent = score.unit;
+  }
+  const audit = el("small", "", `${score.kind === "measured" ? "Measured" : "Expert estimate"} · ${score.reference} · audited ${score.audited}`);
+  block.append(value, description, audit);
+  return block;
+}
+
+function coverageExpander(item) {
+  const details = el("details", "coverage-expander");
+  const summary = el("summary", "");
+  const heading = el("span", "coverage-heading");
+  heading.append(el("span", "summary-label", "Scope"), el("strong", "", item.coverage.label));
+  summary.append(heading, el("span", "coverage-score-summary", coverageScoreSummary(item.coverage.score)));
+  const body = el("div", "coverage-body");
+  body.append(coverageScoreBlock(item.coverage.score), el("p", "", item.coverage.summary));
+  if (item.coverage.score?.method) body.append(el("p", "coverage-method", `Method: ${item.coverage.score.method}`));
+  const list = el("ul", "coverage-list");
+  for (const family of item.coverage.includes) list.append(el("li", "", family));
+  body.append(list);
+  details.append(summary, body);
+  return details;
 }
 
 function notebookSource(example) {
@@ -122,7 +173,11 @@ function capabilityCard(item) {
   const titleWrap = el("div", "capability-title");
   titleWrap.append(el("p", "capability-area", item.area), el("h3", "", item.feature));
   const badges = el("div", "badges");
-  badges.append(badge("state", item.state), badge("quality", item.quality));
+  badges.append(
+    badge("state", item.state),
+    badge("quality", item.quality),
+    el("span", `badge coverage-${item.coverage.level}`, coverageLabels[item.coverage.level]),
+  );
   top.append(titleWrap, badges);
 
   const summary = el("p", "capability-summary", item.summary);
@@ -134,7 +189,7 @@ function capabilityCard(item) {
   const target = el("div", "detail target");
   target.append(el("h4", "", `Target · ${labels[item.priority]}`), el("p", "", item.target));
   details.append(implementation, evidence, target);
-  article.append(top, summary, details);
+  article.append(top, summary, details, coverageExpander(item));
   const expander = exampleExpander(item);
   if (expander) article.append(expander);
   return article;
@@ -151,14 +206,46 @@ function visibleExampleMatches() {
 }
 
 function revealExample(example) {
-  const target = document.querySelector(`#example-${CSS.escape(example.id)}`);
+  let target = document.querySelector(`#example-${CSS.escape(example.id)}`);
+  if (!target) {
+    resetDashboardFilters();
+    renderCapabilities();
+    target = document.querySelector(`#example-${CSS.escape(example.id)}`);
+  }
   if (!target) return;
   const details = target.closest("details");
   if (details) details.open = true;
   target.classList.add("example-highlight");
-  history.replaceState(null, "", `#example-${example.id}`);
+  const url = new URL(location.href);
+  url.hash = `example-${example.id}`;
+  history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   target.scrollIntoView({ behavior: "smooth", block: "center" });
   window.setTimeout(() => target.classList.remove("example-highlight"), 2200);
+}
+
+function resetDashboardFilters() {
+  state.query = "";
+  state.filter = "all";
+  state.area = "all";
+  document.querySelector("#search").value = "";
+  document.querySelector("#area-filter").value = "all";
+  document.querySelectorAll("#state-filters .filter").forEach((button) => {
+    button.classList.toggle("active", button.dataset.state === "all");
+  });
+  const url = new URL(location.href);
+  url.searchParams.delete("q");
+  history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function revealCapability(capabilityId) {
+  resetDashboardFilters();
+  renderCapabilities();
+  const target = document.querySelector(`#${CSS.escape(capabilityId)}`);
+  if (!target) return;
+  history.replaceState(null, "", `#${capabilityId}`);
+  target.classList.add("capability-highlight");
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.setTimeout(() => target.classList.remove("capability-highlight"), 2200);
 }
 
 function renderExampleSearch() {
@@ -210,6 +297,10 @@ function renderRoadmap(data) {
       const li = el("li", "");
       const link = el("a", "", item.feature);
       link.href = `#${item.id}`;
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        revealCapability(item.id);
+      });
       li.append(link, el("span", "", item.target));
       list.append(li);
     }
@@ -267,6 +358,11 @@ async function loadDashboard() {
     if (location.hash.startsWith("#example-")) {
       const example = state.examples.find((item) => `#example-${item.id}` === location.hash);
       if (example) window.setTimeout(() => revealExample(example), 0);
+    } else if (location.hash.length > 1) {
+      const capabilityId = decodeURIComponent(location.hash.slice(1));
+      if (state.capabilities.some((item) => item.id === capabilityId)) {
+        window.setTimeout(() => revealCapability(capabilityId), 0);
+      }
     }
   } catch (error) {
     document.querySelector("#load-error").hidden = false;

@@ -10,8 +10,27 @@ entry must distinguish:
   `planned`);
 - `quality`: how strongly it is supported (`certified`, `tested`, `prototype`,
   or `planned`);
+- `coverage`: how broad the implemented surface is, independently of quality;
 - `evidence`: the concrete basis for the quality claim;
 - `target` and `priority`: what remains and when it matters.
+
+## Coverage scores
+
+A numeric score is published only when its meaning is explicit. A measured
+score records its numerator, denominator, unit, reference version, method, and
+audit date. An expert estimate uses `kind: "estimated"`, is rendered with a
+leading `~`, and states why a mechanical denominator is not yet available.
+Capabilities without either must display `Score audit pending`; absence is not
+silently converted into a zero or an optimistic estimate.
+
+The first reproducible audit is
+[`coverage/python-stdlib.json`](coverage/python-stdlib.json). It measures
+top-level module breadth against CPython 3.14. The integration test
+`test/coverage-python-stdlib.cjs` imports every reference name and verifies the
+published numerator. This deliberately does not claim that every API inside an
+importable module exists. Future audits should follow the same pattern and use
+the narrowest defensible unit: public symbols, documented constructors,
+algorithm cases, or a named workflow corpus.
 
 `examples.json` is an executable cookbook. Examples are displayed inside their
 capability cards and indexed by the site-wide search. `test/dashboard-examples.cjs`

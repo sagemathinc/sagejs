@@ -19,6 +19,7 @@ const unit = [
 ];
 
 const integration = [
+  "test/coverage-python-stdlib.cjs",
   "test/native-launcher.cjs",
   "test/cli-smoke.cjs",
   "test/time-module.cjs",

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "updated": "2026-08-05",
   "capabilities": [
     {
@@ -8,6 +8,12 @@
       "feature": "Sage language compiler",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "substantial",
+        "label": "Substantial Sage source compatibility",
+        "summary": "Covers the syntax and preparsing conventions used by ordinary interactive Sage programs, while keeping Python mode separate.",
+        "includes": ["Sage preparser", "generator assignment K.<a>", "symbolic function notation", "implicit multiplication", "range syntax", "Sage and Python modes"]
+      },
       "summary": "Sage syntax compiles to JavaScript and runs on Node.js.",
       "implementation": "Python- and Sage-aware compiler, generated runtime, and ordinary CPython-parseable mathematical library modules.",
       "evidence": "Compiler corpus, tutorial corpus, CLI, and upstream doctest suites in CI.",
@@ -20,6 +26,12 @@
       "feature": "Native command-line applications",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "broad",
+        "label": "Full everyday CLI workflow",
+        "summary": "Covers interactive sessions, scripts, piped input, language modes, help, Jupyter installation, and supported desktop platforms.",
+        "includes": ["sagejs REPL", "sagepython REPL", "script execution", "stdin pipelines", "polyglot cells", "Jupyter kernelspec installation", "Linux / macOS / Windows"]
+      },
       "summary": "Standalone sagejs and sagepython executables run without a separate Node installation.",
       "implementation": "Node single-executable applications for Linux x64/arm64, Windows x64, and macOS arm64.",
       "evidence": "Relocation and smoke tests run on every supported platform in CI.",
@@ -32,6 +44,12 @@
       "feature": "Jupyter kernel",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "substantial",
+        "label": "Substantial kernel protocol support",
+        "summary": "Implements the kernel behaviors needed for normal notebook mathematics, including rich and streaming results.",
+        "includes": ["execute_request", "streaming stdout/stderr", "rich HTML display", "Plotly graphics", "completion", "inspection", "interrupts", "polyglot cell magics"]
+      },
       "summary": "Install and use Sage.js as a Jupyter kernel from the CLI or native executable.",
       "implementation": "Jupyter wire protocol, kernelspec installer, rich display, graphics, and completion.",
       "evidence": "Host and SEA wire-protocol tests plus kernelspec regression tests.",
@@ -44,6 +62,12 @@
       "feature": "Browser and WebAssembly runtime",
       "state": "partial",
       "quality": "prototype",
+      "coverage": {
+        "level": "focused",
+        "label": "Compiler plus selected native mathematics",
+        "summary": "Browser compilation is usable, but only a selected portion of the native mathematical backend is currently exposed through WebAssembly.",
+        "includes": ["browser compiler", "Sage preparsing", "FLINT WebAssembly package", "explicit capability checks"]
+      },
       "summary": "The compiler runs in the browser; native mathematics coverage through WASM is incomplete.",
       "implementation": "Browser compiler plus a FLINT WebAssembly package and explicit native/WASM boundaries.",
       "evidence": "Dedicated WebAssembly build and smoke tests.",
@@ -56,6 +80,12 @@
       "feature": "Resource-bounded evaluation service",
       "state": "planned",
       "quality": "planned",
+      "coverage": {
+        "level": "planned",
+        "label": "Designed security boundary",
+        "summary": "The architecture and threat model exist; no language-only sandbox is currently claimed as safe for hostile input.",
+        "includes": ["isolated workers", "CPU and wall limits", "memory limits", "memory-backed files", "streaming output", "platform isolation"]
+      },
       "summary": "A SageCell-style evaluation service is designed but not yet a security boundary.",
       "implementation": "Roadmap proposes isolated workers, memory-backed storage, limits, streaming output, and defense in depth.",
       "evidence": "Threat-model and implementation roadmap in .agents/safe-sage-eval-roadmap.md.",
@@ -68,6 +98,12 @@
       "feature": "Integers and rational numbers",
       "state": "available",
       "quality": "certified",
+      "coverage": {
+        "level": "broad",
+        "label": "Broad Sage integer and rational surface",
+        "summary": "Covers everyday exact arithmetic, number-theoretic methods, coercion, parents, formatting, and interoperability with the rest of Sage.js.",
+        "includes": ["ZZ and QQ", "arbitrary precision", "gcd / xgcd / lcm", "factorization", "modular arithmetic", "roots and powers", "continued fractions", "coercion and parents"]
+      },
       "summary": "Exact arbitrary-precision integer and rational arithmetic with Sage-compatible parents and elements.",
       "implementation": "FLINT-backed native arithmetic with JavaScript runtime integration.",
       "evidence": "Focused unit tests, native-addon tests, compiler corpus, and upstream Sage examples.",
@@ -80,6 +116,12 @@
       "feature": "Finite fields",
       "state": "available",
       "quality": "certified",
+      "coverage": {
+        "level": "substantial",
+        "label": "Prime and extension field workflows",
+        "summary": "Covers common exact finite-field construction and arithmetic, including integration with polynomials and linear algebra.",
+        "includes": ["GF(p)", "GF(p^n)", "element arithmetic", "generators", "roots", "multiplicative orders", "coercion", "polynomials over finite fields"]
+      },
       "summary": "Prime and extension finite fields support arithmetic, coercion, roots, and standard constructions.",
       "implementation": "FLINT-backed finite-field elements with Sage-style factories and polynomial integration.",
       "evidence": "Finite-field regression suite and imported Sage doctests.",
@@ -92,6 +134,12 @@
       "feature": "Polynomial rings",
       "state": "available",
       "quality": "certified",
+      "coverage": {
+        "level": "broad",
+        "label": "Broad exact polynomial surface",
+        "summary": "Covers the dominant univariate and multivariate polynomial workflows over standard exact coefficient rings.",
+        "includes": ["PolynomialRing", "univariate arithmetic", "multivariate arithmetic", "division and gcd", "factorization", "roots", "derivatives", "evaluation", "ideals", "coefficient coercion"]
+      },
       "summary": "Exact univariate and multivariate polynomial arithmetic over common coefficient rings.",
       "implementation": "Native FLINT kernels plus Sage-compatible rings, coercion, factorization, roots, and ideals.",
       "evidence": "Polynomial, ideal, approximate-polynomial, and upstream compatibility suites.",
@@ -104,6 +152,12 @@
       "feature": "Gröbner bases",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "focused",
+        "label": "Small and medium exact ideal workflows",
+        "summary": "Provides usable Gröbner bases and reduction, but not yet the high-performance commutative-algebra surface needed for large research problems.",
+        "includes": ["ideal.groebner_basis()", "normal-form reduction", "ideal membership", "elimination foundations", "small book and teaching examples"]
+      },
       "summary": "Polynomial ideals provide useful Gröbner basis and reduction functionality; large research workloads need stronger engines.",
       "implementation": "Readable Sage.js algorithms with native polynomial foundations.",
       "evidence": "Polynomial-ideal regression tests and book examples.",
@@ -116,6 +170,12 @@
       "feature": "Exact linear algebra",
       "state": "available",
       "quality": "certified",
+      "coverage": {
+        "level": "broad",
+        "label": "Broad exact matrix and vector surface",
+        "summary": "Covers most everyday dense exact linear algebra over integers, rationals, finite fields, and compatible rings.",
+        "includes": ["matrix() and vector()", "matrix spaces", "rank / determinant / inverse", "kernels and images", "echelon forms", "Hermite and Smith forms", "characteristic polynomials", "exact solving"]
+      },
       "summary": "Matrices, vectors, kernels, echelon forms, normal forms, characteristic polynomials, and exact solving.",
       "implementation": "Sage-compatible matrix spaces backed by native exact arithmetic.",
       "evidence": "Matrix-focused corpus coverage, native tests, and downstream number-theory tests.",
@@ -128,6 +188,12 @@
       "feature": "Numerical spectral linear algebra",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "focused",
+        "label": "Core numerical spectral workflows",
+        "summary": "Covers common numerical eigenvalue calculations but not a NumPy/SciPy-scale decomposition catalog.",
+        "includes": ["real matrices", "complex matrices", "numerical eigenvalues", "spectral matrix APIs"]
+      },
       "summary": "Numerical eigenvalue and related spectral computations are available for real and complex matrices.",
       "implementation": "Numerical backend integrated through Sage matrix APIs.",
       "evidence": "Dedicated spectral-linear-algebra regression suite.",
@@ -140,6 +206,12 @@
       "feature": "Quadratic fields and class groups",
       "state": "available",
       "quality": "certified",
+      "coverage": {
+        "level": "broad",
+        "label": "Broad quadratic ANT workflow",
+        "summary": "Within quadratic number fields, this is a coherent end-to-end arithmetic and class-group implementation rather than a demonstration subset.",
+        "includes": ["QuadraticField", "quadratic NumberField presentations", "rings of integers", "integral bases", "ideal arithmetic", "class numbers", "class groups", "binary quadratic forms"]
+      },
       "summary": "QuadraticField and quadratic NumberField presentations compute rings of integers, ideals, class numbers, and class groups.",
       "implementation": "Exact binary quadratic forms and ideal lattices, including discriminant and presentation normalization.",
       "evidence": "Exhaustive and randomized comparisons with Sage/PARI plus focused NumberField regression tests.",
@@ -152,6 +224,12 @@
       "feature": "General number-field arithmetic",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "foundational",
+        "label": "General-field arithmetic foundation",
+        "summary": "Provides exact fields and elements plus the lattice infrastructure on which general algebraic number theory is being built.",
+        "includes": ["NumberField", "exact elements", "minimal polynomials", "embeddings", "traces and norms", "discriminants", "orders", "basis conversion"]
+      },
       "summary": "General number fields support exact element arithmetic, embeddings, discriminants, and foundational order operations.",
       "implementation": "Readable field, order, and lattice code over exact polynomial and matrix foundations.",
       "evidence": "Number-field and algebraic-number regression suites with Sage/PARI comparisons.",
@@ -164,6 +242,12 @@
       "feature": "Maximal orders",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "focused",
+        "label": "Foundational maximal-order range",
+        "summary": "Handles a useful tested range of fields exactly; complete local cases, certificates, and high-degree scaling remain work in progress.",
+        "includes": ["equation orders", "p-maximal enlargement", "integral bases", "exact lattice transforms", "order discriminants"]
+      },
       "summary": "Maximal-order construction works for a foundational range of number fields, with exact lattice transformations.",
       "implementation": "p-maximal enlargement and exact integral-basis bookkeeping.",
       "evidence": "Known difficult examples and randomized comparisons against Sage/PARI.",
@@ -176,6 +260,12 @@
       "feature": "Number-field ideals",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "foundational",
+        "label": "Exact ideal-lattice foundation",
+        "summary": "Makes the subtle integer-module coordinate systems explicit and supports the ideal operations required by higher ANT algorithms.",
+        "includes": ["ideal construction", "canonical ZZ-lattices", "membership", "addition and multiplication", "norms", "inversion", "principality foundations", "basis-coordinate conversion"]
+      },
       "summary": "Exact ideal lattices support construction, arithmetic, norms, membership, inversion, and principality foundations.",
       "implementation": "Canonical integer-module representations with explicit basis changes among field, order, and ideal coordinates.",
       "evidence": "Invariant tests and cross-checks against established computer algebra systems.",
@@ -188,6 +278,12 @@
       "feature": "General class and unit groups",
       "state": "planned",
       "quality": "planned",
+      "coverage": {
+        "level": "planned",
+        "label": "General certified class and unit groups",
+        "summary": "This is the major missing layer beyond quadratic fields; the prerequisite order and ideal machinery is under active construction.",
+        "includes": ["relation collection", "factor bases", "analytic bounds", "relation saturation", "class-group structure", "unit groups", "regulators", "proof and heuristic modes"]
+      },
       "summary": "Beyond quadratic fields, complete class groups and unit groups remain a major gap.",
       "implementation": "The required order and ideal-lattice substrate is being built first.",
       "evidence": "Tracked as a foundational research milestone, with PARI, Magma, Hecke, and Oscar as comparison systems.",
@@ -200,6 +296,12 @@
       "feature": "Galois groups",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "focused",
+        "label": "Exact low-degree classification",
+        "summary": "Covers exact classification in low degree using transparent invariants and resolvents; arbitrary-degree Stauduhar methods are future work.",
+        "includes": ["discriminant tests", "factorization patterns", "resolvents", "low-degree transitive groups", "permutation-group results"]
+      },
       "summary": "Low-degree polynomials have exact Galois-group classification; general degree is not implemented.",
       "implementation": "Discriminant, resolvent, factorization-pattern, and explicit permutation-group logic.",
       "evidence": "Low-degree exhaustive comparisons against Sage/PARI and representative Magma checks.",
@@ -212,6 +314,12 @@
       "feature": "Primes, factorization, and prime counting",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "substantial",
+        "label": "Substantial elementary prime toolkit",
+        "summary": "Covers standard teaching and computational workflows from primality and factorization through fast prime counting at 10^12 scale.",
+        "includes": ["is_prime", "next_prime / previous_prime", "prime_range", "factor", "prime_pi", "divisors", "probable-prime methods"]
+      },
       "summary": "Primality tests, integer factorization, prime enumeration, and efficient prime counting are available.",
       "implementation": "Native arithmetic plus combinatorial prime-counting algorithms.",
       "evidence": "Arithmetic tests and complete pcimc book demonstrations including prime_pi(10^12).",
@@ -224,6 +332,12 @@
       "feature": "p-adic numbers",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "focused",
+        "label": "Core p-adic arithmetic",
+        "summary": "Provides usable rings, fields, arithmetic, and precision tracking, but not Sage’s extensive local-field and extension ecosystem.",
+        "includes": ["Zp and Qp", "relative precision", "valuation", "arithmetic", "units", "coercion", "elliptic local-data support"]
+      },
       "summary": "Core p-adic fields, rings, precision semantics, and arithmetic work; Sage's full p-adic ecosystem does not.",
       "implementation": "Exact precision-aware p-adic elements and parent structures.",
       "evidence": "Dedicated p-adic test suite and dependent elliptic-curve local computations.",
@@ -236,6 +350,12 @@
       "feature": "Dirichlet characters and L-functions",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "substantial",
+        "label": "Substantial exact character workflow",
+        "summary": "Covers construction and the most common exact arithmetic and special-value operations for Dirichlet characters.",
+        "includes": ["DirichletGroup", "character evaluation", "conductors", "primitive characters", "Bernoulli data", "Gauss sums", "selected L-values"]
+      },
       "summary": "Dirichlet groups, characters, conductors, values, Bernoulli data, and key L-value computations are available.",
       "implementation": "Exact finite abelian-group arithmetic combined with numerical and symbolic evaluation.",
       "evidence": "Dedicated Dirichlet regression suite and Sage-compatible book examples.",
@@ -248,6 +368,12 @@
       "feature": "Elliptic-curve arithmetic",
       "state": "available",
       "quality": "certified",
+      "coverage": {
+        "level": "substantial",
+        "label": "Substantial curve and point arithmetic",
+        "summary": "Covers fast exact arithmetic and standard invariants over rational and finite fields; global Mordell–Weil machinery remains incomplete.",
+        "includes": ["EllipticCurve", "rational and finite fields", "point arithmetic", "projective scalar multiplication", "point orders", "pairings", "curve invariants", "torsion-order checks"]
+      },
       "summary": "Curves and points over rational and finite fields support fast arithmetic, orders, pairings, and standard invariants.",
       "implementation": "Projective formulas, exact coercions, fast scalar multiplication, and native finite-field kernels.",
       "evidence": "Focused regression tests plus randomized Sage/PARI comparisons.",
@@ -260,6 +386,12 @@
       "feature": "Tate's algorithm and conductors over Q",
       "state": "available",
       "quality": "certified",
+      "coverage": {
+        "level": "broad",
+        "label": "Complete local data over Q",
+        "summary": "This capability is complete for elliptic curves over the rationals, including the subtle wild cases at 2 and 3.",
+        "includes": ["minimal models", "Kodaira symbols", "reduction types", "Tamagawa numbers", "conductor exponents", "2-adic wild cases", "3-adic wild cases", "global conductors"]
+      },
       "summary": "Complete local reduction data includes difficult 2- and 3-adic cases and derives global conductors.",
       "implementation": "Readable integral-model transformations and local case analysis with minimal-model tracking.",
       "evidence": "Exhaustive local cross-checks against Sage/PARI and representative Magma data.",
@@ -272,6 +404,12 @@
       "feature": "Isogenies",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "focused",
+        "label": "Core explicit isogeny construction",
+        "summary": "Covers important kernel-based rational and finite-field constructions, not yet the broader graph and modular-polynomial ecosystem.",
+        "includes": ["kernel polynomials", "Vélu construction", "codomain curves", "point maps", "composition", "rational cases", "finite-field cases"]
+      },
       "summary": "Kernel-polynomial construction and Vélu-style isogenies cover important rational and finite-field cases.",
       "implementation": "Exact morphism data integrated with curve and point arithmetic.",
       "evidence": "Composition, kernel, codomain, and cross-system regression tests.",
@@ -284,6 +422,12 @@
       "feature": "Modular symbols",
       "state": "available",
       "quality": "certified",
+      "coverage": {
+        "level": "substantial",
+        "label": "Substantial weight-2 modular-symbol workflow",
+        "summary": "Provides a coherent exact workflow for standard rational modular-symbol computations and elliptic-curve applications.",
+        "includes": ["ModularSymbols", "Manin symbols", "Hecke operators", "cuspidal subspaces", "plus/minus subspaces", "decomposition", "eigenvalues", "elliptic-curve links"]
+      },
       "summary": "Modular-symbol spaces, Hecke operators, cuspidal subspaces, decompositions, and elliptic-curve links are available.",
       "implementation": "Exact Manin-symbol and linear-algebra algorithms.",
       "evidence": "Dedicated modular-symbol tests and broad comparisons with Sage.",
@@ -296,6 +440,12 @@
       "feature": "Modular forms and q-expansions",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "focused",
+        "label": "Core spaces and q-expansions",
+        "summary": "Covers common introductory modular-form calculations, while newforms, characters, coefficient fields, and a scalable Hecke stack remain incomplete.",
+        "includes": ["modular-form spaces", "dimensions", "bases", "q-expansions", "exact power series", "modular-symbol connections"]
+      },
       "summary": "Common modular-form spaces and q-expansion workflows exist, but Sage's full modular-forms stack is much larger.",
       "implementation": "Exact series, dimensions, bases, and connections to modular symbols.",
       "evidence": "Modular regression suite and computational-number-theory corpus examples.",
@@ -308,6 +458,12 @@
       "feature": "Symbolic expressions",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "substantial",
+        "label": "Substantial calculus-oriented symbolic slice",
+        "summary": "Supports the symbolic operations used throughout the tested cybersecurity book and many teaching workflows, but is not yet a general-purpose CAS on the scale of Maxima or Mathematica.",
+        "includes": ["symbolic variables", "expression trees", "simplification", "substitution", "differentiation", "equation solving", "limits", "indefinite integration", "selected definite integrals"]
+      },
       "summary": "Expression construction, simplification, differentiation, substitution, solving, limits, and integration cover useful cases.",
       "implementation": "Native Sage.js symbolic tree and calculus algorithms rather than a remote CAS dependency.",
       "evidence": "Dedicated symbolic tests and the now-complete pcimc book corpus.",
@@ -320,6 +476,12 @@
       "feature": "Numerical integration",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "focused",
+        "label": "Robust one-dimensional quadrature",
+        "summary": "Covers adaptive real one-dimensional integration with error estimates on finite, singular, and infinite intervals.",
+        "includes": ["numerical_integral", "adaptive quadrature", "absolute and relative tolerances", "error estimates", "endpoint singularities", "infinite intervals"]
+      },
       "summary": "Adaptive quadrature provides values and error estimates for finite and infinite intervals.",
       "implementation": "Adaptive integration backend exposed through Sage-compatible numerical_integral APIs.",
       "evidence": "Endpoint, singularity, tolerance, and book-example regression tests.",
@@ -332,6 +494,12 @@
       "feature": "NumPy compatibility",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "focused",
+        "label": "Practical educational NumPy slice",
+        "summary": "Supports common array-based programs and teaching examples but does not claim full NumPy API or dtype compatibility.",
+        "includes": ["ndarray", "typed numeric storage", "indexing and slicing", "common ufuncs", "basic broadcasting", "array construction", "selected linear algebra"]
+      },
       "summary": "A practical NumPy-compatible array layer supports common numerical and educational workloads.",
       "implementation": "Python-facing ndarray APIs over JavaScript typed arrays and numerical kernels.",
       "evidence": "Dedicated NumPy compatibility suite.",
@@ -344,6 +512,20 @@
       "feature": "2D graphics",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "broad",
+        "label": "About 90% of everyday Sage 2D graphics",
+        "summary": "An engineering estimate based on the commonly used Sage plotting surface—not a count of every reference-manual symbol. It covers nearly all ordinary teaching and exploratory 2D plotting workflows, with Plotly output and composition.",
+        "score": {
+          "kind": "estimated",
+          "value": 90,
+          "unit": "of everyday Sage 2D plotting workflows",
+          "reference": "SageMath 2D plotting surface",
+          "method": "Expert workflow estimate checked against the implemented constructor-family inventory below; a symbol-level Sage reference audit is still needed.",
+          "audited": "2026-08-05"
+        },
+        "includes": ["plot / parametric_plot / polar_plot", "line / point / arrow / text / polygon", "circle / ellipse / arc / disk / bezier_path", "list_plot and step/log variants", "bar_chart / histogram / scatter_plot", "implicit_plot / region_plot", "contour_plot / density_plot / matrix_plot", "complex_plot and color maps", "vector / slope fields and streamlines", "hyperbolic arcs and polygons", "graphics_array / multi_graphics / animate", "axes / ticks / grids / legends / styles", "composition with + and show()"]
+      },
       "summary": "Functions, points, lines, implicit curves, regions, and composed graphics render through Plotly.",
       "implementation": "Sage-style graphics primitives and rich Jupyter HTML output.",
       "evidence": "Graphics and export regression suites plus upstream book plots.",
@@ -356,6 +538,12 @@
       "feature": "3D graphics",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "substantial",
+        "label": "Most common Sage 3D constructors",
+        "summary": "Covers a wide interactive 3D surface including plots, meshes, regular solids, scene composition, transforms, camera controls, and aspect ratios.",
+        "includes": ["plot3d / parametric_plot3d / implicit_plot3d", "spherical_plot3d / cylindrical_plot3d", "list_plot3d / revolution_plot3d", "line3d / point3d / polygon3d / text3d / arrow3d", "sphere and mesh surfaces", "tetrahedron / cube / octahedron / dodecahedron / icosahedron", "vector fields", "frames / axes / rulers / labels", "translation / scaling / rotation", "scene composition and aspect_ratio"]
+      },
       "summary": "Surfaces, parametric objects, polyhedra, scenes, transforms, and aspect ratios render interactively.",
       "implementation": "Plotly 3D traces with Sage-compatible scene composition and self-contained Jupyter output.",
       "evidence": "3D regression suite covering geometry, serialization, transforms, and layout.",
@@ -368,6 +556,12 @@
       "feature": "sqlite3",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "substantial",
+        "label": "Substantial Python DB-API workflow",
+        "summary": "Covers the sqlite3 operations needed for normal notebook and application data organization in Node-hosted Sage.js.",
+        "includes": ["connect", "Connection and Cursor", "execute / executemany", "parameter binding", "fetch APIs", "transactions", "row factories", "in-memory and persistent databases"]
+      },
       "summary": "Python's sqlite3 programming model is available in Node environments with the built-in SQLite engine.",
       "implementation": "Compatibility layer over node:sqlite with connections, cursors, parameters, transactions, and row factories.",
       "evidence": "Focused sqlite3 regression suite including persistence and transaction semantics.",
@@ -380,6 +574,22 @@
       "feature": "Python standard library",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "substantial",
+        "label": "Broad practical, non-exhaustive stdlib slice",
+        "summary": "Implements many modules needed by mathematical scripts and notebooks over Node APIs; unsupported CPython modules and edge semantics remain explicit.",
+        "score": {
+          "kind": "measured",
+          "value": 22.7,
+          "numerator": 44,
+          "denominator": 194,
+          "unit": "public top-level standard-library modules import successfully",
+          "reference": "CPython 3.14 public top-level module set",
+          "method": "Probe every name in CPython 3.14 sys.stdlib_module_names after excluding names beginning with an underscore. This measures module breadth only, not the fraction of APIs implemented inside each module.",
+          "audited": "2026-08-05"
+        },
+        "includes": ["os and pathlib-style files", "time and datetime", "subprocess", "networking", "random", "serialization", "arrays", "multiprocessing foundations", "sqlite3"]
+      },
       "summary": "A broad practical slice includes files, OS, time, subprocesses, networking, arrays, randomness, serialization, and multiprocessing.",
       "implementation": "Purpose-built Python-compatible modules over Node platform APIs.",
       "evidence": "Module-specific integration suites on Linux, Windows, and macOS.",
@@ -392,6 +602,12 @@
       "feature": "Magma syntax",
       "state": "partial",
       "quality": "prototype",
+      "coverage": {
+        "level": "focused",
+        "label": "Language frontend proof of concept",
+        "summary": "Demonstrates faithful parsing and translation of a useful Magma subset; it is not a claim to reproduce Magma’s mathematical library.",
+        "includes": ["tree-sitter parsing", "expressions", "assignment", "calls", "basic control syntax", "translation to Sage.js objects"]
+      },
       "summary": "A tree-sitter-based frontend translates a useful subset of Magma syntax into the Sage.js runtime.",
       "implementation": "Language adapter within the shared polyglot compiler architecture.",
       "evidence": "Parser, translation, and runtime regression tests.",
@@ -404,6 +620,12 @@
       "feature": "Macaulay2 syntax",
       "state": "partial",
       "quality": "prototype",
+      "coverage": {
+        "level": "focused",
+        "label": "Core syntax proof of concept",
+        "summary": "Covers basic Macaulay2 source structure and evaluation while the ring, module, ideal, and resolution semantics are the next major layer.",
+        "includes": ["tree-sitter-macaulay2", "arithmetic", "assignment", "lists", "function calls", "ranges", "booleans", "comments"]
+      },
       "summary": "Basic Macaulay2 arithmetic, assignment, lists, calls, ranges, booleans, and comments compile and run.",
       "implementation": "Adapter using the open tree-sitter-macaulay2 grammar.",
       "evidence": "Focused foreign-language and polyglot tests.",
@@ -416,6 +638,12 @@
       "feature": "Maple, Wolfram, and MATLAB syntax",
       "state": "partial",
       "quality": "prototype",
+      "coverage": {
+        "level": "focused",
+        "label": "Multiple language architecture proofs",
+        "summary": "Each frontend proves the shared compiler architecture, with intentionally narrow semantics chosen from real examples.",
+        "includes": ["Maple syntax", "Wolfram syntax", "MATLAB syntax", "Python cells", "cell-language dispatch", "shared Sage.js runtime"]
+      },
       "summary": "Proof-of-concept parsers demonstrate that other mathematical languages fit the architecture.",
       "implementation": "Tree-sitter frontends targeting shared Sage.js runtime objects.",
       "evidence": "Language-specific parser and smoke tests.",
@@ -428,6 +656,12 @@
       "feature": "npm and shell installation",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "broad",
+        "label": "All supported installation paths",
+        "summary": "Covers package-manager and standalone installation across the supported desktop targets, including relocation and checksums.",
+        "includes": ["npm global install", "npm embedding package", "curl | sh installer", "Linux x64 / arm64", "macOS arm64", "Windows x64", "SHA-256 verification", "relocatable SEA executables"]
+      },
       "summary": "Sage.js is installable from npm or with a curl-to-shell native installer.",
       "implementation": "Meta-package plus platform packages for npm, and checksum-verifying release installer for native archives.",
       "evidence": "Package, relocation, and installer tests in release CI.",
@@ -440,6 +674,12 @@
       "feature": "Release signing and provenance",
       "state": "partial",
       "quality": "tested",
+      "coverage": {
+        "level": "focused",
+        "label": "CI signing pipeline awaiting production credentials",
+        "summary": "The fail-closed automation is present; production trust depends on completing credential provisioning and external verification on each platform.",
+        "includes": ["Apple Developer ID", "Apple notarization", "Windows Authenticode", "protected environments", "release checksums", "artifact verification"]
+      },
       "summary": "CI has signing and notarization workflows, but production credentials and final cross-platform verification are still being completed.",
       "implementation": "Apple Developer ID/notarization, Windows Authenticode, checksums, protected environments, and CI release gates.",
       "evidence": "Release workflow fails closed when signing is required and validates produced artifacts.",
@@ -452,6 +692,12 @@
       "feature": "Independent semantic and performance oracles",
       "state": "available",
       "quality": "tested",
+      "coverage": {
+        "level": "substantial",
+        "label": "Multiple independent truth systems",
+        "summary": "Mathematical implementations are compared against several mature systems, with the exact oracle mix chosen per algorithm.",
+        "includes": ["SageMath", "PARI/GP", "Magma", "Oscar", "Hecke", "Nemo", "imported doctests", "differential and randomized checks"]
+      },
       "summary": "SageMath, PARI/GP, Magma, Oscar, Hecke, and Nemo provide independent comparison points.",
       "implementation": "Differential test scripts, imported doctests, and benchmark fixtures rather than runtime dependencies.",
       "evidence": "Cross-system checks are cited in focused mathematical test suites.",
@@ -464,6 +710,12 @@
       "feature": "Performance history",
       "state": "planned",
       "quality": "planned",
+      "coverage": {
+        "level": "planned",
+        "label": "Reproducible public performance history",
+        "summary": "The comparison systems are installed and individual benchmarks exist; a stable public corpus and historical dashboard are not yet deployed.",
+        "includes": ["Sage.js baselines", "SageMath comparisons", "PARI/GP comparisons", "Magma comparisons", "Oscar / Hecke / Nemo comparisons", "regression thresholds", "historical charts"]
+      },
       "summary": "Performance is tested locally, but historical results are not yet published systematically.",
       "implementation": "Planned representative workloads, fixed reference hardware, and regression thresholds.",
       "evidence": "Current benchmark notes and external reference installations establish the initial corpus.",

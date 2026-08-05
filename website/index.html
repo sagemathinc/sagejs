@@ -85,7 +85,7 @@
             <p class="eyebrow">Implementation map</p>
             <h2 id="capabilities-title">Capabilities and evidence</h2>
           </div>
-          <p>“Available” describes scope. “Certified,” “tested,” and “prototype” describe confidence. Every item states both.</p>
+          <p>Status says whether something works, confidence says how strongly it is tested, and scope says how much of the mathematical surface is present.</p>
         </div>
 
         <div class="toolbar" aria-label="Capability filters">
@@ -104,11 +104,22 @@
           </label>
         </div>
 
-        <div class="legend" aria-label="Quality legend">
+        <div class="legend" aria-label="Confidence and scope legend">
           <span><i class="dot certified"></i>Certified: exact semantics cross-checked</span>
           <span><i class="dot tested"></i>Tested: focused regression coverage</span>
           <span><i class="dot prototype"></i>Prototype: useful, deliberately narrow</span>
           <span><i class="dot planned"></i>Planned: designed or prioritized</span>
+        </div>
+
+        <div class="scope-legend">
+          <strong>Scope is independent of confidence.</strong>
+          <span><b>Broad surface</b> covers most everyday workflows in that area;</span>
+          <span><b>Substantial slice</b> covers several coherent API families;</span>
+          <span><b>Focused slice</b> is deliberately narrower;</span>
+          <span><b>Foundation</b> exposes core building blocks for the next layer.</span>
+          <span><b>Measured scores</b> always state numerator, denominator, unit, reference, and audit date;</span>
+          <span><b>~ estimates</b> are explicitly labeled expert workflow estimates.</span>
+          <span>“Audit pending” is shown when no defensible denominator exists yet. Open Scope for the method and searchable API-family inventory.</span>
         </div>
 
         <section id="example-search-results" class="example-search-results" aria-labelledby="example-results-title" hidden>

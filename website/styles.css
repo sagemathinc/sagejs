@@ -98,6 +98,9 @@ input, select { width: 100%; min-height: 42px; border: 1px solid var(--line); bo
 .select-label select { min-width: 170px; }
 .legend { display: flex; flex-wrap: wrap; gap: 18px; margin: 20px 0 0; color: var(--ink-soft); font-size: .78rem; }
 .legend span { display: flex; align-items: center; gap: 7px; }
+.scope-legend { display: flex; flex-wrap: wrap; gap: 7px 16px; margin-top: 12px; padding: 13px 15px; border-left: 3px solid var(--teal); color: var(--ink-soft); background: #f1f8f7; font-size: .78rem; }
+.scope-legend strong { color: var(--ink); }
+.scope-legend b { color: #35536e; }
 .dot { width: 8px; height: 8px; border-radius: 50%; }
 .dot.certified { background: var(--teal); }.dot.tested { background: #3b82f6; }.dot.prototype { background: var(--gold); }.dot.planned { background: #94a3b8; }
 .result-count { margin: 32px 0 12px; color: var(--ink-soft); font-size: .82rem; font-weight: 750; }
@@ -124,11 +127,30 @@ input, select { width: 100%; min-height: 42px; border: 1px solid var(--line); bo
 .badge { align-self: start; border-radius: 999px; padding: 4px 9px; font-size: .67rem; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
 .state-available { color: #06675e; background: var(--teal-pale); }.state-partial { color: #885900; background: var(--gold-pale); }.state-planned { color: #52606d; background: #e9eef3; }
 .quality-certified { color: #06675e; border: 1px solid #6bd2c5; }.quality-tested { color: #2458a6; border: 1px solid #a8cbf7; }.quality-prototype { color: #885900; border: 1px solid #e9c36f; }.quality-planned { color: #52606d; border: 1px solid #bcccdc; }
+.coverage-broad { color: #4f3472; background: #eee7f7; }.coverage-substantial { color: #315574; background: #e8f1f8; }.coverage-focused { color: #6c5217; background: #f7f0de; }.coverage-foundational { color: #4e5e6d; background: #edf1f4; }.coverage-planned { color: #52606d; background: #e9eef3; }
 .capability-summary { margin: 13px 0 20px; color: var(--ink-soft); }
 .capability-details { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; padding-top: 17px; border-top: 1px solid #e7ecf1; }
 .detail h4 { margin: 0 0 5px; color: var(--ink); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; }
 .detail p { margin: 0; color: var(--ink-soft); font-size: .82rem; }
 .detail.target { padding-left: 14px; border-left: 3px solid var(--gold); }
+.coverage-expander { margin-top: 20px; border-top: 1px solid #e7ecf1; }
+.coverage-expander > summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 17px 2px 0; color: #4f3472; cursor: pointer; list-style-position: inside; }
+.coverage-expander > summary:hover { color: #704b9d; }
+.coverage-heading { display: inline-flex; align-items: baseline; gap: 9px; }
+.coverage-heading .summary-label { color: var(--ink-soft); font-size: .67rem; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
+.coverage-heading strong { font-size: .88rem; }
+.coverage-score-summary { border-radius: 999px; padding: 4px 9px; color: #4f3472; background: #eee7f7; font-size: .69rem; font-weight: 800; text-transform: capitalize; }
+.coverage-body { margin: 14px 0 0; padding: 16px; border-radius: 10px; color: var(--ink-soft); background: #f7f5fa; }
+.coverage-body p { margin: 0 0 12px; font-size: .84rem; }
+.coverage-score { display: grid; grid-template-columns: auto 1fr; gap: 1px 12px; align-items: baseline; margin-bottom: 14px; padding-bottom: 13px; border-bottom: 1px solid #e1d8eb; }
+.coverage-score-value { grid-row: 1 / 3; color: #4f3472; font-size: 1.7rem; letter-spacing: -.04em; }
+.coverage-score-description { color: var(--ink); font-size: .8rem; font-weight: 750; }
+.coverage-score small { color: var(--ink-soft); font-size: .68rem; }
+.coverage-score-pending strong { color: #596b7a; font-size: .82rem; }
+.coverage-score-pending span { color: var(--ink-soft); font-size: .76rem; }
+.coverage-method { padding: 10px 12px; border-left: 2px solid #9b77c4; background: white; }
+.coverage-list { display: flex; flex-wrap: wrap; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.coverage-list li { border: 1px solid #d9cee8; border-radius: 999px; padding: 5px 9px; color: #4f3472; background: white; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .7rem; }
 .example-expander { margin-top: 20px; border-top: 1px solid #e7ecf1; }
 .example-expander > summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 17px 2px 0; color: var(--teal); cursor: pointer; font-weight: 800; list-style-position: inside; }
 .example-expander > summary:hover { color: #08776f; }
@@ -136,6 +158,7 @@ input, select { width: 100%; min-height: 42px; border: 1px solid var(--line); bo
 .example-list { display: grid; gap: 14px; margin-top: 18px; }
 .example-block { scroll-margin-top: 100px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: #f4f7f9; transition: background .25s ease, box-shadow .25s ease; }
 .example-highlight { background: var(--gold-pale); box-shadow: 0 0 0 3px rgba(232,168,56,.35); }
+.capability-highlight { border-color: #9b77c4; box-shadow: 0 0 0 3px rgba(112,75,157,.2); }
 .example-header { display: flex; align-items: start; justify-content: space-between; gap: 18px; }
 .example-header h4 { margin: 7px 0 12px; font-size: 1rem; }
 .example-meta { display: flex; align-items: center; gap: 7px; }
@@ -197,7 +220,7 @@ footer { padding-block: 38px; color: #bcccdc; background: var(--navy-deep); }
   .hero-actions { align-items: stretch; flex-direction: column; }
   .install-card { padding: 20px; }.command-row { display: block; }.copy { width: 100%; min-height: 38px; border-top: 1px solid rgba(255,255,255,.15); border-left: 0; }
   .capability-card { padding: 19px; }.capability-top { display: block; }.badges { justify-content: start; margin-top: 13px; }
-  .example-results-heading, .example-expander > summary, .example-header { align-items: start; flex-direction: column; }.example-copy { width: 100%; }
+  .example-results-heading, .coverage-expander > summary, .example-expander > summary, .example-header { align-items: start; flex-direction: column; }.example-copy { width: 100%; }
   .principle-grid { grid-template-columns: 1fr; }.footer-inner { align-items: start; flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }

@@ -11,9 +11,12 @@ const payload = JSON.parse(fs.readFileSync(path.join(website, "capabilities.json
 const examplePayload = JSON.parse(fs.readFileSync(path.join(website, "examples.json"), "utf8"));
 const html = fs.readFileSync(path.join(website, "index.html"), "utf8");
 const script = fs.readFileSync(path.join(website, "app.js"), "utf8");
+const stdlibCoverage = JSON.parse(
+  fs.readFileSync(path.join(website, "coverage/python-stdlib.json"), "utf8"),
+);
 
 test("dashboard data has a stable, complete schema", () => {
-  assert.equal(payload.schemaVersion, 1);
+  assert.equal(payload.schemaVersion, 2);
   assert.match(payload.updated, /^\d{4}-\d{2}-\d{2}$/);
   assert.ok(payload.capabilities.length >= 30);
 
@@ -21,6 +24,7 @@ test("dashboard data has a stable, complete schema", () => {
   const states = new Set(["available", "partial", "planned"]);
   const qualities = new Set(["certified", "tested", "prototype", "planned"]);
   const priorities = new Set(["now", "next", "later"]);
+  const coverageLevels = new Set(["broad", "substantial", "focused", "foundational", "planned"]);
   const textFields = ["id", "area", "feature", "summary", "implementation", "evidence", "target"];
 
   for (const capability of payload.capabilities) {
@@ -34,6 +38,17 @@ test("dashboard data has a stable, complete schema", () => {
     assert.ok(states.has(capability.state), `${capability.id}.state`);
     assert.ok(qualities.has(capability.quality), `${capability.id}.quality`);
     assert.ok(priorities.has(capability.priority), `${capability.id}.priority`);
+    assert.ok(coverageLevels.has(capability.coverage?.level), `${capability.id}.coverage.level`);
+    for (const field of ["label", "summary"]) {
+      assert.equal(typeof capability.coverage?.[field], "string", `${capability.id}.coverage.${field}`);
+      assert.ok(capability.coverage[field].trim(), `${capability.id}.coverage.${field} is empty`);
+    }
+    assert.ok(Array.isArray(capability.coverage.includes), `${capability.id}.coverage.includes`);
+    assert.ok(capability.coverage.includes.length > 0, `${capability.id}.coverage.includes is empty`);
+    for (const family of capability.coverage.includes) {
+      assert.equal(typeof family, "string", `${capability.id}.coverage.includes item`);
+      assert.ok(family.trim(), `${capability.id}.coverage.includes has an empty item`);
+    }
     if (capability.state === "planned") assert.equal(capability.quality, "planned", `${capability.id} planned state must not overclaim quality`);
   }
 });
@@ -59,6 +74,30 @@ test("verified examples form a searchable executable corpus", () => {
   }
 });
 
+test("published coverage scores have explicit denominators or estimate labels", () => {
+  const scored = payload.capabilities.filter((item) => item.coverage.score);
+  assert.ok(scored.length >= 2);
+  for (const capability of scored) {
+    const score = capability.coverage.score;
+    assert.ok(["measured", "estimated"].includes(score.kind));
+    assert.equal(typeof score.value, "number");
+    assert.ok(score.value >= 0 && score.value <= 100);
+    for (const field of ["unit", "reference", "method", "audited"]) {
+      assert.equal(typeof score[field], "string", `${capability.id}.coverage.score.${field}`);
+      assert.ok(score[field].trim());
+    }
+    if (score.kind === "measured") {
+      assert.ok(Number.isInteger(score.numerator) && score.numerator >= 0);
+      assert.ok(Number.isInteger(score.denominator) && score.denominator > 0);
+      assert.equal(score.value, Math.round((1000 * score.numerator) / score.denominator) / 10);
+    }
+  }
+  const stdlib = payload.capabilities.find((item) => item.id === "stdlib").coverage.score;
+  assert.equal(stdlib.numerator, stdlibCoverage.metric.numerator);
+  assert.equal(stdlib.denominator, stdlibCoverage.metric.denominator);
+  assert.equal(stdlib.value, stdlibCoverage.metric.percentage);
+});
+
 test("dashboard covers the three questions and both install paths", () => {
   for (const id of ["install", "capabilities", "roadmap"]) assert.match(html, new RegExp(`id=["']${id}["']`));
   assert.match(html, /@sagemath\/sagejs/);
@@ -74,4 +113,7 @@ test("dashboard JavaScript is self-contained and does not inject capability HTML
   assert.match(script, /fetch\(["']\.\/capabilities\.json["']\)/);
   assert.match(script, /fetch\(["']\.\/examples\.json["']\)/);
   assert.match(script, /CSS\.escape/);
+  assert.match(script, /function revealCapability/);
+  assert.match(script, /url\.searchParams\.delete\("q"\)/);
+  assert.match(script, /link\.addEventListener\("click"/);
 });
