@@ -35,6 +35,7 @@
     "src/lib/maple.py",
     "src/lib/matlab.py",
     "src/lib/numpy.py",
+    "src/lib/sqlite3.py",
     "src/lib/wolfram.py"
   ],
   "extraPaths": [
