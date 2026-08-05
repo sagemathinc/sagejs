@@ -61,18 +61,19 @@ The full build requires Node.js 25.5 or newer (for Node's SEA builder), pnpm
 non-Node prerequisites are installed by:
 
 ```sh
-sudo apt-get install build-essential git python3 m4 xz-utils
+sudo apt-get install build-essential cmake git python3 m4 xz-utils
 ```
 
 A system GMP installation is **not** required. Linux and macOS download and
-build SHA-256-pinned GMP, MPFR, MPC, OpenBLAS, and FLINT releases. Linux x64
-also builds ffpoly and smalljac; Windows installs the same core stack from a
-pinned vcpkg baseline. Every platform statically links its libraries into the
-native addon and SEA. The ffpoly/smalljac accelerator still contains x86-64
+build SHA-256-pinned GMP, MPFR, MPC, OpenBLAS, FLINT, and igraph releases.
+Linux x64 also builds ffpoly and smalljac; Windows installs the arithmetic
+stack from a pinned vcpkg baseline and builds the same pinned igraph source.
+Every platform statically links its libraries into the native addons and SEA.
+The ffpoly/smalljac accelerator still contains x86-64
 GNU assembly, so Linux arm64, macOS, and Windows currently use the tested
 portable elliptic-curve point-count fallback behind the same API. Downloads
-and builds are cached under `packages/flint/.native`, making later bootstrap
-runs incremental.
+and builds are cached under `packages/flint/.native` and
+`packages/graph/.native`, making later bootstrap runs incremental.
 
 On Apple Silicon macOS, install the Xcode Command Line Tools and Homebrew
 packages `node`, `pnpm`, `m4`, and `xz`. The native libraries target macOS 13
@@ -121,7 +122,7 @@ build\sea\sagejs.exe program.sage  # Windows: no Node or checkout
 
 pnpm test:unit                     # fast JavaScript/runtime regression tier
 pnpm test:startup                  # enforce the 300 ms startup budget
-pnpm test:native                   # FLINT and native integration tests
+pnpm test:native                   # FLINT, igraph, and native integration tests
 pnpm test:tutorial                 # complete Sage tutorial compatibility
 pnpm test:sea                      # rebuild and relocation-test both SEAs
 pnpm test                          # full compiler, CLI, upstream, and CoWasm suite
@@ -755,6 +756,31 @@ same ordinary `.py` fixture runs under Sage.js and CPython/NumPy, and
 `test/numpy-module.cjs` requires their output to agree when NumPy is available.
 That differential corpus is intended to grow into selected upstream NumPy
 tests without making CPython's extension ABI a Sage.js goal.
+
+## Graphs, exact symmetry, and interactive layouts
+
+Sage.js provides readable `Graph` and `DiGraph` objects, Sage's authored
+layouts for the implemented named families, the historical 1,252-record small
+graph database, and exact portable algorithms. An isolated optional
+[igraph](https://igraph.org/) backend supplies dispatched Bliss/VF2
+isomorphism, Bliss canonical labeling, compact automorphism-group generators
+with exact orders, and Fruchterman–Reingold and Kamada–Kawai layouts. Labeled
+multigraphs and certificates retain the readable exact fallback.
+
+```py
+G = graphs.PetersenGraph()
+A = G.automorphism_group()
+print(A.order(), A.gens())
+G.show(interactive=True)  # self-contained SVG; drag vertices directly
+```
+
+Plotly remains the default renderer. `interactive=True` (also
+`renderer='interactive'`) selects a dependency-free SVG renderer because
+Plotly editable mode edits chart metadata, not scatter-point positions. The
+SVG has no CDN dependency and supports pointer and touch dragging.
+
+The igraph release archive is SHA-256 pinned and mirrored in Sage.js's durable
+source cache; see [VENDORED-SOURCES.md](VENDORED-SOURCES.md).
 
 ## JavaScript API
 

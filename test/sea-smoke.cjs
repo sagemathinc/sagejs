@@ -175,6 +175,9 @@ try {
         "def modular_dimension(n):",
         "    return str(dimension_modular_forms(n, 8))",
         "print(factor(2026))",
+        "P = graphs.PetersenGraph()",
+        "A = P.automorphism_group()",
+        "print(A.order(), len(A.gens()), len(A.list()), len(P.layout('spring')))",
         "R = RealField(100)",
         "print(R('1.25') * R('2.5'))",
         "print(x)",
@@ -199,6 +202,7 @@ try {
     assert.equal(
       run(mathExecutable, mathProgram),
       "2 * 1013\n" +
+        "120 3 120 10\n" +
         "3.1250000000000000000000000000\n" +
         "x\n" +
         "2*x*cos(x^2)\n" +

@@ -102,7 +102,7 @@
       "language": "sage",
       "code": "G = graphs.PetersenGraph()\nH = G.relabel({i:(7*i)%10 for i in range(10)}, inplace=False)\n(G.order(), G.size(), G.girth(), G.is_isomorphic(H), G.automorphism_group().order(), G.chromatic_number())",
       "expected": "(10, 15, 5, True, 120, 3)",
-      "note": "Isomorphism, canonical labeling, certificates, and automorphisms use an exact individualization/refinement search."
+      "note": "Packaged builds dispatch boolean isomorphism among native tiny-graph, Bliss, and VF2 kernels, and use Bliss for canonical labels and compact automorphism generators; certificates and unsupported cases retain the readable exact fallback."
     },
     {
       "id": "small-graph-database",
@@ -118,9 +118,9 @@
       "capability": "graph-theory",
       "title": "Interactive graph visualization",
       "language": "sage",
-      "code": "G = graphs.PetersenGraph()\nG.show(vertex_color='#377eb8', vertex_size=30)",
+      "code": "G = graphs.PetersenGraph()\nG.show(interactive=True, vertex_color='#377eb8', vertex_size=30)",
       "expected": "GraphPlot object for Petersen graph",
-      "note": "The same rich output works in JupyterLab and CoCalc; graph-specific WebGL rendering is a future scale backend."
+      "note": "Plotly remains the default; interactive=True selects a self-contained SVG whose vertices can be dragged with a mouse or touch in JupyterLab and CoCalc."
     },
     {
       "id": "number-field-arithmetic",

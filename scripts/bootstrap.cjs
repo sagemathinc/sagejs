@@ -125,6 +125,7 @@ function checkPrerequisites() {
         "cc",
         "c++",
         "make",
+        "cmake",
         "python3",
         "m4",
         "tar",
@@ -175,10 +176,11 @@ function main() {
   step(
     4,
     process.platform === "linux" && process.arch === "x64"
-      ? "Building GMP, MPFR, MPC, OpenBLAS, FLINT, ffpoly, smalljac, and the Node addon"
-      : "Building GMP, MPFR, MPC, OpenBLAS, FLINT, and the Node addon",
+      ? "Building FLINT, ffpoly, smalljac, igraph, and their Node addons"
+      : "Building FLINT, igraph, and their Node addons",
   );
   runPnpm(["--dir", "packages/flint", "build"]);
+  runPnpm(["--dir", "packages/graph", "build"]);
 
   step(5, "Building the Sage.js compiler, runtime, and standard library");
   runPnpm(["run", "build"]);
@@ -208,8 +210,9 @@ Sage.js is ready.
 ${withoutSea ? "" : `  Self-contained executable:          build/sea/sagejs${executableSuffix}\n`}  Fast test tiers:                   pnpm test:unit && pnpm test:native
   Full test suite:                   pnpm test
 
-The native libraries are cached under packages/flint/.native, so subsequent
-bootstrap runs reuse them unless the pinned versions change.
+The native libraries are cached under packages/flint/.native and
+packages/graph/.native, so subsequent bootstrap runs reuse them unless the
+pinned versions change.
 `);
 }
 

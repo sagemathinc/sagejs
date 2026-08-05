@@ -33,6 +33,9 @@ importers:
       '@sagemath/sagejs-flint':
         specifier: workspace:*
         version: link:packages/flint
+      '@sagemath/sagejs-graph':
+        specifier: workspace:*
+        version: link:packages/graph
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
@@ -104,6 +107,12 @@ importers:
       plotly.js-dist-min:
         specifier: 3.7.0
         version: 3.7.0
+
+  packages/graph:
+    devDependencies:
+      node-gyp:
+        specifier: ^13.0.1
+        version: 13.0.1
 
   packages/native-darwin-arm64: {}
 

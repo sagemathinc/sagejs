@@ -16,8 +16,8 @@
     "meaning": "Sage.js implements 77 exact-name methods from SageMath's 411-method public Graph surface. This measures API breadth, not semantic depth or performance."
   },
   "internalMethodCoverage": {
-    "numerator": 132,
-    "denominator": 132,
+    "numerator": 133,
+    "denominator": 133,
     "percentage": 100,
     "meaning": "Every public function or alias currently defined by the Sage.js graph module is assigned to an executable semantic test."
   },
@@ -109,7 +109,7 @@
     {
       "name": "Implemented API test assignment",
       "status": "tested",
-      "detail": "132 of 132 public graph-module functions and aliases are assigned to executable semantic tests; the test fails when a new method is left unassigned."
+      "detail": "133 of 133 public graph-module functions and aliases are assigned to executable semantic tests; the test fails when a new method is left unassigned."
     },
     {
       "name": "Core graph semantics",
@@ -127,9 +127,14 @@
       "detail": "Every implemented named generator, lazy database query operation, and graph-specific Plotly route has an executable test."
     },
     {
+      "name": "Native isomorphism and layout",
+      "status": "tested",
+      "detail": "An optional igraph 1.0.1 backend dispatches boolean isomorphism among tiny-graph tables, Bliss, and VF2, and provides Bliss canonical labeling, exact compact automorphism-group generators, and FR/KK layouts; portable exact fallbacks remain available."
+    },
+    {
       "name": "Research-scale performance",
       "status": "planned",
-      "detail": "The readable exact implementation is not yet backed by bliss, nauty, igraph, or OGDF-class native kernels, and no competitive performance claim is made."
+      "detail": "The native architecture is in place, but broader graph families, OGDF-class routing/layout, and dedicated-host competitive benchmark baselines are not yet complete."
     }
   ],
   "limitations": [

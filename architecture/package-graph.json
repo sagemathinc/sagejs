@@ -100,7 +100,7 @@
       "id": "graph-theory",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 85000,
+      "max_source_bytes": 110000,
       "depends_on": ["core-runtime", "linear-algebra"],
       "files": ["src/baselib/graphs.py"],
       "prefixes": []
@@ -210,7 +210,7 @@
       "id": "sagejs",
       "path": ".",
       "name": "@sagemath/sagejs",
-      "depends_on": ["sagejs-flint"]
+      "depends_on": ["sagejs-flint", "sagejs-graph"]
     },
     {
       "id": "sagejs-flint",
@@ -222,6 +222,12 @@
       "id": "sagejs-flint-wasm",
       "path": "packages/flint-wasm",
       "name": "@sagemath/sagejs-flint-wasm",
+      "depends_on": []
+    },
+    {
+      "id": "sagejs-graph",
+      "path": "packages/graph",
+      "name": "@sagemath/sagejs-graph",
       "depends_on": []
     }
   ]

@@ -167,6 +167,19 @@ test("generators and graph-specific Plotly rendering", async () => {
   });
 });
 
+test("interactive graphs are self-contained draggable SVG", async () => {
+  await withSage(async (session) => {
+    const result = await session.evaluate(
+      "graphs.PetersenGraph().show(interactive=True)",
+    );
+    assert.equal(result.display?.mime, "text/html");
+    assert.match(result.display?.data, /<svg/);
+    assert.match(result.display?.data, /pointermove/);
+    assert.match(result.display?.data, /data-source=/);
+    assert.doesNotMatch(result.display?.data, /https?:\/\//);
+  });
+});
+
 test("bundled Sage graph database and historical import paths", async () => {
   await withSage(async (session) => {
     const result = await session.evaluate(
@@ -267,7 +280,7 @@ test("every structural and optimization graph operation has a semantic smoke tes
     "automorphism_group", "canonical_label", "graph6_string",
     "sparse6_string", "relabel", "clique_maximum", "maximum_clique",
     "clique_number", "independent_set", "vertex_cover", "coloring",
-    "chromatic_number", "plot", "show",
+    "chromatic_number", "layout", "plot", "show",
   ]);
   cover("GraphPlot", ["plotly", "show"]);
   await withSage(async (session) => {
@@ -291,6 +304,7 @@ test("every structural and optimization graph operation has a semantic smoke tes
         "coloring = C.coloring()",
         "graph_plot = P.plot(title='path')",
         "shown_plot = P.show(vertex_size=20)",
+        "spring_layout = P.layout('spring')",
         "left_vertex = ('left',1)",
         "right_vertex = ('right',2)",
         "T = Graph([(left_vertex,right_vertex)])",
@@ -313,6 +327,7 @@ test("every structural and optimization graph operation has a semantic smoke tes
         " U.is_isomorphic(P), product.order() == 6, product.size() == 7,",
         " A.nrows() == 4, A.ncols() == 4, P.is_isomorphic(R),",
         " group.order() == 2, canonical.is_isomorphic(P),",
+        " len(spring_layout) == 4, all([v in spring_layout for v in P]),",
         " Graph(P.graph6_string()).is_isomorphic(P),",
         " Graph(P.sparse6_string()).is_isomorphic(P),",
         " R.vertices() == ['a','b','c','d'],",
@@ -417,10 +432,12 @@ test("generic plot dispatch and shortest-path call errors match Sage", async () 
       (
         await session.evaluate(
           "g=graphs.CompleteBipartiteGraph(5,7); " +
-            "[repr(plot(g)), len(plot(g).plotly().data)]",
+            "[repr(plot(g)), len(plot(g).plotly().data), " +
+            "repr(plot(graphs.PetersenGraph()))]",
         )
       ).repr,
-      "['GraphPlot object for Complete bipartite graph of order 5+7', 2]",
+      "['GraphPlot object for Complete bipartite graph of order 5+7', 2, " +
+        "'GraphPlot object for Petersen graph']",
     );
     await assert.rejects(
       session.evaluate("graphs.PetersenGraph().shortest_path()"),

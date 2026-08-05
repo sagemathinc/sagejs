@@ -50,7 +50,9 @@ jobs:
           path: |
             packages/flint/.native/downloads
             packages/flint/.native/prefix
-          key: linux-x64-native-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'pnpm-lock.yaml') }}
+            packages/graph/.native/downloads
+            packages/graph/.native/prefix
+          key: linux-x64-native-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json', 'pnpm-lock.yaml') }}
 
       - name: Bootstrap the complete native system
         env:
@@ -190,7 +192,9 @@ jobs:
           path: |
             packages/flint/.native/downloads
             packages/flint/.native/prefix
-          key: linux-arm64-native-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp', 'pnpm-lock.yaml') }}
+            packages/graph/.native/downloads
+            packages/graph/.native/prefix
+          key: linux-arm64-native-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp', 'packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json', 'packages/graph/binding.gyp', 'pnpm-lock.yaml') }}
 
       - name: Bootstrap the complete native system
         env:
@@ -316,13 +320,16 @@ jobs:
           path: |
             packages/flint/.native/vcpkg
             packages/flint/.native/vcpkg-installed
-          key: windows-x64-native-${{ hashFiles('packages/flint/vcpkg.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/scripts/triplets/*.cmake', 'packages/flint/scripts/vcpkg-ports/**/*', 'packages/flint/binding.gyp', 'pnpm-lock.yaml') }}
+            packages/graph/.native/downloads
+            packages/graph/.native/prefix
+          key: windows-x64-native-${{ hashFiles('packages/flint/vcpkg.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/scripts/triplets/*.cmake', 'packages/flint/scripts/vcpkg-ports/**/*', 'packages/flint/binding.gyp', 'packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json', 'packages/graph/binding.gyp', 'pnpm-lock.yaml') }}
 
       - name: Build the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "8"
         run: |
           pnpm --dir packages/flint build
+          pnpm --dir packages/graph build
           pnpm build
 
       - name: Enforce the development startup budget
@@ -438,13 +445,16 @@ jobs:
           path: |
             packages/flint/.native/downloads
             packages/flint/.native/prefix
-          key: macos-arm64-native-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'pnpm-lock.yaml') }}
+            packages/graph/.native/downloads
+            packages/graph/.native/prefix
+          key: macos-arm64-native-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json', 'pnpm-lock.yaml') }}
 
       - name: Build the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "6"
         run: |
           pnpm --dir packages/flint build
+          pnpm --dir packages/graph build
           pnpm build
 
       - name: Enforce the development startup budget

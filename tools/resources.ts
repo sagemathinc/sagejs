@@ -21,6 +21,7 @@ const BASELIB_ASSET = "compiler/baselib-plain-pretty.js";
 const RUNTIME_BOOTSTRAP_PREFIX = "runtime-cache/runtime-bootstrap-";
 const TASK_RUNTIME_ASSET = "compiler/task-runtime.js";
 const FLINT_ASSET = "native/sagejs_flint.node";
+const GRAPH_ASSET = "native/sagejs_graph.node";
 const ZEROMQ_ASSET = "native/zeromq.node";
 const PLOTLY_ASSET = "vendor/plotly.min.js";
 const KERNEL_WORKER_ASSET = "worker/kernel-worker.cjs";
@@ -28,6 +29,7 @@ const MULTIPROCESSING_WORKER_ASSET = "worker/multiprocessing-worker.cjs";
 const VENDOR_ASSET_PREFIX = "vendor/";
 
 let flintModule: unknown;
+let graphModule: unknown;
 let zeroMQModule: unknown;
 let nativeTemporaryDirectory: string | undefined;
 let kernelWorkerFilename: string | undefined;
@@ -218,6 +220,26 @@ function loadEmbeddedFlint(): unknown {
   return flintModule;
 }
 
+function loadEmbeddedGraph(): unknown {
+  if (graphModule !== undefined) return graphModule;
+  if (!hasAsset(GRAPH_ASSET)) {
+    throw new Error(
+      "This Sage.js executable was built without the optional igraph backend",
+    );
+  }
+  if (!nativeTemporaryDirectory) {
+    nativeTemporaryDirectory = mkdtempSync(join(tmpdir(), "sagejs-sea-"));
+  }
+  const addonFilename = join(nativeTemporaryDirectory, basename(GRAPH_ASSET));
+  writeFileSync(addonFilename, Buffer.from(getAsset(GRAPH_ASSET)), {
+    mode: 0o700,
+  });
+  const nativeModule = { exports: {} };
+  process.dlopen(nativeModule, addonFilename);
+  graphModule = nativeModule.exports;
+  return graphModule;
+}
+
 function loadEmbeddedZeroMQ(): unknown {
   if (zeroMQModule !== undefined) return zeroMQModule;
   if (!hasAsset(ZEROMQ_ASSET)) {
@@ -284,6 +306,9 @@ function loadEmbeddedZeroMQ(): unknown {
 export function runtimeRequire(name: string): unknown {
   if (isSea() && name === "@sagemath/sagejs-flint") {
     return loadEmbeddedFlint();
+  }
+  if (isSea() && name === "@sagemath/sagejs-graph") {
+    return loadEmbeddedGraph();
   }
   if (isSea() && name === "zeromq") return loadEmbeddedZeroMQ();
   if (name === "numpy-ts") {

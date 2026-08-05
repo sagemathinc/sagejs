@@ -21,6 +21,7 @@ import sagejs.runtime as runtime
 
 
 _PLOTLY_MIME = 'application/vnd.plotly.v1+json'
+_graph_native_state = {'attempted': False, 'backend': None}
 
 
 class _GraphPositiveInfinity:
@@ -60,6 +61,18 @@ def _native_record(**values: Any) -> Any:
     for key in runtime.object.keys(values):
         runtime.reflect.set(answer, key, runtime.reflect.get(values, key))
     return answer
+
+
+def _native_graph_backend() -> Any:
+    """Load the optional igraph addon once, preserving portable fallbacks."""
+    if not _graph_native_state['attempted']:
+        _graph_native_state['attempted'] = True
+        try:
+            _graph_native_state['backend'] = runtime.require_module(
+                '@sagemath/sagejs-graph')
+        except Exception:
+            _graph_native_state['backend'] = None
+    return _graph_native_state['backend']
 
 
 def _record_get(record: Any, key: str, default_value: Any = None) -> Any:
@@ -102,6 +115,21 @@ def _safe_sorted(values: Sequence[Any]) -> list[Any]:
 
 def _label_code(label: Any) -> str:
     return repr(label)
+
+
+def _html_escape(value: Any) -> str:
+    return str(value).replace(
+        '&', '&amp;').replace(
+        '<', '&lt;').replace(
+        '>', '&gt;').replace(
+        '"', '&quot;').replace(
+        "'", '&#39;')
+
+
+def _json_text(value: Any) -> str:
+    stringify = runtime.reflect.get(runtime.json, 'stringify')
+    text = str(runtime.reflect.apply(stringify, runtime.json, [value]))
+    return text.replace('<', '\\u003c')
 
 
 def _encode_order(order: int) -> str:
@@ -225,27 +253,60 @@ class GraphAutomorphism:
 
 
 class GraphAutomorphismGroup:
-    """Finite graph automorphism group represented by exact permutations."""
+    """Finite graph automorphism group represented by compact generators."""
 
-    def __init__(self, vertices: list[Any], mappings: list[list[int]]) -> None:
+    def __init__(
+        self,
+        vertices: list[Any],
+        mappings: list[list[int]],
+        known_order: int | None = None,
+        generators_only: bool = False,
+    ) -> None:
         self._vertices = list(vertices)
-        self._mappings = [list(mapping) for mapping in mappings]
+        self._generators = [list(mapping) for mapping in mappings]
+        self._mappings = None if generators_only else [
+            list(mapping) for mapping in mappings]
+        self._known_order = (
+            known_order if known_order is not None else len(mappings))
+
+    def _enumerate_mappings(self) -> list[list[int]]:
+        if self._mappings is not None:
+            return self._mappings
+        identity = list(range(len(self._vertices)))
+        mappings = [identity]
+        seen = {repr(identity): True}
+        cursor = 0
+        while cursor < len(mappings):
+            current = mappings[cursor]
+            cursor += 1
+            for generator in self._generators:
+                composed = [current[generator[index]] for index in range(
+                    len(self._vertices))]
+                code = repr(composed)
+                if code not in seen:
+                    seen[code] = True
+                    mappings.append(composed)
+        self._mappings = mappings
+        return mappings
 
     def order(self) -> int:
-        return len(self._mappings)
+        return self._known_order
 
     cardinality = order
 
     def list(self) -> list[GraphAutomorphism]:
         return [
             GraphAutomorphism(self._vertices, mapping)
-            for mapping in self._mappings
+            for mapping in self._enumerate_mappings()
         ]
+
+    def __iter__(self) -> Iterator[GraphAutomorphism]:
+        return iter(self.list())
 
     def gens(self) -> 'tuple[GraphAutomorphism, ...]':
         identity = list(range(len(self._vertices)))
         generators = []
-        for mapping in self._mappings:
+        for mapping in self._generators:
             if mapping != identity:
                 generators.append(GraphAutomorphism(self._vertices, mapping))
         if len(generators) == 0:
@@ -270,7 +331,12 @@ class GraphPlot:
         self._options = dict(options)
 
     def _positions(self) -> list[tuple[float, float]]:
-        supplied = self._options.get('pos', self._graph.get_pos())
+        if 'pos' in self._options:
+            supplied = self._options['pos']
+        elif 'layout' in self._options:
+            supplied = self._graph.layout(self._options['layout'])
+        else:
+            supplied = self._graph.get_pos()
         if supplied is not None:
             answer = []
             for vertex in self._graph._vertices:
@@ -363,7 +429,128 @@ class GraphPlot:
             config=_native_record(displaylogo=False, responsive=True),
         )
 
+    def _interactive_html(self) -> str:
+        """Return a dependency-free SVG graph whose vertices are draggable."""
+        width = int(self._options.get('width', 800))
+        height = int(self._options.get('height', 500))
+        positions = self._positions()
+        if len(positions):
+            minimum_x = min([point[0] for point in positions])
+            maximum_x = max([point[0] for point in positions])
+            minimum_y = min([point[1] for point in positions])
+            maximum_y = max([point[1] for point in positions])
+            span_x = maximum_x - minimum_x
+            span_y = maximum_y - minimum_y
+            if span_x == 0:
+                span_x = 1.0
+            if span_y == 0:
+                span_y = 1.0
+            scale = min((width - 80) / span_x, (height - 80) / span_y)
+            screen_positions = [
+                (
+                    40 + (point[0] - minimum_x) * scale,
+                    height - 40 - (point[1] - minimum_y) * scale
+                )
+                for point in positions
+            ]
+        else:
+            screen_positions = []
+        identifier = 'sagejs-graph-' + str(int(
+            runtime.math.random() * 1000000000000))
+        edge_color = _html_escape(self._options.get('edge_color', '#777'))
+        vertex_color = _html_escape(
+            self._options.get('vertex_color', '#377eb8'))
+        radius = float(self._options.get('vertex_size', 28)) / 2.0
+        parts = [
+            '<div id="' + identifier + '" class="sagejs-interactive-graph">',
+            '<svg viewBox="0 0 ' + str(width) + ' ' + str(height) + '" ',
+            'role="img" aria-label="' + _html_escape(
+                self._graph.graph_name() or 'Interactive graph') + '">',
+            '<defs><marker id="' + identifier + '-arrow" markerWidth="8" ',
+            'markerHeight="8" refX="7" refY="3" orient="auto" ',
+            'markerUnits="strokeWidth"><path d="M0,0 L0,6 L8,3 z" ',
+            'fill="' + edge_color + '"/></marker></defs>',
+            '<g class="sagejs-edges" stroke="' + edge_color + '" ',
+            'stroke-width="' + str(self._options.get(
+                'edge_thickness', 1.5)) + '" fill="none">',
+        ]
+        for index in range(len(self._graph._edges)):
+            edge = self._graph._edges[index]
+            source = screen_positions[edge.source]
+            target = screen_positions[edge.target]
+            common = (
+                ' data-source="' + str(edge.source) + '" data-target="' +
+                str(edge.target) + '"')
+            if edge.source == edge.target:
+                parts.append(
+                    '<circle class="sagejs-edge sagejs-loop"' + common +
+                    ' cx="' + str(source[0]) + '" cy="' + str(
+                        source[1] - radius) + '" r="' + str(radius * 0.75) +
+                    '"/>')
+            else:
+                arrow = (
+                    ' marker-end="url(#' + identifier + '-arrow)"'
+                    if self._graph.is_directed() else '')
+                parts.append(
+                    '<line class="sagejs-edge"' + common + arrow +
+                    ' x1="' + str(source[0]) + '" y1="' + str(source[1]) +
+                    '" x2="' + str(target[0]) + '" y2="' + str(
+                        target[1]) + '"/>')
+        parts.append('</g><g class="sagejs-vertices">')
+        for index in range(len(self._graph._vertices)):
+            point = screen_positions[index]
+            parts.extend([
+                '<g class="sagejs-vertex" data-index="' + str(index) +
+                '" transform="translate(' + str(point[0]) + ' ' + str(
+                    point[1]) + ')">',
+                '<circle r="' + str(radius) + '" fill="' + vertex_color +
+                '" stroke="#fff" stroke-width="1.5"/>',
+                '<text text-anchor="middle" dominant-baseline="central">' +
+                _html_escape(self._graph._vertices[index]) + '</text></g>',
+            ])
+        parts.extend([
+            '</g></svg><div class="sagejs-graph-hint">Drag vertices to explore ',
+            'the layout.</div><style>',
+            '#' + identifier + '{max-width:100%;font-family:system-ui,sans-serif}',
+            '#' + identifier + ' svg{width:100%;height:auto;min-height:260px;',
+            'background:var(--jp-layout-color0,#fff);border:1px solid ',
+            'var(--jp-border-color2,#ddd);border-radius:8px;touch-action:none}',
+            '#' + identifier + ' .sagejs-vertex{cursor:grab}',
+            '#' + identifier + ' .sagejs-vertex:active{cursor:grabbing}',
+            '#' + identifier + ' text{fill:#fff;font-size:12px;',
+            'pointer-events:none;user-select:none}',
+            '#' + identifier + ' .sagejs-graph-hint{color:#666;font-size:12px;',
+            'margin-top:4px}</style><script>(()=>{',
+            'const root=document.getElementById(' + _json_text(identifier) + ');',
+            'if(!root)return;const svg=root.querySelector("svg");',
+            'const positions=' + _json_text(screen_positions) + ';',
+            'const edges=[...root.querySelectorAll(".sagejs-edge")];',
+            'const nodes=[...root.querySelectorAll(".sagejs-vertex")];',
+            'const update=()=>{nodes.forEach((node,i)=>node.setAttribute(',
+            '"transform",`translate(${positions[i][0]} ${positions[i][1]})`));',
+            'edges.forEach(edge=>{const s=+edge.dataset.source,t=+edge.dataset.target;',
+            'if(edge.classList.contains("sagejs-loop")){edge.setAttribute("cx",',
+            'positions[s][0]);edge.setAttribute("cy",positions[s][1]-' +
+            str(radius) + ');}else{edge.setAttribute("x1",positions[s][0]);',
+            'edge.setAttribute("y1",positions[s][1]);edge.setAttribute("x2",',
+            'positions[t][0]);edge.setAttribute("y2",positions[t][1]);}});};',
+            'const point=e=>{const box=svg.getBoundingClientRect();return[',
+            '(e.clientX-box.left)*' + str(width) + '/box.width,',
+            '(e.clientY-box.top)*' + str(height) + '/box.height];};',
+            'nodes.forEach((node,i)=>{node.addEventListener("pointerdown",e=>{',
+            'node.setPointerCapture(e.pointerId);e.preventDefault();});',
+            'node.addEventListener("pointermove",e=>{if(!node.hasPointerCapture(',
+            'e.pointerId))return;positions[i]=point(e);update();});});',
+            '})();</script></div>',
+        ])
+        return ''.join(parts)
+
     def _rich_repr_(self) -> Any:
+        renderer = str(self._options.get('renderer', '')).lower()
+        if self._options.get('interactive', False) or renderer in (
+            'interactive', 'svg'
+        ):
+            return _native_record(mime='text/html', data=self._interactive_html())
         return _native_record(mime=_PLOTLY_MIME, data=self.plotly())
 
     def show(self, **options: Any) -> GraphPlot:
@@ -571,6 +758,72 @@ class GenericGraph:
 
     def set_pos(self, pos: Any) -> None:
         self._pos = pos
+
+    def _native_data(self) -> Any:
+        edges = []
+        for edge in self._edges:
+            edges.extend([edge.source, edge.target])
+        return _native_record(
+            vertexCount=self.order(),
+            edges=edges,
+            directed=self._directed,
+        )
+
+    def _native_simple_backend(self) -> Any:
+        # Bliss canonical forms intentionally target simple graphs.  In
+        # particular, igraph does not encode loop and parallel-edge semantics
+        # in this API, so keep those cases on the exact portable path.
+        if self._multiedges or any([
+            edge.source == edge.target for edge in self._edges
+        ]):
+            return None
+        return _native_graph_backend()
+
+    def layout(
+        self,
+        layout: str | None = None,
+        save_pos: bool = False,
+        **_options: Any,
+    ) -> dict[Any, Any]:
+        """Return vertex coordinates, using igraph for force layouts.
+
+        Authored positions on Sage's named graph families remain the default.
+        Explicit ``spring``/``fr`` and ``kamada_kawai``/``kk`` requests use
+        the isolated native backend when present and a deterministic circular
+        layout otherwise.
+        """
+        if layout is None and self._pos is not None:
+            return dict(self._pos)
+        name = 'spring' if layout is None else str(layout).lower()
+        native_names = {
+            'spring': 'fr', 'fr': 'fr',
+            'kamada_kawai': 'kk', 'kk': 'kk',
+            'circular': 'circle', 'circle': 'circle',
+            'grid': 'grid',
+        }
+        if name not in native_names:
+            raise ValueError('unknown graph layout: ' + repr(layout))
+        coordinates = None
+        backend = self._native_simple_backend()
+        if backend is not None:
+            try:
+                native_function = runtime.reflect.get(backend, 'layout')
+                coordinates = runtime.reflect.apply(native_function, backend, [
+                    self._native_data(), native_names[name]])
+            except Exception:
+                coordinates = None
+        if coordinates is None:
+            positions = self._circle_embedding(
+                self._vertices, return_dict=True)
+        else:
+            positions = {}
+            for index in range(self.order()):
+                point = coordinates[index]
+                positions[self._vertices[index]] = (
+                    float(point[0]), float(point[1]))
+        if save_pos:
+            self._pos = positions
+        return positions
 
     def _circle_embedding(
         self,
@@ -1484,6 +1737,18 @@ class GenericGraph:
     ) -> Any:
         if not isinstance(other, GenericGraph):
             return runtime.math_tuple([False, None]) if certificate else False
+        if not certificate and not edge_labels:
+            backend = _native_graph_backend()
+            if (
+                backend is not None
+                and self._directed == other._directed
+            ):
+                try:
+                    native_function = runtime.reflect.get(backend, 'isomorphic')
+                    return bool(runtime.reflect.apply(native_function, backend, [
+                        self._native_data(), other._native_data()]))
+                except Exception:
+                    pass
         mappings = self._all_isomorphisms(other, edge_labels, True)
         if len(mappings) == 0:
             return runtime.math_tuple([False, None]) if certificate else False
@@ -1498,6 +1763,23 @@ class GenericGraph:
     def automorphism_group(
         self, edge_labels: bool = False, **_options: Any,
     ) -> GraphAutomorphismGroup:
+        if not edge_labels:
+            backend = self._native_simple_backend()
+            if backend is not None:
+                try:
+                    native_function = runtime.reflect.get(
+                        backend, 'automorphismGroup')
+                    data = runtime.reflect.apply(
+                        native_function, backend, [self._native_data()])
+                    generators = [
+                        list(mapping) for mapping in
+                        runtime.reflect.get(data, 'generators')]
+                    order = int(str(runtime.reflect.get(data, 'order')))
+                    return GraphAutomorphismGroup(
+                        self._vertices, generators,
+                        known_order=order, generators_only=True)
+                except Exception:
+                    pass
         return GraphAutomorphismGroup(
             self._vertices,
             self._all_isomorphisms(self, edge_labels, False),
@@ -1558,6 +1840,30 @@ class GenericGraph:
         edge_labels: bool = False,
         **_options: Any,
     ) -> Any:
+        if partition is None and not edge_labels:
+            backend = self._native_simple_backend()
+            if backend is not None:
+                try:
+                    native_function = runtime.reflect.get(
+                        backend, 'canonicalPermutation')
+                    permutation = list(runtime.reflect.apply(
+                        native_function, backend, [self._native_data()]))
+                    answer = self._new(
+                        loops=self._loops, multiedges=self._multiedges,
+                        weighted=self._weighted)
+                    answer.add_vertices(range(self.order()))
+                    for edge in self._edges:
+                        answer.add_edge(
+                            permutation[edge.source],
+                            permutation[edge.target], edge.label)
+                    if certificate:
+                        mapping = {}
+                        for index in range(self.order()):
+                            mapping[self._vertices[index]] = permutation[index]
+                        return runtime.math_tuple([answer, mapping])
+                    return answer
+                except Exception:
+                    pass
         del partition
         order = self.order()
         signatures = [self._vertex_signature(index, edge_labels) for index in range(order)]
@@ -2048,8 +2354,11 @@ class GraphGenerators:
         return graph
 
     def PetersenGraph(self, immutable: bool = False) -> Graph:
-        del immutable
-        return self.GeneralizedPetersenGraph(5, 2, name='Petersen graph')
+        # Keep this internal call positional.  Besides avoiding unnecessary
+        # keyword machinery in a hot constructor, it remains safe when a live
+        # Jupyter worker straddles a compiler/bootstrap rebuild.
+        return self.GeneralizedPetersenGraph(
+            5, 2, immutable, 'Petersen graph')
 
     def HouseGraph(self, immutable: bool = False) -> Graph:
         del immutable

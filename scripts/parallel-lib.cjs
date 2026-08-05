@@ -284,6 +284,10 @@ function validationCommandsForFiles(files) {
     add("pnpm", "--dir", "packages/flint", "build");
     add("pnpm", "test:native");
   }
+  if (has("packages/graph/")) {
+    add("pnpm", "--dir", "packages/graph", "build");
+    add("pnpm", "test:native");
+  }
   if (has("packages/flint-wasm/")) add("pnpm", "test:wasm");
   if (
     has("docs/") ||

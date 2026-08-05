@@ -30,6 +30,14 @@ const flintAddon = join(
   "Release",
   "sagejs_flint.node",
 );
+const graphAddon = join(
+  root,
+  "packages",
+  "graph",
+  "build",
+  "Release",
+  "sagejs_graph.node",
+);
 
 const args = new Set(process.argv.slice(2));
 const buildPython = args.size === 0 || args.has("--all") || args.has("--python");
@@ -192,6 +200,12 @@ function buildExecutable(name, withFlint) {
         "`pnpm --dir packages/flint build` first",
     );
   }
+  if (withFlint && !existsSync(graphAddon)) {
+    throw new Error(
+      `igraph addon not found at ${relative(root, graphAddon)}; run ` +
+        "`pnpm --dir packages/graph build` first",
+    );
+  }
   const output = join(outputDirectory, name);
   const assets = {
     "compiler/compiler.js": join(root, "dist", "compiler", "compiler.js"),
@@ -282,7 +296,10 @@ function buildExecutable(name, withFlint) {
       "tree-sitter-wolfram.wasm",
     ),
   };
-  if (withFlint) assets["native/sagejs_flint.node"] = flintAddon;
+  if (withFlint) {
+    assets["native/sagejs_flint.node"] = flintAddon;
+    assets["native/sagejs_graph.node"] = graphAddon;
+  }
 
   writeFileSync(
     configFilename,
@@ -313,7 +330,7 @@ function buildExecutable(name, withFlint) {
     });
   }
   console.log(
-    `Built ${relative(root, output)} (${withFlint ? "with FLINT" : "Python runtime"})`,
+    `Built ${relative(root, output)} (${withFlint ? "with native mathematics" : "Python runtime"})`,
   );
 }
 

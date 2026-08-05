@@ -7,6 +7,8 @@ const test = require("node:test");
 
 const root = path.resolve(__dirname, "..");
 const script = path.join(root, "scripts/list-audit-gaps.cjs");
+const audit = require("../website/competitive-audit.json");
+const benchmarks = require("../website/benchmarks.json");
 
 function gaps(...args) {
   return JSON.parse(execFileSync(process.execPath, [script, "--json", ...args], { cwd: root, encoding: "utf8" }));
@@ -14,7 +16,11 @@ function gaps(...args) {
 
 test("audit gap queue exposes every stable capability lane", () => {
   const rows = gaps();
-  assert.equal(rows.length, 60);
+  assert.equal(
+    rows.length,
+    audit.capabilities.length +
+      benchmarks.suites.filter((suite) => suite.status === "planned").length,
+  );
   assert.equal(new Set(rows.map((row) => row.id)).size, rows.length);
   assert.ok(rows.every((row) => row.benchmarkSuites.length > 0));
 });
