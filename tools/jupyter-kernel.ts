@@ -26,7 +26,11 @@ import { Publisher, Reply, Router } from "./zeromq-runtime";
 const DELIMITER = Buffer.from("<IDS|MSG>");
 const PROTOCOL_VERSION = "5.4";
 const PLOTLY_MIME = "application/vnd.plotly.v1+json";
-const PLOTLY_CDN = "https://cdn.plot.ly/plotly-3.7.0.min.js";
+// JupyterLab serves pages with COEP enabled.  cdn.plot.ly does not currently
+// send Cross-Origin-Resource-Policy, so browsers reject its otherwise valid
+// response.  jsDelivr explicitly permits cross-origin embedding.
+const PLOTLY_CDN =
+  "https://cdn.jsdelivr.net/npm/plotly.js-dist-min@3.7.0/plotly.min.js";
 
 interface ConnectionInfo {
   transport: string;
@@ -128,11 +132,12 @@ export function plotlyHtmlFallback(figure: unknown): string {
 html,body{width:100%;margin:0}
 #${id}{width:${cssWidth};height:${cssHeight};max-width:100%}
 </style>
-<script src="${PLOTLY_CDN}" charset="utf-8"
-  onerror="document.getElementById('${id}').textContent='Plotly.js could not be loaded from the CDN.'"></script>
 </head>
 <body>
 <div id="${id}">Loading Plotly.js…</div>
+<script src="${PLOTLY_CDN}" charset="utf-8"
+  crossorigin="anonymous"
+  onerror="document.getElementById('${id}').textContent='Plotly.js could not be loaded from the CDN.'"></script>
 <script>
 {
   const figure = ${figureJson};

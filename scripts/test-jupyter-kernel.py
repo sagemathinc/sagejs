@@ -217,7 +217,10 @@ def main(kernel_command: list[str]) -> None:
             assert "text/plain" in plot_data
             assert "application/vnd.plotly.v1+json" in plot_data
             assert "text/html" in plot_data
-            assert "https://cdn.plot.ly/plotly-3.7.0.min.js" in (
+            assert (
+                "https://cdn.jsdelivr.net/npm/"
+                "plotly.js-dist-min@3.7.0/plotly.min.js"
+            ) in (
                 plot_data["text/html"]
             )
             assert "Plotly.newPlot" in plot_data["text/html"]

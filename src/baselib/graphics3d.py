@@ -1664,26 +1664,66 @@ class Graphics3d:
             if len(ratio) != 3:
                 raise ValueError(
                     '3D aspect_ratio must have exactly three entries')
-            runtime.reflect.set(scene, 'aspectmode', 'manual')
-            runtime.reflect.set(
-                scene,
-                'aspectratio',
-                _g3d_native_record(
-                    x=float(ratio[0]),
-                    y=float(ratio[1]),
-                    z=float(ratio[2]),
-                ),
-            )
+            factors = [float(value) for value in ratio]
+            if any(value <= 0 for value in factors):
+                raise ValueError('3D aspect_ratio entries must be positive')
+            if factors[0] == factors[1] == factors[2]:
+                # Sage's ratio measures display units per coordinate unit.
+                # Plotly's ``data`` mode has precisely that interpretation;
+                # a manual (1,1,1) instead forces the whole bounding box into
+                # a cube and visibly distorts objects in unequal ranges.
+                runtime.reflect.set(scene, 'aspectmode', 'data')
+            else:
+                bounds = self.bounding_box()
+                spans = [
+                    float(bounds[1][index] - bounds[0][index])
+                    for index in range(3)
+                ]
+                positive_spans = [value for value in spans if value > 0]
+                fallback_span = (
+                    min(positive_spans) if len(positive_spans) else 1.0)
+                lengths = [
+                    (spans[index] if spans[index] > 0 else fallback_span)
+                    * factors[index]
+                    for index in range(3)
+                ]
+                scale = max(lengths)
+                runtime.reflect.set(scene, 'aspectmode', 'manual')
+                runtime.reflect.set(
+                    scene,
+                    'aspectratio',
+                    _g3d_native_record(
+                        x=lengths[0] / scale,
+                        y=lengths[1] / scale,
+                        z=lengths[2] / scale,
+                    ),
+                )
         else:
             numeric_ratio = float(ratio)
+            if numeric_ratio <= 0:
+                raise ValueError('3D aspect_ratio must be positive')
+            bounds = self.bounding_box()
+            spans = [
+                float(bounds[1][index] - bounds[0][index])
+                for index in range(3)
+            ]
+            positive_spans = [value for value in spans if value > 0]
+            fallback_span = min(positive_spans) if len(positive_spans) else 1.0
+            lengths = [
+                spans[0] if spans[0] > 0 else fallback_span,
+                spans[1] if spans[1] > 0 else fallback_span,
+                (spans[2] if spans[2] > 0 else fallback_span)
+                * numeric_ratio,
+            ]
+            scale = max(lengths)
             runtime.reflect.set(scene, 'aspectmode', 'manual')
             runtime.reflect.set(
                 scene,
                 'aspectratio',
                 _g3d_native_record(
-                    x=1,
-                    y=1,
-                    z=numeric_ratio,
+                    x=lengths[0] / scale,
+                    y=lengths[1] / scale,
+                    z=lengths[2] / scale,
                 ),
             )
 

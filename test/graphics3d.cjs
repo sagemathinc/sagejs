@@ -85,10 +85,18 @@ async function main() {
     );
     assert.equal(composed.display?.data.data[2].colorscale[0][1], "red");
     assert.equal(composed.display?.data.data[2].opacity, 0.5);
-    assert.deepEqual(
-      composed.display?.data.layout.scene.aspectratio,
-      { x: 1, y: 1, z: 1 },
+    assert.equal(composed.display?.data.layout.scene.aspectmode, "data");
+
+    const spreadSolids = await session.evaluate(
+      [
+        "G = tetrahedron((0,-3.5,0), color='blue')",
+        "G += cube((0,-2,0), color=(.25,0,.5))",
+        "G += octahedron(color='red') + dodecahedron((0,2,0), color='orange')",
+        "G += icosahedron(center=(0,4,0), color='yellow')",
+        "G.show(aspect_ratio=[1,1,1])",
+      ].join("\n"),
     );
+    assert.equal(spreadSolids.display?.data.layout.scene.aspectmode, "data");
 
     const curve = await session.evaluate(
       [
@@ -335,10 +343,7 @@ async function main() {
     assert.equal(coloredCube.display?.data.data[0].facecolor[2], "green");
     assert.equal(Math.min(...coloredCube.display?.data.data[0].x), 0);
     assert.equal(Math.max(...coloredCube.display?.data.data[0].x), 2);
-    assert.deepEqual(
-      coloredCube.display?.data.layout.scene.aspectratio,
-      { x: 1, y: 1, z: 1 },
-    );
+    assert.equal(coloredCube.display?.data.layout.scene.aspectmode, "data");
 
     const meshedIcosahedron = await session.evaluate(
       "icosahedron(color='green', figsize=10, mesh=True, thickness=5)",
