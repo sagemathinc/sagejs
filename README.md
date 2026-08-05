@@ -9,6 +9,11 @@
 > every result.**
 
 [![Sage.js CI](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml/badge.svg)](https://github.com/sagemathinc/sagejs/actions/workflows/ci.yml)
+[![Implementation dashboard](https://img.shields.io/badge/dashboard-capabilities%20%26%20roadmap-0d9488)](https://sagemathinc.github.io/sagejs/)
+
+The [implementation dashboard](https://sagemathinc.github.io/sagejs/) is the
+living map of what Sage.js provides, how strongly each capability is tested,
+and what is prioritized next.
 
 ## Download a standalone executable
 
