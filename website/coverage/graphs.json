@@ -16,8 +16,8 @@
     "meaning": "Sage.js implements 77 exact-name methods from SageMath's 411-method public Graph surface. This measures API breadth, not semantic depth or performance."
   },
   "internalMethodCoverage": {
-    "numerator": 130,
-    "denominator": 130,
+    "numerator": 132,
+    "denominator": 132,
     "percentage": 100,
     "meaning": "Every public function or alias currently defined by the Sage.js graph module is assigned to an executable semantic test."
   },
@@ -109,7 +109,7 @@
     {
       "name": "Implemented API test assignment",
       "status": "tested",
-      "detail": "130 of 130 public graph-module functions and aliases are assigned to executable semantic tests; the test fails when a new method is left unassigned."
+      "detail": "132 of 132 public graph-module functions and aliases are assigned to executable semantic tests; the test fails when a new method is left unassigned."
     },
     {
       "name": "Core graph semantics",

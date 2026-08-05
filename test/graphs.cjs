@@ -150,14 +150,19 @@ test("generators and graph-specific Plotly rendering", async () => {
             "grid = graphs.Grid2dGraph(3,4)",
             "ico = graphs.IcosahedralGraph()",
             "dod = graphs.DodecahedralGraph()",
+            "petersen = graphs.PetersenGraph()",
             "figure = graphs.PetersenGraph().plot().plotly()",
             "[grid.order(), grid.size(), ico.order(), ico.size(),",
             " dod.order(), dod.size(), len(figure.data),",
-            " figure.data[1].type]",
+            " figure.data[1].type, grid.get_pos()[(2,3)],",
+            " petersen.get_pos()[0], petersen.get_pos()[5],",
+            " graphs.CompleteBipartiteGraph(1,3).get_pos()[0],",
+            " graphs.HouseGraph().get_pos()[4]]",
           ].join("\n"),
         )
       ).repr,
-      "[12, 17, 12, 30, 20, 30, 2, 'scatter']",
+      "[12, 17, 12, 30, 20, 30, 2, 'scatter', [3, -2], " +
+        "[0, 1], [0, 0.5], [1.5, 1], [0, 2]]",
     );
   });
 });
@@ -334,9 +339,9 @@ test("every named graph and digraph generator has a semantic smoke test", async 
   cover("GraphGenerators", [
     "EmptyGraph", "CompleteGraph", "CompleteBipartiteGraph", "PathGraph",
     "CycleGraph", "StarGraph", "WheelGraph", "Grid2dGraph",
-    "PetersenGraph", "HouseGraph", "BullGraph", "DiamondGraph",
-    "TetrahedralGraph", "OctahedralGraph", "IcosahedralGraph",
-    "DodecahedralGraph", "RandomGNP",
+    "GeneralizedPetersenGraph", "PetersenGraph", "HouseGraph", "BullGraph",
+    "DiamondGraph", "TetrahedralGraph", "HexahedralGraph",
+    "OctahedralGraph", "IcosahedralGraph", "DodecahedralGraph", "RandomGNP",
   ]);
   cover("DigraphGenerators", ["Path", "Circuit", "Complete"]);
   await withSage(async (session) => {
@@ -347,9 +352,11 @@ test("every named graph and digraph generator has a semantic smoke test", async 
         " graphs.CompleteBipartiteGraph(2,3).size(), graphs.PathGraph(4).size(),",
         " graphs.CycleGraph(4).size(), graphs.StarGraph(4).size(),",
         " graphs.WheelGraph(5).size(), graphs.Grid2dGraph(2,3).size(),",
+        " graphs.GeneralizedPetersenGraph(5,2).size(),",
         " graphs.PetersenGraph().size(), graphs.HouseGraph().size(),",
         " graphs.BullGraph().size(), graphs.DiamondGraph().size(),",
-        " graphs.TetrahedralGraph().size(), graphs.OctahedralGraph().size(),",
+        " graphs.TetrahedralGraph().size(), graphs.HexahedralGraph().size(),",
+        " graphs.OctahedralGraph().size(),",
         " graphs.IcosahedralGraph().size(), graphs.DodecahedralGraph().size(),",
         " graphs.RandomGNP(5,0.0).size(), digraphs.Path(4).size(),",
         " digraphs.Circuit(4).size(), digraphs.Complete(4).size()]",
@@ -358,7 +365,8 @@ test("every named graph and digraph generator has a semantic smoke test", async 
     );
     assert.equal(
       result.repr,
-      "[0, 6, 6, 3, 4, 4, 8, 7, 15, 6, 5, 5, 6, 12, 30, 30, 0, 3, 4, 12]",
+      "[0, 6, 6, 3, 4, 4, 8, 7, 15, 15, 6, 5, 5, 6, 12, 12, " +
+        "30, 30, 0, 3, 4, 12]",
     );
   });
 });
@@ -412,7 +420,7 @@ test("generic plot dispatch and shortest-path call errors match Sage", async () 
             "[repr(plot(g)), len(plot(g).plotly().data)]",
         )
       ).repr,
-      "['GraphPlot object for Complete bipartite graph', 2]",
+      "['GraphPlot object for Complete bipartite graph of order 5+7', 2]",
     );
     await assert.rejects(
       session.evaluate("graphs.PetersenGraph().shortest_path()"),

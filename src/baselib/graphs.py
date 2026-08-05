@@ -70,6 +70,13 @@ def _record_get(record: Any, key: str, default_value: Any = None) -> Any:
     return default_value
 
 
+def _position_dict(entries: Any) -> dict[Any, Any]:
+    positions = {}
+    for entry in entries:
+        positions[entry[0]] = (entry[1], entry[2])
+    return positions
+
+
 def _same(left: Any, right: Any) -> bool:
     try:
         return bool(left == right)
@@ -564,6 +571,70 @@ class GenericGraph:
 
     def set_pos(self, pos: Any) -> None:
         self._pos = pos
+
+    def _circle_embedding(
+        self,
+        vertices: Any,
+        center: Any = None,
+        radius: Any = 1,
+        shift: Any = 0,
+        angle: Any = 0,
+        return_dict: bool = False,
+    ) -> Any:
+        """Place ``vertices`` on a circle, matching Sage's layout helper."""
+        if center is None:
+            center = (0, 0)
+        ordered = list(vertices)
+        positions = {} if return_dict else self._pos
+        if positions is None:
+            positions = {}
+            self._pos = positions
+        count = len(ordered)
+        pi = 3.141592653589793
+        for index in range(count):
+            theta = angle + 2.0 * (index + shift) * pi / count
+            x = center[0] + radius * round(runtime.math.cos(theta), 10)
+            y = center[1] + radius * round(runtime.math.sin(theta), 10)
+            positions[ordered[index]] = (x, y)
+        if return_dict:
+            return positions
+        return None
+
+    def _line_embedding(
+        self,
+        vertices: Any,
+        first: Any = None,
+        last: Any = None,
+        return_dict: bool = False,
+    ) -> Any:
+        """Place ``vertices`` evenly on a line, matching Sage's helper."""
+        if first is None:
+            first = (0, 0)
+        if last is None:
+            last = (0, 1)
+        ordered = list(vertices)
+        positions = {} if return_dict else self._pos
+        if positions is None:
+            positions = {}
+            self._pos = positions
+        intervals = len(ordered) - 1
+        if intervals != 0:
+            x = first[0]
+            y = first[1]
+            dx = (last[0] - first[0]) / intervals
+            dy = (last[1] - first[1]) / intervals
+        else:
+            x = (first[0] + last[0]) / 2.0
+            y = (first[1] + last[1]) / 2.0
+            dx = 0
+            dy = 0
+        for vertex in ordered:
+            positions[vertex] = (x, y)
+            x += dx
+            y += dy
+        if return_dict:
+            return positions
+        return None
 
     def _vertex_index(self, vertex: Any) -> int:
         return _index_equal(self._vertices, vertex)
@@ -1804,53 +1875,134 @@ class DiGraph(GenericGraph):
 class GraphGenerators:
     """Sage's ``graphs`` namespace of named and parametric graphs."""
 
-    def EmptyGraph(self) -> Graph:
+    def EmptyGraph(self, immutable: bool = False) -> Graph:
+        del immutable
         return Graph(name='Empty graph')
 
-    def CompleteGraph(self, order: int) -> Graph:
+    def CompleteGraph(self, order: int, immutable: bool = False) -> Graph:
+        del immutable
         graph = Graph(order, name='Complete graph')
         graph.add_clique(range(order))
+        if order == 1:
+            graph.set_pos(_position_dict([[0, 0, 0]]))
+        else:
+            graph._circle_embedding(range(order), angle=3.141592653589793 / 2)
         return graph
 
-    def CompleteBipartiteGraph(self, left: int, right: int) -> Graph:
-        graph = Graph(left + right, name='Complete bipartite graph')
+    def CompleteBipartiteGraph(
+        self,
+        left: int,
+        right: int,
+        set_position: bool = True,
+        immutable: bool = False,
+        name: str | None = None,
+    ) -> Graph:
+        del immutable
+        if left < 0 or right < 0:
+            raise ValueError('the part sizes must be nonnegative')
+        if name is None:
+            name = (
+                'Complete bipartite graph of order '
+                + str(left) + '+' + str(right))
+        graph = Graph(left + right, name=name)
         for source in range(left):
             for target in range(left, left + right):
                 graph.add_edge(source, target)
+        if set_position:
+            width = max(left, right)
+            graph._line_embedding(
+                range(left), first=(0, 1), last=(width, 1))
+            graph._line_embedding(
+                range(left, left + right),
+                first=(0, 0), last=(width, 0))
         return graph
 
-    def PathGraph(self, order: int) -> Graph:
-        graph = Graph(order, name='Path graph')
+    def PathGraph(
+        self,
+        order: int,
+        pos: Any = None,
+        immutable: bool = False,
+        name: str | None = None,
+    ) -> Graph:
+        del immutable
+        graph = Graph(order, name='Path graph' if name is None else name)
         graph.add_path(range(order))
+        circle = pos == 'circle' or (pos != 'line' and 10 < order < 41)
+        if circle:
+            if order == 1:
+                graph.set_pos(_position_dict([[0, 0, 0]]))
+            else:
+                graph._circle_embedding(
+                    range(order), angle=3.141592653589793 / 2)
+        else:
+            positions = {}
+            for index in range(order):
+                row = index // 10
+                offset = index % 10
+                x = offset if row % 2 == 0 else 9 - offset
+                positions[index] = (x, -row)
+            graph.set_pos(positions)
         return graph
 
-    def CycleGraph(self, order: int) -> Graph:
+    def CycleGraph(self, order: int, immutable: bool = False) -> Graph:
+        del immutable
+        if order < 0:
+            raise ValueError('parameter n must be a positive integer')
         graph = Graph(order, name='Cycle graph')
         if order > 1:
             graph.add_cycle(range(order))
+        if order == 1:
+            graph.set_pos(_position_dict([[0, 0, 0]]))
+        else:
+            graph._circle_embedding(
+                range(order), angle=3.141592653589793 / 2)
         return graph
 
-    def StarGraph(self, leaves: int) -> Graph:
+    def StarGraph(self, leaves: int, immutable: bool = False) -> Graph:
+        del immutable
         graph = Graph(leaves + 1, name='Star graph')
         for vertex in range(1, leaves + 1):
             graph.add_edge(0, vertex)
+        graph.set_pos(_position_dict([[0, 0, 0]]))
+        graph._circle_embedding(
+            range(1, leaves + 1), angle=3.141592653589793 / 2)
         return graph
 
-    def WheelGraph(self, order: int) -> Graph:
+    def WheelGraph(self, order: int, immutable: bool = False) -> Graph:
+        del immutable
+        if order < 0:
+            raise ValueError('parameter n must be a positive integer')
         if order < 4:
-            raise ValueError('a wheel graph needs at least four vertices')
+            graph = self.CycleGraph(order)
+            graph.graph_name('Wheel graph')
+            return graph
         graph = Graph(order, name='Wheel graph')
         graph.add_cycle(range(1, order))
         for vertex in range(1, order):
             graph.add_edge(0, vertex)
+        graph._circle_embedding(
+            range(1, order), angle=3.141592653589793 / 2)
+        graph._pos[0] = (0, 0)
         return graph
 
-    def Grid2dGraph(self, rows: int, columns: int) -> Graph:
+    def Grid2dGraph(
+        self,
+        rows: int,
+        columns: int,
+        set_positions: bool = True,
+        immutable: bool = False,
+        name: str | None = None,
+    ) -> Graph:
+        del immutable
+        if rows <= 0 or columns <= 0:
+            raise ValueError('parameters p and q must be positive integers')
         vertices = []
         for row in range(rows):
             for column in range(columns):
                 vertices.append((row, column))
-        graph = Graph(name='2D Grid Graph')
+        if name is None:
+            name = '2D Grid Graph for [' + str(rows) + ', ' + str(columns) + ']'
+        graph = Graph(name=name)
         graph.add_vertices(vertices)
         for row in range(rows):
             for column in range(columns):
@@ -1858,49 +2010,164 @@ class GraphGenerators:
                     graph.add_edge((row, column), (row + 1, column))
                 if column + 1 < columns:
                     graph.add_edge((row, column), (row, column + 1))
+        if set_positions:
+            positions = {}
+            for row in range(rows):
+                for column in range(columns):
+                    positions[(row, column)] = (column, -row)
+            graph.set_pos(positions)
         return graph
 
-    def PetersenGraph(self) -> Graph:
-        graph = Graph(10, name='Petersen graph')
-        graph.add_cycle(range(5))
-        graph.add_edges([(index, index + 5) for index in range(5)])
-        graph.add_edges([(5, 7), (7, 9), (9, 6), (6, 8), (8, 5)])
+    def GeneralizedPetersenGraph(
+        self,
+        order: int,
+        step: int,
+        immutable: bool = False,
+        name: str | None = None,
+    ) -> Graph:
+        del immutable
+        if order < 3:
+            raise ValueError('n must be larger than 2')
+        if step < 1 or step > (order - 1) // 2:
+            raise ValueError('k must be in 1<= k <=floor((n-1)/2)')
+        if name is None:
+            name = (
+                'Generalized Petersen graph (n=' + str(order)
+                + ',k=' + str(step) + ')')
+        graph = Graph(2 * order, name=name)
+        for index in range(order):
+            graph.add_edge(index, (index + 1) % order)
+            graph.add_edge(index, index + order)
+            graph.add_edge(
+                index + order, order + (index + step) % order)
+        graph._circle_embedding(
+            range(order), radius=1, angle=3.141592653589793 / 2)
+        graph._circle_embedding(
+            range(order, 2 * order),
+            radius=0.5, angle=3.141592653589793 / 2)
         return graph
 
-    def HouseGraph(self) -> Graph:
-        return Graph(
-            [(0, 1), (1, 2), (2, 3), (3, 0), (2, 4), (3, 4)],
-            name='House graph')
+    def PetersenGraph(self, immutable: bool = False) -> Graph:
+        del immutable
+        return self.GeneralizedPetersenGraph(5, 2, name='Petersen graph')
 
-    def BullGraph(self) -> Graph:
+    def HouseGraph(self, immutable: bool = False) -> Graph:
+        del immutable
         return Graph(
-            [(0, 1), (1, 2), (2, 0), (0, 3), (1, 4)],
+            [(0, 1), (0, 2), (1, 3), (2, 3), (2, 4), (3, 4)],
+            pos=_position_dict([
+                [0, -1, 0], [1, 1, 0], [2, -1, 1],
+                [3, 1, 1], [4, 0, 2],
+            ]),
+            name='House Graph')
+
+    def BullGraph(self, immutable: bool = False) -> Graph:
+        del immutable
+        return Graph(
+            [(0, 1), (0, 2), (1, 2), (1, 3), (2, 4)],
+            pos=_position_dict([
+                [0, 0, 0], [1, -1, 1], [2, 1, 1],
+                [3, -2, 2], [4, 2, 2],
+            ]),
             name='Bull graph')
 
-    def DiamondGraph(self) -> Graph:
+    def DiamondGraph(self, immutable: bool = False) -> Graph:
+        del immutable
         return Graph(
-            [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3)],
-            name='Diamond graph')
+            [(0, 1), (0, 2), (1, 2), (1, 3), (2, 3)],
+            pos=_position_dict([
+                [0, 0, 1], [1, -1, 0],
+                [2, 1, 0], [3, 0, -1],
+            ]),
+            name='Diamond Graph')
 
-    def TetrahedralGraph(self) -> Graph:
-        graph = self.CompleteGraph(4)
-        graph.graph_name('Tetrahedron')
+    def TetrahedralGraph(self, immutable: bool = False) -> Graph:
+        del immutable
+        pi = 3.141592653589793
+        return Graph(
+            [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)],
+            pos=_position_dict([
+                [0, 0, 0], [1, 0, 1],
+                [2, runtime.math.cos(3.5 * pi / 3),
+                    runtime.math.sin(3.5 * pi / 3)],
+                [3, runtime.math.cos(5.5 * pi / 3),
+                    runtime.math.sin(5.5 * pi / 3)],
+            ]),
+            name='Tetrahedron')
+
+    def HexahedralGraph(self, immutable: bool = False) -> Graph:
+        del immutable
+        return Graph(
+            [
+                (0, 1), (0, 3), (0, 4), (1, 2), (1, 5), (2, 3),
+                (2, 6), (3, 7), (4, 5), (4, 7), (5, 6), (6, 7),
+            ],
+            pos=_position_dict([
+                [0, 0, 0], [1, 1, 0], [3, 0, 1], [2, 1, 1],
+                [4, 0.5, 0.5], [5, 1.5, 0.5],
+                [7, 0.5, 1.5], [6, 1.5, 1.5],
+            ]),
+            name='Hexahedron')
+
+    def OctahedralGraph(self, immutable: bool = False) -> Graph:
+        del immutable
+        graph = Graph(
+            [
+                (0, 1), (0, 2), (0, 3), (0, 4),
+                (1, 2), (1, 3), (1, 5), (2, 4),
+                (2, 5), (3, 4), (3, 5), (4, 5),
+            ],
+            name='Octahedron')
+        graph._circle_embedding(
+            [0, 1, 2], radius=5, angle=3.141592653589793 / 2)
+        graph._circle_embedding(
+            [4, 3, 5], radius=1, angle=3.141592653589793 / 6)
         return graph
 
-    def OctahedralGraph(self) -> Graph:
-        graph = self.CompleteGraph(6)
-        graph.delete_edges([(0, 1), (2, 3), (4, 5)])
-        graph.graph_name('Octahedron')
+    def IcosahedralGraph(self, immutable: bool = False) -> Graph:
+        del immutable
+        graph = Graph(
+            [
+                (0, 1), (0, 5), (0, 7), (0, 8), (0, 11),
+                (1, 2), (1, 5), (1, 6), (1, 8),
+                (2, 3), (2, 6), (2, 8), (2, 9),
+                (3, 4), (3, 6), (3, 9), (3, 10),
+                (4, 5), (4, 6), (4, 10), (4, 11),
+                (5, 6), (5, 11), (7, 8), (7, 9), (7, 10),
+                (7, 11), (8, 9), (9, 10), (10, 11),
+            ],
+            name='Icosahedron')
+        graph._circle_embedding(
+            [2, 8, 7, 11, 4, 6], radius=5,
+            angle=3.141592653589793 / 6)
+        graph._circle_embedding(
+            [1, 9, 0, 10, 5, 3], radius=2,
+            angle=3.141592653589793 / 6)
         return graph
 
-    def IcosahedralGraph(self) -> Graph:
-        graph = Graph('KhFJ{B`KWqph')
-        graph.graph_name('Icosahedron')
-        return graph
-
-    def DodecahedralGraph(self) -> Graph:
-        graph = Graph('ShCHGD@?K?_@?@?C_GGG@??cG?G?GK_?C')
-        graph.graph_name('Dodecahedron')
+    def DodecahedralGraph(self, immutable: bool = False) -> Graph:
+        del immutable
+        graph = Graph(
+            [
+                (0, 1), (0, 10), (0, 19), (1, 2), (1, 8),
+                (2, 3), (2, 6), (3, 4), (3, 19), (4, 5),
+                (4, 17), (5, 6), (5, 15), (6, 7), (7, 8),
+                (7, 14), (8, 9), (9, 10), (9, 13), (10, 11),
+                (11, 12), (11, 18), (12, 13), (12, 16),
+                (13, 14), (14, 15), (15, 16), (16, 17),
+                (17, 18), (18, 19),
+            ],
+            name='Dodecahedron')
+        pi = 3.141592653589793
+        graph._circle_embedding(
+            [19, 0, 1, 2, 3], radius=7, angle=pi / 10)
+        graph._circle_embedding(
+            [18, 10, 8, 6, 4], radius=4.7, angle=pi / 10)
+        graph._circle_embedding(
+            [11, 9, 7, 5, 17], radius=3.8, angle=3 * pi / 10)
+        graph._circle_embedding(
+            [12, 13, 14, 15, 16], radius=1.5,
+            angle=3 * pi / 10)
         return graph
 
     def RandomGNP(self, order: int, probability: float) -> Graph:
