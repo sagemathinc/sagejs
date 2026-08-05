@@ -8,6 +8,7 @@ const test = require("node:test");
 const root = path.resolve(__dirname, "..");
 const website = path.join(root, "website");
 const payload = JSON.parse(fs.readFileSync(path.join(website, "capabilities.json"), "utf8"));
+const examplePayload = JSON.parse(fs.readFileSync(path.join(website, "examples.json"), "utf8"));
 const html = fs.readFileSync(path.join(website, "index.html"), "utf8");
 const script = fs.readFileSync(path.join(website, "app.js"), "utf8");
 
@@ -37,12 +38,33 @@ test("dashboard data has a stable, complete schema", () => {
   }
 });
 
+test("verified examples form a searchable executable corpus", () => {
+  assert.equal(examplePayload.schemaVersion, 1);
+  assert.match(examplePayload.verified, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(examplePayload.runner, "Sage.js polyglot Jupyter kernel");
+  assert.ok(examplePayload.examples.length >= 40);
+  const capabilityIds = new Set(payload.capabilities.map((item) => item.id));
+  const ids = new Set();
+  const languages = new Set(["sage", "python", "magma", "macaulay2", "matlab", "maple", "wolfram"]);
+  for (const example of examplePayload.examples) {
+    assert.match(example.id, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+    assert.ok(!ids.has(example.id), `duplicate example ${example.id}`);
+    ids.add(example.id);
+    assert.ok(capabilityIds.has(example.capability), `${example.id} references an unknown capability`);
+    assert.ok(languages.has(example.language), `${example.id} has an unsupported language`);
+    for (const field of ["title", "code", "expected"]) {
+      assert.equal(typeof example[field], "string", `${example.id}.${field}`);
+      assert.ok(example[field].trim(), `${example.id}.${field} is empty`);
+    }
+  }
+});
+
 test("dashboard covers the three questions and both install paths", () => {
   for (const id of ["install", "capabilities", "roadmap"]) assert.match(html, new RegExp(`id=["']${id}["']`));
   assert.match(html, /@sagemath\/sagejs/);
   assert.match(html, /releases\/latest\/download\/install\.sh/);
   assert.match(html, /--install-jupyter-kernel/);
-  for (const hook of ["metric-total", "capability-list", "roadmap-columns", "area-filter"]) assert.match(html, new RegExp(`id=["']${hook}["']`));
+  for (const hook of ["metric-total", "capability-list", "roadmap-columns", "area-filter", "example-search-results", "example-result-list"]) assert.match(html, new RegExp(`id=["']${hook}["']`));
 });
 
 test("dashboard JavaScript is self-contained and does not inject capability HTML", () => {
@@ -50,4 +72,6 @@ test("dashboard JavaScript is self-contained and does not inject capability HTML
   assert.doesNotMatch(html, /<link[^>]+href=["']https?:/i);
   assert.doesNotMatch(script, /innerHTML|insertAdjacentHTML|eval\s*\(/);
   assert.match(script, /fetch\(["']\.\/capabilities\.json["']\)/);
+  assert.match(script, /fetch\(["']\.\/examples\.json["']\)/);
+  assert.match(script, /CSS\.escape/);
 });

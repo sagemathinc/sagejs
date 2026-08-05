@@ -45,7 +45,7 @@
             <div><strong id="metric-total">—</strong><span>capabilities</span></div>
             <div><strong id="metric-available">—</strong><span>available</span></div>
             <div><strong id="metric-certified">—</strong><span>certified</span></div>
-            <div><strong id="metric-now">—</strong><span>priority now</span></div>
+            <div><strong id="metric-examples">—</strong><span>verified examples</span></div>
           </div>
           <p class="snapshot-date">Evidence reviewed <time id="updated-date">—</time></p>
         </aside>
@@ -91,7 +91,7 @@
         <div class="toolbar" aria-label="Capability filters">
           <label class="search-label">
             <span class="visually-hidden">Search capabilities</span>
-            <input id="search" type="search" placeholder="Search mathematics, APIs, or goals…" />
+            <input id="search" type="search" placeholder="Search capabilities, code, or expected output…" />
           </label>
           <div class="filter-group" id="state-filters" aria-label="Filter by status">
             <button class="filter active" data-state="all" type="button">All</button>
@@ -110,6 +110,14 @@
           <span><i class="dot prototype"></i>Prototype: useful, deliberately narrow</span>
           <span><i class="dot planned"></i>Planned: designed or prioritized</span>
         </div>
+
+        <section id="example-search-results" class="example-search-results" aria-labelledby="example-results-title" hidden>
+          <div class="example-results-heading">
+            <div><p class="eyebrow">Matching notebook cells</p><h3 id="example-results-title">Verified examples</h3></div>
+            <p>Choose an example to reveal it inside its capability.</p>
+          </div>
+          <div id="example-result-list" class="example-result-list"></div>
+        </section>
 
         <p id="result-count" class="result-count" aria-live="polite"></p>
         <div id="capability-list" class="capability-list" aria-live="polite"></div>

@@ -1,0 +1,342 @@
+{
+  "schemaVersion": 1,
+  "verified": "2026-08-05",
+  "runner": "Sage.js polyglot Jupyter kernel",
+  "examples": [
+    {
+      "id": "sage-exponentiation",
+      "capability": "sage-language",
+      "title": "Sage arithmetic semantics",
+      "language": "sage",
+      "code": "factor(2026), 2^100, 22/7",
+      "expected": "(2 * 1013, 1267650600228229401496703205376, 22/7)",
+      "note": "The caret is exponentiation and integer division remains exact in Sage mode."
+    },
+    {
+      "id": "python-semantics",
+      "capability": "sage-language",
+      "title": "Switch one cell to Python semantics",
+      "language": "python",
+      "code": "(2**10, 2^10, 7/2)",
+      "expected": "(1024, 8, 3.5)",
+      "note": "The polyglot kernel preserves ordinary Python operators inside a %%python cell."
+    },
+    {
+      "id": "integer-number-theory",
+      "capability": "integers-rationals",
+      "title": "Exact integer arithmetic",
+      "language": "sage",
+      "code": "n = factorial(50)\n(len(str(n)), gcd(n, 2026), factor(2026))",
+      "expected": "(65, 2, 2 * 1013)",
+      "note": "Integers are arbitrary precision and participate in native factorization."
+    },
+    {
+      "id": "rational-arithmetic",
+      "capability": "integers-rationals",
+      "title": "Rational arithmetic stays exact",
+      "language": "sage",
+      "code": "q = 22/7\n(q, q.numerator(), q.denominator(), q^2)",
+      "expected": "(22/7, 22, 7, 484/49)"
+    },
+    {
+      "id": "finite-field-powers",
+      "capability": "finite-fields",
+      "title": "Arithmetic in a prime field",
+      "language": "sage",
+      "code": "F = GF(101)\na = F(7)\n(a^100, a.multiplicative_order(), (a + 5)/(a - 5))",
+      "expected": "(1, 100, 6)"
+    },
+    {
+      "id": "finite-field-extension",
+      "capability": "finite-fields",
+      "title": "A finite extension field",
+      "language": "sage",
+      "code": "K.<a> = GF(3^2)\n(a, a^2, a^4, a^8)",
+      "expected": "(a, a + 1, 2, 1)"
+    },
+    {
+      "id": "polynomial-factorization",
+      "capability": "polynomials",
+      "title": "Factor an exact polynomial",
+      "language": "sage",
+      "code": "R.<x> = QQ[]\nf = x^8 - 1\n(f.factor(), f(2))",
+      "expected": "((x + 1) * (x - 1) * (x^2 + 1) * (x^4 + 1), 255)"
+    },
+    {
+      "id": "multivariate-polynomial",
+      "capability": "polynomials",
+      "title": "Multivariate polynomial rings",
+      "language": "sage",
+      "code": "R.<x,y> = QQ[]\nf = (x + y)^3\n(f, f + x*y)",
+      "expected": "(x^3 + 3*x^2*y + 3*x*y^2 + y^3, x^3 + 3*x^2*y + 3*x*y^2 + y^3 + x*y)"
+    },
+    {
+      "id": "macaulay2-groebner",
+      "capability": "groebner",
+      "title": "A Gröbner basis in Macaulay2 syntax",
+      "language": "macaulay2",
+      "code": "R = QQ[x,y];\nI = ideal(x^2-y^3, x*y);\ngens gb I",
+      "expected": "(y^3 - x^2, x*y, x^3)",
+      "note": "This uses the experimental Macaulay2 frontend and shared Sage.js polynomial objects."
+    },
+    {
+      "id": "matrix-exact",
+      "capability": "linear-algebra",
+      "title": "Exact matrix invariants",
+      "language": "sage",
+      "code": "A = matrix(QQ, [[1,2,3], [0,1,4], [5,6,0]])\n(A.det(), A.rank(), A.charpoly(), A.inverse())",
+      "expected": "(1, 3, x^3 - 2*x^2 - 38*x - 1, [-24  18   5]\n[ 20 -15  -4]\n[ -5   4   1])"
+    },
+    {
+      "id": "matrix-kernel",
+      "capability": "linear-algebra",
+      "title": "An exact right kernel",
+      "language": "sage",
+      "code": "A = matrix(GF(2), [[1,1,0,1], [0,1,1,1]])\nK = A.right_kernel()\n(K.dimension(), K.basis())",
+      "expected": "(2, [(1, 0, 1, 1), (0, 1, 0, 1)])"
+    },
+    {
+      "id": "number-field-arithmetic",
+      "capability": "number-fields",
+      "title": "Exact arithmetic in a number field",
+      "language": "sage",
+      "code": "R.<x> = QQ[]\nK.<a> = NumberField(x^4 + 1)\n(a^4, a^8, (a+1)*(a-1), 1/(a+1), a.multiplicative_order())",
+      "expected": "(-1, 1, a^2 - 1, -1/2*a^3 + 1/2*a^2 - 1/2*a + 1/2, 8)"
+    },
+    {
+      "id": "quadratic-class-group",
+      "capability": "quadratic-fields",
+      "title": "A quadratic class group",
+      "language": "sage",
+      "code": "R.<x> = QQ[]\nK.<a> = NumberField(x^2 + 17)\nC = K.class_group()\n(K.discriminant(), K.class_number(), C.invariants(), C.gen(), C.gen().order())",
+      "expected": "(-68, 4, (4,), Fractional ideal class (3, a + 1), 4)"
+    },
+    {
+      "id": "maximal-order-basis",
+      "capability": "maximal-orders",
+      "title": "Compute an integral basis",
+      "language": "sage",
+      "code": "R.<x> = QQ[]\nK.<a> = NumberField(x^3 + x^2 - 2*x + 8)\nO = K.maximal_order()\n(O.basis(), O.discriminant(), O.is_maximal())",
+      "expected": "([1, 1/2*a^2 + 1/2*a, a^2], -503, True)"
+    },
+    {
+      "id": "ideal-lattice-arithmetic",
+      "capability": "ideal-lattices",
+      "title": "Exact ideal lattices",
+      "language": "sage",
+      "code": "R.<x> = QQ[]\nK.<a> = NumberField(x^3+x^2-2*x+8)\nO = K.maximal_order()\nI = O.ideal([2,a])\n(I.gens_reduced(), I.norm(), (I^2).gens_reduced(), (I^2).norm(), a in I, 1 in I)",
+      "expected": "((2, a, a^2), 4, (4, 2*a, a^2), 16, True, False)"
+    },
+    {
+      "id": "galois-group-quartic",
+      "capability": "galois-groups",
+      "title": "Identify a quartic Galois group",
+      "language": "sage",
+      "code": "R.<x> = QQ[]\nG = NumberField(x^4 - x + 1, 'a').galois_group()\n(G.transitive_label(), G.order(), G.is_galois(), G.is_abelian())",
+      "expected": "('4T5', 24, False, False)"
+    },
+    {
+      "id": "prime-counting",
+      "capability": "primes-factorization",
+      "title": "Count primes without enumerating them",
+      "language": "sage",
+      "code": "prime_pi(10^12)",
+      "expected": "37607912018"
+    },
+    {
+      "id": "primality-and-factorization",
+      "capability": "primes-factorization",
+      "title": "Primality and factorization",
+      "language": "sage",
+      "code": "n = 2^127 - 1\n(is_prime(n), factor(2^32 - 1), next_prime(10^6))",
+      "expected": "(True, 3 * 5 * 17 * 257 * 65537, 1000003)"
+    },
+    {
+      "id": "padic-basics",
+      "capability": "padics",
+      "title": "p-adic arithmetic and valuation",
+      "language": "sage",
+      "code": "K = Qp(5)\n(K(1/3) + K(2/3) == K(1), K(25/3).valuation(), Zp(5))",
+      "expected": "(True, 2, 5-adic Ring with capped relative precision 20)"
+    },
+    {
+      "id": "dirichlet-character",
+      "capability": "dirichlet",
+      "title": "A Dirichlet character",
+      "language": "sage",
+      "code": "G = DirichletGroup(21)\nchi = G.1\n(chi.conductor(), chi.modulus(), chi.order(), chi(19), chi(40))",
+      "expected": "(7, 21, 6, -zeta6 + 1, -zeta6 + 1)"
+    },
+    {
+      "id": "dirichlet-bernoulli",
+      "capability": "dirichlet",
+      "title": "Generalized Bernoulli numbers",
+      "language": "sage",
+      "code": "chi = DirichletGroup(5).0\n[chi.bernoulli(k) for k in range(6)]",
+      "expected": "[0, -1/5*I - 3/5, 0, 6/5*I + 12/5, 0, -86/5*I - 148/5]"
+    },
+    {
+      "id": "elliptic-rational-points",
+      "capability": "elliptic-arithmetic",
+      "title": "Elliptic-curve point arithmetic",
+      "language": "sage",
+      "code": "E = EllipticCurve([0,0,1,-1,0])\nP = E([0,0])\n(P, 2*P, 10*P, E.conductor(), E.j_invariant())",
+      "expected": "((0 : 0 : 1), (1 : 0 : 1), (161/16 : -2065/64 : 1), 37, 110592/37)"
+    },
+    {
+      "id": "elliptic-finite-field",
+      "capability": "elliptic-arithmetic",
+      "title": "Points over a finite field",
+      "language": "sage",
+      "code": "E = EllipticCurve(GF(11), [0,0,1,-1,0])\n(len(E.points()), E([0,0]) + E([0,0]))",
+      "expected": "(17, (1 : 0 : 1))"
+    },
+    {
+      "id": "tate-local-data",
+      "capability": "tate-algorithm",
+      "title": "Wild 2-adic local data",
+      "language": "sage",
+      "code": "E = EllipticCurve([0,-2,0,-10,-8])\nd = E.local_data(2)\n(d.discriminant_valuation(), d.conductor_valuation(), str(d.kodaira_symbol()), d.tamagawa_number())",
+      "expected": "(8, 7, 'III', 2)"
+    },
+    {
+      "id": "global-conductor",
+      "capability": "tate-algorithm",
+      "title": "Global conductor and reduction data",
+      "language": "sage",
+      "code": "E = EllipticCurve([0,-2,0,9,8])\n(E.global_minimal_model().ainvs(), E.minimal_discriminant(), E.conductor(), E.bad_primes(), E.tamagawa_numbers())",
+      "expected": "((1, 0, 1, 0, 0), -26, 26, [2, 13], [1, 1])"
+    },
+    {
+      "id": "velu-isogeny",
+      "capability": "isogenies",
+      "title": "Construct a Vélu isogeny",
+      "language": "sage",
+      "code": "E = EllipticCurve([1,0,1,-171,-874])\nP = E([15,-8])\nphi = E.isogeny(P)\n(phi.degree(), phi.codomain().ainvs(), phi(P).is_zero(), phi.kernel_polynomial())",
+      "expected": "(2, (1, 0, 1, -2731, -55146), True, x - 15)"
+    },
+    {
+      "id": "modular-symbols-hecke",
+      "capability": "modular-symbols",
+      "title": "A Hecke operator on modular symbols",
+      "language": "sage",
+      "code": "M = ModularSymbols(11)\n(M.dimension(), M.weight(), M.T(2).matrix(), M.T(6).matrix() == M.T(2).matrix()*M.T(3).matrix())",
+      "expected": "(3, 2, [ 3  0 -1]\n[ 0 -2  0]\n[ 0  0 -2], True)"
+    },
+    {
+      "id": "modular-q-expansion",
+      "capability": "modular-forms",
+      "title": "A cuspidal q-expansion",
+      "language": "sage",
+      "code": "S = ModularSymbols(Gamma1(11), 2).cuspidal_submodule()\n(S.dimension(), S.q_expansion_basis(10))",
+      "expected": "(2, [q - 2*q^2 - q^3 + 2*q^4 + q^5 + 2*q^6 - 2*q^7 - 2*q^9 + O(q^10)])"
+    },
+    {
+      "id": "symbolic-calculus",
+      "capability": "symbolics",
+      "title": "Differentiate, integrate, and take a limit",
+      "language": "sage",
+      "code": "f = sin(x^2)\n(f.derivative(x), integral(x^2, x, 0, 1), limit(sin(2*x)/tan(3*x), x=0))",
+      "expected": "(2*x*cos(x^2), 1/3, 2/3)"
+    },
+    {
+      "id": "symbolic-definite-integral",
+      "capability": "symbolics",
+      "title": "A logarithmic definite integral",
+      "language": "sage",
+      "code": "integral(log(x)*x, (x, 2, 10))",
+      "expected": "-24 - 2*log(2) + 50*log(10)"
+    },
+    {
+      "id": "adaptive-quadrature",
+      "capability": "numerical-integration",
+      "title": "Adaptive quadrature with an error estimate",
+      "language": "sage",
+      "code": "value, error = numerical_integral(exp(x^2), 1, 2)\n(abs(value - 14.989976019600048) < 1e-12, error < 1e-10)",
+      "expected": "(True, True)"
+    },
+    {
+      "id": "numpy-array",
+      "capability": "numpy",
+      "title": "NumPy arrays in Python mode",
+      "language": "python",
+      "code": "import numpy as np\nA = np.array([[1, 2], [3, 4]])\n(A.shape, A.sum(), A @ A)",
+      "expected": "((2, 2), 10, array([[ 7, 10]\n [15, 22]]))"
+    },
+    {
+      "id": "plot-composition",
+      "capability": "graphics-2d",
+      "title": "Compose interactive 2D graphics",
+      "language": "sage",
+      "code": "g = line([(0, 0), (1, 1)], color='red', thickness=2)\ng += point((0, 1), color='black', size=12)\n(g, len(g), g.xmin(), g.xmax())",
+      "expected": "(Graphics object consisting of 2 graphics primitives, 2, 0, 1)",
+      "note": "In Jupyter the graphics object also produces an interactive Plotly display."
+    },
+    {
+      "id": "plot-3d-aspect",
+      "capability": "graphics-3d",
+      "title": "Compose solids with an equal aspect ratio",
+      "language": "sage",
+      "code": "G = tetrahedron((0,-3.5,0), color='blue')\nG += cube((0,-2,0), color=(.25,0,.5))\nG += octahedron(color='red') + dodecahedron((0,2,0), color='orange')\nG += icosahedron(center=(0,4,0), color='yellow')\nG.show(aspect_ratio=[1,1,1])",
+      "expected": "Graphics3d Object",
+      "note": "The rich result uses Plotly's data aspect mode."
+    },
+    {
+      "id": "sqlite-memory-database",
+      "capability": "sqlite",
+      "title": "Query an in-memory SQLite database",
+      "language": "python",
+      "code": "import sqlite3\ndb = sqlite3.connect(':memory:')\ndb.execute('create table items(id integer primary key, name text)')\ndb.executemany('insert into items(name) values (?)', [('alpha',), ('beta',), ('gamma',)])\nrows = db.execute('select id, name from items where id >= ? order by id', (2,)).fetchall()\ndb.close()\nrows",
+      "expected": "[(2, 'beta'), (3, 'gamma')]"
+    },
+    {
+      "id": "abelian-group",
+      "capability": "stdlib",
+      "title": "A finitely generated abelian group",
+      "language": "sage",
+      "code": "G = AbelianGroup([2,3], names='xy')\n(G, G.order(), G.gens())",
+      "expected": "(Multiplicative Abelian group isomorphic to C2 x C3, 6, (x, y))"
+    },
+    {
+      "id": "magma-factorization",
+      "capability": "magma-polyglot",
+      "title": "Magma-style arithmetic",
+      "language": "magma",
+      "code": "n := 2026;\nFactorization(n);\nIsPrime(101);",
+      "expected": "2 * 1013\nTrue",
+      "note": "This is translated locally; no Magma installation or subprocess is used."
+    },
+    {
+      "id": "macaulay2-polynomial-ring",
+      "capability": "macaulay2-polyglot",
+      "title": "Macaulay2 polynomial and ideal syntax",
+      "language": "macaulay2",
+      "code": "R = QQ[x,y];\nI = ideal(x^2-y^3, x*y);\ngens gb I\nfactor 2026",
+      "expected": "(y^3 - x^2, x*y, x^3)\n2 * 1013"
+    },
+    {
+      "id": "wolfram-language",
+      "capability": "other-polyglot",
+      "title": "Wolfram Language syntax",
+      "language": "wolfram",
+      "code": "f[x_] := x^2 + 1;\nTable[f[n], {n, 1, 5}]\nFactorInteger[2025]\nPrimePi[100]",
+      "expected": "[2, 5, 10, 17, 26]\n[[3, 4], [5, 2]]\n25"
+    },
+    {
+      "id": "maple-language",
+      "capability": "other-polyglot",
+      "title": "Maple syntax",
+      "language": "maple",
+      "code": "f := x -> x^2 + 1:\nseq(f(n), n=1..5);\nithprime(10);",
+      "expected": "[2, 5, 10, 17, 26]\n29"
+    },
+    {
+      "id": "matlab-language",
+      "capability": "other-polyglot",
+      "title": "MATLAB matrix syntax",
+      "language": "matlab",
+      "code": "A = [1 2; 3 4];\nA^2\nsize(A)",
+      "expected": "[[ 7 10]\n [15 22]]\n(2, 2)"
+    }
+  ]
+}

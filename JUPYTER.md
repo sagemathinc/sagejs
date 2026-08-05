@@ -111,8 +111,9 @@ A.tolist()
 A;
 ```
 
-The available magics are `%%sage`, `%%python`, `%%magma`, `%%matlab`,
-`%%maple`, and `%%wolfram`; `%%mathematica` is an alias for `%%wolfram`.
+The available magics are `%%sage`, `%%python`, `%%magma`, `%%macaulay2`
+(`%%m2`), `%%matlab`, `%%maple`, and `%%wolfram`; `%%mathematica` is an alias
+for `%%wolfram`.
 Without a magic, the kernelspec's default language is used.
 
 Submitting a Magma or Maple cell also terminates its final statement, so the

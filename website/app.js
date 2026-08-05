@@ -12,7 +12,7 @@ const labels = {
   later: "Later",
 };
 
-const state = { capabilities: [], filter: "all", area: "all", query: "" };
+const state = { capabilities: [], examples: [], filter: "all", area: "all", query: "" };
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -25,11 +25,11 @@ function badge(kind, value) {
   return el("span", `badge ${kind}-${value}`, labels[value] || value);
 }
 
-function renderMetrics(data) {
+function renderMetrics(data, examples) {
   document.querySelector("#metric-total").textContent = String(data.length);
   document.querySelector("#metric-available").textContent = String(data.filter((item) => item.state === "available").length);
   document.querySelector("#metric-certified").textContent = String(data.filter((item) => item.quality === "certified").length);
-  document.querySelector("#metric-now").textContent = String(data.filter((item) => item.priority === "now").length);
+  document.querySelector("#metric-examples").textContent = String(examples.length);
 }
 
 function renderAreaOptions(data) {
@@ -42,12 +42,76 @@ function renderAreaOptions(data) {
   }
 }
 
+function examplesFor(capabilityId) {
+  return state.examples.filter((example) => example.capability === capabilityId);
+}
+
+function exampleText(example) {
+  return [example.title, example.language, example.code, example.expected, example.note || ""].join(" ").toLowerCase();
+}
+
+function capabilityPassesFilters(item) {
+  return (state.filter === "all" || item.state === state.filter) &&
+    (state.area === "all" || item.area === state.area);
+}
+
 function matches(item) {
-  if (state.filter !== "all" && item.state !== state.filter) return false;
-  if (state.area !== "all" && item.area !== state.area) return false;
+  if (!capabilityPassesFilters(item)) return false;
   if (!state.query) return true;
   const text = [item.feature, item.area, item.summary, item.implementation, item.evidence, item.target].join(" ").toLowerCase();
-  return text.includes(state.query);
+  return text.includes(state.query) || examplesFor(item.id).some((example) => exampleText(example).includes(state.query));
+}
+
+function notebookSource(example) {
+  return example.language === "sage" ? example.code : `%%${example.language}\n${example.code}`;
+}
+
+async function copyText(button, value) {
+  try {
+    await navigator.clipboard.writeText(value);
+    const previous = button.textContent;
+    button.textContent = "Copied";
+    window.setTimeout(() => { button.textContent = previous; }, 1400);
+  } catch {
+    button.textContent = "Select code";
+  }
+}
+
+function exampleBlock(example) {
+  const article = el("article", "example-block");
+  article.id = `example-${example.id}`;
+  const header = el("div", "example-header");
+  const title = el("div", "");
+  const meta = el("div", "example-meta");
+  meta.append(el("span", `language language-${example.language}`, example.language), el("span", "verified", "✓ CI verified"));
+  title.append(meta, el("h4", "", example.title));
+  const copy = el("button", "example-copy", "Copy cell");
+  copy.type = "button";
+  copy.addEventListener("click", () => copyText(copy, notebookSource(example)));
+  header.append(title, copy);
+
+  const source = el("pre", "example-code");
+  source.append(el("code", "", notebookSource(example)));
+  const outputLabel = el("p", "output-label", "Expected output");
+  const output = el("pre", "example-output");
+  output.append(el("code", "", example.expected));
+  article.append(header, source, outputLabel, output);
+  if (example.note) article.append(el("p", "example-note", example.note));
+  return article;
+}
+
+function exampleExpander(item) {
+  const examples = examplesFor(item.id);
+  if (examples.length === 0) return null;
+  const details = el("details", "example-expander");
+  details.dataset.capability = item.id;
+  const summary = el("summary", "");
+  summary.append(el("span", "summary-label", `Try ${examples.length} verified ${examples.length === 1 ? "example" : "examples"}`), el("span", "summary-hint", "Copy directly into the polyglot Jupyter kernel"));
+  details.append(summary);
+  const list = el("div", "example-list");
+  for (const example of examples) list.append(exampleBlock(example));
+  details.append(list);
+  return details;
 }
 
 function capabilityCard(item) {
@@ -71,16 +135,61 @@ function capabilityCard(item) {
   target.append(el("h4", "", `Target · ${labels[item.priority]}`), el("p", "", item.target));
   details.append(implementation, evidence, target);
   article.append(top, summary, details);
+  const expander = exampleExpander(item);
+  if (expander) article.append(expander);
   return article;
+}
+
+function visibleExampleMatches() {
+  if (!state.query) return [];
+  const allowedCapabilities = new Map(
+    state.capabilities.filter(capabilityPassesFilters).map((item) => [item.id, item]),
+  );
+  return state.examples
+    .filter((example) => allowedCapabilities.has(example.capability) && exampleText(example).includes(state.query))
+    .map((example) => ({ example, capability: allowedCapabilities.get(example.capability) }));
+}
+
+function revealExample(example) {
+  const target = document.querySelector(`#example-${CSS.escape(example.id)}`);
+  if (!target) return;
+  const details = target.closest("details");
+  if (details) details.open = true;
+  target.classList.add("example-highlight");
+  history.replaceState(null, "", `#example-${example.id}`);
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  window.setTimeout(() => target.classList.remove("example-highlight"), 2200);
+}
+
+function renderExampleSearch() {
+  const section = document.querySelector("#example-search-results");
+  const list = document.querySelector("#example-result-list");
+  const matches = visibleExampleMatches();
+  section.hidden = !state.query || matches.length === 0;
+  list.replaceChildren();
+  for (const { example, capability } of matches) {
+    const button = el("button", "example-result", "");
+    button.type = "button";
+    const heading = el("span", "example-result-title");
+    heading.append(el("span", `language language-${example.language}`, example.language), el("strong", "", example.title));
+    const code = example.code.replace(/\s+/g, " ").trim();
+    button.append(heading, el("span", "example-result-context", `${capability.area} · ${capability.feature}`), el("code", "", code.length > 120 ? `${code.slice(0, 117)}…` : code));
+    button.addEventListener("click", () => revealExample(example));
+    list.append(button);
+  }
 }
 
 function renderCapabilities() {
   const list = document.querySelector("#capability-list");
   list.replaceChildren();
   const filtered = state.capabilities.filter(matches);
-  document.querySelector("#result-count").textContent = `${filtered.length} of ${state.capabilities.length} capabilities`;
+  const exampleMatches = visibleExampleMatches().length;
+  document.querySelector("#result-count").textContent = state.query
+    ? `${filtered.length} capabilities · ${exampleMatches} matching examples`
+    : `${filtered.length} of ${state.capabilities.length} capabilities · ${state.examples.length} verified examples`;
   for (const item of filtered) list.append(capabilityCard(item));
   if (filtered.length === 0) list.append(el("p", "empty-state", "No capabilities match these filters."));
+  renderExampleSearch();
 }
 
 function renderRoadmap(data) {
@@ -111,16 +220,7 @@ function renderRoadmap(data) {
 
 function installInteractions() {
   document.querySelectorAll(".copy").forEach((button) => {
-    button.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(button.dataset.copy);
-        const previous = button.textContent;
-        button.textContent = "Copied";
-        window.setTimeout(() => { button.textContent = previous; }, 1400);
-      } catch {
-        button.textContent = "Select command";
-      }
-    });
+    button.addEventListener("click", () => copyText(button, button.dataset.copy));
   });
 
   document.querySelectorAll("#state-filters .filter").forEach((button) => {
@@ -136,6 +236,10 @@ function installInteractions() {
   });
   document.querySelector("#search").addEventListener("input", (event) => {
     state.query = event.target.value.trim().toLowerCase();
+    const url = new URL(location.href);
+    if (event.target.value.trim()) url.searchParams.set("q", event.target.value.trim());
+    else url.searchParams.delete("q");
+    history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
     renderCapabilities();
   });
 }
@@ -143,16 +247,27 @@ function installInteractions() {
 async function loadDashboard() {
   installInteractions();
   try {
-    const response = await fetch("./capabilities.json");
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const payload = await response.json();
+    const [capabilityResponse, exampleResponse] = await Promise.all([
+      fetch("./capabilities.json"),
+      fetch("./examples.json"),
+    ]);
+    if (!capabilityResponse.ok || !exampleResponse.ok) throw new Error(`HTTP ${capabilityResponse.status}/${exampleResponse.status}`);
+    const [payload, examplePayload] = await Promise.all([capabilityResponse.json(), exampleResponse.json()]);
     state.capabilities = payload.capabilities;
+    state.examples = examplePayload.examples;
+    const initialQuery = new URLSearchParams(location.search).get("q") || "";
+    state.query = initialQuery.trim().toLowerCase();
+    document.querySelector("#search").value = initialQuery;
     document.querySelector("#updated-date").dateTime = payload.updated;
     document.querySelector("#updated-date").textContent = new Date(`${payload.updated}T00:00:00Z`).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
-    renderMetrics(state.capabilities);
+    renderMetrics(state.capabilities, state.examples);
     renderAreaOptions(state.capabilities);
     renderCapabilities();
     renderRoadmap(state.capabilities);
+    if (location.hash.startsWith("#example-")) {
+      const example = state.examples.find((item) => `#example-${item.id}` === location.hash);
+      if (example) window.setTimeout(() => revealExample(example), 0);
+    }
   } catch (error) {
     document.querySelector("#load-error").hidden = false;
     document.querySelector("#result-count").textContent = "Dashboard unavailable";
