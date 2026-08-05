@@ -45,7 +45,7 @@
       "id": "arithmetic",
       "layer": 1,
       "startup": "bootstrap",
-      "max_source_bytes": 480000,
+      "max_source_bytes": 495000,
       "depends_on": ["core-runtime"],
       "files": [
         "src/baselib/algebra.py",
@@ -138,7 +138,7 @@
       "id": "python-stdlib",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 425000,
+      "max_source_bytes": 440000,
       "depends_on": ["core-runtime"],
       "modules": [
         "aes", "array", "base64", "bisect", "collections", "contextlib",
@@ -147,7 +147,7 @@
         "http", "io", "js", "json", "math", "multiprocessing", "ntpath",
         "operator", "os", "pathlib", "posixpath", "pythonize", "random",
         "re", "sage", "sagejs_serialization", "shutil", "socket",
-        "statistics", "struct", "subprocess", "sys", "tempfile", "time",
+        "sqlite3", "statistics", "struct", "subprocess", "sys", "tempfile", "time",
         "traceback", "types", "urllib", "uuid", "weakref", "zlib"
       ],
       "files": [
@@ -162,7 +162,7 @@
         "src/lib/os.py", "src/lib/pathlib.py", "src/lib/posixpath.py",
         "src/lib/pythonize.py", "src/lib/random.py", "src/lib/re.py",
         "src/lib/sagejs_serialization.py", "src/lib/shutil.py",
-        "src/lib/socket.py", "src/lib/statistics.py", "src/lib/struct.py",
+        "src/lib/socket.py", "src/lib/sqlite3.py", "src/lib/statistics.py", "src/lib/struct.py",
         "src/lib/subprocess.py", "src/lib/sys.py", "src/lib/tempfile.py",
         "src/lib/time.py", "src/lib/traceback.py", "src/lib/types.py",
         "src/lib/uuid.py", "src/lib/weakref.py", "src/lib/zlib.py"
@@ -188,9 +188,9 @@
         "core-runtime", "python-stdlib", "arithmetic", "symbolics",
         "numeric-compat", "graphics"
       ],
-      "modules": ["magma", "maple", "matlab", "wolfram"],
+      "modules": ["macaulay2", "magma", "maple", "matlab", "wolfram"],
       "files": [
-        "src/lib/magma.py", "src/lib/maple.py", "src/lib/matlab.py",
+        "src/lib/macaulay2.py", "src/lib/magma.py", "src/lib/maple.py", "src/lib/matlab.py",
         "src/lib/wolfram.py"
       ],
       "prefixes": []
