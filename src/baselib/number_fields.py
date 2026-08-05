@@ -764,14 +764,159 @@ class NumberFieldGaloisGroup:
         return self._group.random_element()
 
 
-class NumberFieldClassGroup:
+@runtime.lightweight_math_class
+class NumberFieldClassGroupElement(sage.Element):
+    """An imaginary-quadratic ideal class in a general field presentation."""
 
-    def __init__(self, field: NumberFieldParent) -> None:
-        self._field = field
+    def __init__(
+        self,
+        parent: NumberFieldClassGroup,
+        element: Any,
+    ) -> None:
+        self._parent = parent
+        self._element = element
+        runtime.object.freeze(self)
+
+    def _mul_(
+        self, other: NumberFieldClassGroupElement,
+    ) -> NumberFieldClassGroupElement:
+        if (
+            not isinstance(other, NumberFieldClassGroupElement)
+            or other._parent is not self._parent
+        ):
+            raise TypeError('ideal classes must have the same parent')
+        return self._parent._wrap(self._element * other._element)
+
+    def __mul__(self, other: Any) -> Any:
+        return runtime.coercion_model.binOp('mul', self, other)
+
+    def _eq_(self, other: NumberFieldClassGroupElement) -> bool:
+        return (
+            isinstance(other, NumberFieldClassGroupElement)
+            and other._parent is self._parent
+            and other._element == self._element
+        )
+
+    def __eq__(self, other: object) -> bool:
+        return runtime.coercion_model.equals(self, other)
+
+    def __invert__(self) -> NumberFieldClassGroupElement:
+        return self._parent._wrap(~self._element)
+
+    inverse = __invert__
+
+    def __pow__(self, exponent: Any) -> NumberFieldClassGroupElement:
+        return self._parent._wrap(self._element ** exponent)
+
+    def is_one(self) -> bool:
+        return self._element.is_one()
+
+    is_principal = is_one
+
+    def order(self) -> int:
+        return self._element.order()
+
+    additive_order = order
+
+    def ideal(self) -> NumberFieldIdeal:
+        generators = self._mapped_generators()
+        return self._parent._field.maximal_order().ideal(generators)
+
+    def _mapped_generators(self) -> list[NumberFieldElement]:
+        return [
+            self._parent._field._from_quadratic_backend(value)
+            for value in self._element.ideal().gens_reduced()
+        ]
+
+    def form(self) -> Any:
+        return self._element.form()
 
     def __repr__(self) -> str:
+        if self.is_one():
+            return 'Trivial principal fractional ideal class'
+        generators = self._mapped_generators()
         return (
-            'Class group of order 1 of ' + str(self._field)
+            'Fractional ideal class ('
+            + ', '.join([str(value) for value in generators]) + ')'
+        )
+
+    __str__ = __repr__
+    toString = __repr__
+
+
+class NumberFieldClassGroup:
+    """A class group whose elements retain the original field presentation."""
+
+    def __init__(self, field: NumberFieldParent, group: Any = None) -> None:
+        self._field = field
+        self._group = group
+        self._element_cache = runtime.map()
+
+    def _wrap(self, element: Any) -> NumberFieldClassGroupElement:
+        cached = self._element_cache.get(element)
+        if cached is not runtime.undefined:
+            return cached
+        result = NumberFieldClassGroupElement(self, element)
+        self._element_cache.set(element, result)
+        return result
+
+    def __len__(self) -> int:
+        return self.order()
+
+    def __iter__(self) -> Any:
+        return iter(self.list())
+
+    def __getitem__(self, index: int) -> NumberFieldClassGroupElement:
+        return self.list()[index]
+
+    def list(self) -> list[NumberFieldClassGroupElement]:
+        if self._group is None:
+            return []
+        return [self._wrap(value) for value in self._group.list()]
+
+    def order(self) -> int:
+        return 1 if self._group is None else self._group.order()
+
+    cardinality = order
+
+    def one(self) -> NumberFieldClassGroupElement:
+        if self._group is None:
+            raise NotImplementedError(
+                'the tutorial class group does not expose ideal classes')
+        return self._wrap(self._group.one())
+
+    def invariants(self) -> 'tuple[Any, ...]':
+        if self._group is None:
+            return runtime.math_tuple([])
+        return self._group.invariants()
+
+    def gens(self) -> 'tuple[Any, ...]':
+        if self._group is None:
+            return runtime.math_tuple([])
+        return runtime.math_tuple([
+            self._wrap(value) for value in self._group.gens()])
+
+    def ngens(self) -> int:
+        return len(self.gens())
+
+    def gen(self, index: int = 0) -> NumberFieldClassGroupElement:
+        generators = self.gens()
+        if index < 0 or index >= len(generators):
+            raise IndexError('class-group generator index out of range')
+        return generators[index]
+
+    def number_field(self) -> NumberFieldParent:
+        return self._field
+
+    def __repr__(self) -> str:
+        structure = ''
+        invariants = self.invariants()
+        if len(invariants):
+            structure = ' with structure ' + ' x '.join([
+                'C' + str(value) for value in invariants])
+        return (
+            'Class group of order ' + str(self.order()) + structure
+            + ' of ' + str(self._field)
         )
 
     __str__ = __repr__
@@ -1476,6 +1621,12 @@ class NumberFieldOrder(sage.Parent):
                     generator * basis_element, self.degree()))
         return NumberFieldIdeal(self, rows)
 
+    def class_group(self) -> NumberFieldClassGroup:
+        return self._field.class_group()
+
+    def class_number(self) -> int:
+        return self._field.class_number()
+
     def __repr__(self) -> str:
         label = 'Maximal Order' if self._is_maximal else 'Order'
         generators = self.basis()[1:]
@@ -1524,6 +1675,8 @@ class NumberFieldParent(sage.Parent):
             self, generator_coefficients)
         self._equation_order_cache = runtime.undefined
         self._maximal_order_cache = runtime.undefined
+        self._quadratic_backend_cache = runtime.undefined
+        self._class_group_cache = runtime.undefined
         runtime.coercion_model.register(sage.ZZ, self, self)
         runtime.coercion_model.register(sage.QQ, self, self)
 
@@ -1697,17 +1850,64 @@ class NumberFieldParent(sage.Parent):
     def discriminant(self) -> Any:
         return self.maximal_order().discriminant()
 
-    def class_group(self) -> NumberFieldClassGroup:
-        if not self._is_tutorial_cubic():
+    def _quadratic_backend(self) -> Any:
+        """Return an equivalent ``QuadraticField`` for degree-two fields.
+
+        If ``a`` satisfies ``a^2 + b*a + c``, its polynomial
+        discriminant is ``delta = b^2 - 4*c``.  Writing
+        ``delta = numerator/denominator`` in lowest terms gives the
+        equivalent integral radicand ``numerator*denominator``.
+        """
+        if self.degree() != 2:
             raise NotImplementedError(
-                'general class groups need a number-field backend')
-        return NumberFieldClassGroup(self)
+                'quadratic class groups require a degree-two number field')
+        if self._quadratic_backend_cache is runtime.undefined:
+            constant = self._defining_coefficients[0]
+            linear = self._defining_coefficients[1]
+            discriminant = linear * linear - 4 * constant
+            numerator = runtime.integer_bigint(discriminant._numerator)
+            denominator = runtime.integer_bigint(discriminant._denominator)
+            if numerator >= 0:
+                raise NotImplementedError(
+                    'native NumberField class groups currently require '
+                    'an imaginary quadratic field')
+            radicand = numerator * denominator
+            backend = QuadraticField(radicand, self._variable)
+            self._quadratic_backend_cache = runtime.math_tuple([
+                backend, linear, denominator])
+        return self._quadratic_backend_cache
+
+    def _from_quadratic_backend(self, value: Any) -> NumberFieldElement:
+        backend_data = self._quadratic_backend()
+        linear = backend_data[1]
+        denominator = sage.QQ(backend_data[2])
+        # sqrt(numerator*denominator)
+        #     = denominator * (2*a + linear).
+        return self._from_coefficients([
+            value._real + value._imag * denominator * linear,
+            2 * value._imag * denominator,
+        ])
+
+    def class_group(self) -> NumberFieldClassGroup:
+        if self._class_group_cache is runtime.undefined:
+            if self._is_tutorial_cubic():
+                self._class_group_cache = NumberFieldClassGroup(self)
+            elif self.degree() == 2:
+                backend = self._quadratic_backend()[0]
+                self._class_group_cache = NumberFieldClassGroup(
+                    self, backend.class_group())
+            else:
+                raise NotImplementedError(
+                    'general class groups need a number-field backend')
+        return self._class_group_cache
 
     def class_number(self) -> int:
-        if not self._is_tutorial_cubic():
-            raise NotImplementedError(
-                'general class numbers need a number-field backend')
-        return 1
+        if self._is_tutorial_cubic():
+            return 1
+        if self.degree() == 2:
+            return self._quadratic_backend()[0].class_number()
+        raise NotImplementedError(
+            'general class numbers need a number-field backend')
 
 
 def NumberField(

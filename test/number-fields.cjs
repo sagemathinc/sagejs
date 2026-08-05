@@ -77,6 +77,44 @@ test("number-field tutorial invariants and custom Dirichlet values", async () =>
   }
 });
 
+test("quadratic NumberField presentations use native class groups", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "R.<x> = QQ[]",
+            "K.<a> = NumberField(x^2 + 17)",
+            "C = K.class_group()",
+            "[K.discriminant(), K.class_number(), C, C.invariants(), " +
+              "C.number_field() is K, C.gens(), " +
+              "K.maximal_order().class_number()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[-68, 4, Class group of order 4 with structure C4 of Number Field " +
+        "in a with defining polynomial x^2 + 17, (4,), True, " +
+        "(Fractional ideal class (3, a + 1),), 4]",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "L.<b> = NumberField(x^2 - x + 6)",
+            "D = L.class_group()",
+            "[L.discriminant(), L.class_number(), D.invariants(), " +
+              "D.gen()^3, D.gen().order()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[-23, 3, (3,), Trivial principal fractional ideal class, 3]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("maximal orders use exact trace-radical enlargements", async () => {
   const session = await createSage();
   try {
