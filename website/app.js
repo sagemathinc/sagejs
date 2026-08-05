@@ -20,7 +20,7 @@ const coverageLabels = {
   planned: "Planned",
 };
 
-const state = { capabilities: [], examples: [], audits: [], auditAreas: [], benchmarks: [], filter: "all", area: "all", query: "" };
+const state = { capabilities: [], examples: [], audits: [], auditAreas: [], benchmarks: [], performancePilot: null, filter: "all", area: "all", query: "" };
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -101,7 +101,8 @@ function matches(item) {
   if (!capabilityPassesFilters(item)) return false;
   if (!state.query) return true;
   const score = item.coverage.score || {};
-  const coverageText = [item.coverage.label, item.coverage.summary, ...item.coverage.includes, score.unit || "", score.reference || "", score.method || ""].join(" ");
+  const facetText = (item.coverage.facets || []).flatMap((facet) => [facet.name, facet.status, facet.detail]);
+  const coverageText = [item.coverage.label, item.coverage.summary, ...item.coverage.includes, ...facetText, item.coverage.auditPath || "", score.unit || "", score.reference || "", score.method || ""].join(" ");
   const text = [item.feature, item.area, item.summary, item.implementation, item.evidence, item.target, coverageText, auditText(item)].join(" ").toLowerCase();
   return text.includes(state.query) || examplesFor(item.id).some((example) => exampleText(example).includes(state.query));
 }
@@ -146,6 +147,11 @@ function competitiveAuditExpander(item) {
       suiteList.append(row);
     }
     performance.append(suiteList);
+    if (state.performancePilot && suites.some((suite) => suite.id === state.performancePilot.suite)) {
+      const resultLink = el("a", "benchmark-result-link", "View the published measured result →");
+      resultLink.href = "#performance-results";
+      performance.append(resultLink);
+    }
   } else {
     performance.append(el("p", "", "No benchmark suite has been defined yet."));
   }
@@ -190,6 +196,23 @@ function coverageExpander(item) {
   const body = el("div", "coverage-body");
   body.append(coverageScoreBlock(item.coverage.score), el("p", "", item.coverage.summary));
   if (item.coverage.score?.method) body.append(el("p", "coverage-method", `Method: ${item.coverage.score.method}`));
+  if (item.coverage.auditPath) {
+    const auditLink = el("a", "coverage-audit-link", "View the machine-readable coverage audit →");
+    auditLink.href = `./${item.coverage.auditPath}`;
+    body.append(auditLink);
+  }
+  if (item.coverage.facets?.length) {
+    const facets = el("div", "coverage-facets");
+    facets.append(el("h4", "", "Semantic facets"));
+    for (const facet of item.coverage.facets) {
+      const row = el("div", "coverage-facet");
+      const heading = el("div", "coverage-facet-heading");
+      heading.append(el("strong", "", facet.name), el("span", `coverage-facet-status facet-${facet.status}`, facet.status));
+      row.append(heading, el("p", "", facet.detail));
+      facets.append(row);
+    }
+    body.append(facets);
+  }
   const list = el("ul", "coverage-list");
   for (const family of item.coverage.includes) list.append(el("li", "", family));
   body.append(list);
@@ -374,6 +397,58 @@ function renderAuditMetrics() {
   document.querySelector("#audit-system-count").textContent = String(systems.size);
 }
 
+function formatDuration(seconds) {
+  if (seconds < 0.001) return `${Math.round(seconds * 1e6)} µs`;
+  if (seconds < 1) return `${(seconds * 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} ms`;
+  return `${seconds.toLocaleString(undefined, { maximumFractionDigits: 3 })} s`;
+}
+
+function renderPerformancePilot() {
+  const pilot = state.performancePilot;
+  if (!pilot) return;
+  const section = document.querySelector("#performance-results");
+  section.hidden = false;
+  document.querySelector("#performance-intro").textContent =
+    `All compared systems agree that h(${pilot.case.discriminant}) = ${pilot.case.answer}. ` +
+    "The rows deliberately expose their different proof guarantees instead of pretending they are equivalent operations.";
+
+  const environment = document.querySelector("#performance-environment");
+  environment.replaceChildren();
+  for (const value of [pilot.environment.cpu, `${pilot.environment.allocatedCores} allocated cores`, `Node ${pilot.environment.node}`, `PARI ${pilot.environment.pari}`, `Magma ${pilot.environment.magma}`]) {
+    environment.append(el("span", "", value));
+  }
+
+  const values = pilot.results.map((result) => result.medianSeconds);
+  const minimum = Math.min(...values);
+  const maximum = Math.max(...values);
+  const logRange = Math.log10(maximum) - Math.log10(minimum);
+  const bars = document.querySelector("#performance-bars");
+  const table = document.querySelector("#performance-table-body");
+  bars.replaceChildren();
+  table.replaceChildren();
+  for (const result of pilot.results) {
+    const chartRow = el("div", "performance-bar-row");
+    const label = el("div", "performance-bar-label");
+    label.append(el("strong", "", result.system), el("small", "", result.operation));
+    const track = el("div", "performance-bar-track");
+    const bar = el("span", "performance-bar-fill");
+    const position = logRange === 0 ? 1 : (Math.log10(result.medianSeconds) - Math.log10(minimum)) / logRange;
+    bar.style.width = `${10 + 90 * position}%`;
+    bar.title = `${result.system}: ${formatDuration(result.medianSeconds)}`;
+    track.append(bar);
+    chartRow.append(label, track, el("code", "performance-bar-value", formatDuration(result.medianSeconds)));
+    bars.append(chartRow);
+
+    const row = document.createElement("tr");
+    for (const value of [result.system, result.operation, result.semantics, formatDuration(result.medianSeconds)]) {
+      row.append(el("td", "", value));
+    }
+    table.append(row);
+  }
+  document.querySelector("#performance-warning").textContent = pilot.warning;
+  document.querySelector("#performance-command").textContent = pilot.reproduce;
+}
+
 function renderRoadmap(data) {
   const container = document.querySelector("#roadmap-columns");
   container.replaceChildren();
@@ -433,26 +508,29 @@ function installInteractions() {
 async function loadDashboard() {
   installInteractions();
   try {
-    const [capabilityResponse, exampleResponse, auditResponse, benchmarkResponse] = await Promise.all([
+    const [capabilityResponse, exampleResponse, auditResponse, benchmarkResponse, performanceResponse] = await Promise.all([
       fetch("./capabilities.json"),
       fetch("./examples.json"),
       fetch("./competitive-audit.json"),
       fetch("./benchmarks.json"),
+      fetch("./performance/quadratic-class-groups-pilot.json"),
     ]);
-    if (!capabilityResponse.ok || !exampleResponse.ok || !auditResponse.ok || !benchmarkResponse.ok) {
-      throw new Error(`HTTP ${capabilityResponse.status}/${exampleResponse.status}/${auditResponse.status}/${benchmarkResponse.status}`);
+    if (!capabilityResponse.ok || !exampleResponse.ok || !auditResponse.ok || !benchmarkResponse.ok || !performanceResponse.ok) {
+      throw new Error(`HTTP ${capabilityResponse.status}/${exampleResponse.status}/${auditResponse.status}/${benchmarkResponse.status}/${performanceResponse.status}`);
     }
-    const [payload, examplePayload, auditPayload, benchmarkPayload] = await Promise.all([
+    const [payload, examplePayload, auditPayload, benchmarkPayload, performancePayload] = await Promise.all([
       capabilityResponse.json(),
       exampleResponse.json(),
       auditResponse.json(),
       benchmarkResponse.json(),
+      performanceResponse.json(),
     ]);
     state.capabilities = payload.capabilities;
     state.examples = examplePayload.examples;
     state.audits = auditPayload.capabilities;
     state.auditAreas = auditPayload.areas;
     state.benchmarks = benchmarkPayload.suites;
+    state.performancePilot = performancePayload;
     const initialQuery = new URLSearchParams(location.search).get("q") || "";
     state.query = initialQuery.trim().toLowerCase();
     document.querySelector("#search").value = initialQuery;
@@ -460,6 +538,7 @@ async function loadDashboard() {
     document.querySelector("#updated-date").textContent = new Date(`${payload.updated}T00:00:00Z`).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
     renderMetrics(state.capabilities, state.examples);
     renderAuditMetrics();
+    renderPerformancePilot();
     renderAreaOptions(state.capabilities);
     renderCapabilities();
     renderRoadmap(state.capabilities);

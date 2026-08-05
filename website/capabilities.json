@@ -540,8 +540,28 @@
       "quality": "tested",
       "coverage": {
         "level": "substantial",
-        "label": "Most common Sage 3D constructors",
-        "summary": "Covers a wide interactive 3D surface including plots, meshes, regular solids, scene composition, transforms, camera controls, and aspect ratios.",
+        "label": "All 24 public Sage 3D plotting names",
+        "summary": "Sage.js exposes every public name imported by SageMath's sage.plot.plot3d.all module. That is complete top-level symbol coverage, while specialized options, adaptive algorithms, renderer selection, and export semantics remain only partial.",
+        "score": {
+          "kind": "measured",
+          "value": 100,
+          "numerator": 24,
+          "denominator": 24,
+          "unit": "public SageMath 3D plotting exports",
+          "reference": "SageMath 10.10.beta7 sage.plot.plot3d.all at 09472ff5",
+          "method": "Extracted all public imports and lazy imports from SageMath's plot3d/all.py, then verified that every corresponding Sage.js top-level name is callable. Semantic facets and limitations are reported separately.",
+          "audited": "2026-08-05"
+        },
+        "auditPath": "coverage/graphics-3d.json",
+        "facets": [
+          {"name":"Public top-level API","status":"measured","detail":"24 of 24 SageMath 10.10.beta7 public plot3d exports are callable."},
+          {"name":"Plots and geometric primitives","status":"tested","detail":"Surface, parametric, implicit, list, revolution, vector-field, curve, mesh, text, arrow, sphere, and regular-solid families have focused regressions."},
+          {"name":"Composition and transforms","status":"tested","detail":"Scene addition, indexing, translation, scaling, rotation, coordinate transforms, frames, rulers, axes, labels, and aspect-ratio handling are regression tested."},
+          {"name":"Jupyter rendering","status":"tested","detail":"Plotly MIME output is self-contained and covered by rich-display and serialization tests."},
+          {"name":"Sampling and interpolation parity","status":"partial","detail":"Rectangular and scattered sampling are useful today; Sage adaptive plot3d refinement and some list_plot3d interpolation modes remain missing."},
+          {"name":"Renderer and export parity","status":"partial","detail":"Plotly is the supported renderer; Sage Tachyon/Jmol/Three.js renderer selection and the full static export matrix are not reproduced."},
+          {"name":"Materials, textures, and lighting","status":"partial","detail":"Colors, opacity, mesh styling, and common scene options work; advanced textures, lighting, and material semantics remain incomplete."}
+        ],
         "includes": ["plot3d / parametric_plot3d / implicit_plot3d", "spherical_plot3d / cylindrical_plot3d", "list_plot3d / revolution_plot3d", "line3d / point3d / polygon3d / text3d / arrow3d", "sphere and mesh surfaces", "tetrahedron / cube / octahedron / dodecahedron / icosahedron", "vector fields", "frames / axes / rulers / labels", "translation / scaling / rotation", "scene composition and aspect_ratio"]
       },
       "summary": "Surfaces, parametric objects, polyhedra, scenes, transforms, and aspect ratios render interactively.",

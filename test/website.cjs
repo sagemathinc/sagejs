@@ -14,6 +14,9 @@ const script = fs.readFileSync(path.join(website, "app.js"), "utf8");
 const stdlibCoverage = JSON.parse(
   fs.readFileSync(path.join(website, "coverage/python-stdlib.json"), "utf8"),
 );
+const graphics3dCoverage = JSON.parse(
+  fs.readFileSync(path.join(website, "coverage/graphics-3d.json"), "utf8"),
+);
 const competitiveAudit = JSON.parse(
   fs.readFileSync(path.join(website, "competitive-audit.json"), "utf8"),
 );
@@ -57,6 +60,13 @@ test("dashboard data has a stable, complete schema", () => {
     for (const family of capability.coverage.includes) {
       assert.equal(typeof family, "string", `${capability.id}.coverage.includes item`);
       assert.ok(family.trim(), `${capability.id}.coverage.includes has an empty item`);
+    }
+    if (capability.coverage.facets) {
+      assert.ok(capability.coverage.facets.length > 0, `${capability.id}.coverage.facets`);
+      for (const facet of capability.coverage.facets) {
+        assert.ok(facet.name?.trim() && facet.detail?.trim(), `${capability.id} coverage facet text`);
+        assert.ok(["measured", "tested", "partial", "missing", "planned"].includes(facet.status), `${capability.id} facet status`);
+      }
     }
     if (capability.state === "planned") assert.equal(capability.quality, "planned", `${capability.id} planned state must not overclaim quality`);
   }
@@ -105,6 +115,12 @@ test("published coverage scores have explicit denominators or estimate labels", 
   assert.equal(stdlib.numerator, stdlibCoverage.metric.numerator);
   assert.equal(stdlib.denominator, stdlibCoverage.metric.denominator);
   assert.equal(stdlib.value, stdlibCoverage.metric.percentage);
+  const graphics3d = payload.capabilities.find((item) => item.id === "graphics-3d").coverage;
+  assert.equal(graphics3d.score.numerator, graphics3dCoverage.metric.numerator);
+  assert.equal(graphics3d.score.denominator, graphics3dCoverage.metric.denominator);
+  assert.equal(graphics3d.score.value, graphics3dCoverage.metric.percentage);
+  assert.equal(graphics3d.auditPath, "coverage/graphics-3d.json");
+  assert.deepEqual(graphics3d.facets, graphics3dCoverage.facets.map(({ name, status, detail }) => ({ name, status, detail })));
 });
 
 test("competitive audit covers every capability with a stable work lane", () => {
@@ -175,7 +191,7 @@ test("dashboard covers the three questions and both install paths", () => {
   assert.match(html, /@sagemath\/sagejs/);
   assert.match(html, /releases\/latest\/download\/install\.sh/);
   assert.match(html, /--install-jupyter-kernel/);
-  for (const hook of ["metric-total", "capability-list", "roadmap-columns", "area-filter", "example-search-results", "example-result-list", "competitive-audit", "audit-gap-count", "audit-existing-benchmarks"]) assert.match(html, new RegExp(`id=["']${hook}["']`));
+  for (const hook of ["metric-total", "capability-list", "roadmap-columns", "area-filter", "example-search-results", "example-result-list", "competitive-audit", "audit-gap-count", "audit-existing-benchmarks", "performance-results", "performance-bars", "performance-table-body", "performance-warning", "performance-command"]) assert.match(html, new RegExp(`id=["']${hook}["']`));
 });
 
 test("dashboard JavaScript is self-contained and does not inject capability HTML", () => {
@@ -186,6 +202,9 @@ test("dashboard JavaScript is self-contained and does not inject capability HTML
   assert.match(script, /fetch\(["']\.\/examples\.json["']\)/);
   assert.match(script, /fetch\(["']\.\/competitive-audit\.json["']\)/);
   assert.match(script, /fetch\(["']\.\/benchmarks\.json["']\)/);
+  assert.match(script, /fetch\(["']\.\/performance\/quadratic-class-groups-pilot\.json["']\)/);
+  assert.match(script, /function renderPerformancePilot/);
+  assert.match(script, /function formatDuration/);
   assert.match(script, /CSS\.escape/);
   assert.match(script, /function revealCapability/);
   assert.match(script, /url\.searchParams\.delete\("q"\)/);

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "audited": "2026-08-05",
+  "capability": "graphics-3d",
+  "reference": {
+    "system": "SageMath",
+    "version": "10.10.beta7",
+    "revision": "09472ff530d280d0c9f44fdc5a9c3e856ed95b37",
+    "source": "src/sage/plot/plot3d/all.py",
+    "unit": "public names imported or lazy-imported by sage.plot.plot3d.all"
+  },
+  "metric": {
+    "numerator": 24,
+    "denominator": 24,
+    "percentage": 100,
+    "meaning": "Every public top-level SageMath 3D plotting name is callable in Sage.js. This measures symbol presence, not complete option, renderer, or algorithm parity."
+  },
+  "exports": [
+    {"name":"plot3d","kind":"function","family":"surface plots","status":"supported"},
+    {"name":"cylindrical_plot3d","kind":"function","family":"surface plots","status":"supported"},
+    {"name":"spherical_plot3d","kind":"function","family":"surface plots","status":"supported"},
+    {"name":"Spherical","kind":"class","family":"coordinate transforms","status":"supported"},
+    {"name":"SphericalElevation","kind":"class","family":"coordinate transforms","status":"supported"},
+    {"name":"Cylindrical","kind":"class","family":"coordinate transforms","status":"supported"},
+    {"name":"parametric_plot3d","kind":"function","family":"parametric plots","status":"supported"},
+    {"name":"plot_vector_field3d","kind":"function","family":"vector fields","status":"supported"},
+    {"name":"implicit_plot3d","kind":"function","family":"implicit surfaces","status":"supported"},
+    {"name":"list_plot3d","kind":"function","family":"data surfaces","status":"supported"},
+    {"name":"revolution_plot3d","kind":"function","family":"surfaces of revolution","status":"supported"},
+    {"name":"tetrahedron","kind":"function","family":"regular solids","status":"supported"},
+    {"name":"cube","kind":"function","family":"regular solids","status":"supported"},
+    {"name":"octahedron","kind":"function","family":"regular solids","status":"supported"},
+    {"name":"dodecahedron","kind":"function","family":"regular solids","status":"supported"},
+    {"name":"icosahedron","kind":"function","family":"regular solids","status":"supported"},
+    {"name":"sphere","kind":"function","family":"geometric primitives","status":"supported"},
+    {"name":"line3d","kind":"function","family":"geometric primitives","status":"supported"},
+    {"name":"polygon3d","kind":"function","family":"geometric primitives","status":"supported"},
+    {"name":"polygons3d","kind":"function","family":"geometric primitives","status":"supported"},
+    {"name":"point3d","kind":"function","family":"geometric primitives","status":"supported"},
+    {"name":"text3d","kind":"function","family":"geometric primitives","status":"supported"},
+    {"name":"bezier3d","kind":"function","family":"geometric primitives","status":"supported"},
+    {"name":"arrow3d","kind":"function","family":"geometric primitives","status":"supported"}
+  ],
+  "facets": [
+    {"name":"Public top-level API","status":"measured","detail":"24 of 24 SageMath 10.10.beta7 public plot3d exports are callable."},
+    {"name":"Plots and geometric primitives","status":"tested","detail":"Surface, parametric, implicit, list, revolution, vector-field, curve, mesh, text, arrow, sphere, and regular-solid families have focused regressions."},
+    {"name":"Composition and transforms","status":"tested","detail":"Scene addition, indexing, translation, scaling, rotation, coordinate transforms, frames, rulers, axes, labels, and aspect-ratio handling are regression tested."},
+    {"name":"Jupyter rendering","status":"tested","detail":"Plotly MIME output is self-contained and covered by rich-display and serialization tests."},
+    {"name":"Sampling and interpolation parity","status":"partial","detail":"Rectangular and scattered sampling are useful today; Sage adaptive plot3d refinement and some list_plot3d interpolation modes remain missing."},
+    {"name":"Renderer and export parity","status":"partial","detail":"Plotly is the supported renderer; Sage Tachyon/Jmol/Three.js renderer selection and the full static export matrix are not reproduced."},
+    {"name":"Materials, textures, and lighting","status":"partial","detail":"Colors, opacity, mesh styling, and common scene options work; advanced textures, lighting, and material semantics remain incomplete."}
+  ],
+  "limitations": [
+    "A callable constructor can still have unsupported specialized keyword options.",
+    "Visual equivalence needs image- or scene-level regression tests in addition to object-structure tests.",
+    "This audit intentionally does not count Sage internal renderer classes as user-facing top-level plotting API."
+  ]
+}

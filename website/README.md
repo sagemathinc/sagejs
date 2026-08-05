@@ -32,6 +32,13 @@ importable module exists. Future audits should follow the same pattern and use
 the narrowest defensible unit: public symbols, documented constructors,
 algorithm cases, or a named workflow corpus.
 
+[`coverage/graphics-3d.json`](coverage/graphics-3d.json) applies the same rule
+to SageMath 10.10.beta7's public `sage.plot.plot3d.all` exports. Its 24/24 score
+means complete top-level symbol presence only. Separate facets report tested
+workflows and incomplete option, algorithm, renderer, export, texture, and
+lighting semantics, preventing a narrow 100% measurement from being presented
+as total implementation parity.
+
 ## Competitive audit and performance corpus
 
 `competitive-audit.json` gives every capability one explicit audit unit, a
@@ -54,7 +61,9 @@ because both print the same integer.
 same-host result. It demonstrates the result shape and semantic labels, but is
 explicitly not a release baseline. Future dedicated benchmark VMs should record
 their exact machine type, software revisions, proof modes, repetitions, and raw
-case data.
+case data. The dashboard renders this JSON as both an exact table and a compact
+log-scale elapsed-time plot; it does not maintain a second hand-written copy of
+the numbers.
 
 Run the complete audit validation with:
 

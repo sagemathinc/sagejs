@@ -21,6 +21,7 @@
         <a href="#install">Install</a>
         <a href="#capabilities">Capabilities</a>
         <a href="#competitive-audit">Audit</a>
+        <a href="#performance-results">Performance</a>
         <a href="#roadmap">Roadmap</a>
         <a href="https://github.com/sagemathinc/sagejs">GitHub</a>
       </nav>
@@ -135,6 +136,34 @@
             <div><strong id="audit-planned-benchmarks">—</strong><span>planned benchmark suites</span></div>
             <div><strong id="audit-system-count">—</strong><span>comparison-system families</span></div>
           </div>
+        </section>
+
+        <section class="performance-results" id="performance-results" aria-labelledby="performance-results-title" hidden>
+          <div class="performance-heading">
+            <div>
+              <p class="eyebrow">Measured performance</p>
+              <h3 id="performance-results-title">One transparent pilot, not an opaque score</h3>
+              <p id="performance-intro"></p>
+            </div>
+            <div id="performance-environment" class="performance-environment" aria-label="Benchmark environment"></div>
+          </div>
+          <div class="performance-layout">
+            <figure class="performance-figure">
+              <figcaption>Median elapsed time <span>logarithmic visual scale</span></figcaption>
+              <div id="performance-bars" class="performance-bars"></div>
+            </figure>
+            <div class="performance-table-wrap">
+              <table class="performance-table">
+                <thead><tr><th>System</th><th>Operation</th><th>Proof semantics</th><th>Median</th></tr></thead>
+                <tbody id="performance-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <p id="performance-warning" class="performance-warning"></p>
+          <details class="performance-reproduce">
+            <summary>Environment and reproduction command</summary>
+            <pre><code id="performance-command"></code></pre>
+          </details>
         </section>
 
         <section id="example-search-results" class="example-search-results" aria-labelledby="example-results-title" hidden>
