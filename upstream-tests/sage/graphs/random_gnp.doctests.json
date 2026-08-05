@@ -1,0 +1,172 @@
+{
+  "schema": "sagejs.sage-doctests/v1",
+  "generatedBy": "scripts/extract-sage-doctests.cjs",
+  "source": {
+    "repository": "https://github.com/sagemath/sage",
+    "revision": "09472ff530d280d0c9f44fdc5a9c3e856ed95b37",
+    "path": "src/sage/graphs/generators/random.py",
+    "sha256": "bb166031fcca6f5ac20f09e080ff2323ea6f60783e29ba153efcb85285392a6f",
+    "license": "GPL-2.0-or-later"
+  },
+  "summary": {
+    "groups": 1,
+    "examples": 16
+  },
+  "groups": [
+    {
+      "id": "src/sage/graphs/generators/random.py#RandomGNP@26",
+      "owner": "RandomGNP",
+      "line": 26,
+      "examples": [
+        {
+          "id": "src/sage/graphs/generators/random.py:67",
+          "line": 67,
+          "source": "set_random_seed(0)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:68",
+          "line": 68,
+          "source": "graphs.RandomGNP(6, .4).edges(sort=true, labels=False)",
+          "want": "[(0, 3), (1, 2), (2, 3), (2, 4)]\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:73",
+          "line": 73,
+          "source": "gnp = graphs.RandomGNP(12,.71)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:74",
+          "line": 74,
+          "source": "gnp.show()                        # long time                             # needs sage.plot",
+          "want": "",
+          "tags": [
+            {
+              "name": "needs",
+              "value": "sage.plot"
+            },
+            {
+              "name": "long time"
+            }
+          ]
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:78",
+          "line": 78,
+          "source": "g = []",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:79",
+          "line": 79,
+          "source": "j = []",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:80",
+          "line": 80,
+          "source": "for i in range(9):\n    k = graphs.RandomGNP(i+3,.43)\n    g.append(k)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:83",
+          "line": 83,
+          "source": "for i in range(3):                                                        # needs sage.plot\n    n = []\n    for m in range(3):\n        n.append(g[3*i + m].plot(vertex_size=50, vertex_labels=False))\n    j.append(n)",
+          "want": "",
+          "tags": [
+            {
+              "name": "needs",
+              "value": "sage.plot"
+            }
+          ]
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:88",
+          "line": 88,
+          "source": "G = graphics_array(j)                                                     # needs sage.plot",
+          "want": "",
+          "tags": [
+            {
+              "name": "needs",
+              "value": "sage.plot"
+            }
+          ]
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:89",
+          "line": 89,
+          "source": "G.show()                          # long time                             # needs sage.plot",
+          "want": "",
+          "tags": [
+            {
+              "name": "needs",
+              "value": "sage.plot"
+            },
+            {
+              "name": "long time"
+            }
+          ]
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:90",
+          "line": 90,
+          "source": "graphs.RandomGNP(4,1)",
+          "want": "Complete graph: Graph on 4 vertices\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:95",
+          "line": 95,
+          "source": "graphs.RandomGNP(50,.2,algorithm=50)",
+          "want": "Traceback (most recent call last):\n...\nValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:99",
+          "line": 99,
+          "source": "set_random_seed(0)",
+          "want": "",
+          "tags": []
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:100",
+          "line": 100,
+          "source": "graphs.RandomGNP(50,.2, algorithm='Sage').size()",
+          "want": "243\n",
+          "tags": []
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:102",
+          "line": 102,
+          "source": "s = graphs.RandomGNP(50,.2, algorithm='networkx').size()                  # needs networkx",
+          "want": "",
+          "tags": [
+            {
+              "name": "needs",
+              "value": "networkx"
+            }
+          ]
+        },
+        {
+          "id": "src/sage/graphs/generators/random.py:103",
+          "line": 103,
+          "source": "s in [279, 209]  # 32 and 64 bit, needs networkx",
+          "want": "True\n",
+          "tags": [
+            {
+              "name": "needs",
+              "value": "networkx"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

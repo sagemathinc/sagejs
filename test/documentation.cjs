@@ -109,6 +109,26 @@ test("DocSpec rejects reStructuredText artifacts", () => {
   );
 });
 
+test("DocSpec preserves typed positional and keyword-only signatures", () => {
+  function example() {}
+  example.__name__ = "typed";
+  example.__argnames__ = ["value"];
+  example.__kwonly__ = ["proof"];
+  example.__defaults__ = { proof: true };
+  example.__annotations_text__ = {
+    value: "list[int]",
+    proof: "bool",
+    return: "tuple[int, ...]",
+  };
+  const catalog = documentationCatalogFromRegistry([["typed", example, {
+    provenance: [{ kind: "sagejs-original" }],
+  }]]);
+  assert.equal(
+    catalog.entries[0].signature,
+    "typed(value: list[int], *, proof: bool=true) -> tuple[int, ...]",
+  );
+});
+
 test("DocSpec supports documented constants without mutating their value", () => {
   const value = Object.freeze({ value: Math.log(2) });
   const catalog = documentationCatalogFromRegistry([

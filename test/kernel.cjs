@@ -48,7 +48,7 @@ async function main(t) {
   assert.ok(dimensionDocumentation.tags.includes("modular forms"));
   assert.equal(
     documentation.entries.find((entry) => entry.name === "matrix").signature,
-    "matrix(*args)",
+    "matrix(*args: Any) -> Matrix",
   );
   assert.deepEqual(
     documentation.entries.flatMap((entry) =>

@@ -551,6 +551,8 @@ class AST_Lambda(AST_Scope):
         "[bool*] assign this definition when its statement executes",
         "return_annotation":
         "[AST_Node?] The return type annotation provided (if any)",
+        "return_annotation_text":
+        "[string?] The source spelling of the return annotation",
         "declared_globals":
         "[string*] names declared global directly in this function",
         "declared_nonlocals":
@@ -1268,7 +1270,9 @@ class AST_SymbolFunarg(AST_SymbolVar):
     "Symbol naming a function argument, possibly with an annotation."
     properties = {
         'annotation':
-        "[AST_Node?] The annotation provided for this argument (if any)"
+        "[AST_Node?] The annotation provided for this argument (if any)",
+        'annotation_text':
+        "[string?] The source spelling of the annotation",
     }
 
 

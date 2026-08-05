@@ -100,7 +100,7 @@
       "id": "graph-theory",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 110000,
+      "max_source_bytes": 120000,
       "depends_on": ["core-runtime", "linear-algebra"],
       "files": ["src/baselib/graphs.py"],
       "prefixes": []

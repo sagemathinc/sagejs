@@ -2029,25 +2029,71 @@ def _builtins_has_own(value: Any, name: _Str) -> _Bool:
 def _builtins_signature(value: Any, name: _Str) -> _Str:
     argument_names = _builtins_get_member(value, '__argnames__')
     defaults = _builtins_get_member(value, '__defaults__')
+    annotation_text = _builtins_get_member(
+        value, '__annotations_text__')
+    annotations = _builtins_get_member(value, '__annotations__')
+
+    def annotation(argument: _Str) -> _Str:
+        if _builtins_has_own(annotation_text, argument):
+            return str(_builtins_get_member(annotation_text, argument))
+        if not _builtins_has_own(annotations, argument):
+            return ''
+        item = _builtins_get_member(annotations, argument)
+        if runtime.strict_equal(runtime.jstype(item), 'string'):
+            return item
+        callable_name = _builtins_callable_name(item)
+        if callable_name != '<anonymous>':
+            return callable_name
+        return runtime.repr(item)
+
+    def argument_part(argument: _Str) -> _Str:
+        part = argument
+        type_name = annotation(argument)
+        if type_name:
+            part += ': ' + type_name
+        if _builtins_has_own(defaults, argument):
+            default_value = _builtins_get_member(defaults, argument)
+            if default_value is runtime.undefined:
+                part += '=None'
+            else:
+                part += '=' + runtime.repr(default_value)
+        return part
+
     parts = []
     if runtime.array.isArray(argument_names):
         for argument in argument_names:
-            part = argument
-            if _builtins_has_own(defaults, argument):
-                default_value = _builtins_get_member(defaults, argument)
-                if default_value is runtime.undefined:
-                    part += '=None'
-                else:
-                    part += '=' + runtime.repr(default_value)
-            parts.append(part)
+            parts.append(argument_part(argument))
+
+    positional_only = _builtins_get_member(
+        value, '__positional_only__')
+    if positional_only is True and len(parts):
+        parts.append('/')
 
     varargs = _builtins_get_member(value, '__varargs__')
     if runtime.strict_equal(runtime.jstype(varargs), 'string'):
-        parts.append('*' + varargs)
+        varargs_part = '*' + varargs
+        varargs_type = annotation(varargs)
+        if varargs_type:
+            varargs_part += ': ' + varargs_type
+        parts.append(varargs_part)
+    kwonly = _builtins_get_member(value, '__kwonly__')
+    if runtime.array.isArray(kwonly) and len(kwonly):
+        if not runtime.strict_equal(runtime.jstype(varargs), 'string'):
+            parts.append('*')
+        for argument in kwonly:
+            parts.append(argument_part(argument))
     varkw = _builtins_get_member(value, '__varkw__')
     if runtime.strict_equal(runtime.jstype(varkw), 'string'):
-        parts.append('**' + varkw)
-    return name + '(' + str.join(', ', parts) + ')'
+        varkw_part = '**' + varkw
+        varkw_type = annotation(varkw)
+        if varkw_type:
+            varkw_part += ': ' + varkw_type
+        parts.append(varkw_part)
+    signature = name + '(' + str.join(', ', parts) + ')'
+    return_type = annotation('return')
+    if return_type:
+        signature += ' -> ' + return_type
+    return signature
 
 
 def _builtins_doc(value: Any) -> _Str:

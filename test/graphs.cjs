@@ -280,9 +280,9 @@ test("every structural and optimization graph operation has a semantic smoke tes
     "automorphism_group", "canonical_label", "graph6_string",
     "sparse6_string", "relabel", "clique_maximum", "maximum_clique",
     "clique_number", "independent_set", "vertex_cover", "coloring",
-    "chromatic_number", "layout", "plot", "show",
+    "chromatic_number", "layout", "graphplot", "plot", "show",
   ]);
-  cover("GraphPlot", ["plotly", "show"]);
+  cover("GraphPlot", ["plotly", "plot", "show"]);
   await withSage(async (session) => {
     const result = await session.evaluate(
       [
@@ -336,7 +336,7 @@ test("every structural and optimization graph operation has a semantic smoke tes
         " len(C.independent_set()) == 2, len(C.vertex_cover()) == 2,",
         " len(coloring) == 2, C.chromatic_number() == 2,",
         " len(graph_plot.plotly().data) == 2,",
-        " graph_plot.show(title='changed').plotly().layout.title == 'changed',",
+        " graph_plot.show(title='changed').plotly().layout.title.text == 'changed',",
         " len(shown_plot.plotly().data) == 2,",
         " len(plot(P).plotly().data) == 2,",
         " tuple_iso[1][left_vertex] == left_vertex,",
@@ -436,8 +436,18 @@ test("generic plot dispatch and shortest-path call errors match Sage", async () 
             "repr(plot(graphs.PetersenGraph()))]",
         )
       ).repr,
-      "['GraphPlot object for Complete bipartite graph of order 5+7', 2, " +
-        "'GraphPlot object for Petersen graph']",
+      "['Graphics object consisting of 2 graphics primitives', 2, " +
+        "'Graphics object consisting of 2 graphics primitives']",
+    );
+    assert.equal(
+      (
+        await session.evaluate(
+          "g=graphs.PetersenGraph(); [repr(g.graphplot()), " +
+            "repr(graphics_array([[g.plot(), g.plot()]]))]",
+        )
+      ).repr,
+      "['GraphPlot object for Petersen graph: Graph on 10 vertices', " +
+        "'Graphics Array of size 1 x 2']",
     );
     await assert.rejects(
       session.evaluate("graphs.PetersenGraph().shortest_path()"),

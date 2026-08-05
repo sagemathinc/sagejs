@@ -181,6 +181,8 @@ reliably with other tools.
 
 `pnpm docs:generate` writes the committed Markdown API reference.
 `pnpm docs:check` detects generated-reference drift.
+`pnpm docs:verify` executes the public examples, records their exact status,
+and regenerates both the Markdown and searchable web reference.
 
 Coverage currently measures registered entries. It does not claim that every
 public-looking runtime name has been inventoried; a future public API manifest

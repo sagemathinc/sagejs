@@ -8,7 +8,10 @@ const {
   tripleQuotedStrings,
 } = require("../tools/sage-doctest-fixture.cjs");
 const {
+  directiveSkipReason,
+  matchesExample,
   matchesExpected,
+  matchesTolerance,
 } = require("../scripts/run-sage-doctests.cjs");
 const {
   matchesTutorialExpected,
@@ -78,6 +81,30 @@ assert.ok(
   ),
 );
 assert.ok(!matchesExpected("6\n", "5\n"));
+assert.ok(matchesTolerance("1.00001\n", "1.0\n", 0.00002, 0));
+assert.ok(!matchesTolerance("1.01\n", "1.0\n", 0.00002, 0));
+assert.ok(matchesExample("any nondeterministic output\n", {
+  want: "another value\n",
+  tags: [{ name: "random" }],
+}));
+assert.ok(!matchesExample("TypeError: bad\n    at generated.js:1:2\n", {
+  want: "anything\n",
+  tags: [{ name: "random" }],
+}));
+assert.equal(
+  directiveSkipReason(
+    { tags: [{ name: "long time" }] },
+    { long: false, features: new Set() },
+  ),
+  "Sage directive: # long time (enable with --long)",
+);
+assert.equal(
+  directiveSkipReason(
+    { tags: [{ name: "needs", value: "sage.plot networkx" }] },
+    { long: false, features: new Set(["sage.plot"]) },
+  ),
+  "optional features unavailable: networkx",
+);
 assert.ok(
   matchesTutorialExpected("sqrt(3)/2\n", "1/2*sqrt(3)\n", {
     accepted: ["sqrt(3)/2\n"],

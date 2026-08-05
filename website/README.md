@@ -92,6 +92,24 @@ runs every cell through the same polyglot kernel used by Jupyter and checks its
 exact normalized output. Non-Sage examples are copied with their required cell
 magic automatically.
 
+## Reference manual
+
+`reference.html` is the fast searchable API manual. Its generated
+`reference-data.json` combines the runtime DocSpec catalog, local executable
+docstrings, imported revision-pinned Sage examples, and relevant source
+excerpts. `reference-results.json` is a deterministic verification receipt;
+green transcripts are never inferred from prose.
+
+```sh
+pnpm docs:verify   # execute examples and regenerate the manual
+pnpm docs:check    # detect stale generated reference artifacts
+```
+
+The published coverage denominator is the explicit DocSpec registry. Example,
+semantic, Sage API breadth, and performance coverage stay separate. The CI
+ratchet permits the existing documentation backlog but rejects new registered
+APIs that increase the number lacking executable examples.
+
 Run `node --test test/website.cjs` after changing the site or capability data.
 After changing examples, build Sage.js and run the executable corpus as well:
 

@@ -40,9 +40,14 @@ def ρσ_native_method_adapter(target_function):
             method.__argnames__ = target_function.__argnames__.slice(1);
         }
         for (const name of [
+            "__annotations__",
+            "__annotations_text__",
             "__defaults__",
+            "__doc__",
             "__handles_kwarg_interpolation__",
             "__kwonly__",
+            "__module__",
+            "__name__",
             "__positional_only__",
             "__varargs__",
             "__varkw__",

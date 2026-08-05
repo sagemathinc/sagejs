@@ -233,7 +233,55 @@ def has_annotations(self):
     for arg in self.argnames:
         if arg.annotation:
             return True
+    for arg in self.argnames.kwonly:
+        if arg.annotation:
+            return True
+    if (
+        self.argnames.starargs is not undefined
+        and self.argnames.starargs.annotation
+    ):
+        return True
+    if (
+        self.argnames.kwargs is not undefined
+        and self.argnames.kwargs.annotation
+    ):
+        return True
     return False
+
+
+def print_annotation_text(self, output, strip_first):
+    output.print('{')
+    wrote = False
+
+    def write_argument(arg):
+        nonlocal wrote
+        if arg.annotation:
+            if wrote:
+                output.comma()
+            output.print(JSON.stringify(arg.name))
+            output.print(':')
+            output.space()
+            output.print(JSON.stringify(
+                arg.annotation_text or arg.name))
+            wrote = True
+
+    for index, arg in enumerate(self.argnames):
+        if not (strip_first and index is 0):
+            write_argument(arg)
+    if self.argnames.starargs is not undefined:
+        write_argument(self.argnames.starargs)
+    for arg in self.argnames.kwonly:
+        write_argument(arg)
+    if self.argnames.kwargs is not undefined:
+        write_argument(self.argnames.kwargs)
+    if self.return_annotation:
+        if wrote:
+            output.comma()
+        output.print('"return":')
+        output.space()
+        output.print(JSON.stringify(
+            self.return_annotation_text or 'Any'))
+    output.print('}')
 
 
 def function_annotation(self, output, strip_first, name):
@@ -261,26 +309,50 @@ def function_annotation(self, output, strip_first, name):
 
         props.__python_descriptor__ = python_descriptor
 
-    # Create __annotations__
-    # TODO: These are completely disabled, since to really using
-    # them the typings module has to be properly implemented...
-    # otherwise trying to use them with a mocked typings module
-    # doesn't work at all.  For now we just ignore this data
-    # and mock typings, so you can fully typecheck code with mypy
-    # while still *running* it with pylang.
+    # Keep the exact source spelling independently of runtime evaluation.
+    # This powers help(), DocSpec, and the static reference manual even when
+    # the ``typing`` names exist only for static checking.
+    if has_annotations(self):
+
+        def annotation_text():
+            print_annotation_text(self, output, strip_first)
+
+        props.__annotations_text__ = annotation_text
+
+    # ``from __future__ import annotations`` stores strings, matching Python.
+    # The explicit Sage.js compiler flag retains the historical evaluated
+    # annotation mode used by compiler conformance tests.
     if self.annotations and has_annotations(self):
 
         def annotations():
+            if self.annotations is 'future':
+                print_annotation_text(self, output, strip_first)
+                return
             output.print('{')
-            if self.argnames and self.argnames.length:
-                for i, arg in enumerate(self.argnames):
-                    if arg.annotation:
-                        arg.print(output)
-                        output.print(':'), output.space()
-                        arg.annotation.print(output)
-                        if i < self.argnames.length - 1 or self.return_annotation:
-                            output.comma()
+            wrote = False
+
+            def write_evaluated(arg):
+                nonlocal wrote
+                if arg.annotation:
+                    if wrote:
+                        output.comma()
+                    output.print(JSON.stringify(arg.name))
+                    output.print(':'), output.space()
+                    arg.annotation.print(output)
+                    wrote = True
+
+            for index, arg in enumerate(self.argnames):
+                if not (strip_first and index is 0):
+                    write_evaluated(arg)
+            if self.argnames.starargs is not undefined:
+                write_evaluated(self.argnames.starargs)
+            for arg in self.argnames.kwonly:
+                write_evaluated(arg)
+            if self.argnames.kwargs is not undefined:
+                write_evaluated(self.argnames.kwargs)
             if self.return_annotation:
+                if wrote:
+                    output.comma()
                 output.print('return:'), output.space()
                 self.return_annotation.print(output)
             output.print('}')

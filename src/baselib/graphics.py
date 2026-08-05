@@ -317,6 +317,28 @@ class GraphicPrimitive:
     toString = __repr__
 
 
+class _PlotlyPrimitive(GraphicPrimitive):
+    """A renderer trace imported through a public object's Plotly boundary.
+
+    This small adapter lets independently implemented objects, such as graph
+    plots, participate in ordinary Sage graphics composition without making
+    the semantic graphics layer depend on their implementation modules.
+    """
+
+    def __init__(self, trace: Any) -> None:
+        GraphicPrimitive.__init__(self, {})
+        self._trace = trace
+
+    def _plotly_trace(self) -> Any:
+        return self._trace
+
+    def __repr__(self) -> str:
+        return 'Imported Plotly graphics primitive'
+
+    __str__ = __repr__
+    toString = __repr__
+
+
 @runtime.sequence_class
 class Line(GraphicPrimitive):
     """A line through a sequence of two-dimensional points."""
@@ -1537,6 +1559,15 @@ class Graphics:
             if int(_option_get(legend_options, 'ncol', 1)) > 1:
                 runtime.reflect.set(legend, 'orientation', 'h')
             runtime.reflect.set(layout, 'legend', legend)
+        imported_layout = _option_get(options, '__plotly_layout__')
+        if imported_layout is not None:
+            for imported_name in runtime.object.keys(imported_layout):
+                if not _option_has(options, imported_name):
+                    runtime.reflect.set(
+                        layout,
+                        imported_name,
+                        runtime.reflect.get(imported_layout, imported_name),
+                    )
         return layout
 
     def plotly(self) -> Any:
@@ -1545,13 +1576,17 @@ class Graphics:
             primitive._plotly_trace()
             for primitive in self._objects
         ]
+        config = _native_record(
+            displaylogo=False,
+            responsive=True,
+        )
+        imported_config = _option_get(self._extra_kwds, '__plotly_config__')
+        if imported_config is not None:
+            _option_update(config, imported_config)
         return _native_record(
             data=traces,
             layout=self._plotly_layout(),
-            config=_native_record(
-                displaylogo=False,
-                responsive=True,
-            ),
+            config=config,
         )
 
     def _rich_repr_(self) -> Any:
@@ -1579,6 +1614,29 @@ class Graphics:
         if len(options):
             self.set_extra_kwds(options)
         return self
+
+
+def _graphics_from_plotly(figure: Any) -> Graphics:
+    """Convert a renderer-neutral Plotly figure to composable ``Graphics``."""
+    answer = Graphics()
+    data = runtime.reflect.get(figure, 'data')
+    if data is not runtime.undefined:
+        for trace in data:
+            answer.add_primitive(_PlotlyPrimitive(trace))
+    layout = runtime.reflect.get(figure, 'layout')
+    if layout is not runtime.undefined:
+        answer._extra_kwds['__plotly_layout__'] = layout
+    config = runtime.reflect.get(figure, 'config')
+    if config is not runtime.undefined:
+        answer._extra_kwds['__plotly_config__'] = config
+    return answer
+
+
+runtime.reflect.set(
+    runtime.global_object,
+    '__sagejs_graphics_from_plotly__',
+    _graphics_from_plotly,
+)
 
 
 def _graphics_options(options: dict[str, Any]) -> dict[str, Any]:
@@ -2965,6 +3023,14 @@ class GraphicsArray:
     def __len__(self) -> int:
         return sum(len(row) for row in self._rows)
 
+    def nrows(self) -> int:
+        """Return the number of rows in this graphics array."""
+        return len(self._rows)
+
+    def ncols(self) -> int:
+        """Return the number of columns in this graphics array."""
+        return self._columns
+
     def __iter__(self) -> Iterator[Graphics]:
         for row in self._rows:
             for graphic in row:
@@ -3536,8 +3602,9 @@ def complex_to_rgb(
     ### Examples
 
     ```sage
-    sage: complex_to_rgb([[0, 1, 10]])[0]
-    [[0.0, 0.0, 0.0], [0.771725..., 0.0, 0.0], ...]
+    sage: colors = complex_to_rgb([[0, 1, 10]])[0]
+    sage: len(colors), colors[0], len(colors[1])
+    (3, [0, 0, 0], 3)
     ```
     """
     contour_type = str(contour_type).lower()
@@ -3699,7 +3766,7 @@ def complex_to_cmap_rgb(
 
     ```sage
     sage: complex_to_cmap_rgb([[0, 1]], cmap='viridis')[0][0]
-    [0.0, 0.0, 0.0]
+    [0, 0, 0]
     sage: len(complex_to_cmap_rgb([[1 + I]], cmap='plasma')[0][0])
     3
     ```

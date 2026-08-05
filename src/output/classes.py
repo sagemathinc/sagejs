@@ -495,6 +495,9 @@ def print_class(output):
                         '.__argnames__',
                         '.__defaults__',
                         '.__handles_kwarg_interpolation__',
+                        '.__annotations__',
+                        '.__annotations_text__',
+                        '.__kwonly__',
                         '.__varargs__',
                         '.__varkw__',
                 ]:

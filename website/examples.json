@@ -119,7 +119,7 @@
       "title": "Interactive graph visualization",
       "language": "sage",
       "code": "G = graphs.PetersenGraph()\nG.show(interactive=True, vertex_color='#377eb8', vertex_size=30)",
-      "expected": "GraphPlot object for Petersen graph",
+      "expected": "GraphPlot object for Petersen graph: Graph on 10 vertices",
       "note": "Plotly remains the default; interactive=True selects a self-contained SVG whose vertices can be dragged with a mouse or touch in JupyterLab and CoCalc."
     },
     {

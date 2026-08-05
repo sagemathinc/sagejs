@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Fast searchable Sage.js API reference with CI-verified examples." />
+    <meta name="theme-color" content="#102a43" />
+    <title>Sage.js reference manual</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./reference.css" />
+    <style>.status.xfail{color:#a45b00}.status.xpass{color:#b42318}</style>
+    <script src="./reference.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./"><span>S</span>Sage.js</a>
+      <nav><a href="./">Dashboard</a><a aria-current="page" href="./reference.html">Reference</a><a href="https://github.com/sagemathinc/sagejs">Source</a></nav>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">Living, executable documentation</p>
+        <h1>Sage.js reference manual</h1>
+        <p>Search names, signatures, mathematical prose, tags, backends, and executable examples. Every green example is the same example executed by CI.</p>
+        <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" autocomplete="off" placeholder="Try RandomGNP, class group, Plotly, matrix…" autofocus /></label>
+        <div id="coverage" class="coverage" aria-label="Documentation coverage"></div>
+      </section>
+      <section class="reference-shell">
+        <aside class="results" aria-label="Search results">
+          <p id="result-count" aria-live="polite">Loading reference…</p>
+          <div id="result-list"></div>
+        </aside>
+        <article id="entry" class="entry" aria-live="polite">
+          <p class="empty">Choose an API entry, or start typing above.</p>
+        </article>
+      </section>
+    </main>
+    <footer>Generated from the runtime DocSpec registry and executable source docstrings.</footer>
+  </body>
+</html>

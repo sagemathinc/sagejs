@@ -37,6 +37,37 @@ A public mathematical function, parent, element, or method should document:
 4. the computational backend when that matters (for example FLINT);
 5. current limitations and every intentional difference from SageMath.
 
+Every public callable is expected to gain at least one executable example.
+Examples are documentation first: they should be short, mathematical, and
+worth copying. Unit and property tests remain separate and may assert details
+that would make a user-facing example unreadable.
+
+When an API is ported from SageMath, its imported upstream examples are kept
+in a revision-pinned fixture as well as concise local examples. The reference
+manual labels their origin and exposes expected failures or unavailable
+optional dependencies instead of quietly dropping inconvenient examples.
+
+## Executable examples
+
+Sage prompts in retained docstrings are extracted into a versioned fixture and
+run in isolated Sage.js sessions. The runner implements the important Sage
+doctest directives:
+
+- `# random` executes the example but does not compare its textual output;
+- `# long time` runs only with `--long`;
+- `# needs FEATURE` and `# optional - FEATURE` run only when the feature is
+  enabled with `--optional`;
+- `# tol`, `# abs tol`, and `# rel tol` compare numeric tokens with tolerance;
+- `# not tested`, `# not implemented`, and `# known bug` are visible skips.
+
+Each fixture run reports its random seed. Reference verification uses a stable
+seed, while broader CI can vary the seed to expose accidental dependence on a
+particular random stream. A skipped, randomly accepted, or failing example is
+never presented as an exact CI-verified transcript.
+
+Run `pnpm docs:verify` to execute attached public examples and regenerate the
+reference data. Run `pnpm docs:generate` when only prose or metadata changed.
+
 Documentation of an extension or incompatibility belongs next to the API, not
 only in a commit message.  Backend notes should explain behavior users can
 observe—exactness, precision, supported coefficient rings, or performance
@@ -62,6 +93,17 @@ cannot drift. Run:
 pnpm docs:generate
 pnpm docs:check
 ```
+
+The same catalog and verification results generate the fast static manual at
+`website/reference.html`. Its search covers names, signatures, prose, tags,
+backends, and example cells. Copy buttons remove Sage prompts, source excerpts
+are available without a GitHub round trip, and language tabs preserve the
+viewport when equivalent verified examples are added for another frontend.
+
+Documentation coverage uses the explicit runtime DocSpec registry as its
+denominator. It does **not** claim semantic correctness, performance, or an
+inventory of every runtime-visible name; those dimensions are reported
+separately so a high documentation score cannot conceal a mathematical gap.
 
 ## Attribution and algorithms
 

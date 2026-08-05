@@ -12,7 +12,7 @@ adjacent public docstring and registration metadata, then regenerate it.
 ## `AffineSpace`
 
 ```sage
-AffineSpace(dimension, base, names='x')
+AffineSpace(dimension: int, base: sage.Parent, names: Any='x') -> AffineSpaceParent
 ```
 
 Construct affine space with the requested coordinate names.
@@ -46,7 +46,7 @@ The coordinate ring is a FLINT-backed multivariate polynomial ring.
 ## `animate`
 
 ```sage
-animate(frames, **options)
+animate(frames: Any, **options: Any) -> Animation
 ```
 
 Animate an iterable of Sage graphics or plottable symbolic objects.
@@ -75,7 +75,7 @@ SageMath.  `iterations=0` denotes unrestricted interactive replay.
 ## `arc`
 
 ```sage
-arc(center, r1, r2=None, angle=0, sector=None, **options)
+arc(center: Any, r1: Any, r2: Any=None, angle: Any=0, sector: Any=None, **options: Any) -> Graphics
 ```
 
 Return a circular or elliptical arc over an angular sector.
@@ -101,7 +101,7 @@ Return a circular or elliptical arc over an angular sector.
 ## `arrow`
 
 ```sage
-arrow(tailpoint, headpoint, **options)
+arrow(tailpoint: Any, headpoint: Any, **options: Any) -> Graphics
 ```
 
 Return a directed line segment from `tailpoint` to `headpoint`.
@@ -127,7 +127,7 @@ Return a directed line segment from `tailpoint` to `headpoint`.
 ## `arrow2d`
 
 ```sage
-arrow(tailpoint, headpoint, **options)
+arrow(tailpoint: Any, headpoint: Any, **options: Any) -> Graphics
 ```
 
 Return a directed line segment from `tailpoint` to `headpoint`.
@@ -153,7 +153,7 @@ Return a directed line segment from `tailpoint` to `headpoint`.
 ## `arrow3d`
 
 ```sage
-arrow3d(start, end, width=1, radius=None, head_radius=None, head_len=None, **options)
+arrow3d(start: Any, end: Any, width: Any=1, radius: Any=None, head_radius: Any=None, head_len: Any=None, **options: Any) -> Graphics3d
 ```
 
 Draw an arrow from `start` to `end` in three dimensions.
@@ -175,7 +175,7 @@ Draw an arrow from `start` to `end` in three dimensions.
 ## `axes`
 
 ```sage
-axes(scale=1, radius=None, **options)
+axes(scale: Any=1, radius: Any=None, **options: Any) -> Graphics3d
 ```
 
 Create the three positive coordinate axes as 3D arrows.
@@ -197,7 +197,7 @@ Create the three positive coordinate axes as 3D arrows.
 ## `bar_chart`
 
 ```sage
-bar_chart(values, **options)
+bar_chart(values: Any, **options: Any) -> Graphics
 ```
 
 Return a graphics object containing a vertical bar chart.
@@ -223,7 +223,7 @@ Return a graphics object containing a vertical bar chart.
 ## `bezier_path`
 
 ```sage
-bezier_path(path, **options)
+bezier_path(path: Any, **options: Any) -> Graphics
 ```
 
 Return the Bézier path described by Sage's list-of-curves format.
@@ -253,7 +253,7 @@ control points followed by its new endpoint.
 ## `bezier3d`
 
 ```sage
-bezier3d(path, **options)
+bezier3d(path: Any, **options: Any) -> Graphics3d
 ```
 
 Draw a three-dimensional Bézier path.
@@ -288,7 +288,7 @@ Graphics3d Object
 ## `circle`
 
 ```sage
-circle(center, radius, **options)
+circle(center: Any, radius: Any, **options: Any) -> Graphics
 ```
 
 Return a circle centered at `center` with the given radius.
@@ -314,7 +314,7 @@ Return a circle centered at `center` with the given radius.
 ## `Color`
 
 ```sage
-Color(red='#0000ff', green=None, blue=None, space='rgb')
+Color(red: Any='#0000ff', green: Any=None, blue: Any=None, space: str='rgb') -> None
 ```
 
 A Sage-compatible RGB color with color-space conversions.
@@ -340,7 +340,7 @@ A Sage-compatible RGB color with color-space conversions.
 ## `complex_plot`
 
 ```sage
-complex_plot(function_value, x_range, y_range, contoured=False, tiled=False, cmap=None, contour_type='logarithmic', contour_base=None, dark_rate=0.5, nphases=10, **options)
+complex_plot(function_value: Any, x_range: Any, y_range: Any, contoured: bool=False, tiled: bool=False, cmap: Any=None, contour_type: str='logarithmic', contour_base: Any=None, dark_rate: float=0.5, nphases: int=10, **options: Any) -> Graphics
 ```
 
 Plot a complex function using Sage's domain-coloring convention.
@@ -378,7 +378,7 @@ Graphics object consisting of 1 graphics primitive
 ## `complex_to_cmap_rgb`
 
 ```sage
-complex_to_cmap_rgb(z_values, cmap='turbo', contoured=False, tiled=False, contour_type='logarithmic', contour_base=None, dark_rate=0.5, nphases=10)
+complex_to_cmap_rgb(z_values: Any, cmap: Any='turbo', contoured: bool=False, tiled: bool=False, contour_type: str='logarithmic', contour_base: Any=None, dark_rate: float=0.5, nphases: int=10) -> list[list[list[float]]]
 ```
 
 Convert complex values to RGB using a Sage-compatible colormap.
@@ -393,7 +393,7 @@ returning an RGB(A) tuple is also accepted.
 
 ```sage
 sage: complex_to_cmap_rgb([[0, 1]], cmap='viridis')[0][0]
-[0.0, 0.0, 0.0]
+[0, 0, 0]
 sage: len(complex_to_cmap_rgb([[1 + I]], cmap='plasma')[0][0])
 3
 ```
@@ -419,7 +419,7 @@ sage: len(complex_to_cmap_rgb([[1 + I]], cmap='plasma')[0][0])
 ## `complex_to_rgb`
 
 ```sage
-complex_to_rgb(z_values, contoured=False, tiled=False, contour_type='logarithmic', contour_base=None, dark_rate=0.5, nphases=10)
+complex_to_rgb(z_values: Any, contoured: bool=False, tiled: bool=False, contour_type: str='logarithmic', contour_base: Any=None, dark_rate: float=0.5, nphases: int=10) -> list[list[list[float]]]
 ```
 
 Convert a rectangular grid of complex values to Sage domain colors.
@@ -430,8 +430,9 @@ or through optional logarithmic/linear contours and phase tiles.
 ### Examples
 
 ```sage
-sage: complex_to_rgb([[0, 1, 10]])[0]
-[[0.0, 0.0, 0.0], [0.771725..., 0.0, 0.0], ...]
+sage: colors = complex_to_rgb([[0, 1, 10]])[0]
+sage: len(colors), colors[0], len(colors[1])
+(3, [0, 0, 0], 3)
 ```
 
 ### Metadata
@@ -455,7 +456,7 @@ sage: complex_to_rgb([[0, 1, 10]])[0]
 ## `contour_plot`
 
 ```sage
-contour_plot(function_value, xrange, yrange, **options)
+contour_plot(function_value: Any, xrange: Any, yrange: Any, **options: Any) -> Graphics
 ```
 
 Plot a sampled scalar function as a filled contour grid.
@@ -481,7 +482,7 @@ Plot a sampled scalar function as a filled contour grid.
 ## `cube`
 
 ```sage
-cube(center=[0, 0, 0], size=1, color=None, frame_thickness=0, frame_color=None, **options)
+cube(center: Any=[0, 0, 0], size: Any=1, color: Any=None, frame_thickness: Any=0, frame_color: Any=None, **options: Any) -> Graphics3d
 ```
 
 Return a cube centered at `center` with side length `size`.
@@ -503,7 +504,7 @@ Return a cube centered at `center` with side length `size`.
 ## `Curve`
 
 ```sage
-Curve(polynomial)
+Curve(polynomial: Any) -> AffinePlaneCurve
 ```
 
 Construct an affine plane curve from a multivariate polynomial.
@@ -540,7 +541,7 @@ Gröbner bases. General primary decomposition is not yet implemented.
 ## `cylindrical_plot3d`
 
 ```sage
-cylindrical_plot3d(function_value, urange, vrange, **options)
+cylindrical_plot3d(function_value: Any, urange: Any, vrange: Any, **options: Any) -> Graphics3d
 ```
 
 Plot a radial function in cylindrical coordinates.
@@ -562,7 +563,7 @@ Plot a radial function in cylindrical coordinates.
 ## `density_plot`
 
 ```sage
-density_plot(function_value, xrange, yrange, **options)
+density_plot(function_value: Any, xrange: Any, yrange: Any, **options: Any) -> Graphics
 ```
 
 Plot the values of a function of two variables as a color density.
@@ -588,7 +589,7 @@ Plot the values of a function of two variables as a color density.
 ## `dimension_cusp_forms`
 
 ```sage
-dimension_cusp_forms(group, weight=2)
+dimension_cusp_forms(group: Any, weight: Any=2) -> int
 ```
 
 Return the dimension of a space of cuspidal modular forms.
@@ -635,7 +636,7 @@ Weight-one cases that require the Schaeffer algorithm raise
 ## `dimension_eis`
 
 ```sage
-dimension_eis(group, weight=2)
+dimension_eis(group: Any, weight: Any=2) -> int
 ```
 
 Return the dimension of the Eisenstein subspace.
@@ -666,7 +667,7 @@ cusp data or the Cohen--Oesterlé character formula.
 ## `dimension_modular_forms`
 
 ```sage
-dimension_modular_forms(group, weight=2)
+dimension_modular_forms(group: Any, weight: Any=2) -> int
 ```
 
 Return cusp dimension plus Eisenstein dimension for `group`.
@@ -693,7 +694,7 @@ Return cusp dimension plus Eisenstein dimension for `group`.
 ## `DirichletGroup`
 
 ```sage
-DirichletGroup(modulus, base_ring=None, zeta=None)
+DirichletGroup(modulus: Any, base_ring: Any=None, zeta: Any=None) -> DirichletGroup_class
 ```
 
 Return the group of Dirichlet characters modulo `modulus`.
@@ -740,7 +741,7 @@ group.
 ## `disk`
 
 ```sage
-disk(center, radius, angle, **options)
+disk(center: Any, radius: Any, angle: Any, **options: Any) -> Graphics
 ```
 
 Return a filled or outlined circular/elliptical sector.
@@ -766,7 +767,7 @@ Return a filled or outlined circular/elliptical sector.
 ## `dodecahedron`
 
 ```sage
-dodecahedron(center=[0, 0, 0], size=1, **options)
+dodecahedron(center: Any=[0, 0, 0], size: Any=1, **options: Any) -> Graphics3d
 ```
 
 Return a regular dodecahedron centered at `center`.
@@ -788,7 +789,7 @@ Return a regular dodecahedron centered at `center`.
 ## `EisensteinForms`
 
 ```sage
-EisensteinForms(group=1, weight=2, base_ring=None, use_cache=True, prec=6)
+EisensteinForms(group: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=True, prec: Any=6) -> EisensteinSubspace
 ```
 
 Construct the Eisenstein subspace of `ModularForms(group, weight)`.
@@ -828,7 +829,7 @@ sage: b.q_expansion(100).precision_absolute()
 ## `EisensteinSeriesElement.q_expansion`
 
 ```sage
-q_expansion(prec=None)
+q_expansion(prec: Any=None) -> Any
 ```
 
 Return the `q`-expansion to absolute precision `O(q^prec)`.
@@ -878,7 +879,7 @@ Prime-level oldforms use the exact degeneracy map `q -> q^N`.
 ## `EisensteinSubspace.basis`
 
 ```sage
-basis(prec=None)
+basis(prec: Any=None) -> list[Any]
 ```
 
 Return a basis of modular forms, optionally with display precision.
@@ -910,7 +911,7 @@ This optional argument is a convenient Sage.js extension: SageMath's
 ## `ellipse`
 
 ```sage
-ellipse(center, r1, r2, angle=0, **options)
+ellipse(center: Any, r1: Any, r2: Any, angle: Any=0, **options: Any) -> Graphics
 ```
 
 Return an optionally rotated ellipse centered at `(x, y)`.
@@ -936,7 +937,7 @@ Return an optionally rotated ellipse centered at `(x, y)`.
 ## `EllipticCurve`
 
 ```sage
-EllipticCurve(data, coefficients=None)
+EllipticCurve(data: Any, coefficients: Any=None) -> EllipticCurveParent
 ```
 
 Construct an elliptic curve in general Weierstrass form.
@@ -966,7 +967,7 @@ sage: 10 * E([0,0])
 ## `exit`
 
 ```sage
-quit(code=None)
+quit(code: Any=None) -> None
 ```
 
 Exit the current Sage.js or Python session.
@@ -989,7 +990,7 @@ status, matching Python's interactive convenience function.
 ## `factor`
 
 ```sage
-factor(value)
+factor(value: Any) -> Any
 ```
 
 Return the exact factorization of an integer or factorable element.
@@ -1031,7 +1032,7 @@ automatically use `BigInt` when necessary.
 ## `fast_callable`
 
 ```sage
-fast_callable(expression, vars=None)
+fast_callable(expression: Any, vars: Sequence[Any] | None=None) -> Any
 ```
 
 Compile a symbolic expression to a hot JavaScript numeric function.
@@ -1058,7 +1059,7 @@ Compile a symbolic expression to a hot JavaScript numeric function.
 ## `frame_labels`
 
 ```sage
-frame_labels(lower_left, upper_right, label_lower_left, label_upper_right, eps=1, **options)
+frame_labels(lower_left: Any, upper_right: Any, label_lower_left: Any, label_upper_right: Any, eps: Any=1, **options: Any) -> Graphics3d
 ```
 
 Draw Sage-style endpoint and midpoint labels around a 3D frame.
@@ -1080,7 +1081,7 @@ Draw Sage-style endpoint and midpoint labels around a 3D frame.
 ## `frame3d`
 
 ```sage
-frame3d(lower_left, upper_right, **options)
+frame3d(lower_left: Any, upper_right: Any, **options: Any) -> Graphics3d
 ```
 
 Draw the twelve edges of an axis-aligned three-dimensional frame.
@@ -1102,7 +1103,7 @@ Draw the twelve edges of an axis-aligned three-dimensional frame.
 ## `GF`
 
 ```sage
-GF(order, name=None, modulus=None, names=None)
+GF(order: Any, name: Any=None, modulus: Any=None, names: Any=None) -> Any
 ```
 
 Construct the finite field with `order` elements.
@@ -1147,7 +1148,7 @@ Extension moduli are irreducible and normalized to monic. Passing
 ## `graphics_array`
 
 ```sage
-graphics_array(graphics, rows=None, columns=None)
+graphics_array(graphics: Any, rows: Any=None, columns: Any=None) -> GraphicsArray
 ```
 
 Arrange several two-dimensional graphics objects in a rectangular grid.
@@ -1181,10 +1182,84 @@ sage: G.nrows(), G.ncols()
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `graphs.RandomGNP`
+
+```sage
+RandomGNP(n: int, p: float, seed: Any=None, fast: bool=True, algorithm: str='Sage', immutable: bool=False) -> Graph
+```
+
+Return a random graph on `n` vertices.
+
+Every possible edge is inserted independently with probability `p`.
+
+### Input
+
+- `n` -- nonnegative number of vertices
+- `p` -- edge probability in the interval `[0, 1]`
+- `seed` -- optional local random seed
+- `fast` -- use the sparse `O(n+m)` Batagelj--Brandes algorithm
+- `algorithm` -- `'Sage'` (or `'sage'`); `'networkx'` is
+  accepted only when that optional Python package is available
+- `immutable` -- request an immutable graph (currently accepted for
+  Sage call compatibility; immutable graphs are not yet implemented)
+
+### Examples
+
+The endpoints `p=0` and `p=1` are deterministic:
+
+```sage
+    sage: graphs.RandomGNP(5, 0).size()
+    0
+    sage: graphs.RandomGNP(4, 1)
+    Complete graph: Graph on 4 vertices
+```
+
+A seed makes a generated graph reproducible without changing the
+process-wide Sage random state:
+
+```sage
+    sage: a = graphs.RandomGNP(12, .3, seed=7)
+    sage: b = graphs.RandomGNP(12, .3, seed=7)
+    sage: a.edges(sort=True, labels=False) == b.edges(sort=True, labels=False)
+    True
+```
+
+Graph plots are ordinary composable graphics, as in Sage:
+
+```sage
+    sage: rows = [[graphs.RandomGNP(3+i+3*j, .43, seed=i+3*j).plot(
+    ....:          vertex_size=10, vertex_labels=False) for i in range(3)]
+    ....:         for j in range(3)]
+    sage: graphics_array(rows)
+    Graphics Array of size 3 x 3
+```
+
+This API and documentation are adapted from
+`sage.graphs.generators.random.RandomGNP` (GPL-2.0-or-later).
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.random`
+- Tags: graph theory, random graphs, Erdos-Renyi, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The Sage algorithm is implemented, including sparse and quadratic paths. The optional networkx algorithm and immutable graph representation are not bundled.
+- Algorithm: Batagelj--Brandes skip sampling or Bernoulli scan
+- Limitations: algorithm='networkx' requires an external backend. immutable=True is accepted but does not yet freeze the graph.
+
+### Provenance
+
+- `sage-derived` — [SageMath RandomGNP API and documentation](https://doc.sagemath.org/html/en/reference/graphs/sage/graphs/generators/random.html); license GPL-2.0-or-later
+- `literature-implemented` — Batagelj--Brandes sparse random graph algorithm
+
+### References
+
+- Vladimir Batagelj, Ulrik Brandes, [Efficient generation of large random networks](https://doi.org/10.1103/PhysRevE.71.036113) (2005).
+
 ## `help`
 
 ```sage
-help(item=None)
+help(item: Any=None) -> None
 ```
 
 Print concise Python-style help derived from Sage.js metadata.
@@ -1204,7 +1279,7 @@ Print concise Python-style help derived from Sage.js metadata.
 ## `histogram`
 
 ```sage
-histogram(datalist, **options)
+histogram(datalist: Any, **options: Any) -> Graphics
 ```
 
 Compute and draw a histogram of numerical data.
@@ -1240,7 +1315,7 @@ Graphics object consisting of 1 graphics primitive
 ## `hue`
 
 ```sage
-hue(value, saturation=1, brightness=1)
+hue(value: Any, saturation: Any=1, brightness: Any=1) -> tuple[float, float, float]
 ```
 
 Return an RGB triple from hue, saturation, and brightness.
@@ -1266,7 +1341,7 @@ Return an RGB triple from hue, saturation, and brightness.
 ## `hyperbolic_arc`
 
 ```sage
-hyperbolic_arc(a, b, model='UHP', **options)
+hyperbolic_arc(a: Any, b: Any, model: str='UHP', **options: Any) -> Graphics
 ```
 
 Plot the hyperbolic geodesic from `a` to `b`.
@@ -1292,7 +1367,7 @@ Plot the hyperbolic geodesic from `a` to `b`.
 ## `hyperbolic_polygon`
 
 ```sage
-hyperbolic_polygon(points, model='UHP', resolution=100, **options)
+hyperbolic_polygon(points: Any, model: str='UHP', resolution: int=100, **options: Any) -> Graphics
 ```
 
 Plot a polygon whose sides are hyperbolic geodesics.
@@ -1318,7 +1393,7 @@ Plot a polygon whose sides are hyperbolic geodesics.
 ## `hyperbolic_regular_polygon`
 
 ```sage
-hyperbolic_regular_polygon(sides, i_angle, center=None, **options)
+hyperbolic_regular_polygon(sides: int, i_angle: Any, center: Any=None, **options: Any) -> Graphics
 ```
 
 Plot a regular hyperbolic polygon in the upper-half-plane model.
@@ -1344,7 +1419,7 @@ Plot a regular hyperbolic polygon in the upper-half-plane model.
 ## `hyperbolic_triangle`
 
 ```sage
-hyperbolic_triangle(a, b, c, model='UHP', **options)
+hyperbolic_triangle(a: Any, b: Any, c: Any, model: str='UHP', **options: Any) -> Graphics
 ```
 
 Plot a hyperbolic triangle with vertices `a`, `b`, and `c`.
@@ -1370,7 +1445,7 @@ Plot a hyperbolic triangle with vertices `a`, `b`, and `c`.
 ## `icosahedron`
 
 ```sage
-icosahedron(center=[0, 0, 0], size=1, **options)
+icosahedron(center: Any=[0, 0, 0], size: Any=1, **options: Any) -> Graphics3d
 ```
 
 Return a regular icosahedron centered at `center`.
@@ -1392,7 +1467,7 @@ Return a regular icosahedron centered at `center`.
 ## `implicit_plot`
 
 ```sage
-implicit_plot(function_value, xrange, yrange, **options)
+implicit_plot(function_value: Any, xrange: Any, yrange: Any, **options: Any) -> Graphics
 ```
 
 Plot the plane curve where a function is zero or an equality holds.
@@ -1418,7 +1493,7 @@ Plot the plane curve where a function is zero or an equality holds.
 ## `implicit_plot3d`
 
 ```sage
-implicit_plot3d(function_value, xrange, yrange, zrange, **options)
+implicit_plot3d(function_value: Any, xrange: Any, yrange: Any, zrange: Any, **options: Any) -> Graphics3d
 ```
 
 Plot an implicit surface in three variables.
@@ -1463,7 +1538,7 @@ cubes refinements.
 ## `IndexFaceSet`
 
 ```sage
-IndexFaceSet(faces, point_list=None, enclosed=False, texture_list=None, **options)
+IndexFaceSet(faces: Any, point_list: Any=None, enclosed: bool=False, texture_list: Any=None, **options: Any) -> None
 ```
 
 A Sage-compatible indexed collection of polygonal faces.
@@ -1479,7 +1554,7 @@ sage: S = IndexFaceSet([[(1,0,0), (0,1,0), (0,0,1)]])
 sage: S.index_faces()
 [[0, 1, 2]]
 sage: S.vertex_list()
-[(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)]
+[[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 ```
 
 ### Metadata
@@ -1499,7 +1574,7 @@ sage: S.vertex_list()
 ## `is_prime`
 
 ```sage
-is_prime(value)
+is_prime(value: Any) -> _Bool
 ```
 
 Return whether `value` is prime, using FLINT's primality test.
@@ -1525,7 +1600,7 @@ Return whether `value` is prime, using FLINT's primality test.
 ## `line`
 
 ```sage
-line(points, **options)
+line(points: Any, **options: Any) -> Graphics
 ```
 
 Return a graphics object containing a line through `points`.
@@ -1551,7 +1626,7 @@ Return a graphics object containing a line through `points`.
 ## `line2d`
 
 ```sage
-line(points, **options)
+line(points: Any, **options: Any) -> Graphics
 ```
 
 Return a graphics object containing a line through `points`.
@@ -1577,7 +1652,7 @@ Return a graphics object containing a line through `points`.
 ## `line3d`
 
 ```sage
-line3d(points, **options)
+line3d(points: Any, **options: Any) -> Graphics3d
 ```
 
 Return a line through three-dimensional `points`.
@@ -1599,7 +1674,7 @@ Return a line through three-dimensional `points`.
 ## `list_plot`
 
 ```sage
-list_plot(data, plotjoined=False, **options)
+list_plot(data: Any, plotjoined: bool=False, **options: Any) -> Graphics
 ```
 
 Plot a sequence of y-values or a sequence of `(x, y)` pairs.
@@ -1625,7 +1700,7 @@ Plot a sequence of y-values or a sequence of `(x, y)` pairs.
 ## `list_plot_loglog`
 
 ```sage
-list_plot_loglog(data, plotjoined=False, **options)
+list_plot_loglog(data: Any, plotjoined: bool=False, **options: Any) -> Graphics
 ```
 
 Plot list data with logarithmic horizontal and vertical axes.
@@ -1651,7 +1726,7 @@ Plot list data with logarithmic horizontal and vertical axes.
 ## `list_plot_semilogx`
 
 ```sage
-list_plot_semilogx(data, plotjoined=False, **options)
+list_plot_semilogx(data: Any, plotjoined: bool=False, **options: Any) -> Graphics
 ```
 
 Plot list data with a logarithmic horizontal axis.
@@ -1677,7 +1752,7 @@ Plot list data with a logarithmic horizontal axis.
 ## `list_plot_semilogy`
 
 ```sage
-list_plot_semilogy(data, plotjoined=False, **options)
+list_plot_semilogy(data: Any, plotjoined: bool=False, **options: Any) -> Graphics
 ```
 
 Plot list data with a logarithmic vertical axis.
@@ -1703,7 +1778,7 @@ Plot list data with a logarithmic vertical axis.
 ## `list_plot3d`
 
 ```sage
-list_plot3d(values, interpolation_type='default', point_list=None, **options)
+list_plot3d(values: Any, interpolation_type: str='default', point_list: Any=None, **options: Any) -> Graphics3d
 ```
 
 Plot a matrix, rectangular array, or list of `(x, y, z)` samples.
@@ -1761,7 +1836,7 @@ sage: float(log2)
 ## `ManinPresentation`
 
 ```sage
-ManinPresentation(projective_line)
+ManinPresentation(projective_line: P1List) -> None
 ```
 
 A minimal weight-2 `Gamma_0(N)` modular-symbol presentation.
@@ -1789,7 +1864,7 @@ the `E1` paths together with order-two and order-three stabilizer paths.
 ## `ManinRelations`
 
 ```sage
-ManinRelations(projective_line, modulus)
+ManinRelations(projective_line: P1List, modulus: Any) -> None
 ```
 
 Sparse weight-2 `Gamma_0(N)` Manin relations over `GF(p)`.
@@ -1820,7 +1895,7 @@ relations `x + R*x + R^2*x`, stored in native compressed-row form.
 ## `matrix`
 
 ```sage
-matrix(*args)
+matrix(*args: Any) -> Matrix
 ```
 
 Construct a dense matrix, optionally over an explicit base ring.
@@ -1862,7 +1937,7 @@ sage: A.rref()
 ## `matrix_plot`
 
 ```sage
-matrix_plot(matrix_value, xrange=None, yrange=None, **options)
+matrix_plot(matrix_value: Any, xrange: Any=None, yrange: Any=None, **options: Any) -> Graphics
 ```
 
 Plot a matrix or rectangular array as a color-valued grid.
@@ -1888,7 +1963,7 @@ Plot a matrix or rectangular array as a color-valued grid.
 ## `MatrixGroup`
 
 ```sage
-MatrixGroup(generators)
+MatrixGroup(generators: Any) -> MatrixGroupParent
 ```
 
 Construct the finite matrix group generated by square matrices.
@@ -1919,7 +1994,7 @@ conjugacy classes using the conjugation action of the generators.
 ## `Mod`
 
 ```sage
-Mod(value, modulus)
+Mod(value: Any, modulus: Any) -> IntegerModElement
 ```
 
 Construct `value` in the ring of integers modulo `modulus`.
@@ -1946,7 +2021,7 @@ Construct `value` in the ring of integers modulo `modulus`.
 ## `ModularForms`
 
 ```sage
-ModularForms(group=1, weight=2, base_ring=None, use_cache=True, prec=6)
+ModularForms(group: Any=1, weight: Any=2, base_ring: Any=None, use_cache: bool=True, prec: Any=6) -> ModularFormsSpace
 ```
 
 Construct the implemented ambient space of modular forms.
@@ -1992,7 +2067,7 @@ Hecke-module implementation.
 ## `ModularSymbols`
 
 ```sage
-ModularSymbols(group=1, weight=2, sign=0, base_ring=None)
+ModularSymbols(group: Any=1, weight: Any=2, sign: Any=0, base_ring: Any=None) -> ModularSymbolsSpace
 ```
 
 Construct a modular-symbol Hecke module.
@@ -2028,7 +2103,7 @@ and the nebentypus factor in the Hecke recurrence.
 ## `ModularSymbolsSpace.boundary_map`
 
 ```sage
-boundary_map()
+boundary_map() -> ModularSymbolsBoundaryMap
 ```
 
 Return the exact map from modular symbols to cusp divisors.
@@ -2068,7 +2143,7 @@ sage: M.boundary_map().matrix()
 ## `ModularSymbolsSpace.cuspidal_submodule`
 
 ```sage
-cuspidal_submodule()
+cuspidal_submodule() -> ModularSymbolsSpace
 ```
 
 Return the exact kernel of the boundary map.
@@ -2097,7 +2172,7 @@ Return the exact kernel of the boundary map.
 ## `ModularSymbolsSpace.decomposition`
 
 ```sage
-decomposition(bound=None, anemic=True, **_kwds)
+decomposition(bound: Any=None, anemic: bool=True, **_kwds: Any) -> list[ModularSymbolsSpace]
 ```
 
 Decompose this space into simple modules for Hecke operators.
@@ -2152,7 +2227,7 @@ sage: [A.dimension() for A in M.decomposition(bound=2)]
 ## `ModularSymbolsSpace.degeneracy_map`
 
 ```sage
-degeneracy_map(codomain, index=1)
+degeneracy_map(codomain: Any, index: Any=1) -> ModularSymbolsDegeneracyMap
 ```
 
 Return an exact level-lowering degeneracy map.
@@ -2193,7 +2268,7 @@ sage: (d.matrix().dimensions(), d.rank())
 ## `ModularSymbolsSpace.hecke_matrix`
 
 ```sage
-hecke_matrix(index)
+hecke_matrix(index: Any) -> Any
 ```
 
 Return the exact matrix of the Hecke operator `T_index`.
@@ -2228,7 +2303,7 @@ sage: M.hecke_matrix(6).trace()
 ## `ModularSymbolsSpace.minus_submodule`
 
 ```sage
-minus_submodule()
+minus_submodule() -> ModularSymbolsSpace
 ```
 
 Return the `-1` eigenspace of the star involution.
@@ -2257,7 +2332,7 @@ Return the `-1` eigenspace of the star involution.
 ## `ModularSymbolsSpace.modular_symbol`
 
 ```sage
-modular_symbol(start, stop)
+modular_symbol(start: Any, stop: Any) -> ModularSymbolElement
 ```
 
 Construct the rational path `{start, stop}` as an exact element.
@@ -2289,7 +2364,7 @@ Continued-fraction reduction happens in one native call.
 ## `ModularSymbolsSpace.new_submodule`
 
 ```sage
-new_submodule(prime=None)
+new_submodule(prime: Any=None) -> ModularSymbolsSpace
 ```
 
 Return the new, or `p`-new, submodule of this space.
@@ -2334,7 +2409,7 @@ sage: [A.dimension() for A in N.decomposition()]
 ## `ModularSymbolsSpace.plus_submodule`
 
 ```sage
-plus_submodule()
+plus_submodule() -> ModularSymbolsSpace
 ```
 
 Return the `+1` eigenspace of the star involution.
@@ -2363,7 +2438,7 @@ Return the `+1` eigenspace of the star involution.
 ## `ModularSymbolsSpace.star_involution`
 
 ```sage
-star_involution()
+star_involution() -> ModularSymbolsLinearOperator
 ```
 
 Return complex conjugation on this modular-symbol space.
@@ -2392,7 +2467,7 @@ Return complex conjugation on this modular-symbol space.
 ## `multi_graphics`
 
 ```sage
-multi_graphics(graphics_list)
+multi_graphics(graphics_list: Any) -> MultiGraphics
 ```
 
 Draw graphics at arbitrary positions on one common canvas.
@@ -2431,7 +2506,7 @@ Multigraphics with 2 elements
 ## `next_prime`
 
 ```sage
-next_prime(value)
+next_prime(value: Any) -> Any
 ```
 
 Return the smallest prime strictly greater than `value` using FLINT.
@@ -2457,7 +2532,7 @@ Return the smallest prime strictly greater than `value` using FLINT.
 ## `NumberField`
 
 ```sage
-NumberField(polynomial, names=None)
+NumberField(polynomial: Any, names: Any=None) -> NumberFieldParent
 ```
 
 Construct the exact simple field `QQ[a]/(polynomial)`.
@@ -2481,7 +2556,7 @@ Construct the exact simple field `QQ[a]/(polynomial)`.
 ## `numerical_integral`
 
 ```sage
-numerical_integral(function_value, a, b=None, algorithm='qag', max_points=87, params=None, eps_abs=0.000001, eps_rel=0.000001, rule=6)
+numerical_integral(function_value: Any, a: Any, b: Any=None, algorithm: str='qag', max_points: int=87, params: Any=None, eps_abs: float=0.000001, eps_rel: float=0.000001, rule: int=6) -> tuple[float, float]
 ```
 
 Numerically integrate a real function and estimate absolute error.
@@ -2509,7 +2584,7 @@ every `rule` value uses the same 10/21-point embedded pair.
 ## `octahedron`
 
 ```sage
-octahedron(center=[0, 0, 0], size=1, **options)
+octahedron(center: Any=[0, 0, 0], size: Any=1, **options: Any) -> Graphics3d
 ```
 
 Return a regular octahedron centered at `center`.
@@ -2531,7 +2606,7 @@ Return a regular octahedron centered at `center`.
 ## `P1List`
 
 ```sage
-P1List(level)
+P1List(level: Any) -> None
 ```
 
 The projective line `P^1(Z/NZ)` with Sage-compatible representatives.
@@ -2568,7 +2643,7 @@ sage: P.apply_S(P.apply_S(10))
 ## `P1List.hecke_matrix`
 
 ```sage
-hecke_matrix(prime)
+hecke_matrix(prime: Any) -> Any
 ```
 
 Return the exact weight-2 `T_p` (or `U_p`) matrix in the native
@@ -2604,7 +2679,7 @@ sage: P1List(11).hecke_matrix(2)
 ## `P1List.higher_weight_presentation`
 
 ```sage
-higher_weight_presentation(weight, sign=0)
+higher_weight_presentation(weight: Any, sign: Any=0) -> Any
 ```
 
 Return the exact triple-Manin-symbol presentation over `QQ`.
@@ -2627,7 +2702,7 @@ Return the exact triple-Manin-symbol presentation over `QQ`.
 ## `parametric_plot`
 
 ```sage
-parametric_plot(functions, *range_args, **options)
+parametric_plot(functions: Sequence[Any], *range_args: Any, **options: Any) -> Graphics
 ```
 
 Plot a two-component parametric plane curve.
@@ -2653,7 +2728,7 @@ Plot a two-component parametric plane curve.
 ## `parametric_plot3d`
 
 ```sage
-parametric_plot3d(functions, urange, vrange=None, plot_points='automatic', **options)
+parametric_plot3d(functions: Sequence[Any], urange: Any, vrange: Any=None, plot_points: Any='automatic', **options: Any) -> Graphics3d
 ```
 
 Plot a parametric space curve or parametric surface.
@@ -2675,7 +2750,7 @@ Plot a parametric space curve or parametric surface.
 ## `PermutationGroup`
 
 ```sage
-PermutationGroup(generators)
+PermutationGroup(generators: Any) -> PermutationGroupParent
 ```
 
 Construct the finite permutation group generated by cycle data.
@@ -2708,7 +2783,7 @@ elements.
 ## `plot`
 
 ```sage
-plot(funcs, *range_args, **options)
+plot(funcs: Any, *range_args: Any, **options: Any) -> Any
 ```
 
 Plot a callable, symbolic expression, or list of functions on an interval.
@@ -2749,7 +2824,7 @@ host with a supported Plotly export route.
 ## `plot_loglog`
 
 ```sage
-plot_loglog(funcs, *range_args, **options)
+plot_loglog(funcs: Any, *range_args: Any, **options: Any) -> Graphics
 ```
 
 Plot functions with logarithmic horizontal and vertical axes.
@@ -2775,7 +2850,7 @@ Plot functions with logarithmic horizontal and vertical axes.
 ## `plot_semilogx`
 
 ```sage
-plot_semilogx(funcs, *range_args, **options)
+plot_semilogx(funcs: Any, *range_args: Any, **options: Any) -> Graphics
 ```
 
 Plot functions with a logarithmic horizontal axis.
@@ -2801,7 +2876,7 @@ Plot functions with a logarithmic horizontal axis.
 ## `plot_semilogy`
 
 ```sage
-plot_semilogy(funcs, *range_args, **options)
+plot_semilogy(funcs: Any, *range_args: Any, **options: Any) -> Graphics
 ```
 
 Plot functions with a logarithmic vertical axis.
@@ -2827,7 +2902,7 @@ Plot functions with a logarithmic vertical axis.
 ## `plot_slope_field`
 
 ```sage
-plot_slope_field(function_value, xrange, yrange, **options)
+plot_slope_field(function_value: Any, xrange: Any, yrange: Any, **options: Any) -> Graphics
 ```
 
 Plot short normalized line segments with slope `function_value`.
@@ -2853,7 +2928,7 @@ Plot short normalized line segments with slope `function_value`.
 ## `plot_step_function`
 
 ```sage
-plot_step_function(values, vertical_lines=True, **options)
+plot_step_function(values: Any, vertical_lines: bool=True, **options: Any) -> Graphics
 ```
 
 Plot the step function defined by a sequence of `(x, y)` pairs.
@@ -2879,7 +2954,7 @@ Plot the step function defined by a sequence of `(x, y)` pairs.
 ## `plot_vector_field`
 
 ```sage
-plot_vector_field(functions, xrange, yrange, **options)
+plot_vector_field(functions: Any, xrange: Any, yrange: Any, **options: Any) -> Graphics
 ```
 
 Plot a two-dimensional vector field on a rectangular sample grid.
@@ -2908,7 +2983,7 @@ values are omitted, matching Sage's masked-vector behavior.
 ## `plot_vector_field3d`
 
 ```sage
-plot_vector_field3d(functions, xrange, yrange, zrange, plot_points=5, colors='jet', center_arrows=False, **options)
+plot_vector_field3d(functions: Sequence[Any], xrange: Any, yrange: Any, zrange: Any, plot_points: Any=5, colors: Any='jet', center_arrows: bool=False, **options: Any) -> Graphics3d
 ```
 
 Plot a sampled vector field in three-dimensional space.
@@ -2943,7 +3018,7 @@ Graphics3d Object
 ## `plot3d`
 
 ```sage
-plot3d(func, urange, vrange, adaptive=False, transformation=None, **options)
+plot3d(func: Any, urange: Any, vrange: Any, adaptive: bool=False, transformation: Any=None, **options: Any) -> Graphics3d
 ```
 
 Plot a function of two variables as a three-dimensional surface.
@@ -2965,7 +3040,7 @@ Plot a function of two variables as a three-dimensional surface.
 ## `point`
 
 ```sage
-point(points, **options)
+point(points: Any, **options: Any) -> Graphics
 ```
 
 Return a graphics object containing one or more points.
@@ -2991,7 +3066,7 @@ Return a graphics object containing one or more points.
 ## `point2d`
 
 ```sage
-point(points, **options)
+point(points: Any, **options: Any) -> Graphics
 ```
 
 Return a graphics object containing one or more points.
@@ -3017,7 +3092,7 @@ Return a graphics object containing one or more points.
 ## `point3d`
 
 ```sage
-point3d(points, **options)
+point3d(points: Any, **options: Any) -> Graphics3d
 ```
 
 Return one or more points in three-dimensional space.
@@ -3039,7 +3114,7 @@ Return one or more points in three-dimensional space.
 ## `points`
 
 ```sage
-point(points, **options)
+point(points: Any, **options: Any) -> Graphics
 ```
 
 Return a graphics object containing one or more points.
@@ -3065,7 +3140,7 @@ Return a graphics object containing one or more points.
 ## `polar_plot`
 
 ```sage
-polar_plot(funcs, *range_args, **options)
+polar_plot(funcs: Any, *range_args: Any, **options: Any) -> Graphics
 ```
 
 Plot one or more functions in polar coordinates.
@@ -3094,7 +3169,7 @@ All adaptive sampling and line options accepted by `plot` are supported.
 ## `polygon`
 
 ```sage
-polygon(points, **options)
+polygon(points: Any, **options: Any) -> Graphics
 ```
 
 Return a filled polygon through `points`.
@@ -3120,7 +3195,7 @@ Return a filled polygon through `points`.
 ## `polygon2d`
 
 ```sage
-polygon(points, **options)
+polygon(points: Any, **options: Any) -> Graphics
 ```
 
 Return a filled polygon through `points`.
@@ -3146,7 +3221,7 @@ Return a filled polygon through `points`.
 ## `polygon3d`
 
 ```sage
-polygon3d(points, **options)
+polygon3d(points: Any, **options: Any) -> Graphics3d
 ```
 
 Draw a single polygon with vertices in three-dimensional space.
@@ -3168,7 +3243,7 @@ Draw a single polygon with vertices in three-dimensional space.
 ## `polygons3d`
 
 ```sage
-polygons3d(faces, points, **options)
+polygons3d(faces: Any, points: Any, **options: Any) -> Graphics3d
 ```
 
 Draw an indexed union of polygons in three-dimensional space.
@@ -3190,7 +3265,7 @@ Draw an indexed union of polygons in three-dimensional space.
 ## `PolynomialRing`
 
 ```sage
-PolynomialRing(base, variable=None, names=None, sparse=False, implementation=None, order='degrevlex')
+PolynomialRing(base: sage.Parent, variable: Any=None, names: Any=None, sparse: bool=False, implementation: Any=None, order: str='degrevlex') -> Any
 ```
 
 Construct a univariate or multivariate polynomial ring.
@@ -3239,7 +3314,7 @@ full constructor while native implementations are selected automatically.
 ## `prime_pi`
 
 ```sage
-prime_pi(value)
+prime_pi(value: Any) -> Any
 ```
 
 Return the number of primes less than or equal to `value`.
@@ -3281,7 +3356,7 @@ sage: prime_pi(10^12)
 ## `prime_range`
 
 ```sage
-prime_range(start, stop=None)
+prime_range(start: Any, stop: Any=None) -> Any
 ```
 
 Return the primes in the half-open interval `[start, stop)`.
@@ -3319,7 +3394,7 @@ sage: prime_range(10, 20)
 ## `Qp`
 
 ```sage
-Qp(prime, prec=20)
+Qp(prime: Any, prec: Any=20) -> PAdicParent
 ```
 
 Construct a capped-relative p-adic field.
@@ -3342,7 +3417,7 @@ Construct a capped-relative p-adic field.
 ## `QuadraticField`
 
 ```sage
-QuadraticField(radicand, names=None)
+QuadraticField(radicand: Any, names: Any=None) -> QuadraticField_class
 ```
 
 Construct an exact imaginary quadratic field.
@@ -3378,7 +3453,7 @@ sage: K.class_group().invariants()
 ## `quit`
 
 ```sage
-quit(code=None)
+quit(code: Any=None) -> None
 ```
 
 Exit the current Sage.js or Python session.
@@ -3401,7 +3476,7 @@ status, matching Python's interactive convenience function.
 ## `rainbow`
 
 ```sage
-rainbow(count, format='hex')
+rainbow(count: int, format: str='hex') -> list[Any]
 ```
 
 Return `count` evenly spaced hues as hex strings or RGB tuples.
@@ -3427,7 +3502,7 @@ Return `count` evenly spaced hues as hex strings or RGB tuples.
 ## `random_matrix`
 
 ```sage
-random_matrix(base, nrows, ncols=None, algorithm='randomize', implementation=None, *args, **kwds)
+random_matrix(base: sage.Parent, nrows: int, ncols: Any=None, algorithm: str='randomize', implementation: Any=None, *args: Any, **kwds: Any) -> Matrix
 ```
 
 Construct a random dense matrix over `base`.
@@ -3471,7 +3546,7 @@ implemented.
 ## `region_plot`
 
 ```sage
-region_plot(functions, xrange, yrange, **options)
+region_plot(functions: Any, xrange: Any, yrange: Any, **options: Any) -> Graphics
 ```
 
 Plot the region where one or more boolean functions are true.
@@ -3497,7 +3572,7 @@ Plot the region where one or more boolean functions are true.
 ## `revolution_plot3d`
 
 ```sage
-revolution_plot3d(curve, trange, phirange=None, parallel_axis='z', axis=None, print_vector=False, show_curve=False, **options)
+revolution_plot3d(curve: Any, trange: Any, phirange: Any=None, parallel_axis: str='z', axis: Any=None, print_vector: bool=False, show_curve: bool=False, **options: Any) -> Graphics3d
 ```
 
 Revolve a function or parametric curve around a coordinate axis.
@@ -3519,7 +3594,7 @@ Revolve a function or parametric curve around a coordinate axis.
 ## `rgbcolor`
 
 ```sage
-rgbcolor(value, space='rgb')
+rgbcolor(value: Any, space: str='rgb') -> tuple[float, float, float]
 ```
 
 Convert a Sage color specification to an RGB triple.
@@ -3545,7 +3620,7 @@ Convert a Sage color specification to an RGB triple.
 ## `ruler`
 
 ```sage
-ruler(start, end, ticks=4, sub_ticks=4, absolute=False, snap=False, **options)
+ruler(start: Any, end: Any, ticks: int=4, sub_ticks: int=4, absolute: bool=False, snap: bool=False, **options: Any) -> Graphics3d
 ```
 
 Draw a three-dimensional ruler with labeled major and minor ticks.
@@ -3567,7 +3642,7 @@ Draw a three-dimensional ruler with labeled major and minor ticks.
 ## `ruler_frame`
 
 ```sage
-ruler_frame(lower_left, upper_right, ticks=4, sub_ticks=4, **options)
+ruler_frame(lower_left: Any, upper_right: Any, ticks: int=4, sub_ticks: int=4, **options: Any) -> Graphics3d
 ```
 
 Draw three axis-aligned rulers from the lower frame corner.
@@ -3589,7 +3664,7 @@ Draw three axis-aligned rulers from the lower frame corner.
 ## `scatter_plot`
 
 ```sage
-scatter_plot(datalist, **options)
+scatter_plot(datalist: Any, **options: Any) -> Graphics
 ```
 
 Return a Sage-compatible scatter plot of `(x, y)` points.
@@ -3615,7 +3690,7 @@ Return a Sage-compatible scatter plot of `(x, y)` points.
 ## `search_doc`
 
 ```sage
-search_doc(query)
+search_doc(query: Any) -> None
 ```
 
 Search the docstrings of public objects loaded into Sage.js.
@@ -3651,7 +3726,7 @@ implemented.
 ## `show`
 
 ```sage
-show(value, *others, **options)
+show(value: Any, *others: Any, **options: Any) -> Any
 ```
 
 Return `value` for rich display, combining graphics when requested.
@@ -3681,7 +3756,7 @@ requiring a Jupyter extension.
 ## `solve`
 
 ```sage
-solve(equations, *variables, **options)
+solve(equations: Any, *variables: Any, **options: Any) -> Any
 ```
 
 Solve supported elementary symbolic equations.
@@ -3725,7 +3800,7 @@ transcendental families remain outside the current supported surface.
 ## `Sp`
 
 ```sage
-Sp(degree, field)
+Sp(degree: int, field: sage.Parent) -> SymplecticGroupParent
 ```
 
 Construct a finite symplectic group in its natural representation.
@@ -3754,7 +3829,7 @@ sage: Sp(4, GF(7)).order()
 ## `sphere`
 
 ```sage
-sphere(center=[0, 0, 0], size=1, **options)
+sphere(center: Any=[0, 0, 0], size: Any=1, **options: Any) -> Graphics3d
 ```
 
 Return a sphere of radius `size` centered at `center`.
@@ -3776,7 +3851,7 @@ Return a sphere of radius `size` centered at `center`.
 ## `spherical_plot3d`
 
 ```sage
-spherical_plot3d(function_value, urange, vrange, **options)
+spherical_plot3d(function_value: Any, urange: Any, vrange: Any, **options: Any) -> Graphics3d
 ```
 
 Plot a radial function in spherical coordinates.
@@ -3798,7 +3873,7 @@ Plot a radial function in spherical coordinates.
 ## `streamline_plot`
 
 ```sage
-streamline_plot(functions, xrange, yrange, **options)
+streamline_plot(functions: Any, xrange: Any, yrange: Any, **options: Any) -> Graphics
 ```
 
 Plot integral curves of a vector field or first-order slope field.
@@ -3828,7 +3903,7 @@ midpoint method.  `density` controls seed count and integration step;
 ## `sudoku`
 
 ```sage
-sudoku(puzzle)
+sudoku(puzzle: Matrix) -> Matrix
 ```
 
 Solve a 9-by-9 Sudoku puzzle represented by a matrix.
@@ -3871,7 +3946,7 @@ sage: sudoku(A)[0]
 ## `tetrahedron`
 
 ```sage
-tetrahedron(center=[0, 0, 0], size=1, **options)
+tetrahedron(center: Any=[0, 0, 0], size: Any=1, **options: Any) -> Graphics3d
 ```
 
 Return a regular tetrahedron centered at `center`.
@@ -3893,7 +3968,7 @@ Return a regular tetrahedron centered at `center`.
 ## `text`
 
 ```sage
-text(string, position, **options)
+text(string: Any, position: Any, **options: Any) -> Graphics
 ```
 
 Return a graphics object containing a positioned text label.
@@ -3919,7 +3994,7 @@ Return a graphics object containing a positioned text label.
 ## `text3d`
 
 ```sage
-text3d(string, position, **options)
+text3d(string: Any, position: Any, **options: Any) -> Graphics3d
 ```
 
 Display text at a point in three-dimensional space.
@@ -3941,7 +4016,7 @@ Display text at a point in three-dimensional space.
 ## `var`
 
 ```sage
-var(names)
+var(names: str) -> Any
 ```
 
 Create one or more symbolic variables and publish them in the session.
@@ -3979,7 +4054,7 @@ sage: (x^2 + y).derivative(x)
 ## `Zmod`
 
 ```sage
-Zmod(order)
+Zmod(order: Any) -> IntegerModRing
 ```
 
 Construct the ring of integers modulo `order`.

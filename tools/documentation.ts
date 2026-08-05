@@ -192,22 +192,58 @@ function signature(value: unknown, fallbackName: string): string {
   const name = callableName(value) || fallbackName.split(".").at(-1) || fallbackName;
   const argumentNames = Reflect.get(value, "__argnames__");
   const defaults = Reflect.get(value, "__defaults__");
-  const parts = (Array.isArray(argumentNames) ? argumentNames : []).map((argument) => {
+  const annotationText = Reflect.get(value, "__annotations_text__");
+  const annotations = Reflect.get(value, "__annotations__");
+  const annotation = (argument: string): string => {
+    for (const source of [annotationText, annotations]) {
+      if (
+        source &&
+        (typeof source === "object" || typeof source === "function") &&
+        Object.prototype.hasOwnProperty.call(source, argument)
+      ) {
+        const item = Reflect.get(source, argument);
+        if (typeof item === "string") return item;
+        return callableName(item) || defaultRepr(item);
+      }
+    }
+    return "";
+  };
+  const argumentPart = (argument: string): string => {
+    let part = argument;
+    const typeName = annotation(argument);
+    if (typeName) part += `: ${typeName}`;
     if (
       defaults &&
       (typeof defaults === "object" || typeof defaults === "function") &&
       Object.prototype.hasOwnProperty.call(defaults, argument)
     ) {
       const item = Reflect.get(defaults, argument);
-      return `${argument}=${item === undefined ? "None" : defaultRepr(item)}`;
+      part += `=${item === undefined ? "None" : defaultRepr(item)}`;
     }
-    return String(argument);
-  });
+    return part;
+  };
+  const parts = (Array.isArray(argumentNames) ? argumentNames : []).map(
+    (argument) => argumentPart(String(argument)),
+  );
+  if (Reflect.get(value, "__positional_only__") === true && parts.length) {
+    parts.push("/");
+  }
   const varargs = Reflect.get(value, "__varargs__");
-  if (typeof varargs === "string") parts.push(`*${varargs}`);
+  if (typeof varargs === "string") {
+    parts.push(`*${varargs}${annotation(varargs) ? `: ${annotation(varargs)}` : ""}`);
+  }
+  const keywordOnly = Reflect.get(value, "__kwonly__");
+  if (Array.isArray(keywordOnly) && keywordOnly.length) {
+    if (typeof varargs !== "string") parts.push("*");
+    parts.push(...keywordOnly.map((argument) => argumentPart(String(argument))));
+  }
   const varkw = Reflect.get(value, "__varkw__");
-  if (typeof varkw === "string") parts.push(`**${varkw}`);
-  return `${name}(${parts.join(", ")})`;
+  if (typeof varkw === "string") {
+    parts.push(`**${varkw}${annotation(varkw) ? `: ${annotation(varkw)}` : ""}`);
+  }
+  const result = `${name}(${parts.join(", ")})`;
+  const returnType = annotation("return");
+  return returnType ? `${result} -> ${returnType}` : result;
 }
 
 function firstNonemptyLine(text: string): string {

@@ -113,11 +113,15 @@ function ownerAtLine(sourceLines, lineNumber) {
 function exampleTags(source) {
   const tags = [];
   const patterns = [
-    ["needs", /#\s*needs\s+([^\n#]+)/gi],
+    ["needs", /#[^\n#]*?\bneeds\s+([^\n#]+)/gi],
     ["optional", /#\s*optional\s*-\s*([^\n#]+)/gi],
     ["long time", /#\s*long time\b/gi],
     ["random", /#\s*random\b/gi],
+    ["absolute tolerance", /#\s*abs(?:olute)?\s+tol(?:erance)?\s+([^\s#]+)/gi],
+    ["relative tolerance", /#\s*rel(?:ative)?\s+tol(?:erance)?\s+([^\s#]+)/gi],
+    ["tolerance", /#\s*tol(?:erance)?(?:\s+([^\s#]+))?/gi],
     ["not tested", /#\s*not tested\b/gi],
+    ["not implemented", /#\s*not implemented\b/gi],
     ["known bug", /#\s*known bug\b/gi],
   ];
   for (const [name, pattern] of patterns) {
@@ -157,6 +161,10 @@ function extractExamples(block, sourcePath, owner) {
     const wanted = [];
     while (index < lines.length) {
       if (lines[index].match(new RegExp(`^${promptIndent}sage:\\s?`))) break;
+      if (/^```/.test(lines[index].trim())) {
+        index += 1;
+        break;
+      }
       if (lines[index].trim() === "") {
         index += 1;
         break;

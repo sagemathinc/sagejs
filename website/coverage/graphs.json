@@ -10,14 +10,14 @@
     "unit": "public Graph methods available in the reference installation"
   },
   "metric": {
-    "numerator": 77,
+    "numerator": 78,
     "denominator": 411,
-    "percentage": 18.7,
-    "meaning": "Sage.js implements 77 exact-name methods from SageMath's 411-method public Graph surface. This measures API breadth, not semantic depth or performance."
+    "percentage": 19,
+    "meaning": "Sage.js implements 78 exact-name methods from SageMath's 411-method public Graph surface. This measures API breadth, not semantic depth or performance."
   },
   "internalMethodCoverage": {
-    "numerator": 133,
-    "denominator": 133,
+    "numerator": 135,
+    "denominator": 135,
     "percentage": 100,
     "meaning": "Every public function or alias currently defined by the Sage.js graph module is assigned to an executable semantic test."
   },
@@ -64,6 +64,7 @@
     "get_pos",
     "girth",
     "graph6_string",
+    "graphplot",
     "has_edge",
     "has_loops",
     "has_vertex",
@@ -104,12 +105,12 @@
     {
       "name": "SageMath public API breadth",
       "status": "measured",
-      "detail": "77 of 411 callable methods on a SageMath Graph instance have exact-name Sage.js implementations."
+      "detail": "78 of 411 callable methods on a SageMath Graph instance have exact-name Sage.js implementations."
     },
     {
       "name": "Implemented API test assignment",
       "status": "tested",
-      "detail": "133 of 133 public graph-module functions and aliases are assigned to executable semantic tests; the test fails when a new method is left unassigned."
+      "detail": "135 of 135 public graph-module functions and aliases are assigned to executable semantic tests; the test fails when a new method is left unassigned."
     },
     {
       "name": "Core graph semantics",

@@ -100,6 +100,15 @@ jobs:
           pnpm test:installer
           pnpm test:release
 
+      - name: Verify generated reference and imported Sage examples
+        run: |
+          pnpm docs:verify
+          git diff --exit-code -- \
+            docs/reference/api.md \
+            website/reference-data.json \
+            website/reference-results.json
+          pnpm test:upstream:run
+
       - name: Run Sage tutorial compatibility diagnostics
         id: tutorial
         run: |

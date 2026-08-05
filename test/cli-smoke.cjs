@@ -68,7 +68,7 @@ assert.match(
 assert.equal(existsSync(run(["docs", "path"]).trim()), true);
 assert.match(
   run(["docs", "search", "--backend", "FLINT", "finite-field"]),
-  /GF\(order, name=None/,
+  /GF\(order: Any, name: Any=None/,
 );
 const documentedDimension = JSON.parse(
   run(["docs", "show", "--json", "dimension_cusp_forms"]),
@@ -454,9 +454,9 @@ assert.equal(
     [
       "class Example:",
       '    """An example class."""',
-      "    def __init__(self, label='example'):",
+      "    def __init__(self, label: str='example'):",
       "        self.label = label",
-      "    def value(self, n=2):",
+      "    def value(self, n: int=2) -> int:",
       '        """Return an example value."""',
       "        return n",
       "",
@@ -479,17 +479,17 @@ assert.equal(
     "True",
     "Help on method value in module __main__:",
     "",
-    "value(n=2)",
+    "value(n: int=2) -> int",
     "",
     "    Return an example value.",
     "Help on class Example:",
     "",
-    "class Example(label='example')",
+    "class Example(label: str='example')",
     "",
     "    An example class.",
     "",
     "Methods:",
-    "    value(n=2)",
+    "    value(n: int=2) -> int",
     "        Return an example value.",
   ].join("\n"),
 );

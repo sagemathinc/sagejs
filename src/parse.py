@@ -1827,6 +1827,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'Sage.js currently supports only '
                         'from __future__ import annotations')
                 next()
+                # PEP 563 postpones annotation evaluation.  Keep source
+                # spellings and expose them as strings instead of resolving
+                # typing-only names in the mathematical runtime.
+                S.scoped_flags.set('annotations', 'future')
                 return AST_EmptyStatement({
                     'stype': 'future_annotations',
                     'start': tok.start,
@@ -2184,6 +2188,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             S.in_parenthesized_expr = True
         ctor = AST_Method if in_class else AST_Function
         return_annotation = None
+        return_annotation_text = None
         is_generator = r'%js []'
         docstrings = r'%js []'
         parsed_argnames = None
@@ -2219,7 +2224,10 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                 if ntok.type is 'punc' and ntok.value is ':' and not is_lambda:
                     next()
                     expect(':')
+                    annotation_start = S.token.pos
                     annotation = maybe_conditional()
+                    annotation_text = S.input.context()['text'].slice(
+                        annotation_start, prev().endpos).trim()
 
                     # and now, do as_symbol without the next() at the end
                     # since we are already at the next comma (or end bracket)
@@ -2233,7 +2241,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'name': name_token.value,
                         'start': S.token,
                         'end': S.token,
-                        'annotation': annotation
+                        'annotation': annotation,
+                        'annotation_text': annotation_text,
                     })
                     return sym
                 else:
@@ -2250,7 +2259,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                         'name': current_arg_name,
                         'start': S.token,
                         'end': S.token,
-                        'annotation': None
+                        'annotation': None,
+                        'annotation_text': None,
                     })
                     next()
                     return sym
@@ -2331,8 +2341,11 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
             #    https://stackoverflow.com/questions/33833881/is-it-possible-to-type-hint-a-lambda-function
             if not is_lambda and is_("punc", "->"):
                 next()
-                nonlocal return_annotation
+                nonlocal return_annotation, return_annotation_text
+                annotation_start = S.token.pos
                 return_annotation = maybe_conditional()
+                return_annotation_text = S.input.context()['text'].slice(
+                    annotation_start, prev().endpos).trim()
             if not is_lambda:
                 S.in_parenthesized_expr = False
             a.defaults = defaults
@@ -2400,6 +2413,7 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
         definition = js_new(ctor, args)
         definition.is_coroutine = is_coroutine
         definition.return_annotation = return_annotation
+        definition.return_annotation_text = return_annotation_text
         definition.annotated_locals = scan_for_annotated_names(
             definition.body)
         definition.is_generator = is_generator[0]

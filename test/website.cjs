@@ -29,6 +29,12 @@ const benchmarks = JSON.parse(
 const performancePilot = JSON.parse(
   fs.readFileSync(path.join(website, "performance/quadratic-class-groups-pilot.json"), "utf8"),
 );
+const referenceHtml = fs.readFileSync(
+  path.join(website, "reference.html"), "utf8",
+);
+const referenceScript = fs.readFileSync(
+  path.join(website, "reference.js"), "utf8",
+);
 
 test("dashboard data has a stable, complete schema", () => {
   assert.equal(payload.schemaVersion, 2);
@@ -217,4 +223,35 @@ test("dashboard JavaScript is self-contained and does not inject capability HTML
   assert.match(script, /function revealCapability/);
   assert.match(script, /url\.searchParams\.delete\("q"\)/);
   assert.match(script, /link\.addEventListener\("click"/);
+});
+
+test("reference manual is fast, searchable, and verification-aware", () => {
+  const reference = JSON.parse(
+    fs.readFileSync(path.join(website, "reference-data.json"), "utf8"),
+  );
+  assert.equal(reference.schema, "sagejs.reference/v1");
+  assert.ok(reference.entries.length >= 100);
+  assert.equal(
+    reference.coverage.definitions.declared_surface,
+    "runtime DocSpec registry",
+  );
+  assert.match(reference.coverage.definitions.warning, /not every runtime-visible name/i);
+  assert.ok(reference.coverage.examples.documented > 0);
+  assert.ok(
+    reference.coverage.examples.entries_without_examples <= 95,
+    "new public DocSpec entries must include an executable example",
+  );
+  assert.equal(reference.coverage.examples.failing, 0);
+  assert.equal(reference.coverage.examples.unverified, 0);
+  assert.ok(reference.coverage.examples.verified >= 109);
+  assert.ok(reference.entries.some((entry) => entry.name === "graphs.RandomGNP"));
+  assert.match(referenceHtml, /id=["']search["']/);
+  assert.match(referenceHtml, /id=["']result-list["']/);
+  assert.match(referenceHtml, /id=["']entry["']/);
+  assert.doesNotMatch(referenceHtml, /<script[^>]+src=["']https?:/i);
+  assert.match(referenceScript, /function filtered/);
+  assert.match(referenceScript, /function exampleCard/);
+  assert.match(referenceScript, /requestAnimationFrame/);
+  assert.match(referenceScript, /CI verified/);
+  assert.match(referenceScript, /source\.excerpt/);
 });

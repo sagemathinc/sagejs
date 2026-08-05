@@ -324,7 +324,7 @@ class GraphAutomorphismGroup:
 
 
 class GraphPlot:
-    """Graph-specific Plotly renderer returned by :meth:`Graph.plot`."""
+    """Graph-specific renderer returned by :meth:`Graph.graphplot`."""
 
     def __init__(self, graph: GenericGraph, **options: Any) -> None:
         self._graph = graph
@@ -384,7 +384,10 @@ class GraphPlot:
         )
         labels = [str(vertex) for vertex in self._graph._vertices]
         vertex_trace = _native_record(
-            type='scatter', mode='markers+text',
+            type='scatter', mode=(
+                'markers+text'
+                if bool(self._options.get('vertex_labels', True))
+                else 'markers'),
             x=[point[0] for point in positions],
             y=[point[1] for point in positions],
             text=labels,
@@ -428,6 +431,15 @@ class GraphPlot:
             layout=layout,
             config=_native_record(displaylogo=False, responsive=True),
         )
+
+    def plot(self) -> Any:
+        """Return this renderer as an ordinary composable ``Graphics``."""
+        adapter = runtime.reflect.get(
+            runtime.global_object, '__sagejs_graphics_from_plotly__')
+        if adapter is runtime.undefined:
+            raise RuntimeError('the two-dimensional graphics layer is unavailable')
+        return runtime.reflect.apply(
+            adapter, runtime.undefined, [self.plotly()])
 
     def _interactive_html(self) -> str:
         """Return a dependency-free SVG graph whose vertices are draggable."""
@@ -1087,7 +1099,10 @@ class GenericGraph:
 
     def __repr__(self) -> str:
         if self._name is not None and self._name != '':
-            return self._name
+            noun = 'Digraph' if self._directed else 'Graph'
+            return (
+                self._name + ': ' + noun + ' on ' +
+                str(self.order()) + ' vertices')
         noun = 'Digraph' if self._directed else 'Graph'
         return noun + ' on ' + str(self.order()) + ' vertices'
 
@@ -2090,11 +2105,20 @@ class GenericGraph:
     def chromatic_number(self, **options: Any) -> int:
         return len(self.coloring(**options))
 
-    def plot(self, **options: Any) -> GraphPlot:
+    def graphplot(self, **options: Any) -> GraphPlot:
+        """Return the graph-specific renderer used to construct a plot."""
         return GraphPlot(self, **options)
 
-    def show(self, **options: Any) -> GraphPlot:
-        return self.plot(**options)
+    def plot(self, **options: Any) -> Any:
+        """Return a composable two-dimensional graphics object."""
+        return self.graphplot(**options).plot()
+
+    def show(self, **options: Any) -> Any:
+        if bool(_record_get(options, 'interactive', False)) or str(
+            _record_get(options, 'renderer', '')).lower() in (
+                'interactive', 'svg'):
+            return self.graphplot(**options).show()
+        return self.plot(**options).show()
 
 
 class Graph(GenericGraph):
@@ -2479,16 +2503,130 @@ class GraphGenerators:
             angle=3 * pi / 10)
         return graph
 
-    def RandomGNP(self, order: int, probability: float) -> Graph:
+    def RandomGNP(
+        self,
+        n: int,
+        p: float,
+        seed: Any = None,
+        fast: bool = True,
+        algorithm: str = 'Sage',
+        immutable: bool = False,
+    ) -> Graph:
+        r"""
+        Return a random graph on `n` vertices.
+
+        Every possible edge is inserted independently with probability `p`.
+
+        ### Input
+
+        - `n` -- nonnegative number of vertices
+        - `p` -- edge probability in the interval `[0, 1]`
+        - `seed` -- optional local random seed
+        - `fast` -- use the sparse `O(n+m)` Batagelj--Brandes algorithm
+        - `algorithm` -- `'Sage'` (or `'sage'`); `'networkx'` is
+          accepted only when that optional Python package is available
+        - `immutable` -- request an immutable graph (currently accepted for
+          Sage call compatibility; immutable graphs are not yet implemented)
+
+        ### Examples
+
+        The endpoints `p=0` and `p=1` are deterministic:
+
+        ```sage
+            sage: graphs.RandomGNP(5, 0).size()
+            0
+            sage: graphs.RandomGNP(4, 1)
+            Complete graph: Graph on 4 vertices
+        ```
+
+        A seed makes a generated graph reproducible without changing the
+        process-wide Sage random state:
+
+        ```sage
+            sage: a = graphs.RandomGNP(12, .3, seed=7)
+            sage: b = graphs.RandomGNP(12, .3, seed=7)
+            sage: a.edges(sort=True, labels=False) == b.edges(sort=True, labels=False)
+            True
+        ```
+
+        Graph plots are ordinary composable graphics, as in Sage:
+
+        ```sage
+            sage: rows = [[graphs.RandomGNP(3+i+3*j, .43, seed=i+3*j).plot(
+            ....:          vertex_size=10, vertex_labels=False) for i in range(3)]
+            ....:         for j in range(3)]
+            sage: graphics_array(rows)
+            Graphics Array of size 3 x 3
+        ```
+
+        This API and documentation are adapted from
+        `sage.graphs.generators.random.RandomGNP` (GPL-2.0-or-later).
+        """
+        del immutable
+        order = int(n)
+        probability = float(p)
+        if order < 0:
+            raise ValueError('The number of nodes must be positive or null.')
         if probability < 0 or probability > 1:
-            raise ValueError('probability must lie between 0 and 1')
+            raise ValueError('The probability p must be in [0..1].')
+        if algorithm == 'networkx':
+            raise ImportError(
+                "algorithm='networkx' requires the optional networkx package")
+        if algorithm not in ('Sage', 'sage'):
+            raise ValueError(
+                "'algorithm' must be equal to 'networkx' or to 'Sage'")
+        if probability == 1:
+            return self.CompleteGraph(order)
         graph = Graph(order, name='Random G(n,p) graph')
+        if probability == 0 or order < 2:
+            return graph
+
+        local_state = None
+        if seed is not None:
+            local_state = 5381
+            for character in str(seed):
+                local_state = (
+                    local_state * 33 + ord(character)
+                ) % 4294967296
+            if local_state == 0:
+                local_state = 1
+
+        def random_float() -> float:
+            nonlocal local_state
+            if local_state is None:
+                random_function = runtime.reflect.get(
+                    runtime.global_object, 'random')
+                return float(runtime.reflect.apply(
+                    random_function, runtime.undefined, []))
+            local_state = (
+                1664525 * local_state + 1013904223
+            ) % 4294967296
+            return local_state / 4294967296
+
+        if fast:
+            # Batagelj--Brandes skip sampling: expected O(n+m) work for
+            # sparse graphs, while retaining independent Bernoulli edges.
+            log_not_p = runtime.math.log(1.0 - probability)
+            source = 1
+            target = -1
+            while source < order:
+                draw = random_float()
+                if draw == 0:
+                    draw = 1.0 / 4294967296
+                target += 1 + int(runtime.math.floor(
+                    runtime.math.log(1.0 - draw) / log_not_p))
+                while target >= source and source < order:
+                    target -= source
+                    source += 1
+                if source < order:
+                    graph.add_edge(source, target)
+            return graph
+
         for source in range(order):
             for target in range(source + 1, order):
-                if runtime.math.random() < probability:
+                if random_float() < probability:
                     graph.add_edge(source, target)
         return graph
-
 
 graphs = GraphGenerators()
 
@@ -2727,3 +2865,57 @@ class GraphDatabase:
 
     __str__ = __repr__
     toString = __repr__
+
+
+runtime.register_doc(
+    'graphs.RandomGNP',
+    graphs.RandomGNP,
+    {
+        'kind': 'method',
+        'module': 'sage.graphs.generators.random',
+        'tags': [
+            'graph theory', 'random graphs', 'Erdos-Renyi', 'generators',
+        ],
+        'backends': ['Sage.js graph algorithms'],
+        'sage_compatibility': {
+            'status': 'partial',
+            'notes': (
+                "The Sage algorithm is implemented, including sparse and "
+                "quadratic paths. The optional networkx algorithm and "
+                "immutable graph representation are not bundled."
+            ),
+        },
+        'provenance': [
+            {
+                'kind': 'sage-derived',
+                'source': 'SageMath RandomGNP API and documentation',
+                'url': (
+                    'https://doc.sagemath.org/html/en/reference/graphs/'
+                    'sage/graphs/generators/random.html'
+                ),
+                'license': 'GPL-2.0-or-later',
+            },
+            {
+                'kind': 'literature-implemented',
+                'source': 'Batagelj--Brandes sparse random graph algorithm',
+            },
+        ],
+        'references': [
+            {
+                'id': 'batagelj-brandes-2005',
+                'type': 'paper',
+                'title': 'Efficient generation of large random networks',
+                'authors': ['Vladimir Batagelj', 'Ulrik Brandes'],
+                'year': 2005,
+                'url': 'https://doi.org/10.1103/PhysRevE.71.036113',
+            },
+        ],
+        'implementation': {
+            'algorithm': 'Batagelj--Brandes skip sampling or Bernoulli scan',
+        },
+        'limitations': [
+            "algorithm='networkx' requires an external backend.",
+            'immutable=True is accepted but does not yet freeze the graph.',
+        ],
+    },
+)
