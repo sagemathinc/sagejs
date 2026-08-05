@@ -25,11 +25,19 @@
         ["OS=='win'", {
           "defines": ["_CRT_SECURE_NO_WARNINGS"],
           "libraries": ["<(native_prefix)/lib/igraph.lib"],
+          "configurations": {
+            "Release": {
+              "msvs_settings": {
+                "VCCLCompilerTool": {
+                  "RuntimeLibrary": 2
+                }
+              }
+            }
+          },
           "msvs_settings": {
             "VCCLCompilerTool": {
               "Optimization": 3,
-              "WarningLevel": 3,
-              "RuntimeLibrary": 2
+              "WarningLevel": 3
             }
           }
         }]

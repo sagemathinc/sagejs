@@ -42,17 +42,27 @@ jobs:
       - name: Install the native toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install --yes build-essential python3 python3-jupyter-client m4 xz-utils
+          sudo apt-get install --yes build-essential cmake python3 python3-jupyter-client m4 xz-utils
 
-      - name: Cache downloaded and compiled native dependencies
+      - name: Cache downloaded and compiled arithmetic dependencies
         uses: actions/cache@v6
         with:
           path: |
             packages/flint/.native/downloads
             packages/flint/.native/prefix
+          key: linux-x64-flint-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp') }}
+          restore-keys: |
+            linux-x64-flint-
+            linux-x64-native-
+
+      - name: Cache downloaded and compiled graph dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
             packages/graph/.native/downloads
             packages/graph/.native/prefix
-          key: linux-x64-native-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json', 'pnpm-lock.yaml') }}
+          key: linux-x64-graph-${{ hashFiles('packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json') }}
+          restore-keys: linux-x64-graph-
 
       - name: Bootstrap the complete native system
         env:
@@ -184,17 +194,27 @@ jobs:
       - name: Install the native toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install --yes build-essential python3 m4 xz-utils
+          sudo apt-get install --yes build-essential cmake python3 m4 xz-utils
 
-      - name: Cache downloaded and compiled native dependencies
+      - name: Cache downloaded and compiled arithmetic dependencies
         uses: actions/cache@v6
         with:
           path: |
             packages/flint/.native/downloads
             packages/flint/.native/prefix
+          key: linux-arm64-flint-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp') }}
+          restore-keys: |
+            linux-arm64-flint-
+            linux-arm64-native-
+
+      - name: Cache downloaded and compiled graph dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
             packages/graph/.native/downloads
             packages/graph/.native/prefix
-          key: linux-arm64-native-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp', 'packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json', 'packages/graph/binding.gyp', 'pnpm-lock.yaml') }}
+          key: linux-arm64-graph-${{ hashFiles('packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json') }}
+          restore-keys: linux-arm64-graph-
 
       - name: Bootstrap the complete native system
         env:
@@ -314,22 +334,34 @@ jobs:
       - name: Install the pinned dependency graph
         run: pnpm install --frozen-lockfile
 
-      - name: Cache vcpkg and compiled native dependencies
+      - name: Cache vcpkg arithmetic dependencies
         uses: actions/cache@v6
         with:
           path: |
             packages/flint/.native/vcpkg
             packages/flint/.native/vcpkg-installed
+          key: windows-x64-flint-${{ hashFiles('packages/flint/vcpkg.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/scripts/triplets/*.cmake', 'packages/flint/scripts/vcpkg-ports/**/*', 'packages/flint/binding.gyp') }}
+          restore-keys: |
+            windows-x64-flint-
+            windows-x64-native-
+
+      - name: Cache downloaded and compiled graph dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
             packages/graph/.native/downloads
             packages/graph/.native/prefix
-          key: windows-x64-native-${{ hashFiles('packages/flint/vcpkg.json', 'packages/flint/scripts/build-deps.cjs', 'packages/flint/scripts/triplets/*.cmake', 'packages/flint/scripts/vcpkg-ports/**/*', 'packages/flint/binding.gyp', 'packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json', 'packages/graph/binding.gyp', 'pnpm-lock.yaml') }}
+          key: windows-x64-graph-${{ hashFiles('packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json') }}
+          restore-keys: windows-x64-graph-
 
       - name: Build the compiler and native mathematics stack
         env:
           SAGEJS_BUILD_JOBS: "8"
         run: |
           pnpm --dir packages/flint build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm --dir packages/graph build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm build
 
       - name: Enforce the development startup budget
@@ -434,20 +466,30 @@ jobs:
       - name: Install native build prerequisites
         run: |
           brew untap aws/tap || true
-          brew install m4 xz
+          brew install cmake m4 xz
 
       - name: Install the pinned dependency graph
         run: pnpm install --frozen-lockfile
 
-      - name: Cache downloaded and compiled native dependencies
+      - name: Cache downloaded and compiled arithmetic dependencies
         uses: actions/cache@v6
         with:
           path: |
             packages/flint/.native/downloads
             packages/flint/.native/prefix
+          key: macos-arm64-flint-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/flint/binding.gyp') }}
+          restore-keys: |
+            macos-arm64-flint-
+            macos-arm64-native-
+
+      - name: Cache downloaded and compiled graph dependencies
+        uses: actions/cache@v6
+        with:
+          path: |
             packages/graph/.native/downloads
             packages/graph/.native/prefix
-          key: macos-arm64-native-${{ hashFiles('packages/flint/scripts/build-deps.cjs', 'packages/flint/package.json', 'packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json', 'pnpm-lock.yaml') }}
+          key: macos-arm64-graph-${{ hashFiles('packages/graph/scripts/build-deps.cjs', 'packages/graph/package.json') }}
+          restore-keys: macos-arm64-graph-
 
       - name: Build the compiler and native mathematics stack
         env:
