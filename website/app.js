@@ -20,7 +20,7 @@ const coverageLabels = {
   planned: "Planned",
 };
 
-const state = { capabilities: [], examples: [], filter: "all", area: "all", query: "" };
+const state = { capabilities: [], examples: [], audits: [], auditAreas: [], benchmarks: [], filter: "all", area: "all", query: "" };
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -54,6 +54,40 @@ function examplesFor(capabilityId) {
   return state.examples.filter((example) => example.capability === capabilityId);
 }
 
+function auditFor(capabilityId) {
+  return state.audits.find((audit) => audit.capability === capabilityId);
+}
+
+function benchmarkFor(suiteId) {
+  return state.benchmarks.find((suite) => suite.id === suiteId);
+}
+
+function auditAreaFor(area) {
+  return state.auditAreas.find((entry) => entry.area === area);
+}
+
+function auditText(item) {
+  const audit = auditFor(item.id);
+  const area = auditAreaFor(item.area);
+  if (!audit || !area) return "";
+  const suites = audit.benchmarkSuites.map(benchmarkFor).filter(Boolean);
+  return [
+    audit.scopeStatus,
+    audit.scopeUnit,
+    audit.nextAudit,
+    audit.gap.id,
+    audit.gap.dimension,
+    audit.gap.priority,
+    audit.gap.title,
+    ...area.systems,
+    area.scopeReference,
+    area.competitiveTarget,
+    ...area.comparisonFocus,
+    ...area.benchmarkAxes,
+    ...suites.flatMap((suite) => [suite.id, suite.status, ...suite.systems, ...suite.axes]),
+  ].join(" ");
+}
+
 function exampleText(example) {
   return [example.title, example.language, example.code, example.expected, example.note || ""].join(" ").toLowerCase();
 }
@@ -68,8 +102,58 @@ function matches(item) {
   if (!state.query) return true;
   const score = item.coverage.score || {};
   const coverageText = [item.coverage.label, item.coverage.summary, ...item.coverage.includes, score.unit || "", score.reference || "", score.method || ""].join(" ");
-  const text = [item.feature, item.area, item.summary, item.implementation, item.evidence, item.target, coverageText].join(" ").toLowerCase();
+  const text = [item.feature, item.area, item.summary, item.implementation, item.evidence, item.target, coverageText, auditText(item)].join(" ").toLowerCase();
   return text.includes(state.query) || examplesFor(item.id).some((example) => exampleText(example).includes(state.query));
+}
+
+function chipList(values, className = "audit-chip-list") {
+  const list = el("ul", className);
+  for (const value of values) list.append(el("li", "", value));
+  return list;
+}
+
+function competitiveAuditExpander(item) {
+  const audit = auditFor(item.id);
+  const area = auditAreaFor(item.area);
+  if (!audit || !area) return null;
+  const suites = audit.benchmarkSuites.map(benchmarkFor).filter(Boolean);
+  const existing = suites.filter((suite) => suite.status === "existing").length;
+  const details = el("details", "competitive-expander");
+  const summary = el("summary", "");
+  const heading = el("span", "audit-heading");
+  heading.append(el("span", "summary-label", "Competitive audit"), el("strong", "", audit.gap.title));
+  summary.append(heading, el("span", `audit-priority audit-priority-${audit.gap.priority.toLowerCase()}`, `${audit.gap.priority} · ${existing}/${suites.length} benchmark suites exist`));
+
+  const body = el("div", "competitive-body");
+  const references = el("section", "audit-panel");
+  references.append(
+    el("h4", "", "Comparison systems"),
+    chipList(area.systems),
+    el("p", "", area.scopeReference),
+    el("h5", "", "Competitive target"),
+    el("p", "", area.competitiveTarget),
+    chipList(area.comparisonFocus, "audit-focus-list"),
+  );
+  const scope = el("section", "audit-panel");
+  scope.append(el("h4", "", `Scope audit · ${audit.scopeStatus}`), el("strong", "", audit.scopeUnit), el("p", "", audit.nextAudit));
+  const performance = el("section", "audit-panel audit-performance");
+  performance.append(el("h4", "", "Performance corpus"));
+  if (suites.length) {
+    const suiteList = el("ul", "benchmark-suite-list");
+    for (const suite of suites) {
+      const row = el("li", "");
+      row.append(el("code", "", suite.id), el("span", `suite-status suite-${suite.status}`, suite.status), el("small", "", suite.axes.join(" · ")));
+      suiteList.append(row);
+    }
+    performance.append(suiteList);
+  } else {
+    performance.append(el("p", "", "No benchmark suite has been defined yet."));
+  }
+  const lane = el("section", "audit-panel audit-lane");
+  lane.append(el("h4", "", "Primary work lane"), el("code", "audit-gap-id", audit.gap.id), el("strong", "", audit.gap.title), el("p", "", `${audit.gap.dimension} · ${audit.gap.priority} · ${audit.gap.parallelizable ? "independently claimable" : "integration/dependency lane"}`));
+  body.append(references, scope, performance, lane);
+  details.append(summary, body);
+  return details;
 }
 
 function coverageScoreSummary(score) {
@@ -190,6 +274,8 @@ function capabilityCard(item) {
   target.append(el("h4", "", `Target · ${labels[item.priority]}`), el("p", "", item.target));
   details.append(implementation, evidence, target);
   article.append(top, summary, details, coverageExpander(item));
+  const audit = competitiveAuditExpander(item);
+  if (audit) article.append(audit);
   const expander = exampleExpander(item);
   if (expander) article.append(expander);
   return article;
@@ -279,6 +365,15 @@ function renderCapabilities() {
   renderExampleSearch();
 }
 
+function renderAuditMetrics() {
+  const existing = state.benchmarks.filter((suite) => suite.status === "existing").length;
+  document.querySelector("#audit-gap-count").textContent = String(state.audits.length);
+  document.querySelector("#audit-existing-benchmarks").textContent = String(existing);
+  document.querySelector("#audit-planned-benchmarks").textContent = String(state.benchmarks.length - existing);
+  const systems = new Set(state.auditAreas.flatMap((area) => area.systems));
+  document.querySelector("#audit-system-count").textContent = String(systems.size);
+}
+
 function renderRoadmap(data) {
   const container = document.querySelector("#roadmap-columns");
   container.replaceChildren();
@@ -338,20 +433,33 @@ function installInteractions() {
 async function loadDashboard() {
   installInteractions();
   try {
-    const [capabilityResponse, exampleResponse] = await Promise.all([
+    const [capabilityResponse, exampleResponse, auditResponse, benchmarkResponse] = await Promise.all([
       fetch("./capabilities.json"),
       fetch("./examples.json"),
+      fetch("./competitive-audit.json"),
+      fetch("./benchmarks.json"),
     ]);
-    if (!capabilityResponse.ok || !exampleResponse.ok) throw new Error(`HTTP ${capabilityResponse.status}/${exampleResponse.status}`);
-    const [payload, examplePayload] = await Promise.all([capabilityResponse.json(), exampleResponse.json()]);
+    if (!capabilityResponse.ok || !exampleResponse.ok || !auditResponse.ok || !benchmarkResponse.ok) {
+      throw new Error(`HTTP ${capabilityResponse.status}/${exampleResponse.status}/${auditResponse.status}/${benchmarkResponse.status}`);
+    }
+    const [payload, examplePayload, auditPayload, benchmarkPayload] = await Promise.all([
+      capabilityResponse.json(),
+      exampleResponse.json(),
+      auditResponse.json(),
+      benchmarkResponse.json(),
+    ]);
     state.capabilities = payload.capabilities;
     state.examples = examplePayload.examples;
+    state.audits = auditPayload.capabilities;
+    state.auditAreas = auditPayload.areas;
+    state.benchmarks = benchmarkPayload.suites;
     const initialQuery = new URLSearchParams(location.search).get("q") || "";
     state.query = initialQuery.trim().toLowerCase();
     document.querySelector("#search").value = initialQuery;
     document.querySelector("#updated-date").dateTime = payload.updated;
     document.querySelector("#updated-date").textContent = new Date(`${payload.updated}T00:00:00Z`).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
     renderMetrics(state.capabilities, state.examples);
+    renderAuditMetrics();
     renderAreaOptions(state.capabilities);
     renderCapabilities();
     renderRoadmap(state.capabilities);
@@ -362,6 +470,9 @@ async function loadDashboard() {
       const capabilityId = decodeURIComponent(location.hash.slice(1));
       if (state.capabilities.some((item) => item.id === capabilityId)) {
         window.setTimeout(() => revealCapability(capabilityId), 0);
+      } else {
+        const section = document.getElementById(capabilityId);
+        if (section) window.setTimeout(() => section.scrollIntoView({ behavior: "auto", block: "start" }), 0);
       }
     }
   } catch (error) {

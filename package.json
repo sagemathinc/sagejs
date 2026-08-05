@@ -171,6 +171,9 @@
     "bench:cowasm:ceilings": "node bench/cowasm/direct-ceilings.cjs",
     "bench:native": "node bench/compare-native-compiler.cjs",
     "bench:polyglot": "node bench/polyglot.cjs",
+    "bench:audit:pilot": "node bench/compare-quadratic-class-groups.cjs --json",
+    "audit:competitive": "node --test test/website.cjs test/coverage-python-stdlib.cjs test/audit-gaps.cjs",
+    "audit:gaps": "node scripts/list-audit-gaps.cjs",
     "prepack": "node scripts/prepack.cjs"
   },
   "devDependencies": {

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-05T06:02:24.925Z",
+  "status": "illustrative-pilot",
+  "suite": "quadratic-class-groups",
+  "revision": "0043a9e098b1dcfc1a54109c48dc61e385603fc9",
+  "environment": {
+    "cpu": "AMD EPYC 7B13",
+    "allocatedCores": 16,
+    "node": "26.5.1",
+    "platform": "linux-x64",
+    "pari": "2.17.3",
+    "magma": "2.18-5"
+  },
+  "case": {
+    "discriminant": "-1000000007",
+    "answer": "26629",
+    "allAnswersAgree": true
+  },
+  "results": [
+    {"system":"Sage.js/FLINT","operation":"class-number","semantics":"certified enumeration","medianSeconds":0.007381902999999988},
+    {"system":"Sage.js/FLINT","operation":"cyclic-structure","semantics":"certified enumeration plus order proof","medianSeconds":0.010602253800000017},
+    {"system":"PARI/GP","operation":"probable-shanks","semantics":"probable Shanks","medianSeconds":0.00015},
+    {"system":"PARI/GP","operation":"analytic-proof","semantics":"analytic proof mode","medianSeconds":0.567},
+    {"system":"Magma","operation":"middle-shanks","semantics":"middle-range Shanks","medianSeconds":0.004}
+  ],
+  "warning": "This is one same-host example, not a release baseline or aggregate speed claim. The operations have deliberately different proof semantics; comparing them without the semantics column would be misleading.",
+  "reproduce": "PARI_GP=/usr/bin/gp MAGMA=/home/user/bin/magma node bench/compare-quadratic-class-groups.cjs --json"
+}

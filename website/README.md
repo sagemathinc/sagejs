@@ -32,6 +32,51 @@ importable module exists. Future audits should follow the same pattern and use
 the narrowest defensible unit: public symbols, documented constructors,
 algorithm cases, or a named workflow corpus.
 
+## Competitive audit and performance corpus
+
+`competitive-audit.json` gives every capability one explicit audit unit, a
+reference-system family, benchmark-suite IDs, and a stable primary gap ID. The
+gap IDs are intended to become independently claimable implementation or audit
+lanes. Keeping them in data makes priority searches and generated work queues
+possible without scraping prose. Every planned benchmark suite also generates
+an independent `benchmark-*` performance lane, so scope measurement and timing
+infrastructure can proceed in parallel.
+
+`benchmarks.json` inventories both existing benchmark programs and planned
+research workload families. Existing entries must point at a checked-in runner;
+planned entries must state their capability, comparison systems, and input
+axes without pretending timing data exists. Competitive results must preserve
+proof and semantic modes. For example, probable class-number computation and a
+certified class-group computation must never be presented as equivalent merely
+because both print the same integer.
+
+`performance/quadratic-class-groups-pilot.json` is the first illustrative
+same-host result. It demonstrates the result shape and semantic labels, but is
+explicitly not a release baseline. Future dedicated benchmark VMs should record
+their exact machine type, software revisions, proof modes, repetitions, and raw
+case data.
+
+Run the complete audit validation with:
+
+```sh
+pnpm audit:competitive
+```
+
+Run the small same-host timing pilot, without a CI performance gate, with:
+
+```sh
+pnpm bench:audit:pilot
+```
+
+List the generated work queue, optionally filtering by priority, dimension,
+area, or text:
+
+```sh
+pnpm audit:gaps -- --priority=P0
+pnpm audit:gaps -- --dimension=performance
+pnpm audit:gaps -- --area="Algebraic number theory"
+```
+
 `examples.json` is an executable cookbook. Examples are displayed inside their
 capability cards and indexed by the site-wide search. `test/dashboard-examples.cjs`
 runs every cell through the same polyglot kernel used by Jupyter and checks its

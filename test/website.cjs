@@ -14,6 +14,15 @@ const script = fs.readFileSync(path.join(website, "app.js"), "utf8");
 const stdlibCoverage = JSON.parse(
   fs.readFileSync(path.join(website, "coverage/python-stdlib.json"), "utf8"),
 );
+const competitiveAudit = JSON.parse(
+  fs.readFileSync(path.join(website, "competitive-audit.json"), "utf8"),
+);
+const benchmarks = JSON.parse(
+  fs.readFileSync(path.join(website, "benchmarks.json"), "utf8"),
+);
+const performancePilot = JSON.parse(
+  fs.readFileSync(path.join(website, "performance/quadratic-class-groups-pilot.json"), "utf8"),
+);
 
 test("dashboard data has a stable, complete schema", () => {
   assert.equal(payload.schemaVersion, 2);
@@ -98,12 +107,75 @@ test("published coverage scores have explicit denominators or estimate labels", 
   assert.equal(stdlib.value, stdlibCoverage.metric.percentage);
 });
 
+test("competitive audit covers every capability with a stable work lane", () => {
+  assert.equal(competitiveAudit.schemaVersion, 1);
+  const capabilityIds = payload.capabilities.map((item) => item.id).sort();
+  const auditedIds = competitiveAudit.capabilities.map((item) => item.capability).sort();
+  assert.deepEqual(auditedIds, capabilityIds);
+  const areas = new Set(payload.capabilities.map((item) => item.area));
+  assert.deepEqual(new Set(competitiveAudit.areas.map((item) => item.area)), areas);
+  for (const area of competitiveAudit.areas) {
+    assert.ok(area.systems.length > 0 && area.benchmarkAxes.length > 0 && area.comparisonFocus.length > 0);
+    assert.ok(area.scopeReference.trim() && area.competitiveTarget.trim());
+  }
+  const suiteIds = new Set(benchmarks.suites.map((suite) => suite.id));
+  const gapIds = new Set();
+  const dimensions = new Set(["scope", "correctness", "workflow", "performance"]);
+  const scopeStatuses = new Set(["measured", "estimated", "inventory", "planned", "domain-complete"]);
+  for (const audit of competitiveAudit.capabilities) {
+    assert.ok(scopeStatuses.has(audit.scopeStatus), `${audit.capability}.scopeStatus`);
+    for (const field of ["scopeUnit", "nextAudit"]) assert.ok(audit[field]?.trim(), `${audit.capability}.${field}`);
+    assert.ok(audit.benchmarkSuites.length > 0, `${audit.capability} needs a benchmark suite`);
+    for (const suite of audit.benchmarkSuites) assert.ok(suiteIds.has(suite), `${audit.capability} unknown suite ${suite}`);
+    assert.match(audit.gap.id, /^audit-[a-z0-9]+(?:-[a-z0-9]+)*$/);
+    assert.ok(!gapIds.has(audit.gap.id), `duplicate gap ${audit.gap.id}`);
+    gapIds.add(audit.gap.id);
+    assert.ok(dimensions.has(audit.gap.dimension), `${audit.gap.id}.dimension`);
+    assert.ok(["P0", "P1", "P2"].includes(audit.gap.priority), `${audit.gap.id}.priority`);
+    assert.equal(typeof audit.gap.parallelizable, "boolean", `${audit.gap.id}.parallelizable`);
+    assert.ok(audit.gap.title.trim());
+  }
+});
+
+test("benchmark catalog inventories existing suites and future research cases", () => {
+  assert.equal(benchmarks.schemaVersion, 1);
+  const capabilityIds = new Set(payload.capabilities.map((item) => item.id));
+  const ids = new Set();
+  let existing = 0;
+  let planned = 0;
+  for (const suite of benchmarks.suites) {
+    assert.match(suite.id, /^[a-z0-9]+(?:-[a-z0-9]+)*$/);
+    assert.ok(!ids.has(suite.id), `duplicate benchmark ${suite.id}`);
+    ids.add(suite.id);
+    assert.ok(["existing", "planned"].includes(suite.status), `${suite.id}.status`);
+    if (suite.status === "existing") {
+      existing += 1;
+      assert.ok(suite.path, `${suite.id}.path`);
+      assert.ok(fs.existsSync(path.join(root, suite.path)), `${suite.id} missing ${suite.path}`);
+    } else {
+      planned += 1;
+      assert.equal(suite.path, undefined, `${suite.id} planned suite must not claim an implementation`);
+      assert.ok(["P0", "P1", "P2"].includes(benchmarks.plannedPriorities[suite.id]), `${suite.id} planned priority`);
+    }
+    assert.ok(suite.capabilities.length > 0 && suite.axes.length > 0 && suite.systems.length > 0);
+    for (const capability of suite.capabilities) assert.ok(capabilityIds.has(capability), `${suite.id} unknown capability ${capability}`);
+  }
+  assert.ok(existing >= 10, "existing benchmark work is undercounted");
+  assert.ok(planned >= 10, "future benchmark corpus is too narrow");
+  assert.deepEqual(Object.keys(benchmarks.plannedPriorities).sort(), benchmarks.suites.filter((suite) => suite.status === "planned").map((suite) => suite.id).sort());
+  assert.equal(performancePilot.suite, "quadratic-class-groups");
+  assert.equal(performancePilot.status, "illustrative-pilot");
+  assert.equal(performancePilot.case.allAnswersAgree, true);
+  assert.ok(performancePilot.results.length >= 3);
+  assert.match(performancePilot.warning, /not a release baseline/i);
+});
+
 test("dashboard covers the three questions and both install paths", () => {
   for (const id of ["install", "capabilities", "roadmap"]) assert.match(html, new RegExp(`id=["']${id}["']`));
   assert.match(html, /@sagemath\/sagejs/);
   assert.match(html, /releases\/latest\/download\/install\.sh/);
   assert.match(html, /--install-jupyter-kernel/);
-  for (const hook of ["metric-total", "capability-list", "roadmap-columns", "area-filter", "example-search-results", "example-result-list"]) assert.match(html, new RegExp(`id=["']${hook}["']`));
+  for (const hook of ["metric-total", "capability-list", "roadmap-columns", "area-filter", "example-search-results", "example-result-list", "competitive-audit", "audit-gap-count", "audit-existing-benchmarks"]) assert.match(html, new RegExp(`id=["']${hook}["']`));
 });
 
 test("dashboard JavaScript is self-contained and does not inject capability HTML", () => {
@@ -112,6 +184,8 @@ test("dashboard JavaScript is self-contained and does not inject capability HTML
   assert.doesNotMatch(script, /innerHTML|insertAdjacentHTML|eval\s*\(/);
   assert.match(script, /fetch\(["']\.\/capabilities\.json["']\)/);
   assert.match(script, /fetch\(["']\.\/examples\.json["']\)/);
+  assert.match(script, /fetch\(["']\.\/competitive-audit\.json["']\)/);
+  assert.match(script, /fetch\(["']\.\/benchmarks\.json["']\)/);
   assert.match(script, /CSS\.escape/);
   assert.match(script, /function revealCapability/);
   assert.match(script, /url\.searchParams\.delete\("q"\)/);
