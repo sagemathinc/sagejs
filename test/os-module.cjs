@@ -27,6 +27,8 @@ async function testNodeHost() {
     const originalProcessCwd = process.cwd();
     const source = [
       "import os",
+      "import os.path",
+      "assert os.path is __import__('os.path', fromlist=['path'])",
       `sandbox = ${JSON.stringify(sandbox)}`,
       "print(os.name)",
       "print(repr(os.sep), repr(os.pathsep), repr(os.linesep))",

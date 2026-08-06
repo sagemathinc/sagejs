@@ -179,6 +179,16 @@ def _builtins_call_member(
     call_args: list[Any],
 ) -> Any:
     method = _builtins_get_member(value, name)
+    if _builtins_get_member(method, '__staticmethod__') is True:
+        return runtime.reflect.apply(
+            method, runtime.undefined, call_args)
+    if _builtins_get_member(
+        method, '__python_descriptor__'
+    ) is True:
+        explicit_args = [value]
+        explicit_args.extend(call_args)
+        return runtime.reflect.apply(
+            method, runtime.undefined, explicit_args)
     return runtime.reflect.apply(method, value, call_args)
 
 
@@ -315,6 +325,16 @@ def _builtins_call_special(
     call_args: list[Any],
 ) -> Any:
     method = _builtins_get_special_member(value, name)
+    if _builtins_get_member(method, '__staticmethod__') is True:
+        return runtime.reflect.apply(
+            method, runtime.undefined, call_args)
+    if _builtins_get_member(
+        method, '__python_descriptor__'
+    ) is True:
+        explicit_args = [value]
+        explicit_args.extend(call_args)
+        return runtime.reflect.apply(
+            method, runtime.undefined, explicit_args)
     return runtime.reflect.apply(method, value, call_args)
 
 
@@ -865,9 +885,13 @@ def ρσ_operator_mul(left: Any, right: Any) -> Any:
     ):
         return _builtins_repeat_string(right, left)
     if _builtins_member_is_function(left, '__mul__'):
-        return _builtins_call_member(left, '__mul__', [right])
+        result = _builtins_call_member(left, '__mul__', [right])
+        if result is not NotImplemented:
+            return result
     if _builtins_member_is_function(right, '__rmul__'):
-        return _builtins_call_member(right, '__rmul__', [left])
+        result = _builtins_call_member(right, '__rmul__', [left])
+        if result is not NotImplemented:
+            return result
     return runtime.native_mul(left, right)
 
 
@@ -919,9 +943,13 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
     ):
         return _builtins_repeat_string(right, left)
     if _builtins_member_is_function(left, '__mul__'):
-        return _builtins_call_member(left, '__mul__', [right])
+        result = _builtins_call_member(left, '__mul__', [right])
+        if result is not NotImplemented:
+            return result
     if _builtins_member_is_function(right, '__rmul__'):
-        return _builtins_call_member(right, '__rmul__', [left])
+        result = _builtins_call_member(right, '__rmul__', [left])
+        if result is not NotImplemented:
+            return result
     if (
         runtime.strict_equal(left_type, 'bigint')
         or runtime.strict_equal(right_type, 'bigint')
@@ -969,9 +997,13 @@ def ρσ_operator_div(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('truediv', left, right)
     if _builtins_member_is_function(left, '__div__'):
-        return _builtins_call_member(left, '__div__', [right])
+        result = _builtins_call_member(left, '__div__', [right])
+        if result is not NotImplemented:
+            return result
     if _builtins_member_is_function(right, '__rdiv__'):
-        return _builtins_call_member(right, '__rdiv__', [left])
+        result = _builtins_call_member(right, '__rdiv__', [left])
+        if result is not NotImplemented:
+            return result
     return runtime.native_div(left, right)
 
 
@@ -986,7 +1018,13 @@ def ρσ_operator_pow(left: Any, right: Any) -> Any:
     ):
         return runtime.native_pow(left, right)
     if _builtins_member_is_function(left, '__pow__'):
-        return _builtins_call_member(left, '__pow__', [right])
+        result = _builtins_call_member(left, '__pow__', [right])
+        if result is not NotImplemented:
+            return result
+    if _builtins_member_is_function(right, '__rpow__'):
+        result = _builtins_call_member(right, '__rpow__', [left])
+        if result is not NotImplemented:
+            return result
     return runtime.native_pow(left, right)
 
 
@@ -1061,7 +1099,13 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
         return runtime.native_pow(
             runtime.bigint(left), runtime.bigint(right))
     if _builtins_member_is_function(left, '__pow__'):
-        return _builtins_call_member(left, '__pow__', [right])
+        result = _builtins_call_member(left, '__pow__', [right])
+        if result is not NotImplemented:
+            return result
+    if _builtins_member_is_function(right, '__rpow__'):
+        result = _builtins_call_member(right, '__rpow__', [left])
+        if result is not NotImplemented:
+            return result
     # Python permits arbitrary-precision integers to participate in floating
     # exponentiation. JavaScript rejects every BigInt/Number mixture, so cross
     # the explicit floating boundary before invoking its numeric operator.
@@ -1208,9 +1252,13 @@ def ρσ_operator_truediv(left: Any, right: Any) -> Any:
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('truediv', left, right)
     if _builtins_member_is_function(left, '__truediv__'):
-        return _builtins_call_member(left, '__truediv__', [right])
+        result = _builtins_call_member(left, '__truediv__', [right])
+        if result is not NotImplemented:
+            return result
     if _builtins_member_is_function(right, '__rtruediv__'):
-        return _builtins_call_member(right, '__rtruediv__', [left])
+        result = _builtins_call_member(right, '__rtruediv__', [left])
+        if result is not NotImplemented:
+            return result
     if runtime.equals(right, 0):
         raise runtime.zero_division_error('division by zero')
     if (
@@ -1237,9 +1285,13 @@ def ρσ_operator_truediv_exact(left: Any, right: Any) -> Any:
         return runtime.reflect.construct(
             runtime.rational_class, [left, right])
     if _builtins_member_is_function(left, '__truediv__'):
-        return _builtins_call_member(left, '__truediv__', [right])
+        result = _builtins_call_member(left, '__truediv__', [right])
+        if result is not NotImplemented:
+            return result
     if _builtins_member_is_function(right, '__rtruediv__'):
-        return _builtins_call_member(right, '__rtruediv__', [left])
+        result = _builtins_call_member(right, '__rtruediv__', [left])
+        if result is not NotImplemented:
+            return result
     return runtime.native_div(left, right)
 
 
@@ -2648,6 +2700,66 @@ def ρσ_oct(value: Any) -> _Str:
     return _builtins_integer_string(value, 8, '0o')
 
 
+def _builtins_float_hash(value: Any) -> Any:
+    """Return CPython's platform-independent numeric hash for a float."""
+    if runtime.number.isNaN(value):
+        # CPython deliberately gives distinct NaN objects identity-derived
+        # hashes. JavaScript NaN is a primitive, so zero is the least
+        # surprising stable value and agrees with sys.hash_info.nan.
+        return 0
+    if not runtime.number.isFinite(value):
+        return 314159 if value > 0 else -314159
+    if value == 0:
+        return 0
+
+    sign = 1
+    magnitude = value
+    if magnitude < 0:
+        sign = -1
+        magnitude = -magnitude
+
+    # This is _Py_HashDouble's binary-float algorithm. All extracted chunks
+    # contain at most 28 bits, while the accumulator is an exact BigInt.
+    exponent = runtime.math.floor(runtime.math.log2(magnitude)) + 1
+    mantissa = magnitude / runtime.math.pow(2, exponent)
+    modulus = runtime.bigint('2305843009213693951')
+    accumulator = runtime.bigint(0)
+    while mantissa:
+        accumulator = (
+            runtime.native_bitand(
+                runtime.native_lshift(accumulator, runtime.bigint(28)),
+                modulus,
+            )
+            | runtime.native_rshift(accumulator, runtime.bigint(33))
+        )
+        mantissa *= 268435456
+        exponent -= 28
+        digit = runtime.math.floor(mantissa)
+        mantissa -= digit
+        accumulator += runtime.bigint(digit)
+        if accumulator >= modulus:
+            accumulator -= modulus
+
+    if exponent >= 0:
+        exponent %= 61
+    else:
+        exponent = 60 - ((-1 - exponent) % 61)
+    accumulator = (
+        runtime.native_bitand(
+            runtime.native_lshift(
+                accumulator, runtime.bigint(exponent)),
+            modulus,
+        )
+        | runtime.native_rshift(
+            accumulator, runtime.bigint(61 - exponent))
+    )
+    if sign < 0:
+        accumulator = runtime.native_neg(accumulator)
+    if accumulator == -1:
+        accumulator = runtime.bigint(-2)
+    return runtime.normalize_integer(accumulator)
+
+
 def ρσ_hash(value: Any) -> Any:
     if value is True:
         return 1
@@ -2659,6 +2771,8 @@ def ρσ_hash(value: Any) -> Any:
         if answer == -1:
             answer = runtime.bigint(-2)
         return runtime.normalize_integer(answer)
+    if runtime.strict_equal(runtime.jstype(value), 'number'):
+        return _builtins_float_hash(value)
     constructor = _builtins_get_member(value, 'constructor')
     prototype = _builtins_get_member(constructor, 'prototype')
     if (
@@ -3822,6 +3936,27 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             "object attribute '" + name + "' is read-only")
 
 
+def ρσ_resolve_module_name(
+    value: Any,
+    name: _Str,
+    module_builtins: Any,
+) -> Any:
+    """Resolve a module name declared only inside control flow.
+
+    CPython's module ``LOAD_NAME`` checks the module namespace and then its
+    builtins.  A JavaScript ``var`` emitted for a conditional import is
+    hoisted, so a direct read would instead yield ``undefined`` and suppress
+    idioms such as ``try: set; except NameError: ...``.
+    """
+    if value is not runtime.undefined:
+        return value
+    if _builtins_has_member(module_builtins, name):
+        return _builtins_get_member(module_builtins, name)
+    if _builtins_has_member(runtime.global_object, name):
+        return _builtins_get_member(runtime.global_object, name)
+    raise NameError("name '" + name + "' is not defined")
+
+
 _dynamic_code_helper_cache = runtime.undefined
 
 
@@ -4443,6 +4578,12 @@ def ρσ_type(*values: Any) -> Any:
     if runtime.strict_equal(value_type, 'string'):
         return runtime.string_builtin
     if runtime.array.isArray(value):
+        constructor = _builtins_get_member(value, 'constructor')
+        if (
+            constructor is not runtime.list_constructor
+            and _builtins_is_python_class(constructor)
+        ):
+            return constructor
         if runtime.object.isFrozen(value):
             return ρσ_tuple
         return runtime.list_constructor
@@ -5755,11 +5896,19 @@ def _builtins_integer_nbits(self: Any) -> _Int:
     value = runtime.bigint(self)
     if value < runtime.bigint(0):
         value = runtime.native_neg(value)
-    count = 0
-    while value != runtime.bigint(0):
-        value = runtime.native_div(value, runtime.bigint(2))
-        count += 1
-    return count
+    if value == runtime.bigint(0):
+        return 0
+    # BigInt.toString(2) is implemented natively by V8 and avoids a Python
+    # loop with one division per bit for very large integers.
+    binary = runtime.reflect.apply(
+        runtime.reflect.get(
+            runtime.reflect.get(runtime.bigint, 'prototype'),
+            'toString',
+        ),
+        value,
+        [2],
+    )
+    return len(binary)
 
 
 def _builtins_extreme(
@@ -5790,18 +5939,18 @@ def _builtins_extreme(
         answer_key = key(answer)
         for value in iterator:
             candidate = key(value)
-            if find_maximum and candidate > answer_key:
+            if find_maximum and ρσ_operator_gt(candidate, answer_key):
                 answer = value
                 answer_key = candidate
-            elif not find_maximum and candidate < answer_key:
+            elif not find_maximum and ρσ_operator_lt(candidate, answer_key):
                 answer = value
                 answer_key = candidate
         return answer
 
     for value in iterator:
-        if find_maximum and value > answer:
+        if find_maximum and ρσ_operator_gt(value, answer):
             answer = value
-        elif not find_maximum and value < answer:
+        elif not find_maximum and ρσ_operator_lt(value, answer):
             answer = value
     return answer
 
@@ -6835,6 +6984,16 @@ runtime.reflect.set(
 runtime.reflect.set(
     runtime.reflect.get(runtime.bigint, 'prototype'),
     'nbits',
+    _integer_nbits_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.number, 'prototype'),
+    'bit_length',
+    _integer_nbits_native,
+)
+runtime.reflect.set(
+    runtime.reflect.get(runtime.bigint, 'prototype'),
+    'bit_length',
     _integer_nbits_native,
 )
 runtime.reflect.set(runtime.global_object, 'true', True)

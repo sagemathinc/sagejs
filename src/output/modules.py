@@ -11,8 +11,50 @@ from output.functions import set_module_name
 from compiler_version import get_compiler_version
 from utils import cache_file_name
 from ast_types import (
-    AST_Call, AST_Class, AST_Lambda, AST_String, AST_SymbolRef, AST_Toplevel,
-    TreeWalker, is_node_type)
+    AST_Call, AST_Class, AST_Import, AST_Lambda, AST_String, AST_SymbolRef,
+    AST_Toplevel, TreeWalker, is_node_type)
+
+
+def control_flow_import_names(module):
+    """Return module names assigned by imports nested in control flow."""
+    names = {}
+    walker = None
+
+    def collect(node, descend):
+        if node is module:
+            return
+        if (
+            is_node_type(node, AST_Import)
+            or (
+                node.key
+                and (
+                    node.argnames is not undefined
+                    or node.alias is not undefined
+                )
+            )
+        ):
+            # The parser's import container is transparent to this walk.  A
+            # direct module import has only the toplevel as an ancestor; an
+            # additional statement/block ancestor means JavaScript ``var``
+            # hoisting can mask Python's builtin fallback.
+            if walker.stack.length > 2:
+                if node.argnames:
+                    for argname in node.argnames:
+                        local_name = (
+                            argname.alias.name
+                            if argname.alias else argname.name)
+                        names[local_name] = True
+                elif node.alias:
+                    names[node.alias.name] = True
+                elif node.key:
+                    names[node.key.split('.')[0]] = True
+            return True
+        if is_node_type(node, AST_Lambda) or is_node_type(node, AST_Class):
+            return True
+
+    walker = TreeWalker(collect)
+    module.walk(walker)
+    return names
 
 
 def prepare_numeric_literal_pool(module, output):
@@ -401,6 +443,7 @@ def print_top_level(self, output):
     set_module_name(self.module_id)
     is_main = self.module_id is '__main__'
     numeric_literal_pool = prepare_numeric_literal_pool(self, output)
+    output.module_control_flow_names = control_flow_import_names(self)
 
     def write_docstrings():
         if is_main and output.options.keep_docstrings and self.docstrings and self.docstrings.length:
@@ -424,6 +467,8 @@ def print_top_level(self, output):
 
                 prologue(self, output)
                 write_imports(self, output)
+                output.module_control_flow_names = (
+                    control_flow_import_names(self))
                 set_module_name(self.module_id)
                 output.newline()
                 output.indent()
@@ -462,6 +507,7 @@ def print_top_level(self, output):
         if is_main:
             prologue(self, output)
             write_imports(self, output)
+            output.module_control_flow_names = control_flow_import_names(self)
             set_module_name(self.module_id)
             write_main_name(output, self.filename)
         else:
@@ -483,6 +529,8 @@ def print_module(self, output):
     # literal pool produced on the cache-writing pass.
     numeric_literal_pool = (
         [] if self.is_cached else prepare_numeric_literal_pool(self, output))
+    output.module_control_flow_names = (
+        {} if self.is_cached else control_flow_import_names(self))
 
     def output_module(output):
         write_numeric_literal_pool(numeric_literal_pool, output)

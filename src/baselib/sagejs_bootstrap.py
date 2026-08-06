@@ -97,6 +97,11 @@ def ρσ_unbound_method_adapter(target_function):
             if (name !== "__argnames__") method[name] = target_function[name];
         }
         method.__func__ = target_function;
+        // The adapter still represents an ordinary Python function.  Mark it
+        // as a descriptor so aliases assigned back onto a class (for example
+        // ``C.__rtruediv__ = C.__rdiv__``) bind their eventual instance
+        // before receiving the operator's other operand.
+        method.__python_descriptor__ = true;
         target_function.__sagejs_unbound_adapter__ = method;
         return method;
     })()"""

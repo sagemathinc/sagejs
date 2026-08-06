@@ -32,6 +32,25 @@ def _internal_member_is_function(value: Any, name: Any) -> bool:
     )
 
 
+def _internal_call_member(
+    value: Any,
+    name: Any,
+    call_args: list[Any],
+) -> Any:
+    method = _internal_get_member(value, name)
+    if _internal_get_member(method, '__staticmethod__') is True:
+        return runtime.reflect.apply(
+            method, runtime.undefined, call_args)
+    if _internal_get_member(
+        method, '__python_descriptor__'
+    ) is True:
+        explicit_args = [value]
+        explicit_args.extend(call_args)
+        return runtime.reflect.apply(
+            method, runtime.undefined, explicit_args)
+    return runtime.reflect.apply(method, value, call_args)
+
+
 def _internal_is_native_map(value: Any) -> bool:
     return (
         value is not None
@@ -54,11 +73,7 @@ def _internal_is_plain_object(value: Any) -> bool:
 def ρσ_python_iterator_next(self: Any) -> Any:
     result = runtime.object.create(None)
     try:
-        value = runtime.reflect.apply(
-            _internal_get_member(self, '__next__'),
-            self,
-            [],
-        )
+        value = _internal_call_member(self, '__next__', [])
         runtime.reflect.set(result, 'value', value)
         runtime.reflect.set(result, 'done', False)
     except StopIteration as error:
@@ -154,11 +169,8 @@ class _PythonSequenceIterator:
         index = self._index
         self._index += 1
         try:
-            return runtime.reflect.apply(
-                _internal_get_member(self._sequence, '__getitem__'),
-                self._sequence,
-                [index],
-            )
+            return _internal_call_member(
+                self._sequence, '__getitem__', [index])
         except IndexError:
             raise StopIteration  # noqa: B904
         except StopIteration:
@@ -633,13 +645,8 @@ def ρσ_in(value: Any, container: Any) -> bool:
                 "'in <string>' requires string as left operand")
         return container.indexOf(value) != -1
     if _internal_member_is_function(container, '__contains__'):
-        return bool(
-            runtime.reflect.apply(
-                _internal_get_member(container, '__contains__'),
-                container,
-                [value],
-            )
-        )
+        return bool(_internal_call_member(
+            container, '__contains__', [value]))
     if (
         runtime.instance_of(container, runtime.map_class)
         or runtime.instance_of(container, runtime.set_class)
@@ -664,7 +671,17 @@ def ρσ_in(value: Any, container: Any) -> bool:
 def ρσ_Iterable(iterable: Any) -> Any:
     """Return an ES iterable implementing Python's iteration protocol."""
     if runtime.arraylike(iterable):
+        python_iterator = _internal_get_member(iterable, '__iter__')
+        if _internal_get_member(
+            python_iterator, '__python_descriptor__'
+        ) is True:
+            return _internal_call_member(iterable, '__iter__', [])
         return iterable
+    python_iterator = _internal_get_member(iterable, '__iter__')
+    if _internal_get_member(
+        python_iterator, '__python_descriptor__'
+    ) is True:
+        return _internal_call_member(iterable, '__iter__', [])
     iterator_method = _internal_get_member(
         iterable, runtime.iterator_symbol)
     if _internal_type_is(runtime.jstype(iterator_method), 'function'):
@@ -688,8 +705,7 @@ def ρσ_desugar_kwargs(sources: Any) -> Any:
     answer[runtime.kwargs_symbol] = True
     for source in sources:
         if _internal_member_is_function(source, 'keys'):
-            keys = runtime.reflect.apply(
-                _internal_get_member(source, 'keys'), source, [])
+            keys = _internal_call_member(source, 'keys', [])
         elif _internal_is_plain_object(source):
             keys = runtime.object.keys(source)
         else:
@@ -701,11 +717,8 @@ def ρσ_desugar_kwargs(sources: Any) -> Any:
                 raise TypeError(
                     "multiple values for keyword argument '" + key + "'")
             if _internal_member_is_function(source, '__getitem__'):
-                answer[key] = runtime.reflect.apply(
-                    _internal_get_member(source, '__getitem__'),
-                    source,
-                    [key],
-                )
+                answer[key] = _internal_call_member(
+                    source, '__getitem__', [key])
             else:
                 answer[key] = source[key]
     return answer
@@ -963,11 +976,7 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
                 raise IndexError('index out of range')
             return _internal_native_getitem(value, key)
     if _internal_member_is_function(value, '__getitem__'):
-        return runtime.reflect.apply(
-            _internal_get_member(value, '__getitem__'),
-            value,
-            [key],
-        )
+        return _internal_call_member(value, '__getitem__', [key])
     if _internal_get_member(key, '__sagejs_slice__'):
         indices = runtime.reflect.apply(
             _internal_get_member(key, 'indices'),
@@ -1032,11 +1041,7 @@ def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
         runtime.reflect.set(value, key, member)
         return
     if _internal_member_is_function(value, '__setitem__'):
-        runtime.reflect.apply(
-            _internal_get_member(value, '__setitem__'),
-            value,
-            [key, member],
-        )
+        _internal_call_member(value, '__setitem__', [key, member])
         return
     if _internal_get_member(key, '__sagejs_slice__'):
         if not _internal_member_is_function(value, 'splice'):
@@ -1089,11 +1094,7 @@ def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
 
 def ρσ_delitem(value: Any, key: Any) -> None:
     if _internal_member_is_function(value, '__delitem__'):
-        runtime.reflect.apply(
-            _internal_get_member(value, '__delitem__'),
-            value,
-            [key],
-        )
+        _internal_call_member(value, '__delitem__', [key])
         return
     if _internal_get_member(key, '__sagejs_slice__'):
         if not _internal_member_is_function(value, 'splice'):
@@ -1449,8 +1450,14 @@ def ρσ_instanceof(value: Any, *candidates: Any) -> bool:
             return True
         if (
             candidate is runtime.int_builtin
-            and _internal_type_is(runtime.jstype(value), 'number')
-            and runtime.number.isInteger(value)
+            and (
+                _internal_type_is(runtime.jstype(value), 'bigint')
+                or _internal_type_is(runtime.jstype(value), 'boolean')
+                or (
+                    _internal_type_is(runtime.jstype(value), 'number')
+                    and runtime.number.isInteger(value)
+                )
+            )
         ):
             return True
         if (

@@ -48,6 +48,18 @@ def _get_member(value: Any, name: str) -> Any:
     return runtime.reflect.get(boxed, name)
 
 
+def _call_member(value: Any, name: str, args: Any) -> Any:
+    method = _get_member(value, name)
+    if _get_member(method, '__staticmethod__') is True:
+        return runtime.reflect.apply(method, runtime.undefined, args)
+    if _get_member(method, '__python_descriptor__') is True:
+        explicit_args = [value]
+        explicit_args.extend(args)
+        return runtime.reflect.apply(
+            method, runtime.undefined, explicit_args)
+    return runtime.reflect.apply(method, value, args)
+
+
 def _native_delete(container: Any, key: Any) -> bool:
     return runtime.reflect.apply(
         runtime.reflect.get(container, 'delete'), container, [key])
@@ -128,7 +140,9 @@ def equals(left: Any, right: Any) -> bool:
             'function',
         )
     ):
-        return left.__eq__(right)
+        result = _call_member(left, '__eq__', [right])
+        if result is not NotImplemented:
+            return bool(result)
     if (
         right is not None
         and runtime.strict_equal(
@@ -136,7 +150,9 @@ def equals(left: Any, right: Any) -> bool:
             'function',
         )
     ):
-        return right.__eq__(left)
+        result = _call_member(right, '__eq__', [left])
+        if result is not NotImplemented:
+            return bool(result)
 
     if left is right:
         return True
@@ -203,7 +219,9 @@ def not_equals(left: Any, right: Any) -> bool:
             'function',
         )
     ):
-        return left.__ne__(right)
+        result = _call_member(left, '__ne__', [right])
+        if result is not NotImplemented:
+            return bool(result)
     if (
         left is not None
         and runtime.strict_equal(
@@ -211,7 +229,9 @@ def not_equals(left: Any, right: Any) -> bool:
             'function',
         )
     ):
-        return not left.__eq__(right)
+        result = _call_member(left, '__eq__', [right])
+        if result is not NotImplemented:
+            return not bool(result)
     if (
         right is not None
         and runtime.strict_equal(
@@ -219,7 +239,9 @@ def not_equals(left: Any, right: Any) -> bool:
             'function',
         )
     ):
-        return right.__ne__(left)
+        result = _call_member(right, '__ne__', [left])
+        if result is not NotImplemented:
+            return bool(result)
     if (
         right is not None
         and runtime.strict_equal(
@@ -227,7 +249,9 @@ def not_equals(left: Any, right: Any) -> bool:
             'function',
         )
     ):
-        return not right.__eq__(left)
+        result = _call_member(right, '__eq__', [left])
+        if result is not NotImplemented:
+            return not bool(result)
     return not equals(left, right)
 
 
@@ -476,6 +500,13 @@ def _list_iadd(self: Any, other: Any) -> Any:
     return self
 
 
+@runtime.native_method
+def _list_iter(self: Any) -> Any:
+    native_iterator = runtime.reflect.get(
+        runtime.array.prototype, runtime.iterator_symbol)
+    return runtime.reflect.apply(native_iterator, self, [])
+
+
 _list_prototype_cache = runtime.undefined
 
 
@@ -503,6 +534,7 @@ def _list_prototype() -> Any:
         prototype.slice = _list_slice
         prototype.as_array = _list_as_array
         prototype.__len__ = _list_len
+        prototype.__iter__ = _list_iter
         prototype.__contains__ = _list_contains
         prototype.__eq__ = _list_eq
         prototype.__mul__ = _list_mul
@@ -524,6 +556,23 @@ def ρσ_list_decorate(answer: Any) -> Any:
 def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
     if iterable is runtime.undefined:
         answer = _new_array()
+    elif (
+        runtime.strict_equal(runtime.jstype(iterable), 'object')
+        or runtime.strict_equal(runtime.jstype(iterable), 'function')
+    ) and _get_member(
+        _get_member(iterable, '__iter__'),
+        '__python_descriptor__',
+    ) is True:
+        python_iterator = runtime.reflect.apply(
+            _get_member(iterable, '__iter__'),
+            runtime.undefined,
+            [iterable],
+        )
+        answer = runtime.reflect.apply(
+            runtime.reflect.get(runtime.array, 'from'),
+            runtime.array,
+            [python_iterator],
+        )
     elif runtime.arraylike(iterable):
         answer = runtime.reflect.apply(
             runtime.array.prototype.slice, iterable, [])

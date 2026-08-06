@@ -66,13 +66,16 @@ def _parse_format(format):
             size = count
             value_count = 1
             count = 1
+        elif code == 'c':
+            size = 1
+            value_count = count
         elif code in _STANDARD_SIZES:
             size = _native_size(code) if native else _STANDARD_SIZES[code]
             value_count = count
         else:
             raise error('bad char in struct format')
 
-        if native and code not in ('x', 's') and count > 0:
+        if native and code not in ('x', 's', 'c') and count > 0:
             alignment = size
             offset = (offset + alignment - 1) // alignment * alignment
 
@@ -134,6 +137,17 @@ def _pack(format, values):
                 answer[offset + index] = data[index]
             continue
 
+        if code == 'c':
+            if value_index + value_count > len(values):
+                raise error('pack expected more items for packing')
+            for repetition in range(count):
+                data = bytes(values[value_index])
+                value_index += 1
+                if len(data) != 1:
+                    raise error('char format requires a bytes object of length 1')
+                answer[offset + repetition] = data[0]
+            continue
+
         if value_index + value_count > len(values):
             raise error('pack expected more items for packing')
         for repetition in range(count):
@@ -193,6 +207,10 @@ def _unpack_from(format, buffer, offset):
             continue
         if code == 's':
             values.append(bytes(buffer[start:start + item_size]))
+            continue
+        if code == 'c':
+            for repetition in range(count):
+                values.append(bytes(buffer[start + repetition:start + repetition + 1]))
             continue
         for repetition in range(count):
             values.append(

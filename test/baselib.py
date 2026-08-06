@@ -32,6 +32,26 @@ assrt.equal(mapping_copy.__getitem__('a'), 1)
 assrt.equal(mapping_copy.__getitem__('b'), 2)
 assrt.ok(isinstance([], (String, list)))
 assrt.ok(isinstance(1, int))
+assrt.ok(isinstance(10**100, int))
+assrt.ok(isinstance(True, int))
+assrt.equal(hash(0.5), 1152921504606846976)
+assrt.equal(hash(2+3j), 3000011)
+
+
+class OrderedForExtrema:
+    def __init__(self, value):
+        self.value = value
+
+    def __lt__(self, other):
+        return self.value < other
+
+    def __gt__(self, other):
+        return self.value > other
+
+
+negative = OrderedForExtrema(-10)
+assrt.ok(max(negative, -3) == -3)
+assrt.ok(min(negative, -3) is negative)
 assrt.ok(not isinstance(r"%js new Number(1)", int))
 assrt.ok(not isinstance(1.1, int))
 assrt.ok(isinstance(1.1, float))

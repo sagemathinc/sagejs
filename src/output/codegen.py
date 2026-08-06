@@ -624,6 +624,7 @@ def generate_code():
 
         check_unbound = False
         class_namespace = None
+        module_name_fallback = False
         if (
             is_node_type(self, AST_SymbolRef)
             and not output.assignment_target
@@ -635,6 +636,16 @@ def generate_code():
                 if is_node_type(scope, AST_Scope):
                     if (
                         is_node_type(scope, AST_Class)
+                        and (
+                            scope.parent is self
+                            or scope.bases.indexOf(self) is not -1
+                        )
+                    ):
+                        # Base expressions execute in the enclosing scope,
+                        # before the class namespace exists.
+                        continue
+                    if (
+                        is_node_type(scope, AST_Class)
                         and output.in_class_body
                         and self.name in scope.classvars
                         and name == self.name
@@ -643,6 +654,15 @@ def generate_code():
                     check_unbound = (
                         scope.annotated_locals
                         and scope.annotated_locals.indexOf(self.name) is not -1
+                    )
+                    module_name_fallback = (
+                        output.module_control_flow_names
+                        and output.module_control_flow_names[self.name]
+                        and (
+                            is_node_type(scope, AST_Toplevel)
+                            or not def_
+                            or scope.localvars.indexOf(def_) is -1
+                        )
                     )
                     break
         if class_namespace:
@@ -660,12 +680,31 @@ def generate_code():
             output.print(JSON.stringify(self.name))
             output.print('])')
             return
+        parent = output.parent()
+        parenthesize_constructor = (
+            (check_unbound or module_name_fallback)
+            and is_node_type(parent, AST_New)
+            and parent.expression is self
+        )
+        if parenthesize_constructor:
+            output.print('(')
         if check_unbound:
             output.print('ρσ_check_unbound(')
+        if module_name_fallback:
+            output.print('ρσ_resolve_module_name(')
         output.print_name(name)
+        if module_name_fallback:
+            output.comma()
+            output.print(JSON.stringify(self.name))
+            output.comma()
+            output.print(
+                '(typeof __builtins__ !== "undefined" ? __builtins__ : '
+                '(ρσ_modules.builtins || globalThis)))')
         if check_unbound:
             output.comma()
             output.print(JSON.stringify(self.name))
+            output.print(')')
+        if parenthesize_constructor:
             output.print(')')
 
     DEFPRINT(AST_Undefined, lambda self, output: output.print("void 0"))

@@ -1,5 +1,5 @@
 # globals:test_path, GLOBAL_SYMBOL, assrt
-from _import_one import toplevel_var, toplevel_func as tf, TopLevel, true_var, false_var, test_other, increment
+from _import_one import toplevel_var, toplevel_func as tf, TopLevel, true_var, test_other, increment
 from _import_two import (toplevel_var2,
                  toplevel_func2, TopLevel2 as TL2)
 
@@ -12,7 +12,6 @@ eq(toplevel_var, 'foo')
 eq(tf('x'), 'xtoplevel')
 eq(toplevel_var2, 'foo2')
 eq(toplevel_func2('x'), 'xtoplevel2')
-eq(false_var, undefined)
 eq(test_other, 'other')
 eq(increment(41), 42)
 
@@ -21,6 +20,7 @@ eq('true', true_var)
 
 # Test plain imports
 import _import_one
+eq(hasattr(_import_one, 'false_var'), False)
 eq(_import_one.toplevel_var, toplevel_var)
 eq(_import_one.toplevel_func('x'), tf('x'))
 

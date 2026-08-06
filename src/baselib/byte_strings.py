@@ -1578,7 +1578,10 @@ for _method_name in [
     runtime.reflect.set(
         ρσ_bytes,
         _method_name,
-        runtime.reflect.get(SageBytes, _method_name),
+        runtime.reflect.get(
+            runtime.reflect.get(SageBytes, 'prototype'),
+            _method_name,
+        ),
     )
 
 bytes = ρσ_bytes
@@ -1617,7 +1620,10 @@ for _bytearray_method_name in [
     runtime.reflect.set(
         ρσ_bytearray,
         _bytearray_method_name,
-        runtime.reflect.get(SageByteArray, _bytearray_method_name),
+        runtime.reflect.get(
+            runtime.reflect.get(SageByteArray, 'prototype'),
+            _bytearray_method_name,
+        ),
     )
 
 runtime.reflect.set(ρσ_bytes, 'fromhex', _bytes_fromhex)

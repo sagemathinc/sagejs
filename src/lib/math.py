@@ -150,9 +150,24 @@ def expm1(x):
 
 
 def log(x, base=e):
-    # JavaScript's Math.log rejects BigInt, whereas Python's math.log accepts
-    # arbitrary integers after converting them to a floating-point value.
-    return Math.log(float(x)) / Math.log(float(base))
+    # JavaScript cannot convert a sufficiently large BigInt to a finite
+    # Number.  CPython's math.log accepts arbitrary integers by extracting a
+    # leading floating-point mantissa and accounting for the discarded bits.
+    def natural_log(value):
+        if type(value) is int:
+            if value <= 0:
+                raise ValueError('math domain error')
+            bits = value.bit_length()
+            if bits > 53:
+                shift = bits - 53
+                leading = float(value >> shift)
+                return Math.log(leading) + shift * Math.LN2
+        converted = float(value)
+        if converted <= 0:
+            raise ValueError('math domain error')
+        return Math.log(converted)
+
+    return natural_log(x) / natural_log(base)
 
 
 def log1p(x):

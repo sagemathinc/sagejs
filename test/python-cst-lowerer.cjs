@@ -215,3 +215,45 @@ test("observable chained assignments use Python hooks from left to right", async
     frontend.close();
   }
 });
+
+test("chained comparisons preserve Python dispatch and shared operands", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "simple = left == middle == right\n" +
+      "observed = first() < middle_value() <= last()\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.equal((javascript.match(/ρσ_equals/g) ?? []).length, 2);
+    assert.match(javascript, /ρσ_equals\(left, middle\) && ρσ_equals\(middle, right\)/);
+    assert.equal((javascript.match(/middle_value\?\.__call__/g) ?? []).length, 1);
+    assert.match(javascript, /function\(ρσ_compare_left, ρσ_compare_middle\)/);
+    assert.match(javascript, /&&/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("nested loop targets unpack only the target pattern", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "for index, (value, expected) in items:\n" +
+      "    result = (index, value, expected)\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    assert.match(
+      output.get(),
+      /ρσ_unpack_nested\(\[null, \[null, null\]\], ρσ_Index/,
+    );
+  } finally {
+    frontend.close();
+  }
+});

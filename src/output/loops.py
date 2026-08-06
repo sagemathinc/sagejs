@@ -7,6 +7,21 @@ from output.stream import OutputStream
 from output.statements import force_statement, print_await_expression
 
 
+def print_unpack_pattern(node, output):
+    """Emit the shape consumed by ``ρσ_unpack_nested`` for a target."""
+    if is_node_type(node, AST_Seq):
+        node = AST_Array({'elements': node.to_array()})
+    if is_node_type(node, AST_Array):
+        output.print('[')
+        for index, element in enumerate(node.elements):
+            if index:
+                output.comma()
+            print_unpack_pattern(element, output)
+        output.print(']')
+    else:
+        output.print('null')
+
+
 def print_target_assignment(target, output, print_value):
     """Emit one Python assignment target using the appropriate runtime hook."""
     if is_node_type(target, AST_ItemAccess):
@@ -189,7 +204,11 @@ def print_for_loop_body(output):
                 flat = self.init.flatten()
                 output.assign("ρσ_unpack")
                 if flat.length > self.init.elements.length:
-                    output.print('ρσ_flatten(' + itervar + ')')
+                    output.print('ρσ_unpack_nested(')
+                    print_unpack_pattern(self.init, output)
+                    output.comma()
+                    output.print(itervar)
+                    output.print(')')
                 else:
                     output.print(itervar)
                 output.end_statement()

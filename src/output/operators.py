@@ -278,6 +278,12 @@ comparators = {
     ">": True,
     "<=": True,
     ">=": True,
+    "==": True,
+    "!=": True,
+    "===": True,
+    "!==": True,
+    "in": True,
+    "nin": True,
 }
 
 function_ops = {
@@ -313,15 +319,6 @@ def print_binary_op(self, output):
         else:
             self.right.print(output)
         output.print(')')
-    elif function_ops[self.operator]:
-        output.print(function_ops[self.operator])
-
-        def f_comma():
-            self.left.print(output)
-            output.comma()
-            self.right.print(output)
-
-        output.with_parens(f_comma)
     elif comparators[self.operator] and is_node_type(
             self.left, AST_Binary) and comparators[self.left.operator]:
         # A chained comparison such as a < b < c
@@ -331,28 +328,52 @@ def print_binary_op(self, output):
             self.left.print(output)
             leftvar = self.left.right.name
         else:
-            # some logic is being performed, let's cache it
+            # Cache the first two operands in function-local parameters.
+            # The historical global ρσ_cond_temp is also used inside runtime
+            # truth/equality helpers, so using it here corrupts the shared
+            # operand for comparisons such as ``a == f() == b``.
+            output.print(
+                '(function(ρσ_compare_left, ρσ_compare_middle) { return ')
+            inner_comparison = AST_Binary({
+                'left': AST_SymbolRef({'name': 'ρσ_compare_left'}),
+                'operator': self.left.operator,
+                'right': AST_SymbolRef({'name': 'ρσ_compare_middle'}),
+            })
+            inner_comparison.print(output)
+            output.space()
+            output.print('&&')
+            output.space()
+            outer_comparison = AST_Binary({
+                'left': AST_SymbolRef({'name': 'ρσ_compare_middle'}),
+                'operator': self.operator,
+                'right': self.right,
+            })
+            outer_comparison.print(output)
+            output.print('; })(')
             self.left.left.print(output)
-            output.space()
-            output.print(self.left.operator)
-            output.space()
-
-            def f_cond_temp():
-                nonlocal leftvar
-                output.assign("ρσ_cond_temp")
-                self.left.right.print(output)
-                leftvar = "ρσ_cond_temp"
-
-            output.with_parens(f_cond_temp)
+            output.comma()
+            self.left.right.print(output)
+            output.print(')')
+            return
 
         output.space()
         output.print("&&")
         output.space()
-        output.print(leftvar)
-        output.space()
-        output.print(self.operator)
-        output.space()
-        self.right.print(output)
+        outer_comparison = AST_Binary({
+            'left': AST_SymbolRef({'name': leftvar}),
+            'operator': self.operator,
+            'right': self.right,
+        })
+        outer_comparison.print(output)
+    elif function_ops[self.operator]:
+        output.print(function_ops[self.operator])
+
+        def f_comma():
+            self.left.print(output)
+            output.comma()
+            self.right.print(output)
+
+        output.with_parens(f_comma)
     elif self.operator is '**':
         left = self.left
         if is_node_type(self.left, AST_Unary) and not self.left.parenthesized:

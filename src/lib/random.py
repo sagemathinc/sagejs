@@ -54,7 +54,10 @@ def _type_name(value):
 
 
 def _as_index(value):
-    if value is True or value is False or isinstance(value, int):
+    if (
+        value is True or value is False
+        or isinstance(value, int) or jstype(value) is 'bigint'
+    ):
         return int(value)
     if jstype(value) is 'number':
         raise TypeError(
@@ -73,6 +76,39 @@ def _as_index(value):
     return int(answer)
 
 
+def getrandbits(k):
+    """Return a nonnegative integer with *k* random bits.
+
+    The implementation composes words from this module's deterministic PRNG,
+    so it works for arbitrarily large Python integers as CPython's API does.
+    """
+    k = _as_index(k)
+    if k < 0:
+        raise ValueError('number of bits must be non-negative')
+    answer = BigInt(0)
+    remaining = k
+    while remaining > 0:
+        take = min(remaining, 32)
+        word = Math.floor(random() * 4294967296)
+        if take < 32:
+            word = word % (2 ** take)
+        answer = (answer << BigInt(take)) | BigInt(word)
+        remaining -= take
+    return int(answer)
+
+
+def _randbelow(upper):
+    # Preserve the fast one-draw path for every safely representable range,
+    # even when exact floor division happened to produce a BigInt.
+    if upper <= Number.MAX_SAFE_INTEGER:
+        return Math.floor(random() * float(upper))
+    bits = upper.bit_length()
+    while True:
+        candidate = getrandbits(bits)
+        if candidate < upper:
+            return candidate
+
+
 def randrange(start, stop=None, step=1):
     start = _as_index(start)
     if stop is None:
@@ -83,11 +119,14 @@ def randrange(start, stop=None, step=1):
     step = _as_index(step)
     if step == 0:
         raise ValueError('zero step for randrange()')
-    values = range(start, stop, step)
-    count = len(values)
-    if count == 0:
+    width = stop - start
+    if step > 0:
+        count = 0 if width <= 0 else (width + step - 1) // step
+    else:
+        count = 0 if width >= 0 else (width + step + 1) // step
+    if count <= 0:
         raise ValueError('empty range for randrange()')
-    return values[Math.floor(random() * count)]
+    return start + step * _randbelow(count)
 
 
 def randint(a, b):

@@ -73,6 +73,22 @@
       "sha256": "a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c",
       "source": "from mpmath import mp\nmp.dps = 30\nprint(mp.nstr(mp.sqrt(2), 20))\nprint(mp.nstr(mp.zeta(2), 20))\n",
       "stdout": "1.4142135623730950488\n1.6449340668482264365\n"
+    },
+    {
+      "name": "pytz",
+      "version": "2025.2",
+      "wheel": "pytz-2025.2-py2.py3-none-any.whl",
+      "sha256": "5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00",
+      "source": "from datetime import datetime\nimport pytz\neastern = pytz.timezone('US/Eastern')\nlocal = eastern.localize(datetime(2024, 3, 10, 1, 30))\nprint(local.strftime('%Y-%m-%d %H:%M %z'))\nprint(local.astimezone(pytz.utc).strftime('%Y-%m-%d %H:%M %z'))\n",
+      "stdout": "2024-03-10 01:30 -0500\n2024-03-10 06:30 +0000\n"
+    },
+    {
+      "name": "python-dateutil",
+      "version": "2.9.0.post0",
+      "wheel": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+      "sha256": "a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427",
+      "source": "from datetime import datetime, timezone\nfrom dateutil.relativedelta import relativedelta\nstart = datetime(2024, 1, 31, 12, 30, tzinfo=timezone.utc)\nprint(start.isoformat())\nprint((start + relativedelta(months=1)).isoformat())\n",
+      "stdout": "2024-01-31T12:30:00+00:00\n2024-02-29T12:30:00+00:00\n"
     }
   ]
 }

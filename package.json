@@ -177,6 +177,7 @@
     "bench:brython": "node bench/cowasm/run.cjs --suite brython",
     "bench:programs": "node bench/cowasm/run.cjs --suite programs",
     "bench:micropython": "node bench/micropython-conformance.cjs",
+    "bench:mpmath": "node bench/compare-mpmath.cjs",
     "bench:cowasm:ceilings": "node bench/cowasm/direct-ceilings.cjs",
     "bench:native": "node bench/compare-native-compiler.cjs",
     "bench:polyglot": "node bench/polyglot.cjs",

@@ -8,8 +8,7 @@ import this module and use ``os.path``; filesystem calls raise
 """
 
 import sagejs.runtime as runtime
-import ntpath
-import posixpath
+import os.path as path
 
 
 def _property(value, key, fallback=None):
@@ -556,10 +555,5 @@ def renames(old, new_path):
         except OSError:
             pass
 
-
-if name == 'nt':
-    path = ntpath
-else:
-    path = posixpath
 
 defpath = path.defpath

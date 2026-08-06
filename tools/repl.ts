@@ -308,6 +308,7 @@ export default async function Repl(
       pythonFrontend!,
       dynamicPythonFrontend!,
       importDirs,
+      moduleCacheDir,
     );
     runInThisContext('var __name__ = "__repl__"; show_js=false;');
   }

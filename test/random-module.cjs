@@ -12,6 +12,7 @@ test("random core APIs match CPython semantics", async (t) => {
   const result = await session.evaluate(
     [
       "import random",
+      "original_random = random.random",
       "class Draws:",
       "    def __init__(self, values): self.values = iter(values)",
       "    def __call__(self): return next(self.values)",
@@ -26,6 +27,11 @@ test("random core APIs match CPython semantics", async (t) => {
       "print(random.sample('abcd', 3))",
       "random.random = Draws([0.5])",
       "print(random.randrange(2, 10, 2))",
+      "random.random = original_random",
+      "random.seed(0)",
+      "large = random.randint(-(10**200), 10**200)",
+      "print(isinstance(large, int), -(10**200) <= large <= 10**200)",
+      "print(0 <= random.getrandbits(257) < 2**257)",
       "class IndexTwo:",
       "    def __index__(self): return 2",
       "random.random = Draws([0.0, 0.0])",
@@ -65,6 +71,8 @@ test("random core APIs match CPython semantics", async (t) => {
       "True [2, 3, 4, 1]",
       "['a', 'b', 'c']",
       "6",
+      "True True",
+      "True",
       "['a', 'b']",
       "['a', 'b', 'a']",
       "[]",

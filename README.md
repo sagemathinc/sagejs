@@ -722,10 +722,32 @@ including mixed real arithmetic, division, absolute value, conjugation, and
 Python-style representation. This is distinct from Sage mode's
 arbitrary-precision `CC` parent.
 
-This is a **Python-like language**, not an implementation of the complete
-Python language or standard library. Programs can directly load JavaScript
-packages with `require(...)`, and compiled code runs as JavaScript rather than
-through CPython or WebAssembly.
+Python mode is an independent implementation of Python on the JavaScript
+runtime, in the same broad category as PyPy, Jython, IronPython, and
+RustPython. It parses ordinary Python with the pinned Tree-sitter Python
+grammar, lowers it through Sage.js's Python AST, and executes generated
+JavaScript on V8. CPython is not embedded and CPython's extension-module ABI is
+not provided.
+
+The compatibility target is increasingly ordinary, unmodified pure-Python
+code. Install platform-independent wheels with the bundled package command:
+
+```sh
+sagejs pip install mpmath
+printf 'import mpmath\nprint(mpmath.mp.dps)\n' | sagejs --python
+```
+
+Pinned end-to-end workflows currently verify `packaging`, `six`, `pyparsing`,
+`attrs`, `idna`, `tomli`, `decorator`, `sortedcontainers`, `mpmath`, `pytz`,
+and `python-dateutil`. Those checks download the identified `py3-none-any`
+wheels, run their unmodified package sources, and assert substantive output.
+They are compatibility evidence, not a claim that the complete Python
+language and standard library are finished. Native wheels and source builds
+that require the CPython C API remain explicitly unsupported.
+
+Third-party modules are translated once and stored in a compiler-versioned,
+source-hashed user cache. Cache misses affect the first import only; edits to a
+module or compiler change invalidate the corresponding entry.
 
 ### Experimental NumPy facade
 

@@ -172,7 +172,12 @@ def print_class(output):
                 output.end_statement()
 
             output.with_block(call_without_new)
-            if native_storage_parent:
+            # A user-defined ``__new__`` owns allocation.  In particular, it
+            # may deliberately return an instance of a different subclass,
+            # as pytz.LazyList does.  Preallocating native storage here would
+            # discard that return value when the constructor recurses with
+            # the newly allocated Array/Map wrapper.
+            if native_storage_parent and not uses_python_new:
                 output.indent()
                 if native_storage_parent in (
                     'list', 'ρσ_list_constructor'

@@ -6,7 +6,8 @@
  * architecture, then compiles the unchanged source normally.
  */
 
-import { statSync } from "fs";
+import { mkdirSync, statSync, writeFileSync } from "fs";
+import { homedir } from "os";
 import { dirname, join } from "path";
 import { Script } from "vm";
 
@@ -19,7 +20,7 @@ import {
   readRuntimeBootstrapSource,
   standardLibraryCacheDirectory,
 } from "./resources";
-import { getImportDirs, importPath, libraryPath } from "./utils";
+import { getImportDirs, importPath, libraryPath, sha1sum } from "./utils";
 
 export type RuntimeBootstrapMode = "sage" | "python";
 
@@ -30,6 +31,11 @@ const BOOTSTRAP_SOURCE = "pass\n";
 
 function cacheDirectory(): string {
   return join(__dirname, "..", "runtime-cache");
+}
+
+function defaultModuleCacheDirectory(compiler: Compiler): string {
+  const base = process.env.XDG_CACHE_HOME || join(homedir(), ".cache");
+  return join(base, "sagejs", "modules", compiler.get_compiler_version());
 }
 
 export function runtimeBootstrapFilename(
@@ -75,7 +81,11 @@ export function runRuntimeBootstrap(
   frontend: PythonCompilerFrontend,
   pythonFrontend: PythonCompilerFrontend = frontend,
   additionalImportDirs: string[] = [],
+  requestedModuleCacheDirectory?: string | false,
 ): void {
+  const moduleCacheDirectory = requestedModuleCacheDirectory === false
+    ? ""
+    : requestedModuleCacheDirectory ?? defaultModuleCacheDirectory(compiler);
   const directory = cacheDirectory();
   const source =
     readRuntimeBootstrapSource(
@@ -226,55 +236,119 @@ export function runRuntimeBootstrap(
     if (parent && childName) Reflect.set(parent, childName, namespace);
     loading.add(name);
     try {
-      const ast = frontend.parse(source, {
-        filename,
-        basedir: dirname(filename),
-        libdir: importPath,
-        import_dirs: getImportDirs(),
-        module_id: name,
-        runtime_imports: true,
-        jsage: mode === "sage",
-        exact_integer_literals: true,
-        strict_python_scopes: true,
-        // Dynamically loaded third-party modules are ordinary Python, not
-        // legacy RapydScript.  Give them the same semantic baseline as the
-        // main Python frontend before module-local directives are applied.
-        scoped_flags: {
-          dict_literals: true,
-          overload_getitem: true,
-          bound_methods: true,
-          sequential_definitions: true,
-        },
-        precompiled_module_cache_dir: standardLibraryCacheDirectory(
-          join(__dirname, "..", "module-cache"),
-        ),
+      // Installed modules are ordinary Python regardless of whether their
+      // importer is a Sage worksheet. This also lets both host modes share a
+      // single validated package cache instead of silently compiling Python
+      // dependencies with Sage's exact-division semantics.
+      const moduleMode: RuntimeBootstrapMode = "python";
+      const sourceHash = sha1sum(source);
+      const cacheFilename = moduleCacheDirectory
+        ? join(
+          moduleCacheDirectory,
+          "lazy",
+          `${name.replaceAll(".", "-")}-${sha1sum(filename).slice(0, 16)}.json`,
+        )
+        : "";
+      let javascript = "";
+      let cachedData: Buffer | undefined;
+      let cacheNeedsWrite = false;
+      if (cacheFilename) {
+        try {
+          const cached = JSON.parse(readResourceText(cacheFilename));
+          if (
+            cached.version === compiler.get_compiler_version() &&
+            cached.signature === sourceHash &&
+            cached.mode === moduleMode &&
+            cached.filename === filename &&
+            typeof cached.javascript === "string"
+          ) {
+            javascript = cached.javascript;
+            if (typeof cached.cachedData === "string") {
+              cachedData = Buffer.from(cached.cachedData, "base64");
+            }
+          }
+        } catch (_error) {}
+      }
+      if (!javascript) {
+        const ast = pythonFrontend.parse(source, {
+          filename,
+          basedir: dirname(filename),
+          libdir: importPath,
+          import_dirs: getImportDirs(),
+          module_id: name,
+          runtime_imports: true,
+          jsage: false,
+          exact_integer_literals: true,
+          strict_python_scopes: true,
+          // Dynamically loaded third-party modules are ordinary Python, not
+          // legacy RapydScript.  Give them the same semantic baseline as the
+          // main Python frontend before module-local directives are applied.
+          scoped_flags: {
+            dict_literals: true,
+            overload_getitem: true,
+            bound_methods: true,
+            sequential_definitions: true,
+          },
+          precompiled_module_cache_dir: standardLibraryCacheDirectory(
+            join(__dirname, "..", "module-cache"),
+          ),
+        });
+        const output = new compiler.OutputStream({
+          omit_baselib: true,
+          write_name: false,
+          private_scope: false,
+          beautify: true,
+          keep_docstrings: true,
+          exact_integers: true,
+          rational_division: false,
+          python_tuples: true,
+          python_truthiness: true,
+          python_attributes: true,
+          pool_numeric_literals: true,
+          numeric_literal_pool_prefix:
+            `rho_module_${name.replaceAll(".", "_")}_`,
+          module_registry: "ρσ_modules",
+        });
+        ast.print(output);
+        javascript = output.get();
+        cacheNeedsWrite = true;
+      }
+      const scriptSource = `(function(){\n${javascript}\n})();`;
+      let moduleScript = new Script(scriptSource, {
+        filename: `sagejs/lazy-module-${name}.js`,
+        cachedData,
       });
-      const output = new compiler.OutputStream({
-        omit_baselib: true,
-        write_name: false,
-        private_scope: false,
-        beautify: true,
-        keep_docstrings: true,
-        exact_integers: true,
-        rational_division: mode === "sage",
-        python_tuples: true,
-        python_truthiness: true,
-        python_attributes: true,
-        pool_numeric_literals: true,
-        numeric_literal_pool_prefix:
-          `rho_module_${name.replaceAll(".", "_")}_`,
-        module_registry: "ρσ_modules",
-      });
-      ast.print(output);
+      if (moduleScript.cachedDataRejected) {
+        cachedData = undefined;
+        cacheNeedsWrite = true;
+        moduleScript = new Script(scriptSource, {
+          filename: `sagejs/lazy-module-${name}.js`,
+        });
+      }
+      if (cacheFilename && (cacheNeedsWrite || !cachedData)) {
+        try {
+          cachedData = moduleScript.createCachedData();
+          mkdirSync(dirname(cacheFilename), { recursive: true });
+          writeFileSync(cacheFilename, JSON.stringify({
+            version: compiler.get_compiler_version(),
+            signature: sourceHash,
+            mode: moduleMode,
+            filename,
+            javascript,
+            cachedData: cachedData.toString("base64"),
+          }));
+        } catch (_error) {
+          // A read-only home or competing cache writer must never make an
+          // otherwise importable Python package fail.
+        }
+      }
       const previousModule = Reflect.get(
         globalThis,
         "__sagejs_current_module_namespace__",
       );
       Reflect.set(globalThis, "__sagejs_current_module_namespace__", namespace);
       try {
-        new Script(`(function(){\n${output.get()}\n})();`, {
-          filename: `sagejs/lazy-module-${name}.js`,
-        }).runInThisContext();
+        moduleScript.runInThisContext();
       } finally {
         if (previousModule === undefined) {
           Reflect.deleteProperty(globalThis, "__sagejs_current_module_namespace__");

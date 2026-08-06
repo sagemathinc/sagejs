@@ -845,6 +845,20 @@ class PythonComplex:
             and self._imag == parts[1]
         )
 
+    def __hash__(self) -> int:
+        answer = (
+            runtime.integer_bigint(hash(self._real))
+            + runtime.bigint(1000003)
+            * runtime.integer_bigint(hash(self._imag))
+        )
+        width = runtime.bigint('18446744073709551616')
+        answer %= width
+        if answer >= runtime.bigint('9223372036854775808'):
+            answer -= width
+        if answer == runtime.bigint(-1):
+            answer = runtime.bigint(-2)
+        return runtime.normalize_integer(answer)
+
     def conjugate(self) -> PythonComplex:
         return PythonComplex(self._real, -self._imag)
 
