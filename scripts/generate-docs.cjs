@@ -30,6 +30,10 @@ function stampedReferenceHtml(referenceData) {
   const html = readFileSync(websiteHtml, "utf8");
   const assets = {
     "reference.css": readFileSync(join(root, "website", "reference.css"), "utf8"),
+    "reference-examples.css": readFileSync(
+      join(root, "website", "reference-examples.css"),
+      "utf8",
+    ),
     "reference.js": readFileSync(join(root, "website", "reference.js"), "utf8"),
     "reference-data.json": referenceData,
   };

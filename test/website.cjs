@@ -255,12 +255,14 @@ test("reference manual is fast, searchable, and verification-aware", () => {
   assert.match(referenceHtml, /id=["']result-list["']/);
   assert.match(referenceHtml, /id=["']entry["']/);
   assert.match(referenceHtml, /reference\.css\?v=[a-f0-9]{16}/);
+  assert.match(referenceHtml, /reference-examples\.css\?v=[a-f0-9]{16}/);
   assert.match(referenceHtml, /reference\.js\?v=[a-f0-9]{16}/);
   assert.match(referenceHtml, /reference-data\.json\?v=[a-f0-9]{16}/);
   assert.doesNotMatch(referenceHtml, /<script[^>]+src=["']https?:/i);
   assert.match(referenceScript, /function filtered/);
   assert.match(referenceScript, /function exampleCard/);
-  assert.match(referenceScript, /example-source/);
+  assert.doesNotMatch(referenceScript, /example-source/);
+  assert.match(referenceScript, /data-example-role/);
   assert.match(referenceScript, /has no source/);
   assert.match(referenceScript, /referenceDataUrl/);
   assert.match(referenceScript, /requestAnimationFrame/);

@@ -92,10 +92,12 @@ async function main() {
       `http://127.0.0.1:${port}/reference.html?q=RandomGNP`,
     );
     assert.match(html, /data-reference-ready="true"/);
-    assert.match(html, /<pre class="example-source"><code>/);
+    assert.match(html, /<div class="example-label">Input<\/div>/);
+    assert.match(html, /<pre data-example-role="input"><code>/);
     assert.match(html, /graphs\.RandomGNP\(5, 0\)\.size\(\)/);
-    assert.match(html, /<pre class="expected"><code>0<\/code><\/pre>/);
-    console.log("Reference browser test: visible example source and output rendered");
+    assert.match(html, /<div class="example-label">Expected output<\/div>/);
+    assert.match(html, /<pre data-example-role="output"><code>0<\/code><\/pre>/);
+    console.log("Reference browser test: example input and output rendered into DOM");
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
