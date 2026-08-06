@@ -256,6 +256,38 @@ async function createReport() {
     loweringGaps.set(kind, gap);
   }
 
+  function firstDifferingLine(left, right) {
+    const leftLines = left.split("\n");
+    const rightLines = right.split("\n");
+    const count = Math.max(leftLines.length, rightLines.length);
+    for (let index = 0; index < count; index += 1) {
+      if (leftLines[index] !== rightLines[index]) {
+        return {
+          line: index + 1,
+          legacy: (leftLines[index] ?? "<missing>").slice(0, 240),
+          direct: (rightLines[index] ?? "<missing>").slice(0, 240),
+        };
+      }
+    }
+    return null;
+  }
+
+  function recordMismatch(id, legacyJavaScript, directJavaScript) {
+    const difference = firstDifferingLine(legacyJavaScript, directJavaScript);
+    const kind = difference
+      ? `javascript-mismatch:${difference.legacy.split(/[( =.;[]/, 1)[0] || "line"}`
+      : "javascript-mismatch:unknown";
+    const gap = loweringGaps.get(kind) ?? {
+      count: 0,
+      examples: [],
+      differences: [],
+    };
+    gap.count += 1;
+    if (gap.examples.length < 5) gap.examples.push(id);
+    if (gap.differences.length < 3 && difference) gap.differences.push(difference);
+    loweringGaps.set(kind, gap);
+  }
+
   try {
     for (let index = 0; index < records.length; index += 1) {
       const record = records[index];
@@ -294,11 +326,28 @@ async function createReport() {
           const direct = new PythonCstLowerer(
             compiler,
             syntax,
-            { filename: record.id },
+            {
+              filename: record.id,
+              module_id: `__grammar_audit_${index}`,
+              for_linting: true,
+              jsage: record.mode === "sage",
+              exact_integer_literals: true,
+              strict_python_scopes: true,
+              scoped_flags: {
+                dict_literals: true,
+                overload_getitem: true,
+                bound_methods: true,
+                sequential_definitions: true,
+              },
+            },
           ).lowerModule(legacyAst);
-          const exact = render(direct.ast) === render(legacyAst);
+          const directJavaScript = render(direct.ast);
+          const legacyJavaScript = render(legacyAst);
+          const exact = directJavaScript === legacyJavaScript;
           directById.set(record.id, { constructed: true, exact });
-          if (!exact) recordGap("javascript-mismatch", record.id);
+          if (!exact) {
+            recordMismatch(record.id, legacyJavaScript, directJavaScript);
+          }
         } catch (error) {
           const kind = error?.nodeType ?? error?.name ?? "Error";
           directById.set(record.id, { constructed: false, exact: false });

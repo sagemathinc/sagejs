@@ -1113,17 +1113,19 @@ class Matrix(sage.Element):
         backend = runtime.flint_backend()
         if _is_extension_field_base(self.base_ring()):
             native_value = backend.fqMatrixEntry(
-                self._native, row, col)
+                self._native, runtime.number(row), runtime.number(col))
         else:
             native_value = backend.matrixEntry(
-                self._native, row, col)
+                self._native, runtime.number(row), runtime.number(col))
         return _entry_from_native(
             self.base_ring(),
             native_value,
         )
 
     def __getitem__(self, index: Any) -> Any:
-        if isinstance(index, tuple):
+        # Compiler output can represent a multi-index as a native array when
+        # tuple preservation is disabled for a lightweight embedding.
+        if isinstance(index, tuple) or runtime.array.isArray(index):
             if len(index) != 2:
                 raise IndexError('matrix index must have two components')
             return self._entry(index[0], index[1])

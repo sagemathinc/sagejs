@@ -68,13 +68,16 @@ if (argv.mode === "self") {
     compilerPath,
     argv.complete,
     argv.profile
-  );
-  if (argv.test) {
-    console.log("\nRunning test suite...\n");
-    argv.files = [];
-    load("test").default(argv, basePath, srcPath, compilerPath);
-  }
-  process.exit(0);
+  ).then(() => {
+    if (argv.test) {
+      console.log("\nRunning test suite...\n");
+      argv.files = [];
+      return load("test").default(argv, basePath, srcPath, compilerPath);
+    }
+  }).catch((error) => {
+    console.error(error?.stack ?? error);
+    process.exitCode = 1;
+  });
 } else if (argv.mode === "test") {
   load("test").default(argv, basePath, srcPath, compilerPath);
 } else if (argv.mode === "lint") {

@@ -12,7 +12,11 @@ var fs = require("fs");
 var vm = require("vm");
 var zlib = require("zlib");
 
-function compile_baselib(PyLang, src_path) {
+async function compile_baselib(PyLang, src_path) {
+  const { createPythonCompilerFrontend } = require("./python/compiler-frontend");
+  const frontend = PyLang.AST_AnnotatedAssignment
+    ? await createPythonCompilerFrontend(PyLang, "python")
+    : null;
   var items = fs
     .readdirSync(path.join(src_path, "baselib"))
     .filter(function (name) {
@@ -20,33 +24,49 @@ function compile_baselib(PyLang, src_path) {
     });
   var ans = { pretty: "" };
 
-  items.sort().forEach(function (fname) {
-    var name = fname.slice(0, -3),
-      ast;
-    var raw = fs.readFileSync(path.join(src_path, "baselib", fname), "utf-8");
-    try {
-      ast = PyLang.parse(raw, {
-        filename: fname,
-        basedir: path.join(src_path, "baselib"),
-        // Baselib classes implement Python objects, so extracting a method
-        // from an instance must retain that instance as ``self``.
-        scoped_flags: { bound_methods: true },
-      });
-    } catch (e) {
-      if (!(e instanceof PyLang.SyntaxError)) throw e;
-      console.error(e.toString());
-      process.exit(1);
-    }
-    var output = new PyLang.OutputStream({
-      beautify: true,
-      keep_docstrings: true,
-      write_name: false,
-      private_scope: false,
-      omit_baselib: true,
-    });
-    ast.print(output);
-    ans["pretty"] += output.get();
+  // The concatenated baselib is the compiler prologue.  Its low-level Python
+  // object helpers must exist before another module finalizes its first class.
+  // The historical parser happened not to exercise those helpers during
+  // startup; the complete Tree-sitter lowering correctly does.
+  items.sort(function (left, right) {
+    if (left === "builtins.py") return -1;
+    if (right === "builtins.py") return 1;
+    return left.localeCompare(right);
   });
+
+  try {
+    items.forEach(function (fname) {
+      var ast;
+      var raw = fs.readFileSync(
+        path.join(src_path, "baselib", fname),
+        "utf-8",
+      );
+      try {
+        ast = (frontend ? frontend.parse : PyLang.parse)(raw, {
+          filename: fname,
+          basedir: path.join(src_path, "baselib"),
+          // Baselib classes implement Python objects, so extracting a method
+          // from an instance must retain that instance as ``self``.
+          scoped_flags: { bound_methods: true },
+        });
+      } catch (e) {
+        if (!(e instanceof PyLang.SyntaxError)) throw e;
+        console.error(e.toString());
+        process.exit(1);
+      }
+      var output = new PyLang.OutputStream({
+        beautify: true,
+        keep_docstrings: true,
+        write_name: false,
+        private_scope: false,
+        omit_baselib: true,
+      });
+      ast.print(output);
+      ans["pretty"] += output.get();
+    });
+  } finally {
+    frontend?.close();
+  }
   return ans;
 }
 
@@ -115,12 +135,12 @@ function check_for_changes(base_path, src_path, signatures) {
 
 import createCompiler from "./compiler";
 
-function compile(src_path, lib_path, sources, source_hash, profile) {
+async function compile(src_path, lib_path, sources, source_hash, profile) {
   var file = path.join(src_path, "compiler.py");
   var t1 = new Date().getTime();
   var PyLang = createCompiler();
   var output_options, profiler, cpu_profile;
-  var compiled_baselib = compile_baselib(PyLang, src_path);
+  var compiled_baselib = await compile_baselib(PyLang, src_path);
   var out_path = lib_path;
   try {
     fs.mkdirSync(out_path);
@@ -132,8 +152,12 @@ function compile(src_path, lib_path, sources, source_hash, profile) {
   var raw = sources[file],
     toplevel;
 
+  const { createPythonCompilerFrontend } = require("./python/compiler-frontend");
+  const frontend = PyLang.AST_AnnotatedAssignment
+    ? await createPythonCompilerFrontend(PyLang, "python")
+    : null;
   function parse_file(code, file) {
-    return PyLang.parse(code, {
+    return (frontend ? frontend.parse : PyLang.parse)(code, {
       filename: file,
       basedir: path.dirname(file),
       libdir: path.join(src_path, "lib"),
@@ -154,6 +178,8 @@ function compile(src_path, lib_path, sources, source_hash, profile) {
     if (!(e instanceof PyLang.SyntaxError)) throw e;
     console.error(e.toString());
     process.exit(1);
+  } finally {
+    frontend?.close();
   }
   var output = new PyLang.OutputStream(output_options);
   toplevel.print(output);
@@ -172,7 +198,7 @@ function compile(src_path, lib_path, sources, source_hash, profile) {
   return output;
 }
 
-function run_single_compile(base_path, src_path, lib_path, profile) {
+async function run_single_compile(base_path, src_path, lib_path, profile) {
   var out_path = lib_path;
   var signatures = path.join(out_path, "signatures.json");
   var temp = check_for_changes(base_path, src_path, signatures);
@@ -182,13 +208,13 @@ function run_single_compile(base_path, src_path, lib_path, profile) {
     hashes = temp[3];
 
   if (compiler_changed) {
-    compile(src_path, lib_path, sources, source_hash, profile);
+    await compile(src_path, lib_path, sources, source_hash, profile);
     fs.writeFileSync(signatures, JSON.stringify(hashes, null, 4));
   } else console.log("Compiler is built with the up-to-date version of itself");
   return compiler_changed;
 }
 
-module.exports = function compile_self(
+module.exports = async function compile_self(
   base_path,
   src_path,
   lib_path,
@@ -197,7 +223,7 @@ module.exports = function compile_self(
 ) {
   var changed;
   do {
-    changed = run_single_compile(base_path, src_path, lib_path, profile);
+    changed = await run_single_compile(base_path, src_path, lib_path, profile);
     lib_path = lib_path;
   } while (changed && complete);
 };

@@ -102,10 +102,10 @@ f(x, y) = x^2 + y
       parameter: (identifier)
       parameter: (identifier)
       value: (binary_operator
-        left: (identifier)
-        right: (binary_operator
-          left: (integer)
-          right: (identifier))))))
+        left: (binary_operator
+          left: (identifier)
+          right: (integer))
+        right: (identifier)))))
 
 ==================
 generator access and integer methods
@@ -153,7 +153,7 @@ factor??
           (identifier)
           (argument_list
             (binary_operator
-              (integer)
               (binary_operator
                 (integer)
-                (integer)))))))))
+                (integer))
+              (integer))))))))

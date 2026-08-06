@@ -15,7 +15,7 @@
         "cpythonApplicable": 0,
         "directAttempted": 12,
         "directConstructed": 12,
-        "directExact": 0
+        "directExact": 12
       },
       "sage-doctests": {
         "total": 980,
@@ -25,7 +25,7 @@
         "cpythonApplicable": 0,
         "directAttempted": 977,
         "directConstructed": 977,
-        "directExact": 821
+        "directExact": 977
       },
       "pcimc-book": {
         "total": 937,
@@ -35,7 +35,7 @@
         "cpythonApplicable": 5,
         "directAttempted": 936,
         "directConstructed": 936,
-        "directExact": 604
+        "directExact": 936
       },
       "compiler-self-hosting": {
         "total": 8,
@@ -45,7 +45,7 @@
         "cpythonApplicable": 8,
         "directAttempted": 8,
         "directConstructed": 8,
-        "directExact": 0
+        "directExact": 8
       },
       "strict-baselib": {
         "total": 32,
@@ -55,7 +55,7 @@
         "cpythonApplicable": 32,
         "directAttempted": 32,
         "directConstructed": 32,
-        "directExact": 0
+        "directExact": 12
       },
       "legacy-stdlib": {
         "total": 69,
@@ -65,7 +65,7 @@
         "cpythonApplicable": 69,
         "directAttempted": 61,
         "directConstructed": 61,
-        "directExact": 0
+        "directExact": 33
       },
       "micropython": {
         "total": 576,
@@ -74,8 +74,8 @@
         "cpythonAccepted": 575,
         "cpythonApplicable": 576,
         "directAttempted": 565,
-        "directConstructed": 565,
-        "directExact": 205
+        "directConstructed": 564,
+        "directExact": 498
       }
     },
     "distinctNodeTypes": {
@@ -280,14 +280,175 @@
   },
   "lowering": {
     "gaps": {
-      "javascript-mismatch": {
-        "count": 961,
+      "javascript-mismatch:Factorization": {
+        "count": 1,
         "examples": [
-          "bench/arithmetic.sage",
-          "bench/character-modular-symbols.sage",
-          "bench/complex-arithmetic.sage",
-          "bench/elliptic-curves.sage",
-          "bench/exact-linear-algebra.sage"
+          "src/baselib/factorization.py"
+        ],
+        "differences": [
+          {
+            "line": 530,
+            "legacy": "Factorization.prototype.sort = function ρσ_method_sort(key) {",
+            "direct": "Factorization.prototype.sort = function ρσ_method_sort() {"
+          }
+        ]
+      },
+      "javascript-mismatch:i": {
+        "count": 1,
+        "examples": [
+          "upstream-tests/micropython/basics/int_big_rshift.py"
+        ],
+        "differences": [
+          {
+            "line": 7,
+            "legacy": "i = ρσ_operator_neg(((ρσ_operator_lshift((Integer?.__call__?.bind(Integer) ?? Integer)(\"1\"), (Integer?.__call__?.bind(Integer) ?? Integer)(\"70\")))));",
+            "direct": "i = ρσ_operator_neg((ρσ_operator_lshift((Integer?.__call__?.bind(Integer) ?? Integer)(\"1\"), (Integer?.__call__?.bind(Integer) ?? Integer)(\"70\"))));"
+          }
+        ]
+      },
+      "javascript-mismatch:line": {
+        "count": 80,
+        "examples": [
+          "src/baselib/byte_strings.py",
+          "src/baselib/dirichlet.py",
+          "src/baselib/elliptic_curves.py",
+          "src/baselib/exact_rational.py",
+          "src/baselib/finite_fields.py"
+        ],
+        "differences": [
+          {
+            "line": 234,
+            "legacy": "    var ρσ_init_result = SageBytes.prototype.__init__.apply(this, arguments);",
+            "direct": "    SageBytes.prototype.__bind_methods__.call(this);"
+          },
+          {
+            "line": 1852,
+            "legacy": "    return (DirichletLFunction?.__call__?.bind(DirichletLFunction) ?? DirichletLFunction)(self, (_analytic_precision?.__call__?.bind(_analytic_precision) ?? _analytic_precision)(prec));",
+            "direct": "    return new DirichletLFunction(self, (_analytic_precision?.__call__?.bind(_analytic_precision) ?? _analytic_precision)(prec));"
+          },
+          {
+            "line": 1896,
+            "legacy": "    return ρσ_operator_add_exact(ρσ_operator_sub_exact(ρσ_operator_sub_exact(ρσ_operator_mul_exact(-ρσ_operator_pow_exact(b2, (Integer?.__call__?.bind(Integer) ?? Integer)(\"2\")), b8), ρσ_operator_mul_exact((Integer?.__call__?.bind(Integer) ",
+            "direct": "    return ρσ_operator_add_exact(ρσ_operator_sub_exact(ρσ_operator_sub_exact(ρσ_operator_mul_exact(ρσ_operator_neg((ρσ_operator_pow_exact(b2, (Integer?.__call__?.bind(Integer) ?? Integer)(\"2\")))), b8), ρσ_operator_mul_exact((Integer?.__call"
+          }
+        ]
+      },
+      "javascript-mismatch:Object": {
+        "count": 5,
+        "examples": [
+          "src/lib/gc.py",
+          "upstream-tests/micropython/basics/assign_expr_scope.py",
+          "upstream-tests/micropython/basics/builtin_compile.py",
+          "upstream-tests/micropython/basics/scope.py",
+          "upstream-tests/micropython/basics/weakref_multiple_refs.py"
+        ],
+        "differences": [
+          {
+            "line": 1,
+            "legacy": "Object.defineProperties(ρσ_modules.__grammar_audit_1975, {\"_enabled\": {enumerable:true,get:function(){return _enabled},set:function(value){_enabled=value}}, \"collect\": {enumerable:true,get:function(){return collect},set:function(value){coll",
+            "direct": "var _enabled;"
+          },
+          {
+            "line": 1,
+            "legacy": "Object.defineProperties(ρσ_modules.__grammar_audit_2050, {\"var2\": {enumerable:true,get:function(){return var2},set:function(value){var2=value}}, \"var3\": {enumerable:true,get:function(){return var3},set:function(value){var3=value}}, \"var4\": ",
+            "direct": "Object.defineProperties(ρσ_modules.__grammar_audit_2050, {\"scope0\": {enumerable:true,get:function(){return scope0},set:function(value){scope0=value}}, \"scope1\": {enumerable:true,get:function(){return scope1},set:function(value){scope1=value"
+          },
+          {
+            "line": 1,
+            "legacy": "Object.defineProperties(ρσ_modules.__grammar_audit_2076, {\"x\": {enumerable:true,get:function(){return x},set:function(value){x=value}}, \"test\": {enumerable:true,get:function(){return test},set:function(value){test=value}}});",
+            "direct": "Object.defineProperties(ρσ_modules.__grammar_audit_2076, {\"test\": {enumerable:true,get:function(){return test},set:function(value){test=value}}});"
+          }
+        ]
+      },
+      "javascript-mismatch:tests": {
+        "count": 2,
+        "examples": [
+          "upstream-tests/micropython/basics/builtin_allany.py",
+          "upstream-tests/micropython/basics/builtin_sum.py"
+        ],
+        "differences": [
+          {
+            "line": 4,
+            "legacy": "tests = ρσ_math_tuple(ρσ_list_decorate([ ρσ_math_tuple(ρσ_list_decorate([])), ρσ_list_decorate([]), ρσ_list_decorate([ false ]), ρσ_list_decorate([ true ]), ρσ_list_decorate([ false, true ]), ρσ_list_decorate([ true, false ]), ρσ_list_decor",
+            "direct": "tests = ρσ_math_tuple([ρσ_math_tuple(ρσ_list_decorate([])), ρσ_list_decorate([]), "
+          },
+          {
+            "line": 4,
+            "legacy": "tests = ρσ_math_tuple(ρσ_list_decorate([ ρσ_math_tuple(ρσ_list_decorate([])), ρσ_list_decorate([]), ρσ_list_decorate([ (Integer?.__call__?.bind(Integer) ?? Integer)(\"0\") ]), ρσ_list_decorate([ (Integer?.__call__?.bind(Integer) ?? Integer)(\"",
+            "direct": "tests = ρσ_math_tuple([ρσ_math_tuple(ρσ_list_decorate([])), ρσ_list_decorate([]), "
+          }
+        ]
+      },
+      "javascript-mismatch:var": {
+        "count": 22,
+        "examples": [
+          "src/baselib/algebra.py",
+          "src/baselib/builtins.py",
+          "src/baselib/containers.py",
+          "src/lib/sage/graphs/__init__.py",
+          "src/lib/sage/graphs/digraph.py"
+        ],
+        "differences": [
+          {
+            "line": 1,
+            "legacy": "var ZZ, QQ, _field_kinds, _ring_kinds, _rings_category, _fields_category, _integer_ring_category, coercion_model, QuotientFunctor, AlgebraicExtensionFunctor, _flint_state, ρσ_is_exact_integer, ρσ_normalize_integer, ρσ_integer_bigint, ρσ_new",
+            "direct": "var ZZ, QQ, _field_kinds, _ring_kinds, _rings_category, _fields_category, _integer_ring_category, coercion_model, _tuple_array_prototype_cache, QuotientFunctor, AlgebraicExtensionFunctor, _flint_state, ρσ_is_exact_integer, ρσ_normalize_inte"
+          },
+          {
+            "line": 1,
+            "legacy": "var _builtins_number_class, _Bool, _Float, _Int, _Str, __build_class__, __import__, _BUILTINS_MISSING, _BUILTINS_EMPTY, _BUILTINS_DESCRIPTOR_MISSING, _builtins_descriptor_cache, cached_method, NotImplemented, _BUILTINS_MAX_SAFE_INTEGER, _BU",
+            "direct": "var _builtins_number_class, _Bool, _Float, _Int, _Str, __build_class__, __import__, _BUILTINS_MISSING, _BUILTINS_EMPTY, _BUILTINS_DESCRIPTOR_MISSING, _builtins_descriptor_cache, _builtins_descriptor_epoch, cached_method, NotImplemented, _BU"
+          },
+          {
+            "line": 1,
+            "legacy": "var _CONTAINERS_MISSING, ρσ_equals, ρσ_not_equals, ρσ_list_contains, ρσ_set_wrap, ρσ_dict_wrap, list_constructor, list_decorate, list, list_wrap, set, frozenset, dict;",
+            "direct": "var _CONTAINERS_MISSING, _list_prototype_cache, ρσ_equals, ρσ_not_equals, ρσ_list_contains, ρσ_set_wrap, ρσ_dict_wrap, list_constructor, list_decorate, list, list_wrap, set, frozenset, dict;"
+          }
+        ]
+      },
+      "javascript-mismatch:zeros": {
+        "count": 1,
+        "examples": [
+          "upstream-tests/micropython/basics/int_big_zeroone.py"
+        ],
+        "differences": [
+          {
+            "line": 68,
+            "legacy": "zeros = ρσ_math_tuple(ρσ_list_decorate([ ρσ_operator_sub_exact(large, large), ρσ_operator_add_exact(ρσ_operator_neg(large), large), ρσ_operator_add_exact(large, ρσ_operator_neg(large)), ρσ_operator_neg(((ρσ_operator_sub_exact(large, large))",
+            "direct": "zeros = ρσ_math_tuple([ρσ_operator_sub_exact(large, large), ρσ_operator_add_exact(ρσ_operator_neg(large), large), "
+          }
+        ]
+      },
+      "javascript-mismatch:ρσ_operator_add_exact": {
+        "count": 1,
+        "examples": [
+          "upstream-tests/micropython/basics/int_big_cmp.py"
+        ],
+        "differences": [
+          {
+            "line": 7,
+            "legacy": "ρσ_operator_add_exact(i, (Integer?.__call__?.bind(Integer) ?? Integer)(\"1\")), ρσ_operator_neg(((ρσ_operator_add_exact(i, (Integer?.__call__?.bind(Integer) ?? Integer)(\"1\")))))]);",
+            "direct": "ρσ_operator_add_exact(i, (Integer?.__call__?.bind(Integer) ?? Integer)(\"1\")), ρσ_operator_neg((ρσ_operator_add_exact(i, (Integer?.__call__?.bind(Integer) ?? Integer)(\"1\"))))]);"
+          }
+        ]
+      },
+      "javascript-mismatch:ρσ_setitem": {
+        "count": 1,
+        "examples": [
+          "upstream-tests/micropython/basics/list_slice_assign.py"
+        ],
+        "differences": [
+          {
+            "line": 36,
+            "legacy": "ρσ_setitem(l, new slice((Integer?.__call__?.bind(Integer) ?? Integer)(\"0\"), (Integer?.__call__?.bind(Integer) ?? Integer)(\"1\"), null), ρσ_math_tuple(ρσ_list_decorate([ (Integer?.__call__?.bind(Integer) ?? Integer)(\"10\"), (Integer?.__call__?",
+            "direct": "ρσ_setitem(l, new slice((Integer?.__call__?.bind(Integer) ?? Integer)(\"0\"), (Integer?.__call__?.bind(Integer) ?? Integer)(\"1\"), null), (Integer?.__call__?.bind(Integer) ?? Integer)(\"10\"), "
+          }
+        ]
+      },
+      "SyntaxError": {
+        "count": 1,
+        "examples": [
+          "upstream-tests/micropython/basics/string_fstring.py"
         ]
       }
     }

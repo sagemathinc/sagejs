@@ -40,7 +40,14 @@ copyFileSync(
   join(outputDirectory, "tree-sitter-python.wasm"),
 );
 
-function buildParser(name, sourceDirectory) {
+function buildParser(name, sourceDirectory, { generate = false } = {}) {
+  if (generate) {
+    execFileSync(
+      process.execPath,
+      [require.resolve("tree-sitter-cli/cli.js"), "generate"],
+      { cwd: sourceDirectory, stdio: "inherit" },
+    );
+  }
   execFileSync(
     process.execPath,
     [
@@ -56,7 +63,9 @@ function buildParser(name, sourceDirectory) {
 }
 
 buildParser("magma", join(root, "upstream-tests", "tree-sitter-magma"));
-buildParser("sage", join(root, "tools", "tree-sitter-sage"));
+buildParser("sage", join(root, "tools", "tree-sitter-sage"), {
+  generate: true,
+});
 buildParser("wolfram", join(root, "upstream-tests", "tree-sitter-wolfram"));
 buildParser("matlab", join(root, "upstream-tests", "tree-sitter-matlab"));
 buildParser("maple", join(root, "tools", "maple"));

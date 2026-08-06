@@ -7,7 +7,9 @@ from utils import DefaultsError, string_template
 from errors import ImportError, SyntaxError
 from tokenizer import ALL_KEYWORDS, IDENTIFIER_PAT, tokenizer
 from parse import (
-    parse, NATIVE_CLASSES, compile_time_decorators, get_compiler_version)
+    parse, NATIVE_CLASSES, SAGEJS_PUBLIC_INTRINSICS,
+    SAGEJS_RUNTIME_INTRINSICS, compile_time_decorators,
+    get_compiler_version)
 from output.stream import OutputStream
 from output.codegen import generate_code
 
@@ -26,6 +28,8 @@ if jstype(exports) is 'object':
     exports.ALL_KEYWORDS = ALL_KEYWORDS
     exports.IDENTIFIER_PAT = IDENTIFIER_PAT
     exports.NATIVE_CLASSES = NATIVE_CLASSES
+    exports.SAGEJS_RUNTIME_INTRINSICS = SAGEJS_RUNTIME_INTRINSICS
+    exports.SAGEJS_PUBLIC_INTRINSICS = SAGEJS_PUBLIC_INTRINSICS
     exports.ImportError = ImportError
     exports.SyntaxError = SyntaxError
     exports.tokenizer = tokenizer

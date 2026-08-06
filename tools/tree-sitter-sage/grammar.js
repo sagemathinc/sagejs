@@ -41,20 +41,37 @@ module.exports = grammar(Python, {
         $.sage_integer_attribute,
       ),
 
-    binary_operator: ($, previous) =>
-      choice(
-        previous,
-        prec.left(16, seq(
+    // Python gives ^ bitwise-xor precedence.  Sage instead makes ^ power and
+    // spells xor as ^^, so this rule must replace (not merely extend) the
+    // upstream table; otherwise the CST groups x^3+x as x^(3+x).
+    binary_operator: $ => {
+      /** @type {Array<[Function, string, number]>} */
+      const table = [
+        [prec.left, "+", 18],
+        [prec.left, "-", 18],
+        [prec.left, "*", 19],
+        [prec.left, "@", 19],
+        [prec.left, "/", 19],
+        [prec.left, "%", 19],
+        [prec.left, "//", 19],
+        [prec.right, "**", 21],
+        [prec.right, "^", 21],
+        [prec.left, "|", 14],
+        [prec.left, "&", 15],
+        [prec.left, "^^", 16],
+        [prec.left, "<<", 17],
+        [prec.left, ">>", 17],
+        [prec.left, "..", 9],
+      ];
+      return choice(...table.map(([fn, operator, precedence]) =>
+        // @ts-ignore tree-sitter's DSL callable precedence helpers are overloaded.
+        fn(precedence, seq(
           field("left", $.primary_expression),
-          field("operator", "^^"),
+          field("operator", operator),
           field("right", $.primary_expression),
-        )),
-        prec.left(9, seq(
-          field("left", $.primary_expression),
-          field("operator", ".."),
-          field("right", $.primary_expression),
-        )),
-      ),
+        ))
+      ));
+    },
 
     sage_generator_assignment: $ => seq(
       field("parent", $.identifier),

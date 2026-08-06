@@ -503,6 +503,8 @@ def _resolve_field(path: _Str, value: Any) -> Any:
             while end < len(path) and path[end] != ']':
                 end += 1
             key = path[position:end]
+            if _string_call(key, 'match', runtime.regexp(r'^\d+$')) is not None:
+                key = runtime.parse_int(key, 10)
             value = value[key]
             position = end + 1
         else:

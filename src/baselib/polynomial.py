@@ -2234,7 +2234,7 @@ def PolynomialRing(
     full constructor while native implementations are selected automatically.
     """
     if (variable is not None and runtime.jstype(variable) == 'object'
-            and variable[runtime.kwargs_symbol]):
+            and runtime.reflect.get(variable, runtime.kwargs_symbol)):
         names = variable.names
         variable = None
     if names is not None:

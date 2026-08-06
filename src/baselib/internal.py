@@ -411,6 +411,27 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
 
             return slice_items
         value = runtime.reflect.get(target, property_name, receiver)
+        # Sequence classes are exposed through a Proxy.  Their ordinary
+        # baselib constructor may already have bound a method to the raw
+        # target; rebind that method to the public proxy so returning ``self``
+        # preserves Python object identity.
+        if (
+            _internal_type_is(runtime.jstype(value), 'function')
+            and runtime.reflect.get(value, '__self__') is target
+        ):
+            unbound = runtime.reflect.get(value, '__func__')
+            if _internal_type_is(runtime.jstype(unbound), 'function'):
+                value = runtime.reflect.apply(
+                    runtime.function_class.prototype.bind,
+                    unbound,
+                    [receiver],
+                )
+                runtime.object.assign(
+                    value,
+                    runtime.reflect.get(target, property_name),
+                )
+                runtime.reflect.set(value, '__func__', unbound)
+                runtime.reflect.set(value, '__self__', receiver)
         if (
             value is runtime.undefined
             and _internal_type_is(
@@ -441,9 +462,12 @@ def ρσ_sequence_proxy(instance: Any) -> Any:
         return runtime.reflect.set(
             target, property_name, value, receiver)
 
+    handler = runtime.object.create(None)
+    runtime.reflect.set(handler, 'get', get_item)
+    runtime.reflect.set(handler, 'set', set_item)
     return runtime.reflect.construct(
         runtime.proxy_class,
-        [instance, {'get': get_item, 'set': set_item}],
+        [instance, handler],
     )
 
 
@@ -458,11 +482,10 @@ def _internal_set_class_repr(wrapper: Any, target: Any) -> None:
     def class_repr() -> str:
         return "<class '" + target.name + "'>"
 
-    runtime.object.defineProperty(
-        wrapper,
-        '__repr__',
-        {'configurable': True, 'value': class_repr},
-    )
+    descriptor = runtime.object.create(None)
+    runtime.reflect.set(descriptor, 'configurable', True)
+    runtime.reflect.set(descriptor, 'value', class_repr)
+    runtime.object.defineProperty(wrapper, '__repr__', descriptor)
 
 
 def ρσ_callable_sequence_class(target: Any) -> Any:
@@ -484,12 +507,12 @@ def ρσ_callable_sequence_class(target: Any) -> Any:
                 target_class, call_args, new_target)
         )
 
+    handler = runtime.object.create(None)
+    runtime.reflect.set(handler, 'apply', call_class)
+    runtime.reflect.set(handler, 'construct', construct_class)
     wrapper = runtime.reflect.construct(
         runtime.proxy_class,
-        [
-            target,
-            {'apply': call_class, 'construct': construct_class},
-        ],
+        [target, handler],
     )
     target.prototype.constructor = wrapper
     _internal_set_class_repr(wrapper, target)
@@ -545,12 +568,12 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
     ) -> Any:
         return make_instance(target_class, call_args)
 
+    handler = runtime.object.create(None)
+    runtime.reflect.set(handler, 'apply', call_class)
+    runtime.reflect.set(handler, 'construct', construct_class)
     wrapper = runtime.reflect.construct(
         runtime.proxy_class,
-        [
-            target,
-            {'apply': call_class, 'construct': construct_class},
-        ],
+        [target, handler],
     )
     target.prototype.constructor = wrapper
     _internal_set_class_repr(wrapper, target)
@@ -832,6 +855,19 @@ def ρσ_interpolate_kwargs_constructor_legacy(
     return receiver
 
 
+def _internal_native_getitem(value: Any, key: Any) -> Any:
+    """Read a JavaScript property, boxing non-null primitives as JS does."""
+    if value is None or value is runtime.undefined:
+        raise TypeError('object is not subscriptable')
+    value_type = runtime.jstype(value)
+    if (
+        not _internal_type_is(value_type, 'object')
+        and not _internal_type_is(value_type, 'function')
+    ):
+        value = runtime.reflect.construct(runtime.object, [value])
+    return runtime.reflect.get(value, key)
+
+
 def ρσ_getitem(value: Any, key: Any) -> Any:
     # Native lists and tuples are JavaScript arrays.  Keep their overwhelmingly
     # common integer-index path monomorphic instead of performing reflective
@@ -856,7 +892,7 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
                 key += value.length
             if key < 0 or key >= value.length:
                 raise IndexError('index out of range')
-            return value[key]
+            return _internal_native_getitem(value, key)
     if _internal_member_is_function(value, '__getitem__'):
         return runtime.reflect.apply(
             _internal_get_member(value, '__getitem__'),
@@ -871,9 +907,14 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
         )
         answer = []
         for index in range(indices[0], indices[1], indices[2]):
-            answer.append(value[index])
+            runtime.reflect.apply(
+                runtime.array.prototype.push,
+                answer,
+                [value[index]],
+            )
         if _internal_type_is(runtime.jstype(value), 'string'):
-            return ''.join(answer)
+            return runtime.reflect.apply(
+                runtime.reflect.get(answer, 'join'), answer, [''])
         if (
             runtime.array.isArray(value)
             and runtime.object.isFrozen(value)
@@ -901,10 +942,10 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
             key += value.length
         if key < 0 or key >= value.length:
             raise IndexError('index out of range')
-        return value[key]
+        return _internal_native_getitem(value, key)
     if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
         key += value.length
-    return value[key]
+    return _internal_native_getitem(value, key)
 
 
 def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
@@ -917,7 +958,7 @@ def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
     ):
         if key < 0:
             key += value.length
-        value[key] = member
+        runtime.reflect.set(value, key, member)
         return
     if _internal_member_is_function(value, '__setitem__'):
         runtime.reflect.apply(
@@ -972,7 +1013,7 @@ def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
         return
     if _internal_type_is(runtime.jstype(key), 'number') and key < 0:
         key += value.length
-    value[key] = member
+    runtime.reflect.set(value, key, member)
 
 
 def ρσ_delitem(value: Any, key: Any) -> None:

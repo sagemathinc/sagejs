@@ -65,3 +65,27 @@ test("direct CST lowering matches established JavaScript for core nodes", async 
     frontend.close();
   }
 });
+
+test("authoritative compilation sends only imports to the stage-zero resolver", async () => {
+  const compiler = createCompiler();
+  const originalParse = compiler.parse.bind(compiler);
+  const bootstrapSources = [];
+  compiler.parse = (source, options) => {
+    bootstrapSources.push(source);
+    return originalParse(source, options);
+  };
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "import sagejs.runtime as runtime\n" +
+      "answer = 6 * 7\n" +
+      "try:\n    raise ValueError('bad') from cause\nexcept ValueError:\n    pass\n",
+      parserOptions,
+    );
+    assert.equal(ast.body.length, 3);
+    assert.deepEqual(bootstrapSources, ["import sagejs.runtime as runtime\n"]);
+    assert.equal(ast.body[1].body.right.operator, "*");
+  } finally {
+    frontend.close();
+  }
+});
