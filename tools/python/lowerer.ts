@@ -163,7 +163,8 @@ export class PythonCstLowerer {
       this.options.classes ?? {},
     )) this.knownClasses.set(name, details);
     this.annotationsMode = root.namedChildren.some(
-      (node) => node.type === "future_import_statement",
+      (node) => node.type === "future_import_statement" &&
+        /\bannotations\b/.test(node.text),
     ) ? "future" : (this.options.scoped_flags?.annotations ?? false);
     const body = significantChildren(root).flatMap((node) =>
       this.lowerStatement(node)
@@ -848,6 +849,12 @@ export class PythonCstLowerer {
       case "sage_symbolic_function_assignment":
         return this.lowerSageSymbolicFunction(node);
       case "call":
+        if (this.field(node, "function").type === "list_splat") {
+          return this.make("AST_UnaryPrefix", node, {
+            operator: "*",
+            expression: this.lowerCall(node, true),
+          });
+        }
         return this.lowerCall(node);
       case "subscript":
         return this.lowerSubscript(node);
@@ -1187,6 +1194,9 @@ export class PythonCstLowerer {
   }
 
   private lowerType(node: SyntaxNode): any {
+    if (this.annotationsMode === "future") {
+      return this.make("AST_String", node, { value: node.text });
+    }
     const children = significantChildren(node);
     return children.length === 1
       ? this.lowerExpression(children[0])
@@ -1203,6 +1213,7 @@ export class PythonCstLowerer {
     let sawPositionalDefault = false;
     let sawVarargs = false;
     let sawKwargs = false;
+    let positionalOnlyCount = 0;
     const parameterNames = new Set<string>();
     const register = (name: SyntaxNode): void => {
       if (parameterNames.has(name.text)) {
@@ -1219,6 +1230,10 @@ export class PythonCstLowerer {
       });
 
     for (const parameter of significantChildren(node)) {
+      if (parameter.type === "positional_separator") {
+        positionalOnlyCount = positional.length;
+        continue;
+      }
       if (sawKwargs) {
         throw new SyntaxError("arguments cannot follow var-keyword argument");
       }
@@ -1292,6 +1307,7 @@ export class PythonCstLowerer {
     args.starargs = starargs ?? undefined;
     args.kwargs = kwargs ?? undefined;
     args.defaults = defaults;
+    args.posonly = positionalOnlyCount;
     args.is_simple_func = !kwonly.length && !starargs && !kwargs && !args.has_defaults;
     return args;
   }
@@ -1303,6 +1319,7 @@ export class PythonCstLowerer {
     args.starargs = undefined;
     args.kwargs = undefined;
     args.defaults = Object.create(null);
+    args.posonly = 0;
     args.is_simple_func = true;
     return args;
   }
@@ -1524,9 +1541,31 @@ export class PythonCstLowerer {
   private lowerClass(node: SyntaxNode, decorators: any[]): any {
     const nameNode = this.field(node, "name");
     const superclasses = node.childForFieldName("superclasses");
-    const bases = superclasses
-      ? significantChildren(superclasses).map((child) => this.lowerExpression(child))
+    const superclassEntries = superclasses
+      ? significantChildren(superclasses)
       : [];
+    const baseNodes = superclassEntries.filter(
+      (child) => child.type !== "keyword_argument",
+    );
+    const typingDictionaryBase = baseNodes.some(
+      (child) => child.text === "TypedDict" || child.text.endsWith(".TypedDict"),
+    );
+    for (const keyword of superclassEntries.filter(
+      (child) => child.type === "keyword_argument",
+    )) {
+      const keywordName = keyword.childForFieldName("name")?.text ?? "";
+      if (typingDictionaryBase && ["total", "closed"].includes(keywordName)) {
+        continue;
+      }
+      throw new UnsupportedPythonCstNode(
+        keyword,
+        `class keyword ${JSON.stringify(keywordName)} requires metaclass semantics`,
+      );
+    }
+    const bases = baseNodes.map((child) => this.lowerExpression(child));
+    const isNamedTupleClass = baseNodes.some((child) =>
+      child.text === "NamedTuple" || child.text.endsWith(".NamedTuple")
+    );
     // The class name is already bound while its body is compiled.  Calls to
     // that name from methods are constructor calls even though the complete
     // method/class-variable table is not available until the body has been
@@ -1588,6 +1627,13 @@ export class PythonCstLowerer {
       Object.assign(staticMethods, inherited.static ?? {});
       Object.assign(classMethods, inherited.classmethods ?? {});
       Object.assign(classvars, inherited.classvars ?? {});
+      // Inherited properties are available through the prototype chain, but
+      // they are not class variables.  Leaving their names in the inherited
+      // class-variable table would make code generation read the descriptor
+      // from the prototype and execute its getter during subclass creation.
+      for (const name of Object.keys(inherited.dynamic_properties ?? {})) {
+        delete classvars[name];
+      }
     }
     let initializer: any = undefined;
     for (const statement of classStatements) {
@@ -1615,9 +1661,38 @@ export class PythonCstLowerer {
           if (statement.is_setter) descriptor.setter = statement;
           if (statement.is_deleter) descriptor.deleter = statement;
         }
+      } else if (statement instanceof this.compiler.AST_Class) {
+        classvars[statement.name.name] = true;
       }
     }
     for (const name of nonlocalNames) delete classvars[name];
+    // A descriptor remains an ordinary namespace value until class creation.
+    // Preserve aliases such as ``oldName = new_name`` when ``new_name`` is a
+    // property; reading it from the partly built JavaScript prototype would
+    // invoke the getter with the prototype itself as ``self``.
+    for (let index = 0; index < classStatements.length; index += 1) {
+      const statement = classStatements[index];
+      const assignment = statement instanceof this.compiler.AST_Assign
+        ? statement
+        : statement?.body instanceof this.compiler.AST_Assign
+        ? statement.body
+        : null;
+      if (
+        assignment?.operator === "=" &&
+        assignment.left instanceof this.compiler.AST_SymbolRef &&
+        assignment.right instanceof this.compiler.AST_SymbolRef &&
+        dynamicProperties[assignment.right.name]
+      ) {
+        dynamicProperties[assignment.left.name] =
+          dynamicProperties[assignment.right.name];
+        classvars[assignment.left.name] = true;
+        classStatements[index] = new this.compiler.AST_EmptyStatement({
+          stype: ";",
+          start: statement.start,
+          end: statement.end,
+        });
+      }
+    }
     this.rewriteClassVariables(
       nameNode.text,
       classStatements,
@@ -1651,6 +1726,18 @@ export class PythonCstLowerer {
         }
       }
     }
+    const namedtupleFields = isNamedTupleClass
+      ? classStatements
+        .map((statement) =>
+          statement instanceof this.compiler.AST_AnnotatedAssignment
+            ? statement
+            : statement.body instanceof this.compiler.AST_AnnotatedAssignment
+            ? statement.body
+            : null
+        )
+        .filter((statement) => typeof statement?.target?.name === "string")
+        .map((statement) => statement.target.name)
+      : [];
     const definition = this.make("AST_Class", node, {
       name: this.make("AST_SymbolDefun", nameNode, { name: nameNode.text }),
       parent,
@@ -1664,6 +1751,7 @@ export class PythonCstLowerer {
       sequence_class: decoratorNames.has("ρσ_sequence_class"),
       callable_instance_class: decoratorNames.has("ρσ_callable_instance_class"),
       bigint_fields: bigintFields,
+      namedtuple_fields: namedtupleFields,
       bound,
       decorators: decorators.filter(
         (decorator) => !compileTimeDecorators.has(decoratorName(decorator) ?? ""),
@@ -1778,7 +1866,14 @@ export class PythonCstLowerer {
         return;
       }
       if (value instanceof this.compiler.AST_Scope) return;
-      if (value instanceof this.compiler.AST_Assign &&
+      if (value instanceof this.compiler.AST_AnnotatedAssignment &&
+          value.target instanceof this.compiler.AST_SymbolRef) {
+        const name = value.target.name;
+        if (nonlocals.has(name)) return;
+        known.add(name);
+        classvars[name] = true;
+        value.target.thedef = definition(name);
+      } else if (value instanceof this.compiler.AST_Assign &&
           value.left instanceof this.compiler.AST_SymbolRef) {
         const name = value.left.name;
         if (nonlocals.has(name)) return;
@@ -1798,6 +1893,23 @@ export class PythonCstLowerer {
     for (const statement of statements) {
       if (statement instanceof this.compiler.AST_Method) {
         known.add(statement.name.name);
+        // A function body has its own lexical scope, but decorators, default
+        // arguments, and annotations are evaluated immediately in the
+        // surrounding class namespace.  Rewrite those expressions without
+        // descending into the method body itself.
+        for (const decorator of statement.decorators ?? []) visit(decorator);
+        for (const value of Object.values(
+          statement.argnames?.defaults ?? {},
+        )) visit(value);
+        for (const argument of statement.argnames ?? []) {
+          visit(argument?.annotation);
+        }
+        visit(statement.argnames?.starargs?.annotation);
+        for (const argument of statement.argnames?.kwonly ?? []) {
+          visit(argument?.annotation);
+        }
+        visit(statement.argnames?.kwargs?.annotation);
+        visit(statement.return_annotation);
         continue;
       }
       if (statement instanceof this.compiler.AST_Class) continue;
@@ -1818,7 +1930,8 @@ export class PythonCstLowerer {
     if (node.type === "import_from_statement" && sourceKey === "__python__") {
       return this.make("AST_EmptyStatement", node, { stype: "scoped_flags" });
     }
-    if (node.type === "import_from_statement" && sourceKey === "typing") {
+    if (node.type === "import_from_statement" && sourceKey === "typing" &&
+        !this.options.runtime_imports) {
       return this.make("AST_EmptyStatement", node);
     }
     const imports: any[] = [];
@@ -1938,7 +2051,10 @@ export class PythonCstLowerer {
       argnames,
       body: () => modules[key],
       intrinsic,
-      dynamic: !!imported?.dynamic,
+      // Runtime package execution must invoke __import__ even when the target
+      // is the current package.  In particular ``from . import child`` asks
+      // the import machinery to load and bind ``package.child``.
+      dynamic: !!this.options.runtime_imports || !!imported?.dynamic,
       level,
       star,
       target_module: this.options.module_id ?? this.currentToplevel?.module_id,

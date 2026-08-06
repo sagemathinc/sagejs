@@ -20,6 +20,12 @@ class _Implementation:
 
 implementation = _Implementation()
 
+version_info = runtime.named_tuple(
+    [3, 14, 4, 'final', 0],
+    'version_info',
+    ['major', 'minor', 'micro', 'releaselevel', 'serial'],
+)
+
 
 class TextIOWrapper:
     def __init__(self, name):
@@ -49,6 +55,7 @@ byteorder = 'little'
 # even when this module is compiled by a bootstrap compiler whose own numeric
 # literals are JavaScript Numbers.
 maxsize = int('9223372036854775807')
+maxunicode = 0x10FFFF
 
 # CPython exposes a descriptive implementation version here.  Code should
 # generally use ``sys.version_info`` for feature checks, but ``version`` is a
@@ -56,6 +63,31 @@ maxsize = int('9223372036854775807')
 version = 'Sage.js'
 executable = process.execPath
 modules = runtime.modules
+meta_path = []
+path_hooks = []
+path_importer_cache = {}
+platform = process.platform
+prefix = process.cwd()
+base_prefix = prefix
+exec_prefix = prefix
+base_exec_prefix = prefix
+hexversion = (3 << 24) | (14 << 16) | (4 << 8) | 0xF0
+api_version = 1013
+warnoptions = []
+dont_write_bytecode = True
+_recursion_limit = 1000
+
+
+def getrecursionlimit():
+    return _recursion_limit
+
+
+def setrecursionlimit(limit):
+    global _recursion_limit
+    limit = int(limit)
+    if limit < 1:
+        raise ValueError('recursion limit must be greater than 0')
+    _recursion_limit = limit
 
 
 def intern(value):

@@ -2,7 +2,7 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 
-from ast_types import AST_Binary, AST_Number, AST_String, is_node_type
+from ast_types import AST_Binary, AST_Number, AST_String, AST_Unary, is_node_type
 
 
 def print_array(self, output):
@@ -19,7 +19,12 @@ def print_array(self, output):
             for i, exp in enumerate(a):
                 if i:
                     output.comma()
-                exp.print(output)
+                if exp.operator is '*' and exp.expression is not undefined:
+                    output.print('...Array.from(ρσ_Iterable(')
+                    exp.expression.print(output)
+                    output.print('))')
+                else:
+                    exp.print(output)
             if len_ > 0:
                 output.space()
 

@@ -72,6 +72,7 @@ export interface Options {
   emitSage?: boolean;
   tokens?: boolean; // show very verbose tokens as parsed
   moduleCacheDir?: string | false;
+  importDirs?: string[];
 }
 
 export function defaultHistoryFile(
@@ -248,7 +249,7 @@ export default async function Repl(
   let more: boolean = false;
   const LINE_CONTINUATION_CHARS = ":\\";
   let toplevel;
-  var importDirs = getImportDirs();
+  var importDirs = options.importDirs ?? getImportDirs();
 
   /*
   Python 3.11.0 (main, Nov 29 2022, 20:26:05) [Clang 15.0.3 (git@github.com:ziglang/zig-bootstrap.git 0ce789d0f7a4d89fdc4d9571 on wasi
@@ -285,6 +286,7 @@ export default async function Repl(
       numeric_literal_pool_prefix:
         `ρσ_repl_${numericLiteralPoolCounter++}_`,
       module_cache_dir: moduleCacheDir,
+      module_registry: "ρσ_modules",
     });
     ast.print(output);
     return output.get();
@@ -305,6 +307,7 @@ export default async function Repl(
       options.sage ? "sage" : "python",
       pythonFrontend!,
       dynamicPythonFrontend!,
+      importDirs,
     );
     runInThisContext('var __name__ = "__repl__"; show_js=false;');
   }
@@ -499,6 +502,7 @@ export default async function Repl(
         jsage: options.sage,
         exact_integer_literals: true,
         strict_python_scopes: true,
+        runtime_imports: true,
         module_cache_dir: moduleCacheDir,
         precompiled_module_cache_dir: precompiledModuleCacheDir,
         tokens: options.tokens,
@@ -615,9 +619,8 @@ export default async function Repl(
   });
   function queueLine(line: string): void {
     lineQueue = lineQueue.then(async () => {
-      const frontend = ensurePythonFrontend();
+      await ensurePythonFrontend();
       initContext();
-      await frontend;
       readLine(line);
     }).catch((error) => {
       options.console.error(error?.stack ?? error);

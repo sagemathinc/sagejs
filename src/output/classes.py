@@ -1,6 +1,9 @@
 from __python__ import hash_literals
 
-from ast_types import AST_Class, AST_Method, AST_SymbolNonlocal, AST_SymbolRef, AST_Var, is_node_type
+from ast_types import (
+    AST_AnnotatedAssignment, AST_Class, AST_Method,
+    AST_SymbolNonlocal, AST_SymbolRef, AST_Var, is_node_type
+)
 from output.functions import decorate, function_definition, function_annotation
 from output.utils import create_doctring
 from utils import has_prop
@@ -10,6 +13,16 @@ def print_class(output):
     self = this
     if self.external:
         return
+    # Runtime-loaded package modules do not participate in the compiler's
+    # cross-module class metadata cache. Keep emission robust when an imported
+    # base supplied only the minimal dynamic shell used during lowering.
+    self['static'] = self['static'] or {}
+    self.classmethods = self.classmethods or {}
+    self.bound = self.bound or []
+    self.dynamic_properties = self.dynamic_properties or {}
+    self.classvars = self.classvars or {}
+    self.bases = self.bases or []
+    self.namedtuple_fields = self.namedtuple_fields or []
     compiling_baselib = (
         output.options.omit_baselib
         and not output.options.private_scope
@@ -27,7 +40,7 @@ def print_class(output):
     def class_def(method, is_var):
         output.indent()
         self.name.print(output)
-        if not is_var and method and has_prop(self.static, method):
+        if not is_var and method and has_prop(self['static'], method):
             output.assign("." + method)
         else:
             if is_var:
@@ -42,7 +55,7 @@ def print_class(output):
         if not is_property:
             class_def(name)
         # only strip first argument if the method is static
-        is_static = has_prop(self.static, name)
+        is_static = has_prop(self['static'], name)
         is_classmethod = has_prop(self.classmethods, name)
         strip_first = not is_static
 
@@ -57,7 +70,8 @@ def print_class(output):
                     True,
                     javascript_name,
                 ))
-            output.end_statement()
+            if not is_property:
+                output.end_statement()
         else:
             function_definition(
                 stmt,
@@ -105,26 +119,32 @@ def print_class(output):
         output.with_block(lambda: [output.indent(), body()])
         output.end_statement()
 
-    def add_hidden_property(name, proceed):
+    def add_hidden_property(name, proceed, writable=False):
         output.indent(), output.print('Object.defineProperty(')
         self.name.print(
             output), output.print('.prototype'), output.comma(), output.print(
                 JSON.stringify(name)), output.comma()
         output.spaced(
             '{value:',
-            ''), proceed(), output.print('})'), output.end_statement()
+            ''), proceed()
+        if writable:
+            output.print(', writable:true, configurable:true')
+        output.print('})'), output.end_statement()
 
-    def add_hidden_class_property(name, proceed):
+    def add_hidden_class_property(name, proceed, writable=False):
         output.indent(), output.print('Object.defineProperty(')
         self.name.print(output), output.comma(), output.print(
             JSON.stringify(name)), output.comma()
         output.spaced(
             '{value:',
-            ''), proceed(), output.print('})'), output.end_statement()
+            ''), proceed()
+        if writable:
+            output.print(', writable:true, configurable:true')
+        output.print('})'), output.end_statement()
 
     # generate constructor
     def write_constructor():
-        uses_python_new = has_prop(self.static, '__new__')
+        uses_python_new = has_prop(self['static'], '__new__')
         instance_name = 'ρσ_python_instance' if uses_python_new else 'this'
         output.print("function")
         output.space()
@@ -295,6 +315,9 @@ def print_class(output):
     add_hidden_class_property(
         '__name__',
         lambda: output.print(JSON.stringify(self.name.name)))
+    add_hidden_class_property(
+        '__qualname__',
+        lambda: output.print(JSON.stringify(self.name.name)))
 
     def print_class_module():
         if self.module_id:
@@ -306,6 +329,40 @@ def print_class(output):
     add_hidden_class_property(
         '__module__',
         print_class_module)
+
+    class_annotations = []
+    for statement in self.body:
+        annotated = statement
+        if not is_node_type(annotated, AST_AnnotatedAssignment):
+            annotated = getattr(statement, 'body', None)
+        if (
+            is_node_type(annotated, AST_AnnotatedAssignment)
+            and is_node_type(annotated.target, AST_SymbolRef)
+        ):
+            class_annotations.append(annotated)
+    if class_annotations.length:
+        def print_class_annotations():
+            if compiling_baselib:
+                output.print('{')
+                for index, annotated in enumerate(class_annotations):
+                    if index:
+                        output.comma()
+                    output.print(JSON.stringify(annotated.target.name))
+                    output.colon()
+                    annotated.annotation.print(output)
+                output.print('}')
+                return
+            output.print('(function(){var ρσ_annotations = ρσ_dict();')
+            for annotated in class_annotations:
+                output.print('ρσ_annotations.set(')
+                output.print(JSON.stringify(annotated.target.name))
+                output.comma()
+                annotated.annotation.print(output)
+                output.print(');')
+            output.print('return ρσ_annotations;})()')
+
+        add_hidden_class_property(
+            '__annotations__', print_class_annotations, True)
 
     if decorators.length:
         output.indent()
@@ -485,6 +542,11 @@ def print_class(output):
                 output.end_statement()
 
         define_default_method('__init__', f_default)
+        output.indent()
+        self.name.print(output)
+        output.print(
+            '.prototype.__init__.__sagejs_synthetic_init__ = true')
+        output.end_statement()
 
     defined_methods = {}
 
@@ -532,7 +594,10 @@ def print_class(output):
                 output.end_statement()
 
         elif is_node_type(stmt, AST_Class):
-            console.error('Nested classes aren\'t supported yet')  # noqa:undef
+            stmt.print(output)
+            class_def(JSON.stringify(stmt.name.name), True)
+            stmt.name.print(output)
+            output.end_statement()
 
     if defined_methods['__next__']:
         class_def('next', False)
@@ -561,6 +626,11 @@ def print_class(output):
             output.end_statement()
 
         define_default_method('__repr__', f_repr)
+        output.indent()
+        self.name.print(output)
+        output.print(
+            '.prototype.__repr__.__sagejs_synthetic_method__ = true')
+        output.end_statement()
 
     if (
         not defined_methods['__str__']
@@ -577,6 +647,11 @@ def print_class(output):
             output.end_statement()
 
         define_default_method('__str__', f_str)
+        output.indent()
+        self.name.print(output)
+        output.print(
+            '.prototype.__str__.__sagejs_synthetic_method__ = true')
+        output.end_statement()
 
     # Multiple inheritance
     def f_basis():
@@ -594,6 +669,15 @@ def print_class(output):
     add_hidden_property('__bases__', f_basis)
     add_hidden_class_property('__bases__', f_basis)
 
+    def f_mro():
+        output.print('ρσ_compute_mro(')
+        self.name.print(output)
+        output.comma()
+        f_basis()
+        output.print(')')
+
+    add_hidden_class_property('__mro__', f_mro)
+
     if self.bases.length > 1:
         output.indent()
         output.print("ρσ_mixin(")
@@ -609,8 +693,8 @@ def print_class(output):
         def f_doc():
             output.print(JSON.stringify(create_doctring(self.docstrings)))
 
-        add_hidden_property('__doc__', f_doc)
-        add_hidden_class_property('__doc__', f_doc)
+        add_hidden_property('__doc__', f_doc, True)
+        add_hidden_class_property('__doc__', f_doc, True)
 
     # Other statements in the class context
     for stmt in self.statements:
@@ -732,7 +816,16 @@ def print_class(output):
             output.print('.prototype)')
             output.end_statement()
 
-    for classvar_name in Object.keys(self.classvars):
+    # A property alias such as ``old_name = new_name`` is represented as a
+    # native prototype descriptor.  Reading it from the prototype here would
+    # execute its getter with the prototype as ``self``.  It is not also a
+    # class variable, and native properties have no Python ``__set_name__``
+    # hook to call.
+    classvar_names = [
+        name for name in Object.keys(self.classvars)
+        if not self.dynamic_properties[name]
+    ]
+    for classvar_name in classvar_names:
         output.indent()
         output.print('if (typeof ')
         self.name.print(output)
@@ -743,7 +836,6 @@ def print_class(output):
         self.name.print(output)
         output.print('.prototype.' + classvar_name)
         output.end_statement()
-    classvar_names = Object.keys(self.classvars)
     if classvar_names.length:
         output.indent()
         output.print('ρσ_call_set_names(')
@@ -760,7 +852,7 @@ def print_class(output):
                 '.prototype.' + classvar_names[index])
         output.print('])')
         output.end_statement()
-    inherited_callable_names = Object.keys(self.static).concat(
+    inherited_callable_names = Object.keys(self['static']).concat(
         Object.keys(self.classmethods))
     for method_name in inherited_callable_names:
         output.indent()
@@ -825,6 +917,16 @@ def print_class(output):
             output.end_statement()
 
         output.with_block(call_build_class_hook)
+
+    if self.namedtuple_fields.length:
+        output.indent()
+        output.assign(self.name)
+        output.print('ρσ_finalize_namedtuple_class(')
+        self.name.print(output)
+        output.comma()
+        output.print(JSON.stringify(self.namedtuple_fields))
+        output.print(')')
+        output.end_statement()
 
     # Definitions should not display their implementation object merely
     # because the class is the final statement entered in the REPL.

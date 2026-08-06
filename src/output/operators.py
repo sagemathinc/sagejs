@@ -793,6 +793,17 @@ def print_seq(output):
                 output.indent()
             self.cdr.print(output)
 
+    def print_tuple_items():
+        for index, item in enumerate(self.to_array()):
+            if index:
+                output.comma()
+            if is_node_type(item, AST_Unary) and item.operator is '*':
+                output.print('...Array.from(ρσ_Iterable(')
+                item.expression.print(output)
+                output.print('))')
+            else:
+                item.print(output)
+
     # this will effectively convert tuples to arrays
     if (is_node_type(p, AST_Binary) or is_node_type(p, AST_Return)
             or is_node_type(p, AST_Array) or is_node_type(p, AST_BaseCall)
@@ -824,7 +835,8 @@ def print_seq(output):
             )):
         if output.options.python_tuples:
             output.print('ρσ_math_tuple(')
-        output.with_square(print_seq0)
+        output.with_square(
+            print_tuple_items if output.options.python_tuples else print_seq0)
         if output.options.python_tuples:
             output.print(')')
     else:

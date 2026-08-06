@@ -27,6 +27,20 @@ def ρσ_exception_value(value: object) -> object:
     raise TypeError('exceptions must derive from BaseException')
 
 
+def ρσ_function_argument_error(
+    message: str,
+    target_function: object,
+) -> object:
+    """Create an argument-binding error attributed to the Python call site."""
+    error = runtime.type_error(message)
+    capture = runtime.reflect.get(runtime.error, 'captureStackTrace')
+    if runtime.strict_equal(runtime.jstype(capture), 'function'):
+        runtime.reflect.apply(
+            capture, runtime.error, [error, target_function])
+    runtime.reflect.set(error, '__sagejs_argument_error__', True)
+    return error
+
+
 class BaseException(runtime.error):
 
     def __init__(self, *args: object) -> None:
@@ -42,12 +56,23 @@ class BaseException(runtime.error):
         error = runtime.error(message)
         error.name = self.name
         self.stack = error.stack
+        # Until an embedding provides structured frame objects, the native
+        # Error itself is our traceback-like carrier.  ``traceback.extract_tb``
+        # understands its stack string.
+        self.__traceback__ = self
+        self.__cause__ = None
+        self.__context__ = None
+        self.__suppress_context__ = False
 
     def __repr__(self) -> str:
         return self.name + runtime.repr(self.args)
 
     def __str__(self) -> str:
         return self.message
+
+    def with_traceback(self, traceback: object) -> BaseException:
+        self.__traceback__ = traceback
+        return self
 
 
 class Exception(BaseException):
@@ -122,6 +147,50 @@ class MemoryError(Exception):
     pass
 
 
+class Warning(Exception):
+    pass
+
+
+class UserWarning(Warning):
+    pass
+
+
+class DeprecationWarning(Warning):
+    pass
+
+
+class PendingDeprecationWarning(Warning):
+    pass
+
+
+class SyntaxWarning(Warning):
+    pass
+
+
+class RuntimeWarning(Warning):
+    pass
+
+
+class FutureWarning(Warning):
+    pass
+
+
+class ImportWarning(Warning):
+    pass
+
+
+class UnicodeWarning(Warning):
+    pass
+
+
+class BytesWarning(Warning):
+    pass
+
+
+class ResourceWarning(Warning):
+    pass
+
+
 class OSError(Exception):
 
     def __init__(self, *args: object) -> None:
@@ -171,7 +240,19 @@ class NotImplementedError(RuntimeError):
     pass
 
 
-class UnicodeDecodeError(Exception):
+class UnicodeError(ValueError):
+    pass
+
+
+class UnicodeEncodeError(UnicodeError):
+    pass
+
+
+class UnicodeDecodeError(UnicodeError):
+    pass
+
+
+class UnicodeTranslateError(UnicodeError):
     pass
 
 
@@ -223,6 +304,17 @@ for _exception_class in [
     EOFError,
     ImportError,
     MemoryError,
+    Warning,
+    UserWarning,
+    DeprecationWarning,
+    PendingDeprecationWarning,
+    SyntaxWarning,
+    RuntimeWarning,
+    FutureWarning,
+    ImportWarning,
+    UnicodeWarning,
+    BytesWarning,
+    ResourceWarning,
     OSError,
     FileNotFoundError,
     FileExistsError,
@@ -231,7 +323,10 @@ for _exception_class in [
     NotADirectoryError,
     IndentationError,
     NotImplementedError,
+    UnicodeError,
+    UnicodeEncodeError,
     UnicodeDecodeError,
+    UnicodeTranslateError,
     AssertionError,
     ZeroDivisionError,
     OverflowError,

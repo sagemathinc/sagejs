@@ -48,6 +48,11 @@ def _get_member(value: Any, name: str) -> Any:
     return runtime.reflect.get(boxed, name)
 
 
+def _native_delete(container: Any, key: Any) -> bool:
+    return runtime.reflect.apply(
+        runtime.reflect.get(container, 'delete'), container, [key])
+
+
 def equals(left: Any, right: Any) -> bool:
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
@@ -622,12 +627,15 @@ def _set_has_value(native_set: Any, value: Any) -> bool:
 
 def _set_delete_value(native_set: Any, value: Any) -> bool:
     normalized = _set_normalize_value(value)
-    if native_set.delete(normalized):
+    delete_method = runtime.reflect.get(native_set, 'delete')
+    if runtime.reflect.apply(delete_method, native_set, [normalized]):
         return True
     if runtime.strict_equal(normalized, 0):
-        return native_set.delete(False)
+        return runtime.reflect.apply(
+            delete_method, native_set, [False])
     if runtime.strict_equal(normalized, 1):
-        return native_set.delete(True)
+        return runtime.reflect.apply(
+            delete_method, native_set, [True])
     return False
 
 
@@ -715,7 +723,7 @@ class SageSet:
         converted = [self._from_iterable(other) for other in others]
         for value in list_constructor(self):
             if any(other.has(value) for other in converted):
-                self.jsset.delete(value)
+                _native_delete(self.jsset, value)
 
     def intersection(self, *others: Any) -> SageSet:
         converted = [self._from_iterable(other) for other in others]
@@ -729,7 +737,7 @@ class SageSet:
         converted = [self._from_iterable(other) for other in others]
         for value in list_constructor(self):
             if not all(other.has(value) for other in converted):
-                self.jsset.delete(value)
+                _native_delete(self.jsset, value)
 
     def isdisjoint(self, other: Any) -> bool:
         converted = self._from_iterable(other)
@@ -752,7 +760,7 @@ class SageSet:
         result = self.jsset.values().next()
         if result.done:
             raise KeyError('pop from an empty set')
-        self.jsset.delete(result.value)
+        _native_delete(self.jsset, result.value)
         return result.value
 
     def remove(self, value: Any) -> None:
@@ -1124,8 +1132,8 @@ class SageDict:
         normalized_key = _dict_normalize_key(key)
         if not self.jsmap.has(normalized_key):
             raise KeyError(key)
-        self.jsmap.delete(normalized_key)
-        self.keymap.delete(normalized_key)
+        _native_delete(self.jsmap, normalized_key)
+        _native_delete(self.keymap, normalized_key)
 
     def __getitem__(self, key: Any) -> Any:
         normalized_key = _dict_normalize_key(key)
@@ -1218,17 +1226,17 @@ class SageDict:
             if default_value is runtime.undefined:
                 raise KeyError(key)
             return default_value
-        self.jsmap.delete(normalized_key)
-        self.keymap.delete(normalized_key)
+        _native_delete(self.jsmap, normalized_key)
+        _native_delete(self.keymap, normalized_key)
         return answer
 
     def popitem(self) -> Any:
         result = self.jsmap.entries().next()
         if result.done:
             raise KeyError('dict is empty')
-        self.jsmap.delete(result.value[0])
+        _native_delete(self.jsmap, result.value[0])
         key = self.keymap.get(result.value[0])
-        self.keymap.delete(result.value[0])
+        _native_delete(self.keymap, result.value[0])
         return runtime.math_tuple([key, result.value[1]])
 
     def update(

@@ -112,8 +112,14 @@ def ρσ_repr(value: Any) -> _Str:
         '__repr__',
     )
     if _value_type_is(repr_method, 'function'):
-        representation = runtime.reflect.apply(
-            repr_method, value, [])
+        if runtime.reflect.get(
+            repr_method, '__python_descriptor__'
+        ) is True:
+            representation = runtime.reflect.apply(
+                repr_method, runtime.undefined, [value])
+        else:
+            representation = runtime.reflect.apply(
+                repr_method, value, [])
     elif value is True or value is False:
         representation = 'True' if value else 'False'
     elif runtime.array.isArray(value):
@@ -183,10 +189,34 @@ def ρσ_str(
         runtime.object, runtime.undefined, [value])
     str_method = runtime.reflect.get(boxed, '__str__')
     repr_method = runtime.reflect.get(boxed, '__repr__')
-    if _value_type_is(str_method, 'function'):
-        answer = runtime.reflect.apply(str_method, value, [])
+    if (
+        _value_type_is(str_method, 'function')
+        and runtime.reflect.get(
+            str_method, '__sagejs_synthetic_method__'
+        ) is True
+        and _value_type_is(repr_method, 'function')
+        and runtime.reflect.get(
+            repr_method, '__python_descriptor__'
+        ) is True
+    ):
+        answer = runtime.reflect.apply(
+            repr_method, runtime.undefined, [value])
+    elif _value_type_is(str_method, 'function'):
+        if runtime.reflect.get(
+            str_method, '__python_descriptor__'
+        ) is True:
+            answer = runtime.reflect.apply(
+                str_method, runtime.undefined, [value])
+        else:
+            answer = runtime.reflect.apply(str_method, value, [])
     elif _value_type_is(repr_method, 'function'):
-        answer = runtime.reflect.apply(repr_method, value, [])
+        if runtime.reflect.get(
+            repr_method, '__python_descriptor__'
+        ) is True:
+            answer = runtime.reflect.apply(
+                repr_method, runtime.undefined, [value])
+        else:
+            answer = runtime.reflect.apply(repr_method, value, [])
     elif value is True or value is False:
         answer = 'True' if value else 'False'
     elif runtime.array.isArray(value):
@@ -872,6 +902,13 @@ def _str_isdigit(string: Any) -> bool:
         _native_string(string))
 
 
+def _str_isidentifier(string: Any) -> bool:
+    """Return whether *string* is a syntactically valid Python identifier."""
+    return runtime.regexp(
+        r'^[_\p{ID_Start}][_\p{ID_Continue}]*$', 'u'
+    ).test(_native_string(string))
+
+
 def _str_join(separator: Any, iterable: Any) -> _Str:
     # Native methods receive a boxed String as ``self`` on some JavaScript
     # engines.  It is still a Python str; normalize only the receiver while
@@ -903,6 +940,43 @@ def _str_lower(string: Any) -> _Str:
 
 def _str_upper(string: Any) -> _Str:
     return _upper(string)
+
+
+def _str_title(string: Any) -> _Str:
+    string = _native_string(string)
+    answer = ''
+    previous_cased = False
+    for character in string:
+        cased = _str_isalpha(character)
+        if cased:
+            if previous_cased:
+                answer += _str_lower(character)
+            else:
+                answer += _str_upper(character)
+        else:
+            answer += character
+        previous_cased = cased
+    return answer
+
+
+def _str_expandtabs(string: Any, tabsize: int = 8) -> _Str:
+    """Expand tabs using Python's column-based tab stops."""
+    text = _native_string(string)
+    size = int(tabsize)
+    answer = ''
+    column = 0
+    for character in text:
+        if character == '\t':
+            spaces = 0 if size <= 0 else size - column % size
+            answer += _repeat(' ', spaces)
+            column += spaces
+        else:
+            answer += character
+            if character == '\n' or character == '\r':
+                column = 0
+            else:
+                column += 1
+    return answer
 
 
 def _str_lstrip(string: Any, characters: Any = runtime.undefined) -> _Str:
@@ -1413,11 +1487,14 @@ _define_string_method('isupper', _str_isupper)
 _define_string_method('isspace', _str_isspace)
 _define_string_method('isalpha', _str_isalpha)
 _define_string_method('isdigit', _str_isdigit)
+_define_string_method('isidentifier', _str_isidentifier)
 _define_string_method('join', _str_join)
 _define_string_method('ljust', _str_ljust)
 _define_string_method('rjust', _str_rjust)
 _define_string_method('lower', _str_lower)
 _define_string_method('upper', _str_upper)
+_define_string_method('title', _str_title)
+_define_string_method('expandtabs', _str_expandtabs)
 _define_string_method('lstrip', _str_lstrip)
 _define_string_method('rstrip', _str_rstrip)
 _define_string_method('strip', _str_strip)

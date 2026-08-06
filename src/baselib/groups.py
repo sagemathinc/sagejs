@@ -552,7 +552,11 @@ class MatrixGroupParent(sage.Parent):
                     if not class_seen.has(conjugate_key):
                         class_seen.set(conjugate_key, True)
                         conjugates.append(conjugate)
-                        remaining.delete(conjugate_key)
+                        runtime.reflect.apply(
+                            runtime.reflect.get(remaining, 'delete'),
+                            remaining,
+                            [conjugate_key]
+                        )
         return runtime.math_tuple(representatives)
 
     def __repr__(self) -> str:

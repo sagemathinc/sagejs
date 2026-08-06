@@ -821,7 +821,7 @@ def namedtuple(type_name: str, field_names: Any) -> Any:
 
     tuple_class.__name__ = type_name
     tuple_class._fields = runtime.math_tuple(names)
-    runtime.object.setPrototypeOf(
+    runtime.reflect.setPrototypeOf(
         tuple_class.prototype,
         runtime.tuple_builtin.prototype,
     )

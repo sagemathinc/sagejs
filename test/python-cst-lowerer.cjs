@@ -106,6 +106,26 @@ test("Sage percent-time is represented and emitted by the compiler", async () =>
   }
 });
 
+test("comprehension targets stay in their implicit Python 3 scope", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "values = [v for v in range(3)]\n" +
+      "mapping = {key: value for key, value in [(1, 2)]}\n",
+      parserOptions,
+    );
+    const exports = ast.exports.map((symbol) => symbol.name);
+    assert.deepEqual(exports.sort(), ["mapping", "values"]);
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.doesNotMatch(javascript.split("\n")[0], /\bv\b/);
+  } finally {
+    frontend.close();
+  }
+});
+
 test("lowering preserves tuple, assignment-target, class, and native-object boundaries", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");

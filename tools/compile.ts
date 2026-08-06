@@ -69,6 +69,7 @@ interface OutputOptions {
   python_attributes?: boolean;
   pool_numeric_literals?: boolean;
   numeric_literal_pool_prefix?: string;
+  module_registry?: string;
 }
 
 export default async function Compile({
@@ -134,6 +135,7 @@ export default async function Compile({
     python_truthiness: true,
     python_attributes: true,
     pool_numeric_literals: true,
+    module_registry: argv.execute ? "ρσ_modules" : undefined,
   } as OutputOptions;
 
   const files: string[] = argv.files.slice();
@@ -154,6 +156,7 @@ export default async function Compile({
       jsage: argv.sage,
       exact_integer_literals: true,
       strict_python_scopes: true,
+      runtime_imports: !!argv.execute,
       scoped_flags: {
         dict_literals: true,
         overload_getitem: true,
@@ -341,6 +344,7 @@ export default async function Compile({
         argv.sage ? "sage" : "python",
         pythonFrontend,
         dynamicPythonFrontend,
+        getImportDirs(argv.import_path),
       );
     }
   }

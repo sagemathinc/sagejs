@@ -101,9 +101,15 @@ if (argv.mode === "self") {
     mathematica: !!argv.mathematica,
     emitSage: !!argv.emit_sage,
     tokens: argv.tokens,
+    importDirs: load("utils").getImportDirs(argv.import_path),
   });
 } else if (argv.mode === "msgfmt") {
   load("msgfmt").cli(argv, basePath, srcPath, compilerPath);
+} else if (argv.mode === "pip") {
+  load("python-packages").runPackageCli(argv).catch((error) => {
+    console.error(error?.stack ?? error);
+    process.exitCode = 1;
+  });
 } else if (argv.mode === "docs") {
   load("docs").runDocumentationCli(argv, basePath).catch((error) => {
     console.error(error?.message ?? String(error));

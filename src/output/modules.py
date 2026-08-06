@@ -11,7 +11,8 @@ from output.functions import set_module_name
 from compiler_version import get_compiler_version
 from utils import cache_file_name
 from ast_types import (
-    AST_Call, AST_String, AST_SymbolRef, TreeWalker, is_node_type)
+    AST_Call, AST_Class, AST_Lambda, AST_String, AST_SymbolRef, AST_Toplevel,
+    TreeWalker, is_node_type)
 
 
 def prepare_numeric_literal_pool(module, output):
@@ -71,7 +72,7 @@ def write_imports(module, output):
     for import_id in Object.keys(module.imports):
         imports.push(module.imports[import_id])
 
-    imports.sort(lambda entry: entry.import_order)
+    imports.sort(lambda left, right: left.import_order - right.import_order)
     output.indent()
     if output.options.module_registry:
         output.print('var ρσ_modules = globalThis[')
@@ -127,6 +128,28 @@ def write_imports(module, output):
         output.space(), output.print('='), output.space(), output.print('{}')
         output.end_statement()
 
+    # Every loaded child module is also an attribute of its parent package.
+    # Python establishes this relationship independently of whether user code
+    # wrote ``import package.child`` or ``from package import child``.
+    for module_ in imports:
+        module_id = module_.module_id
+        if module_.dynamic or module_id.indexOf('.') is -1:
+            continue
+        parts = module_id.split('.')
+        parent_id = parts.slice(0, -1).join('.')
+        child_name = parts[parts.length - 1]
+        output.indent()
+        output.print('if (ρσ_modules[')
+        output.print_string(parent_id)
+        output.print(']) ρσ_modules[')
+        output.print_string(parent_id)
+        output.print('][')
+        output.print_string(child_name)
+        output.print('] = ρσ_modules[')
+        output.print_string(module_id)
+        output.print(']')
+        output.end_statement()
+
     # Output module code
     for module_ in imports:
         if module_.module_id is not '__main__' and not module_.dynamic:
@@ -137,7 +160,10 @@ def write_main_name(output, filename=None):
     if output.options.write_name:
         output.newline()
         output.indent()
-        output.print('var __name__ = "__main__"')
+        output.print(
+            'var __name__ = "__main__", __package__ = null, '
+            '__loader__ = null, __spec__ = null, __cached__ = null, '
+            '__builtins__ = ρσ_modules.builtins || {}')
         output.semicolon()
         if filename:
             output.newline()
@@ -146,6 +172,54 @@ def write_main_name(output, filename=None):
             output.semicolon()
         output.newline()
         output.newline()
+
+
+def module_directory(filename):
+    normalized = filename.replaceAll('\\', '/')
+    index = normalized.lastIndexOf('/')
+    return normalized.slice(0, index) if index >= 0 else '.'
+
+
+def write_module_metadata(module, output):
+    """Create the standard import globals for an ordinary Python module."""
+    module_id = module.module_id
+    filename = module.filename or ''
+    normalized = filename.replaceAll('\\', '/')
+    is_package = normalized.endsWith('/__init__.py')
+    package_name = (
+        module_id if is_package
+        else '.'.join(module_id.split('.')[:-1]))
+    directory = module_directory(filename)
+
+    output.indent()
+    output.print('var __name__ = ')
+    output.print_string(module_id)
+    output.print(', __file__ = ')
+    output.print_string(filename)
+    output.print(', __package__ = ')
+    output.print_string(package_name)
+    output.print(', __loader__ = null, __cached__ = null')
+    output.print(', __builtins__ = ρσ_modules.builtins || {}')
+    if is_package:
+        output.print(', __path__ = [')
+        output.print_string(directory)
+        output.print(']')
+    output.end_statement()
+
+    output.indent()
+    output.print('var __spec__ = {name:')
+    output.print_string(module_id)
+    output.print(',parent:')
+    output.print_string(package_name)
+    output.print(',origin:')
+    output.print_string(filename)
+    output.print(',loader:null,submodule_search_locations:')
+    if is_package:
+        output.print('__path__')
+    else:
+        output.print('null')
+    output.print('}')
+    output.end_statement()
 
 
 def bind_module_namespace(module, output, hidden_names=None):
@@ -171,10 +245,35 @@ def bind_module_namespace(module, output, hidden_names=None):
         if not seen[symbol.name]:
             seen[symbol.name] = True
             names.push(symbol.name)
+
+    # Definitions executed in module-level control flow (for example, a
+    # platform-dependent ``if`` or import fallback ``try``) are still module
+    # globals.  The legacy scope analysis does not include every such nested
+    # definition in ``localvars``, so collect their names while deliberately
+    # stopping at function and class scope boundaries.
+    def collect_control_flow_definition(node, descend):
+        if is_node_type(node, AST_Toplevel):
+            return
+        if is_node_type(node, AST_Lambda) or is_node_type(node, AST_Class):
+            if node.name and node.name.name and not seen[node.name.name]:
+                seen[node.name.name] = True
+                names.push(node.name.name)
+            return True
+
+    module.walk(TreeWalker(collect_control_flow_definition))
     magic_names = []
-    if output.options.write_name:
-        magic_names.push('__name__')
-        if module_id is '__main__' and module.filename:
+    if module_id is not '__main__':
+        magic_names = [
+            '__name__', '__file__', '__package__', '__loader__', '__spec__',
+            '__cached__', '__builtins__']
+        normalized_filename = (module.filename or '').replaceAll('\\', '/')
+        if normalized_filename.endsWith('/__init__.py'):
+            magic_names.push('__path__')
+    elif output.options.write_name:
+        magic_names = [
+            '__name__', '__package__', '__loader__', '__spec__', '__cached__',
+            '__builtins__']
+        if module.filename:
             magic_names.push('__file__')
     for name in magic_names:
         if not seen[name]:
@@ -216,7 +315,12 @@ def bind_module_namespace(module, output, hidden_names=None):
     output.end_statement()
 
     output.indent()
-    output.print('Object.defineProperty(')
+    output.print('if (!Object.prototype.hasOwnProperty.call(')
+    if module_id.indexOf('.') is -1:
+        output.print('ρσ_modules.' + module_id)
+    else:
+        output.print('ρσ_modules["' + module_id + '"]')
+    output.print(',"__repr__")) Object.defineProperty(')
     if module_id.indexOf('.') is -1:
         output.print('ρσ_modules.' + module_id)
     else:
@@ -360,6 +464,8 @@ def print_top_level(self, output):
             write_imports(self, output)
             set_module_name(self.module_id)
             write_main_name(output, self.filename)
+        else:
+            write_module_metadata(self, output)
 
         write_numeric_literal_pool(numeric_literal_pool, output)
         declare_vars(self.localvars, output)
@@ -393,13 +499,7 @@ def print_module(self, output):
 
         def dump_the_logic_of_this_module():
             print_comments(self, output)
-            if output.options.write_name:
-                output.indent()
-                output.print('var ')
-                output.assign('__name__')
-                output.print('"' + self.module_id + '"')
-                output.semicolon()
-                output.newline()
+            write_module_metadata(self, output)
 
             def output_key(beautify, keep_docstrings):
                 return 'beautify:' + beautify + ' keep_docstrings:' + keep_docstrings
@@ -428,9 +528,17 @@ def print_module(self, output):
                             'name': {
                                 'name': cobj.name.name
                             },
-                            'static': cobj.static,
+                            'static': cobj['static'],
                             'bound': cobj.bound,
-                            'classvars': cobj.classvars
+                            'classvars': cobj.classvars,
+                            # Only the names are compiler metadata in an
+                            # imported-module cache.  The descriptor bodies
+                            # remain in that module's emitted JavaScript.
+                            'dynamic_properties': {
+                                name: True
+                                for name in Object.keys(
+                                    cobj.dynamic_properties or {})
+                            }
                         }
                     for symdef in self.exports:
                         cached.exports.push({'name': symdef.name})
@@ -504,9 +612,12 @@ def print_imports(container, output):
                 "cannot import name '" + from_import + "'")
             output.print(')')
             output.end_statement()
-            output.indent()
+        output.indent()
         output.print('var ')
-        output.assign(aname)
+        output.print_name(aname)
+        output.space()
+        output.print('=')
+        output.space()
         if key.indexOf('.') is -1:
             output.print('ρσ_modules.'), output.print(key)
         else:
@@ -574,6 +685,18 @@ def print_imports(container, output):
         output.with_block(copy_star_name)
 
     def dynamic_import(self):
+        def publish_local(name):
+            if not self.target_module or self.target_module is '__main__':
+                return
+            output.indent()
+            output.print('ρσ_modules[')
+            output.print_string(self.target_module)
+            output.print('][')
+            output.print_string(name)
+            output.print('] = ')
+            output.print_name(name)
+            output.end_statement()
+
         output.print('var ρσ_imported_module')
         output.end_statement()
         output.indent()
@@ -582,14 +705,22 @@ def print_imports(container, output):
         def default_import():
             output.indent()
             output.assign('ρσ_imported_module')
-            output.print('Reflect.get(ρσ_modules, ')
+            output.print('__import__(')
             output.print_string(self.key)
-            output.print(')')
-            output.end_statement()
-            output.indent()
-            output.print('if (ρσ_imported_module === undefined) ')
-            output.print('throw new ImportError(')
-            output.print_string("No module named '" + self.key + "'")
+            output.print(', null, null, ')
+            if self.argnames:
+                output.print('ρσ_math_tuple([')
+                for index, argname in enumerate(self.argnames):
+                    if index:
+                        output.comma()
+                    output.print_string(argname.name)
+                output.print('])')
+            elif self.star or self.alias:
+                output.print('ρσ_math_tuple(["*"])')
+            else:
+                output.print('null')
+            output.comma()
+            output.print(str(self.level or 0))
             output.print(')')
             output.end_statement()
 
@@ -609,7 +740,7 @@ def print_imports(container, output):
                         output.comma()
                     output.print_string(argname.name)
                 output.print('])')
-            elif self.star:
+            elif self.star or self.alias:
                 output.print('ρσ_math_tuple(["*"])')
             else:
                 output.print('null')
@@ -629,21 +760,31 @@ def print_imports(container, output):
             import_star(self.key, self.target_module)
         elif self.argnames:
             for argname in self.argnames:
+                local_name = (
+                    argname.alias.name if argname.alias else argname.name)
                 output.indent()
                 output.print('var ')
-                output.assign(
-                    argname.alias.name if argname.alias else argname.name)
+                output.print_name(local_name)
+                output.space()
+                output.print('=')
+                output.space()
                 output.print('ρσ_getattr(ρσ_imported_module, ')
                 output.print_string(argname.name)
                 output.print(')')
                 output.end_statement()
+                publish_local(local_name)
         else:
+            local_name = (
+                self.alias.name if self.alias else self.key.split('.')[0])
             output.indent()
             output.print('var ')
-            output.assign(
-                self.alias.name if self.alias else self.key.split('.')[0])
+            output.print_name(local_name)
+            output.space()
+            output.print('=')
+            output.space()
             output.print('ρσ_imported_module')
             output.end_statement()
+            publish_local(local_name)
 
     for self in container.imports:
         if self.intrinsic:
@@ -672,3 +813,10 @@ def print_imports(container, output):
                         output.indent()
                         output.spaced(q, '=', 'ρσ_modules["' + q + '"]')
                         output.end_statement()
+    if container.imports.length:
+        # JavaScript reports the last assignment performed inside an import
+        # statement as a script completion value.  Python import statements
+        # never display a value in a REPL or notebook cell.
+        output.indent()
+        output.print('undefined')
+        output.end_statement()

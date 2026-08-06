@@ -6,6 +6,7 @@
  */
 
 import { statSync } from "fs";
+import { homedir } from "os";
 import { delimiter } from "path";
 import { createHash } from "crypto";
 import { EventEmitter } from "events";
@@ -152,7 +153,21 @@ export function getImportDirs(paths_string?: string, ignore_env?: boolean) {
   if (paths_string) {
     paths_string.split(delimiter).forEach(merge);
   }
+  if (!ignore_env) merge(sitePackagesDirectory());
   return paths;
+}
+
+/** User-writable home for distributions installed by ``sagejs pip``. */
+export function sitePackagesDirectory(): string {
+  if (process.env.SAGEJS_SITE_PACKAGES) {
+    return normalize(process.env.SAGEJS_SITE_PACKAGES);
+  }
+  if (process.platform === "win32") {
+    const local = process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local");
+    return join(local, "SageJS", "site-packages");
+  }
+  const data = process.env.XDG_DATA_HOME || join(homedir(), ".local", "share");
+  return join(data, "sagejs", "site-packages");
 }
 
 export function sha1sum(data) {

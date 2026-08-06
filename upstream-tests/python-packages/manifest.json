@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "python": "3.14",
+  "packages": [
+    {
+      "name": "packaging",
+      "version": "26.2",
+      "wheel": "packaging-26.2-py3-none-any.whl",
+      "sha256": "5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e",
+      "source": "from packaging.version import Version\nversions = sorted([Version('2'), Version('1.0rc1'), Version('1.0')])\nprint([str(value) for value in versions])\nprint(Version('1!2.0.post3+linux.1').epoch)\n",
+      "stdout": "['1.0rc1', '1.0', '2']\n1\n"
+    },
+    {
+      "name": "six",
+      "version": "1.17.0",
+      "wheel": "six-1.17.0-py2.py3-none-any.whl",
+      "sha256": "4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274",
+      "source": "import six\nprint(six.__version__)\nprint(list(six.moves.range(4)))\nprint(six.ensure_text(b'sagejs'))\n",
+      "stdout": "1.17.0\n[0, 1, 2, 3]\nsagejs\n"
+    },
+    {
+      "name": "pyparsing",
+      "version": "3.3.2",
+      "wheel": "pyparsing-3.3.2-py3-none-any.whl",
+      "sha256": "850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d",
+      "source": "from pyparsing import Word, nums, delimited_list\ninteger = Word(nums).set_parse_action(lambda tokens: int(tokens[0]))\nprint(delimited_list(integer).parse_string('2, 3, 5, 7').as_list())\n",
+      "stdout": "[2, 3, 5, 7]\n"
+    },
+    {
+      "name": "attrs",
+      "version": "25.4.0",
+      "wheel": "attrs-25.4.0-py3-none-any.whl",
+      "sha256": "adcf7e2a1fb3b36ac48d97835bb6d8ade15b8dcce26aba8bf1d14847b57a3373",
+      "source": "import attrs\n@attrs.define\nclass Point:\n    x: int\n    y: int = 2\np = Point(3)\nprint(p)\nprint(attrs.asdict(p))\n",
+      "stdout": "Point(x=3, y=2)\n{'x': 3, 'y': 2}\n"
+    },
+    {
+      "name": "idna",
+      "version": "3.11",
+      "wheel": "idna-3.11-py3-none-any.whl",
+      "sha256": "771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea",
+      "source": "import idna\nencoded = idna.encode('bücher.de')\nprint(encoded)\nprint(idna.decode(encoded))\n",
+      "stdout": "b'xn--bcher-kva.de'\nbücher.de\n"
+    },
+    {
+      "name": "tomli",
+      "version": "2.3.0",
+      "wheel": "tomli-2.3.0-py3-none-any.whl",
+      "sha256": "e95b1af3c5b07d9e643909b5abbec77cd9f1217e6d0bca72b0234736b9fb1f1b",
+      "source": "import tomli\ndata = tomli.loads('title = \\\"Sage.js\\\"\\n[owner]\\nname = \\\"Ada\\\"\\n')\nprint(data['title'])\nprint(data['owner']['name'])\n",
+      "stdout": "Sage.js\nAda\n"
+    }
+  ]
+}

@@ -155,6 +155,7 @@ export function createKernelEvaluator({
       jsage: language === "sage",
       exact_integer_literals: true,
       strict_python_scopes: true,
+      runtime_imports: true,
       precompiled_module_cache_dir: precompiledModuleCacheDir,
     };
   }

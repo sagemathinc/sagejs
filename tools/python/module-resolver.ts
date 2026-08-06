@@ -54,6 +54,7 @@ export class PythonModuleResolver {
   private readonly importedModules: Record<string, any>;
   private readonly importingModules: Record<string, boolean>;
   private readonly importDirectories: string[];
+  private nextImportOrder: number;
 
   constructor(
     private readonly compiler: any,
@@ -62,6 +63,12 @@ export class PythonModuleResolver {
   ) {
     this.importedModules = options.imported_modules ?? nullObject();
     this.importingModules = options.importing_modules ?? nullObject();
+    this.nextImportOrder = 0;
+    for (const module of Object.values(this.importedModules)) {
+      const order = Number((module as any)?.import_order);
+      if (Number.isFinite(order)) this.nextImportOrder = Math.max(
+        this.nextImportOrder, order + 1);
+    }
     this.importDirectories = [];
     for (const location of [
       ...(options.import_dirs ?? []),
@@ -90,18 +97,28 @@ export class PythonModuleResolver {
   ): any {
     const moduleId = moduleOptions.module_id;
     if (this.importingModules[moduleId]) {
-      throw this.importError(
-        `Detected a recursive import of: ${moduleId}`,
-        parsed.tree.rootNode,
-        moduleOptions.filename,
-      );
+      return this.importedModules[moduleId];
     }
     this.importingModules[moduleId] = true;
+    let completed = false;
     try {
       const scopedFlags = this.scopedFlags(parsed, moduleOptions);
       const importedModuleIds: string[] = [];
       const baselib = nullObject<Record<string, boolean>>();
       const resolvedImportKeys = new Map<number, string>();
+      // Publish a package namespace before discovering its dependencies.
+      // This mirrors Python's insertion into sys.modules before executing a
+      // module and lets children refer to a partially initialized parent.
+      // The static emitter still executes ordinary acyclic dependencies first;
+      // the shell gives circular imports stable identity during lowering.
+      const shell = this.createShell({
+        moduleId,
+        filename: moduleOptions.filename,
+        scopedFlags,
+        importedModuleIds,
+        baselib,
+      });
+      this.importedModules[moduleId] = shell;
       for (const request of this.importRequests(
         parsed,
         moduleId,
@@ -127,30 +144,39 @@ export class PythonModuleResolver {
         )) baselib[item] = true;
       }
 
-      const shell = this.createShell({
-        moduleId,
-        filename: moduleOptions.filename,
-        scopedFlags,
-        importedModuleIds,
-        baselib,
-      });
-      const ast = new PythonCstLowerer(this.compiler, parsed, {
-        ...moduleOptions,
-        scoped_flags: scopedFlags,
-        resolved_import_keys: resolvedImportKeys,
-      }).lowerModule(shell).ast;
+      let ast: any;
+      try {
+        ast = new PythonCstLowerer(this.compiler, parsed, {
+          ...moduleOptions,
+          scoped_flags: scopedFlags,
+          resolved_import_keys: resolvedImportKeys,
+        }).lowerModule(shell).ast;
+      } catch (error) {
+        if (error instanceof Error) {
+          error.message = `${moduleOptions.filename}:${error.message}`;
+        }
+        throw error;
+      }
       ast.filename = moduleOptions.filename;
       ast.module_id = moduleId;
       ast.imported_module_ids = importedModuleIds;
-      ast.import_order = Object.keys(this.importedModules).length;
+      // Completion order is a dependency-first topological order for ordinary
+      // imports. Object-count ordering is insufficient once a parent shell is
+      // published before its children, since several completions can otherwise
+      // receive the same value.
+      ast.import_order = this.nextImportOrder++;
       ast.imports = this.importedModules;
       ast.scoped_flags = scopedFlags;
       ast.srchash = sourceHash;
       ast.comments_after ??= [];
       this.importedModules[moduleId] = ast;
+      completed = true;
       return ast;
     } finally {
       this.importingModules[moduleId] = false;
+      if (!completed && this.importedModules[moduleId]?.body?.length === 0) {
+        delete this.importedModules[moduleId];
+      }
     }
   }
 
@@ -174,7 +200,7 @@ export class PythonModuleResolver {
       imported_module_ids: importedModuleIds,
       nonlocalvars: [],
       shebang: null,
-      import_order: Object.keys(this.importedModules).length,
+      import_order: Number.MAX_SAFE_INTEGER,
       module_id: moduleId,
       exports: [],
       classes: nullObject(),
@@ -218,7 +244,8 @@ export class PythonModuleResolver {
         const spelling = moduleNode.text;
         const level = spelling.match(/^\.+/)?.[0].length ?? 0;
         const relativeName = spelling.slice(level);
-        if (["__python__", "typing"].includes(relativeName)) return;
+        if (relativeName === "__python__" ||
+            relativeName === "typing" && !moduleOptions.runtime_imports) return;
         if (INTRINSIC_MODULES.has(relativeName)) {
           throw this.importError(
             `Compiler intrinsic modules must be imported as modules: import ${relativeName} as runtime`,
@@ -235,6 +262,20 @@ export class PythonModuleResolver {
         );
         resolvedImportKeys.set(moduleNode.startIndex, key);
         requests.push({ key, node });
+        // CPython's ``from package import name`` falls back to importing
+        // ``package.name`` when name is a submodule.  Resolve that statically
+        // when source is available, then the emitter binds the child on its
+        // parent package exactly once.
+        if (key) {
+          for (const entry of node.childrenForFieldName("name")) {
+            const nameNode = entry.type === "aliased_import"
+              ? entry.childForFieldName("name")
+              : entry;
+            if (!nameNode || nameNode.text === "*") continue;
+            const childKey = `${key}.${nameNode.text}`;
+            if (this.findSource(childKey)) requests.push({ key: childKey, node });
+          }
+        }
         return;
       }
       if (
@@ -296,12 +337,26 @@ export class PythonModuleResolver {
     moduleOptions: Record<string, any>,
   ): void {
     if (own(this.importedModules, key)) return;
+    if (moduleOptions.runtime_imports) {
+      this.importedModules[key] = {
+        is_cached: true,
+        dynamic: true,
+        classes: nullObject(),
+        module_id: key,
+        import_order: this.nextImportOrder++,
+        exports: [],
+        nonlocalvars: [],
+        baselib: nullObject(),
+        outputs: nullObject(),
+        discard_asserts: !!moduleOptions.discard_asserts,
+        imported_module_ids: [],
+      };
+      return;
+    }
     if (this.importingModules[key]) {
-      throw this.importError(
-        `Detected a recursive import of: ${key} while importing: ${moduleOptions.module_id}`,
-        node,
-        moduleOptions.filename,
-      );
+      // A partially initialized namespace was installed by lowerModule.
+      // Runtime code may observe it, matching Python's circular-import model.
+      return;
     }
 
     const packageId = key.split(".").slice(0, -1).join(".");
@@ -322,7 +377,7 @@ export class PythonModuleResolver {
         dynamic: true,
         classes: nullObject(),
         module_id: key,
-        import_order: Object.keys(this.importedModules).length,
+        import_order: this.nextImportOrder++,
         exports: [],
         nonlocalvars: [],
         baselib: nullObject(),
@@ -419,7 +474,7 @@ export class PythonModuleResolver {
       classes: cached.classes ?? nullObject(),
       outputs: cached.outputs ?? nullObject(),
       module_id: key,
-      import_order: Object.keys(this.importedModules).length,
+      import_order: this.nextImportOrder++,
       nonlocalvars: cached.nonlocalvars ?? [],
       baselib: cached.baselib ?? nullObject(),
       exports: cached.exports ?? [],

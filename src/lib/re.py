@@ -84,6 +84,11 @@ def _transform(source, flags):
                     flags |= inline[character]
                 source = source[close + 1:]
     source = _replace_all(source, '(?P<', '(?<')
+    # ECMAScript does not currently expose Python's scoped ASCII/Unicode mode
+    # switch.  Its default Unicode behavior is the correct approximation for
+    # these groups, and the surrounding non-capturing group preserves shape.
+    source = _replace_all(source, '(?a:', '(?:')
+    source = _replace_all(source, '(?u:', '(?:')
     source = _replace_all(source, '[]]', '[\\]]')
     source = _replace_all(source, '[^]]', '[^\\]]')
     answer = ''
@@ -102,6 +107,35 @@ def _transform(source, flags):
         position = close + 1
     source = _replace_all(answer, '\\A', '^')
     source = _replace_all(source, '\\Z', '$')
+    # Python 3.11 possessive quantifiers have no ECMAScript spelling.  Dropping
+    # the possessive suffix preserves the accepted language, though it may
+    # permit additional backtracking.  Walk the pattern so escaped plus signs
+    # and character classes remain untouched.
+    answer = ''
+    in_class = False
+    escaped = False
+    for character in source:
+        if escaped:
+            answer += character
+            escaped = False
+            continue
+        if character == '\\':
+            answer += character
+            escaped = True
+            continue
+        if character == '[':
+            in_class = True
+        elif character == ']':
+            in_class = False
+        if (
+            character == '+'
+            and not in_class
+            and len(answer) > 0
+            and answer[-1] in ('*', '+', '?', '}')
+        ):
+            continue
+        answer += character
+    source = answer
     if flags & VERBOSE:
         source = _verbose_source(source)
     return source, flags
@@ -158,7 +192,10 @@ class MatchObject:
         values = []
         for group in groups:
             value, unused = self._resolve(group)
-            values.append(None if value is runtime.undefined else str(value))
+            values.append(
+                None
+                if value is None or value is runtime.undefined
+                else str(value))
         return values[0] if len(values) == 1 else tuple(values)
 
     __getitem__ = group
@@ -167,7 +204,10 @@ class MatchObject:
         answer = []
         for index in range(1, len(self._match)):
             value = self._match[index]
-            answer.append(fallback if value is runtime.undefined else str(value))
+            answer.append(
+                fallback
+                if value is None or value is runtime.undefined
+                else str(value))
         return tuple(answer)
 
     def groupdict(self, fallback=None):
@@ -178,18 +218,21 @@ class MatchObject:
         keys = runtime.reflect.ownKeys(native)
         for key in keys:
             value = runtime.reflect.get(native, key)
-            answer[str(key)] = fallback if value is runtime.undefined else str(value)
+            answer[str(key)] = (
+                fallback
+                if value is None or value is runtime.undefined
+                else str(value))
         return answer
 
     def start(self, group=0):
         unused, pair = self._resolve(group)
-        if pair is runtime.undefined:
+        if pair is None or pair is runtime.undefined:
             return -1
         return int(pair[0])
 
     def end(self, group=0):
         unused, pair = self._resolve(group)
-        if pair is runtime.undefined:
+        if pair is None or pair is runtime.undefined:
             return -1
         return int(pair[1])
 

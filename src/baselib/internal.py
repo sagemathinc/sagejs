@@ -504,6 +504,9 @@ def _internal_set_class_repr(wrapper: Any, target: Any) -> None:
     def class_repr() -> str:
         return "<class '" + target.name + "'>"
 
+    runtime.reflect.set(
+        class_repr, '__sagejs_internal_class_repr__', True)
+
     descriptor = runtime.object.create(None)
     runtime.reflect.set(descriptor, 'configurable', True)
     runtime.reflect.set(descriptor, 'value', class_repr)
@@ -560,8 +563,29 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
                     function_member,
                 ),
             )
-        runtime.reflect.apply(
-            target_class, callable_instance, call_args)
+        bind_methods = _internal_get_member(
+            target_class.prototype, '__bind_methods__')
+        if _internal_type_is(
+            runtime.jstype(bind_methods), 'function'
+        ):
+            runtime.reflect.apply(
+                bind_methods, callable_instance, [])
+        initializer = _internal_get_member(
+            target_class.prototype, '__init__')
+        if _internal_type_is(
+            runtime.jstype(initializer), 'function'
+        ):
+            if _internal_get_member(
+                initializer, '__python_descriptor__'
+            ) is True:
+                initializer_args = [callable_instance]
+                for argument in call_args:
+                    initializer_args.append(argument)
+                runtime.reflect.apply(
+                    initializer, runtime.undefined, initializer_args)
+            else:
+                runtime.reflect.apply(
+                    initializer, callable_instance, call_args)
         if (
             runtime.strict_equal(
                 _internal_get_member(
@@ -734,7 +758,7 @@ def ρσ_interpolate_kwargs(
         argument_count = max(supplied_args.length, argnames.length)
         call_args = runtime.reflect.construct(
             runtime.array, [argument_count + 1])
-        call_args[-1] = keyword_object
+        call_args[argument_count] = keyword_object
         for index in range(argument_count):
             if index < argnames.length:
                 property_name = argnames[index]
@@ -804,7 +828,7 @@ def ρσ_interpolate_kwargs_legacy(
         argument_count = max(supplied_args.length, argnames.length)
         call_args = runtime.reflect.construct(
             runtime.array, [argument_count + 1])
-        call_args[-1] = keyword_object
+        call_args[argument_count] = keyword_object
         for index in range(argument_count):
             if index < argnames.length:
                 property_name = argnames[index]
@@ -890,7 +914,30 @@ def _internal_native_getitem(value: Any, key: Any) -> Any:
     return runtime.reflect.get(value, key)
 
 
+def _internal_generic_alias(origin: Any, type_arguments: Any) -> Any:
+    alias = runtime.object.create(None)
+    runtime.reflect.set(alias, '__origin__', origin)
+    runtime.reflect.set(
+        alias,
+        '__args__',
+        type_arguments
+        if runtime.array.isArray(type_arguments)
+        else runtime.math_tuple([type_arguments]),
+    )
+    return alias
+
+
 def ρσ_getitem(value: Any, key: Any) -> Any:
+    class_getitem = _internal_get_member(value, '__class_getitem__')
+    if _internal_type_is(runtime.jstype(class_getitem), 'function'):
+        return runtime.reflect.apply(class_getitem, value, [key])
+    if (
+        value is runtime.list_constructor
+        or value is runtime.tuple_builtin
+        or value is runtime.string_builtin
+        or value is runtime.int_builtin
+    ):
+        return _internal_generic_alias(value, key)
     # Native lists and tuples are JavaScript arrays.  Keep their overwhelmingly
     # common integer-index path monomorphic instead of performing reflective
     # special-method discovery for every access in a Python loop.
@@ -1159,6 +1206,61 @@ def _internal_exists_alternative(
 }
 
 
+def ρσ_compute_mro(cls: Any, bases: Any) -> Any:
+    """Return the C3 linearization for a newly created Python class."""
+    sequences = []
+    for base in bases:
+        inherited = _internal_get_member(base, '__mro__')
+        sequence = []
+        if inherited is runtime.undefined:
+            sequence.push(base)  # type: ignore[attr-defined]
+        else:
+            for item in inherited:
+                sequence.push(item)  # type: ignore[attr-defined]
+        sequences.push(sequence)  # type: ignore[attr-defined]
+    direct_bases = []
+    for base in bases:
+        direct_bases.push(base)  # type: ignore[attr-defined]
+    sequences.push(direct_bases)  # type: ignore[attr-defined]
+
+    result = [cls]
+    while True:
+        active_sequences = []
+        for sequence in sequences:
+            if sequence.length:  # type: ignore[attr-defined]
+                active_sequences.push(sequence)  # type: ignore[attr-defined]
+        sequences = active_sequences
+        if not sequences.length:  # type: ignore[attr-defined]
+            return runtime.object.freeze(result)
+
+        candidate = runtime.undefined
+        for sequence in sequences:
+            head = sequence[0]
+            blocked = False
+            for other in sequences:
+                first = True
+                for item in other:
+                    if first:
+                        first = False
+                        continue
+                    if item is head:
+                        blocked = True
+                        break
+                if blocked:
+                    break
+            if not blocked:
+                candidate = head
+                break
+
+        if candidate is runtime.undefined:
+            raise TypeError(
+                'Cannot create a consistent method resolution order (MRO)')
+        result.push(candidate)  # type: ignore[attr-defined]
+        for sequence in sequences:
+            if sequence and sequence[0] is candidate:
+                sequence.shift()  # type: ignore[attr-defined]
+
+
 def ρσ_mixin(*classes: Any) -> None:
     """Copy missing prototype members using the legacy Sage.js MRO."""
     seen = runtime.object.create(None)
@@ -1170,6 +1272,7 @@ def ρσ_mixin(*classes: Any) -> None:
         '__doc__',
         '__bind_methods__',
         '__bases__',
+        '__mro__',
         'constructor',
         '__class__',
     ]
@@ -1275,8 +1378,45 @@ def ρσ_instanceof(value: Any, *candidates: Any) -> bool:
             bases = candidate_bases
 
     for candidate in candidates:
-        if runtime.instance_of(value, candidate):
+        if (
+            runtime.array.isArray(candidate)
+            and runtime.object.isFrozen(candidate)
+        ):
+            if ρσ_instanceof(value, *candidate):
+                return True
+            continue
+        if (
+            _internal_type_is(runtime.jstype(candidate), 'function')
+            and runtime.instance_of(value, candidate)
+            # JavaScript represents both Python functions and Python classes
+            # with native Function objects.  ``types.FunctionType`` is the
+            # native Function constructor, but CPython does not consider a
+            # class to be a function.  Python classes are identified by the
+            # ``__bases__`` metadata installed on their prototypes.
+            and not (
+                candidate is runtime.function_class
+                and _internal_type_is(runtime.jstype(value), 'function')
+                and _internal_get_member(value, 'prototype')
+                is not runtime.undefined
+                and _internal_get_member(value.prototype, '__bases__')
+                is not runtime.undefined
+            )
+        ):
             return True
+        if (
+            candidate is type
+            and _internal_type_is(runtime.jstype(value), 'function')
+            and _internal_get_member(value, 'prototype')
+            is not runtime.undefined
+            and _internal_get_member(value.prototype, '__bases__')
+            is not runtime.undefined
+        ):
+            return True
+        registry = _internal_get_member(candidate, '_abc_registry')
+        if runtime.array.isArray(registry):
+            for registered_class in registry:
+                if runtime.instance_of(value, registered_class):
+                    return True
         if (
             (
                 candidate is runtime.array

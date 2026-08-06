@@ -35,8 +35,9 @@ class DefaultsError(ValueError):
             str(Object.keys(defs)))
 
 
-has_prop = Object.prototype.hasOwnProperty.call.bind(
-    Object.prototype.hasOwnProperty)
+def has_prop(value: object, name: str) -> bool:
+    """Return whether *value* owns *name* without invoking descriptors."""
+    return Object.prototype.hasOwnProperty.call(value, name)
 
 
 def defaults(args: Union[Literal[True], dict], defs: dict, croak: Callable):

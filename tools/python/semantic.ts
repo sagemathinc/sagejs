@@ -254,6 +254,8 @@ export class PythonAstSemanticAnalyzer {
     includePureAnnotations = true,
   ): string[] {
     const names: string[] = [];
+    const isComprehension = (value: any): boolean =>
+      value instanceof this.compiler.AST_ListComprehension;
     const scan = (value: any): void => {
       if (!value) return;
       if (Array.isArray(value)) {
@@ -263,7 +265,10 @@ export class PythonAstSemanticAnalyzer {
             const nested = statement[key];
             if (nested) scan(nested);
           }
-          if (statement instanceof this.compiler.AST_ForIn) {
+          if (
+            statement instanceof this.compiler.AST_ForIn &&
+            !isComprehension(statement)
+          ) {
             this.addTarget(statement.init, names);
           } else if (statement instanceof this.compiler.AST_With) {
             names.push("ρσ_with_exception", "ρσ_with_suppress");
@@ -287,7 +292,14 @@ export class PythonAstSemanticAnalyzer {
         if (!(value.right instanceof this.compiler.AST_Scope)) scan(value.right);
         return;
       }
-      if (value instanceof this.compiler.AST_ForIn) {
+      // Python 3 gives comprehensions their own implicit scope. Their loop
+      // targets must not become locals (or module exports) in the containing
+      // function. Walrus assignments are collected separately below because
+      // they intentionally bind in the containing scope.
+      if (
+        value instanceof this.compiler.AST_ForIn &&
+        !isComprehension(value)
+      ) {
         this.addTarget(value.init, names);
         return;
       }

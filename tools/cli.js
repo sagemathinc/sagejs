@@ -162,6 +162,7 @@ function print_top_level_usage() {
 
   console.log(label("Advanced subcommands:"));
   console.log("  docs            search and export installed API documentation");
+  console.log("  pip             install pure-Python packages for Sage.js");
   console.log("  compile         compile Sage.js source to JavaScript");
   console.log("  repl            start a REPL with detailed options");
   console.log("  lint            check Python/Sage source");
@@ -621,6 +622,35 @@ Install the Jupyter kernelspec under Jupyter's current sys.prefix.
 opt("prefix", "", "string", "", function () {
   /*
 Install the Jupyter kernelspec under the given prefix.
+*/
+});
+
+create_group(
+  "pip",
+  "<install|uninstall|list|path> [packages]",
+  function () {
+    /*
+Install platform-independent Python wheels into Sage.js site-packages.
+Packages and dependencies must publish a py3-none-any wheel.
+*/
+  }
+);
+
+opt("target", "t", "string", "", function () {
+  /*
+Install into this directory instead of the Sage.js user site-packages.
+*/
+});
+
+opt("index_url", "i", "string", "https://pypi.org/pypi", function () {
+  /*
+Base JSON package index URL (default: https://pypi.org/pypi).
+*/
+});
+
+opt("no_deps", "", "bool", false, function () {
+  /*
+Do not install package dependencies.
 */
 });
 

@@ -623,6 +623,8 @@ class AST_Class(AST_Scope):
         "[boolean] construct callable function objects as class instances",
         'bigint_fields':
         "[dict] instance fields known by the compiler to contain JS BigInts",
+        'namedtuple_fields':
+        "[string*] fields declared by a typing.NamedTuple class",
         'bound':
         "[string*] list of methods that need to be bound to self",
         'decorators':

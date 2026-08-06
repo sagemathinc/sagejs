@@ -11,6 +11,9 @@ importers:
       '@cortex-js/compute-engine':
         specifier: 0.98.0
         version: 0.98.0
+      fflate:
+        specifier: 0.7.5
+        version: 0.7.5
       numpy-ts:
         specifier: 1.6.0
         version: 1.6.0

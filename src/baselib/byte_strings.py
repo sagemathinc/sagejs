@@ -441,6 +441,11 @@ class SageBytes:
             return answer
         if normalised in ('latin-1', 'latin1', 'iso-8859-1'):
             return self._binary_string()
+        if normalised == 'punycode':
+            module = runtime.require_module('punycode')
+            decoder = runtime.reflect.get(module, 'decode')
+            return runtime.reflect.apply(
+                decoder, runtime.undefined, [self._binary_string()])
         raise ValueError('unknown encoding: ' + encoding)
 
     def find(
@@ -1335,12 +1340,46 @@ def _construct_bytes(
         if encoding is runtime.undefined:
             raise TypeError('string argument without an encoding')
         normalised = _normalise_encoding(encoding)
-        if normalised not in ('utf-8', 'utf8', 'ascii', 'latin-1', 'latin1'):
+        if normalised not in (
+            'utf-8', 'utf8', 'ascii', 'latin-1', 'latin1', 'punycode'
+        ):
             raise ValueError('unknown encoding: ' + encoding)
         if normalised in ('utf-8', 'utf8'):
             values = _encode_utf8(source)
+        elif normalised == 'punycode':
+            module = runtime.require_module('punycode')
+            encoder = runtime.reflect.get(module, 'encode')
+            encoded = runtime.reflect.apply(
+                encoder, runtime.undefined, [source])
+            values = _byte_values_from_binary_string(encoded)
+        elif normalised == 'ascii':
+            values = []
+            for character in source:
+                code = ord(character)
+                if code > 127:
+                    if errors == 'ignore':
+                        continue
+                    if errors == 'replace':
+                        code = 63
+                    else:
+                        raise UnicodeEncodeError(
+                            'ascii', source, 0, len(source),
+                            'ordinal not in range(128)')
+                values.append(code)
         else:
-            values = _byte_values_from_binary_string(source)
+            values = []
+            for character in source:
+                code = ord(character)
+                if code > 255:
+                    if errors == 'ignore':
+                        continue
+                    if errors == 'replace':
+                        code = 63
+                    else:
+                        raise UnicodeEncodeError(
+                            'latin-1', source, 0, len(source),
+                            'ordinal not in range(256)')
+                values.append(code)
         return SageBytes(values)
     if (
         runtime.strict_equal(runtime.jstype(source), 'number')

@@ -958,6 +958,14 @@ def _tuple_append(self: Any, _value: Any) -> None:
         "'tuple' object has no attribute 'append'")
 
 
+@runtime.native_method
+def _tuple_slice(self: Any, *slice_args: Any) -> Any:
+    """Return a tuple when optimized subscripting delegates to JS ``slice``."""
+    values = runtime.reflect.apply(
+        runtime.array.prototype.slice, self, slice_args)
+    return math_tuple(values)
+
+
 _tuple_array_prototype_cache = runtime.undefined
 
 
@@ -976,6 +984,7 @@ def _tuple_array_prototype() -> Any:
             '__repr__': {'value': _tuple_repr},
             '__str__': {'value': _tuple_repr},
             'append': {'value': _tuple_append},
+            'slice': {'value': _tuple_slice},
             'toString': {'value': _tuple_repr},
         }
         runtime.object.defineProperties(prototype, properties)

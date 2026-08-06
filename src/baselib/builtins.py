@@ -47,11 +47,36 @@ def _builtins_default_import(
     fromlist: Any = None,
     level: _Int = 0,
 ) -> Any:
-    """Resolve a module already linked into the compiled program."""
+    """Load a Python module through the host and return CPython-style bindings."""
     module = runtime.reflect.get(runtime.modules, name)
     if module is runtime.undefined:
-        raise ImportError("No module named '" + name + "'")
-    return module
+        loader = runtime.reflect.get(
+            runtime.global_object, '__sagejs_load_module__')
+        if loader is runtime.undefined:
+            raise ImportError("No module named '" + name + "'")
+        module = runtime.reflect.apply(
+            loader, runtime.undefined, [name])
+
+    if fromlist:
+        loader = runtime.reflect.get(
+            runtime.global_object, '__sagejs_load_module__')
+        if loader is not runtime.undefined:
+            for item in fromlist:
+                if item == '*' or hasattr(module, item):
+                    continue
+                try:
+                    runtime.reflect.apply(
+                        loader, runtime.undefined, [name + '.' + item])
+                except ImportError:
+                    # ``from module import attribute`` is allowed to resolve an
+                    # ordinary attribute rather than a child module.  The
+                    # generated from-import performs the definitive check.
+                    pass
+        return module
+
+    top_name = name.split('.')[0]
+    top_module = runtime.reflect.get(runtime.modules, top_name)
+    return module if top_module is runtime.undefined else top_module
 
 
 __import__ = _builtins_default_import
@@ -161,10 +186,15 @@ def _builtins_bind_python_function(
     target: Any,
     receiver: Any,
 ) -> Any:
+    bind_arguments = [runtime.undefined, receiver]
+    if _builtins_get_member(
+        target, '__sagejs_native_method__'
+    ) is True:
+        bind_arguments = [receiver]
     bound = runtime.reflect.apply(
         runtime.reflect.get(target, 'bind'),
         target,
-        [runtime.undefined, receiver],
+        bind_arguments,
     )
     runtime.object.assign(bound, target)
     runtime.reflect.set(bound, '__func__', target)
@@ -1674,7 +1704,9 @@ def _builtins_parse_integer(value: _Str, base: Any) -> Any:
             continue
         digit = _builtins_digit_value(character)
         if digit < 0 or digit >= radix:
-            raise ValueError('invalid digit in integer literal')
+            raise ValueError(
+                "invalid literal for int() with base " + str(radix)
+                + ": " + repr(value))
         answer = (
             answer * runtime.bigint(radix)
             + runtime.bigint(digit)
@@ -1923,6 +1955,7 @@ def _builtins_namespace_dict(value: Any) -> Any:
         if source is None or source is runtime.undefined:
             return
         for member_name in runtime.object.getOwnPropertyNames(source):
+            member = runtime.reflect.get(source, member_name)
             native_function_slot = (
                 source is value
                 and runtime.strict_equal(
@@ -1931,12 +1964,31 @@ def _builtins_namespace_dict(value: Any) -> Any:
             )
             if (
                 not native_function_slot
+                and _builtins_get_member(
+                    member,
+                    '__sagejs_synthetic_method__',
+                ) is not True
+                and not (
+                    member_name == '__init__'
+                    and _builtins_get_member(
+                        member,
+                        '__sagejs_synthetic_init__',
+                    ) is True
+                )
+                and not (
+                    source is value
+                    and member_name == '__repr__'
+                    and _builtins_get_member(
+                        member,
+                        '__sagejs_internal_class_repr__',
+                    ) is True
+                )
                 and _builtins_visible_introspection_name(member_name)
             ):
                 runtime.reflect.set(
                     namespace,
                     member_name,
-                    runtime.reflect.get(source, member_name),
+                    member,
                 )
 
     copy_own_members(value)
@@ -2005,6 +2057,36 @@ def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
                 answer[left_index] = answer[right_index]
                 answer[right_index] = temporary
     return answer
+
+
+def ρσ_vars(item: Any = _BUILTINS_MISSING) -> Any:
+    """Return an object's writable Python namespace.
+
+    The compiler emits no-argument ``vars()`` directly from the current
+    lexical scope.  This runtime path implements ``vars(object)`` and remains
+    a useful fallback for dynamically compiled code.
+    """
+    if item is _BUILTINS_MISSING:
+        current_module = runtime.reflect.get(
+            runtime.global_object,
+            '__sagejs_current_module_namespace__',
+        )
+        if current_module is not runtime.undefined:
+            return ρσ_live_scope_dict(  # type: ignore[name-defined]  # noqa: F821
+                current_module)
+        raise TypeError('vars() has no current Python scope')
+    try:
+        return ρσ_getattr(item, '__dict__')
+    except AttributeError:
+        raise TypeError(  # noqa: B904
+            'vars() argument must have __dict__ attribute')
+
+
+def ρσ_resolve_callable(value: Any) -> Any:
+    """Return a host function or an object's bound ``__call__`` method."""
+    if runtime.strict_equal(runtime.jstype(value), 'function'):
+        return value
+    return ρσ_getattr(value, '__call__')
 
 
 def _builtins_callable_name(value: Any) -> _Str:
@@ -2807,6 +2889,92 @@ def _builtins_tuple_subclass_mul(
     return runtime.math_tuple(values)
 
 
+def ρσ_finalize_namedtuple_class(
+    cls: Any,
+    field_names: Any,
+) -> Any:
+    """Complete a class-syntax ``typing.NamedTuple`` declaration.
+
+    Annotations are normally erased by the compiler.  For a NamedTuple they
+    also define the immutable tuple layout, so the lowerer records just those
+    names and this runtime helper installs the corresponding constructor and
+    descriptors while preserving methods declared in the class body.
+    """
+    names = list(field_names)
+
+    @runtime.native_method
+    def tuple_init(
+        self: Any,
+        *args: Any,
+        **keywords: Any,
+    ) -> None:
+        if len(args) > len(names):
+            raise TypeError(
+                'Expected ' + str(len(names)) + ' arguments, got '
+                + str(len(args)))
+        values = list(args)
+        keyword_names = list(keywords)
+        for index in range(len(args)):
+            if names[index] in keyword_names:
+                raise TypeError(
+                    "got multiple values for argument '"
+                    + names[index] + "'")
+        for index in range(len(args), len(names)):
+            name = names[index]
+            if name not in keyword_names:
+                raise TypeError("missing required argument: '" + name + "'")
+            values.append(keywords.__getitem__(name))
+        for name in keyword_names:
+            if name not in names:
+                raise TypeError(
+                    "got an unexpected keyword argument '" + name + "'")
+        self._tuple_values = values
+
+    @runtime.native_method
+    def tuple_repr(self: Any) -> _Str:
+        entries = []
+        for index in range(len(names)):
+            entries.append(
+                names[index] + '=' + repr(self._tuple_values[index]))
+        return cls.__name__ + '(' + ', '.join(entries) + ')'
+
+    @runtime.native_method
+    def tuple_asdict(self: Any) -> Any:
+        answer = dict()
+        for index in range(len(names)):
+            answer.__setitem__(names[index], self._tuple_values[index])
+        return answer
+
+    prototype = runtime.reflect.get(cls, 'prototype')
+    runtime.reflect.set(prototype, '__init__', tuple_init)
+    runtime.reflect.set(prototype, '__repr__', tuple_repr)
+    runtime.reflect.set(prototype, '__str__', tuple_repr)
+    runtime.reflect.set(prototype, 'toString', tuple_repr)
+    runtime.reflect.set(prototype, '_asdict', tuple_asdict)
+    runtime.reflect.set(cls, '_fields', runtime.math_tuple(names))
+    runtime.reflect.set(cls, '_field_defaults', dict())
+    runtime.reflect.set(prototype, '_fields', runtime.math_tuple(names))
+    runtime.reflect.set(prototype, '_field_defaults', dict())
+
+    for index in range(len(names)):
+        def make_getter(position: _Int) -> Any:
+            @runtime.native_method
+            def field_getter(self: Any) -> Any:
+                return self._tuple_values[position]
+            return field_getter
+
+        runtime.object.defineProperty(
+            prototype,
+            names[index],
+            {
+                'configurable': False,
+                'enumerable': True,
+                'get': make_getter(index),
+            },
+        )
+    return cls
+
+
 def _builtins_reverse_iterator(iterable: Any) -> Iterator[Any]:
     if ρσ_arraylike(iterable):
         length = iterable.length
@@ -3316,6 +3484,25 @@ def ρσ_getattr(
 ) -> Any:
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
+    if runtime.instance_of(value, runtime.error):
+        # Native TypeError/ReferenceError/SyntaxError objects are part of the
+        # Python exception hierarchy but do not pass through BaseException's
+        # initializer. Supply the standard traceback protocol lazily.
+        if name == '__traceback__':
+            traceback = runtime.reflect.get(value, name)
+            return value if traceback is runtime.undefined else traceback
+        if name in ('__cause__', '__context__'):
+            context = runtime.reflect.get(value, name)
+            return None if context is runtime.undefined else context
+        if name == '__suppress_context__':
+            suppressed = runtime.reflect.get(value, name)
+            return False if suppressed is runtime.undefined else suppressed
+        if name == 'with_traceback':
+            def native_with_traceback(traceback: Any) -> Any:
+                runtime.reflect.set(value, '__traceback__', traceback)
+                return value
+
+            return native_with_traceback
     if (
         name == '__dict__'
         and value is not None
@@ -3361,11 +3548,29 @@ def ρσ_getattr(
             return ρσ_next(value)
 
         return native_next
-    if (
-        name == '__class__'
-        and not runtime.strict_equal(runtime.jstype(value), 'function')
-    ):
+    if name == '__class__':
+        if _builtins_is_python_class(value):
+            return ρσ_type
+        if runtime.strict_equal(runtime.jstype(value), 'function'):
+            return ρσ_function_type
         return _builtins_get_member(value, 'constructor')
+    if (
+        name == '__get__'
+        and runtime.strict_equal(runtime.jstype(value), 'function')
+    ):
+        # Python function objects implement the descriptor protocol.  This is
+        # observable when libraries retain an unbound method such as
+        # ``object.__setattr__`` and explicitly bind it with ``.__get__``.
+        def function_descriptor_get(
+            instance: Any,
+            owner: Any = None,
+        ) -> Any:
+            del owner
+            if instance is None:
+                return value
+            return _builtins_bind_python_function(value, instance)
+
+        return function_descriptor_get
 
     descriptor = runtime.undefined
     owner = runtime.undefined
@@ -3410,14 +3615,37 @@ def ρσ_getattr(
                     class_member,
                     [value],
                 )
+            if _builtins_member_is_function(
+                class_member, '__get__'
+            ):
+                return _builtins_call_member(
+                    class_member, '__get__', [None, value])
             return class_member
     if _builtins_has_member(value, name):
         member = _builtins_get_member(value, name)
+        # ``undefined`` is an implementation detail of the JavaScript host,
+        # not a Python attribute value.  Compiler metadata may leave optional
+        # slots present with this value; Python's getattr/hasattr semantics
+        # must treat them as absent and honor the caller's default.
+        if member is runtime.undefined:
+            if default_value is not _BUILTINS_MISSING:
+                return default_value
+            raise AttributeError(
+                'The attribute ' + name + ' is not present')
         member_is_own = runtime.reflect.apply(
             runtime.object.prototype.hasOwnProperty,
             value,
             [name],
         )
+        if (
+            runtime.strict_equal(runtime.jstype(value), 'function')
+            and _builtins_has_member(member, '__classmethod__')
+        ):
+            return runtime.reflect.apply(
+                runtime.reflect.get(member, 'bind'),
+                member,
+                [value],
+            )
         if (
             _builtins_member_is_function(member, '__get__')
             and (
@@ -3677,6 +3905,15 @@ def _builtins_dynamic_namespaces(
     caller_globals: Any,
     caller_locals: Any,
 ) -> Any:
+    if caller_globals is runtime.undefined:
+        current_module = runtime.reflect.get(
+            runtime.global_object,
+            '__sagejs_current_module_namespace__',
+        )
+        if current_module is not runtime.undefined:
+            caller_globals = ρσ_live_scope_dict(  # type: ignore[name-defined]  # noqa: F821
+                current_module)
+            caller_locals = caller_globals
     if global_namespace is runtime.undefined or global_namespace is None:
         global_namespace = caller_globals
         default_locals = caller_locals
@@ -3734,7 +3971,10 @@ def _builtins_run_dynamic(
                 # unbound-name check rather than reading the outer JS slot.
                 runtime.reflect.set(
                     native_namespace, key, runtime.undefined)
-    if global_namespace is not caller_globals:
+    if (
+        caller_globals is not runtime.undefined
+        and global_namespace is not caller_globals
+    ):
         for key in caller_globals.keys():
             if key not in execution_namespace:
                 runtime.reflect.set(
@@ -4049,7 +4289,10 @@ def ρσ_type(*values: Any) -> Any:
         if len(bases) == 0:
             bases = runtime.math_tuple([SageObject])
         parent = bases[0]
-        if not _builtins_is_python_class(parent):
+        if (
+            not _builtins_is_python_class(parent)
+            and parent is not runtime.tuple_builtin
+        ):
             raise TypeError('type() bases must be types')
         if not _builtins_member_is_function(namespace, 'items'):
             raise TypeError('type() argument 3 must be dict')
@@ -4057,15 +4300,18 @@ def ρσ_type(*values: Any) -> Any:
         def dynamic_class(*args: Any, **keywords: Any) -> Any:
             instance = runtime.object.create(
                 runtime.reflect.get(dynamic_class, 'prototype'))
-            initializer = _builtins_get_member(instance, '__init__')
+            # Namespace functions installed by ``type(name, bases, ns)`` are
+            # ordinary Python descriptors.  Resolve ``__init__`` through
+            # getattr so it is bound exactly as it would be on a class
+            # statement, including functions created by exec().  Calling the
+            # bound function also gives dynamically generated classes normal
+            # keyword-argument support.
+            initializer = ρσ_getattr(
+                instance, '__init__', runtime.undefined)
             if runtime.strict_equal(
                 runtime.jstype(initializer), 'function'
             ):
-                if len(keywords) != 0:
-                    raise TypeError(
-                        'dynamic class keyword construction '
-                        'is not implemented')
-                runtime.reflect.apply(initializer, instance, args)
+                initializer(*args, **keywords)
             return instance
 
         prototype = runtime.object.create(
@@ -4083,9 +4329,11 @@ def ρσ_type(*values: Any) -> Any:
             member = pair[1]
             runtime.reflect.set(prototype, member_name, member)
             if (
-                runtime.strict_equal(
-                    runtime.jstype(member), 'function')
-                or runtime.string_find(member_name, '__') != 0
+                runtime.string_find(member_name, '__') != 0
+                or member_name in (
+                    '__annotations__', '__doc__', '__module__',
+                    '__name__', '__qualname__', '__slots__'
+                )
             ):
                 runtime.reflect.set(
                     dynamic_class, member_name, member)
@@ -4143,6 +4391,11 @@ def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
         raise TypeError('issubclass() arg 1 must be a class')
     if cls is candidates:
         return True
+    registry = _builtins_get_member(candidates, '_abc_registry')
+    if runtime.array.isArray(registry):
+        for registered_class in registry:
+            if ρσ_issubclass(cls, registered_class):
+                return True
     bases = _builtins_get_member(cls, '__bases__')
     if runtime.array.isArray(bases):
         for base in bases:
@@ -5435,9 +5688,7 @@ def _builtins_extreme(
     keywords: Any,
     find_maximum: _Bool,
 ) -> Any:
-    # ``default`` is reserved in JavaScript, so the compiler's keyword
-    # desugaring uses this stable internal property spelling.
-    default_value = runtime.reflect.get(keywords, 'ρσ_py_default')
+    default_value = runtime.reflect.get(keywords, 'default')
     key = runtime.reflect.get(keywords, 'key')
     if len(positional) == 0:
         if default_value is not runtime.undefined:
@@ -6025,6 +6276,7 @@ get_module = ρσ_get_module
 pow = ρσ_pow
 divmod = ρσ_divmod
 dir = ρσ_dir
+vars = ρσ_vars
 help = ρσ_help
 search_doc = ρσ_search_doc
 
@@ -6283,6 +6535,9 @@ runtime.reflect.set(
     _tuple_prototype, '__iter__',
     runtime.native_method(_builtins_tuple_subclass_iter))
 runtime.reflect.set(
+    _tuple_prototype, runtime.iterator_symbol,
+    runtime.native_method(_builtins_tuple_subclass_iter))
+runtime.reflect.set(
     _tuple_prototype, '__getitem__',
     runtime.native_method(_builtins_tuple_subclass_getitem))
 runtime.reflect.set(
@@ -6307,6 +6562,7 @@ runtime.reflect.set(
     _tuple_prototype, '__rmul__',
     runtime.native_method(_builtins_tuple_subclass_mul))
 issubclass = ρσ_issubclass
+isinstance = ρσ_instanceof  # type: ignore[name-defined]  # noqa: F821
 iter = ρσ_iter
 next = ρσ_next
 reversed = ρσ_reversed

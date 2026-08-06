@@ -43,6 +43,13 @@ def encode_string(str_):
 
 require_semi_colon_chars = make_predicate("( [ + * / - , .")
 
+JS_RESERVED_IDENTIFIERS = make_predicate(
+    "break case class catch const continue debugger default delete do else "
+    "export extends finally for function if import in instanceof new return "
+    "super switch this throw try typeof var void while with yield enum "
+    "implements static private package let public protected interface await "
+    "null true false")
+
 output_stream_defaults = {
     'indent_start': 0,
     'indent_level': 4,
@@ -113,6 +120,8 @@ class OutputStream:
 
     def make_name(self, name):
         name = name.toString()
+        if JS_RESERVED_IDENTIFIERS[name] and name is not 'this':
+            name = 'ρσ_py_' + name
         if self.options.ascii_only:
             name = to_ascii(name, True)
 

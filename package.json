@@ -131,6 +131,7 @@
     "test:python:conformance": "pnpm run build && pnpm run test:python:conformance:run",
     "test:python:conformance:run": "node scripts/run-python-conformance.cjs --check",
     "test:python:grammar": "pnpm run build && node node_modules/tree-sitter-cli/cli.js test -p tools/tree-sitter-python && node node_modules/tree-sitter-cli/cli.js test -p tools/tree-sitter-sage && node --test test/python-syntax-frontend.cjs && node scripts/audit-python-grammar.cjs --check",
+    "test:python:packages": "pnpm run build && node --test test/python-packages.cjs && node scripts/run-pure-python-packages.cjs",
     "python:grammar:audit": "pnpm run build && node scripts/audit-python-grammar.cjs",
     "test:native": "pnpm --dir packages/flint test && pnpm --dir packages/graph test && node bin/sagejs packages/flint/test/integration.sage && node bin/sagejs packages/graph/test/integration.sage && node test/native-kernel.cjs && pnpm run test:matrix:performance",
     "test:sea": "pnpm run build:sea && node test/sea-smoke.cjs && pnpm run test:startup:sea",
@@ -205,6 +206,7 @@
   },
   "dependencies": {
     "@cortex-js/compute-engine": "0.98.0",
+    "fflate": "0.7.5",
     "numpy-ts": "1.6.0",
     "playwright-core": "1.62.0",
     "plotly.js-dist-min": "3.7.0",

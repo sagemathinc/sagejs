@@ -220,3 +220,31 @@ def unpack(format, buffer):
 
 def unpack_from(format, buffer, offset=0):
     return _unpack_from(format, buffer, offset)
+
+
+class Struct:
+    """Compiled struct format with the standard bound-method API."""
+
+    def __init__(self, format):
+        self.format = format
+        self.size = calcsize(format)
+
+    def pack(self, *values):
+        return pack(self.format, *values)
+
+    def pack_into(self, buffer, offset, *values):
+        return pack_into(self.format, buffer, offset, *values)
+
+    def unpack(self, buffer):
+        return unpack(self.format, buffer)
+
+    def unpack_from(self, buffer, offset=0):
+        return unpack_from(self.format, buffer, offset)
+
+
+def iter_unpack(format, buffer):
+    size = calcsize(format)
+    if size == 0 or len(buffer) % size != 0:
+        raise error('iterative unpacking requires a buffer of a multiple size')
+    for offset in range(0, len(buffer), size):
+        yield unpack_from(format, buffer, offset)

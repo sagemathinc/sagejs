@@ -168,11 +168,19 @@ def ρσ_dynamic_eval(
 ):
     return r"""%js (() => {
         const ρσ_dynamic_modules = {[module_id]: {}};
-        const ρσ_modules = ρσ_dynamic_modules;
-        const __name__ = module_id;
         const __sagejs_input_namespace__ = input_namespace;
-        const completion = eval(javascript);
-        return {completion, namespace: ρσ_modules[module_id]};
+        const evaluate = new Function(
+            "ρσ_modules",
+            "__sagejs_input_namespace__",
+            "javascript",
+            "return eval(javascript)"
+        );
+        const completion = evaluate(
+            ρσ_dynamic_modules,
+            __sagejs_input_namespace__,
+            javascript
+        );
+        return {completion, namespace: ρσ_dynamic_modules[module_id]};
     })()"""
 
 
