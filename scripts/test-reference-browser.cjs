@@ -93,20 +93,27 @@ async function main() {
     );
     assert.match(html, /data-reference-ready="true"/);
     assert.match(html, /<div class="example-label">Input<\/div>/);
-    assert.match(html, /<pre data-example-role="input"><code>/);
-    assert.match(html, /graphs\.RandomGNP\(5, 0\)\.size\(\)/);
+    assert.match(html, /<pre data-example-role="input" class="language-python"[^>]*><code class="language-python">/);
+    assert.match(html, />graphs<span class="token punctuation">\.<\/span>RandomGNP/);
+    assert.match(html, /<span class="token number">5<\/span>/);
+    assert.match(html, /<span class="token punctuation">\.<\/span>RandomGNP/);
     assert.match(html, /<div class="example-label">Expected output<\/div>/);
     assert.match(html, /<pre data-example-role="output"><code>0<\/code><\/pre>/);
     const explanation = html.indexOf(
       "The endpoints <code>p=0</code> and <code>p=1</code> are deterministic:",
     );
-    const inlineCode = html.indexOf("graphs.RandomGNP(5, 0).size()", explanation);
+    const inlineCode = html.indexOf(
+      '<pre data-example-role="input" class="language-python"',
+      explanation,
+    );
     const additional = html.indexOf("additional executable examples", explanation);
     assert.ok(explanation >= 0);
     assert.ok(inlineCode > explanation);
     assert.ok(additional > inlineCode);
     assert.match(html, /<div class="doc-examples"><section class="example">/);
     assert.doesNotMatch(html, />23 executable examples</);
+    assert.match(html, /<pre class="line-numbers language-python" data-start="\d+"[^>]*>/);
+    assert.match(html, /class="line-numbers-rows"/);
     const visualHtml = await runBrowser(
       `http://127.0.0.1:${port}/reference.html?q=Graph.plot#Graph.plot`,
     );

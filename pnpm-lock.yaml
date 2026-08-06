@@ -42,6 +42,9 @@ importers:
       esbuild:
         specifier: 0.28.1
         version: 0.28.1
+      prismjs:
+        specifier: 1.30.0
+        version: 1.30.0
       pyright:
         specifier: 1.1.411
         version: 1.1.411
@@ -678,6 +681,10 @@ packages:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
 
+  prismjs@1.30.0:
+    resolution: {integrity: sha512-DEvV2ZF2r2/63V+tK8hQvrR2ZGn10srHbXviTlcv7Kpzw8jWiNTqbVgjO3IY8RxrrOUF8VPMQQFysYYYv0YZxw==}
+    engines: {node: '>=6'}
+
   proc-log@7.0.0:
     resolution: {integrity: sha512-FYgfaA69XZ93zaXLoMNQ+ViDXGGBgR8aLh03txzcFhV+9xOXx7+8DLCULrKKpR9+GsH9ZfHm82aSUPpozX0Ztg==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
@@ -1214,6 +1221,8 @@ snapshots:
   plotly.js-dist-min@3.7.0: {}
 
   possible-typed-array-names@1.1.0: {}
+
+  prismjs@1.30.0: {}
 
   proc-log@7.0.0: {}
 

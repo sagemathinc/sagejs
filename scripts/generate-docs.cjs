@@ -15,6 +15,7 @@ const {
   examplesForEntry,
   sourceForEntry,
 } = require("./reference-examples.cjs");
+const { buildReferencePrism } = require("./build-reference-prism.cjs");
 
 const root = join(__dirname, "..");
 const output = join(root, "docs", "reference", "api.md");
@@ -34,6 +35,14 @@ function stampedReferenceHtml(referenceData) {
       join(root, "website", "reference-examples.css"),
       "utf8",
     ),
+    "reference-prism.css": readFileSync(
+      join(root, "website", "reference-prism.css"),
+      "utf8",
+    ),
+    "reference-prism.js": readFileSync(
+      join(root, "website", "reference-prism.js"),
+      "utf8",
+    ),
     "reference.js": readFileSync(join(root, "website", "reference.js"), "utf8"),
     "reference-data.json": referenceData,
   };
@@ -49,6 +58,7 @@ function stampedReferenceHtml(referenceData) {
 }
 
 async function main() {
+  buildReferencePrism({ checkOnly: check });
   const session = await createSage();
   let generated;
   let catalog;

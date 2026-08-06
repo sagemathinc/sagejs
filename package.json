@@ -187,6 +187,7 @@
     "@sagemath/sagejs-graph": "workspace:*",
     "@types/node": "^26.1.1",
     "esbuild": "0.28.1",
+    "prismjs": "1.30.0",
     "pyright": "1.1.411",
     "tree-sitter-cli": "0.26.11",
     "tree-sitter-macaulay2": "4.0.1",
