@@ -20,7 +20,15 @@ function portableActual(text) {
   const slashRoot = root.replaceAll("\\", "/");
   return String(text)
     .replaceAll(nativeRoot, "<SAGEJS_ROOT>")
-    .replaceAll(slashRoot, "<SAGEJS_ROOT>");
+    .replaceAll(slashRoot, "<SAGEJS_ROOT>")
+    // Exception examples are useful documentation, but generated-JavaScript
+    // and Node stack coordinates are build artifacts rather than output
+    // semantics.  Normalize them so inserting an unrelated source line or
+    // updating the pinned Node release cannot invalidate the reference site.
+    .replace(
+      /((?:<SAGEJS_ROOT>\/|sagejs\/|evalmachine\.|node:)[^:\n()]+):\d+(?::\d+)?/g,
+      "$1:<location>",
+    );
 }
 
 async function main() {
