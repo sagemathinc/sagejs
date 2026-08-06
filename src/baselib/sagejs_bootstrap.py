@@ -42,19 +42,62 @@ def ρσ_native_method_adapter(target_function):
         for (const name of [
             "__annotations__",
             "__annotations_text__",
+            "__code__",
             "__defaults__",
             "__doc__",
+            "__globals__",
             "__handles_kwarg_interpolation__",
+            "__kwdefaults__",
             "__kwonly__",
             "__module__",
             "__name__",
             "__positional_only__",
+            "__python_type__",
+            "__qualname__",
             "__varargs__",
             "__varkw__",
         ]) {
             method[name] = target_function[name];
         }
         method.__sagejs_native_method__ = true;
+        return method;
+    })()"""
+
+
+def ρσ_unbound_method_adapter(target_function):
+    """Expose a JavaScript-receiver method as ``method(self, *args)``."""
+    return r"""%js (() => {
+        if (target_function.__sagejs_unbound_adapter__) {
+            return target_function.__sagejs_unbound_adapter__;
+        }
+        function method(receiver, ...args) {
+            return Reflect.apply(target_function, receiver, args);
+        }
+        if (target_function.__argnames__) {
+            method.__argnames__ = ["self", ...target_function.__argnames__];
+        }
+        for (const name of [
+            "__annotations__",
+            "__annotations_text__",
+            "__code__",
+            "__defaults__",
+            "__doc__",
+            "__globals__",
+            "__handles_kwarg_interpolation__",
+            "__kwdefaults__",
+            "__kwonly__",
+            "__module__",
+            "__name__",
+            "__positional_only__",
+            "__python_type__",
+            "__qualname__",
+            "__varargs__",
+            "__varkw__",
+        ]) {
+            if (name !== "__argnames__") method[name] = target_function[name];
+        }
+        method.__func__ = target_function;
+        target_function.__sagejs_unbound_adapter__ = method;
         return method;
     })()"""
 

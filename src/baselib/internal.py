@@ -1385,31 +1385,39 @@ def ρσ_instanceof(value: Any, *candidates: Any) -> bool:
             if ρσ_instanceof(value, *candidate):
                 return True
             continue
+        # Some Python runtime types (notably ``function``) are represented by
+        # callable adapters rather than JavaScript constructors. Their value
+        # carries the authoritative Python type explicitly.
+        if candidate is _internal_get_member(value, '__python_type__'):
+            return True
         if (
             _internal_type_is(runtime.jstype(candidate), 'function')
             and runtime.instance_of(value, candidate)
             # JavaScript represents both Python functions and Python classes
             # with native Function objects.  ``types.FunctionType`` is the
             # native Function constructor, but CPython does not consider a
-            # class to be a function.  Python classes are identified by the
-            # ``__bases__`` metadata installed on their prototypes.
+            # class to be a function. Python classes have their own
+            # ``__bases__`` marker on the constructor; checking the prototype
+            # would misclassify ordinary functions when that name is inherited.
             and not (
                 candidate is runtime.function_class
                 and _internal_type_is(runtime.jstype(value), 'function')
-                and _internal_get_member(value, 'prototype')
-                is not runtime.undefined
-                and _internal_get_member(value.prototype, '__bases__')
-                is not runtime.undefined
+                and runtime.reflect.apply(
+                    runtime.object.prototype.hasOwnProperty,
+                    value,
+                    ['__bases__'],
+                )
             )
         ):
             return True
         if (
             candidate is type
             and _internal_type_is(runtime.jstype(value), 'function')
-            and _internal_get_member(value, 'prototype')
-            is not runtime.undefined
-            and _internal_get_member(value.prototype, '__bases__')
-            is not runtime.undefined
+            and runtime.reflect.apply(
+                runtime.object.prototype.hasOwnProperty,
+                value,
+                ['__bases__'],
+            )
         ):
             return True
         registry = _internal_get_member(candidate, '_abc_registry')

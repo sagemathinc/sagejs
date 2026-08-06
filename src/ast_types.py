@@ -1108,15 +1108,30 @@ class AST_Assign(AST_Binary):
     def is_chained(self):
         return is_node_type(
             self.right,
-            AST_Assign) or (is_node_type(self.right, AST_Seq) and
-                            (is_node_type(self.right.car, AST_Assign)
-                             or is_node_type(self.right.cdr, AST_Assign)))
+            AST_Assign) or (
+                (
+                    is_node_type(self.right, AST_ItemAccess)
+                    or is_node_type(self.right, AST_Splice)
+                )
+                and self.right.assignment is not None
+            ) or (is_node_type(self.right, AST_Seq) and
+                  (is_node_type(self.right.car, AST_Assign)
+                   or is_node_type(self.right.cdr, AST_Assign)))
 
     def traverse_chain(self):
         right = self.right
         while True:
             if is_node_type(right, AST_Assign):
                 right = right.right
+                continue
+            if (
+                (
+                    is_node_type(right, AST_ItemAccess)
+                    or is_node_type(right, AST_Splice)
+                )
+                and right.assignment is not None
+            ):
+                right = right.assignment
                 continue
             if is_node_type(right, AST_Seq):
                 if is_node_type(right.car, AST_Assign):
@@ -1132,6 +1147,28 @@ class AST_Assign(AST_Binary):
             if is_node_type(next, AST_Assign):
                 left_hand_sides.push(next.left)
                 next = next.right
+                continue
+            if (
+                (
+                    is_node_type(next, AST_ItemAccess)
+                    or is_node_type(next, AST_Splice)
+                )
+                and next.assignment is not None
+            ):
+                initializer = {
+                    'expression': next.expression,
+                    'property': next.property,
+                    'assignment': None,
+                    'start': next.start,
+                    'end': next.end,
+                }
+                if is_node_type(next, AST_Splice):
+                    initializer['property2'] = next.property2
+                    target = AST_Splice(initializer)
+                else:
+                    target = AST_ItemAccess(initializer)
+                left_hand_sides.push(target)
+                next = next.assignment
                 continue
             if is_node_type(next, AST_Seq):
                 if is_node_type(next.cdr, AST_Assign):

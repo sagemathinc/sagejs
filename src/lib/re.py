@@ -72,8 +72,27 @@ def _verbose_source(source):
 
 def _transform(source, flags):
     source = str(source)
-    if '(?(' in source:
-        raise error('conditional groups are not supported')
+    # Detect an actual ``(?(id/name)yes|no)`` construct without mistaking an
+    # escaped literal parenthesis followed by another group (``\(?(?P...``)
+    # for one.  ECMAScript has no conditional-group equivalent.
+    escaped = False
+    in_class = False
+    for position in range(len(source) - 2):
+        character = source[position]
+        if escaped:
+            escaped = False
+            continue
+        if character == '\\':
+            escaped = True
+            continue
+        if character == '[':
+            in_class = True
+            continue
+        if character == ']':
+            in_class = False
+            continue
+        if not in_class and source[position:position + 3] == '(?(':
+            raise error('conditional groups are not supported')
     inline = {'i': IGNORECASE, 'm': MULTILINE, 's': DOTALL, 'x': VERBOSE}
     if source.startswith('(?'):
         close = source.find(')')

@@ -83,6 +83,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   modules: "ρσ_modules",
   native_method: "ρσ_native_method",
   native_method_adapter: "ρσ_native_method_adapter",
+  unbound_method_adapter: "ρσ_unbound_method_adapter",
   non_exception_throw: "ρσ_non_exception_throw",
   native_add: "ρσ_native_add",
   native_bitand: "ρσ_native_bitand",

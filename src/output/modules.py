@@ -763,6 +763,15 @@ def print_imports(container, output):
                 local_name = (
                     argname.alias.name if argname.alias else argname.name)
                 output.indent()
+                output.print('if (!ρσ_hasattr(ρσ_imported_module, ')
+                output.print_string(argname.name)
+                output.print(')) throw new ImportError(')
+                output.print_string(
+                    "cannot import name '" + argname.name + "' from '" +
+                    self.key + "'")
+                output.print(')')
+                output.end_statement()
+                output.indent()
                 output.print('var ')
                 output.print_name(local_name)
                 output.space()

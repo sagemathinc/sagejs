@@ -26,6 +26,18 @@ version_info = runtime.named_tuple(
     ['major', 'minor', 'micro', 'releaselevel', 'serial'],
 )
 
+# Values follow CPython on the 64-bit platforms supported by Sage.js.  The
+# named tuple shape matters to numeric packages that reproduce Python's hash
+# contract for their own exact numeric types.
+hash_info = runtime.named_tuple(
+    [64, 2305843009213693951, 314159, 0, 1000003, 'siphash13', 64, 128, 0],
+    'hash_info',
+    [
+        'width', 'modulus', 'inf', 'nan', 'imag', 'algorithm',
+        'hash_bits', 'seed_bits', 'cutoff',
+    ],
+)
+
 
 class TextIOWrapper:
     def __init__(self, name):

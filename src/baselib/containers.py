@@ -1087,6 +1087,14 @@ class _DictView:
     inspect = __repr__
 
 
+def _dict_storage_setitem(mapping: Any, key: Any, value: Any) -> None:
+    """Set an item without dispatching to a dict subclass override."""
+    normalized_key = _dict_normalize_key(key)
+    if not mapping.jsmap.has(normalized_key):
+        mapping.keymap.set(normalized_key, key)
+    mapping.jsmap.set(normalized_key, value)
+
+
 class SageDict:
 
     def __init__(
@@ -1118,13 +1126,13 @@ class SageDict:
     has = __contains__
 
     def __iter__(self) -> Any:
-        return iter(self.keys())
+        # Do not dispatch through ``self.keys()``: CPython's built-in dict
+        # iterator continues to expose the underlying storage when invoked as
+        # ``dict.__iter__(a_dict_subclass)``.
+        return iter(_DictView(self, 'keys'))
 
     def __setitem__(self, key: Any, value: Any) -> None:
-        normalized_key = _dict_normalize_key(key)
-        if not self.jsmap.has(normalized_key):
-            self.keymap.set(normalized_key, key)
-        self.jsmap.set(normalized_key, value)
+        _dict_storage_setitem(self, key, value)
 
     set = __setitem__
 
@@ -1248,20 +1256,20 @@ class SageDict:
             if isinstance(iterable, SageDict):
                 source = iterable.items()
                 for pair in source:
-                    self.__setitem__(pair[0], pair[1])
+                    _dict_storage_setitem(self, pair[0], pair[1])
             elif isinstance(iterable, runtime.map_class):
                 for pair in iterable.entries():
-                    self.__setitem__(pair[0], pair[1])
+                    _dict_storage_setitem(self, pair[0], pair[1])
             elif hasattr(iterable, 'items'):
                 for pair in iterable.items():
-                    self.__setitem__(pair[0], pair[1])
+                    _dict_storage_setitem(self, pair[0], pair[1])
             elif runtime.array.isArray(iterable):
                 for pair in iterable:
                     if len(pair) != 2:
                         raise ValueError(
                             'dictionary update sequence element has '
                             'length ' + str(len(pair)) + '; 2 is required')
-                    self.__setitem__(pair[0], pair[1])
+                    _dict_storage_setitem(self, pair[0], pair[1])
             elif (
                 runtime.strict_equal(
                     runtime.jstype(
@@ -1277,12 +1285,12 @@ class SageDict:
                         raise ValueError(
                             'dictionary update sequence element has '
                             'length ' + str(len(pair)) + '; 2 is required')
-                    self.__setitem__(pair[0], pair[1])
+                    _dict_storage_setitem(self, pair[0], pair[1])
             else:
                 for key in runtime.object.keys(iterable):
-                    self.__setitem__(key, iterable[key])
+                    _dict_storage_setitem(self, key, iterable[key])
         for key in keywords:
-            self.__setitem__(key, keywords[key])
+            _dict_storage_setitem(self, key, keywords[key])
 
     def __repr__(self) -> str:
         entries = list_constructor()

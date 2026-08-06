@@ -172,6 +172,13 @@ export function runRuntimeBootstrap(
     const parentName = separator < 0 ? "" : name.slice(0, separator);
     const childName = separator < 0 ? "" : name.slice(separator + 1);
     const parent = parentName ? loadModule(parentName) : undefined;
+    // Executing a package's __init__.py may import the very child module that
+    // caused us to load the package.  Recheck after the parent returns so the
+    // child is not executed a second time (which would reset module globals
+    // and create distinct class objects).
+    if (Object.prototype.hasOwnProperty.call(registry, name)) {
+      return Reflect.get(registry, name);
+    }
     const modulePath = name.replaceAll(".", "/");
     let source: string | undefined;
     let filename = "";
@@ -204,7 +211,12 @@ export function runRuntimeBootstrap(
       filename = join(namespaceDirectory, "__init__.py");
     }
     if (source === undefined) {
-      const error = new Error(`No module named '${name}'`);
+      const message = `No module named '${name}'`;
+      const ImportErrorClass = Reflect.get(globalThis, "ImportError");
+      if (typeof ImportErrorClass === "function") {
+        throw Reflect.construct(ImportErrorClass, [message]);
+      }
+      const error = new Error(message);
       error.name = "ImportError";
       throw error;
     }

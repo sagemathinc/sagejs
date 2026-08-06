@@ -27,6 +27,7 @@ def print_class(output):
         output.options.omit_baselib
         and not output.options.private_scope
         and not output.options.write_name
+        and not output.options.python_attributes
     )
     native_storage_parent = None
     if (
@@ -687,14 +688,18 @@ def print_class(output):
             self.bases[i].print(output)
         output.print(')'), output.end_statement()
 
-    # Docstring
-    if self.docstrings and self.docstrings.length and output.options.keep_docstrings:
-
-        def f_doc():
+    # Every Python class has ``__doc__``.  Keep the attribute present with a
+    # value of ``None`` even when the class has no docstring; introspection
+    # libraries rely on the distinction between a missing attribute and an
+    # undocumented class.
+    def f_doc():
+        if self.docstrings and self.docstrings.length and output.options.keep_docstrings:
             output.print(JSON.stringify(create_doctring(self.docstrings)))
+        else:
+            output.print('null')
 
-        add_hidden_property('__doc__', f_doc, True)
-        add_hidden_class_property('__doc__', f_doc, True)
+    add_hidden_property('__doc__', f_doc, True)
+    add_hidden_class_property('__doc__', f_doc, True)
 
     # Other statements in the class context
     for stmt in self.statements:

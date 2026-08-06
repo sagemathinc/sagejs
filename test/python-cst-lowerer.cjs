@@ -126,6 +126,26 @@ test("comprehension targets stay in their implicit Python 3 scope", async () => 
   }
 });
 
+test("module fallback names and explicit line continuations preserve Python semantics", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "try:\n    optional_name\nexcept NameError:\n    optional_name = 42\n" +
+      "answer = optional_name <= \\\n    43\n",
+      parserOptions,
+    );
+    assert.deepEqual(ast.annotated_locals, ["optional_name"]);
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /ρσ_check_unbound\(optional_name/);
+    assert.doesNotMatch(javascript, /<= \\/);
+  } finally {
+    frontend.close();
+  }
+});
+
 test("lowering preserves tuple, assignment-target, class, and native-object boundaries", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");
@@ -152,6 +172,45 @@ test("lowering preserves tuple, assignment-target, class, and native-object boun
     );
     assert.doesNotMatch(javascript, /Object\.defineProperty\([^\n]+ρσ_dict/);
     assert.match(javascript, /ρσ_interpolate_kwargs_constructor[^\n]+Point/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("observable chained assignments use Python hooks from left to right", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "first.child.value = second.child.value = marker\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /function\(ρσ_chain_assign_temp\)/);
+    assert.equal((javascript.match(/ρσ_setattr/g) ?? []).length, 2);
+    assert.match(javascript, /ρσ_getattr\(first, "child"\)/);
+    assert.match(javascript, /ρσ_getattr\(second, "child"\)/);
+    assert.ok(
+      javascript.indexOf('ρσ_getattr(first, "child")') <
+        javascript.indexOf('ρσ_getattr(second, "child")'),
+    );
+
+    const itemAst = frontend.parse(
+      "shared = values[0] = marker\n",
+      parserOptions,
+    );
+    const itemOutput = new compiler.OutputStream(outputOptions);
+    itemAst.print(itemOutput);
+    const itemJavascript = itemOutput.get();
+    assert.match(itemJavascript, /function\(ρσ_chain_assign_temp\)/);
+    assert.match(itemJavascript, /shared = ρσ_chain_assign_temp/);
+    assert.match(itemJavascript, /ρσ_setitem\(values/);
+    assert.ok(
+      itemJavascript.indexOf("shared = ρσ_chain_assign_temp") <
+        itemJavascript.indexOf("ρσ_setitem(values"),
+    );
   } finally {
     frontend.close();
   }

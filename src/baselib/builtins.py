@@ -1062,19 +1062,13 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
             runtime.bigint(left), runtime.bigint(right))
     if _builtins_member_is_function(left, '__pow__'):
         return _builtins_call_member(left, '__pow__', [right])
-    if (
-        (
-            runtime.strict_equal(left_type, 'bigint')
-            or runtime.strict_equal(right_type, 'bigint')
-        )
-        and _builtins_exact_integer_primitive(left)
-        and _builtins_exact_integer_primitive(right)
-    ):
-        if right < 0:
-            raise ValueError(
-                'negative powers of exact integers are not implemented yet')
-        return runtime.native_pow(
-            runtime.bigint(left), runtime.bigint(right))
+    # Python permits arbitrary-precision integers to participate in floating
+    # exponentiation. JavaScript rejects every BigInt/Number mixture, so cross
+    # the explicit floating boundary before invoking its numeric operator.
+    if runtime.strict_equal(left_type, 'bigint'):
+        return runtime.native_pow(runtime.number(left), right)
+    if runtime.strict_equal(right_type, 'bigint'):
+        return runtime.native_pow(left, runtime.number(right))
     if (
         not runtime.strict_equal(left_type, 'number')
         or not runtime.strict_equal(right_type, 'number')
@@ -1343,7 +1337,7 @@ def ρσ_operator_irshift(left: Any, right: Any) -> Any:
 def ρσ_operator_bitand(left: Any, right: Any) -> Any:
     if left is True or left is False:
         if right is True or right is False:
-            return runtime.native_bitand(left, right)
+            return left and right
     if (
         _builtins_exact_integer_primitive(left)
         and _builtins_exact_integer_primitive(right)
@@ -1361,7 +1355,7 @@ def ρσ_operator_bitand(left: Any, right: Any) -> Any:
 def ρσ_operator_bitor(left: Any, right: Any) -> Any:
     if left is True or left is False:
         if right is True or right is False:
-            return runtime.native_bitor(left, right)
+            return left or right
     if (
         _builtins_exact_integer_primitive(left)
         and _builtins_exact_integer_primitive(right)
@@ -1379,7 +1373,7 @@ def ρσ_operator_bitor(left: Any, right: Any) -> Any:
 def ρσ_operator_bitxor(left: Any, right: Any) -> Any:
     if left is True or left is False:
         if right is True or right is False:
-            return runtime.native_bitxor(left, right)
+            return left is not right
     if (
         _builtins_exact_integer_primitive(left)
         and _builtins_exact_integer_primitive(right)
@@ -1775,6 +1769,16 @@ def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
             'Invalid literal for int with base '
             + str(radix) + ': ' + str(value)
         )
+    if (
+        runtime.strict_equal(runtime.jstype(answer), 'number')
+        and not runtime.number.isFinite(answer)
+    ):
+        raise OverflowError('cannot convert float infinity to integer')
+    if (
+        runtime.strict_equal(runtime.jstype(answer), 'number')
+        and not runtime.number.isSafeInteger(answer)
+    ):
+        return runtime.bigint(answer)
     return answer
 
 
@@ -1783,7 +1787,18 @@ def ρσ_float(value: Any) -> Any:
     if runtime.strict_equal(value_type, 'number'):
         answer = value
     elif runtime.strict_equal(value_type, 'string'):
-        answer = runtime.parse_float(value)
+        normalized = value.strip().lower()
+        if normalized in ('inf', '+inf', 'infinity', '+infinity'):
+            return runtime.number.POSITIVE_INFINITY
+        if normalized in ('-inf', '-infinity'):
+            return runtime.number.NEGATIVE_INFINITY
+        if normalized in ('nan', '+nan', '-nan'):
+            return runtime.number.NaN
+        if normalized == '':
+            raise ValueError(
+                'Could not convert string to float: ' + str(value))
+        # Number() rejects trailing junk which JavaScript parseFloat accepts.
+        answer = runtime.number(value)
     elif value and _builtins_member_is_function(value, '__float__'):
         answer = _builtins_call_member(value, '__float__', [])
     else:
@@ -1897,6 +1912,25 @@ _BUILTINS_HIDDEN_INTROSPECTION_NAMES = [
 ]
 
 
+# These attributes are stored as JavaScript own properties so calls and
+# introspection stay fast, but CPython exposes them as slots on ``function``;
+# they are not entries in a function object's writable ``__dict__``.
+_BUILTINS_FUNCTION_SLOT_NAMES = [
+    '__annotations__',
+    '__annotations_text__',
+    '__code__',
+    '__defaults__',
+    '__doc__',
+    '__globals__',
+    '__kwdefaults__',
+    '__module__',
+    '__name__',
+    '__python_descriptor__',
+    '__python_type__',
+    '__qualname__',
+]
+
+
 def _builtins_visible_introspection_name(name: Any) -> _Bool:
     return (
         runtime.strict_equal(runtime.jstype(name), 'string')
@@ -1950,6 +1984,10 @@ def _builtins_append_own_dir_names(
 def _builtins_namespace_dict(value: Any) -> Any:
     """Return the Python-visible own namespace of an object or class."""
     namespace = runtime.object.create(None)
+    plain_function = (
+        runtime.strict_equal(runtime.jstype(value), 'function')
+        and not _builtins_is_python_class(value)
+    )
 
     def copy_own_members(source: Any) -> None:
         if source is None or source is runtime.undefined:
@@ -1964,6 +2002,11 @@ def _builtins_namespace_dict(value: Any) -> Any:
             )
             if (
                 not native_function_slot
+                and not (
+                    source is value
+                    and plain_function
+                    and member_name in _BUILTINS_FUNCTION_SLOT_NAMES
+                )
                 and _builtins_get_member(
                     member,
                     '__sagejs_synthetic_method__',
@@ -2252,10 +2295,14 @@ def _builtins_doc_search_match(
 def _builtins_is_python_class(value: Any) -> _Bool:
     if not runtime.strict_equal(runtime.jstype(value), 'function'):
         return False
-    prototype = _builtins_get_member(value, 'prototype')
-    return (
-        prototype is not runtime.undefined
-        and _builtins_has_member(prototype, '__bases__')
+    # Class statements and ``type(name, bases, namespace)`` both install the
+    # marker on the constructor itself.  Looking on ``prototype`` is weaker:
+    # a dynamic subclass may inherit a non-writable ``__bases__`` descriptor,
+    # preventing Reflect.set from creating an own prototype property.
+    return runtime.reflect.apply(
+        runtime.object.prototype.hasOwnProperty,
+        value,
+        ['__bases__'],
     )
 
 
@@ -3615,11 +3662,23 @@ def ρσ_getattr(
                     class_member,
                     [value],
                 )
+            if _builtins_has_member(
+                class_member, '__staticmethod__'
+            ):
+                return class_member
             if _builtins_member_is_function(
                 class_member, '__get__'
             ):
                 return _builtins_call_member(
                     class_member, '__get__', [None, value])
+            if runtime.strict_equal(
+                runtime.jstype(class_member), 'function'
+            ) and not _builtins_is_python_class(
+                class_member
+            ) and _builtins_get_member(
+                class_member, '__python_descriptor__'
+            ) is not True:
+                return runtime.unbound_method_adapter(class_member)
             return class_member
     if _builtins_has_member(value, name):
         member = _builtins_get_member(value, name)
@@ -3668,6 +3727,16 @@ def ρσ_getattr(
                 member, '__get__', [instance, member_owner])
         if _builtins_has_member(member, '__staticmethod__'):
             return member
+        if (
+            _builtins_is_python_class(value)
+            and runtime.strict_equal(
+                runtime.jstype(member), 'function')
+            and not _builtins_is_python_class(member)
+            and _builtins_get_member(
+                member, '__python_descriptor__'
+            ) is not True
+        ):
+            return runtime.unbound_method_adapter(member)
         if (
             runtime.strict_equal(runtime.jstype(member), 'function')
             and not _builtins_is_python_class(member)
@@ -4298,8 +4367,18 @@ def ρσ_type(*values: Any) -> Any:
             raise TypeError('type() argument 3 must be dict')
 
         def dynamic_class(*args: Any, **keywords: Any) -> Any:
-            instance = runtime.object.create(
-                runtime.reflect.get(dynamic_class, 'prototype'))
+            allocator = ρσ_getattr(
+                dynamic_class, '__new__', None)
+            if runtime.strict_equal(
+                runtime.jstype(allocator), 'function'
+            ):
+                instance = allocator(
+                    dynamic_class, *args, **keywords)
+            else:
+                instance = runtime.object.create(
+                    runtime.reflect.get(dynamic_class, 'prototype'))
+            if not runtime.instance_of(instance, dynamic_class):
+                return instance
             # Namespace functions installed by ``type(name, bases, ns)`` are
             # ordinary Python descriptors.  Resolve ``__init__`` through
             # getattr so it is bound exactly as it would be on a class
@@ -4307,7 +4386,7 @@ def ρσ_type(*values: Any) -> Any:
             # bound function also gives dynamically generated classes normal
             # keyword-argument support.
             initializer = ρσ_getattr(
-                instance, '__init__', runtime.undefined)
+                instance, '__init__', None)
             if runtime.strict_equal(
                 runtime.jstype(initializer), 'function'
             ):

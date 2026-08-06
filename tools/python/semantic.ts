@@ -21,7 +21,10 @@ function unique(values: string[]): string[] {
  * testable and lets the Tree-sitter lowerer remain a mechanical CST mapping.
  */
 export class PythonAstSemanticAnalyzer {
-  constructor(private readonly compiler: any) {}
+  constructor(
+    private readonly compiler: any,
+    private readonly sequentialDefinitions = false,
+  ) {}
 
   private is(value: any, constructorName: string): boolean {
     const Constructor = this.compiler[constructorName];
@@ -41,9 +44,18 @@ export class PythonAstSemanticAnalyzer {
     const nonlocals = new Set(this.scanDeclaredNames(toplevel.body));
     const callables = this.topLevelCallableBindings(toplevel.body);
     toplevel.nonlocalvars = [...nonlocals];
+    const sequentialModule = this.sequentialDefinitions ||
+      !!toplevel.scoped_flags?.sequential_definitions;
     toplevel.annotated_locals = unique([
       ...this.scanAnnotatedNames(toplevel.body),
       ...deletedGlobals,
+      // Module assignments are lexical declarations in the generated
+      // JavaScript.  Guard reads which occur before the Python binding (for
+      // example ``try: optional_name`` followed by a fallback assignment),
+      // so JavaScript's hoisted ``undefined`` cannot leak into Python code.
+      ...(sequentialModule
+        ? this.scanPotentiallyUnbound(toplevel.body, topAssignments)
+        : []),
     ]);
     this.walk(toplevel.body, (node) => {
       if (node instanceof this.compiler.AST_Lambda) {
@@ -442,6 +454,19 @@ export class PythonAstSemanticAnalyzer {
         restore(before);
         if (node.alternative) visit(node.alternative);
         restore(before);
+        return;
+      }
+      if (node instanceof this.compiler.AST_Try) {
+        const before = snapshot();
+        visit(node.body);
+        const successful = snapshot();
+        if (node.belse) visit(node.belse);
+        const successWithElse = snapshot();
+        restore(before);
+        if (node.bcatch) visit(node.bcatch);
+        const caught = node.bcatch ? snapshot() : successful;
+        intersect(successWithElse, caught);
+        if (node.bfinally) visit(node.bfinally);
         return;
       }
       if (

@@ -329,6 +329,7 @@ def function_annotation(self, output, strip_first, name):
         output.options.omit_baselib
         and not output.options.private_scope
         and not output.options.write_name
+        and not output.options.python_attributes
     )
     if not compiling_baselib and not strip_first:
 

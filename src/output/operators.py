@@ -4,8 +4,8 @@ from __python__ import hash_literals
 from ast_types import (AST_Array, AST_Assign, AST_BaseCall, AST_Binary,
                        AST_Conditional, AST_Dot, AST_Existential, AST_ForIn, AST_ItemAccess, AST_Number,
                        AST_Object, AST_Return, AST_Seq, AST_Set,
-                       AST_SimpleStatement, AST_Statement, AST_String, AST_Sub,
-                       AST_Symbol, AST_SymbolRef, AST_Unary, TreeWalker,
+                       AST_SimpleStatement, AST_Splice, AST_Statement, AST_String, AST_Sub,
+                       AST_Symbol, AST_SymbolRef, AST_Unary,
                        is_node_type)
 from output.loops import print_target_assignment, unpack_tuple
 
@@ -29,16 +29,11 @@ def print_getattr(self, output, skip_expression):  # AST_Dot
         ancestor = stack[index]
         if not is_node_type(ancestor, AST_Assign):
             continue
-        found_target = [False]
-
-        def find_target(node, _descend):
-            if node is self:
-                found_target[0] = True
-                return True
-            return False
-
-        ancestor.left.walk(TreeWalker(find_target))
-        if found_target[0]:
+        # Only the outermost dot is the storage target.  In
+        # ``obj.child.value = x``, ``obj.child`` is an ordinary attribute
+        # read and must still raise AttributeError (or run a descriptor)
+        # before setattr handles ``value``.
+        if ancestor.left is self:
             assignment_target = True
             break
         if ancestor.is_chained():
@@ -550,6 +545,16 @@ def print_assignment(self, output):
     flattened = False
     left = self.left
     if (
+        self.operator is '='
+        and (
+            is_node_type(left, AST_ItemAccess)
+            or is_node_type(left, AST_Splice)
+        )
+    ):
+        print_target_assignment(
+            left, output, lambda: self.right.print(output))
+        return
+    if (
         output.options.python_attributes
         and self.operator is '='
         and is_node_type(left, AST_Dot)
@@ -741,25 +746,42 @@ def print_assign(self, output):
         left_hand_sides, rhs = self.traverse_chain()
         is_compound_assign = False
         for lhs in left_hand_sides:
-            if is_node_type(lhs, AST_Seq) or is_node_type(lhs, AST_Array):
+            # Attribute and item targets are observable assignments in Python:
+            # descriptors and ``__setitem__`` hooks run from left to right.
+            # JavaScript's native chained assignment runs right to left and
+            # would also bypass our Python runtime hooks.
+            if (
+                is_node_type(lhs, AST_Seq)
+                or is_node_type(lhs, AST_Array)
+                or is_node_type(lhs, AST_Dot)
+                or is_node_type(lhs, AST_ItemAccess)
+            ):
                 is_compound_assign = True
                 break
         if is_compound_assign:
             temp_rhs = AST_SymbolRef({'name': 'ρσ_chain_assign_temp'})
-            print_assignment(
-                AST_Assign({
-                    'left': temp_rhs,
-                    'operator': '=',
-                    'right': rhs
-                }), output)
-            for lhs in left_hand_sides:
-                output.end_statement(), output.indent()
-                print_assignment(
-                    AST_Assign({
-                        'left': lhs,
-                        'right': temp_rhs,
-                        'operator': self.operator
-                    }), output)
+            # An IIFE parameter gives us a genuinely local temporary without
+            # teaching scope analysis about a compiler-generated symbol.  It
+            # also guarantees that the right-hand side is evaluated once.
+            output.print('(function(ρσ_chain_assign_temp)')
+            output.space()
+
+            def print_chain_body():
+                for lhs in left_hand_sides:
+                    output.indent()
+                    print_assignment(
+                        AST_Assign({
+                            'left': lhs,
+                            'right': temp_rhs,
+                            'operator': self.operator
+                        }), output)
+                    output.end_statement()
+                    output.newline()
+
+            output.with_block(print_chain_body)
+            output.print(')(')
+            rhs.print(output)
+            output.print(')')
         else:
             for lhs in left_hand_sides:
                 output.spaced(lhs, '=', '')

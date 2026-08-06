@@ -95,8 +95,32 @@ def isinf(x):
     return not isFinite(x)
 
 
+def isfinite(x):
+    return isFinite(x)
+
+
 def isnan(x):
     return isNaN(x)
+
+
+def frexp(x):
+    """Return the mantissa and exponent satisfying ``x == m * 2**e``."""
+    x = float(x)
+    if x == 0.0 or isinf(x) or isnan(x):
+        return x, 0
+    exponent = int(Math.floor(Math.log2(Math.abs(x)))) + 1
+    mantissa = x / Math.pow(2, exponent)
+    return mantissa, exponent
+
+
+def ldexp(x, i):
+    """Return ``x * (2**i)`` using the platform floating-point format."""
+    x = float(x)
+    i = int(i)
+    result = x * Math.pow(2, i)
+    if isFinite(x) and x != 0.0 and not isFinite(result):
+        raise OverflowError('math range error')
+    return result
 
 
 def modf(x):

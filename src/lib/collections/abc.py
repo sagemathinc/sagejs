@@ -57,3 +57,44 @@ class MutableSet(Set):
 
 class Callable(ABC):
     pass
+
+
+class MappingView(Sized):
+    def __init__(self, mapping):
+        self._mapping = mapping
+
+    def __len__(self):
+        return len(self._mapping)
+
+
+class KeysView(MappingView, Set):
+    def __iter__(self):
+        return iter(self._mapping)
+
+    def __contains__(self, key):
+        return key in self._mapping
+
+
+class ItemsView(MappingView, Set):
+    def __iter__(self):
+        for key in self._mapping:
+            yield key, self._mapping[key]
+
+    def __contains__(self, item):
+        try:
+            key, value = item
+        except (TypeError, ValueError):
+            return False
+        try:
+            return self._mapping[key] == value
+        except KeyError:
+            return False
+
+
+class ValuesView(MappingView, Collection):
+    def __iter__(self):
+        for key in self._mapping:
+            yield self._mapping[key]
+
+    def __contains__(self, value):
+        return any(item == value for item in self)

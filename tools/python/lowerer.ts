@@ -175,7 +175,13 @@ export class PythonCstLowerer {
     ast.docstrings = extracted.docstrings;
     ast.start = this.token(root, false);
     ast.end = this.token(root, true);
-    new PythonAstSemanticAnalyzer(this.compiler).analyze(ast);
+    new PythonAstSemanticAnalyzer(
+      this.compiler,
+      !!(
+        finalizedToplevel?.scoped_flags?.sequential_definitions ??
+        this.options.scoped_flags?.sequential_definitions
+      ),
+    ).analyze(ast);
     return {
       ast,
       directlyLoweredNodeTypes: new Set(this.lowered),
@@ -905,7 +911,7 @@ export class PythonCstLowerer {
       const left = operands[index - 1];
       const right = operands[index];
       const spelling = this.syntax.source.slice(left.endIndex, right.startIndex)
-        .trim().replace(/\s+/g, " ");
+        .replace(/\\\r?\n/g, " ").trim().replace(/\s+/g, " ");
       result = this.make("AST_Binary", node, {
         left: result,
         operator: this.normalizeOperator(spelling),
