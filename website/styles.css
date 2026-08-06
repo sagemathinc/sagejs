@@ -249,6 +249,7 @@ input, select { width: 100%; min-height: 42px; border: 1px solid var(--line); bo
 .example-copy:hover { border-color: var(--teal); color: var(--teal); }
 .example-code, .example-output { margin: 0; overflow-x: auto; border-radius: 8px; padding: 14px; font-size: .78rem; line-height: 1.5; white-space: pre; }
 .example-code { color: #e6fffa; background: var(--navy-deep); }
+.example-code[class*="language-"] { margin: 0; padding: 14px; color: #e6fffa; background: var(--navy-deep); font-size: .78rem; line-height: 1.5; }
 .example-output { border: 1px solid var(--line); color: #35536e; background: white; }
 .output-label { margin: 12px 0 5px; color: var(--ink-soft); font-size: .65rem; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
 .example-note { margin: 10px 0 0; color: var(--ink-soft); font-size: .78rem; }

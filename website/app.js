@@ -224,6 +224,15 @@ function notebookSource(example) {
   return example.language === "sage" ? example.code : `%%${example.language}\n${example.code}`;
 }
 
+const prismLanguages = new Set(["sage", "python", "magma", "maple", "matlab", "macaulay2", "wolfram"]);
+
+function highlightExample(code, language) {
+  if (!prismLanguages.has(language) || !window.Prism?.languages?.[language]) return;
+  code.classList.add(`language-${language}`);
+  code.parentElement?.classList.add(`language-${language}`);
+  window.Prism.highlightElement(code);
+}
+
 async function copyText(button, value) {
   try {
     await navigator.clipboard.writeText(value);
@@ -249,7 +258,9 @@ function exampleBlock(example) {
   header.append(title, copy);
 
   const source = el("pre", "example-code");
-  source.append(el("code", "", notebookSource(example)));
+  const sourceCode = el("code", "", notebookSource(example));
+  source.append(sourceCode);
+  highlightExample(sourceCode, example.language);
   const outputLabel = el("p", "output-label", "Expected output");
   const output = el("pre", "example-output");
   output.append(el("code", "", example.expected));
@@ -554,6 +565,7 @@ async function loadDashboard() {
         if (section) window.setTimeout(() => section.scrollIntoView({ behavior: "auto", block: "start" }), 0);
       }
     }
+    document.documentElement.dataset.dashboardReady = "true";
   } catch (error) {
     document.querySelector("#load-error").hidden = false;
     document.querySelector("#result-count").textContent = "Dashboard unavailable";

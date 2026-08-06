@@ -223,6 +223,13 @@ test("dashboard JavaScript is self-contained and does not inject capability HTML
   assert.match(script, /function revealCapability/);
   assert.match(script, /url\.searchParams\.delete\("q"\)/);
   assert.match(script, /link\.addEventListener\("click"/);
+  assert.match(html, /reference-prism\.css/);
+  assert.match(html, /data-manual src="\.\/reference-prism\.js"/);
+  assert.match(script, /function highlightExample/);
+  assert.match(script, /Prism\.highlightElement/);
+  for (const language of new Set(examplePayload.examples.map((example) => example.language))) {
+    assert.match(script, new RegExp(`\\"${language}\\"`), `${language} highlighting is registered`);
+  }
 });
 
 test("reference manual is fast, searchable, and verification-aware", () => {

@@ -121,7 +121,14 @@ async function main() {
     );
     assert.match(visualHtml, /class="example-visual"/);
     assert.match(visualHtml, /Verified graphical output · Petersen graph/);
-    console.log("Reference browser test: example input and output rendered into DOM");
+    const dashboardHtml = await runBrowser(
+      `http://127.0.0.1:${port}/index.html?q=matrix`,
+    );
+    assert.match(dashboardHtml, /data-dashboard-ready="true"/);
+    assert.match(dashboardHtml, /<pre class="example-code language-sage"[^>]*><code class="language-sage">/);
+    assert.match(dashboardHtml, /<span class="token operator">=<\/span>/);
+    assert.match(dashboardHtml, /<span class="token number">1<\/span>/);
+    console.log("Browser test: dashboard and reference examples are syntax highlighted");
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
