@@ -15,6 +15,14 @@ const {
 
 const root = join(__dirname, "..");
 
+function portableActual(text) {
+  const nativeRoot = root;
+  const slashRoot = root.replaceAll("\\", "/");
+  return String(text)
+    .replaceAll(nativeRoot, "<SAGEJS_ROOT>")
+    .replaceAll(slashRoot, "<SAGEJS_ROOT>");
+}
+
 async function main() {
   const session = await createSage();
   let catalog;
@@ -102,6 +110,11 @@ async function main() {
     }
   }
   report.revision = revision;
+  for (const result of report.results) {
+    if (typeof result.actual === "string") {
+      result.actual = portableActual(result.actual);
+    }
+  }
   writeFileSync(
     join(root, "website", "reference-results.json"),
     JSON.stringify(report, null, 2) + "\n",
