@@ -168,6 +168,10 @@ export class SageSession extends EventEmitter {
         this.emit("ready");
         return;
       }
+      if (message.type === "startup-error") {
+        this.readyReject(deserializeError(message.error));
+        return;
+      }
 
       const pending = this.pending.get(message.id);
       if (!pending) return;

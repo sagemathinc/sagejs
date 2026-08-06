@@ -26,6 +26,7 @@ import {
 import { installNodeHost } from "./host";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
 import { runRuntimeBootstrap } from "./runtime-bootstrap";
+import { createPythonCompilerFrontend } from "./python/compiler-frontend";
 
 // TODO
 type Parsed = any;
@@ -102,6 +103,10 @@ export default async function Compile({
   lib_path: string;
 }): Promise<void> {
   const PyLang = createCompiler();
+  const pythonFrontend = await createPythonCompilerFrontend(
+    PyLang,
+    argv.sage ? "sage" : "python",
+  );
   const foreignLanguage = selectedForeignLanguage(argv);
   const foreignFrontend: ForeignFrontend | undefined = foreignLanguage
     ? await createForeignFrontend(foreignLanguage)
@@ -133,7 +138,7 @@ export default async function Compile({
   const count = files.length || 1;
 
   function parseFile(code: string, filename: string): Parsed {
-    return PyLang.parse(code, {
+    return pythonFrontend.parse(code, {
       filename,
       basedir: filename !== "<stdin>" ? dirname(filename) : undefined,
       libdir: join(src_path, "lib"),

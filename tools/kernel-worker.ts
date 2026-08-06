@@ -1,7 +1,7 @@
 import { parentPort, workerData } from "worker_threads";
 
 import {
-  createKernelEvaluator,
+  createKernelEvaluatorAsync,
   SageLanguageMode,
 } from "./kernel-evaluator";
 
@@ -30,19 +30,21 @@ let evaluationId: number | undefined;
 const interruptState = new Int32Array(
   workerData.interruptBuffer as SharedArrayBuffer,
 );
-const evaluator = createKernelEvaluator({
-  mode: workerData.mode as SageLanguageMode,
-  interruptState,
-  onOutput(text) {
-    parentPort.postMessage({
-      type: "stdout",
-      id: evaluationId,
-      text,
-    });
-  },
-});
+async function main(): Promise<void> {
+  const port = parentPort!;
+  const evaluator = await createKernelEvaluatorAsync({
+    mode: workerData.mode as SageLanguageMode,
+    interruptState,
+    onOutput(text) {
+      port.postMessage({
+        type: "stdout",
+        id: evaluationId,
+        text,
+      });
+    },
+  });
 
-parentPort.on("message", (message) => {
+  port.on("message", (message) => {
   if (
     message.type === "evaluate" ||
     message.type === "complete" ||
@@ -68,7 +70,7 @@ parentPort.on("message", (message) => {
       } else {
         result = evaluator.isComplete(message.source, message.language);
       }
-      parentPort.postMessage({
+      port.postMessage({
         type: "result",
         id: message.id,
         ok: true,
@@ -81,7 +83,7 @@ parentPort.on("message", (message) => {
       ) {
         Atomics.store(interruptState, 0, 0);
       }
-      parentPort.postMessage({
+      port.postMessage({
         type: "result",
         id: message.id,
         ok: false,
@@ -92,11 +94,20 @@ parentPort.on("message", (message) => {
     }
   } else if (message.type === "close") {
     evaluator.close();
-    parentPort.close();
-  }
-});
+      port.close();
+    }
+  });
 
-parentPort.postMessage({
-  type: "ready",
-  protocol: 1,
+  port.postMessage({
+    type: "ready",
+    protocol: 1,
+  });
+}
+
+void main().catch((error) => {
+  parentPort!.postMessage({
+    type: "startup-error",
+    error: serializeError(error),
+  });
+  parentPort!.close();
 });

@@ -36,6 +36,7 @@ import {
   selectedForeignLanguage,
 } from "./foreign";
 import { rewriteQuestionMarkHelp } from "./polyglot";
+import { createPythonCompilerFrontend } from "./python/compiler-frontend";
 
 const DEFAULT_HISTORY_SIZE = 1000;
 const HOME =
@@ -174,6 +175,10 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   const sourceLanguage =
     foreignLanguage ?? (options.sage ? "sage" : "python");
   const PyLang = createCompiler({ console: options.console });
+  const pythonFrontendPromise = createPythonCompilerFrontend(
+    PyLang,
+    options.sage ? "sage" : "python",
+  );
   const foreignFrontendPromise = foreignLanguage
     ? createForeignFrontend(foreignLanguage)
     : undefined;
@@ -210,6 +215,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   readline.on("line", duringInit);
   const foreignFrontend: ForeignFrontend | undefined =
     await foreignFrontendPromise;
+  const pythonFrontend = await pythonFrontendPromise;
   await initContext();
   readline.off("line", duringInit);
 
@@ -449,7 +455,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       sequential_definitions: true,
     };
     try {
-      toplevel = PyLang.parse(source, {
+      toplevel = pythonFrontend.parse(source, {
         filename: runOptions.filename ?? "<repl>",
         basedir: runOptions.filename
           ? dirname(runOptions.filename)

@@ -1,0 +1,33 @@
+{
+  "grammars": [
+    {
+      "name": "sage",
+      "camelcase": "Sage",
+      "scope": "source.sage",
+      "path": ".",
+      "file-types": ["sage"],
+      "injection-regex": "sage"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Sage language grammar derived from tree-sitter-python",
+    "authors": [
+      {
+        "name": "Sage.js contributors"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/sagemathinc/sagejs"
+    }
+  },
+  "bindings": {
+    "c": false,
+    "go": false,
+    "node": false,
+    "python": false,
+    "rust": false,
+    "swift": false
+  }
+}

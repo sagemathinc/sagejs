@@ -35,6 +35,10 @@ copyFileSync(
   require.resolve("web-tree-sitter/web-tree-sitter.wasm"),
   join(outputDirectory, "web-tree-sitter.wasm"),
 );
+copyFileSync(
+  require.resolve("tree-sitter-python/tree-sitter-python.wasm"),
+  join(outputDirectory, "tree-sitter-python.wasm"),
+);
 
 function buildParser(name, sourceDirectory) {
   execFileSync(
@@ -52,6 +56,7 @@ function buildParser(name, sourceDirectory) {
 }
 
 buildParser("magma", join(root, "upstream-tests", "tree-sitter-magma"));
+buildParser("sage", join(root, "tools", "tree-sitter-sage"));
 buildParser("wolfram", join(root, "upstream-tests", "tree-sitter-wolfram"));
 buildParser("matlab", join(root, "upstream-tests", "tree-sitter-matlab"));
 buildParser("maple", join(root, "tools", "maple"));

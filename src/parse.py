@@ -2498,8 +2498,8 @@ def create_parser_ctx(S, import_dirs, module_id, baselib_items,
                     + "' is nonlocal and global"
                 )
 
-        definition.declared_globals = Array.from(declared_globals)
-        definition.declared_nonlocals = Array.from(declared_nonlocals)
+        definition.declared_globals = r'%js Array.from(declared_globals)'
+        definition.declared_nonlocals = r'%js Array.from(declared_nonlocals)'
         scope_bindings = assignments.concat(
             scan_for_scope_callable_bindings(definition.body)
         ).concat(parameter_names)

@@ -12,6 +12,7 @@ const unit = [
   "test/documentation.cjs",
   "test/magma.cjs",
   "test/foreign-languages.cjs",
+  "test/python-syntax-frontend.cjs",
   "test/parallel-development.cjs",
   "test/package-graph.cjs",
   "test/pnpm-invocation.cjs",

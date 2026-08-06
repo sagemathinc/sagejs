@@ -15,6 +15,10 @@ import {
   DocumentationCatalog,
   documentationCatalogFromRegistry,
 } from "./documentation";
+import {
+  createPythonCompilerFrontend,
+  PythonCompilerFrontend,
+} from "./python/compiler-frontend";
 
 export type SageLanguageMode = "sage" | "python";
 
@@ -68,6 +72,8 @@ interface EvaluatorOptions {
   mode: SageLanguageMode;
   onOutput(text: string): void;
   interruptState?: Int32Array;
+  compiler?: any;
+  compilerFrontends?: Map<SageLanguageMode, PythonCompilerFrontend>;
 }
 
 function richDisplay(value: unknown): SageDisplayData | undefined {
@@ -104,8 +110,10 @@ export function createKernelEvaluator({
   mode,
   onOutput,
   interruptState,
+  compiler: suppliedCompiler,
+  compilerFrontends,
 }: EvaluatorOptions): KernelEvaluator {
-  const compiler = createCompiler();
+  const compiler = suppliedCompiler ?? createCompiler();
   const precompiledModuleCacheDir = standardLibraryCacheDirectory(
     join(__dirname, "..", "module-cache"),
   );
@@ -188,7 +196,7 @@ export function createKernelEvaluator({
     language: SageLanguageMode,
   ): string {
     const classes = toplevel?.classes;
-    toplevel = compiler.parse(
+    toplevel = (compilerFrontends?.get(language)?.parse ?? compiler.parse)(
       source,
       parserOptions(filename, false, language),
     );
@@ -212,7 +220,7 @@ export function createKernelEvaluator({
   }
 
   function evaluateTransient(source: string): unknown {
-    const ast = compiler.parse(
+    const ast = (compilerFrontends?.get(mode)?.parse ?? compiler.parse)(
       source,
       parserOptions("<kernel-introspection>", true),
     );
@@ -437,7 +445,7 @@ export function createKernelEvaluator({
     ): KernelCompleteness {
       if (!source.trim()) return { status: "complete" };
       try {
-        compiler.parse(
+        (compilerFrontends?.get(language)?.parse ?? compiler.parse)(
           source,
           parserOptions("<kernel-is-complete>", true, language),
         );
@@ -469,6 +477,9 @@ export function createKernelEvaluator({
     },
 
     close(): void {
+      for (const frontend of compilerFrontends?.values() ?? []) {
+        frontend.close();
+      }
       uninstallNodeHost();
       delete global.__sagejs_output_write__;
       delete global.__sagejs_interrupt_state__;
@@ -477,4 +488,23 @@ export function createKernelEvaluator({
       delete global.__sagejs_kernel_modules__;
     },
   };
+}
+
+/** Create the user-facing evaluator with both authoritative grammars loaded. */
+export async function createKernelEvaluatorAsync(
+  options: Omit<EvaluatorOptions, "compiler" | "compilerFrontends">,
+): Promise<KernelEvaluator> {
+  const compiler = createCompiler();
+  const [python, sage] = await Promise.all([
+    createPythonCompilerFrontend(compiler, "python"),
+    createPythonCompilerFrontend(compiler, "sage"),
+  ]);
+  return createKernelEvaluator({
+    ...options,
+    compiler,
+    compilerFrontends: new Map([
+      ["python", python],
+      ["sage", sage],
+    ]),
+  });
 }

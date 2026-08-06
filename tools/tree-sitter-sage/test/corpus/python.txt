@@ -1,0 +1,50 @@
+==================
+ordinary Python
+==================
+
+def f(x: int = 2, *, scale: float = 1.0) -> float:
+    return x * scale
+
+class C:
+    value = [n * n for n in range(5) if n % 2]
+
+---
+
+(module
+  (function_definition
+    name: (identifier)
+    parameters: (parameters
+      (typed_default_parameter
+        name: (identifier)
+        type: (type (identifier))
+        value: (integer))
+      (keyword_separator)
+      (typed_default_parameter
+        name: (identifier)
+        type: (type (identifier))
+        value: (float)))
+    return_type: (type (identifier))
+    body: (block
+      (return_statement
+        (binary_operator
+          left: (identifier)
+          right: (identifier)))))
+  (class_definition
+    name: (identifier)
+    body: (block
+      (expression_statement
+        (assignment
+          left: (identifier)
+          right: (list_comprehension
+            body: (binary_operator
+              left: (identifier)
+              right: (identifier))
+            (for_in_clause
+              left: (identifier)
+              right: (call
+                function: (identifier)
+                arguments: (argument_list (integer))))
+            (if_clause
+              (binary_operator
+                left: (identifier)
+                right: (integer)))))))))
