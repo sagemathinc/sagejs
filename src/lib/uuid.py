@@ -1,77 +1,72 @@
-# vim:fileencoding=utf-8
-# License: BSD Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
-# globals: crypto
-from __python__ import hash_literals
+"""UUID generation and compact URL-safe UUID helpers."""
+
+import os
 
 from encodings import hexlify, urlsafe_b64decode, urlsafe_b64encode
 
+
 RFC_4122 = 1
 
-if jstype(crypto) is 'object' and crypto.getRandomValues:
-    random_bytes = def (num=None):
-        ans = Uint8Array(num or 16)
-        crypto.getRandomValues(ans)
-        return ans
-else:
-    random_bytes = def (num=None):
-        ans = Uint8Array(num or 16)
-        for i in range(ans.length):
-            ans[i] = Math.floor(Math.random() * 256)
-        return ans
+
+class UUID:
+    def __init__(self, *, bytes=None, hex=None, version=None):
+        if bytes is None:
+            if hex is None:
+                raise TypeError('one of bytes or hex is required')
+            bytes = bytearray.fromhex(str(hex).replace('-', ''))
+        self.bytes = bytes
+        self.hex = hexlify(bytes)
+        self.variant = RFC_4122
+        self.version = version if version is not None else ((bytes[6] >> 4) & 15)
+
+    def __str__(self):
+        value = self.hex
+        return (value[:8] + '-' + value[8:12] + '-' + value[12:16]
+                + '-' + value[16:20] + '-' + value[20:])
+
+    def __repr__(self):
+        return "UUID('" + str(self) + "')"
+
+
+def random_bytes(num=16):
+    return bytearray(os.urandom(num))
 
 
 def uuid4_bytes():
-    data = random_bytes()
-    data[6] = 0b01000000 | (data[6] & 0b1111)
-    data[8] = (((data[8] >> 4) & 0b11 | 0b1000) << 4) | (data[8] & 0b1111)
+    data = random_bytes(16)
+    data[6] = 0x40 | (data[6] & 0x0f)
+    data[8] = 0x80 | (data[8] & 0x3f)
     return data
 
 
-def as_str():
-    h = this.hex
-    return h[:8] + '-' + h[8:12] + '-' + h[12:16] + '-' + h[16:20] + '-' + h[20:]
-
-
 def uuid4():
-    b = uuid4_bytes()
-    return {
-        'hex': hexlify(b),
-        'bytes': b,
-        'variant': RFC_4122,
-        'version': 4,
-        '__str__': as_str,
-        'toString': as_str,
-    }
-
-
-def num_to_string(numbers, alphabet, pad_to_length):
-    ans = v'[]'
-    alphabet_len = alphabet.length
-    numbers = Array.prototype.slice.call(numbers)
-    for v'var i = 0; i < numbers.length - 1; i++':
-        x = divmod(numbers[i], alphabet_len)
-        numbers[i] = x[0]
-        numbers[i+1] += x[1]
-    for v'var i = 0; i < numbers.length; i++':
-        number = numbers[i]
-        while number:
-            x = divmod(number, alphabet_len)
-            number = x[0]
-            ans.push(alphabet[x[1]])
-    if pad_to_length and pad_to_length > ans.length:
-        ans.push(alphabet[0].repeat(pad_to_length - ans.length))
-    return ans.join('')
+    return UUID(bytes=uuid4_bytes(), version=4)
 
 
 def short_uuid():
-    # A totally random uuid encoded using only URL and filename safe characters
-    return urlsafe_b64encode(random_bytes(), '')
+    return urlsafe_b64encode(random_bytes(16), '')
 
 
 def short_uuid4():
-    # A uuid4 encoded using only URL and filename safe characters
     return urlsafe_b64encode(uuid4_bytes(), '')
 
 
-def decode_short_uuid(val):
-    return urlsafe_b64decode(val + '==')
+def decode_short_uuid(value):
+    return urlsafe_b64decode(str(value))
+
+
+def num_to_string(numbers, alphabet, pad_to_length=None):
+    """Encode a non-negative big-endian byte sequence in *alphabet*."""
+    base = len(alphabet)
+    value = 0
+    for item in numbers:
+        value = value * 256 + int(item)
+    answer = ''
+    while value:
+        value, remainder = divmod(value, base)
+        answer = alphabet[remainder] + answer
+    if not answer:
+        answer = alphabet[0]
+    if pad_to_length is not None:
+        answer = answer.rjust(pad_to_length, alphabet[0])
+    return answer

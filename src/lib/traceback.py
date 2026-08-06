@@ -1,63 +1,64 @@
-# vim:fileencoding=utf-8
-# License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
-# globals: ρσ_str, ρσ_last_exception
+"""Formatting helpers for Sage.js JavaScript exception stacks."""
+
+import sagejs.runtime as runtime
 
 
-def _get_internal_traceback(err):
-    if isinstance(err, Exception) and err.stack:
-        lines = ρσ_str.splitlines(err.stack)
-        final_lines = v'[]'
-        found_sentinel = False
-        for i, line in enumerate(lines):
-            sline = ρσ_str.strip(line)
-            if i is 0:
-                final_lines.push(line)
-                continue
-            if found_sentinel:
-                final_lines.push(line)
-                continue
-            # These two conditions work on desktop Chrome and Firefox to identify the correct
-            # line in the traceback.
-            if sline.startsWith('at new ' + err.name) or sline.startsWith(err.name + '@'):
-                found_sentinel = True
-        return final_lines.join('\n')
-    return err and err.stack
+def _stack(error):
+    if error is None or error is runtime.undefined:
+        return ''
+    value = runtime.reflect.get(error, 'stack')
+    if value is runtime.undefined:
+        return str(error)
+    return str(value)
 
-def format_exception(exc, limit):
-    if jstype(exc) is 'undefined':
-        exc = ρσ_last_exception
-    if not isinstance(exc, Error):
-        if exc and exc.toString:
-            return [exc.toString()]
+
+def format_exception(exc=runtime.undefined, value=None, tb=None, limit=None,
+                     chain=True):
+    """Format an exception using its native JavaScript stack when present."""
+    if exc is runtime.undefined:
+        exc = runtime.last_exception
+    elif value is not None:
+        exc = value
+    text = _stack(exc)
+    if not text:
         return []
-    tb = _get_internal_traceback(exc)
-    if tb:
-        lines = ρσ_str.splitlines(tb)
-        e = lines[0]
-        lines = lines[1:]
-        if limit:
-            lines = lines[:limit+1] if limit > 0 else lines[limit:]
-        lines.reverse()
-        lines.push(e)
-        lines.insert(0, 'Traceback (most recent call last):')
-        return [l+'\n' for l in lines]
-    return [exc.toString()]
+    lines = text.splitlines()
+    heading = lines[0]
+    body = lines[1:]
+    name = runtime.reflect.get(exc, 'name')
+    if name is not runtime.undefined:
+        sentinel = 'at new ' + str(name)
+        for index in range(len(body)):
+            if body[index].strip().startswith(sentinel):
+                body = body[index + 1:]
+                break
+    if limit is not None:
+        body = body[:limit] if limit >= 0 else body[limit:]
+    body.reverse()
+    lines = ['Traceback (most recent call last):'] + body + [heading]
+    return [line + '\n' for line in lines]
 
-def format_exc(limit):
-    return format_exception(ρσ_last_exception, limit).join('')
 
-def print_exc(limit):
-    print(format_exc(limit))
+def format_exc(limit=None, chain=True):
+    return ''.join(format_exception(limit=limit, chain=chain))
 
-def format_stack(limit):
-    stack = Error().stack
-    if not stack:
-        return []
-    lines = str.splitlines(stack)[2:]
+
+def print_exc(limit=None, file=None, chain=True):
+    print(format_exc(limit, chain), end='')
+
+
+def format_stack(frame=None, limit=None):
+    error = runtime.reflect.construct(runtime.error, [])
+    lines = _stack(error).splitlines()[1:]
+    for index in range(len(lines)):
+        if 'format_stack' in lines[index]:
+            lines = lines[index + 1:]
+            break
     lines.reverse()
-    if limit:
-        lines = lines[:limit+1] if limit > 0 else lines[limit:]
-    return [l + '\n' for l in lines]
+    if limit is not None:
+        lines = lines[:limit] if limit >= 0 else lines[limit:]
+    return [line + '\n' for line in lines]
 
-def print_stack(limit):
-    print(format_stack(limit).join(''))
+
+def print_stack(frame=None, limit=None, file=None):
+    print(''.join(format_stack(frame, limit)), end='')

@@ -907,6 +907,13 @@ export class PythonCstLowerer {
       loweredLeft.assignment = loweredRight;
       return loweredLeft;
     }
+    if (
+      operator === "=" &&
+      loweredLeft instanceof this.compiler.AST_Splice
+    ) {
+      loweredLeft.assignment = loweredRight;
+      return loweredLeft;
+    }
     const assignment = this.make("AST_Assign", node, {
       left: loweredLeft,
       operator,
@@ -1350,11 +1357,11 @@ export class PythonCstLowerer {
     const moduleNode = node.childForFieldName("module_name");
     const moduleText = moduleNode?.text ?? "";
     const level = moduleText.match(/^\.+/)?.[0].length ?? 0;
-    const key = moduleText.slice(level);
-    if (node.type === "import_from_statement" && key === "__python__") {
+    const sourceKey = moduleText.slice(level);
+    if (node.type === "import_from_statement" && sourceKey === "__python__") {
       return this.make("AST_EmptyStatement", node, { stype: "scoped_flags" });
     }
-    if (node.type === "import_from_statement" && key === "typing") {
+    if (node.type === "import_from_statement" && sourceKey === "typing") {
       return this.make("AST_EmptyStatement", node);
     }
     const imports: any[] = [];
@@ -1366,10 +1373,12 @@ export class PythonCstLowerer {
         const aliasNode = entry.type === "aliased_import"
           ? entry.childForFieldName("alias")
           : null;
+        const key = this.options.resolved_import_keys?.get(nameNode.startIndex) ??
+          nameNode.text;
         imports.push(this.makeImport(
           node,
           nameNode,
-          nameNode.text,
+          key,
           aliasNode,
           null,
           0,
@@ -1378,6 +1387,8 @@ export class PythonCstLowerer {
       }
     } else {
       if (!moduleNode) throw new UnsupportedPythonCstNode(node, "missing module");
+      const key = this.options.resolved_import_keys?.get(moduleNode.startIndex) ??
+        sourceKey;
       const wildcard = significantChildren(node).some(
         (child) => child.type === "wildcard_import",
       );
@@ -1799,28 +1810,92 @@ export class PythonCstLowerer {
     const value = this.lowerExpression(this.field(node, "value"));
     const parts = significantChildren(node).slice(1);
     if (!parts.length) throw new UnsupportedPythonCstNode(node, "empty index");
-    const lowerPart = (part: SyntaxNode): any => {
-      if (part.type !== "slice") return this.lowerExpression(part);
+    const sliceNodes = (part: SyntaxNode): Array<SyntaxNode | null> => {
       const colons = part.children.filter((child) => child.text === ":");
       const values = significantChildren(part);
-      const slots: any[] = [];
-      const boundaries = [part.startIndex, ...colons.map((colon) => colon.startIndex), part.endIndex];
+      const boundaries = [
+        part.startIndex,
+        ...colons.map((colon) => colon.startIndex),
+        part.endIndex,
+      ];
+      const slots: Array<SyntaxNode | null> = [];
       for (let index = 0; index < boundaries.length - 1; index += 1) {
-        const child = values.find((value) =>
-          value.startIndex >= boundaries[index] &&
-          value.endIndex <= boundaries[index + 1]
-        );
-        slots.push(child
+        slots.push(values.find((candidate) =>
+          candidate.startIndex >= boundaries[index] &&
+          candidate.endIndex <= boundaries[index + 1]
+        ) ?? null);
+      }
+      while (slots.length < 3) slots.push(null);
+      return slots;
+    };
+    const lowerPythonPart = (part: SyntaxNode): any => {
+      if (part.type !== "slice") return this.lowerExpression(part);
+      const slots = sliceNodes(part).map((child) =>
+        child
           ? this.lowerExpression(child)
           : this.make("AST_Null", part));
-      }
-      while (slots.length < 3) slots.push(this.make("AST_Null", part));
       return this.make("AST_New", part, {
         expression: this.make("AST_SymbolRef", part, { name: "slice" }),
         args: slots,
       });
     };
-    const loweredParts = parts.map(lowerPart);
+    const overloadGetitem = !!(
+      this.currentToplevel?.scoped_flags?.overload_getitem ??
+      this.options.scoped_flags?.overload_getitem
+    );
+    if (!overloadGetitem) {
+      const slicePart = parts.find((part) => part.type === "slice");
+      if (slicePart && parts.length === 1) {
+        const [lowerNode, upperNode, stepNode] = sliceNodes(slicePart);
+        const lower = lowerNode
+          ? this.lowerExpression(lowerNode)
+          : this.make("AST_Number", slicePart, { value: 0 });
+        const upper = upperNode ? this.lowerExpression(upperNode) : null;
+        if (stepNode) {
+          const args = [
+            value,
+            this.lowerExpression(stepNode),
+          ];
+          if (lowerNode) args.push(lower);
+          else if (upper) {
+            args.push(this.make("AST_Undefined", slicePart));
+          }
+          if (upper) args.push(upper);
+          return this.make("AST_Call", node, {
+            expression: this.make("AST_SymbolRef", slicePart, {
+              name: "ρσ_eslice",
+            }),
+            args,
+          });
+        }
+        const parent = node.parent;
+        const assignmentTarget = parent?.type === "assignment" &&
+          parent.childForFieldName("left")?.id === node.id;
+        if (assignmentTarget) {
+          return this.make("AST_Splice", node, {
+            expression: value,
+            property: lower,
+            property2: upper,
+            assignment: null,
+          });
+        }
+        const args = [lower];
+        if (upper) args.push(upper);
+        return this.make("AST_Call", node, {
+          expression: this.make("AST_Dot", node, {
+            expression: value,
+            property: "slice",
+          }),
+          args,
+        });
+      }
+      const loweredParts = parts.map((part) => this.lowerExpression(part));
+      const property = loweredParts.length === 1
+        ? loweredParts[0]
+        : this.make("AST_Array", node, { elements: loweredParts });
+      return this.make("AST_Sub", node, { expression: value, property });
+    }
+    const loweredParts = parts.map(lowerPythonPart);
     let property = loweredParts[0];
     if (loweredParts.length > 1) {
       property = this.make("AST_Array", node, {

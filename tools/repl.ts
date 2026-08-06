@@ -36,7 +36,7 @@ import {
   selectedForeignLanguage,
 } from "./foreign";
 import { rewriteQuestionMarkHelp } from "./polyglot";
-import { createPythonCompilerFrontend } from "./python/compiler-frontend";
+import type { PythonCompilerFrontend } from "./python/compiler-frontend";
 
 const DEFAULT_HISTORY_SIZE = 1000;
 const HOME =
@@ -175,10 +175,21 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   const sourceLanguage =
     foreignLanguage ?? (options.sage ? "sage" : "python");
   const PyLang = createCompiler({ console: options.console });
-  const pythonFrontendPromise = createPythonCompilerFrontend(
-    PyLang,
-    options.sage ? "sage" : "python",
-  );
+  let pythonFrontend: PythonCompilerFrontend | undefined;
+  let pythonFrontendPromise: Promise<PythonCompilerFrontend> | undefined;
+  function ensurePythonFrontend(): Promise<PythonCompilerFrontend> {
+    pythonFrontendPromise ??= import("./python/compiler-frontend.js").then(
+      ({ createPythonCompilerFrontend }) =>
+        createPythonCompilerFrontend(
+          PyLang,
+          options.sage ? "sage" : "python",
+        ),
+    );
+    return pythonFrontendPromise.then((frontend) => {
+      pythonFrontend = frontend;
+      return frontend;
+    });
+  }
   const foreignFrontendPromise = foreignLanguage
     ? createForeignFrontend(foreignLanguage)
     : undefined;
@@ -215,8 +226,6 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   readline.on("line", duringInit);
   const foreignFrontend: ForeignFrontend | undefined =
     await foreignFrontendPromise;
-  const pythonFrontend = await pythonFrontendPromise;
-  await initContext();
   readline.off("line", duringInit);
 
   const buffer: string[] = [];
@@ -266,7 +275,10 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     return output.get();
   }
 
-  async function initContext() {
+  let contextInitialized = false;
+  function initContext(): void {
+    if (contextInitialized) return;
+    contextInitialized = true;
     // @ts-ignore
     global.require = runtimeRequire;
     global.__sagejs_graph_database_bytes__ = () =>
@@ -455,7 +467,7 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       sequential_definitions: true,
     };
     try {
-      toplevel = pythonFrontend.parse(source, {
+      toplevel = pythonFrontend!.parse(source, {
         filename: runOptions.filename ?? "<repl>",
         basedir: runOptions.filename
           ? dirname(runOptions.filename)
@@ -572,12 +584,29 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     }
     prompt();
   }
-  // Run code we received during initialization.
-  for (const line of initLines) {
-    readLine(line);
+  // Tree-sitter's WebAssembly runtime is deliberately initialized only when
+  // the user submits code.  In particular, starting the CLI with empty stdin
+  // should not pay the parser's fixed startup cost.  Serializing line events
+  // also preserves piped-input ordering while the first parser is loading.
+  let lineQueue: Promise<void> = Promise.resolve();
+  function queueLine(line: string): void {
+    lineQueue = lineQueue.then(async () => {
+      const frontend = ensurePythonFrontend();
+      initContext();
+      await frontend;
+      readLine(line);
+    }).catch((error) => {
+      options.console.error(error?.stack ?? error);
+      process.exitCode = 1;
+    });
   }
 
-  readline.on("line", readLine);
+  // Run code we received during initialization.
+  for (const line of initLines) {
+    queueLine(line);
+  }
+
+  readline.on("line", queueLine);
 
   readline.on("history", (history) => {
     // Note -- this only exists in node >15.x.
@@ -586,7 +615,8 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
     }
   });
 
-  readline.on("close", () => {
+  readline.on("close", async () => {
+    await lineQueue;
     const { history } = readline as any; //  deprecated in node 15...
     if (history) {
       writeHistory(options, history);

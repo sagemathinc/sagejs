@@ -66,7 +66,7 @@ test("direct CST lowering matches established JavaScript for core nodes", async 
   }
 });
 
-test("authoritative compilation sends only imports to the stage-zero resolver", async () => {
+test("authoritative compilation never invokes the stage-zero parser", async () => {
   const compiler = createCompiler();
   const originalParse = compiler.parse.bind(compiler);
   const bootstrapSources = [];
@@ -83,7 +83,7 @@ test("authoritative compilation sends only imports to the stage-zero resolver", 
       parserOptions,
     );
     assert.equal(ast.body.length, 3);
-    assert.deepEqual(bootstrapSources, ["import sagejs.runtime as runtime\n"]);
+    assert.deepEqual(bootstrapSources, []);
     assert.equal(ast.body[1].body.right.operator, "*");
   } finally {
     frontend.close();

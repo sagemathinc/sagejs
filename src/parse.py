@@ -252,6 +252,7 @@ SAGEJS_RUNTIME_INTRINSICS = {
     'is_nan': 'isNaN',
     'iterator_symbol': 'ρσ_iterator_symbol',
     'json': 'JSON',
+    'last_exception': 'ρσ_last_exception',
     'kwargs_symbol': 'ρσ_kwargs_symbol',
     'jstype': 'jstype',
     'lightweight_math_class': 'ρσ_lightweight_math_class',

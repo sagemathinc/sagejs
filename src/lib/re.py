@@ -1,470 +1,394 @@
-# vim:fileencoding=utf-8
-# License: BSD
-# Copyright: 2015, Kovid Goyal <kovid at kovidgoyal.net>
-# Copyright: 2013, Alexander Tsepkov
+"""Python-shaped regular expressions backed by ECMAScript ``RegExp``.
 
-# globals: ρσ_iterator_symbol, ρσ_list_decorate
+Modern JavaScript supplies named groups, lookbehind, dot-all mode, and match
+indices.  This module translates the small syntax differences and implements
+Python's result objects and replacement rules in ordinary Python source.
+"""
 
-# basic implementation of Python's 're' library
+import sagejs.runtime as runtime
 
-from __python__ import bound_methods
-
-# Alias DB from http://www.unicode.org/Public/8.0.0/ucd/NameAliases.txt {{{
-_ALIAS_MAP = {"null":0,"nul":0,"start of heading":1,"soh":1,"start of text":2,"stx":2,"end of text":3,"etx":3,"end of transmission":4,"eot":4,"enquiry":5,"enq":5,"acknowledge":6,"ack":6,"alert":7,"bel":7,"backspace":8,"bs":8,"character tabulation":9,"horizontal tabulation":9,"ht":9,"tab":9,"line feed":10,"new line":10,"end of line":10,"lf":10,"nl":10,"eol":10,"line tabulation":11,"vertical tabulation":11,"vt":11,"form feed":12,"ff":12,"carriage return":13,"cr":13,"shift out":14,"locking-shift one":14,"so":14,"shift in":15,"locking-shift zero":15,"si":15,"data link escape":16,"dle":16,"device control one":17,"dc1":17,"device control two":18,"dc2":18,"device control three":19,"dc3":19,"device control four":20,"dc4":20,"negative acknowledge":21,"nak":21,"synchronous idle":22,"syn":22,"end of transmission block":23,"etb":23,"cancel":24,"can":24,"end of medium":25,"eom":25,"substitute":26,"sub":26,"escape":27,"esc":27,"information separator four":28,"file separator":28,"fs":28,"information separator three":29,"group separator":29,"gs":29,"information separator two":30,"record separator":30,"rs":30,"information separator one":31,"unit separator":31,"us":31,"sp":32,"delete":127,"del":127,"padding character":128,"pad":128,"high octet preset":129,"hop":129,"break permitted here":130,"bph":130,"no break here":131,"nbh":131,"index":132,"ind":132,"next line":133,"nel":133,"start of selected area":134,"ssa":134,"end of selected area":135,"esa":135,"character tabulation set":136,"horizontal tabulation set":136,"hts":136,"character tabulation with justification":137,"horizontal tabulation with justification":137,"htj":137,"line tabulation set":138,"vertical tabulation set":138,"vts":138,"partial line forward":139,"partial line down":139,"pld":139,"partial line backward":140,"partial line up":140,"plu":140,"reverse line feed":141,"reverse index":141,"ri":141,"single shift two":142,"single-shift-2":142,"ss2":142,"single shift three":143,"single-shift-3":143,"ss3":143,"device control string":144,"dcs":144,"private use one":145,"private use-1":145,"pu1":145,"private use two":146,"private use-2":146,"pu2":146,"set transmit state":147,"sts":147,"cancel character":148,"cch":148,"message waiting":149,"mw":149,"start of guarded area":150,"start of protected area":150,"spa":150,"end of guarded area":151,"end of protected area":151,"epa":151,"start of string":152,"sos":152,"single graphic character introducer":153,"sgc":153,"single character introducer":154,"sci":154,"control sequence introducer":155,"csi":155,"string terminator":156,"st":156,"operating system command":157,"osc":157,"privacy message":158,"pm":158,"application program command":159,"apc":159,"nbsp":160,"shy":173,"latin capital letter gha":418,"latin small letter gha":419,"cgj":847,"alm":1564,"syriac sublinear colon skewed left":1801,"kannada letter llla":3294,"lao letter fo fon":3741,"lao letter fo fay":3743,"lao letter ro":3747,"lao letter lo":3749,"tibetan mark bka- shog gi mgo rgyan":4048,"fvs1":6155,"fvs2":6156,"fvs3":6157,"mvs":6158,"zwsp":8203,"zwnj":8204,"zwj":8205,"lrm":8206,"rlm":8207,"lre":8234,"rle":8235,"pdf":8236,"lro":8237,"rlo":8238,"nnbsp":8239,"mmsp":8287,"wj":8288,"lri":8294,"rli":8295,"fsi":8296,"pdi":8297,"weierstrass elliptic function":8472,"micr on us symbol":9288,"micr dash symbol":9289,"leftwards triangle-headed arrow with double vertical stroke":11130,"rightwards triangle-headed arrow with double vertical stroke":11132,"yi syllable iteration mark":40981,"presentation form for vertical right white lenticular bracket":65048,"vs1":65024,"vs2":65025,"vs3":65026,"vs4":65027,"vs5":65028,"vs6":65029,"vs7":65030,"vs8":65031,"vs9":65032,"vs10":65033,"vs11":65034,"vs12":65035,"vs13":65036,"vs14":65037,"vs15":65038,"vs16":65039,"byte order mark":65279,"bom":65279,"zwnbsp":65279,"cuneiform sign nu11 tenu":74452,"cuneiform sign nu11 over nu11 bur over bur":74453,"byzantine musical symbol fthora skliron chroma vasis":118981,"vs17":917760,"vs18":917761,"vs19":917762,"vs20":917763,"vs21":917764,"vs22":917765,"vs23":917766,"vs24":917767,"vs25":917768,"vs26":917769,"vs27":917770,"vs28":917771,"vs29":917772,"vs30":917773,"vs31":917774,"vs32":917775,"vs33":917776,"vs34":917777,"vs35":917778,"vs36":917779,"vs37":917780,"vs38":917781,"vs39":917782,"vs40":917783,"vs41":917784,"vs42":917785,"vs43":917786,"vs44":917787,"vs45":917788,"vs46":917789,"vs47":917790,"vs48":917791,"vs49":917792,"vs50":917793,"vs51":917794,"vs52":917795,"vs53":917796,"vs54":917797,"vs55":917798,"vs56":917799,"vs57":917800,"vs58":917801,"vs59":917802,"vs60":917803,"vs61":917804,"vs62":917805,"vs63":917806,"vs64":917807,"vs65":917808,"vs66":917809,"vs67":917810,"vs68":917811,"vs69":917812,"vs70":917813,"vs71":917814,"vs72":917815,"vs73":917816,"vs74":917817,"vs75":917818,"vs76":917819,"vs77":917820,"vs78":917821,"vs79":917822,"vs80":917823,"vs81":917824,"vs82":917825,"vs83":917826,"vs84":917827,"vs85":917828,"vs86":917829,"vs87":917830,"vs88":917831,"vs89":917832,"vs90":917833,"vs91":917834,"vs92":917835,"vs93":917836,"vs94":917837,"vs95":917838,"vs96":917839,"vs97":917840,"vs98":917841,"vs99":917842,"vs100":917843,"vs101":917844,"vs102":917845,"vs103":917846,"vs104":917847,"vs105":917848,"vs106":917849,"vs107":917850,"vs108":917851,"vs109":917852,"vs110":917853,"vs111":917854,"vs112":917855,"vs113":917856,"vs114":917857,"vs115":917858,"vs116":917859,"vs117":917860,"vs118":917861,"vs119":917862,"vs120":917863,"vs121":917864,"vs122":917865,"vs123":917866,"vs124":917867,"vs125":917868,"vs126":917869,"vs127":917870,"vs128":917871,"vs129":917872,"vs130":917873,"vs131":917874,"vs132":917875,"vs133":917876,"vs134":917877,"vs135":917878,"vs136":917879,"vs137":917880,"vs138":917881,"vs139":917882,"vs140":917883,"vs141":917884,"vs142":917885,"vs143":917886,"vs144":917887,"vs145":917888,"vs146":917889,"vs147":917890,"vs148":917891,"vs149":917892,"vs150":917893,"vs151":917894,"vs152":917895,"vs153":917896,"vs154":917897,"vs155":917898,"vs156":917899,"vs157":917900,"vs158":917901,"vs159":917902,"vs160":917903,"vs161":917904,"vs162":917905,"vs163":917906,"vs164":917907,"vs165":917908,"vs166":917909,"vs167":917910,"vs168":917911,"vs169":917912,"vs170":917913,"vs171":917914,"vs172":917915,"vs173":917916,"vs174":917917,"vs175":917918,"vs176":917919,"vs177":917920,"vs178":917921,"vs179":917922,"vs180":917923,"vs181":917924,"vs182":917925,"vs183":917926,"vs184":917927,"vs185":917928,"vs186":917929,"vs187":917930,"vs188":917931,"vs189":917932,"vs190":917933,"vs191":917934,"vs192":917935,"vs193":917936,"vs194":917937,"vs195":917938,"vs196":917939,"vs197":917940,"vs198":917941,"vs199":917942,"vs200":917943,"vs201":917944,"vs202":917945,"vs203":917946,"vs204":917947,"vs205":917948,"vs206":917949,"vs207":917950,"vs208":917951,"vs209":917952,"vs210":917953,"vs211":917954,"vs212":917955,"vs213":917956,"vs214":917957,"vs215":917958,"vs216":917959,"vs217":917960,"vs218":917961,"vs219":917962,"vs220":917963,"vs221":917964,"vs222":917965,"vs223":917966,"vs224":917967,"vs225":917968,"vs226":917969,"vs227":917970,"vs228":917971,"vs229":917972,"vs230":917973,"vs231":917974,"vs232":917975,"vs233":917976,"vs234":917977,"vs235":917978,"vs236":917979,"vs237":917980,"vs238":917981,"vs239":917982,"vs240":917983,"vs241":917984,"vs242":917985,"vs243":917986,"vs244":917987,"vs245":917988,"vs246":917989,"vs247":917990,"vs248":917991,"vs249":917992,"vs250":917993,"vs251":917994,"vs252":917995,"vs253":917996,"vs254":917997,"vs255":917998,"vs256":917999}
-# }}}
-
-_ASCII_CONTROL_CHARS = {'a':7, 'b':8, 'f': 12, 'n': 10, 'r': 13, 't': 9, 'v': 11}
-_HEX_PAT = /^[a-fA-F0-9]/
-_NUM_PAT =  /^[0-9]/
-_GROUP_PAT = /<([^>]+)>/
-_NAME_PAT = /^[a-zA-Z ]/
 
 I = IGNORECASE = 2
 L = LOCALE = 4
 M = MULTILINE = 8
-D = DOTALL = 16
+S = D = DOTALL = 16
 U = UNICODE = 32
 X = VERBOSE = 64
 DEBUG = 128
 A = ASCII = 256
+T = TEMPLATE = 1
+NOFLAG = 0
+error = SyntaxError
 
-supports_unicode = RegExp.prototype.unicode is not undefined
 
-_RE_ESCAPE = /[-\/\\^$*+?.()|[\]{}]/g
+def _replace_all(source, old, replacement):
+    answer = ''
+    while old in source:
+        position = source.find(old)
+        answer += source[:position] + replacement
+        source = source[position + len(old):]
+    return answer + source
 
-_re_cache_map = {}
-_re_cache_items = v'[]'
 
-error = SyntaxError  # This is the error JS throws for invalid regexps
-has_prop = Object.prototype.hasOwnProperty.call.bind(Object.prototype.hasOwnProperty)
+def _property(value, name, fallback=None):
+    answer = runtime.reflect.get(value, name)
+    return fallback if answer is runtime.undefined else answer
 
-def _expand(groups, repl, group_name_map):
-    i = 0
 
-    def next():
-        nonlocal i
-        return v'repl[i++]'
-
-    def peek():
-        return repl[i]
-
-    def read_digits(count, pat, base, maxval, prefix):
-        ans = prefix or ''
-        greedy = count is Number.MAX_VALUE
-        while count > 0:
-            count -= 1
-            if not pat.test(peek()):
-                if greedy:
-                    break
-                return ans
-            ans += next()
-        nval = parseInt(ans, base)
-        if nval > maxval:
-            return ans
-        return nval
-
-    def read_escape_sequence():
-        nonlocal i
-        q = next()
-        if not q or q is '\\':
-            return '\\'
-        if '"\''.indexOf(q) is not -1:
-            return q
-        if _ASCII_CONTROL_CHARS[q]:
-            return String.fromCharCode(_ASCII_CONTROL_CHARS[q])
-        if '0' <= q <= '9':
-            ans = read_digits(Number.MAX_VALUE, _NUM_PAT, 10, Number.MAX_VALUE, q)
-            if jstype(ans) is 'number':
-                return groups[ans] or ''
-            return '\\' + ans
-        if q is 'g':
-            m = _GROUP_PAT.exec(repl[i:])
-            if m is not None:
-                i += m[0].length
-                gn = m[1]
-                if isNaN(parseInt(gn, 10)):
-                    if not has_prop(group_name_map, gn):
-                        return ''
-                    gn = group_name_map[gn][-1]
-                return groups[gn] or ''
-        if q is 'x':
-            code = read_digits(2, _HEX_PAT, 16, 0x10FFFF)
-            if jstype(code) is 'number':
-                return String.fromCharCode(code)
-            return '\\x' + code
-        if q is 'u':
-            code = read_digits(4, _HEX_PAT, 16, 0x10FFFF)
-            if jstype(code) is 'number':
-                return String.fromCharCode(code)
-            return '\\u' + code
-        if q is 'U':
-            code = read_digits(8, _HEX_PAT, 16, 0x10FFFF)
-            if jstype(code) is 'number':
-                if code <= 0xFFFF:
-                    return String.fromCharCode(code)
-                code -= 0x10000
-                return String.fromCharCode(0xD800+(code>>10), 0xDC00+(code&0x3FF))
-            return '\\U' + code
-        if q is 'N' and peek() is '{':
-            next()
-            name = ''
-            while _NAME_PAT.test(peek()):
-                name += next()
-            if peek() is not '}':
-                return '\\N{' + name
-            next()
-            key = (name or '').toLowerCase()
-            if not name or not has_prop(_ALIAS_MAP, key):
-                return '\\N{' + name + '}'
-            code = _ALIAS_MAP[key]
-            if code <= 0xFFFF:
-                return String.fromCharCode(code)
-            code -= 0x10000
-            return String.fromCharCode(0xD800+(code>>10), 0xDC00+(code&0x3FF))
-
-        return '\\' + q
-
-    ans = ch = ''
-    while True:
-        ch = next()
-        if ch is '\\':
-            ans += read_escape_sequence()
-        elif not ch:
-            break
-        else:
-            ans += ch
-    return ans
-
-def transform_regex(source, flags):
-    pos = 0
-    previous_backslash = in_class = False
-    ans = ''
-    group_map = {}
-    flags = flags or 0
-    group_count = 0
-
-    while pos < source.length:
-        ch = v'source[pos++]'
-        if previous_backslash:
-            ans += '\\' + ch
-            previous_backslash = False
+def _verbose_source(source):
+    answer = ''
+    in_class = False
+    escaped = False
+    comment = False
+    for character in source:
+        if comment:
+            if character == '\n':
+                comment = False
             continue
-
-        if in_class:
-            if ch is ']':
-                in_class = False
-            ans += ch
+        if escaped:
+            answer += character
+            escaped = False
             continue
-
-        if ch is '\\':
-            previous_backslash = True
+        if character == '\\':
+            answer += character
+            escaped = True
             continue
-
-        if ch is '[':
+        if character == '[':
             in_class = True
-            if source[pos] is ']':  # in python the empty set is not allowed, instead []] is the same as [\]]
-                pos += 1
-                ch = r'[\]'
-        elif ch is '(':
-            if source[pos] is '?':
-                extension = source[pos + 1]
-                if extension is '#':
-                    close = source.indexOf(')', pos + 1)
-                    if close is -1:
-                        raise ValueError('Expecting a closing )')
-                    pos = close + 1
-                    continue
-                if 'aiLmsux'.indexOf(extension) is not -1:
-                    flag_map = {'a':ASCII, 'i':IGNORECASE, 'L':LOCALE, 'm':MULTILINE, 's':DOTALL, 'u':UNICODE, 'x':VERBOSE}
-                    close = source.indexOf(')', pos + 1)
-                    if close is -1:
-                        raise SyntaxError('Expecting a closing )')
-                    flgs = source[pos+1:close]
-                    for v'var i = 0; i < flgs.length; i++':
-                        q = flgs[i]  # noqa:undef
-                        if not has_prop(flag_map, q):
-                            raise SyntaxError('Invalid flag: ' + q)
-                        flags |= flag_map[q]
-                    pos = close + 1
-                    continue
-                if extension is '(':
-                    raise SyntaxError('Group existence assertions are not supported in JavaScript')
-                if extension is 'P':
-                    pos += 2
-                    q = source[pos]
-                    if q is '<':
-                        close = source.indexOf('>', pos)
-                        if close is -1:
-                            raise SyntaxError('Named group not closed, expecting >')
-                        name = source[pos+1:close]
-                        if not has_prop(group_map, name):
-                            group_map[name] = v'[]'
-                        group_map[name].push(v'++group_count')
-                        pos = close + 1
-                    elif q is '=':
-                        close = source.indexOf(')', pos)
-                        if close is -1:
-                            raise SyntaxError('Named group back-reference not closed, expecting a )')
-                        name = source[pos+1:close]
-                        if not isNaN(parseInt(name, 10)):
-                            ans += '\\' + name
-                        else:
-                            if not has_prop(group_map, name):
-                                raise SyntaxError('Invalid back-reference. The named group: ' + name + ' has not yet been defined.')
-                            ans += '\\' + group_map[name][-1]
-                        pos = close + 1
-                        continue
-                    else:
-                        raise SyntaxError('Expecting < or = after (?P')
-            else:
-                group_count += 1
-        elif ch is '.' and (flags & DOTALL):
-            ans += r'[\s\S]'  # JavaScript has no DOTALL
+            answer += character
             continue
+        if character == ']':
+            in_class = False
+            answer += character
+            continue
+        if not in_class and character == '#':
+            comment = True
+            continue
+        if not in_class and character.isspace():
+            continue
+        answer += character
+    return answer
 
-        ans += ch
 
-    return ans, flags, group_map
+def _transform(source, flags):
+    source = str(source)
+    if '(?(' in source:
+        raise error('conditional groups are not supported')
+    inline = {'i': IGNORECASE, 'm': MULTILINE, 's': DOTALL, 'x': VERBOSE}
+    if source.startswith('(?'):
+        close = source.find(')')
+        if close > 2:
+            prefix = source[2:close]
+            if all(character in inline for character in prefix):
+                for character in prefix:
+                    flags |= inline[character]
+                source = source[close + 1:]
+    source = _replace_all(source, '(?P<', '(?<')
+    source = _replace_all(source, '[]]', '[\\]]')
+    source = _replace_all(source, '[^]]', '[^\\]]')
+    answer = ''
+    position = 0
+    marker = '(?P='
+    while True:
+        start = source.find(marker, position)
+        if start < 0:
+            answer += source[position:]
+            break
+        answer += source[position:start] + '\\k<'
+        close = source.find(')', start + len(marker))
+        if close < 0:
+            raise error('named group back-reference is not closed')
+        answer += source[start + len(marker):close] + '>'
+        position = close + 1
+    source = _replace_all(answer, '\\A', '^')
+    source = _replace_all(source, '\\Z', '$')
+    if flags & VERBOSE:
+        source = _verbose_source(source)
+    return source, flags
+
+
+def _flag_text(flags, global_mode=True):
+    answer = 'd'
+    if global_mode:
+        answer += 'g'
+    if flags & IGNORECASE:
+        answer += 'i'
+    if flags & MULTILINE:
+        answer += 'm'
+    if flags & DOTALL:
+        answer += 's'
+    return answer
+
 
 class MatchObject:
-
-    def __init__(self, regex, match, pos, endpos):
+    def __init__(self, regex, native_match, position, end_position):
         self.re = regex
-        self.string = match.input
-        self._start_pos = match.index
-        self._groups = match
-        self.pos, self.endpos = pos, endpos
+        self.string = str(_property(native_match, 'input', ''))
+        self.pos = position
+        self.endpos = end_position
+        self._match = native_match
+        self._indices = _property(native_match, 'indices')
+        self.lastindex = None
+        self.lastgroup = None
+        for index in range(1, len(native_match)):
+            if native_match[index] is not runtime.undefined:
+                self.lastindex = index
 
-    def _compute_extents(self):
-        # compute start/end for each group
-        match = self._groups
-        self._start = v'Array(match.length)'
-        self._end = v'Array(match.length)'
-        self._start[0] = self._start_pos
-        self._end[0] = self._start_pos + match[0].length
-        offset = self._start_pos
-        extent = match[0]
-        loc = 0
-        for v'var i = 1; i < match.length; i++':
-            g = match[i]
-            loc = extent.indexOf(g, loc)
-            if loc is -1:
-                self._start[i] = self._start[i-1]
-                self._end[i] = self._end[i-1]
-            else:
-                self._start[i] = offset + loc
-                loc += g.length
-                self._end[i] = offset + loc # noqa:undef
+    def _resolve(self, group):
+        if isinstance(group, str):
+            groups = _property(self._match, 'groups')
+            if groups is None or groups is runtime.undefined:
+                raise IndexError('no such group')
+            value = _property(groups, group, runtime.undefined)
+            if value is runtime.undefined:
+                raise IndexError('no such group')
+            indices = _property(self._indices, 'groups')
+            pair = _property(indices, group, runtime.undefined)
+            return value, pair
+        index = int(group)
+        if index < 0 or index >= len(self._match):
+            raise IndexError('no such group')
+        value = self._match[index]
+        pair = self._indices[index]
+        return value, pair
 
-    def groups(self, defval=None):
-        ans = v'[]'
-        for v'var i = 1; i < self._groups.length; i++':
-            val = self._groups[i]  # noqa:undef
-            if val is undefined:
-                val = defval
-            ans.push(val)
-        return ans
+    def group(self, *groups):
+        if not groups:
+            groups = (0,)
+        values = []
+        for group in groups:
+            value, unused = self._resolve(group)
+            values.append(None if value is runtime.undefined else str(value))
+        return values[0] if len(values) == 1 else tuple(values)
 
-    def _group_number(self, g):
-        if jstype(g) is 'number':
-            return g
-        if has_prop(self.re.group_name_map, g):
-            return self.re.group_name_map[g][-1]
-        return g
+    __getitem__ = group
 
-    def _group_val(self, q, defval):
-        val = undefined
-        if jstype(q) is 'number' and -1 < q < self._groups.length:
-            val = self._groups[q]
-        else:
-            if has_prop(self.re.group_name_map, q):
-                val = self._groups[self.re.group_name_map[q][-1]]
-        if val is undefined:
-            val = defval
-        return val
+    def groups(self, fallback=None):
+        answer = []
+        for index in range(1, len(self._match)):
+            value = self._match[index]
+            answer.append(fallback if value is runtime.undefined else str(value))
+        return tuple(answer)
 
-    def group(self):
-        if arguments.length is 0:
-            return self._groups[0]
-        ans = v'[]'
-        for v'var i = 0; i < arguments.length; i++':
-            q = arguments[i]  # noqa:undef
-            ans.push(self._group_val(q, None))
-        return ans[0] if ans.length is 1 else ans
+    def groupdict(self, fallback=None):
+        native = _property(self._match, 'groups')
+        answer = {}
+        if native is None or native is runtime.undefined:
+            return answer
+        keys = runtime.reflect.ownKeys(native)
+        for key in keys:
+            value = runtime.reflect.get(native, key)
+            answer[str(key)] = fallback if value is runtime.undefined else str(value)
+        return answer
 
-    def start(self, g):
-        if self._start is undefined:
-            self._compute_extents()
-        val = self._start[self._group_number(g or 0)]
-        if val is undefined:
-            val = -1
-        return val
+    def start(self, group=0):
+        unused, pair = self._resolve(group)
+        if pair is runtime.undefined:
+            return -1
+        return int(pair[0])
 
-    def end(self, g):
-        if self._end is undefined:
-            self._compute_extents()
-        val = self._end[self._group_number(g or 0)]
-        if val is undefined:
-            val = -1
-        return val
+    def end(self, group=0):
+        unused, pair = self._resolve(group)
+        if pair is runtime.undefined:
+            return -1
+        return int(pair[1])
 
-    def span(self, g):
-        return [self.start(g), self.end(g)]
+    def span(self, group=0):
+        return (self.start(group), self.end(group))
 
-    def expand(self, repl):
-        return _expand(repl, this._groups, this.re.group_name_map)
+    def expand(self, template):
+        return _expand(template, self)
 
-    def groupdict(self, defval=None):
-        gnm = self.re.group_name_map
-        names = Object.keys(gnm)
-        ans = {}
-        for v"var i = 0; i < names.length; i++":
-            name = names[i]  # noqa:undef
-            if has_prop(gnm, name):
-                val = self._groups[gnm[name][-1]]
-                if val is undefined:
-                    val = defval
-                ans[name] = val
-        return ans
+    def __bool__(self):
+        return True
 
-    def captures(self, group_name):
-        ans = []
-        if not has_prop(self.re.group_name_map, group_name):
-            return ans
-        groups = self.re.group_name_map[group_name]
-        for v'var i = 0; i < groups.length; i++':
-            val = self._groups[groups[i]]  # noqa:undef
-            if val is not undefined:
-                ans.push(val)
-        return ans
-
-    def capturesdict(self):
-        gnm = self.re.group_name_map
-        names = Object.keys(gnm)
-        ans = {}
-        for v'var i = 0; i < names.length; i++':
-            name = names[i]  # noqa:undef
-            ans[name] = self.captures(name)
-        return ans
 
 class RegexObject:
+    def __init__(self, pattern, flags=0):
+        self.pattern, self.flags = _transform(pattern, int(flags))
 
-    def __init__(self, pattern, flags):
-        self.pattern = pattern.source if isinstance(pattern, RegExp) else pattern
-        self.js_pattern, self.flags, self.group_name_map = transform_regex(self.pattern, flags)
-
-        modifiers = ''
-        if self.flags & IGNORECASE: modifiers += 'i'
-        if self.flags & MULTILINE: modifiers += 'm'
-        if not (self.flags & ASCII) and supports_unicode:
-            modifiers += 'u'
-        self._modifiers = modifiers + 'g'
-        self._pattern = RegExp(self.js_pattern, self._modifiers)
-
-    def _do_search(self, pat, string, pos, endpos):
-        pat.lastIndex = 0
-        if endpos is not None:
-            string = string[:endpos]
-        while True:
-            n = pat.exec(string)
-            if n is None:
-                return None
-            if n.index >= pos:
-                return MatchObject(self, n, pos, endpos)
+    def _native(self):
+        return runtime.reflect.construct(
+            runtime.regexp, [self.pattern, _flag_text(self.flags)])
 
     def search(self, string, pos=0, endpos=None):
-        return self._do_search(self._pattern, string, pos, endpos)
+        text = str(string)
+        if endpos is None:
+            endpos = len(text)
+        target = text[:endpos]
+        regex = self._native()
+        runtime.reflect.set(regex, 'lastIndex', pos)
+        native = runtime.reflect.apply(
+            runtime.reflect.get(regex, 'exec'), regex, [target])
+        if native is None:
+            return None
+        return MatchObject(self, native, pos, endpos)
 
     def match(self, string, pos=0, endpos=None):
-        return self._do_search(RegExp('^' + self.js_pattern, self._modifiers), string, pos, endpos)
+        answer = self.search(string, pos, endpos)
+        return answer if answer is not None and answer.start() == pos else None
+
+    def fullmatch(self, string, pos=0, endpos=None):
+        text = str(string)
+        if endpos is None:
+            endpos = len(text)
+        answer = self.match(text, pos, endpos)
+        return answer if answer is not None and answer.end() == endpos else None
+
+    def finditer(self, string, pos=0, endpos=None):
+        text = str(string)
+        if endpos is None:
+            endpos = len(text)
+        answers = []
+        cursor = pos
+        while cursor <= endpos:
+            match = self.search(text, cursor, endpos)
+            if match is None:
+                break
+            answers.append(match)
+            next_cursor = match.end()
+            cursor = next_cursor + 1 if next_cursor == match.start() else next_cursor
+        return iter(answers)
+
+    def findall(self, string, pos=0, endpos=None):
+        answer = []
+        for match in self.finditer(string, pos, endpos):
+            groups = match.groups('')
+            if len(groups) == 0:
+                answer.append(match.group())
+            elif len(groups) == 1:
+                answer.append(groups[0])
+            else:
+                answer.append(groups)
+        return answer
 
     def split(self, string, maxsplit=0):
-        self._pattern.lastIndex = 0
-        return string.split(self._pattern, maxsplit or undefined)
-
-    def findall(self, string):
-        self._pattern.lastIndex = 0
-        return ρσ_list_decorate(string.match(self._pattern) or v'[]')
-
-    def finditer(self, string):
-        # We have to copy pat since lastIndex is mutable
-        pat = RegExp(this._pattern.source, this._modifiers)  # noqa: unused-local
-        ans = v"{'_string':string, '_r':pat, '_self':self}"
-        ans[ρσ_iterator_symbol] = def():
-            return this
-        ans['next'] = def():
-            m = this._r.exec(this._string)
-            if m is None:
-                return v"{'done':true}"
-            return v"{'done':false, 'value':new MatchObject(this._self, m, 0, null)}"
-        return ans
-
-    def subn(self, repl, string, count=0):
-        expand = _expand
-        if jstype(repl) is 'function':
-            expand = def(m, repl, gnm): return '' + repl(MatchObject(self, m, 0, None))
-        this._pattern.lastIndex = 0
-        num = 0
-        matches = v'[]'
-
-        while count < 1 or num < count:
-            m = this._pattern.exec(string)
-            if m is None:
+        text = str(string)
+        answer = []
+        position = 0
+        splits = 0
+        for match in self.finditer(text):
+            if maxsplit and splits >= maxsplit:
                 break
-            matches.push(m)
-            num += 1
+            answer.append(text[position:match.start()])
+            answer.extend(match.groups())
+            position = match.end()
+            splits += 1
+        answer.append(text[position:])
+        return answer
 
-        for v'var i = matches.length - 1; i > -1; i--':
-            m = matches[i]  # noqa:undef
-            start = m.index
-            end = start + m[0].length
-            string = string[:start] + expand(m, repl, self.group_name_map) + string[end:]
-        return string, matches.length
+    def subn(self, replacement, string, count=0):
+        text = str(string)
+        answer = ''
+        position = 0
+        replacements = 0
+        for match in self.finditer(text):
+            if count and replacements >= count:
+                break
+            answer += text[position:match.start()]
+            answer += str(replacement(match) if callable(replacement)
+                          else _expand(replacement, match))
+            position = match.end()
+            replacements += 1
+        answer += text[position:]
+        return answer, replacements
 
-    def sub(self, repl, string, count=0):
-        return self.subn(repl, string, count)[0]
+    def sub(self, replacement, string, count=0):
+        return self.subn(replacement, string, count)[0]
 
-def _get_from_cache(pattern, flags):
-    if isinstance(pattern, RegExp):
-        pattern = pattern.source
-    key = JSON.stringify(v'[pattern, flags]')
-    if has_prop(_re_cache_map, key):
-        return _re_cache_map[key]
-    if _re_cache_items.length >= 100:
-        v'delete _re_cache_map[_re_cache_items.shift()]'
-    ans = RegexObject(pattern, flags)
-    _re_cache_map[key] = ans
-    _re_cache_items.push(key)
-    return ans
+
+Pattern = RegexObject
+Match = MatchObject
+
+
+def _expand(template, match):
+    source = str(template)
+    answer = ''
+    position = 0
+    escapes = {'n': '\n', 'r': '\r', 't': '\t', 'f': '\f', 'v': '\v'}
+    while position < len(source):
+        character = source[position]
+        if character != '\\' or position + 1 >= len(source):
+            answer += character
+            position += 1
+            continue
+        following = source[position + 1]
+        if following == 'g' and position + 2 < len(source) and source[position + 2] == '<':
+            close = source.find('>', position + 3)
+            if close < 0:
+                raise error('missing > in group name')
+            name = source[position + 3:close]
+            group = int(name) if name.isdigit() else name
+            answer += match.group(group) or ''
+            position = close + 1
+        elif following.isdigit():
+            end = position + 1
+            while end < len(source) and source[end].isdigit():
+                end += 1
+            answer += match.group(int(source[position + 1:end])) or ''
+            position = end
+        elif following == '\\':
+            answer += '\\'
+            position += 2
+        else:
+            answer += escapes.get(following, following)
+            position += 2
+    return answer
+
+
+_cache = {}
+
 
 def compile(pattern, flags=0):
-    return _get_from_cache(pattern, flags)
+    if isinstance(pattern, RegexObject):
+        if flags:
+            raise ValueError('cannot process flags argument with a compiled pattern')
+        return pattern
+    if runtime.instance_of(pattern, runtime.regexp):
+        pattern = _property(pattern, 'source')
+    key = (str(pattern), int(flags))
+    if key not in _cache:
+        _cache[key] = RegexObject(pattern, flags)
+    return _cache[key]
+
 
 def search(pattern, string, flags=0):
-    return _get_from_cache(pattern, flags).search(string)
+    return compile(pattern, flags).search(string)
+
 
 def match(pattern, string, flags=0):
-    return _get_from_cache(pattern, flags).match(string)
+    return compile(pattern, flags).match(string)
+
+
+def fullmatch(pattern, string, flags=0):
+    return compile(pattern, flags).fullmatch(string)
+
 
 def split(pattern, string, maxsplit=0, flags=0):
-    return _get_from_cache(pattern, flags).split(string)
+    return compile(pattern, flags).split(string, maxsplit)
+
 
 def findall(pattern, string, flags=0):
-    return _get_from_cache(pattern, flags).findall(string)
+    return compile(pattern, flags).findall(string)
+
 
 def finditer(pattern, string, flags=0):
-    return _get_from_cache(pattern, flags).finditer(string)
+    return compile(pattern, flags).finditer(string)
 
-def sub(pattern, repl, string, count=0, flags=0):
-    return _get_from_cache(pattern, flags).sub(repl, string, count)
 
-def subn(pattern, repl, string, count=0, flags=0):
-    return _get_from_cache(pattern, flags).subn(repl, string, count)
+def sub(pattern, replacement, string, count=0, flags=0):
+    return compile(pattern, flags).sub(replacement, string, count)
+
+
+def subn(pattern, replacement, string, count=0, flags=0):
+    return compile(pattern, flags).subn(replacement, string, count)
+
 
 def escape(string):
-    return string.replace(_RE_ESCAPE, '\\$&')
+    special = set('.^$*+?{}[]\\|()')
+    return ''.join('\\' + character if character in special else character
+                   for character in str(string))
+
 
 def purge():
-    nonlocal _re_cache_map, _re_cache_items
-    _re_cache_map = {}
-    _re_cache_items = v'[]'
+    _cache.clear()
