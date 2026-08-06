@@ -108,7 +108,17 @@ export class PythonModuleResolver {
         moduleOptions,
         resolvedImportKeys,
       )) {
-        this.ensureImported(request.key, request.node, moduleOptions);
+        if (request.key === moduleId) {
+          // A module may import itself (most visibly, ``import __main__``).
+          // A temporary namespace gives lowering metadata without moving the
+          // current module ahead of its dependencies in output order.
+          this.importedModules[moduleId] ??= this.cachedStub(moduleId, {
+            classes: {}, outputs: {}, exports: [], nonlocalvars: [], baselib: {},
+            imported_module_ids: [],
+          });
+        } else {
+          this.ensureImported(request.key, request.node, moduleOptions);
+        }
         if (!importedModuleIds.includes(request.key)) {
           importedModuleIds.push(request.key);
         }
@@ -271,11 +281,10 @@ export class PythonModuleResolver {
       : moduleParts.slice(0, -1);
     const keep = packageParts.length - (level - 1);
     if (keep <= 0 || !packageParts.length) {
-      throw this.importError(
-        "attempted relative import beyond top-level package",
-        node,
-        filename,
-      );
+      // Keep enough spelling for the runtime __import__ hook.  The default
+      // hook will still raise ImportError, while a user replacement (as in
+      // CPython's builtins.__import__) receives the requested level.
+      return relativeName;
     }
     return [...packageParts.slice(0, keep), ...relativeName.split(".").filter(Boolean)]
       .join(".");
@@ -349,7 +358,13 @@ export class PythonModuleResolver {
       module_id: key,
       jsage: false,
       exact_integer_literals: true,
-      scoped_flags: nullObject(),
+      // Imported Python modules inherit the caller's semantic defaults.
+      // Module-local ``from __python__ import ...`` directives are applied by
+      // scopedFlags() on top of this copy, including explicit ``no_*`` flags.
+      scoped_flags: Object.assign(
+        nullObject(),
+        moduleOptions.scoped_flags ?? {},
+      ),
       classes: undefined,
     }, sourceHash);
   }

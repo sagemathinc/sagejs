@@ -91,6 +91,10 @@ export async function instantiateSageEvaluator({
   flint,
   symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
   compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
+  compilerFrontend = new URL("./dist/compiler-frontend.mjs", import.meta.url),
+  treeSitterRuntime = new URL("./dist/web-tree-sitter.wasm", import.meta.url),
+  pythonGrammar = new URL("./dist/tree-sitter-python.wasm", import.meta.url),
+  sageGrammar = new URL("./dist/tree-sitter-sage.wasm", import.meta.url),
 }) {
   const language = new CompilerWorker(compilerWorker);
   let initialization;
@@ -102,6 +106,10 @@ export async function instantiateSageEvaluator({
         compiler: String(compiler),
         baselib: String(baselib),
         standardLibrary: String(standardLibrary),
+        compilerFrontend: String(compilerFrontend),
+        treeSitterRuntime: String(treeSitterRuntime),
+        pythonGrammar: String(pythonGrammar),
+        sageGrammar: String(sageGrammar),
       }),
       instantiateFlintFactor(flint),
       import(String(symbolic)),

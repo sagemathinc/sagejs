@@ -22,6 +22,10 @@
   "files": [
     "dist/flint-factor.wasm",
     "dist/compiler.js",
+    "dist/compiler-frontend.mjs",
+    "dist/web-tree-sitter.wasm",
+    "dist/tree-sitter-python.wasm",
+    "dist/tree-sitter-sage.wasm",
     "dist/baselib.js",
     "dist/plotly.min.js",
     "dist/stdlib.json",

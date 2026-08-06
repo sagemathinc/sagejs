@@ -2,17 +2,61 @@
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 from __python__ import hash_literals
 
-from ast_types import AST_Array, AST_AsyncFor, AST_BaseCall, AST_GeneratorComprehension, AST_ListComprehension, AST_Number, AST_Seq, AST_SymbolRef, AST_Try, AST_Unary, is_node_type
+from ast_types import AST_Array, AST_AsyncFor, AST_BaseCall, AST_Dot, AST_GeneratorComprehension, AST_ItemAccess, AST_ListComprehension, AST_Number, AST_Seq, AST_Splice, AST_SymbolRef, AST_Try, AST_Unary, is_node_type
 from output.stream import OutputStream
 from output.statements import force_statement, print_await_expression
 
 
-def unpack_tuple(elems, output, in_statement):
+def print_target_assignment(target, output, print_value):
+    """Emit one Python assignment target using the appropriate runtime hook."""
+    if is_node_type(target, AST_ItemAccess):
+        output.print('ρσ_setitem(')
+        target.expression.print(output)
+        output.comma()
+        target.property.print(output)
+        output.comma()
+        print_value()
+        output.print(')')
+        return
+    if is_node_type(target, AST_Splice):
+        output.print('ρσ_splice(')
+        target.expression.print(output)
+        output.comma()
+        print_value()
+        output.comma()
+        target.property.print(output) if target.property else output.print('0')
+        if target.property2:
+            output.comma()
+            target.property2.print(output)
+        output.print(')')
+        return
+    if (
+        output.options.python_attributes
+        and is_node_type(target, AST_Dot)
+        and not target.property.startswith('ρσ_')
+        and '.' not in target.property
+    ):
+        output.print('ρσ_setattr(')
+        target.expression.print(output)
+        output.comma()
+        output.print(JSON.stringify(target.property))
+        output.comma()
+        print_value()
+        output.print(')')
+        return
+    output.assign(target)
+    print_value()
+
+
+def unpack_tuple(elems, output, in_statement=False):
     for i, elem in enumerate(elems):
         output.indent()
-        output.assign(elem)
-        output.print("ρσ_unpack")
-        output.with_square(lambda: output.print(i))
+
+        def print_value():
+            output.print("ρσ_unpack")
+            output.with_square(lambda: output.print(i))
+
+        print_target_assignment(elem, output, print_value)
         if not in_statement or i < elems.length - 1:
             output.semicolon()
             output.newline()

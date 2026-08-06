@@ -328,6 +328,28 @@ def ρσ_extends(child: Any, parent: Any) -> None:
     child.prototype.constructor = child
 
 
+def ρσ_validate_class_bases(bases: Any) -> None:
+    """Reject non-types and incompatible native instance layouts."""
+    native_layouts = 0
+    for index in range(len(bases)):
+        base = bases[index]
+        if (
+            not runtime.strict_equal(runtime.jstype(base), 'function')
+            or base is runtime.function_class
+        ):
+            raise TypeError('bases must be types')
+        for previous_index in range(index):
+            if base is bases[previous_index]:
+                raise TypeError('duplicate base class')
+        prototype = runtime.reflect.get(base, 'prototype')
+        if prototype is runtime.undefined:
+            raise TypeError('bases must be types')
+        if not runtime.reflect.has(prototype, '__bases__'):
+            native_layouts += 1
+    if native_layouts > 1:
+        raise TypeError('multiple bases have instance lay-out conflict')
+
+
 def ρσ_native_method(target_function: Any) -> Any:
     """Adapt an ordinary ``(self, *args)`` function to a JS object method."""
     return runtime.native_method_adapter(target_function)
@@ -956,6 +978,8 @@ def ρσ_setitem(value: Any, key: Any, member: Any) -> None:
         and _internal_type_is(runtime.jstype(key), 'number')
         and runtime.number.isInteger(key)
     ):
+        if runtime.object.isFrozen(value):
+            raise TypeError('tuple object does not support item assignment')
         if key < 0:
             key += value.length
         runtime.reflect.set(value, key, member)

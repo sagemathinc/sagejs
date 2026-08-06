@@ -767,6 +767,62 @@ class PythonComplex:
             ) / denominator,
         )
 
+    def __pow__(self, exponent: Any) -> Any:
+        """Return the ordinary double-precision complex power.
+
+        Integer powers use exponentiation by squaring.  Besides avoiding
+        branch-cut roundoff for the overwhelmingly common case, this also
+        handles negative integer powers without ever handing a PythonComplex
+        object to JavaScript's native ``**`` operator.
+        """
+        if runtime.is_exact_integer(exponent):
+            negative = exponent < 0
+            power = -exponent if negative else exponent
+            base = self
+            result = PythonComplex(1, 0)
+            while power > 0:
+                if power % 2:
+                    result = result * base
+                power = power // 2
+                if power:
+                    base = base * base
+            if negative:
+                return PythonComplex(1, 0) / result
+            return result
+
+        try:
+            parts = _python_complex_parts(exponent)
+        except TypeError:
+            return NotImplemented
+        if self._real == 0 and self._imag == 0:
+            if parts[1] == 0 and parts[0] > 0:
+                return PythonComplex(0, 0)
+            if parts[1] == 0 and parts[0] == 0:
+                return PythonComplex(1, 0)
+            raise ZeroDivisionError(
+                '0.0 to a negative or complex power')
+        logarithm_real = runtime.math.log(
+            runtime.math.hypot(self._real, self._imag))
+        logarithm_imag = runtime.math.atan2(self._imag, self._real)
+        product_real = (
+            parts[0] * logarithm_real
+            - parts[1] * logarithm_imag)
+        product_imag = (
+            parts[0] * logarithm_imag
+            + parts[1] * logarithm_real)
+        magnitude = runtime.math.exp(product_real)
+        return PythonComplex(
+            magnitude * runtime.math.cos(product_imag),
+            magnitude * runtime.math.sin(product_imag),
+        )
+
+    def __rpow__(self, base: Any) -> Any:
+        try:
+            parts = _python_complex_parts(base)
+        except TypeError:
+            return NotImplemented
+        return PythonComplex(parts[0], parts[1]) ** self
+
     def __neg__(self) -> PythonComplex:
         return PythonComplex(-self._real, -self._imag)
 

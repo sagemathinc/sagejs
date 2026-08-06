@@ -7,7 +7,7 @@ const { join } = require("node:path");
 
 const { createSage } = require("../dist/tools/kernel.js");
 const {
-  createKernelEvaluator,
+  createKernelEvaluatorAsync,
 } = require("../dist/tools/kernel-evaluator.js");
 
 async function testNodeFiles() {
@@ -140,9 +140,9 @@ async function testNodeFiles() {
   }
 }
 
-function testUnavailableHost() {
+async function testUnavailableHost() {
   const output = [];
-  const evaluator = createKernelEvaluator({
+  const evaluator = await createKernelEvaluatorAsync({
     mode: "python",
     onOutput: (text) => output.push(text),
   });

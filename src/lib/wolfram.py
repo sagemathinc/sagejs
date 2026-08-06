@@ -25,6 +25,7 @@ def head(value: Any) -> str:
         "RealLiteral": "Real",
         "RealNumberElement": "Real",
         "complex": "Complex",
+        "PythonComplex": "Complex",
         "ComplexNumberElement": "Complex",
         "str": "String",
         "list": "List",

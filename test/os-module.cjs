@@ -12,7 +12,7 @@ const { join, resolve } = require("node:path");
 
 const { createSage } = require("../dist/tools/kernel.js");
 const {
-  createKernelEvaluator,
+  createKernelEvaluatorAsync,
 } = require("../dist/tools/kernel-evaluator.js");
 
 const root = resolve(__dirname, "..");
@@ -90,9 +90,9 @@ async function testNodeHost() {
   }
 }
 
-function testPathCompatibilityAndUnavailableHost() {
+async function testPathCompatibilityAndUnavailableHost() {
   const output = [];
-  const evaluator = createKernelEvaluator({
+  const evaluator = await createKernelEvaluatorAsync({
     mode: "python",
     onOutput: (text) => output.push(text),
   });
@@ -148,7 +148,7 @@ function testPathCompatibilityAndUnavailableHost() {
 
 async function main() {
   await testNodeHost();
-  testPathCompatibilityAndUnavailableHost();
+  await testPathCompatibilityAndUnavailableHost();
   console.log("Sage.js os/path host compatibility passed.");
 }
 

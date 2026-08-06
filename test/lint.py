@@ -1,6 +1,7 @@
 # vim:fileencoding=utf-8
 # License: BSD
 # Copyright: 2015, Kovid Goyal <kovid at kovidgoyal.net>
+# DISABLED: replaced by the authoritative Tree-sitter lint CLI test
 
 linter = require('../tools/lint.js')
 

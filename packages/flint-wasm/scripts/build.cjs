@@ -39,6 +39,10 @@ const outputDirectory = path.join(packageRoot, "dist");
 const rawOutput = path.join(outputDirectory, "flint-factor.unstripped.wasm");
 const output = path.join(outputDirectory, "flint-factor.wasm");
 const compilerOutput = path.join(outputDirectory, "compiler.js");
+const compilerFrontendOutput = path.join(
+  outputDirectory,
+  "compiler-frontend.mjs",
+);
 const baselibOutput = path.join(outputDirectory, "baselib.js");
 const standardLibraryOutput = path.join(outputDirectory, "stdlib.json");
 const wasiRuntimeOutput = path.join(outputDirectory, "wasi-runtime.mjs");
@@ -64,6 +68,12 @@ const standardLibraryCacheDirectory = path.join(
   repositoryRoot,
   "dist",
   "module-cache",
+);
+const vendorDirectory = path.join(repositoryRoot, "dist", "vendor");
+const compilerResourceShim = path.join(
+  packageRoot,
+  "src",
+  "compiler-resources.ts",
 );
 
 function requirePath(description, filename) {
@@ -101,6 +111,16 @@ requirePath(
   "built Sage.js baselib (run `pnpm build` first)",
   baselibSource,
 );
+for (const filename of [
+  "web-tree-sitter.wasm",
+  "tree-sitter-python.wasm",
+  "tree-sitter-sage.wasm",
+]) {
+  requirePath(
+    `built ${filename} (run \`pnpm build\` first)`,
+    path.join(vendorDirectory, filename),
+  );
+}
 for (const dependency of dependencies) {
   requirePath(
     `${dependency.name} headers`,
@@ -229,8 +249,43 @@ esbuild.buildSync({
   outfile: symbolicBackendOutput,
   minify: true,
 });
+const compilerFrontendBuild = esbuild.build({
+  entryPoints: [
+    path.join(packageRoot, "src", "compiler-frontend-entry.ts"),
+  ],
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: ["es2022"],
+  outfile: compilerFrontendOutput,
+  alias: {
+    path: require.resolve("path-browserify", { paths: [packageRoot] }),
+  },
+  // web-tree-sitter contains guarded Node fallbacks. They are unreachable in
+  // a browser worker but must remain unresolved dynamic imports in the bundle.
+  external: ["fs/promises", "module"],
+  plugins: [{
+    name: "sagejs-browser-compiler-resources",
+    setup(build) {
+      build.onResolve(
+        { filter: /^\.\.\/(?:resources|utils)$/ },
+        () => ({ path: compilerResourceShim }),
+      );
+    },
+  }],
+});
 fs.copyFileSync(compilerSource, compilerOutput);
 fs.copyFileSync(baselibSource, baselibOutput);
+for (const filename of [
+  "web-tree-sitter.wasm",
+  "tree-sitter-python.wasm",
+  "tree-sitter-sage.wasm",
+]) {
+  fs.copyFileSync(
+    path.join(vendorDirectory, filename),
+    path.join(outputDirectory, filename),
+  );
+}
 const standardLibraryModules = {};
 for (const filename of fs.readdirSync(standardLibrarySourceDirectory).sort()) {
   if (!filename.endsWith(".py")) {
@@ -268,3 +323,7 @@ console.log(
   `Copied browser evaluator assets to ` +
     `${path.relative(repositoryRoot, outputDirectory)}`,
 );
+void compilerFrontendBuild.catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

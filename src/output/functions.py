@@ -16,7 +16,7 @@ module_name = 'null'
 
 
 def set_module_name(x):
-    nonlocal module_name
+    global module_name
     module_name = '"' + x + '"' if x else 'null'
 
 
@@ -823,6 +823,8 @@ def print_function_call(self, output):
             # class methods are called through the prototype unless static
             if self.static:
                 self['class'].print(output)
+                if self.classvar:
+                    output.print(".prototype")
                 output.print(".")
                 output.print(self.method)
             else:

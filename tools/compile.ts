@@ -107,6 +107,9 @@ export default async function Compile({
     PyLang,
     argv.sage ? "sage" : "python",
   );
+  const dynamicPythonFrontend = argv.sage
+    ? await createPythonCompilerFrontend(PyLang, "python")
+    : pythonFrontend;
   const foreignLanguage = selectedForeignLanguage(argv);
   const foreignFrontend: ForeignFrontend | undefined = foreignLanguage
     ? await createForeignFrontend(foreignLanguage)
@@ -333,7 +336,12 @@ export default async function Compile({
       argv.sage ? "sage" : "python",
     );
     if (useCachedRuntime) {
-      runRuntimeBootstrap(PyLang, argv.sage ? "sage" : "python");
+      runRuntimeBootstrap(
+        PyLang,
+        argv.sage ? "sage" : "python",
+        pythonFrontend,
+        dynamicPythonFrontend,
+      );
     }
   }
 
@@ -347,6 +355,8 @@ export default async function Compile({
     }
   } finally {
     uninstallNodeHost?.();
+    pythonFrontend.close();
+    if (dynamicPythonFrontend !== pythonFrontend) dynamicPythonFrontend.close();
   }
 
   if (argv.stats) {

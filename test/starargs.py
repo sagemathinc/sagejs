@@ -345,3 +345,4 @@ class Prnb1(Prnb):
 p = Prnb1(1, 2, x=1, y=2)
 de(p.a, [1, 2])
 de(p.k, {'x': 1, 'y':2})
+# STAGE_ZERO_ONLY: historical parser-introspection syntax

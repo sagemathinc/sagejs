@@ -27,6 +27,7 @@
   "exports": {
     ".": "./index.cjs",
     "./embedded": "./dist/tools/embedded_compiler.js",
+    "./frontend": "./dist/tools/python/compiler-frontend.js",
     "./kernel": {
       "types": "./dist/tools/kernel.d.ts",
       "default": "./dist/tools/kernel.js"
@@ -129,7 +130,7 @@
     "test:cowasm:run": "node bench/cowasm/run.cjs --check",
     "test:python:conformance": "pnpm run build && pnpm run test:python:conformance:run",
     "test:python:conformance:run": "node scripts/run-python-conformance.cjs --check",
-    "test:python:grammar": "pnpm run build && node node_modules/tree-sitter-cli/cli.js test -p tools/tree-sitter-sage && node --test test/python-syntax-frontend.cjs && node scripts/audit-python-grammar.cjs --check",
+    "test:python:grammar": "pnpm run build && node node_modules/tree-sitter-cli/cli.js test -p tools/tree-sitter-python && node node_modules/tree-sitter-cli/cli.js test -p tools/tree-sitter-sage && node --test test/python-syntax-frontend.cjs && node scripts/audit-python-grammar.cjs --check",
     "python:grammar:audit": "pnpm run build && node scripts/audit-python-grammar.cjs",
     "test:native": "pnpm --dir packages/flint test && pnpm --dir packages/graph test && node bin/sagejs packages/flint/test/integration.sage && node bin/sagejs packages/graph/test/integration.sage && node test/native-kernel.cjs && pnpm run test:matrix:performance",
     "test:sea": "pnpm run build:sea && node test/sea-smoke.cjs && pnpm run test:startup:sea",

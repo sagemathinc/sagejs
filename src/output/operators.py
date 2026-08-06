@@ -7,7 +7,7 @@ from ast_types import (AST_Array, AST_Assign, AST_BaseCall, AST_Binary,
                        AST_SimpleStatement, AST_Statement, AST_String, AST_Sub,
                        AST_Symbol, AST_SymbolRef, AST_Unary, TreeWalker,
                        is_node_type)
-from output.loops import unpack_tuple
+from output.loops import print_target_assignment, unpack_tuple
 
 
 def print_getattr(self, output, skip_expression):  # AST_Dot
@@ -597,23 +597,25 @@ def print_assignment(self, output):
                     if index is star_index
                     else element
                 )
-                output.assign(target)
-                if index is star_index:
-                    output.print("ρσ_list_constructor(ρσ_unpack.slice(")
-                    output.print(star_index)
-                    output.comma()
-                    output.print(
-                        "ρσ_unpack.length - " + trailing_count)
-                    output.print("))")
-                else:
-                    output.print("ρσ_unpack")
-                    if index < star_index:
-                        output.with_square(lambda: output.print(index))
+                def print_value():
+                    if index is star_index:
+                        output.print("ρσ_list_constructor(ρσ_unpack.slice(")
+                        output.print(star_index)
+                        output.comma()
+                        output.print(
+                            "ρσ_unpack.length - " + trailing_count)
+                        output.print("))")
                     else:
-                        trailing_index = flat.length - index
-                        output.with_square(
-                            lambda: output.print(
-                                "ρσ_unpack.length - " + trailing_index))
+                        output.print("ρσ_unpack")
+                        if index < star_index:
+                            output.with_square(lambda: output.print(index))
+                        else:
+                            trailing_index = flat.length - index
+                            output.with_square(
+                                lambda: output.print(
+                                    "ρσ_unpack.length - " + trailing_index))
+
+                print_target_assignment(target, output, print_value)
                 if index < flat.length - 1:
                     output.semicolon()
                     output.newline()
@@ -794,6 +796,11 @@ def print_seq(output):
     # this will effectively convert tuples to arrays
     if (is_node_type(p, AST_Binary) or is_node_type(p, AST_Return)
             or is_node_type(p, AST_Array) or is_node_type(p, AST_BaseCall)
+            or is_node_type(p, AST_Object)
+            or (
+                is_node_type(p, AST_ItemAccess)
+                and p.assignment is self
+            )
             or is_node_type(p, AST_SimpleStatement)
             or (
                 output.options.python_tuples

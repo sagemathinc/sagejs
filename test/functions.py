@@ -317,3 +317,4 @@ assrt.equal(conditionally_bound(True), 10)
 assrt.throws(def(): conditionally_bound(False);, NameError)
 assrt.equal(loop_bound(1), 20)
 assrt.throws(def(): loop_bound(0);, NameError)
+# STAGE_ZERO_ONLY: historical RapydScript anonymous-function syntax

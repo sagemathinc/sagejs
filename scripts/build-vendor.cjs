@@ -35,11 +35,6 @@ copyFileSync(
   require.resolve("web-tree-sitter/web-tree-sitter.wasm"),
   join(outputDirectory, "web-tree-sitter.wasm"),
 );
-copyFileSync(
-  require.resolve("tree-sitter-python/tree-sitter-python.wasm"),
-  join(outputDirectory, "tree-sitter-python.wasm"),
-);
-
 function buildParser(name, sourceDirectory, { generate = false } = {}) {
   if (generate) {
     execFileSync(
@@ -62,6 +57,13 @@ function buildParser(name, sourceDirectory, { generate = false } = {}) {
   );
 }
 
+// Build Python from our tiny, reviewable grammar overlay instead of copying
+// the package's prebuilt WASM.  This keeps the pinned upstream scanner and
+// grammar as the foundation while allowing correctness fixes to live in this
+// repository and apply identically on every platform.
+buildParser("python", join(root, "tools", "tree-sitter-python"), {
+  generate: true,
+});
 buildParser("magma", join(root, "upstream-tests", "tree-sitter-magma"));
 buildParser("sage", join(root, "tools", "tree-sitter-sage"), {
   generate: true,

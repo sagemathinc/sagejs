@@ -10,6 +10,7 @@ import { join } from "path";
 import { Script } from "vm";
 
 import type { Compiler } from "./compiler";
+import type { PythonCompilerFrontend } from "./python/compiler-frontend";
 import {
   readBaselibSource,
   readRuntimeBootstrapCachedData,
@@ -20,7 +21,10 @@ import { getImportDirs, importPath, libraryPath } from "./utils";
 
 export type RuntimeBootstrapMode = "sage" | "python";
 
-const BOOTSTRAP_SOURCE = "(def ():\n yield 1\n)";
+// A real statement gives the output pipeline a module to which it can attach
+// the generated baselib.  This used to be a RapydScript anonymous-function
+// extension; the authoritative frontend intentionally accepts Python/Sage.
+const BOOTSTRAP_SOURCE = "pass\n";
 
 function cacheDirectory(): string {
   return join(__dirname, "..", "runtime-cache");
@@ -35,8 +39,9 @@ export function runtimeBootstrapFilename(
 export function generateRuntimeBootstrapSource(
   compiler: Compiler,
   mode: RuntimeBootstrapMode,
+  frontend: PythonCompilerFrontend,
 ): string {
-  const ast = compiler.parse(BOOTSTRAP_SOURCE, {
+  const ast = frontend.parse(BOOTSTRAP_SOURCE, {
     filename: "<runtime-bootstrap>",
     basedir: process.cwd(),
   });
@@ -65,6 +70,8 @@ export function generateRuntimeBootstrapSource(
 export function runRuntimeBootstrap(
   compiler: Compiler,
   mode: RuntimeBootstrapMode,
+  frontend: PythonCompilerFrontend,
+  pythonFrontend: PythonCompilerFrontend = frontend,
 ): void {
   const directory = cacheDirectory();
   const source =
@@ -72,7 +79,7 @@ export function runRuntimeBootstrap(
       mode,
       join(directory, `runtime-bootstrap-${mode}.js`),
     ) ??
-    generateRuntimeBootstrapSource(compiler, mode);
+    generateRuntimeBootstrapSource(compiler, mode, frontend);
   const cachedData = readRuntimeBootstrapCachedData(
     mode,
     join(directory, `runtime-bootstrap-${mode}.bin`),
@@ -103,7 +110,7 @@ export function runRuntimeBootstrap(
     }
     loading.add(name);
     try {
-      const ast = compiler.parse(`import ${name}\n`, {
+      const ast = frontend.parse(`import ${name}\n`, {
         filename: `<lazy-module:${name}>`,
         basedir: process.cwd(),
         libdir: importPath,
@@ -140,4 +147,10 @@ export function runRuntimeBootstrap(
     }
     return Reflect.get(registry, name);
   });
+  Reflect.set(
+    globalThis,
+    "__sagejs_parse_python__",
+    (source: string, options: Record<string, any>) =>
+      pythonFrontend.parse(source, options),
+  );
 }

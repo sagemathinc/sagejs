@@ -31,6 +31,7 @@ function sha256(text: string): string {
 /** Compare direct CST lowering with the stage-zero AST bridge. */
 export function comparePythonFrontends(
   compiler,
+  legacyCompiler,
   frontend: PythonCompilerFrontend,
   source: string,
   parserOptions: Record<string, any>,
@@ -41,7 +42,7 @@ export function comparePythonFrontends(
       source,
       parserOptions.filename ?? "<input>",
     );
-    const legacy = frontend.parseLegacy(source, parserOptions);
+    const legacy = legacyCompiler.parse(source, parserOptions);
     const lowerer = new PythonCstLowerer(compiler, syntax, parserOptions);
     const direct = lowerer.lowerModule(legacy);
     const legacyJavaScript = print(compiler, legacy, outputOptions);

@@ -56,7 +56,9 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "3D graphics",
+          "animation"
         ],
         "backends": [
           "Plotly",
@@ -104,7 +106,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "ellipses"
         ],
         "backends": [
           "Plotly",
@@ -152,7 +155,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "arrows"
         ],
         "backends": [
           "Plotly",
@@ -200,7 +204,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "arrows"
         ],
         "backends": [
           "Plotly",
@@ -289,7 +294,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "axes"
+          "axes",
+          "arrows"
         ],
         "backends": [
           "Plotly",
@@ -330,7 +336,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "charts"
         ],
         "backends": [
           "Plotly",
@@ -378,7 +385,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "curves"
         ],
         "backends": [
           "Plotly",
@@ -426,7 +434,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "curves"
+          "curves",
+          "Bézier paths"
         ],
         "backends": [
           "Plotly",
@@ -467,7 +476,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "circles"
         ],
         "backends": [
           "Plotly",
@@ -565,7 +575,9 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "complex analysis",
+          "domain coloring"
         ],
         "backends": [
           "Plotly",
@@ -613,7 +625,10 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "complex analysis",
+          "domain coloring",
+          "colormaps"
         ],
         "backends": [
           "Plotly",
@@ -661,7 +676,9 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "complex analysis",
+          "domain coloring"
         ],
         "backends": [
           "Plotly",
@@ -709,7 +726,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "contours"
         ],
         "backends": [
           "Plotly",
@@ -757,7 +775,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "shapes"
+          "shapes",
+          "platonic solids"
         ],
         "backends": [
           "Plotly",
@@ -839,7 +858,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "surfaces"
+          "surfaces",
+          "coordinate transforms"
         ],
         "backends": [
           "Plotly",
@@ -880,7 +900,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "scalar fields"
         ],
         "backends": [
           "Plotly",
@@ -1431,7 +1452,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "regions"
         ],
         "backends": [
           "Plotly",
@@ -1479,7 +1501,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "shapes"
+          "shapes",
+          "platonic solids"
         ],
         "backends": [
           "Plotly",
@@ -1678,7 +1701,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "ellipses"
         ],
         "backends": [
           "Plotly",
@@ -1893,7 +1917,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "frames"
+          "frames",
+          "labels"
         ],
         "backends": [
           "Plotly",
@@ -5418,7 +5443,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "composition"
         ],
         "backends": [
           "Plotly",
@@ -6393,7 +6419,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "statistics"
         ],
         "backends": [
           "Plotly",
@@ -6441,7 +6468,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "colors"
         ],
         "backends": [
           "Plotly",
@@ -6489,7 +6517,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "hyperbolic geometry"
         ],
         "backends": [
           "Plotly",
@@ -6537,7 +6566,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "hyperbolic geometry"
         ],
         "backends": [
           "Plotly",
@@ -6585,7 +6615,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "hyperbolic geometry"
         ],
         "backends": [
           "Plotly",
@@ -6633,7 +6664,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "hyperbolic geometry"
         ],
         "backends": [
           "Plotly",
@@ -6681,7 +6713,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "shapes"
+          "shapes",
+          "platonic solids"
         ],
         "backends": [
           "Plotly",
@@ -6722,7 +6755,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "implicit curves"
         ],
         "backends": [
           "Plotly",
@@ -6821,7 +6855,9 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "polygons"
+          "polygons",
+          "meshes",
+          "data structures"
         ],
         "backends": [
           "Plotly",
@@ -6912,7 +6948,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "lines"
         ],
         "backends": [
           "Plotly",
@@ -6960,7 +6997,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "lines"
         ],
         "backends": [
           "Plotly",
@@ -7049,7 +7087,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "data"
         ],
         "backends": [
           "Plotly",
@@ -7097,7 +7136,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "logarithmic axes"
         ],
         "backends": [
           "Plotly",
@@ -7145,7 +7185,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "logarithmic axes"
         ],
         "backends": [
           "Plotly",
@@ -7193,7 +7234,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "logarithmic axes"
         ],
         "backends": [
           "Plotly",
@@ -7241,7 +7283,9 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "surfaces"
+          "surfaces",
+          "data plots",
+          "interpolation"
         ],
         "backends": [
           "Plotly",
@@ -7483,7 +7527,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "matrices"
         ],
         "backends": [
           "Plotly",
@@ -8420,7 +8465,9 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "composition",
+          "insets"
         ],
         "backends": [
           "Plotly",
@@ -8608,7 +8655,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "shapes"
+          "shapes",
+          "platonic solids"
         ],
         "backends": [
           "Plotly",
@@ -8784,7 +8832,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "parametric"
         ],
         "backends": [
           "Plotly",
@@ -8957,7 +9006,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "logarithmic axes"
         ],
         "backends": [
           "Plotly",
@@ -9005,7 +9055,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "logarithmic axes"
         ],
         "backends": [
           "Plotly",
@@ -9053,7 +9104,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "logarithmic axes"
         ],
         "backends": [
           "Plotly",
@@ -9101,7 +9153,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "differential equations"
         ],
         "backends": [
           "Plotly",
@@ -9149,7 +9202,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "data"
         ],
         "backends": [
           "Plotly",
@@ -9197,7 +9251,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "vector fields"
         ],
         "backends": [
           "Plotly",
@@ -9327,7 +9382,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "points"
         ],
         "backends": [
           "Plotly",
@@ -9375,7 +9431,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "points"
         ],
         "backends": [
           "Plotly",
@@ -9464,7 +9521,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "points"
         ],
         "backends": [
           "Plotly",
@@ -9512,7 +9570,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "polar coordinates"
         ],
         "backends": [
           "Plotly",
@@ -9560,7 +9619,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "polygons"
         ],
         "backends": [
           "Plotly",
@@ -9608,7 +9668,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "polygons"
         ],
         "backends": [
           "Plotly",
@@ -9656,7 +9717,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "polygons"
+          "polygons",
+          "meshes"
         ],
         "backends": [
           "Plotly",
@@ -9697,7 +9759,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "polygons"
+          "polygons",
+          "meshes"
         ],
         "backends": [
           "Plotly",
@@ -10016,7 +10079,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "colors"
         ],
         "backends": [
           "Plotly",
@@ -10120,7 +10184,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "regions"
         ],
         "backends": [
           "Plotly",
@@ -10168,7 +10233,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "surfaces"
+          "surfaces",
+          "surfaces of revolution"
         ],
         "backends": [
           "Plotly",
@@ -10209,7 +10275,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "colors"
         ],
         "backends": [
           "Plotly",
@@ -10257,7 +10324,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "frames"
+          "frames",
+          "rulers"
         ],
         "backends": [
           "Plotly",
@@ -10298,7 +10366,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "frames"
+          "frames",
+          "rulers"
         ],
         "backends": [
           "Plotly",
@@ -10339,7 +10408,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "statistics"
         ],
         "backends": [
           "Plotly",
@@ -10591,7 +10661,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "surfaces"
+          "surfaces",
+          "coordinate transforms"
         ],
         "backends": [
           "Plotly",
@@ -10632,7 +10703,9 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "vector fields",
+          "differential equations"
         ],
         "backends": [
           "Plotly",
@@ -10733,7 +10806,8 @@
         "tags": [
           "graphics",
           "3D graphics",
-          "shapes"
+          "shapes",
+          "platonic solids"
         ],
         "backends": [
           "Plotly",
@@ -10774,7 +10848,8 @@
         "tags": [
           "graphics",
           "plotting",
-          "2D graphics"
+          "2D graphics",
+          "labels"
         ],
         "backends": [
           "Plotly",
@@ -11067,7 +11142,9 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "3D graphics",
+        "animation"
       ],
       "backends": [
         "Plotly",
@@ -11126,7 +11203,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "ellipses"
       ],
       "backends": [
         "Plotly",
@@ -11185,7 +11263,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "arrows"
       ],
       "backends": [
         "Plotly",
@@ -11244,7 +11323,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "arrows"
       ],
       "backends": [
         "Plotly",
@@ -11346,7 +11426,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "axes"
+        "axes",
+        "arrows"
       ],
       "backends": [
         "Plotly",
@@ -11398,7 +11479,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "charts"
       ],
       "backends": [
         "Plotly",
@@ -11457,7 +11539,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "curves"
       ],
       "backends": [
         "Plotly",
@@ -11516,7 +11599,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "curves"
+        "curves",
+        "Bézier paths"
       ],
       "backends": [
         "Plotly",
@@ -11601,7 +11685,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "circles"
       ],
       "backends": [
         "Plotly",
@@ -11712,7 +11797,9 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "complex analysis",
+        "domain coloring"
       ],
       "backends": [
         "Plotly",
@@ -11788,7 +11875,10 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "complex analysis",
+        "domain coloring",
+        "colormaps"
       ],
       "backends": [
         "Plotly",
@@ -11880,7 +11970,9 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "complex analysis",
+        "domain coloring"
       ],
       "backends": [
         "Plotly",
@@ -11972,7 +12064,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "contours"
       ],
       "backends": [
         "Plotly",
@@ -12031,7 +12124,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "shapes"
+        "shapes",
+        "platonic solids"
       ],
       "backends": [
         "Plotly",
@@ -12184,7 +12278,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "surfaces"
+        "surfaces",
+        "coordinate transforms"
       ],
       "backends": [
         "Plotly",
@@ -12236,7 +12331,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "scalar fields"
       ],
       "backends": [
         "Plotly",
@@ -12647,9 +12743,9 @@
         "name": "Circuit",
         "qualified": "DigraphGenerators.Circuit",
         "path": "src/baselib/graphs.py",
-        "line": 2642,
+        "line": 2649,
         "excerpt": {
-          "start_line": 2630,
+          "start_line": 2637,
           "text": "\ngraphs = GraphGenerators()\n\n\nclass DigraphGenerators:\n    \"\"\"Sage's ``digraphs`` namespace.\"\"\"\n\n    def Path(self, order: int) -> DiGraph:\n        graph = DiGraph(order, name='Path digraph')\n        graph.add_path(range(order))\n        return graph\n\n    def Circuit(self, order: int) -> DiGraph:\n        graph = DiGraph(order, name='Circuit')\n        graph.add_cycle(range(order))\n        return graph\n\n    def Complete(self, order: int) -> DiGraph:\n        graph = DiGraph(order, name='Complete digraph')\n        for source in range(order):\n            for target in range(order):\n                if source != target:\n                    graph.add_edge(source, target)\n        return graph\n"
         }
       },
@@ -12715,9 +12811,9 @@
         "name": "Complete",
         "qualified": "DigraphGenerators.Complete",
         "path": "src/baselib/graphs.py",
-        "line": 2647,
+        "line": 2654,
         "excerpt": {
-          "start_line": 2635,
+          "start_line": 2642,
           "text": "    \"\"\"Sage's ``digraphs`` namespace.\"\"\"\n\n    def Path(self, order: int) -> DiGraph:\n        graph = DiGraph(order, name='Path digraph')\n        graph.add_path(range(order))\n        return graph\n\n    def Circuit(self, order: int) -> DiGraph:\n        graph = DiGraph(order, name='Circuit')\n        graph.add_cycle(range(order))\n        return graph\n\n    def Complete(self, order: int) -> DiGraph:\n        graph = DiGraph(order, name='Complete digraph')\n        for source in range(order):\n            for target in range(order):\n                if source != target:\n                    graph.add_edge(source, target)\n        return graph\n\n\ndigraphs = DigraphGenerators()\n\n\n_GRAPH_DATABASE_TABLES = {"
         }
       },
@@ -12783,9 +12879,9 @@
         "name": "Path",
         "qualified": "DigraphGenerators.Path",
         "path": "src/baselib/graphs.py",
-        "line": 2637,
+        "line": 2644,
         "excerpt": {
-          "start_line": 2625,
+          "start_line": 2632,
           "text": "        for source in range(order):\n            for target in range(source + 1, order):\n                if random_float() < probability:\n                    graph.add_edge(source, target)\n        return graph\n\ngraphs = GraphGenerators()\n\n\nclass DigraphGenerators:\n    \"\"\"Sage's ``digraphs`` namespace.\"\"\"\n\n    def Path(self, order: int) -> DiGraph:\n        graph = DiGraph(order, name='Path digraph')\n        graph.add_path(range(order))\n        return graph\n\n    def Circuit(self, order: int) -> DiGraph:\n        graph = DiGraph(order, name='Circuit')\n        graph.add_cycle(range(order))\n        return graph\n\n    def Complete(self, order: int) -> DiGraph:\n        graph = DiGraph(order, name='Complete digraph')\n        for source in range(order):"
         }
       },
@@ -13235,7 +13331,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "regions"
       ],
       "backends": [
         "Plotly",
@@ -13294,7 +13391,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "shapes"
+        "shapes",
+        "platonic solids"
       ],
       "backends": [
         "Plotly",
@@ -13635,7 +13733,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "ellipses"
       ],
       "backends": [
         "Plotly",
@@ -13945,7 +14044,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "frames"
+        "frames",
+        "labels"
       ],
       "backends": [
         "Plotly",
@@ -21155,9 +21255,9 @@
         "name": "close",
         "qualified": "GraphDatabase.close",
         "path": "src/baselib/graphs.py",
-        "line": 2853,
+        "line": 2860,
         "excerpt": {
-          "start_line": 2841,
+          "start_line": 2848,
           "text": "                    merged, key, runtime.reflect.get(query_dict, key))\n        for key in runtime.object.keys(conditions):\n            runtime.reflect.set(\n                merged, key, runtime.reflect.get(conditions, key))\n        return GraphQuery(self._database, merged, limit)\n\n    def graphs(self, **conditions: Any) -> list[Graph]:\n        return self.query(**conditions).list()\n\n    def count(self, **conditions: Any) -> int:\n        return self.query(**conditions).count()\n\n    def close(self) -> None:\n        runtime.reflect.apply(\n            runtime.reflect.get(self._database, 'close'), self._database, [])\n\n    def __enter__(self) -> GraphDatabase:\n        return self\n\n    def __exit__(self, *_arguments: Any) -> None:\n        self.close()\n\n    def __repr__(self) -> str:\n        return 'Sage graph database at ' + self.filename\n"
         }
       },
@@ -21221,9 +21321,9 @@
         "name": "count",
         "qualified": "GraphDatabase.count",
         "path": "src/baselib/graphs.py",
-        "line": 2850,
+        "line": 2857,
         "excerpt": {
-          "start_line": 2838,
+          "start_line": 2845,
           "text": "        if query_dict is not None:\n            for key in runtime.object.keys(query_dict):\n                runtime.reflect.set(\n                    merged, key, runtime.reflect.get(query_dict, key))\n        for key in runtime.object.keys(conditions):\n            runtime.reflect.set(\n                merged, key, runtime.reflect.get(conditions, key))\n        return GraphQuery(self._database, merged, limit)\n\n    def graphs(self, **conditions: Any) -> list[Graph]:\n        return self.query(**conditions).list()\n\n    def count(self, **conditions: Any) -> int:\n        return self.query(**conditions).count()\n\n    def close(self) -> None:\n        runtime.reflect.apply(\n            runtime.reflect.get(self._database, 'close'), self._database, [])\n\n    def __enter__(self) -> GraphDatabase:\n        return self\n\n    def __exit__(self, *_arguments: Any) -> None:\n        self.close()\n"
         }
       },
@@ -21287,9 +21387,9 @@
         "name": "graphs",
         "qualified": "GraphDatabase.graphs",
         "path": "src/baselib/graphs.py",
-        "line": 2847,
+        "line": 2854,
         "excerpt": {
-          "start_line": 2835,
+          "start_line": 2842,
           "text": "    ) -> GraphQuery:\n        del display_cols\n        merged = _native_object()\n        if query_dict is not None:\n            for key in runtime.object.keys(query_dict):\n                runtime.reflect.set(\n                    merged, key, runtime.reflect.get(query_dict, key))\n        for key in runtime.object.keys(conditions):\n            runtime.reflect.set(\n                merged, key, runtime.reflect.get(conditions, key))\n        return GraphQuery(self._database, merged, limit)\n\n    def graphs(self, **conditions: Any) -> list[Graph]:\n        return self.query(**conditions).list()\n\n    def count(self, **conditions: Any) -> int:\n        return self.query(**conditions).count()\n\n    def close(self) -> None:\n        runtime.reflect.apply(\n            runtime.reflect.get(self._database, 'close'), self._database, [])\n\n    def __enter__(self) -> GraphDatabase:\n        return self\n"
         }
       },
@@ -21355,9 +21455,9 @@
         "name": "query",
         "qualified": "GraphDatabase.query",
         "path": "src/baselib/graphs.py",
-        "line": 2829,
+        "line": 2836,
         "excerpt": {
-          "start_line": 2817,
+          "start_line": 2824,
           "text": "            if resource_hook is runtime.undefined:\n                raise FileNotFoundError(\n                    'Sage graph database not found at ' + self.filename +\n                    '; set SAGEJS_GRAPH_DATABASE to an installed graphs.db')\n            database_bytes = runtime.reflect.apply(\n                resource_hook, runtime.undefined, [])\n            self._database = runtime.reflect.construct(\n                constructor, [':memory:'])\n            runtime.reflect.apply(\n                runtime.reflect.get(self._database, 'deserialize'),\n                self._database, [database_bytes])\n\n    def query(\n        self,\n        query_dict: Any = None,\n        display_cols: Any = None,\n        limit: int | None = None,\n        **conditions: Any,\n    ) -> GraphQuery:\n        del display_cols\n        merged = _native_object()\n        if query_dict is not None:\n            for key in runtime.object.keys(query_dict):\n                runtime.reflect.set(\n                    merged, key, runtime.reflect.get(query_dict, key))"
         }
       },
@@ -21398,7 +21498,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "composition"
       ],
       "backends": [
         "Plotly",
@@ -22201,9 +22302,9 @@
         "name": "count",
         "qualified": "GraphQuery.count",
         "path": "src/baselib/graphs.py",
-        "line": 2789,
+        "line": 2796,
         "excerpt": {
-          "start_line": 2777,
+          "start_line": 2784,
           "text": "            self._parameters,\n        )\n        return iter([Graph(row[0]) for row in rows])\n\n    def __iter__(self) -> Iterator[Graph]:\n        return self.query_iterator()\n\n    def list(self) -> list[Graph]:\n        return list(self.query_iterator())\n\n    get_graphs_list = list\n\n    def count(self) -> int:\n        return len(self.list())\n\n    def __repr__(self) -> str:\n        return 'Graph database query: ' + self._sql\n\n    __str__ = __repr__\n    toString = __repr__\n\n\nclass GraphDatabase:\n    \"\"\"Immutable SQLite database of all unlabeled graphs through order 7.\"\"\"\n"
         }
       },
@@ -22326,9 +22427,9 @@
         "name": "list",
         "qualified": "GraphQuery.list",
         "path": "src/baselib/graphs.py",
-        "line": 2784,
+        "line": 2791,
         "excerpt": {
-          "start_line": 2772,
+          "start_line": 2779,
           "text": "            [self._sql, options],\n        )\n        rows = runtime.reflect.apply(\n            runtime.reflect.get(statement, 'all'),\n            statement,\n            self._parameters,\n        )\n        return iter([Graph(row[0]) for row in rows])\n\n    def __iter__(self) -> Iterator[Graph]:\n        return self.query_iterator()\n\n    def list(self) -> list[Graph]:\n        return list(self.query_iterator())\n\n    get_graphs_list = list\n\n    def count(self) -> int:\n        return len(self.list())\n\n    def __repr__(self) -> str:\n        return 'Graph database query: ' + self._sql\n\n    __str__ = __repr__\n    toString = __repr__"
         }
       },
@@ -22394,9 +22495,9 @@
         "name": "query_iterator",
         "qualified": "GraphQuery.query_iterator",
         "path": "src/baselib/graphs.py",
-        "line": 2766,
+        "line": 2773,
         "excerpt": {
-          "start_line": 2754,
+          "start_line": 2761,
           "text": "                + table + '.graph_id ')\n        if len(clauses):\n            sql += 'WHERE ' + ' AND '.join(clauses) + ' '\n        sql += 'ORDER BY graph_data.graph6'\n        if limit is not None:\n            if int(limit) < 0:\n                raise ValueError('query limit must be nonnegative')\n            sql += ' LIMIT ?'\n            parameters.append(int(limit))\n        self._sql = sql\n        self._parameters = parameters\n\n    def query_iterator(self, immutable: Any = None) -> Iterator[Graph]:\n        del immutable\n        options = _native_record(readBigInts=True, returnArrays=True)\n        statement = runtime.reflect.apply(\n            runtime.reflect.get(self._database, 'prepare'),\n            self._database,\n            [self._sql, options],\n        )\n        rows = runtime.reflect.apply(\n            runtime.reflect.get(statement, 'all'),\n            statement,\n            self._parameters,\n        )"
         }
       },
@@ -22462,9 +22563,9 @@
         "name": "BullGraph",
         "qualified": "GraphGenerators.BullGraph",
         "path": "src/baselib/graphs.py",
-        "line": 2397,
+        "line": 2404,
         "excerpt": {
-          "start_line": 2385,
+          "start_line": 2392,
           "text": "            5, 2, immutable, 'Petersen graph')\n\n    def HouseGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        return Graph(\n            [(0, 1), (0, 2), (1, 3), (2, 3), (2, 4), (3, 4)],\n            pos=_position_dict([\n                [0, -1, 0], [1, 1, 0], [2, -1, 1],\n                [3, 1, 1], [4, 0, 2],\n            ]),\n            name='House Graph')\n\n    def BullGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        return Graph(\n            [(0, 1), (0, 2), (1, 2), (1, 3), (2, 4)],\n            pos=_position_dict([\n                [0, 0, 0], [1, -1, 1], [2, 1, 1],\n                [3, -2, 2], [4, 2, 2],\n            ]),\n            name='Bull graph')\n\n    def DiamondGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        return Graph("
         }
       },
@@ -22734,9 +22835,9 @@
         "name": "DiamondGraph",
         "qualified": "GraphGenerators.DiamondGraph",
         "path": "src/baselib/graphs.py",
-        "line": 2407,
+        "line": 2414,
         "excerpt": {
-          "start_line": 2395,
+          "start_line": 2402,
           "text": "            name='House Graph')\n\n    def BullGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        return Graph(\n            [(0, 1), (0, 2), (1, 2), (1, 3), (2, 4)],\n            pos=_position_dict([\n                [0, 0, 0], [1, -1, 1], [2, 1, 1],\n                [3, -2, 2], [4, 2, 2],\n            ]),\n            name='Bull graph')\n\n    def DiamondGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        return Graph(\n            [(0, 1), (0, 2), (1, 2), (1, 3), (2, 3)],\n            pos=_position_dict([\n                [0, 0, 1], [1, -1, 0],\n                [2, 1, 0], [3, 0, -1],\n            ]),\n            name='Diamond Graph')\n\n    def TetrahedralGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        pi = 3.141592653589793"
         }
       },
@@ -22802,9 +22903,9 @@
         "name": "DodecahedralGraph",
         "qualified": "GraphGenerators.DodecahedralGraph",
         "path": "src/baselib/graphs.py",
-        "line": 2481,
+        "line": 2488,
         "excerpt": {
-          "start_line": 2469,
+          "start_line": 2476,
           "text": "                (5, 6), (5, 11), (7, 8), (7, 9), (7, 10),\n                (7, 11), (8, 9), (9, 10), (10, 11),\n            ],\n            name='Icosahedron')\n        graph._circle_embedding(\n            [2, 8, 7, 11, 4, 6], radius=5,\n            angle=3.141592653589793 / 6)\n        graph._circle_embedding(\n            [1, 9, 0, 10, 5, 3], radius=2,\n            angle=3.141592653589793 / 6)\n        return graph\n\n    def DodecahedralGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        graph = Graph(\n            [\n                (0, 1), (0, 10), (0, 19), (1, 2), (1, 8),\n                (2, 3), (2, 6), (3, 4), (3, 19), (4, 5),\n                (4, 17), (5, 6), (5, 15), (6, 7), (7, 8),\n                (7, 14), (8, 9), (9, 10), (9, 13), (10, 11),\n                (11, 12), (11, 18), (12, 13), (12, 16),\n                (13, 14), (14, 15), (15, 16), (16, 17),\n                (17, 18), (18, 19),\n            ],\n            name='Dodecahedron')"
         }
       },
@@ -22938,10 +23039,10 @@
         "name": "GeneralizedPetersenGraph",
         "qualified": "GraphGenerators.GeneralizedPetersenGraph",
         "path": "src/baselib/graphs.py",
-        "line": 2351,
+        "line": 2358,
         "excerpt": {
-          "start_line": 2339,
-          "text": "                if row + 1 < rows:\n                    graph.add_edge((row, column), (row + 1, column))\n                if column + 1 < columns:\n                    graph.add_edge((row, column), (row, column + 1))\n        if set_positions:\n            positions = {}\n            for row in range(rows):\n                for column in range(columns):\n                    positions[(row, column)] = (column, -row)\n            graph.set_pos(positions)\n        return graph\n\n    def GeneralizedPetersenGraph(\n        self,\n        order: int,\n        step: int,\n        immutable: bool = False,\n        name: str | None = None,\n    ) -> Graph:\n        del immutable\n        if order < 3:\n            raise ValueError('n must be larger than 2')\n        if step < 1 or step > (order - 1) // 2:\n            raise ValueError('k must be in 1<= k <=floor((n-1)/2)')\n        if name is None:"
+          "start_line": 2346,
+          "text": "                        runtime.math_tuple([row, column]),\n                        runtime.math_tuple([row, column + 1]),\n                    )\n        if set_positions:\n            positions = {}\n            for row in range(rows):\n                for column in range(columns):\n                    vertex = runtime.math_tuple([row, column])\n                    positions[vertex] = runtime.math_tuple([column, -row])\n            graph.set_pos(positions)\n        return graph\n\n    def GeneralizedPetersenGraph(\n        self,\n        order: int,\n        step: int,\n        immutable: bool = False,\n        name: str | None = None,\n    ) -> Graph:\n        del immutable\n        if order < 3:\n            raise ValueError('n must be larger than 2')\n        if step < 1 or step > (order - 1) // 2:\n            raise ValueError('k must be in 1<= k <=floor((n-1)/2)')\n        if name is None:"
         }
       },
       "examples": [
@@ -23074,9 +23175,9 @@
         "name": "HexahedralGraph",
         "qualified": "GraphGenerators.HexahedralGraph",
         "path": "src/baselib/graphs.py",
-        "line": 2431,
+        "line": 2438,
         "excerpt": {
-          "start_line": 2419,
+          "start_line": 2426,
           "text": "        pi = 3.141592653589793\n        return Graph(\n            [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)],\n            pos=_position_dict([\n                [0, 0, 0], [1, 0, 1],\n                [2, runtime.math.cos(3.5 * pi / 3),\n                    runtime.math.sin(3.5 * pi / 3)],\n                [3, runtime.math.cos(5.5 * pi / 3),\n                    runtime.math.sin(5.5 * pi / 3)],\n            ]),\n            name='Tetrahedron')\n\n    def HexahedralGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        return Graph(\n            [\n                (0, 1), (0, 3), (0, 4), (1, 2), (1, 5), (2, 3),\n                (2, 6), (3, 7), (4, 5), (4, 7), (5, 6), (6, 7),\n            ],\n            pos=_position_dict([\n                [0, 0, 0], [1, 1, 0], [3, 0, 1], [2, 1, 1],\n                [4, 0.5, 0.5], [5, 1.5, 0.5],\n                [7, 0.5, 1.5], [6, 1.5, 1.5],\n            ]),\n            name='Hexahedron')"
         }
       },
@@ -23142,9 +23243,9 @@
         "name": "HouseGraph",
         "qualified": "GraphGenerators.HouseGraph",
         "path": "src/baselib/graphs.py",
-        "line": 2387,
+        "line": 2394,
         "excerpt": {
-          "start_line": 2375,
+          "start_line": 2382,
           "text": "        graph._circle_embedding(\n            range(order, 2 * order),\n            radius=0.5, angle=3.141592653589793 / 2)\n        return graph\n\n    def PetersenGraph(self, immutable: bool = False) -> Graph:\n        # Keep this internal call positional.  Besides avoiding unnecessary\n        # keyword machinery in a hot constructor, it remains safe when a live\n        # Jupyter worker straddles a compiler/bootstrap rebuild.\n        return self.GeneralizedPetersenGraph(\n            5, 2, immutable, 'Petersen graph')\n\n    def HouseGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        return Graph(\n            [(0, 1), (0, 2), (1, 3), (2, 3), (2, 4), (3, 4)],\n            pos=_position_dict([\n                [0, -1, 0], [1, 1, 0], [2, -1, 1],\n                [3, 1, 1], [4, 0, 2],\n            ]),\n            name='House Graph')\n\n    def BullGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        return Graph("
         }
       },
@@ -23210,9 +23311,9 @@
         "name": "IcosahedralGraph",
         "qualified": "GraphGenerators.IcosahedralGraph",
         "path": "src/baselib/graphs.py",
-        "line": 2460,
+        "line": 2467,
         "excerpt": {
-          "start_line": 2448,
+          "start_line": 2455,
           "text": "            [\n                (0, 1), (0, 2), (0, 3), (0, 4),\n                (1, 2), (1, 3), (1, 5), (2, 4),\n                (2, 5), (3, 4), (3, 5), (4, 5),\n            ],\n            name='Octahedron')\n        graph._circle_embedding(\n            [0, 1, 2], radius=5, angle=3.141592653589793 / 2)\n        graph._circle_embedding(\n            [4, 3, 5], radius=1, angle=3.141592653589793 / 6)\n        return graph\n\n    def IcosahedralGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        graph = Graph(\n            [\n                (0, 1), (0, 5), (0, 7), (0, 8), (0, 11),\n                (1, 2), (1, 5), (1, 6), (1, 8),\n                (2, 3), (2, 6), (2, 8), (2, 9),\n                (3, 4), (3, 6), (3, 9), (3, 10),\n                (4, 5), (4, 6), (4, 10), (4, 11),\n                (5, 6), (5, 11), (7, 8), (7, 9), (7, 10),\n                (7, 11), (8, 9), (9, 10), (10, 11),\n            ],\n            name='Icosahedron')"
         }
       },
@@ -23278,9 +23379,9 @@
         "name": "OctahedralGraph",
         "qualified": "GraphGenerators.OctahedralGraph",
         "path": "src/baselib/graphs.py",
-        "line": 2445,
+        "line": 2452,
         "excerpt": {
-          "start_line": 2433,
+          "start_line": 2440,
           "text": "        return Graph(\n            [\n                (0, 1), (0, 3), (0, 4), (1, 2), (1, 5), (2, 3),\n                (2, 6), (3, 7), (4, 5), (4, 7), (5, 6), (6, 7),\n            ],\n            pos=_position_dict([\n                [0, 0, 0], [1, 1, 0], [3, 0, 1], [2, 1, 1],\n                [4, 0.5, 0.5], [5, 1.5, 0.5],\n                [7, 0.5, 1.5], [6, 1.5, 1.5],\n            ]),\n            name='Hexahedron')\n\n    def OctahedralGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        graph = Graph(\n            [\n                (0, 1), (0, 2), (0, 3), (0, 4),\n                (1, 2), (1, 3), (1, 5), (2, 4),\n                (2, 5), (3, 4), (3, 5), (4, 5),\n            ],\n            name='Octahedron')\n        graph._circle_embedding(\n            [0, 1, 2], radius=5, angle=3.141592653589793 / 2)\n        graph._circle_embedding(\n            [4, 3, 5], radius=1, angle=3.141592653589793 / 6)"
         }
       },
@@ -23414,9 +23515,9 @@
         "name": "PetersenGraph",
         "qualified": "GraphGenerators.PetersenGraph",
         "path": "src/baselib/graphs.py",
-        "line": 2380,
+        "line": 2387,
         "excerpt": {
-          "start_line": 2368,
+          "start_line": 2375,
           "text": "        for index in range(order):\n            graph.add_edge(index, (index + 1) % order)\n            graph.add_edge(index, index + order)\n            graph.add_edge(\n                index + order, order + (index + step) % order)\n        graph._circle_embedding(\n            range(order), radius=1, angle=3.141592653589793 / 2)\n        graph._circle_embedding(\n            range(order, 2 * order),\n            radius=0.5, angle=3.141592653589793 / 2)\n        return graph\n\n    def PetersenGraph(self, immutable: bool = False) -> Graph:\n        # Keep this internal call positional.  Besides avoiding unnecessary\n        # keyword machinery in a hot constructor, it remains safe when a live\n        # Jupyter worker straddles a compiler/bootstrap rebuild.\n        return self.GeneralizedPetersenGraph(\n            5, 2, immutable, 'Petersen graph')\n\n    def HouseGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        return Graph(\n            [(0, 1), (0, 2), (1, 3), (2, 3), (2, 4), (3, 4)],\n            pos=_position_dict([\n                [0, -1, 0], [1, 1, 0], [2, -1, 1],"
         }
       },
@@ -23503,16 +23604,16 @@
         "name": "RandomGNP",
         "qualified": "GraphGenerators.RandomGNP",
         "path": "src/baselib/graphs.py",
-        "line": 2506,
+        "line": 2513,
         "excerpt": {
-          "start_line": 2494,
+          "start_line": 2501,
           "text": "        pi = 3.141592653589793\n        graph._circle_embedding(\n            [19, 0, 1, 2, 3], radius=7, angle=pi / 10)\n        graph._circle_embedding(\n            [18, 10, 8, 6, 4], radius=4.7, angle=pi / 10)\n        graph._circle_embedding(\n            [11, 9, 7, 5, 17], radius=3.8, angle=3 * pi / 10)\n        graph._circle_embedding(\n            [12, 13, 14, 15, 16], radius=1.5,\n            angle=3 * pi / 10)\n        return graph\n\n    def RandomGNP(\n        self,\n        n: int,\n        p: float,\n        seed: Any = None,\n        fast: bool = True,\n        algorithm: str = 'Sage',\n        immutable: bool = False,\n    ) -> Graph:\n        r\"\"\"\n        Return a random graph on `n` vertices.\n\n        Every possible edge is inserted independently with probability `p`."
         }
       },
       "examples": [
         {
-          "id": "src/baselib/graphs.py:2536",
-          "line": 2536,
+          "id": "src/baselib/graphs.py:2543",
+          "line": 2543,
           "source": "graphs.RandomGNP(5, 0).size()",
           "want": "0\n",
           "tags": [],
@@ -23521,14 +23622,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/graphs.py:2536",
+            "id": "src/baselib/graphs.py:2543",
             "status": "pass",
             "actual": "0\n"
           }
         },
         {
-          "id": "src/baselib/graphs.py:2538",
-          "line": 2538,
+          "id": "src/baselib/graphs.py:2545",
+          "line": 2545,
           "source": "graphs.RandomGNP(4, 1)",
           "want": "Complete graph: Graph on 4 vertices\n",
           "tags": [],
@@ -23537,14 +23638,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/graphs.py:2538",
+            "id": "src/baselib/graphs.py:2545",
             "status": "pass",
             "actual": "Complete graph: Graph on 4 vertices\n"
           }
         },
         {
-          "id": "src/baselib/graphs.py:2546",
-          "line": 2546,
+          "id": "src/baselib/graphs.py:2553",
+          "line": 2553,
           "source": "a = graphs.RandomGNP(12, .3, seed=7)",
           "want": "",
           "tags": [],
@@ -23553,14 +23654,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/graphs.py:2546",
+            "id": "src/baselib/graphs.py:2553",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/graphs.py:2547",
-          "line": 2547,
+          "id": "src/baselib/graphs.py:2554",
+          "line": 2554,
           "source": "b = graphs.RandomGNP(12, .3, seed=7)",
           "want": "",
           "tags": [],
@@ -23569,14 +23670,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/graphs.py:2547",
+            "id": "src/baselib/graphs.py:2554",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/graphs.py:2548",
-          "line": 2548,
+          "id": "src/baselib/graphs.py:2555",
+          "line": 2555,
           "source": "a.edges(sort=True, labels=False) == b.edges(sort=True, labels=False)",
           "want": "True\n",
           "tags": [],
@@ -23585,14 +23686,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/graphs.py:2548",
+            "id": "src/baselib/graphs.py:2555",
             "status": "pass",
             "actual": "True\n"
           }
         },
         {
-          "id": "src/baselib/graphs.py:2555",
-          "line": 2555,
+          "id": "src/baselib/graphs.py:2562",
+          "line": 2562,
           "source": "rows = [[graphs.RandomGNP(3+i+3*j, .43, seed=i+3*j).plot(\n         vertex_size=10, vertex_labels=False) for i in range(3)]\n        for j in range(3)]",
           "want": "",
           "tags": [],
@@ -23601,14 +23702,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/graphs.py:2555",
+            "id": "src/baselib/graphs.py:2562",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/graphs.py:2558",
-          "line": 2558,
+          "id": "src/baselib/graphs.py:2565",
+          "line": 2565,
           "source": "graphics_array(rows)",
           "want": "Graphics Array of size 3 x 3\n",
           "tags": [],
@@ -23617,7 +23718,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/graphs.py:2558",
+            "id": "src/baselib/graphs.py:2565",
             "status": "pass",
             "actual": "Graphics Array of size 3 x 3\n"
           }
@@ -23922,7 +24023,7 @@
           "verification": {
             "id": "src/sage/graphs/generators/random.py:95",
             "status": "pass",
-            "actual": "sagejs/runtime-bootstrap-sage.js:51872\n        throw ρσ_exception_value(new ValueError(\"'algorithm' must be equal to 'networkx' or to 'Sage'\"));\n        ^\n\nValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n    at ValueError.ρσ_method___init__ [as __init__] (sagejs/runtime-bootstrap-sage.js:24175:13)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:24228:74)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:24482:66)\n    at new ValueError (sagejs/runtime-bootstrap-sage.js:24475:56)\n    at GraphGenerators.ρσ_method_RandomGNP [as RandomGNP] (sagejs/runtime-bootstrap-sage.js:51872:34)\n    at ρσ_interpolate_kwargs (sagejs/runtime-bootstrap-sage.js:55900:24)\n    at evalmachine.<anonymous>:6:1\n    at Script.runInThisContext (node:vm:138:12)\n    at runInThisContext (node:vm:318:38)\n    at runJS (<SAGEJS_ROOT>/dist/tools/repl.js:236:48)\n"
+            "actual": "sagejs/runtime-bootstrap-sage.js:51667\n        throw ρσ_exception_value(new ValueError(\"'algorithm' must be equal to 'networkx' or to 'Sage'\"));\n        ^\n\nValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n    at ValueError.ρσ_method___init__ [as __init__] (sagejs/runtime-bootstrap-sage.js:23967:13)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:24021:74)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:24283:66)\n    at new ValueError (sagejs/runtime-bootstrap-sage.js:24275:56)\n    at GraphGenerators.ρσ_method_RandomGNP [as RandomGNP] (sagejs/runtime-bootstrap-sage.js:51667:34)\n    at ρσ_interpolate_kwargs (sagejs/runtime-bootstrap-sage.js:55762:24)\n    at evalmachine.<anonymous>:6:1\n    at Script.runInThisContext (node:vm:138:12)\n    at runInThisContext (node:vm:318:38)\n    at runJS (<SAGEJS_ROOT>/dist/tools/repl.js:255:48)\n"
           }
         },
         {
@@ -24157,9 +24258,9 @@
         "name": "TetrahedralGraph",
         "qualified": "GraphGenerators.TetrahedralGraph",
         "path": "src/baselib/graphs.py",
-        "line": 2417,
+        "line": 2424,
         "excerpt": {
-          "start_line": 2405,
+          "start_line": 2412,
           "text": "            name='Bull graph')\n\n    def DiamondGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        return Graph(\n            [(0, 1), (0, 2), (1, 2), (1, 3), (2, 3)],\n            pos=_position_dict([\n                [0, 0, 1], [1, -1, 0],\n                [2, 1, 0], [3, 0, -1],\n            ]),\n            name='Diamond Graph')\n\n    def TetrahedralGraph(self, immutable: bool = False) -> Graph:\n        del immutable\n        pi = 3.141592653589793\n        return Graph(\n            [(0, 1), (0, 2), (0, 3), (1, 2), (1, 3), (2, 3)],\n            pos=_position_dict([\n                [0, 0, 0], [1, 0, 1],\n                [2, runtime.math.cos(3.5 * pi / 3),\n                    runtime.math.sin(3.5 * pi / 3)],\n                [3, runtime.math.cos(5.5 * pi / 3),\n                    runtime.math.sin(5.5 * pi / 3)],\n            ]),\n            name='Tetrahedron')"
         }
       },
@@ -24298,7 +24399,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "statistics"
       ],
       "backends": [
         "Plotly",
@@ -24374,7 +24476,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "colors"
       ],
       "backends": [
         "Plotly",
@@ -24433,7 +24536,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "hyperbolic geometry"
       ],
       "backends": [
         "Plotly",
@@ -24492,7 +24596,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "hyperbolic geometry"
       ],
       "backends": [
         "Plotly",
@@ -24551,7 +24656,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "hyperbolic geometry"
       ],
       "backends": [
         "Plotly",
@@ -24610,7 +24716,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "hyperbolic geometry"
       ],
       "backends": [
         "Plotly",
@@ -24669,7 +24776,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "shapes"
+        "shapes",
+        "platonic solids"
       ],
       "backends": [
         "Plotly",
@@ -24721,7 +24829,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "implicit curves"
       ],
       "backends": [
         "Plotly",
@@ -24875,7 +24984,9 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "polygons"
+        "polygons",
+        "meshes",
+        "data structures"
       ],
       "backends": [
         "Plotly",
@@ -25019,7 +25130,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "lines"
       ],
       "backends": [
         "Plotly",
@@ -25078,7 +25190,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "lines"
       ],
       "backends": [
         "Plotly",
@@ -25180,7 +25293,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "data"
       ],
       "backends": [
         "Plotly",
@@ -25239,7 +25353,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "logarithmic axes"
       ],
       "backends": [
         "Plotly",
@@ -25298,7 +25413,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "logarithmic axes"
       ],
       "backends": [
         "Plotly",
@@ -25357,7 +25473,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "logarithmic axes"
       ],
       "backends": [
         "Plotly",
@@ -25416,7 +25533,9 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "surfaces"
+        "surfaces",
+        "data plots",
+        "interpolation"
       ],
       "backends": [
         "Plotly",
@@ -25666,16 +25785,16 @@
         "name": "matrix",
         "qualified": "matrix",
         "path": "src/baselib/matrix.py",
-        "line": 2634,
+        "line": 2636,
         "excerpt": {
-          "start_line": 2622,
+          "start_line": 2624,
           "text": "        return 1, len(rows), rows\n    first = list(rows[0])\n    cols = len(first)\n    values = []\n    for row in rows:\n        entries = list(row)\n        if len(entries) != cols:\n            raise ValueError('matrix rows must all have the same length')\n        values.extend(entries)\n    return len(rows), cols, values\n\n\ndef matrix(*args: Any) -> Matrix:\n    r\"\"\"\n    Construct a dense matrix, optionally over an explicit base ring.\n\n    Sage's common row-list, flat-list, dimension, and entry-function forms are\n    supported. Exact matrices use FLINT on native hosts; `RDF`/`CDF` and\n    arbitrary-precision real/complex matrices use FLINT, Arb, and ACB.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 2, [1, 2, 3, 4])\n    sage: A.det()"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/matrix.py:2645",
-          "line": 2645,
+          "id": "src/baselib/matrix.py:2647",
+          "line": 2647,
           "source": "A = matrix(ZZ, 2, [1, 2, 3, 4])",
           "want": "",
           "tags": [],
@@ -25684,14 +25803,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:2645",
+            "id": "src/baselib/matrix.py:2647",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/matrix.py:2646",
-          "line": 2646,
+          "id": "src/baselib/matrix.py:2648",
+          "line": 2648,
           "source": "A.det()",
           "want": "-2\n",
           "tags": [],
@@ -25700,14 +25819,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:2646",
+            "id": "src/baselib/matrix.py:2648",
             "status": "pass",
             "actual": "-2\n"
           }
         },
         {
-          "id": "src/baselib/matrix.py:2648",
-          "line": 2648,
+          "id": "src/baselib/matrix.py:2650",
+          "line": 2650,
           "source": "A.rref()",
           "want": "[1 0]\n[0 1]\n",
           "tags": [],
@@ -25716,7 +25835,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:2648",
+            "id": "src/baselib/matrix.py:2650",
             "status": "pass",
             "actual": "[1 0]\n[0 1]\n"
           }
@@ -25735,7 +25854,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "matrices"
       ],
       "backends": [
         "Plotly",
@@ -27196,7 +27316,9 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "composition",
+        "insets"
       ],
       "backends": [
         "Plotly",
@@ -27468,7 +27590,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "shapes"
+        "shapes",
+        "platonic solids"
       ],
       "backends": [
         "Plotly",
@@ -27770,7 +27893,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "parametric"
       ],
       "backends": [
         "Plotly",
@@ -28069,7 +28193,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "logarithmic axes"
       ],
       "backends": [
         "Plotly",
@@ -28128,7 +28253,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "logarithmic axes"
       ],
       "backends": [
         "Plotly",
@@ -28187,7 +28313,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "logarithmic axes"
       ],
       "backends": [
         "Plotly",
@@ -28246,7 +28373,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "differential equations"
       ],
       "backends": [
         "Plotly",
@@ -28305,7 +28433,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "data"
       ],
       "backends": [
         "Plotly",
@@ -28364,7 +28493,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "vector fields"
       ],
       "backends": [
         "Plotly",
@@ -28560,7 +28690,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "points"
       ],
       "backends": [
         "Plotly",
@@ -28619,7 +28750,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "points"
       ],
       "backends": [
         "Plotly",
@@ -28721,7 +28853,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "points"
       ],
       "backends": [
         "Plotly",
@@ -28780,7 +28913,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "polar coordinates"
       ],
       "backends": [
         "Plotly",
@@ -28839,7 +28973,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "polygons"
       ],
       "backends": [
         "Plotly",
@@ -28898,7 +29033,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "polygons"
       ],
       "backends": [
         "Plotly",
@@ -28948,7 +29084,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "polygons"
+        "polygons",
+        "meshes"
       ],
       "backends": [
         "Plotly",
@@ -29000,7 +29137,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "polygons"
+        "polygons",
+        "meshes"
       ],
       "backends": [
         "Plotly",
@@ -29229,16 +29367,16 @@
         "name": "prime_pi",
         "qualified": "prime_pi",
         "path": "src/baselib/builtins.py",
-        "line": 4585,
+        "line": 4595,
         "excerpt": {
-          "start_line": 4573,
+          "start_line": 4583,
           "text": "\ndef latex(value: Any) -> LatexExpr:\n    \"\"\"Return a compact LaTeX expression for ``value``.\"\"\"\n    if _builtins_member_is_function(value, '_latex_'):\n        return LatexExpr(_builtins_call_member(value, '_latex_', []))\n    return LatexExpr(value)\n\n\n_prime_pi_primes = None\n_prime_pi_checked_through = 1\n\n\ndef prime_pi(value: Any) -> Any:\n    r\"\"\"\n    Return the number of primes less than or equal to `value`.\n\n    Results are exact.  Moderate bounds are served by an incremental prime\n    cache, while large isolated bounds use Lehmer's combinatorial algorithm.\n    As in Sage, inputs are limited to integers below `2^63`.\n\n    ### Examples\n\n    ```sage\n    sage: prime_pi(10)\n    4"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/builtins.py:4596",
-          "line": 4596,
+          "id": "src/baselib/builtins.py:4606",
+          "line": 4606,
           "source": "prime_pi(10)",
           "want": "4\n",
           "tags": [],
@@ -29247,14 +29385,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/builtins.py:4596",
+            "id": "src/baselib/builtins.py:4606",
             "status": "pass",
             "actual": "4\n"
           }
         },
         {
-          "id": "src/baselib/builtins.py:4598",
-          "line": 4598,
+          "id": "src/baselib/builtins.py:4608",
+          "line": 4608,
           "source": "prime_pi(100)",
           "want": "25\n",
           "tags": [],
@@ -29263,14 +29401,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/builtins.py:4598",
+            "id": "src/baselib/builtins.py:4608",
             "status": "pass",
             "actual": "25\n"
           }
         },
         {
-          "id": "src/baselib/builtins.py:4600",
-          "line": 4600,
+          "id": "src/baselib/builtins.py:4610",
+          "line": 4610,
           "source": "prime_pi(10^12)",
           "want": "37607912018\n",
           "tags": [],
@@ -29279,7 +29417,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/builtins.py:4600",
+            "id": "src/baselib/builtins.py:4610",
             "status": "pass",
             "actual": "37607912018\n"
           }
@@ -29530,9 +29668,9 @@
         "name": "quit",
         "qualified": "quit",
         "path": "src/baselib/builtins.py",
-        "line": 6022,
+        "line": 6032,
         "excerpt": {
-          "start_line": 6010,
+          "start_line": 6020,
           "text": "RealNumber = ρσ_real_literal\narraylike = ρσ_arraylike\nprint = ρσ_print\nid = ρσ_id\nget_module = ρσ_get_module\npow = ρσ_pow\ndivmod = ρσ_divmod\ndir = ρσ_dir\nhelp = ρσ_help\nsearch_doc = ρσ_search_doc\n\n\ndef quit(code: Any = None) -> None:\n    \"\"\"Exit the current Sage.js or Python session.\n\n    `quit()` exits successfully. An integer argument becomes the process exit\n    status, matching Python's interactive convenience function.\n    \"\"\"\n    if code is None:\n        raise SystemExit\n    raise SystemExit(code)\n\n\nexit = quit\n"
         }
       },
@@ -29550,7 +29688,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "colors"
       ],
       "backends": [
         "Plotly",
@@ -29656,16 +29795,16 @@
         "name": "random_matrix",
         "qualified": "random_matrix",
         "path": "src/baselib/matrix.py",
-        "line": 2939,
+        "line": 2941,
         "excerpt": {
-          "start_line": 2927,
+          "start_line": 2929,
           "text": "        degree = _untyped(base).degree()\n        characteristic = _untyped(base).characteristic()\n        generator = _untyped(base).gen()\n        for _index in range(degree):\n            coefficient = _random_int(\n                0, characteristic - 1)\n            value += base(coefficient) * power\n            power *= generator\n        if not nonzero or not value.is_zero():\n            return value\n\n\ndef random_matrix(\n    base: sage.Parent,\n    nrows: int,\n    ncols: Any = None,\n    algorithm: str = 'randomize',\n    implementation: Any = None,\n    *args: Any,\n    **kwds: Any,\n) -> Matrix:\n    r\"\"\"\n    Construct a random dense matrix over `base`.\n\n    The dimensions are `nrows` by `ncols`; omitting `ncols` constructs"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/matrix.py:2958",
-          "line": 2958,
+          "id": "src/baselib/matrix.py:2960",
+          "line": 2960,
           "source": "A = random_matrix(ZZ, 3, 5, x=-10, y=11)",
           "want": "",
           "tags": [],
@@ -29674,14 +29813,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:2958",
+            "id": "src/baselib/matrix.py:2960",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/matrix.py:2959",
-          "line": 2959,
+          "id": "src/baselib/matrix.py:2961",
+          "line": 2961,
           "source": "A.nrows(), A.ncols(), A.base_ring()",
           "want": "(3, 5, Integer Ring)\n",
           "tags": [],
@@ -29690,14 +29829,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:2959",
+            "id": "src/baselib/matrix.py:2961",
             "status": "pass",
             "actual": "(3, 5, Integer Ring)\n"
           }
         },
         {
-          "id": "src/baselib/matrix.py:2961",
-          "line": 2961,
+          "id": "src/baselib/matrix.py:2963",
+          "line": 2963,
           "source": "random_matrix(GF(9, 'a'), 2).base_ring() is GF(9, 'a')",
           "want": "True\n",
           "tags": [],
@@ -29706,7 +29845,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:2961",
+            "id": "src/baselib/matrix.py:2963",
             "status": "pass",
             "actual": "True\n"
           }
@@ -29725,7 +29864,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "regions"
       ],
       "backends": [
         "Plotly",
@@ -29784,7 +29924,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "surfaces"
+        "surfaces",
+        "surfaces of revolution"
       ],
       "backends": [
         "Plotly",
@@ -29836,7 +29977,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "colors"
       ],
       "backends": [
         "Plotly",
@@ -29895,7 +30037,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "frames"
+        "frames",
+        "rulers"
       ],
       "backends": [
         "Plotly",
@@ -29947,7 +30090,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "frames"
+        "frames",
+        "rulers"
       ],
       "backends": [
         "Plotly",
@@ -29999,7 +30143,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "statistics"
       ],
       "backends": [
         "Plotly",
@@ -30342,7 +30487,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "surfaces"
+        "surfaces",
+        "coordinate transforms"
       ],
       "backends": [
         "Plotly",
@@ -30394,7 +30540,9 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "vector fields",
+        "differential equations"
       ],
       "backends": [
         "Plotly",
@@ -30497,16 +30645,16 @@
         "name": "sudoku",
         "qualified": "sudoku",
         "path": "src/baselib/matrix.py",
-        "line": 2735,
+        "line": 2737,
         "excerpt": {
-          "start_line": 2723,
+          "start_line": 2725,
           "text": "        raise TypeError('unsupported vector() constructor signature')\n    if isinstance(values[0], Vector):\n        source = values[0]\n        return (\n            source if base is None\n            else source.change_ring(base)\n        )\n    if base is None:\n        base = _base_for_values(entries)\n    return VectorSpace(base, len(entries))(entries)\n\n\ndef sudoku(puzzle: Matrix) -> Matrix:\n    r\"\"\"\n    Solve a 9-by-9 Sudoku puzzle represented by a matrix.\n\n    Entries from 1 through 9 are fixed clues and zero denotes an empty cell.\n    The input matrix is not modified.  A `ValueError` is raised if the clues\n    are inconsistent or the puzzle has no solution.\n\n    ### Examples\n\n    ```sage\n    sage: A = matrix(ZZ, 9, [\n    ....:     5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,"
         }
       },
       "examples": [
         {
-          "id": "src/baselib/matrix.py:2746",
-          "line": 2746,
+          "id": "src/baselib/matrix.py:2748",
+          "line": 2748,
           "source": "A = matrix(ZZ, 9, [\n    5,0,0,0,8,0,0,4,9, 0,0,0,5,0,0,0,3,0,\n    0,6,7,3,0,0,0,0,1, 1,5,0,0,0,0,0,0,0,\n    0,0,0,2,0,8,0,0,0, 0,0,0,0,0,0,0,1,8,\n    7,0,0,0,0,4,1,5,0, 0,3,0,0,0,2,0,0,0,\n    4,9,0,0,5,0,0,0,3])",
           "want": "",
           "tags": [],
@@ -30515,14 +30663,14 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:2746",
+            "id": "src/baselib/matrix.py:2748",
             "status": "pass",
             "actual": ""
           }
         },
         {
-          "id": "src/baselib/matrix.py:2752",
-          "line": 2752,
+          "id": "src/baselib/matrix.py:2754",
+          "line": 2754,
           "source": "sudoku(A)[0]",
           "want": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n",
           "tags": [],
@@ -30531,7 +30679,7 @@
           "origin": "sagejs",
           "language": "sage",
           "verification": {
-            "id": "src/baselib/matrix.py:2752",
+            "id": "src/baselib/matrix.py:2754",
             "status": "pass",
             "actual": "(5, 1, 3, 6, 8, 7, 2, 4, 9)\n"
           }
@@ -30550,7 +30698,8 @@
       "tags": [
         "graphics",
         "3D graphics",
-        "shapes"
+        "shapes",
+        "platonic solids"
       ],
       "backends": [
         "Plotly",
@@ -30602,7 +30751,8 @@
       "tags": [
         "graphics",
         "plotting",
-        "2D graphics"
+        "2D graphics",
+        "labels"
       ],
       "backends": [
         "Plotly",

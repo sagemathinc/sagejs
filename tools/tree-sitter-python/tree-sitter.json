@@ -1,0 +1,16 @@
+{
+  "grammars": [
+    {
+      "name": "python",
+      "camelcase": "Python",
+      "scope": "source.python",
+      "path": ".",
+      "file-types": ["py", "pyi"]
+    }
+  ],
+  "metadata": {
+    "version": "0.25.0-sagejs.1",
+    "license": "MIT",
+    "description": "Pinned tree-sitter-python grammar with Sage.js correctness fixes"
+  }
+}

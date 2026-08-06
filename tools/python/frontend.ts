@@ -34,7 +34,13 @@ export class PythonSyntaxError extends SyntaxError {
   constructor(filename: string, diagnostic: PythonSyntaxDiagnostic, eof: number) {
     const { line, column, offset } = diagnostic.span.start;
     super(
-      `${filename}:${line}:${column}: invalid ${diagnostic.nodeType} syntax`,
+      diagnostic.nodeType === "indentation"
+        ? `${filename}:${line}:${column}: Inconsistent indentation`
+        : diagnostic.text.includes("(") && diagnostic.text.trimEnd().endsWith("=")
+        ? `${filename}:${line}:${column}: cannot assign to a function call`
+        : `${filename}:${line}:${column}: Unexpected token: ${
+          diagnostic.text || diagnostic.nodeType
+        }`,
     );
     this.name = "PythonSyntaxError";
     this.diagnostic = diagnostic;
@@ -62,6 +68,74 @@ function collect(
   for (const child of node.children) collect(child, diagnostics, nodeTypes);
 }
 
+function effectiveIndent(source: string, node: SyntaxNode): number {
+  const lineStart = source.lastIndexOf("\n", Math.max(0, node.startIndex - 1)) + 1;
+  const prefix = source.slice(lineStart, node.startIndex);
+  let column = 0;
+  for (const character of prefix) {
+    if (character === " ") column += 1;
+    else if (character === "\t") column += 8 - (column % 8);
+    else if (character === "\f") column = 0;
+  }
+  return column;
+}
+
+/**
+ * Tree-sitter intentionally recovers an unexpected indent by treating the
+ * following line as a new statement.  That is useful in an editor, but a
+ * compiler must reject the same source as CPython.  Validate the statement
+ * columns represented by each module/block while still allowing multiple
+ * statements on one physical line (``a; b``).
+ */
+function firstIndentationError(
+  source: string,
+  node: SyntaxNode,
+): SyntaxNode | null {
+  if (node.type === "module" || node.type === "block") {
+    const firstByRow = new Map<number, SyntaxNode>();
+    for (const child of node.namedChildren) {
+      if (child.type === "comment" || child.isError || child.isMissing) continue;
+      if (!firstByRow.has(child.startPosition.row)) {
+        firstByRow.set(child.startPosition.row, child);
+      }
+    }
+    const statements = [...firstByRow.values()];
+    if (statements.length) {
+      const expected = node.type === "module"
+        ? 0
+        : effectiveIndent(source, statements[0]);
+      for (const statement of statements) {
+        if (effectiveIndent(source, statement) !== expected) return statement;
+      }
+    }
+  }
+  for (const child of node.namedChildren) {
+    const error = firstIndentationError(source, child);
+    if (error) return error;
+  }
+  return null;
+}
+
+/**
+ * Tree-sitter represents a compound statement ending at its colon as a valid
+ * node with an empty ``block``.  That recovery is convenient while editing,
+ * but Python requires at least one statement in every suite.  In particular,
+ * Jupyter relies on the resulting EOF diagnostic to request another line.
+ */
+function firstEmptyBlock(node: SyntaxNode): SyntaxNode | null {
+  if (
+    node.type === "block" &&
+    !node.namedChildren.some((child) => child.type !== "comment")
+  ) {
+    return node;
+  }
+  for (const child of node.namedChildren) {
+    const empty = firstEmptyBlock(child);
+    if (empty) return empty;
+  }
+  return null;
+}
+
 /**
  * Portable, authoritative concrete-syntax parser for Python or Sage input.
  *
@@ -76,11 +150,19 @@ export async function createPythonSyntaxFrontend(mode: PythonSyntaxMode) {
   );
 
   function parse(source: string): PythonSyntaxTree {
-    const tree = parser.parse(source.endsWith("\n") ? source : `${source}\n`);
+    // CPython performs universal-newline translation before tokenization.
+    // Tree-sitter's external scanner expects LF, so normalize here rather
+    // than letting CR-only files collapse into a single comment/token.
+    const normalizedSource = source.replace(/\r\n?/g, "\n");
+    const tree = parser.parse(
+      normalizedSource.endsWith("\n")
+        ? normalizedSource
+        : `${normalizedSource}\n`,
+    );
     const diagnostics: PythonSyntaxDiagnostic[] = [];
     const nodeTypes = new Set<string>();
     collect(tree.rootNode, diagnostics, nodeTypes);
-    return { mode, source, tree, diagnostics, nodeTypes };
+    return { mode, source: normalizedSource, tree, diagnostics, nodeTypes };
   }
 
   function assertValid(source: string, filename = "<input>"): PythonSyntaxTree {
@@ -95,7 +177,28 @@ export async function createPythonSyntaxFrontend(mode: PythonSyntaxMode) {
         text: error.text,
         span: sourceSpan(error),
       };
-      throw new PythonSyntaxError(filename, diagnostic, source.length);
+      throw new PythonSyntaxError(filename, diagnostic, result.source.length);
+    }
+    const emptyBlock = firstEmptyBlock(result.tree.rootNode);
+    if (emptyBlock) {
+      throw new PythonSyntaxError(filename, {
+        kind: "missing",
+        nodeType: "block",
+        text: "",
+        span: sourceSpan(emptyBlock),
+      }, result.source.length);
+    }
+    const indentationError = firstIndentationError(
+      result.source,
+      result.tree.rootNode,
+    );
+    if (indentationError) {
+      throw new PythonSyntaxError(filename, {
+        kind: "error",
+        nodeType: "indentation",
+        text: indentationError.text,
+        span: sourceSpan(indentationError),
+      }, result.source.length);
     }
     return result;
   }

@@ -582,3 +582,4 @@ assrt.equal(str(range(15, 3, -3)[1:]), 'range(12, 3, -3)')
 
 # Adding lists
 assrt.equal(str([1, 2, 3] + ['a', 'b', 'c']), str([1, 2, 3, 'a', 'b', 'c']))
+# STAGE_ZERO_ONLY: historical JavaScript regexp literal syntax

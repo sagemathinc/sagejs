@@ -110,6 +110,36 @@ function addPcimcRecords(records) {
   }
 }
 
+function addCompilerTestRecords(records) {
+  const directory = join(root, "test");
+  for (const path of walk(directory, (filename) => filename.endsWith(".py"))) {
+    const source = readFileSync(path, "utf8");
+    if (source.includes("# DISABLED") || source.includes("# STAGE_ZERO_ONLY")) {
+      continue;
+    }
+    records.push({
+      id: relative(root, path).replaceAll("\\", "/"),
+      category: "compiler-tests",
+      mode: "python",
+      source,
+    });
+  }
+}
+
+function excludedCompilerTests() {
+  const excluded = { disabled: [], stageZeroOnly: [] };
+  const directory = join(root, "test");
+  for (const path of walk(directory, (filename) => filename.endsWith(".py"))) {
+    const source = readFileSync(path, "utf8");
+    const id = relative(root, path).replaceAll("\\", "/");
+    if (source.includes("# DISABLED")) excluded.disabled.push(id);
+    else if (source.includes("# STAGE_ZERO_ONLY")) {
+      excluded.stageZeroOnly.push(id);
+    }
+  }
+  return excluded;
+}
+
 function corpusRecords() {
   const records = [];
   for (const name of readdirSync(join(root, "src")).sort()) {
@@ -159,6 +189,7 @@ function corpusRecords() {
   );
   addDoctestRecords(records);
   addPcimcRecords(records);
+  addCompilerTestRecords(records);
   return records.sort((left, right) => left.id.localeCompare(right.id));
 }
 
@@ -219,18 +250,22 @@ async function createReport() {
   const {
     PythonCstLowerer,
   } = require("../dist/tools/python/lowerer.js");
-  const createCompiler = require("../dist/tools/compiler.js").default;
+  const { default: createCompiler, createBootstrapCompiler } = require(
+    "../dist/tools/compiler.js"
+  );
   const [python, sage] = await Promise.all([
     createPythonSyntaxFrontend("python"),
     createPythonSyntaxFrontend("sage"),
   ]);
   const compiler = createCompiler();
+  const legacyCompiler = createBootstrapCompiler();
   const records = corpusRecords();
   const cpython = cpythonAcceptance(records);
   const nodeCounts = { python: {}, sage: {} };
   const details = [];
   const directById = new Map();
   const loweringGaps = new Map();
+  const historicalOutputDifferences = new Map();
   const outputOptions = {
     omit_baselib: true,
     write_name: false,
@@ -249,10 +284,48 @@ async function createReport() {
     return output.get();
   }
 
-  function recordGap(kind, id) {
-    const gap = loweringGaps.get(kind) ?? { count: 0, examples: [] };
+  function directShell(record, index) {
+    const moduleId = `__grammar_audit_${index}`;
+    return new compiler.AST_Toplevel({
+      globals: undefined,
+      baselib: Object.create(null),
+      imports: Object.create(null),
+      imported_module_ids: [],
+      nonlocalvars: [],
+      shebang: null,
+      import_order: 0,
+      module_id: moduleId,
+      exports: [],
+      classes: Object.create(null),
+      filename: record.id,
+      srchash: undefined,
+      comments_after: [],
+      localvars: [],
+      annotated_locals: [],
+      docstrings: [],
+      body: [],
+      start: null,
+      end: null,
+      scoped_flags: {
+        dict_literals: true,
+        overload_getitem: true,
+        bound_methods: true,
+        sequential_definitions: true,
+      },
+    });
+  }
+
+  function recordGap(kind, id, error) {
+    const gap = loweringGaps.get(kind) ?? {
+      count: 0,
+      examples: [],
+      errors: [],
+    };
     gap.count += 1;
     if (gap.examples.length < 5) gap.examples.push(id);
+    if (gap.errors.length < 10 && error) {
+      gap.errors.push({ id, ...errorSummary(error) });
+    }
     loweringGaps.set(kind, gap);
   }
 
@@ -277,7 +350,7 @@ async function createReport() {
     const kind = difference
       ? `javascript-mismatch:${difference.legacy.split(/[( =.;[]/, 1)[0] || "line"}`
       : "javascript-mismatch:unknown";
-    const gap = loweringGaps.get(kind) ?? {
+    const gap = historicalOutputDifferences.get(kind) ?? {
       count: 0,
       examples: [],
       differences: [],
@@ -285,7 +358,7 @@ async function createReport() {
     gap.count += 1;
     if (gap.examples.length < 5) gap.examples.push(id);
     if (gap.differences.length < 3 && difference) gap.differences.push(difference);
-    loweringGaps.set(kind, gap);
+    historicalOutputDifferences.set(kind, gap);
   }
 
   try {
@@ -301,7 +374,7 @@ async function createReport() {
       let legacyError = null;
       let legacyAst = null;
       try {
-        legacyAst = compiler.parse(record.source, {
+        legacyAst = legacyCompiler.parse(record.source, {
           filename: record.id,
           module_id: `__grammar_audit_${index}`,
           for_linting: true,
@@ -321,7 +394,7 @@ async function createReport() {
       } catch (error) {
         legacyError = errorSummary(error);
       }
-      if (!treeError && legacyAst) {
+      if (!treeError) {
         try {
           const direct = new PythonCstLowerer(
             compiler,
@@ -340,18 +413,29 @@ async function createReport() {
                 sequential_definitions: true,
               },
             },
-          ).lowerModule(legacyAst);
+          ).lowerModule(directShell(record, index));
           const directJavaScript = render(direct.ast);
-          const legacyJavaScript = render(legacyAst);
-          const exact = directJavaScript === legacyJavaScript;
-          directById.set(record.id, { constructed: true, exact });
-          if (!exact) {
-            recordMismatch(record.id, legacyJavaScript, directJavaScript);
+          let exact = false;
+          if (legacyAst) {
+            const legacyJavaScript = render(legacyAst);
+            exact = directJavaScript === legacyJavaScript;
+            if (!exact) {
+              recordMismatch(record.id, legacyJavaScript, directJavaScript);
+            }
           }
+          directById.set(record.id, {
+            constructed: true,
+            historicalCompared: Boolean(legacyAst),
+            historicalExact: exact,
+          });
         } catch (error) {
           const kind = error?.nodeType ?? error?.name ?? "Error";
-          directById.set(record.id, { constructed: false, exact: false });
-          recordGap(kind, record.id);
+          directById.set(record.id, {
+            constructed: false,
+            historicalCompared: false,
+            historicalExact: false,
+          });
+          recordGap(kind, record.id, error);
         }
       }
       const cp = cpython.get(record.id) ?? null;
@@ -381,7 +465,8 @@ async function createReport() {
       cpythonApplicable: 0,
       directAttempted: 0,
       directConstructed: 0,
-      directExact: 0,
+      historicalOutputCompared: 0,
+      historicalOutputExact: 0,
     };
     const summary = categories[record.category];
     const detail = details.find((item) => item.id === record.id);
@@ -392,7 +477,8 @@ async function createReport() {
     if (direct) {
       summary.directAttempted += 1;
       if (direct.constructed) summary.directConstructed += 1;
-      if (direct.exact) summary.directExact += 1;
+      if (direct.historicalCompared) summary.historicalOutputCompared += 1;
+      if (direct.historicalExact) summary.historicalOutputExact += 1;
     }
     const cp = cpython.get(record.id);
     if (cp) {
@@ -422,11 +508,19 @@ async function createReport() {
         sage: Object.keys(nodeCounts.sage).length,
       },
       discrepancies: details.length,
+      excludedCompilerTests: excludedCompilerTests(),
     },
     nodeCounts,
     lowering: {
       gaps: Object.fromEntries(
         [...loweringGaps.entries()].sort(([left], [right]) =>
+          left.localeCompare(right)
+        ),
+      ),
+    },
+    historicalOutput: {
+      differences: Object.fromEntries(
+        [...historicalOutputDifferences.entries()].sort(([left], [right]) =>
           left.localeCompare(right)
         ),
       ),
@@ -462,7 +556,9 @@ async function main() {
     console.log(
       `  ${name}: Tree-sitter ${category.treeSitterAccepted}/${category.total}; ` +
       `legacy ${category.legacyAccepted}/${category.total}; ` +
-      `direct AST exact ${category.directExact}/${category.directAttempted}` +
+      `direct AST ${category.directConstructed}/${category.directAttempted}; ` +
+      `historical JS exact ${category.historicalOutputExact}/` +
+      `${category.historicalOutputCompared}` +
       (category.cpythonApplicable
         ? `; CPython ${category.cpythonAccepted}/${category.cpythonApplicable}`
         : ""),

@@ -58,7 +58,7 @@ SageMath.  `iterations=0` denotes unrestricted interactive replay.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, 3D graphics, animation
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -84,7 +84,7 @@ Return a circular or elliptical arc over an angular sector.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, ellipses
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -110,7 +110,7 @@ Return a directed line segment from `tailpoint` to `headpoint`.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, arrows
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -136,7 +136,7 @@ Return a directed line segment from `tailpoint` to `headpoint`.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, arrows
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -184,7 +184,7 @@ Create the three positive coordinate axes as 3D arrows.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, axes
+- Tags: graphics, 3D graphics, axes, arrows
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -206,7 +206,7 @@ Return a graphics object containing a vertical bar chart.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, charts
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -236,7 +236,7 @@ control points followed by its new endpoint.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, curves
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -275,7 +275,7 @@ Graphics3d Object
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, curves
+- Tags: graphics, 3D graphics, curves, Bézier paths
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -297,7 +297,7 @@ Return a circle centered at `center` with the given radius.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, circles
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -361,7 +361,7 @@ Graphics object consisting of 1 graphics primitive
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, complex analysis, domain coloring
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -402,7 +402,7 @@ sage: len(complex_to_cmap_rgb([[1 + I]], cmap='plasma')[0][0])
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, complex analysis, domain coloring, colormaps
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -439,7 +439,7 @@ sage: len(colors), colors[0], len(colors[1])
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, complex analysis, domain coloring
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -465,7 +465,7 @@ Plot a sampled scalar function as a filled contour grid.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, contours
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -491,7 +491,7 @@ Return a cube centered at `center` with side length `size`.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, shapes
+- Tags: graphics, 3D graphics, shapes, platonic solids
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -550,7 +550,7 @@ Plot a radial function in cylindrical coordinates.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, surfaces
+- Tags: graphics, 3D graphics, surfaces, coordinate transforms
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -572,7 +572,7 @@ Plot the values of a function of two variables as a color density.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, scalar fields
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -950,7 +950,7 @@ Return a filled or outlined circular/elliptical sector.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, regions
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -976,7 +976,7 @@ Return a regular dodecahedron centered at `center`.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, shapes
+- Tags: graphics, 3D graphics, shapes, platonic solids
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -1120,7 +1120,7 @@ Return an optionally rotated ellipse centered at `(x, y)`.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, ellipses
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -1268,7 +1268,7 @@ Draw Sage-style endpoint and midpoint labels around a 3D frame.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, frames
+- Tags: graphics, 3D graphics, frames, labels
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -3893,7 +3893,7 @@ sage: G.nrows(), G.ncols()
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, composition
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -4648,7 +4648,7 @@ Graphics object consisting of 1 graphics primitive
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, statistics
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -4674,7 +4674,7 @@ Return an RGB triple from hue, saturation, and brightness.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, colors
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -4700,7 +4700,7 @@ Plot the hyperbolic geodesic from `a` to `b`.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, hyperbolic geometry
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -4726,7 +4726,7 @@ Plot a polygon whose sides are hyperbolic geodesics.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, hyperbolic geometry
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -4752,7 +4752,7 @@ Plot a regular hyperbolic polygon in the upper-half-plane model.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, hyperbolic geometry
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -4778,7 +4778,7 @@ Plot a hyperbolic triangle with vertices `a`, `b`, and `c`.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, hyperbolic geometry
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -4804,7 +4804,7 @@ Return a regular icosahedron centered at `center`.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, shapes
+- Tags: graphics, 3D graphics, shapes, platonic solids
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -4826,7 +4826,7 @@ Plot the plane curve where a function is zero or an equality holds.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, implicit curves
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -4911,7 +4911,7 @@ sage: S.vertex_list()
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, polygons
+- Tags: graphics, 3D graphics, polygons, meshes, data structures
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -4959,7 +4959,7 @@ Return a graphics object containing a line through `points`.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, lines
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -4985,7 +4985,7 @@ Return a graphics object containing a line through `points`.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, lines
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -5033,7 +5033,7 @@ Plot a sequence of y-values or a sequence of `(x, y)` pairs.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, data
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -5059,7 +5059,7 @@ Plot list data with logarithmic horizontal and vertical axes.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, logarithmic axes
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -5085,7 +5085,7 @@ Plot list data with a logarithmic horizontal axis.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, logarithmic axes
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -5111,7 +5111,7 @@ Plot list data with a logarithmic vertical axis.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, logarithmic axes
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -5144,7 +5144,7 @@ returning a different surface.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, surfaces
+- Tags: graphics, 3D graphics, surfaces, data plots, interpolation
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -5296,7 +5296,7 @@ Plot a matrix or rectangular array as a color-valued grid.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, matrices
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -5839,7 +5839,7 @@ Multigraphics with 2 elements
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, composition, insets
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -5943,7 +5943,7 @@ Return a regular octahedron centered at `center`.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, shapes
+- Tags: graphics, 3D graphics, shapes, platonic solids
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -6061,7 +6061,7 @@ Plot a two-component parametric plane curve.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, parametric
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6183,7 +6183,7 @@ Plot functions with logarithmic horizontal and vertical axes.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, logarithmic axes
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6209,7 +6209,7 @@ Plot functions with a logarithmic horizontal axis.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, logarithmic axes
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6235,7 +6235,7 @@ Plot functions with a logarithmic vertical axis.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, logarithmic axes
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6261,7 +6261,7 @@ Plot short normalized line segments with slope `function_value`.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, differential equations
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6287,7 +6287,7 @@ Plot the step function defined by a sequence of `(x, y)` pairs.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, data
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6316,7 +6316,7 @@ values are omitted, matching Sage's masked-vector behavior.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, vector fields
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6399,7 +6399,7 @@ Return a graphics object containing one or more points.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, points
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6425,7 +6425,7 @@ Return a graphics object containing one or more points.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, points
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6473,7 +6473,7 @@ Return a graphics object containing one or more points.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, points
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6502,7 +6502,7 @@ All adaptive sampling and line options accepted by `plot` are supported.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, polar coordinates
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6528,7 +6528,7 @@ Return a filled polygon through `points`.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, polygons
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6554,7 +6554,7 @@ Return a filled polygon through `points`.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, polygons
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6580,7 +6580,7 @@ Draw a single polygon with vertices in three-dimensional space.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, polygons
+- Tags: graphics, 3D graphics, polygons, meshes
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -6602,7 +6602,7 @@ Draw an indexed union of polygons in three-dimensional space.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, polygons
+- Tags: graphics, 3D graphics, polygons, meshes
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -6835,7 +6835,7 @@ Return `count` evenly spaced hues as hex strings or RGB tuples.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, colors
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6905,7 +6905,7 @@ Plot the region where one or more boolean functions are true.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, regions
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6931,7 +6931,7 @@ Revolve a function or parametric curve around a coordinate axis.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, surfaces
+- Tags: graphics, 3D graphics, surfaces, surfaces of revolution
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -6953,7 +6953,7 @@ Convert a Sage color specification to an RGB triple.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, colors
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -6979,7 +6979,7 @@ Draw a three-dimensional ruler with labeled major and minor ticks.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, frames
+- Tags: graphics, 3D graphics, frames, rulers
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -7001,7 +7001,7 @@ Draw three axis-aligned rulers from the lower frame corner.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, frames
+- Tags: graphics, 3D graphics, frames, rulers
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -7023,7 +7023,7 @@ Return a Sage-compatible scatter plot of `(x, y)` points.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, statistics
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -7210,7 +7210,7 @@ Plot a radial function in spherical coordinates.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, surfaces
+- Tags: graphics, 3D graphics, surfaces, coordinate transforms
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -7236,7 +7236,7 @@ midpoint method.  `density` controls seed count and integration step;
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, vector fields, differential equations
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering
@@ -7305,7 +7305,7 @@ Return a regular tetrahedron centered at `center`.
 
 - Kind: `function`
 - Module: `sage.plot.plot3d`
-- Tags: graphics, 3D graphics, shapes
+- Tags: graphics, 3D graphics, shapes, platonic solids
 - Backends: Plotly, Sage.js rectangular sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Semantic 3D primitives with Plotly rendering
@@ -7327,7 +7327,7 @@ Return a graphics object containing a positioned text label.
 
 - Kind: `function`
 - Module: `sage.plot`
-- Tags: graphics, plotting, 2D graphics
+- Tags: graphics, plotting, 2D graphics, labels
 - Backends: Plotly, Sage.js adaptive sampler
 - Sage compatibility: partial — The Sage call form and core rendering semantics are supported; remaining specialized options are tracked by the graphics compatibility corpus.
 - Algorithm: Sage-compatible semantic graphics with Plotly rendering

@@ -72,3 +72,4 @@ assrt.equal(2.5, parseFloat('1.5'))
 # could not represent the literal.
 assrt.equal(202693990283402830942083402834,
             '202693990283402830942083402834')
+# STAGE_ZERO_ONLY: historical compiler-extension coverage

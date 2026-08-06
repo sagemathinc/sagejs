@@ -19,6 +19,7 @@ import {
   createPythonCompilerFrontend,
   PythonCompilerFrontend,
 } from "./python/compiler-frontend";
+import { PYTHON_KEYWORDS } from "./python/contract";
 
 export type SageLanguageMode = "sage" | "python";
 
@@ -114,6 +115,12 @@ export function createKernelEvaluator({
   compilerFrontends,
 }: EvaluatorOptions): KernelEvaluator {
   const compiler = suppliedCompiler ?? createCompiler();
+  if (!compilerFrontends?.has("python") || !compilerFrontends.has("sage")) {
+    throw new TypeError(
+      "createKernelEvaluator requires initialized Python and Sage frontends; " +
+        "use createKernelEvaluatorAsync()",
+    );
+  }
   const precompiledModuleCacheDir = standardLibraryCacheDirectory(
     join(__dirname, "..", "module-cache"),
   );
@@ -186,7 +193,12 @@ export function createKernelEvaluator({
     onOutput(String(text));
   };
   global.__sagejs_interrupt_state__ = interruptState;
-  runRuntimeBootstrap(compiler, mode);
+  runRuntimeBootstrap(
+    compiler,
+    mode,
+    compilerFrontends.get(mode)!,
+    compilerFrontends.get("python")!,
+  );
   global.__sagejs_kernel_modules__ = global.ρσ_modules;
   runInThisContext('var __name__ = "__embedded__"; show_js = false;');
 
@@ -196,7 +208,7 @@ export function createKernelEvaluator({
     language: SageLanguageMode,
   ): string {
     const classes = toplevel?.classes;
-    toplevel = (compilerFrontends?.get(language)?.parse ?? compiler.parse)(
+    toplevel = compilerFrontends.get(language)!.parse(
       source,
       parserOptions(filename, false, language),
     );
@@ -220,7 +232,7 @@ export function createKernelEvaluator({
   }
 
   function evaluateTransient(source: string): unknown {
-    const ast = (compilerFrontends?.get(mode)?.parse ?? compiler.parse)(
+    const ast = compilerFrontends.get(mode)!.parse(
       source,
       parserOptions("<kernel-introspection>", true),
     );
@@ -406,7 +418,7 @@ export function createKernelEvaluator({
               evaluateTransient(`dir(${context.expression})`),
             )
           : uniqueSortedStrings(global.ρσ_dir(globalThis)).concat(
-              compiler.ALL_KEYWORDS.split(" "),
+              PYTHON_KEYWORDS,
             );
       } catch (_error) {
         names = [];
@@ -445,7 +457,7 @@ export function createKernelEvaluator({
     ): KernelCompleteness {
       if (!source.trim()) return { status: "complete" };
       try {
-        (compilerFrontends?.get(language)?.parse ?? compiler.parse)(
+        compilerFrontends.get(language)!.parse(
           source,
           parserOptions("<kernel-is-complete>", true, language),
         );
@@ -477,7 +489,7 @@ export function createKernelEvaluator({
     },
 
     close(): void {
-      for (const frontend of compilerFrontends?.values() ?? []) {
+      for (const frontend of compilerFrontends.values()) {
         frontend.close();
       }
       uninstallNodeHost();
@@ -486,6 +498,7 @@ export function createKernelEvaluator({
       delete global.__sagejs_graphics_save_hook__;
       delete global.__sagejs_graph_database_bytes__;
       delete global.__sagejs_kernel_modules__;
+      Reflect.deleteProperty(globalThis, "__sagejs_parse_python__");
     },
   };
 }

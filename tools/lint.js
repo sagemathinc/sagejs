@@ -12,7 +12,23 @@ var utils = require("./utils");
 var colored = utils.colored;
 
 import createCompiler from "./compiler";
+import { createPythonCompilerFrontend } from "./python/compiler-frontend";
+import {
+  COMPILE_TIME_DECORATORS,
+  NATIVE_CLASSES,
+} from "./python/contract";
 const PyLang = createCompiler();
+var frontend;
+var frontendPromise;
+
+function initialize() {
+  frontendPromise = frontendPromise ||
+    createPythonCompilerFrontend(PyLang, "python").then(function (value) {
+      frontend = value;
+      return value;
+    });
+  return frontendPromise;
+}
 
 var WARN = 1,
   ERROR = 2;
@@ -54,7 +70,7 @@ var BUILTINS = Object.create(null);
     BUILTINS[x] = true;
   });
 
-Object.keys(PyLang.NATIVE_CLASSES).forEach(function (name) {
+Object.keys(NATIVE_CLASSES).forEach(function (name) {
   BUILTINS[name] = true;
 });
 var has_prop = Object.prototype.hasOwnProperty.call.bind(
@@ -73,7 +89,8 @@ function cmp(a, b) {
 }
 
 function parse_file(code, filename) {
-  return PyLang.parse(code, {
+  if (!frontend) throw new Error("call lint.initialize() before lint_code()");
+  return frontend.parse(code, {
     filename: filename,
     basedir: path.dirname(filename),
     libdir: path.dirname(filename),
@@ -393,7 +410,7 @@ function Linter(toplevel, filename, code, options) {
     var node = this.current_node.expression;
     if (
       node instanceof PyLang.AST_SymbolRef &&
-      PyLang.compile_time_decorators.indexOf(node.name) != -1
+      COMPILE_TIME_DECORATORS.indexOf(node.name) != -1
     )
       node.link_visited = true;
   };
@@ -641,7 +658,7 @@ function lint_code(code, options) {
   try {
     toplevel = parse_file(code, filename);
   } catch (e) {
-    if (e instanceof PyLang.ImportError) {
+    if (e instanceof PyLang.ImportError || e?.name === "ImportError") {
       messages = [
         {
           filename: filename,
@@ -652,7 +669,11 @@ function lint_code(code, options) {
           message: e.message,
         },
       ];
-    } else if (e instanceof PyLang.SyntaxError) {
+    } else if (
+      e instanceof PyLang.SyntaxError ||
+      e instanceof SyntaxError ||
+      e?.name === "PythonSyntaxError"
+    ) {
       messages = [
         {
           filename: filename,
@@ -754,7 +775,8 @@ function get_ini(toplevel_dir) {
   return rl;
 }
 
-module.exports.cli = function (argv, base_path, src_path, lib_path) {
+module.exports.cli = async function (argv, base_path, src_path, lib_path) {
+  await initialize();
   var files = argv.files.slice();
   var num_of_files = files.length || 1;
   var read_config = require("./ini");
@@ -858,6 +880,7 @@ module.exports.cli = function (argv, base_path, src_path, lib_path) {
 };
 
 module.exports.lint_code = lint_code;
+module.exports.initialize = initialize;
 module.exports.WARN = WARN;
 module.exports.ERROR = ERROR;
 module.exports.MESSAGES = MESSAGES;

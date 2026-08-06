@@ -2329,7 +2329,7 @@ class GraphGenerators:
         vertices = []
         for row in range(rows):
             for column in range(columns):
-                vertices.append((row, column))
+                vertices.append(runtime.math_tuple([row, column]))
         if name is None:
             name = '2D Grid Graph for [' + str(rows) + ', ' + str(columns) + ']'
         graph = Graph(name=name)
@@ -2337,14 +2337,21 @@ class GraphGenerators:
         for row in range(rows):
             for column in range(columns):
                 if row + 1 < rows:
-                    graph.add_edge((row, column), (row + 1, column))
+                    graph.add_edge(
+                        runtime.math_tuple([row, column]),
+                        runtime.math_tuple([row + 1, column]),
+                    )
                 if column + 1 < columns:
-                    graph.add_edge((row, column), (row, column + 1))
+                    graph.add_edge(
+                        runtime.math_tuple([row, column]),
+                        runtime.math_tuple([row, column + 1]),
+                    )
         if set_positions:
             positions = {}
             for row in range(rows):
                 for column in range(columns):
-                    positions[(row, column)] = (column, -row)
+                    vertex = runtime.math_tuple([row, column])
+                    positions[vertex] = runtime.math_tuple([column, -row])
             graph.set_pos(positions)
         return graph
 

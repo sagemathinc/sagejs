@@ -82,3 +82,4 @@ class A:
         pass
 
 assrt.deepEqual(A.prototype.f.__annotations__, {'a':int, 'b':'x', 'return': float})
+# STAGE_ZERO_ONLY: historical RapydScript anonymous-function syntax

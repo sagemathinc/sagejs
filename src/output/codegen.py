@@ -4,9 +4,7 @@ from __python__ import hash_literals
 
 # globals:console,writefile
 
-from utils import noop
-from parse import PRECEDENCE
-from tokenizer import RESERVED_WORDS
+from utils import noop, make_predicate
 from ast_types import (
     AST_AnnotatedAssignment, AST_Array, AST_Assign, AST_AsyncFor,
     AST_BaseCall, AST_Binary,
@@ -20,6 +18,7 @@ from ast_types import (
     AST_ObjectKeyVal, AST_ObjectProperty, AST_PropAccess, AST_RegExp,
     AST_Return, AST_Set, AST_Seq, AST_SimpleStatement, AST_Splice,
     AST_Statement, AST_StatementWithBody, AST_String, AST_Sub, AST_ItemAccess,
+    AST_TimedStatement,
     AST_Scope, AST_Symbol, AST_SymbolRef, AST_This, AST_Throw, AST_Toplevel,
     AST_Try, AST_Unary,
     AST_UnaryPrefix, AST_Undefined, AST_Var, AST_VarDef, AST_Assert,
@@ -37,6 +36,30 @@ from output.operators import (print_getattr, print_getitem, print_rich_getitem,
 from output.functions import print_function, print_function_call
 from output.statements import print_bracketed, first_in_statement, force_statement, print_with, print_assert
 from output.utils import make_block, make_num
+
+
+def operator_to_precedence(groups):
+    answer = {}
+    for i, group in enumerate(groups):
+        for operator in group:
+            answer[operator] = i + 1
+    return answer
+
+
+PRECEDENCE = operator_to_precedence([
+    ["||"], ["&&"],
+    ["==", "===", "!=", "!==", "<", ">", "<=", ">=", "in", "nin",
+     "instanceof"],
+    ["|"], ["^"], ["&"], [">>", "<<", ">>>"], ["+", "-"],
+    ["*", "@", "/", "//", "%"], ["**"],
+])
+
+RESERVED_WORDS = make_predicate(
+    "break case class catch const continue debugger default delete do else "
+    "export extends finally for function if import in instanceof new return "
+    "super switch this throw try typeof var void while with yield enum "
+    "implements static private package let public protected interface await "
+    "null true false")
 
 
 # -----[ code generators ]-----
@@ -230,6 +253,27 @@ def generate_code():
             output.semicolon()
 
     DEFPRINT(AST_SimpleStatement, f_simple_statement)
+
+    def print_timed_statement(self, output):
+        start_name = output.new_time_counter()
+
+        def timed_body():
+            output.indent()
+            output.assign('var ' + start_name)
+            output.print('Date.now()')
+            output.end_statement()
+            output.indent()
+            self.body.print(output)
+            output.newline()
+            output.indent()
+            output.print('console.log("Wall time: " + (Date.now() - ')
+            output.print(start_name)
+            output.print(') + "ms")')
+            output.end_statement()
+
+        output.with_block(timed_body)
+
+    DEFPRINT(AST_TimedStatement, print_timed_statement)
     DEFPRINT(AST_BlockStatement,
              lambda self, output: print_bracketed(self, output))
 

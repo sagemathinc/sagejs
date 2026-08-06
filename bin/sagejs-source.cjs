@@ -79,9 +79,15 @@ if (argv.mode === "self") {
     process.exitCode = 1;
   });
 } else if (argv.mode === "test") {
-  load("test").default(argv, basePath, srcPath, compilerPath);
+  load("test").default(argv, basePath, srcPath, compilerPath).catch((error) => {
+    console.error(error?.stack ?? error);
+    process.exitCode = 1;
+  });
 } else if (argv.mode === "lint") {
-  load("lint").cli(argv, basePath, srcPath, compilerPath);
+  load("lint").cli(argv, basePath, srcPath, compilerPath).catch((error) => {
+    console.error(error?.stack ?? error);
+    process.exitCode = 1;
+  });
 } else if (argv.mode === "repl") {
   load("repl").default({
     show_js: !argv.no_js,

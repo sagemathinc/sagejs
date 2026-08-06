@@ -1,5 +1,5 @@
 # vim:fileencoding=utf-8
-nonlocal GLOBAL_SYMBOL
+global GLOBAL_SYMBOL
 
 'Module level ds1'
 

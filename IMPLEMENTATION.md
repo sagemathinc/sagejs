@@ -144,8 +144,9 @@ The JavaScript execution tier must remain independently credible. Native
 kernels are for sustained mathematical algorithms, not an excuse for ordinary
 Python-shaped code to be many times slower than CPython.
 
-Python module imports must not repeatedly invoke the self-hosted parser and
-code generator. Builds ship source-hash- and compiler-version-validated
+Python module imports are discovered once from the authoritative Tree-sitter
+CST and must not repeatedly invoke syntax lowering or the code generator.
+Builds ship source-hash- and compiler-version-validated
 standard-library caches, while the REPL maintains the same cache format for
 user modules. This is the Sage.js counterpart of CPython bytecode caching:
 source remains authoritative, and generated JavaScript is disposable.

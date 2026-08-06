@@ -295,10 +295,17 @@ def print_class(output):
     add_hidden_class_property(
         '__name__',
         lambda: output.print(JSON.stringify(self.name.name)))
+
+    def print_class_module():
+        if self.module_id:
+            output.print(JSON.stringify(self.module_id))
+        else:
+            output.print(
+                '(typeof __name__ === "undefined" ? null : __name__)')
+
     add_hidden_class_property(
         '__module__',
-        lambda: output.print(
-            '(typeof __name__ === "undefined" ? null : __name__)'))
+        print_class_module)
 
     if decorators.length:
         output.indent()
@@ -310,6 +317,19 @@ def print_class(output):
             output.spaced(',' if i < num - 1 else ']')
         output.semicolon()
         output.newline()
+
+    # Validate bases before mutating any prototypes.  In particular, a bound
+    # native method's JavaScript constructor is Function, but CPython does not
+    # permit ``class C(type([].append))``.
+    if self.bases.length:
+        output.indent()
+        output.print('ρσ_validate_class_bases([')
+        for i, base in enumerate(self.bases):
+            if i:
+                output.comma()
+            base.print(output)
+        output.print('])')
+        output.end_statement()
 
     # inheritance
     if self.parent:

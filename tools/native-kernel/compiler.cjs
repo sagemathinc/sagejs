@@ -102,10 +102,10 @@ function bindingGyp() {
   };
 }
 
-function compileKernel(options) {
+async function compileKernel(options) {
   const sourcePath = resolve(options.sourcePath);
   const source = readFileSync(sourcePath, "utf8");
-  const ir = lowerSource(source, sourcePath);
+  const ir = await lowerSource(source, sourcePath);
   const identity = {
     source,
     ir,

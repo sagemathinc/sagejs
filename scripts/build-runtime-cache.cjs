@@ -22,6 +22,7 @@ function cacheScript(source, filename, outputFilename) {
   return cachedData.length;
 }
 
+async function main() {
 rmSync(outputDirectory, { recursive: true, force: true });
 mkdirSync(outputDirectory, { recursive: true });
 
@@ -39,10 +40,15 @@ const {
   generateRuntimeBootstrapSource,
   runtimeBootstrapFilename,
 } = require("../dist/tools/runtime-bootstrap.js");
+const { createPythonCompilerFrontend } = require(
+  "../dist/tools/python/compiler-frontend.js"
+);
 const compiler = createCompiler();
 const runtimeCaches = {};
 for (const mode of ["sage", "python"]) {
-  const source = generateRuntimeBootstrapSource(compiler, mode);
+  const frontend = await createPythonCompilerFrontend(compiler, mode);
+  const source = generateRuntimeBootstrapSource(compiler, mode, frontend);
+  frontend.close();
   const sourceFilename = join(
     outputDirectory,
     `runtime-bootstrap-${mode}.js`,
@@ -75,3 +81,9 @@ console.log(
   `Cached compiler and Sage/Python runtimes for Node ${process.versions.node} ` +
     `(${process.platform}-${process.arch})`,
 );
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

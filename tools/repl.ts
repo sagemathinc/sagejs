@@ -169,21 +169,34 @@ function createReadlineInterface(options: Options, PyLang) {
   return readline;
 }
 
-export default async function Repl(options0: Partial<Options>): Promise<void> {
+export interface ReplController {
+  /** Resolve after every line submitted so far has been compiled and run. */
+  drain(): Promise<void>;
+}
+
+export default async function Repl(
+  options0: Partial<Options>,
+): Promise<ReplController> {
   const options = replDefaults(options0);
   const foreignLanguage = selectedForeignLanguage(options);
   const sourceLanguage =
     foreignLanguage ?? (options.sage ? "sage" : "python");
   const PyLang = createCompiler({ console: options.console });
   let pythonFrontend: PythonCompilerFrontend | undefined;
+  let dynamicPythonFrontend: PythonCompilerFrontend | undefined;
   let pythonFrontendPromise: Promise<PythonCompilerFrontend> | undefined;
   function ensurePythonFrontend(): Promise<PythonCompilerFrontend> {
     pythonFrontendPromise ??= import("./python/compiler-frontend.js").then(
-      ({ createPythonCompilerFrontend }) =>
-        createPythonCompilerFrontend(
+      async ({ createPythonCompilerFrontend }) => {
+        const frontend = await createPythonCompilerFrontend(
           PyLang,
           options.sage ? "sage" : "python",
-        ),
+        );
+        dynamicPythonFrontend = options.sage
+          ? await createPythonCompilerFrontend(PyLang, "python")
+          : frontend;
+        return frontend;
+      },
     );
     return pythonFrontendPromise.then((frontend) => {
       pythonFrontend = frontend;
@@ -285,7 +298,12 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
       readResourceBytes(join(importPath, "sage", "graphs", "data", "graphs.db"));
     installNodeGraphicsSaveHook();
     installNodeHost(globalThis, options.sage ? "sage" : "python");
-    runRuntimeBootstrap(PyLang, options.sage ? "sage" : "python");
+    runRuntimeBootstrap(
+      PyLang,
+      options.sage ? "sage" : "python",
+      pythonFrontend!,
+      dynamicPythonFrontend!,
+    );
     runInThisContext('var __name__ = "__repl__"; show_js=false;');
   }
 
@@ -636,6 +654,11 @@ export default async function Repl(options0: Partial<Options>): Promise<void> {
   readline.on("SIGCONT", prompt);
 
   prompt();
+  return {
+    drain(): Promise<void> {
+      return lineQueue;
+    },
+  };
 }
 
 function foreignDisplayName(language: ForeignLanguage): string {

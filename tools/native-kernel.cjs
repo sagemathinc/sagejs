@@ -3,7 +3,7 @@
 const { resolve } = require("node:path");
 const { compileKernel } = require("./native-kernel/compiler.cjs");
 
-function main() {
+async function main() {
   if (process.argv.length !== 3) {
     process.stderr.write(
       "Usage: node tools/native-kernel.cjs <kernel-config.cjs>\n",
@@ -14,7 +14,7 @@ function main() {
   const configPath = resolve(process.argv[2]);
   const config = require(configPath);
   const base = require("node:path").dirname(configPath);
-  const result = compileKernel({
+  const result = await compileKernel({
     ...config,
     sourcePath: resolve(base, config.sourcePath),
     cacheRoot:
@@ -29,4 +29,9 @@ function main() {
 
 module.exports = { compileKernel };
 
-if (require.main === module) main();
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

@@ -7,7 +7,7 @@
 
 import Compile from "./compile";
 import { runDocumentationCli } from "./docs";
-import { createKernelEvaluator } from "./kernel-evaluator";
+import { createKernelEvaluatorAsync } from "./kernel-evaluator";
 import Repl from "./repl";
 import { importPath, libraryPath } from "./utils";
 import { basename, dirname, extname } from "path";
@@ -303,7 +303,7 @@ async function main(): Promise<void> {
     return;
   }
   if (argv.mode === "docs") {
-    const evaluator = createKernelEvaluator({
+    const evaluator = await createKernelEvaluatorAsync({
       mode: "sage",
       onOutput(text) {
         process.stderr.write(text);

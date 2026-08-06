@@ -8,17 +8,20 @@
 var vm = require("vm");
 var embedded_compiler = require("tools/embedded_compiler.js");
 
-module.exports = function (compiler, baselib) {
+module.exports = async function (compiler, baselib) {
   var ctx = vm.createContext();
   var LINE_CONTINUATION_CHARS = ":\\";
   var find_completions = null;
-  var streaming_compiler = embedded_compiler(
+  var frontend = await require("./python/compiler-frontend.js")
+    .createPythonCompilerFrontend(compiler, "python");
+  var streaming_compiler = await embedded_compiler(
     compiler,
     baselib,
     function (js) {
       return vm.runInContext(js, ctx);
     },
-    "__repl__"
+    "__repl__",
+    frontend
   );
 
   return {
@@ -57,7 +60,7 @@ module.exports = function (compiler, baselib) {
         return false;
       }
       try {
-        compiler.parse(source, { filename: "<repl>", basedir: "__stdlib__" });
+        frontend.parse(source, { filename: "<repl>", basedir: "__stdlib__" });
       } catch (e) {
         if (e.is_eof && e.line === lines.length && e.col > 0) {
           return false;
@@ -93,5 +96,6 @@ module.exports = function (compiler, baselib) {
     find_completions: (line) => {
       return find_completions(line, ctx);
     },
+    close: () => frontend.close(),
   };
 };

@@ -788,9 +788,18 @@ The compiler can also be loaded from Node:
 
 ```js
 const createCompiler = require("@sagemath/sagejs");
+const {
+  createPythonCompilerFrontend,
+} = require("@sagemath/sagejs/frontend");
 const compiler = createCompiler();
-const ast = compiler.parse("print(2 + 3)");
+const frontend = await createPythonCompilerFrontend(compiler, "python");
+const ast = frontend.parse("print(2 + 3)");
+frontend.close();
 ```
+
+Tree-sitter is intentionally initialized asynchronously. The low-level
+compiler object contains semantic AST and JavaScript-output machinery, but no
+second parser implementation.
 
 The CLI can emit standalone JavaScript containing the small Sage.js base
 library:

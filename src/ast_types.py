@@ -175,6 +175,16 @@ class AST_SimpleStatement(AST_Statement):
         return visitor._visit(self, lambda: self.body._walk(visitor))
 
 
+class AST_TimedStatement(AST_Statement):
+    """A Sage ``%time`` statement evaluated with host wall-clock timing."""
+    properties = {
+        'body': "[AST_Statement] the statement whose execution is timed",
+    }
+
+    def _walk(self, visitor):
+        return visitor._visit(self, lambda: self.body._walk(visitor))
+
+
 class AST_Assert(AST_Statement):
     "An assert statement, e.g. assert True, 'an error message'"
     properties = {
@@ -853,7 +863,9 @@ class AST_ClassCall(AST_BaseCall):
     properties = {
         "class": "[string] name of the class method belongs to",
         'method': "[string] class method being called",
-        "static": "[boolean] defines whether the method is static"
+        "static": "[boolean] defines whether the method is static",
+        "classvar":
+        "[boolean] call a callable class variable through the prototype"
     }
 
     def _walk(self, visitor):

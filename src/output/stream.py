@@ -3,7 +3,13 @@
 from __python__ import hash_literals
 
 from utils import make_predicate, defaults, repeat_string
-from tokenizer import is_identifier_char
+
+
+IDENTIFIER_CONTINUE = RegExp(r"^[$_\p{ID_Continue}]$", "u")
+
+
+def is_identifier_char(ch):
+    return bool(ch) and IDENTIFIER_CONTINUE.test(ch)
 
 DANGEROUS = RegExp(
     r"[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]",
@@ -86,11 +92,16 @@ class OutputStream:
         self.with_counter = 0
         self.try_else_counter = 0
         self.loop_else_counter = 0
+        self.time_counter = 0
         self.assignment_target = False
 
     def new_try_else_counter(self):
         self.try_else_counter += 1
         return 'ρσ_try_else_' + self.try_else_counter
+
+    def new_time_counter(self):
+        self.time_counter += 1
+        return 'ρσ_time_start_' + self.time_counter
 
     def print_truth_test(self, expression):
         if self.options.python_truthiness:

@@ -8,7 +8,7 @@ from output.stream import OutputStream
 from output.utils import create_doctring
 from output.comments import print_comments, output_comments
 from output.functions import set_module_name
-from parse import get_compiler_version
+from compiler_version import get_compiler_version
 from utils import cache_file_name
 from ast_types import (
     AST_Call, AST_String, AST_SymbolRef, TreeWalker, is_node_type)
@@ -447,6 +447,8 @@ def print_module(self, output):
                                 output.options.discard_asserts,
                                 'python_truthiness':
                                 output.options.python_truthiness,
+                                'python_tuples':
+                                output.options.python_tuples,
                                 'python_attributes':
                                 output.options.python_attributes
                             })
@@ -572,24 +574,51 @@ def print_imports(container, output):
         output.with_block(copy_star_name)
 
     def dynamic_import(self):
-        output.print('var ρσ_imported_module = __import__(')
-        output.print_string(self.key)
-        output.print(', null, null, ')
-        if self.argnames:
-            output.print('ρσ_math_tuple([')
-            for index, argname in enumerate(self.argnames):
-                if index:
-                    output.comma()
-                output.print_string(argname.name)
-            output.print('])')
-        elif self.star:
-            output.print('ρσ_math_tuple(["*"])')
-        else:
-            output.print('null')
-        output.comma()
-        output.print(str(self.level or 0))
-        output.print(')')
+        output.print('var ρσ_imported_module')
         output.end_statement()
+        output.indent()
+        output.print('if (__import__.__sagejs_default_import__ === true)')
+
+        def default_import():
+            output.indent()
+            output.assign('ρσ_imported_module')
+            output.print('Reflect.get(ρσ_modules, ')
+            output.print_string(self.key)
+            output.print(')')
+            output.end_statement()
+            output.indent()
+            output.print('if (ρσ_imported_module === undefined) ')
+            output.print('throw new ImportError(')
+            output.print_string("No module named '" + self.key + "'")
+            output.print(')')
+            output.end_statement()
+
+        output.with_block(default_import)
+        output.print(' else')
+
+        def custom_import():
+            output.indent()
+            output.assign('ρσ_imported_module')
+            output.print('__import__(')
+            output.print_string(self.key)
+            output.print(', null, null, ')
+            if self.argnames:
+                output.print('ρσ_math_tuple([')
+                for index, argname in enumerate(self.argnames):
+                    if index:
+                        output.comma()
+                    output.print_string(argname.name)
+                output.print('])')
+            elif self.star:
+                output.print('ρσ_math_tuple(["*"])')
+            else:
+                output.print('null')
+            output.comma()
+            output.print(str(self.level or 0))
+            output.print(')')
+            output.end_statement()
+
+        output.with_block(custom_import)
         if self.star:
             output.indent()
             output.print('ρσ_modules[')

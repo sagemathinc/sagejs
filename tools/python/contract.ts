@@ -1,0 +1,187 @@
+/**
+ * Syntax-independent compiler contract shared by the Tree-sitter frontend and
+ * editor tooling.  Keeping this data in TypeScript prevents the generated
+ * compiler from bundling the historical Python tokenizer and parser merely to
+ * discover native names.
+ */
+
+function staticNames(...names: string[]): Record<string, true> {
+  return Object.fromEntries(names.map((name) => [name, true]));
+}
+
+export const NATIVE_CLASSES: Record<string, any> = Object.fromEntries(
+  [
+    "object", "Rational", "slice", "Image", "FileReader", "RegExp",
+    "Error", "EvalError", "InternalError", "RangeError", "RumtimeError",
+    "ReferenceError", "SyntaxError", "TypeError", "URIError", "Function",
+    "DataView", "Float32Array", "Float64Array", "Int16Array", "Int32Array",
+    "Int8Array", "Uint16Array", "Uint32Array", "Uint8Array",
+    "Uint8ClampedArray", "Map", "WeakMap", "Proxy", "Set", "WeakSet",
+    "WebSocket", "XMLHttpRequest", "TextEncoder", "TextDecoder",
+    "MouseEvent", "Event", "CustomEvent", "Blob",
+  ].map((name) => [name, {}]),
+);
+
+NATIVE_CLASSES.Object = { static: staticNames(
+  "getOwnPropertyNames", "getOwnPropertyDescriptor",
+  "getOwnPropertyDescriptors", "getOwnPropertySymbols", "keys", "entries",
+  "values", "create", "defineProperty", "defineProperties",
+  "getPrototypeOf", "setPrototypeOf", "assign", "seal", "isSealed", "is",
+  "preventExtensions", "isExtensible", "freeze", "isFrozen",
+) };
+NATIVE_CLASSES.String = { static: staticNames("fromCharCode", "fromCodePoint") };
+NATIVE_CLASSES.Array = { static: staticNames("isArray", "from", "of") };
+NATIVE_CLASSES.Date = { static: staticNames("UTC", "now", "parse") };
+NATIVE_CLASSES.ArrayBuffer = { static: staticNames("isView", "transfer") };
+NATIVE_CLASSES.Promise = { static: staticNames("all", "race", "reject", "resolve") };
+
+export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
+  array: "Array",
+  arraylike: "ρσ_arraylike",
+  bigint: "BigInt",
+  bigint_divexact: "ρσ_bigint_divexact",
+  bigint_gcd: "ρσ_bigint_gcd",
+  bigint_fields: "ρσ_bigint_fields",
+  blocking_sleep: "ρσ_blocking_sleep",
+  check_interrupt: "ρσ_check_interrupt",
+  callable_instance_class: "ρσ_callable_instance_class",
+  console_object: "console",
+  coercion_model: "ρσ_coercion_model",
+  dynamic_eval: "ρσ_dynamic_eval",
+  documentation_registry: "ρσ_documentation_registry",
+  equals: "ρσ_equals",
+  element: "Element",
+  error: "Error",
+  function_class: "Function",
+  factor_pair: "ρσ_factor_pair",
+  finalization_registry_class: "FinalizationRegistry",
+  float_builtin: "ρσ_float",
+  flint_backend: "ρσ_flint_backend",
+  global_object: "globalThis",
+  int_builtin: "ρσ_int",
+  integer_bigint: "ρσ_integer_bigint",
+  integer_factorization: "IntegerFactorization",
+  instance_of: "ρσ_native_instanceof",
+  is_exact_integer: "ρσ_is_exact_integer",
+  is_math_element: "ρσ_is_math_element",
+  is_nan: "isNaN",
+  iterator_symbol: "ρσ_iterator_symbol",
+  json: "JSON",
+  last_exception: "ρσ_last_exception",
+  kwargs_symbol: "ρσ_kwargs_symbol",
+  jstype: "jstype",
+  lightweight_math_class: "ρσ_lightweight_math_class",
+  list_constructor: "ρσ_list_constructor",
+  list_contains: "ρσ_list_contains",
+  map: "ρσ_new_map",
+  map_class: "Map",
+  math: "Math",
+  math_tuple: "ρσ_math_tuple",
+  named_tuple: "ρσ_named_tuple",
+  modular_inverse: "ρσ_modular_inverse",
+  modular_power: "ρσ_modular_power",
+  modules: "ρσ_modules",
+  native_method: "ρσ_native_method",
+  native_method_adapter: "ρσ_native_method_adapter",
+  non_exception_throw: "ρσ_non_exception_throw",
+  native_add: "ρσ_native_add",
+  native_bitand: "ρσ_native_bitand",
+  native_bitor: "ρσ_native_bitor",
+  native_bitxor: "ρσ_native_bitxor",
+  native_div: "ρσ_native_div",
+  native_mod: "ρσ_native_mod",
+  native_mul: "ρσ_native_mul",
+  native_neg: "ρσ_native_neg",
+  native_pow: "ρσ_native_pow",
+  native_sub: "ρσ_native_sub",
+  native_lshift: "ρσ_native_lshift",
+  native_rshift: "ρσ_native_rshift",
+  native_lt: "ρσ_native_lt",
+  native_le: "ρσ_native_le",
+  native_gt: "ρσ_native_gt",
+  native_ge: "ρσ_native_ge",
+  normalize_integer: "ρσ_normalize_integer",
+  native_number_class: "Number",
+  number: "_builtins_number_class",
+  object: "Object",
+  operator_add_exact: "ρσ_operator_add_exact",
+  operator_mul_exact: "ρσ_operator_mul_exact",
+  operator_pow_exact: "ρσ_operator_pow_exact",
+  output_write: "ρσ_output_write",
+  parse_float: "parseFloat",
+  parse_int: "parseInt",
+  polynomial_ring: "ρσ_polynomial_ring",
+  proxy_class: "Proxy",
+  qq: "QQ",
+  rational_class: "Rational",
+  reflect: "Reflect",
+  reference_error: "ReferenceError",
+  register_doc: "ρσ_register_doc",
+  regexp: "RegExp",
+  real_literal: "create_real_literal",
+  require_module: "require",
+  repr: "ρσ_repr",
+  scope_dict: "ρσ_scope_dict",
+  sequence_class: "ρσ_sequence_class",
+  set_class: "Set",
+  set_class_repr: "ρσ_set_class_repr",
+  strict_equal: "ρσ_strict_equal",
+  string_find: "ρσ_string_find",
+  string_class: "String",
+  string_builtin: "ρσ_str",
+  string: "ρσ_string_primitive",
+  syntax_error: "SyntaxError",
+  type_error: "TypeError",
+  tuple_builtin: "ρσ_tuple",
+  undefined: "undefined",
+  wall_time: "ρσ_wall_time",
+  weak_ref_class: "WeakRef",
+  zero_division_error: "ZeroDivisionError",
+};
+
+export const SAGEJS_PUBLIC_INTRINSICS: Record<string, string> = {
+  AlgebraicExtensionFunctor: "AlgebraicExtensionFunctor",
+  Element: "Element",
+  Factorization: "Factorization",
+  FiniteFieldElement: "FiniteFieldElement",
+  Parent: "Parent",
+  PolynomialRing: "ρσ_polynomial_ring",
+  QQ: "QQ",
+  QuotientFunctor: "QuotientFunctor",
+  Rational: "Rational",
+  ZZ: "ZZ",
+  ZeroDivisionError: "ZeroDivisionError",
+  divisors: "ρσ_divisors",
+  factor: "ρσ_factor",
+  is_prime: "ρσ_is_prime",
+  parent: "parent",
+  prime_divisors: "ρσ_prime_divisors",
+  arrow: "arrow",
+  arrow3d: "arrow3d",
+  circle: "circle",
+  cube: "cube",
+  disk: "disk",
+  hue: "hue",
+  line: "line",
+  line3d: "line3d",
+  point: "point",
+  point3d: "point3d",
+  parametric_plot3d: "parametric_plot3d",
+  polygon: "polygon",
+  polygon3d: "polygon3d",
+  sphere: "sphere",
+  text: "text",
+  text3d: "text3d",
+};
+
+export const COMPILE_TIME_DECORATORS = [
+  "staticmethod", "classmethod", "external", "property",
+  "ρσ_lightweight_math_class", "ρσ_bigint_fields", "ρσ_sequence_class",
+  "ρσ_callable_instance_class",
+] as const;
+
+export const PYTHON_KEYWORDS = (
+  "as assert async await break class continue def del do elif else except " +
+  "finally for from global if import in is lambda new nonlocal pass raise " +
+  "return yield try while with or and not False None True __debug__"
+).split(" ");

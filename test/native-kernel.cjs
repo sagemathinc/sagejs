@@ -15,9 +15,10 @@ const { generateC } = require("../tools/native-kernel/c-backend.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 
 const root = join(__dirname, "..");
+(async () => {
 const sourcePath = join(root, "bench", "native-kernel-input.sage");
 const source = readFileSync(sourcePath, "utf8");
-const ir = lowerSource(source, sourcePath);
+const ir = await lowerSource(source, sourcePath);
 const complexFunction = ir.functions.find(
   (fn) => fn.name === "multiply_loop",
 );
@@ -56,7 +57,7 @@ assert.match(
   generatedC,
   /mpfr_mul\(sagejs_value->value, sagejs_value->value, sagejs_step/,
 );
-assert.throws(
+await assert.rejects(
   () =>
     lowerSource(
       "def f(field: ComplexField, n: uint64) -> ComplexNumber:\n" +
@@ -65,7 +66,7 @@ assert.throws(
     ),
   /native function must return a ComplexNumber local/,
 );
-assert.throws(
+await assert.rejects(
   () =>
     lowerSource(
       "def f(field, n: uint64) -> ComplexNumber:\n" +
@@ -103,8 +104,8 @@ try {
     sourcePath,
     cacheRoot: join(temporary, "cache"),
   };
-  const first = compileKernel(options);
-  const second = compileKernel(options);
+  const first = await compileKernel(options);
+  const second = await compileKernel(options);
   assert.equal(first.cached, false);
   assert.equal(second.cached, true);
   assert.equal(first.cacheKey, second.cacheKey);
@@ -177,3 +178,7 @@ print(kernel.nativeAvailable)
 }
 
 console.log("Native Kernel v0 typed IR, cache, ABI, and fallback passed.");
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

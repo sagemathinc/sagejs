@@ -135,7 +135,8 @@ function rawRealMultiply(precision, iterations) {
   return value;
 }
 
-const generated = compileKernel({
+(async () => {
+const generated = await compileKernel({
   ...config,
   sourcePath: join(__dirname, config.sourcePath),
   cacheRoot: join(__dirname, config.cacheRoot),
@@ -179,7 +180,6 @@ for (const kind of kinds) {
     });
   }
 }
-
 const sagejsResult = execute(
   "Sage.js",
   process.execPath,
@@ -287,3 +287,7 @@ if (juliaResult !== null) {
     }
   }
 }
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

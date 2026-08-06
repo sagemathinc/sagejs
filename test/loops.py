@@ -154,3 +154,4 @@ while False:
 else:
     loop_events.append("while else")
 assrt.equal(loop_events[-1], "while else")
+# STAGE_ZERO_ONLY: historical JavaScript loop-header syntax

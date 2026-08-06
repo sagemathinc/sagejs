@@ -5,40 +5,34 @@ const { spawnSync } = require("node:child_process");
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const createCompiler = require("..");
+const {
+  createPythonCompilerFrontend,
+} = require("../dist/tools/python/compiler-frontend.js");
+const {
+  SAGEJS_PUBLIC_INTRINSICS,
+  SAGEJS_RUNTIME_INTRINSICS,
+} = require("../dist/tools/python/contract.js");
 
 const root = join(__dirname, "..");
+(async () => {
 const compiler = createCompiler();
+const frontend = await createPythonCompilerFrontend(compiler, "python");
 
-const parserSource = readFileSync(join(root, "src", "parse.py"), "utf8");
 const runtimeSource = readFileSync(
   join(root, "src", "baselib", "sagejs", "runtime.py"),
   "utf8",
 );
-const runtimeManifestBlock = parserSource.match(
-  /SAGEJS_RUNTIME_INTRINSICS = \{([\s\S]*?)\n\}/,
-);
-const publicManifestBlock = parserSource.match(
-  /SAGEJS_PUBLIC_INTRINSICS = \{([\s\S]*?)\n\}/,
-);
-assert.notEqual(runtimeManifestBlock, null);
-assert.notEqual(publicManifestBlock, null);
-
-function parseManifest(block) {
-  return Array.from(
-    block[1].matchAll(/^\s*'([^']+)': '([^']+)',?$/gm),
-    (match) => [match[1], match[2]],
-  );
-}
-
-const runtimeManifest = parseManifest(runtimeManifestBlock);
-const publicManifest = parseManifest(publicManifestBlock);
+const runtimeManifest = Object.entries(SAGEJS_RUNTIME_INTRINSICS);
+const publicManifest = Object.entries(SAGEJS_PUBLIC_INTRINSICS);
 const bootstrapFunctions = Array.from(
   runtimeSource.matchAll(/^def ([a-z_]+)\(/gm),
   (match) => match[1],
 );
 const bootstrapAssignments = Array.from(
-  runtimeSource.matchAll(/^([a-z_]+) = ([A-Za-z0-9_ρσ]+)$/gm),
-  (match) => [match[1], match[2]],
+  runtimeSource.matchAll(
+    /^([a-z_]+) = (?:([A-Za-z0-9_ρσ]+)|r'%js ([A-Za-z0-9_ρσ]+)')$/gm,
+  ),
+  (match) => [match[1], match[2] ?? match[3]],
 );
 const bootstrapNames = [
   ...bootstrapFunctions,
@@ -66,13 +60,15 @@ const expectedBootstrapAssignments = runtimeManifest
         : [name, value],
   );
 assert.deepEqual(
-  bootstrapAssignments,
-  expectedBootstrapAssignments,
+  bootstrapAssignments.toSorted(([left], [right]) => left.localeCompare(right)),
+  expectedBootstrapAssignments.toSorted(
+    ([left], [right]) => left.localeCompare(right),
+  ),
   "ordinary bootstrap aliases must lower to the matching runtime globals",
 );
 
 function compile(source) {
-  const ast = compiler.parse(source, {
+  const ast = frontend.parse(source, {
     filename: "runtime-intrinsics.py",
   });
   const output = new compiler.OutputStream({
@@ -153,3 +149,8 @@ assert.equal(lint.status, 0, lint.stderr);
 assert.equal(lint.stdout, "");
 
 console.log("Sage.js runtime intrinsic lowering passed.");
+frontend.close();
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

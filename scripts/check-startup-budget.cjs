@@ -10,8 +10,8 @@ const ROOT = resolve(__dirname, "..");
 const EXPECTED = "1267650600228229401496703205376";
 const PACKAGE_GRAPH = require("../architecture/package-graph.json");
 
-function startupDefaults(sea = false) {
-  const name = sea ? "sea-cli" : "development-cli";
+function startupDefaults(sea = false, empty = false) {
+  const name = `${sea ? "sea-cli" : "development-cli"}${empty ? "-empty" : ""}`;
   const budget = PACKAGE_GRAPH.startup_budgets[name];
   if (!budget) throw new Error(`missing startup budget ${name}`);
   return {
@@ -139,6 +139,7 @@ function targetCommand({ executable, sea }) {
 function run(argv = process.argv.slice(2), environment = process.env) {
   const parsed = parseArguments(argv);
   const defaults = startupDefaults(parsed.sea);
+  const emptyDefaults = startupDefaults(parsed.sea, true);
   const samples = sampleCount(
     parsed.samples ?? environment.SAGEJS_STARTUP_SAMPLES ?? defaults.samples,
   );
@@ -160,6 +161,7 @@ function run(argv = process.argv.slice(2), environment = process.env) {
   const target = targetCommand(parsed);
   const nodeTimes = [];
   const targetTimes = [];
+  const emptyTargetTimes = [];
 
   const launchNode = () => {
     nodeTimes.push(timedSpawn(process.execPath, ["-e", ""]).elapsedMs);
@@ -176,21 +178,34 @@ function run(argv = process.argv.slice(2), environment = process.env) {
     }
     targetTimes.push(measurement.elapsedMs);
   };
+  const launchEmptyTarget = () => {
+    const measurement = timedSpawn(target.command, target.args, { input: "" });
+    if (measurement.result.stdout.trim() !== "") {
+      throw new Error(
+        `${target.label} produced output for empty stdin: ` +
+          JSON.stringify(measurement.result.stdout),
+      );
+    }
+    emptyTargetTimes.push(measurement.elapsedMs);
+  };
 
   // Alternating order keeps a changing host load from systematically favoring
   // either bare Node or Sage.js. Every observation is a fresh OS process.
   for (let i = 0; i < samples; i += 1) {
     if (i % 2 === 0) {
       launchNode();
+      launchEmptyTarget();
       launchTarget();
     } else {
       launchTarget();
+      launchEmptyTarget();
       launchNode();
     }
   }
 
   const nodeMedianMs = median(nodeTimes);
   const targetMedianMs = median(targetTimes);
+  const emptyTargetMedianMs = median(emptyTargetTimes);
   const assessment = assessStartup({
     nodeMedianMs,
     targetMedianMs,
@@ -198,15 +213,32 @@ function run(argv = process.argv.slice(2), environment = process.env) {
     referenceNodeMs,
     hardLimitMs,
   });
+  const emptyAssessment = assessStartup({
+    nodeMedianMs,
+    targetMedianMs: emptyTargetMedianMs,
+    budgetMs: positiveNumber(
+      environment.SAGEJS_EMPTY_STARTUP_BUDGET_MS,
+      "SAGEJS_EMPTY_STARTUP_BUDGET_MS",
+      emptyDefaults.budgetMs,
+    ),
+    referenceNodeMs: emptyDefaults.referenceNodeMs,
+    hardLimitMs: positiveNumber(
+      environment.SAGEJS_EMPTY_STARTUP_HARD_LIMIT_MS,
+      "SAGEJS_EMPTY_STARTUP_HARD_LIMIT_MS",
+      emptyDefaults.hardLimitMs,
+    ),
+  });
   console.log(`Startup budget (${samples} fresh-process samples, median)`);
   console.log(`  bare Node:             ${nodeMedianMs.toFixed(1)} ms`);
+  console.log(`  ${target.label} empty:`.padEnd(25) + `${emptyTargetMedianMs.toFixed(1)} ms`);
   console.log(`  ${target.label}:`.padEnd(25) + `${targetMedianMs.toFixed(1)} ms`);
   console.log(`  measured load factor:  ${assessment.loadFactor.toFixed(2)}x`);
   console.log(`  normalized Sage.js:    ${assessment.normalizedMs.toFixed(1)} ms`);
+  console.log(`  normalized empty:      ${emptyAssessment.normalizedMs.toFixed(1)} ms`);
   console.log(`  normalized budget:     ${budgetMs.toFixed(1)} ms`);
   console.log(`  catastrophic ceiling:  ${hardLimitMs.toFixed(1)} ms raw`);
 
-  if (!assessment.passed) {
+  if (!assessment.passed || !emptyAssessment.passed) {
     const reasons = [];
     if (!assessment.withinNormalizedBudget) {
       reasons.push(
@@ -215,6 +247,18 @@ function run(argv = process.argv.slice(2), environment = process.env) {
     }
     if (!assessment.withinHardLimit) {
       reasons.push(`${targetMedianMs.toFixed(1)} ms raw exceeds ${hardLimitMs.toFixed(1)} ms`);
+    }
+    if (!emptyAssessment.withinNormalizedBudget) {
+      reasons.push(
+        `${emptyAssessment.normalizedMs.toFixed(1)} ms normalized empty startup ` +
+          `exceeds ${emptyDefaults.budgetMs.toFixed(1)} ms`,
+      );
+    }
+    if (!emptyAssessment.withinHardLimit) {
+      reasons.push(
+        `${emptyTargetMedianMs.toFixed(1)} ms raw empty startup exceeds ` +
+          `${emptyDefaults.hardLimitMs.toFixed(1)} ms`,
+      );
     }
     throw new Error(`Sage.js startup regression: ${reasons.join("; ")}`);
   }

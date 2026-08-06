@@ -238,3 +238,4 @@ class X:
 
 
 assert abs(X()) == 10
+# STAGE_ZERO_ONLY: historical JavaScript unary-operator syntax

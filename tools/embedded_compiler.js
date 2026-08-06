@@ -10,10 +10,15 @@ var has_prop = Object.prototype.hasOwnProperty.call.bind(
   Object.prototype.hasOwnProperty
 );
 
-module.exports = function (compiler, baselib, runjs, name) {
+module.exports = async function (compiler, baselib, runjs, name, frontend) {
+  var ownsFrontend = !frontend;
+  if (!frontend) {
+    frontend = await require("./python/compiler-frontend.js")
+      .createPythonCompilerFrontend(compiler, "python");
+  }
   var LINE_CONTINUATION_CHARS = ":\\";
   runjs = runjs || eval;
-  runjs(print_ast(compiler.parse(""), true));
+  runjs(print_ast(frontend.parse("pass\n", { filename: "<embedded-runtime>" }), true));
   runjs('var __name__ = "' + (name || "__embedded__") + '";');
 
   function print_ast(
@@ -43,7 +48,7 @@ module.exports = function (compiler, baselib, runjs, name) {
       opts = opts || {};
       var classes = this.toplevel ? this.toplevel.classes : undefined;
       var scoped_flags = this.toplevel ? this.toplevel.scoped_flags : undefined;
-      this.toplevel = compiler.parse(code, {
+      this.toplevel = frontend.parse(code, {
         filename: opts.filename || "<embedded>",
         basedir: "__stdlib__",
         classes: classes,
@@ -74,6 +79,9 @@ module.exports = function (compiler, baselib, runjs, name) {
       scoped_flags = this.toplevel.scoped_flags;
 
       return ans;
+    },
+    close: () => {
+      if (ownsFrontend) frontend.close();
     },
   };
 };

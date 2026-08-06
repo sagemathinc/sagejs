@@ -279,12 +279,18 @@ function lowerFunction(fn) {
   };
 }
 
-function lowerSource(source, filename) {
+async function lowerSource(source, filename) {
   const compiler = createCompiler();
-  const toplevel = compiler.parse(source, {
-    filename,
-    jsage: true,
-  });
+  const { createPythonCompilerFrontend } = require(
+    "../../dist/tools/python/compiler-frontend.js"
+  );
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  let toplevel;
+  try {
+    toplevel = frontend.parse(source, { filename, jsage: true });
+  } finally {
+    frontend.close();
+  }
   const functions = array(toplevel.body).map((statement) => {
     expect(
       nodeType(statement) === "AST_Function",

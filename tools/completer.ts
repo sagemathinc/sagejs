@@ -7,11 +7,10 @@
 
 import { runInThisContext } from "vm";
 import { Compiler } from "./compiler";
+import { PYTHON_KEYWORDS } from "./python/contract";
 
-type Token = any;
-
-export default function Completer(compiler: Compiler) {
-  const allKeywords: string[] = compiler.ALL_KEYWORDS.split(" ");
+export default function Completer(_compiler: Compiler) {
+  const allKeywords = PYTHON_KEYWORDS;
 
   function globalNames(): string[] {
     try {
@@ -72,61 +71,21 @@ export default function Completer(compiler: Compiler) {
   }
 
   function findCompletions(line: string) {
-    let t;
-    try {
-      t = compiler.tokenizer(line, "<repl>");
-    } catch (_err) {
-      return [];
-    }
-    const tokens: Token[] = [];
-    let token: Token;
-    while (true) {
-      try {
-        token = t();
-      } catch (_err) {
-        return [];
-      }
-      if (token.type === "eof") break;
-      if (token.type === "punc" && "(){},;:".includes(token.value)) {
-        // empties the tokens since we care about what's next only
-        tokens.splice(0, tokens.length);
-      }
-      tokens.push(token);
-    }
-    if (tokens.length == 0) {
-      // New line or trailing space
+    if (!line || /\s$/.test(line)) {
       return [globalNames(), ""];
     }
-    let lastTok: any = tokens[tokens.length - 1];
-    if (
-      lastTok.value === "." ||
-      (lastTok.type === "name" && compiler.IDENTIFIER_PAT.test(lastTok.value))
-    ) {
-      lastTok = lastTok.value;
-      if (lastTok === ".") {
-        tokens.push({ value: "" });
-        lastTok = "";
-      }
-      if (tokens.length > 1 && tokens[tokens.length - 2].value === ".") {
-        // A compound expression
-        let prefix = "";
-        let result;
-        for (const tok of tokens.slice(0, tokens.length - 2)) {
-          prefix += tok.value;
-        }
-        if (prefix) {
-          try {
-            result = runInThisContext(prefix);
-          } catch (e) {
-            return [];
-          }
-          return [objectNames(result, lastTok), lastTok];
-        }
-      } else {
-        return [prefixMatches(lastTok, globalNames()), lastTok];
-      }
+    const match = line.match(
+      /((?:[A-Za-z_$][A-Za-z0-9_$]*\.)*)([A-Za-z_$][A-Za-z0-9_$]*)?$/,
+    );
+    if (!match) return [];
+    const expression = match[1].replace(/\.$/, "");
+    const prefix = match[2] ?? "";
+    if (!expression) return [prefixMatches(prefix, globalNames()), prefix];
+    try {
+      return [objectNames(runInThisContext(expression), prefix), prefix];
+    } catch (_error) {
+      return [];
     }
-    return [];
   }
 
   return findCompletions;

@@ -1,5 +1,10 @@
 import type { Node as SyntaxNode } from "web-tree-sitter";
 
+import {
+  NATIVE_CLASSES,
+  SAGEJS_PUBLIC_INTRINSICS,
+  SAGEJS_RUNTIME_INTRINSICS,
+} from "./contract";
 import type { PythonSyntaxTree } from "./frontend";
 import { PythonAstSemanticAnalyzer } from "./semantic";
 
@@ -32,6 +37,77 @@ function significantChildren(node: SyntaxNode): SyntaxNode[] {
   );
 }
 
+function decodePythonEscapes(source: string): string {
+  let value = "";
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (character !== "\\") {
+      value += character;
+      continue;
+    }
+    const escaped = source[++index];
+    if (escaped === undefined) {
+      value += "\\";
+      break;
+    }
+    if (escaped === "\n") continue;
+    const controls: Record<string, string> = {
+      "\\": "\\", "'": "'", '"': '"',
+      a: "\x07", b: "\b", f: "\f", n: "\n", r: "\r", t: "\t", v: "\v",
+    };
+    if (Object.hasOwn(controls, escaped)) {
+      value += controls[escaped];
+      continue;
+    }
+    if (/[0-7]/.test(escaped)) {
+      let digits = escaped;
+      while (digits.length < 3 && /[0-7]/.test(source[index + 1] ?? "")) {
+        digits += source[++index];
+      }
+      value += String.fromCharCode(Number.parseInt(digits, 8));
+      continue;
+    }
+    const widths: Record<string, number> = { x: 2, u: 4, U: 8 };
+    const width = widths[escaped];
+    if (width !== undefined) {
+      const digits = source.slice(index + 1, index + 1 + width);
+      if (digits.length !== width || !/^[0-9a-f]+$/i.test(digits)) {
+        throw new SyntaxError(`truncated \\${escaped}${"X".repeat(width)} escape sequence`);
+      }
+      const codepoint = Number.parseInt(digits, 16);
+      if (codepoint > 0x10ffff) {
+        throw new SyntaxError(`illegal Unicode character U+${digits.toUpperCase()}`);
+      }
+      value += String.fromCodePoint(codepoint);
+      index += width;
+      continue;
+    }
+    // Python deliberately preserves unrecognized escapes, including \N when
+    // no Unicode-name database is available in the portable frontend.
+    value += `\\${escaped}`;
+  }
+  return value;
+}
+
+function decodePythonStringLiteral(source: string): {
+  kind: "string" | "bytes" | "js";
+  value: string;
+} {
+  const opening = source.match(/^([A-Za-z]*)("""|'''|"|')/);
+  if (!opening) throw new SyntaxError("invalid string literal");
+  const prefix = opening[1].toLowerCase();
+  const quote = opening[2];
+  const closing = source.slice(-quote.length);
+  if (closing !== quote) throw new SyntaxError("unterminated string literal");
+  const rawBody = source.slice(opening[0].length, -quote.length);
+  const raw = prefix.includes("r");
+  const value = raw ? rawBody : decodePythonEscapes(rawBody);
+  if (raw && value.startsWith("%js") && /\s/.test(value[3] ?? "")) {
+    return { kind: "js", value: value.slice(4).trim() };
+  }
+  return { kind: prefix.includes("b") ? "bytes" : "string", value };
+}
+
 /**
  * Lower Tree-sitter Python/Sage nodes into the established Sage.js semantic
  * AST classes.  This module has no parser: every branch consumes an explicit
@@ -48,6 +124,13 @@ export class PythonCstLowerer {
   private readonly knownClasses = new Map<string, any>();
   private readonly intrinsicModules = new Map<string, Record<string, string>>();
   private nativeBitwise = false;
+  private readonly classStack: string[] = [];
+  private catchDepth = 0;
+  private readonly functionFrames: Array<{
+    isCoroutine: boolean;
+    superClass: string | null;
+    superReceiver: string | null;
+  }> = [];
 
   constructor(
     private readonly compiler: any,
@@ -61,9 +144,9 @@ export class PythonCstLowerer {
     this.lowered.add(root.type);
     this.currentToplevel = finalizedToplevel;
     this.nativeBitwise = this.syntax.source.includes("# sagejs: native-bitwise");
-    for (const [name, details] of Object.entries(
-      this.compiler.NATIVE_CLASSES ?? {},
-    )) this.knownClasses.set(name, details);
+    for (const [name, details] of Object.entries(NATIVE_CLASSES)) {
+      this.knownClasses.set(name, details);
+    }
     for (const name of [
       "BaseException", "Exception", "SystemExit", "KeyboardInterrupt",
       "AttributeError", "ArithmeticError", "LookupError", "IndexError",
@@ -169,9 +252,26 @@ export class PythonCstLowerer {
       }
       case "raise_statement": {
         const value = significantChildren(node)[0];
-        const raised = value
-          ? this.lowerExpression(value)
-          : this.make("AST_SymbolCatch", node, { name: "ρσ_Exception" });
+        let raised: any;
+        if (value) {
+          raised = this.lowerExpression(value);
+        } else if (this.catchDepth > 0) {
+          raised = this.make("AST_SymbolCatch", node, { name: "ρσ_Exception" });
+        } else {
+          const args: any[] = [this.make("AST_String", node, {
+            value: "No active exception to reraise",
+          })];
+          (args as any).kwargs = [];
+          (args as any).kwarg_items = [];
+          (args as any).starargs = false;
+          raised = this.make("AST_New", node, {
+            expression: this.make("AST_SymbolRef", node, {
+              name: "RuntimeError",
+            }),
+            args,
+            python_class: false,
+          });
+        }
         return [this.make("AST_Throw", node, {
           value: raised,
         })];
@@ -186,7 +286,10 @@ export class PythonCstLowerer {
       case "if_statement":
         return [this.lowerIf(node)];
       case "for_statement":
-        return [this.lowerFor(node, false)];
+        return [this.lowerFor(
+          node,
+          node.children.some((part) => part.text === "async"),
+        )];
       case "async_for_statement":
         return [this.lowerFor(node, true)];
       case "while_statement": {
@@ -207,6 +310,22 @@ export class PythonCstLowerer {
         );
       case "delete_statement": {
         const targets = significantChildren(node);
+        const validDeleteTarget = (target: SyntaxNode): boolean => {
+          if (["identifier", "attribute", "subscript"].includes(target.type)) {
+            return true;
+          }
+          if ([
+            "parenthesized_expression", "expression_list", "pattern_list",
+            "tuple_pattern", "list_pattern", "tuple", "list",
+          ].includes(target.type)) {
+            const children = significantChildren(target);
+            return children.length > 0 && children.every(validDeleteTarget);
+          }
+          return false;
+        };
+        if (!targets.every(validDeleteTarget)) {
+          throw new SyntaxError("cannot delete expression");
+        }
         const deleted = targets.map((target) =>
           this.make("AST_UnaryPrefix", node, {
             operator: "delete",
@@ -223,7 +342,10 @@ export class PythonCstLowerer {
       case "nonlocal_statement":
         return [this.lowerDeclaration(node, false)];
       case "with_statement":
-        return [this.lowerWith(node, false)];
+        return [this.lowerWith(
+          node,
+          node.children.some((part) => part.text === "async"),
+        )];
       case "async_with_statement":
         return [this.lowerWith(node, true)];
       case "try_statement":
@@ -244,6 +366,16 @@ export class PythonCstLowerer {
             after: null,
           }),
         })];
+      }
+      case "sage_time_statement": {
+        const timed = this.lowerStatement(this.field(node, "statement"));
+        if (timed.length !== 1) {
+          throw new UnsupportedPythonCstNode(
+            node,
+            "%time must contain exactly one statement",
+          );
+        }
+        return [this.make("AST_TimedStatement", node, { body: timed[0] })];
       }
       case "import_statement":
       case "import_from_statement":
@@ -287,6 +419,9 @@ export class PythonCstLowerer {
   }
 
   private lowerFor(node: SyntaxNode, isAsync: boolean): any {
+    if (isAsync && !this.functionFrames.at(-1)?.isCoroutine) {
+      throw new SyntaxError("'async for' outside async function");
+    }
     const alternative = significantChildren(node).find(
       (child) => child.type === "else_clause",
     );
@@ -318,6 +453,9 @@ export class PythonCstLowerer {
   }
 
   private lowerDeclaration(node: SyntaxNode, isGlobal: boolean): any {
+    if (!isGlobal && this.functionFrames.length === 0) {
+      throw new SyntaxError("nonlocal declaration not allowed at module level");
+    }
     return this.make("AST_Var", node, {
       definitions: significantChildren(node).map((name) =>
         this.make("AST_VarDef", name, {
@@ -330,6 +468,9 @@ export class PythonCstLowerer {
   }
 
   private lowerWith(node: SyntaxNode, isAsync: boolean): any {
+    if (isAsync && !this.functionFrames.at(-1)?.isCoroutine) {
+      throw new SyntaxError("'async with' outside async function");
+    }
     const clause = significantChildren(node).find(
       (child) => child.type === "with_clause",
     );
@@ -376,14 +517,21 @@ export class PythonCstLowerer {
         (child) => child.type === "block",
       );
       if (!body) throw new UnsupportedPythonCstNode(clause, "missing body");
+      this.catchDepth += 1;
+      let loweredBody: any[];
+      try {
+        loweredBody = significantChildren(body).flatMap((child) =>
+          this.lowerStatement(child)
+        );
+      } finally {
+        this.catchDepth -= 1;
+      }
       return this.make("AST_Except", clause, {
         argname: alias
           ? this.make("AST_SymbolCatch", alias, { name: alias.text })
           : null,
         errors,
-        body: significantChildren(body).flatMap((child) =>
-          this.lowerStatement(child)
-        ),
+        body: loweredBody,
       });
     });
     const elseClause = significantChildren(node).find(
@@ -424,6 +572,7 @@ export class PythonCstLowerer {
     switch (node.type) {
       case "identifier":
       case "keyword_identifier":
+        if (node.text === "__debug__") return this.make("AST_True", node);
         return this.make("AST_SymbolRef", node, { name: node.text });
       case "integer":
       case "float":
@@ -499,9 +648,26 @@ export class PythonCstLowerer {
           right: this.lowerType(right),
         });
       }
-      case "expression_list":
       case "tuple":
+        // tree-sitter-python uses tuple_pattern for both `(target)` and
+        // `(target,)`; only the latter is an unpacking target.
+        if (
+          significantChildren(node).length === 1 &&
+          !node.text.includes(",")
+        ) return this.lowerExpression(significantChildren(node)[0]);
+        return this.make("AST_Array", node, {
+          elements: significantChildren(node).map((child) =>
+            this.lowerExpression(child)
+          ),
+          is_tuple: true,
+        });
+      case "expression_list":
       case "tuple_pattern":
+        if (
+          significantChildren(node).length === 1 &&
+          !node.text.includes(",")
+        ) return this.lowerExpression(significantChildren(node)[0]);
+        return this.lowerTuple(node);
       case "pattern_list":
         return this.lowerTuple(node);
       case "list":
@@ -584,6 +750,9 @@ export class PythonCstLowerer {
       case "generator_expression":
         return this.lowerComprehension(node, "AST_GeneratorComprehension");
       case "yield": {
+        if (!this.functionFrames.length) {
+          throw new SyntaxError("'yield' outside function");
+        }
         const child = significantChildren(node)[0];
         const isFrom = node.children.some((part) => part.text === "from");
         return this.make("AST_Yield", node, {
@@ -592,6 +761,9 @@ export class PythonCstLowerer {
         });
       }
       case "await": {
+        if (!this.functionFrames.at(-1)?.isCoroutine) {
+          throw new SyntaxError("'await' outside async function");
+        }
         const child = significantChildren(node)[0];
         return this.make("AST_Yield", node, {
           is_yield_from: true,
@@ -602,9 +774,22 @@ export class PythonCstLowerer {
         {
           const object = this.field(node, "object");
           const property = this.field(node, "attribute").text;
-          const intrinsic = object.type === "identifier"
-            ? this.intrinsicModules.get(object.text)?.[property]
+          const intrinsicTable = object.type === "identifier"
+            ? this.intrinsicModules.get(object.text)
             : undefined;
+          if (
+            intrinsicTable &&
+            !Object.hasOwn(intrinsicTable, property) &&
+            !this.options.for_linting
+          ) {
+            throw new SyntaxError(
+              `${intrinsicTable === SAGEJS_RUNTIME_INTRINSICS
+                ? "sagejs.runtime"
+                : "sagejs"} ` +
+                `has no compiler intrinsic named ${property}`,
+            );
+          }
+          const intrinsic = intrinsicTable?.[property];
           if (intrinsic && !this.options.for_linting) {
             const symbol = this.make("AST_SymbolRef", node, { name: intrinsic });
             symbol.intrinsic_call = true;
@@ -636,6 +821,9 @@ export class PythonCstLowerer {
         });
       case "sage_empty_subscript": {
         const names = this.options.sageGeneratorNames ?? [];
+        if (names.length === 0) {
+          throw new SyntaxError("Unexpected token: ]");
+        }
         const value = this.lowerExpression(this.field(node, "value"));
         const variableNames = names.length === 1
           ? this.make("AST_String", node, { value: names[0] })
@@ -745,11 +933,27 @@ export class PythonCstLowerer {
   private lowerNumber(node: SyntaxNode): any {
     const suffix = node.text.match(/[rRlLjJ]+$/)?.[0] ?? "";
     const raw = suffix ? node.text.slice(0, -suffix.length) : node.text;
-    if (/[jJ]/.test(suffix)) throw new UnsupportedPythonCstNode(node, "complex");
     const integer = node.type === "integer" || (
       node.type === "sage_number" &&
       (/^0[xob]/i.test(raw) || (!raw.includes(".") && !/[eE]/.test(raw)))
     );
+    const decimalDigits = raw.replaceAll("_", "");
+    if (
+      integer && /^0[0-9_]+$/.test(raw) && /[1-9]/.test(decimalDigits)
+    ) {
+      throw new SyntaxError(
+        "leading zeros in decimal integer literals are not permitted",
+      );
+    }
+    if (/[jJ]/.test(suffix)) {
+      const imaginary = this.numberFromText(node, raw, integer);
+      return this.make("AST_Call", node, {
+        expression: this.make("AST_SymbolRef", node, {
+          name: this.syntax.mode === "sage" ? "CC" : "complex",
+        }),
+        args: [this.numberFromText(node, "0", true), imaginary],
+      });
+    }
     return this.numberFromText(node, raw, integer);
   }
 
@@ -763,11 +967,11 @@ export class PythonCstLowerer {
           value: strings.map((string) => string.value).join(""),
         });
       }
-      if (strings.every((string) =>
+      const isBytes = (string: any) =>
         string instanceof this.compiler.AST_Call &&
         string.expression?.name === "ρσ_bytes_literal" &&
-        string.args?.[0] instanceof this.compiler.AST_String
-      )) {
+        string.args?.[0] instanceof this.compiler.AST_String;
+      if (strings.every(isBytes)) {
         return this.make("AST_Call", node, {
           expression: this.make("AST_SymbolRef", node, {
             name: "ρσ_bytes_literal",
@@ -777,7 +981,12 @@ export class PythonCstLowerer {
           })],
         });
       }
-      throw new SyntaxError("cannot mix bytes and nonbytes literals");
+      if (strings.some(isBytes)) {
+        throw new SyntaxError("cannot mix bytes and nonbytes literals");
+      }
+      // Adjacent f-strings and ordinary strings concatenate at compile time
+      // semantically, though interpolation keeps the resulting AST dynamic.
+      return this.concatenateExpressions(node, strings);
     }
     const stringStart = significantChildren(node).find(
       (child) => child.type === "string_start",
@@ -788,47 +997,45 @@ export class PythonCstLowerer {
     ) {
       return this.lowerFormattedString(node);
     }
-    const input = this.compiler.tokenizer(
-      node.text,
-      this.options.filename ?? "<string>",
-      true,
-      this.syntax.mode === "sage",
-    );
-    const token = input();
-    if (token.type === "string") {
-      return this.make("AST_String", node, { value: token.value });
+    const literal = decodePythonStringLiteral(node.text);
+    if (literal.kind === "string") {
+      return this.make("AST_String", node, { value: literal.value });
     }
-    if (token.type === "bytes") {
+    if (literal.kind === "bytes") {
       return this.make("AST_Call", node, {
         expression: this.make("AST_SymbolRef", node, {
           name: "ρσ_bytes_literal",
         }),
-        args: [this.make("AST_String", node, { value: token.value })],
+        args: [this.make("AST_String", node, { value: literal.value })],
       });
     }
-    if (token.type === "js") {
-      return this.make("AST_Verbatim", node, { value: token.value });
+    if (literal.kind === "js") {
+      return this.make("AST_Verbatim", node, { value: literal.value });
     }
-    throw new UnsupportedPythonCstNode(node, token.type);
+    throw new UnsupportedPythonCstNode(node, literal.kind);
   }
 
-  private decodeStringFragment(node: SyntaxNode): any {
-    const quoted = `"${node.text.replaceAll('"', '\\"')}"`;
-    const token = this.compiler.tokenizer(
-      quoted,
-      this.options.filename ?? "<string>",
-      true,
-      this.syntax.mode === "sage",
-    )();
-    return this.make("AST_String", node, { value: token.value });
+  private decodeStringFragment(node: SyntaxNode, raw: boolean): any {
+    let value = raw || node.type !== "escape_sequence"
+      ? node.text
+      : decodePythonEscapes(node.text);
+    // The f-string scanner deliberately preserves doubled literal braces.
+    value = value.replaceAll("{{", "{").replaceAll("}}", "}");
+    return this.make("AST_String", node, {
+      value,
+    });
   }
 
   private lowerFormattedString(node: SyntaxNode): any {
     const pieces: any[] = [];
+    const start = significantChildren(node).find(
+      (child) => child.type === "string_start",
+    );
+    const raw = /^(?=[A-Za-z]*["'])(?=[A-Za-z]*r)/i.test(start?.text ?? "");
     for (const child of significantChildren(node)) {
       if (child.type === "string_start" || child.type === "string_end") continue;
       if (child.type === "string_content" || child.type === "escape_sequence") {
-        pieces.push(this.decodeStringFragment(child));
+        pieces.push(this.decodeStringFragment(child, raw));
         continue;
       }
       if (child.type !== "interpolation") {
@@ -846,9 +1053,19 @@ export class PythonCstLowerer {
       const debugPrefix = debug
         ? inner.match(/^(.+?=\s*)/)?.[1] ?? `${expression.text}=`
         : "";
-      const formatText = `${debugPrefix}{${
-        conversion?.text ?? (debug ? "!r" : "")
-      }${format?.text ?? ""}}`;
+      const conversionText = conversion?.text ??
+        (debug && !format ? "!r" : "");
+      const formatText = format
+        ? this.concatenateExpressions(node, [
+          this.make("AST_String", child, {
+            value: `${debugPrefix}{${conversionText}`,
+          }),
+          this.lowerFormatSpecifier(format),
+          this.make("AST_String", child, { value: "}" }),
+        ])
+        : this.make("AST_String", child, {
+          value: `${debugPrefix}{${conversionText}}`,
+        });
       const lowered = this.lowerExpression(expression);
       if (lowered instanceof this.compiler.AST_SymbolRef) lowered.parens = true;
       pieces.push(this.make("AST_Call", child, {
@@ -858,7 +1075,7 @@ export class PythonCstLowerer {
         }),
         direct_call: false,
         args: [
-          this.make("AST_String", child, { value: formatText }),
+          formatText,
           lowered,
         ],
       }));
@@ -880,6 +1097,44 @@ export class PythonCstLowerer {
     );
   }
 
+  private concatenateExpressions(node: SyntaxNode, pieces: any[]): any {
+    if (!pieces.length) return this.make("AST_String", node, { value: "" });
+    return pieces.slice(1).reduce(
+      (left, right) => this.make("AST_Binary", node, {
+        left,
+        operator: "+",
+        right,
+      }),
+      pieces[0],
+    );
+  }
+
+  private lowerFormatSpecifier(node: SyntaxNode): any {
+    const pieces: any[] = [];
+    let cursor = node.startIndex;
+    for (const expression of significantChildren(node)) {
+      if (expression.type !== "format_expression") continue;
+      if (expression.startIndex > cursor) {
+        pieces.push(this.make("AST_String", node, {
+          value: this.syntax.source.slice(cursor, expression.startIndex),
+        }));
+      }
+      const value = this.field(expression, "expression");
+      pieces.push(this.make("AST_Call", expression, {
+        expression: this.make("AST_SymbolRef", expression, { name: "str" }),
+        direct_call: false,
+        args: [this.lowerExpression(value)],
+      }));
+      cursor = expression.endIndex;
+    }
+    if (cursor < node.endIndex) {
+      pieces.push(this.make("AST_String", node, {
+        value: this.syntax.source.slice(cursor, node.endIndex),
+      }));
+    }
+    return this.concatenateExpressions(node, pieces);
+  }
+
   private lowerAssignment(node: SyntaxNode): any {
     const left =
       this.optionalField(node, "left") ?? this.field(node, "name");
@@ -898,6 +1153,12 @@ export class PythonCstLowerer {
       this.optionalField(node, "operator")?.text ??
       "=",
     );
+    if (
+      operator !== "=" &&
+      ["pattern_list", "tuple_pattern", "list_pattern"].includes(left.type)
+    ) {
+      throw new SyntaxError("illegal expression for augmented assignment");
+    }
     const loweredLeft = this.lowerExpression(left);
     const loweredRight = this.lowerExpression(right);
     if (
@@ -939,6 +1200,16 @@ export class PythonCstLowerer {
     let starargs: any = null;
     let kwargs: any = null;
     let keywordOnly = false;
+    let sawPositionalDefault = false;
+    let sawVarargs = false;
+    let sawKwargs = false;
+    const parameterNames = new Set<string>();
+    const register = (name: SyntaxNode): void => {
+      if (parameterNames.has(name.text)) {
+        throw new SyntaxError(`duplicate argument '${name.text}'`);
+      }
+      parameterNames.add(name.text);
+    };
 
     const makeArgument = (nameNode: SyntaxNode, typeNode: SyntaxNode | null) =>
       this.make("AST_SymbolFunarg", nameNode, {
@@ -948,19 +1219,33 @@ export class PythonCstLowerer {
       });
 
     for (const parameter of significantChildren(node)) {
+      if (sawKwargs) {
+        throw new SyntaxError("arguments cannot follow var-keyword argument");
+      }
       if (parameter.type === "list_splat_pattern") {
+        if (sawVarargs) throw new SyntaxError("* argument may appear only once");
         keywordOnly = true;
         const name = significantChildren(parameter)[0];
-        starargs = name ? makeArgument(name, null) : null;
+        if (name) {
+          register(name);
+          starargs = makeArgument(name, null);
+        }
+        sawVarargs = true;
         continue;
       }
       if (parameter.type === "dictionary_splat_pattern") {
         const name = significantChildren(parameter)[0];
+        register(name);
         kwargs = makeArgument(name, null);
+        sawKwargs = true;
         continue;
       }
       if (parameter.type === "keyword_separator") {
+        if (sawVarargs || keywordOnly) {
+          throw new SyntaxError("* argument may appear only once");
+        }
         keywordOnly = true;
+        sawVarargs = true;
         continue;
       }
       let name = parameter;
@@ -973,21 +1258,30 @@ export class PythonCstLowerer {
         name = this.field(parameter, "name");
         typeNode = parameter.childForFieldName("type");
         value = this.field(parameter, "value");
+        if (!keywordOnly) sawPositionalDefault = true;
       } else if (parameter.type === "typed_parameter") {
         name = significantChildren(parameter)[0];
         typeNode = parameter.childForFieldName("type");
         if (name.type === "list_splat_pattern") {
           keywordOnly = true;
           const identifier = significantChildren(name)[0];
+          register(identifier);
           starargs = makeArgument(identifier, typeNode);
+          sawVarargs = true;
           continue;
         }
         if (name.type === "dictionary_splat_pattern") {
           const identifier = significantChildren(name)[0];
+          register(identifier);
           kwargs = makeArgument(identifier, typeNode);
+          sawKwargs = true;
           continue;
         }
       }
+      if (!value && !keywordOnly && sawPositionalDefault) {
+        throw new SyntaxError("non-default argument follows default argument");
+      }
+      register(name);
       const argument = makeArgument(name, typeNode);
       (keywordOnly ? kwonly : positional).push(argument);
       if (value) defaults[name.text] = this.lowerExpression(value);
@@ -1017,12 +1311,24 @@ export class PythonCstLowerer {
     const parameters = node.childForFieldName("parameters");
     const body = this.field(node, "body");
     const args = parameters ? this.lowerParameters(parameters) : this.emptyParameters();
+    const inherited = this.functionFrames.at(-1);
+    this.functionFrames.push({
+      isCoroutine: false,
+      superClass: inherited?.superClass ?? null,
+      superReceiver: inherited?.superReceiver ?? null,
+    });
+    let loweredBody: any;
+    try {
+      loweredBody = this.lowerExpression(body);
+    } finally {
+      this.functionFrames.pop();
+    }
     return this.make("AST_Function", node, {
       name: null,
       argnames: args,
       decorators: [],
       annotations: this.annotationsMode,
-      is_generator: false,
+      is_generator: this.containsNodeType(node, "yield"),
       is_coroutine: false,
       is_lambda: true,
       is_expression: true,
@@ -1036,7 +1342,7 @@ export class PythonCstLowerer {
       localvars: [],
       annotated_locals: [],
       docstrings: [],
-      body: this.lowerExpression(body),
+      body: loweredBody,
     });
   }
 
@@ -1049,6 +1355,21 @@ export class PythonCstLowerer {
     ].map((argument) => argument.name);
   }
 
+  private withLexicalImportScope<T>(callback: () => T): T {
+    const classes = new Map(this.knownClasses);
+    const intrinsics = new Map(this.intrinsicModules);
+    try {
+      return callback();
+    } finally {
+      this.knownClasses.clear();
+      for (const [name, details] of classes) this.knownClasses.set(name, details);
+      this.intrinsicModules.clear();
+      for (const [name, table] of intrinsics) {
+        this.intrinsicModules.set(name, table);
+      }
+    }
+  }
+
   private lowerFunction(
     node: SyntaxNode,
     decorators: any[],
@@ -1059,18 +1380,38 @@ export class PythonCstLowerer {
     const args = this.lowerParameters(parameters);
     const returnType = node.childForFieldName("return_type");
     const bodyNode = this.field(node, "body");
-    const loweredBody = significantChildren(bodyNode).flatMap((child) =>
-      this.lowerStatement(child)
-    );
-    const extracted = this.extractDocstrings(loweredBody);
     const isCoroutine = node.children.some((part) => part.text === "async");
+    const inherited = this.functionFrames.at(-1);
+    this.functionFrames.push({
+      isCoroutine,
+      superClass: isMethod
+        ? this.classStack.at(-1) ?? null
+        : inherited?.superClass ?? null,
+      superReceiver: isMethod
+        ? args[0]?.name ?? null
+        : inherited?.superReceiver ?? null,
+    });
+    let loweredBody: any[];
+    try {
+      loweredBody = this.withLexicalImportScope(() =>
+        significantChildren(bodyNode).flatMap((child) =>
+          this.lowerStatement(child)
+        )
+      );
+    } finally {
+      this.functionFrames.pop();
+    }
+    const extracted = this.extractDocstrings(loweredBody);
     const Constructor = isMethod ? "AST_Method" : "AST_Function";
     const properties: Record<string, any> = {
       name: this.make("AST_SymbolDefun", nameNode, { name: nameNode.text }),
       argnames: args,
       decorators,
       annotations: this.annotationsMode,
-      is_generator: this.containsNodeType(node, "yield"),
+      // Sage.js implements Python coroutines with the generator protocol, so
+      // an async function must be emitted as `function*` even when its only
+      // suspension points are `await`, `async for`, or `async with`.
+      is_generator: isCoroutine || this.containsNodeType(node, "yield"),
       is_coroutine: isCoroutine,
       is_lambda: false,
       is_expression: false,
@@ -1186,24 +1527,39 @@ export class PythonCstLowerer {
     const bases = superclasses
       ? significantChildren(superclasses).map((child) => this.lowerExpression(child))
       : [];
-    const statements: any[] = [];
-    for (const child of significantChildren(this.field(node, "body"))) {
-      if (child.type === "function_definition") {
-        statements.push(this.lowerFunction(child, [], true));
-      } else if (child.type === "decorated_definition") {
-        const definition = this.field(child, "definition");
-        if (definition.type !== "function_definition") {
-          statements.push(...this.lowerDecoratedDefinition(child));
-        } else {
-          statements.push(this.lowerFunction(
-            definition,
-            this.lowerDecorators(child),
-            true,
-          ));
+    // The class name is already bound while its body is compiled.  Calls to
+    // that name from methods are constructor calls even though the complete
+    // method/class-variable table is not available until the body has been
+    // lowered.  A provisional entry is enough to select AST_New; it is
+    // replaced by the finished class definition below.
+    this.knownClasses.set(nameNode.text, Object.create(null));
+    this.classStack.push(nameNode.text);
+    let statements: any[];
+    try {
+      statements = this.withLexicalImportScope(() => {
+        const result: any[] = [];
+        for (const child of significantChildren(this.field(node, "body"))) {
+          if (child.type === "function_definition") {
+            result.push(this.lowerFunction(child, [], true));
+          } else if (child.type === "decorated_definition") {
+            const definition = this.field(child, "definition");
+            if (definition.type !== "function_definition") {
+              result.push(...this.lowerDecoratedDefinition(child));
+            } else {
+              result.push(this.lowerFunction(
+                definition,
+                this.lowerDecorators(child),
+                true,
+              ));
+            }
+          } else {
+            result.push(...this.lowerStatement(child));
+          }
         }
-      } else {
-        statements.push(...this.lowerStatement(child));
-      }
+        return result;
+      });
+    } finally {
+      this.classStack.pop();
     }
     const extracted = this.extractDocstrings(statements);
     const classStatements = extracted.body;
@@ -1224,9 +1580,25 @@ export class PythonCstLowerer {
     const staticMethods: Record<string, boolean> = Object.create(null);
     const classMethods: Record<string, boolean> = Object.create(null);
     const dynamicProperties: Record<string, any> = Object.create(null);
+    const nonlocalNames: string[] = [];
+    for (const base of bases) {
+      if (!(base instanceof this.compiler.AST_SymbolRef)) continue;
+      const inherited = this.knownClasses.get(base.name);
+      if (!inherited) continue;
+      Object.assign(staticMethods, inherited.static ?? {});
+      Object.assign(classMethods, inherited.classmethods ?? {});
+      Object.assign(classvars, inherited.classvars ?? {});
+    }
     let initializer: any = undefined;
     for (const statement of classStatements) {
       const body = statement?.body;
+      if (statement instanceof this.compiler.AST_Var) {
+        for (const declaration of statement.definitions ?? []) {
+          if (!declaration.is_global && declaration.name?.name) {
+            nonlocalNames.push(declaration.name.name);
+          }
+        }
+      }
       if (body instanceof this.compiler.AST_Assign && body.left?.name) {
         classvars[body.left.name] = true;
       }
@@ -1245,13 +1617,23 @@ export class PythonCstLowerer {
         }
       }
     }
-    this.rewriteClassVariables(nameNode.text, classStatements, classvars);
-    const bound = classStatements
-      .filter((statement) => statement instanceof this.compiler.AST_Method)
-      .filter((method) =>
-        method.name.name !== "__init__" && !method.static && !method.classmethod
-      )
-      .map((method) => method.name.name);
+    for (const name of nonlocalNames) delete classvars[name];
+    this.rewriteClassVariables(
+      nameNode.text,
+      classStatements,
+      classvars,
+      new Set(nonlocalNames),
+    );
+    const useBoundMethods = this.currentToplevel?.scoped_flags
+      ?.bound_methods ?? this.options.scoped_flags?.bound_methods ?? true;
+    const bound = useBoundMethods
+      ? classStatements
+        .filter((statement) => statement instanceof this.compiler.AST_Method)
+        .filter((method) =>
+          method.name.name !== "__init__" && !method.static
+        )
+        .map((method) => method.name.name)
+      : [];
     const sequential = this.currentToplevel?.scoped_flags
       ?.sequential_definitions ??
       this.options.scoped_flags?.sequential_definitions ?? false;
@@ -1293,22 +1675,96 @@ export class PythonCstLowerer {
       ),
       dynamic_properties: dynamicProperties,
       classvars,
-      nonlocal_names: [],
+      nonlocal_names: nonlocalNames,
       localvars: [],
       annotated_locals: [],
       docstrings: extracted.docstrings,
       body: classStatements,
       init: initializer,
     });
+    this.specializeBigintClass(definition);
     // Class constructor calls later in the same suite must lower as `new`.
     this.knownClasses.set(nameNode.text, definition);
     return definition;
+  }
+
+  /** Preserve the typed integer fast path formerly coupled to token parsing. */
+  private specializeBigintClass(definition: any): void {
+    if (!Object.keys(definition.bigint_fields ?? {}).length) return;
+    const className = definition.name.name;
+    for (const method of definition.body ?? []) {
+      if (!(method instanceof this.compiler.AST_Method)) continue;
+      const objectTypes: Record<string, string> = Object.create(null);
+      const bigintLocals = new Set<string>();
+      if (!method.static && method.argnames?.length) {
+        objectTypes[method.argnames[0].name] = className;
+      }
+      for (const argument of method.argnames ?? []) {
+        const annotation = argument.annotation;
+        if (annotation instanceof this.compiler.AST_SymbolRef) {
+          objectTypes[argument.name] = annotation.name;
+        } else if (annotation instanceof this.compiler.AST_String) {
+          objectTypes[argument.name] = annotation.value;
+        }
+      }
+      const isBigint = (value: any): boolean => {
+        if (value?.inferred_type === "bigint") return true;
+        if (value instanceof this.compiler.AST_SymbolRef) {
+          return bigintLocals.has(value.name);
+        }
+        if (!(value instanceof this.compiler.AST_Dot)) return false;
+        const owner = value.expression;
+        return owner instanceof this.compiler.AST_SymbolRef &&
+          objectTypes[owner.name] === className &&
+          !!definition.bigint_fields[value.property];
+      };
+      const seen = new Set<any>();
+      const visit = (value: any): void => {
+        if (!value || typeof value !== "object" || seen.has(value)) return;
+        seen.add(value);
+        if (Array.isArray(value)) {
+          for (const child of value) visit(child);
+          for (const key of ["kwonly", "starargs", "kwargs", "defaults"]) {
+            visit(value[key]);
+          }
+          return;
+        }
+        if (!(value instanceof this.compiler.AST_Node)) return;
+        for (const [key, child] of Object.entries(value)) {
+          if (["start", "end", "scope", "thedef", "imports"].includes(key) ||
+              typeof child === "function") continue;
+          visit(child);
+        }
+        if (value instanceof this.compiler.AST_Binary) {
+          if (value.operator === "instanceof" &&
+              value.right instanceof this.compiler.AST_SymbolRef) {
+            value.native_operator = true;
+          } else if (["+", "-", "*"].includes(value.operator) &&
+              isBigint(value.left) && isBigint(value.right)) {
+            value.native_operator = true;
+            value.inferred_type = "bigint";
+          }
+        } else if (value instanceof this.compiler.AST_UnaryPrefix &&
+            value.operator === "-" && isBigint(value.expression)) {
+          value.native_operator = true;
+          value.inferred_type = "bigint";
+        }
+        if (value instanceof this.compiler.AST_Assign &&
+            value.operator === "=" &&
+            value.left instanceof this.compiler.AST_SymbolRef &&
+            isBigint(value.right)) {
+          bigintLocals.add(value.left.name);
+        }
+      };
+      visit(method.body);
+    }
   }
 
   private rewriteClassVariables(
     className: string,
     statements: any[],
     classvars: Record<string, boolean>,
+    nonlocals = new Set<string>(),
   ): void {
     const known = new Set<string>();
     const definition = (name: string) => new this.compiler.AST_SymbolDefun({
@@ -1325,6 +1781,7 @@ export class PythonCstLowerer {
       if (value instanceof this.compiler.AST_Assign &&
           value.left instanceof this.compiler.AST_SymbolRef) {
         const name = value.left.name;
+        if (nonlocals.has(name)) return;
         known.add(name);
         classvars[name] = true;
         value.left.thedef = definition(name);
@@ -1423,8 +1880,8 @@ export class PythonCstLowerer {
     for (const imported of imports) {
       if (!imported.intrinsic || !imported.alias?.name) continue;
       const table = imported.key === "sagejs.runtime"
-        ? this.compiler.SAGEJS_RUNTIME_INTRINSICS
-        : this.compiler.SAGEJS_PUBLIC_INTRINSICS;
+        ? SAGEJS_RUNTIME_INTRINSICS
+        : SAGEJS_PUBLIC_INTRINSICS;
       if (table) this.intrinsicModules.set(imported.alias.name, table);
     }
     return this.make("AST_Imports", node, { imports });
@@ -1588,6 +2045,10 @@ export class PythonCstLowerer {
     const clauses: any[] = [];
     for (const child of significantChildren(node).slice(1)) {
       if (child.type === "for_in_clause") {
+        const isAsync = child.children.some((part) => part.text === "async");
+        if (isAsync && !this.functionFrames.at(-1)?.isCoroutine) {
+          throw new SyntaxError("asynchronous comprehension outside async function");
+        }
         clauses.push({
           init: this.lowerBindingTarget(
             this.lowerExpression(this.field(child, "left")),
@@ -1596,7 +2057,7 @@ export class PythonCstLowerer {
           name: null,
           object: this.lowerExpression(this.field(child, "right")),
           conditions: [],
-          is_async: child.children.some((part) => part.text === "async"),
+          is_async: isAsync,
         });
       } else if (child.type === "if_clause") {
         const expression = significantChildren(child)[0];
@@ -1677,7 +2138,7 @@ export class PythonCstLowerer {
     return build(0);
   }
 
-  private lowerCall(node: SyntaxNode): any {
+  private lowerCall(node: SyntaxNode, unwrapSplatFunction = false): any {
     const args: any[] = [];
     (args as any).kwargs = [];
     (args as any).kwarg_items = [];
@@ -1686,8 +2147,11 @@ export class PythonCstLowerer {
     const argumentNodes = argumentsNode.type === "argument_list"
       ? significantChildren(argumentsNode)
       : [argumentsNode];
+    let sawKeyword = false;
+    let sawDictionarySplat = false;
     for (const argument of argumentNodes) {
       if (argument.type === "keyword_argument") {
+        sawKeyword = true;
         (args as any).kwargs.push([
           this.make("AST_SymbolRef", this.field(argument, "name"), {
             name: this.field(argument, "name").text,
@@ -1695,15 +2159,28 @@ export class PythonCstLowerer {
           this.lowerExpression(this.field(argument, "value")),
         ]);
       } else if (argument.type === "dictionary_splat") {
+        sawDictionarySplat = true;
         (args as any).kwarg_items.push(
           this.lowerExpression(significantChildren(argument)[0]),
         );
         (args as any).starargs = true;
       } else {
-        const isSplat =
+        const splatFunction = argument.type === "call" &&
+          this.field(argument, "function").type === "list_splat";
+        const isSplat = splatFunction ||
           argument.type === "list_splat" ||
           argument.type === "list_splat_pattern";
-        const lowered = isSplat
+        if (sawDictionarySplat && isSplat) {
+          throw new SyntaxError(
+            "iterable argument unpacking follows keyword argument unpacking",
+          );
+        }
+        if ((sawKeyword || sawDictionarySplat) && !isSplat) {
+          throw new SyntaxError("positional argument follows keyword argument");
+        }
+        const lowered = splatFunction
+          ? this.lowerCall(argument, true)
+          : isSplat
           ? this.lowerExpression(significantChildren(argument)[0])
           : this.lowerExpression(argument);
         if (
@@ -1715,11 +2192,23 @@ export class PythonCstLowerer {
         args.push(lowered);
       }
     }
-    const functionNode = this.field(node, "function");
+    let functionNode = this.field(node, "function");
+    if (unwrapSplatFunction) {
+      functionNode = significantChildren(functionNode)[0];
+    }
     const callable = this.lowerExpression(functionNode);
     const callableName = callable instanceof this.compiler.AST_SymbolRef
       ? callable.name
       : null;
+    if (callableName === "super" && args.length === 0) {
+      const frame = this.functionFrames.at(-1);
+      if (frame?.superClass && frame.superReceiver) {
+        args.push(
+          this.make("AST_SymbolRef", node, { name: frame.superClass }),
+          this.make("AST_SymbolRef", node, { name: frame.superReceiver }),
+        );
+      }
+    }
     if (
       functionNode.type === "identifier" &&
       functionNode.text === "isinstance"
@@ -1747,16 +2236,40 @@ export class PythonCstLowerer {
     }
     if (functionNode.type === "attribute") {
       const ownerNode = this.field(functionNode, "object");
-      const ownerKey = this.expressionKey(ownerNode);
+      // Intrinsic module attributes are rewritten while the callable is
+      // lowered (for example ``runtime.object`` becomes the native
+      // ``Object`` symbol).  Prefer that authoritative lowered owner when it
+      // names a known native class; the source spelling is still needed for
+      // ordinary imported classes.
+      const loweredOwnerKey = callable instanceof this.compiler.AST_Dot &&
+          callable.expression instanceof this.compiler.AST_SymbolRef
+        ? callable.expression.name
+        : null;
+      const sourceOwnerKey = this.expressionKey(ownerNode);
+      const ownerKey = loweredOwnerKey && this.knownClasses.has(loweredOwnerKey)
+        ? loweredOwnerKey
+        : sourceOwnerKey;
       const method = this.field(functionNode, "attribute").text;
       if (ownerKey && this.knownClasses.has(ownerKey)) {
         const details = this.knownClasses.get(ownerKey);
+        const classvar = !!details?.classvars?.[method];
+        if (ownerKey === "Object") {
+          if (method === "defineProperty" && args[2]) {
+            this.markNativeObjectLiteral(args[2]);
+          } else if (
+            (method === "defineProperties" || method === "create") && args[1]
+          ) {
+            this.markNativeObjectLiteral(args[1], true);
+          }
+        }
         return this.make("AST_ClassCall", node, {
           class: this.lowerExpression(ownerNode),
           method,
           static: method === "__new__" ||
             ["call", "apply", "bind", "toString"].includes(method) ||
-            !!details?.static?.[method] || !!details?.classmethods?.[method],
+            !!details?.static?.[method] || !!details?.classmethods?.[method] ||
+            classvar,
+          classvar,
           args,
         });
       }
@@ -1799,11 +2312,32 @@ export class PythonCstLowerer {
         native_operator: true,
       });
     }
+    const inferredType = new Set([
+      "BigInt",
+      "ρσ_bigint_divexact",
+      "ρσ_bigint_gcd",
+      "ρσ_integer_bigint",
+    ]).has(callableName ?? "") ? "bigint" : undefined;
     return this.make("AST_Call", node, {
       expression: callable,
-      direct_call: callable.intrinsic_call === true,
+      direct_call: callable.intrinsic_call === true || inferredType !== undefined,
+      inferred_type: inferredType,
       args,
     });
+  }
+
+  /** Mark the object-shaped metadata consumed directly by native Object APIs. */
+  private markNativeObjectLiteral(value: any, descriptorMap = false): void {
+    if (!(value instanceof this.compiler.AST_Object)) return;
+    value.is_pydict = false;
+    value.is_jshash = false;
+    if (!descriptorMap) return;
+    for (const property of value.properties ?? []) {
+      if (property.value instanceof this.compiler.AST_Object) {
+        property.value.is_pydict = false;
+        property.value.is_jshash = false;
+      }
+    }
   }
 
   private lowerSubscript(node: SyntaxNode): any {

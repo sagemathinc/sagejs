@@ -53,3 +53,4 @@ assrt.equal(re.search(///
     .  # anything
     b
     ///, ' axb').group(), 'axb')
+# STAGE_ZERO_ONLY: historical JavaScript regexp literal syntax

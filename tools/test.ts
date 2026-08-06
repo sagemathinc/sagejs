@@ -8,16 +8,16 @@
 import { basename, join } from "path";
 import { readFileSync, readdirSync, writeFileSync } from "fs";
 import createCompiler from "./compiler";
+import { createPythonCompilerFrontend } from "./python/compiler-frontend";
 import { colored } from "./utils";
 import { deepEqual as origDeepEqual, AssertionError } from "assert";
 import { tmpdir } from "os";
 import { runInNewContext } from "vm";
 
-const PyLang = createCompiler();
-
 export interface CompilerTestResult {
   durationMs: number;
   skipped: boolean;
+  skipReason?: "disabled" | "stage-zero-only";
 }
 
 export interface CompilerTestHarness {
@@ -25,11 +25,13 @@ export interface CompilerTestHarness {
   run(filename: string): CompilerTestResult;
 }
 
-export function createCompilerTestHarness(
+export async function createCompilerTestHarness(
   basePath,
   srcPath,
   libPath
-): CompilerTestHarness {
+): Promise<CompilerTestHarness> {
+  const PyLang = createCompiler();
+  const frontend = await createPythonCompilerFrontend(PyLang, "python");
   const testPath = join(basePath, "test");
   const baselib = readFileSync(
     join(libPath, "baselib-plain-pretty.js"),
@@ -49,13 +51,16 @@ export function createCompilerTestHarness(
   function run(filename: string): CompilerTestResult {
     const t0 = new Date().valueOf();
     const file = readFileSync(filename, "utf-8");
-    if (file.toString().includes("# DISABLED")) {
+    const disabled = file.toString().includes("# DISABLED");
+    const stageZeroOnly = file.toString().includes("# STAGE_ZERO_ONLY");
+    if (disabled || stageZeroOnly) {
       return {
         durationMs: new Date().valueOf() - t0,
         skipped: true,
+        skipReason: disabled ? "disabled" : "stage-zero-only",
       };
     }
-    const toplevel = PyLang.parse(file, {
+    const toplevel = frontend.parse(file, {
       filename,
       toplevel: undefined,
       basedir: testPath,
@@ -133,7 +138,7 @@ export function createCompilerTestHarness(
   return { files, run };
 }
 
-export default function (
+export default async function (
   argv: { files: string[] },
   basePath,
   srcPath,
@@ -142,7 +147,7 @@ export default function (
   // Preserve the historical `sagejs test` command while exposing the same
   // isolated file runner to node:test.
   const failures: string[] = [];
-  const harness = createCompilerTestHarness(
+  const harness = await createCompilerTestHarness(
     basePath, srcPath, libPath);
   const files = harness.files(argv.files);
   const t_start = new Date().valueOf();
@@ -219,6 +224,8 @@ function deepEqual(a: any, b: any, message: any): void {
       });
   } else {
     // Fallback to standard version in nodejs library.
-    return origDeepEqual(a, b, message);
+    return message === undefined
+      ? origDeepEqual(a, b)
+      : origDeepEqual(a, b, message);
   }
 }

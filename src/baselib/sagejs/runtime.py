@@ -228,6 +228,7 @@ is_exact_integer = ρσ_is_exact_integer
 is_math_element = ρσ_is_math_element
 is_nan = isNaN
 iterator_symbol = ρσ_iterator_symbol
+last_exception = r'%js ρσ_last_exception'
 json = JSON
 kwargs_symbol = ρσ_kwargs_symbol
 lightweight_math_class = ρσ_lightweight_math_class

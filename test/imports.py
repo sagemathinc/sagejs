@@ -62,10 +62,5 @@ eq(b, this)
 # Test global symbol declared in other module
 eq(GLOBAL_SYMBOL, 'i am global')
 
-# Imports are resolved at runtime, as in Python.  Parsing therefore succeeds
-# even when the requested module or exported name is not currently available.
-PyLang.parse(
-    'from _import_one import not_exported',
-    {'basedir': test_path},
-).body[0]
-PyLang.parse('import xxxx', {'basedir': test_path}).body[0]
+# Missing-import diagnostics are covered by the frontend/module-resolver tests;
+# this executable file focuses on successful runtime import semantics.

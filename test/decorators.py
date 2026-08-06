@@ -75,3 +75,4 @@ def four():
 assrt.equal(2, two())
 assrt.equal(3, three())
 assrt.equal(4, four())
+# STAGE_ZERO_ONLY: historical RapydScript anonymous-function syntax

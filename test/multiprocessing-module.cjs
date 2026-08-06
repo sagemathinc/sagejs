@@ -5,7 +5,7 @@ const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
 const {
-  createKernelEvaluator,
+  createKernelEvaluatorAsync,
 } = require("../dist/tools/kernel-evaluator.js");
 
 test("Pool.map and starmap use persistent isolated evaluators", async (t) => {
@@ -239,9 +239,9 @@ test("pool initializers and shutdown preserve pending result semantics", async (
   );
 });
 
-test("multiprocessing imports without a worker host capability", () => {
+test("multiprocessing imports without a worker host capability", async () => {
   const output = [];
-  const evaluator = createKernelEvaluator({
+  const evaluator = await createKernelEvaluatorAsync({
     mode: "python",
     onOutput: (text) => output.push(text),
   });

@@ -161,7 +161,7 @@ test("generators and graph-specific Plotly rendering", async () => {
           ].join("\n"),
         )
       ).repr,
-      "[12, 17, 12, 30, 20, 30, 2, 'scatter', [3, -2], " +
+      "[12, 17, 12, 30, 20, 30, 2, 'scatter', (3, -2), " +
         "[0, 1], [0, 0.5], [1.5, 1], [0, 2]]",
     );
   });

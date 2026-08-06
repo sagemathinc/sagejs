@@ -41,3 +41,4 @@ x = def():
     'xxx'
 
 assrt.equal(x.__doc__, 'xxx')
+# STAGE_ZERO_ONLY: historical RapydScript anonymous-function syntax

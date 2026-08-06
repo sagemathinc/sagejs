@@ -127,6 +127,7 @@ def type_method(value: Any) -> str:
         'RealLiteral': 'FldReElt',
         'RealNumberElement': 'FldReElt',
         'complex': 'FldComElt',
+        'PythonComplex': 'FldComElt',
         'ComplexNumberElement': 'FldComElt',
         'str': 'MonStgElt',
         'list': 'SeqEnum',

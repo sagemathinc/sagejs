@@ -80,7 +80,16 @@ async function fetchText(url) {
   return response.text();
 }
 
+async function fetchBytes(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`could not fetch ${url}: HTTP ${response.status}`);
+  }
+  return new Uint8Array(await response.arrayBuffer());
+}
+
 let compiler;
+let frontend;
 let baselib;
 let toplevel;
 
@@ -92,7 +101,7 @@ function compile(source, filename) {
     bound_methods: true,
     sequential_definitions: true,
   };
-  toplevel = compiler.parse(source, {
+  toplevel = frontend.parse(source, {
     filename,
     basedir: "__stdlib__",
     libdir: "__stdlib__",
@@ -125,16 +134,37 @@ self.onmessage = async ({ data }) => {
         compilerSource,
         baselibSource,
         standardLibrary,
+        compilerFrontend,
+        treeSitterRuntime,
+        pythonGrammar,
+        sageGrammar,
       ] = await Promise.all([
         fetchText(data.compiler),
         fetchText(data.baselib),
         fetchText(data.standardLibrary).then((source) => JSON.parse(source)),
+        import(data.compilerFrontend),
+        fetchBytes(data.treeSitterRuntime),
+        fetchBytes(data.pythonGrammar),
+        fetchBytes(data.sageGrammar),
       ]);
       compiler = createCompiler(compilerSource, standardLibrary);
       baselib = baselibSource;
-      const initialization = compiler.parse("", {
+      compilerFrontend.configureBrowserCompilerResources({
+        treeSitterRuntime,
+        pythonGrammar,
+        sageGrammar,
+        standardLibrary,
+      });
+      frontend = await compilerFrontend.createPythonCompilerFrontend(
+        compiler,
+        "sage",
+      );
+      const initialization = frontend.parse("", {
         filename: "<browser-init>",
         basedir: "__stdlib__",
+        libdir: "__stdlib__",
+        import_dirs: ["__stdlib__"],
+        precompiled_module_cache_dir: "__module_cache__",
       });
       result = outputJavaScript(compiler, initialization, baselib, true);
     } else if (data.type === "compile") {

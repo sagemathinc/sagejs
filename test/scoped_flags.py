@@ -1,4 +1,5 @@
 # vim:fileencoding=utf-8
+# STAGE_ZERO_ONLY: historical sequential __python__ compiler flags
 # License: BSD Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 a = {1: 1}

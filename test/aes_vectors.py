@@ -419,3 +419,4 @@ def run_tests():
     # }}}
 
 run_tests()
+# STAGE_ZERO_ONLY: historical RapydScript anonymous-function syntax

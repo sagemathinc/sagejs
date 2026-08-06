@@ -51,6 +51,7 @@ def class_name(value: Any) -> str:
         "Integer": "sage.Integer",
         "Rational": "sage.Rational",
         "complex": "sage.Complex",
+        "PythonComplex": "sage.Complex",
         "ComplexNumberElement": "sage.Complex",
         "dict": "sage.Dictionary",
         "set": "sage.Set",

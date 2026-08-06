@@ -27,6 +27,7 @@ def whattype(value: Any) -> str:
         "RealLiteral": "float",
         "RealNumberElement": "float",
         "complex": "complex",
+        "PythonComplex": "complex",
         "ComplexNumberElement": "complex",
         "str": "string",
         "list": "list",

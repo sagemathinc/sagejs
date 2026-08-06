@@ -8,7 +8,8 @@ const {
   createCompilerTestHarness,
 } = require("../dist/tools/test.js");
 
-const harness = createCompilerTestHarness(
+(async () => {
+const harness = await createCompilerTestHarness(
   root,
   join(root, "src"),
   join(root, "dist", "compiler"),
@@ -18,9 +19,17 @@ for (const filename of harness.files()) {
   test(`compiler/${basename(filename)}`, { timeout: 30_000 }, (context) => {
     const result = harness.run(filename);
     if (result.skipped) {
-      context.skip("disabled by an in-file marker");
+      context.skip(
+        result.skipReason === "stage-zero-only"
+          ? "historical non-Python stage-zero fixture"
+          : "disabled by an in-file marker",
+      );
       return;
     }
     context.diagnostic(`${result.durationMs} ms`);
   });
 }
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

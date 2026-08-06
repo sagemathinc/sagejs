@@ -174,23 +174,26 @@ configuration.
 
 ## Modes
 
-The same parser supports two intentional modes:
+The pinned Tree-sitter frontend supports two intentional modes:
 
 - `sagejs` enables all currently implemented Sage-style syntax.
 - `sagepython`, or `sagejs --python`, uses Python-like syntax.
 
 When adding syntax, add tests for both its enabled and disabled behavior.
-Sage generator declarations such as `R.<x> = ZZ[]` are recognized in
-`statement()` and lowered to ordinary assignment nodes; they are not a
-textual preprocessing pass. Keep the contextual meaning of empty brackets
-isolated from normal indexing syntax.
+Sage generator declarations such as `R.<x> = ZZ[]` are grammar nodes lowered
+directly to ordinary semantic assignment nodes; they are not a textual
+preprocessing pass. Keep the contextual meaning of empty brackets isolated
+from normal indexing syntax. See `architecture/PYTHON-FRONTEND.md` for the
+frontend contract and stage-zero boundary.
 
 ## Bootstrap changes
 
-Normal compiler development does not require changing `bootstrap/`: an older
-compiler builds the new compiler. Update the bootstrap artifacts only when a
-source change cannot be parsed by the existing bootstrap compiler. Such
-updates should be isolated and carefully reviewed.
+Normal compiler development does not require changing `bootstrap/`: its frozen
+RapydScript compiler builds the ordinary-Python compiler sources, after which
+the generated compiler self-hosts through Tree-sitter. The bootstrap parser is
+an emergency/stage-zero artifact, never a user-code fallback. Update bootstrap
+artifacts only when they cannot parse the compiler sources; isolate and review
+such updates carefully.
 
 ## Generated files
 

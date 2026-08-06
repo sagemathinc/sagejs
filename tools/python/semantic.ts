@@ -30,17 +30,42 @@ export class PythonAstSemanticAnalyzer {
 
   analyze(toplevel: any): any {
     const shellExports = (toplevel.exports ?? []).map((symbol) => symbol.name);
-    this.analyzeNestedScopes(toplevel.body);
-    const topAssignments = this.scanLocalNames(toplevel.body);
+    this.analyzeNestedScopes(toplevel.body, []);
+    const topAssignments = this.scanLocalNames(toplevel.body, false);
+    const nestedGlobals = this.scanNestedGlobals(toplevel.body);
+    const deletedGlobals = this.scanNestedDeletedGlobals(toplevel.body);
     this.markDirectBuiltins(toplevel.body, topAssignments);
+    if (topAssignments.includes("range")) {
+      this.disableBuiltinRange(toplevel.body);
+    }
     const nonlocals = new Set(this.scanDeclaredNames(toplevel.body));
     const callables = this.topLevelCallableBindings(toplevel.body);
     toplevel.nonlocalvars = [...nonlocals];
-    toplevel.annotated_locals = this.scanAnnotatedNames(toplevel.body);
-    toplevel.localvars = topAssignments
+    toplevel.annotated_locals = unique([
+      ...this.scanAnnotatedNames(toplevel.body),
+      ...deletedGlobals,
+    ]);
+    this.walk(toplevel.body, (node) => {
+      if (node instanceof this.compiler.AST_Lambda) {
+        const guarded = (node.declared_globals ?? []).filter(
+          (name) => deletedGlobals.includes(name),
+        );
+        node.annotated_locals = unique([
+          ...(node.annotated_locals ?? []),
+          ...guarded,
+        ]);
+      }
+      return false;
+    });
+    toplevel.localvars = unique([...topAssignments, ...nestedGlobals])
       .filter((name) => !nonlocals.has(name))
       .map((name) => new this.compiler.AST_SymbolVar({ name }));
-    const exported = unique([...shellExports, ...topAssignments, ...callables])
+    const exported = unique([
+      ...shellExports,
+      ...topAssignments,
+      ...nestedGlobals,
+      ...callables,
+    ])
       .filter((name) => !nonlocals.has(name));
     toplevel.exports = exported.map(
       (name) => new this.compiler.AST_SymbolVar({ name }),
@@ -86,20 +111,23 @@ export class PythonAstSemanticAnalyzer {
     descend(value);
   }
 
-  private analyzeNestedScopes(body: any[]): void {
+  private analyzeNestedScopes(
+    body: any[],
+    enclosingFunctionBindings: ReadonlySet<string>[],
+  ): void {
     for (const statement of body ?? []) {
       if (statement instanceof this.compiler.AST_Class) {
-        this.analyzeClass(statement);
+        this.analyzeClass(statement, enclosingFunctionBindings);
       } else if (statement instanceof this.compiler.AST_Lambda) {
-        this.analyzeFunction(statement);
+        this.analyzeFunction(statement, enclosingFunctionBindings);
       } else {
         this.walk(statement, (node) => {
           if (node instanceof this.compiler.AST_Class) {
-            this.analyzeClass(node);
+            this.analyzeClass(node, enclosingFunctionBindings);
             return true;
           }
           if (node instanceof this.compiler.AST_Lambda) {
-            this.analyzeFunction(node);
+            this.analyzeFunction(node, enclosingFunctionBindings);
             return true;
           }
           return false;
@@ -108,13 +136,40 @@ export class PythonAstSemanticAnalyzer {
     }
   }
 
-  private analyzeFunction(definition: any): void {
+  private analyzeFunction(
+    definition: any,
+    enclosingFunctionBindings: ReadonlySet<string>[],
+  ): void {
     const body = Array.isArray(definition.body) ? definition.body : [];
-    this.analyzeNestedScopes(body);
     const assignments = this.scanLocalNames(body);
     const parameters = this.parameterNames(definition.argnames);
-    const globals = new Set(definition.declared_globals ?? []);
-    const nonlocals = new Set(definition.declared_nonlocals ?? []);
+    const globals = new Set<string>(definition.declared_globals ?? []);
+    const nonlocals = new Set<string>(definition.declared_nonlocals ?? []);
+    for (const name of parameters) {
+      if (globals.has(name)) {
+        throw new SyntaxError(`name '${name}' is parameter and global`);
+      }
+      if (nonlocals.has(name)) {
+        throw new SyntaxError(`name '${name}' is parameter and nonlocal`);
+      }
+    }
+    for (const name of nonlocals) {
+      if (globals.has(name)) {
+        throw new SyntaxError(`name '${name}' is nonlocal and global`);
+      }
+      if (!enclosingFunctionBindings.some((bindings) => bindings.has(name))) {
+        throw new SyntaxError(`no binding for nonlocal '${name}' found`);
+      }
+    }
+    const ownBindings = new Set(unique([
+      ...assignments,
+      ...this.scanCallableBindings(body),
+      ...parameters,
+    ]).filter((name) => !globals.has(name) && !nonlocals.has(name)));
+    this.analyzeNestedScopes(
+      body,
+      [...enclosingFunctionBindings, ownBindings],
+    );
     definition.localvars = assignments
       .filter((name) => !parameters.includes(name))
       .filter((name) => !globals.has(name) && !nonlocals.has(name))
@@ -122,6 +177,10 @@ export class PythonAstSemanticAnalyzer {
     definition.annotated_locals = unique([
       ...(definition.annotated_locals ?? []),
       ...this.scanAnnotatedNames(body),
+      // A global/nonlocal cell may be deleted or unbound by the defining
+      // scope, so reads through either declaration require the same runtime
+      // NameError guard as local annotated/deleted variables.
+      ...nonlocals,
     ]);
     for (const name of this.scanPotentiallyUnbound(
       body,
@@ -144,13 +203,16 @@ export class PythonAstSemanticAnalyzer {
     if (shadowed.has("range")) this.disableBuiltinRange(body);
   }
 
-  private analyzeClass(definition: any): void {
+  private analyzeClass(
+    definition: any,
+    enclosingFunctionBindings: ReadonlySet<string>[],
+  ): void {
     const body = definition.body ?? definition.statements ?? [];
     for (const statement of body) {
       if (statement instanceof this.compiler.AST_Method) {
-        this.analyzeFunction(statement);
+        this.analyzeFunction(statement, enclosingFunctionBindings);
       } else if (statement instanceof this.compiler.AST_Class) {
-        this.analyzeClass(statement);
+        this.analyzeClass(statement, enclosingFunctionBindings);
       }
     }
     definition.localvars ??= [];
@@ -187,16 +249,16 @@ export class PythonAstSemanticAnalyzer {
     }
   }
 
-  private scanLocalNames(body: any[]): string[] {
+  private scanLocalNames(
+    body: any[],
+    includePureAnnotations = true,
+  ): string[] {
     const names: string[] = [];
     const scan = (value: any): void => {
       if (!value) return;
       if (Array.isArray(value)) {
         for (const statement of value) {
           if (statement instanceof this.compiler.AST_Scope) continue;
-          if (this.is(statement, "AST_AnnotatedAssignment")) {
-            this.addTarget(statement.target, names);
-          }
           for (const key of ["body", "alternative", "bcatch", "bfinally", "condition"]) {
             const nested = statement[key];
             if (nested) scan(nested);
@@ -213,6 +275,13 @@ export class PythonAstSemanticAnalyzer {
         return;
       }
       if (value instanceof this.compiler.AST_Scope) return;
+      if (this.is(value, "AST_AnnotatedAssignment")) {
+        if (includePureAnnotations || value.value) {
+          this.addTarget(value.target, names);
+        }
+        if (value.value) scan(value.value);
+        return;
+      }
       if (value instanceof this.compiler.AST_Assign) {
         this.addTarget(value.left, names);
         if (!(value.right instanceof this.compiler.AST_Scope)) scan(value.right);
@@ -233,6 +302,31 @@ export class PythonAstSemanticAnalyzer {
       if (node instanceof this.compiler.AST_Scope) return true;
       if (node instanceof this.compiler.AST_Assign && node.is_walrus) {
         this.addTarget(node.left, names);
+      }
+      return false;
+    });
+    return unique(names);
+  }
+
+  private scanNestedGlobals(body: any[]): string[] {
+    const names: string[] = [];
+    this.walk(body, (node) => {
+      if (node instanceof this.compiler.AST_Lambda) {
+        names.push(...(node.declared_globals ?? []));
+      }
+      return false;
+    });
+    return unique(names);
+  }
+
+  private scanNestedDeletedGlobals(body: any[]): string[] {
+    const names: string[] = [];
+    this.walk(body, (node) => {
+      if (node instanceof this.compiler.AST_Lambda) {
+        const deleted = new Set(this.scanAnnotatedNames(node.body ?? []));
+        for (const name of node.declared_globals ?? []) {
+          if (deleted.has(name)) names.push(name);
+        }
       }
       return false;
     });

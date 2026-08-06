@@ -522,3 +522,4 @@ def decorate(cls):
 @decorate
 class decorated:
     somevar = 1
+# STAGE_ZERO_ONLY: historical RapydScript expression syntax

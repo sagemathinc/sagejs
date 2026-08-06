@@ -87,9 +87,17 @@ function parseSource(
   mode: DynamicCode["mode"],
   moduleId: string,
 ) {
-  return compiler.parse(
+  const parse = Reflect.get(globalThis, "__sagejs_parse_python__");
+  if (typeof parse !== "function") {
+    throw new Error("the authoritative Python frontend is not initialized");
+  }
+  return Reflect.apply(
+    parse,
+    undefined,
+    [
     mode === "eval" ? expressionSource(source) : statementSource(source),
     parserOptions(filename, moduleId),
+    ],
   );
 }
 
@@ -161,9 +169,17 @@ export function runDynamic(
   const moduleId = `__dynamic_${++moduleCounter}__`;
   let javascript: string;
   try {
-    const ast = compiler.parse(
+    const parse = Reflect.get(globalThis, "__sagejs_parse_python__");
+    if (typeof parse !== "function") {
+      throw new Error("the authoritative Python frontend is not initialized");
+    }
+    const ast: any = Reflect.apply(
+      parse,
+      undefined,
+      [
       seededSource(code, namespace),
       parserOptions(code.filename, moduleId),
+      ],
     );
     for (const [name, value] of Object.entries(namespace)) {
       if (

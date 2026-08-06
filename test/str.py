@@ -212,3 +212,4 @@ ae(f'{{ {a} }}', '{ 1 }')
 # Keep an interpolated assignment at end-of-file: the tokenizer must stop
 # looking for an adjacent string prefix when it reaches EOF.
 terminal_interpolation = f'{a}'
+# STAGE_ZERO_ONLY: historical JavaScript constructor syntax

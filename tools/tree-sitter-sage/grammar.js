@@ -10,7 +10,7 @@
 /// <reference types="tree-sitter-cli/dsl" />
 // @ts-check
 
-const Python = require("tree-sitter-python/grammar");
+const Python = require("../tree-sitter-python/grammar");
 
 module.exports = grammar(Python, {
   name: "sage",
@@ -57,8 +57,11 @@ module.exports = grammar(Python, {
         [prec.right, "**", 21],
         [prec.right, "^", 21],
         [prec.left, "|", 14],
-        [prec.left, "&", 15],
-        [prec.left, "^^", 16],
+        // Python binds & more tightly than xor.  Upstream 0.25.0 has these
+        // two precedences reversed; keep Sage's ^^ spelling but preserve the
+        // Python grouping documented by the language reference.
+        [prec.left, "&", 16],
+        [prec.left, "^^", 15],
         [prec.left, "<<", 17],
         [prec.left, ">>", 17],
         [prec.left, "..", 9],

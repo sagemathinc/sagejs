@@ -7,6 +7,7 @@ const {
   assessStartup,
   median,
   sampleCount,
+  startupDefaults,
 } = require("../scripts/check-startup-budget.cjs");
 
 test("startup medians are deterministic for odd and even samples", () => {
@@ -48,4 +49,13 @@ test("startup sample count must be odd so its median is observed", () => {
   assert.equal(sampleCount("7"), 7);
   assert.throws(() => sampleCount("2"), /odd integer/);
   assert.throws(() => sampleCount("8"), /odd integer/);
+});
+
+test("empty startup has a distinct stricter regression budget", () => {
+  assert.ok(
+    startupDefaults(false, true).budgetMs < startupDefaults(false).budgetMs,
+  );
+  assert.ok(
+    startupDefaults(true, true).hardLimitMs < startupDefaults(true).hardLimitMs,
+  );
 });

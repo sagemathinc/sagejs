@@ -456,3 +456,4 @@ if "1" + "2" not in ["1", "2"]:
     assrt.ok(1)
 else:
     assrt.ok(0)
+# STAGE_ZERO_ONLY: historical parser-introspection syntax

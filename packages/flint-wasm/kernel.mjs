@@ -41,6 +41,10 @@ export class SageSession {
     flint = new URL("./dist/flint-factor.wasm", import.meta.url),
     symbolic = new URL("./dist/symbolic-backend.mjs", import.meta.url),
     compilerWorker = new URL("./compiler-worker.mjs", import.meta.url),
+    compilerFrontend = new URL("./dist/compiler-frontend.mjs", import.meta.url),
+    treeSitterRuntime = new URL("./dist/web-tree-sitter.wasm", import.meta.url),
+    pythonGrammar = new URL("./dist/tree-sitter-python.wasm", import.meta.url),
+    sageGrammar = new URL("./dist/tree-sitter-sage.wasm", import.meta.url),
     onGraphicsSave,
   } = {}) {
     this.resources = {
@@ -51,6 +55,10 @@ export class SageSession {
       flint: String(flint),
       symbolic: String(symbolic),
       compilerWorker: String(compilerWorker),
+      compilerFrontend: String(compilerFrontend),
+      treeSitterRuntime: String(treeSitterRuntime),
+      pythonGrammar: String(pythonGrammar),
+      sageGrammar: String(sageGrammar),
     };
     this.onGraphicsSave = onGraphicsSave;
     this.listeners = new Map();
@@ -167,6 +175,10 @@ export class SageSession {
       flint: this.resources.flint,
       symbolic: this.resources.symbolic,
       compilerWorker: this.resources.compilerWorker,
+      compilerFrontend: this.resources.compilerFrontend,
+      treeSitterRuntime: this.resources.treeSitterRuntime,
+      pythonGrammar: this.resources.pythonGrammar,
+      sageGrammar: this.resources.sageGrammar,
     });
   }
 

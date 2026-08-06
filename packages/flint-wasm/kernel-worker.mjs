@@ -22,6 +22,10 @@ async function initialize(message) {
     flint: message.flint,
     symbolic: message.symbolic,
     compilerWorker: message.compilerWorker,
+    compilerFrontend: message.compilerFrontend,
+    treeSitterRuntime: message.treeSitterRuntime,
+    pythonGrammar: message.pythonGrammar,
+    sageGrammar: message.sageGrammar,
   });
   await evaluatorPromise;
   self.postMessage({

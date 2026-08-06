@@ -27,9 +27,6 @@ export async function createPythonCompilerFrontend(compiler, mode: PythonSyntaxM
         jsage: mode === "sage",
       }).lowerMain(parsed);
     },
-    parseLegacy(source: string, options: Record<string, any> = {}) {
-      return compiler.parse(source, options);
-    },
     close(): void {
       syntax.close();
       if (moduleSyntax !== syntax) moduleSyntax.close();

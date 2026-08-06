@@ -1,0 +1,39 @@
+==================
+bitwise precedence
+==================
+
+value = 1 ^ 2 & 3
+
+---
+
+(module
+  (expression_statement
+    (assignment
+      left: (identifier)
+      right: (binary_operator
+        left: (integer)
+        right: (binary_operator
+          left: (integer)
+          right: (integer))))))
+
+==================
+await before power
+==================
+
+async def f():
+    return await g() ** 2
+
+---
+
+(module
+  (function_definition
+    name: (identifier)
+    parameters: (parameters)
+    body: (block
+      (return_statement
+        (binary_operator
+          left: (await
+            (call
+              function: (identifier)
+              arguments: (argument_list)))
+          right: (integer))))))

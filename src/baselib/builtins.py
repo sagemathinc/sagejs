@@ -55,6 +55,11 @@ def _builtins_default_import(
 
 
 __import__ = _builtins_default_import
+runtime.reflect.set(
+    _builtins_default_import,
+    '__sagejs_default_import__',
+    True,
+)
 
 
 class _BuiltinsMissing:
@@ -3874,7 +3879,12 @@ def ρσ_hasattr(value: Any, name: _Str) -> _Bool:
         return False
 
 
-def ρσ_py_super(cls: Any, instance: Any) -> Any:
+def ρσ_py_super(
+    cls: Any = runtime.undefined,
+    instance: Any = runtime.undefined,
+) -> Any:
+    if runtime.strict_equal(cls, runtime.undefined):
+        raise RuntimeError('super(): no arguments')
     class_subtype = (
         _builtins_is_python_class(instance)
         and (
@@ -6123,6 +6133,13 @@ class SageObject:
             if constructor is SageObject
             else runtime.reflect.get(constructor, '__name__')
         )
+        module = runtime.reflect.get(constructor, '__module__')
+        if (
+            module is not runtime.undefined
+            and module is not None
+            and module not in ('__main__', 'builtins')
+        ):
+            name = str(module) + '.' + name
         return (
             '<' + name + ' object at ' + str(id(self)) + '>'
         )

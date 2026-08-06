@@ -6,11 +6,22 @@ const { runInThisContext } = require("node:vm");
 const createCompiler = require("../dist/tools/compiler.js").default;
 const Completer = require("../dist/tools/completer.js").default;
 const {
+  createPythonCompilerFrontend,
+} = require("../dist/tools/python/compiler-frontend.js");
+const {
+  runRuntimeBootstrap,
+} = require("../dist/tools/runtime-bootstrap.js");
+const {
   importPath,
   libraryPath,
 } = require("../dist/tools/utils.js");
 
+(async () => {
 const compiler = createCompiler();
+const [pythonFrontend, sageFrontend] = await Promise.all([
+  createPythonCompilerFrontend(compiler, "python"),
+  createPythonCompilerFrontend(compiler, "sage"),
+]);
 
 function printAST(ast, keepBaselib = false) {
   const output = new compiler.OutputStream({
@@ -32,9 +43,7 @@ function printAST(ast, keepBaselib = false) {
 }
 
 global.require = require;
-runInThisContext(
-  printAST(compiler.parse("(def ():\n yield 1\n)"), true),
-);
+runRuntimeBootstrap(compiler, "sage", sageFrontend, pythonFrontend);
 runInThisContext('var __name__ = "__completion_test__";');
 
 const source = [
@@ -47,7 +56,7 @@ const source = [
   'R = PolynomialRing(ZZ, "x");',
   "",
 ].join("\n");
-const ast = compiler.parse(source, {
+const ast = sageFrontend.parse(source, {
   filename: "<completion-test>",
   basedir: process.cwd(),
   libdir: importPath,
@@ -94,3 +103,9 @@ assert.ok(items.includes("variable_name"));
 assert.ok(!items.includes("constructor"));
 
 console.log("Python-facing global and attribute completion passed.");
+pythonFrontend.close();
+sageFrontend.close();
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

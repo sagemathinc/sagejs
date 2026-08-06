@@ -152,7 +152,7 @@ async function worker() {
     };
   }
 
-  await Repl({
+  const repl = await Repl({
     console: capturingConsole,
     mockReadline: () => readline,
     terminal: false,
@@ -167,6 +167,7 @@ async function worker() {
     readline.emit(
       "line", `set_random_seed(${JSON.stringify(request.randomSeed)})`);
     readline.emit("line", "");
+    await repl.drain();
     output = "";
   }
 
@@ -183,6 +184,7 @@ async function worker() {
     const lines = example.source.replace(/\n$/, "").split("\n");
     for (const line of lines) readline.emit("line", line);
     readline.emit("line", "");
+    await repl.drain();
     results.push({ id: example.id, actual: output });
   }
   stdoutWrite(JSON.stringify(results));

@@ -71,6 +71,10 @@ The build also packages Sage.js's precompiled Python standard library into a
 browser manifest. Imports such as `import math` therefore use the same
 compiler-version and source-signature-checked module cache as Node rather than
 requiring filesystem access or recompiling library source in the browser.
+The compiler worker uses the same authoritative Tree-sitter Sage/Python
+frontend and CST lowerer as Node. The three small parser WASM assets and a
+browser bundle of the frontend are local package resources; the historical
+stage-zero parser is not part of this path.
 
 The public `@sagemath/sagejs-flint-wasm/kernel` entry point packages this
 architecture as an embeddable session:
