@@ -105,6 +105,7 @@ jobs:
           pnpm docs:verify
           git diff --exit-code -- \
             docs/reference/api.md \
+            website/reference.html \
             website/reference-data.json \
             website/reference-results.json
           pnpm test:upstream:run

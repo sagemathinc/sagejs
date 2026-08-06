@@ -7,6 +7,8 @@ on:
     paths:
       - "website/**"
       - "test/website.cjs"
+      - "scripts/test-reference-browser.cjs"
+      - "scripts/generate-docs.cjs"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -34,6 +36,7 @@ jobs:
         run: |
           node --check website/app.js
           node --test test/website.cjs
+          SAGEJS_REQUIRE_REFERENCE_BROWSER=1 node scripts/test-reference-browser.cjs
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

@@ -2,6 +2,7 @@
 "use strict";
 
 const { existsSync, mkdirSync, readFileSync, writeFileSync } = require("node:fs");
+const { createHash } = require("node:crypto");
 const { join } = require("node:path");
 
 const { createSage } = require("../dist/tools/kernel.js");
@@ -18,7 +19,30 @@ const {
 const root = join(__dirname, "..");
 const output = join(root, "docs", "reference", "api.md");
 const websiteOutput = join(root, "website", "reference-data.json");
+const websiteHtml = join(root, "website", "reference.html");
 const check = process.argv.slice(2).includes("--check");
+
+function contentHash(text) {
+  return createHash("sha256").update(text).digest("hex").slice(0, 16);
+}
+
+function stampedReferenceHtml(referenceData) {
+  const html = readFileSync(websiteHtml, "utf8");
+  const assets = {
+    "reference.css": readFileSync(join(root, "website", "reference.css"), "utf8"),
+    "reference.js": readFileSync(join(root, "website", "reference.js"), "utf8"),
+    "reference-data.json": referenceData,
+  };
+  let stamped = html;
+  for (const [filename, contents] of Object.entries(assets)) {
+    const escaped = filename.replaceAll(".", "\\.");
+    stamped = stamped.replace(
+      new RegExp(`\\./${escaped}(?:\\?v=[^\"']*)?`, "g"),
+      `./${filename}?v=${contentHash(contents)}`,
+    );
+  }
+  return stamped;
+}
 
 async function main() {
   const session = await createSage();
@@ -89,14 +113,17 @@ async function main() {
       },
     },
   }, null, 2) + "\n";
+  const referenceHtml = stampedReferenceHtml(referenceData);
   if (check) {
     const current = existsSync(output) ? readFileSync(output, "utf8") : "";
     const currentWebsite = existsSync(websiteOutput)
       ? readFileSync(websiteOutput, "utf8")
       : "";
+    const currentHtml = readFileSync(websiteHtml, "utf8");
     if (
       current.replace(/\r\n/g, "\n") !== generated ||
-      currentWebsite.replace(/\r\n/g, "\n") !== referenceData
+      currentWebsite.replace(/\r\n/g, "\n") !== referenceData ||
+      currentHtml.replace(/\r\n/g, "\n") !== referenceHtml
     ) {
       console.error(
         "generated reference documentation is stale; run pnpm docs:generate",
@@ -108,7 +135,11 @@ async function main() {
   mkdirSync(join(root, "docs", "reference"), { recursive: true });
   writeFileSync(output, generated);
   writeFileSync(websiteOutput, referenceData);
-  console.log("Wrote docs/reference/api.md and website/reference-data.json");
+  writeFileSync(websiteHtml, referenceHtml);
+  console.log(
+    "Wrote docs/reference/api.md, website/reference-data.json, and " +
+      "fingerprinted website/reference.html",
+  );
 }
 
 main().catch((error) => {

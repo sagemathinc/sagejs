@@ -245,12 +245,24 @@ test("reference manual is fast, searchable, and verification-aware", () => {
   assert.equal(reference.coverage.examples.unverified, 0);
   assert.ok(reference.coverage.examples.verified >= 109);
   assert.ok(reference.entries.some((entry) => entry.name === "graphs.RandomGNP"));
+  for (const entry of reference.entries) {
+    for (const example of entry.examples) {
+      assert.equal(typeof example.source, "string", `${example.id}.source`);
+      assert.ok(example.source.trim(), `${example.id}.source is empty`);
+    }
+  }
   assert.match(referenceHtml, /id=["']search["']/);
   assert.match(referenceHtml, /id=["']result-list["']/);
   assert.match(referenceHtml, /id=["']entry["']/);
+  assert.match(referenceHtml, /reference\.css\?v=[a-f0-9]{16}/);
+  assert.match(referenceHtml, /reference\.js\?v=[a-f0-9]{16}/);
+  assert.match(referenceHtml, /reference-data\.json\?v=[a-f0-9]{16}/);
   assert.doesNotMatch(referenceHtml, /<script[^>]+src=["']https?:/i);
   assert.match(referenceScript, /function filtered/);
   assert.match(referenceScript, /function exampleCard/);
+  assert.match(referenceScript, /example-source/);
+  assert.match(referenceScript, /has no source/);
+  assert.match(referenceScript, /referenceDataUrl/);
   assert.match(referenceScript, /requestAnimationFrame/);
   assert.match(referenceScript, /CI verified/);
   assert.match(referenceScript, /source\.excerpt/);
