@@ -216,6 +216,9 @@ async function createReport() {
   const { createPythonSyntaxFrontend } = require(
     "../dist/tools/python/frontend.js"
   );
+  const {
+    PythonCstLowerer,
+  } = require("../dist/tools/python/lowerer.js");
   const createCompiler = require("../dist/tools/compiler.js").default;
   const [python, sage] = await Promise.all([
     createPythonSyntaxFrontend("python"),
@@ -226,19 +229,47 @@ async function createReport() {
   const cpython = cpythonAcceptance(records);
   const nodeCounts = { python: {}, sage: {} };
   const details = [];
+  const directById = new Map();
+  const loweringGaps = new Map();
+  const outputOptions = {
+    omit_baselib: true,
+    write_name: false,
+    private_scope: false,
+    beautify: true,
+    keep_docstrings: true,
+    exact_integers: true,
+    python_tuples: true,
+    python_truthiness: true,
+    python_attributes: true,
+  };
+
+  function render(ast) {
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    return output.get();
+  }
+
+  function recordGap(kind, id) {
+    const gap = loweringGaps.get(kind) ?? { count: 0, examples: [] };
+    gap.count += 1;
+    if (gap.examples.length < 5) gap.examples.push(id);
+    loweringGaps.set(kind, gap);
+  }
 
   try {
     for (let index = 0; index < records.length; index += 1) {
       const record = records[index];
       const frontend = record.mode === "sage" ? sage : python;
       const syntax = frontend.parse(record.source);
+      const treeError = syntax.diagnostics[0] ?? null;
       for (const type of syntax.nodeTypes) {
         nodeCounts[record.mode][type] =
           (nodeCounts[record.mode][type] ?? 0) + 1;
       }
       let legacyError = null;
+      let legacyAst = null;
       try {
-        compiler.parse(record.source, {
+        legacyAst = compiler.parse(record.source, {
           filename: record.id,
           module_id: `__grammar_audit_${index}`,
           for_linting: true,
@@ -258,8 +289,23 @@ async function createReport() {
       } catch (error) {
         legacyError = errorSummary(error);
       }
+      if (!treeError && legacyAst) {
+        try {
+          const direct = new PythonCstLowerer(
+            compiler,
+            syntax,
+            { filename: record.id },
+          ).lowerModule(legacyAst);
+          const exact = render(direct.ast) === render(legacyAst);
+          directById.set(record.id, { constructed: true, exact });
+          if (!exact) recordGap("javascript-mismatch", record.id);
+        } catch (error) {
+          const kind = error?.nodeType ?? error?.name ?? "Error";
+          directById.set(record.id, { constructed: false, exact: false });
+          recordGap(kind, record.id);
+        }
+      }
       const cp = cpython.get(record.id) ?? null;
-      const treeError = syntax.diagnostics[0] ?? null;
       if (treeError || legacyError || (cp && !cp.accepted)) {
         details.push({
           id: record.id,
@@ -284,12 +330,21 @@ async function createReport() {
       legacyAccepted: 0,
       cpythonAccepted: 0,
       cpythonApplicable: 0,
+      directAttempted: 0,
+      directConstructed: 0,
+      directExact: 0,
     };
     const summary = categories[record.category];
     const detail = details.find((item) => item.id === record.id);
     summary.total += 1;
     if (!detail?.treeSitter) summary.treeSitterAccepted += 1;
     if (!detail?.legacy) summary.legacyAccepted += 1;
+    const direct = directById.get(record.id);
+    if (direct) {
+      summary.directAttempted += 1;
+      if (direct.constructed) summary.directConstructed += 1;
+      if (direct.exact) summary.directExact += 1;
+    }
     const cp = cpython.get(record.id);
     if (cp) {
       summary.cpythonApplicable += 1;
@@ -320,6 +375,13 @@ async function createReport() {
       discrepancies: details.length,
     },
     nodeCounts,
+    lowering: {
+      gaps: Object.fromEntries(
+        [...loweringGaps.entries()].sort(([left], [right]) =>
+          left.localeCompare(right)
+        ),
+      ),
+    },
     discrepancies: details,
   };
 }
@@ -350,7 +412,8 @@ async function main() {
   for (const [name, category] of Object.entries(report.summary.categories)) {
     console.log(
       `  ${name}: Tree-sitter ${category.treeSitterAccepted}/${category.total}; ` +
-      `legacy ${category.legacyAccepted}/${category.total}` +
+      `legacy ${category.legacyAccepted}/${category.total}; ` +
+      `direct AST exact ${category.directExact}/${category.directAttempted}` +
       (category.cpythonApplicable
         ? `; CPython ${category.cpythonAccepted}/${category.cpythonApplicable}`
         : ""),

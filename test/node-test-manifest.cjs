@@ -13,6 +13,7 @@ const unit = [
   "test/magma.cjs",
   "test/foreign-languages.cjs",
   "test/python-syntax-frontend.cjs",
+  "test/python-cst-lowerer.cjs",
   "test/parallel-development.cjs",
   "test/package-graph.cjs",
   "test/pnpm-invocation.cjs",

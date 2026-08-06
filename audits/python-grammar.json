@@ -12,49 +12,70 @@
         "treeSitterAccepted": 12,
         "legacyAccepted": 12,
         "cpythonAccepted": 0,
-        "cpythonApplicable": 0
+        "cpythonApplicable": 0,
+        "directAttempted": 12,
+        "directConstructed": 12,
+        "directExact": 0
       },
       "sage-doctests": {
         "total": 980,
         "treeSitterAccepted": 980,
         "legacyAccepted": 977,
         "cpythonAccepted": 0,
-        "cpythonApplicable": 0
+        "cpythonApplicable": 0,
+        "directAttempted": 977,
+        "directConstructed": 977,
+        "directExact": 821
       },
       "pcimc-book": {
         "total": 937,
         "treeSitterAccepted": 937,
         "legacyAccepted": 936,
         "cpythonAccepted": 5,
-        "cpythonApplicable": 5
+        "cpythonApplicable": 5,
+        "directAttempted": 936,
+        "directConstructed": 936,
+        "directExact": 604
       },
       "compiler-self-hosting": {
         "total": 8,
         "treeSitterAccepted": 8,
         "legacyAccepted": 8,
         "cpythonAccepted": 8,
-        "cpythonApplicable": 8
+        "cpythonApplicable": 8,
+        "directAttempted": 8,
+        "directConstructed": 8,
+        "directExact": 0
       },
       "strict-baselib": {
         "total": 32,
         "treeSitterAccepted": 32,
         "legacyAccepted": 32,
         "cpythonAccepted": 32,
-        "cpythonApplicable": 32
+        "cpythonApplicable": 32,
+        "directAttempted": 32,
+        "directConstructed": 32,
+        "directExact": 0
       },
       "legacy-stdlib": {
         "total": 69,
         "treeSitterAccepted": 61,
         "legacyAccepted": 67,
         "cpythonAccepted": 61,
-        "cpythonApplicable": 69
+        "cpythonApplicable": 69,
+        "directAttempted": 61,
+        "directConstructed": 61,
+        "directExact": 0
       },
       "micropython": {
         "total": 576,
         "treeSitterAccepted": 576,
         "legacyAccepted": 565,
         "cpythonAccepted": 575,
-        "cpythonApplicable": 576
+        "cpythonApplicable": 576,
+        "directAttempted": 565,
+        "directConstructed": 565,
+        "directExact": 205
       }
     },
     "distinctNodeTypes": {
@@ -255,6 +276,20 @@
       "typed_parameter": 8,
       "unary_operator": 114,
       "while_statement": 20
+    }
+  },
+  "lowering": {
+    "gaps": {
+      "javascript-mismatch": {
+        "count": 961,
+        "examples": [
+          "bench/arithmetic.sage",
+          "bench/character-modular-symbols.sage",
+          "bench/complex-arithmetic.sage",
+          "bench/elliptic-curves.sage",
+          "bench/exact-linear-algebra.sage"
+        ]
+      }
     }
   },
   "discrepancies": [
