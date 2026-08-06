@@ -467,6 +467,8 @@ class PolynomialRingParent(sage.Parent):
             or source._construction.kind != 'polynomial'
         ):
             raise TypeError('incompatible polynomial rings')
+        if source.variable_name() != self.variable_name():
+            raise TypeError('incompatible polynomial rings')
         if source.base_ring() is self._base:
             result = self(0)
             generator = self.gen()
@@ -474,8 +476,6 @@ class PolynomialRingParent(sage.Parent):
                 result = result._mul_(generator)._add_(
                     self(coefficient))
             return result
-        if source.variable_name() != self.variable_name():
-            raise TypeError('incompatible polynomial rings')
         if source.base_ring() is sage.ZZ and self._base is sage.QQ:
             return PolynomialElement(
                 self, runtime.flint_backend().zzPolyToQQ(value._native))

@@ -172,6 +172,8 @@ function createReadlineInterface(options: Options, PyLang) {
 export interface ReplController {
   /** Resolve after every line submitted so far has been compiled and run. */
   drain(): Promise<void>;
+  /** Resolve after EOF has flushed the final buffered compound statement. */
+  finished(): Promise<void>;
 }
 
 export default async function Repl(
@@ -607,6 +609,10 @@ export default async function Repl(
   // should not pay the parser's fixed startup cost.  Serializing line events
   // also preserves piped-input ordering while the first parser is loading.
   let lineQueue: Promise<void> = Promise.resolve();
+  let resolveFinished!: () => void;
+  const finished = new Promise<void>((resolve) => {
+    resolveFinished = resolve;
+  });
   function queueLine(line: string): void {
     lineQueue = lineQueue.then(async () => {
       const frontend = ensurePythonFrontend();
@@ -635,12 +641,22 @@ export default async function Repl(
 
   readline.on("close", async () => {
     await lineQueue;
+    // A pipe commonly ends immediately after the final indented line rather
+    // than delivering the blank line used by an interactive REPL.  At EOF the
+    // input is unambiguous, so compile that final suite as a complete stdin
+    // unit instead of silently abandoning it in the continuation buffer.
+    if (buffer.length) {
+      const source = buffer.join("\n");
+      resetBuffer();
+      more = false;
+      compileAndRun(source, { filename: "<stdin>" });
+    }
     const { history } = readline as any; //  deprecated in node 15...
     if (history) {
       writeHistory(options, history);
     }
     options.console.log();
-    process.exit(0);
+    resolveFinished();
   });
 
   readline.on("SIGINT", () => {
@@ -657,6 +673,9 @@ export default async function Repl(
   return {
     drain(): Promise<void> {
       return lineQueue;
+    },
+    finished(): Promise<void> {
+      return finished;
     },
   };
 }

@@ -279,7 +279,7 @@ async function main(): Promise<void> {
     return;
   }
   if (argv.mode === "repl") {
-    await Repl({
+    const repl = await Repl({
       show_js: !argv.no_js,
       sage: sageMode,
       magma: argv.magma,
@@ -292,6 +292,11 @@ async function main(): Promise<void> {
       emitSage: argv.emit_sage,
       tokens: argv.tokens,
     });
+    // A non-interactive SEA has no filesystem handles keeping Node alive while
+    // the lazily initialized Tree-sitter frontend consumes piped input.  Wait
+    // for every line observed during REPL initialization before returning.
+    // Interactive readline sessions remain alive through their input handle.
+    await repl.finished();
     return;
   }
   if (argv.mode === "compile") {

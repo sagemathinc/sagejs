@@ -105,6 +105,18 @@ assert.equal(
   1,
 );
 assert.match(run([], "print(2^3)\nprint(sum([1..10]))\n"), /8\s+55\s*$/);
+assert.equal(
+  run(
+    [],
+    [
+      "try:",
+      "    raise TypeError('expected')",
+      "except TypeError:",
+      "    print('compound statement flushed at EOF')",
+    ].join("\n") + "\n",
+  ).trim(),
+  "compound statement flushed at EOF",
+);
 assert.equal(run([], 'print("before")\nquit()\nprint("after")\n').trim(), "before");
 const explicitExit = spawnSync(process.execPath, [cli], {
   cwd: root,
