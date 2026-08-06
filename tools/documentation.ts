@@ -356,9 +356,11 @@ export function documentationCatalogFromRegistry(
       kind,
       module: typeof moduleValue === "string" ? moduleValue : "",
       signature:
-        kind === "constant" || kind === "object"
-          ? name
-          : signature(value, name),
+        typeof metadata.signature === "string" && metadata.signature
+          ? metadata.signature
+          : kind === "constant" || kind === "object"
+            ? name
+            : signature(value, name),
       summary: firstNonemptyLine(doc),
       doc,
       tags: stringArray(metadata.tags),

@@ -147,3 +147,15 @@ test("DocSpec supports documented constants without mutating their value", () =>
   assert.equal(catalog.entries[0].signature, "log2");
   assert.equal(catalog.entries[0].summary, "The natural logarithm of `2`.");
 });
+
+test("DocSpec accepts an explicit signature for generated reference data", () => {
+  function generatedCallable() {}
+  const catalog = documentationCatalogFromRegistry([
+    ["Graph.order", generatedCallable, {
+      kind: "method",
+      signature: "order() -> int",
+      doc: "Return the number of vertices.",
+    }],
+  ]);
+  assert.equal(catalog.entries[0].signature, "order() -> int");
+});

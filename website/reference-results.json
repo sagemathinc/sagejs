@@ -3,7 +3,7 @@
   "fixture": "reference.doctests.json",
   "randomSeed": "sagejs-reference-0",
   "counts": {
-    "pass": 119,
+    "pass": 127,
     "fail": 0,
     "skip": 4,
     "xfail": 2,
@@ -74,6 +74,16 @@
       "id": "src/baselib/polynomial.py:1988",
       "status": "pass",
       "actual": "[Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^2 + y^2 - 1, Closed subscheme of Affine Space of dimension 2 over Rational Field defined by:\n  x^3 + y^3 - 1]\n"
+    },
+    {
+      "id": "reference-tests/graphs.cjs:directed-graph-workflow",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "reference-tests/graphs.cjs:named-graph-generators-workflow",
+      "status": "pass",
+      "actual": "True\n"
     },
     {
       "id": "src/baselib/modular.py:468",
@@ -181,6 +191,250 @@
       "actual": "Univariate Polynomial Ring in x over Finite Field in a of size 3^2\n"
     },
     {
+      "id": "reference-tests/graphs.cjs:mutable-graph-workflow",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "reference-tests/graphs.cjs:structural-algorithms-workflow",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "reference-tests/graphs.cjs:isomorphism-and-optimization-workflow",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "reference-tests/graphs.cjs:graph-layout-and-plotting-workflow",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
+      "id": "src/baselib/graphics.py:4245",
+      "status": "pass",
+      "actual": ""
+    },
+    {
+      "id": "src/baselib/graphics.py:4246",
+      "status": "pass",
+      "actual": "1\n"
+    },
+    {
+      "id": "reference-tests/graphs.cjs:petersen-plot-preview",
+      "status": "pass",
+      "actual": "Graphics object consisting of 2 graphics primitives\n",
+      "display": {
+        "mime": "application/vnd.plotly.v1+json",
+        "data": {
+          "data": [
+            {
+              "type": "scatter",
+              "mode": "lines",
+              "x": [
+                0,
+                -0.9510565163,
+                null,
+                0,
+                0,
+                null,
+                0,
+                -0.29389262615,
+                null,
+                -0.9510565163,
+                -0.5877852523,
+                null,
+                -0.9510565163,
+                -0.47552825815,
+                null,
+                -0.47552825815,
+                0.29389262615,
+                null,
+                -0.5877852523,
+                0.5877852523,
+                null,
+                -0.5877852523,
+                -0.29389262615,
+                null,
+                -0.29389262615,
+                0.47552825815,
+                null,
+                0.5877852523,
+                0.9510565163,
+                null,
+                0.5877852523,
+                0.29389262615,
+                null,
+                0.29389262615,
+                0,
+                null,
+                0.9510565163,
+                0,
+                null,
+                0.9510565163,
+                0.47552825815,
+                null,
+                0.47552825815,
+                -0.47552825815,
+                null
+              ],
+              "y": [
+                1,
+                0.3090169944,
+                null,
+                1,
+                0.5,
+                null,
+                0.5,
+                -0.4045084972,
+                null,
+                0.3090169944,
+                -0.8090169944,
+                null,
+                0.3090169944,
+                0.1545084972,
+                null,
+                0.1545084972,
+                -0.4045084972,
+                null,
+                -0.8090169944,
+                -0.8090169944,
+                null,
+                -0.8090169944,
+                -0.4045084972,
+                null,
+                -0.4045084972,
+                0.1545084972,
+                null,
+                -0.8090169944,
+                0.3090169944,
+                null,
+                -0.8090169944,
+                -0.4045084972,
+                null,
+                -0.4045084972,
+                0.5,
+                null,
+                0.3090169944,
+                1,
+                null,
+                0.3090169944,
+                0.1545084972,
+                null,
+                0.1545084972,
+                0.1545084972,
+                null
+              ],
+              "line": {
+                "color": "#777",
+                "width": 1.5
+              },
+              "hoverinfo": "skip",
+              "showlegend": false
+            },
+            {
+              "type": "scatter",
+              "mode": "markers+text",
+              "x": [
+                0,
+                -0.9510565163,
+                -0.5877852523,
+                0.5877852523,
+                0.9510565163,
+                0,
+                -0.47552825815,
+                -0.29389262615,
+                0.29389262615,
+                0.47552825815
+              ],
+              "y": [
+                1,
+                0.3090169944,
+                -0.8090169944,
+                -0.8090169944,
+                0.3090169944,
+                0.5,
+                0.1545084972,
+                -0.4045084972,
+                -0.4045084972,
+                0.1545084972
+              ],
+              "text": [
+                "0",
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9"
+              ],
+              "textposition": "middle center",
+              "hovertext": [
+                "0",
+                "1",
+                "2",
+                "3",
+                "4",
+                "5",
+                "6",
+                "7",
+                "8",
+                "9"
+              ],
+              "hoverinfo": "text",
+              "marker": {
+                "color": "#377eb8",
+                "size": 28,
+                "line": {
+                  "color": "#ffffff",
+                  "width": 1.5
+                }
+              },
+              "showlegend": false
+            }
+          ],
+          "layout": {
+            "autosize": true,
+            "showlegend": false,
+            "font": {
+              "size": 10
+            },
+            "xaxis": {
+              "visible": false,
+              "scaleanchor": "y",
+              "scaleratio": 1
+            },
+            "yaxis": {
+              "visible": false
+            },
+            "title": "Petersen graph",
+            "hovermode": "closest",
+            "margin": {
+              "l": 20,
+              "r": 20,
+              "b": 20,
+              "t": 45
+            },
+            "annotations": [],
+            "plot_bgcolor": "rgba(0,0,0,0)",
+            "paper_bgcolor": "rgba(0,0,0,0)"
+          },
+          "config": {
+            "displaylogo": false,
+            "responsive": true
+          }
+        }
+      }
+    },
+    {
+      "id": "reference-tests/graphs.cjs:graph-database-workflow",
+      "status": "pass",
+      "actual": "True\n"
+    },
+    {
       "id": "src/baselib/graphics.py:3126",
       "status": "pass",
       "actual": ""
@@ -284,7 +538,7 @@
     {
       "id": "src/sage/graphs/generators/random.py:95",
       "status": "pass",
-      "actual": "sagejs/runtime-bootstrap-sage.js:51855\n        throw ρσ_exception_value(new ValueError(\"'algorithm' must be equal to 'networkx' or to 'Sage'\"));\n        ^\n\nValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n    at ValueError.ρσ_method___init__ [as __init__] (sagejs/runtime-bootstrap-sage.js:24175:13)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:24228:74)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:24482:66)\n    at new ValueError (sagejs/runtime-bootstrap-sage.js:24475:56)\n    at GraphGenerators.ρσ_method_RandomGNP [as RandomGNP] (sagejs/runtime-bootstrap-sage.js:51855:34)\n    at ρσ_interpolate_kwargs (sagejs/runtime-bootstrap-sage.js:55857:24)\n    at evalmachine.<anonymous>:6:1\n    at Script.runInThisContext (node:vm:138:12)\n    at runInThisContext (node:vm:318:38)\n    at runJS (/home/user/sagejs/dist/tools/repl.js:236:48)\n"
+      "actual": "sagejs/runtime-bootstrap-sage.js:51872\n        throw ρσ_exception_value(new ValueError(\"'algorithm' must be equal to 'networkx' or to 'Sage'\"));\n        ^\n\nValueError: 'algorithm' must be equal to 'networkx' or to 'Sage'\n    at ValueError.ρσ_method___init__ [as __init__] (sagejs/runtime-bootstrap-sage.js:24175:13)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:24228:74)\n    at ValueError.__init__ (sagejs/runtime-bootstrap-sage.js:24482:66)\n    at new ValueError (sagejs/runtime-bootstrap-sage.js:24475:56)\n    at GraphGenerators.ρσ_method_RandomGNP [as RandomGNP] (sagejs/runtime-bootstrap-sage.js:51872:34)\n    at ρσ_interpolate_kwargs (sagejs/runtime-bootstrap-sage.js:55900:24)\n    at evalmachine.<anonymous>:6:1\n    at Script.runInThisContext (node:vm:138:12)\n    at runInThisContext (node:vm:318:38)\n    at runJS (/home/user/sagejs/dist/tools/repl.js:236:48)\n"
     },
     {
       "id": "src/sage/graphs/generators/random.py:99",
@@ -433,11 +687,6 @@
       "actual": "((5, 2), 2)\n"
     },
     {
-      "id": "src/baselib/modular.py:2345",
-      "status": "pass",
-      "actual": "[ 3  0  0]\n[ 1 -2  0]\n[ 1  0 -2]\n"
-    },
-    {
       "id": "src/baselib/modular.py:3754",
       "status": "pass",
       "actual": ""
@@ -503,6 +752,11 @@
       "actual": "10\n"
     },
     {
+      "id": "src/baselib/modular.py:2345",
+      "status": "pass",
+      "actual": "[ 3  0  0]\n[ 1 -2  0]\n[ 1  0 -2]\n"
+    },
+    {
       "id": "src/baselib/groups.py:447",
       "status": "pass",
       "actual": ""
@@ -516,16 +770,6 @@
       "id": "src/baselib/groups.py:450",
       "status": "pass",
       "actual": "False\n"
-    },
-    {
-      "id": "src/baselib/graphics.py:4245",
-      "status": "pass",
-      "actual": ""
-    },
-    {
-      "id": "src/baselib/graphics.py:4246",
-      "status": "pass",
-      "actual": "1\n"
     },
     {
       "id": "src/baselib/graphics3d.py:2209",

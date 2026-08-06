@@ -586,6 +586,206 @@ Plot the values of a function of two variables as a color density.
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
 
+## `DiGraph.is_dag`
+
+```sage
+is_dag() -> bool
+```
+
+Return the result of the Sage-compatible `is_dag` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `DiGraph.is_directed_acyclic`
+
+```sage
+is_directed_acyclic() -> bool
+```
+
+Check whether the digraph is acyclic or not.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:998](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L998); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `DiGraph.reverse`
+
+```sage
+reverse() -> DiGraph
+```
+
+Return a copy of digraph with edges reversed in direction.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:1859](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L1859); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `DiGraph.strongly_connected_components`
+
+```sage
+strongly_connected_components() -> list[list[Any]]
+```
+
+Return the strongly connected components.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `DiGraph.topological_sort`
+
+```sage
+topological_sort(**_options: Any) -> list[Any]
+```
+
+Return a topological sort of the digraph if it is acyclic.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:2877](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L2877); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `digraphs.Circuit`
+
+```sage
+Circuit(order: int) -> DiGraph
+```
+
+Return the circuit on `n` vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph_generators`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph_generators.py`:913](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph_generators.py#L913); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `digraphs.Complete`
+
+```sage
+Complete(order: int) -> DiGraph
+```
+
+Return the complete digraph on `n` vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph_generators`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph_generators.py`:865](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph_generators.py#L865); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `digraphs.Path`
+
+```sage
+Path(order: int) -> DiGraph
+```
+
+Return a directed path on `n` vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph_generators`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph_generators.py`:347](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph_generators.py#L347); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
 ## `dimension_cusp_forms`
 
 ```sage
@@ -1145,6 +1345,2531 @@ Extension moduli are irreducible and normalized to monic. Passing
 
 - The FLINT contributors, [FLINT: Fast Library for Number Theory](https://flintlib.org/).
 
+## `Graph.add_clique`
+
+```sage
+add_clique(vertices: Any) -> None
+```
+
+Add a clique to the graph with the given vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:19673](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L19673); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.add_cycle`
+
+```sage
+add_cycle(vertices: Any) -> None
+```
+
+Add a cycle to the graph with the given vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:19771](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L19771); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.add_edge`
+
+```sage
+add_edge(*edge_data: Any) -> None
+```
+
+Add an edge from `u` to `v`.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:12608](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L12608); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.add_edges`
+
+```sage
+add_edges(edges: Any) -> None
+```
+
+Add edges from an iterable container.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:12671](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L12671); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.add_path`
+
+```sage
+add_path(vertices: Any) -> None
+```
+
+Add a path to the graph with the given vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:19837](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L19837); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.add_vertex`
+
+```sage
+add_vertex(vertex: Any=None) -> Any
+```
+
+Create an isolated vertex.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:11647](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L11647); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.add_vertices`
+
+```sage
+add_vertices(vertices: Any) -> None
+```
+
+Add vertices to the (di)graph from an iterable container of vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:11681](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L11681); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.adjacency_matrix`
+
+```sage
+adjacency_matrix(**_options: Any) -> Any
+```
+
+Return the adjacency matrix of the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:2269](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L2269); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.allows_loops`
+
+```sage
+allows_loops(value: Any=None) -> bool
+```
+
+Return whether loops are permitted in the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:3541](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L3541); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.allows_multiple_edges`
+
+```sage
+allows_multiple_edges(value: Any=None) -> bool
+```
+
+Return whether multiple edges are permitted in the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:3852](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L3852); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.automorphism_group`
+
+```sage
+automorphism_group(edge_labels: bool=False, **_options: Any) -> GraphAutomorphismGroup
+```
+
+Return the automorphism group of the graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:24638](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L24638); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.average_degree`
+
+```sage
+average_degree() -> float
+```
+
+Return the average degree of the graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:14052](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L14052); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.breadth_first_search`
+
+```sage
+breadth_first_search(start: Any, distance: Any=None, **_options: Any) -> Iterator[Any]
+```
+
+Return an iterator over the vertices in a breadth-first ordering.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:19274](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L19274); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.bridges`
+
+```sage
+bridges(labels: bool=True) -> list[Any]
+```
+
+Return the result of the Sage-compatible `bridges` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.canonical_label`
+
+```sage
+canonical_label(partition: Any=None, certificate: bool=False, edge_labels: bool=False, **_options: Any) -> Any
+```
+
+Return the canonical graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:25481](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L25481); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.cartesian_product`
+
+```sage
+cartesian_product(other: GenericGraph) -> GenericGraph
+```
+
+Return the Cartesian product of `self` and `other`.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:20251](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L20251); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.center`
+
+```sage
+center() -> list[Any]
+```
+
+Return the set of vertices in the center of the DiGraph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:2710](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L2710); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.chromatic_number`
+
+```sage
+chromatic_number(**options: Any) -> int
+```
+
+Return the minimal number of colors needed to color the vertices of the graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph.py`:3443](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph.py#L3443); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.clique_maximum`
+
+```sage
+clique_maximum(**_options: Any) -> list[Any]
+```
+
+Return the vertex set of a maximal order complete subgraph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph.py`:6073](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph.py#L6073); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.clique_number`
+
+```sage
+clique_number(**_options: Any) -> int
+```
+
+Return the order of the largest clique of the graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph.py`:6158](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph.py#L6158); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.coloring`
+
+```sage
+coloring(hex_colors: bool=False, **_options: Any) -> Any
+```
+
+Return the first (optimal) proper vertex-coloring found.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph.py`:3588](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph.py#L3588); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.complement`
+
+```sage
+complement() -> GenericGraph
+```
+
+Return the complement of the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:19884](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L19884); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.components`
+
+```sage
+components(sort: bool=False) -> list[list[Any]]
+```
+
+Return the result of the Sage-compatible `components` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.connected_component_containing_vertex`
+
+```sage
+connected_component_containing_vertex(vertex: Any) -> list[Any]
+```
+
+Return the result of the Sage-compatible `connected_component_containing_vertex` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.connected_components`
+
+```sage
+connected_components(sort: bool=False) -> list[list[Any]]
+```
+
+Return the result of the Sage-compatible `connected_components` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.copy`
+
+```sage
+copy(immutable: bool=False) -> GenericGraph
+```
+
+Change the graph implementation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:1294](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L1294); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.degree`
+
+```sage
+degree(vertex: Any=None) -> Any
+```
+
+Return the degree (in + out for digraphs) of a vertex or of vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:13980](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L13980); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.degree_sequence`
+
+```sage
+degree_sequence() -> list[int]
+```
+
+Return the degree sequence of this (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:14200](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L14200); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.delete_edge`
+
+```sage
+delete_edge(*edge_data: Any) -> None
+```
+
+Delete the edge from `u` to `v`.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:12910](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L12910); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.delete_edges`
+
+```sage
+delete_edges(edges: Any) -> None
+```
+
+Delete edges from an iterable container.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:12983](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L12983); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.delete_vertex`
+
+```sage
+delete_vertex(vertex: Any) -> None
+```
+
+Delete vertex, removing all incident edges.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:11719](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L11719); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.delete_vertices`
+
+```sage
+delete_vertices(vertices: Any) -> None
+```
+
+Delete vertices from the (di)graph taken from an iterable container of vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:11796](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L11796); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.density`
+
+```sage
+density() -> float
+```
+
+Return the density of the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:4524](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L4524); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.depth_first_search`
+
+```sage
+depth_first_search(start: Any, **_options: Any) -> Iterator[Any]
+```
+
+Return an iterator over the vertices in a depth-first ordering.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:19499](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L19499); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.diameter`
+
+```sage
+diameter() -> Any
+```
+
+Return the diameter of the DiGraph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:2542](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L2542); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.distance`
+
+```sage
+distance(source_vertex: Any, target_vertex: Any, **_options: Any) -> Any
+```
+
+Return the (directed) distance from `u` to `v` in the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:16636](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L16636); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.distances_all_pairs`
+
+```sage
+distances_all_pairs() -> dict[Any, dict[Any, Any]]
+```
+
+Return the result of the Sage-compatible `distances_all_pairs` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.eccentricity`
+
+```sage
+eccentricity(vertex: Any=None) -> Any
+```
+
+Return the eccentricity of vertex (or vertices) `v`.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:2257](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L2257); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.edge_iterator`
+
+```sage
+edge_iterator(labels: bool=True, sort: bool=False, **_options: Any) -> list[Any]
+```
+
+Return an iterator over edges.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:13669](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L13669); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.edge_label`
+
+```sage
+edge_label(source_vertex: Any, target_vertex: Any) -> Any
+```
+
+Return the label of an edge.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:13804](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L13804); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.edges`
+
+```sage
+edges(labels: bool=True, sort: bool=False, **_options: Any) -> list[Any]
+```
+
+Return a `~EdgesView` of edges.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:13388](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L13388); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.get_pos`
+
+```sage
+get_pos() -> Any
+```
+
+Return the position dictionary.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:4219](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L4219); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.girth`
+
+```sage
+girth() -> Any
+```
+
+Return the girth of the graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:16869](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L16869); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.graph_name`
+
+```sage
+graph_name(value: Any=None) -> str
+```
+
+Return the result of the Sage-compatible `graph_name` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.graph6_string`
+
+```sage
+graph6_string() -> str
+```
+
+Return the graph6 representation of the graph as an ASCII string.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph.py`:1365](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph.py#L1365); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.graphplot`
+
+```sage
+graphplot(**options: Any) -> GraphPlot
+```
+
+Return a `~sage.graphs.graph_plot.GraphPlot` object.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:22235](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L22235); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.has_edge`
+
+```sage
+has_edge(source_vertex: Any, target_vertex: Any, label: Any=...) -> bool
+```
+
+Check whether `(u, v)` is an edge of the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:13355](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L13355); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.has_loops`
+
+```sage
+has_loops() -> bool
+```
+
+Return whether there are loops in the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:3497](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L3497); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.has_vertex`
+
+```sage
+has_vertex(vertex: Any) -> bool
+```
+
+Check if `vertex` is one of the vertices of this graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:11850](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L11850); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.in_degree`
+
+```sage
+in_degree(vertex: Any=None) -> Any
+```
+
+Same as degree, but for in degree.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:1374](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L1374); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.independent_set`
+
+```sage
+independent_set(**_options: Any) -> list[Any]
+```
+
+Return a maximum independent set.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph.py`:6455](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph.py#L6455); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.is_bipartite`
+
+```sage
+is_bipartite(certificate: bool=False) -> Any
+```
+
+Check whether the graph is bipartite.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:4565](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L4565); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.is_connected`
+
+```sage
+is_connected() -> bool
+```
+
+Return the result of the Sage-compatible `is_connected` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.is_directed`
+
+```sage
+is_directed() -> bool
+```
+
+Since digraph is directed, return `True`.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:985](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L985); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.is_eulerian`
+
+```sage
+is_eulerian() -> bool
+```
+
+Check whether the graph is Eulerian.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:4687](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L4687); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.is_forest`
+
+```sage
+is_forest() -> bool
+```
+
+Test if the graph is a forest, i.e. a disjoint union of trees.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph.py`:1706](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph.py#L1706); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.is_isomorphic`
+
+```sage
+is_isomorphic(other: Any, certificate: bool=False, edge_labels: bool=False, **_options: Any) -> Any
+```
+
+Test for isomorphism between `self` and `other`.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:25152](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L25152); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.is_regular`
+
+```sage
+is_regular(degree: Any=None) -> bool
+```
+
+Check whether this graph is (`k`-)regular.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:14229](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L14229); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.is_tree`
+
+```sage
+is_tree() -> bool
+```
+
+Test if the graph is a tree.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph.py`:1546](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph.py#L1546); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.layout`
+
+```sage
+layout(layout: str | None=None, save_pos: bool=False, **_options: Any) -> dict[Any, Any]
+```
+
+Return a layout for the vertices of this graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:21227](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L21227); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.loop_edges`
+
+```sage
+loop_edges(labels: bool=True) -> list[Any]
+```
+
+Return a list of all loops in the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:3638](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L3638); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.max_degree`
+
+```sage
+max_degree() -> int
+```
+
+Return the result of the Sage-compatible `max_degree` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.maximum_clique`
+
+```sage
+maximum_clique(**_options: Any) -> list[Any]
+```
+
+Return the result of the Sage-compatible `maximum_clique` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.maximum_degree`
+
+```sage
+maximum_degree() -> int
+```
+
+Return the result of the Sage-compatible `maximum_degree` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.min_degree`
+
+```sage
+min_degree() -> int
+```
+
+Return the result of the Sage-compatible `min_degree` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.min_spanning_tree`
+
+```sage
+min_spanning_tree(starting_vertex: Any=None) -> GenericGraph
+```
+
+Return the edges of a minimum spanning tree.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:4996](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L4996); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.minimum_degree`
+
+```sage
+minimum_degree() -> int
+```
+
+Return the result of the Sage-compatible `minimum_degree` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.neighbor_iterator`
+
+```sage
+neighbor_iterator(vertex: Any) -> Iterator[Any]
+```
+
+Return an iterator over neighbors of `vertex`.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:12290](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L12290); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.neighbors`
+
+```sage
+neighbors(vertex: Any) -> list[Any]
+```
+
+Return a list of neighbors (in and out if directed) of `vertex`.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:12463](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L12463); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.neighbors_in`
+
+```sage
+neighbors_in(vertex: Any) -> list[Any]
+```
+
+Return the list of the in-neighbors of a given vertex.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:1304](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L1304); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.neighbors_out`
+
+```sage
+neighbors_out(vertex: Any) -> list[Any]
+```
+
+Return the list of the out-neighbors of a given vertex.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:1358](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L1358); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.num_edges`
+
+```sage
+num_edges() -> int
+```
+
+Return the result of the Sage-compatible `num_edges` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.num_verts`
+
+```sage
+num_verts() -> int
+```
+
+Return the result of the Sage-compatible `num_verts` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.order`
+
+```sage
+order() -> int
+```
+
+Return the number of vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:4799](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L4799); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.out_degree`
+
+```sage
+out_degree(vertex: Any=None) -> Any
+```
+
+Same as degree, but for out degree.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:1445](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L1445); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.plot`
+
+```sage
+plot(**options: Any) -> Any
+```
+
+Return a `~sage.plot.graphics.Graphics` object representing the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:22318](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L22318); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.radius`
+
+```sage
+radius() -> Any
+```
+
+Return the radius of the DiGraph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:2474](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L2474); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.relabel`
+
+```sage
+relabel(perm: Any=None, inplace: bool=True, **_options: Any) -> Any
+```
+
+Relabel the vertices of `self`.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:24111](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L24111); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.set_edge_label`
+
+```sage
+set_edge_label(source_vertex: Any, target_vertex: Any, label: Any) -> None
+```
+
+Set the edge label of a given edge.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:13260](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L13260); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.set_pos`
+
+```sage
+set_pos(pos: Any) -> None
+```
+
+Set the position dictionary.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:4340](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L4340); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.shortest_path`
+
+```sage
+shortest_path(u: Any, v: Any, **_options: Any) -> list[Any]
+```
+
+Return a list of vertices representing some shortest path from `u` to `v`.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:17687](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L17687); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.show`
+
+```sage
+show(**options: Any) -> Any
+```
+
+Show the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:22646](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L22646); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.size`
+
+```sage
+size() -> int
+```
+
+Return the number of edges.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:4827](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L4827); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.spanning_tree`
+
+```sage
+spanning_tree(starting_vertex: Any=None) -> GenericGraph
+```
+
+Return the result of the Sage-compatible `spanning_tree` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `Graph.sparse6_string`
+
+```sage
+sparse6_string() -> str
+```
+
+Return the sparse6 representation of the graph as an ASCII string.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph.py`:1403](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph.py#L1403); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.subgraph`
+
+```sage
+subgraph(vertices: Any=None, edges: Any=None, **_options: Any) -> GenericGraph
+```
+
+Return the subgraph containing the given vertices and edges.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:14273](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L14273); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.to_directed`
+
+```sage
+to_directed() -> DiGraph
+```
+
+Since the graph is already directed, simply returns a copy of itself.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.digraph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/digraph.py`:1083](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/digraph.py#L1083); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.to_undirected`
+
+```sage
+to_undirected() -> Graph
+```
+
+Return an undirected Graph (without bipartite constraint) of the given object.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.bipartite_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/bipartite_graph.py`:1660](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/bipartite_graph.py#L1660); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.vertex_cover`
+
+```sage
+vertex_cover(**_options: Any) -> list[Any]
+```
+
+Return a minimum vertex cover of `self` represented by a set of vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.bipartite_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/bipartite_graph.py`:2556](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/bipartite_graph.py#L2556); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.vertex_iterator`
+
+```sage
+vertex_iterator(sort: bool=False, **_options: Any) -> list[Any]
+```
+
+Return an iterator over the given vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:12213](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L12213); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.vertices`
+
+```sage
+vertices(sort: bool=False, **_options: Any) -> list[Any]
+```
+
+Return a list of the vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:12361](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L12361); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `Graph.weighted`
+
+```sage
+weighted(value: Any=None) -> bool
+```
+
+Whether the (di)graph is to be considered as a weighted (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generic_graph`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generic_graph.py`:4380](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generic_graph.py#L4380); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `GraphAutomorphism.dict`
+
+```sage
+dict() -> dict[Any, Any]
+```
+
+Return the vertex-image dictionary of this automorphism.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `GraphAutomorphismGroup.cardinality`
+
+```sage
+cardinality() -> int
+```
+
+Return the number of orderings allowed by the structure.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.pq_trees`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/pq_trees.py`:746](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/pq_trees.py#L746); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `GraphAutomorphismGroup.gens`
+
+```sage
+gens() -> 'tuple[GraphAutomorphism, ...]'
+```
+
+Return compact generators of the graph automorphism group.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `GraphAutomorphismGroup.list`
+
+```sage
+list() -> list[GraphAutomorphism]
+```
+
+Return the result of the Sage-compatible `list` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `GraphAutomorphismGroup.order`
+
+```sage
+order() -> int
+```
+
+Return the number of vertices of the graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.luw_graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/luw_graphs.py`:218](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/luw_graphs.py#L218); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `GraphDatabase.close`
+
+```sage
+close() -> None
+```
+
+Return the result of the Sage-compatible `close` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `GraphDatabase.count`
+
+```sage
+count(**conditions: Any) -> int
+```
+
+Return the result of the Sage-compatible `count` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `GraphDatabase.graphs`
+
+```sage
+graphs(**conditions: Any) -> list[Graph]
+```
+
+Return the result of the Sage-compatible `graphs` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `GraphDatabase.query`
+
+```sage
+query(query_dict: Any=None, display_cols: Any=None, limit: int | None=None, **conditions: Any) -> GraphQuery
+```
+
+Create a GraphQuery on this database.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph_database`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph_database.py`:1020](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph_database.py#L1020); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
 ## `graphics_array`
 
 ```sage
@@ -1181,6 +3906,556 @@ sage: G.nrows(), G.ncols()
 ### References
 
 - [Plotly JavaScript Open Source Graphing Library](https://plotly.com/javascript/).
+
+## `GraphPlot.plot`
+
+```sage
+plot() -> Any
+```
+
+Return a graphics object representing the (di)graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph_plot`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph_plot.py`:1147](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph_plot.py#L1147); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `GraphPlot.plotly`
+
+```sage
+plotly() -> Any
+```
+
+Return the Plotly figure representing this graph plot.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `GraphPlot.show`
+
+```sage
+show(**options: Any) -> GraphPlot
+```
+
+Show the (di)graph associated with this `GraphPlot` object.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph_plot`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph_plot.py`:1109](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph_plot.py#L1109); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `GraphQuery.count`
+
+```sage
+count() -> int
+```
+
+Return the result of the Sage-compatible `count` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `GraphQuery.get_graphs_list`
+
+```sage
+get_graphs_list() -> list[Graph]
+```
+
+Return a list of Sage Graph objects that satisfy the query.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph_database`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph_database.py`:727](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph_database.py#L727); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `GraphQuery.list`
+
+```sage
+list() -> list[Graph]
+```
+
+Return the result of the Sage-compatible `list` graph operation.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sagejs-original` — Sage.js graph implementation; license GPL-3.0-only
+
+## `GraphQuery.query_iterator`
+
+```sage
+query_iterator(immutable: Any=None) -> Iterator[Graph]
+```
+
+Return an iterator over the results list of the `~GraphQuery`.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.graph_database`
+- Tags: graph theory, graphs
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/graph_database.py`:549](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/graph_database.py#L549); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.BullGraph`
+
+```sage
+BullGraph(immutable: bool=False) -> Graph
+```
+
+Return a bull graph with 5 nodes.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.basic`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/basic.py`:23](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/basic.py#L23); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.CompleteBipartiteGraph`
+
+```sage
+CompleteBipartiteGraph(left: int, right: int, set_position: bool=True, immutable: bool=False, name: str | None=None) -> Graph
+```
+
+Return a Complete Bipartite Graph on `p + q` vertices.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.basic`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/basic.py`:555](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/basic.py#L555); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.CompleteGraph`
+
+```sage
+CompleteGraph(order: int, immutable: bool=False) -> Graph
+```
+
+Return a complete graph on `n` nodes.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.basic`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/basic.py`:382](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/basic.py#L382); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.CycleGraph`
+
+```sage
+CycleGraph(order: int, immutable: bool=False) -> Graph
+```
+
+Return a cycle graph with `n` nodes.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.basic`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/basic.py`:282](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/basic.py#L282); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.DiamondGraph`
+
+```sage
+DiamondGraph(immutable: bool=False) -> Graph
+```
+
+Return a diamond graph with 4 nodes.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.basic`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/basic.py`:794](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/basic.py#L794); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.DodecahedralGraph`
+
+```sage
+DodecahedralGraph(immutable: bool=False) -> Graph
+```
+
+Return a Dodecahedral graph (with 20 nodes).
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.platonic_solids`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/platonic_solids.py`:237](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/platonic_solids.py#L237); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.EmptyGraph`
+
+```sage
+EmptyGraph(immutable: bool=False) -> Graph
+```
+
+Return an empty graph (0 nodes and 0 edges).
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.basic`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/basic.py`:933](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/basic.py#L933); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.GeneralizedPetersenGraph`
+
+```sage
+GeneralizedPetersenGraph(order: int, step: int, immutable: bool=False, name: str | None=None) -> Graph
+```
+
+Return a generalized Petersen graph with `2n` nodes. The variables `n`, `k` are integers such that `n>2` and `0<k\leq\lfloor(n-1)`/`2\rfloor`
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.families`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/families.py`:1697](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/families.py#L1697); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.Grid2dGraph`
+
+```sage
+Grid2dGraph(rows: int, columns: int, set_positions: bool=True, immutable: bool=False, name: str | None=None) -> Graph
+```
+
+Return a `2`-dimensional grid graph with `p \times q` nodes (`p` rows and `q` columns).
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.basic`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/basic.py`:1110](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/basic.py#L1110); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.HexahedralGraph`
+
+```sage
+HexahedralGraph(immutable: bool=False) -> Graph
+```
+
+Return a hexahedral graph (with 8 nodes).
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.platonic_solids`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/platonic_solids.py`:78](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/platonic_solids.py#L78); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.HouseGraph`
+
+```sage
+HouseGraph(immutable: bool=False) -> Graph
+```
+
+Return a house graph with 5 nodes.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.basic`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/basic.py`:1317](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/basic.py#L1317); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.IcosahedralGraph`
+
+```sage
+IcosahedralGraph(immutable: bool=False) -> Graph
+```
+
+Return an Icosahedral graph (with 12 nodes).
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.platonic_solids`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/platonic_solids.py`:185](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/platonic_solids.py#L185); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.OctahedralGraph`
+
+```sage
+OctahedralGraph(immutable: bool=False) -> Graph
+```
+
+Return an Octahedral graph (with 6 nodes).
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.platonic_solids`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/platonic_solids.py`:134](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/platonic_solids.py#L134); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.PathGraph`
+
+```sage
+PathGraph(order: int, pos: Any=None, immutable: bool=False, name: str | None=None) -> Graph
+```
+
+Return a path graph with `n` nodes.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.basic`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/basic.py`:1553](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/basic.py#L1553); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.PetersenGraph`
+
+```sage
+PetersenGraph(immutable: bool=False) -> Graph
+```
+
+Return the Petersen Graph.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.smallgraphs`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/smallgraphs.py`:4603](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/smallgraphs.py#L4603); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
 
 ## `graphs.RandomGNP`
 
@@ -1255,6 +4530,81 @@ This API and documentation are adapted from
 ### References
 
 - Vladimir Batagelj, Ulrik Brandes, [Efficient generation of large random networks](https://doi.org/10.1103/PhysRevE.71.036113) (2005).
+
+## `graphs.StarGraph`
+
+```sage
+StarGraph(leaves: int, immutable: bool=False) -> Graph
+```
+
+Return a star graph with `n + 1` nodes.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.basic`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/basic.py`:1675](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/basic.py#L1675); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.TetrahedralGraph`
+
+```sage
+TetrahedralGraph(immutable: bool=False) -> Graph
+```
+
+Return a tetrahedral graph (with 4 nodes).
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.platonic_solids`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/platonic_solids.py`:21](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/platonic_solids.py#L21); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
+
+## `graphs.WheelGraph`
+
+```sage
+WheelGraph(order: int, immutable: bool=False) -> Graph
+```
+
+Return a Wheel graph with `n` nodes.
+
+### Sage.js status
+
+This entry is implemented and exercised by the Sage.js graph semantic corpus. The executable examples below define the currently verified option surface.
+
+### Metadata
+
+- Kind: `method`
+- Module: `sage.graphs.generators.families`
+- Tags: graph theory, generators
+- Backends: Sage.js graph algorithms
+- Sage compatibility: partial — The documented executable surface is supported; some specialized Sage backends and optional keywords are not bundled.
+- Limitations: Consult the verified examples for the currently tested option surface.
+
+### Provenance
+
+- `sage-derived` — [SageMath `src/sage/graphs/generators/families.py`:3651](https://github.com/sagemath/sage/blob/09472ff530d280d0c9f44fdc5a9c3e856ed95b37/src/sage/graphs/generators/families.py#L3651); revision 09472ff530d280d0c9f44fdc5a9c3e856ed95b37; license GPL-2.0-or-later
 
 ## `help`
 

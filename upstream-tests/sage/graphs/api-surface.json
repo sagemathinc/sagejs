@@ -1,0 +1,1548 @@
+{
+  "schema": "sagejs.graph-reference-import/v1",
+  "generatedBy": "scripts/import-sage-graph-reference.py",
+  "sage": {
+    "repository": "https://github.com/sagemath/sage",
+    "revision": "09472ff530d280d0c9f44fdc5a9c3e856ed95b37",
+    "license": "GPL-2.0-or-later"
+  },
+  "sagejsSource": "src/baselib/graphs.py",
+  "counts": {
+    "publicNames": 135,
+    "generatedEntries": 134,
+    "preexistingEntries": 1,
+    "matchedUpstreamDocs": 108
+  },
+  "entries": [
+    {
+      "owner": "DiGraph",
+      "attribute": "is_dag",
+      "name": "DiGraph.is_dag",
+      "signature": "is_dag() -> bool",
+      "local_line": 2170,
+      "alias_of": "DiGraph.is_directed_acyclic",
+      "upstream": null
+    },
+    {
+      "owner": "DiGraph",
+      "attribute": "is_directed_acyclic",
+      "name": "DiGraph.is_directed_acyclic",
+      "signature": "is_directed_acyclic() -> bool",
+      "local_line": 2163,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 998
+      }
+    },
+    {
+      "owner": "DiGraph",
+      "attribute": "reverse",
+      "name": "DiGraph.reverse",
+      "signature": "reverse() -> DiGraph",
+      "local_line": 2135,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 1859
+      }
+    },
+    {
+      "owner": "DiGraph",
+      "attribute": "strongly_connected_components",
+      "name": "DiGraph.strongly_connected_components",
+      "signature": "strongly_connected_components() -> list[list[Any]]",
+      "local_line": 2172,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "DiGraph",
+      "attribute": "topological_sort",
+      "name": "DiGraph.topological_sort",
+      "signature": "topological_sort(**_options: Any) -> list[Any]",
+      "local_line": 2146,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 2877
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "add_clique",
+      "name": "Graph.add_clique",
+      "signature": "add_clique(vertices: Any) -> None",
+      "local_line": 980,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 19673
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "add_cycle",
+      "name": "Graph.add_cycle",
+      "signature": "add_cycle(vertices: Any) -> None",
+      "local_line": 967,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 19771
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "add_edge",
+      "name": "Graph.add_edge",
+      "signature": "add_edge(*edge_data: Any) -> None",
+      "local_line": 934,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 12608
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "add_edges",
+      "name": "Graph.add_edges",
+      "signature": "add_edges(edges: Any) -> None",
+      "local_line": 963,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 12671
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "add_path",
+      "name": "Graph.add_path",
+      "signature": "add_path(vertices: Any) -> None",
+      "local_line": 974,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 19837
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "add_vertex",
+      "name": "Graph.add_vertex",
+      "signature": "add_vertex(vertex: Any=None) -> Any",
+      "local_line": 913,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 11647
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "add_vertices",
+      "name": "Graph.add_vertices",
+      "signature": "add_vertices(vertices: Any) -> None",
+      "local_line": 922,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 11681
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "adjacency_matrix",
+      "name": "Graph.adjacency_matrix",
+      "signature": "adjacency_matrix(**_options: Any) -> Any",
+      "local_line": 1656,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 2269
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "allows_loops",
+      "name": "Graph.allows_loops",
+      "signature": "allows_loops(value: Any=None) -> bool",
+      "local_line": 746,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 3541
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "allows_multiple_edges",
+      "name": "Graph.allows_multiple_edges",
+      "signature": "allows_multiple_edges(value: Any=None) -> bool",
+      "local_line": 751,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 3852
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "automorphism_group",
+      "name": "Graph.automorphism_group",
+      "signature": "automorphism_group(edge_labels: bool=False, **_options: Any) -> GraphAutomorphismGroup",
+      "local_line": 1778,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 24638
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "average_degree",
+      "name": "Graph.average_degree",
+      "signature": "average_degree() -> float",
+      "local_line": 1194,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 14052
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "breadth_first_search",
+      "name": "Graph.breadth_first_search",
+      "signature": "breadth_first_search(start: Any, distance: Any=None, **_options: Any) -> Iterator[Any]",
+      "local_line": 1218,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 19274
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "bridges",
+      "name": "Graph.bridges",
+      "signature": "bridges(labels: bool=True) -> list[Any]",
+      "local_line": 1593,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "canonical_label",
+      "name": "Graph.canonical_label",
+      "signature": "canonical_label(partition: Any=None, certificate: bool=False, edge_labels: bool=False, **_options: Any) -> Any",
+      "local_line": 1851,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 25481
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "cartesian_product",
+      "name": "Graph.cartesian_product",
+      "signature": "cartesian_product(other: GenericGraph) -> GenericGraph",
+      "local_line": 1637,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 20251
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "center",
+      "name": "Graph.center",
+      "signature": "center() -> list[Any]",
+      "local_line": 1381,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 2710
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "chromatic_number",
+      "name": "Graph.chromatic_number",
+      "signature": "chromatic_number(**options: Any) -> int",
+      "local_line": 2105,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph.py",
+        "line": 3443
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "clique_maximum",
+      "name": "Graph.clique_maximum",
+      "signature": "clique_maximum(**_options: Any) -> list[Any]",
+      "local_line": 2033,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph.py",
+        "line": 6073
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "clique_number",
+      "name": "Graph.clique_number",
+      "signature": "clique_number(**_options: Any) -> int",
+      "local_line": 2038,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph.py",
+        "line": 6158
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "coloring",
+      "name": "Graph.coloring",
+      "signature": "coloring(hex_colors: bool=False, **_options: Any) -> Any",
+      "local_line": 2048,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph.py",
+        "line": 3588
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "complement",
+      "name": "Graph.complement",
+      "signature": "complement() -> GenericGraph",
+      "local_line": 1525,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 19884
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "components",
+      "name": "Graph.components",
+      "signature": "components(sort: bool=False) -> list[list[Any]]",
+      "local_line": 1289,
+      "alias_of": "Graph.connected_components",
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "connected_component_containing_vertex",
+      "name": "Graph.connected_component_containing_vertex",
+      "signature": "connected_component_containing_vertex(vertex: Any) -> list[Any]",
+      "local_line": 1291,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "connected_components",
+      "name": "Graph.connected_components",
+      "signature": "connected_components(sort: bool=False) -> list[list[Any]]",
+      "local_line": 1260,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "copy",
+      "name": "Graph.copy",
+      "signature": "copy(immutable: bool=False) -> GenericGraph",
+      "local_line": 739,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 1294
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "degree",
+      "name": "Graph.degree",
+      "signature": "degree(vertex: Any=None) -> Any",
+      "local_line": 1147,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 13980
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "degree_sequence",
+      "name": "Graph.degree_sequence",
+      "signature": "degree_sequence() -> list[int]",
+      "local_line": 1182,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 14200
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "delete_edge",
+      "name": "Graph.delete_edge",
+      "signature": "delete_edge(*edge_data: Any) -> None",
+      "local_line": 987,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 12910
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "delete_edges",
+      "name": "Graph.delete_edges",
+      "signature": "delete_edges(edges: Any) -> None",
+      "local_line": 1003,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 12983
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "delete_vertex",
+      "name": "Graph.delete_vertex",
+      "signature": "delete_vertex(vertex: Any) -> None",
+      "local_line": 1007,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 11719
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "delete_vertices",
+      "name": "Graph.delete_vertices",
+      "signature": "delete_vertices(vertices: Any) -> None",
+      "local_line": 1023,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 11796
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "density",
+      "name": "Graph.density",
+      "signature": "density() -> float",
+      "local_line": 1197,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 4524
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "depth_first_search",
+      "name": "Graph.depth_first_search",
+      "signature": "depth_first_search(start: Any, **_options: Any) -> Iterator[Any]",
+      "local_line": 1241,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 19499
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "diameter",
+      "name": "Graph.diameter",
+      "signature": "diameter() -> Any",
+      "local_line": 1373,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 2542
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "distance",
+      "name": "Graph.distance",
+      "signature": "distance(source_vertex: Any, target_vertex: Any, **_options: Any) -> Any",
+      "local_line": 1346,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 16636
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "distances_all_pairs",
+      "name": "Graph.distances_all_pairs",
+      "signature": "distances_all_pairs() -> dict[Any, dict[Any, Any]]",
+      "local_line": 1350,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "eccentricity",
+      "name": "Graph.eccentricity",
+      "signature": "eccentricity(vertex: Any=None) -> Any",
+      "local_line": 1362,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 2257
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "edge_iterator",
+      "name": "Graph.edge_iterator",
+      "signature": "edge_iterator(labels: bool=True, sort: bool=False, **_options: Any) -> list[Any]",
+      "local_line": 1082,
+      "alias_of": "Graph.edges",
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 13669
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "edge_label",
+      "name": "Graph.edge_label",
+      "signature": "edge_label(source_vertex: Any, target_vertex: Any) -> Any",
+      "local_line": 1039,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 13804
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "edges",
+      "name": "Graph.edges",
+      "signature": "edges(labels: bool=True, sort: bool=False, **_options: Any) -> list[Any]",
+      "local_line": 1064,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 13388
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "get_pos",
+      "name": "Graph.get_pos",
+      "signature": "get_pos() -> Any",
+      "local_line": 768,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 4219
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "girth",
+      "name": "Graph.girth",
+      "signature": "girth() -> Any",
+      "local_line": 1391,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 16869
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "graph6_string",
+      "name": "Graph.graph6_string",
+      "signature": "graph6_string() -> str",
+      "local_line": 1938,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph.py",
+        "line": 1365
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "graph_name",
+      "name": "Graph.graph_name",
+      "signature": "graph_name(value: Any=None) -> str",
+      "local_line": 761,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "graphplot",
+      "name": "Graph.graphplot",
+      "signature": "graphplot(**options: Any) -> GraphPlot",
+      "local_line": 2108,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 22235
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "has_edge",
+      "name": "Graph.has_edge",
+      "signature": "has_edge(source_vertex: Any, target_vertex: Any, label: Any=...) -> bool",
+      "local_line": 1027,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 13355
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "has_loops",
+      "name": "Graph.has_loops",
+      "signature": "has_loops() -> bool",
+      "local_line": 1509,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 3497
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "has_vertex",
+      "name": "Graph.has_vertex",
+      "signature": "has_vertex(vertex: Any) -> bool",
+      "local_line": 907,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 11850
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "in_degree",
+      "name": "Graph.in_degree",
+      "signature": "in_degree(vertex: Any=None) -> Any",
+      "local_line": 1174,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 1374
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "independent_set",
+      "name": "Graph.independent_set",
+      "signature": "independent_set(**_options: Any) -> list[Any]",
+      "local_line": 2041,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph.py",
+        "line": 6455
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "is_bipartite",
+      "name": "Graph.is_bipartite",
+      "signature": "is_bipartite(certificate: bool=False) -> Any",
+      "local_line": 1457,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 4565
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "is_connected",
+      "name": "Graph.is_connected",
+      "signature": "is_connected() -> bool",
+      "local_line": 1297,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "is_directed",
+      "name": "Graph.is_directed",
+      "signature": "is_directed() -> bool",
+      "local_line": 743,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 985
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "is_eulerian",
+      "name": "Graph.is_eulerian",
+      "signature": "is_eulerian() -> bool",
+      "local_line": 1424,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 4687
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "is_forest",
+      "name": "Graph.is_forest",
+      "signature": "is_forest() -> bool",
+      "local_line": 1388,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph.py",
+        "line": 1706
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "is_isomorphic",
+      "name": "Graph.is_isomorphic",
+      "signature": "is_isomorphic(other: Any, certificate: bool=False, edge_labels: bool=False, **_options: Any) -> Any",
+      "local_line": 1746,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 25152
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "is_regular",
+      "name": "Graph.is_regular",
+      "signature": "is_regular(degree: Any=None) -> bool",
+      "local_line": 1450,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 14229
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "is_tree",
+      "name": "Graph.is_tree",
+      "signature": "is_tree() -> bool",
+      "local_line": 1385,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph.py",
+        "line": 1546
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "layout",
+      "name": "Graph.layout",
+      "signature": "layout(layout: str | None=None, save_pos: bool=False, **_options: Any) -> dict[Any, Any]",
+      "local_line": 794,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 21227
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "loop_edges",
+      "name": "Graph.loop_edges",
+      "signature": "loop_edges(labels: bool=True) -> list[Any]",
+      "local_line": 1513,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 3638
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "max_degree",
+      "name": "Graph.max_degree",
+      "signature": "max_degree() -> int",
+      "local_line": 1192,
+      "alias_of": "Graph.maximum_degree",
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "maximum_clique",
+      "name": "Graph.maximum_clique",
+      "signature": "maximum_clique(**_options: Any) -> list[Any]",
+      "local_line": 2036,
+      "alias_of": "Graph.clique_maximum",
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "maximum_degree",
+      "name": "Graph.maximum_degree",
+      "signature": "maximum_degree() -> int",
+      "local_line": 1188,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "min_degree",
+      "name": "Graph.min_degree",
+      "signature": "min_degree() -> int",
+      "local_line": 1191,
+      "alias_of": "Graph.minimum_degree",
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "min_spanning_tree",
+      "name": "Graph.min_spanning_tree",
+      "signature": "min_spanning_tree(starting_vertex: Any=None) -> GenericGraph",
+      "local_line": 1591,
+      "alias_of": "Graph.spanning_tree",
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 4996
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "minimum_degree",
+      "name": "Graph.minimum_degree",
+      "signature": "minimum_degree() -> int",
+      "local_line": 1185,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "neighbor_iterator",
+      "name": "Graph.neighbor_iterator",
+      "signature": "neighbor_iterator(vertex: Any) -> Iterator[Any]",
+      "local_line": 1144,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 12290
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "neighbors",
+      "name": "Graph.neighbors",
+      "signature": "neighbors(vertex: Any) -> list[Any]",
+      "local_line": 1112,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 12463
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "neighbors_in",
+      "name": "Graph.neighbors_in",
+      "signature": "neighbors_in(vertex: Any) -> list[Any]",
+      "local_line": 1130,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 1304
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "neighbors_out",
+      "name": "Graph.neighbors_out",
+      "signature": "neighbors_out(vertex: Any) -> list[Any]",
+      "local_line": 1128,
+      "alias_of": "Graph.neighbors",
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 1358
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "num_edges",
+      "name": "Graph.num_edges",
+      "signature": "num_edges() -> int",
+      "local_line": 1092,
+      "alias_of": "Graph.size",
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "num_verts",
+      "name": "Graph.num_verts",
+      "signature": "num_verts() -> int",
+      "local_line": 1087,
+      "alias_of": "Graph.order",
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "order",
+      "name": "Graph.order",
+      "signature": "order() -> int",
+      "local_line": 1084,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 4799
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "out_degree",
+      "name": "Graph.out_degree",
+      "signature": "out_degree(vertex: Any=None) -> Any",
+      "local_line": 1166,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 1445
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "plot",
+      "name": "Graph.plot",
+      "signature": "plot(**options: Any) -> Any",
+      "local_line": 2112,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 22318
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "radius",
+      "name": "Graph.radius",
+      "signature": "radius() -> Any",
+      "local_line": 1377,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 2474
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "relabel",
+      "name": "Graph.relabel",
+      "signature": "relabel(perm: Any=None, inplace: bool=True, **_options: Any) -> Any",
+      "local_line": 1989,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 24111
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "set_edge_label",
+      "name": "Graph.set_edge_label",
+      "signature": "set_edge_label(source_vertex: Any, target_vertex: Any, label: Any) -> None",
+      "local_line": 1050,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 13260
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "set_pos",
+      "name": "Graph.set_pos",
+      "signature": "set_pos(pos: Any) -> None",
+      "local_line": 771,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 4340
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "shortest_path",
+      "name": "Graph.shortest_path",
+      "signature": "shortest_path(u: Any, v: Any, **_options: Any) -> list[Any]",
+      "local_line": 1316,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 17687
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "show",
+      "name": "Graph.show",
+      "signature": "show(**options: Any) -> Any",
+      "local_line": 2116,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 22646
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "size",
+      "name": "Graph.size",
+      "signature": "size() -> int",
+      "local_line": 1089,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 4827
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "spanning_tree",
+      "name": "Graph.spanning_tree",
+      "signature": "spanning_tree(starting_vertex: Any=None) -> GenericGraph",
+      "local_line": 1567,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "sparse6_string",
+      "name": "Graph.sparse6_string",
+      "signature": "sparse6_string() -> str",
+      "local_line": 1947,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph.py",
+        "line": 1403
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "subgraph",
+      "name": "Graph.subgraph",
+      "signature": "subgraph(vertices: Any=None, edges: Any=None, **_options: Any) -> GenericGraph",
+      "local_line": 1537,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 14273
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "to_directed",
+      "name": "Graph.to_directed",
+      "signature": "to_directed() -> DiGraph",
+      "local_line": 1611,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph.py",
+        "line": 1083
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "to_undirected",
+      "name": "Graph.to_undirected",
+      "signature": "to_undirected() -> Graph",
+      "local_line": 1625,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/bipartite_graph.py",
+        "line": 1660
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "vertex_cover",
+      "name": "Graph.vertex_cover",
+      "signature": "vertex_cover(**_options: Any) -> list[Any]",
+      "local_line": 2044,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/bipartite_graph.py",
+        "line": 2556
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "vertex_iterator",
+      "name": "Graph.vertex_iterator",
+      "signature": "vertex_iterator(sort: bool=False, **_options: Any) -> list[Any]",
+      "local_line": 1062,
+      "alias_of": "Graph.vertices",
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 12213
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "vertices",
+      "name": "Graph.vertices",
+      "signature": "vertices(sort: bool=False, **_options: Any) -> list[Any]",
+      "local_line": 1059,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 12361
+      }
+    },
+    {
+      "owner": "GenericGraph",
+      "attribute": "weighted",
+      "name": "Graph.weighted",
+      "signature": "weighted(value: Any=None) -> bool",
+      "local_line": 756,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generic_graph.py",
+        "line": 4380
+      }
+    },
+    {
+      "owner": "GraphAutomorphism",
+      "attribute": "dict",
+      "name": "GraphAutomorphism.dict",
+      "signature": "dict() -> dict[Any, Any]",
+      "local_line": 228,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GraphAutomorphismGroup",
+      "attribute": "cardinality",
+      "name": "GraphAutomorphismGroup.cardinality",
+      "signature": "cardinality() -> int",
+      "local_line": 295,
+      "alias_of": "GraphAutomorphismGroup.order",
+      "upstream": {
+        "path": "src/sage/graphs/pq_trees.py",
+        "line": 746
+      }
+    },
+    {
+      "owner": "GraphAutomorphismGroup",
+      "attribute": "gens",
+      "name": "GraphAutomorphismGroup.gens",
+      "signature": "gens() -> 'tuple[GraphAutomorphism, ...]'",
+      "local_line": 306,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GraphAutomorphismGroup",
+      "attribute": "list",
+      "name": "GraphAutomorphismGroup.list",
+      "signature": "list() -> list[GraphAutomorphism]",
+      "local_line": 297,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GraphAutomorphismGroup",
+      "attribute": "order",
+      "name": "GraphAutomorphismGroup.order",
+      "signature": "order() -> int",
+      "local_line": 292,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/luw_graphs.py",
+        "line": 218
+      }
+    },
+    {
+      "owner": "GraphDatabase",
+      "attribute": "close",
+      "name": "GraphDatabase.close",
+      "signature": "close() -> None",
+      "local_line": 2853,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GraphDatabase",
+      "attribute": "count",
+      "name": "GraphDatabase.count",
+      "signature": "count(**conditions: Any) -> int",
+      "local_line": 2850,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GraphDatabase",
+      "attribute": "graphs",
+      "name": "GraphDatabase.graphs",
+      "signature": "graphs(**conditions: Any) -> list[Graph]",
+      "local_line": 2847,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GraphDatabase",
+      "attribute": "query",
+      "name": "GraphDatabase.query",
+      "signature": "query(query_dict: Any=None, display_cols: Any=None, limit: int | None=None, **conditions: Any) -> GraphQuery",
+      "local_line": 2829,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph_database.py",
+        "line": 1020
+      }
+    },
+    {
+      "owner": "GraphPlot",
+      "attribute": "plot",
+      "name": "GraphPlot.plot",
+      "signature": "plot() -> Any",
+      "local_line": 435,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph_plot.py",
+        "line": 1147
+      }
+    },
+    {
+      "owner": "GraphPlot",
+      "attribute": "plotly",
+      "name": "GraphPlot.plotly",
+      "signature": "plotly() -> Any",
+      "local_line": 358,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GraphPlot",
+      "attribute": "show",
+      "name": "GraphPlot.show",
+      "signature": "show(**options: Any) -> GraphPlot",
+      "local_line": 568,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph_plot.py",
+        "line": 1109
+      }
+    },
+    {
+      "owner": "GraphQuery",
+      "attribute": "count",
+      "name": "GraphQuery.count",
+      "signature": "count() -> int",
+      "local_line": 2789,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GraphQuery",
+      "attribute": "get_graphs_list",
+      "name": "GraphQuery.get_graphs_list",
+      "signature": "get_graphs_list() -> list[Graph]",
+      "local_line": 2787,
+      "alias_of": "GraphQuery.list",
+      "upstream": {
+        "path": "src/sage/graphs/graph_database.py",
+        "line": 727
+      }
+    },
+    {
+      "owner": "GraphQuery",
+      "attribute": "list",
+      "name": "GraphQuery.list",
+      "signature": "list() -> list[Graph]",
+      "local_line": 2784,
+      "alias_of": null,
+      "upstream": null
+    },
+    {
+      "owner": "GraphQuery",
+      "attribute": "query_iterator",
+      "name": "GraphQuery.query_iterator",
+      "signature": "query_iterator(immutable: Any=None) -> Iterator[Graph]",
+      "local_line": 2766,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/graph_database.py",
+        "line": 549
+      }
+    },
+    {
+      "owner": "DigraphGenerators",
+      "attribute": "Circuit",
+      "name": "digraphs.Circuit",
+      "signature": "Circuit(order: int) -> DiGraph",
+      "local_line": 2642,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph_generators.py",
+        "line": 913
+      }
+    },
+    {
+      "owner": "DigraphGenerators",
+      "attribute": "Complete",
+      "name": "digraphs.Complete",
+      "signature": "Complete(order: int) -> DiGraph",
+      "local_line": 2647,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph_generators.py",
+        "line": 865
+      }
+    },
+    {
+      "owner": "DigraphGenerators",
+      "attribute": "Path",
+      "name": "digraphs.Path",
+      "signature": "Path(order: int) -> DiGraph",
+      "local_line": 2637,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/digraph_generators.py",
+        "line": 347
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "BullGraph",
+      "name": "graphs.BullGraph",
+      "signature": "BullGraph(immutable: bool=False) -> Graph",
+      "local_line": 2397,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/basic.py",
+        "line": 23
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "CompleteBipartiteGraph",
+      "name": "graphs.CompleteBipartiteGraph",
+      "signature": "CompleteBipartiteGraph(left: int, right: int, set_position: bool=True, immutable: bool=False, name: str | None=None) -> Graph",
+      "local_line": 2222,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/basic.py",
+        "line": 555
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "CompleteGraph",
+      "name": "graphs.CompleteGraph",
+      "signature": "CompleteGraph(order: int, immutable: bool=False) -> Graph",
+      "local_line": 2212,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/basic.py",
+        "line": 382
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "CycleGraph",
+      "name": "graphs.CycleGraph",
+      "signature": "CycleGraph(order: int, immutable: bool=False) -> Graph",
+      "local_line": 2277,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/basic.py",
+        "line": 282
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "DiamondGraph",
+      "name": "graphs.DiamondGraph",
+      "signature": "DiamondGraph(immutable: bool=False) -> Graph",
+      "local_line": 2407,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/basic.py",
+        "line": 794
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "DodecahedralGraph",
+      "name": "graphs.DodecahedralGraph",
+      "signature": "DodecahedralGraph(immutable: bool=False) -> Graph",
+      "local_line": 2481,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/platonic_solids.py",
+        "line": 237
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "EmptyGraph",
+      "name": "graphs.EmptyGraph",
+      "signature": "EmptyGraph(immutable: bool=False) -> Graph",
+      "local_line": 2208,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/basic.py",
+        "line": 933
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "GeneralizedPetersenGraph",
+      "name": "graphs.GeneralizedPetersenGraph",
+      "signature": "GeneralizedPetersenGraph(order: int, step: int, immutable: bool=False, name: str | None=None) -> Graph",
+      "local_line": 2351,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/families.py",
+        "line": 1697
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "Grid2dGraph",
+      "name": "graphs.Grid2dGraph",
+      "signature": "Grid2dGraph(rows: int, columns: int, set_positions: bool=True, immutable: bool=False, name: str | None=None) -> Graph",
+      "local_line": 2318,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/basic.py",
+        "line": 1110
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "HexahedralGraph",
+      "name": "graphs.HexahedralGraph",
+      "signature": "HexahedralGraph(immutable: bool=False) -> Graph",
+      "local_line": 2431,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/platonic_solids.py",
+        "line": 78
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "HouseGraph",
+      "name": "graphs.HouseGraph",
+      "signature": "HouseGraph(immutable: bool=False) -> Graph",
+      "local_line": 2387,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/basic.py",
+        "line": 1317
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "IcosahedralGraph",
+      "name": "graphs.IcosahedralGraph",
+      "signature": "IcosahedralGraph(immutable: bool=False) -> Graph",
+      "local_line": 2460,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/platonic_solids.py",
+        "line": 185
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "OctahedralGraph",
+      "name": "graphs.OctahedralGraph",
+      "signature": "OctahedralGraph(immutable: bool=False) -> Graph",
+      "local_line": 2445,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/platonic_solids.py",
+        "line": 134
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "PathGraph",
+      "name": "graphs.PathGraph",
+      "signature": "PathGraph(order: int, pos: Any=None, immutable: bool=False, name: str | None=None) -> Graph",
+      "local_line": 2250,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/basic.py",
+        "line": 1553
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "PetersenGraph",
+      "name": "graphs.PetersenGraph",
+      "signature": "PetersenGraph(immutable: bool=False) -> Graph",
+      "local_line": 2380,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/smallgraphs.py",
+        "line": 4603
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "StarGraph",
+      "name": "graphs.StarGraph",
+      "signature": "StarGraph(leaves: int, immutable: bool=False) -> Graph",
+      "local_line": 2291,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/basic.py",
+        "line": 1675
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "TetrahedralGraph",
+      "name": "graphs.TetrahedralGraph",
+      "signature": "TetrahedralGraph(immutable: bool=False) -> Graph",
+      "local_line": 2417,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/platonic_solids.py",
+        "line": 21
+      }
+    },
+    {
+      "owner": "GraphGenerators",
+      "attribute": "WheelGraph",
+      "name": "graphs.WheelGraph",
+      "signature": "WheelGraph(order: int, immutable: bool=False) -> Graph",
+      "local_line": 2301,
+      "alias_of": null,
+      "upstream": {
+        "path": "src/sage/graphs/generators/families.py",
+        "line": 3651
+      }
+    }
+  ]
+}

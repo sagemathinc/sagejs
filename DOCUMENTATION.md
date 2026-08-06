@@ -68,6 +68,21 @@ never presented as an exact CI-verified transcript.
 Run `pnpm docs:verify` to execute attached public examples and regenerate the
 reference data. Run `pnpm docs:generate` when only prose or metadata changed.
 
+Large public surfaces may use a reproducible importer rather than handwritten
+duplicate registrations. For graph theory, `pnpm docs:graphs:import` inventories
+the runtime-visible Python API, imports concise prose from a pinned local Sage
+checkout, and writes both generated DocSpec data and an attribution manifest.
+Reusable mathematical workflows live in `reference-tests/graphs.cjs`; every
+one of the 135 graph names must attach to at least one passing workflow. The
+coverage test rejects a new graph API until that inventory, documentation, and
+executable-example assignment are refreshed.
+
+Examples can opt into deterministic display capture when their useful result
+is graphical. Verification stores the MIME bundle alongside the transcript,
+and the static reference manual renders supported Plotly graph displays as
+self-contained SVG. Textual output and graphical output therefore have the
+same CI-backed provenance.
+
 Documentation of an extension or incompatibility belongs next to the API, not
 only in a commit message.  Backend notes should explain behavior users can
 observe—exactness, precision, supported coefficient rings, or performance

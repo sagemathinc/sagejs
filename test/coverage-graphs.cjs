@@ -11,6 +11,15 @@ const root = path.resolve(__dirname, "..");
 const audit = JSON.parse(
   fs.readFileSync(path.join(root, "website/coverage/graphs.json"), "utf8"),
 );
+const importedSurface = JSON.parse(
+  fs.readFileSync(
+    path.join(root, "upstream-tests/sage/graphs/api-surface.json"),
+    "utf8",
+  ),
+);
+const reference = JSON.parse(
+  fs.readFileSync(path.join(root, "website/reference-data.json"), "utf8"),
+);
 
 function implementedPublicMethodCount() {
   const source = fs.readFileSync(
@@ -73,6 +82,42 @@ test("published SageMath graph coverage is reproducible", async () => {
   assert.equal(
     audit.internalMethodCoverage.numerator,
     audit.internalMethodCoverage.denominator,
+  );
+  assert.equal(importedSurface.counts.publicNames, implementedPublicMethodCount());
+  assert.equal(
+    importedSurface.counts.generatedEntries +
+      importedSurface.counts.preexistingEntries,
+    importedSurface.counts.publicNames,
+  );
+  const expectedReferenceNames = new Set([
+    ...importedSurface.entries.map((entry) => entry.name),
+    "graphs.RandomGNP",
+  ]);
+  const graphReference = reference.entries.filter((entry) =>
+    entry.tags.includes("graph theory"),
+  );
+  assert.deepEqual(
+    new Set(graphReference.map((entry) => entry.name)),
+    expectedReferenceNames,
+  );
+  assert.equal(audit.referenceCoverage.numerator, graphReference.length);
+  assert.equal(audit.referenceCoverage.denominator, expectedReferenceNames.size);
+  assert.equal(audit.referenceCoverage.percentage, 100);
+  assert.equal(
+    graphReference.filter((entry) =>
+      entry.examples.some(
+        (example) => example.verification.status === "pass",
+      ),
+    ).length,
+    graphReference.length,
+  );
+  assert.ok(
+    graphReference.every(
+      (entry) =>
+        entry.doc.trim() &&
+        entry.signature.trim() &&
+        entry.provenance.length,
+    ),
   );
   assert.ok(audit.facets.some((facet) => facet.status === "planned"));
 

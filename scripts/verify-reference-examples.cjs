@@ -81,6 +81,26 @@ async function main() {
   process.stderr.write(run.stderr);
   if (run.status !== 0) process.exit(run.status ?? 1);
   const report = JSON.parse(readFileSync(results, "utf8"));
+  const displayExamples = [...examplesById.values()].filter(
+    (example) => example.captureDisplay === true,
+  );
+  if (displayExamples.length) {
+    const displaySession = await createSage();
+    try {
+      const resultById = new Map(
+        report.results.map((result) => [result.id, result]),
+      );
+      for (const example of displayExamples) {
+        const evaluated = await displaySession.evaluate(example.source);
+        if (!evaluated.display?.mime) {
+          throw new Error(`reference example ${example.id} produced no display`);
+        }
+        resultById.get(example.id).display = evaluated.display;
+      }
+    } finally {
+      await displaySession.close();
+    }
+  }
   report.revision = revision;
   writeFileSync(
     join(root, "website", "reference-results.json"),

@@ -98,12 +98,20 @@ magic automatically.
 `reference-data.json` combines the runtime DocSpec catalog, local executable
 docstrings, imported revision-pinned Sage examples, and relevant source
 excerpts. `reference-results.json` is a deterministic verification receipt;
-green transcripts are never inferred from prose.
+green transcripts are never inferred from prose. Graph reference entries are
+generated from the runtime-visible API and revision-pinned Sage source; their
+examples come from executable, reusable workflows in `reference-tests/`.
 
 ```sh
 pnpm docs:verify   # execute examples and regenerate the manual
 pnpm docs:check    # detect stale generated reference artifacts
+pnpm docs:graphs:import  # refresh graph API prose from a local Sage checkout
 ```
+
+The graph importer records its Sage revision, path, line, URL, and license in
+`upstream-tests/sage/graphs/api-surface.json`. Plot examples may also capture a
+deterministic display MIME bundle; the static manual renders the supported
+Plotly graph subset as self-contained SVG, without a CDN dependency.
 
 The published coverage denominator is the explicit DocSpec registry. Example,
 semantic, Sage API breadth, and performance coverage stay separate. The CI

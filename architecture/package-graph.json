@@ -100,9 +100,12 @@
       "id": "graph-theory",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 120000,
+      "max_source_bytes": 330000,
       "depends_on": ["core-runtime", "linear-algebra"],
-      "files": ["src/baselib/graphs.py"],
+      "files": [
+        "src/baselib/graph_reference_data.py",
+        "src/baselib/graphs.py"
+      ],
       "prefixes": []
     },
     {

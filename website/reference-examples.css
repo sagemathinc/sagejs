@@ -3,6 +3,14 @@
   color: #e7f4ff;
 }
 
+.doc-examples {
+  margin: 10px 0 22px;
+}
+
+.doc-examples .example {
+  margin: 8px 0;
+}
+
 .example-pane + .example-pane {
   border-top: 1px solid #29445c;
 }
@@ -24,4 +32,33 @@
   border-radius: 0;
   background: transparent;
   padding-top: 7px;
+}
+
+.example-preview {
+  margin: 0;
+  padding: 12px 16px 18px;
+  border-top: 1px solid #d9e2ec;
+  background: #fbfdff;
+}
+
+.example-preview figcaption {
+  margin-bottom: 8px;
+  color: #526b80;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.example-visual {
+  display: block;
+  width: min(100%, 640px);
+  height: auto;
+  margin: auto;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.example-visual text {
+  fill: #fff;
+  font: 11px ui-sans-serif, system-ui, sans-serif;
+  pointer-events: none;
 }

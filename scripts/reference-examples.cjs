@@ -32,14 +32,15 @@ function sourceDefinitions(source, path) {
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     const indent = line.match(/^\s*/)[0].length;
-    while (classes.length && classes.at(-1).indent >= indent) classes.pop();
     const classMatch = line.match(/^\s*class\s+([A-Za-z_]\w*)/);
     if (classMatch) {
+      while (classes.length && classes.at(-1).indent >= indent) classes.pop();
       classes.push({ name: classMatch[1], indent });
       continue;
     }
     const match = line.match(/^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(/);
     if (!match) continue;
+    while (classes.length && classes.at(-1).indent >= indent) classes.pop();
     definitions.push({
       name: match[1],
       qualified: [...classes.map((item) => item.name), match[1]].join("."),
@@ -85,6 +86,20 @@ function collectReferenceSources(root) {
       });
     }
   }
+  const localFixtures = [
+    join(root, "reference-tests", "graphs.cjs"),
+  ];
+  for (const filename of localFixtures) {
+    const fixture = require(filename);
+    for (const group of fixture.groups ?? []) {
+      groups.push({
+        ...group,
+        path: fixture.source.path,
+        origin: "sagejs-reference",
+        provenance: fixture.source,
+      });
+    }
+  }
   return { groups, definitions };
 }
 
@@ -94,9 +109,27 @@ function tailName(value) {
 
 function examplesForEntry(entry, sources) {
   const names = new Set([entry.name, ...entry.aliases].map(tailName));
+  const exactNames = new Set([entry.name, ...entry.aliases]);
   const matches = sources.groups.filter((group) => {
-    const owner = tailName(group.owner);
-    return names.has(owner);
+    if ((group.covers ?? []).some((name) => exactNames.has(name))) return true;
+    const owner = String(group.owner);
+    if (exactNames.has(owner)) return true;
+    const ownerParts = owner.split(".");
+    if (!names.has(tailName(owner))) return false;
+    // An unqualified owner (the common shape for an extracted module-level
+    // function) can safely match a namespaced public entry.  Qualified method
+    // owners must also agree on their class/namespace, otherwise Graph.order
+    // would acquire examples from finite-field order methods.
+    if (ownerParts.length === 1) return true;
+    return [...exactNames].some((name) => {
+      const parts = name.split(".");
+      const normalizedOwner = {
+        genericgraph: "graph",
+        graphgenerators: "graphs",
+        digraphgenerators: "digraphs",
+      }[ownerParts.at(-2).toLowerCase()] ?? ownerParts.at(-2).toLowerCase();
+      return parts.length > 1 && parts.at(-2).toLowerCase() === normalizedOwner;
+    });
   });
   return matches.flatMap((group) => group.examples.map((example) => ({
     ...example,
@@ -110,10 +143,22 @@ function examplesForEntry(entry, sources) {
 
 function sourceForEntry(entry, sources) {
   const names = new Set([entry.name, ...entry.aliases].map(tailName));
-  const candidates = sources.definitions.filter(
+  let candidates = sources.definitions.filter(
     (definition) => names.has(definition.name.toLowerCase()),
   );
   if (!candidates.length) return null;
+  if (entry.tags.includes("graph theory")) {
+    const owner = entry.name.split(".").at(-2);
+    const implementationOwner = {
+      Graph: "GenericGraph",
+      graphs: "GraphGenerators",
+      digraphs: "DigraphGenerators",
+    }[owner] ?? owner;
+    const graphCandidates = candidates.filter((item) =>
+      item.path === "src/baselib/graphs.py" &&
+      item.qualified.split(".").at(-2) === implementationOwner);
+    if (graphCandidates.length) candidates = graphCandidates;
+  }
   const moduleHint = entry.module.replaceAll(".", "/");
   return candidates.find((item) => moduleHint.includes(
     item.path.replace(/^src\/baselib\//, "").replace(/\.py$/, ""),

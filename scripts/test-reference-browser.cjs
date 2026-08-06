@@ -97,6 +97,21 @@ async function main() {
     assert.match(html, /graphs\.RandomGNP\(5, 0\)\.size\(\)/);
     assert.match(html, /<div class="example-label">Expected output<\/div>/);
     assert.match(html, /<pre data-example-role="output"><code>0<\/code><\/pre>/);
+    const explanation = html.indexOf(
+      "The endpoints <code>p=0</code> and <code>p=1</code> are deterministic:",
+    );
+    const inlineCode = html.indexOf("graphs.RandomGNP(5, 0).size()", explanation);
+    const additional = html.indexOf("additional executable examples", explanation);
+    assert.ok(explanation >= 0);
+    assert.ok(inlineCode > explanation);
+    assert.ok(additional > inlineCode);
+    assert.match(html, /<div class="doc-examples"><section class="example">/);
+    assert.doesNotMatch(html, />23 executable examples</);
+    const visualHtml = await runBrowser(
+      `http://127.0.0.1:${port}/reference.html?q=Graph.plot#Graph.plot`,
+    );
+    assert.match(visualHtml, /class="example-visual"/);
+    assert.match(visualHtml, /Verified graphical output · Petersen graph/);
     console.log("Reference browser test: example input and output rendered into DOM");
   } finally {
     await new Promise((resolve) => server.close(resolve));

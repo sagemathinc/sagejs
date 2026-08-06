@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "audited": "2026-08-05",
+  "audited": "2026-08-06",
   "capability": "graph-theory",
   "reference": {
     "system": "SageMath",
@@ -20,6 +20,15 @@
     "denominator": 135,
     "percentage": 100,
     "meaning": "Every public function or alias currently defined by the Sage.js graph module is assigned to an executable semantic test."
+  },
+  "referenceCoverage": {
+    "numerator": 135,
+    "denominator": 135,
+    "percentage": 100,
+    "verified": 135,
+    "upstreamSummaries": 109,
+    "manifest": "upstream-tests/sage/graphs/api-surface.json",
+    "meaning": "Every public Sage.js graph method, alias, generator, plotting helper, automorphism helper, query, and database operation has a searchable DocSpec entry with a passing executable workflow. Sage-derived prose is revision pinned and provenance linked."
   },
   "supportedSageMethods": [
     "add_clique",
@@ -113,6 +122,11 @@
       "detail": "135 of 135 public graph-module functions and aliases are assigned to executable semantic tests; the test fails when a new method is left unassigned."
     },
     {
+      "name": "Executable reference coverage",
+      "status": "measured",
+      "detail": "135 of 135 public Sage.js graph names have searchable typed documentation and at least one passing CI-verified workflow; the manifest is source-derived and revision pinned."
+    },
+    {
       "name": "Core graph semantics",
       "status": "tested",
       "detail": "Mutation, arbitrary vertices, labels, loops, multiedges, traversal, distances, connectivity, transformations, matrices, serialization, and directed algorithms have focused checks."
@@ -140,6 +154,7 @@
   ],
   "limitations": [
     "Method assignment coverage does not imply exhaustive combinations of arguments, error paths, or graph families.",
+    "Executable reference coverage measures the implemented Sage.js surface; it does not change the separate 78-of-411 SageMath API breadth score.",
     "The SageMath denominator includes specialized algorithms from many optional graph packages; matching all 411 methods is a long-term scope target.",
     "Performance and memory coverage need reproducible benchmark suites on dedicated hosts."
   ]

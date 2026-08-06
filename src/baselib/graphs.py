@@ -2919,3 +2919,45 @@ runtime.register_doc(
         ],
     },
 )
+
+
+# ``graph_reference_data.py`` sorts before this module in the concatenated
+# baselib build. The guarded import gives standalone type checkers the same
+# name without performing a runtime module import in that build.
+if bool(0):
+    from graph_reference_data import _GRAPH_REFERENCE_RECORDS
+
+
+def _register_graph_reference(record: dict[str, Any]) -> None:
+    owners = {
+        'GraphAutomorphism': GraphAutomorphism,
+        'GraphAutomorphismGroup': GraphAutomorphismGroup,
+        'GraphPlot': GraphPlot,
+        'GenericGraph': Graph,
+        'DiGraph': DiGraph,
+        'GraphGenerators': graphs,
+        'DigraphGenerators': digraphs,
+        'GraphQuery': GraphQuery,
+        'GraphDatabase': GraphDatabase,
+    }
+    owner = owners[record['owner']]
+    value = runtime.reflect.get(owner, record['attribute'])
+    runtime.register_doc(
+        record['name'],
+        value,
+        {
+            'kind': 'method',
+            'module': record['module'],
+            'signature': record['signature'],
+            'doc': record['doc'],
+            'tags': record['tags'],
+            'backends': record['backends'],
+            'sage_compatibility': record['sage_compatibility'],
+            'provenance': record['provenance'],
+            'limitations': record['limitations'],
+        },
+    )
+
+
+for _graph_reference_record in _GRAPH_REFERENCE_RECORDS:  # pyright: ignore[reportPossiblyUnboundVariable]
+    _register_graph_reference(_graph_reference_record)
