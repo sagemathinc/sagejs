@@ -62,3 +62,34 @@
   font: 11px ui-sans-serif, system-ui, sans-serif;
   pointer-events: none;
 }
+
+.source-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 10px 0 7px;
+}
+
+.source-file-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #aabaca;
+  border-radius: 7px;
+  padding: 5px 10px;
+  color: #102a43;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.source-file-link:hover {
+  border-color: #137c8b;
+  color: #0d6672;
+}
+
+.source-file-link svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}

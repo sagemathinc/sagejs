@@ -266,6 +266,8 @@ test("reference manual is fast, searchable, and verification-aware", () => {
   assert.match(referenceScript, /function highlightCode/);
   assert.match(referenceScript, /Prism\.highlightElement/);
   assert.match(referenceScript, /"line-numbers"/);
+  assert.match(referenceScript, /github\.com\/sagemathinc\/sagejs\/blob\/main/);
+  assert.match(referenceScript, /noopener noreferrer/);
   assert.doesNotMatch(referenceScript, /example-source/);
   assert.match(referenceScript, /data-example-role/);
   assert.match(referenceScript, /has no source/);

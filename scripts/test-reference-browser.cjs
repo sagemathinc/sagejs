@@ -114,6 +114,8 @@ async function main() {
     assert.doesNotMatch(html, />23 executable examples</);
     assert.match(html, /<pre class="line-numbers language-python" data-start="\d+"[^>]*>/);
     assert.match(html, /class="line-numbers-rows"/);
+    assert.match(html, /class="source-file-link" href="https:\/\/github\.com\/sagemathinc\/sagejs\/blob\/main\/src\/baselib\/graphs\.py#L\d+"/);
+    assert.match(html, />Open full file on GitHub<\/span>/);
     const visualHtml = await runBrowser(
       `http://127.0.0.1:${port}/reference.html?q=Graph.plot#Graph.plot`,
     );
