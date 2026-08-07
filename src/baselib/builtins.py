@@ -195,6 +195,11 @@ def _builtins_call_member(
 ) -> Any:
     method = _builtins_get_member(value, name)
     if _builtins_get_member(method, '__staticmethod__') is True:
+        static_target = _builtins_get_member(method, '__func__')
+        if runtime.strict_equal(
+            runtime.jstype(static_target), 'function'
+        ):
+            method = static_target
         return runtime.reflect.apply(
             method, runtime.undefined, call_args)
     if _builtins_get_member(
@@ -228,6 +233,25 @@ def _builtins_bind_python_function(
         bind_arguments,
     )
     runtime.object.assign(bound, target)
+    target_argnames = _builtins_get_member(target, '__argnames__')
+    if (
+        _builtins_get_member(
+            target, '__sagejs_native_method__'
+        ) is not True
+        and _builtins_get_member(
+            target, '__sagejs_method_signature_excludes_self__'
+        ) is not True
+        and target_argnames
+    ):
+        runtime.reflect.set(
+            bound,
+            '__argnames__',
+            runtime.reflect.apply(
+                runtime.array.prototype.slice,
+                target_argnames,
+                [1],
+            ),
+        )
     runtime.reflect.set(bound, '__func__', target)
     runtime.reflect.set(bound, '__self__', receiver)
     runtime.reflect.set(
@@ -343,6 +367,11 @@ def _builtins_call_special(
 ) -> Any:
     method = _builtins_get_special_member(value, name)
     if _builtins_get_member(method, '__staticmethod__') is True:
+        static_target = _builtins_get_member(method, '__func__')
+        if runtime.strict_equal(
+            runtime.jstype(static_target), 'function'
+        ):
+            method = static_target
         return runtime.reflect.apply(
             method, runtime.undefined, call_args)
     if _builtins_get_member(
@@ -2173,6 +2202,7 @@ def ρσ_float(value: Any = 0) -> Any:
     if _builtins_is_boxed_float(value):
         return value
     value_type = runtime.jstype(value)
+    reject_nan = False
     if runtime.strict_equal(value_type, 'number'):
         answer = value
     elif runtime.strict_equal(value_type, 'string'):
@@ -2188,11 +2218,13 @@ def ρσ_float(value: Any = 0) -> Any:
                 'Could not convert string to float: ' + str(value))
         # Number() rejects trailing junk which JavaScript parseFloat accepts.
         answer = runtime.number(value)
+        reject_nan = True
     elif value and _builtins_member_is_function(value, '__float__'):
         answer = _builtins_call_member(value, '__float__', [])
     else:
         answer = runtime.parse_float(value)
-    if runtime.is_nan(answer):
+        reject_nan = True
+    if reject_nan and runtime.is_nan(answer):
         raise ValueError(
             'Could not convert string to float: ' + str(value))
     return ρσ_float_result(answer)
@@ -3044,16 +3076,35 @@ def ρσ_callable(value: Any) -> _Bool:
 def ρσ_classmethod(target: Any) -> Any:
     descriptor = runtime.object.create(None)
     descriptor.__func__ = target
+    descriptor.__wrapped__ = target
     descriptor.__classmethod__ = True
     descriptor.__python_type__ = ρσ_classmethod
+
+    def classmethod_get(instance: Any, owner: Any = None) -> Any:
+        if owner is None:
+            owner = getattr(instance, '__class__')
+        return _builtins_bind_python_function(target, owner)
+
+    descriptor.__get__ = classmethod_get
     return descriptor
 
 
 def ρσ_staticmethod(target: Any) -> Any:
     descriptor = runtime.object.create(None)
     descriptor.__func__ = target
+    descriptor.__wrapped__ = target
     descriptor.__staticmethod__ = True
     descriptor.__python_type__ = ρσ_staticmethod
+
+    def staticmethod_get(
+        instance: Any,
+        owner: Any = None,
+    ) -> Any:
+        del instance, owner
+        return target
+
+    descriptor.__get__ = staticmethod_get
+    descriptor.__call__ = target
     return descriptor
 
 
@@ -4199,12 +4250,25 @@ def ρσ_getattr(
             if _builtins_has_member(
                 class_member, '__classmethod__'
             ):
+                class_target = _builtins_get_member(
+                    class_member, '__func__')
+                if runtime.strict_equal(
+                    runtime.jstype(class_target), 'function'
+                ):
+                    class_member = class_target
                 return _builtins_bind_python_function(
                     class_member, value)
             if _builtins_has_member(
                 class_member, '__staticmethod__'
             ):
-                return class_member
+                static_target = _builtins_get_member(
+                    class_member, '__func__')
+                return (
+                    static_target
+                    if runtime.strict_equal(
+                        runtime.jstype(static_target), 'function')
+                    else class_member
+                )
             if _builtins_member_is_function(
                 class_member, '__get__'
             ):
@@ -4243,7 +4307,14 @@ def ρσ_getattr(
                 if _builtins_has_member(
                     metaclass_member, '__staticmethod__'
                 ):
-                    return metaclass_member
+                    static_target = _builtins_get_member(
+                        metaclass_member, '__func__')
+                    return (
+                        static_target
+                        if runtime.strict_equal(
+                            runtime.jstype(static_target), 'function')
+                        else metaclass_member
+                    )
                 if runtime.strict_equal(
                     runtime.jstype(metaclass_member), 'function'
                 ):
@@ -4270,6 +4341,11 @@ def ρσ_getattr(
             runtime.strict_equal(runtime.jstype(value), 'function')
             and _builtins_has_member(member, '__classmethod__')
         ):
+            class_target = _builtins_get_member(member, '__func__')
+            if runtime.strict_equal(
+                runtime.jstype(class_target), 'function'
+            ):
+                member = class_target
             return _builtins_bind_python_function(member, value)
         if (
             _builtins_member_is_function(member, '__get__')
@@ -4292,7 +4368,13 @@ def ρσ_getattr(
             return _builtins_call_member(
                 member, '__get__', [instance, member_owner])
         if _builtins_has_member(member, '__staticmethod__'):
-            return member
+            static_target = _builtins_get_member(member, '__func__')
+            return (
+                static_target
+                if runtime.strict_equal(
+                    runtime.jstype(static_target), 'function')
+                else member
+            )
         if (
             _builtins_is_python_class(value)
             and runtime.strict_equal(
@@ -4339,7 +4421,14 @@ def ρσ_getattr(
             return _builtins_call_member(
                 descriptor, '__get__', [value, owner])
         if _builtins_has_member(descriptor, '__staticmethod__'):
-            return descriptor
+            static_target = _builtins_get_member(
+                descriptor, '__func__')
+            return (
+                static_target
+                if runtime.strict_equal(
+                    runtime.jstype(static_target), 'function')
+                else descriptor
+            )
         if (
             runtime.strict_equal(
                 runtime.jstype(descriptor), 'function')

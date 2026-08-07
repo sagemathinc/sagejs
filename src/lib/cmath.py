@@ -116,6 +116,11 @@ def atan(value):
 
 def asinh(value):
     value = _z(value)
+    if value.imag == 0:
+        # Avoid the severe cancellation in log(z + sqrt(z*z + 1)) for
+        # negative real inputs.  Native binary64 asinh also tracks CPython's
+        # real-axis result much more closely.
+        return complex(math.asinh(value.real), value.imag)
     return log(value + sqrt(value * value + 1))
 
 

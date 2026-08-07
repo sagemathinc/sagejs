@@ -643,9 +643,26 @@ def ComplexNumber(
     return CC(real, imag)
 
 
-def _python_complex_parts(value: Any) -> tuple[float, float]:
+def _python_complex_parts(
+    value: Any,
+    convert_protocols: bool = False,
+) -> tuple[float, float]:
     if isinstance(value, PythonComplex):
         return value._real, value._imag
+    if convert_protocols and isinstance(value, str):
+        # The complete complex-string grammar is handled separately as that
+        # frontend is implemented.  A real spelling is already accepted by
+        # Python's complex constructor and is sufficient for numeric sentinels
+        # such as ``-inf`` used by interval packages.
+        return runtime.number(float(value)), 0.0
+    complex_converter = None
+    if convert_protocols:
+        complex_converter = getattr(value, '__complex__', None)
+    if complex_converter is not None:
+        converted = complex_converter()
+        if not isinstance(converted, PythonComplex):
+            raise TypeError('__complex__ returned non-complex')
+        return converted._real, converted._imag
     if isinstance(value, RealNumberElement):
         return runtime.number(float(value)), 0.0
     if isinstance(value, sage.Rational):
@@ -665,6 +682,11 @@ def _python_complex_parts(value: Any) -> tuple[float, float]:
         return runtime.number(value), 0.0
     if runtime.jstype(value) == 'number':
         return value, 0.0
+    float_converter = None
+    if convert_protocols:
+        float_converter = getattr(value, '__float__', None)
+    if float_converter is not None:
+        return runtime.number(float_converter()), 0.0
     raise TypeError('complex() argument must be a number')
 
 
@@ -675,8 +697,8 @@ class PythonComplex:
     from __python__ import no_bound_methods  # type: ignore
 
     def __init__(self, real: Any = 0, imag: Any = 0) -> None:
-        real_part = _python_complex_parts(real)
-        imag_part = _python_complex_parts(imag)
+        real_part = _python_complex_parts(real, True)
+        imag_part = _python_complex_parts(imag, True)
         # Complex components stay as primitive binary64 numbers internally;
         # their public ``real`` and ``imag`` properties restore Python float
         # identity when an integral value crosses back into Python code.
@@ -845,11 +867,16 @@ class PythonComplex:
     def __bool__(self) -> bool:
         return self._real != 0 or self._imag != 0
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: object) -> Any:
         try:
             parts = _python_complex_parts(other)
         except TypeError:
-            return False
+            # CPython's complex comparison gives the other operand an
+            # opportunity to implement numeric equality.  Returning False
+            # here would make equality asymmetric for compatible third-party
+            # numeric classes (and would also break tuple membership, which
+            # compares each stored item from the left).
+            return NotImplemented
         return (
             self._real == parts[0]
             and self._imag == parts[1]

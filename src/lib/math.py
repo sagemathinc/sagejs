@@ -123,6 +123,14 @@ def ldexp(x, i):
     return float(result)
 
 
+# CPython exposes these as built-in functions.  In particular, assigning
+# ``math.frexp`` or ``math.ldexp`` to a class does not turn it into a method
+# that receives the instance.  The runtime's static marker preserves that
+# behavior for these Python implementations.
+frexp.__staticmethod__ = True
+ldexp.__staticmethod__ = True
+
+
 def modf(x):
     m = fmod(x, 1)
     return float(m), float(x - m)
@@ -197,14 +205,17 @@ def log10(x):
 
 
 def pow(x, y):
-    if x < 0 and int(y) is not y:
+    x = float(x)
+    y = float(y)
+    if x < 0 and (not isfinite(y) or int(y) != y):
         raise ValueError('math domain error')
-    if isnan(y) and x is 1:
+    if isnan(y) and x == 1:
         return float(1)
     return float(Math.pow(x, y))
 
 
 def sqrt(x):
+    x = float(x)
     return float(Math.sqrt(x))
 
 
@@ -264,9 +275,11 @@ def acosh(x):
 
 
 def asinh(x):
-    # NOTE: will be replaced with official, when it becomes mainstream
-    # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/asinh
-    return float(Math.log(x + Math.sqrt(x * x + 1)))
+    x = float(x)
+    if x == 0:
+        return x
+    magnitude = Math.log(Math.abs(x) + Math.sqrt(x * x + 1))
+    return float(-magnitude if x < 0 else magnitude)
 
 
 def atanh(x):
@@ -276,15 +289,19 @@ def atanh(x):
 
 
 def cosh(x):
-    # NOTE: will be replaced with official, when it becomes mainstream
-    # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/cosh
-    return float((Math.exp(x) + Math.exp(-x)) / 2)
+    x = float(x)
+    answer = (Math.exp(x) + Math.exp(-x)) / 2
+    if isfinite(x) and not isfinite(answer):
+        raise OverflowError('math range error')
+    return float(answer)
 
 
 def sinh(x):
-    # NOTE: will be replaced with official, when it becomes mainstream
-    # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sinh
-    return float((Math.exp(x) - Math.exp(-x)) / 2)
+    x = float(x)
+    answer = (Math.exp(x) - Math.exp(-x)) / 2
+    if isfinite(x) and not isfinite(answer):
+        raise OverflowError('math range error')
+    return float(answer)
 
 
 def tanh(x):
