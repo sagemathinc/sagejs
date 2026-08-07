@@ -84,29 +84,39 @@ const workload = join(root, "bench", "mpmath-workload.py");
 const basicOpsTests = join(root, "bench", "mpmath-test-basic-ops.py");
 const implementations = [
   {
-    name: "CPython",
+    name: "CPython/gmpy",
     command: python,
     args: (program) => [program],
-    env: { PYTHONPATH: sitePackages },
+    env: { PYTHONPATH: sitePackages, MPMATH_NOGMPY: "" },
+    backend: "gmpy",
+  },
+  {
+    name: "CPython/python",
+    command: python,
+    args: (program) => [program],
+    env: { PYTHONPATH: sitePackages, MPMATH_NOGMPY: "Y" },
+    backend: "python",
   },
 ];
 
 const pypyProbe = spawnSync(pypy, ["--version"], { encoding: "utf8" });
 if (!pypyProbe.error && pypyProbe.status === 0) {
   implementations.push({
-    name: "PyPy",
+    name: "PyPy/python",
     command: pypy,
     args: (program) => [program],
-    env: { PYTHONPATH: sitePackages },
+    env: { PYTHONPATH: sitePackages, MPMATH_NOGMPY: "Y" },
+    backend: "python",
   });
 }
 
 implementations.push(
   {
-    name: "Sage.js",
+    name: "Sage.js/python",
     command: process.execPath,
     args: (program) => [join(root, "bin", "sagejs-source.cjs"), "--python", program],
-    env: { SAGEJS_SITE_PACKAGES: sitePackages },
+    env: { SAGEJS_SITE_PACKAGES: sitePackages, MPMATH_NOGMPY: "Y" },
+    backend: "python",
   },
 );
 
@@ -155,6 +165,7 @@ for (const implementation of implementations) {
   }
   rows.push({
     runtime: implementation.name,
+    backend: implementation.backend,
     digest: match[1],
     warmSeconds: Number(match[2]),
     coldImportSeconds: median(importSamples),
@@ -182,11 +193,11 @@ if (json) {
   console.log(JSON.stringify(report, null, 2));
 } else {
   console.log(`${report.package}: ${report.workload}`);
-  console.log("runtime".padEnd(12), "cold import".padStart(12), "cold total".padStart(12), "warm compute".padStart(14));
-  console.log("-".repeat(54));
+  console.log("runtime/backend".padEnd(17), "cold import".padStart(12), "cold total".padStart(12), "warm compute".padStart(14));
+  console.log("-".repeat(59));
   for (const row of rows) {
     console.log(
-      row.runtime.padEnd(12),
+      row.runtime.padEnd(17),
       `${(row.coldImportSeconds * 1000).toFixed(1)} ms`.padStart(12),
       `${(row.coldWorkloadSeconds * 1000).toFixed(1)} ms`.padStart(12),
       `${(row.warmSeconds * 1000).toFixed(2)} ms`.padStart(14),
@@ -194,11 +205,11 @@ if (json) {
   }
   console.log(`\nmatching 60-digit result: ${correct ? "PASS" : "FAIL"}`);
   console.log("\nunmodified upstream mpmath basic operations (23 tests)");
-  console.log("runtime".padEnd(12), "test loop".padStart(12), "whole process".padStart(14));
-  console.log("-".repeat(40));
+  console.log("runtime/backend".padEnd(17), "test loop".padStart(12), "whole process".padStart(14));
+  console.log("-".repeat(45));
   for (const row of rows) {
     console.log(
-      row.runtime.padEnd(12),
+      row.runtime.padEnd(17),
       `${(row.basicTestSeconds * 1000).toFixed(1)} ms`.padStart(12),
       `${(row.basicTestProcessSeconds * 1000).toFixed(1)} ms`.padStart(14),
     );
