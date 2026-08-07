@@ -267,11 +267,21 @@ test("observable chained assignments use Python hooks from left to right", async
     const javascript = output.get();
     assert.match(javascript, /function\(ρσ_chain_assign_temp\)/);
     assert.equal((javascript.match(/ρσ_setattr/g) ?? []).length, 2);
-    assert.match(javascript, /ρσ_getattr\(first, "child"\)/);
-    assert.match(javascript, /ρσ_getattr\(second, "child"\)/);
+    assert.match(
+      javascript,
+      /ρσ_getattr_internal\(first, "child", ρσ_getattr_missing\)/,
+    );
+    assert.match(
+      javascript,
+      /ρσ_getattr_internal\(second, "child", ρσ_getattr_missing\)/,
+    );
     assert.ok(
-      javascript.indexOf('ρσ_getattr(first, "child")') <
-        javascript.indexOf('ρσ_getattr(second, "child")'),
+      javascript.indexOf(
+        'ρσ_getattr_internal(first, "child", ρσ_getattr_missing)',
+      ) <
+        javascript.indexOf(
+          'ρσ_getattr_internal(second, "child", ρσ_getattr_missing)',
+        ),
     );
 
     const itemAst = frontend.parse(
@@ -418,11 +428,11 @@ test("dotted callable instances resolve through __call__", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_interpolate_kwargs\(ρσ_py_package, ρσ_getattr\(ρσ_py_package, "marker"\)/,
+      /ρσ_interpolate_kwargs\(ρσ_py_package, ρσ_getattr_internal\(ρσ_py_package, "marker", ρσ_getattr_missing\)/,
     );
     assert.match(
       javascript,
-      /ρσ_resolve_callable\(ρσ_getattr\(ρσ_py_package, "factory"\)\)/,
+      /ρσ_resolve_callable\(ρσ_getattr_internal\(ρσ_py_package, "factory", ρσ_getattr_missing\)\)/,
     );
   } finally {
     frontend.close();
@@ -443,7 +453,7 @@ test("Python bindings shadow JavaScript native namespace names", async () => {
     const javascript = output.get();
     assert.match(
       javascript,
-      /ρσ_getattr\(ρσ_getattr\(Number, "Integer"\), "Long"\)/,
+      /ρσ_getattr_internal\(ρσ_getattr_internal\(Number, "Integer", ρσ_getattr_missing\), "Long", ρσ_getattr_missing\)/,
     );
     assert.doesNotMatch(javascript, /Number\.Integer\.Long/);
   } finally {
@@ -600,7 +610,10 @@ test("same-class static calls are not guessed to be unbound methods", async () =
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(javascript, /ρσ_getattr\(Config, "name"\)/);
+    assert.match(
+      javascript,
+      /ρσ_getattr_internal\(Config, "name", ρσ_getattr_missing\)/,
+    );
     assert.doesNotMatch(
       javascript,
       /Config\.prototype\.name\.call\(value\)/,

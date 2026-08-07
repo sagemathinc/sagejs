@@ -105,9 +105,15 @@ _BUILTINS_MISSING = _BuiltinsMissing()
 _BUILTINS_EMPTY = _BuiltinsMissing()
 _BUILTINS_DESCRIPTOR_MISSING = _BuiltinsMissing()
 _BUILTINS_HASATTR_MISSING = _BuiltinsMissing()
+# Compiler-emitted attribute reads use this reserved alias when calling the
+# fixed-arity lookup primitive.  Keeping it in the runtime namespace avoids a
+# collision with an ordinary user binding named ``_BUILTINS_MISSING``.
+ρσ_getattr_missing = _BUILTINS_MISSING
 _builtins_float_prototype = runtime.undefined
 _builtins_descriptor_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, 'WeakMap'), [])
+_builtins_data_descriptor_names = runtime.reflect.construct(
+    runtime.set_class, [])
 _builtins_descriptor_epoch = 0
 
 
@@ -271,10 +277,9 @@ def _builtins_member_is_function(value: Any, name: Any) -> _Bool:
 
 
 def _builtins_class_attribute_descriptor(
-    value: Any,
+    owner: Any,
     name: Any,
 ) -> Any:
-    owner = runtime.native_get(value, 'constructor')
     if (
         owner is None
         or owner is runtime.undefined
@@ -325,13 +330,32 @@ def ρσ_call_set_names(
     names: list[Any],
     values: list[Any],
 ) -> None:
-    """Call descriptor ``__set_name__`` methods from a namespace snapshot."""
+    """Register descriptors and call ``__set_name__`` from a namespace."""
     index = 0
     while index < _builtins_get_member(names, 'length'):
         value = values[index]
+        name = names[index]
+        if (
+            _builtins_member_is_function(value, '__set__')
+            or _builtins_member_is_function(value, '__delete__')
+        ):
+            # This append-only name filter makes ordinary own-field reads
+            # cheap without weakening descriptor precedence.  A false
+            # positive only takes the complete per-class lookup path; a
+            # false negative would be incorrect, so deleted descriptors stay
+            # registered and dynamic class assignment registers eagerly.
+            _builtins_data_descriptor_names.add(name)
         if _builtins_member_is_function(value, '__set_name__'):
             _builtins_call_member(
-                value, '__set_name__', [owner, names[index]])
+                value, '__set_name__', [owner, name])
+        index += 1
+
+
+def ρσ_register_data_descriptor_names(names: list[Any]) -> None:
+    """Register compiler-emitted native Python property names."""
+    index = 0
+    while index < _builtins_get_member(names, 'length'):
+        _builtins_data_descriptor_names.add(names[index])
         index += 1
 
 
@@ -4082,10 +4106,10 @@ def ρσ_ellipsis_iter(*specification: Any) -> Any:
     return iter(ρσ_ellipsis_range(*specification))
 
 
-def ρσ_getattr(
+def ρσ_getattr_internal(
     value: Any,
     name: _Str,
-    default_value: Any = _BUILTINS_MISSING,
+    default_value: Any,
 ) -> Any:
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
@@ -4115,7 +4139,7 @@ def ρσ_getattr(
 
             return native_with_traceback
     if (
-        name == '__dict__'
+        runtime.strict_equal(name, '__dict__')
         and value is not None
         and value is not runtime.undefined
         and (
@@ -4125,7 +4149,7 @@ def ρσ_getattr(
     ):
         return _builtins_namespace_dict(value)
     if (
-        name == 'sort'
+        runtime.strict_equal(name, 'sort')
         and runtime.array.isArray(value)
         and _builtins_member_is_function(value, 'pythonsort')
     ):
@@ -4151,7 +4175,7 @@ def ρσ_getattr(
                 [value],
             )
     if (
-        name == '__next__'
+        runtime.strict_equal(name, '__next__')
         and not _builtins_member_is_function(value, '__next__')
         and _builtins_member_is_function(value, 'next')
     ):
@@ -4159,7 +4183,7 @@ def ρσ_getattr(
             return ρσ_next(value)
 
         return native_next
-    if name == '__class__':
+    if runtime.strict_equal(name, '__class__'):
         if _builtins_is_python_class(value):
             return ρσ_type
         if (
@@ -4176,7 +4200,7 @@ def ρσ_getattr(
             return ρσ_function_type
         return _builtins_get_member(value, 'constructor')
     if (
-        name == '__get__'
+        runtime.strict_equal(name, '__get__')
         and runtime.strict_equal(runtime.jstype(value), 'function')
     ):
         # Python function objects implement the descriptor protocol.  This is
@@ -4200,9 +4224,25 @@ def ρσ_getattr(
         and value is not None
         and value is not runtime.undefined
     ):
-        owner = _builtins_get_member(value, 'constructor')
+        has_own_member = runtime.reflect.apply(
+            runtime.object.prototype.hasOwnProperty,
+            value,
+            [name],
+        )
+        if (
+            has_own_member
+            and not _builtins_data_descriptor_names.has(name)
+        ):
+            own_member = runtime.native_get(value, name)
+            if own_member is runtime.undefined:
+                if default_value is not _BUILTINS_MISSING:
+                    return default_value
+                raise AttributeError(
+                    'The attribute ' + name + ' is not present')
+            return own_member
+        owner = runtime.native_get(value, 'constructor')
         descriptor_info = _builtins_class_attribute_descriptor(
-            value, name)
+            owner, name)
         if descriptor_info is not runtime.undefined:
             descriptor = runtime.reflect.get(
                 descriptor_info, 'value')
@@ -4222,11 +4262,7 @@ def ρσ_getattr(
         # non-callable value cannot require binding or another inherited
         # lookup, which is the overwhelmingly common path for mathematical
         # object payloads such as ``_mpf_`` and ``_ctxdata``.
-        if runtime.reflect.apply(
-            runtime.object.prototype.hasOwnProperty,
-            value,
-            [name],
-        ):
+        if has_own_member:
             own_member = runtime.native_get(value, name)
             if own_member is runtime.undefined:
                 if default_value is not _BUILTINS_MISSING:
@@ -4449,6 +4485,15 @@ def ρσ_getattr(
     raise AttributeError('The attribute ' + name + ' is not present')
 
 
+def ρσ_getattr(
+    value: Any,
+    name: _Str,
+    default_value: Any = _BUILTINS_MISSING,
+) -> Any:
+    """Public Python ``getattr`` wrapper around fixed-arity lookup."""
+    return ρσ_getattr_internal(value, name, default_value)
+
+
 def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
     global _builtins_descriptor_epoch
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
@@ -4484,7 +4529,7 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             return _builtins_call_member(
                 value, '__setattr__', [name, member])
     descriptor_info = _builtins_class_attribute_descriptor(
-        value, name)
+        _builtins_get_member(value, 'constructor'), name)
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(descriptor_info, 'value')
         if _builtins_member_is_function(descriptor, '__set__'):
@@ -4492,6 +4537,11 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
                 descriptor, '__set__', [value, member])
     if _builtins_is_python_class(value):
         _builtins_descriptor_epoch += 1
+        if (
+            _builtins_member_is_function(member, '__set__')
+            or _builtins_member_is_function(member, '__delete__')
+        ):
+            _builtins_data_descriptor_names.add(name)
         runtime.reflect.set(value.prototype, name, member)
         if _builtins_member_is_function(member, '__set_name__'):
             _builtins_call_member(
@@ -4905,7 +4955,7 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
         runtime.reflect.apply(property_deleter, value, [])
         return
     descriptor_info = _builtins_class_attribute_descriptor(
-        value, name)
+        _builtins_get_member(value, 'constructor'), name)
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(descriptor_info, 'value')
         if _builtins_member_is_function(descriptor, '__delete__'):
@@ -4927,7 +4977,7 @@ def ρσ_delattr(value: Any, name: _Str) -> None:
 def ρσ_hasattr(value: Any, name: _Str) -> _Bool:
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
-    return ρσ_getattr(
+    return ρσ_getattr_internal(
         value, name, _BUILTINS_HASATTR_MISSING
     ) is not _BUILTINS_HASATTR_MISSING
 
@@ -5275,6 +5325,11 @@ def ρσ_type(*values: Any) -> Any:
                 runtime.reflect.set(
                     member, '__python_descriptor__', True)
             runtime.reflect.set(prototype, member_name, member)
+            if (
+                _builtins_member_is_function(member, '__set__')
+                or _builtins_member_is_function(member, '__delete__')
+            ):
+                _builtins_data_descriptor_names.add(member_name)
             if (
                 runtime.string_find(member_name, '__') != 0
                 or member_name in (
@@ -7513,7 +7568,7 @@ def _builtins_object_setattr(
     if not runtime.strict_equal(runtime.jstype(name), 'string'):
         raise TypeError('attribute name must be string')
     descriptor_info = _builtins_class_attribute_descriptor(
-        self, name)
+        _builtins_get_member(self, 'constructor'), name)
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(
             descriptor_info, 'value')
@@ -7536,7 +7591,7 @@ def _builtins_object_delattr(self: Any, name: _Str) -> None:
         runtime.reflect.apply(property_deleter, self, [])
         return
     descriptor_info = _builtins_class_attribute_descriptor(
-        self, name)
+        _builtins_get_member(self, 'constructor'), name)
     if descriptor_info is not runtime.undefined:
         descriptor = runtime.reflect.get(
             descriptor_info, 'value')

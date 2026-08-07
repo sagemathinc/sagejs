@@ -77,10 +77,12 @@ def print_getattr(self, output, skip_expression):  # AST_Dot
         and '.' not in self.property
         and not is_native_attribute_chain(self)
     ):
-        output.print('ρσ_getattr(')
+        output.print('ρσ_getattr_internal(')
         self.expression.print(output)
         output.comma()
         output.print(JSON.stringify(self.property))
+        output.comma()
+        output.print('ρσ_getattr_missing')
         output.print(')')
         return
     expr = self.expression
@@ -755,8 +757,10 @@ def print_assign(self, output):
         else:
             function_name = compound_functions[self.operator]
             output.print(function_name + '(')
-        output.print('ρσ_getattr(ρσ_attr_target, ')
+        output.print('ρσ_getattr_internal(ρσ_attr_target, ')
         output.print(JSON.stringify(self.left.property))
+        output.comma()
+        output.print('ρσ_getattr_missing')
         output.print(')')
         output.comma()
         self.right.print(output)

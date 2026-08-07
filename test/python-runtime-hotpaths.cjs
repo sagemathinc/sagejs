@@ -37,3 +37,35 @@ test("optimized calls, equality, and indexing retain Python semantics", async (t
     "('Alias', 'parameter')",
   ].join("\n"));
 });
+
+test("optimized own-field lookup preserves descriptor precedence", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "class DataDescriptor:",
+    "    def __get__(self, instance, owner):",
+    "        return 71",
+    "    def __set__(self, instance, value):",
+    "        instance.stored = value",
+    "class WithDataDescriptor:",
+    "    answer = DataDescriptor()",
+    "data = WithDataDescriptor()",
+    "data.__dict__['answer'] = 99",
+    "print(data.answer)",
+    "class NonDataDescriptor:",
+    "    def __get__(self, instance, owner):",
+    "        return 73",
+    "class WithNonDataDescriptor:",
+    "    answer = NonDataDescriptor()",
+    "non_data = WithNonDataDescriptor()",
+    "non_data.__dict__['answer'] = 101",
+    "print(non_data.answer)",
+    "class Dynamic:",
+    "    pass",
+    "dynamic = Dynamic()",
+    "dynamic.answer = 103",
+    "setattr(Dynamic, 'answer', property(lambda self: 79))",
+    "print(dynamic.answer)",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), ["71", "101", "79"].join("\n"));
+});

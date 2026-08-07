@@ -705,7 +705,8 @@ def print_imports(container, output):
         output.indent()
         output.print(
             'var ρσ_star_names = ρσ_star_has_all ? '
-            'ρσ_getattr(ρσ_star_source, "__all__") : '
+            'ρσ_getattr_internal(ρσ_star_source, "__all__", '
+            'ρσ_getattr_missing) : '
             'ρσ_dir(ρσ_star_source)')
         output.end_statement()
         output.indent()
@@ -723,7 +724,8 @@ def print_imports(container, output):
             output.print_string(target_module)
             output.print(
                 '][ρσ_star_name] = '
-                'ρσ_getattr(ρσ_star_source, ρσ_star_name)')
+                'ρσ_getattr_internal(ρσ_star_source, ρσ_star_name, '
+                'ρσ_getattr_missing)')
             output.end_statement()
             output.indent()
             output.print('globalThis[ρσ_star_name] = ρσ_modules[')
@@ -826,8 +828,11 @@ def print_imports(container, output):
                 output.space()
                 output.print('=')
                 output.space()
-                output.print('ρσ_getattr(ρσ_imported_module, ')
+                output.print(
+                    'ρσ_getattr_internal(ρσ_imported_module, ')
                 output.print_string(argname.name)
+                output.comma()
+                output.print('ρσ_getattr_missing')
                 output.print(')')
                 output.end_statement()
                 publish_local(local_name)

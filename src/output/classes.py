@@ -549,6 +549,11 @@ def print_class(output):
 
         output.with_parens(f_props)
         output.end_statement()
+        output.indent()
+        output.print('ρσ_register_data_descriptor_names(')
+        output.print(JSON.stringify(property_names))
+        output.print(')')
+        output.end_statement()
         for name in property_names:
             prop = self.dynamic_properties[name]
             if prop.deleter:
