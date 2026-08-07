@@ -1138,20 +1138,6 @@ def ρσ_generic_alias(origin: Any, type_arguments: Any) -> Any:
 
 
 def ρσ_getitem(value: Any, key: Any) -> Any:
-    # ``__class_getitem__`` is commonly a classmethod inherited from an ABC.
-    # Use Python descriptor lookup so the defining class does not accidentally
-    # become the receiver when a subclass is subscribed.
-    class_getitem = getattr(
-        value, '__class_getitem__', None)
-    if _internal_type_is(runtime.jstype(class_getitem), 'function'):
-        bound_receiver = runtime.reflect.get(class_getitem, '__self__')
-        receiver = (
-            value
-            if bound_receiver is runtime.undefined
-            else bound_receiver
-        )
-        return runtime.reflect.apply(
-            class_getitem, receiver, [key])
     if (
         value is runtime.list_constructor
         or value is runtime.tuple_builtin
@@ -1187,6 +1173,22 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
             if key < 0 or key >= value.length:
                 raise IndexError('index out of range')
             return _internal_native_getitem(value, key)
+    # ``__class_getitem__`` is commonly a classmethod inherited from an ABC.
+    # Use Python descriptor lookup so the defining class does not accidentally
+    # become the receiver when a subclass is subscribed.  Keep this after the
+    # native list/tuple integer path: class subscription is rare, while tuple
+    # indexing is one of the hottest operations in numerical Python code.
+    class_getitem = getattr(
+        value, '__class_getitem__', None)
+    if _internal_type_is(runtime.jstype(class_getitem), 'function'):
+        bound_receiver = runtime.reflect.get(class_getitem, '__self__')
+        receiver = (
+            value
+            if bound_receiver is runtime.undefined
+            else bound_receiver
+        )
+        return runtime.reflect.apply(
+            class_getitem, receiver, [key])
     if _internal_member_is_function(value, '__getitem__'):
         return _internal_call_member(value, '__getitem__', [key])
     if _internal_get_member(key, '__sagejs_slice__'):

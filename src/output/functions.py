@@ -939,17 +939,11 @@ def print_function_call(self, output):
                     output.print('ρσ_expr_temp')
             elif (not is_new and not self.direct_call
                   and is_node_type(self.expression, AST_SymbolRef)):
-                # Easy special case where we can make the __call__
-                # operator work.  We are not doing the general case yet,
-                # which is difficult because of this binding.
-                # (f?.__call__?.bind(f) ?? f)
-                # We will likely instead do the general case by making
-                # classes ES6 classes that are just plain callable.
-                output.print('(')
-                self.expression.print(output)
-                output.print("?.__call__?.bind(")
-                self.expression.print(output)
-                output.print(') ?? ')
+                # Resolve callable instances without allocating a fresh bound
+                # function on every ordinary Python function call.  The
+                # resolver immediately returns native functions and performs
+                # Python descriptor binding only for callable objects.
+                output.print('ρσ_resolve_callable(')
                 self.expression.print(output)
                 output.print(')')
             else:

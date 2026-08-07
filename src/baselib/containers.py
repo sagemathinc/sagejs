@@ -79,10 +79,50 @@ def _numeric_key(value: Any) -> Any:
 def equals(left: Any, right: Any) -> Any:
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
-    if _is_boxed_float(left):
+
+    # Primitive equality is overwhelmingly common in numerical inner loops.
+    # Resolve it before probing Python special members or the uncommon boxed
+    # representation used by integral-valued floats.  In particular, avoid a
+    # megamorphic ``__sagejs_float__`` property lookup on every integer.
+    if (
+        not runtime.strict_equal(left_type, 'object')
+        and not runtime.strict_equal(left_type, 'function')
+        and not runtime.strict_equal(right_type, 'object')
+        and not runtime.strict_equal(right_type, 'function')
+    ):
+        if runtime.strict_equal(left_type, 'boolean'):
+            left = 1 if left else 0
+            left_type = 'number'
+        if runtime.strict_equal(right_type, 'boolean'):
+            right = 1 if right else 0
+            right_type = 'number'
+        if (
+            (
+                runtime.strict_equal(left_type, 'bigint')
+                and runtime.strict_equal(right_type, 'number')
+                and runtime.number.isInteger(right)
+            )
+            or (
+                runtime.strict_equal(right_type, 'bigint')
+                and runtime.strict_equal(left_type, 'number')
+                and runtime.number.isInteger(left)
+            )
+        ):
+            return runtime.bigint(left) is runtime.bigint(right)
+        if runtime.strict_equal(left_type, right_type):
+            return left is right
+        return False
+
+    if (
+        runtime.strict_equal(left_type, 'object')
+        and _is_boxed_float(left)
+    ):
         left = runtime.number(left)
         left_type = 'number'
-    if _is_boxed_float(right):
+    if (
+        runtime.strict_equal(right_type, 'object')
+        and _is_boxed_float(right)
+    ):
         right = runtime.number(right)
         right_type = 'number'
     if (

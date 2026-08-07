@@ -14,7 +14,11 @@ const manifest = JSON.parse(readFileSync(
 const mpmath = manifest.packages.find((entry) => entry.name === "mpmath");
 const python = process.env.PYTHON || "python3";
 const pypy = process.env.PYPY || "pypy3";
-const samples = Number(process.env.SAGEJS_MPMATH_SUITE_SAMPLES || 3);
+const fullSuite = process.argv.includes("--full");
+const defaultSamples = fullSuite ? 1 : 3;
+const samples = Number(
+  process.env.SAGEJS_MPMATH_SUITE_SAMPLES || defaultSamples,
+);
 const json = process.argv.includes("--json");
 if (!Number.isInteger(samples) || samples < 1) {
   throw new Error("SAGEJS_MPMATH_SUITE_SAMPLES must be a positive integer");
@@ -65,12 +69,26 @@ function sitePackagesPath() {
       `${mpmath.name}==${mpmath.version}`,
     ]);
   }
+  if (fullSuite) {
+    const pytestReceipt = join(target, ".sagejs-installed", "pytest.json");
+    if (!existsSync(pytestReceipt)) {
+      run(process.execPath, [
+        join(root, "bin", "sagejs-source.cjs"),
+        "pip",
+        "--target",
+        target,
+        "install",
+        "pytest==9.1.1",
+      ]);
+    }
+  }
   return target;
 }
 
 function parseOutput(output) {
   const tests = new Map();
   const modules = new Map();
+  const imports = new Map();
   let summary;
   for (const line of output.trim().split("\n")) {
     const fields = line.split("\t");
@@ -81,6 +99,12 @@ function parseOutput(output) {
         passed: fields[3] === "PASS",
         seconds: Number(fields[4]),
         detail: fields.slice(5).join("\t"),
+      });
+    } else if (fields[0] === "IMPORT") {
+      imports.set(fields[1], {
+        passed: fields[2] === "PASS",
+        seconds: Number(fields[3]),
+        detail: fields.slice(4).join("\t"),
       });
     } else if (fields[0] === "MODULE") {
       modules.set(fields[1], {
@@ -98,7 +122,7 @@ function parseOutput(output) {
     }
   }
   if (!summary) throw new Error(`unexpected suite output: ${output}`);
-  return { tests, modules, summary };
+  return { tests, modules, imports, summary };
 }
 
 const sitePackages = sitePackagesPath();
@@ -112,7 +136,10 @@ const implementations = [
   },
 ];
 const pypyProbe = spawnSync(pypy, ["--version"], { encoding: "utf8" });
-if (!pypyProbe.error && pypyProbe.status === 0) {
+if (
+  (!fullSuite || process.argv.includes("--pypy")) &&
+  !pypyProbe.error && pypyProbe.status === 0
+) {
   implementations.push({
     name: "PyPy",
     command: pypy,
@@ -129,6 +156,7 @@ implementations.push({
 
 for (const implementation of implementations) {
   implementation.env.MPMATH_NOGMPY = "Y";
+  if (fullSuite) implementation.env.SAGEJS_MPMATH_FULL_SUITE = "1";
   implementation.discovery = parseOutput(run(
     implementation.command,
     implementation.args,
@@ -147,11 +175,16 @@ for (const implementation of implementations) {
   const moduleSamples = new Map();
   const totalSamples = [];
   for (let sample = 0; sample < samples; sample += 1) {
-    const measured = parseOutput(run(
-      implementation.command,
-      implementation.args,
-      { env: implementation.env },
-    ));
+    // A full upstream run is expensive enough that its discovery process is
+    // also the first valid fresh-process timing sample.  The curated suite
+    // retains a separate discovery pass for continuity with published data.
+    const measured = fullSuite && sample === 0
+      ? implementation.discovery
+      : parseOutput(run(
+          implementation.command,
+          implementation.args,
+          { env: implementation.env },
+        ));
     const failedCommon = commonTests.filter((name) =>
       !measured.tests.get(name)?.passed
     );
@@ -197,6 +230,7 @@ const moduleRows = moduleNames.map((moduleName) => {
 const report = {
   generatedAt: new Date().toISOString(),
   package: `${mpmath.name}==${mpmath.version}`,
+  scope: fullSuite ? "full" : "curated",
   samples,
   discoveredTests: allTestNames.length,
   commonPassingTests: commonTests.length,
@@ -205,7 +239,15 @@ const report = {
     ...implementation.discovery.summary,
     failures: [...implementation.discovery.tests]
       .filter(([, result]) => !result.passed)
-      .map(([name, result]) => ({ name, detail: result.detail })),
+      .map(([name, result]) => ({ name, detail: result.detail }))
+      .concat(
+        [...implementation.discovery.imports]
+          .filter(([, result]) => !result.passed)
+          .map(([name, result]) => ({
+            name: `${name} import`,
+            detail: result.detail,
+          })),
+      ),
   })),
   moduleRows,
 };
@@ -213,7 +255,10 @@ const report = {
 if (json) {
   console.log(JSON.stringify(report, null, 2));
 } else {
-  console.log(`${report.package}: upstream suite compatibility (pure-Python backend)`);
+  console.log(
+    `${report.package}: ${report.scope} upstream suite compatibility ` +
+    "(pure-Python backend)",
+  );
   for (const row of report.compatibility) {
     console.log(
       `  ${row.runtime.padEnd(10)} ${String(row.passed).padStart(3)}/` +
@@ -233,13 +278,20 @@ if (json) {
   for (const row of moduleRows) {
     const cpython = row.timings.CPython;
     const sagejs = row.timings["Sage.js"];
+    const timingColumns = implementations.map((implementation) => {
+      const seconds = row.timings[implementation.name];
+      return Number.isFinite(seconds)
+        ? `${(seconds * 1000).toFixed(1)} ms`.padStart(11)
+        : "—".padStart(11);
+    });
+    const ratio = Number.isFinite(cpython) && Number.isFinite(sagejs)
+      ? `${(sagejs / cpython).toFixed(1)}x`
+      : "—";
     console.log(
       row.module.padEnd(16),
       String(row.tests).padStart(5),
-      ...implementations.map((implementation) =>
-        `${(row.timings[implementation.name] * 1000).toFixed(1)} ms`.padStart(11)
-      ),
-      `${(sagejs / cpython).toFixed(1)}x`.padStart(10),
+      ...timingColumns,
+      ratio.padStart(10),
     );
   }
   console.log(

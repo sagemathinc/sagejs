@@ -541,12 +541,15 @@ test("chained comparisons preserve Python dispatch and shared operands", async (
     const javascript = output.get();
     assert.equal((javascript.match(/ρσ_equals/g) ?? []).length, 6);
     assert.match(javascript, /ρσ_equals\(ρσ_compare_0, ρσ_compare_1\)/);
-    assert.equal((javascript.match(/middle_value\?\.__call__/g) ?? []).length, 1);
+    assert.equal(
+      (javascript.match(/ρσ_resolve_callable\(middle_value\)/g) ?? []).length,
+      1,
+    );
     for (const name of ["a", "b", "c", "d", "e"]) {
       assert.equal(
         (
           javascript.match(
-            new RegExp(`(?:^|[^A-Za-z0-9_])${name}\\?\\.__call__`, "g"),
+            new RegExp(`ρσ_resolve_callable\\(${name}\\)`, "g"),
           ) ?? []
         ).length,
         1,
