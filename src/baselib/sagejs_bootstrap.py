@@ -128,7 +128,9 @@ def ρσ_wall_time():
 def ρσ_dynamic_eval(javascript, input_namespace, module_id):
     """Evaluate compiler output in an isolated dynamic module namespace."""
     return r"""%js (() => {
-        const ρσ_dynamic_modules = {[module_id]: {}};
+        const ρσ_dynamic_modules = {
+            [module_id]: Object.assign({}, input_namespace)
+        };
         const __sagejs_input_namespace__ = input_namespace;
         const evaluate = new Function(
             "ρσ_modules",

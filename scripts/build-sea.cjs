@@ -193,6 +193,17 @@ function collectStandardLibraryCacheAssets() {
   return assets;
 }
 
+function collectJsonCacheAssets(directoryName) {
+  const directory = join(root, "dist", directoryName);
+  const assets = {};
+  if (!existsSync(directory)) return assets;
+  for (const filename of readdirSync(directory)) {
+    if (!filename.endsWith(".json")) continue;
+    assets[`${directoryName}/${filename}`] = join(directory, filename);
+  }
+  return assets;
+}
+
 function buildExecutable(name, withFlint) {
   if (withFlint && !existsSync(flintAddon)) {
     throw new Error(
@@ -256,6 +267,8 @@ function buildExecutable(name, withFlint) {
     "native/zeromq.node": zeroMQAddonFilename(),
     ...collectStandardLibraryAssets(),
     ...collectStandardLibraryCacheAssets(),
+    ...collectJsonCacheAssets("lazy-module-cache"),
+    ...collectJsonCacheAssets("dynamic-cache"),
     "vendor/plotly.min.js": require.resolve(
       "plotly.js-dist-min/plotly.min.js",
     ),

@@ -22,6 +22,9 @@ const temporary = mkdtempSync(join(tmpdir(), "sagejs-module-cache-test-~1-"));
 const sourceDirectory = join(temporary, "source");
 const compilerCache = join(temporary, "compiler-cache");
 const replCache = join(temporary, "repl-cache");
+const portableReplCache = join(temporary, "portable-repl-cache");
+const portableCache = join(temporary, "portable-cache");
+const dynamicCache = join(temporary, "dynamic-cache");
 const modulePath = join(sourceDirectory, "cached_value.py");
 const mainPath = join(sourceDirectory, "main.py");
 const precompiledNumpyCache = join(
@@ -34,6 +37,7 @@ const precompiledNumpyCache = join(
 mkdirSync(sourceDirectory);
 
 function run(args, options = {}) {
+  const { env = {}, ...spawnOptions } = options;
   const result = spawnSync(process.execPath, [cli, ...args], {
     cwd: root,
     encoding: "utf8",
@@ -41,15 +45,16 @@ function run(args, options = {}) {
       ...process.env,
       SAGEJSPATH: sourceDirectory,
       XDG_CACHE_HOME: replCache,
+      ...env,
     },
-    ...options,
+    ...spawnOptions,
   });
   assert.equal(
     result.status,
     0,
     `sagejs ${args.join(" ")} failed:\n${result.stderr}`,
   );
-  return result.stdout.trim();
+  return result.stdout?.trim() ?? "";
 }
 
 function filesBelow(directory) {
@@ -73,11 +78,13 @@ try {
     run([], { input: "import numpy\nprint(numpy.arange(3))\n" }),
     "[0 1 2]",
   );
-  assert.deepEqual(
-    filesBelow(join(replCache, "sagejs", "modules")),
-    [],
-    "a shipped standard-library cache should avoid recompilation",
-  );
+  // Runtime imports maintain their own V8 bytecode cache even when the
+  // compiler used a shipped syntax/module artifact for the calling cell.
+  for (const filename of filesBelow(join(replCache, "sagejs", "modules"))) {
+    const cached = JSON.parse(readFileSync(filename, "utf8"));
+    assert.equal(cached.version, numpyCache.version);
+    assert.equal(typeof cached.cachedData, "string");
+  }
 
   writeFileSync(
     modulePath,
@@ -85,13 +92,13 @@ try {
   );
   writeFileSync(mainPath, "import cached_value\nprint(cached_value.value)\n");
 
-  const compileArgs = [
+  run([
     "compile",
-    "--execute",
     "--cache-dir",
     compilerCache,
     mainPath,
-  ];
+  ], { stdio: ["ignore", "ignore", "pipe"] });
+  const compileArgs = ["compile", "--execute", mainPath];
   const expected = "123456789012345678901234567890";
   assert.equal(run(compileArgs), expected);
   assert.equal(run(compileArgs), expected);
@@ -108,7 +115,10 @@ try {
     expected,
   );
   const replEntries = filesBelow(join(replCache, "sagejs", "modules"));
-  assert.equal(replEntries.length, 1);
+  assert.equal(replEntries.filter((filename) => {
+    const entry = JSON.parse(readFileSync(filename, "utf8"));
+    return entry.filename === modulePath;
+  }).length, 1);
 
   writeFileSync(
     modulePath,
@@ -118,6 +128,69 @@ try {
     run([], { input: "import cached_value\nprint(cached_value.value)\n" }),
     "3141592653589793238462643383279",
   );
+
+  const currentCacheFilename = filesBelow(
+    join(replCache, "sagejs", "modules"),
+  ).find((filename) => {
+    const cached = JSON.parse(readFileSync(filename, "utf8"));
+    return cached.filename === modulePath;
+  });
+  assert.ok(currentCacheFilename);
+  const currentCache = JSON.parse(readFileSync(currentCacheFilename, "utf8"));
+  const filenameMarker = "__sagejs_precompiled_module_filename__";
+  const filenameLiteral = JSON.stringify(currentCache.filename);
+  assert.ok(currentCache.javascript.includes(filenameLiteral));
+  mkdirSync(portableCache);
+  writeFileSync(
+    join(portableCache, "cached_value.json"),
+    JSON.stringify({
+      version: currentCache.version,
+      signature: currentCache.signature,
+      mode: currentCache.mode,
+      module: "cached_value",
+      javascriptTemplate: currentCache.javascript.replaceAll(
+        filenameLiteral,
+        JSON.stringify(filenameMarker),
+      ),
+    }),
+  );
+  assert.equal(
+    run([], {
+      env: {
+        XDG_CACHE_HOME: portableReplCache,
+        SAGEJS_PRECOMPILED_MODULE_CACHE_DIR: portableCache,
+      },
+      input: "import cached_value\nprint(cached_value.value)\n",
+    }),
+    "3141592653589793238462643383279",
+  );
+  const materializedFilename = filesBelow(
+    join(portableReplCache, "sagejs", "modules"),
+  ).find((filename) => {
+    const cached = JSON.parse(readFileSync(filename, "utf8"));
+    return cached.filename === modulePath;
+  });
+  assert.ok(materializedFilename);
+  const materialized = JSON.parse(readFileSync(materializedFilename, "utf8"));
+  assert.equal(materialized.filename, modulePath);
+  assert.ok(!materialized.javascript.includes(filenameMarker));
+
+  const dynamicProgram = [
+    "namespace = {'input_value': 41}",
+    "exec('answer = input_value + 1', namespace)",
+    "print(namespace['answer'])",
+    "",
+  ].join("\n");
+  for (let index = 0; index < 2; index += 1) {
+    assert.equal(
+      run([], {
+        env: { SAGEJS_DYNAMIC_CACHE_DIR: dynamicCache },
+        input: dynamicProgram,
+      }),
+      "42",
+    );
+  }
+  assert.equal(filesBelow(dynamicCache).length, 1);
 } finally {
   rmSync(temporary, { recursive: true, force: true });
 }

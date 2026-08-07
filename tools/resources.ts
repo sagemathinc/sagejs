@@ -78,6 +78,16 @@ export function standardLibraryCacheDirectory(fallback: string): string {
   return isSea() ? join(VIRTUAL_ROOT, "module-cache") : fallback;
 }
 
+export function precompiledLazyModuleCacheDirectory(
+  fallback: string,
+): string {
+  return isSea() ? join(VIRTUAL_ROOT, "lazy-module-cache") : fallback;
+}
+
+export function precompiledDynamicCacheDirectory(fallback: string): string {
+  return isSea() ? join(VIRTUAL_ROOT, "dynamic-cache") : fallback;
+}
+
 export function readResourceText(filename: string): string {
   if (isSea()) {
     const key = assetKeyForVirtualPath(filename);

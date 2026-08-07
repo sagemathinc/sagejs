@@ -1,8 +1,14 @@
+import { createHash } from "node:crypto";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import createCompiler, { type Compiler } from "./compiler";
+import {
+  precompiledDynamicCacheDirectory,
+  readResourceText,
+} from "./resources";
 
 let compiler: Compiler | undefined;
-let moduleCounter = 0;
 
 function dynamicCompiler(): Compiler {
   compiler ??= createCompiler();
@@ -48,14 +54,76 @@ const pythonKeywords = new Set([
 ]);
 
 export interface DynamicCode {
+  ast?: any;
+  cacheFilename: string;
   filename: string;
   mode: "eval" | "exec" | "single";
+  moduleId: string;
+  outputs: Record<string, string>;
   source: string;
+  sourceHash: string;
+  version: string;
 }
 
 interface PreparedDynamicCode {
   javascript: string;
   moduleId: string;
+}
+
+interface DynamicCodeCache {
+  filename: string;
+  mode: DynamicCode["mode"];
+  outputs: Record<string, string>;
+  sourceHash: string;
+  version: string;
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function dynamicCacheDirectory(version: string): string {
+  if (process.env.SAGEJS_DYNAMIC_CACHE_DIR) {
+    return join(process.env.SAGEJS_DYNAMIC_CACHE_DIR, version);
+  }
+  const base = process.env.XDG_CACHE_HOME || join(homedir(), ".cache");
+  return join(base, "sagejs", "dynamic", version);
+}
+
+function readDynamicCache(
+  cacheFilename: string,
+  expected: Omit<DynamicCodeCache, "outputs">,
+): Record<string, string> | undefined {
+  try {
+    const cached = JSON.parse(readResourceText(cacheFilename));
+    if (
+      cached.version === expected.version &&
+      cached.sourceHash === expected.sourceHash &&
+      cached.filename === expected.filename &&
+      cached.mode === expected.mode &&
+      cached.outputs &&
+      typeof cached.outputs === "object"
+    ) {
+      return cached.outputs;
+    }
+  } catch (_error) {}
+  return undefined;
+}
+
+function writeDynamicCache(code: DynamicCode): void {
+  try {
+    mkdirSync(dirname(code.cacheFilename), { recursive: true });
+    writeFileSync(code.cacheFilename, JSON.stringify({
+      version: code.version,
+      sourceHash: code.sourceHash,
+      filename: code.filename,
+      mode: code.mode,
+      outputs: code.outputs,
+    } satisfies DynamicCodeCache));
+  } catch (_error) {
+    // Dynamic execution must still work with a read-only home directory or
+    // when another process happens to write the same content-addressed entry.
+  }
 }
 
 function parserOptions(filename: string, moduleId: string) {
@@ -135,12 +203,48 @@ export function compileDynamic(
   filename: string,
   mode: DynamicCode["mode"],
 ): DynamicCode {
+  const version = dynamicCompiler().get_compiler_version();
+  const sourceHash = sha256(source);
+  const identity = sha256(JSON.stringify({ version, sourceHash, filename, mode }));
+  const moduleId = `__dynamic_${identity.slice(0, 24)}__`;
+  const cacheFilename = join(dynamicCacheDirectory(version), `${identity}.json`);
+  const precompiledCacheFilename = join(
+    process.env.SAGEJS_PRECOMPILED_DYNAMIC_CACHE_DIR ??
+      precompiledDynamicCacheDirectory(join(__dirname, "..", "dynamic-cache")),
+    `${identity}.json`,
+  );
+  const expected = { version, sourceHash, filename, mode };
+  const outputs =
+    readDynamicCache(cacheFilename, expected) ??
+    readDynamicCache(precompiledCacheFilename, expected);
+  if (outputs) {
+    return {
+      cacheFilename,
+      filename,
+      mode,
+      moduleId,
+      outputs,
+      source,
+      sourceHash,
+      version,
+    };
+  }
   try {
-    parseSource(source, filename, mode, "__dynamic_validation__");
+    const ast = parseSource(source, filename, mode, moduleId);
+    return {
+      ast,
+      cacheFilename,
+      filename,
+      mode,
+      moduleId,
+      outputs: Object.create(null),
+      source,
+      sourceHash,
+      version,
+    };
   } catch (error) {
     throw syntaxError(error);
   }
-  return { filename, mode, source };
 }
 
 function canSeedName(name: string): boolean {
@@ -152,47 +256,57 @@ function canSeedName(name: string): boolean {
   );
 }
 
-function seededSource(code: DynamicCode, namespace: Record<string, unknown>) {
-  const seed = Object.keys(namespace)
+function namespaceNames(namespace: Record<string, unknown>): string[] {
+  return Object.keys(namespace)
     .filter(canSeedName)
+    .sort();
+}
+
+function namespacePrelude(names: string[], output: any): string {
+  return names
     .map(
       (name) =>
-        `${name} = __sagejs_input_namespace__[${JSON.stringify(name)}]`,
+        `var ${output.make_name(name)} = ` +
+        `__sagejs_input_namespace__[${JSON.stringify(name)}];`,
     )
     .join("\n");
-  const body =
-    code.mode === "eval"
-      ? expressionSource(code.source)
-      : statementSource(code.source);
-  return seed ? `${seed}\n${body}` : body;
+}
+
+function namespaceSignature(
+  names: string[],
+  namespace: Record<string, unknown>,
+): string {
+  const undefinedNames = names.filter((name) => namespace[name] === undefined);
+  return sha256(JSON.stringify([names, undefinedNames]));
 }
 
 export function runDynamic(
   code: DynamicCode,
   namespace: Record<string, unknown>,
 ): PreparedDynamicCode {
-  const moduleId = `__dynamic_${++moduleCounter}__`;
+  const names = namespaceNames(namespace);
+  const signature = namespaceSignature(names, namespace);
+  const cached = code.outputs[signature];
+  if (typeof cached === "string") {
+    return { javascript: cached, moduleId: code.moduleId };
+  }
+  code.ast ??= parseSource(code.source, code.filename, code.mode, code.moduleId);
+  const originalAnnotatedLocals = code.ast.annotated_locals;
   let javascript: string;
   try {
-    const parse = Reflect.get(globalThis, "__sagejs_parse_python__");
-    if (typeof parse !== "function") {
-      throw new Error("the authoritative Python frontend is not initialized");
-    }
-    const ast: any = Reflect.apply(
-      parse,
-      undefined,
-      [
-      seededSource(code, namespace),
-      parserOptions(code.filename, moduleId),
-      ],
-    );
+    // ``compile()`` has already parsed and lowered the authoritative Python
+    // syntax tree.  Names supplied by the execution namespace are ordinary
+    // JavaScript lexical bindings around that generated program; manufacturing
+    // Python assignments for every name used to make ``exec()`` parse and
+    // lower a much larger program for a second time.
+    code.ast.annotated_locals = [...(originalAnnotatedLocals ?? [])];
     for (const [name, value] of Object.entries(namespace)) {
       if (
         value === undefined &&
         canSeedName(name) &&
-        !ast.annotated_locals.includes(name)
+        !code.ast.annotated_locals.includes(name)
       ) {
-        ast.annotated_locals.push(name);
+        code.ast.annotated_locals.push(name);
       }
     }
     const OutputStream = dynamicCompiler().OutputStream;
@@ -206,15 +320,20 @@ export function runDynamic(
       python_truthiness: true,
       python_attributes: true,
       pool_numeric_literals: true,
-      numeric_literal_pool_prefix: `${moduleId}_`,
+      numeric_literal_pool_prefix: `${code.moduleId}_`,
     });
-    ast.print(output);
-    javascript = output.get();
+    code.ast.print(output);
+    const prelude = namespacePrelude(names, output);
+    javascript = prelude ? `${prelude}\n${output.get()}` : output.get();
+    code.outputs[signature] = javascript;
+    writeDynamicCache(code);
   } catch (error) {
     throw syntaxError(error);
+  } finally {
+    code.ast.annotated_locals = originalAnnotatedLocals;
   }
 
-  return { javascript, moduleId };
+  return { javascript, moduleId: code.moduleId };
 }
 
 export default {

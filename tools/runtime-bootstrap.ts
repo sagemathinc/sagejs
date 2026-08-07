@@ -20,6 +20,7 @@ import {
 } from "./javascript-modules";
 import type { PythonCompilerFrontend } from "./python/compiler-frontend";
 import {
+  precompiledLazyModuleCacheDirectory,
   readBaselibSource,
   readResourceText,
   readRuntimeBootstrapCachedData,
@@ -29,6 +30,9 @@ import {
 import { getImportDirs, importPath, libraryPath, sha1sum } from "./utils";
 
 export type RuntimeBootstrapMode = "sage" | "python";
+
+export const PRECOMPILED_MODULE_FILENAME =
+  "__sagejs_precompiled_module_filename__";
 
 // A real statement gives the output pipeline a module to which it can attach
 // the generated baselib.  This used to be a RapydScript anonymous-function
@@ -266,6 +270,13 @@ export function runRuntimeBootstrap(
           `${name.replaceAll(".", "-")}-${sha1sum(filename).slice(0, 16)}.json`,
         )
         : "";
+      const precompiledCacheFilename = join(
+        process.env.SAGEJS_PRECOMPILED_MODULE_CACHE_DIR ??
+          precompiledLazyModuleCacheDirectory(
+            join(__dirname, "..", "lazy-module-cache"),
+          ),
+        `${name.replaceAll(".", "-")}.json`,
+      );
       let javascript = "";
       let cachedData: Buffer | undefined;
       let cacheNeedsWrite = false;
@@ -283,6 +294,32 @@ export function runRuntimeBootstrap(
             if (typeof cached.cachedData === "string") {
               cachedData = Buffer.from(cached.cachedData, "base64");
             }
+          }
+        } catch (_error) {}
+      }
+      if (!javascript) {
+        try {
+          const cached = JSON.parse(
+            readResourceText(precompiledCacheFilename),
+          );
+          if (
+            cached.version === compiler.get_compiler_version() &&
+            cached.signature === sourceHash &&
+            cached.mode === moduleMode &&
+            cached.module === name &&
+            typeof cached.javascriptTemplate === "string" &&
+            cached.javascriptTemplate.includes(
+              JSON.stringify(PRECOMPILED_MODULE_FILENAME),
+            )
+          ) {
+            javascript = cached.javascriptTemplate.replaceAll(
+              JSON.stringify(PRECOMPILED_MODULE_FILENAME),
+              JSON.stringify(filename),
+            );
+            // Portable build artifacts intentionally omit V8 cached data
+            // because their source filename is materialized at load time.
+            // Write a local bytecode cache after constructing the script.
+            cacheNeedsWrite = true;
           }
         } catch (_error) {}
       }

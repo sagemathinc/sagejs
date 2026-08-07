@@ -9,3 +9,4 @@ if (process.env.SAGEJS_SKIP_PREPACK === "1") {
 }
 
 runPnpm(["test"], { stdio: "inherit" });
+runPnpm(["python:precompile:run"], { stdio: "inherit" });

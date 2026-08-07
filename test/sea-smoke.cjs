@@ -10,6 +10,7 @@ const {
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const { performance } = require("node:perf_hooks");
 
 const { testJavaScriptSea } = require("./helpers/javascript-sea.cjs");
 
@@ -62,6 +63,36 @@ try {
   );
 
   testJavaScriptSea(pythonExecutable, temporaryDirectory);
+
+  const mpmathProgram = join(temporaryDirectory, "mpmath.py");
+  writeFileSync(
+    mpmathProgram,
+    [
+      "from mpmath import mp",
+      "mp.dps = 50",
+      "print(mp.sqrt(2))",
+      "",
+    ].join("\n"),
+  );
+  const mpmathStarted = performance.now();
+  const mpmath = spawnSync(pythonExecutable, [mpmathProgram], {
+    cwd: temporaryDirectory,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      XDG_CACHE_HOME: join(temporaryDirectory, "empty-mpmath-cache"),
+    },
+  });
+  const mpmathMilliseconds = performance.now() - mpmathStarted;
+  assert.equal(mpmath.status, 0, mpmath.stderr);
+  assert.equal(
+    mpmath.stdout.trim(),
+    "1.4142135623730950488016887242096980785696718753769",
+  );
+  assert.ok(
+    mpmathMilliseconds < 10_000,
+    `clean-cache mpmath import took ${mpmathMilliseconds.toFixed(1)} ms`,
+  );
 
   const pythonProgram = join(temporaryDirectory, "portable.py");
   writeFileSync(

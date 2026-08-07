@@ -339,12 +339,20 @@ export default async function Compile({
       argv.sage ? "sage" : "python",
     );
     if (useCachedRuntime) {
+      const executionImportDirs = getImportDirs(argv.import_path);
+      for (const filename of files) {
+        if (filename === "-") continue;
+        const directory = dirname(resolve(filename));
+        if (!executionImportDirs.includes(directory)) {
+          executionImportDirs.unshift(directory);
+        }
+      }
       runRuntimeBootstrap(
         PyLang,
         argv.sage ? "sage" : "python",
         pythonFrontend,
         dynamicPythonFrontend,
-        getImportDirs(argv.import_path),
+        executionImportDirs,
       );
     }
   }

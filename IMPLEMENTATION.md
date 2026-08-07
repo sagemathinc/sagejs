@@ -151,6 +151,16 @@ standard-library caches, while the REPL maintains the same cache format for
 user modules. This is the Sage.js counterpart of CPython bytecode caching:
 source remains authoritative, and generated JavaScript is disposable.
 
+Large bundled pure-Python packages have a second, portable lazy-module cache.
+Release builds compile each selected package once, replace its physical build
+filename with a template marker, and embed the generated JavaScript. The first
+target import substitutes the installed or SEA filename and asks that exact
+Node/V8 build to create its local bytecode cache. Dynamic `compile` and `exec`
+programs use a separate content- and namespace-shape-addressed cache; namespace
+values are supplied only at execution and are never serialized. This avoids
+both recompiling generated package methods in every process and treating a
+development machine's absolute paths or V8 bytecode as portable artifacts.
+
 Cold builds also generate V8 cached data for the self-hosted compiler and
 separate Sage/Python base-runtime initializers. The executable and development
 CLI run the cached initializer once, then compile only the user's program.
