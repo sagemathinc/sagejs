@@ -38,14 +38,7 @@ def _has_own(value: Any, key: Any) -> bool:
 def _get_member(value: Any, name: str) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
-    if (
-        runtime.strict_equal(runtime.jstype(value), 'object')
-        or runtime.strict_equal(runtime.jstype(value), 'function')
-    ):
-        return runtime.reflect.get(value, name)
-    boxed = runtime.reflect.apply(
-        runtime.object, runtime.undefined, [value])
-    return runtime.reflect.get(boxed, name)
+    return runtime.native_get(value, name)
 
 
 def _call_member(value: Any, name: str, args: Any) -> Any:
@@ -65,7 +58,7 @@ def _native_delete(container: Any, key: Any) -> bool:
         runtime.reflect.get(container, 'delete'), container, [key])
 
 
-def equals(left: Any, right: Any) -> bool:
+def equals(left: Any, right: Any) -> Any:
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
     if (
@@ -142,7 +135,7 @@ def equals(left: Any, right: Any) -> bool:
     ):
         result = _call_member(left, '__eq__', [right])
         if result is not NotImplemented:
-            return bool(result)
+            return result
     if (
         right is not None
         and runtime.strict_equal(
@@ -152,7 +145,7 @@ def equals(left: Any, right: Any) -> bool:
     ):
         result = _call_member(right, '__eq__', [left])
         if result is not NotImplemented:
-            return bool(result)
+            return result
 
     if left is right:
         return True
@@ -202,7 +195,7 @@ def equals(left: Any, right: Any) -> bool:
     return False
 
 
-def not_equals(left: Any, right: Any) -> bool:
+def not_equals(left: Any, right: Any) -> Any:
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
     if (
@@ -221,7 +214,7 @@ def not_equals(left: Any, right: Any) -> bool:
     ):
         result = _call_member(left, '__ne__', [right])
         if result is not NotImplemented:
-            return bool(result)
+            return result
     if (
         left is not None
         and runtime.strict_equal(
@@ -241,7 +234,7 @@ def not_equals(left: Any, right: Any) -> bool:
     ):
         result = _call_member(right, '__ne__', [left])
         if result is not NotImplemented:
-            return bool(result)
+            return result
     if (
         right is not None
         and runtime.strict_equal(
@@ -1147,8 +1140,8 @@ def _dict_storage_setitem(mapping: Any, key: Any, value: Any) -> None:
     mapping.jsmap.set(normalized_key, value)
 
 
+@runtime.lightweight_math_class
 class SageDict:
-
     def __init__(
         self,
         iterable: Any = runtime.undefined,

@@ -110,6 +110,20 @@ def native_ge(left, right):
     return r"%js left >= right"
 
 
+def native_get(value, property_name):
+    """Read a JavaScript property, allowing ordinary primitive boxing."""
+    return r"%js value[property_name]"
+
+
+def native_freeze_tuple(values, prototype):
+    """Install the shared tuple prototype and freeze a fresh native array."""
+    return r"""%js (
+        Object.setPrototypeOf(values, prototype),
+        Object.freeze(values),
+        values
+    )"""
+
+
 def wall_time():
     """Return Unix time as a native JavaScript floating-point number."""
     return r"%js Date.now() / 1000"

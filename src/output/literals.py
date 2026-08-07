@@ -6,8 +6,28 @@ from ast_types import AST_Binary, AST_Number, AST_String, AST_Unary, is_node_typ
 
 
 def print_array(self, output):
+    def f_native_array():
+        for i, exp in enumerate(self.elements):
+            if i:
+                output.comma()
+            if exp.operator is '*' and exp.expression is not undefined:
+                output.print('...Array.from(ρσ_Iterable(')
+                exp.expression.print(output)
+                output.print('))')
+            else:
+                exp.print(output)
+
+    if self.is_native:
+        output.with_square(f_native_array)
+        return
     if output.options.python_tuples and self.is_tuple:
         output.print('ρσ_math_tuple(')
+        # ``math_tuple`` installs the tuple prototype on this fresh array.
+        # Decorating it as a mutable Python list first only installs another
+        # prototype that is immediately replaced.
+        output.with_square(f_native_array)
+        output.print(')')
+        return
     output.print('ρσ_list_decorate')
 
     def f_list_decorate():
@@ -31,8 +51,6 @@ def print_array(self, output):
         output.with_square(f_list_decorate0)
 
     output.with_parens(f_list_decorate)
-    if output.options.python_tuples and self.is_tuple:
-        output.print(')')
 
 
 def print_obj_literal_slow(self, output):

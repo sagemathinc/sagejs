@@ -982,6 +982,10 @@ class AST_Dot(AST_PropAccess):
 
 class AST_Sub(AST_PropAccess):
     'Index-style property access, i.e. `a["foo"]`'
+    properties = {
+        'native_access':
+        '[boolean] emit direct JavaScript property access without Python indexing',
+    }
 
     def _walk(self, visitor):
         def f_sub():
@@ -1192,6 +1196,8 @@ class AST_Array(AST_Node):
     properties = {
         'elements': "[AST_Node*] array of elements",
         'is_tuple': "[boolean] whether this array represents a tuple literal",
+        'is_native':
+        "[boolean] whether this is a compiler-owned JavaScript array literal",
     }
 
     def _walk(self, visitor):

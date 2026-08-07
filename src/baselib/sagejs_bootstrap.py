@@ -29,7 +29,6 @@ is_prime_function = is_prime
 parent_function = parent
 prime_divisors_function = prime_divisors
 
-
 def ρσ_native_method_adapter(target_function):
     return r"""%js (() => {
         function method(...args) {
@@ -105,6 +104,15 @@ def ρσ_unbound_method_adapter(target_function):
         target_function.__sagejs_unbound_adapter__ = method;
         return method;
     })()"""
+
+
+def ρσ_native_freeze_tuple(values, prototype):
+    """Implement the hot tuple finalization primitive in native JavaScript."""
+    return r"""%js (
+        Object.setPrototypeOf(values, prototype),
+        Object.freeze(values),
+        values
+    )"""
 
 
 def ρσ_output_write(text):

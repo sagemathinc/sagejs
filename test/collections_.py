@@ -33,6 +33,19 @@ assrt.ok([1] in [[1], [2]])
 assrt.ok([3] not in [[1], [2]])
 assrt.ok("a" != ord("a"))
 
+
+class NonBooleanComparison:
+    def __eq__(self, other):
+        return 123
+
+    def __ne__(self, other):
+        return -456
+
+
+non_boolean_comparison = NonBooleanComparison()
+assrt.equal(non_boolean_comparison == object(), 123)
+assrt.equal(non_boolean_comparison != object(), -456)
+
 if jstype(Symbol) is 'function':
     ss = Symbol('s')
     sym = {ss: 1}
@@ -135,6 +148,10 @@ assrt.equal(d1.fun2(3), 4)
 assrt.equal(len(d0), 3)
 assrt.equal(d2.get(1), 2)
 assrt.equal(d2.get('a'), 'b')
+dict_get = d2.get
+assrt.equal(dict_get(1), 2)
+assrt.equal(dict_get.__self__, d2)
+assrt.equal(dict_get.__func__.__name__, 'get')
 
 # assignment
 d1["bar"] += "!"

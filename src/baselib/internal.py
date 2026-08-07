@@ -14,15 +14,7 @@ def _internal_type_is(actual: Any, expected: str) -> bool:
 def _internal_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
-    value_type = runtime.jstype(value)
-    if (
-        _internal_type_is(value_type, 'object')
-        or _internal_type_is(value_type, 'function')
-    ):
-        return runtime.reflect.get(value, name)
-    boxed = runtime.reflect.apply(
-        runtime.object, runtime.undefined, [value])
-    return runtime.reflect.get(boxed, name)
+    return runtime.native_get(value, name)
 
 
 def _internal_member_is_function(value: Any, name: Any) -> bool:
@@ -44,8 +36,9 @@ def _internal_call_member(
     if _internal_get_member(
         method, '__python_descriptor__'
     ) is True:
-        explicit_args = [value]
-        explicit_args.extend(call_args)
+        explicit_args = runtime.reflect.apply(
+            runtime.array.prototype.slice, call_args, [])
+        explicit_args.unshift(value)
         return runtime.reflect.apply(
             method, runtime.undefined, explicit_args)
     return runtime.reflect.apply(method, value, call_args)
@@ -278,7 +271,9 @@ def ρσ_unpack_asarray(count: Any, iterable: Any) -> Any:
     if runtime.arraylike(iterable):
         answer = iterable
     else:
-        answer = []
+        # This is a compiler-internal staging vector, not a user-visible
+        # Python list.  Starred assignment wraps its slice explicitly.
+        answer = runtime.reflect.construct(runtime.array, [])
         iterator_method = _internal_get_member(
             iterable, runtime.iterator_symbol)
         if _internal_type_is(runtime.jstype(iterator_method), 'function'):
@@ -295,7 +290,7 @@ def ρσ_unpack_asarray(count: Any, iterable: Any) -> Any:
                     or len(answer) <= count
                 )
             ):
-                answer.append(result.value)
+                answer.push(result.value)
                 result = iterator.next()
     if (
         count is not runtime.number.POSITIVE_INFINITY
@@ -322,16 +317,17 @@ def ρσ_unpack_starred(
 
 def ρσ_unpack_nested(pattern: Any, iterable: Any) -> list[Any]:
     values = ρσ_unpack_asarray(len(pattern), iterable)
-    answer = []
+    # Generated destructuring consumes this vector immediately by index.
+    answer = runtime.reflect.construct(runtime.array, [])
     for index in range(len(pattern)):
         nested_pattern = pattern[index]
         if nested_pattern is None:
-            answer.append(values[index])
+            answer.push(values[index])
         else:
             for value in ρσ_unpack_nested(
                 nested_pattern, values[index]
             ):
-                answer.append(value)
+                answer.push(value)
     return answer
 
 
@@ -918,13 +914,7 @@ def _internal_native_getitem(value: Any, key: Any) -> Any:
     """Read a JavaScript property, boxing non-null primitives as JS does."""
     if value is None or value is runtime.undefined:
         raise TypeError('object is not subscriptable')
-    value_type = runtime.jstype(value)
-    if (
-        not _internal_type_is(value_type, 'object')
-        and not _internal_type_is(value_type, 'function')
-    ):
-        value = runtime.reflect.construct(runtime.object, [value])
-    return runtime.reflect.get(value, key)
+    return runtime.native_get(value, key)
 
 
 def _internal_generic_alias(origin: Any, type_arguments: Any) -> Any:
@@ -1368,112 +1358,129 @@ def ρσ_mixin(*classes: Any) -> None:
     runtime.object.defineProperties(target, resolved_properties)
 
 
-def ρσ_instanceof(value: Any, *candidates: Any) -> bool:
-    bases = []
-    constructor = _internal_get_member(value, 'constructor')
-    prototype = _internal_get_member(constructor, 'prototype')
-    if prototype is not runtime.undefined:
-        candidate_bases = _internal_get_member(
-            prototype, '__bases__')
-        if candidate_bases:
-            bases = candidate_bases
-
-    for candidate in candidates:
-        if (
-            runtime.array.isArray(candidate)
-            and runtime.object.isFrozen(candidate)
-        ):
-            if ρσ_instanceof(value, *candidate):
+def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
+    """Test one ``isinstance`` candidate without a variadic call frame."""
+    value_type = runtime.jstype(value)
+    if (
+        runtime.array.isArray(candidate)
+        and runtime.object.isFrozen(candidate)
+    ):
+        for nested_candidate in candidate:
+            if ρσ_instanceof_one(value, nested_candidate):
                 return True
-            continue
-        # Some Python runtime types (notably ``function``) are represented by
-        # callable adapters rather than JavaScript constructors. Their value
-        # carries the authoritative Python type explicitly.
-        if candidate is _internal_get_member(value, '__python_type__'):
-            return True
-        if (
-            _internal_type_is(runtime.jstype(candidate), 'function')
-            and runtime.instance_of(value, candidate)
-            # JavaScript represents both Python functions and Python classes
-            # with native Function objects.  ``types.FunctionType`` is the
-            # native Function constructor, but CPython does not consider a
-            # class to be a function. Python classes have their own
-            # ``__bases__`` marker on the constructor; checking the prototype
-            # would misclassify ordinary functions when that name is inherited.
-            and not (
-                candidate is runtime.function_class
-                and _internal_type_is(runtime.jstype(value), 'function')
-                and runtime.reflect.apply(
-                    runtime.object.prototype.hasOwnProperty,
-                    value,
-                    ['__bases__'],
-                )
+        return False
+    # Check the native representations of Python's fundamental types before
+    # inspecting constructors and prototype chains.  In particular, numeric
+    # libraries make ``isinstance(x, int_types)`` a very hot operation and
+    # JavaScript primitives have no useful Python inheritance metadata to
+    # discover.
+    if (
+        (
+            candidate is runtime.array
+            or candidate is runtime.list_constructor
+            or candidate is runtime.tuple_builtin
+        )
+        and runtime.array.isArray(value)
+        and (
+            candidate is not runtime.tuple_builtin
+            or runtime.object.isFrozen(value)
+        )
+    ):
+        return True
+    if (
+        candidate is runtime.string_builtin
+        and (
+            _internal_type_is(value_type, 'string')
+            or runtime.instance_of(
+                value, runtime.string_class)
+        )
+    ):
+        return True
+    if (
+        candidate is runtime.int_builtin
+        and (
+            _internal_type_is(value_type, 'bigint')
+            or _internal_type_is(value_type, 'boolean')
+            or (
+                _internal_type_is(value_type, 'number')
+                and runtime.number.isInteger(value)
             )
-        ):
-            return True
-        if (
-            candidate is type
-            and _internal_type_is(runtime.jstype(value), 'function')
+        )
+    ):
+        return True
+    if (
+        candidate is runtime.float_builtin
+        and _internal_type_is(value_type, 'number')
+        and not runtime.number.isInteger(value)
+    ):
+        return True
+    if (
+        _internal_type_is(runtime.jstype(candidate), 'function')
+        and runtime.instance_of(value, candidate)
+        # JavaScript represents both Python functions and Python classes
+        # with native Function objects.  ``types.FunctionType`` is the
+        # native Function constructor, but CPython does not consider a
+        # class to be a function. Python classes have their own
+        # ``__bases__`` marker on the constructor; checking the prototype
+        # would misclassify ordinary functions when that name is inherited.
+        and not (
+            candidate is runtime.function_class
+            and _internal_type_is(value_type, 'function')
             and runtime.reflect.apply(
                 runtime.object.prototype.hasOwnProperty,
                 value,
                 ['__bases__'],
             )
-        ):
+        )
+    ):
+        return True
+    # Some Python runtime types (notably ``function``) are represented by
+    # callable adapters rather than JavaScript constructors. Check their
+    # explicit marker after the native class path, which handles ordinary
+    # user-defined classes without another property lookup.
+    if candidate is _internal_get_member(value, '__python_type__'):
+        return True
+    if (
+        candidate is type
+        and _internal_type_is(value_type, 'function')
+        and runtime.reflect.apply(
+            runtime.object.prototype.hasOwnProperty,
+            value,
+            ['__bases__'],
+        )
+    ):
+        return True
+    registry = _internal_get_member(candidate, '_abc_registry')
+    if runtime.array.isArray(registry):
+        for registered_class in registry:
+            if runtime.instance_of(value, registered_class):
+                return True
+    # Only user-defined classes need the Python multiple-inheritance walk.
+    # Deferring it until every direct test has failed avoids allocating a
+    # temporary list and boxing primitives on the common path.
+    constructor = _internal_get_member(value, 'constructor')
+    prototype = _internal_get_member(constructor, 'prototype')
+    if prototype is runtime.undefined:
+        return False
+    bases = _internal_get_member(prototype, '__bases__')
+    if not bases:
+        return False
+    for base_index in range(1, len(bases)):
+        base = bases[base_index]
+        while base:
+            if candidate is base:
+                return True
+            base_prototype = runtime.object.getPrototypeOf(
+                base.prototype)
+            if not base_prototype:
+                break
+            base = base_prototype.constructor
+    return False
+
+
+def ρσ_instanceof(value: Any, *candidates: Any) -> bool:
+    """Variadic compatibility entry point used for literal type tuples."""
+    for candidate in candidates:
+        if ρσ_instanceof_one(value, candidate):
             return True
-        registry = _internal_get_member(candidate, '_abc_registry')
-        if runtime.array.isArray(registry):
-            for registered_class in registry:
-                if runtime.instance_of(value, registered_class):
-                    return True
-        if (
-            (
-                candidate is runtime.array
-                or candidate is runtime.list_constructor
-                or candidate is runtime.tuple_builtin
-            )
-            and runtime.array.isArray(value)
-            and (
-                candidate is not runtime.tuple_builtin
-                or runtime.object.isFrozen(value)
-            )
-        ):
-            return True
-        if (
-            candidate is runtime.string_builtin
-            and (
-                _internal_type_is(runtime.jstype(value), 'string')
-                or runtime.instance_of(
-                    value, runtime.string_class)
-            )
-        ):
-            return True
-        if (
-            candidate is runtime.int_builtin
-            and (
-                _internal_type_is(runtime.jstype(value), 'bigint')
-                or _internal_type_is(runtime.jstype(value), 'boolean')
-                or (
-                    _internal_type_is(runtime.jstype(value), 'number')
-                    and runtime.number.isInteger(value)
-                )
-            )
-        ):
-            return True
-        if (
-            candidate is runtime.float_builtin
-            and _internal_type_is(runtime.jstype(value), 'number')
-            and not runtime.number.isInteger(value)
-        ):
-            return True
-        for base_index in range(1, len(bases)):
-            base = bases[base_index]
-            while base:
-                if candidate is base:
-                    return True
-                base_prototype = runtime.object.getPrototypeOf(
-                    base.prototype)
-                if not base_prototype:
-                    break
-                base = base_prototype.constructor
     return False

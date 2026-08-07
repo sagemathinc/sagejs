@@ -796,6 +796,19 @@ def print_class(output):
                     output.print(JSON.stringify(bname))
                     output.end_statement()
                     output.indent()
+                    # Immutable tuple-backed values can inherit lightweight
+                    # Python methods, but cannot accept the usual per-instance
+                    # bound-method cache.
+                    output.print('if (Object.isExtensible(this)) ')
+                    output.print('Object.defineProperty(this, ')
+                    output.print(JSON.stringify(bname))
+                    output.comma()
+                    output.space()
+                    output.print(
+                        '{value: ρσ_bound_method, writable: true, '
+                        'configurable: true, enumerable: true})')
+                    output.end_statement()
+                    output.indent()
                     output.print('return ρσ_bound_method')
                     output.end_statement()
 

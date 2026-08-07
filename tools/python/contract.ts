@@ -101,6 +101,8 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   native_le: "ρσ_native_le",
   native_gt: "ρσ_native_gt",
   native_ge: "ρσ_native_ge",
+  native_get: "ρσ_native_get",
+  native_freeze_tuple: "ρσ_native_freeze_tuple",
   normalize_integer: "ρσ_normalize_integer",
   native_number_class: "Number",
   number: "_builtins_number_class",

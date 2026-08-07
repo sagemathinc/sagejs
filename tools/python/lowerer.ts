@@ -2322,6 +2322,37 @@ export class PythonCstLowerer {
     const callableName = callable instanceof this.compiler.AST_SymbolRef
       ? callable.name
       : null;
+    if (
+      callable instanceof this.compiler.AST_Dot &&
+      callable.expression instanceof this.compiler.AST_SymbolRef &&
+      callable.expression.name === "Reflect"
+    ) {
+      const argumentVectorIndex = callable.property === "apply"
+        ? 2
+        : callable.property === "construct"
+        ? 1
+        : -1;
+      const argumentVector = args[argumentVectorIndex];
+      if (argumentVector instanceof this.compiler.AST_Array) {
+        // Reflect consumes this literal only as an ECMAScript argument list.
+        // Giving it Python's decorated list prototype is both unobservable
+        // and extremely expensive on hot low-level runtime paths.
+        argumentVector.is_native = true;
+      }
+    }
+    const nativeVectorArgument = callableName === "_builtins_call_member" ||
+        callableName === "_builtins_call_special" ||
+        callableName === "_internal_call_member"
+      ? 2
+      : callableName === "ρσ_math_tuple" || callableName === "math_tuple"
+      ? 0
+      : -1;
+    const nativeVector = args[nativeVectorArgument];
+    if (nativeVector instanceof this.compiler.AST_Array) {
+      // These private runtime APIs consume the literal as an implementation
+      // vector.  None of them exposes a mutable Python list to user code.
+      nativeVector.is_native = true;
+    }
     if (callableName === "super" && args.length === 0) {
       const frame = this.functionFrames.at(-1);
       if (frame?.superClass && frame.superReceiver) {
@@ -2432,6 +2463,11 @@ export class PythonCstLowerer {
       return this.make("AST_Binary", node, {
         left: args[0], operator: "instanceof", right: args[1],
         native_operator: true,
+      });
+    }
+    if (callableName === "ρσ_native_get" && args.length === 2) {
+      return this.make("AST_Sub", node, {
+        expression: args[0], property: args[1], native_access: true,
       });
     }
     const inferredType = new Set([

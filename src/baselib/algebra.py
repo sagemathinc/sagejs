@@ -30,10 +30,13 @@ def is_exact_integer(value: object) -> bool:
 
 
 def normalize_integer(value: Any) -> Any:
-    if not is_exact_integer(value):
-        raise TypeError('expected an exact integer')
-    if runtime.jstype(value) == 'number':
+    value_type = runtime.jstype(value)
+    if value_type == 'number':
+        if not runtime.number.isSafeInteger(value):
+            raise TypeError('expected an exact integer')
         return value
+    if value_type != 'bigint':
+        raise TypeError('expected an exact integer')
     if (
         value <= runtime.bigint(runtime.number.MAX_SAFE_INTEGER)
         and value >= runtime.bigint(runtime.number.MIN_SAFE_INTEGER)
@@ -43,7 +46,11 @@ def normalize_integer(value: Any) -> Any:
 
 
 def integer_bigint(value: object) -> int:
-    if not is_exact_integer(value):
+    value_type = runtime.jstype(value)
+    if value_type == 'number':
+        if not runtime.number.isSafeInteger(value):
+            raise TypeError('expected an exact integer')
+    elif value_type != 'bigint':
         raise TypeError('expected an exact integer')
     return runtime.bigint(value)
 
@@ -997,12 +1004,10 @@ def _freeze_tuple(
     tuple_repr: Any = None,
     extra_properties: Any = None,
 ) -> Any:
-    if tuple_repr is None and extra_properties is None:
-        runtime.object.setPrototypeOf(
-            values, _tuple_array_prototype())
-    else:
-        runtime.object.setPrototypeOf(
-            values, _tuple_array_prototype())
+    prototype = _tuple_array_prototype_cache
+    if prototype is runtime.undefined:
+        prototype = _tuple_array_prototype()
+    if tuple_repr is not None or extra_properties is not None:
         properties = {
             '__repr__': {'value': tuple_repr},
             '__str__': {'value': tuple_repr},
@@ -1011,8 +1016,7 @@ def _freeze_tuple(
         if extra_properties is not None:
             runtime.object.assign(properties, extra_properties)
         runtime.object.defineProperties(values, properties)
-    runtime.object.freeze(values)
-    return values
+    return runtime.native_freeze_tuple(values, prototype)
 
 
 def math_tuple(values: list[Any]) -> Any:
@@ -1021,7 +1025,10 @@ def math_tuple(values: list[Any]) -> Any:
     # before replacing that decoration with immutable tuple behavior.
     if not runtime.array.isArray(values):
         values = runtime.list_constructor(values)
-    return _freeze_tuple(values)
+    prototype = _tuple_array_prototype_cache
+    if prototype is runtime.undefined:
+        prototype = _tuple_array_prototype()
+    return runtime.native_freeze_tuple(values, prototype)
 
 
 def named_tuple(

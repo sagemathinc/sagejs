@@ -52,7 +52,13 @@ def _bounds(values, lo, hi):
 
 
 def bisect_right(values, item, lo=0, hi=None, *, key=None):
-    lo, hi = _bounds(values, lo, hi)
+    # This overwhelmingly common form is also used in the innermost loops of
+    # mpmath's integer arithmetic.  Avoid allocating two temporary bound
+    # tuples and re-validating compiler-supplied defaults on every search.
+    if lo == 0 and hi is None:
+        hi = len(values)
+    else:
+        lo, hi = _bounds(values, lo, hi)
     while lo < hi:
         middle = (lo + hi) // 2
         candidate = values[middle] if key is None else key(values[middle])
@@ -64,7 +70,10 @@ def bisect_right(values, item, lo=0, hi=None, *, key=None):
 
 
 def bisect_left(values, item, lo=0, hi=None, *, key=None):
-    lo, hi = _bounds(values, lo, hi)
+    if lo == 0 and hi is None:
+        hi = len(values)
+    else:
+        lo, hi = _bounds(values, lo, hi)
     while lo < hi:
         middle = (lo + hi) // 2
         candidate = values[middle] if key is None else key(values[middle])

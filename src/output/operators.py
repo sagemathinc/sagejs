@@ -78,6 +78,10 @@ def print_getattr(self, output, skip_expression):  # AST_Dot
 def print_getitem(self, output):  # AST_Sub
     expr = self.expression
     prop = self.property
+    if self.native_access:
+        expr.print(output)
+        output.print('['), prop.print(output), output.print(']')
+        return
     if (is_node_type(prop, AST_Number) or is_node_type(prop, AST_String)) or (
             is_node_type(prop, AST_SymbolRef) and prop.name
             and prop.name.startsWith('ρσ_')):
@@ -235,7 +239,7 @@ def write_instanceof(left, right, output):
     elif is_node_type(right, AST_Array):
         do_many(right.elements)
     else:
-        output.print('ρσ_instanceof(')
+        output.print('ρσ_instanceof_one(')
         left.print(output), output.comma(), right.print(output), output.print(
             ')')
 

@@ -72,6 +72,7 @@ assrt.equal(lightweight_add(4), 9)
 assrt.equal(lightweight_add.__self__, lightweight_element)
 assrt.equal(lightweight_add.__func__, LightweightMathElement.add)
 assrt.equal(lightweight_add.__name__, 'add')
+assrt.ok(lightweight_element.add is lightweight_add)
 
 # basic class
 class Human:

@@ -52,10 +52,54 @@ class OrderedForExtrema:
 negative = OrderedForExtrema(-10)
 assrt.ok(max(negative, -3) == -3)
 assrt.ok(min(negative, -3) is negative)
+
+
+class NonBooleanComparison:
+    def __eq__(self, other):
+        return 123
+
+    def __ne__(self, other):
+        return -456
+
+
+non_boolean_comparison = NonBooleanComparison()
+assrt.equal(non_boolean_comparison == object(), 123)
+assrt.equal(non_boolean_comparison != object(), -456)
 assrt.ok(not isinstance(r"%js new Number(1)", int))
 assrt.ok(not isinstance(1.1, int))
 assrt.ok(isinstance(1.1, float))
 assrt.ok(not isinstance(r"%js new Number(1.1)", float))
+
+
+class InstanceBase:
+    pass
+
+
+class InstanceChild(InstanceBase):
+    pass
+
+
+instance_child = InstanceChild()
+assrt.ok(isinstance(instance_child, InstanceBase))
+assrt.ok(isinstance(instance_child, (str, InstanceBase)))
+assrt.ok(isinstance(1, (str, int)))
+
+
+class AttributePrecedence:
+    inherited_data = ['class value']
+
+
+attribute_precedence = AttributePrecedence()
+assrt.ok(attribute_precedence.inherited_data is AttributePrecedence.inherited_data)
+
+
+def instance_function():
+    return 'instance value'
+
+
+attribute_precedence.callback = instance_function
+assrt.ok(attribute_precedence.callback is instance_function)
+assrt.equal(attribute_precedence.callback(), 'instance value')
 m = Map()
 m.set('a', 1)
 assrt.equal(len(m), 1)
@@ -85,6 +129,15 @@ assrt.equal(bin(3), '0b11')
 assrt.equal(bin(-3), '-0b11')
 assrt.equal(hex(10), '0xa')
 assrt.equal(hex(-10), '-0xa')
+assrt.equal(0x7fffffff & 0x12345678, 0x12345678)
+assrt.equal(0x40000000 | 3, 0x40000003)
+assrt.equal(-1 ^ 5, -6)
+assrt.equal((2**40) | 3, 1099511627779)
+assrt.equal(123456 << 10, 126418944)
+assrt.equal(1 << 60, 1152921504606846976)
+assrt.equal(-17 >> 2, -5)
+assrt.equal(1 >> 100, 0)
+assrt.equal(-1 >> 100, -1)
 assrt.deepEqual((550).digits(base=8), [6, 4, 0, 1])
 assrt.deepEqual((41943).digits(16), [7, 13, 3, 10])
 assrt.deepEqual(
@@ -155,6 +208,25 @@ setattr(
 assrt.equal(getattr(dynamic_descriptor, 'answer'), 43)
 delattr(DynamicDescriptor, 'answer')
 assrt.equal(getattr(dynamic_descriptor, 'answer', None), None)
+
+
+class DataDescriptor:
+    def __get__(self, instance, owner):
+        return 71
+
+    def __set__(self, instance, value):
+        instance.stored = value
+
+
+class OwnValueBehindDescriptor:
+    answer = DataDescriptor()
+
+
+own_value_behind_descriptor = OwnValueBehindDescriptor()
+r"%js Object.defineProperty(own_value_behind_descriptor, 'answer', {value: 99, writable: true})"
+assrt.equal(getattr(own_value_behind_descriptor, 'answer'), 71)
+setattr(own_value_behind_descriptor, 'answer', 72)
+assrt.equal(own_value_behind_descriptor.stored, 72)
 
 # int()/float()
 assrt.equal(int('a', 16), 10)

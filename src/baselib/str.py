@@ -107,8 +107,7 @@ def ρσ_repr(value: Any) -> _Str:
         return 'None'
     representation = value
     repr_method = runtime.reflect.get(
-        runtime.reflect.apply(
-            runtime.object, runtime.undefined, [value]),
+        runtime.object(value),
         '__repr__',
     )
     if _value_type_is(repr_method, 'function'):
@@ -185,8 +184,7 @@ def ρσ_str(
         return 'None'
     if value is runtime.undefined:
         return 'None'
-    boxed = runtime.reflect.apply(
-        runtime.object, runtime.undefined, [value])
+    boxed = runtime.object(value)
     str_method = runtime.reflect.get(boxed, '__str__')
     repr_method = runtime.reflect.get(boxed, '__repr__')
     if (
@@ -1240,8 +1238,7 @@ def _integer_format(value: Any, base: int, uppercase: bool) -> _Str:
     integer = runtime.bigint(value)
     if negative:
         integer = -integer
-    boxed_integer = runtime.reflect.apply(
-        runtime.object, runtime.undefined, [integer])
+    boxed_integer = runtime.object(integer)
     digits = runtime.reflect.apply(
         runtime.reflect.get(boxed_integer, 'toString'),
         integer,

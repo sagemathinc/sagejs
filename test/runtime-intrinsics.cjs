@@ -67,13 +67,14 @@ assert.deepEqual(
   "ordinary bootstrap aliases must lower to the matching runtime globals",
 );
 
-function compile(source) {
+function compile(source, outputOptions = {}) {
   const ast = frontend.parse(source, {
     filename: "runtime-intrinsics.py",
   });
   const output = new compiler.OutputStream({
     beautify: true,
     omit_baselib: true,
+    ...outputOptions,
   });
   ast.print(output);
   return output.get();
@@ -93,6 +94,59 @@ assert.match(generated, /ρσ_operator_mul_exact/);
 assert.doesNotMatch(generated, /sagejs\.runtime/);
 assert.doesNotMatch(generated, /ρσ_modules\["sagejs\.runtime"\]/);
 assert.doesNotMatch(generated, /(?:\bvar\s+runtime\b|\bruntime\s*[.(])/);
+
+const nativeArgumentVectors = compile(
+  "import sagejs.runtime as runtime\n" +
+    "applied = runtime.reflect.apply(target_function, receiver, [1, 2])\n" +
+    "constructed = runtime.reflect.construct(constructor, [3, 4])\n" +
+    "ordinary = [5, 6]\n",
+);
+assert.match(
+  nativeArgumentVectors,
+  /Reflect\.apply\(target_function, receiver, \[1, 2\]\)/,
+);
+assert.match(
+  nativeArgumentVectors,
+  /Reflect\.construct\(constructor, \[3, 4\]\)/,
+);
+assert.match(nativeArgumentVectors, /ordinary = ρσ_list_decorate\(\[ 5, 6 \]\)/);
+assert.doesNotMatch(
+  nativeArgumentVectors,
+  /Reflect\.(?:apply|construct)\([^;]*ρσ_list_decorate/,
+);
+
+const nativePropertyRead = compile(
+  "import sagejs.runtime as runtime\n" +
+    "value = runtime.native_get(target, property_name)\n" +
+    "frozen = runtime.native_freeze_tuple(values, prototype)\n",
+);
+assert.match(nativePropertyRead, /value = target\[property_name\]/);
+assert.doesNotMatch(nativePropertyRead, /ρσ_getitem|Reflect\.get/);
+assert.match(
+  nativePropertyRead,
+  /frozen = ρσ_native_freeze_tuple\(values, prototype\)/,
+);
+
+const instanceChecks = compile(
+  "one = isinstance(value, candidate)\n" +
+    "many = isinstance(value, (first_type, second_type))\n",
+);
+assert.match(instanceChecks, /one = ρσ_instanceof_one\(value, candidate\)/);
+assert.match(instanceChecks, /many = ρσ_instanceof\.apply/);
+
+const tupleLiteral = compile("value = (1, 2)\n", { python_tuples: true });
+assert.match(tupleLiteral, /value = ρσ_math_tuple\(\[1, 2\]\)/);
+assert.doesNotMatch(tupleLiteral, /ρσ_math_tuple\(ρσ_list_decorate/);
+
+const privateRuntimeVectors = compile(
+  "_builtins_call_member(value, '__add__', [other])\n" +
+    "_internal_call_member(value, '__iter__', [])\n" +
+    "tuple_value = ρσ_math_tuple([1, 2])\n",
+  { python_tuples: true },
+);
+assert.doesNotMatch(privateRuntimeVectors, /ρσ_list_decorate/);
+assert.match(privateRuntimeVectors, /_builtins_call_member[^;]*\[other\]\)/);
+assert.match(privateRuntimeVectors, /tuple_value = [^;]*ρσ_math_tuple[^;]*\(\[1, 2\]\)/);
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
