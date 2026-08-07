@@ -22,6 +22,7 @@ def print_class(output):
     self.dynamic_properties = self.dynamic_properties or {}
     self.classvars = self.classvars or {}
     self.bases = self.bases or []
+    self.metaclass = self.metaclass or None
     self.namedtuple_fields = self.namedtuple_fields or []
     compiling_baselib = (
         output.options.omit_baselib
@@ -83,8 +84,9 @@ def print_class(output):
             )
             if not is_property:
                 output.end_statement()
-                fname = self.name.name + ('.' if is_static else
-                                          '.prototype.') + name
+                fname = output.make_name(self.name.name) + (
+                    '.' if is_static else '.prototype.'
+                ) + name
                 function_annotation(stmt, output, strip_first, fname)
                 if is_static:
                     output.indent()
@@ -113,6 +115,14 @@ def print_class(output):
                     self.name.print(output)
                     output.print('.prototype.' + name)
                     output.end_statement()
+
+        if not is_property and not is_static:
+            output.indent()
+            self.name.print(output)
+            output.print(
+                '.prototype.' + name
+                + '.__sagejs_method_signature_excludes_self__ = true')
+            output.end_statement()
 
     def define_default_method(name, body):
         class_def(name)
@@ -285,6 +295,23 @@ def print_class(output):
                 self.name.print(output), output.print(
                     ".prototype.__bind_methods__.call("
                     + instance_name + ")")
+                output.end_statement()
+            elif self.bases.length:
+                # A dynamically resolved base (for example ``Base[T]`` from
+                # another module) may provide eagerly bound Python methods
+                # even when this class defines none of its own.  The inherited
+                # binder is only known at runtime, so invoke it when present.
+                # Without this, keyword calls through such inherited methods
+                # lose their function metadata and are interpreted as a
+                # positional kwargs packet.
+                output.indent()
+                output.print('if (typeof ')
+                self.name.print(output)
+                output.print(
+                    '.prototype.__bind_methods__ === "function") ')
+                self.name.print(output)
+                output.print(
+                    '.prototype.__bind_methods__.call(' + instance_name + ')')
                 output.end_statement()
             output.indent()
             output.print('var ρσ_init_result = ')
@@ -529,6 +556,42 @@ def print_class(output):
                 define_method(prop.deleter, True)
                 output.end_statement()
 
+    # Python executes a class body from top to bottom.  The JavaScript class
+    # representation emits methods as prototype properties, but their default
+    # arguments are still evaluated at definition time.  Emit the leading
+    # ordinary class-body statements before the first method/nested class so a
+    # default such as ``def f(self, value=SENTINEL)`` sees an earlier
+    # ``SENTINEL = object()`` assignment.  Remaining statements stay in the
+    # historical post-method section below; preserving arbitrary interleaving
+    # is a separate, larger class-namespace lowering concern.
+    early_statements = []
+    for stmt in self.body:
+        if is_node_type(stmt, AST_Method) or is_node_type(stmt, AST_Class):
+            break
+        if self.statements.indexOf(stmt) is not -1:
+            early_statements.append(stmt)
+
+    def print_class_statement(stmt):
+        if (
+            is_node_type(stmt, AST_Var)
+            and all(
+                is_node_type(definition.name, AST_SymbolNonlocal)
+                for definition in stmt.definitions
+            )
+        ):
+            return
+        output.indent()
+        previous_class_body = output.in_class_body
+        output.in_class_body = True
+        try:
+            stmt.print(output)
+        finally:
+            output.in_class_body = previous_class_body
+        output.newline()
+
+    for stmt in early_statements:
+        print_class_statement(stmt)
+
     # actual methods
     if not self.init:
         # Create a default __init__ method
@@ -708,24 +771,11 @@ def print_class(output):
 
     # Other statements in the class context
     for stmt in self.statements:
-        if not is_node_type(stmt, AST_Method):
-            if (
-                is_node_type(stmt, AST_Var)
-                and all(
-                    is_node_type(
-                        definition.name, AST_SymbolNonlocal)
-                    for definition in stmt.definitions
-                )
-            ):
-                continue
-            output.indent()
-            previous_class_body = output.in_class_body
-            output.in_class_body = True
-            try:
-                stmt.print(output)
-            finally:
-                output.in_class_body = previous_class_body
-            output.newline()
+        if (
+            not is_node_type(stmt, AST_Method)
+            and early_statements.indexOf(stmt) is -1
+        ):
+            print_class_statement(stmt)
 
     # Preserve Python bound-method behavior for lightweight mathematical
     # classes without eagerly allocating and decorating every bound method on
@@ -883,6 +933,35 @@ def print_class(output):
         output.assign('.' + method_name)
         self.name.print(output)
         output.print('.prototype.' + method_name)
+        output.end_statement()
+
+    # An explicit Python 3 metaclass owns the final class object.  The native
+    # lowering above efficiently evaluates the class body and gives us its
+    # complete namespace; hand that namespace to the metaclass before class
+    # decorators run, exactly as CPython does.
+    if self.metaclass:
+        output.indent()
+        output.assign(self.name)
+        output.print('ρσ_apply_metaclass(')
+        self.metaclass.print(output)
+        output.comma()
+        output.print_string(self.name.name)
+        output.comma()
+        f_basis()
+        output.comma()
+        self.name.print(output)
+        output.print(')')
+        output.end_statement()
+    elif self.bases.length:
+        output.indent()
+        output.assign(self.name)
+        output.print('ρσ_apply_inherited_metaclass(')
+        output.print_string(self.name.name)
+        output.comma()
+        f_basis()
+        output.comma()
+        self.name.print(output)
+        output.print(')')
         output.end_statement()
 
     if decorators.length:

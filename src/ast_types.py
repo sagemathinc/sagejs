@@ -605,6 +605,8 @@ class AST_Class(AST_Scope):
         "[AST_Symbol?] parent class this class inherits from",
         'bases':
         "[AST_Symbol*] list of base classes this class inherits from",
+        'metaclass':
+        "[AST_Node?] explicit Python 3 metaclass expression",
         'implicit_object_base':
         "[boolean] object was inserted as an implementation default",
         "static":

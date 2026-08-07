@@ -22,6 +22,30 @@ class ExecError(OSError):
 
 COPY_BUFSIZE = 1024 * 1024
 _ntuple_diskusage = namedtuple('usage', 'total used free')
+_ntuple_terminal_size = namedtuple('terminal_size', 'columns lines')
+
+
+def get_terminal_size(fallback=(80, 24)):
+    """Return the terminal dimensions, using ``fallback`` when unavailable.
+
+    Kernel and SEA hosts do not consistently expose a controlling TTY to the
+    Python runtime.  Falling back is CPython's documented behavior and keeps
+    terminal-oriented libraries deterministic in notebooks and CI.
+    """
+    columns, lines = fallback
+    value = os.environ.get('COLUMNS')
+    if value:
+        try:
+            columns = int(value)
+        except ValueError:
+            pass
+    value = os.environ.get('LINES')
+    if value:
+        try:
+            lines = int(value)
+        except ValueError:
+            pass
+    return _ntuple_terminal_size(columns, lines)
 
 
 def copyfileobj(fsrc, fdst, length=0):
@@ -239,4 +263,3 @@ def which(cmd, mode=os.F_OK | os.X_OK, path=None):
             if os.path.isfile(candidate) and os.access(candidate, mode):
                 return candidate
     return None
-

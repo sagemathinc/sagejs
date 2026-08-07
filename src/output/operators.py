@@ -3,7 +3,7 @@
 from __python__ import hash_literals
 from ast_types import (AST_Array, AST_Assign, AST_BaseCall, AST_Binary,
                        AST_Conditional, AST_Dot, AST_Existential, AST_ForIn, AST_ItemAccess, AST_Number,
-                       AST_Object, AST_Return, AST_Seq, AST_Set,
+                       AST_Object, AST_Return, AST_Scope, AST_Seq, AST_Set,
                        AST_SimpleStatement, AST_Splice, AST_Statement, AST_String, AST_Sub,
                        AST_Symbol, AST_SymbolRef, AST_Unary,
                        is_node_type)
@@ -14,14 +14,34 @@ def print_getattr(self, output, skip_expression):  # AST_Dot
     def is_native_attribute_chain(expression):
         while is_node_type(expression, AST_Dot):
             expression = expression.expression
-        return (
+        if not (
             is_node_type(expression, AST_SymbolRef)
             and expression.name in (
                 'Array', 'BigInt', 'JSON', 'Map', 'Math', 'Number',
                 'Object', 'Proxy', 'PyLang', 'Reflect', 'RegExp',
                 'Set', 'String', 'Symbol', 'console'
             )
-        )
+        ):
+            return False
+
+        # These names denote JavaScript namespaces only while they remain
+        # unbound in Python.  Libraries are free to bind names such as
+        # ``Number`` (Pygments does so for its token hierarchy), at which
+        # point every attribute access must use normal Python dispatch.
+        for index in range(output.stack().length - 1, -1, -1):
+            scope = output.stack()[index]
+            if not is_node_type(scope, AST_Scope):
+                continue
+            for name in scope.scope_bindings or []:
+                if expression.name is name:
+                    return False
+            for symbol in scope.localvars or []:
+                if expression.name is symbol.name:
+                    return False
+            for symbol in scope.exports or []:
+                if expression.name is symbol.name:
+                    return False
+        return True
 
     assignment_target = False
     stack = output.stack()
@@ -809,7 +829,11 @@ def print_assign(self, output):
             output.print(')')
         else:
             for lhs in left_hand_sides:
-                output.spaced(lhs, '=', '')
+                # A chained assignment target is a write even though it is
+                # no longer the literal ``left`` child of the outer AST node.
+                # Mark it explicitly so annotated-but-unbound names do not
+                # acquire a read check while being initialized.
+                output.assign(lhs)
             rhs.print(output)
     else:
         print_assignment(self, output)

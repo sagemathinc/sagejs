@@ -8,6 +8,7 @@ Python so the same Windows semantics are available on every Sage.js host.
 """
 
 import genericpath
+import sagejs.runtime as runtime
 
 curdir = '.'
 pardir = '..'
@@ -29,6 +30,15 @@ getatime = genericpath.getatime
 getctime = genericpath.getctime
 commonprefix = genericpath.commonprefix
 samefile = genericpath.samefile
+
+
+def _environment(name):
+    process = runtime.reflect.get(runtime.global_object, 'process')
+    if process is runtime.undefined:
+        return None
+    environment = runtime.reflect.get(process, 'env')
+    value = runtime.reflect.get(environment, name)
+    return None if value is runtime.undefined else value
 
 
 def _path(path):
@@ -153,6 +163,62 @@ def realpath(path):
         return genericpath._realpath(path)
     except NotImplementedError:
         return abspath(path)
+
+
+def expanduser(path):
+    path = _path(path)
+    if not isinstance(path, str) or not path.startswith('~'):
+        return path
+    index = 1
+    while index < len(path) and path[index] not in (sep, altsep):
+        index += 1
+    if index != 1:
+        return path
+    home = _environment('USERPROFILE')
+    if home is None:
+        drive = _environment('HOMEDRIVE')
+        homepath = _environment('HOMEPATH')
+        home = None if drive is None or homepath is None else drive + homepath
+    if home is None:
+        home = _environment('HOME')
+    return path if home is None else home.rstrip(sep + altsep) + path[index:]
+
+
+def expandvars(path):
+    path = _path(path)
+    if not isinstance(path, str):
+        return path
+    # Windows accepts both ``%NAME%`` and the POSIX forms.  Reuse a compact
+    # local scanner for percent variables, then handle dollar variables.
+    answer = ''
+    index = 0
+    while index < len(path):
+        if path[index] == '%':
+            end = path.find('%', index + 1)
+            if end != -1:
+                name = path[index + 1:end]
+                value = _environment(name)
+                answer += path[index:end + 1] if value is None else value
+                index = end + 1
+                continue
+        answer += path[index]
+        index += 1
+    path = answer
+    answer = ''
+    index = 0
+    while index < len(path):
+        if path[index] != '$':
+            answer += path[index]
+            index += 1
+            continue
+        end = index + 1
+        while end < len(path) and (path[end].isalnum() or path[end] == '_'):
+            end += 1
+        name = path[index + 1:end]
+        value = _environment(name)
+        answer += path[index:end] if value is None else value
+        index = end
+    return answer
 
 
 def relpath(path, start=None):

@@ -151,20 +151,46 @@ def filter(
             yield value
 
 
-def zip(*iterables: Iterable[Any]) -> Iterator[Any]:
+def zip(
+    *iterables: Iterable[Any],
+    **options: Any,
+) -> Iterator[Any]:
+    strict = runtime.reflect.get(options, 'strict')
+    if strict is runtime.undefined:
+        strict = False
+    else:
+        runtime.reflect.deleteProperty(options, 'strict')
+    option_names = runtime.object.keys(options)
+    if option_names.length:
+        name = option_names[0]
+        raise TypeError("zip() got an unexpected keyword argument '" + name + "'")
     iterators = [iter(iterable) for iterable in iterables]
     done = len(iterators) == 0
     while not done:
         values = []
-        for iterator in iterators:
+        for index, iterator in enumerate(iterators):
             try:
                 values.append(next(iterator))
             except StopIteration as error:
-                if len(error.args) == 0:
+                if len(error.args) != 0:
+                    raise error  # noqa: B904
+                if not strict:
                     done = True
                     break
-                else:
-                    raise error  # noqa: B904
+                if index:
+                    raise ValueError(  # noqa: B904
+                        'zip() argument ' + str(index + 1)
+                        + ' is shorter than argument 1')
+                for later_index in range(1, len(iterators)):
+                    try:
+                        next(iterators[later_index])
+                    except StopIteration:
+                        continue
+                    raise ValueError(  # noqa: B904
+                        'zip() argument ' + str(later_index + 1)
+                        + ' is longer than argument 1')
+                done = True
+                break
         if not done:
             yield runtime.math_tuple(values)
 

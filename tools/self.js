@@ -113,9 +113,27 @@ function check_for_changes(base_path, src_path, signatures) {
   var compiler_files = [
     module.filename,
     path.join(base_path, "tools", "compiler.ts"),
+    path.join(base_path, "tools", "runtime-bootstrap.ts"),
   ];
+  function add_typescript_sources(p) {
+    fs.readdirSync(p).forEach(function (name) {
+      var fp = path.join(p, name);
+      if (fs.statSync(fp).isDirectory()) {
+        add_typescript_sources(fp);
+      } else if (name.endsWith(".ts")) {
+        compiler_files.push(fp);
+      }
+    });
+  }
+  add_typescript_sources(path.join(base_path, "tools", "python"));
   compiler_files.forEach(function (fpath) {
-    compiler_hash.update(fs.readFileSync(fpath, "utf-8"));
+    var contents = fs.readFileSync(fpath, "utf-8");
+    compiler_hash.update(contents);
+    // Lazy-module JavaScript is produced by both the Python compiler sources
+    // and the authoritative TypeScript Tree-sitter frontend.  Include both in
+    // the public compiler version so a frontend semantic change cannot reuse
+    // stale third-party package code from ~/.cache/sagejs/modules.
+    source_hash.update(contents);
   });
   hashes["#compiler#"] = compiler_hash.digest("hex");
   hashes["#compiled_with#"] = saved_hashes["#compiler#"] || "unknown";

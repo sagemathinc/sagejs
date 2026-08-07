@@ -43,6 +43,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   bigint_gcd: "ρσ_bigint_gcd",
   bigint_fields: "ρσ_bigint_fields",
   blocking_sleep: "ρσ_blocking_sleep",
+  bool_builtin: "ρσ_bool",
   check_interrupt: "ρσ_check_interrupt",
   callable_instance_class: "ρσ_callable_instance_class",
   console_object: "console",
@@ -127,6 +128,7 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   // public sagejs.javascript module.
   require_module: "__sagejs_runtime_require__",
   repr: "ρσ_repr",
+  live_scope_dict: "ρσ_live_scope_dict",
   scope_dict: "ρσ_scope_dict",
   sequence_class: "ρσ_sequence_class",
   set_class: "Set",

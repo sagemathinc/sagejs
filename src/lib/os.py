@@ -11,6 +11,29 @@ import sagejs.runtime as runtime
 import os.path as path
 
 
+_STRERROR = {
+    1: 'Operation not permitted',
+    2: 'No such file or directory',
+    5: 'Input/output error',
+    11: 'Resource temporarily unavailable',
+    13: 'Permission denied',
+    17: 'File exists',
+    20: 'Not a directory',
+    21: 'Is a directory',
+    22: 'Invalid argument',
+    28: 'No space left on device',
+    32: 'Broken pipe',
+    38: 'Function not implemented',
+    39: 'Directory not empty',
+}
+
+
+def strerror(code):
+    """Return a platform-neutral description for a Python errno value."""
+    value = int(code)
+    return _STRERROR.get(value, 'Unknown error ' + str(value))
+
+
 def _property(value, key, fallback=None):
     result = runtime.reflect.get(value, key)
     if result is runtime.undefined:
@@ -468,6 +491,16 @@ class _Environ:
         except KeyError:
             return fallback
 
+    def pop(self, key, *default):
+        try:
+            value = self.__getitem__(key)
+        except KeyError:
+            if default:
+                return default[0]
+            raise
+        self.__delitem__(key)
+        return value
+
     def copy(self):
         return dict(self.items())
 
@@ -499,6 +532,23 @@ def unsetenv(key):
         del environ[key]
     except KeyError:
         pass
+
+
+_fallback_umask = 0o022
+
+
+def umask(mask):
+    """Set the process file-creation mask and return the previous value."""
+    global _fallback_umask
+    mask = int(mask)
+    process_object = runtime.reflect.get(runtime.global_object, 'process')
+    if process_object is not runtime.undefined:
+        method = runtime.reflect.get(process_object, 'umask')
+        if runtime.strict_equal(runtime.jstype(method), 'function'):
+            return int(runtime.reflect.apply(method, process_object, [mask]))
+    previous = _fallback_umask
+    _fallback_umask = mask
+    return previous
 
 
 def getpid():

@@ -27,7 +27,8 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_lightweight_math_class, ρσ_sequence_class
 # globals: ρσ_math_tuple, ρσ_modular_inverse, ρσ_modular_power, ρσ_modules
 # globals: ρσ_output_write
-# globals: ρσ_named_tuple, ρσ_scope_dict, ρσ_unbound_method_adapter
+# globals: ρσ_live_scope_dict, ρσ_named_tuple, ρσ_scope_dict
+# globals: ρσ_unbound_method_adapter
 # globals: ρσ_native_method, ρσ_native_method_adapter
 # globals: ρσ_normalize_integer, ρσ_operator_add_exact, ρσ_operator_mul_exact
 # globals: ρσ_operator_pow_exact, ρσ_repr
@@ -246,6 +247,7 @@ float_builtin = ρσ_float
 flint_backend = ρσ_flint_backend
 global_object = globalThis
 int_builtin = ρσ_int
+bool_builtin = ρσ_bool
 integer_bigint = ρσ_integer_bigint
 integer_factorization = IntegerFactorization
 is_exact_integer = ρσ_is_exact_integer
@@ -289,6 +291,7 @@ regexp = RegExp
 real_literal = create_real_literal
 require_module = __sagejs_runtime_require__
 repr = ρσ_repr
+live_scope_dict = ρσ_live_scope_dict
 scope_dict = ρσ_scope_dict
 sequence_class = ρσ_sequence_class
 set_class = Set

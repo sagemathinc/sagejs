@@ -186,8 +186,16 @@ class Signature:
         return BoundArguments(self, arguments)
 
 
-def signature(callable, *, follow_wrapped=True, globals=None, locals=None, eval_str=False):
-    del globals, locals, eval_str
+def signature(
+    callable,
+    *,
+    follow_wrapped=True,
+    globals=None,
+    locals=None,
+    eval_str=False,
+    annotation_format=None,
+):
+    del globals, locals, eval_str, annotation_format
     explicit = getattr(callable, '__signature__', None)
     if explicit is not None:
         return explicit
@@ -200,6 +208,19 @@ def signature(callable, *, follow_wrapped=True, globals=None, locals=None, eval_
         if call is None or call is callable:
             raise ValueError('callable is not supported by signature')
         return signature(call, follow_wrapped=follow_wrapped)
+    names = list(names)
+    if (
+        getattr(
+            callable, '__sagejs_method_signature_excludes_self__', False
+        )
+        and getattr(callable, '__self__', None) is None
+    ):
+        # Method code is emitted with JavaScript's receiver as ``self``, so
+        # its fast-call metadata omits that source parameter.  An unbound
+        # function exposed through ``bound_method.__func__`` must nevertheless
+        # have CPython's introspection signature; libraries such as pluggy use
+        # this distinction to discover hook arguments.
+        names.insert(0, 'self')
     # Compiler metadata is intentionally stored as lightweight JavaScript
     # records.  Normalize it to Python mappings before using the public dict
     # API; third-party decorators should never have to know the distinction.
@@ -265,6 +286,10 @@ def iscoroutinefunction(value):
     return bool(getattr(value, '__is_coroutine__', False))
 
 
+def isasyncgenfunction(value):
+    return isgeneratorfunction(value) and iscoroutinefunction(value)
+
+
 def getfullargspec(callable):
     """Return CPython-compatible argument metadata for a callable."""
     sig = signature(callable, follow_wrapped=False)
@@ -312,3 +337,52 @@ def getfullargspec(callable):
 def get_annotations(obj, *, globals=None, locals=None, eval_str=False):
     del globals, locals, eval_str
     return dict(getattr(obj, '__annotations__', {}))
+
+
+def unwrap(func, *, stop=None):
+    """Follow ``__wrapped__`` links and return the innermost callable.
+
+    ``stop`` has the same meaning as in CPython: it is tested before each
+    link is followed. Wrapper cycles are rejected instead of looping.
+    """
+    seen = set()
+    while hasattr(func, '__wrapped__'):
+        if stop is not None and stop(func):
+            break
+        marker = id(func)
+        if marker in seen:
+            raise ValueError('wrapper loop when unwrapping ' + repr(func))
+        seen.add(marker)
+        func = func.__wrapped__
+    if id(func) in seen:
+        raise ValueError('wrapper loop when unwrapping ' + repr(func))
+    return func
+
+
+def getfile(obj):
+    """Return the filename associated with a module, callable, or code object."""
+    filename = getattr(obj, 'co_filename', None)
+    if filename is not None:
+        return filename
+    code = getattr(obj, '__code__', None)
+    filename = getattr(code, 'co_filename', None)
+    if filename is not None:
+        return filename
+    filename = getattr(obj, '__file__', None)
+    if filename is not None:
+        return filename
+    if isclass(obj):
+        import sys
+        module = sys.modules.get(getattr(obj, '__module__', ''))
+        filename = getattr(module, '__file__', None)
+        if filename is not None:
+            return filename
+    raise TypeError('source filename is not available')
+
+
+def getsourcefile(obj):
+    """Return the Python source filename for *obj* when it is available."""
+    filename = getfile(obj)
+    if filename.endswith(('.pyc', '.pyo')):
+        return filename[:-1]
+    return filename

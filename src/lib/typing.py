@@ -19,6 +19,23 @@ class _TypingAlias:
         return repr(self.__origin__) + '[' + ', '.join(
             repr(value) for value in self.__args__) + ']'
 
+    def __or__(self, other):
+        return _TypingUnion((self, other))
+
+    def __ror__(self, other):
+        return _TypingUnion((other, self))
+
+
+class _TypingUnion:
+    def __init__(self, values):
+        self.__args__ = values
+
+    def __or__(self, other):
+        return _TypingUnion(self.__args__ + (other,))
+
+    def __ror__(self, other):
+        return _TypingUnion((other,) + self.__args__)
+
 
 # CPython exposes this implementation detail and a number of widely used
 # packages probe for it.  Keeping the alias costs nothing and is more useful
@@ -124,6 +141,18 @@ def cast(_type, value):
     return value
 
 
+def assert_type(value, _type):
+    return value
+
+
+def assert_never(value):
+    raise AssertionError('Expected code to be unreachable, but got: ' + repr(value))
+
+
+def reveal_type(value):
+    return value
+
+
 def overload(function):
     return function
 
@@ -184,6 +213,7 @@ Required = _SpecialForm('Required')
 NotRequired = _SpecialForm('NotRequired')
 TypeGuard = _SpecialForm('TypeGuard')
 Self = _SpecialForm('Self')
+TypeAlias = _SpecialForm('TypeAlias')
 
 List = _SpecialForm('List', list)
 Dict = _SpecialForm('Dict', dict)
@@ -211,7 +241,16 @@ Coroutine = _SpecialForm('Coroutine')
 Awaitable = _SpecialForm('Awaitable')
 Pattern = _SpecialForm('Pattern')
 Match = _SpecialForm('Match')
-IO = _SpecialForm('IO')
-TextIO = _SpecialForm('TextIO')
-BinaryIO = _SpecialForm('BinaryIO')
+class IO(_SubscriptableMarker):
+    pass
+
+
+class TextIO(IO):
+    pass
+
+
+class BinaryIO(IO):
+    pass
+
+
 AnyStr = TypeVar('AnyStr', str, bytes)

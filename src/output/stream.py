@@ -120,7 +120,10 @@ class OutputStream:
 
     def make_name(self, name):
         name = name.toString()
-        if JS_RESERVED_IDENTIFIERS[name] and name is not 'this':
+        if (
+            JS_RESERVED_IDENTIFIERS[name]
+            and (name is not 'this' or self.options.python_attributes)
+        ):
             name = 'ρσ_py_' + name
         if self.options.ascii_only:
             name = to_ascii(name, True)

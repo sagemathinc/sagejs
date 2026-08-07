@@ -1,6 +1,6 @@
 """Core collection ABCs used for runtime checks and type declarations."""
 
-from abc import ABC
+from abc import ABC, _register
 
 
 class Container(ABC):
@@ -16,6 +16,10 @@ class Iterable(ABC):
 
 
 class Iterator(Iterable):
+    pass
+
+
+class Generator(Iterator):
     pass
 
 
@@ -98,3 +102,15 @@ class ValuesView(MappingView, Collection):
 
     def __contains__(self, value):
         return any(item == value for item in self)
+
+
+# Match the virtual-subclass relationships installed by CPython's
+# ``_collections_abc``.  Sage.js's fundamental containers are native-backed
+# rather than Python subclasses, so explicit registration is the correct ABC
+# boundary and keeps third-party runtime checks meaningful.
+_register(MutableSequence, list)
+for _sequence_type in (tuple, str, bytes, bytearray, range, memoryview):
+    _register(Sequence, _sequence_type)
+_register(MutableMapping, dict)
+_register(MutableSet, set)
+_register(Set, frozenset)

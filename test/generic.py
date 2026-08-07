@@ -1,6 +1,11 @@
 # globals: assrt, outerRealmError, ρσ_last_exception
 
 import traceback
+import sys
+import types
+
+assrt.ok(isinstance(sys, types.ModuleType))
+assrt.ok(type(sys) is types.ModuleType)
 
 
 def throw_test(code):
@@ -90,6 +95,26 @@ def inc():
 
 a = b = inc()
 assrt.deepEqual([a, b], [12, 12])
+
+
+class MutableNamespace:
+    pass
+
+
+namespace = MutableNamespace()
+namespace.__dict__.update({'answer': 42})
+assrt.equal(namespace.answer, 42)
+
+
+class TupleSubclass(tuple):
+    def __new__(cls, *values):
+        return tuple.__new__(cls, values)
+
+
+tuple_subclass = TupleSubclass(1, 2, 3)
+assrt.equal(tuple(tuple_subclass), (1, 2, 3))
+assrt.equal(isinstance(tuple_subclass, TupleSubclass), True)
+
 a, b = c, d = 1, 2
 assrt.deepEqual([a, b, c, d], [1, 2, 1, 2])
 (a, b) = [c, d] = 1, 2
@@ -403,6 +428,15 @@ assrt.deepEqual(else_without_finally(True), ['ex'])
 assrt.deepEqual(else_with_finally(), ['ok', 'el', 'fi'])
 assrt.deepEqual(else_with_finally(True), ['ex', 'fi'])
 assrt.deepEqual(exc_in_else(), ['ok', 'fi', 'ex'])
+
+runtime_exception_types = (ValueError, TypeError)
+try:
+    raise TypeError('runtime tuple')
+except runtime_exception_types:
+    runtime_exception_tuple_caught = True
+else:
+    runtime_exception_tuple_caught = False
+assrt.ok(runtime_exception_tuple_caught)
 
 # Existential operator
 

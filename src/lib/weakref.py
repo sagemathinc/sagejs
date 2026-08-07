@@ -80,6 +80,18 @@ class ReferenceType:
 ref = ReferenceType
 
 
+class WeakKeyDictionary(dict):
+    """Mapping-compatible weak-key surface.
+
+    Keys remain strongly reachable in this initial implementation; observable
+    collection timing is already outside Sage.js's V8 weak-reference contract.
+    """
+
+
+class WeakValueDictionary(dict):
+    """Mapping-compatible weak-value surface; see ``WeakKeyDictionary``."""
+
+
 class finalize:
     def __init__(
         self,

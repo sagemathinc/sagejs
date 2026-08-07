@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import sagejs.runtime as runtime
 
 NameError = runtime.reference_error
@@ -77,6 +79,49 @@ class BaseException(runtime.error):
 
 class Exception(BaseException):
     pass
+
+
+class BaseExceptionGroup(BaseException):
+    """A group of exceptions, compatible with Python 3.11's core surface.
+
+    Sage.js does not yet implement ``except*`` lowering, but ordinary Python
+    libraries use the group classes for annotations and explicit inspection.
+    Keeping the standard constructor and attributes makes those uses work
+    without pretending that exception-group control flow is complete.
+    """
+
+    def __init__(self, message: str, exceptions: Any) -> None:
+        values = tuple(exceptions)
+        if len(values) == 0:
+            raise ValueError(  # pyright: ignore[reportGeneralTypeIssues]
+                'exceptions must be a non-empty sequence')
+        for value in values:
+            if not isinstance(value, BaseException):
+                raise TypeError(
+                    'exceptions must be a sequence of BaseException instances')
+        BaseException.__init__(self, message, values)
+        self.message = message
+        self.exceptions = values
+
+    def derive(self, exceptions: Any) -> BaseExceptionGroup:
+        return self.constructor(self.message, exceptions)
+
+    @classmethod
+    def __class_getitem__(cls, _arguments: object) -> object:
+        # The concrete group classes are generic in CPython.  Runtime typing
+        # information is intentionally lightweight in Sage.js.
+        return cls
+
+
+class ExceptionGroup(BaseExceptionGroup, Exception):
+
+    def __init__(self, message: str, exceptions: Any) -> None:
+        values = tuple(exceptions)
+        for value in values:
+            if not isinstance(value, Exception):
+                raise TypeError(
+                    'Cannot nest BaseExceptions in an ExceptionGroup')
+        BaseExceptionGroup.__init__(self, message, values)
 
 
 # Native JavaScript failures participate in Python's Exception hierarchy.
@@ -228,11 +273,21 @@ class NotADirectoryError(OSError):
     pass
 
 
+# Python 3 keeps these historical names as exact aliases, and compatibility
+# libraries such as pytest's bundled ``py.error`` still import them.
+EnvironmentError = OSError
+IOError = OSError
+
+
 class IndentationError(runtime.syntax_error):
     pass
 
 
 class RuntimeError(Exception):
+    pass
+
+
+class RecursionError(RuntimeError):
     pass
 
 
@@ -293,6 +348,8 @@ class ρσ_non_exception_throw(BaseException):
 for _exception_class in [
     BaseException,
     Exception,
+    BaseExceptionGroup,
+    ExceptionGroup,
     SystemExit,
     KeyboardInterrupt,
     AttributeError,
@@ -331,6 +388,7 @@ for _exception_class in [
     ZeroDivisionError,
     OverflowError,
     RuntimeError,
+    RecursionError,
     GeneratorExit,
     StopIteration,
     StopAsyncIteration,

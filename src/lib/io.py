@@ -11,6 +11,14 @@ import builtins
 open = builtins.open
 
 
+class UnsupportedOperation(OSError):
+    pass
+
+
+class _WindowsConsoleIO:
+    pass
+
+
 class IOBase:
     def __init__(self):
         self.closed = False
@@ -292,3 +300,85 @@ class BytesIO(IOBase):
         if size < len(self._value):
             del self._value[size:]
         return size
+
+
+class TextIOWrapper(IOBase):
+    """Encode and decode text over a binary stream."""
+
+    def __init__(
+        self,
+        buffer,
+        encoding='utf-8',
+        errors='strict',
+        newline=None,
+        line_buffering=False,
+        write_through=False,
+    ):
+        IOBase.__init__(self)
+        self.buffer = buffer
+        self.encoding = encoding
+        self.errors = errors
+        self.newlines = None
+        self._newline = newline
+        self.line_buffering = line_buffering
+        self.write_through = write_through
+
+    def readable(self):
+        return self.buffer.readable()
+
+    def writable(self):
+        return self.buffer.writable()
+
+    def seekable(self):
+        return self.buffer.seekable()
+
+    def flush(self):
+        return self.buffer.flush()
+
+    def tell(self):
+        return self.buffer.tell()
+
+    def seek(self, offset, whence=0):
+        return self.buffer.seek(offset, whence)
+
+    def truncate(self, size=None):
+        return self.buffer.truncate(size)
+
+    def read(self, size=-1):
+        data = self.buffer.read(size)
+        return data.decode(self.encoding, self.errors)
+
+    def readline(self, size=-1):
+        data = self.buffer.readline(size)
+        return data.decode(self.encoding, self.errors)
+
+    def write(self, text):
+        if not isinstance(text, str):
+            raise TypeError('write() argument must be str, not '
+                            + type(text).__name__)
+        data = text.encode(self.encoding, self.errors)
+        self.buffer.write(data)
+        if self.write_through or (self.line_buffering and '\n' in text):
+            self.flush()
+        return len(text)
+
+    def detach(self):
+        buffer = self.buffer
+        self.buffer = None
+        return buffer
+
+    def fileno(self):
+        method = getattr(self.buffer, 'fileno', None)
+        if method is None:
+            raise UnsupportedOperation('fileno')
+        return method()
+
+    def isatty(self):
+        method = getattr(self.buffer, 'isatty', None)
+        return False if method is None else method()
+
+    def close(self):
+        if not self.closed:
+            self.flush()
+            self.buffer.close()
+            self.closed = True

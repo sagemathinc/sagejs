@@ -126,6 +126,7 @@ export class PythonCstLowerer {
   private nativeBitwise = false;
   private readonly classStack: string[] = [];
   private catchDepth = 0;
+  private matchCounter = 0;
   private readonly functionFrames: Array<{
     isCoroutine: boolean;
     superClass: string | null;
@@ -292,6 +293,8 @@ export class PythonCstLowerer {
       }
       case "if_statement":
         return [this.lowerIf(node)];
+      case "match_statement":
+        return this.lowerMatch(node);
       case "for_statement":
         return [this.lowerFor(
           node,
@@ -423,6 +426,254 @@ export class PythonCstLowerer {
       body: this.lowerBlock(this.field(node, "consequence")),
       alternative,
     });
+  }
+
+  /**
+   * Lower structural pattern matching without baking Python's matching rules
+   * into the JavaScript emitter.  The runtime helper returns either a mapping
+   * of capture names to values or None.  Cases remain ordinary sequential
+   * statements, so a failed guard naturally continues to the next case while
+   * break/return/raise in a selected body retain their surrounding meaning.
+   */
+  private lowerMatch(node: SyntaxNode): any[] {
+    const id = this.matchCounter++;
+    const subjectName = `ρσ_match_subject_${id}`;
+    const selectedName = `ρσ_match_selected_${id}`;
+    const symbol = (name: string, owner: SyntaxNode = node) =>
+      this.make("AST_SymbolRef", owner, { name });
+    const assignment = (name: string, value: any, owner: SyntaxNode = node) =>
+      this.make("AST_SimpleStatement", owner, {
+        body: this.make("AST_Assign", owner, {
+          left: symbol(name, owner), operator: "=", right: value,
+        }),
+      });
+
+    const subjectNodes = node.childrenForFieldName("subject");
+    const subject = subjectNodes.length === 1
+      ? this.lowerExpression(subjectNodes[0])
+      : this.sequenceFromExpressions(subjectNodes, node, false);
+    const statements: any[] = [
+      assignment(subjectName, subject),
+      assignment(selectedName, this.make("AST_False", node)),
+    ];
+    const body = this.field(node, "body");
+    const clauses = significantChildren(body).filter(
+      (child) => child.type === "case_clause",
+    );
+    for (let index = 0; index < clauses.length; index += 1) {
+      const clause = clauses[index];
+      const pattern = significantChildren(clause).find(
+        (child) => child.type === "case_pattern",
+      );
+      if (!pattern) throw new UnsupportedPythonCstNode(clause, "missing pattern");
+      const resultName = `ρσ_match_result_${id}_${index}`;
+      const captures = new Set<string>();
+      const descriptor = this.lowerMatchPattern(pattern, captures);
+      const args: any[] = [symbol(subjectName, clause), descriptor];
+      (args as any).kwargs = [];
+      (args as any).kwarg_items = [];
+      (args as any).starargs = false;
+      statements.push(assignment(resultName, this.make("AST_Call", clause, {
+        expression: symbol("ρσ_match_pattern", clause),
+        direct_call: true,
+        args,
+      }), clause));
+
+      const structuralBody: any[] = [];
+      for (const name of captures) {
+        structuralBody.push(assignment(name, this.make("AST_ItemAccess", clause, {
+          expression: symbol(resultName, clause),
+          property: this.make("AST_String", clause, { value: name }),
+          assignment: null,
+        }), clause));
+      }
+      const selected = assignment(
+        selectedName,
+        this.make("AST_True", clause),
+        clause,
+      );
+      const consequence = this.field(clause, "consequence");
+      const caseBody = [selected, ...significantChildren(consequence).flatMap(
+        (child) => this.lowerStatement(child),
+      )];
+      const guardClause = significantChildren(clause).find(
+        (child) => child.type === "if_clause",
+      );
+      if (guardClause) {
+        const guard = significantChildren(guardClause)[0];
+        if (!guard) throw new UnsupportedPythonCstNode(guardClause, "missing guard");
+        structuralBody.push(this.make("AST_If", guardClause, {
+          condition: this.lowerExpression(guard),
+          body: this.make("AST_BlockStatement", consequence, { body: caseBody }),
+          alternative: null,
+        }));
+      } else {
+        structuralBody.push(...caseBody);
+      }
+      const notSelected = this.make("AST_UnaryPrefix", clause, {
+        operator: "!", expression: symbol(selectedName, clause),
+      });
+      const matched = this.make("AST_Binary", clause, {
+        left: symbol(resultName, clause), operator: "!==",
+        right: this.make("AST_Null", clause), native_operator: true,
+      });
+      statements.push(this.make("AST_If", clause, {
+        condition: this.make("AST_Binary", clause, {
+          left: notSelected, operator: "&&", right: matched,
+        }),
+        body: this.make("AST_BlockStatement", consequence, {
+          body: structuralBody,
+        }),
+        alternative: null,
+      }));
+    }
+    return statements;
+  }
+
+  private lowerMatchPattern(node: SyntaxNode, captures: Set<string>): any {
+    const array = (owner: SyntaxNode, elements: any[]) =>
+      this.make("AST_Array", owner, { elements, is_tuple: false });
+    const string = (owner: SyntaxNode, value: string) =>
+      this.make("AST_String", owner, { value });
+    const descriptor = (owner: SyntaxNode, kind: string, ...values: any[]) =>
+      array(owner, [string(owner, kind), ...values]);
+    if (node.type === "case_pattern") {
+      const child = significantChildren(node)[0];
+      if (!child) {
+        if (node.text.trim() === "_") return descriptor(node, "wildcard");
+        throw new UnsupportedPythonCstNode(node, "empty pattern");
+      }
+      return this.lowerMatchPattern(child, captures);
+    }
+    if (node.type === "identifier") {
+      if (node.text === "_") return descriptor(node, "wildcard");
+      captures.add(node.text);
+      return descriptor(node, "capture", string(node, node.text));
+    }
+    if (node.type === "as_pattern") {
+      const children = significantChildren(node);
+      const alias = children.at(-1);
+      const value = children[0];
+      if (!alias || alias.type !== "identifier" || !value) {
+        throw new UnsupportedPythonCstNode(node, "invalid as-pattern");
+      }
+      captures.add(alias.text);
+      return descriptor(
+        node,
+        "as",
+        this.lowerMatchPattern(value, captures),
+        string(alias, alias.text),
+      );
+    }
+    if (node.type === "union_pattern") {
+      const alternatives = significantChildren(node);
+      const alternativeCaptures = alternatives.map(() => new Set<string>());
+      const patterns = alternatives.map((child, index) =>
+        this.lowerMatchPattern(child, alternativeCaptures[index])
+      );
+      const expected = [...(alternativeCaptures[0] ?? [])].sort().join("\0");
+      if (alternativeCaptures.some(
+        (names) => [...names].sort().join("\0") !== expected,
+      )) throw new SyntaxError("alternative patterns bind different names");
+      for (const name of alternativeCaptures[0] ?? []) captures.add(name);
+      return descriptor(node, "or", array(node, patterns));
+    }
+    if (node.type === "tuple_pattern" || node.type === "list_pattern") {
+      return descriptor(node, "sequence", array(
+        node,
+        significantChildren(node).map((child) =>
+          this.lowerMatchPattern(child, captures)
+        ),
+      ));
+    }
+    if (node.type === "class_pattern") {
+      const children = significantChildren(node);
+      const className = children[0];
+      if (!className || className.type !== "dotted_name") {
+        throw new UnsupportedPythonCstNode(node, "missing class name");
+      }
+      const positional: any[] = [];
+      const keywords: any[] = [];
+      for (const child of children.slice(1)) {
+        let part = child.type === "case_pattern"
+          ? significantChildren(child)[0]
+          : child;
+        if (!part) continue;
+        let alias: SyntaxNode | null = null;
+        if (part.type === "as_pattern") {
+          const asChildren = significantChildren(part);
+          alias = asChildren.at(-1) ?? null;
+          part = asChildren[0];
+          if (part?.type === "case_pattern") {
+            part = significantChildren(part)[0];
+          }
+        }
+        if (part.type === "keyword_pattern") {
+          const values = significantChildren(part);
+          const name = values[0];
+          const value = values[1];
+          if (!name || name.type !== "identifier" || !value) {
+            throw new UnsupportedPythonCstNode(part, "invalid keyword pattern");
+          }
+          let lowered = this.lowerMatchPattern(value, captures);
+          if (alias) {
+            if (alias.type !== "identifier") {
+              throw new UnsupportedPythonCstNode(alias, "invalid as-pattern alias");
+            }
+            captures.add(alias.text);
+            lowered = descriptor(
+              part, "as", lowered, string(alias, alias.text),
+            );
+          }
+          keywords.push(array(part, [string(name, name.text), lowered]));
+        } else {
+          if (alias) {
+            if (alias.type !== "identifier") {
+              throw new UnsupportedPythonCstNode(alias, "invalid as-pattern alias");
+            }
+            captures.add(alias.text);
+            part = child;
+          }
+          positional.push(this.lowerMatchPattern(part, captures));
+        }
+      }
+      return descriptor(
+        node,
+        "class",
+        this.lowerDottedPatternName(className),
+        array(node, positional),
+        array(node, keywords),
+      );
+    }
+    if (node.type === "dotted_name") {
+      const names = significantChildren(node);
+      if (names.length === 1) {
+        const name = names[0].text;
+        if (name === "_") return descriptor(node, "wildcard");
+        captures.add(name);
+        return descriptor(node, "capture", string(node, name));
+      }
+      return descriptor(node, "value", this.lowerDottedPatternName(node));
+    }
+    if ([
+      "integer", "float", "string", "concatenated_string",
+      "none", "true", "false",
+    ].includes(node.type)) {
+      return descriptor(node, "value", this.lowerExpression(node));
+    }
+    throw new UnsupportedPythonCstNode(node, "unsupported match pattern");
+  }
+
+  private lowerDottedPatternName(node: SyntaxNode): any {
+    const names = significantChildren(node);
+    if (!names.length) throw new UnsupportedPythonCstNode(node, "empty name");
+    let value = this.make("AST_SymbolRef", names[0], { name: names[0].text });
+    for (const name of names.slice(1)) {
+      value = this.make("AST_Dot", node, {
+        expression: value, property: name.text,
+      });
+    }
+    return value;
   }
 
   private lowerFor(node: SyntaxNode, isAsync: boolean): any {
@@ -1553,6 +1804,7 @@ export class PythonCstLowerer {
     const baseNodes = superclassEntries.filter(
       (child) => child.type !== "keyword_argument",
     );
+    let metaclass: any = null;
     const typingDictionaryBase = baseNodes.some(
       (child) => child.text === "TypedDict" || child.text.endsWith(".TypedDict"),
     );
@@ -1563,12 +1815,28 @@ export class PythonCstLowerer {
       if (typingDictionaryBase && ["total", "closed"].includes(keywordName)) {
         continue;
       }
+      if (keywordName === "metaclass") {
+        metaclass = this.lowerExpression(this.field(keyword, "value"));
+        continue;
+      }
       throw new UnsupportedPythonCstNode(
         keyword,
         `class keyword ${JSON.stringify(keywordName)} requires metaclass semantics`,
       );
     }
-    const bases = baseNodes.map((child) => this.lowerExpression(child));
+    const genericBuiltinBases = new Set([
+      "dict", "frozenset", "list", "set", "str", "tuple", "type",
+    ]);
+    const bases = baseNodes.map((child) => {
+      if (child.type === "subscript") {
+        const origin = this.field(child, "value");
+        const originName = this.expressionKey(origin);
+        if (originName && genericBuiltinBases.has(originName)) {
+          return this.lowerExpression(origin);
+        }
+      }
+      return this.lowerExpression(child);
+    });
     const isNamedTupleClass = baseNodes.some((child) =>
       child.text === "NamedTuple" || child.text.endsWith(".NamedTuple")
     );
@@ -1577,7 +1845,7 @@ export class PythonCstLowerer {
     // method/class-variable table is not available until the body has been
     // lowered.  A provisional entry is enough to select AST_New; it is
     // replaced by the finished class definition below.
-    this.knownClasses.set(nameNode.text, Object.create(null));
+    this.knownClasses.set(nameNode.text, { provisional: true });
     this.classStack.push(nameNode.text);
     let statements: any[];
     try {
@@ -1748,6 +2016,7 @@ export class PythonCstLowerer {
       name: this.make("AST_SymbolDefun", nameNode, { name: nameNode.text }),
       parent,
       bases: effectiveBases,
+      metaclass,
       implicit_object_base: implicitObjectBase,
       static: staticMethods,
       classmethods: classMethods,
@@ -1883,9 +2152,15 @@ export class PythonCstLowerer {
           value.left instanceof this.compiler.AST_SymbolRef) {
         const name = value.left.name;
         if (nonlocals.has(name)) return;
+        // Python evaluates the right-hand side before binding a new class
+        // namespace name. Thus ``Interrupted = Interrupted`` reads the
+        // module global on its first occurrence, while a later ``x = x + 1``
+        // reads the existing class value.
+        visit(value.right, seen);
         known.add(name);
         classvars[name] = true;
         value.left.thedef = definition(name);
+        return;
       } else if (value instanceof this.compiler.AST_SymbolRef &&
                  known.has(value.name)) {
         value.thedef = definition(value.name);
@@ -2405,7 +2680,22 @@ export class PythonCstLowerer {
       const method = this.field(functionNode, "attribute").text;
       if (ownerKey && this.knownClasses.has(ownerKey)) {
         const details = this.knownClasses.get(ownerKey);
+        // While lowering a class body we know that its name denotes a class,
+        // but have not yet collected the decorators on all of its methods.
+        // Do not guess that ``C.f(...)`` is an unbound instance-method call:
+        // a later ``@staticmethod``/``@classmethod`` declaration would make
+        // that optimization semantically wrong.  The ordinary attribute-call
+        // lowering is correct for all three cases.
+        if (details?.provisional) {
+          return this.make("AST_Call", node, {
+            expression: callable,
+            args,
+          });
+        }
         const classvar = !!details?.classvars?.[method];
+        const staticMethod = method === "__new__" ||
+          ["call", "apply", "bind", "toString"].includes(method) ||
+          !!details?.static?.[method] || !!details?.classmethods?.[method];
         if (ownerKey === "Object") {
           if (method === "defineProperty" && args[2]) {
             this.markNativeObjectLiteral(args[2]);
@@ -2415,13 +2705,26 @@ export class PythonCstLowerer {
             this.markNativeObjectLiteral(args[1], true);
           }
         }
+        // Class metadata for forward references and imported bases can be
+        // intentionally incomplete.  Treating an unknown keyword-bearing
+        // call as an instance method changes ``C.f(...)`` into
+        // ``C.prototype.f.call(...)`` and, for a classmethod, passes the
+        // surrounding JavaScript receiver as ``cls``.  Ordinary Python
+        // attribute lookup is the authoritative fallback and binds instance,
+        // static, and class methods correctly at runtime.  Positional-only
+        // unknown calls retain the legacy bootstrap optimization for now.
+        const hasKeywordArguments = (args as any).kwargs.length > 0 ||
+          (args as any).kwarg_items.length > 0;
+        if (!staticMethod && !classvar && hasKeywordArguments) {
+          return this.make("AST_Call", node, {
+            expression: callable,
+            args,
+          });
+        }
         return this.make("AST_ClassCall", node, {
           class: this.lowerExpression(ownerNode),
           method,
-          static: method === "__new__" ||
-            ["call", "apply", "bind", "toString"].includes(method) ||
-            !!details?.static?.[method] || !!details?.classmethods?.[method] ||
-            classvar,
+          static: staticMethod || classvar,
           classvar,
           args,
         });
@@ -2605,15 +2908,43 @@ export class PythonCstLowerer {
   private lowerDictionary(node: SyntaxNode): any {
     const literalFlags = this.dictionaryLiteralFlags();
     const properties = [];
+    const parts: any[] = [];
+    const flushProperties = (): void => {
+      if (!properties.length) return;
+      parts.push(this.make("AST_Object", node, {
+        properties: properties.splice(0),
+        is_pydict: true,
+        is_jshash: false,
+      }));
+    };
     for (const child of significantChildren(node)) {
+      if (child.type === "dictionary_splat") {
+        flushProperties();
+        parts.push(this.lowerExpression(significantChildren(child)[0]));
+        continue;
+      }
       if (child.type !== "pair") {
-        throw new UnsupportedPythonCstNode(child, "dictionary splat");
+        throw new UnsupportedPythonCstNode(child);
       }
       properties.push(this.make("AST_ObjectKeyVal", child, {
         key: this.lowerExpression(this.field(child, "key")),
         value: this.lowerExpression(this.field(child, "value")),
         quoted: true,
       }));
+    }
+    if (parts.length) {
+      flushProperties();
+      const args = parts;
+      (args as any).kwargs = [];
+      (args as any).kwarg_items = [];
+      (args as any).starargs = false;
+      return this.make("AST_Call", node, {
+        expression: this.make("AST_SymbolRef", node, {
+          name: "ρσ_dict_unpack",
+        }),
+        direct_call: false,
+        args,
+      });
     }
     return this.make("AST_Object", node, {
       properties,

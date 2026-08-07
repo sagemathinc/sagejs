@@ -54,6 +54,47 @@ class suppress(AbstractContextManager):
         return exc_type is not None and issubclass(exc_type, self._exceptions)
 
 
+class ExitStack(AbstractContextManager):
+    def __init__(self):
+        self._exit_callbacks = []
+
+    def push(self, exit):
+        callback = exit.__exit__ if hasattr(exit, '__exit__') else exit
+        self._exit_callbacks.append(callback)
+        return exit
+
+    def callback(self, callback, *args, **kwargs):
+        def exit_callback(exc_type, exc_value, traceback):
+            del exc_type, exc_value, traceback
+            callback(*args, **kwargs)
+            return False
+        self._exit_callbacks.append(exit_callback)
+        return callback
+
+    def enter_context(self, context_manager):
+        result = context_manager.__enter__()
+        self._exit_callbacks.append(context_manager.__exit__)
+        return result
+
+    def pop_all(self):
+        other = type(self)()
+        other._exit_callbacks = self._exit_callbacks
+        self._exit_callbacks = []
+        return other
+
+    def close(self):
+        self.__exit__(None, None, None)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        suppressed = False
+        while self._exit_callbacks:
+            callback = self._exit_callbacks.pop()
+            if callback(exc_type, exc_value, traceback):
+                exc_type = exc_value = traceback = None
+                suppressed = True
+        return suppressed
+
+
 class _GeneratorContextManager(ContextDecorator, AbstractContextManager):
     def __init__(self, function, args, keywords):
         self.function = function
@@ -91,4 +132,3 @@ def contextmanager(function):
     def helper(*args, **keywords):
         return _GeneratorContextManager(function, args, keywords)
     return helper
-

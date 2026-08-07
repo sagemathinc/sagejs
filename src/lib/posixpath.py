@@ -8,6 +8,7 @@ operations work without a host filesystem, including in browser/WASM builds.
 """
 
 import genericpath
+import sagejs.runtime as runtime
 
 curdir = '.'
 pardir = '..'
@@ -29,6 +30,15 @@ getatime = genericpath.getatime
 getctime = genericpath.getctime
 commonprefix = genericpath.commonprefix
 samefile = genericpath.samefile
+
+
+def _environment(name):
+    process = runtime.reflect.get(runtime.global_object, 'process')
+    if process is runtime.undefined:
+        return None
+    environment = runtime.reflect.get(process, 'env')
+    value = runtime.reflect.get(environment, name)
+    return None if value is runtime.undefined else value
 
 
 def _path(path):
@@ -132,6 +142,55 @@ def realpath(path):
         return genericpath._realpath(path)
     except NotImplementedError:
         return abspath(path)
+
+
+def expanduser(path):
+    path = _path(path)
+    if not isinstance(path, str) or not path.startswith('~'):
+        return path
+    separator = path.find(sep)
+    if separator == -1:
+        separator = len(path)
+    if separator != 1:
+        return path
+    home = _environment('HOME')
+    if home is None:
+        return path
+    return home.rstrip(sep) + path[separator:]
+
+
+def expandvars(path):
+    path = _path(path)
+    if not isinstance(path, str) or '$' not in path:
+        return path
+    answer = ''
+    index = 0
+    while index < len(path):
+        if path[index] != '$':
+            answer += path[index]
+            index += 1
+            continue
+        if index + 1 < len(path) and path[index + 1] == '{':
+            end = path.find('}', index + 2)
+            if end == -1:
+                answer += '$'
+                index += 1
+                continue
+            name = path[index + 2:end]
+            original = path[index:end + 1]
+            index = end + 1
+        else:
+            end = index + 1
+            while end < len(path) and (
+                path[end].isalnum() or path[end] == '_'
+            ):
+                end += 1
+            name = path[index + 1:end]
+            original = path[index:end]
+            index = end
+        value = _environment(name)
+        answer += original if value is None else value
+    return answer
 
 
 def relpath(path, start=None):

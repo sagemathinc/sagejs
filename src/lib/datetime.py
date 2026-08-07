@@ -373,6 +373,14 @@ class datetime(date):
         return cls(year, month, day)
 
     @classmethod
+    def fromtimestamp(cls, timestamp, tz=None):
+        epoch = cls(1970, 1, 1)
+        result = epoch + timedelta(seconds=float(timestamp))
+        if tz is None:
+            return result
+        return tz.fromutc(result.replace(tzinfo=tz))
+
+    @classmethod
     def combine(cls, date_value, time_value, tzinfo=None):
         if tzinfo is None:
             tzinfo = time_value.tzinfo
@@ -438,6 +446,14 @@ class datetime(date):
             raise ValueError('utcoffset() returned None')
         utc = (self.replace(tzinfo=None) - offset).replace(tzinfo=tz)
         return tz.fromutc(utc)
+
+    def timestamp(self):
+        epoch_microseconds = (date(1970, 1, 1).toordinal() - 1) * _DAY_MICROSECONDS
+        total = self._wall_microseconds() - epoch_microseconds
+        offset = self.utcoffset()
+        if offset is not None:
+            total -= offset._total_microseconds
+        return total / 1000000
 
     def __add__(self, other):
         if isinstance(other, timedelta):

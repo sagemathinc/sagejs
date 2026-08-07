@@ -749,6 +749,26 @@ Third-party modules are translated once and stored in a compiler-versioned,
 source-hashed user cache. Cache misses affect the first import only; edits to a
 module or compiler change invalidate the corresponding entry.
 
+### Pytest
+
+Sage.js runs the unmodified upstream pytest distribution as an explicit
+pure-Python compatibility target:
+
+```sh
+sagejs pip install pytest==9.1.1
+sagejs pytest
+```
+
+The initial supported tier includes test discovery, fixtures, parametrization,
+marks and outcomes, `pytest.raises`, `pytest.approx`, terminal reporting, and
+correct success/failure exit codes. Sage.js selects `--assert=plain`, disables
+third-party plugin autoloading, and disables pytest's bundled `capture`,
+`logging`, `subtests`, `cacheprovider`, and `faulthandler` plugins. Those
+plugins depend on host-specific stream, logging, cache, signal, or unittest
+details that are outside this first tier. Arbitrary third-party plugins and
+CPython-style assertion rewriting are later compatibility milestones; ordinary
+Python `assert` statements and pytest's failure reports work now.
+
 ### JavaScript and local npm packages
 
 Trusted Node.js hosts expose an explicit public bridge to built-in modules and

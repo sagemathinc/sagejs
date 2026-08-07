@@ -132,6 +132,7 @@
     "test:python:conformance:run": "node scripts/run-python-conformance.cjs --check",
     "test:python:grammar": "pnpm run build && node node_modules/tree-sitter-cli/cli.js test -p tools/tree-sitter-python && node node_modules/tree-sitter-cli/cli.js test -p tools/tree-sitter-sage && node --test test/python-syntax-frontend.cjs && node scripts/audit-python-grammar.cjs --check",
     "test:python:packages": "pnpm run build && node --test test/python-packages.cjs && node scripts/run-pure-python-packages.cjs",
+    "test:python:pytest": "pnpm run build && node scripts/test-pytest-compat.cjs",
     "python:grammar:audit": "pnpm run build && node scripts/audit-python-grammar.cjs",
     "python:precompile": "pnpm run build && pnpm run python:precompile:run",
     "python:precompile:run": "node scripts/build-lazy-module-cache.cjs",

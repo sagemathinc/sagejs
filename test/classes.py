@@ -44,6 +44,7 @@ class CallableValue:
 callable_value_constructor = CallableValue
 callable_value = callable_value_constructor(7)
 assrt.ok(isinstance(callable_value, CallableValue))
+assrt.ok(type(callable_value) is CallableValue)
 assrt.equal(callable_value(5), 12)
 
 
@@ -523,4 +524,134 @@ def decorate(cls):
 @decorate
 class decorated:
     somevar = 1
+
+
+class CallableObject:
+    def __init__(self, value):
+        self.value = value
+
+    def __call__(self):
+        return self.value
+
+    @property
+    def doubled(self):
+        return 2 * self.value
+
+    @property
+    def name(self):
+        return 'callable-' + str(self.value)
+
+
+callable_object = CallableObject(37)
+assrt.equal(callable_object(), 37)
+assrt.equal(type(callable_object), CallableObject)
+assrt.equal(callable_object.__class__, CallableObject)
+assrt.equal(callable_object.__class__(41)(), 41)
+assrt.equal(callable_object.doubled, 74)
+assrt.equal(callable_object.name, 'callable-37')
+
+static_descriptor = staticmethod(lambda: 1)
+class_descriptor = classmethod(lambda cls: cls)
+assrt.equal(type(static_descriptor), staticmethod)
+assrt.equal(type(class_descriptor), classmethod)
+assrt.ok(isinstance(static_descriptor, staticmethod | classmethod))
+assrt.ok(isinstance(class_descriptor, staticmethod | classmethod))
+
+
+class AbstractCollector:
+    def collect(self):
+        raise NotImplementedError('abstract')
+
+
+class FileCollector(AbstractCollector):
+    pass
+
+
+class PythonCollector(AbstractCollector):
+    def collect(self):
+        return ['python']
+
+
+class ModuleCollector(FileCollector, PythonCollector):
+    def collect(self):
+        return super().collect()
+
+
+assrt.deepEqual(ModuleCollector().collect(), ['python'])
+assrt.ok(isinstance(ModuleCollector(), FileCollector))
+assrt.ok(isinstance(ModuleCollector(), PythonCollector))
+
+
+class KeywordMethodBase:
+    def inherited_keyword_method(self, request):
+        return request
+
+
+class KeywordMethodChild(KeywordMethodBase):
+    pass
+
+
+keyword_method_child = KeywordMethodChild()
+assrt.equal(
+    keyword_method_child.inherited_keyword_method(request=17), 17)
+
+
+class ExampleMeta(type):
+    pass
+
+
+class MetaclassBase:
+    pass
+
+
+class ExplicitMetaclassClass(MetaclassBase, metaclass=ExampleMeta):
+    pass
+
+
+class InheritedMetaclassClass(ExplicitMetaclassClass):
+    pass
+
+
+assrt.deepEqual(ExplicitMetaclassClass.__bases__, (MetaclassBase,))
+assrt.deepEqual(
+    InheritedMetaclassClass.__bases__, (ExplicitMetaclassClass,))
+assrt.deepEqual(
+    ExplicitMetaclassClass.__mro__[:2],
+    (ExplicitMetaclassClass, MetaclassBase),
+)
+assrt.deepEqual(
+    InheritedMetaclassClass.__mro__[:2],
+    (InheritedMetaclassClass, ExplicitMetaclassClass),
+)
+
+DynamicMetaclassClass = type(
+    'DynamicMetaclassClass',
+    (ExplicitMetaclassClass,),
+    {},
+)
+assrt.deepEqual(
+    DynamicMetaclassClass.__bases__, (ExplicitMetaclassClass,))
+assrt.deepEqual(
+    DynamicMetaclassClass.__mro__[:3],
+    (
+        DynamicMetaclassClass,
+        ExplicitMetaclassClass,
+        MetaclassBase,
+    ),
+)
+
+
+class FactoryMeta(type):
+    def create(cls, *args, **kwargs):
+        return super().__call__(*args, **kwargs)
+
+
+class FactoryProduct(metaclass=FactoryMeta):
+    def __init__(self, value, *, doubled=False):
+        self.value = value * 2 if doubled else value
+
+
+factory_product = getattr(FactoryProduct, 'create')(6, doubled=True)
+assrt.ok(isinstance(factory_product, FactoryProduct))
+assrt.equal(factory_product.value, 12)
 # STAGE_ZERO_ONLY: historical RapydScript expression syntax

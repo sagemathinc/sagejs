@@ -4,7 +4,13 @@ def _register(cls, subclass):
     if not callable(subclass):
         raise TypeError('Can only register classes')
     for base in getattr(cls, '__mro__', (cls,)):
-        registry = getattr(base, '_abc_registry', None)
+        if base is object:
+            continue
+        # Registries belong to the individual ABC.  Looking them up with
+        # ``getattr`` can reuse an inherited mutable list and accidentally
+        # merge unrelated ABC registrations (for example Pattern and
+        # Complex), making nearly every object satisfy every ABC.
+        registry = getattr(base, '__dict__', {}).get('_abc_registry')
         if registry is None:
             registry = []
             setattr(base, '_abc_registry', registry)

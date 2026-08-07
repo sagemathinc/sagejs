@@ -338,6 +338,12 @@ def function_annotation(self, output, strip_first, name):
 
         props.__python_descriptor__ = python_descriptor
 
+    if self.is_generator:
+        props.__is_generator__ = lambda: output.print('true')
+
+    if self.is_coroutine:
+        props.__is_coroutine__ = lambda: output.print('true')
+
     # Keep the exact source spelling independently of runtime evaluation.
     # This powers help(), DocSpec, and the static reference manual even when
     # the ``typing`` names exist only for static checking.
@@ -579,6 +585,20 @@ def function_definition(
         output.print('()'), output.space()
 
         def output_generator():
+            # Dynamically resolved methods are invoked like unbound Python
+            # descriptors: ``self`` is supplied as the first argument and
+            # the host receiver is undefined.  Shift that receiver in the
+            # ordinary wrapper before creating the native generator.  Doing
+            # this only inside ``function* js_generator`` returns the nested
+            # generator as StopIteration.value instead of delegating to it.
+            if strip_first and output.options.python_attributes:
+                output.indent()
+                output.print('if ((this === globalThis || this == null) ')
+                output.print(
+                    '&& arguments.length > 0) return arguments.callee.apply(')
+                output.print(
+                    'arguments[0], Array.prototype.slice.call(arguments, 1))')
+                output.end_statement()
             output.indent()
             output.print('function* js_generator')
             function_args(self.argnames, output, strip_first)
@@ -945,7 +965,14 @@ def print_function_call(self, output):
                 resolve_callable = (
                     not is_new
                     and not self.direct_call
-                    and is_node_type(self.expression, AST_Call)
+                    and (
+                        is_node_type(self.expression, AST_Call)
+                        or (
+                            output.options.python_attributes
+                            and not has_kwargs
+                            and is_node_type(self.expression, AST_Dot)
+                        )
+                    )
                 )
                 if resolve_callable:
                     output.print('ρσ_resolve_callable(')
@@ -1001,6 +1028,13 @@ def print_function_call(self, output):
     def do_print_this():
         if not is_repeatable:
             output.print('ρσ_expr_temp')
+        elif is_node_type(self, AST_ClassCall) and self['static']:
+            # ``AST_ClassCall.static`` covers both static methods and class
+            # methods.  Static methods ignore the receiver, while class
+            # methods require the class object itself.  Using the ambient
+            # JavaScript ``this`` accidentally bound class methods to a
+            # decorator/hook object when frameworks invoked them indirectly.
+            self['class'].print(output)
         else:
             print_this(self.expression, output)
         output.comma()

@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+import sagejs.runtime as runtime
+
 
 class ModuleType:
     """Mutable module namespace compatible with ``types.ModuleType``."""
+
+    __sagejs_module_type__ = True
 
     def __init__(self, name, doc=None):
         self.__name__ = name
@@ -17,6 +21,14 @@ class ModuleType:
 
     def __repr__(self):
         return "<module '" + self.__name__ + "'>"
+
+
+# Compiled imports use lightweight live namespace objects rather than
+# allocating ``ModuleType`` for every module.  Publish the Python class so the
+# builtin ``type``/``isinstance`` operations can preserve CPython semantics
+# for those native namespaces.
+runtime.reflect.set(
+    runtime.global_object, '__sagejs_module_type_class__', ModuleType)
 
 
 def MethodType(function, instance, cls=None):
@@ -40,15 +52,41 @@ class DynamicClassAttribute(property):
     pass
 
 
-def MappingProxyType(mapping):
-    """Return a mapping view.
+class MappingProxyType:
+    """Read-only live view of a mapping."""
 
-    The initial runtime representation shares the input dictionary, matching
-    CPython's live-view behavior.  Mutation rejection will be added with the
-    general read-only mapping protocol; consumers such as TOML parsers only
-    read this object.
-    """
-    return mapping
+    def __init__(self, mapping):
+        self._mapping = mapping
+
+    def __getitem__(self, key):
+        return self._mapping[key]
+
+    def __iter__(self):
+        return iter(self._mapping)
+
+    def __len__(self):
+        return len(self._mapping)
+
+    def __contains__(self, key):
+        return key in self._mapping
+
+    def get(self, key, default=None):
+        return self._mapping.get(key, default)
+
+    def keys(self):
+        return self._mapping.keys()
+
+    def values(self):
+        return self._mapping.values()
+
+    def items(self):
+        return self._mapping.items()
+
+    def copy(self):
+        return self._mapping.copy()
+
+    def __repr__(self):
+        return 'mappingproxy(' + repr(self._mapping) + ')'
 
 
 FunctionType = type(lambda: None)
@@ -56,7 +94,40 @@ LambdaType = FunctionType
 BuiltinFunctionType = FunctionType
 BuiltinMethodType = FunctionType
 GeneratorType = type((value for value in ()))
-NoneType = type(None)
+CodeType = type((lambda: None).__code__)
+# Native JavaScript stacks do not expose CPython frame/traceback objects yet;
+# these names primarily serve runtime annotation and compatibility imports.
+
+
+class NoneType:
+    pass
+
+
+class FrameType:
+    pass
+
+
+class TracebackType:
+    pass
+
+
+GenericAlias = type(list[int])
+
+
+class SimpleNamespace:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+    def __repr__(self):
+        values = ', '.join(
+            name + '=' + repr(value)
+            for name, value in sorted(self.__dict__.items()))
+        return 'namespace(' + values + ')'
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, SimpleNamespace)
+            and self.__dict__ == other.__dict__)
 
 
 def coroutine(function: Callable[..., Any]) -> Callable[..., Any]:

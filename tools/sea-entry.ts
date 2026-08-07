@@ -8,6 +8,7 @@
 import Compile from "./compile";
 import { runDocumentationCli } from "./docs";
 import { createKernelEvaluatorAsync } from "./kernel-evaluator";
+import { runPytestCli } from "./pytest";
 import Repl from "./repl";
 import { importPath, libraryPath } from "./utils";
 import { basename, dirname, extname } from "path";
@@ -24,7 +25,8 @@ interface SeaArguments {
     | "repl"
     | "jupyter-install"
     | "jupyter-kernel"
-    | "jupyter-self-test";
+    | "jupyter-self-test"
+    | "pytest";
   execute: boolean;
   sage: boolean;
   magma: boolean;
@@ -47,6 +49,7 @@ interface SeaArguments {
   backend?: string;
   tag?: string;
   jupyter_args?: string[];
+  pytest_args?: string[];
 }
 
 function usage(): void {
@@ -55,6 +58,7 @@ function usage(): void {
 Run Sage.js from a self-contained executable. With no program, start a REPL.
 
   ${executable} docs <search|show|export|coverage> [query]
+  ${executable} pytest [pytest options] [paths]
   ${executable} --install-jupyter-kernel [--jupyter-kernel-mode sage|python]
 
 Options:
@@ -185,6 +189,11 @@ function parseArguments(): SeaArguments {
         args.files.push(argument);
       }
     }
+    return args;
+  }
+  if (rawArguments[0] === "pytest") {
+    args.mode = "pytest";
+    args.pytest_args = rawArguments.slice(1);
     return args;
   }
   let optionsEnded = false;
@@ -322,6 +331,10 @@ async function main(): Promise<void> {
     } finally {
       evaluator.close();
     }
+    return;
+  }
+  if (argv.mode === "pytest") {
+    process.exitCode = await runPytestCli({ files: argv.pytest_args ?? [] });
     return;
   }
   throw new Error(

@@ -574,7 +574,10 @@ def generate_code():
         name = self.name
         if def_:
             name = def_.mangled_name or def_.name
-        if RESERVED_WORDS[name] and name is not 'this':
+        if (
+            RESERVED_WORDS[name]
+            and (name is not 'this' or output.options.python_attributes)
+        ):
             name = 'ρσ_py_' + name
 
         def contains_delete_target(target):

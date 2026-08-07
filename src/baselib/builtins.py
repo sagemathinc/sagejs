@@ -65,13 +65,23 @@ def _builtins_default_import(
                 if item == '*' or hasattr(module, item):
                     continue
                 try:
-                    runtime.reflect.apply(
+                    child = runtime.reflect.apply(
                         loader, runtime.undefined, [name + '.' + item])
-                except ImportError:
+                    if child is runtime.undefined:
+                        child = runtime.reflect.get(
+                            runtime.modules, name + '.' + item)
+                    if child is not runtime.undefined:
+                        # CPython publishes an imported child module on its
+                        # parent package.  Generated from-import code then
+                        # performs the same final attribute lookup it uses for
+                        # ordinary module attributes.
+                        runtime.reflect.set(module, item, child)
+                except ImportError as error:
                     # ``from module import attribute`` is allowed to resolve an
                     # ordinary attribute rather than a child module.  The
                     # generated from-import performs the definitive check.
-                    pass
+                    if str(error) != "No module named '" + name + '.' + item + "'":
+                        raise
         return module
 
     top_name = name.split('.')[0]
@@ -1431,6 +1441,21 @@ def ρσ_operator_bitor(left: Any, right: Any) -> Any:
         return runtime.normalize_integer(
             runtime.native_bitor(
                 runtime.bigint(left), runtime.bigint(right)))
+    builtin_type_operands = [
+        ρσ_bool, ρσ_int, ρσ_float, ρσ_type,
+        ρσ_classmethod, ρσ_staticmethod,
+        runtime.list_constructor, runtime.tuple_builtin,
+        runtime.string_builtin,
+    ]
+    if (
+        _builtins_is_python_class(left)
+        or _builtins_is_python_class(right)
+        or left in builtin_type_operands
+        or right in builtin_type_operands
+        or left is None
+        or right is None
+    ):
+        return ρσ_type_union(left, right)  # type: ignore[name-defined]  # noqa: F821
     if _builtins_member_is_function(left, '__or__'):
         return _builtins_call_member(left, '__or__', [right])
     if _builtins_member_is_function(right, '__ror__'):
@@ -2102,6 +2127,15 @@ def _builtins_namespace_dict(value: Any) -> Any:
             return runtime.reflect.apply(
                 live_scope_dict, runtime.undefined, [value])
 
+    if runtime.strict_equal(runtime.jstype(value), 'object'):
+        # Instance ``__dict__`` is a writable live namespace.  A detached
+        # snapshot breaks ``obj.__dict__.update(...)`` and other ordinary
+        # Python object-model operations.
+        live_scope_dict = runtime.reflect.get(
+            runtime.global_object, 'ρσ_live_scope_dict')
+        return runtime.reflect.apply(
+            live_scope_dict, runtime.undefined, [value])
+
     namespace = runtime.object.create(None)
     plain_function = (
         runtime.strict_equal(runtime.jstype(value), 'function')
@@ -2112,7 +2146,28 @@ def _builtins_namespace_dict(value: Any) -> Any:
         if source is None or source is runtime.undefined:
             return
         for member_name in runtime.object.getOwnPropertyNames(source):
-            member = runtime.reflect.get(source, member_name)
+            descriptor = runtime.object.getOwnPropertyDescriptor(
+                source, member_name)
+            member = runtime.reflect.get(descriptor, 'value')
+            if member is runtime.undefined and (
+                runtime.reflect.get(descriptor, 'get') is not runtime.undefined
+                or runtime.reflect.get(descriptor, 'set') is not runtime.undefined
+            ):
+                # A class dictionary exposes the descriptor without invoking
+                # it.  Compiler-emitted properties use native accessors; wrap
+                # those accessors so a class rebuilt by ``type``/a metaclass
+                # retains the property in its namespace.
+                getter = runtime.reflect.get(descriptor, 'get')
+                setter = runtime.reflect.get(descriptor, 'set')
+                runtime.reflect.set(
+                    namespace,
+                    member_name,
+                    SageProperty(
+                        None if getter is runtime.undefined else getter,
+                        None if setter is runtime.undefined else setter,
+                    ),
+                )
+                continue
             native_function_slot = (
                 source is value
                 and runtime.strict_equal(
@@ -2732,6 +2787,7 @@ def ρσ_classmethod(target: Any) -> Any:
     descriptor = runtime.object.create(None)
     descriptor.__func__ = target
     descriptor.__classmethod__ = True
+    descriptor.__python_type__ = ρσ_classmethod
     return descriptor
 
 
@@ -2739,6 +2795,7 @@ def ρσ_staticmethod(target: Any) -> Any:
     descriptor = runtime.object.create(None)
     descriptor.__func__ = target
     descriptor.__staticmethod__ = True
+    descriptor.__python_type__ = ρσ_staticmethod
     return descriptor
 
 
@@ -3033,13 +3090,14 @@ class SageSlice:
 
 def _builtins_tuple_subclass_init(
     self: Any,
-    iterable: Any = runtime.undefined,
+    *args: Any,
 ) -> None:
-    self._tuple_values = (
-        []
-        if iterable is runtime.undefined
-        else list(iterable)
-    )
+    # ``tuple.__new__`` has already fixed the immutable value.  Initialization
+    # is intentionally a no-op in that case and may receive the subclass's
+    # original constructor arguments rather than a single iterable.
+    if hasattr(self, '_tuple_values'):
+        return
+    self._tuple_values = [] if len(args) == 0 else list(args[0])
 
 
 def _builtins_tuple_subclass_len(self: Any) -> _Int:
@@ -3181,6 +3239,12 @@ def ρσ_finalize_namedtuple_class(
     runtime.reflect.set(prototype, '_asdict', tuple_asdict)
     runtime.reflect.set(cls, '_fields', runtime.math_tuple(names))
     runtime.reflect.set(cls, '_field_defaults', dict())
+    # Keyword interpolation happens at the class-call boundary before the
+    # generated constructor forwards into the replacement tuple initializer.
+    # The original synthetic ``NamedTuple.__init__`` metadata has no field
+    # names, so publish the finalized constructor signature on the class.
+    runtime.reflect.set(cls, '__argnames__', names)
+    runtime.reflect.set(cls, '__handles_kwarg_interpolation__', True)
     runtime.reflect.set(prototype, '_fields', runtime.math_tuple(names))
     runtime.reflect.set(prototype, '_field_defaults', dict())
 
@@ -3719,6 +3783,12 @@ def ρσ_getattr(
         if name == '__traceback__':
             traceback = runtime.reflect.get(value, name)
             return value if traceback is runtime.undefined else traceback
+        if name == 'tb_next':
+            # Native V8 stacks are currently represented as one traceback
+            # carrier.  Expose the terminal link required by traceback-
+            # walking code instead of raising AttributeError while an
+            # unrelated exception is already being handled.
+            return None
         if name in ('__cause__', '__context__'):
             context = runtime.reflect.get(value, name)
             return None if context is runtime.undefined else context
@@ -3779,6 +3849,16 @@ def ρσ_getattr(
     if name == '__class__':
         if _builtins_is_python_class(value):
             return ρσ_type
+        if (
+            _builtins_get_member(
+                value, '__sagejs_callable_instance__') is True
+            and runtime.strict_equal(
+                runtime.jstype(
+                    _builtins_get_member(value, '__python_type__')),
+                'function',
+            )
+        ):
+            return _builtins_get_member(value, '__python_type__')
         if runtime.strict_equal(runtime.jstype(value), 'function'):
             return ρσ_function_type
         return _builtins_get_member(value, 'constructor')
@@ -3857,11 +3937,8 @@ def ρσ_getattr(
             if _builtins_has_member(
                 class_member, '__classmethod__'
             ):
-                return runtime.reflect.apply(
-                    runtime.reflect.get(class_member, 'bind'),
-                    class_member,
-                    [value],
-                )
+                return _builtins_bind_python_function(
+                    class_member, value)
             if _builtins_has_member(
                 class_member, '__staticmethod__'
             ):
@@ -3880,6 +3957,37 @@ def ρσ_getattr(
             ) is not True:
                 return runtime.unbound_method_adapter(class_member)
             return class_member
+        # A Python class is an instance of its metaclass.  Methods inherited
+        # from that metaclass (for example pytest's ``NodeMeta._create``) bind
+        # to the class object, not to instances in the class prototype chain.
+        python_metaclass = _builtins_get_member(value, '__python_type__')
+        if (
+            _builtins_is_python_class(value)
+            and not _builtins_has_member(value, name)
+            and
+            runtime.strict_equal(
+                runtime.jstype(python_metaclass), 'function')
+            and python_metaclass is not ρσ_type
+            and python_metaclass is not value
+        ):
+            metaclass_prototype = _builtins_get_member(
+                python_metaclass, 'prototype')
+            if (
+                metaclass_prototype is not runtime.undefined
+                and _builtins_has_member(metaclass_prototype, name)
+            ):
+                metaclass_member = _builtins_get_member(
+                    metaclass_prototype, name)
+                if _builtins_has_member(
+                    metaclass_member, '__staticmethod__'
+                ):
+                    return metaclass_member
+                if runtime.strict_equal(
+                    runtime.jstype(metaclass_member), 'function'
+                ):
+                    return _builtins_bind_python_function(
+                        metaclass_member, value)
+                return metaclass_member
     if _builtins_has_member(value, name):
         member = _builtins_get_member(value, name)
         # ``undefined`` is an implementation detail of the JavaScript host,
@@ -3900,11 +4008,7 @@ def ρσ_getattr(
             runtime.strict_equal(runtime.jstype(value), 'function')
             and _builtins_has_member(member, '__classmethod__')
         ):
-            return runtime.reflect.apply(
-                runtime.reflect.get(member, 'bind'),
-                member,
-                [value],
-            )
+            return _builtins_bind_python_function(member, value)
         if (
             _builtins_member_is_function(member, '__get__')
             and (
@@ -3964,6 +4068,23 @@ def ρσ_getattr(
                 [receiver],
             )
         return member
+    # Native JavaScript inheritance represents only Python's primary base.
+    # The descriptor search above follows the computed Python MRO; reuse that
+    # authoritative result for ordinary non-data descriptors when the native
+    # member lookup missed it.
+    if descriptor is not runtime.undefined:
+        if _builtins_member_is_function(descriptor, '__get__'):
+            return _builtins_call_member(
+                descriptor, '__get__', [value, owner])
+        if _builtins_has_member(descriptor, '__staticmethod__'):
+            return descriptor
+        if (
+            runtime.strict_equal(
+                runtime.jstype(descriptor), 'function')
+            and not _builtins_is_python_class(descriptor)
+        ):
+            return _builtins_bind_python_function(descriptor, value)
+        return descriptor
     if _builtins_member_is_function(value, '__getattr__'):
         try:
             return _builtins_call_member(
@@ -4025,6 +4146,19 @@ def ρσ_setattr(value: Any, name: _Str, member: Any) -> None:
             _builtins_call_member(
                 member, '__set_name__', [value, name])
     if not runtime.reflect.set(value, name, member):
+        own_descriptor = runtime.object.getOwnPropertyDescriptor(value, name)
+        if (
+            runtime.strict_equal(runtime.jstype(value), 'function')
+            and own_descriptor is not runtime.undefined
+            and runtime.reflect.get(own_descriptor, 'configurable') is True
+        ):
+            replacement = runtime.object.create(None)
+            replacement.value = member
+            replacement.writable = True
+            replacement.configurable = True
+            replacement.enumerable = True
+            runtime.object.defineProperty(value, name, replacement)
+            return
         raise AttributeError(
             "object attribute '" + name + "' is read-only")
 
@@ -4072,6 +4206,39 @@ class _FunctionCode:
 
     def __init__(self, source_function: Any) -> None:
         self.source_function = source_function
+
+    @property
+    def co_filename(self) -> _Str:
+        globals_mapping = _builtins_get_member(
+            self.source_function, '__globals__')
+        if globals_mapping is not runtime.undefined:
+            filename = globals_mapping.get('__file__', '')
+            if filename is not None:
+                return filename
+        return ''
+
+    @property
+    def co_name(self) -> _Str:
+        return _builtins_get_member(self.source_function, '__name__')
+
+    @property
+    def co_qualname(self) -> _Str:
+        qualname = _builtins_get_member(
+            self.source_function, '__qualname__')
+        if qualname is runtime.undefined:
+            return self.co_name
+        return qualname
+
+    @property
+    def co_firstlineno(self) -> _Int:
+        # Exact line metadata will be attached by the source-mapping layer.
+        # A stable one-based fallback still gives inspection/reporting tools
+        # a valid source location instead of exposing a non-code sentinel.
+        line = _builtins_get_member(
+            self.source_function, '__firstlineno__')
+        if line is runtime.undefined:
+            return 1
+        return line
 
 
 def ρσ_function_code(source_function: Any) -> _FunctionCode:
@@ -4420,12 +4587,47 @@ def ρσ_py_super(
 ) -> Any:
     if runtime.strict_equal(cls, runtime.undefined):
         raise RuntimeError('super(): no arguments')
+
+    def mro_contains(candidate_mro: Any, candidate_cls: Any) -> _Bool:
+        candidate_prototype = _builtins_get_member(
+            candidate_cls, 'prototype')
+        if candidate_mro:
+            for entry in candidate_mro:
+                if (
+                    entry is candidate_cls
+                    or _builtins_get_member(entry, 'prototype')
+                    is candidate_prototype
+                ):
+                    return True
+        return False
+
+    represented_class = (
+        instance
+        if _builtins_is_python_class(instance)
+        else _builtins_get_member(instance, 'constructor')
+    )
+    represented_mro = _builtins_get_member(
+        represented_class, '__mro__')
+    python_subtype = mro_contains(represented_mro, cls)
     class_subtype = (
         _builtins_is_python_class(instance)
         and (
             instance is cls
             or runtime.instance_of(
                 runtime.reflect.get(instance, 'prototype'), cls)
+            or _builtins_get_member(instance, '__python_type__') is cls
+            or (
+                _builtins_is_python_class(
+                    _builtins_get_member(instance, '__python_type__'))
+                and runtime.instance_of(
+                    runtime.reflect.get(
+                        _builtins_get_member(
+                            instance, '__python_type__'),
+                        'prototype',
+                    ),
+                    cls,
+                )
+            )
         )
     )
     if (
@@ -4433,12 +4635,53 @@ def ρσ_py_super(
         or (
             not runtime.instance_of(instance, cls)
             and not class_subtype
+            and not python_subtype
         )
     ):
         raise TypeError(
             'super(type, obj): obj must be an instance or subtype of type')
 
-    prototype = runtime.object.getPrototypeOf(cls.prototype)
+    instance_class = represented_class
+    mro = _builtins_get_member(instance_class, '__mro__')
+
+    # A class object is an instance of its metaclass.  Inside a metaclass
+    # method, ``super()`` therefore follows the metaclass MRO, whereas inside
+    # an ordinary classmethod it follows the class MRO.  Host functions
+    # represent both cases, so distinguish them by where ``cls`` occurs.
+    if _builtins_is_python_class(instance) and not mro_contains(mro, cls):
+        metaclass = _builtins_get_member(instance, '__python_type__')
+        metaclass_mro = _builtins_get_member(metaclass, '__mro__')
+        if mro_contains(metaclass_mro, cls):
+            instance_class = metaclass
+            mro = metaclass_mro
+    if not mro:
+        mro = _builtins_get_member(cls, '__mro__')
+
+    def lookup_super_member(name: Any) -> Any:
+        found_cls = False
+        cls_prototype = _builtins_get_member(cls, 'prototype')
+        if mro:
+            for base in mro:
+                if not found_cls:
+                    if (
+                        base is cls
+                        or _builtins_get_member(base, 'prototype')
+                        is cls_prototype
+                    ):
+                        found_cls = True
+                    continue
+                base_prototype = _builtins_get_member(base, 'prototype')
+                if (
+                    base_prototype is None
+                    or base_prototype is runtime.undefined
+                ):
+                    continue
+                descriptor = runtime.object.getOwnPropertyDescriptor(
+                    base_prototype, name)
+                if descriptor is not runtime.undefined:
+                    return runtime.reflect.get(
+                        base_prototype, name, instance)
+        return runtime.undefined
 
     def super_repr() -> _Str:
         return (
@@ -4461,21 +4704,35 @@ def ρσ_py_super(
     ) -> Any:
         if runtime.reflect.has(proxy_target, name):
             return runtime.reflect.get(proxy_target, name)
-        member = runtime.reflect.get(prototype, name)
+        member = lookup_super_member(name)
+        if member is runtime.undefined:
+            return runtime.undefined
         if runtime.strict_equal(runtime.jstype(member), 'function'):
             if _builtins_has_member(member, '__staticmethod__'):
                 return member
-            return runtime.reflect.apply(
+            receiver = instance
+            if _builtins_has_member(member, '__classmethod__'):
+                receiver = instance_class
+            bound = runtime.reflect.apply(
                 runtime.reflect.get(member, 'bind'),
                 member,
-                [instance],
+                [receiver],
             )
+            # Function.bind preserves execution semantics but discards the
+            # Python signature metadata used by keyword interpolation.
+            runtime.object.assign(bound, member)
+            runtime.reflect.set(bound, '__self__', receiver)
+            runtime.reflect.set(bound, '__func__', member)
+            return bound
+        if _builtins_member_is_function(member, '__get__'):
+            return _builtins_call_member(
+                member, '__get__', [instance, instance_class])
         return member
 
     def has_member(proxy_target: Any, name: Any) -> _Bool:
         return (
             runtime.reflect.has(proxy_target, name)
-            or runtime.reflect.has(prototype, name)
+            or lookup_super_member(name) is not runtime.undefined
         )
 
     def reject_assignment(
@@ -4570,6 +4827,43 @@ def ρσ_pow(
     return runtime.normalize_integer(answer)
 
 
+def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
+    """Implement ``type.__call__`` after a custom metaclass delegates."""
+    interpolate = runtime.reflect.get(
+        runtime.global_object, 'ρσ_interpolate_kwargs')
+    call_args = list(args)
+    runtime.reflect.apply(
+        runtime.array.prototype.push, call_args, [keywords])
+    allocator = ρσ_getattr(cls, '__new__', None)
+    if (
+        runtime.strict_equal(runtime.jstype(allocator), 'function')
+        and allocator is not _builtins_object_new
+    ):
+        allocator_args = [cls]
+        allocator_args.extend(call_args)
+        instance = runtime.reflect.apply(
+            interpolate,
+            runtime.undefined,
+            [runtime.undefined, allocator, allocator_args],
+        )
+    else:
+        instance = runtime.object.create(
+            runtime.reflect.get(cls, 'prototype'))
+    if not runtime.instance_of(instance, cls):
+        return instance
+    initializer = ρσ_getattr(instance, '__init__', None)
+    if runtime.strict_equal(runtime.jstype(initializer), 'function'):
+        # ``initializer`` is already descriptor-bound.  Calling it through
+        # the compiler's generic callable fallback would resolve ``__call__``
+        # a second time and lose the keyword packet.
+        runtime.reflect.apply(
+            interpolate,
+            runtime.undefined,
+            [runtime.undefined, initializer, call_args],
+        )
+    return instance
+
+
 def ρσ_type(*values: Any) -> Any:
     if len(values) == 3:
         class_name = values[0]
@@ -4593,31 +4887,8 @@ def ρσ_type(*values: Any) -> Any:
             raise TypeError('type() argument 3 must be dict')
 
         def dynamic_class(*args: Any, **keywords: Any) -> Any:
-            allocator = ρσ_getattr(
-                dynamic_class, '__new__', None)
-            if runtime.strict_equal(
-                runtime.jstype(allocator), 'function'
-            ):
-                instance = allocator(
-                    dynamic_class, *args, **keywords)
-            else:
-                instance = runtime.object.create(
-                    runtime.reflect.get(dynamic_class, 'prototype'))
-            if not runtime.instance_of(instance, dynamic_class):
-                return instance
-            # Namespace functions installed by ``type(name, bases, ns)`` are
-            # ordinary Python descriptors.  Resolve ``__init__`` through
-            # getattr so it is bound exactly as it would be on a class
-            # statement, including functions created by exec().  Calling the
-            # bound function also gives dynamically generated classes normal
-            # keyword-argument support.
-            initializer = ρσ_getattr(
-                instance, '__init__', None)
-            if runtime.strict_equal(
-                runtime.jstype(initializer), 'function'
-            ):
-                initializer(*args, **keywords)
-            return instance
+            return _builtins_type_call(
+                dynamic_class, *args, **keywords)
 
         prototype = runtime.object.create(
             runtime.reflect.get(parent, 'prototype'))
@@ -4632,6 +4903,25 @@ def ρσ_type(*values: Any) -> Any:
         for pair in namespace.items():
             member_name = pair[0]
             member = pair[1]
+            # These slots describe the newly allocated class itself.  A
+            # temporary compiler-emitted class handed to a metaclass can have
+            # stale structural metadata (notably during circular imports),
+            # and CPython does not treat either name as an override supplied
+            # by the class namespace.
+            if member_name in ('__bases__', '__mro__'):
+                continue
+            if (
+                runtime.strict_equal(runtime.jstype(member), 'function')
+                and _builtins_get_member(
+                    member, '__staticmethod__') is not True
+            ):
+                # Functions supplied to ``type(name, bases, namespace)`` are
+                # descriptors.  Compiler-emitted class methods normally rely
+                # on their statically known class binding path, so retain this
+                # explicit marker when rebuilding the class through a custom
+                # metaclass.
+                runtime.reflect.set(
+                    member, '__python_descriptor__', True)
             runtime.reflect.set(prototype, member_name, member)
             if (
                 runtime.string_find(member_name, '__') != 0
@@ -4650,12 +4940,38 @@ def ρσ_type(*values: Any) -> Any:
                     '__set_name__',
                     [dynamic_class, member_name],
                 )
+        compute_mro = runtime.reflect.get(
+            runtime.global_object, 'ρσ_compute_mro')
+        if runtime.strict_equal(runtime.jstype(compute_mro), 'function'):
+            runtime.reflect.set(
+                dynamic_class,
+                '__mro__',
+                runtime.reflect.apply(
+                    compute_mro,
+                    runtime.undefined,
+                    [dynamic_class, bases],
+                ),
+            )
         runtime.set_class_repr(dynamic_class, "<class '" + class_name + "'>")
         return dynamic_class
     if len(values) != 1:
         raise TypeError('type() takes 1 or 3 arguments')
     value = values[0]
     value_type = runtime.jstype(value)
+    module_namespaces = runtime.reflect.get(
+        runtime.global_object, '__sagejs_module_namespaces__')
+    module_type = runtime.reflect.get(
+        runtime.global_object, '__sagejs_module_type_class__')
+    if (
+        module_namespaces is not runtime.undefined
+        and module_type is not runtime.undefined
+        and runtime.reflect.apply(
+            runtime.reflect.get(module_namespaces, 'has'),
+            module_namespaces,
+            [value],
+        )
+    ):
+        return module_type
     if (
         runtime.strict_equal(value_type, 'number')
     ):
@@ -4686,6 +5002,114 @@ def ρσ_type(*values: Any) -> Any:
     if _builtins_is_python_class(value):
         return ρσ_type
     return _builtins_get_member(value, 'constructor')
+
+
+runtime.reflect.set(
+    runtime.reflect.get(ρσ_type, 'prototype'),
+    '__call__',
+    runtime.native_method_adapter(_builtins_type_call),
+)
+
+
+def _builtins_type_class_getitem(type_arguments: Any) -> Any:
+    return ρσ_generic_alias(  # type: ignore[name-defined]  # noqa: F821
+        ρσ_type, type_arguments)
+
+
+runtime.reflect.set(
+    ρσ_type, '__class_getitem__', _builtins_type_class_getitem)
+
+
+def _builtins_type_new(
+    metaclass: Any,
+    class_name: _Str,
+    bases: Any,
+    namespace: Any,
+) -> Any:
+    """Implement the unbound ``type.__new__`` protocol used by metaclasses."""
+    # This is the allocation half of the metaclass protocol, so it must call
+    # the builtin implementation directly.  An ordinary Python-level
+    # ``ρσ_type(...)`` call is deliberately dispatched through
+    # ``type.__call__``; doing that from ``type.__new__`` recursively enters
+    # instance construction and can mistake the metaclass for the new class's
+    # bases.
+    return runtime.reflect.apply(
+        ρσ_type,
+        runtime.undefined,
+        [class_name, bases, namespace],
+    )
+
+
+runtime.reflect.set(_builtins_type_new, '__staticmethod__', True)
+runtime.reflect.set(ρσ_type, '__new__', _builtins_type_new)
+
+
+def ρσ_apply_metaclass(
+    metaclass: Any,
+    class_name: _Str,
+    bases: Any,
+    compiled_class: Any,
+) -> Any:
+    """Create a class through ``metaclass`` from a compiled class body."""
+    namespace = _builtins_namespace_dict(compiled_class)
+    # Class construction invokes ``type(metaclass).__call__``.  It must not
+    # invoke a ``__call__`` defined *by* the metaclass: that hook constructs
+    # instances of the eventual class (RegexLexerMeta is a prominent real
+    # example), not instances of the metaclass itself.  Go directly through
+    # the metaclass allocation protocol here.
+    allocator = _builtins_get_member(metaclass, '__new__')
+    if not runtime.strict_equal(runtime.jstype(allocator), 'function'):
+        allocator = _builtins_type_new
+    created = runtime.reflect.apply(
+        allocator,
+        runtime.undefined,
+        [metaclass, class_name, bases, namespace],
+    )
+    initializer = _builtins_get_member(
+        _builtins_get_member(metaclass, 'prototype'),
+        '__init__',
+    )
+    if (
+        runtime.strict_equal(runtime.jstype(initializer), 'function')
+        and _builtins_get_member(
+            initializer, '__sagejs_synthetic_init__') is not True
+    ):
+        runtime.reflect.apply(
+            initializer,
+            created,
+            [class_name, bases, namespace],
+        )
+    decorators = runtime.reflect.get(compiled_class, 'ρσ_decorators')
+    if decorators is not runtime.undefined:
+        runtime.reflect.set(created, 'ρσ_decorators', decorators)
+    runtime.reflect.set(created, '__python_type__', metaclass)
+    return created
+
+
+def ρσ_apply_inherited_metaclass(
+    class_name: _Str,
+    bases: Any,
+    compiled_class: Any,
+) -> Any:
+    """Apply the non-default metaclass inherited from a base class."""
+    selected = runtime.undefined
+    for base in bases:
+        candidate = _builtins_get_member(base, '__python_type__')
+        if (
+            candidate is runtime.undefined
+            or candidate is ρσ_type
+        ):
+            continue
+        if selected is runtime.undefined:
+            selected = candidate
+        elif selected is not candidate:
+            raise TypeError(
+                'metaclass conflict: the metaclass of a derived class must '
+                'be a subclass of the metaclasses of all its bases')
+    if selected is runtime.undefined:
+        return compiled_class
+    return ρσ_apply_metaclass(
+        selected, class_name, bases, compiled_class)
 
 
 def ρσ_issubclass(cls: Any, candidates: Any) -> _Bool:
@@ -6844,6 +7268,24 @@ tuple = ρσ_tuple
 slice = SageSlice
 runtime.set_class_repr(SageSlice, "<class 'slice'>")
 _tuple_prototype = runtime.reflect.get(tuple, 'prototype')
+
+
+def _builtins_tuple_new(
+    cls: Any,
+    iterable: Any = runtime.undefined,
+) -> Any:
+    """Allocate an immutable tuple, preserving a requested subclass."""
+    values = []
+    if iterable is not runtime.undefined:
+        for value in iterable:
+            values.append(value)
+    instance = runtime.object.create(runtime.reflect.get(cls, 'prototype'))
+    runtime.reflect.set(instance, '_tuple_values', values)
+    return instance
+
+
+runtime.reflect.set(_builtins_tuple_new, '__staticmethod__', True)
+runtime.reflect.set(tuple, '__new__', _builtins_tuple_new)
 runtime.reflect.set(
     _tuple_prototype, '__init__',
     runtime.native_method(_builtins_tuple_subclass_init))

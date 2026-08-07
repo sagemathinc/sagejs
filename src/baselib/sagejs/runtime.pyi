@@ -161,6 +161,7 @@ native_number_class: _Number
 number: _Number
 object: _Object
 int_builtin: Any
+bool_builtin: Any
 list_constructor: Any
 list_contains: Any
 map_class: Any

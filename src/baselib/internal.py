@@ -35,7 +35,9 @@ def _internal_call_member(
             method, runtime.undefined, call_args)
     if _internal_get_member(
         method, '__python_descriptor__'
-    ) is True:
+    ) is True and _internal_get_member(
+        method, '__self__'
+    ) is runtime.undefined:
         explicit_args = runtime.reflect.apply(
             runtime.array.prototype.slice, call_args, [])
         explicit_args.unshift(value)
@@ -560,8 +562,31 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
             return runtime.reflect.apply(
                 method, callable_instance, instance_args)
 
+        # Host functions have configurable own ``name`` and ``length``
+        # properties.  They are representation details here: retaining them
+        # would shadow Python properties or attributes with those perfectly
+        # ordinary names on callable instances (pytest's MarkDecorator uses
+        # ``name`` directly).
+        runtime.reflect.deleteProperty(callable_instance, 'name')
+        runtime.reflect.deleteProperty(callable_instance, 'length')
         runtime.object.setPrototypeOf(
             callable_instance, target_class.prototype)
+        # Callable Python instances are represented by host functions so that
+        # ordinary positional calls stay cheap.  Keep an explicit marker: a
+        # host ``typeof value === 'function'`` check alone cannot distinguish
+        # these adapters from real Python functions when keyword arguments
+        # must be matched against ``value.__call__``.
+        runtime.reflect.set(
+            callable_instance, '__sagejs_callable_instance__', True)
+        # A host function is only the representation of this Python object;
+        # its Python type remains the callable class.  This makes ``type(x)``
+        # and ``x.__class__(...)`` behave normally for objects such as
+        # Pluggy's TagTracerSub.
+        # JavaScript passes the Proxy's hidden target to apply/construct
+        # traps, but Python identity must use the public class object.  This
+        # preserves CPython's exact ``type(C()) is C`` guarantee.
+        runtime.reflect.set(
+            callable_instance, '__python_type__', wrapper)
         for function_member in ['apply', 'bind', 'call']:
             runtime.reflect.set(
                 callable_instance,
@@ -629,6 +654,8 @@ def ρσ_callable_instance_class_adapter(target: Any) -> Any:
         runtime.proxy_class,
         [target, handler],
     )
+    runtime.reflect.set(
+        wrapper, '__sagejs_callable_instance_class__', True)
     target.prototype.constructor = wrapper
     _internal_set_class_repr(wrapper, target)
     return wrapper
@@ -742,6 +769,41 @@ def ρσ_interpolate_kwargs(
     target_function: Any,
     supplied_args: Any,
 ) -> Any:
+    if (
+        not _internal_type_is(runtime.jstype(target_function), 'function')
+        or _internal_get_member(
+            target_function, '__sagejs_callable_instance__') is True
+    ):
+        receiver = target_function
+        target_function = runtime.reflect.apply(
+            runtime.reflect.get(runtime.global_object, 'ρσ_getattr'),
+            runtime.undefined,
+            [target_function, '__call__'],
+        )
+    elif (
+        not _internal_get_member(target_function, '__argnames__')
+        and not _internal_get_member(target_function, '__kwonly__')
+        and _internal_get_member(
+            target_function, '__sagejs_callable_instance_class__') is not True
+    ):
+        # Descriptor lookup can expose a callable-instance adapter as another
+        # host function (for example ``pytest.hookimpl``).  Such an adapter has
+        # no meaningful signature of its own; its bound ``__call__`` method
+        # carries the Python keyword metadata.
+        callable_method = runtime.reflect.apply(
+            runtime.reflect.get(runtime.global_object, 'ρσ_getattr'),
+            runtime.undefined,
+            [target_function, '__call__', None],
+        )
+        if (
+            callable_method is not None
+            and (
+                _internal_get_member(callable_method, '__argnames__')
+                or _internal_get_member(callable_method, '__kwonly__')
+            )
+        ):
+            receiver = target_function
+            target_function = callable_method
     keyword_object = supplied_args[-1]
     if (
         _internal_get_member(
@@ -823,6 +885,33 @@ def ρσ_interpolate_kwargs_legacy(
     target_function: Any,
     supplied_args: Any,
 ) -> Any:
+    if (
+        not _internal_type_is(runtime.jstype(target_function), 'function')
+        or _internal_get_member(
+            target_function, '__sagejs_callable_instance__') is True
+    ):
+        receiver = target_function
+        target_function = runtime.reflect.apply(
+            runtime.reflect.get(runtime.global_object, 'ρσ_getattr'),
+            runtime.undefined,
+            [target_function, '__call__'],
+        )
+    elif (
+        not _internal_get_member(target_function, '__argnames__')
+        and _internal_get_member(
+            target_function, '__sagejs_callable_instance_class__') is not True
+    ):
+        callable_method = runtime.reflect.apply(
+            runtime.reflect.get(runtime.global_object, 'ρσ_getattr'),
+            runtime.undefined,
+            [target_function, '__call__', None],
+        )
+        if (
+            callable_method is not None
+            and _internal_get_member(callable_method, '__argnames__')
+        ):
+            receiver = target_function
+            target_function = callable_method
     keyword_object = supplied_args[-1]
     argnames = _internal_get_member(
         target_function, '__argnames__')
@@ -917,7 +1006,116 @@ def _internal_native_getitem(value: Any, key: Any) -> Any:
     return runtime.native_get(value, key)
 
 
-def _internal_generic_alias(origin: Any, type_arguments: Any) -> Any:
+def ρσ_type_union(left: Any, right: Any) -> Any:
+    union_values = []
+    for value in [left, right]:
+        if _internal_get_member(value, '__sagejs_union_type__') is True:
+            for argument in _internal_get_member(value, '__args__'):
+                if argument not in union_values:
+                    union_values.push(argument)  # type: ignore[attr-defined]
+        elif value not in union_values:
+            union_values.push(value)  # type: ignore[attr-defined]
+    union = runtime.object.create(None)
+    runtime.reflect.set(union, '__sagejs_union_type__', True)
+    runtime.reflect.set(union, '__args__', runtime.math_tuple(union_values))
+
+    def union_or(other: Any) -> Any:
+        return ρσ_type_union(union, other)
+
+    def union_ror(other: Any) -> Any:
+        return ρσ_type_union(other, union)
+
+    runtime.reflect.set(union, '__or__', union_or)
+    runtime.reflect.set(union, '__ror__', union_ror)
+    return union
+
+
+def ρσ_match_pattern(subject: Any, pattern: Any) -> Any:
+    """Return structural-pattern captures, or ``None`` when it does not match.
+
+    The compiler represents patterns as small tagged lists.  Keeping the
+    matching rules here gives every backend the same semantics and avoids
+    expanding nested class/OR patterns into large JavaScript condition trees.
+    Assertion rewriting is deliberately independent of this helper.
+    """
+    captures = {}
+
+    def merge(destination: Any, source: Any) -> None:
+        for name in runtime.object.keys(source):
+            runtime.reflect.set(
+                destination, name, runtime.native_get(source, name))
+
+    def match(value: Any, descriptor: Any, bindings: Any) -> bool:
+        kind = descriptor[0]
+        if kind == 'wildcard':
+            return True
+        if kind == 'capture':
+            runtime.reflect.set(bindings, descriptor[1], value)
+            return True
+        if kind == 'as':
+            nested = {}
+            if not match(value, descriptor[1], nested):
+                return False
+            merge(bindings, nested)
+            runtime.reflect.set(bindings, descriptor[2], value)
+            return True
+        if kind == 'value':
+            return value == descriptor[1]
+        if kind == 'or':
+            for alternative in descriptor[1]:
+                nested = {}
+                if match(value, alternative, nested):
+                    merge(bindings, nested)
+                    return True
+            return False
+        if kind == 'sequence':
+            if not isinstance(value, (list, tuple)):
+                return False
+            parts = descriptor[1]
+            if len(value) != len(parts):
+                return False
+            nested = {}
+            for index in range(len(parts)):
+                if not match(value[index], parts[index], nested):
+                    return False
+            merge(bindings, nested)
+            return True
+        if kind == 'class':
+            expected = descriptor[1]
+            if not isinstance(value, expected):
+                return False
+            positional = descriptor[2]
+            keywords = descriptor[3]
+            match_args = getattr(expected, '__match_args__', ())
+            if len(positional) > len(match_args):
+                raise TypeError(
+                    f'{getattr(expected, "__name__", expected)!r} accepts '
+                    f'{len(match_args)} positional sub-patterns '
+                    f'({len(positional)} given)')
+            nested = {}
+            try:
+                for index in range(len(positional)):
+                    if not match(
+                        getattr(value, match_args[index]),
+                        positional[index],
+                        nested,
+                    ):
+                        return False
+                for entry in keywords:
+                    if not match(
+                        getattr(value, entry[0]), entry[1], nested
+                    ):
+                        return False
+            except AttributeError:
+                return False
+            merge(bindings, nested)
+            return True
+        raise RuntimeError(f'unknown structural pattern kind {kind!r}')
+
+    return captures if match(subject, pattern, captures) else None
+
+
+def ρσ_generic_alias(origin: Any, type_arguments: Any) -> Any:
     alias = runtime.object.create(None)
     runtime.reflect.set(alias, '__origin__', origin)
     runtime.reflect.set(
@@ -927,20 +1125,44 @@ def _internal_generic_alias(origin: Any, type_arguments: Any) -> Any:
         if runtime.array.isArray(type_arguments)
         else runtime.math_tuple([type_arguments]),
     )
+
+    def alias_or(other: Any) -> Any:
+        return ρσ_type_union(alias, other)
+
+    def alias_ror(other: Any) -> Any:
+        return ρσ_type_union(other, alias)
+
+    runtime.reflect.set(alias, '__or__', alias_or)
+    runtime.reflect.set(alias, '__ror__', alias_ror)
     return alias
 
 
 def ρσ_getitem(value: Any, key: Any) -> Any:
-    class_getitem = _internal_get_member(value, '__class_getitem__')
+    # ``__class_getitem__`` is commonly a classmethod inherited from an ABC.
+    # Use Python descriptor lookup so the defining class does not accidentally
+    # become the receiver when a subclass is subscribed.
+    class_getitem = getattr(
+        value, '__class_getitem__', None)
     if _internal_type_is(runtime.jstype(class_getitem), 'function'):
-        return runtime.reflect.apply(class_getitem, value, [key])
+        bound_receiver = runtime.reflect.get(class_getitem, '__self__')
+        receiver = (
+            value
+            if bound_receiver is runtime.undefined
+            else bound_receiver
+        )
+        return runtime.reflect.apply(
+            class_getitem, receiver, [key])
     if (
         value is runtime.list_constructor
         or value is runtime.tuple_builtin
         or value is runtime.string_builtin
         or value is runtime.int_builtin
+        or value is runtime.reflect.get(runtime.global_object, 'ρσ_dict')
+        or value is runtime.reflect.get(runtime.global_object, 'ρσ_set')
+        or value is runtime.reflect.get(runtime.global_object, 'ρσ_frozenset')
+        or value is runtime.reflect.get(runtime.global_object, 'ρσ_type')
     ):
-        return _internal_generic_alias(value, key)
+        return ρσ_generic_alias(value, key)
     # Native lists and tuples are JavaScript arrays.  Keep their overwhelmingly
     # common integer-index path monomorphic instead of performing reflective
     # special-method discovery for every access in a Python loop.
@@ -1361,6 +1583,11 @@ def ρσ_mixin(*classes: Any) -> None:
 def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     """Test one ``isinstance`` candidate without a variadic call frame."""
     value_type = runtime.jstype(value)
+    if _internal_get_member(candidate, '__sagejs_union_type__') is True:
+        for nested_candidate in _internal_get_member(candidate, '__args__'):
+            if ρσ_instanceof_one(value, nested_candidate):
+                return True
+        return False
     if (
         runtime.array.isArray(candidate)
         and runtime.object.isFrozen(candidate)
@@ -1369,6 +1596,15 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
             if ρσ_instanceof_one(value, nested_candidate):
                 return True
         return False
+    if _internal_get_member(candidate, '__sagejs_module_type__') is True:
+        module_namespaces = runtime.reflect.get(
+            runtime.global_object, '__sagejs_module_namespaces__')
+        if module_namespaces is not runtime.undefined:
+            has_module = runtime.reflect.get(module_namespaces, 'has')
+            if runtime.reflect.apply(
+                has_module, module_namespaces, [value]
+            ):
+                return True
     # Check the native representations of Python's fundamental types before
     # inspecting constructors and prototype chains.  In particular, numeric
     # libraries make ``isinstance(x, int_types)`` a very hot operation and
@@ -1394,6 +1630,11 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
             or runtime.instance_of(
                 value, runtime.string_class)
         )
+    ):
+        return True
+    if (
+        candidate is runtime.bool_builtin
+        and _internal_type_is(value_type, 'boolean')
     ):
         return True
     if (
@@ -1451,9 +1692,23 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     ):
         return True
     registry = _internal_get_member(candidate, '_abc_registry')
+    if not runtime.array.isArray(registry):
+        candidate_prototype = _internal_get_member(candidate, 'prototype')
+        registry = _internal_get_member(
+            candidate_prototype, '_abc_registry')
+    if not runtime.array.isArray(registry):
+        candidate_mro = _internal_get_member(candidate, '__mro__')
+        if candidate_mro is not runtime.undefined:
+            for candidate_base in candidate_mro:
+                base_prototype = _internal_get_member(
+                    candidate_base, 'prototype')
+                registry = _internal_get_member(
+                    base_prototype, '_abc_registry')
+                if runtime.array.isArray(registry):
+                    break
     if runtime.array.isArray(registry):
         for registered_class in registry:
-            if runtime.instance_of(value, registered_class):
+            if ρσ_instanceof_one(value, registered_class):
                 return True
     # Only user-defined classes need the Python multiple-inheritance walk.
     # Deferring it until every direct test has failed avoids allocating a
@@ -1462,6 +1717,16 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     prototype = _internal_get_member(constructor, 'prototype')
     if prototype is runtime.undefined:
         return False
+    # The JavaScript prototype chain can represent only the primary base.
+    # Metaclass rebuilding and mixin copying also make a hand-walk through
+    # ``prototype.__bases__`` less authoritative than Python's computed C3
+    # linearization.  Use the class MRO first; this is precisely the semantic
+    # relation that ``isinstance`` is required to answer.
+    mro = _internal_get_member(constructor, '__mro__')
+    if mro is not runtime.undefined:
+        for base in mro:
+            if candidate is base:
+                return True
     bases = _internal_get_member(prototype, '__bases__')
     if not bases:
         return False

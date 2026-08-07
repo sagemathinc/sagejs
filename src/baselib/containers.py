@@ -1115,6 +1115,36 @@ class _DictView:
             "unsupported operand type(s) for +: 'dict_" +
             self._kind + "'")
 
+    def _as_set(self) -> SageSet:
+        if self._kind == 'values':
+            raise TypeError(
+                "unsupported operand type for set operation: 'dict_values'")
+        return SageSet(self)
+
+    def __or__(self, other: Any) -> SageSet:
+        return self._as_set().union(other)
+
+    def __and__(self, other: Any) -> SageSet:
+        return self._as_set().intersection(other)
+
+    def __sub__(self, other: Any) -> SageSet:
+        return self._as_set().difference(other)
+
+    def __xor__(self, other: Any) -> SageSet:
+        return self._as_set().symmetric_difference(other)
+
+    def __ror__(self, other: Any) -> SageSet:
+        return SageSet(other).union(self)
+
+    def __rand__(self, other: Any) -> SageSet:
+        return SageSet(other).intersection(self)
+
+    def __rsub__(self, other: Any) -> SageSet:
+        return SageSet(other).difference(self)
+
+    def __rxor__(self, other: Any) -> SageSet:
+        return SageSet(other).symmetric_difference(self)
+
     def __hash__(self) -> int:
         if self._kind != 'values':
             raise TypeError(
@@ -1195,6 +1225,9 @@ class SageDict:
             answer is runtime.undefined
             and not self.jsmap.has(normalized_key)
         ):
+            missing = _get_member(self, '__missing__')
+            if missing is not runtime.undefined:
+                return _call_member(self, '__missing__', [key])
             raise KeyError(key)
         return answer
 
@@ -1305,6 +1338,21 @@ class SageDict:
             elif isinstance(iterable, runtime.map_class):
                 for pair in iterable.entries():
                     _dict_storage_setitem(self, pair[0], pair[1])
+            elif (
+                runtime.strict_equal(runtime.jstype(iterable), 'object')
+                and (
+                    runtime.reflect.get(iterable, 'constructor')
+                    is runtime.object
+                    or runtime.object.getPrototypeOf(iterable) is None
+                )
+            ):
+                # Native object literals are used as compact compiler
+                # metadata (notably function annotations).  Object.prototype
+                # also carries Python compatibility methods, so recognize the
+                # native mapping before the generic ``hasattr(items)`` path.
+                for key in runtime.object.keys(iterable):
+                    _dict_storage_setitem(
+                        self, key, runtime.native_get(iterable, key))
             elif hasattr(iterable, 'items'):
                 for pair in iterable.items():
                     _dict_storage_setitem(self, pair[0], pair[1])
@@ -1464,6 +1512,25 @@ class _LiveScopeDict(SageDict):
         for key in list(self.keys()):
             self.__delitem__(key)
 
+    def update(
+        self,
+        iterable: Any = runtime.undefined,
+        **keywords: Any,
+    ) -> None:
+        if iterable is not runtime.undefined:
+            if hasattr(iterable, 'items'):
+                for pair in iterable.items():
+                    self.__setitem__(pair[0], pair[1])
+            else:
+                for pair in iterable:
+                    if len(pair) != 2:
+                        raise ValueError(
+                            'dictionary update sequence element must have '
+                            'length 2')
+                    self.__setitem__(pair[0], pair[1])
+        for key in keywords:
+            self.__setitem__(key, keywords[key])
+
     def copy(self) -> SageDict:
         self._refresh()
         answer = SageDict()
@@ -1555,6 +1622,14 @@ def ρσ_dict(
     **keywords: Any,
 ) -> SageDict:
     return SageDict(iterable, **keywords)
+
+
+def ρσ_dict_unpack(*parts: Any) -> SageDict:
+    """Build a dictionary from ordered PEP 448 literal components."""
+    answer = SageDict()
+    for part in parts:
+        answer.update(part)
+    return answer
 
 
 def ρσ_scope_dict(values: Any) -> SageDict:

@@ -233,12 +233,23 @@ export function runRuntimeBootstrap(
     let source: string | undefined;
     let filename = "";
     let namespaceDirectory = "";
-    const locations = [
+    // Python code is allowed to mutate ``sys.path`` at runtime.  Pytest's
+    // default import mode relies on this when it prepends a test directory;
+    // consulting only the evaluator's startup paths made an explicitly
+    // selected test file collect as an empty module.
+    const sysModule = Reflect.get(registry, "sys");
+    const dynamicSysPath = sysModule == null
+      ? []
+      : Reflect.get(sysModule, "path");
+    const locations = [...new Set([
+      ...(Array.isArray(dynamicSysPath)
+        ? dynamicSysPath.map((value) => String(value))
+        : []),
       ...additionalImportDirs,
       ...getImportDirs(),
       importPath,
       process.cwd(),
-    ];
+    ])];
     for (const location of locations) {
       for (const candidate of [
         join(location, `${modulePath}.py`),

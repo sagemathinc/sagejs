@@ -254,6 +254,11 @@ class deque:
 @runtime.sequence_class
 class OrderedDict:
 
+    @classmethod
+    def __class_getitem__(cls, _parameters):
+        """Return the runtime origin for an erased generic alias."""
+        return cls
+
     _order_sensitive_equality = True
 
     def __init__(
@@ -772,6 +777,103 @@ class ChainMap:
             type(self).__name__ + '('
             + ', '.join(repr(mapping) for mapping in self.maps) + ')'
         )
+
+
+class UserDict:
+    """Dictionary wrapper compatible with ``collections.UserDict``."""
+
+    def __init__(self, initialdata: Any = None, **keywords: Any) -> None:
+        self.data = {}
+        if initialdata is not None:
+            self.data.update(initialdata)
+        self.data.update(keywords)
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __iter__(self) -> Iterator[Any]:
+        return iter(self.data)
+
+    def __getitem__(self, key: Any) -> Any:
+        return self.data[key]
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        self.data[key] = value
+
+    def __delitem__(self, key: Any) -> None:
+        del self.data[key]
+
+    def __contains__(self, key: Any) -> bool:
+        return key in self.data
+
+    def keys(self) -> Any:
+        return self.data.keys()
+
+    def values(self) -> Any:
+        return self.data.values()
+
+    def items(self) -> Any:
+        return self.data.items()
+
+    def get(self, key: Any, default: Any = None) -> Any:
+        return self.data.get(key, default)
+
+    def update(self, other: Any = (), **keywords: Any) -> None:
+        self.data.update(other)
+        self.data.update(keywords)
+
+    def copy(self) -> Any:
+        return type(self)(self.data)
+
+    def __repr__(self) -> str:
+        return repr(self.data)
+
+
+class UserList:
+    """List wrapper compatible with ``collections.UserList``."""
+
+    def __init__(self, initiallist: Any = None) -> None:
+        self.data = [] if initiallist is None else list(initiallist)
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __iter__(self) -> Iterator[Any]:
+        return iter(self.data)
+
+    def __getitem__(self, index: Any) -> Any:
+        return self.data[index]
+
+    def __setitem__(self, index: Any, value: Any) -> None:
+        self.data[index] = value
+
+    def __delitem__(self, index: Any) -> None:
+        del self.data[index]
+
+    def append(self, value: Any) -> None:
+        self.data.append(value)
+
+    def __repr__(self) -> str:
+        return repr(self.data)
+
+
+class UserString:
+    """String wrapper compatible with ``collections.UserString``."""
+
+    def __init__(self, sequence: Any) -> None:
+        self.data = str(sequence)
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def __getitem__(self, index: Any) -> Any:
+        return self.data[index]
+
+    def __str__(self) -> str:
+        return self.data
+
+    def __repr__(self) -> str:
+        return repr(self.data)
 
 
 def _normalize_field_names(field_names: Any) -> list[str]:

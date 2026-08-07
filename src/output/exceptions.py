@@ -46,6 +46,13 @@ def print_catch(self, output):
         output.indent()
         output.spaced('ρσ_last_exception', '=',
                       'ρσ_Exception'), output.end_statement()
+        # Lazy modules execute in separate JavaScript closures, so their
+        # lexical ``ρσ_last_exception`` bindings are not visible to the
+        # stdlib ``sys`` module.  Mirror the normalized exception on the
+        # shared global object for ``sys.exc_info()`` and ``sys.exception()``.
+        output.indent()
+        output.spaced('globalThis.__sagejs_last_exception__', '=',
+                      'ρσ_Exception'), output.end_statement()
         output.indent()
         no_default = True
         for i, exception in enumerate(self.body):
@@ -77,11 +84,14 @@ def print_catch(self, output):
                                 'Object.prototype.toString.call('
                                 'ρσ_Exception) === "[object Error]"')
                         else:
-                            output.print("ρσ_Exception")
-                            output.space()
-                            output.print("instanceof")
-                            output.space()
+                            # The exception expression may evaluate to either
+                            # one class or a runtime tuple of classes (pytest
+                            # stores such tuples in module constants).  Raw
+                            # JavaScript ``instanceof`` cannot accept the
+                            # latter and leaks a host TypeError.
+                            output.print("ρσ_instanceof_one(ρσ_Exception,")
                             err.print(output)
+                            output.print(")")
 
                 output.with_parens(f_errors)
                 output.space()

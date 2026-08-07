@@ -163,6 +163,7 @@ function print_top_level_usage() {
   console.log(label("Advanced subcommands:"));
   console.log("  docs            search and export installed API documentation");
   console.log("  pip             install pure-Python packages for Sage.js");
+  console.log("  pytest          run installed pytest with Sage.js Python");
   console.log("  compile         compile Sage.js source to JavaScript");
   console.log("  repl            start a REPL with detailed options");
   console.log("  lint            check Python/Sage source");
@@ -292,6 +293,12 @@ function parse_args() {
       ans.execute = true;
     }
     ans.auto_mode = true;
+  }
+  // pytest owns its complete argument grammar. Pass every token through
+  // unchanged, including options unknown to the Sage.js command parser.
+  if (ans.mode === "pytest") {
+    ans.files = all_args;
+    return ans;
   }
   options = groups[ans.mode].options;
 
@@ -653,6 +660,18 @@ opt("no_deps", "", "bool", false, function () {
 Do not install package dependencies.
 */
 });
+
+create_group(
+  "pytest",
+  "[pytest options] [paths]",
+  function () {
+    /*
+Run an installed, unmodified pytest distribution in Sage.js Python mode.
+Third-party plugin autoloading is disabled and --assert=plain is selected by
+default; plugin compatibility and CPython assertion rewriting are later goals.
+*/
+  }
+);
 
 create_group(
   "docs",

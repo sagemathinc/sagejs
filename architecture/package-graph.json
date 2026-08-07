@@ -165,34 +165,35 @@
       "max_source_bytes": 440000,
       "depends_on": ["core-runtime"],
       "modules": [
-        "aes", "array", "base64", "bisect", "collections", "contextlib",
-        "csv", "elementmaker", "encodings", "fnmatch", "functools", "gc",
-        "genericpath", "gettext", "glob", "gzip", "hashlib", "heapq",
-        "http", "io", "js", "json", "math", "multiprocessing", "ntpath",
-        "operator", "os", "pathlib", "posixpath", "pythonize", "random",
-        "re", "sage", "sagejs_serialization", "shutil", "socket",
-        "sagejs.javascript", "sqlite3", "statistics", "struct", "subprocess", "sys", "tempfile", "time",
-        "traceback", "types", "urllib", "uuid", "weakref", "zlib"
+        "aes", "argparse", "array", "ast", "atexit", "base64", "bdb", "bisect", "codecs", "collections", "contextlib", "decimal",
+        "csv", "dataclasses", "elementmaker", "encodings", "errno", "fnmatch", "functools", "gc",
+        "genericpath", "gettext", "glob", "gzip", "hashlib", "heapq", "locale", "logging", "marshal",
+        "http", "importlib", "io", "js", "json", "keyword", "math", "multiprocessing", "ntpath",
+        "operator", "os", "pathlib", "pdb", "posixpath", "pprint", "pythonize", "random",
+        "re", "reprlib", "sage", "sagejs_serialization", "shlex", "shutil", "socket",
+        "sagejs.javascript", "sqlite3", "stat", "statistics", "struct", "subprocess", "sys", "tempfile", "time",
+        "tokenize", "traceback", "types", "urllib", "uuid", "weakref", "xml", "zlib"
       ],
       "files": [
-        "src/lib/aes.py", "src/lib/array.py", "src/lib/base64.py",
+        "src/lib/aes.py", "src/lib/argparse.py", "src/lib/array.py", "src/lib/ast.py", "src/lib/atexit.py", "src/lib/base64.py", "src/lib/bdb.py", "src/lib/decimal.py",
+        "src/lib/codecs.py",
         "src/lib/bisect.py", "src/lib/collections.py", "src/lib/contextlib.py",
-        "src/lib/csv.py", "src/lib/elementmaker.py", "src/lib/encodings.py",
+        "src/lib/csv.py", "src/lib/dataclasses.py", "src/lib/elementmaker.py", "src/lib/encodings.py", "src/lib/errno.py",
         "src/lib/fnmatch.py", "src/lib/functools.py", "src/lib/gc.py",
         "src/lib/genericpath.py", "src/lib/gettext.py", "src/lib/glob.py",
         "src/lib/gzip.py", "src/lib/hashlib.py", "src/lib/heapq.py",
-        "src/lib/io.py", "src/lib/js.py", "src/lib/json.py", "src/lib/math.py",
+        "src/lib/io.py", "src/lib/js.py", "src/lib/json.py", "src/lib/keyword.py", "src/lib/locale.py", "src/lib/logging.py", "src/lib/marshal.py", "src/lib/math.py",
         "src/lib/multiprocessing.py", "src/lib/ntpath.py", "src/lib/operator.py",
-        "src/lib/os.py", "src/lib/pathlib.py", "src/lib/posixpath.py",
-        "src/lib/pythonize.py", "src/lib/random.py", "src/lib/re.py",
-        "src/lib/sagejs_serialization.py", "src/lib/shutil.py",
-        "src/lib/socket.py", "src/lib/sqlite3.py", "src/lib/statistics.py", "src/lib/struct.py",
+        "src/lib/os.py", "src/lib/pathlib.py", "src/lib/pdb.py", "src/lib/posixpath.py", "src/lib/pprint.py",
+        "src/lib/pythonize.py", "src/lib/random.py", "src/lib/re.py", "src/lib/reprlib.py",
+        "src/lib/sagejs_serialization.py", "src/lib/shlex.py", "src/lib/shutil.py",
+        "src/lib/socket.py", "src/lib/sqlite3.py", "src/lib/stat.py", "src/lib/statistics.py", "src/lib/struct.py",
         "src/lib/subprocess.py", "src/lib/sys.py", "src/lib/tempfile.py",
-        "src/lib/time.py", "src/lib/traceback.py", "src/lib/types.py",
+        "src/lib/time.py", "src/lib/tokenize.py", "src/lib/traceback.py", "src/lib/types.py",
         "src/lib/uuid.py", "src/lib/weakref.py", "src/lib/zlib.py"
       ],
       "prefixes": [
-        "src/lib/http/", "src/lib/sage/", "src/lib/sagejs/", "src/lib/urllib/"
+        "src/lib/http/", "src/lib/importlib/", "src/lib/sage/", "src/lib/sagejs/", "src/lib/urllib/", "src/lib/xml/"
       ]
     },
     {

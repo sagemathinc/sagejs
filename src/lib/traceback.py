@@ -67,6 +67,17 @@ def format_exception(exc=runtime.undefined, value=None, tb=None, limit=None,
     return [line + '\n' for line in lines]
 
 
+def format_exception_only(exc, value=None):
+    """Format the exception type and value without stack frames."""
+    if value is not None:
+        exc = value
+    name = getattr(type(exc), '__name__', 'Exception')
+    message = str(exc)
+    if message:
+        return [name + ': ' + message + '\n']
+    return [name + '\n']
+
+
 def format_exc(limit=None, chain=True):
     return ''.join(format_exception(limit=limit, chain=chain))
 

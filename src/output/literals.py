@@ -145,7 +145,16 @@ def print_set(self, output):
         for index, item in enumerate(self.items):
             if index:
                 output.comma()
-            item.value.print(output)
+            value = item.value
+            if (
+                value.operator is '*'
+                and value.expression is not undefined
+            ):
+                output.print('...Array.from(ρσ_Iterable(')
+                value.expression.print(output)
+                output.print('))')
+            else:
+                value.print(output)
 
     output.with_parens(lambda: output.with_square(print_items))
 
