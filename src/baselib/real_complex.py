@@ -647,13 +647,20 @@ def _python_complex_parts(value: Any) -> tuple[float, float]:
     if isinstance(value, PythonComplex):
         return value._real, value._imag
     if isinstance(value, RealNumberElement):
-        return float(value), 0.0
+        return runtime.number(float(value)), 0.0
     if isinstance(value, sage.Rational):
         return (
-            runtime.number(value._numerator)
-            / runtime.number(value._denominator),
+            runtime.native_div(
+                runtime.number(value._numerator),
+                runtime.number(value._denominator),
+            ),
             0.0
         )
+    if (
+        runtime.jstype(value) == 'object'
+        and runtime.native_get(value, '__sagejs_float__') is True
+    ):
+        return runtime.number(value), 0.0
     if runtime.is_exact_integer(value):
         return runtime.number(value), 0.0
     if runtime.jstype(value) == 'number':
@@ -670,17 +677,20 @@ class PythonComplex:
     def __init__(self, real: Any = 0, imag: Any = 0) -> None:
         real_part = _python_complex_parts(real)
         imag_part = _python_complex_parts(imag)
-        self._real = real_part[0] - imag_part[1]
-        self._imag = real_part[1] + imag_part[0]
+        # Complex components stay as primitive binary64 numbers internally;
+        # their public ``real`` and ``imag`` properties restore Python float
+        # identity when an integral value crosses back into Python code.
+        self._real = runtime.native_sub(real_part[0], imag_part[1])
+        self._imag = runtime.native_add(real_part[1], imag_part[0])
         runtime.object.freeze(self)
 
     @property
     def real(self) -> float:
-        return self._real
+        return float(self._real)
 
     @property
     def imag(self) -> float:
-        return self._imag
+        return float(self._imag)
 
     def __add__(self, other: Any) -> Any:
         try:
@@ -830,7 +840,7 @@ class PythonComplex:
         return self
 
     def __abs__(self) -> float:
-        return runtime.math.hypot(self._real, self._imag)
+        return float(runtime.math.hypot(self._real, self._imag))
 
     def __bool__(self) -> bool:
         return self._real != 0 or self._imag != 0

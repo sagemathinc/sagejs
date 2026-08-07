@@ -27,13 +27,13 @@ def ceil(x):
 def copysign(x, y):
     x = Math.abs(x)
     if y < 0:
-        return -x
+        return float(-x)
     else:
-        return x
+        return float(x)
 
 
 def fabs(x):
-    return Math.abs(x)
+    return float(Math.abs(x))
 
 
 def factorial(x):
@@ -69,7 +69,7 @@ def fmod(x, y):
     # javascript's % operator isn't consistent with C fmod implementation, this function is
     while y <= x:
         x -= y
-    return x
+    return float(x)
 
 
 def fsum(iterable):
@@ -88,7 +88,7 @@ def fsum(iterable):
             x = hi
         #partials[i:] = [x]
         partials.splice(i, partials.length - i, x)
-    return sum(partials)
+    return float(sum(partials))
 
 
 def isinf(x):
@@ -120,12 +120,12 @@ def ldexp(x, i):
     result = x * Math.pow(2, i)
     if isFinite(x) and x != 0.0 and not isFinite(result):
         raise OverflowError('math range error')
-    return result
+    return float(result)
 
 
 def modf(x):
     m = fmod(x, 1)
-    return m, x - m
+    return float(m), float(x - m)
 
 
 def trunc(x):
@@ -136,7 +136,7 @@ def trunc(x):
 # Power and logarithmic functions
 ########################################
 def exp(x):
-    return Math.exp(x)
+    return float(Math.exp(x))
 
 
 def expm1(x):
@@ -144,9 +144,9 @@ def expm1(x):
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/expm1
     #return Math.expm1(x)
     if Math.abs(x) < 1e-5:
-        return x + 0.5 * x * x
+        return float(x + 0.5 * x * x)
     else:
-        return Math.exp(x) - 1
+        return float(Math.exp(x) - 1)
 
 
 def log(x, base=e):
@@ -167,7 +167,7 @@ def log(x, base=e):
             raise ValueError('math domain error')
         return Math.log(converted)
 
-    return natural_log(x) / natural_log(base)
+    return float(natural_log(x) / natural_log(base))
 
 
 def log1p(x):
@@ -180,78 +180,78 @@ def log1p(x):
     if x <= -1:
         return Number.NEGATIVE_INFINITY
     if x < 0 or x > 1:
-        return Math.log(1 + x)
+        return float(Math.log(1 + x))
     for i in range(1, n):
         if i % 2 is 0:
             ret -= Math.pow(x, i) / i
         else:
             ret += Math.pow(x, i) / i
-    return ret
+    return float(ret)
 
 
 def log10(x):
     # NOTE: Math.log10() is currently only implemented in Firefox, this provides alternative implementation
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log10
     # I didn't find a more accurate algorithm so I'm using the basic implementation
-    return Math.log(x) / Math.LN10
+    return float(Math.log(x) / Math.LN10)
 
 
 def pow(x, y):
     if x < 0 and int(y) is not y:
         raise ValueError('math domain error')
     if isnan(y) and x is 1:
-        return 1
-    return Math.pow(x, y)
+        return float(1)
+    return float(Math.pow(x, y))
 
 
 def sqrt(x):
-    return Math.sqrt(x)
+    return float(Math.sqrt(x))
 
 
 ########################################
 # Trigonometric functions
 ########################################
 def acos(x):
-    return Math.acos(x)
+    return float(Math.acos(x))
 
 
 def asin(x):
-    return Math.asin(x)
+    return float(Math.asin(x))
 
 
 def atan(x):
-    return Math.atan(x)
+    return float(Math.atan(x))
 
 
 def atan2(y, x):
-    return Math.atan2(y, x)
+    return float(Math.atan2(y, x))
 
 
 def cos(x):
-    return Math.cos(x)
+    return float(Math.cos(x))
 
 
 def sin(x):
-    return Math.sin(x)
+    return float(Math.sin(x))
 
 
 def hypot(x, y):
-    return Math.sqrt(x * x + y * y)
+    return float(Math.sqrt(x * x + y * y))
 
 
 def tan(x):
-    return Math.tan(x)
+    return float(Math.tan(x))
 
 
 ########################################
 # Angular conversion
 ########################################
 def degrees(x):
-    return x * 180 / pi
+    return float(x * 180 / pi)
 
 
 def radians(x):
-    return x * pi / 180
+    return float(x * pi / 180)
 
 
 ########################################
@@ -260,37 +260,39 @@ def radians(x):
 def acosh(x):
     # NOTE: will be replaced with official, when it becomes mainstream
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/acosh
-    return Math.log(x + Math.sqrt(x * x - 1))
+    return float(Math.log(x + Math.sqrt(x * x - 1)))
 
 
 def asinh(x):
     # NOTE: will be replaced with official, when it becomes mainstream
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/asinh
-    return Math.log(x + Math.sqrt(x * x + 1))
+    return float(Math.log(x + Math.sqrt(x * x + 1)))
 
 
 def atanh(x):
     # NOTE: will be replaced with official, when it becomes mainstream
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/atanh
-    return 0.5 * Math.log((1 + x) / (1 - x))
+    return float(0.5 * Math.log((1 + x) / (1 - x)))
 
 
 def cosh(x):
     # NOTE: will be replaced with official, when it becomes mainstream
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/cosh
-    return (Math.exp(x) + Math.exp(-x)) / 2
+    return float((Math.exp(x) + Math.exp(-x)) / 2)
 
 
 def sinh(x):
     # NOTE: will be replaced with official, when it becomes mainstream
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/sinh
-    return (Math.exp(x) - Math.exp(-x)) / 2
+    return float((Math.exp(x) - Math.exp(-x)) / 2)
 
 
 def tanh(x):
     # NOTE: will be replaced with official, when it becomes mainstream
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/tanh
-    return (Math.exp(x) - Math.exp(-x)) / (Math.exp(x) + Math.exp(-x))
+    return float(
+        (Math.exp(x) - Math.exp(-x))
+        / (Math.exp(x) + Math.exp(-x)))
 
 
 #import stdlib

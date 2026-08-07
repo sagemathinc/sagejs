@@ -28,7 +28,7 @@ def _date(milliseconds=None, local=True):
 
 def time():
     """Return seconds since the Unix epoch as a floating-point number."""
-    return runtime.wall_time()
+    return float(runtime.wall_time())
 
 
 def time_ns():
@@ -36,7 +36,7 @@ def time_ns():
 
 
 def monotonic():
-    return runtime.wall_time()
+    return float(runtime.wall_time())
 
 
 def monotonic_ns():

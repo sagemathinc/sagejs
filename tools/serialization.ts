@@ -17,6 +17,7 @@ export type WireValue =
   | Scalar
   | { $ref: number }
   | { $integer: string }
+  | { $float: string }
   | { $number: "nan" | "+infinity" | "-infinity" | "-0" }
   | { $undefined: true }
   | { $buffer: number };
@@ -219,6 +220,11 @@ function encodePacket(value: unknown, transferOwnedBuffers: boolean): SagePacket
       );
     }
 
+    if (Reflect.get(Object(item), "__sagejs_float__") === true) {
+      const numeric = Number(item);
+      return { $float: Object.is(numeric, -0) ? "-0" : String(numeric) };
+    }
+
     const object = item as object;
     if (Array.isArray(item)) {
       return record(
@@ -413,6 +419,16 @@ export function decode(packet: SagePacket): unknown {
     }
     if ("$ref" in value) return decodeRecord(value.$ref);
     if ("$integer" in value) return BigInt(value.$integer);
+    if ("$float" in value) {
+      const numeric = Number(value.$float);
+      if (!Number.isFinite(numeric) || !Number.isInteger(numeric)) {
+        throw new SageSerializationError("serialized integral float is invalid");
+      }
+      const factory = Reflect.get(globalThis, "ρσ_float");
+      return typeof factory === "function"
+        ? invoke(factory, undefined, [value.$float])
+        : numeric;
+    }
     if ("$undefined" in value) return undefined;
     if ("$buffer" in value) {
       const buffer = packet.buffers[value.$buffer];

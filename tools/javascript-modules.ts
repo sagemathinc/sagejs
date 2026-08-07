@@ -13,6 +13,17 @@ const wrappedMembers = new WeakMap<
 >();
 
 function unwrapJavaScriptValue<T>(value: T): T {
+  // Integral-valued Python floats use a Number wrapper inside Sage.js so
+  // Python can distinguish ``1.0`` from ``1``.  That representation is an
+  // interpreter detail; native JavaScript APIs must receive a primitive
+  // number at this explicit interoperability boundary.
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    Reflect.get(value, "__sagejs_float__") === true
+  ) {
+    return Number(value) as T;
+  }
   if (
     (typeof value === "object" && value !== null) ||
     typeof value === "function"

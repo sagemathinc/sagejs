@@ -1203,10 +1203,11 @@ export class PythonCstLowerer {
     }
     const constructor = integer
       ? "Integer"
-      : mode === "sage" ? "RealNumber" : "Number";
+      : mode === "sage" ? "RealNumber" : "ρσ_float";
     return this.make("AST_Call", node, {
       expression: this.make("AST_SymbolRef", node, { name: constructor }),
       args: [this.make("AST_String", node, { value: raw })],
+      direct_call: constructor === "ρσ_float",
     });
   }
 

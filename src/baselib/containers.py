@@ -58,9 +58,33 @@ def _native_delete(container: Any, key: Any) -> bool:
         runtime.reflect.get(container, 'delete'), container, [key])
 
 
+def _is_boxed_float(value: Any) -> bool:
+    return (
+        value is not None
+        and _get_member(value, '__sagejs_float__') is True
+    )
+
+
+def _numeric_key(value: Any) -> Any:
+    """Canonicalize equal Python integer and integral-float keys."""
+    number = runtime.number(value)
+    if (
+        runtime.number.isInteger(number)
+        and not runtime.number.isSafeInteger(number)
+    ):
+        return runtime.normalize_integer(runtime.bigint(number))
+    return number
+
+
 def equals(left: Any, right: Any) -> Any:
     left_type = runtime.jstype(left)
     right_type = runtime.jstype(right)
+    if _is_boxed_float(left):
+        left = runtime.number(left)
+        left_type = 'number'
+    if _is_boxed_float(right):
+        right = runtime.number(right)
+        right_type = 'number'
     if (
         runtime.strict_equal(left_type, 'object')
         and runtime.reflect.apply(
@@ -103,12 +127,12 @@ def equals(left: Any, right: Any) -> Any:
         (
             runtime.strict_equal(left_type, 'bigint')
             and runtime.strict_equal(right_type, 'number')
-            and runtime.number.isSafeInteger(right)
+            and runtime.number.isInteger(right)
         )
         or (
             runtime.strict_equal(right_type, 'bigint')
             and runtime.strict_equal(left_type, 'number')
-            and runtime.number.isSafeInteger(left)
+            and runtime.number.isInteger(left)
         )
     ):
         return runtime.bigint(left) is runtime.bigint(right)
@@ -652,8 +676,10 @@ def sorted(
 def _set_normalize_value(value: Any) -> Any:
     if value is True or value is False:
         return int(value)
+    if _is_boxed_float(value):
+        return _numeric_key(value)
     if runtime.strict_equal(runtime.jstype(value), 'number'):
-        return value
+        return _numeric_key(value)
     if runtime.is_exact_integer(value):
         return runtime.normalize_integer(runtime.bigint(value))
     return value
@@ -1062,8 +1088,10 @@ def _dict_normalize_key(key: Any) -> Any:
         return 1
     if key is False:
         return 0
+    if _is_boxed_float(key):
+        return _numeric_key(key)
     if runtime.strict_equal(runtime.jstype(key), 'number'):
-        return key
+        return _numeric_key(key)
     if runtime.is_exact_integer(key):
         return runtime.normalize_integer(runtime.bigint(key))
     structural_key = _get_member(key, '__sagejs_dict_key__')

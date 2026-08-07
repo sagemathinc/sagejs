@@ -1583,6 +1583,11 @@ def ρσ_mixin(*classes: Any) -> None:
 def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     """Test one ``isinstance`` candidate without a variadic call frame."""
     value_type = runtime.jstype(value)
+    if (
+        _internal_type_is(value_type, 'object')
+        and _internal_get_member(value, '__sagejs_float__') is True
+    ):
+        value_type = 'number'
     if _internal_get_member(candidate, '__sagejs_union_type__') is True:
         for nested_candidate in _internal_get_member(candidate, '__args__'):
             if ρσ_instanceof_one(value, nested_candidate):
@@ -1644,7 +1649,7 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
             or _internal_type_is(value_type, 'boolean')
             or (
                 _internal_type_is(value_type, 'number')
-                and runtime.number.isInteger(value)
+                and runtime.number.isSafeInteger(value)
             )
         )
     ):
@@ -1652,7 +1657,7 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     if (
         candidate is runtime.float_builtin
         and _internal_type_is(value_type, 'number')
-        and not runtime.number.isInteger(value)
+        and not runtime.number.isSafeInteger(value)
     ):
         return True
     if (

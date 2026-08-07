@@ -406,7 +406,15 @@ def print_binary_op(self, output):
         if is_node_type(self.left, AST_Unary) and not self.left.parenthesized:
             left = self.left.expression
             output.print(self.left.operator)
-        print_arithmetic_call(output, 'ρσ_operator_pow')
+        if output.options.exact_integers:
+            helper = (
+                'ρσ_operator_pow_exact'
+                if output.options.rational_division
+                else 'ρσ_operator_pow_python_exact'
+            )
+            output.print(helper + '(')
+        else:
+            output.print('ρσ_operator_pow(')
         left.print(output)
         output.comma()
         self.right.print(output)

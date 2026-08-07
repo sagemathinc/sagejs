@@ -91,6 +91,45 @@ test("starred set displays lower to valid JavaScript spread", async () => {
   }
 });
 
+test("Python float literals use the identity-preserving constructor", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "unit = 1.0\nlarge = 1e20\nfraction = 0.5\ninverse = 1**-1\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /ρσ_float[^\n]*\("1\.0"\)/);
+    assert.match(javascript, /ρσ_float[^\n]*\("1e20"\)/);
+    assert.match(javascript, /ρσ_float[^\n]*\("0\.5"\)/);
+    assert.doesNotMatch(javascript, /\bNumber\("(?:1\.0|1e20|0\.5)"\)/);
+    assert.match(javascript, /ρσ_operator_pow_python_exact/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("Sage integer powers retain exact rational semantics", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "sage");
+  try {
+    const ast = frontend.parse("inverse = 2^-1\n", parserOptions);
+    const output = new compiler.OutputStream({
+      ...outputOptions,
+      rational_division: true,
+    });
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /ρσ_operator_pow_exact/);
+    assert.doesNotMatch(javascript, /ρσ_operator_pow_python_exact/);
+  } finally {
+    frontend.close();
+  }
+});
+
 test("dictionary unpacking preserves ordered mapping components", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");

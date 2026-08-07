@@ -43,6 +43,7 @@ const integration = [
   "test/sqlite3.cjs",
   "test/javascript-module.cjs",
   "test/python-packages.cjs",
+  "test/python-float-identity.cjs",
   "test/random-module.cjs",
   "test/array-module.cjs",
   "test/operator-module.cjs",

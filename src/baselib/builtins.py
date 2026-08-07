@@ -105,6 +105,7 @@ _BUILTINS_MISSING = _BuiltinsMissing()
 _BUILTINS_EMPTY = _BuiltinsMissing()
 _BUILTINS_DESCRIPTOR_MISSING = _BuiltinsMissing()
 _BUILTINS_HASATTR_MISSING = _BuiltinsMissing()
+_builtins_float_prototype = runtime.undefined
 _builtins_descriptor_cache = runtime.reflect.construct(
     runtime.reflect.get(runtime.global_object, 'WeakMap'), [])
 _builtins_descriptor_epoch = 0
@@ -160,6 +161,18 @@ def _builtins_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
     return runtime.native_get(value, name)
+
+
+def ρσ_python_jstype(value: Any) -> _Str:
+    """Return the JavaScript storage kind with Python-float virtualization."""
+    native_type = runtime.jstype(value)
+    if (
+        runtime.strict_equal(native_type, 'object')
+        and value is not None
+        and runtime.native_get(value, '__sagejs_float__') is True
+    ):
+        return 'number'
+    return native_type
 
 
 def _builtins_has_member(value: Any, name: Any) -> _Bool:
@@ -361,15 +374,103 @@ def _builtins_exact_integer_primitive(value: Any) -> _Bool:
     )
 
 
+def _builtins_is_boxed_float(value: Any) -> _Bool:
+    """Return whether ``value`` is Sage.js's integral-float wrapper."""
+    return (
+        runtime.strict_equal(runtime.jstype(value), 'object')
+        and value is not None
+        and runtime.native_get(value, '__sagejs_float__') is True
+    )
+
+
+def _builtins_is_python_float(value: Any) -> _Bool:
+    """Recognize both primitive and integral-valued Python floats."""
+    value_type = runtime.jstype(value)
+    return (
+        (
+            runtime.strict_equal(value_type, 'number')
+            and not runtime.number.isSafeInteger(value)
+        )
+        or (
+            runtime.strict_equal(value_type, 'object')
+            and value is not None
+            and runtime.native_get(value, '__sagejs_float__') is True
+        )
+    )
+
+
+def _builtins_float_repr(value: Any) -> _Str:
+    """Format an integral binary64 value using Python float spelling."""
+    number = runtime.number(value)
+    if number == 0 and runtime.native_div(1, number) < 0:
+        return '-0.0'
+    magnitude = runtime.math.abs(number)
+    if magnitude >= 10000000000000000:
+        return runtime.reflect.apply(
+            runtime.number.prototype.toExponential,
+            number,
+            [],
+        )
+    return runtime.string(number) + '.0'
+
+
+runtime.reflect.set(
+    _builtins_float_repr, '__python_descriptor__', True)
+
+
+def _builtins_box_float(value: Any) -> Any:
+    """Create the uncommon representation for an integral Python float."""
+    global _builtins_float_prototype
+    if _builtins_float_prototype is runtime.undefined:
+        prototype = runtime.object.create(
+            runtime.number.prototype)
+        runtime.reflect.set(prototype, 'constructor', ρσ_float)
+        runtime.reflect.set(prototype, '__python_type__', ρσ_float)
+        runtime.reflect.set(prototype, '__sagejs_float__', True)
+        runtime.reflect.set(prototype, '__repr__', _builtins_float_repr)
+        runtime.reflect.set(prototype, '__str__', _builtins_float_repr)
+        _builtins_float_prototype = runtime.object.freeze(prototype)
+    answer = runtime.reflect.construct(
+        _builtins_number_class, [value])
+    runtime.object.setPrototypeOf(
+        answer, _builtins_float_prototype)
+    return runtime.object.freeze(answer)
+
+
+def ρσ_float_result(value: Any) -> Any:
+    """Return a binary64 result without losing Python float identity."""
+    number = runtime.number(value)
+    if runtime.number.isInteger(number):
+        return _builtins_box_float(number)
+    return number
+
+
+def _builtins_numeric_result(
+    value: Any,
+    left: Any,
+    right: Any,
+) -> Any:
+    """Preserve float contagion for a primitive arithmetic result."""
+    if (
+        _builtins_is_python_float(left)
+        or _builtins_is_python_float(right)
+    ):
+        return ρσ_float_result(value)
+    return value
+
+
 def ρσ_bigint_divexact(numerator: Any, denominator: Any) -> Any:
     """Divide two BigInts, relying on exact divisibility."""
     return runtime.native_div(numerator, denominator)
 
 
 def abs(value: Any) -> Any:
-    value_type = runtime.jstype(value)
+    value_type = ρσ_python_jstype(value)
     if runtime.strict_equal(value_type, 'number'):
-        return runtime.math.abs(value)
+        answer = runtime.math.abs(value)
+        if _builtins_is_python_float(value):
+            return ρσ_float_result(answer)
+        return answer
     if runtime.strict_equal(value_type, 'bigint'):
         return runtime.native_neg(value) if value < 0 else value
     if _builtins_member_is_function(value, '__abs__'):
@@ -393,8 +494,8 @@ NotImplemented = NotImplementedType()
 
 
 def ρσ_operator_add(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     if (
         runtime.strict_equal(left_type, right_type)
         and (
@@ -403,7 +504,8 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
             or runtime.strict_equal(left_type, 'string')
         )
     ):
-        return runtime.native_add(left, right)
+        return _builtins_numeric_result(
+            runtime.native_add(left, right), left, right)
     if (
         runtime.strict_equal(left_type, 'bigint')
         or runtime.strict_equal(right_type, 'bigint')
@@ -418,8 +520,12 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
             runtime.strict_equal(left_type, 'number')
             or runtime.strict_equal(right_type, 'number')
         ):
-            return runtime.native_add(
-                runtime.number(left), runtime.number(right))
+            return _builtins_numeric_result(
+                runtime.native_add(
+                    runtime.number(left), runtime.number(right)),
+                left,
+                right,
+            )
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('add', left, right)
     if _builtins_member_is_function(left, '__add__'):
@@ -443,15 +549,16 @@ def ρσ_operator_add(left: Any, right: Any) -> Any:
         or runtime.strict_equal(right_type, 'object')
     ):
         raise TypeError('unsupported operand type(s) for +')
-    return runtime.native_add(left, right)
+    return _builtins_numeric_result(
+        runtime.native_add(left, right), left, right)
 
 
 def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
     # Primitive values cannot override Python's arithmetic methods. Handle
     # them before the general parent/coercion and special-method machinery;
     # overflowing safe integers still promote to BigInt below.
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     if (
         runtime.strict_equal(left_type, right_type)
         and (
@@ -463,6 +570,11 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
         result = runtime.native_add(left, right)
         if not runtime.strict_equal(left_type, 'number'):
             return result
+        if (
+            _builtins_is_python_float(left)
+            or _builtins_is_python_float(right)
+        ):
+            return ρσ_float_result(result)
         if (
             result <= runtime.number.MAX_SAFE_INTEGER
             and result >= runtime.number.MIN_SAFE_INTEGER
@@ -530,8 +642,12 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
             runtime.strict_equal(left_type, 'number')
             or runtime.strict_equal(right_type, 'number')
         ):
-            return runtime.native_add(
-                runtime.number(left), runtime.number(right))
+            return _builtins_numeric_result(
+                runtime.native_add(
+                    runtime.number(left), runtime.number(right)),
+                left,
+                right,
+            )
         return runtime.native_add(left, right)
     if (
         not runtime.strict_equal(left_type, 'number')
@@ -539,6 +655,11 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
     ):
         return runtime.native_add(left, right)
     result = runtime.native_add(left, right)
+    if (
+        _builtins_is_python_float(left)
+        or _builtins_is_python_float(right)
+    ):
+        return ρσ_float_result(result)
     if (
         result <= runtime.number.MAX_SAFE_INTEGER
         and result >= runtime.number.MIN_SAFE_INTEGER
@@ -554,12 +675,15 @@ def ρσ_operator_add_exact(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_neg(value: Any) -> Any:
-    value_type = runtime.jstype(value)
+    value_type = ρσ_python_jstype(value)
     if (
         runtime.strict_equal(value_type, 'number')
         or runtime.strict_equal(value_type, 'bigint')
     ):
-        return runtime.native_neg(value)
+        answer = runtime.native_neg(value)
+        if _builtins_is_python_float(value):
+            return ρσ_float_result(answer)
+        return answer
     if _builtins_member_is_function(value, '__neg__'):
         return _builtins_call_member(value, '__neg__', [])
     return runtime.native_neg(value)
@@ -571,6 +695,8 @@ def ρσ_operator_pos(value: Any) -> Any:
     if value is False:
         return 0
     if _builtins_exact_integer_primitive(value):
+        return value
+    if _builtins_is_python_float(value):
         return value
     if _builtins_member_is_function(value, '__pos__'):
         return _builtins_call_member(value, '__pos__', [])
@@ -611,8 +737,8 @@ def _builtins_rich_compare(
     right: Any,
     operation: _Str,
 ) -> _Bool:
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     numeric = (
         (
             runtime.strict_equal(left_type, 'number')
@@ -726,8 +852,8 @@ def ρσ_operator_ge(left: Any, right: Any) -> _Bool:
 
 
 def ρσ_operator_sub(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     if (
         runtime.strict_equal(left_type, right_type)
         and (
@@ -735,7 +861,8 @@ def ρσ_operator_sub(left: Any, right: Any) -> Any:
             or runtime.strict_equal(left_type, 'bigint')
         )
     ):
-        return runtime.native_sub(left, right)
+        return _builtins_numeric_result(
+            runtime.native_sub(left, right), left, right)
     if (
         runtime.strict_equal(left_type, 'bigint')
         or runtime.strict_equal(right_type, 'bigint')
@@ -750,8 +877,12 @@ def ρσ_operator_sub(left: Any, right: Any) -> Any:
             runtime.strict_equal(left_type, 'number')
             or runtime.strict_equal(right_type, 'number')
         ):
-            return runtime.native_sub(
-                runtime.number(left), runtime.number(right))
+            return _builtins_numeric_result(
+                runtime.native_sub(
+                    runtime.number(left), runtime.number(right)),
+                left,
+                right,
+            )
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('sub', left, right)
     if _builtins_member_is_function(left, '__sub__'):
@@ -767,12 +898,13 @@ def ρσ_operator_sub(left: Any, right: Any) -> Any:
         or runtime.strict_equal(runtime.jstype(right), 'object')
     ):
         raise TypeError('unsupported operand type(s) for -')
-    return runtime.native_sub(left, right)
+    return _builtins_numeric_result(
+        runtime.native_sub(left, right), left, right)
 
 
 def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     if (
         runtime.strict_equal(left_type, right_type)
         and (
@@ -783,6 +915,11 @@ def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
         result = runtime.native_sub(left, right)
         if not runtime.strict_equal(left_type, 'number'):
             return result
+        if (
+            _builtins_is_python_float(left)
+            or _builtins_is_python_float(right)
+        ):
+            return ρσ_float_result(result)
         if (
             result <= runtime.number.MAX_SAFE_INTEGER
             and result >= runtime.number.MIN_SAFE_INTEGER
@@ -834,8 +971,12 @@ def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
             runtime.strict_equal(left_type, 'number')
             or runtime.strict_equal(right_type, 'number')
         ):
-            return runtime.native_sub(
-                runtime.number(left), runtime.number(right))
+            return _builtins_numeric_result(
+                runtime.native_sub(
+                    runtime.number(left), runtime.number(right)),
+                left,
+                right,
+            )
         return runtime.native_sub(left, right)
     if (
         not runtime.strict_equal(left_type, 'number')
@@ -843,6 +984,11 @@ def ρσ_operator_sub_exact(left: Any, right: Any) -> Any:
     ):
         return runtime.native_sub(left, right)
     result = runtime.native_sub(left, right)
+    if (
+        _builtins_is_python_float(left)
+        or _builtins_is_python_float(right)
+    ):
+        return ρσ_float_result(result)
     if (
         result <= runtime.number.MAX_SAFE_INTEGER
         and result >= runtime.number.MIN_SAFE_INTEGER
@@ -867,8 +1013,8 @@ def _builtins_repeat_string(text: str, count: Any) -> str:
 
 
 def ρσ_operator_mul(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     if (
         runtime.strict_equal(left_type, right_type)
         and (
@@ -876,7 +1022,8 @@ def ρσ_operator_mul(left: Any, right: Any) -> Any:
             or runtime.strict_equal(left_type, 'bigint')
         )
     ):
-        return runtime.native_mul(left, right)
+        return _builtins_numeric_result(
+            runtime.native_mul(left, right), left, right)
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('mul', left, right)
     if (
@@ -897,12 +1044,13 @@ def ρσ_operator_mul(left: Any, right: Any) -> Any:
         result = _builtins_call_member(right, '__rmul__', [left])
         if result is not NotImplemented:
             return result
-    return runtime.native_mul(left, right)
+    return _builtins_numeric_result(
+        runtime.native_mul(left, right), left, right)
 
 
 def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     if (
         runtime.strict_equal(left_type, right_type)
         and (
@@ -913,6 +1061,11 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
         result = runtime.native_mul(left, right)
         if not runtime.strict_equal(left_type, 'number'):
             return result
+        if (
+            _builtins_is_python_float(left)
+            or _builtins_is_python_float(right)
+        ):
+            return ρσ_float_result(result)
         if (
             result <= runtime.number.MAX_SAFE_INTEGER
             and result >= runtime.number.MIN_SAFE_INTEGER
@@ -969,8 +1122,12 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
             runtime.strict_equal(left_type, 'number')
             or runtime.strict_equal(right_type, 'number')
         ):
-            return runtime.native_mul(
-                runtime.number(left), runtime.number(right))
+            return _builtins_numeric_result(
+                runtime.native_mul(
+                    runtime.number(left), runtime.number(right)),
+                left,
+                right,
+            )
         return runtime.native_mul(left, right)
     if (
         not runtime.strict_equal(left_type, 'number')
@@ -979,6 +1136,11 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
         raise TypeError(
             'unsupported operand type(s) for multiplication')
     result = runtime.native_mul(left, right)
+    if (
+        _builtins_is_python_float(left)
+        or _builtins_is_python_float(right)
+    ):
+        return ρσ_float_result(result)
     if (
         result <= runtime.number.MAX_SAFE_INTEGER
         and result >= runtime.number.MIN_SAFE_INTEGER
@@ -995,10 +1157,11 @@ def ρσ_operator_mul_exact(left: Any, right: Any) -> Any:
 
 def ρσ_operator_div(left: Any, right: Any) -> Any:
     if (
-        runtime.strict_equal(runtime.jstype(left), 'number')
-        and runtime.strict_equal(runtime.jstype(right), 'number')
+        runtime.strict_equal(ρσ_python_jstype(left), 'number')
+        and runtime.strict_equal(ρσ_python_jstype(right), 'number')
     ):
-        return runtime.native_div(left, right)
+        return ρσ_float_result(
+            runtime.native_div(left, right))
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('truediv', left, right)
     if _builtins_member_is_function(left, '__div__'):
@@ -1009,19 +1172,50 @@ def ρσ_operator_div(left: Any, right: Any) -> Any:
         result = _builtins_call_member(right, '__rdiv__', [left])
         if result is not NotImplemented:
             return result
-    return runtime.native_div(left, right)
+    return ρσ_float_result(
+        runtime.native_div(left, right))
 
 
 def ρσ_operator_pow(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     if (
-        runtime.strict_equal(left_type, runtime.jstype(right))
+        (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(left_type, 'bigint')
+        )
+        and (
+            runtime.strict_equal(right_type, 'number')
+            or runtime.strict_equal(right_type, 'bigint')
+        )
+        and left == 0
+        and right < 0
+    ):
+        raise runtime.zero_division_error(
+            'zero to a negative power')
+    if (
+        _builtins_exact_integer_primitive(left)
+        and _builtins_exact_integer_primitive(right)
+        and right < 0
+    ):
+        left_number = runtime.number(left)
+        right_number = runtime.number(right)
+        if (
+            not runtime.number.isFinite(left_number)
+            or not runtime.number.isFinite(right_number)
+        ):
+            raise OverflowError('int too large to convert to float')
+        return ρσ_float_result(
+            runtime.native_pow(left_number, right_number))
+    if (
+        runtime.strict_equal(left_type, right_type)
         and (
             runtime.strict_equal(left_type, 'number')
             or runtime.strict_equal(left_type, 'bigint')
         )
     ):
-        return runtime.native_pow(left, right)
+        return _builtins_numeric_result(
+            runtime.native_pow(left, right), left, right)
     if _builtins_member_is_function(left, '__pow__'):
         result = _builtins_call_member(left, '__pow__', [right])
         if result is not NotImplemented:
@@ -1030,7 +1224,19 @@ def ρσ_operator_pow(left: Any, right: Any) -> Any:
         result = _builtins_call_member(right, '__rpow__', [left])
         if result is not NotImplemented:
             return result
-    return runtime.native_pow(left, right)
+    return _builtins_numeric_result(
+        runtime.native_pow(left, right), left, right)
+
+
+def ρσ_operator_pow_python_exact(left: Any, right: Any) -> Any:
+    """Use exact Python integers without giving them Sage rational powers."""
+    if (
+        _builtins_exact_integer_primitive(left)
+        and _builtins_exact_integer_primitive(right)
+        and right < 0
+    ):
+        return ρσ_operator_pow(left, right)
+    return ρσ_operator_pow_exact(left, right)
 
 
 def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
@@ -1051,8 +1257,8 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
             if symbolic_ring is not runtime.undefined:
                 return symbolic_ring(left).__pow__(right)
         right = runtime.normalize_integer(right._numerator)
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     if (
         _builtins_exact_integer_primitive(left)
         and _builtins_exact_integer_primitive(right)
@@ -1077,6 +1283,11 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
         result = runtime.native_pow(left, right)
         if not runtime.strict_equal(left_type, 'number'):
             return result
+        if (
+            _builtins_is_python_float(left)
+            or _builtins_is_python_float(right)
+        ):
+            return ρσ_float_result(result)
         if (
             result <= runtime.number.MAX_SAFE_INTEGER
             and result >= runtime.number.MIN_SAFE_INTEGER
@@ -1115,15 +1326,22 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
     # exponentiation. JavaScript rejects every BigInt/Number mixture, so cross
     # the explicit floating boundary before invoking its numeric operator.
     if runtime.strict_equal(left_type, 'bigint'):
-        return runtime.native_pow(runtime.number(left), right)
+        return ρσ_float_result(
+            runtime.native_pow(runtime.number(left), right))
     if runtime.strict_equal(right_type, 'bigint'):
-        return runtime.native_pow(left, runtime.number(right))
+        return ρσ_float_result(
+            runtime.native_pow(left, runtime.number(right)))
     if (
         not runtime.strict_equal(left_type, 'number')
         or not runtime.strict_equal(right_type, 'number')
     ):
         return runtime.native_pow(left, right)
     result = runtime.native_pow(left, right)
+    if (
+        _builtins_is_python_float(left)
+        or _builtins_is_python_float(right)
+    ):
+        return ρσ_float_result(result)
     if (
         result <= runtime.number.MAX_SAFE_INTEGER
         and result >= runtime.number.MIN_SAFE_INTEGER
@@ -1166,7 +1384,8 @@ def ρσ_operator_iadd(left: Any, right: Any) -> Any:
             or runtime.strict_equal(left_type, 'string')
         )
     ):
-        return runtime.native_add(left, right)
+        return _builtins_numeric_result(
+            runtime.native_add(left, right), left, right)
     return _builtins_inplace(left, right, '__iadd__', ρσ_operator_add)
 
 
@@ -1179,7 +1398,8 @@ def ρσ_operator_isub(left: Any, right: Any) -> Any:
             or runtime.strict_equal(left_type, 'bigint')
         )
     ):
-        return runtime.native_sub(left, right)
+        return _builtins_numeric_result(
+            runtime.native_sub(left, right), left, right)
     return _builtins_inplace(left, right, '__isub__', ρσ_operator_sub)
 
 
@@ -1192,7 +1412,8 @@ def ρσ_operator_imul(left: Any, right: Any) -> Any:
             or runtime.strict_equal(left_type, 'bigint')
         )
     ):
-        return runtime.native_mul(left, right)
+        return _builtins_numeric_result(
+            runtime.native_mul(left, right), left, right)
     return _builtins_inplace(left, right, '__imul__', ρσ_operator_mul)
 
 
@@ -1201,7 +1422,8 @@ def ρσ_operator_idiv(left: Any, right: Any) -> Any:
         runtime.strict_equal(runtime.jstype(left), 'number')
         and runtime.strict_equal(runtime.jstype(right), 'number')
     ):
-        return runtime.native_div(left, right)
+        return ρσ_float_result(
+            runtime.native_div(left, right))
     return _builtins_inplace(left, right, '__idiv__', ρσ_operator_div)
 
 
@@ -1214,7 +1436,8 @@ def ρσ_operator_ipow(left: Any, right: Any) -> Any:
             or runtime.strict_equal(left_type, 'bigint')
         )
     ):
-        return runtime.native_pow(left, right)
+        return _builtins_numeric_result(
+            runtime.native_pow(left, right), left, right)
     return _builtins_inplace(left, right, '__ipow__', ρσ_operator_pow)
 
 
@@ -1267,17 +1490,20 @@ def ρσ_operator_truediv(left: Any, right: Any) -> Any:
     if runtime.equals(right, 0):
         raise runtime.zero_division_error('division by zero')
     if (
-        runtime.strict_equal(runtime.jstype(left), 'bigint')
-        or runtime.strict_equal(runtime.jstype(right), 'bigint')
+        runtime.strict_equal(ρσ_python_jstype(left), 'bigint')
+        or runtime.strict_equal(ρσ_python_jstype(right), 'bigint')
     ):
-        return runtime.native_div(
-            runtime.number(left), runtime.number(right))
+        return ρσ_float_result(
+            runtime.native_div(
+                runtime.number(left), runtime.number(right)))
     if (
-        runtime.strict_equal(runtime.jstype(left), 'number')
-        and runtime.strict_equal(runtime.jstype(right), 'number')
+        runtime.strict_equal(ρσ_python_jstype(left), 'number')
+        and runtime.strict_equal(ρσ_python_jstype(right), 'number')
     ):
-        return runtime.native_div(left, right)
-    return runtime.native_div(left, right)
+        return ρσ_float_result(
+            runtime.native_div(left, right))
+    return ρσ_float_result(
+        runtime.native_div(left, right))
 
 
 def ρσ_operator_truediv_exact(left: Any, right: Any) -> Any:
@@ -1297,12 +1523,13 @@ def ρσ_operator_truediv_exact(left: Any, right: Any) -> Any:
         result = _builtins_call_member(right, '__rtruediv__', [left])
         if result is not NotImplemented:
             return result
-    return runtime.native_div(left, right)
+    return ρσ_float_result(
+        runtime.native_div(left, right))
 
 
 def ρσ_operator_mod(left: Any, right: Any) -> Any:
-    left_type = runtime.jstype(left)
-    right_type = runtime.jstype(right)
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
     if (
         runtime.strict_equal(left_type, 'number')
         and runtime.strict_equal(right_type, 'number')
@@ -1342,7 +1569,15 @@ def ρσ_operator_mod(left: Any, right: Any) -> Any:
         ):
             remainder += right_bigint
         return runtime.normalize_integer(remainder)
-    return runtime.native_mod(left, right)
+    if (
+        runtime.strict_equal(left_type, 'bigint')
+        or runtime.strict_equal(right_type, 'bigint')
+    ):
+        return ρσ_float_result(
+            runtime.native_mod(
+                runtime.number(left), runtime.number(right)))
+    return _builtins_numeric_result(
+        runtime.native_mod(left, right), left, right)
 
 
 def ρσ_operator_matmul(left: Any, right: Any) -> Any:
@@ -1562,8 +1797,8 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
             raise runtime.zero_division_error(
                 'integer division or modulo by zero')
         if (
-            runtime.strict_equal(runtime.jstype(left), 'bigint')
-            or runtime.strict_equal(runtime.jstype(right), 'bigint')
+            runtime.strict_equal(ρσ_python_jstype(left), 'bigint')
+            or runtime.strict_equal(ρσ_python_jstype(right), 'bigint')
         ):
             left_bigint = runtime.bigint(left)
             right_bigint = runtime.bigint(right)
@@ -1587,18 +1822,35 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
         raise runtime.zero_division_error(
             'integer division or modulo by zero')
     if (
-        runtime.strict_equal(runtime.jstype(left), 'object')
-        or runtime.strict_equal(runtime.jstype(left), 'function')
-        or runtime.strict_equal(runtime.jstype(right), 'object')
-        or runtime.strict_equal(runtime.jstype(right), 'function')
+        runtime.strict_equal(ρσ_python_jstype(left), 'object')
+        or runtime.strict_equal(ρσ_python_jstype(left), 'function')
+        or runtime.strict_equal(ρσ_python_jstype(right), 'object')
+        or runtime.strict_equal(ρσ_python_jstype(right), 'function')
     ):
         raise TypeError('unsupported operand type(s) for //')
-    return runtime.math.floor(runtime.native_div(left, right))
+    left_type = ρσ_python_jstype(left)
+    right_type = ρσ_python_jstype(right)
+    if (
+        runtime.strict_equal(left_type, 'bigint')
+        or runtime.strict_equal(right_type, 'bigint')
+    ):
+        answer = runtime.math.floor(runtime.native_div(
+            runtime.number(left), runtime.number(right)))
+    else:
+        answer = runtime.math.floor(runtime.native_div(left, right))
+    if (
+        _builtins_is_python_float(left)
+        or _builtins_is_python_float(right)
+    ):
+        return ρσ_float_result(answer)
+    return answer
 
 
 def ρσ_bool(value: Any) -> _Bool:
     if value is None or value is runtime.undefined:
         return False
+    if _builtins_is_boxed_float(value):
+        return runtime.number(value) != 0
     value_type = runtime.jstype(value)
     if (
         runtime.strict_equal(value_type, 'object')
@@ -1685,10 +1937,13 @@ def ρσ_round(
         )
 
     scale = runtime.math.pow(10, int(ndigits))
-    return runtime.native_div(
+    answer = runtime.native_div(
         ρσ_round(runtime.native_mul(value, scale)),
         scale,
     )
+    if _builtins_is_python_float(value):
+        return ρσ_float_result(answer)
+    return answer
 
 
 def _builtins_pop_keyword(
@@ -1865,7 +2120,7 @@ def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
         return 1
     if value is False:
         return 0
-    if runtime.strict_equal(runtime.jstype(value), 'number'):
+    if runtime.strict_equal(ρσ_python_jstype(value), 'number'):
         if base is not runtime.undefined:
             raise TypeError("int() can't convert non-string with explicit base")
         answer = runtime.math.trunc(value)
@@ -1902,19 +2157,21 @@ def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
             + str(radix) + ': ' + str(value)
         )
     if (
-        runtime.strict_equal(runtime.jstype(answer), 'number')
+        runtime.strict_equal(ρσ_python_jstype(answer), 'number')
         and not runtime.number.isFinite(answer)
     ):
         raise OverflowError('cannot convert float infinity to integer')
     if (
-        runtime.strict_equal(runtime.jstype(answer), 'number')
+        runtime.strict_equal(ρσ_python_jstype(answer), 'number')
         and not runtime.number.isSafeInteger(answer)
     ):
         return runtime.bigint(answer)
     return answer
 
 
-def ρσ_float(value: Any) -> Any:
+def ρσ_float(value: Any = 0) -> Any:
+    if _builtins_is_boxed_float(value):
+        return value
     value_type = runtime.jstype(value)
     if runtime.strict_equal(value_type, 'number'):
         answer = value
@@ -1938,7 +2195,7 @@ def ρσ_float(value: Any) -> Any:
     if runtime.is_nan(answer):
         raise ValueError(
             'Could not convert string to float: ' + str(value))
-    return answer
+    return ρσ_float_result(answer)
 
 
 _BUILTINS_MAX_SAFE_INTEGER = runtime.bigint(
@@ -2827,6 +3084,7 @@ def ρσ_oct(value: Any) -> _Str:
 
 def _builtins_float_hash(value: Any) -> Any:
     """Return CPython's platform-independent numeric hash for a float."""
+    value = runtime.number(value)
     if runtime.number.isNaN(value):
         # CPython deliberately gives distinct NaN objects identity-derived
         # hashes. JavaScript NaN is a primitive, so zero is the least
@@ -2849,7 +3107,10 @@ def _builtins_float_hash(value: Any) -> Any:
     mantissa = magnitude / runtime.math.pow(2, exponent)
     modulus = runtime.bigint('2305843009213693951')
     accumulator = runtime.bigint(0)
-    while mantissa:
+    # Baselib bootstraps before Python truth-testing is enabled in generated
+    # user modules.  Compare explicitly because integral float zero is an
+    # object wrapper and every JavaScript object is otherwise truthy.
+    while mantissa != 0:
         accumulator = (
             runtime.native_bitand(
                 runtime.native_lshift(accumulator, runtime.bigint(28)),
@@ -2896,7 +3157,7 @@ def ρσ_hash(value: Any) -> Any:
         if answer == -1:
             answer = runtime.bigint(-2)
         return runtime.normalize_integer(answer)
-    if runtime.strict_equal(runtime.jstype(value), 'number'):
+    if runtime.strict_equal(ρσ_python_jstype(value), 'number'):
         return _builtins_float_hash(value)
     constructor = _builtins_get_member(value, 'constructor')
     prototype = _builtins_get_member(constructor, 'prototype')
@@ -4794,11 +5055,12 @@ def ρσ_pow(
         if (
             _builtins_exact_integer_primitive(left)
             and _builtins_exact_integer_primitive(right)
+            and right >= 0
         ):
             return runtime.normalize_integer(
                 runtime.native_pow(
                     runtime.bigint(left), runtime.bigint(right)))
-        return runtime.math.pow(left, right)
+        return ρσ_operator_pow(left, right)
 
     if (
         not _builtins_exact_integer_primitive(left)
@@ -4958,7 +5220,7 @@ def ρσ_type(*values: Any) -> Any:
     if len(values) != 1:
         raise TypeError('type() takes 1 or 3 arguments')
     value = values[0]
-    value_type = runtime.jstype(value)
+    value_type = ρσ_python_jstype(value)
     module_namespaces = runtime.reflect.get(
         runtime.global_object, '__sagejs_module_namespaces__')
     module_type = runtime.reflect.get(
@@ -4976,7 +5238,7 @@ def ρσ_type(*values: Any) -> Any:
     if (
         runtime.strict_equal(value_type, 'number')
     ):
-        if runtime.number.isInteger(value):
+        if runtime.number.isSafeInteger(value):
             return ρσ_int
         return ρσ_float
     if runtime.strict_equal(value_type, 'bigint'):
@@ -6161,7 +6423,8 @@ def _sage_random_float() -> _Float:
     )
     runtime.reflect.set(
         runtime.global_object, '__sagejs_random_state__', state)
-    return runtime.native_div(state, 4294967296)
+    return ρσ_float_result(
+        runtime.native_div(state, 4294967296))
 
 
 def set_random_seed(seed_value: Any) -> None:
