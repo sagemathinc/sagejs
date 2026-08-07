@@ -107,6 +107,11 @@ export function runRuntimeBootstrap(
   const moduleCacheDirectory = requestedModuleCacheDirectory === false
     ? ""
     : requestedModuleCacheDirectory ?? defaultModuleCacheDirectory(compiler);
+  const precompiledModuleCacheDirectory =
+    process.env.SAGEJS_PRECOMPILED_MODULE_CACHE_DIR ??
+    precompiledLazyModuleCacheDirectory(
+      join(__dirname, "..", "lazy-module-cache"),
+    );
   const directory = cacheDirectory();
   const source =
     readRuntimeBootstrapSource(
@@ -190,6 +195,20 @@ export function runRuntimeBootstrap(
   }
 
   const loading = new Set<string>();
+  // Module ``__dict__`` is a live writable mapping in CPython.  Keep an
+  // identity set so the Python compatibility layer can distinguish module
+  // namespaces from ordinary objects without scanning/copying their members.
+  // A WeakSet also avoids extending the public namespace with a marker.
+  const moduleNamespaces = new WeakSet<object>();
+  for (const value of Object.values(moduleRegistry)) {
+    if (
+      (typeof value === "object" && value !== null) ||
+      typeof value === "function"
+    ) {
+      moduleNamespaces.add(value);
+    }
+  }
+  Reflect.set(globalThis, "__sagejs_module_namespaces__", moduleNamespaces);
   const loadModule = (name: string): any => {
     if (!/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(name)) {
       throw new TypeError(`invalid lazy module name ${JSON.stringify(name)}`);
@@ -253,6 +272,7 @@ export function runRuntimeBootstrap(
     }
 
     const namespace = {};
+    moduleNamespaces.add(namespace);
     Reflect.set(registry, name, namespace);
     if (parent && childName) Reflect.set(parent, childName, namespace);
     loading.add(name);
@@ -271,10 +291,7 @@ export function runRuntimeBootstrap(
         )
         : "";
       const precompiledCacheFilename = join(
-        process.env.SAGEJS_PRECOMPILED_MODULE_CACHE_DIR ??
-          precompiledLazyModuleCacheDirectory(
-            join(__dirname, "..", "lazy-module-cache"),
-          ),
+        precompiledModuleCacheDirectory,
         `${name.replaceAll(".", "-")}.json`,
       );
       let javascript = "";

@@ -114,6 +114,20 @@ try {
     run([], { input: "import cached_value\nprint(cached_value.value)\n" }),
     expected,
   );
+  assert.equal(
+    run([], {
+      input: [
+        "import cached_value",
+        "namespace = cached_value.__dict__",
+        "namespace['injected_from_dict'] = 17",
+        "print(namespace is cached_value.__dict__)",
+        "print(namespace.get('value'))",
+        "print(cached_value.injected_from_dict)",
+        "",
+      ].join("\n"),
+    }),
+    `True\n${expected}\n17`,
+  );
   const replEntries = filesBelow(join(replCache, "sagejs", "modules"));
   assert.equal(replEntries.filter((filename) => {
     const entry = JSON.parse(readFileSync(filename, "utf8"));

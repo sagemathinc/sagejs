@@ -549,7 +549,10 @@ def ρσ_list_decorate(answer: Any) -> Any:
     if runtime.object.isFrozen(answer):
         answer = runtime.reflect.apply(
             runtime.array.prototype.slice, answer, [])
-    runtime.object.setPrototypeOf(answer, _list_prototype())
+    prototype = _list_prototype_cache
+    if prototype is runtime.undefined:
+        prototype = _list_prototype()
+    runtime.object.setPrototypeOf(answer, prototype)
     return answer
 
 
@@ -1412,8 +1415,13 @@ class _LiveScopeDict(SageDict):
         return self.jsmap.size
 
     def __contains__(self, key: Any) -> bool:
-        self._refresh()
-        return SageDict.__contains__(self, key)
+        if not runtime.strict_equal(runtime.jstype(key), 'string'):
+            return False
+        return (
+            _has_own(self._scope, key)
+            and runtime.reflect.get(self._scope, key)
+            is not runtime.undefined
+        )
 
     has = __contains__
 
@@ -1422,8 +1430,9 @@ class _LiveScopeDict(SageDict):
         return SageDict.__iter__(self)
 
     def __getitem__(self, key: Any) -> Any:
-        self._refresh()
-        return SageDict.__getitem__(self, key)
+        if not self.__contains__(key):
+            raise KeyError(key)
+        return runtime.reflect.get(self._scope, key)
 
     def __setitem__(self, key: Any, value: Any) -> None:
         if not runtime.strict_equal(runtime.jstype(key), 'string'):
@@ -1488,8 +1497,13 @@ class _LiveScopeDict(SageDict):
         key: Any,
         default_value: Any = runtime.undefined,
     ) -> Any:
-        self._refresh()
-        return SageDict.get(self, key, default_value)
+        if not self.__contains__(key):
+            return (
+                None
+                if default_value is runtime.undefined
+                else default_value
+            )
+        return runtime.reflect.get(self._scope, key)
 
     def setdefault(
         self,

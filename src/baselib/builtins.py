@@ -2035,6 +2035,20 @@ def _builtins_append_own_dir_names(
 
 def _builtins_namespace_dict(value: Any) -> Any:
     """Return the Python-visible own namespace of an object or class."""
+    module_namespaces = runtime.reflect.get(
+        runtime.global_object, '__sagejs_module_namespaces__')
+    if module_namespaces is not runtime.undefined:
+        has_module = runtime.reflect.get(module_namespaces, 'has')
+        if runtime.reflect.apply(has_module, module_namespaces, [value]):
+            # Unlike class ``__dict__``, a module dictionary is a mutable live
+            # namespace.  Wrapping the actual object is both the CPython
+            # behavior and dramatically cheaper for documentation-heavy
+            # modules such as ``mpmath.function_docs``.
+            live_scope_dict = runtime.reflect.get(
+                runtime.global_object, 'ρσ_live_scope_dict')
+            return runtime.reflect.apply(
+                live_scope_dict, runtime.undefined, [value])
+
     namespace = runtime.object.create(None)
     plain_function = (
         runtime.strict_equal(runtime.jstype(value), 'function')
