@@ -121,6 +121,10 @@ test("package-facing Python introspection and scope semantics", async () => {
     "assert (False & False) is False",
     "assert (False | True) is True",
     "assert (True ^ True) is False",
+    "assert (True ^ 0) == 1",
+    "assert (False ^ 1) == 1",
+    "assert (True & 3) == 1",
+    "assert (False | 2) == 2",
     "assert abs(((1 << 100) ** 0.5) - 2 ** 50) < 1e-9",
     "assert int(1e30) // 2 > 0",
     "try:",
@@ -223,4 +227,140 @@ test("package-facing Python introspection and scope semantics", async () => {
   );
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout.trim(), "compatible");
+});
+
+test("augmented property assignment honors descriptor access", async () => {
+  const source = [
+    "class Counter:",
+    "    def __init__(self):",
+    "        self._value = 5",
+    "    @property",
+    "    def value(self):",
+    "        return self._value",
+    "    @value.setter",
+    "    def value(self, value):",
+    "        self._value = value",
+    "counter = Counter()",
+    "counter.value += 7",
+    "assert counter.value == 12",
+    "print('descriptor augmented assignment works')",
+    "",
+  ].join("\n");
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-property-assignment-"));
+  const program = join(directory, "check.py");
+  writeFileSync(program, source);
+  const result = await child(
+    process.execPath,
+    [join(__dirname, "..", "bin", "sagejs-source.cjs"), program],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "descriptor augmented assignment works");
+});
+
+test("class-private names use CPython-compatible lexical mangling", async () => {
+  const source = [
+    "class Vault:",
+    "    def __init__(self, __initial=5):",
+    "        self.__value = __initial",
+    "    def __read(self):",
+    "        return self.__value",
+    "    def reveal(self):",
+    "        return self.__read()",
+    "vault = Vault(17)",
+    "assert vault.reveal() == 17",
+    "assert vault._Vault__value == 17",
+    "assert vault._Vault__read() == 17",
+    "assert not hasattr(vault, '__value')",
+    "print('private names work')",
+    "",
+  ].join("\n");
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-private-names-"));
+  const program = join(directory, "check.py");
+  writeFileSync(program, source);
+  const result = await child(
+    process.execPath,
+    [join(__dirname, "..", "bin", "sagejs-source.cjs"), program],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "private names work");
+});
+
+test("dictionary tuple keys use structural equality", async () => {
+  const source = [
+    "mapping = {(1, 2): 'first'}",
+    "assert (1, 2) in mapping",
+    "assert mapping[(1, 2)] == 'first'",
+    "mapping[(1, 2)] = 'second'",
+    "assert len(mapping) == 1",
+    "assert mapping.get((1, 2)) == 'second'",
+    "assert mapping.pop((1, 2)) == 'second'",
+    "assert mapping == {}",
+    "print('tuple keys work')",
+    "",
+  ].join("\n");
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-tuple-keys-"));
+  const program = join(directory, "check.py");
+  writeFileSync(program, source);
+  const result = await child(
+    process.execPath,
+    [join(__dirname, "..", "bin", "sagejs-source.cjs"), program],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "tuple keys work");
+});
+
+test("Python methods named like JavaScript function helpers remain bound", async () => {
+  const source = [
+    "class Transformer:",
+    "    def __init__(self, offset):",
+    "        self.offset = offset",
+    "    def apply(self, value):",
+    "        return value + self.offset",
+    "    def run(self, value):",
+    "        return self.apply(value)",
+    "transformer = Transformer(9)",
+    "assert transformer.apply(4) == 13",
+    "assert transformer.run(5) == 14",
+    "print('apply stays bound')",
+    "",
+  ].join("\n");
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-apply-method-"));
+  const program = join(directory, "check.py");
+  writeFileSync(program, source);
+  const result = await child(
+    process.execPath,
+    [join(__dirname, "..", "bin", "sagejs-source.cjs"), program],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "apply stays bound");
+});
+
+test("class method aliases capture the definition at their source position", async () => {
+  const source = [
+    "class Versioned:",
+    "    def implementation(self):",
+    "        return 'first'",
+    "    original = implementation",
+    "    def implementation(self):",
+    "        return 'second'",
+    "value = Versioned()",
+    "assert value.original() == 'first'",
+    "assert value.implementation() == 'second'",
+    "print('class aliases are sequential')",
+    "",
+  ].join("\n");
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-class-aliases-"));
+  const program = join(directory, "check.py");
+  writeFileSync(program, source);
+  const result = await child(
+    process.execPath,
+    [join(__dirname, "..", "bin", "sagejs-source.cjs"), program],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "class aliases are sequential");
 });

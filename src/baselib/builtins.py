@@ -352,7 +352,8 @@ def _builtins_special_is_function(value: Any, name: Any) -> _Bool:
 def _builtins_exact_integer_primitive(value: Any) -> _Bool:
     value_type = runtime.jstype(value)
     return (
-        runtime.strict_equal(value_type, 'bigint')
+        runtime.strict_equal(value_type, 'boolean')
+        or runtime.strict_equal(value_type, 'bigint')
         or (
             runtime.strict_equal(value_type, 'number')
             and runtime.number.isSafeInteger(value)

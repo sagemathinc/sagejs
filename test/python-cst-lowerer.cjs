@@ -493,16 +493,28 @@ test("chained comparisons preserve Python dispatch and shared operands", async (
   try {
     const ast = frontend.parse(
       "simple = left == middle == right\n" +
-      "observed = first() < middle_value() <= last()\n",
+        "observed = first() < middle_value() <= last()\n" +
+        "long = a() == b() == c() == d() == e()\n",
       parserOptions,
     );
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.equal((javascript.match(/ρσ_equals/g) ?? []).length, 2);
-    assert.match(javascript, /ρσ_equals\(left, middle\) && ρσ_equals\(middle, right\)/);
+    assert.equal((javascript.match(/ρσ_equals/g) ?? []).length, 6);
+    assert.match(javascript, /ρσ_equals\(ρσ_compare_0, ρσ_compare_1\)/);
     assert.equal((javascript.match(/middle_value\?\.__call__/g) ?? []).length, 1);
-    assert.match(javascript, /function\(ρσ_compare_left, ρσ_compare_middle\)/);
+    for (const name of ["a", "b", "c", "d", "e"]) {
+      assert.equal(
+        (
+          javascript.match(
+            new RegExp(`(?:^|[^A-Za-z0-9_])${name}\\?\\.__call__`, "g"),
+          ) ?? []
+        ).length,
+        1,
+      );
+    }
+    assert.match(javascript, /function\(ρσ_compare_0, ρσ_compare_1\)/);
+    assert.match(javascript, /function\(ρσ_compare_4\)/);
     assert.match(javascript, /&&/);
   } finally {
     frontend.close();

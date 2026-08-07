@@ -139,6 +139,18 @@ export class PythonCstLowerer {
     private readonly options: Record<string, any>,
   ) {}
 
+  /** Apply Python's lexical private-name transformation inside a class. */
+  private manglePrivateName(name: string): string {
+    const className = this.classStack.at(-1)?.replace(/^_+/, "") ?? "";
+    if (
+      !className ||
+      !name.startsWith("__") ||
+      name.endsWith("__") ||
+      name.includes(".")
+    ) return name;
+    return `_${className}${name}`;
+  }
+
   lowerModule(finalizedToplevel: any): CstLoweringResult {
     const root = this.syntax.tree.rootNode;
     if (root.type !== "module") throw new UnsupportedPythonCstNode(root);
@@ -831,7 +843,9 @@ export class PythonCstLowerer {
       case "identifier":
       case "keyword_identifier":
         if (node.text === "__debug__") return this.make("AST_True", node);
-        return this.make("AST_SymbolRef", node, { name: node.text });
+        return this.make("AST_SymbolRef", node, {
+          name: this.manglePrivateName(node.text),
+        });
       case "integer":
       case "float":
       case "sage_number":
@@ -1031,7 +1045,9 @@ export class PythonCstLowerer {
       case "attribute":
         {
           const object = this.field(node, "object");
-          const property = this.field(node, "attribute").text;
+          const property = this.manglePrivateName(
+            this.field(node, "attribute").text,
+          );
           const intrinsicTable = object.type === "identifier"
             ? this.intrinsicModules.get(object.text)
             : undefined;
@@ -1473,15 +1489,16 @@ export class PythonCstLowerer {
     let positionalOnlyCount = 0;
     const parameterNames = new Set<string>();
     const register = (name: SyntaxNode): void => {
-      if (parameterNames.has(name.text)) {
+      const mangled = this.manglePrivateName(name.text);
+      if (parameterNames.has(mangled)) {
         throw new SyntaxError(`duplicate argument '${name.text}'`);
       }
-      parameterNames.add(name.text);
+      parameterNames.add(mangled);
     };
 
     const makeArgument = (nameNode: SyntaxNode, typeNode: SyntaxNode | null) =>
       this.make("AST_SymbolFunarg", nameNode, {
-        name: nameNode.text,
+        name: this.manglePrivateName(nameNode.text),
         annotation: typeNode ? this.lowerType(typeNode) : null,
         annotation_text: typeNode ? typeNode.text : null,
       });
@@ -1556,7 +1573,10 @@ export class PythonCstLowerer {
       register(name);
       const argument = makeArgument(name, typeNode);
       (keywordOnly ? kwonly : positional).push(argument);
-      if (value) defaults[name.text] = this.lowerExpression(value);
+      if (value) {
+        defaults[this.manglePrivateName(name.text)] =
+          this.lowerExpression(value);
+      }
     }
     const args = positional as any;
     args.kwonly = kwonly;
@@ -1678,7 +1698,9 @@ export class PythonCstLowerer {
     const extracted = this.extractDocstrings(loweredBody);
     const Constructor = isMethod ? "AST_Method" : "AST_Function";
     const properties: Record<string, any> = {
-      name: this.make("AST_SymbolDefun", nameNode, { name: nameNode.text }),
+      name: this.make("AST_SymbolDefun", nameNode, {
+        name: this.manglePrivateName(nameNode.text),
+      }),
       argnames: args,
       decorators,
       annotations: this.annotationsMode,

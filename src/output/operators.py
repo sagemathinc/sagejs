@@ -75,7 +75,6 @@ def print_getattr(self, output, skip_expression):  # AST_Dot
         and not is_node_type(self.expression, AST_Existential)
         and not self.property.startswith('ρσ_')
         and '.' not in self.property
-        and self.property not in ('apply', 'bind', 'call', 'prototype')
         and not is_native_attribute_chain(self)
     ):
         output.print('ρσ_getattr(')
@@ -345,50 +344,54 @@ def print_binary_op(self, output):
         output.print(')')
     elif comparators[self.operator] and is_node_type(
             self.left, AST_Binary) and comparators[self.left.operator]:
-        # A chained comparison such as a < b < c
-        if is_node_type(self.left.right, AST_Symbol):
-            # left side compares against a regular variable,
-            # no caching needed
-            self.left.print(output)
-            leftvar = self.left.right.name
-        else:
-            # Cache the first two operands in function-local parameters.
-            # The historical global ρσ_cond_temp is also used inside runtime
-            # truth/equality helpers, so using it here corrupts the shared
-            # operand for comparisons such as ``a == f() == b``.
-            output.print(
-                '(function(ρσ_compare_left, ρσ_compare_middle) { return ')
-            inner_comparison = AST_Binary({
-                'left': AST_SymbolRef({'name': 'ρσ_compare_left'}),
-                'operator': self.left.operator,
-                'right': AST_SymbolRef({'name': 'ρσ_compare_middle'}),
+        # Comparisons are represented as a left-associated binary tree.  A
+        # pairwise rewrite works for ``a < b < c`` but accidentally compares
+        # the boolean result of an inner chain once there are four or more
+        # operands.  Flatten the entire tree and emit nested functions so that
+        # every operand is evaluated exactly once, from left to right, and
+        # later operands remain short-circuited as in Python.
+        operands = [self.right]
+        operators = [self.operator]
+        cursor = self.left
+        while (
+            is_node_type(cursor, AST_Binary)
+            and comparators[cursor.operator]
+        ):
+            operands.insert(0, cursor.right)
+            operators.insert(0, cursor.operator)
+            cursor = cursor.left
+        operands.insert(0, cursor)
+
+        def value_name(index):
+            return 'ρσ_compare_' + str(index)
+
+        def print_comparison(index):
+            comparison = AST_Binary({
+                'left': AST_SymbolRef({'name': value_name(index)}),
+                'operator': operators[index],
+                'right': AST_SymbolRef({'name': value_name(index + 1)}),
             })
-            inner_comparison.print(output)
+            comparison.print(output)
+            if index + 1 >= len(operators):
+                return
             output.space()
             output.print('&&')
             output.space()
-            outer_comparison = AST_Binary({
-                'left': AST_SymbolRef({'name': 'ρσ_compare_middle'}),
-                'operator': self.operator,
-                'right': self.right,
-            })
-            outer_comparison.print(output)
+            output.print('(function(' + value_name(index + 2) +
+                         ') { return ')
+            print_comparison(index + 1)
             output.print('; })(')
-            self.left.left.print(output)
-            output.comma()
-            self.left.right.print(output)
+            operands[index + 2].print(output)
             output.print(')')
-            return
 
-        output.space()
-        output.print("&&")
-        output.space()
-        outer_comparison = AST_Binary({
-            'left': AST_SymbolRef({'name': leftvar}),
-            'operator': self.operator,
-            'right': self.right,
-        })
-        outer_comparison.print(output)
+        output.print('(function(' + value_name(0) + ', ' + value_name(1) +
+                     ') { return ')
+        print_comparison(0)
+        output.print('; })(')
+        operands[0].print(output)
+        output.comma()
+        operands[1].print(output)
+        output.print(')')
     elif function_ops[self.operator]:
         output.print(function_ops[self.operator])
 
@@ -718,6 +721,41 @@ def print_assign(self, output):
         '<<=': 'ρσ_operator_ilshift',
         '>>=': 'ρσ_operator_irshift',
     }
+    if (
+        output.options.python_attributes
+        and is_node_type(self.left, AST_Dot)
+        and not self.left.property.startswith('ρσ_')
+        and '.' not in self.left.property
+        and (
+            self.operator in arithmetic_compound_functions
+            or self.operator in compound_functions
+        )
+    ):
+        # Augmented attribute assignment must invoke both halves of Python's
+        # descriptor protocol.  Reusing the assignment-target AST as the read
+        # side emits a raw JavaScript property access, which returns the
+        # descriptor object itself for properties such as ``mp.prec``.
+        # Capture the receiver once to preserve Python's evaluation order.
+        output.print('(function(ρσ_attr_target) { return ρσ_setattr(')
+        output.print('ρσ_attr_target')
+        output.comma()
+        output.print(JSON.stringify(self.left.property))
+        output.comma()
+        if self.operator in arithmetic_compound_functions:
+            function_name = arithmetic_compound_functions[self.operator]
+            print_arithmetic_call(output, function_name)
+        else:
+            function_name = compound_functions[self.operator]
+            output.print(function_name + '(')
+        output.print('ρσ_getattr(ρσ_attr_target, ')
+        output.print(JSON.stringify(self.left.property))
+        output.print(')')
+        output.comma()
+        self.right.print(output)
+        output.print(')); })(')
+        self.left.expression.print(output)
+        output.print(')')
+        return
     if (
         is_node_type(self.left, AST_ItemAccess)
         and (

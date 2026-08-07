@@ -1074,6 +1074,33 @@ def _dict_normalize_key(key: Any) -> Any:
     return key
 
 
+def _dict_resolve_key(mapping: Any, key: Any) -> Any:
+    """Return the stored identity for an equal immutable tuple key.
+
+    Native JavaScript ``Map`` compares objects by identity, whereas Python
+    dictionaries compare tuple keys structurally.  Keep the fast primitive
+    and identity paths, then scan existing tuple keys only after an identity
+    miss.  This is intentionally a correctness-first fallback; a hash-bucket
+    index can replace the scan when tuple-key workloads warrant it.
+    """
+    normalized_key = _dict_normalize_key(key)
+    if mapping.jsmap.has(normalized_key):
+        return normalized_key
+    if (
+        runtime.array.isArray(key)
+        and runtime.object.isFrozen(key)
+    ):
+        for candidate in mapping.jsmap.keys():
+            original = mapping.keymap.get(candidate)
+            if (
+                runtime.array.isArray(original)
+                and runtime.object.isFrozen(original)
+                and equals(original, key)
+            ):
+                return candidate
+    return normalized_key
+
+
 class _DictView:
 
     def __init__(self, dictionary: SageDict, kind: str) -> None:
@@ -1164,7 +1191,7 @@ class _DictView:
 
 def _dict_storage_setitem(mapping: Any, key: Any, value: Any) -> None:
     """Set an item without dispatching to a dict subclass override."""
-    normalized_key = _dict_normalize_key(key)
+    normalized_key = _dict_resolve_key(mapping, key)
     if not mapping.jsmap.has(normalized_key):
         mapping.keymap.set(normalized_key, key)
     mapping.jsmap.set(normalized_key, value)
@@ -1196,7 +1223,7 @@ class SageDict:
         return self.jsmap.size
 
     def __contains__(self, key: Any) -> bool:
-        return self.jsmap.has(_dict_normalize_key(key))
+        return self.jsmap.has(_dict_resolve_key(self, key))
 
     has = __contains__
 
@@ -1212,14 +1239,14 @@ class SageDict:
     set = __setitem__
 
     def __delitem__(self, key: Any) -> None:
-        normalized_key = _dict_normalize_key(key)
+        normalized_key = _dict_resolve_key(self, key)
         if not self.jsmap.has(normalized_key):
             raise KeyError(key)
         _native_delete(self.jsmap, normalized_key)
         _native_delete(self.keymap, normalized_key)
 
     def __getitem__(self, key: Any) -> Any:
-        normalized_key = _dict_normalize_key(key)
+        normalized_key = _dict_resolve_key(self, key)
         answer = self.jsmap.get(normalized_key)
         if (
             answer is runtime.undefined
@@ -1260,7 +1287,7 @@ class SageDict:
         key: Any,
         default_value: Any = runtime.undefined,
     ) -> Any:
-        normalized_key = _dict_normalize_key(key)
+        normalized_key = _dict_resolve_key(self, key)
         answer = self.jsmap.get(normalized_key)
         if (
             answer is runtime.undefined
@@ -1278,7 +1305,7 @@ class SageDict:
         key: Any,
         default_value: Any = None,
     ) -> Any:
-        normalized_key = _dict_normalize_key(key)
+        normalized_key = _dict_resolve_key(self, key)
         if not self.jsmap.has(normalized_key):
             self.keymap.set(normalized_key, key)
             self.jsmap.set(normalized_key, default_value)
@@ -1303,7 +1330,7 @@ class SageDict:
         key: Any,
         default_value: Any = runtime.undefined,
     ) -> Any:
-        normalized_key = _dict_normalize_key(key)
+        normalized_key = _dict_resolve_key(self, key)
         answer = self.jsmap.get(normalized_key)
         if (
             answer is runtime.undefined
@@ -1405,7 +1432,7 @@ class SageDict:
         if self.size != other.size:
             return False
         for pair in other.items():
-            normalized_key = _dict_normalize_key(pair[0])
+            normalized_key = _dict_resolve_key(self, pair[0])
             if not self.jsmap.has(normalized_key):
                 return False
             if not equals(

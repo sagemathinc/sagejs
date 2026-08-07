@@ -592,6 +592,8 @@ def print_class(output):
     for stmt in early_statements:
         print_class_statement(stmt)
 
+    emitted_statements = list(early_statements)
+
     # actual methods
     if not self.init:
         # Create a default __init__ method
@@ -667,6 +669,14 @@ def print_class(output):
             class_def(JSON.stringify(stmt.name.name), True)
             stmt.name.print(output)
             output.end_statement()
+
+        elif self.statements.indexOf(stmt) is not -1:
+            # Class namespaces execute sequentially.  In particular, an
+            # alias made between two definitions of the same method must keep
+            # the first function object rather than resolving the final
+            # prototype value after every method has been emitted.
+            print_class_statement(stmt)
+            emitted_statements.append(stmt)
 
     if defined_methods['__next__']:
         class_def('next', False)
@@ -773,7 +783,7 @@ def print_class(output):
     for stmt in self.statements:
         if (
             not is_node_type(stmt, AST_Method)
-            and early_statements.indexOf(stmt) is -1
+            and emitted_statements.indexOf(stmt) is -1
         ):
             print_class_statement(stmt)
 
