@@ -11,6 +11,8 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 
+const { testJavaScriptSea } = require("./helpers/javascript-sea.cjs");
+
 const root = join(__dirname, "..");
 const executableSuffix = process.platform === "win32" ? ".exe" : "";
 const pythonExecutable = join(
@@ -58,6 +60,8 @@ try {
     runArguments(pythonExecutable, ["--jupyter-kernel-self-test"]),
     "Sage.js Jupyter SEA runtime passed.",
   );
+
+  testJavaScriptSea(pythonExecutable, temporaryDirectory);
 
   const pythonProgram = join(temporaryDirectory, "portable.py");
   writeFileSync(

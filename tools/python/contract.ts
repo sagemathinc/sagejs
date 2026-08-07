@@ -120,7 +120,10 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   register_doc: "ρσ_register_doc",
   regexp: "RegExp",
   real_literal: "create_real_literal",
-  require_module: "require",
+  // Do not expose the host's CommonJS loader through the ordinary global
+  // name ``require``. User programs may naturally bind that name from the
+  // public sagejs.javascript module.
+  require_module: "__sagejs_runtime_require__",
   repr: "ρσ_repr",
   scope_dict: "ρσ_scope_dict",
   sequence_class: "ρσ_sequence_class",

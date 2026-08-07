@@ -36,6 +36,8 @@
     "src/lib/sage/graphs/graph_generators.py",
     "src/lib/sage/graphs/graph_database.py",
     "src/lib/sagejs_elliptic_advanced.py",
+    "src/lib/sagejs/__init__.py",
+    "src/lib/sagejs/javascript.py",
     "src/lib/sage/modular/__init__.py",
     "src/lib/sage/modular/dims.py",
     "src/lib/magma.py",

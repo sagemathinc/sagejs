@@ -749,6 +749,37 @@ Third-party modules are translated once and stored in a compiler-versioned,
 source-hashed user cache. Cache misses affect the first import only; edits to a
 module or compiler change invalidate the corresponding entry.
 
+### JavaScript and local npm packages
+
+Trusted Node.js hosts expose an explicit public bridge to built-in modules and
+packages installed in the current project's `node_modules` tree:
+
+```sh
+pnpm add express
+```
+
+```py
+from sagejs.javascript import require
+
+express = require("express")
+app = express()
+path = require("node:path")
+print(path.basename("/tmp/example.txt"))
+```
+
+Resolution begins in the current working directory rather than inside the
+Sage.js installation. An optional second argument selects another project
+directory, and `sagejs.javascript.resolve(name, directory)` reports the exact
+entry point. JavaScript methods retain their native `this` receiver while
+values remain in the same V8 isolate; there is no subprocess or serialization
+boundary. `import_module` additionally returns the native Promise for a
+dynamic ESM import.
+
+The ecosystem boundary is intentional: ordinary `import express` continues
+to mean a Python module and never silently falls back to npm. Browser or
+restricted evaluators may omit JavaScript module loading, which callers can
+detect with `sagejs.javascript.is_available()`.
+
 ### Experimental NumPy facade
 
 Sage.js includes an initial Python-facing `numpy` module backed by

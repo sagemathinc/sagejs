@@ -51,6 +51,7 @@ function evaluateCompiler(
     writefile,
     sha1sum,
     require: runtimeRequire,
+    __sagejs_runtime_require__: runtimeRequire,
     exports: compiler_exports,
   });
 

@@ -12,6 +12,12 @@ import { dirname, join } from "path";
 import { Script } from "vm";
 
 import type { Compiler } from "./compiler";
+import dynamicCode from "./dynamic-code";
+import {
+  importJavaScriptModule,
+  requireJavaScriptModule,
+  resolveJavaScriptModule,
+} from "./javascript-modules";
 import type { PythonCompilerFrontend } from "./python/compiler-frontend";
 import {
   readBaselibSource,
@@ -83,6 +89,17 @@ export function runRuntimeBootstrap(
   additionalImportDirs: string[] = [],
   requestedModuleCacheDirectory?: string | false,
 ): void {
+  const internalRequire = Reflect.get(globalThis, "require");
+  if (typeof internalRequire === "function") {
+    // Compiler intrinsics use this collision-proof name. In particular,
+    // ``from sagejs.javascript import require`` must not redirect internal
+    // FLINT, SQLite, dynamic-code, or other trusted runtime dependencies.
+    const trustedRequire = (name: string): unknown => {
+      if (name === "./dynamic-code.js") return { default: dynamicCode };
+      return Reflect.apply(internalRequire, undefined, [name]);
+    };
+    Reflect.set(globalThis, "__sagejs_runtime_require__", trustedRequire);
+  }
   const moduleCacheDirectory = requestedModuleCacheDirectory === false
     ? ""
     : requestedModuleCacheDirectory ?? defaultModuleCacheDirectory(compiler);
@@ -373,6 +390,24 @@ export function runRuntimeBootstrap(
     return Reflect.get(registry, name);
   };
   Reflect.set(globalThis, "__sagejs_load_module__", loadModule);
+  // Public JavaScript interoperation deliberately uses project-local loaders.
+  // The historical global require resolves relative to Sage.js itself and is
+  // retained only as an internal compiler/runtime boundary.
+  Reflect.set(
+    globalThis,
+    "__sagejs_javascript_require__",
+    requireJavaScriptModule,
+  );
+  Reflect.set(
+    globalThis,
+    "__sagejs_javascript_resolve__",
+    resolveJavaScriptModule,
+  );
+  Reflect.set(
+    globalThis,
+    "__sagejs_javascript_import__",
+    importJavaScriptModule,
+  );
   Reflect.set(
     globalThis,
     "__sagejs_parse_python__",

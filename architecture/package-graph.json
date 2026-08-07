@@ -171,7 +171,7 @@
         "http", "io", "js", "json", "math", "multiprocessing", "ntpath",
         "operator", "os", "pathlib", "posixpath", "pythonize", "random",
         "re", "sage", "sagejs_serialization", "shutil", "socket",
-        "sqlite3", "statistics", "struct", "subprocess", "sys", "tempfile", "time",
+        "sagejs.javascript", "sqlite3", "statistics", "struct", "subprocess", "sys", "tempfile", "time",
         "traceback", "types", "urllib", "uuid", "weakref", "zlib"
       ],
       "files": [
@@ -191,7 +191,9 @@
         "src/lib/time.py", "src/lib/traceback.py", "src/lib/types.py",
         "src/lib/uuid.py", "src/lib/weakref.py", "src/lib/zlib.py"
       ],
-      "prefixes": ["src/lib/http/", "src/lib/sage/", "src/lib/urllib/"]
+      "prefixes": [
+        "src/lib/http/", "src/lib/sage/", "src/lib/sagejs/", "src/lib/urllib/"
+      ]
     },
     {
       "id": "numeric-compat",

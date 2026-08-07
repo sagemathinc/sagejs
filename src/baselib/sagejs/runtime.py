@@ -14,7 +14,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: parseInt
 # globals: QQ, Rational, ReferenceError, Reflect, RegExp, String, SyntaxError
 # globals: TypeError, WeakRef
-# globals: ZeroDivisionError, require
+# globals: ZeroDivisionError, __sagejs_runtime_require__
 # globals: ρσ_bigint_divexact, ρσ_bigint_gcd
 # globals: ρσ_bigint_fields, ρσ_callable_instance_class
 # globals: ρσ_arraylike
@@ -271,7 +271,7 @@ reflect = Reflect
 reference_error = ReferenceError
 regexp = RegExp
 real_literal = create_real_literal
-require_module = require
+require_module = __sagejs_runtime_require__
 repr = ρσ_repr
 scope_dict = ρσ_scope_dict
 sequence_class = ρσ_sequence_class

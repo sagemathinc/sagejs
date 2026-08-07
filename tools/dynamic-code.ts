@@ -1,8 +1,13 @@
 import { dirname, join } from "node:path";
-import createCompiler from "./compiler";
+import createCompiler, { type Compiler } from "./compiler";
 
-const compiler = createCompiler();
+let compiler: Compiler | undefined;
 let moduleCounter = 0;
+
+function dynamicCompiler(): Compiler {
+  compiler ??= createCompiler();
+  return compiler;
+}
 
 const pythonKeywords = new Set([
   "False",
@@ -190,7 +195,8 @@ export function runDynamic(
         ast.annotated_locals.push(name);
       }
     }
-    const output = new compiler.OutputStream({
+    const OutputStream = dynamicCompiler().OutputStream;
+    const output = new OutputStream({
       omit_baselib: true,
       private_scope: false,
       write_name: true,
