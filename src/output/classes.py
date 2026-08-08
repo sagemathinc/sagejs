@@ -347,10 +347,12 @@ def print_class(output):
 
     add_hidden_class_property(
         '__name__',
-        lambda: output.print(JSON.stringify(self.name.name)))
+        lambda: output.print(JSON.stringify(self.name.name)),
+        True)
     add_hidden_class_property(
         '__qualname__',
-        lambda: output.print(JSON.stringify(self.name.name)))
+        lambda: output.print(JSON.stringify(self.name.name)),
+        True)
 
     def print_class_module():
         if self.module_id:
@@ -361,7 +363,8 @@ def print_class(output):
 
     add_hidden_class_property(
         '__module__',
-        print_class_module)
+        print_class_module,
+        True)
 
     class_annotations = []
     for statement in self.body:

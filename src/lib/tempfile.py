@@ -72,6 +72,20 @@ def mkdtemp(suffix=None, prefix=None, dir=None):
     raise FileExistsError('No usable temporary directory name found')
 
 
+def mktemp(suffix=None, prefix=None, dir=None):
+    """Return an unused temporary pathname without creating it.
+
+    This deprecated CPython compatibility API is inherently subject to a
+    create-after-check race.  New code should use ``mkstemp`` or
+    ``NamedTemporaryFile`` instead.
+    """
+    for _attempt in range(TMP_MAX):
+        filename = _candidate(suffix, prefix, dir)
+        if not os.path.exists(filename):
+            return filename
+    raise FileExistsError('No usable temporary file name found')
+
+
 class _TemporaryFileWrapper:
     def __init__(self, fileobj, name, delete_value, delete_on_close=True):
         self.file = fileobj

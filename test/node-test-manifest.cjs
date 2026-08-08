@@ -46,6 +46,7 @@ const integration = [
   "test/python-float-identity.cjs",
   "test/python-runtime-hotpaths.cjs",
   "test/random-module.cjs",
+  "test/pickle-module.cjs",
   "test/array-module.cjs",
   "test/operator-module.cjs",
   "test/multiprocessing-module.cjs",

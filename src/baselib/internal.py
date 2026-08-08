@@ -1586,6 +1586,12 @@ def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
     """Test one ``isinstance`` candidate without a variadic call frame."""
     value_type = runtime.jstype(value)
     if (
+        value is None
+        and _internal_get_member(
+            candidate, '__sagejs_none_type__') is True
+    ):
+        return True
+    if (
         _internal_type_is(value_type, 'object')
         and _internal_get_member(value, '__sagejs_float__') is True
     ):

@@ -596,6 +596,19 @@ class NotImplementedType:
 NotImplemented = NotImplementedType()
 
 
+class _NoneType:
+    """Runtime type object for JavaScript's null-backed Python ``None``."""
+
+    pass
+
+
+runtime.reflect.set(_NoneType, '__name__', 'NoneType')
+runtime.reflect.set(_NoneType, '__qualname__', 'NoneType')
+runtime.reflect.set(_NoneType, '__module__', 'builtins')
+runtime.reflect.set(_NoneType, '__sagejs_none_type__', True)
+runtime.set_class_repr(_NoneType, "<class 'NoneType'>")
+
+
 def ρσ_operator_add(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
@@ -5391,6 +5404,7 @@ def ρσ_type(*values: Any) -> Any:
             prototype, 'constructor', dynamic_class)
         runtime.reflect.set(dynamic_class, 'prototype', prototype)
         runtime.reflect.set(dynamic_class, '__name__', class_name)
+        runtime.reflect.set(dynamic_class, '__qualname__', class_name)
         runtime.reflect.set(
             dynamic_class, '__bases__', runtime.math_tuple(list(bases)))
         runtime.reflect.set(
@@ -5457,6 +5471,8 @@ def ρσ_type(*values: Any) -> Any:
     if len(values) != 1:
         raise TypeError('type() takes 1 or 3 arguments')
     value = values[0]
+    if value is None:
+        return _NoneType
     value_type = ρσ_python_jstype(value)
     module_namespaces = runtime.reflect.get(
         runtime.global_object, '__sagejs_module_namespaces__')
@@ -7751,6 +7767,21 @@ runtime.reflect.set(
     ),
 )
 runtime.set_class_repr(SageObject, "<class 'object'>")
+_type_bases = runtime.object.freeze(
+    runtime.reflect.construct(runtime.array, [SageObject]))
+_type_mro = runtime.object.freeze(
+    runtime.reflect.construct(
+        runtime.array, [ρσ_type, SageObject]))
+runtime.reflect.set(ρσ_type, '__bases__', _type_bases)
+runtime.reflect.set(
+    runtime.reflect.get(ρσ_type, 'prototype'),
+    '__bases__',
+    _type_bases,
+)
+runtime.reflect.set(ρσ_type, '__mro__', _type_mro)
+runtime.reflect.set(ρσ_type, '__module__', 'builtins')
+runtime.reflect.set(ρσ_type, '__name__', 'type')
+runtime.reflect.set(ρσ_type, '__qualname__', 'type')
 _object_bases = runtime.reflect.get(SageObject, '__bases__')
 runtime.object.freeze(_object_bases)
 runtime.object.freeze(runtime.reflect.get(

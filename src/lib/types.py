@@ -99,8 +99,7 @@ CodeType = type((lambda: None).__code__)
 # these names primarily serve runtime annotation and compatibility imports.
 
 
-class NoneType:
-    pass
+NoneType = type(None)
 
 
 class FrameType:

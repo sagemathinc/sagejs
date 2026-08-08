@@ -38,6 +38,26 @@ test("optimized calls, equality, and indexing retain Python semantics", async (t
   ].join("\n"));
 });
 
+test("core type metadata follows the Python object model", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "import types",
+    "print(type.__module__, type.__bases__)",
+    "print(type.__mro__[:2] == (type, object))",
+    "print(all(isinstance(cls, type) for cls in type.__mro__))",
+    "print(type(None).__name__, type(None).__module__)",
+    "print(types.NoneType is type(None), isinstance(None, types.NoneType))",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), [
+    "builtins (<class 'object'>,)",
+    "True",
+    "True",
+    "NoneType builtins",
+    "True True",
+  ].join("\n"));
+});
+
 test("optimized comparisons and integer kernels retain Python semantics", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());

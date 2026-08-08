@@ -976,10 +976,16 @@ def _tuple_slice(self: Any, *slice_args: Any) -> Any:
 _tuple_array_prototype_cache = runtime.undefined
 
 
-def _tuple_array_prototype() -> Any:
+def _tuple_array_prototype(
+    seed_values: Any = runtime.undefined,
+) -> Any:
     global _tuple_array_prototype_cache
     if _tuple_array_prototype_cache is runtime.undefined:
-        decorated = runtime.list_constructor()
+        decorated = (
+            seed_values
+            if runtime.array.isArray(seed_values)
+            else runtime.list_constructor()
+        )
         prototype = runtime.object.create(
             runtime.object.getPrototypeOf(decorated))
         properties = {
@@ -1006,7 +1012,7 @@ def _freeze_tuple(
 ) -> Any:
     prototype = _tuple_array_prototype_cache
     if prototype is runtime.undefined:
-        prototype = _tuple_array_prototype()
+        prototype = _tuple_array_prototype(values)
     if tuple_repr is not None or extra_properties is not None:
         properties = {
             '__repr__': {'value': tuple_repr},
@@ -1027,8 +1033,26 @@ def math_tuple(values: list[Any]) -> Any:
         values = runtime.list_constructor(values)
     prototype = _tuple_array_prototype_cache
     if prototype is runtime.undefined:
-        prototype = _tuple_array_prototype()
+        prototype = _tuple_array_prototype(values)
     return runtime.native_freeze_tuple(values, prototype)
+
+
+def _install_type_tuple_metadata() -> None:
+    """Upgrade bootstrap type metadata to ordinary Python tuples.
+
+    ``builtins`` must create ``type.__bases__`` and ``type.__mro__`` before
+    the tuple runtime is initialized.  Once this module has installed tuple
+    behavior, replace those bootstrap arrays with canonical tuples.
+    """
+    bases = math_tuple([object])
+    mro = math_tuple([type, object])
+    runtime.reflect.set(type, '__bases__', bases)
+    runtime.reflect.set(type, '__mro__', mro)
+    runtime.reflect.set(
+        runtime.reflect.get(type, 'prototype'), '__bases__', bases)
+
+
+_install_type_tuple_metadata()
 
 
 def named_tuple(

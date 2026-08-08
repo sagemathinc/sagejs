@@ -42,6 +42,8 @@ async function testFilesystemModules() {
         "print((root / 'moved.txt').read_text(), (destination / 'nested').exists())",
         "print(shutil.disk_usage(root).total > 0)",
         "fd, filename = tempfile.mkstemp(dir=root, suffix='.dat')",
+        "unused = tempfile.mktemp(dir=root, suffix='.pending')",
+        "assert unused.endswith('.pending') and not os.path.exists(unused)",
         "os.close(fd)",
         "print(Path(filename).exists(), Path(filename).suffix)",
         "Path(filename).unlink()",

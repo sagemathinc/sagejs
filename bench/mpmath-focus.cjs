@@ -51,6 +51,9 @@ const clusters = {
     "test_mpmath.test_newstyle_classes",
     "test_quad.test_quadosc",
   ],
+  pickle: [
+    "test_pickle.test_pickle",
+  ],
 };
 
 function usage() {
