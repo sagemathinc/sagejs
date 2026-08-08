@@ -17,6 +17,7 @@ const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 const root = join(__dirname, "..");
 (async () => {
 const sourcePath = join(root, "bench", "native-kernel-input.sage");
+const mpmathSourcePath = join(root, "bench", "native-mpmath-kernel.sage");
 const source = readFileSync(sourcePath, "utf8");
 const ir = await lowerSource(source, sourcePath);
 const complexFunction = ir.functions.find(
@@ -26,6 +27,10 @@ const realFunction = ir.functions.find(
   (fn) => fn.name === "real_multiply_loop",
 );
 const generatedC = generateC(ir);
+const mpmathSource = readFileSync(mpmathSourcePath, "utf8");
+const mpmathIr = await lowerSource(mpmathSource, mpmathSourcePath);
+const harmonicFunction = mpmathIr.functions[0];
+const harmonicC = generateC(mpmathIr);
 
 assert.equal(ir.version, 0);
 assert.equal(complexFunction.params[0].type, "ComplexField");
@@ -56,6 +61,16 @@ assert.match(
 assert.match(
   generatedC,
   /mpfr_mul\(sagejs_value->value, sagejs_value->value, sagejs_step/,
+);
+assert.equal(harmonicFunction.name, "harmonic_cubic_loop");
+assert.deepEqual(
+  harmonicFunction.body.find((item) => item.kind === "loop.range").body
+    .map((item) => item.operation),
+  ["mul", "mul", "div", "add", "add"],
+);
+assert.match(
+  harmonicC,
+  /mpfr_div\(sagejs_term, sagejs_one, sagejs_denominator_cubed/,
 );
 await assert.rejects(
   () =>
@@ -110,6 +125,17 @@ try {
   assert.equal(second.cached, true);
   assert.equal(first.cacheKey, second.cacheKey);
   assert.equal(first.modulePath, second.modulePath);
+
+  const mpmathKernel = await compileKernel({
+    sourcePath: mpmathSourcePath,
+    cacheRoot: join(temporary, "mpmath-cache"),
+  });
+  const harmonicAddon = require(mpmathKernel.addonPath);
+  const flint = require("../packages/flint");
+  assert.match(
+    flint.realToString(harmonicAddon.harmonic_cubic_loop(269, 400)),
+    /^1\.20205378596232868074466308969974913071858345926099644512838/,
+  );
 
   const direct = spawnSync(
     process.execPath,

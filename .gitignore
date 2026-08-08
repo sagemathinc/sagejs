@@ -10,5 +10,6 @@ dist
 __pycache__/
 *.pyc
 bench/.native-kernel-cache
+bench/.native-mpmath-cache
 bench/.native-poc
 build/sea

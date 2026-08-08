@@ -135,3 +135,22 @@ unconnected AST cases.
 The architectural seams are now present: typed IR, escape-aware native
 storage, independent backends, a JavaScript fallback, a versioned shared
 element ABI, standard runtime results, and deterministic compilation caching.
+
+## mpmath workload prototype
+
+The first application beyond repeated multiplication is the dominant
+harmonic-cubic loop from the 80-decimal-digit mpmath benchmark. The input in
+`native-mpmath-kernel.sage` is ordinary typed Sage.js; the existing Native
+Kernel pipeline lowers its loop and five MPFR operations per term to one C
+entry point. Run the comparison with:
+
+```sh
+pnpm bench:mpmath:aot
+```
+
+The benchmark checks the 60-digit result against unmodified mpmath under both
+CPython and Sage.js, excludes process startup, and reports median time per
+400-term sum. This is deliberately a Cython-style explicit annotation
+prototype: it demonstrates the attainable native ceiling and the reusable AOT
+pipeline, but does not claim that arbitrary unmodified mpmath functions are
+automatically compilable.

@@ -181,6 +181,7 @@
     "bench:programs": "node bench/cowasm/run.cjs --suite programs",
     "bench:micropython": "node bench/micropython-conformance.cjs",
     "bench:mpmath": "node bench/compare-mpmath.cjs",
+    "bench:mpmath:aot": "node bench/compare-mpmath-aot.cjs",
     "bench:mpmath:suite": "node bench/compare-mpmath-suite.cjs",
     "bench:mpmath:focus": "node bench/mpmath-focus.cjs",
     "bench:attributes": "node bench/compare-python-attributes.cjs",

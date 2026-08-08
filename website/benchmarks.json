@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-08-05",
+  "updated": "2026-08-08",
   "policy": {
     "correctnessFirst": "A benchmark result is publishable only after all compared systems agree on the normalized mathematical result or their semantic difference is explicit.",
     "sharedCi": "Shared CI runs correctness and catastrophic-regression checks, not tight competitive timing gates.",
@@ -31,6 +31,7 @@
   "suites": [
     {"id":"cold-start","status":"existing","path":"bench/cold-start.cjs","capabilities":["sage-language","native-cli","numpy","release-installers"],"systems":["Sage.js"],"axes":["compiler load","version","evaluate","import"]},
     {"id":"native-compiler","status":"existing","path":"bench/compare-native-compiler.cjs","capabilities":["sage-language","integers-rationals"],"systems":["Sage.js","SageMath"],"axes":["precision","real/complex","allocation","generated native kernel"]},
+    {"id":"mpmath-aot","status":"existing","path":"bench/compare-mpmath-aot.cjs","capabilities":["sage-language"],"systems":["Sage.js AOT/MPFR","Sage.js mpmath","CPython mpmath"],"axes":["typed AOT kernel","unmodified compatibility path","precision","terms"]},
     {"id":"arithmetic","status":"existing","path":"bench/compare-sagelite.cjs","capabilities":["integers-rationals","primes-factorization"],"systems":["Sage.js","SageMath"],"axes":["integer arithmetic","factorization","common Sage source"]},
     {"id":"complex","status":"existing","path":"bench/compare-complex.cjs","capabilities":["symbolics"],"systems":["Sage.js","SageMath"],"axes":["precision","operation","native versus runtime"]},
     {"id":"finite-fields","status":"existing","path":"bench/compare-finite-fields.cjs","capabilities":["finite-fields"],"systems":["Sage.js","SageMath"],"axes":["prime fields","extension fields","operation","iterations"]},
