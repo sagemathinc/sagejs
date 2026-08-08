@@ -73,6 +73,9 @@ function backendFingerprint() {
       readFileSync(join(__dirname, "exact-analysis.cjs")),
       readFileSync(join(__dirname, "prime-field-ir.cjs")),
       readFileSync(join(__dirname, "prime-field-backend.cjs")),
+      readFileSync(join(__dirname, "prime-source-ir.cjs")),
+      readFileSync(join(__dirname, "prime-source-optimize.cjs")),
+      readFileSync(join(__dirname, "prime-source-backend.cjs")),
       readFileSync(join(__dirname, "word-backend.cjs")),
       readFileSync(join(__dirname, "tagged-backend.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
@@ -122,14 +125,27 @@ function primeFieldTuning() {
   ));
 }
 
-function bindingGyp(ir) {
+function sourceBoundsCheck() {
+  const text = process.env.SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK;
+  if (text === undefined) return true;
+  if (text === "0") return false;
+  if (text === "1") return true;
+  throw new RangeError(
+    "SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK must be 0 or 1",
+  );
+}
+
+function bindingGyp(ir, sourceBoundsChecked) {
   const usesPrimeField = ir.functions.some(
+    (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
+  );
+  const usesSpecializedPrimeField = ir.functions.some(
     (fn) => fn.kernelKind === "prime-field-matrix",
   );
   const matrixOnly = ir.functions.every(
-    (fn) => fn.kernelKind === "prime-field-matrix",
+    (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
-  const tuning = primeFieldTuning();
+  const tuning = usesSpecializedPrimeField ? primeFieldTuning() : null;
   const target = {
     target_name: "sagejs_native_kernel",
     win_delay_load_hook: "false",
@@ -137,7 +153,7 @@ function bindingGyp(ir) {
     include_dirs: [join(nativePrefix, "include"), nativeInclude],
     defines: [
       "NAPI_VERSION=8",
-      ...(usesPrimeField
+      ...(usesSpecializedPrimeField
         ? [
           `SAGEJS_PRIME_BLOCK_THRESHOLD_U32=${tuning.blockThresholdU32}`,
           `SAGEJS_PRIME_BLOCK_THRESHOLD_U64=${tuning.blockThresholdU64}`,
@@ -147,6 +163,9 @@ function bindingGyp(ir) {
           `SAGEJS_PRIME_SHOUP_THRESHOLD=${tuning.shoupThreshold}`,
         ]
         : []),
+      ...(sourceBoundsChecked === null
+        ? []
+        : [`SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK=${sourceBoundsChecked ? 1 : 0}`]),
     ],
   };
   if (process.platform === "win32") {
@@ -214,10 +233,14 @@ async function compileKernel(options) {
   const ir = await lowerSource(source, sourcePath, {
     functions: options.functions,
   });
-  const usesPrimeField = ir.functions.some(
+  const usesSpecializedPrimeField = ir.functions.some(
     (fn) => fn.kernelKind === "prime-field-matrix",
   );
-  const tuning = usesPrimeField ? primeFieldTuning() : null;
+  const usesSourcePrimeField = ir.functions.some(
+    (fn) => fn.kernelKind === "prime-field-source",
+  );
+  const tuning = usesSpecializedPrimeField ? primeFieldTuning() : null;
+  const sourceBoundsChecked = usesSourcePrimeField ? sourceBoundsCheck() : null;
   const identity = {
     sourcePath,
     source,
@@ -229,6 +252,7 @@ async function compileKernel(options) {
     nodeModulesAbi: process.versions.modules,
     toolchain: toolchainFingerprint(),
     primeFieldTuning: tuning,
+    sourceBoundsChecked,
     mpfr: "4.2.2",
     mpc: mpcVersion,
   };
@@ -263,7 +287,7 @@ async function compileKernel(options) {
   }
 
   const matrixOnly = ir.functions.every(
-    (fn) => fn.kernelKind === "prime-field-matrix",
+    (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
   if (!matrixOnly && !existsSync(nativeMpcLibrary)) {
     throw new Error(
@@ -275,13 +299,14 @@ async function compileKernel(options) {
   writeFileSync(join(outputPath, "kernel.c"), generateC(ir));
   writeFileSync(
     join(outputPath, "binding.gyp"),
-    `${JSON.stringify(bindingGyp(ir), null, 2)}\n`,
+    `${JSON.stringify(bindingGyp(ir, sourceBoundsChecked), null, 2)}\n`,
   );
   writeFileSync(
     modulePath,
     generateJavaScript(ir, {
       cacheKey,
       primeFieldTuning: tuning,
+      sourceBoundsChecked,
       sourceHash,
       sourcePath,
     }),
@@ -293,6 +318,7 @@ async function compileKernel(options) {
         cacheKey,
         nativeAbi: NATIVE_ABI_VERSION,
         primeFieldTuning: tuning,
+        sourceBoundsChecked,
         sourcePath,
         ir,
       },

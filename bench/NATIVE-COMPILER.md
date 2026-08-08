@@ -320,7 +320,19 @@ The dedicated-host comparison with Nemo and Magma, artifact-size accounting,
 and full methodology are in
 [`PRIME-FIELD-NATIVE-BENCHMARK.md`](PRIME-FIELD-NATIVE-BENCHMARK.md).
 
-## Deliberate v9 limits
+V10 also contains a deliberately separate source-transparency experiment.
+Classical LU/rank and cubic multiplication are compiled from the loops in an
+actual CPython-parseable Python module; no function-name intrinsic selects the
+algorithm. Generic row-update and modular-dot-product data-flow idioms provide
+Shoup multiplication and bounded delayed reduction. On a dedicated host, the
+compiled Python LU is within 14% of handwritten classical C with GCC and
+usually slightly faster with Clang. It remains slower than blocked v9 and
+FLINT algorithms, which is the intended distinction between compiler quality
+and algorithm quality. See
+[`PRIME-FIELD-SOURCE-COMPILER-EXPERIMENT.md`](PRIME-FIELD-SOURCE-COMPILER-EXPERIMENT.md)
+for code-size, safety, GCC/Clang, interpreted, handwritten-C, and FLINT data.
+
+## Deliberate v10 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements

@@ -89,6 +89,19 @@ function isPrimeFieldSignature(signature) {
   );
 }
 
+function isPrimeFieldIntrinsicFunction(fn) {
+  const statements = array(fn.body).filter(
+    (statement) => nodeType(statement) !== "AST_EmptyStatement",
+  );
+  if (statements.length !== 1 || nodeType(statements[0]) !== "AST_Return") {
+    return false;
+  }
+  const call = statements[0].value;
+  return nodeType(call) === "AST_Call" &&
+    nodeType(call.expression) === "AST_SymbolRef" &&
+    OPERATIONS.has(call.expression.name);
+}
+
 function lowerPrimeFieldFunction(fn, signature, filename, decorated) {
   const statements = array(fn.body).filter(
     (statement) => nodeType(statement) !== "AST_EmptyStatement",
@@ -166,6 +179,7 @@ function lowerPrimeFieldFunction(fn, signature, filename, decorated) {
 }
 
 module.exports = {
+  isPrimeFieldIntrinsicFunction,
   isPrimeFieldSignature,
   lowerPrimeFieldFunction,
 };

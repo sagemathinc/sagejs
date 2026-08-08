@@ -45,6 +45,11 @@ const primeFieldMatrixPath = join(
   "bench",
   "native_prime_field_matrix.py",
 );
+const primeFieldSourcePath = join(
+  root,
+  "bench",
+  "native_prime_field_source.py",
+);
 const source = readFileSync(sourcePath, "utf8");
 const ir = await lowerSource(source, sourcePath);
 const complexFunction = ir.functions.find(
@@ -82,8 +87,19 @@ const primeFieldMatrixIr = await lowerSource(
   primeFieldMatrixPath,
 );
 const primeFieldMatrixC = generateC(primeFieldMatrixIr);
+const primeFieldSourceIr = await lowerSource(
+  readFileSync(primeFieldSourcePath, "utf8"),
+  primeFieldSourcePath,
+);
+const primeFieldSourceC = generateC(primeFieldSourceIr);
+const renamedPrimeFieldSourceIr = await lowerSource(
+  readFileSync(primeFieldSourcePath, "utf8")
+    .replaceAll("source_prime_rank", "renamed_rank_kernel")
+    .replaceAll("source_prime_matmul", "renamed_matmul_kernel"),
+  "renamed-prime-field-source.py",
+);
 
-assert.equal(ir.version, 9);
+assert.equal(ir.version, 10);
 assert.equal(complexFunction.params[0].type, "ComplexField");
 assert.equal(complexFunction.params[1].type, "uint64");
 assert.equal(complexFunction.returnType, "ComplexNumber");
@@ -221,6 +237,36 @@ assert.match(primeFieldMatrixC, /sagejs_prime_factor_classical/);
 assert.match(primeFieldMatrixC, /sagejs_prime_factor_solve/);
 assert.match(primeFieldMatrixC, /nmod_mul\(left, right/);
 assert.match(primeFieldMatrixC, /sagejs_native_wrap_prime_matrix/);
+assert.deepEqual(
+  primeFieldSourceIr.functions.map((fn) => [
+    fn.name,
+    fn.kernelKind,
+    fn.sourceTransparent,
+    fn.optimizations,
+  ]),
+  [
+    [
+      "source_prime_rank",
+      "prime-field-source",
+      true,
+      { rowSubmul: 1, dotAccumulate: 0 },
+    ],
+    [
+      "source_prime_matmul",
+      "prime-field-source",
+      true,
+      { rowSubmul: 0, dotAccumulate: 1 },
+    ],
+  ],
+);
+assert.match(primeFieldSourceC, /sagejs_source_prime_row_submul/);
+assert.match(primeFieldSourceC, /sagejs_source_prime_dot_accumulate/);
+assert.match(primeFieldSourceC, /compiled_source_prime_rank/);
+assert.doesNotMatch(primeFieldSourceC, /sagejs_prime_factor/);
+assert.deepEqual(
+  renamedPrimeFieldSourceIr.functions.map((fn) => fn.optimizations),
+  primeFieldSourceIr.functions.map((fn) => fn.optimizations),
+);
 assert.equal(
   completeNumberTheoryIr.functions.find((fn) => fn.name === "xgcd")
     .returnType,
@@ -480,6 +526,18 @@ try {
     sourcePath: primeFieldMatrixPath,
     cacheRoot: join(temporary, "prime-field-cache"),
   });
+  const primeFieldSourceKernel = await compileKernel({
+    sourcePath: primeFieldSourcePath,
+    cacheRoot: join(temporary, "prime-field-source-cache"),
+  });
+  const primeFieldSourceAddon = require(primeFieldSourceKernel.addonPath);
+  const primeFieldSourceModule = require(primeFieldSourceKernel.modulePath);
+  const primeFieldSourceManifest = JSON.parse(
+    readFileSync(
+      join(primeFieldSourceKernel.outputPath, "manifest.json"),
+      "utf8",
+    ),
+  );
   const primeFieldAddon = require(primeFieldKernel.addonPath);
   const primeFieldModule = require(primeFieldKernel.modulePath);
   const primeFieldManifest = JSON.parse(
@@ -500,6 +558,38 @@ try {
   assert.deepEqual(
     primeFieldManifest.primeFieldTuning,
     expectedPrimeFieldTuning,
+  );
+  assert.equal(primeFieldSourceManifest.sourceBoundsChecked, true);
+  assert.equal(primeFieldSourceModule.sourceBoundsChecked, true);
+  assert.equal(
+    primeFieldSourceModule.source_prime_rank.sourceTransparent,
+    true,
+  );
+  const previousBoundsCheck = process.env.SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK;
+  let uncheckedPrimeFieldSourceKernel;
+  try {
+    process.env.SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK = "0";
+    uncheckedPrimeFieldSourceKernel = await compileKernel({
+      sourcePath: primeFieldSourcePath,
+      cacheRoot: join(temporary, "prime-field-source-cache"),
+    });
+    process.env.SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK = "invalid";
+    await assert.rejects(
+      () => compileKernel({
+        sourcePath: primeFieldSourcePath,
+        cacheRoot: join(temporary, "invalid-prime-field-source-cache"),
+      }),
+      /SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK must be 0 or 1/,
+    );
+  } finally {
+    if (previousBoundsCheck === undefined)
+      delete process.env.SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK;
+    else
+      process.env.SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK = previousBoundsCheck;
+  }
+  assert.notEqual(
+    uncheckedPrimeFieldSourceKernel.cacheKey,
+    primeFieldSourceKernel.cacheKey,
   );
   const thresholdEnvironment = "SAGEJS_NATIVE_PRIME_BLOCK_THRESHOLD_U32";
   const previousThreshold = process.env[thresholdEnvironment];
@@ -546,6 +636,49 @@ try {
     5n,
   );
   const smallPrimeRight = flint.nmodMatrix(2, 1, [1n, 0n], 5n);
+  let sourceRandomState = 0x12345678;
+  const sourceRandom = () => {
+    sourceRandomState = (
+      Math.imul(sourceRandomState, 1664525) + 1013904223
+    ) >>> 0;
+    return sourceRandomState;
+  };
+  const sourcePrimes = [2n, 3n, 5n, 251n, 65521n, 4294967291n];
+  for (let trial = 0; trial < 80; trial += 1) {
+    const modulus = sourcePrimes[trial % sourcePrimes.length];
+    const rows = sourceRandom() % 13;
+    const columns = sourceRandom() % 13;
+    const resultColumns = sourceRandom() % 13;
+    const left = flint.nmodMatrix(
+      rows,
+      columns,
+      Array.from(
+        { length: rows * columns },
+        () => BigInt(sourceRandom()) % modulus,
+      ),
+      modulus,
+    );
+    const right = flint.nmodMatrix(
+      columns,
+      resultColumns,
+      Array.from(
+        { length: columns * resultColumns },
+        () => BigInt(sourceRandom()) % modulus,
+      ),
+      modulus,
+    );
+    assert.equal(
+      primeFieldSourceAddon.source_prime_rank(left),
+      flint.matrixRank(left),
+    );
+    assert.equal(
+      flint.matrixEqual(
+        primeFieldSourceAddon.source_prime_matmul(left, right),
+        flint.matrixMul(left, right),
+      ),
+      true,
+    );
+  }
   assert.equal(primeFieldAddon.prime_field_rank(smallPrimeMatrix), 2);
   assert.equal(
     primeFieldAddon.prime_field_determinant(smallPrimeMatrix),
@@ -887,6 +1020,43 @@ except Exception as error:
       "False", "fallback", "fallback",
       "True", "True",
     ],
+  );
+  const primeFieldSourceScript = `import sys
+sys.path.append(${JSON.stringify(join(root, "bench"))})
+
+from native_prime_field_source import source_prime_matmul, source_prime_rank
+from sagejs.native import is_compiled
+
+A = matrix(GF(5), 3, 3, [1, 2, 3, 0, 1, 4, 2, 0, 1])
+B = matrix(GF(5), 3, 2, [1, 2, 3, 4, 0, 1])
+expected = matrix(GF(5), 3, 2, [2, 3, 3, 3, 2, 0])
+answer = source_prime_matmul(A, B)
+print(source_prime_rank(A))
+print(answer == expected)
+print(answer.dimensions())
+print(is_compiled(source_prime_rank))
+try:
+    source_prime_matmul(A, matrix(GF(5), 2, 1, [1, 2]))
+except Exception as error:
+    print(isinstance(error, ValueError))
+try:
+    source_prime_matmul(A, matrix(GF(7), 3, 1, [1, 2, 3]))
+except Exception as error:
+    print(isinstance(error, ValueError))
+`;
+  const primeFieldSourceEnvironment = {
+    SAGEJS_NATIVE_CACHE_DIR: join(temporary, "prime-field-source-cache"),
+  };
+  assert.deepEqual(
+    runSage(primeFieldSourceScript, primeFieldSourceEnvironment),
+    ["3", "True", "(3, 2)", "True", "True", "True"],
+  );
+  assert.deepEqual(
+    runSage(primeFieldSourceScript, {
+      ...primeFieldSourceEnvironment,
+      SAGEJS_NATIVE_AUTOLOAD: "0",
+    }),
+    ["3", "True", "(3, 2)", "False", "True", "True"],
   );
   const integerCache = join(temporary, "integer-cache");
   const integerKernel = await nativeApi.compile({
@@ -1498,7 +1668,9 @@ print(is_compiled(native_powmod))
   rmSync(temporary, { recursive: true, force: true });
 }
 
-console.log("Native Kernel v9 analysis, decomposition, ABI, and fallback passed.");
+console.log(
+  "Native Kernel v10 source lowering, analysis, ABI, and fallback passed.",
+);
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

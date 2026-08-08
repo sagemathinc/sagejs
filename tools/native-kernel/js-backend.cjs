@@ -617,6 +617,52 @@ ${fn.name}.backendPolicy = Object.freeze(${policy});
 ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
+function emitPrimeSourcePublicFunction(fn) {
+  const declaredParams = fn.params.map((param) => param.name).join(", ");
+  const descriptors = fn.params.map((param) => {
+    if (param.type !== "PrimeFieldMatrix") {
+      throw new Error(`unsupported source-transparent argument ${param.type}`);
+    }
+    return `  const sagejs_${param.name} = primeFieldMatrix(` +
+      `${param.name}, ${jsString(param.name)});`;
+  }).join("\n");
+  const nativeArguments = fn.params
+    .map((param) => `sagejs_${param.name}.native`)
+    .join(", ");
+  let result;
+  if (fn.returnType === "uint64") {
+    result = `return primeFieldNativeCall(${jsString(fn.name)}, ` +
+      `[${nativeArguments}]);`;
+  } else if (fn.returnType === "PrimeFieldMatrix") {
+    result = `const native = primeFieldNativeCall(${jsString(fn.name)}, ` +
+      `[${nativeArguments}]);\n` +
+      `  return primeFieldMethod(sagejs_${fn.params[0].name}.value, ` +
+      `"_new_shape", [native, ` +
+      `Reflect.get(native, "__sagejs_native_rows__"), ` +
+      `Reflect.get(native, "__sagejs_native_columns__")]);`;
+  } else {
+    throw new Error(`unsupported source-transparent result ${fn.returnType}`);
+  }
+  return `function ${fn.name}(${declaredParams}) {
+  if (arguments.length !== ${fn.params.length}) {
+    throw new TypeError(${jsString(fn.name)} + "() expects exactly " +
+      ${fn.params.length} + " argument(s)");
+  }
+${descriptors}
+  if (nativeAddon === null) {
+    throw new Error("source-transparent native artifact is unavailable");
+  }
+  ${result}
+}
+${fn.name}.sourceTransparent = true;
+${fn.name}.backendPolicy = Object.freeze({
+  kind: "compiled-python-body",
+  representation: "owned-row-major-u64-buffer",
+  arithmetic: "u32-prime"
+});
+${fn.name}.nativeAvailable = nativeAddon !== null;`;
+}
+
 function generateJavaScript(ir, options = {}) {
   const exports = ir.functions.map((fn) => fn.name).join(", ");
   return `"use strict";
@@ -796,6 +842,8 @@ ${ir.functions.map((fn) =>
       ? emitExactPublicFunction(fn)
       : fn.kernelKind === "prime-field-matrix"
         ? emitPrimeFieldPublicFunction(fn)
+        : fn.kernelKind === "prime-field-source"
+          ? emitPrimeSourcePublicFunction(fn)
         : emitPublicFunction(fn)
   ).join("\n\n")}
 
@@ -816,6 +864,7 @@ module.exports = {
   primeFieldTuning: Object.freeze(${JSON.stringify(
     options.primeFieldTuning || {},
   )}),
+  sourceBoundsChecked: ${options.sourceBoundsChecked === true ? "true" : "false"},
 };
 `;
 }

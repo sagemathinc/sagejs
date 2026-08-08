@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v9 currently accepts a deliberately narrow typed numerical
+Native Kernel v10 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels and reusable dense
 decompositions over prime fields. Explicit AOT compilation produces a native
 implementation plus an exact fallback or reports a compile-time diagnostic.
@@ -28,6 +28,81 @@ from __future__ import annotations
 
 import builtins
 from typing import Any
+
+# Annotation-only marker understood by the source-transparent prime-field
+# compiler experiment.  At runtime its values are ordinary Python lists.
+UInt64Buffer = list[int]
+
+
+def prime_rows(source: Any) -> int:
+    """Return the row count used by a source-transparent native kernel."""
+    return source.nrows()
+
+
+def prime_columns(source: Any) -> int:
+    """Return the column count used by a source-transparent native kernel."""
+    return source.ncols()
+
+
+def prime_modulus(source: Any) -> int:
+    """Return the characteristic of a dense prime-field matrix."""
+    return source.base_ring().characteristic()
+
+
+def prime_buffer(source: Any) -> UInt64Buffer:
+    """Copy canonical residues into an ordinary row-major Python buffer."""
+    return [entry.lift() for entry in source.list()]
+
+
+def prime_zeros(length: int) -> UInt64Buffer:
+    """Allocate a zero-filled source-kernel fallback buffer."""
+    return [0 for _index in range(length)]
+
+
+def prime_matrix(
+    model: Any,
+    rows: int,
+    columns: int,
+    entries: UInt64Buffer,
+) -> Any:
+    """Construct a matrix over ``model``'s field from row-major residues."""
+    return model.parent().matrix_space(rows, columns)(entries)
+
+
+def prime_add(left: int, right: int, modulus: int) -> int:
+    """Add two canonical machine-word residues."""
+    value = left + right
+    return value - modulus if value >= modulus else value
+
+
+def prime_sub(left: int, right: int, modulus: int) -> int:
+    """Subtract two canonical machine-word residues."""
+    return left - right if left >= right else modulus - (right - left)
+
+
+def prime_mul(left: int, right: int, modulus: int) -> int:
+    """Multiply two residues, reducing the exact Python product."""
+    return (left * right) % modulus
+
+
+def prime_inverse(value: int, modulus: int) -> int:
+    """Invert a nonzero residue modulo a prime."""
+    if value == 0:
+        raise ZeroDivisionError('inverse of zero modulo a prime')
+    old_remainder = modulus
+    remainder = value
+    old_coefficient = 0
+    coefficient = 1
+    while remainder != 0:
+        quotient = old_remainder // remainder
+        next_remainder = old_remainder % remainder
+        next_coefficient = (
+            old_coefficient - quotient * coefficient) % modulus
+        old_remainder = remainder
+        remainder = next_remainder
+        old_coefficient = coefficient
+        coefficient = next_coefficient
+    return old_coefficient
 
 
 def _compiled(function: Any) -> Any:
@@ -94,4 +169,19 @@ def is_compiled(function: Any) -> bool:
     return bool(getattr(function, '__sagejs_native_compiled__', False))
 
 
-__all__ = ['is_compiled', 'is_native', 'native']
+__all__ = [
+    'UInt64Buffer',
+    'is_compiled',
+    'is_native',
+    'native',
+    'prime_add',
+    'prime_buffer',
+    'prime_columns',
+    'prime_inverse',
+    'prime_matrix',
+    'prime_modulus',
+    'prime_mul',
+    'prime_rows',
+    'prime_sub',
+    'prime_zeros',
+]

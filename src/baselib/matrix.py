@@ -1059,6 +1059,18 @@ class Matrix(sage.Element):
     def _new(self, native_value: Any) -> Matrix:
         return Matrix(self._parent, native_value)
 
+    def _new_shape(
+        self,
+        native_value: Any,
+        rows: int,
+        columns: int,
+    ) -> Matrix:
+        """Wrap a native matrix whose dimensions differ from ``self``."""
+        return Matrix(
+            self._parent.matrix_space(rows, columns),
+            native_value,
+        )
+
     def _packed_residues(self, width: int) -> Any:
         """Return modular entries as packed little-endian residues."""
         return runtime.flint_backend().matrixExportPacked(

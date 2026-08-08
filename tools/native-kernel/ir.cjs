@@ -9,11 +9,15 @@ const {
   signatureFromFunction,
 } = require("./integer-ir.cjs");
 const {
+  isPrimeFieldIntrinsicFunction,
   isPrimeFieldSignature,
   lowerPrimeFieldFunction,
 } = require("./prime-field-ir.cjs");
+const {
+  lowerPrimeSourceFunction,
+} = require("./prime-source-ir.cjs");
 
-const IR_VERSION = 9;
+const IR_VERSION = 10;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -689,12 +693,19 @@ async function lowerSource(source, filename, options = {}) {
     return signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
       : isPrimeFieldSignature(signature)
-        ? lowerPrimeFieldFunction(
-            fn,
-            signature,
-            filename,
-            decoratedMode,
-          )
+        ? isPrimeFieldIntrinsicFunction(fn)
+          ? lowerPrimeFieldFunction(
+              fn,
+              signature,
+              filename,
+              decoratedMode,
+            )
+          : lowerPrimeSourceFunction(
+              fn,
+              signature,
+              filename,
+              decoratedMode,
+            )
         : lowerIntegerFunction(
             fn,
             signature,
