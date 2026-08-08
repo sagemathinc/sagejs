@@ -163,7 +163,7 @@ instead. `test/typed-math-lowering.cjs` guards the generated fast path, while
 `test/baselib-boundaries.cjs` prevents escape syntax from returning to
 mathematical modules which have been migrated.
 
-`tools/native-kernel/` contains Native Kernel v0. The frontend lowers a
+`tools/native-kernel/` contains Native Kernel v1. The frontend lowers a
 restricted Sage.js AST to typed IR; independent JavaScript and C/MPC backends
 consume that IR. Generated addons and `packages/flint` share the native
 MPFR/MPC element ABI in `packages/flint/include/sagejs/native.h`. Keep ABI

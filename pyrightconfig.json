@@ -38,6 +38,7 @@
     "src/lib/sagejs_elliptic_advanced.py",
     "src/lib/sagejs/__init__.py",
     "src/lib/sagejs/javascript.py",
+    "src/lib/sagejs/native.py",
     "src/lib/sage/modular/__init__.py",
     "src/lib/sage/modular/dims.py",
     "src/lib/magma.py",

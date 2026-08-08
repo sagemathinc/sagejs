@@ -17,6 +17,30 @@ function nativeValue(local) {
 }
 
 function emitOperation(operation, locals, indent) {
+  if (operation.kind === "real.constant") {
+    const target = locals.get(operation.target);
+    return [
+      `${indent}if (mpfr_set_str(${nativeValue(target)}, ` +
+        `${cString(operation.value)}, 10, MPFR_RNDN) != 0)`,
+      `${indent}{`,
+      `${indent}    napi_throw_type_error(env, NULL, "invalid native literal");`,
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "complex.constant") {
+    const target = locals.get(operation.target);
+    return [
+      `${indent}if (mpfr_set_str(mpc_realref(${nativeValue(target)}), ` +
+        `${cString(operation.real)}, 10, MPFR_RNDN) != 0 ||`,
+      `${indent}    mpfr_set_str(mpc_imagref(${nativeValue(target)}), ` +
+        `${cString(operation.imag)}, 10, MPFR_RNDN) != 0)`,
+      `${indent}{`,
+      `${indent}    napi_throw_type_error(env, NULL, "invalid native literal");`,
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "real.binary") {
     const target = locals.get(operation.target);
     const left = locals.get(operation.left);
@@ -30,6 +54,39 @@ function emitOperation(operation, locals, indent) {
     const right = locals.get(operation.right);
     return `${indent}mpc_${operation.operation}(${nativeValue(target)}, ` +
       `${nativeValue(left)}, ${nativeValue(right)}, MPC_RNDNN);`;
+  }
+  if (operation.kind === "real.copy") {
+    return `${indent}mpfr_set(${nativeValue(locals.get(operation.target))}, ` +
+      `${nativeValue(locals.get(operation.source))}, MPFR_RNDN);`;
+  }
+  if (operation.kind === "complex.copy") {
+    return `${indent}mpc_set(${nativeValue(locals.get(operation.target))}, ` +
+      `${nativeValue(locals.get(operation.source))}, MPC_RNDNN);`;
+  }
+  if (operation.kind === "real.from_uint64") {
+    return `${indent}mpfr_set_uj(` +
+      `${nativeValue(locals.get(operation.target))}, ` +
+      `${cName(operation.source)}, MPFR_RNDN);`;
+  }
+  if (operation.kind === "complex.from_uint64") {
+    const target = nativeValue(locals.get(operation.target));
+    return [
+      `${indent}mpfr_set_uj(mpc_realref(${target}), ` +
+        `${cName(operation.source)}, MPFR_RNDN);`,
+      `${indent}mpfr_set_zero(mpc_imagref(${target}), 0);`,
+    ].join("\n");
+  }
+  if (operation.kind === "real.pow_uint") {
+    return `${indent}mpfr_pow_ui(` +
+      `${nativeValue(locals.get(operation.target))}, ` +
+      `${nativeValue(locals.get(operation.base))}, ` +
+      `${operation.exponent}, MPFR_RNDN);`;
+  }
+  if (operation.kind === "complex.pow_uint") {
+    return `${indent}mpc_pow_ui(` +
+      `${nativeValue(locals.get(operation.target))}, ` +
+      `${nativeValue(locals.get(operation.base))}, ` +
+      `${operation.exponent}, MPC_RNDNN);`;
   }
   throw new Error(`unsupported C IR operation ${operation.kind}`);
 }
@@ -80,32 +137,12 @@ function emitFunction(fn) {
 
   const statements = [];
   for (const operation of fn.body) {
-    if (operation.kind === "real.constant") {
-      const local = locals.get(operation.target);
+    if (operation.kind === "loop.range") {
       statements.push(
-        `    if (mpfr_set_str(${nativeValue(local)}, ` +
-          `${cString(operation.value)}, 10, MPFR_RNDN) != 0)`,
-        "    {",
-        '        napi_throw_type_error(env, NULL, "invalid native literal");',
-        "        goto fail;",
-        "    }",
-      );
-    } else if (operation.kind === "complex.constant") {
-      const local = locals.get(operation.target);
-      statements.push(
-        `    if (mpfr_set_str(mpc_realref(${nativeValue(local)}), ` +
-          `${cString(operation.real)}, 10, MPFR_RNDN) != 0 ||`,
-        `        mpfr_set_str(mpc_imagref(${nativeValue(local)}), ` +
-          `${cString(operation.imag)}, 10, MPFR_RNDN) != 0)`,
-        "    {",
-        '        napi_throw_type_error(env, NULL, "invalid native literal");',
-        "        goto fail;",
-        "    }",
-      );
-    } else if (operation.kind === "loop.range") {
-      statements.push(
-        `    for (${cName(operation.index)} = 0; ` +
-          `${cName(operation.index)} < ${cName(operation.count)}; ` +
+        `    for (${cName(operation.index)} = ` +
+          `UINT64_C(${operation.start}); ` +
+          `(${cName(operation.index)} - UINT64_C(${operation.start})) < ` +
+          `${cName(operation.count)}; ` +
           `${cName(operation.index)}++)`,
         "    {",
       );
@@ -113,7 +150,7 @@ function emitFunction(fn) {
         statements.push(emitOperation(item, locals, "        "));
       statements.push("    }");
     } else if (operation.kind !== "return") {
-      throw new Error(`unsupported C IR statement ${operation.kind}`);
+      statements.push(emitOperation(operation, locals, "    "));
     }
   }
 
@@ -165,7 +202,7 @@ function generateC(ir) {
         "NULL, NULL, NULL, napi_default, NULL}",
     )
     .join(",\n");
-  return `// Generated by Sage.js Native Kernel v0.
+  return `// Generated by Sage.js Native Kernel v1.
 #include <math.h>
 #include <stdint.h>
 

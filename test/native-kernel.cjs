@@ -13,6 +13,7 @@ const { spawnSync } = require("node:child_process");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { generateC } = require("../tools/native-kernel/c-backend.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
+const nativeApi = require("@sagemath/sagejs/native");
 
 const root = join(__dirname, "..");
 (async () => {
@@ -32,7 +33,7 @@ const mpmathIr = await lowerSource(mpmathSource, mpmathSourcePath);
 const harmonicFunction = mpmathIr.functions[0];
 const harmonicC = generateC(mpmathIr);
 
-assert.equal(ir.version, 0);
+assert.equal(ir.version, 1);
 assert.equal(complexFunction.params[0].type, "ComplexField");
 assert.equal(complexFunction.params[1].type, "uint64");
 assert.equal(complexFunction.returnType, "ComplexNumber");
@@ -63,14 +64,33 @@ assert.match(
   /mpfr_mul\(sagejs_value->value, sagejs_value->value, sagejs_step/,
 );
 assert.equal(harmonicFunction.name, "harmonic_cubic_loop");
+assert.equal(harmonicFunction.decorated, true);
 assert.deepEqual(
   harmonicFunction.body.find((item) => item.kind === "loop.range").body
-    .map((item) => item.operation),
-  ["mul", "mul", "div", "add", "add"],
+    .map((item) => item.kind),
+  [
+    "real.from_uint64",
+    "real.pow_uint",
+    "real.binary",
+    "real.binary",
+  ],
+);
+assert.equal(
+  harmonicFunction.body.filter((item) => item.kind === "real.constant")
+    .length,
+  2,
 );
 assert.match(
   harmonicC,
-  /mpfr_div\(sagejs_term, sagejs_one, sagejs_denominator_cubed/,
+  /mpfr_set_uj\(sagejs_sagejs_native_tmp_3, sagejs_denominator/,
+);
+assert.match(
+  harmonicC,
+  /mpfr_pow_ui\(sagejs_sagejs_native_tmp_2, sagejs_sagejs_native_tmp_3, 3/,
+);
+assert.match(
+  harmonicC,
+  /sagejs_denominator - UINT64_C\(1\).*sagejs_terms/,
 );
 await assert.rejects(
   () =>
@@ -89,6 +109,29 @@ await assert.rejects(
       "missing-annotation.sage",
     ),
   /native argument f\.field annotation is missing/,
+);
+await assert.rejects(
+  () =>
+    lowerSource(
+      "def f(field: RealField, n: uint64) -> RealNumber:\n" +
+        "    x = field(1)\n" +
+        "    for k in range(2, n + 1):\n" +
+        "        x += field(k)\n" +
+        "    return x\n",
+      "invalid-range.sage",
+    ),
+  /two-argument loop must use range\(k, n \+ k\)/,
+);
+await assert.rejects(
+  () =>
+    lowerSource(
+      "def f(field: RealField, n: uint64) -> RealNumber:\n" +
+        "    x = field(1)\n" +
+        "    y = x ** 65\n" +
+        "    return y\n",
+      "invalid-power.sage",
+    ),
+  /nonnegative integer exponent at most 64/,
 );
 
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-native-kernel-"));
@@ -119,7 +162,7 @@ try {
     sourcePath,
     cacheRoot: join(temporary, "cache"),
   };
-  const first = await compileKernel(options);
+  const first = await nativeApi.compile(options);
   const second = await compileKernel(options);
   assert.equal(first.cached, false);
   assert.equal(second.cached, true);
@@ -135,6 +178,25 @@ try {
   assert.match(
     flint.realToString(harmonicAddon.harmonic_cubic_loop(269, 400)),
     /^1\.20205378596232868074466308969974913071858345926099644512838/,
+  );
+  const harmonicModulePath = JSON.stringify(mpmathKernel.modulePath);
+  const harmonicScript = `kernel = require(${harmonicModulePath})
+
+def reference(field, terms):
+    total = field(0)
+    for denominator in range(1, terms + 1):
+        total += field(1) / field(denominator) ** 3
+    return total
+
+expected = reference(RR, 40)
+print(kernel.harmonic_cubic_loop(RR, 40) == expected)
+print(kernel.harmonic_cubic_loop.javascript(RR, 40) == expected)
+print(kernel.nativeAvailable)
+`;
+  assert.deepEqual(runSage(harmonicScript), ["True", "True", "True"]);
+  assert.deepEqual(
+    runSage(harmonicScript, { SAGEJS_NATIVE_DISABLE: "1" }),
+    ["True", "True", "False"],
   );
 
   const direct = spawnSync(
@@ -199,11 +261,23 @@ print(kernel.nativeAvailable)
     "True",
     "False",
   ]);
+  assert.deepEqual(
+    runSage(`from sagejs.native import is_native, native
+
+@native
+def square(value):
+    return value * value
+
+print(square(9))
+print(is_native(square))
+`),
+    ["81", "True"],
+  );
 } finally {
   rmSync(temporary, { recursive: true, force: true });
 }
 
-console.log("Native Kernel v0 typed IR, cache, ABI, and fallback passed.");
+console.log("Native Kernel v1 typed IR, cache, ABI, and fallback passed.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

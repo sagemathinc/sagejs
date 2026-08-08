@@ -48,7 +48,7 @@ The architectural conclusion is much stronger than that particular ratio:
 Julia's idiomatic loop is faster than Cython at 53 bits, demonstrating the
 value of a typed JIT implementation language. It nevertheless allocates about
 80 bytes per product. Julia's explicit in-place MPFR loop removes essentially
-all allocation and approaches the generated C kernel. Native Kernel v0 obtains
+all allocation and approaches the generated C kernel. Native Kernel v1 obtains
 the same optimization automatically from ordinary immutable source because
 its typed IR knows that the loop temporary cannot escape.
 
@@ -200,7 +200,7 @@ the behavior of a function called with another Python value.
 
 ## Near-term direction
 
-Native Kernel v0 should grow only through real mathematical library needs.
+Native Kernel v1 should grow only through real mathematical library needs.
 The next kernels should exercise native inputs, coercion plans, multiple return
 paths, exceptions, and library-owned objects while preserving the same dual
 JavaScript/native contract.

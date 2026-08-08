@@ -3,6 +3,23 @@
 const { resolve } = require("node:path");
 const { compileKernel } = require("./native-kernel/compiler.cjs");
 
+async function compile(options) {
+  if (options === null || typeof options !== "object") {
+    throw new TypeError("native compile options must be an object");
+  }
+  if (typeof options.sourcePath !== "string" || !options.sourcePath) {
+    throw new TypeError("native compile sourcePath must be a non-empty string");
+  }
+  return compileKernel({
+    ...options,
+    sourcePath: resolve(options.sourcePath),
+    cacheRoot:
+      options.cacheRoot === undefined
+        ? undefined
+        : resolve(options.cacheRoot),
+  });
+}
+
 async function main() {
   if (process.argv.length !== 3) {
     process.stderr.write(
@@ -14,7 +31,7 @@ async function main() {
   const configPath = resolve(process.argv[2]);
   const config = require(configPath);
   const base = require("node:path").dirname(configPath);
-  const result = await compileKernel({
+  const result = await compile({
     ...config,
     sourcePath: resolve(base, config.sourcePath),
     cacheRoot:
@@ -27,7 +44,7 @@ async function main() {
   );
 }
 
-module.exports = { compileKernel };
+module.exports = { compile, compileKernel };
 
 if (require.main === module) {
   main().catch((error) => {

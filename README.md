@@ -882,9 +882,9 @@ sagejs --python compile input.py --output output.js
 node output.js
 ```
 
-## Native Kernel v0
+## Native Kernel v1
 
-The first structured native compiler path parses selected Sage.js functions
+The structured native compiler path parses `@native` Sage.js functions
 through the ordinary frontend, lowers them to an explicitly typed
 intermediate representation, and generates both a JavaScript fallback and a
 C/MPFR/MPC Node addon. It currently accepts deliberately narrow `RealField`
@@ -913,6 +913,12 @@ run its comparative benchmark with:
 node tools/native-kernel.cjs bench/native-kernel.config.cjs
 pnpm run bench:native
 ```
+
+The public `@sagemath/sagejs/native` Node subpath compiles content-addressed
+kernel modules, while `from sagejs.native import native` marks ordinary Python
+functions without changing their fallback behavior. Native Kernel v1 also
+supports offset `range` loops, integer-to-field coercion, nested arithmetic,
+small constant powers, and augmented assignment.
 
 For a matched comparison where both Sage.js and SageMath call MPFR's
 `mpfr_mul`, see

@@ -2,7 +2,9 @@
 
 const createCompiler = require("../..");
 
-const IR_VERSION = 0;
+const IR_VERSION = 1;
+const MAX_SMALL_POWER = 64n;
+const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
   ["RealField", "RealNumber"],
   ["ComplexField", "ComplexNumber"],
@@ -41,82 +43,46 @@ function array(value) {
 function assignment(statement, description) {
   expect(
     nodeType(statement) === "AST_SimpleStatement" &&
-      nodeType(statement.body) === "AST_Assign" &&
-      statement.body.operator === "=",
+      nodeType(statement.body) === "AST_Assign",
     `expected ${description} to be a simple assignment`,
   );
   return statement.body;
 }
 
-function lowerConstant(node, parentName, elementType, description) {
-  expect(
-    nodeType(node) === "AST_Call" &&
-      nodeType(node.expression) === "AST_SymbolRef" &&
-      node.expression.name === parentName,
-    `expected ${description} to call field argument ${parentName}`,
-  );
-  const args = array(node.args);
-  if (elementType === "RealNumber") {
-    expect(
-      args.length === 1 && nodeType(args[0]) === "AST_String",
-      `expected ${description} to contain one decimal string literal`,
-    );
-    return { value: args[0].value };
+function integerLiteral(node) {
+  if (nodeType(node) === "AST_Number") {
+    const value = String(node.value);
+    return /^\+?[0-9]+$/.test(value) ? BigInt(value) : undefined;
   }
-  expect(
-    args.length === 2 &&
-      nodeType(args[0]) === "AST_String" &&
-      nodeType(args[1]) === "AST_String",
-    `expected ${description} to contain two decimal string literals`,
-  );
-  return { real: args[0].value, imag: args[1].value };
+  if (
+    nodeType(node) !== "AST_Call" ||
+    nodeType(node.expression) !== "AST_SymbolRef" ||
+    node.expression.name !== "Integer"
+  ) {
+    return undefined;
+  }
+  const args = array(node.args);
+  if (
+    args.length !== 1 ||
+    nodeType(args[0]) !== "AST_String" ||
+    !/^\+?[0-9]+$/.test(args[0].value)
+  ) {
+    return undefined;
+  }
+  return BigInt(args[0].value);
 }
 
-function lowerBinary(statement, localTypes, elementType) {
-  const update = assignment(statement, "native loop operation");
-  expect(
-    nodeType(update.left) === "AST_SymbolRef" &&
-      nodeType(update.right) === "AST_Binary",
-    "expected local = left <op> right in native loop",
-  );
-  const operation = BINARY_OPERATIONS.get(update.right.operator);
-  expect(
-    operation !== undefined,
-    `unsupported native binary operator ${update.right.operator}`,
-  );
-  expect(
-    nodeType(update.right.left) === "AST_SymbolRef" &&
-      nodeType(update.right.right) === "AST_SymbolRef",
-    "native arithmetic operands must be local names",
-  );
-  const target = update.left.name;
-  const left = update.right.left.name;
-  const right = update.right.right.name;
-  expect(
-    localTypes.get(left) === elementType &&
-      localTypes.get(right) === elementType,
-    `native arithmetic currently requires ${elementType} operands`,
-  );
-  if (localTypes.has(target)) {
-    expect(
-      localTypes.get(target) === elementType,
-      `native local ${target} changed type`,
-    );
-  } else {
-    localTypes.set(target, elementType);
-  }
-  return {
-    kind:
-      elementType === "RealNumber" ? "real.binary" : "complex.binary",
-    operation,
-    target,
-    left,
-    right,
-  };
+function decimalLiteral(node) {
+  if (nodeType(node) === "AST_String") return node.value;
+  const integer = integerLiteral(node);
+  return integer === undefined ? undefined : integer.toString();
 }
 
 function annotationName(annotation, description) {
-  expect(annotation !== undefined && annotation !== null, `${description} is missing`);
+  expect(
+    annotation !== undefined && annotation !== null,
+    `${description} is missing`,
+  );
   if (
     nodeType(annotation) === "AST_SymbolRef" ||
     nodeType(annotation) === "AST_String"
@@ -126,7 +92,287 @@ function annotationName(annotation, description) {
   fail(`${description} must be a simple type name`);
 }
 
-function lowerFunction(fn) {
+function ensureLocal(context, name) {
+  expect(isCIdentifier(name), `native local ${name} must also be a C identifier`);
+  expect(
+    !context.paramNames.has(name) && !context.scalarTypes.has(name),
+    `native local ${name} conflicts with a scalar or argument`,
+  );
+  if (context.localTypes.has(name)) {
+    expect(
+      context.localTypes.get(name) === context.elementType,
+      `native local ${name} changed type`,
+    );
+  } else {
+    context.localTypes.set(name, context.elementType);
+  }
+  return name;
+}
+
+function temporary(context) {
+  let name;
+  do {
+    name = `sagejs_native_tmp_${context.nextTemporary}`;
+    context.nextTemporary += 1;
+  } while (
+    context.localTypes.has(name) ||
+    context.paramNames.has(name) ||
+    context.scalarTypes.has(name)
+  );
+  return ensureLocal(context, name);
+}
+
+function elementKind(context, suffix) {
+  return `${context.elementType === "RealNumber" ? "real" : "complex"}.${suffix}`;
+}
+
+function lowerFieldCall(node, target, context, operations) {
+  expect(
+    nodeType(node) === "AST_Call" &&
+      nodeType(node.expression) === "AST_SymbolRef" &&
+      node.expression.name === context.parentName,
+    `expected an expression coercible through field argument ${context.parentName}`,
+  );
+  const args = array(node.args);
+  ensureLocal(context, target);
+
+  if (
+    args.length === 1 &&
+    nodeType(args[0]) === "AST_SymbolRef" &&
+    context.scalarTypes.get(args[0].name) === "uint64"
+  ) {
+    operations.push({
+      kind: elementKind(context, "from_uint64"),
+      target,
+      parent: context.parentName,
+      source: args[0].name,
+    });
+    return;
+  }
+
+  if (context.elementType === "RealNumber") {
+    const value = args.length === 1 ? decimalLiteral(args[0]) : undefined;
+    expect(
+      value !== undefined,
+      `expected ${context.parentName}(decimal literal or uint64 value)`,
+    );
+    operations.push({
+      kind: "real.constant",
+      target,
+      parent: context.parentName,
+      value,
+    });
+    return;
+  }
+
+  const real = args.length >= 1 ? decimalLiteral(args[0]) : undefined;
+  const imag = args.length === 1 ? "0" : decimalLiteral(args[1]);
+  expect(
+    (args.length === 1 || args.length === 2) &&
+      real !== undefined &&
+      imag !== undefined,
+    `expected ${context.parentName}(real literal[, imaginary literal])`,
+  );
+  operations.push({
+    kind: "complex.constant",
+    target,
+    parent: context.parentName,
+    real,
+    imag,
+  });
+}
+
+function lowerOperand(node, context, operations) {
+  if (
+    nodeType(node) === "AST_SymbolRef" &&
+    context.localTypes.get(node.name) === context.elementType
+  ) {
+    return node.name;
+  }
+  const target = temporary(context);
+  lowerExpression(node, target, context, operations);
+  return target;
+}
+
+function lowerExpression(node, target, context, operations) {
+  ensureLocal(context, target);
+
+  if (
+    nodeType(node) === "AST_Call" &&
+    nodeType(node.expression) === "AST_SymbolRef" &&
+    node.expression.name === context.parentName
+  ) {
+    lowerFieldCall(node, target, context, operations);
+    return;
+  }
+
+  if (nodeType(node) === "AST_SymbolRef") {
+    expect(
+      context.localTypes.get(node.name) === context.elementType,
+      `native value ${node.name} is not a ${context.elementType} local`,
+    );
+    operations.push({
+      kind: elementKind(context, "copy"),
+      target,
+      source: node.name,
+    });
+    return;
+  }
+
+  expect(
+    nodeType(node) === "AST_Binary",
+    `unsupported ${nodeType(node)} native expression`,
+  );
+  if (node.operator === "**") {
+    const exponent = integerLiteral(node.right);
+    expect(
+      exponent !== undefined && exponent >= 0n && exponent <= MAX_SMALL_POWER,
+      `native powers require a nonnegative integer exponent at most ${MAX_SMALL_POWER}`,
+    );
+    const base = lowerOperand(node.left, context, operations);
+    operations.push({
+      kind: elementKind(context, "pow_uint"),
+      target,
+      base,
+      exponent: Number(exponent),
+    });
+    return;
+  }
+
+  const operation = BINARY_OPERATIONS.get(node.operator);
+  expect(
+    operation !== undefined,
+    `unsupported native binary operator ${node.operator}`,
+  );
+  const left = lowerOperand(node.left, context, operations);
+  const right = lowerOperand(node.right, context, operations);
+  operations.push({
+    kind: elementKind(context, "binary"),
+    operation,
+    target,
+    left,
+    right,
+  });
+}
+
+function lowerAssignment(statement, context, description) {
+  const update = assignment(statement, description);
+  expect(
+    nodeType(update.left) === "AST_SymbolRef",
+    "native assignments require a local-name target",
+  );
+  const target = update.left.name;
+  const operations = [];
+
+  if (update.operator === "=") {
+    lowerExpression(update.right, target, context, operations);
+    return operations;
+  }
+
+  const symbol = update.operator.endsWith("=")
+    ? update.operator.slice(0, -1)
+    : "";
+  const operation = BINARY_OPERATIONS.get(symbol);
+  expect(
+    operation !== undefined,
+    `unsupported native augmented operator ${update.operator}`,
+  );
+  expect(
+    context.localTypes.get(target) === context.elementType,
+    `native augmented target ${target} is not initialized`,
+  );
+  const right = lowerOperand(update.right, context, operations);
+  operations.push({
+    kind: elementKind(context, "binary"),
+    operation,
+    target,
+    left: target,
+    right,
+  });
+  return operations;
+}
+
+function lowerRange(node, iterationName) {
+  expect(
+    nodeType(node) === "AST_Call" &&
+      nodeType(node.expression) === "AST_SymbolRef" &&
+      node.expression.name === "range",
+    "native loop must use range(...) ",
+  );
+  const args = array(node.args);
+  if (
+    args.length === 1 &&
+    nodeType(args[0]) === "AST_SymbolRef" &&
+    args[0].name === iterationName
+  ) {
+    return { start: 0, count: iterationName };
+  }
+
+  const start = args.length === 2 ? integerLiteral(args[0]) : undefined;
+  const stop = args[1];
+  let stopName;
+  let stopOffset;
+  if (nodeType(stop) === "AST_Binary" && stop.operator === "+") {
+    if (nodeType(stop.left) === "AST_SymbolRef") {
+      stopName = stop.left.name;
+      stopOffset = integerLiteral(stop.right);
+    } else if (nodeType(stop.right) === "AST_SymbolRef") {
+      stopName = stop.right.name;
+      stopOffset = integerLiteral(stop.left);
+    }
+  }
+  expect(
+    start !== undefined &&
+      start >= 0n &&
+      start <= MAX_SAFE_START &&
+      stopName === iterationName &&
+      stopOffset === start,
+    `native two-argument loop must use range(k, ${iterationName} + k) ` +
+      "with a nonnegative safe integer k",
+  );
+  return { start: Number(start), count: iterationName };
+}
+
+function nativeDecorator(fn) {
+  const decorators = array(fn.decorators);
+  const marked = decorators.filter(
+    (decorator) =>
+      nodeType(decorator.expression) === "AST_SymbolRef" &&
+      decorator.expression.name === "native",
+  );
+  if (marked.length === 0) return false;
+  expect(
+    decorators.length === 1,
+    "@native cannot currently be combined with other decorators",
+  );
+  return true;
+}
+
+function hoistSyntheticConstants(operations) {
+  const writes = new Map();
+  for (const operation of operations) {
+    if (operation.target !== undefined) {
+      writes.set(operation.target, (writes.get(operation.target) || 0) + 1);
+    }
+  }
+  const hoisted = [];
+  const body = [];
+  for (const operation of operations) {
+    if (
+      (operation.kind === "real.constant" ||
+        operation.kind === "complex.constant") &&
+      operation.target.startsWith("sagejs_native_tmp_") &&
+      writes.get(operation.target) === 1
+    ) {
+      hoisted.push(operation);
+    } else {
+      body.push(operation);
+    }
+  }
+  return { body, hoisted };
+}
+
+function lowerFunction(fn, decorated = false) {
   expect(
     isCIdentifier(fn.name.name),
     "native function names must also be C identifiers",
@@ -153,7 +399,7 @@ function lowerFunction(fn) {
   const iterationParams = params.filter((param) => param.type === "uint64");
   expect(
     parentParams.length === 1 && iterationParams.length === 1,
-    "Native Kernel v0 requires one supported field and one uint64 argument",
+    "Native Kernel v1 requires one supported field and one uint64 argument",
   );
   const parent = parentParams[0];
   const elementType = PARENT_ELEMENT_TYPES.get(parent.type);
@@ -165,41 +411,27 @@ function lowerFunction(fn) {
     returnType === elementType,
     `${fn.name.name} with ${parent.type} must return ${elementType}`,
   );
-  const parentName = parent.name;
   const iterationName = iterationParams[0].name;
-  const localTypes = new Map();
+  const context = {
+    elementType,
+    localTypes: new Map(),
+    nextTemporary: 0,
+    paramNames: new Set(params.map((param) => param.name)),
+    parentName: parent.name,
+    scalarTypes: new Map(
+      params
+        .filter((param) => param.type === "uint64")
+        .map((param) => [param.name, param.type]),
+    ),
+  };
   const body = [];
   let returned;
 
   for (const statement of array(fn.body)) {
     if (nodeType(statement) === "AST_SimpleStatement") {
-      const init = assignment(statement, "native local initializer");
-      expect(
-        nodeType(init.left) === "AST_SymbolRef",
-        "native local initializer needs a local name",
+      body.push(
+        ...lowerAssignment(statement, context, "native assignment"),
       );
-      const target = init.left.name;
-      expect(
-        isCIdentifier(target),
-        `native local ${target} must also be a C identifier`,
-      );
-      expect(!localTypes.has(target), `native local ${target} is redefined`);
-      const value = lowerConstant(
-        init.right,
-        parentName,
-        elementType,
-        `initializer for ${target}`,
-      );
-      localTypes.set(target, elementType);
-      body.push({
-        kind:
-          elementType === "RealNumber"
-            ? "real.constant"
-            : "complex.constant",
-        target,
-        parent: parentName,
-        ...value,
-      });
       continue;
     }
 
@@ -208,37 +440,33 @@ function lowerFunction(fn) {
         nodeType(statement.init) === "AST_SymbolRef",
         "native range loop needs a local index",
       );
+      const index = statement.init.name;
       expect(
-        isCIdentifier(statement.init.name),
-        `native loop index ${statement.init.name} must be a C identifier`,
-      );
-      expect(
-        !localTypes.has(statement.init.name) &&
-          !params.some((param) => param.name === statement.init.name),
-        `native loop index ${statement.init.name} conflicts with a value`,
+        isCIdentifier(index),
+        `native loop index ${index} must be a C identifier`,
       );
       expect(
-        nodeType(statement.object) === "AST_Call" &&
-          nodeType(statement.object.expression) === "AST_SymbolRef" &&
-          statement.object.expression.name === "range",
-        "native loop must use range(iterations)",
+        !context.localTypes.has(index) &&
+          !context.paramNames.has(index) &&
+          !context.scalarTypes.has(index),
+        `native loop index ${index} conflicts with a value`,
       );
-      const rangeArgs = array(statement.object.args);
-      expect(
-        rangeArgs.length === 1 &&
-          nodeType(rangeArgs[0]) === "AST_SymbolRef" &&
-          rangeArgs[0].name === iterationName,
-        `native loop must use range(${iterationName})`,
-      );
-      const loopBody = array(statement.body?.body).map((item) =>
-        lowerBinary(item, localTypes, elementType),
-      );
+      const range = lowerRange(statement.object, iterationName);
+      context.scalarTypes.set(index, "uint64");
+      const loopBody = [];
+      for (const item of array(statement.body?.body)) {
+        loopBody.push(
+          ...lowerAssignment(item, context, "native loop operation"),
+        );
+      }
       expect(loopBody.length > 0, "native loop body cannot be empty");
+      const optimized = hoistSyntheticConstants(loopBody);
+      body.push(...optimized.hoisted);
       body.push({
         kind: "loop.range",
-        index: statement.init.name,
-        count: iterationName,
-        body: loopBody,
+        index,
+        ...range,
+        body: optimized.body,
       });
       continue;
     }
@@ -247,7 +475,7 @@ function lowerFunction(fn) {
       expect(returned === undefined, "native function has multiple returns");
       expect(
         nodeType(statement.value) === "AST_SymbolRef" &&
-          localTypes.get(statement.value.name) === elementType,
+          context.localTypes.get(statement.value.name) === elementType,
         `native function must return a ${elementType} local`,
       );
       returned = statement.value.name;
@@ -265,18 +493,26 @@ function lowerFunction(fn) {
     body[body.length - 1]?.kind === "return",
     "native return must be the final statement",
   );
-  const locals = Array.from(localTypes, ([name, type]) => ({
+  const locals = Array.from(context.localTypes, ([name, type]) => ({
     name,
     type,
     storage: name === returned ? "return" : "local",
   }));
   return {
     name: fn.name.name,
+    decorated,
     params,
     returnType: elementType,
     locals,
     body,
   };
+}
+
+function isEmptyDecoratorStatement(statement) {
+  return (
+    nodeType(statement) === "AST_SimpleStatement" &&
+    nodeType(statement.body) === "AST_EmptyStatement"
+  );
 }
 
 async function lowerSource(source, filename) {
@@ -291,17 +527,31 @@ async function lowerSource(source, filename) {
   } finally {
     frontend.close();
   }
-  const functions = array(toplevel.body).map((statement) => {
-    expect(
-      nodeType(statement) === "AST_Function",
-      "native kernel source may only contain function definitions",
-    );
-    return lowerFunction(statement);
-  });
-  expect(functions.length > 0, "native kernel source defines no functions");
+
+  const topLevel = array(toplevel.body);
+  const definitions = topLevel.filter(
+    (statement) => nodeType(statement) === "AST_Function",
+  );
+  const decorated = definitions.filter(nativeDecorator);
+  let selected;
+  if (decorated.length > 0) {
+    selected = decorated.map((fn) => lowerFunction(fn, true));
+  } else {
+    selected = topLevel
+      .filter((statement) => !isEmptyDecoratorStatement(statement))
+      .map((statement) => {
+        expect(
+          nodeType(statement) === "AST_Function",
+          "native kernel source without @native may only contain " +
+            "function definitions",
+        );
+        return lowerFunction(statement, false);
+      });
+  }
+  expect(selected.length > 0, "native kernel source defines no functions");
   return {
     version: IR_VERSION,
-    functions,
+    functions: selected,
   };
 }
 

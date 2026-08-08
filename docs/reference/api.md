@@ -393,7 +393,7 @@ returning an RGB(A) tuple is also accepted.
 
 ```sage
 sage: complex_to_cmap_rgb([[0, 1]], cmap='viridis')[0][0]
-[0, 0, 0]
+[0.0, 0.0, 0.0]
 sage: len(complex_to_cmap_rgb([[1 + I]], cmap='plasma')[0][0])
 3
 ```
@@ -432,7 +432,7 @@ or through optional logarithmic/linear contours and phase tiles.
 ```sage
 sage: colors = complex_to_rgb([[0, 1, 10]])[0]
 sage: len(colors), colors[0], len(colors[1])
-(3, [0, 0, 0], 3)
+(3, [0.0, 0.0, 0], 3)
 ```
 
 ### Metadata
@@ -4904,7 +4904,7 @@ sage: S = IndexFaceSet([[(1,0,0), (0,1,0), (0,0,1)]])
 sage: S.index_faces()
 [[0, 1, 2]]
 sage: S.vertex_list()
-[[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
 ```
 
 ### Metadata

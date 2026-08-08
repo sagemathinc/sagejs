@@ -1908,7 +1908,7 @@ class IndexFaceSet(Graphics3d):
     sage: S.index_faces()
     [[0, 1, 2]]
     sage: S.vertex_list()
-    [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
     ```
     """
 

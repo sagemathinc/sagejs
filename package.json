@@ -32,6 +32,10 @@
       "types": "./dist/tools/kernel.d.ts",
       "default": "./dist/tools/kernel.js"
     },
+    "./native": {
+      "types": "./tools/native-kernel.d.ts",
+      "default": "./tools/native-kernel.cjs"
+    },
     "./serialization": "./dist/tools/serialization.js"
   },
   "bin": {

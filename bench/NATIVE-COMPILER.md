@@ -1,13 +1,18 @@
-# Native Kernel v0
+# Native Kernel v1
 
-Native Kernel v0 asks whether selected Sage.js library functions can compile
+Native Kernel v1 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. It is a small but structured compiler path, replacing the earlier
 single-function code-generation proof.
 
-The input is ordinary Sage.js source:
+The input is ordinary Sage.js source.  ``@native`` is a no-op under CPython
+and ordinary Sage.js execution, so the body remains its own readable fallback:
 
 ```python
+from sagejs.native import native
+
+
+@native
 def multiply_loop(
     field: ComplexField, iterations: uint64
 ) -> ComplexNumber:
@@ -35,24 +40,40 @@ pnpm --dir packages/flint build
 node tools/native-kernel.cjs bench/native-kernel.config.cjs
 ```
 
+Applications can use the same content-addressed compiler through the public
+Node subpath:
+
+```js
+const { compile } = require("@sagemath/sagejs/native");
+
+const result = await compile({
+  sourcePath: "algorithms.sage",
+  cacheRoot: ".sagejs-native-kernels",
+});
+const algorithms = require(result.modulePath);
+```
+
 The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v0 is currently a source-tree development feature and uses the
+Native Kernel v1 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers the selected functions to typed IR. Native Kernel v0 supports:
+lowers marked functions to typed IR. Native Kernel v1 supports:
 
 - one `RealField` or `ComplexField` parent and one nonnegative `uint64`
   argument;
-- local `RealNumber` or `ComplexNumber` values constructed from decimal
-  strings;
-- `for ... in range(iterations)`;
+- local `RealNumber` or `ComplexNumber` values constructed from decimal or
+  integer literals;
+- coercion of a `uint64` argument or loop index through the supplied field;
+- `range(iterations)` and `range(k, iterations + k)` loops;
 - local real or complex addition, subtraction, multiplication, and division;
+- nested arithmetic expressions, augmented assignments, copies, and
+  nonnegative constant powers through exponent 64;
 - return of a local matching the annotated field.
 
 Unsupported syntax and missing types are rejected during lowering. The IR
@@ -123,7 +144,7 @@ multiplications, while this backend calls MPC. The remaining
 large-precision difference therefore includes a kernel implementation
 difference, not merely compiler or language overhead.
 
-## Deliberate v0 limits
+## Deliberate v1 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements
@@ -132,7 +153,8 @@ prebuilt kernels. The next compiler work should be driven by real Sage.js
 library code and Sage-compatible semantics rather than by accumulating
 unconnected AST cases.
 
-The architectural seams are now present: typed IR, escape-aware native
+The architectural seams are now present: ordinary Python decorator markers,
+typed IR, escape-aware native
 storage, independent backends, a JavaScript fallback, a versioned shared
 element ABI, standard runtime results, and deterministic compilation caching.
 
@@ -151,6 +173,35 @@ pnpm bench:mpmath:aot
 The benchmark checks the 60-digit result against unmodified mpmath under both
 CPython and Sage.js, excludes process startup, and reports median time per
 400-term sum. This is deliberately a Cython-style explicit annotation
-prototype: it demonstrates the attainable native ceiling and the reusable AOT
-pipeline, but does not claim that arbitrary unmodified mpmath functions are
+prototype.  Its body now has the same loop shape as upstream mpmath:
+
+```python
+@native
+def harmonic_cubic_loop(field: RealField, terms: uint64) -> RealNumber:
+    total = field(0)
+    for denominator in range(1, terms + 1):
+        total += field(1) / field(denominator) ** 3
+    return total
+```
+
+It demonstrates the attainable native ceiling and the reusable AOT pipeline,
+but does not claim that arbitrary unmodified mpmath functions are
 automatically compilable.
+
+On a dedicated 16-vCPU AMD EPYC 7B13 VM with Node 26.7.0, the Python-shaped
+v1 kernel took 0.119 ms per 400-term sum, versus 1.989 ms for CPython 3.12 with
+mpmath 1.3.0 and 26.850 ms for unmodified mpmath under Sage.js. All paths
+agreed to the reported 60 decimal digits. These are whole-call measurements
+after warmup; compilation and process startup are excluded. The compiler also
+hoists its generated immutable `field(1)` temporary out of the loop.
+
+## SEA distribution direction
+
+The cache artifact is already the right unit for a future SEA build. Release
+CI can compile marked library modules once per supported platform and Node ABI,
+embed the generated JavaScript, manifest, and native addon, then materialize
+the addon into a verified content-addressed user cache before loading it.
+Native addons cannot generally be loaded directly from bytes inside a SEA, so
+the extraction step is intentional; the source/IR/backend/ABI cache key keeps
+it deterministic and safe to reuse. The ordinary decorated function remains
+available whenever a platform has no precompiled artifact.

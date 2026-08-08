@@ -13,11 +13,11 @@ function jsString(value) {
 
 function emitStatement(operation, indent) {
   if (operation.kind === "real.constant") {
-    return `${indent}let ${operation.target} = ${operation.parent}(` +
+    return `${indent}${operation.target} = ${operation.parent}(` +
       `${jsString(operation.value)});`;
   }
   if (operation.kind === "complex.constant") {
-    return `${indent}let ${operation.target} = ${operation.parent}(` +
+    return `${indent}${operation.target} = ${operation.parent}(` +
       `${jsString(operation.real)}, ${jsString(operation.imag)});`;
   }
   if (
@@ -27,10 +27,31 @@ function emitStatement(operation, indent) {
     return `${indent}${operation.target} = ${operation.left}.` +
       `${METHOD[operation.operation]}(${operation.right});`;
   }
+  if (
+    operation.kind === "real.copy" ||
+    operation.kind === "complex.copy"
+  ) {
+    return `${indent}${operation.target} = ${operation.source};`;
+  }
+  if (
+    operation.kind === "real.from_uint64" ||
+    operation.kind === "complex.from_uint64"
+  ) {
+    return `${indent}${operation.target} = ` +
+      `${operation.parent}(${operation.source});`;
+  }
+  if (
+    operation.kind === "real.pow_uint" ||
+    operation.kind === "complex.pow_uint"
+  ) {
+    return `${indent}${operation.target} = ` +
+      `${operation.base}.__pow__(${operation.exponent});`;
+  }
   if (operation.kind === "loop.range") {
     const lines = [
-      `${indent}for (let ${operation.index} = 0; ` +
-        `${operation.index} < ${operation.count}; ${operation.index} += 1) {`,
+      `${indent}for (let ${operation.index} = ${operation.start}; ` +
+        `${operation.index} - ${operation.start} < ${operation.count}; ` +
+        `${operation.index} += 1) {`,
     ];
     for (const item of operation.body)
       lines.push(emitStatement(item, `${indent}  `));
@@ -44,7 +65,9 @@ function emitStatement(operation, indent) {
 
 function emitFallback(fn) {
   const params = fn.params.map((param) => param.name).join(", ");
+  const locals = fn.locals.map((local) => local.name).join(", ");
   return `function javascript_${fn.name}(${params}) {
+  let ${locals};
 ${fn.body.map((item) => emitStatement(item, "  ")).join("\n")}
 }`;
 }

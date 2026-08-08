@@ -3607,7 +3607,7 @@ def complex_to_rgb(
     ```sage
     sage: colors = complex_to_rgb([[0, 1, 10]])[0]
     sage: len(colors), colors[0], len(colors[1])
-    (3, [0, 0, 0], 3)
+    (3, [0.0, 0.0, 0], 3)
     ```
     """
     contour_type = str(contour_type).lower()
@@ -3769,7 +3769,7 @@ def complex_to_cmap_rgb(
 
     ```sage
     sage: complex_to_cmap_rgb([[0, 1]], cmap='viridis')[0][0]
-    [0, 0, 0]
+    [0.0, 0.0, 0.0]
     sage: len(complex_to_cmap_rgb([[1 + I]], cmap='plasma')[0][0])
     3
     ```
