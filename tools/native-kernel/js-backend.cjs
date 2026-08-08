@@ -515,10 +515,13 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 
 function emitPrimeFieldPublicFunction(fn) {
   const declaredParams = fn.params.map((param) => param.name).join(", ");
-  const descriptors = fn.params.map((param) =>
-    `  const sagejs_${param.name} = primeFieldMatrix(` +
-      `${param.name}, ${jsString(param.name)});`
-  ).join("\n");
+  const descriptors = fn.params.map((param) => {
+    const helper = param.type === "PrimeFieldDecomposition"
+      ? "primeFieldDecomposition"
+      : "primeFieldMatrix";
+    return `  const sagejs_${param.name} = ${helper}(` +
+      `${param.name}, ${jsString(param.name)});`;
+  }).join("\n");
   const nativeArguments = fn.params
     .map((param) => `sagejs_${param.name}.native`)
     .join(", ");
@@ -549,12 +552,44 @@ function emitPrimeFieldPublicFunction(fn) {
       `const native = primeFieldNativeCall(${jsString(fn.name)}, ` +
       `[${nativeArguments}]);\n` +
       `  return primeFieldMethod(${second}.value, "_new", [native]);`;
+  } else if (fn.operation === "factor") {
+    fallback = `return makePrimeFieldDecomposition(null, ${first});`;
+    nativeResult =
+      `const native = primeFieldNativeCall(${jsString(fn.name)}, ` +
+      `[${nativeArguments}]);\n` +
+      `  return makePrimeFieldDecomposition(native, ${first});`;
+  } else if (fn.operation === "factor-rank") {
+    fallback = `return primeFieldMethod(${first}.source, "rank");`;
+    nativeResult = `return primeFieldNativeCall(${jsString(fn.name)}, ` +
+      `[${nativeArguments}]);`;
+  } else if (fn.operation === "factor-determinant") {
+    fallback = `return primeFieldMethod(${first}.source, "determinant");`;
+    nativeResult =
+      `const residue = primeFieldNativeCall(${jsString(fn.name)}, ` +
+      `[${nativeArguments}]);\n` +
+      `  return primeFieldMethod(${first}.base, "__call__", [residue]);`;
+  } else if (fn.operation === "factor-echelon") {
+    fallback = `return primeFieldMethod(${first}.source, "echelon_form");`;
+    nativeResult =
+      `const native = primeFieldNativeCall(${jsString(fn.name)}, ` +
+      `[${nativeArguments}]);\n` +
+      `  return primeFieldMethod(${first}.source, "_new", [native]);`;
+  } else if (fn.operation === "factor-solve") {
+    const second = `sagejs_${fn.params[1].name}`;
+    fallback = `return primeFieldMethod(${first}.source, "solve_right", ` +
+      `[${second}.value]);`;
+    nativeResult =
+      `const native = primeFieldNativeCall(${jsString(fn.name)}, ` +
+      `[${nativeArguments}]);\n` +
+      `  return primeFieldMethod(${second}.value, "_new", [native]);`;
   } else {
     throw new Error(`unsupported prime-field operation ${fn.operation}`);
   }
   const policy = JSON.stringify({
     u32: "uint64 scalar products and Shoup-specialized row updates",
     u64: "FLINT preinverse products and Shoup-specialized row updates",
+    factorization: "blocked dense square LU; classical general PLE",
+    reuse: "one immutable decomposition supports many operations and solves",
     mutation: "private elimination workspace; inputs remain immutable",
   });
   return `function ${fn.name}(${declaredParams}) {
@@ -569,8 +604,11 @@ ${descriptors}
   ${nativeResult}
 }
 ${fn.name}.operation = ${jsString(fn.operation)};
+primeFieldOperations[${jsString(fn.operation)}] = ${fn.name};
 ${fn.name}.backendFor = function (${fn.params[0].name}) {
-  const descriptor = primeFieldMatrix(
+  const descriptor = ${fn.params[0].type === "PrimeFieldDecomposition"
+    ? "primeFieldDecomposition"
+    : "primeFieldMatrix"}(
     ${fn.params[0].name}, ${jsString(fn.params[0].name)});
   const modulus = BigInt(Reflect.get(descriptor.base, "_modulus"));
   return modulus <= 0xffffffffn ? "u32" : "u64";
@@ -693,6 +731,44 @@ function primeFieldMatrix(value, argument) {
   return { value, native, base };
 }
 
+const primeFieldDecompositionTag = Symbol("sagejs.prime-field-decomposition");
+const primeFieldOperations = Object.create(null);
+
+function makePrimeFieldDecomposition(native, matrix) {
+  const algorithm = native === null
+    ? "fallback"
+    : String(Reflect.get(native, "algorithm"));
+  const decomposition = {
+    [primeFieldDecompositionTag]: true,
+    native,
+    source: matrix.value,
+    base: matrix.base,
+    algorithm,
+    rank() {
+      return primeFieldOperations["factor-rank"](decomposition);
+    },
+    determinant() {
+      return primeFieldOperations["factor-determinant"](decomposition);
+    },
+    echelon() {
+      return primeFieldOperations["factor-echelon"](decomposition);
+    },
+    solve(right) {
+      return primeFieldOperations["factor-solve"](decomposition, right);
+    },
+  };
+  return Object.freeze(decomposition);
+}
+
+function primeFieldDecomposition(value, argument) {
+  if (value === null || (typeof value !== "object" &&
+      typeof value !== "function") ||
+      Reflect.get(value, primeFieldDecompositionTag) !== true) {
+    throw new TypeError(argument + " must be a prime-field decomposition");
+  }
+  return value;
+}
+
 function primeFieldMethod(value, name, args = []) {
   const method = Reflect.get(value, name);
   if (typeof method !== "function") {
@@ -737,6 +813,9 @@ module.exports = {
   ...nativeFunctions,
   cacheKey: ${jsString(options.cacheKey || "")},
   nativeAvailable: nativeAddon !== null,
+  primeFieldTuning: Object.freeze(${JSON.stringify(
+    options.primeFieldTuning || {},
+  )}),
 };
 `;
 }

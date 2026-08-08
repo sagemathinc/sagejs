@@ -83,7 +83,7 @@ const primeFieldMatrixIr = await lowerSource(
 );
 const primeFieldMatrixC = generateC(primeFieldMatrixIr);
 
-assert.equal(ir.version, 8);
+assert.equal(ir.version, 9);
 assert.equal(complexFunction.params[0].type, "ComplexField");
 assert.equal(complexFunction.params[1].type, "uint64");
 assert.equal(complexFunction.returnType, "ComplexNumber");
@@ -175,13 +175,50 @@ assert.deepEqual(
       ["PrimeFieldMatrix", "PrimeFieldMatrix"],
       "PrimeFieldMatrix",
     ],
+    [
+      "prime_field_factor",
+      "prime-field-matrix",
+      "factor",
+      ["PrimeFieldMatrix"],
+      "PrimeFieldDecomposition",
+    ],
+    [
+      "prime_field_factor_rank",
+      "prime-field-matrix",
+      "factor-rank",
+      ["PrimeFieldDecomposition"],
+      "uint64",
+    ],
+    [
+      "prime_field_factor_determinant",
+      "prime-field-matrix",
+      "factor-determinant",
+      ["PrimeFieldDecomposition"],
+      "PrimeFieldElement",
+    ],
+    [
+      "prime_field_factor_echelon",
+      "prime-field-matrix",
+      "factor-echelon",
+      ["PrimeFieldDecomposition"],
+      "PrimeFieldMatrix",
+    ],
+    [
+      "prime_field_factor_solve",
+      "prime-field-matrix",
+      "factor-solve",
+      ["PrimeFieldDecomposition", "PrimeFieldMatrix"],
+      "PrimeFieldMatrix",
+    ],
   ],
 );
 assert.deepEqual(
   primeFieldMatrixIr.functions[0].arithmetic.representations,
   ["u32", "u64"],
 );
-assert.match(primeFieldMatrixC, /sagejs_prime_forward_eliminate/);
+assert.match(primeFieldMatrixC, /sagejs_prime_factor_blocked/);
+assert.match(primeFieldMatrixC, /sagejs_prime_factor_classical/);
+assert.match(primeFieldMatrixC, /sagejs_prime_factor_solve/);
 assert.match(primeFieldMatrixC, /nmod_mul\(left, right/);
 assert.match(primeFieldMatrixC, /sagejs_native_wrap_prime_matrix/);
 assert.equal(
@@ -444,6 +481,59 @@ try {
     cacheRoot: join(temporary, "prime-field-cache"),
   });
   const primeFieldAddon = require(primeFieldKernel.addonPath);
+  const primeFieldModule = require(primeFieldKernel.modulePath);
+  const primeFieldManifest = JSON.parse(
+    readFileSync(join(primeFieldKernel.outputPath, "manifest.json"), "utf8"),
+  );
+  const expectedPrimeFieldTuning = {
+    blockThresholdU32: 32,
+    blockThresholdU64: 320,
+    panelU32: 20,
+    panelU64: 48,
+    columnTile: 512,
+    shoupThreshold: 4,
+  };
+  assert.deepEqual(
+    primeFieldModule.primeFieldTuning,
+    expectedPrimeFieldTuning,
+  );
+  assert.deepEqual(
+    primeFieldManifest.primeFieldTuning,
+    expectedPrimeFieldTuning,
+  );
+  const thresholdEnvironment = "SAGEJS_NATIVE_PRIME_BLOCK_THRESHOLD_U32";
+  const previousThreshold = process.env[thresholdEnvironment];
+  let tunedPrimeFieldKernel;
+  try {
+    process.env[thresholdEnvironment] = "33";
+    tunedPrimeFieldKernel = await compileKernel({
+      sourcePath: primeFieldMatrixPath,
+      cacheRoot: join(temporary, "prime-field-cache"),
+    });
+    process.env[thresholdEnvironment] = "0";
+    await assert.rejects(
+      () => compileKernel({
+        sourcePath: primeFieldMatrixPath,
+        cacheRoot: join(temporary, "invalid-prime-field-cache"),
+      }),
+      /SAGEJS_NATIVE_PRIME_BLOCK_THRESHOLD_U32 must be an integer/,
+    );
+  } finally {
+    if (previousThreshold === undefined)
+      delete process.env[thresholdEnvironment];
+    else
+      process.env[thresholdEnvironment] = previousThreshold;
+  }
+  assert.notEqual(tunedPrimeFieldKernel.cacheKey, primeFieldKernel.cacheKey);
+  assert.equal(
+    JSON.parse(
+      readFileSync(
+        join(tunedPrimeFieldKernel.outputPath, "manifest.json"),
+        "utf8",
+      ),
+    ).primeFieldTuning.blockThresholdU32,
+    33,
+  );
   const flint = require("../packages/flint");
   assert.ok(
     statSync(primeFieldKernel.addonPath).size < 1024 * 1024,
@@ -468,6 +558,35 @@ try {
     ),
     true,
   );
+  const smallPrimeFactor = primeFieldAddon.prime_field_factor(
+    smallPrimeMatrix,
+  );
+  assert.equal(smallPrimeFactor.algorithm, "classical");
+  assert.equal(
+    primeFieldAddon.prime_field_factor_rank(smallPrimeFactor),
+    2,
+  );
+  assert.equal(
+    primeFieldAddon.prime_field_factor_determinant(smallPrimeFactor),
+    3n,
+  );
+  assert.equal(
+    flint.matrixEqual(
+      primeFieldAddon.prime_field_factor_echelon(smallPrimeFactor),
+      flint.matrixRref(smallPrimeMatrix),
+    ),
+    true,
+  );
+  for (let repeat = 0; repeat < 3; repeat += 1) {
+    const answer = primeFieldAddon.prime_field_factor_solve(
+      smallPrimeFactor,
+      smallPrimeRight,
+    );
+    assert.equal(
+      flint.matrixEqual(flint.matrixMul(smallPrimeMatrix, answer), smallPrimeRight),
+      true,
+    );
+  }
   const emptyPrimeMatrix = flint.nmodMatrix(0, 0, [], 5n);
   assert.equal(primeFieldAddon.prime_field_rank(emptyPrimeMatrix), 0);
   assert.equal(
@@ -580,6 +699,77 @@ try {
     );
     solved += 1;
   }
+  for (const modulus of [2147483647n, 2305843009213693951n]) {
+    const size = modulus <= 0xffffffffn ? 64 : 320;
+    let left;
+    let sample = 0;
+    do {
+      left = flint.nmodMatrixRandom(
+        size,
+        size,
+        modulus,
+        BigInt(8675309 + sample),
+        BigInt(424242 + sample * 19),
+      );
+      sample += 1;
+    } while (flint.matrixDet(left) === 0n);
+    const unchanged = flint.nmodMatrixRandom(
+      size,
+      size,
+      modulus,
+      BigInt(8675309 + sample - 1),
+      BigInt(424242 + (sample - 1) * 19),
+    );
+    const right = flint.nmodMatrixRandom(
+      size,
+      4,
+      modulus,
+      1234567n,
+      7654321n,
+    );
+    const factor = primeFieldAddon.prime_field_factor(left);
+    assert.equal(factor.algorithm, "blocked");
+    assert.equal(primeFieldAddon.prime_field_factor_rank(factor), size);
+    assert.equal(
+      primeFieldAddon.prime_field_factor_determinant(factor),
+      flint.matrixDet(left),
+    );
+    assert.equal(
+      flint.matrixEqual(
+        primeFieldAddon.prime_field_factor_echelon(factor),
+        flint.matrixRref(left),
+      ),
+      true,
+    );
+    for (let repeat = 0; repeat < 3; repeat += 1) {
+      const answer = primeFieldAddon.prime_field_factor_solve(factor, right);
+      assert.equal(flint.matrixEqual(flint.matrixMul(left, answer), right), true);
+    }
+    assert.equal(flint.matrixEqual(left, unchanged), true);
+  }
+  {
+    const size = 32;
+    const entries = Array.from(
+      { length: size * size },
+      (_unused, index) => {
+        const row = Math.floor(index / size);
+        const column = index % size;
+        return row === column && row + 1 < size ? 1n : 0n;
+      },
+    );
+    const singular = flint.nmodMatrix(size, size, entries, 65521n);
+    const factor = primeFieldAddon.prime_field_factor(singular);
+    assert.equal(factor.algorithm, "classical");
+    assert.equal(primeFieldAddon.prime_field_factor_rank(factor), size - 1);
+    assert.equal(primeFieldAddon.prime_field_factor_determinant(factor), 0n);
+    assert.equal(
+      flint.matrixEqual(
+        primeFieldAddon.prime_field_factor_echelon(factor),
+        flint.matrixRref(singular),
+      ),
+      true,
+    );
+  }
   assert.throws(
     () => primeFieldAddon.prime_field_rank(
       flint.zmodMatrix(1, 1, [1n], 4n),
@@ -606,6 +796,34 @@ try {
     ),
     /singular/,
   );
+  assert.throws(
+    () => primeFieldAddon.prime_field_factor_rank(smallPrimeMatrix),
+    /decomposition/,
+  );
+  const rectangularFactor = primeFieldAddon.prime_field_factor(
+    flint.nmodMatrix(1, 2, [1n, 2n], 5n),
+  );
+  assert.throws(
+    () => primeFieldAddon.prime_field_factor_determinant(rectangularFactor),
+    /square matrix/,
+  );
+  assert.throws(
+    () => primeFieldAddon.prime_field_factor_solve(
+      smallPrimeFactor,
+      flint.nmodMatrix(2, 1, [1n, 0n], 7n),
+    ),
+    /base rings differ/,
+  );
+  const singularFactor = primeFieldAddon.prime_field_factor(
+    flint.nmodMatrix(2, 2, [1n, 2n, 2n, 4n], 5n),
+  );
+  assert.throws(
+    () => primeFieldAddon.prime_field_factor_solve(
+      singularFactor,
+      smallPrimeRight,
+    ),
+    /singular/,
+  );
   const primeFieldScript = `import sys
 sys.path.append(${JSON.stringify(join(root, "bench"))})
 
@@ -614,6 +832,11 @@ from native_prime_field_matrix import (
     prime_field_echelon,
     prime_field_rank,
     prime_field_solve,
+    prime_field_factor,
+    prime_field_factor_rank,
+    prime_field_factor_determinant,
+    prime_field_factor_echelon,
+    prime_field_factor_solve,
 )
 from sagejs.native import is_compiled
 
@@ -621,10 +844,16 @@ A = matrix(GF(5), 2, 2, [1, 2, 3, 4])
 B = matrix(GF(5), 2, 1, [1, 0])
 C = matrix(GF(2305843009213693951), 1, 1, [1])
 X = prime_field_solve(A, B)
+D = prime_field_factor(A)
 print(prime_field_rank(A))
 print(prime_field_determinant(A))
 print(prime_field_echelon(A) == A.echelon_form())
 print(A * X == B)
+print(D.rank())
+print(D.determinant())
+print(D.echelon() == A.echelon_form())
+print(A * D.solve(B) == B)
+print(D.algorithm)
 print(is_compiled(prime_field_rank))
 print(prime_field_rank.backendFor(A) if is_compiled(prime_field_rank) else 'fallback')
 print(prime_field_rank.backendFor(C) if is_compiled(prime_field_rank) else 'fallback')
@@ -643,7 +872,8 @@ except Exception as error:
   assert.deepEqual(
     runSage(primeFieldScript, primeFieldEnvironment),
     [
-      "2", "3", "True", "True", "True", "u32", "u64",
+      "2", "3", "True", "True", "2", "3", "True", "True", "classical",
+      "True", "u32", "u64",
       "True", "True",
     ],
   );
@@ -653,7 +883,8 @@ except Exception as error:
       SAGEJS_NATIVE_AUTOLOAD: "0",
     }),
     [
-      "2", "3", "True", "True", "False", "fallback", "fallback",
+      "2", "3", "True", "True", "2", "3", "True", "True", "python",
+      "False", "fallback", "fallback",
       "True", "True",
     ],
   );
@@ -1267,7 +1498,7 @@ print(is_compiled(native_powmod))
   rmSync(temporary, { recursive: true, force: true });
 }
 
-console.log("Native Kernel v8 analysis, deoptimization, ABI, and fallback passed.");
+console.log("Native Kernel v9 analysis, decomposition, ABI, and fallback passed.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

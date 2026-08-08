@@ -15,6 +15,14 @@ const cacheRoot = process.env.SAGEJS_NATIVE_PRIME_FIELD_CACHE_ROOT ||
   join(__dirname, ".native-prime-field-cache");
 const quick = process.argv.includes("--quick");
 const json = process.argv.includes("--json");
+const samples = Number(process.env.SAGEJS_NATIVE_PRIME_FIELD_SAMPLES || 7);
+if (!Number.isInteger(samples) || samples < 1)
+  throw new RangeError("SAGEJS_NATIVE_PRIME_FIELD_SAMPLES must be positive");
+const operationFilter = new Set(
+  (process.env.SAGEJS_NATIVE_PRIME_FIELD_OPERATIONS || "")
+    .split(",")
+    .filter(Boolean),
+);
 const sizes = (process.env.SAGEJS_NATIVE_PRIME_FIELD_SIZES ||
   (quick ? "16,32" : "16,32,64,128,256"))
   .split(",")
@@ -78,11 +86,15 @@ function cauchyMatrix(rows, columns, modulus) {
   return flint.nmodMatrix(rows, columns, entries, modulus);
 }
 
-function rightSide(rows, columns, modulus) {
+function rightSide(rows, columns, modulus, offset = 0) {
   const entries = [];
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1)
-      entries.push(BigInt((row + 1) * (column + 2)) % modulus);
+      entries.push(
+        BigInt(
+          (row + 1) * (column + 2) + offset * (row + column + 1),
+        ) % modulus,
+      );
   }
   return flint.nmodMatrix(rows, columns, entries, modulus);
 }
@@ -127,6 +139,11 @@ function interpretedFallback(size) {
     for (const size of sizes) {
       const matrix = cauchyMatrix(size, size, modulus.value);
       const right = rightSide(size, 4, modulus.value);
+      const repeatedRights = Array.from(
+        { length: 8 },
+        (_unused, index) => rightSide(size, 4, modulus.value, index),
+      );
+      const factor = kernel.prime_field_factor(matrix);
       const nativeEchelon = kernel.prime_field_echelon(matrix);
       const nativeSolution = kernel.prime_field_solve(matrix, right);
       assert.equal(
@@ -143,6 +160,21 @@ function interpretedFallback(size) {
       );
       assert.equal(
         flint.matrixEqual(flint.matrixMul(matrix, nativeSolution), right),
+        true,
+      );
+      assert.equal(kernel.prime_field_factor_rank(factor), size);
+      assert.equal(
+        kernel.prime_field_factor_determinant(factor),
+        flint.matrixDet(matrix),
+      );
+      assert.equal(
+        flint.matrixEqual(
+          flint.matrixMul(
+            matrix,
+            kernel.prime_field_factor_solve(factor, right),
+          ),
+          right,
+        ),
         true,
       );
       const count = repetitions(size);
@@ -167,14 +199,38 @@ function interpretedFallback(size) {
           () => kernel.prime_field_solve(matrix, right),
           () => flint.matrixSolve(matrix, right),
         ],
+        [
+          "factor",
+          () => kernel.prime_field_factor(matrix),
+          () => flint.matrixRank(matrix),
+        ],
+        [
+          "solve-4-reuse",
+          () => kernel.prime_field_factor_solve(factor, right),
+          () => flint.matrixSolve(matrix, right),
+        ],
+        [
+          "solve-4x8-reuse",
+          () => {
+            for (const repeatedRight of repeatedRights)
+              kernel.prime_field_factor_solve(factor, repeatedRight);
+          },
+          () => {
+            for (const repeatedRight of repeatedRights)
+              flint.matrixSolve(matrix, repeatedRight);
+          },
+        ],
       ];
       for (const [operation, native, direct] of operations) {
-        const nativeMilliseconds = measure(native, count);
-        const flintMilliseconds = measure(direct, count);
+        if (operationFilter.size > 0 && !operationFilter.has(operation))
+          continue;
+        const nativeMilliseconds = measure(native, count, samples);
+        const flintMilliseconds = measure(direct, count, samples);
         rows.push({
           modulus: modulus.name,
           prime: String(modulus.value),
           size,
+          factorAlgorithm: factor.algorithm,
           operation,
           nativeMilliseconds,
           flintMilliseconds,
@@ -211,7 +267,7 @@ function interpretedFallback(size) {
     return;
   }
   console.log(
-    `Native Kernel v8 prime-field matrices; addon ` +
+    `Native Kernel v9 prime-field matrices; addon ` +
       `${report.artifacts.addonBytes} bytes`,
   );
   console.log(

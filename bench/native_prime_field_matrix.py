@@ -121,6 +121,61 @@ def _prime_field_solve_fallback(left: Any, right: Any) -> Any:
     return matrix(field, size, right_columns, answer)
 
 
+class _PrimeFieldDecompositionFallback:
+    """Portable decomposition facade used when no native artifact exists."""
+
+    def __init__(self, source: Any) -> None:
+        rows = _prime_field_rows(source)
+        self.source = matrix(
+            source.base_ring(), source.nrows(), source.ncols(),
+            [value for row in rows for value in row],
+        )
+        self.algorithm = 'python'
+
+    def rank(self) -> int:
+        return _prime_field_rank_fallback(self.source)
+
+    def determinant(self) -> Any:
+        return _prime_field_determinant_fallback(self.source)
+
+    def echelon(self) -> Any:
+        return _prime_field_echelon_fallback(self.source)
+
+    def solve(self, right: Any) -> Any:
+        return _prime_field_solve_fallback(self.source, right)
+
+
+def _prime_field_factor_fallback(
+    source: Any,
+) -> _PrimeFieldDecompositionFallback:
+    return _PrimeFieldDecompositionFallback(source)
+
+
+def _prime_field_factor_rank_fallback(
+    decomposition: _PrimeFieldDecompositionFallback,
+) -> int:
+    return decomposition.rank()
+
+
+def _prime_field_factor_determinant_fallback(
+    decomposition: _PrimeFieldDecompositionFallback,
+) -> Any:
+    return decomposition.determinant()
+
+
+def _prime_field_factor_echelon_fallback(
+    decomposition: _PrimeFieldDecompositionFallback,
+) -> Any:
+    return decomposition.echelon()
+
+
+def _prime_field_factor_solve_fallback(
+    decomposition: _PrimeFieldDecompositionFallback,
+    right: Any,
+) -> Any:
+    return decomposition.solve(right)
+
+
 @native
 def prime_field_rank(source: PrimeFieldMatrix) -> uint64:
     return _prime_field_rank_fallback(source)
@@ -146,3 +201,39 @@ def prime_field_solve(
     right: PrimeFieldMatrix,
 ) -> PrimeFieldMatrix:
     return _prime_field_solve_fallback(left, right)
+
+
+@native
+def prime_field_factor(
+    source: PrimeFieldMatrix,
+) -> PrimeFieldDecomposition:
+    return _prime_field_factor_fallback(source)
+
+
+@native
+def prime_field_factor_rank(
+    decomposition: PrimeFieldDecomposition,
+) -> uint64:
+    return _prime_field_factor_rank_fallback(decomposition)
+
+
+@native
+def prime_field_factor_determinant(
+    decomposition: PrimeFieldDecomposition,
+) -> PrimeFieldElement:
+    return _prime_field_factor_determinant_fallback(decomposition)
+
+
+@native
+def prime_field_factor_echelon(
+    decomposition: PrimeFieldDecomposition,
+) -> PrimeFieldMatrix:
+    return _prime_field_factor_echelon_fallback(decomposition)
+
+
+@native
+def prime_field_factor_solve(
+    decomposition: PrimeFieldDecomposition,
+    right: PrimeFieldMatrix,
+) -> PrimeFieldMatrix:
+    return _prime_field_factor_solve_fallback(decomposition, right)

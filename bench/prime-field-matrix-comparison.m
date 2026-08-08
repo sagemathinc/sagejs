@@ -1,4 +1,4 @@
-// Matched Magma benchmark for Native Kernel v8 prime-field matrices.
+// Matched Magma benchmark for Native Kernel v9 prime-field matrices.
 
 sizes := [16, 32, 64, 128, 256];
 fields := [
@@ -81,6 +81,22 @@ for field_data in fields do
         end for;
         elapsed := 1000 * Cputime(started) / repetitions;
         print "RESULT", field_name, size, "solve-4", RealField(20)!elapsed;
+
+        // Magma can retain decomposition data on a matrix object.  Reuse one
+        // source and force the first solve before measuring the cached path.
+        source := Matrix(field, size, size, source_values);
+        right := Matrix(field, size, 4, right_values);
+        warm := Transpose(Solution(Transpose(source), Transpose(right)));
+        started := Cputime();
+        for repetition in [1..repetitions] do
+            answer := Transpose(Solution(
+                Transpose(source),
+                Transpose(right)
+            ));
+        end for;
+        elapsed := 1000 * Cputime(started) / repetitions;
+        print "RESULT", field_name, size, "solve-4-reuse",
+            RealField(20)!elapsed;
     end for;
 end for;
 

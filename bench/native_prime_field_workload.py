@@ -1,4 +1,4 @@
-"""Timed readable fallback for the Native Kernel v8 matrix benchmark."""
+"""Timed readable fallback for the Native Kernel v9 matrix benchmark."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from native_prime_field_matrix import (
     prime_field_echelon,
     prime_field_rank,
     prime_field_solve,
+    prime_field_factor,
 )
 
 
@@ -59,5 +60,11 @@ measure(
 measure(
     'solve-4',
     lambda: prime_field_solve(source, right),
+    lambda answer: source * answer == right,
+)
+decomposition = prime_field_factor(source)
+measure(
+    'solve-4-reuse',
+    lambda: decomposition.solve(right),
     lambda answer: source * answer == right,
 )

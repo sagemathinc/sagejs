@@ -1,16 +1,51 @@
 "use strict";
 
-function cString(value) {
-  return JSON.stringify(String(value));
-}
-
 function generatePrimeFieldSupport() {
   return String.raw`
+#define SAGEJS_PRIME_FACTOR_MAGIC UINT64_C(0x534147454A534C55)
+#ifndef SAGEJS_PRIME_BLOCK_THRESHOLD_U32
+#define SAGEJS_PRIME_BLOCK_THRESHOLD_U32 32
+#endif
+#ifndef SAGEJS_PRIME_BLOCK_THRESHOLD_U64
+#define SAGEJS_PRIME_BLOCK_THRESHOLD_U64 320
+#endif
+#ifndef SAGEJS_PRIME_PANEL_U32
+#define SAGEJS_PRIME_PANEL_U32 20
+#endif
+#ifndef SAGEJS_PRIME_PANEL_U64
+#define SAGEJS_PRIME_PANEL_U64 48
+#endif
+#ifndef SAGEJS_PRIME_COLUMN_TILE
+#define SAGEJS_PRIME_COLUMN_TILE 512
+#endif
+#ifndef SAGEJS_PRIME_SHOUP_THRESHOLD
+#define SAGEJS_PRIME_SHOUP_THRESHOLD 4
+#endif
+
 typedef struct
 {
     nmod_t modulus;
     int narrow;
 } sagejs_prime_arithmetic;
+
+typedef struct
+{
+    uint64_t magic;
+    sagejs_prime_arithmetic arithmetic;
+    slong rows;
+    slong columns;
+    slong rank;
+    slong swaps;
+    int blocked;
+    ulong *entries;
+    slong *pivots;
+    slong *permutation;
+} sagejs_prime_factor;
+
+static const napi_type_tag sagejs_prime_factor_type_tag = {
+    UINT64_C(0x8d6d4da2c995451d),
+    UINT64_C(0xa2fe9b60db00ed87)
+};
 
 static void sagejs_prime_arithmetic_init(
     sagejs_prime_arithmetic *arithmetic, ulong modulus)
@@ -68,7 +103,7 @@ static void sagejs_prime_scale_row(
     ulong scalar,
     const sagejs_prime_arithmetic *arithmetic)
 {
-    if (length >= 10 &&
+    if (length >= SAGEJS_PRIME_SHOUP_THRESHOLD &&
         NMOD_CAN_USE_SHOUP(arithmetic->modulus))
     {
         const ulong precomputed = n_mulmod_precomp_shoup(
@@ -93,7 +128,9 @@ static void sagejs_prime_subtract_row_multiple(
     ulong factor,
     const sagejs_prime_arithmetic *arithmetic)
 {
-    if (length >= 10 &&
+    if (factor == 0 || length <= 0)
+        return;
+    if (length >= SAGEJS_PRIME_SHOUP_THRESHOLD &&
         NMOD_CAN_USE_SHOUP(arithmetic->modulus))
     {
         const ulong scalar = arithmetic->modulus.n - factor;
@@ -118,6 +155,117 @@ static void sagejs_prime_subtract_row_multiple(
             arithmetic);
 }
 
+/*
+ * Apply a short row-panel dot product.  For narrow primes, several products
+ * are accumulated before reduction whenever the exact uint64 bound permits;
+ * this is the main blocked-kernel advantage over one modular reduction per
+ * scalar update.  Wide primes retain Shoup-specialized row updates.
+ */
+static void sagejs_prime_subtract_panel_product(
+    ulong *target,
+    const ulong *factor_row,
+    const ulong *entries,
+    slong stride,
+    slong first,
+    slong count,
+    slong column_start,
+    slong length,
+    const sagejs_prime_arithmetic *arithmetic)
+{
+    if (count <= 0 || length <= 0)
+        return;
+    if (!arithmetic->narrow)
+    {
+        for (slong offset = 0; offset < count; offset++)
+        {
+            const slong prior = first + offset;
+            sagejs_prime_subtract_row_multiple(
+                target,
+                entries + (size_t) prior * (size_t) stride +
+                    (size_t) column_start,
+                length,
+                factor_row[prior],
+                arithmetic);
+        }
+        return;
+    }
+    const uint64_t modulus = (uint64_t) arithmetic->modulus.n;
+    const uint64_t magnitude = modulus - UINT64_C(1);
+    const uint64_t product_bound = magnitude * magnitude;
+    const uint64_t batch_bound = product_bound == 0
+        ? (uint64_t) count
+        : (UINT64_MAX - magnitude) / product_bound;
+    slong batch = batch_bound > (uint64_t) count
+        ? count
+        : (slong) batch_bound;
+    if (batch < 1)
+        batch = 1;
+    if (batch > count)
+        batch = count;
+    for (slong column = 0; column < length; column++)
+    {
+        ulong value = target[column];
+        for (slong offset = 0; offset < count; offset += batch)
+        {
+            const slong end = offset + batch < count
+                ? offset + batch
+                : count;
+            uint64_t sum = 0;
+            for (slong item = offset; item < end; item++)
+            {
+                const slong prior = first + item;
+                sum += (uint64_t) factor_row[prior] *
+                    (uint64_t) entries[
+                        (size_t) prior * (size_t) stride +
+                        (size_t) column_start + (size_t) column];
+            }
+            value = sagejs_prime_sub(
+                value, (ulong) (sum % modulus), arithmetic);
+        }
+        target[column] = value;
+    }
+}
+
+static void sagejs_prime_subtract_packed_panel(
+    ulong *target,
+    const ulong *factors,
+    const ulong *packed_columns,
+    slong count,
+    slong length,
+    const sagejs_prime_arithmetic *arithmetic)
+{
+    const uint64_t modulus = (uint64_t) arithmetic->modulus.n;
+    const uint64_t magnitude = modulus - UINT64_C(1);
+    const uint64_t product_bound = magnitude * magnitude;
+    const uint64_t batch_bound = product_bound == 0
+        ? (uint64_t) count
+        : (UINT64_MAX - magnitude) / product_bound;
+    slong batch = batch_bound > (uint64_t) count
+        ? count
+        : (slong) batch_bound;
+    if (batch < 1)
+        batch = 1;
+    for (slong column = 0; column < length; column++)
+    {
+        const ulong *packed = packed_columns +
+            (size_t) column * (size_t) count;
+        ulong value = target[column];
+        for (slong offset = 0; offset < count; offset += batch)
+        {
+            const slong end = offset + batch < count
+                ? offset + batch
+                : count;
+            uint64_t sum = 0;
+            for (slong item = offset; item < end; item++)
+                sum += (uint64_t) factors[item] *
+                    (uint64_t) packed[item];
+            value = sagejs_prime_sub(
+                value, (ulong) (sum % modulus), arithmetic);
+        }
+        target[column] = value;
+    }
+}
+
 static int sagejs_prime_entry_count(
     napi_env env, slong rows, slong columns, size_t *count)
 {
@@ -137,29 +285,6 @@ static int sagejs_prime_entry_count(
     return 1;
 }
 
-static ulong *sagejs_prime_copy_entries(
-    napi_env env, const sagejs_matrix *matrix)
-{
-    const slong rows = nmod_mat_nrows(matrix->modular);
-    const slong columns = nmod_mat_ncols(matrix->modular);
-    size_t count;
-    ulong *entries;
-    if (!sagejs_prime_entry_count(env, rows, columns, &count))
-        return NULL;
-    entries = (ulong *) malloc((count == 0 ? 1 : count) * sizeof(*entries));
-    if (entries == NULL)
-    {
-        napi_throw_error(env, NULL,
-            "unable to allocate prime-field elimination workspace");
-        return NULL;
-    }
-    for (slong row = 0; row < rows; row++)
-        for (slong column = 0; column < columns; column++)
-            entries[(size_t) row * (size_t) columns + (size_t) column] =
-                nmod_mat_entry(matrix->modular, row, column);
-    return entries;
-}
-
 static void sagejs_prime_swap_rows(
     ulong *entries, slong columns, slong left, slong right)
 {
@@ -177,193 +302,562 @@ static void sagejs_prime_swap_rows(
     }
 }
 
-static slong sagejs_prime_forward_eliminate(
-    ulong *entries,
-    slong rows,
-    slong columns,
-    slong pivot_columns,
-    const sagejs_prime_arithmetic *arithmetic,
-    ulong *determinant)
+static void sagejs_prime_factor_clear(sagejs_prime_factor *factor)
 {
+    if (factor == NULL)
+        return;
+    free(factor->entries);
+    free(factor->pivots);
+    free(factor->permutation);
+    factor->entries = NULL;
+    factor->pivots = NULL;
+    factor->permutation = NULL;
+    factor->magic = 0;
+    free(factor);
+}
+
+static void sagejs_prime_factor_finalize(
+    napi_env env, void *data, void *hint)
+{
+    sagejs_prime_factor *factor = (sagejs_prime_factor *) data;
+    (void) env;
+    (void) hint;
+    if (factor != NULL && factor->magic == SAGEJS_PRIME_FACTOR_MAGIC)
+        sagejs_prime_factor_clear(factor);
+}
+
+static int sagejs_prime_factor_reset(
+    napi_env env,
+    sagejs_prime_factor *factor,
+    const sagejs_matrix *matrix)
+{
+    factor->rank = 0;
+    factor->swaps = 0;
+    factor->blocked = 0;
+    for (slong row = 0; row < factor->rows; row++)
+    {
+        factor->permutation[row] = row;
+        for (slong column = 0; column < factor->columns; column++)
+            factor->entries[(size_t) row * (size_t) factor->columns +
+                (size_t) column] =
+                nmod_mat_entry(matrix->modular, row, column);
+    }
+    (void) env;
+    return 1;
+}
+
+static void sagejs_prime_factor_classical(sagejs_prime_factor *factor)
+{
+    const slong rows = factor->rows;
+    const slong columns = factor->columns;
+    const sagejs_prime_arithmetic *arithmetic = &factor->arithmetic;
     slong pivot_row = 0;
-    ulong det = 1 % arithmetic->modulus.n;
     for (slong pivot_column = 0;
-         pivot_column < pivot_columns && pivot_row < rows;
+         pivot_column < columns && pivot_row < rows;
          pivot_column++)
     {
         slong selected = pivot_row;
         while (selected < rows &&
-            entries[(size_t) selected * (size_t) columns +
+            factor->entries[(size_t) selected * (size_t) columns +
                 (size_t) pivot_column] == 0)
             selected++;
         if (selected == rows)
             continue;
         if (selected != pivot_row)
         {
+            const slong temporary = factor->permutation[selected];
             sagejs_prime_swap_rows(
-                entries, columns, selected, pivot_row);
-            if (determinant != NULL && det != 0)
-                det = arithmetic->modulus.n - det;
+                factor->entries, columns, selected, pivot_row);
+            factor->permutation[selected] =
+                factor->permutation[pivot_row];
+            factor->permutation[pivot_row] = temporary;
+            factor->swaps++;
         }
-        const size_t pivot_index =
-            (size_t) pivot_row * (size_t) columns +
-            (size_t) pivot_column;
-        const ulong pivot = entries[pivot_index];
+        const size_t pivot_offset =
+            (size_t) pivot_row * (size_t) columns;
+        const ulong pivot =
+            factor->entries[pivot_offset + (size_t) pivot_column];
         const ulong inverse = sagejs_prime_inv(pivot, arithmetic);
-        if (determinant != NULL)
-            det = sagejs_prime_mul(det, pivot, arithmetic);
+        factor->pivots[pivot_row] = pivot_column;
         for (slong row = pivot_row + 1; row < rows; row++)
         {
             const size_t row_offset = (size_t) row * (size_t) columns;
-            const ulong value = entries[row_offset + (size_t) pivot_column];
+            const ulong value =
+                factor->entries[row_offset + (size_t) pivot_column];
             if (value == 0)
                 continue;
-            const ulong factor = sagejs_prime_mul(value, inverse, arithmetic);
-            entries[row_offset + (size_t) pivot_column] = 0;
+            const ulong multiple = sagejs_prime_mul(
+                value, inverse, arithmetic);
+            factor->entries[row_offset + (size_t) pivot_column] = multiple;
             sagejs_prime_subtract_row_multiple(
-                entries + row_offset + (size_t) pivot_column + 1,
-                entries + (size_t) pivot_row * (size_t) columns +
-                    (size_t) pivot_column + 1,
+                factor->entries + row_offset + (size_t) pivot_column + 1,
+                factor->entries + pivot_offset + (size_t) pivot_column + 1,
                 columns - pivot_column - 1,
-                factor,
+                multiple,
                 arithmetic);
         }
         pivot_row++;
     }
-    if (determinant != NULL)
-        *determinant = pivot_row == rows && rows == pivot_columns ? det : 0;
-    return pivot_row;
+    factor->rank = pivot_row;
 }
 
-static slong sagejs_prime_rref_entries(
-    ulong *entries,
-    slong rows,
-    slong columns,
-    slong pivot_columns,
-    const sagejs_prime_arithmetic *arithmetic)
+/*
+ * Factor a dense nonsingular square matrix by panels.  Updates within the
+ * active panel are immediate so pivoting remains exact; updates to the far
+ * trailing matrix are delayed and applied in cache-sized column tiles.
+ */
+static int sagejs_prime_factor_blocked(sagejs_prime_factor *factor)
 {
-    slong pivot_row = 0;
-    for (slong pivot_column = 0;
-         pivot_column < pivot_columns && pivot_row < rows;
-         pivot_column++)
+    const slong size = factor->rows;
+    const slong columns = factor->columns;
+    const sagejs_prime_arithmetic *arithmetic = &factor->arithmetic;
+    const slong panel_width = arithmetic->narrow
+        ? SAGEJS_PRIME_PANEL_U32
+        : SAGEJS_PRIME_PANEL_U64;
+    const slong block_threshold = arithmetic->narrow
+        ? SAGEJS_PRIME_BLOCK_THRESHOLD_U32
+        : SAGEJS_PRIME_BLOCK_THRESHOLD_U64;
+    ulong *packed = NULL;
+    if (size != columns || size < block_threshold)
+        return 0;
+    if (arithmetic->narrow)
     {
-        slong selected = pivot_row;
-        while (selected < rows &&
-            entries[(size_t) selected * (size_t) columns +
-                (size_t) pivot_column] == 0)
-            selected++;
-        if (selected == rows)
-            continue;
-        sagejs_prime_swap_rows(entries, columns, selected, pivot_row);
-        const size_t pivot_offset =
-            (size_t) pivot_row * (size_t) columns;
-        const ulong inverse = sagejs_prime_inv(
-            entries[pivot_offset + (size_t) pivot_column],
-            arithmetic);
-        entries[pivot_offset + (size_t) pivot_column] = 1;
-        sagejs_prime_scale_row(
-            entries + pivot_offset + (size_t) pivot_column + 1,
-            columns - pivot_column - 1,
-            inverse,
-            arithmetic);
-        for (slong row = 0; row < rows; row++)
-        {
-            if (row == pivot_row)
-                continue;
-            const size_t row_offset = (size_t) row * (size_t) columns;
-            const ulong factor =
-                entries[row_offset + (size_t) pivot_column];
-            if (factor == 0)
-                continue;
-            entries[row_offset + (size_t) pivot_column] = 0;
-            sagejs_prime_subtract_row_multiple(
-                entries + row_offset + (size_t) pivot_column + 1,
-                entries + pivot_offset + (size_t) pivot_column + 1,
-                columns - pivot_column - 1,
-                factor,
-                arithmetic);
-        }
-        pivot_row++;
+        const size_t packed_count =
+            (size_t) panel_width * (size_t) SAGEJS_PRIME_COLUMN_TILE;
+        if (panel_width > 0 &&
+            packed_count / (size_t) panel_width !=
+                (size_t) SAGEJS_PRIME_COLUMN_TILE)
+            return 0;
+        if (packed_count > SIZE_MAX / sizeof(*packed))
+            return 0;
+        packed = (ulong *) malloc(
+            (packed_count == 0 ? 1 : packed_count) * sizeof(*packed));
+        if (packed == NULL)
+            return 0;
     }
-    return pivot_row;
+    for (slong panel = 0; panel < size; panel += panel_width)
+    {
+        const slong panel_end = panel + panel_width < size
+            ? panel + panel_width
+            : size;
+        for (slong pivot_row = panel;
+             pivot_row < panel_end;
+             pivot_row++)
+        {
+            slong selected = pivot_row;
+            while (selected < size &&
+                factor->entries[(size_t) selected * (size_t) size +
+                    (size_t) pivot_row] == 0)
+                selected++;
+            if (selected == size)
+            {
+                free(packed);
+                return 0;
+            }
+            if (selected != pivot_row)
+            {
+                const slong temporary = factor->permutation[selected];
+                sagejs_prime_swap_rows(
+                    factor->entries, size, selected, pivot_row);
+                factor->permutation[selected] =
+                    factor->permutation[pivot_row];
+                factor->permutation[pivot_row] = temporary;
+                factor->swaps++;
+            }
+            const size_t pivot_offset =
+                (size_t) pivot_row * (size_t) size;
+            const ulong pivot = factor->entries[
+                pivot_offset + (size_t) pivot_row];
+            const ulong inverse = sagejs_prime_inv(pivot, arithmetic);
+            factor->pivots[pivot_row] = pivot_row;
+            for (slong row = pivot_row + 1; row < size; row++)
+            {
+                const size_t row_offset = (size_t) row * (size_t) size;
+                const ulong value = factor->entries[
+                    row_offset + (size_t) pivot_row];
+                if (value == 0)
+                    continue;
+                const ulong multiple = sagejs_prime_mul(
+                    value, inverse, arithmetic);
+                factor->entries[row_offset + (size_t) pivot_row] = multiple;
+                sagejs_prime_subtract_row_multiple(
+                    factor->entries + row_offset + (size_t) pivot_row + 1,
+                    factor->entries + pivot_offset + (size_t) pivot_row + 1,
+                    panel_end - pivot_row - 1,
+                    multiple,
+                    arithmetic);
+            }
+        }
+
+        for (slong column_start = panel_end;
+             column_start < size;
+             column_start += SAGEJS_PRIME_COLUMN_TILE)
+        {
+            const slong length =
+                column_start + SAGEJS_PRIME_COLUMN_TILE < size
+                    ? SAGEJS_PRIME_COLUMN_TILE
+                    : size - column_start;
+
+            /* U12 = L11^-1 A12. */
+            for (slong row = panel + 1; row < panel_end; row++)
+                sagejs_prime_subtract_panel_product(
+                    factor->entries +
+                        (size_t) row * (size_t) size +
+                        (size_t) column_start,
+                    factor->entries + (size_t) row * (size_t) size,
+                    factor->entries,
+                    size,
+                    panel,
+                    row - panel,
+                    column_start,
+                    length,
+                    arithmetic);
+
+            /* A22 -= L21 U12, tiled along the contiguous column axis. */
+            if (arithmetic->narrow)
+            {
+                const slong count = panel_end - panel;
+                for (slong column = 0; column < length; column++)
+                    for (slong prior = 0; prior < count; prior++)
+                        packed[(size_t) column * (size_t) count +
+                            (size_t) prior] = factor->entries[
+                                (size_t) (panel + prior) * (size_t) size +
+                                (size_t) column_start + (size_t) column];
+                for (slong row = panel_end; row < size; row++)
+                    sagejs_prime_subtract_packed_panel(
+                        factor->entries +
+                            (size_t) row * (size_t) size +
+                            (size_t) column_start,
+                        factor->entries + (size_t) row * (size_t) size +
+                            (size_t) panel,
+                        packed,
+                        count,
+                        length,
+                        arithmetic);
+            }
+            else
+            {
+                for (slong row = panel_end; row < size; row++)
+                    sagejs_prime_subtract_panel_product(
+                        factor->entries +
+                            (size_t) row * (size_t) size +
+                            (size_t) column_start,
+                        factor->entries + (size_t) row * (size_t) size,
+                        factor->entries,
+                        size,
+                        panel,
+                        panel_end - panel,
+                        column_start,
+                        length,
+                        arithmetic);
+            }
+        }
+    }
+    free(packed);
+    factor->rank = size;
+    factor->blocked = 1;
+    return 1;
 }
 
-static sagejs_matrix *sagejs_prime_matrix_from_entries(
-    napi_env env,
-    slong rows,
-    slong columns,
-    ulong modulus,
-    const ulong *entries)
+static sagejs_prime_factor *sagejs_prime_factor_new(
+    napi_env env, const sagejs_matrix *matrix)
 {
+    const slong rows = nmod_mat_nrows(matrix->modular);
+    const slong columns = nmod_mat_ncols(matrix->modular);
+    const slong capacity = rows < columns ? rows : columns;
+    size_t count;
+    sagejs_prime_factor *factor;
+    if (!sagejs_prime_entry_count(env, rows, columns, &count))
+        return NULL;
+    if ((size_t) rows > SIZE_MAX / sizeof(slong) ||
+        (size_t) capacity > SIZE_MAX / sizeof(slong))
+    {
+        napi_throw_range_error(env, NULL, "prime-field matrix is too large");
+        return NULL;
+    }
+    factor = (sagejs_prime_factor *) calloc(1, sizeof(*factor));
+    if (factor == NULL)
+    {
+        napi_throw_error(env, NULL,
+            "unable to allocate prime-field decomposition");
+        return NULL;
+    }
+    factor->magic = SAGEJS_PRIME_FACTOR_MAGIC;
+    factor->rows = rows;
+    factor->columns = columns;
+    factor->entries = (ulong *) malloc(
+        (count == 0 ? 1 : count) * sizeof(*factor->entries));
+    factor->pivots = (slong *) malloc(
+        (capacity == 0 ? 1 : (size_t) capacity) * sizeof(*factor->pivots));
+    factor->permutation = (slong *) malloc(
+        (rows == 0 ? 1 : (size_t) rows) * sizeof(*factor->permutation));
+    if (factor->entries == NULL || factor->pivots == NULL ||
+        factor->permutation == NULL)
+    {
+        sagejs_prime_factor_clear(factor);
+        napi_throw_error(env, NULL,
+            "unable to allocate prime-field decomposition workspace");
+        return NULL;
+    }
+    sagejs_prime_arithmetic_init(
+        &factor->arithmetic, matrix->modular->mod.n);
+    sagejs_prime_factor_reset(env, factor, matrix);
+    if (!sagejs_prime_factor_blocked(factor))
+    {
+        /* A failed block attempt may have mutated the workspace. */
+        sagejs_prime_factor_reset(env, factor, matrix);
+        sagejs_prime_factor_classical(factor);
+    }
+    return factor;
+}
+
+static napi_value sagejs_prime_factor_wrap(
+    napi_env env, sagejs_prime_factor *factor)
+{
+    napi_value object;
+    napi_value algorithm;
+    napi_value rank;
+    if (!sagejs_native_check_napi(env, napi_create_object(env, &object)) ||
+        !sagejs_native_check_napi(env,
+            napi_create_string_utf8(
+                env,
+                factor->blocked ? "blocked" : "classical",
+                NAPI_AUTO_LENGTH,
+                &algorithm)) ||
+        !sagejs_native_check_napi(env,
+            napi_set_named_property(env, object, "algorithm", algorithm)) ||
+        !sagejs_native_check_napi(env,
+            napi_create_int64(env, (int64_t) factor->rank, &rank)) ||
+        !sagejs_native_check_napi(env,
+            napi_set_named_property(env, object, "rank", rank)))
+    {
+        sagejs_prime_factor_clear(factor);
+        return NULL;
+    }
+    if (!sagejs_native_check_napi(env,
+        napi_wrap(env, object, factor, sagejs_prime_factor_finalize,
+            NULL, NULL)))
+    {
+        sagejs_prime_factor_clear(factor);
+        return NULL;
+    }
+    if (!sagejs_native_check_napi(env,
+        napi_type_tag_object(env, object, &sagejs_prime_factor_type_tag)))
+        return NULL;
+    return object;
+}
+
+static sagejs_prime_factor *sagejs_prime_factor_unwrap(
+    napi_env env, napi_value object)
+{
+    bool tagged = false;
+    sagejs_prime_factor *factor = NULL;
+    if (!sagejs_native_check_napi(env,
+        napi_check_object_type_tag(
+            env, object, &sagejs_prime_factor_type_tag, &tagged)))
+        return NULL;
+    if (!tagged ||
+        !sagejs_native_check_napi(
+            env, napi_unwrap(env, object, (void **) &factor)) ||
+        factor == NULL || factor->magic != SAGEJS_PRIME_FACTOR_MAGIC)
+    {
+        napi_throw_type_error(env, NULL,
+            "expected a prime-field decomposition");
+        return NULL;
+    }
+    return factor;
+}
+
+static ulong sagejs_prime_factor_determinant(
+    const sagejs_prime_factor *factor)
+{
+    ulong determinant = 1 % factor->arithmetic.modulus.n;
+    if (factor->rows != factor->columns || factor->rank != factor->rows)
+        return 0;
+    for (slong row = 0; row < factor->rank; row++)
+        determinant = sagejs_prime_mul(
+            determinant,
+            factor->entries[(size_t) row * (size_t) factor->columns +
+                (size_t) factor->pivots[row]],
+            &factor->arithmetic);
+    if ((factor->swaps & 1) != 0 && determinant != 0)
+        determinant = factor->arithmetic.modulus.n - determinant;
+    return determinant;
+}
+
+static sagejs_matrix *sagejs_prime_factor_echelon(
+    napi_env env, const sagejs_prime_factor *factor)
+{
+    const slong rows = factor->rows;
+    const slong columns = factor->columns;
     sagejs_matrix *answer = sagejs_native_new_prime_matrix(
-        env, rows, columns, modulus);
+        env, rows, columns, factor->arithmetic.modulus.n);
     if (answer == NULL)
         return NULL;
-    for (slong row = 0; row < rows; row++)
-        for (slong column = 0; column < columns; column++)
+    if (rows == columns && factor->rank == rows)
+    {
+        for (slong index = 0; index < rows; index++)
+            nmod_mat_entry(answer->modular, index, index) = 1;
+        return answer;
+    }
+    for (slong row = 0; row < factor->rank; row++)
+    {
+        const slong pivot = factor->pivots[row];
+        for (slong column = pivot; column < columns; column++)
             nmod_mat_entry(answer->modular, row, column) =
-                entries[(size_t) row * (size_t) columns + (size_t) column];
+                factor->entries[(size_t) row * (size_t) columns +
+                    (size_t) column];
+    }
+    for (slong row = factor->rank; row-- > 0; )
+    {
+        const slong pivot = factor->pivots[row];
+        ulong *pivot_entries = nmod_mat_row_ptr(answer->modular, row);
+        const ulong inverse = sagejs_prime_inv(
+            pivot_entries[pivot], &factor->arithmetic);
+        sagejs_prime_scale_row(
+            pivot_entries + pivot,
+            columns - pivot,
+            inverse,
+            &factor->arithmetic);
+        pivot_entries[pivot] = 1;
+        for (slong upper = 0; upper < row; upper++)
+        {
+            ulong *upper_entries = nmod_mat_row_ptr(answer->modular, upper);
+            const ulong multiple = upper_entries[pivot];
+            if (multiple == 0)
+                continue;
+            upper_entries[pivot] = 0;
+            sagejs_prime_subtract_row_multiple(
+                upper_entries + pivot + 1,
+                pivot_entries + pivot + 1,
+                columns - pivot - 1,
+                multiple,
+                &factor->arithmetic);
+        }
+    }
+    return answer;
+}
+
+static sagejs_matrix *sagejs_prime_factor_solve(
+    napi_env env,
+    const sagejs_prime_factor *factor,
+    const sagejs_matrix *right)
+{
+    const slong size = factor->rows;
+    const slong right_rows = nmod_mat_nrows(right->modular);
+    const slong right_columns = nmod_mat_ncols(right->modular);
+    sagejs_matrix *answer;
+    if (factor->rows != factor->columns || right_rows != size)
+    {
+        napi_throw_range_error(env, NULL,
+            "solve requires a square matrix and compatible right side");
+        return NULL;
+    }
+    if (right->modular->mod.n != factor->arithmetic.modulus.n)
+    {
+        napi_throw_type_error(env, NULL, "matrix base rings differ");
+        return NULL;
+    }
+    if (factor->rank != size)
+    {
+        napi_throw_range_error(env, NULL, "matrix is singular");
+        return NULL;
+    }
+    answer = sagejs_native_new_prime_matrix(
+        env, size, right_columns, factor->arithmetic.modulus.n);
+    if (answer == NULL)
+        return NULL;
+
+    /* Apply P to the right side. */
+    for (slong row = 0; row < size; row++)
+        for (slong column = 0; column < right_columns; column++)
+            nmod_mat_entry(answer->modular, row, column) =
+                nmod_mat_entry(
+                    right->modular, factor->permutation[row], column);
+
+    /* Forward substitution through unit lower triangular L. */
+    for (slong row = 0; row < size; row++)
+    {
+        ulong *target = nmod_mat_row_ptr(answer->modular, row);
+        for (slong prior = 0; prior < row; prior++)
+        {
+            const ulong multiple = factor->entries[
+                (size_t) row * (size_t) size + (size_t) prior];
+            sagejs_prime_subtract_row_multiple(
+                target,
+                nmod_mat_row_ptr(answer->modular, prior),
+                right_columns,
+                multiple,
+                &factor->arithmetic);
+        }
+    }
+
+    /* Back substitution through U. */
+    for (slong row = size; row-- > 0; )
+    {
+        ulong *target = nmod_mat_row_ptr(answer->modular, row);
+        for (slong upper = row + 1; upper < size; upper++)
+        {
+            const ulong multiple = factor->entries[
+                (size_t) row * (size_t) size + (size_t) upper];
+            sagejs_prime_subtract_row_multiple(
+                target,
+                nmod_mat_row_ptr(answer->modular, upper),
+                right_columns,
+                multiple,
+                &factor->arithmetic);
+        }
+        sagejs_prime_scale_row(
+            target,
+            right_columns,
+            sagejs_prime_inv(
+                factor->entries[(size_t) row * (size_t) size +
+                    (size_t) row],
+                &factor->arithmetic),
+            &factor->arithmetic);
+    }
     return answer;
 }
 
 static int sagejs_prime_rank(
     napi_env env, const sagejs_matrix *matrix, slong *rank)
 {
-    const slong rows = nmod_mat_nrows(matrix->modular);
-    const slong columns = nmod_mat_ncols(matrix->modular);
-    sagejs_prime_arithmetic arithmetic;
-    ulong *entries = sagejs_prime_copy_entries(env, matrix);
-    if (entries == NULL)
+    sagejs_prime_factor *factor = sagejs_prime_factor_new(env, matrix);
+    if (factor == NULL)
         return 0;
-    sagejs_prime_arithmetic_init(
-        &arithmetic, matrix->modular->mod.n);
-    *rank = sagejs_prime_forward_eliminate(
-        entries, rows, columns, columns, &arithmetic, NULL);
-    free(entries);
+    *rank = factor->rank;
+    sagejs_prime_factor_clear(factor);
     return 1;
 }
 
 static int sagejs_prime_determinant(
     napi_env env, const sagejs_matrix *matrix, ulong *determinant)
 {
-    const slong rows = nmod_mat_nrows(matrix->modular);
-    const slong columns = nmod_mat_ncols(matrix->modular);
-    sagejs_prime_arithmetic arithmetic;
-    ulong *entries;
-    if (rows != columns)
+    sagejs_prime_factor *factor;
+    if (nmod_mat_nrows(matrix->modular) !=
+        nmod_mat_ncols(matrix->modular))
     {
         napi_throw_range_error(env, NULL,
             "determinant requires a square matrix");
         return 0;
     }
-    entries = sagejs_prime_copy_entries(env, matrix);
-    if (entries == NULL)
+    factor = sagejs_prime_factor_new(env, matrix);
+    if (factor == NULL)
         return 0;
-    sagejs_prime_arithmetic_init(
-        &arithmetic, matrix->modular->mod.n);
-    sagejs_prime_forward_eliminate(
-        entries, rows, columns, columns, &arithmetic, determinant);
-    free(entries);
+    *determinant = sagejs_prime_factor_determinant(factor);
+    sagejs_prime_factor_clear(factor);
     return 1;
 }
 
 static sagejs_matrix *sagejs_prime_echelon(
     napi_env env, const sagejs_matrix *matrix)
 {
-    const slong rows = nmod_mat_nrows(matrix->modular);
-    const slong columns = nmod_mat_ncols(matrix->modular);
-    const ulong modulus = matrix->modular->mod.n;
-    sagejs_prime_arithmetic arithmetic;
+    sagejs_prime_factor *factor = sagejs_prime_factor_new(env, matrix);
     sagejs_matrix *answer;
-    ulong *entries = sagejs_prime_copy_entries(env, matrix);
-    if (entries == NULL)
+    if (factor == NULL)
         return NULL;
-    sagejs_prime_arithmetic_init(&arithmetic, modulus);
-    sagejs_prime_rref_entries(
-        entries, rows, columns, columns, &arithmetic);
-    answer = sagejs_prime_matrix_from_entries(
-        env, rows, columns, modulus, entries);
-    free(entries);
+    answer = sagejs_prime_factor_echelon(env, factor);
+    sagejs_prime_factor_clear(factor);
     return answer;
 }
 
@@ -372,84 +866,51 @@ static sagejs_matrix *sagejs_prime_solve(
     const sagejs_matrix *left,
     const sagejs_matrix *right)
 {
-    const slong rows = nmod_mat_nrows(left->modular);
-    const slong columns = nmod_mat_ncols(left->modular);
-    const slong right_rows = nmod_mat_nrows(right->modular);
-    const slong right_columns = nmod_mat_ncols(right->modular);
-    const ulong modulus = left->modular->mod.n;
-    slong augmented_columns;
-    sagejs_prime_arithmetic arithmetic;
+    sagejs_prime_factor *factor = sagejs_prime_factor_new(env, left);
     sagejs_matrix *answer;
-    size_t count;
-    ulong *entries;
-    slong rank;
-    if (rows != columns || right_rows != rows)
-    {
-        napi_throw_range_error(env, NULL,
-            "solve requires a square matrix and compatible right side");
+    if (factor == NULL)
         return NULL;
-    }
-    if (right->modular->mod.n != modulus)
-    {
-        napi_throw_type_error(env, NULL, "matrix base rings differ");
-        return NULL;
-    }
-    if (right_columns > WORD_MAX - columns)
-    {
-        napi_throw_range_error(env, NULL, "prime-field matrix is too large");
-        return NULL;
-    }
-    augmented_columns = columns + right_columns;
-    if (!sagejs_prime_entry_count(env, rows, augmented_columns, &count))
-        return NULL;
-    entries = (ulong *) malloc((count == 0 ? 1 : count) * sizeof(*entries));
-    if (entries == NULL)
-    {
-        napi_throw_error(env, NULL,
-            "unable to allocate prime-field solve workspace");
-        return NULL;
-    }
-    for (slong row = 0; row < rows; row++)
-    {
-        const size_t offset = (size_t) row * (size_t) augmented_columns;
-        for (slong column = 0; column < columns; column++)
-            entries[offset + (size_t) column] =
-                nmod_mat_entry(left->modular, row, column);
-        for (slong column = 0; column < right_columns; column++)
-            entries[offset + (size_t) columns + (size_t) column] =
-                nmod_mat_entry(right->modular, row, column);
-    }
-    sagejs_prime_arithmetic_init(&arithmetic, modulus);
-    rank = sagejs_prime_rref_entries(
-        entries, rows, augmented_columns, columns, &arithmetic);
-    if (rank != rows)
-    {
-        free(entries);
-        napi_throw_range_error(env, NULL, "matrix is singular");
-        return NULL;
-    }
-    answer = sagejs_native_new_prime_matrix(
-        env, columns, right_columns, modulus);
-    if (answer == NULL)
-    {
-        free(entries);
-        return NULL;
-    }
-    for (slong row = 0; row < columns; row++)
-        for (slong column = 0; column < right_columns; column++)
-            nmod_mat_entry(answer->modular, row, column) =
-                entries[(size_t) row * (size_t) augmented_columns +
-                    (size_t) columns + (size_t) column];
-    free(entries);
+    answer = sagejs_prime_factor_solve(env, factor, right);
+    sagejs_prime_factor_clear(factor);
     return answer;
 }
 `;
 }
 
+function parsePrimeFieldArguments(fn) {
+  const declarations = [];
+  const parsing = [];
+  fn.params.forEach((param, index) => {
+    if (param.type === "PrimeFieldMatrix") {
+      declarations.push(`    sagejs_matrix *sagejs_${param.name};`);
+      parsing.push(
+        `    sagejs_${param.name} = ` +
+        `sagejs_native_unwrap_prime_matrix(env, args[${index}]);\n` +
+        `    if (sagejs_${param.name} == NULL)\n        return NULL;`,
+      );
+    } else if (param.type === "PrimeFieldDecomposition") {
+      declarations.push(`    sagejs_prime_factor *sagejs_${param.name};`);
+      parsing.push(
+        `    sagejs_${param.name} = ` +
+        `sagejs_prime_factor_unwrap(env, args[${index}]);\n` +
+        `    if (sagejs_${param.name} == NULL)\n        return NULL;`,
+      );
+    } else {
+      throw new Error(`unsupported prime-field parameter ${param.type}`);
+    }
+  });
+  return {
+    declarations: declarations.join("\n"),
+    parsing: parsing.join("\n"),
+  };
+}
+
 function emitPrimeFieldFunction(fn) {
   const argumentCount = fn.params.length;
-  const first = fn.params[0].name;
-  const parse = `    sagejs_matrix *sagejs_${first};
+  const parsed = parsePrimeFieldArguments(fn);
+  const argumentSetup = `${parsed.declarations}
+    napi_value args[${Math.max(argumentCount, 1)}];
+    size_t argc = ${argumentCount};
 
     if (!sagejs_native_check_napi(env,
         napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
@@ -459,46 +920,72 @@ function emitPrimeFieldFunction(fn) {
         napi_throw_type_error(env, NULL, "wrong native argument count");
         return NULL;
     }
-    sagejs_${first} = sagejs_native_unwrap_prime_matrix(env, args[0]);
-    if (sagejs_${first} == NULL)
-        return NULL;`;
-
+${parsed.parsing}`;
+  const first = `sagejs_${fn.params[0].name}`;
+  let declarations = "";
   let body;
   if (fn.operation === "rank") {
-    body = `    slong rank;
-${parse}
-    if (!sagejs_prime_rank(env, sagejs_${first}, &rank) ||
+    declarations = "    slong rank;\n    napi_value result;";
+    body = `    if (!sagejs_prime_rank(env, ${first}, &rank) ||
         !sagejs_native_check_napi(env,
             napi_create_int64(env, (int64_t) rank, &result)))
         return NULL;
     return result;`;
   } else if (fn.operation === "determinant") {
-    body = `    ulong determinant;
-${parse}
-    if (!sagejs_prime_determinant(
-            env, sagejs_${first}, &determinant) ||
+    declarations = "    ulong determinant;\n    napi_value result;";
+    body = `    if (!sagejs_prime_determinant(env, ${first}, &determinant) ||
         !sagejs_native_check_napi(env,
             napi_create_bigint_uint64(
                 env, (uint64_t) determinant, &result)))
         return NULL;
     return result;`;
   } else if (fn.operation === "echelon") {
-    body = `    sagejs_matrix *answer;
-${parse}
-    answer = sagejs_prime_echelon(env, sagejs_${first});
+    declarations = "    sagejs_matrix *answer;";
+    body = `    answer = sagejs_prime_echelon(env, ${first});
     return answer == NULL
         ? NULL
         : sagejs_native_wrap_prime_matrix(env, answer);`;
   } else if (fn.operation === "solve") {
-    const second = fn.params[1].name;
-    body = `    sagejs_matrix *sagejs_${second};
-    sagejs_matrix *answer;
-${parse}
-    sagejs_${second} = sagejs_native_unwrap_prime_matrix(env, args[1]);
-    if (sagejs_${second} == NULL)
+    declarations = "    sagejs_matrix *answer;";
+    body = `    answer = sagejs_prime_solve(
+        env, ${first}, sagejs_${fn.params[1].name});
+    return answer == NULL
+        ? NULL
+        : sagejs_native_wrap_prime_matrix(env, answer);`;
+  } else if (fn.operation === "factor") {
+    declarations = "    sagejs_prime_factor *answer;";
+    body = `    answer = sagejs_prime_factor_new(env, ${first});
+    return answer == NULL ? NULL : sagejs_prime_factor_wrap(env, answer);`;
+  } else if (fn.operation === "factor-rank") {
+    declarations = "    napi_value result;";
+    body = `    if (!sagejs_native_check_napi(env,
+        napi_create_int64(env, (int64_t) ${first}->rank, &result)))
         return NULL;
-    answer = sagejs_prime_solve(
-        env, sagejs_${first}, sagejs_${second});
+    return result;`;
+  } else if (fn.operation === "factor-determinant") {
+    declarations = "    napi_value result;\n    ulong determinant;";
+    body = `    if (${first}->rows != ${first}->columns)
+    {
+        napi_throw_range_error(env, NULL,
+            "determinant requires a square matrix");
+        return NULL;
+    }
+    determinant = sagejs_prime_factor_determinant(${first});
+    if (!sagejs_native_check_napi(env,
+        napi_create_bigint_uint64(
+            env, (uint64_t) determinant, &result)))
+        return NULL;
+    return result;`;
+  } else if (fn.operation === "factor-echelon") {
+    declarations = "    sagejs_matrix *answer;";
+    body = `    answer = sagejs_prime_factor_echelon(env, ${first});
+    return answer == NULL
+        ? NULL
+        : sagejs_native_wrap_prime_matrix(env, answer);`;
+  } else if (fn.operation === "factor-solve") {
+    declarations = "    sagejs_matrix *answer;";
+    body = `    answer = sagejs_prime_factor_solve(
+        env, ${first}, sagejs_${fn.params[1].name});
     return answer == NULL
         ? NULL
         : sagejs_native_wrap_prime_matrix(env, answer);`;
@@ -509,9 +996,8 @@ ${parse}
   return `static napi_value compiled_${fn.name}(
     napi_env env, napi_callback_info info)
 {
-    napi_value args[${argumentCount}];
-    size_t argc = ${argumentCount};
-${["rank", "determinant"].includes(fn.operation) ? "    napi_value result;" : ""}
+${declarations}
+${argumentSetup}
 ${body}
 }`;
 }

@@ -99,6 +99,29 @@ function toolchainFingerprint() {
   };
 }
 
+function primeFieldTuning() {
+  const specifications = [
+    ["blockThresholdU32", "SAGEJS_NATIVE_PRIME_BLOCK_THRESHOLD_U32", 32, 1, 4096],
+    ["blockThresholdU64", "SAGEJS_NATIVE_PRIME_BLOCK_THRESHOLD_U64", 320, 1, 4096],
+    ["panelU32", "SAGEJS_NATIVE_PRIME_PANEL_U32", 20, 1, 128],
+    ["panelU64", "SAGEJS_NATIVE_PRIME_PANEL_U64", 48, 1, 128],
+    ["columnTile", "SAGEJS_NATIVE_PRIME_COLUMN_TILE", 512, 1, 4096],
+    ["shoupThreshold", "SAGEJS_NATIVE_PRIME_SHOUP_THRESHOLD", 4, 1, 128],
+  ];
+  return Object.fromEntries(specifications.map(
+    ([name, environment, fallback, minimum, maximum]) => {
+      const text = process.env[environment];
+      const value = text === undefined ? fallback : Number(text);
+      if (!Number.isInteger(value) || value < minimum || value > maximum) {
+        throw new RangeError(
+          `${environment} must be an integer from ${minimum} through ${maximum}`,
+        );
+      }
+      return [name, value];
+    },
+  ));
+}
+
 function bindingGyp(ir) {
   const usesPrimeField = ir.functions.some(
     (fn) => fn.kernelKind === "prime-field-matrix",
@@ -106,12 +129,25 @@ function bindingGyp(ir) {
   const matrixOnly = ir.functions.every(
     (fn) => fn.kernelKind === "prime-field-matrix",
   );
+  const tuning = primeFieldTuning();
   const target = {
     target_name: "sagejs_native_kernel",
     win_delay_load_hook: "false",
     sources: ["kernel.c"],
     include_dirs: [join(nativePrefix, "include"), nativeInclude],
-    defines: ["NAPI_VERSION=8"],
+    defines: [
+      "NAPI_VERSION=8",
+      ...(usesPrimeField
+        ? [
+          `SAGEJS_PRIME_BLOCK_THRESHOLD_U32=${tuning.blockThresholdU32}`,
+          `SAGEJS_PRIME_BLOCK_THRESHOLD_U64=${tuning.blockThresholdU64}`,
+          `SAGEJS_PRIME_PANEL_U32=${tuning.panelU32}`,
+          `SAGEJS_PRIME_PANEL_U64=${tuning.panelU64}`,
+          `SAGEJS_PRIME_COLUMN_TILE=${tuning.columnTile}`,
+          `SAGEJS_PRIME_SHOUP_THRESHOLD=${tuning.shoupThreshold}`,
+        ]
+        : []),
+    ],
   };
   if (process.platform === "win32") {
     target.libraries = [
@@ -178,6 +214,10 @@ async function compileKernel(options) {
   const ir = await lowerSource(source, sourcePath, {
     functions: options.functions,
   });
+  const usesPrimeField = ir.functions.some(
+    (fn) => fn.kernelKind === "prime-field-matrix",
+  );
+  const tuning = usesPrimeField ? primeFieldTuning() : null;
   const identity = {
     sourcePath,
     source,
@@ -188,6 +228,7 @@ async function compileKernel(options) {
     architecture: process.arch,
     nodeModulesAbi: process.versions.modules,
     toolchain: toolchainFingerprint(),
+    primeFieldTuning: tuning,
     mpfr: "4.2.2",
     mpc: mpcVersion,
   };
@@ -238,7 +279,12 @@ async function compileKernel(options) {
   );
   writeFileSync(
     modulePath,
-    generateJavaScript(ir, { cacheKey, sourceHash, sourcePath }),
+    generateJavaScript(ir, {
+      cacheKey,
+      primeFieldTuning: tuning,
+      sourceHash,
+      sourcePath,
+    }),
   );
   writeFileSync(
     manifestPath,
@@ -246,6 +292,7 @@ async function compileKernel(options) {
       {
         cacheKey,
         nativeAbi: NATIVE_ABI_VERSION,
+        primeFieldTuning: tuning,
         sourcePath,
         ir,
       },

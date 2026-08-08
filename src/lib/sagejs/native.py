@@ -18,10 +18,10 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v8 currently accepts a deliberately narrow typed numerical
-subset, including exact ``Integer``/GMP kernels and dense matrix kernels over
-prime fields. Explicit AOT compilation produces a native implementation plus
-an exact fallback or reports a compile-time diagnostic.
+Native Kernel v9 currently accepts a deliberately narrow typed numerical
+subset, including exact ``Integer``/GMP kernels and reusable dense
+decompositions over prime fields. Explicit AOT compilation produces a native
+implementation plus an exact fallback or reports a compile-time diagnostic.
 """
 
 from __future__ import annotations

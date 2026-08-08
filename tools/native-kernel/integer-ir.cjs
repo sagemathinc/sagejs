@@ -8,6 +8,7 @@ const TYPE_ALIASES = new Map([
   ["bool", "bool"],
   ["PrimeFieldElement", "PrimeFieldElement"],
   ["PrimeFieldMatrix", "PrimeFieldMatrix"],
+  ["PrimeFieldDecomposition", "PrimeFieldDecomposition"],
 ]);
 const INTEGER_BINARY = new Map([
   ["+", "add"],

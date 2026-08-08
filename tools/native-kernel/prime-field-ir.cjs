@@ -5,6 +5,11 @@ const OPERATIONS = new Map([
   ["_prime_field_determinant_fallback", "determinant"],
   ["_prime_field_echelon_fallback", "echelon"],
   ["_prime_field_solve_fallback", "solve"],
+  ["_prime_field_factor_fallback", "factor"],
+  ["_prime_field_factor_rank_fallback", "factor-rank"],
+  ["_prime_field_factor_determinant_fallback", "factor-determinant"],
+  ["_prime_field_factor_echelon_fallback", "factor-echelon"],
+  ["_prime_field_factor_solve_fallback", "factor-solve"],
 ]);
 
 const CONTRACTS = new Map([
@@ -22,6 +27,26 @@ const CONTRACTS = new Map([
   }],
   ["solve", {
     parameters: ["PrimeFieldMatrix", "PrimeFieldMatrix"],
+    result: "PrimeFieldMatrix",
+  }],
+  ["factor", {
+    parameters: ["PrimeFieldMatrix"],
+    result: "PrimeFieldDecomposition",
+  }],
+  ["factor-rank", {
+    parameters: ["PrimeFieldDecomposition"],
+    result: "uint64",
+  }],
+  ["factor-determinant", {
+    parameters: ["PrimeFieldDecomposition"],
+    result: "PrimeFieldElement",
+  }],
+  ["factor-echelon", {
+    parameters: ["PrimeFieldDecomposition"],
+    result: "PrimeFieldMatrix",
+  }],
+  ["factor-solve", {
+    parameters: ["PrimeFieldDecomposition", "PrimeFieldMatrix"],
     result: "PrimeFieldMatrix",
   }],
 ]);
@@ -55,7 +80,11 @@ function expect(fn, filename, node, condition, message) {
 function isPrimeFieldSignature(signature) {
   return (
     signature.params.some((param) => param.type === "PrimeFieldMatrix") ||
+    signature.params.some(
+      (param) => param.type === "PrimeFieldDecomposition",
+    ) ||
     signature.returnType === "PrimeFieldMatrix" ||
+    signature.returnType === "PrimeFieldDecomposition" ||
     signature.returnType === "PrimeFieldElement"
   );
 }
@@ -126,6 +155,12 @@ function lowerPrimeFieldFunction(fn, signature, filename, decorated) {
       u32: "uint64 scalar products and Shoup-specialized row updates",
       u64: "FLINT preinverse products and Shoup-specialized row updates",
       portability: "nmod multiplication on platforms without a wider word",
+    },
+    decomposition: {
+      representation: "packed row-pivoted LU with permutation and pivots",
+      squareDense: "cache-blocked panel factorization",
+      general: "classical row-pivoted elimination",
+      reusable: operation.startsWith("factor"),
     },
   };
 }
