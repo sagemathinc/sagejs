@@ -24,6 +24,9 @@ const referenceRepetitions = Number(
   process.env.SAGEJS_MPMATH_AOT_REPETITIONS || 20,
 );
 const json = process.argv.includes("--json");
+const cacheRoot =
+  process.env.SAGEJS_MPMATH_AOT_CACHE_ROOT ||
+  join(__dirname, ".native-mpmath-cache");
 
 function median(values) {
   const ordered = [...values].sort((left, right) => left - right);
@@ -59,7 +62,7 @@ function reference(label, command, args) {
 (async () => {
   const generated = await compileKernel({
     sourcePath,
-    cacheRoot: join(__dirname, ".native-mpmath-cache"),
+    cacheRoot,
   });
   const addon = require(generated.addonPath);
   const native = addon.harmonic_cubic_loop;

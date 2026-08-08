@@ -188,6 +188,7 @@
     "bench:mpmath:aot": "node bench/compare-mpmath-aot.cjs",
     "bench:native:integer": "node bench/compare-native-integer.cjs",
     "bench:native:cowasm": "node bench/compare-native-cowasm.cjs",
+    "bench:native:julia": "julia --startup-file=no bench/julia-math-comparison.jl",
     "bench:mpmath:suite": "node bench/compare-mpmath-suite.cjs",
     "bench:mpmath:focus": "node bench/mpmath-focus.cjs",
     "bench:attributes": "node bench/compare-python-attributes.cjs",

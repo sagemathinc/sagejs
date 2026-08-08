@@ -315,6 +315,12 @@ typed IR, escape-aware native
 storage, independent backends, a JavaScript fallback, a versioned shared
 element ABI, standard runtime results, and deterministic compilation caching.
 
+A matched comparison against warmed Julia 1.12.6, including independent GCC
+and Clang builds of the same generated C, is recorded in
+[`JULIA-NATIVE-COMPARISON.md`](JULIA-NATIVE-COMPARISON.md). It covers
+machine-word loops, GMP promotion, recursive calls, a complete number-theory
+module, and in-place MPFR arithmetic.
+
 ## mpmath workload prototype
 
 The first application beyond repeated multiplication is the dominant

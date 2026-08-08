@@ -18,6 +18,7 @@ const repetitions = Number(process.env.SAGEJS_NATIVE_COWASM_REPETITIONS || 3);
 const recursiveRepetitions = Number(
   process.env.SAGEJS_NATIVE_COWASM_RECURSIVE_REPETITIONS || 3,
 );
+const cacheRoot = process.env.SAGEJS_NATIVE_COWASM_CACHE_ROOT;
 
 function median(values) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -61,10 +62,12 @@ function interpreter(command, args, mode, count) {
 (async () => {
   const complete = await compile({
     sourcePath: join(__dirname, "cowasm", "src", "nt.py"),
+    ...(cacheRoot ? { cacheRoot: join(cacheRoot, "complete") } : {}),
   });
   const completeModule = require(complete.modulePath);
   const algorithms = await compile({
     sourcePath: join(__dirname, "cowasm", "src", "native_number_theory.py"),
+    ...(cacheRoot ? { cacheRoot: join(cacheRoot, "algorithms") } : {}),
   });
   const native = require(algorithms.modulePath);
 

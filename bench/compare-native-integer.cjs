@@ -19,6 +19,9 @@ const referenceRepetitions = Number(
   process.env.SAGEJS_NATIVE_INTEGER_REPETITIONS || 5,
 );
 const json = process.argv.includes("--json");
+const cacheRoot =
+  process.env.SAGEJS_NATIVE_INTEGER_CACHE_ROOT ||
+  join(__dirname, ".native-integer-cache");
 
 function median(values) {
   const ordered = [...values].sort((left, right) => left - right);
@@ -69,7 +72,7 @@ function reference(runtime, command, args, extraEnvironment = {}) {
 (async () => {
   const generated = await compile({
     sourcePath,
-    cacheRoot: join(__dirname, ".native-integer-cache"),
+    cacheRoot,
   });
   const kernel = require(generated.modulePath);
   const automatic = measure(
