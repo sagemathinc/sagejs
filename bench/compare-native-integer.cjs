@@ -72,14 +72,19 @@ function reference(runtime, command, args, extraEnvironment = {}) {
     cacheRoot: join(__dirname, ".native-integer-cache"),
   });
   const kernel = require(generated.modulePath);
+  const automatic = measure(
+    "Sage.js automatic",
+    () => kernel.integer_quadratic_sum(terms),
+    nativeRepetitions,
+  );
   const native = measure(
     "Sage.js AOT/GMP",
-    () => kernel.integer_quadratic_sum(terms),
+    () => kernel.integer_quadratic_sum.gmp(terms),
     nativeRepetitions,
   );
   const javascript = measure(
     "generated BigInt fallback",
-    () => kernel.integer_quadratic_sum.javascript(terms),
+    () => kernel.integer_quadratic_sum.bigint(terms),
     Math.max(1, Math.floor(nativeRepetitions / 5)),
   );
   const cpython = reference("CPython", process.env.PYTHON || "python3", [
@@ -92,7 +97,7 @@ function reference(runtime, command, args, extraEnvironment = {}) {
     "--python",
     workloadPath,
   ], { SAGEJS_SITE_PACKAGES: __dirname });
-  const rows = [native, javascript, cpython, sagejs];
+  const rows = [automatic, native, javascript, cpython, sagejs];
   for (const row of rows) assert.equal(row.value, native.value);
   const report = {
     generatedAt: new Date().toISOString(),
@@ -104,6 +109,8 @@ function reference(runtime, command, args, extraEnvironment = {}) {
       logicalCpus: os.cpus().length,
     },
     workload: `${terms}-term exact quadratic integer sum`,
+    selectedBackend: kernel.integer_quadratic_sum.backendFor(terms),
+    backendPolicy: kernel.integer_quadratic_sum.backendPolicy,
     cacheKey: generated.cacheKey,
     cached: generated.cached,
     rows: rows.map((row) => ({

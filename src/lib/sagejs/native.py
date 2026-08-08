@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v3 currently accepts a deliberately narrow typed numerical
+Native Kernel v4 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels. Explicit AOT compilation
 produces a native implementation plus an exact JavaScript fallback or reports
 a compile-time diagnostic.

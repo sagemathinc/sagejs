@@ -58,16 +58,20 @@ not cross Node-API and allocate a JavaScript wrapper for every arithmetic
 operation. Batch operations, compile whole loops, and move complete algorithms
 across the boundary.
 
-Native Kernel v3 demonstrates that compiling a complete `ComplexField` loop
+Native Kernel v4 demonstrates that compiling a complete `ComplexField` loop
 can remove the small-operation gap with Sage/Cython. Its shared native element
 ABI also lets generated addons return the ordinary Sage.js `ComplexNumber`
 representation without serialization or copying through an intermediate
 result format.
 
-For exact arithmetic, v3 also compiles multi-function GMP modules. Its private
+For exact arithmetic, v4 also compiles multi-function GMP modules. Its private
 C entry points allow algorithms such as `lcm` to call `gcd` without an
 intermediate JavaScript or Python boundary, while ordinary imports retain an
 exact `BigInt` or interpreted fallback.
+
+V4 adds lifetime-based GMP scratch reuse and automatic backend selection.
+Small-integer loops can stay in V8 BigInt, while sustained or large exact
+arithmetic uses GMP; users can inspect or override every generated decision.
 
 ### 5. Be server-native first
 

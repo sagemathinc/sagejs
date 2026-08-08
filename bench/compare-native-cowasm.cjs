@@ -14,6 +14,9 @@ const largeGcdIterations = Number(
   process.env.SAGEJS_NATIVE_COWASM_LARGE_GCD_ITERATIONS || 100,
 );
 const repetitions = Number(process.env.SAGEJS_NATIVE_COWASM_REPETITIONS || 3);
+const recursiveRepetitions = Number(
+  process.env.SAGEJS_NATIVE_COWASM_RECURSIVE_REPETITIONS || 3,
+);
 
 function median(values) {
   const sorted = [...values].sort((a, b) => a - b);
@@ -65,21 +68,35 @@ function interpreter(command, args, mode, count) {
   });
   const native = require(algorithms.modulePath);
 
-  const nativeGcd = measure(native.native_bench_gcd, [iterations]);
-  const bigintGcd = measure(native.native_bench_gcd.javascript, [iterations]);
-  const nativeLargeGcd = measure(
+  const automaticGcd = measure(native.native_bench_gcd, [iterations]);
+  const nativeGcd = measure(native.native_bench_gcd.gmp, [iterations]);
+  const bigintGcd = measure(native.native_bench_gcd.bigint, [iterations]);
+  const automaticLargeGcd = measure(
     native.native_bench_large_gcd,
     [largeGcdIterations],
   );
-  const bigintLargeGcd = measure(
-    native.native_bench_large_gcd.javascript,
+  const nativeLargeGcd = measure(
+    native.native_bench_large_gcd.gmp,
     [largeGcdIterations],
   );
-  const nativeFibonacci = measure(native.native_rfib, [fibonacciInput], 1);
-  const bigintFibonacci = measure(
-    native.native_rfib.javascript,
+  const bigintLargeGcd = measure(
+    native.native_bench_large_gcd.bigint,
+    [largeGcdIterations],
+  );
+  const automaticFibonacci = measure(
+    native.native_rfib,
     [fibonacciInput],
-    1,
+    recursiveRepetitions,
+  );
+  const nativeFibonacci = measure(
+    native.native_rfib.gmp,
+    [fibonacciInput],
+    recursiveRepetitions,
+  );
+  const bigintFibonacci = measure(
+    native.native_rfib.bigint,
+    [fibonacciInput],
+    recursiveRepetitions,
   );
   const selectedGcd = selectedModule.gcd(92250, 922350);
 
@@ -128,8 +145,17 @@ function interpreter(command, args, mode, count) {
     },
     selectedUnmodifiedNtGcd: String(selectedGcd),
     callGraph: algorithms.ir.callGraph,
+    backendPolicies: Object.fromEntries(
+      [
+        "native_bench_gcd",
+        "native_bench_large_gcd",
+        "native_rfib",
+      ].map((name) => [name, native[name].backendPolicy]),
+    ),
     gcd: {
       iterations,
+      selectedBackend: native.native_bench_gcd.backendFor(iterations),
+      automatic: automaticGcd,
       nativeGmp: nativeGcd,
       generatedBigInt: bigintGcd,
       cpython: cpythonGcd,
@@ -138,6 +164,9 @@ function interpreter(command, args, mode, count) {
     largeGcd: {
       iterations: largeGcdIterations,
       digits: 314,
+      selectedBackend:
+        native.native_bench_large_gcd.backendFor(largeGcdIterations),
+      automatic: automaticLargeGcd,
       nativeGmp: nativeLargeGcd,
       generatedBigInt: bigintLargeGcd,
       cpython: cpythonLargeGcd,
@@ -145,6 +174,8 @@ function interpreter(command, args, mode, count) {
     },
     recursiveFibonacci: {
       input: fibonacciInput,
+      selectedBackend: native.native_rfib.backendFor(fibonacciInput),
+      automatic: automaticFibonacci,
       nativeGmp: nativeFibonacci,
       generatedBigInt: bigintFibonacci,
       cpython: cpythonFibonacci,
@@ -153,6 +184,7 @@ function interpreter(command, args, mode, count) {
   };
   const expectedGcd = "2414484";
   const gcdAnswers = [
+    automaticGcd.answer,
     nativeGcd.answer,
     bigintGcd.answer,
     cpythonGcd.answer,
@@ -162,6 +194,7 @@ function interpreter(command, args, mode, count) {
     throw new Error(`GCD result mismatch: ${gcdAnswers.join(", ")}`);
   }
   const largeGcdAnswers = [
+    automaticLargeGcd.answer,
     nativeLargeGcd.answer,
     bigintLargeGcd.answer,
     cpythonLargeGcd.answer,
@@ -171,6 +204,7 @@ function interpreter(command, args, mode, count) {
     throw new Error(`large GCD result mismatch: ${largeGcdAnswers.join(", ")}`);
   }
   const fibonacciAnswers = [
+    automaticFibonacci.answer,
     nativeFibonacci.answer,
     bigintFibonacci.answer,
     cpythonFibonacci.answer,
@@ -183,17 +217,20 @@ function interpreter(command, args, mode, count) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return;
   }
-  console.log("Native Kernel v3 — CoWasm number theory");
+  console.log("Native Kernel v4 — CoWasm number theory");
   console.log(`unmodified nt.py gcd(92250, 922350): ${selectedGcd}`);
   console.table({
+    "GCD automatic": automaticGcd.seconds,
     "GCD AOT/GMP": nativeGcd.seconds,
     "GCD exact BigInt": bigintGcd.seconds,
     "GCD CPython": cpythonGcd.seconds,
     "GCD Sage.js Python": sagejsGcd.seconds,
+    "large GCD automatic": automaticLargeGcd.seconds,
     "large GCD AOT/GMP": nativeLargeGcd.seconds,
     "large GCD exact BigInt": bigintLargeGcd.seconds,
     "large GCD CPython": cpythonLargeGcd.seconds,
     "large GCD Sage.js Python": sagejsLargeGcd.seconds,
+    "rfib automatic": automaticFibonacci.seconds,
     "rfib AOT/GMP": nativeFibonacci.seconds,
     "rfib exact BigInt": bigintFibonacci.seconds,
     "rfib CPython": cpythonFibonacci.seconds,

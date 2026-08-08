@@ -882,13 +882,13 @@ sagejs --python compile input.py --output output.js
 node output.js
 ```
 
-## Native Kernel v3
+## Native Kernel v4
 
 The structured native compiler path parses `@native` Sage.js functions
 through the ordinary frontend, lowers them to an explicitly typed
 intermediate representation, and generates both a JavaScript fallback and a
 C/GMP/MPFR/MPC Node addon. In addition to `RealField` and `ComplexField` loops,
-v3 compiles exact `int`/`Integer` modules with comparisons, branching, `while`,
+v4 compiles exact `int`/`Integer` modules with comparisons, branching, `while`,
 floor division, remainder, and direct calls among compiled functions. Argument
 and return annotations in the source are the native signature; no parallel
 JavaScript type table is required. A
@@ -936,7 +936,23 @@ and compile typed functions in an undecorated module; for example:
 sagejs native compile bench/cowasm/src/nt.py --functions gcd
 ```
 
-Native Kernel v3 also supports offset `range` loops, integer-to-field coercion,
+V4 performs exact-value lifetime and mutability analysis before generating C.
+Immutable integer parameters are borrowed, while nonescaping locals are
+interval-colored onto reusable GMP scratch slots. The generated wrapper then
+selects GMP or BigInt from the function's loop/call profile and runtime operand
+sizes. Selection is inspectable and both backends remain directly callable:
+
+```js
+kernel.gcd.backendFor(a, b); // "bigint" or "gmp"
+kernel.gcd.backendPolicy;
+kernel.gcd.bigint(a, b);
+kernel.gcd.gmp(a, b);
+```
+
+`SAGEJS_NATIVE_INTEGER_BACKEND=bigint|gmp|auto` overrides selection for
+benchmarking and diagnosis; `auto` is the default.
+
+Native Kernel v4 also supports offset `range` loops, integer-to-field coercion,
 nested arithmetic, small constant powers, augmented assignment, and recursive
 native calls. Run the exact module and CoWasm comparisons with:
 

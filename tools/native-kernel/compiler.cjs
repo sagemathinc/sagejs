@@ -70,6 +70,7 @@ function backendFingerprint() {
       readFileSync(__filename),
       readFileSync(join(__dirname, "ir.cjs")),
       readFileSync(join(__dirname, "integer-ir.cjs")),
+      readFileSync(join(__dirname, "exact-analysis.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
       readFileSync(join(__dirname, "js-backend.cjs")),
       readFileSync(header),

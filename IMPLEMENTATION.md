@@ -48,7 +48,7 @@ The architectural conclusion is much stronger than that particular ratio:
 Julia's idiomatic loop is faster than Cython at 53 bits, demonstrating the
 value of a typed JIT implementation language. It nevertheless allocates about
 80 bytes per product. Julia's explicit in-place MPFR loop removes essentially
-all allocation and approaches the generated C kernel. Native Kernel v3 obtains
+all allocation and approaches the generated C kernel. Native Kernel v4 obtains
 the same optimization automatically from ordinary immutable source because
 its typed IR knows that the loop temporary cannot escape.
 
@@ -200,12 +200,15 @@ the behavior of a function called with another Python value.
 
 ## Near-term direction
 
-Native Kernel v3 adds exact `Integer` inputs and results, structured control
+Native Kernel v4 adds exact `Integer` inputs and results, structured control
 flow, and module call graphs. Public functions cross Node-API once; calls among
-compiled functions use private GMP-aware C entry points directly. It should
-continue to grow through real mathematical library needs, with source-located
-diagnostics and an exact JavaScript fallback preserving the dual-backend
-contract.
+compiled functions use private GMP-aware C entry points directly. Conservative
+liveness analysis borrows immutable inputs and coalesces nonescaping exact
+temporaries into GMP scratch slots. A generated, inspectable policy chooses the
+GMP or BigInt implementation based on static execution shape and runtime
+operand magnitude. It should continue to grow through real mathematical
+library needs, with source-located diagnostics and an exact JavaScript fallback
+preserving the dual-backend contract.
 
 The goal is not a general Python-to-C compiler. It is a mathematical compiler
 which understands Sage parents and elements well enough to turn clean research

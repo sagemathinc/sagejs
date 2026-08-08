@@ -163,7 +163,7 @@ instead. `test/typed-math-lowering.cjs` guards the generated fast path, while
 `test/baselib-boundaries.cjs` prevents escape syntax from returning to
 mathematical modules which have been migrated.
 
-`tools/native-kernel/` contains Native Kernel v3. The frontend lowers a
+`tools/native-kernel/` contains Native Kernel v4. The frontend lowers a
 restricted Sage.js AST to typed IR; independent JavaScript and
 C/GMP/MPFR/MPC backends
 consume that IR. Generated addons and `packages/flint` share the native
@@ -176,6 +176,12 @@ configuration.
 Exact-integer modules also carry a call graph. Generated public Node callbacks
 delegate to private C entry points, and calls among compiled functions use
 those entry points directly rather than crossing Node-API again.
+
+`exact-analysis.cjs` owns conservative integer mutability, lifetime, escape,
+and backend-policy analysis. Any scratch-slot reuse must preserve values across
+structured loop backedges and branch joins. Keep `.bigint`, `.gmp`, and
+automatic dispatch semantically identical; crossover thresholds require
+receipts from a dedicated benchmark host.
 
 ## Modes
 

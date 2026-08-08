@@ -350,6 +350,31 @@ function normalizedArgument(param) {
   return param.name;
 }
 
+function backendDecision(fn) {
+  const policy = fn.analysis.backend;
+  if (policy.kind === "gmp" || policy.kind === "bigint") {
+    return `  return ${jsString(policy.kind)};`;
+  }
+  if (policy.kind === "iterations") {
+    const value = `sagejs_native_${policy.parameter}`;
+    const minimum = BigInt(policy.minimumIterations);
+    return `  return (typeof ${value} === "bigint" ` +
+      `? ${value} >= ${minimum}n : ${value} >= ${minimum}) ` +
+      `? "gmp" : "bigint";`;
+  }
+  if (policy.kind === "operand-bits") {
+    const threshold = 1n << BigInt(policy.minimumBits - 1);
+    const conditions = policy.parameters.map((name) => {
+      const value = `sagejs_native_${name}`;
+      return `${value} >= ${threshold}n || ${value} <= -${threshold}n`;
+    });
+    return conditions.length === 0
+      ? "  return \"bigint\";"
+      : `  return (${conditions.join(" || ")}) ? "gmp" : "bigint";`;
+  }
+  throw new Error(`unsupported exact backend policy ${policy.kind}`);
+}
+
 function emitExactPublicFunction(fn) {
   const params = fn.params.map((param) => param.name).join(", ");
   const normalized = fn.params.map((param) =>
@@ -369,16 +394,28 @@ function emitExactPublicFunction(fn) {
       ? `Number(sagejs_native_${param.name})`
       : `sagejs_native_${param.name}`
   ).join(", ");
+  const policy = JSON.stringify(fn.analysis.backend);
   return `${emitExactFallback(fn)}
 
 function validate_${fn.name}(${params}) {
 ${fn.params.map(exactValidation).join("\n")}
 }
 
+function backend_${fn.name}(${args}) {
+  if (integerBackendOverride === "gmp" && nativeAddon === null) {
+    throw new Error("GMP backend was requested but is not available");
+  }
+  if (nativeAddon === null) return "bigint";
+  if (integerBackendOverride !== "auto") return integerBackendOverride;
+${backendDecision(fn)}
+}
+
 function ${fn.name}(${params}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
-  if (nativeAddon !== null) return nativeAddon.${fn.name}(${args});
+  if (backend_${fn.name}(${args}) === "gmp") {
+    return nativeAddon.${fn.name}(${args});
+  }
 ${fallbackGuards.join("\n")}
   return javascript_${fn.name}(${fallbackArgs});
 }
@@ -388,6 +425,21 @@ ${normalized.join("\n")}
 ${fallbackGuards.join("\n")}
   return javascript_${fn.name}(${fallbackArgs});
 };
+${fn.name}.bigint = ${fn.name}.javascript;
+${fn.name}.gmp = function (${params}) {
+  validate_${fn.name}(${params});
+${normalized.join("\n")}
+  if (nativeAddon === null) {
+    throw new Error("GMP backend is not available");
+  }
+  return nativeAddon.${fn.name}(${args});
+};
+${fn.name}.backendFor = function (${params}) {
+  validate_${fn.name}(${params});
+${normalized.join("\n")}
+  return backend_${fn.name}(${args});
+};
+${fn.name}.backendPolicy = Object.freeze(${policy});
 ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
@@ -402,6 +454,13 @@ if (process.env.SAGEJS_NATIVE_DISABLE !== "1") {
   } catch (error) {
     if (process.env.SAGEJS_NATIVE_REQUIRED === "1") throw error;
   }
+}
+
+const integerBackendOverride =
+  process.env.SAGEJS_NATIVE_INTEGER_BACKEND || "auto";
+if (!["auto", "bigint", "gmp"].includes(integerBackendOverride)) {
+  throw new RangeError(
+    "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, or gmp");
 }
 
 function integerFloorDiv(left, right) {

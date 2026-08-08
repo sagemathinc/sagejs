@@ -6,7 +6,10 @@ interface NativeCompileResult {
   cached: boolean;
   ir: {
     callGraph: Record<string, string[]>;
-    functions: Array<{ name: string }>;
+    functions: Array<{
+      name: string;
+      analysis?: Record<string, unknown>;
+    }>;
   };
   modulePath: string;
 }
@@ -58,6 +61,11 @@ export async function runNativeCompilerCli(
           cached: result.cached,
           callGraph: result.ir.callGraph,
           functions: result.ir.functions.map((fn) => fn.name),
+          analysis: Object.fromEntries(
+            result.ir.functions
+              .filter((fn) => fn.analysis !== undefined)
+              .map((fn) => [fn.name, fn.analysis]),
+          ),
           modulePath: result.modulePath,
           sourcePath: resolve(source),
         },

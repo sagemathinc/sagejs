@@ -25,6 +25,13 @@ const integerAlgorithmsPath = join(
   "bench",
   "native_integer_algorithms.py",
 );
+const nativeNumberTheoryPath = join(
+  root,
+  "bench",
+  "cowasm",
+  "src",
+  "native_number_theory.py",
+);
 const source = readFileSync(sourcePath, "utf8");
 const ir = await lowerSource(source, sourcePath);
 const complexFunction = ir.functions.find(
@@ -48,8 +55,12 @@ const integerAlgorithmsIr = await lowerSource(
   integerAlgorithmsPath,
 );
 const integerAlgorithmsC = generateC(integerAlgorithmsIr);
+const nativeNumberTheoryIr = await lowerSource(
+  readFileSync(nativeNumberTheoryPath, "utf8"),
+  nativeNumberTheoryPath,
+);
 
-assert.equal(ir.version, 3);
+assert.equal(ir.version, 4);
 assert.equal(complexFunction.params[0].type, "ComplexField");
 assert.equal(complexFunction.params[1].type, "uint64");
 assert.equal(complexFunction.returnType, "ComplexNumber");
@@ -121,12 +132,66 @@ assert.match(integerC, /mpz_mul\(/);
 assert.match(integerC, /napi_create_bigint_words\(/);
 assert.deepEqual(integerAlgorithmsIr.callGraph.native_lcm, ["native_gcd"]);
 assert.deepEqual(integerAlgorithmsIr.callGraph.native_coprime, ["native_gcd"]);
+assert.deepEqual(
+  integerAlgorithmsIr.functions.find((fn) => fn.name === "native_lcm")
+    .analysis.storage.borrowedParameters,
+  ["a", "b"],
+);
+assert.equal(
+  integerAlgorithmsIr.functions.find((fn) => fn.name === "native_lcm")
+    .analysis.storage.scratchSlots,
+  2,
+);
+assert.deepEqual(
+  integerAlgorithmsIr.functions.find((fn) => fn.name === "native_identity")
+    .analysis.storage,
+  {
+    borrowedParameters: ["value"],
+    mutableParameters: [],
+    scratchSlots: 0,
+    slots: {},
+    escapedValues: [],
+  },
+);
+assert.equal(
+  integerAlgorithmsIr.functions.find((fn) => fn.name === "native_identity")
+    .analysis.backend.kind,
+  "bigint",
+);
+assert.deepEqual(
+  integerAlgorithmsIr.functions.find((fn) => fn.name === "native_gcd")
+    .analysis.storage.mutableParameters,
+  ["a", "b"],
+);
 assert.match(
   integerAlgorithmsC,
   /native_native_lcm[\s\S]*native_native_gcd\(env/,
 );
+assert.match(integerAlgorithmsC, /mpz_t sagejs_scratch_0/);
+assert.doesNotMatch(integerAlgorithmsC, /mpz_t sagejs_a;/);
 assert.match(integerAlgorithmsC, /mpz_fdiv_q\(/);
 assert.match(integerAlgorithmsC, /mpz_fdiv_r\(/);
+assert.equal(
+  nativeNumberTheoryIr.functions.find((fn) => fn.name === "native_rfib")
+    .analysis.storage.scratchSlots,
+  3,
+);
+assert.equal(
+  nativeNumberTheoryIr.functions.find((fn) => fn.name === "native_rfib")
+    .analysis.backend.kind,
+  "gmp",
+);
+assert.equal(
+  nativeNumberTheoryIr.functions.find((fn) => fn.name === "native_bench_gcd")
+    .analysis.backend.kind,
+  "bigint",
+);
+assert.equal(
+  nativeNumberTheoryIr.functions.find(
+    (fn) => fn.name === "native_bench_large_gcd",
+  ).analysis.backend.kind,
+  "gmp",
+);
 await assert.rejects(
   () =>
     lowerSource(
@@ -239,6 +304,8 @@ try {
   });
   const integerModule = require(integerKernel.modulePath);
   assert.equal(integerModule.integer_quadratic_sum(10), -275n);
+  assert.equal(integerModule.integer_quadratic_sum.backendFor(10), "gmp");
+  assert.equal(integerModule.integer_quadratic_sum.backendPolicy.kind, "gmp");
   assert.equal(
     integerModule.integer_quadratic_sum(1_000_000),
     -333332833332500000n,
@@ -256,6 +323,33 @@ try {
     cacheRoot: integerAlgorithmsCache,
   });
   const integerAlgorithmsModule = require(integerAlgorithms.modulePath);
+  assert.equal(
+    integerAlgorithmsModule.native_identity(2n ** 200n),
+    2n ** 200n,
+  );
+  assert.equal(
+    integerAlgorithmsModule.native_identity(-(2n ** 200n)),
+    -(2n ** 200n),
+  );
+  assert.equal(
+    integerAlgorithmsModule.native_identity.backendFor(2n ** 2000n),
+    "bigint",
+  );
+  assert.equal(
+    integerAlgorithmsModule.native_gcd.backendFor(92250, 922350),
+    "bigint",
+  );
+  assert.equal(
+    integerAlgorithmsModule.native_gcd.backendFor(
+      2n ** 100n - 1n,
+      2n ** 50n - 1n,
+    ),
+    "gmp",
+  );
+  assert.equal(
+    integerAlgorithmsModule.native_gcd.backendPolicy.minimumBits,
+    64,
+  );
   for (const [name, args, expected] of [
     ["native_gcd", [92250, 922350], 150n],
     ["native_gcd", [-84, 30], 6n],
@@ -276,10 +370,41 @@ try {
     integerAlgorithmsModule.native_gcd(2n ** 100n - 1n, 2n ** 50n - 1n),
     2n ** 50n - 1n,
   );
+  assert.equal(
+    integerAlgorithmsModule.native_gcd.gmp(92250, 922350),
+    150n,
+  );
+  assert.equal(
+    integerAlgorithmsModule.native_gcd.bigint(92250, 922350),
+    150n,
+  );
   assert.throws(
     () => integerAlgorithmsModule.native_floordiv(1, 0),
     /division or modulo by zero/,
   );
+  const nativeNumberTheory = await nativeApi.compile({
+    sourcePath: nativeNumberTheoryPath,
+    cacheRoot: join(temporary, "native-number-theory-cache"),
+  });
+  const nativeNumberTheoryModule = require(nativeNumberTheory.modulePath);
+  assert.equal(
+    nativeNumberTheoryModule.native_bench_gcd.backendFor(100),
+    "bigint",
+  );
+  assert.equal(
+    nativeNumberTheoryModule.native_bench_large_gcd.backendFor(2),
+    "gmp",
+  );
+  assert.equal(
+    nativeNumberTheoryModule.native_rfib.backendFor(10),
+    "gmp",
+  );
+  assert.equal(nativeNumberTheoryModule.native_rfib(10), 89n);
+  assert.equal(
+    nativeNumberTheoryModule.native_bench_gcd(100),
+    nativeNumberTheoryModule.native_bench_gcd.gmp(100),
+  );
+  assert.equal(nativeNumberTheoryModule.native_bench_large_gcd(2), 2n);
   assert.throws(
     () => integerAlgorithmsModule.native_mod.javascript(1, 0),
     /division or modulo by zero/,
@@ -291,6 +416,29 @@ try {
   });
   assert.deepEqual(selectedNt.ir.callGraph, { gcd: [] });
   assert.equal(require(selectedNt.modulePath).gcd(92250, 922350), 150n);
+  for (const [override, expected] of [
+    ["bigint", "bigint"],
+    ["gmp", "gmp"],
+  ]) {
+    const selectedBackend = spawnSync(
+      process.execPath,
+      [
+        "-e",
+        `const kernel = require(${JSON.stringify(integerAlgorithms.modulePath)}); ` +
+          "process.stdout.write(kernel.native_gcd.backendFor(92250, 922350));",
+      ],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          SAGEJS_NATIVE_INTEGER_BACKEND: override,
+        },
+      },
+    );
+    assert.equal(selectedBackend.status, 0, selectedBackend.stderr);
+    assert.equal(selectedBackend.stdout, expected);
+  }
   const cli = spawnSync(
     process.execPath,
     [
@@ -308,6 +456,8 @@ try {
   const cliResult = JSON.parse(cli.stdout);
   assert.equal(cliResult.functions.includes("native_gcd"), true);
   assert.deepEqual(cliResult.callGraph.native_lcm, ["native_gcd"]);
+  assert.equal(cliResult.analysis.native_gcd.backend.minimumBits, 64);
+  assert.equal(cliResult.analysis.native_lcm.storage.scratchSlots, 2);
   const integerIndex = JSON.parse(
     readFileSync(join(integerCache, "index.json"), "utf8"),
   );
@@ -503,7 +653,7 @@ print(is_compiled(native_powmod))
   rmSync(temporary, { recursive: true, force: true });
 }
 
-console.log("Native Kernel v3 typed IR, cache, ABI, and fallback passed.");
+console.log("Native Kernel v4 analysis, selection, ABI, and fallback passed.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

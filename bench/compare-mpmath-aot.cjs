@@ -107,7 +107,7 @@ function reference(label, command, args) {
       logicalCpus: os.cpus().length,
     },
     workload: `${terms}-term harmonic cubic sum at 80 decimal digits`,
-    source: "ordinary @native Sage.js lowered through Native Kernel v3",
+    source: "ordinary @native Sage.js lowered through Native Kernel v4",
     cacheKey: generated.cacheKey,
     cached: generated.cached,
     precision,

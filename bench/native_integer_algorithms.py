@@ -1,6 +1,12 @@
-"""Small exact-integer module used to validate Native Kernel v3."""
+"""Small exact-integer module used to validate Native Kernel v4."""
 
 from sagejs.native import native
+
+
+@native
+def native_identity(value: int) -> int:
+    """Return a borrowed exact input without allocating a local value."""
+    return value
 
 
 @native

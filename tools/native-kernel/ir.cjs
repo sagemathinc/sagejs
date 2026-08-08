@@ -1,13 +1,14 @@
 "use strict";
 
 const createCompiler = require("../..");
+const { analyzeExactModule } = require("./exact-analysis.cjs");
 const {
   isIntegerSignature,
   lowerIntegerFunction,
   signatureFromFunction,
 } = require("./integer-ir.cjs");
 
-const IR_VERSION = 3;
+const IR_VERSION = 4;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -673,7 +674,7 @@ async function lowerSource(source, filename, options = {}) {
       signatures.set(signature.name, signature);
     }
   }
-  const selected = selectedDefinitions.map((fn) => {
+  const selected = analyzeExactModule(selectedDefinitions.map((fn) => {
     const signature = signatures.get(fn.name.name);
     return signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
@@ -684,7 +685,7 @@ async function lowerSource(source, filename, options = {}) {
           filename,
           decoratedMode,
         );
-  });
+  }));
   return {
     version: IR_VERSION,
     functions: selected,
