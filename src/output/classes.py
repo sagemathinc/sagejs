@@ -19,6 +19,9 @@ def print_class(output):
     self['static'] = self['static'] or {}
     self.classmethods = self.classmethods or {}
     self.bound = self.bound or []
+    self.shadowed_bound = self.shadowed_bound or []
+    self.bind_inherited_methods = (
+        self.bind_inherited_methods is not False)
     self.dynamic_properties = self.dynamic_properties or {}
     self.classvars = self.classvars or {}
     self.bases = self.bases or []
@@ -176,9 +179,9 @@ def print_class(output):
                 output.print('.prototype)')
                 output.end_statement()
                 output.indent()
-                output.print('return ')
+                output.print('return Reflect.apply(')
                 self.name.print(output)
-                output.print('.apply(ρσ_allocated, arguments)')
+                output.print(', ρσ_allocated, arguments)')
                 output.end_statement()
 
             output.with_block(call_without_new)
@@ -290,13 +293,13 @@ def print_class(output):
                     '{"value":++ρσ_object_counter})',
                 )
                 output.end_statement()
-            if self.bound.length:
+            if self.bound.length or self.shadowed_bound.length:
                 output.indent()
                 self.name.print(output), output.print(
                     ".prototype.__bind_methods__.call("
                     + instance_name + ")")
                 output.end_statement()
-            elif self.bases.length:
+            elif self.bind_inherited_methods and self.bases.length:
                 # A dynamically resolved base (for example ``Base[T]`` from
                 # another module) may provide eagerly bound Python methods
                 # even when this class defines none of its own.  The inherited
@@ -438,7 +441,7 @@ def print_class(output):
         output.end_statement()
 
     # method binding
-    if self.bound.length:
+    if self.bound.length or self.shadowed_bound.length:
         seen_methods = Object.create(None)
 
         def f_bind_methods():
@@ -453,6 +456,15 @@ def print_class(output):
                         base.print(output), output.print(
                             '.prototype.__bind_methods__.call(this)')
                         output.end_statement()
+                # Base binders eagerly cache methods as own instance fields.
+                # A class-body value with the same name (including a runtime
+                # ``staticmethod`` descriptor) shadows that inherited method,
+                # so remove the implementation-only cache before normal
+                # descriptor lookup observes the instance.
+                for bname in self.shadowed_bound:
+                    output.indent()
+                    output.print('delete this.' + bname)
+                    output.end_statement()
                 # Lightweight immutable mathematical values are often
                 # allocated millions of times.  Their own methods use lazy
                 # prototype accessors emitted below; only inherited methods
@@ -493,6 +505,11 @@ def print_class(output):
                             output.indent(), output.assign(
                                 'this.' + bname + '.__name__')
                             output.print(JSON.stringify(bname))
+                            output.end_statement()
+                            output.indent(), output.assign(
+                                'this.' + bname
+                                + '.__sagejs_eager_bound_cache__')
+                            output.print('true')
                             output.end_statement()
 
                         output.indent()
@@ -706,9 +723,18 @@ def print_class(output):
                     '.prototype.__repr__)', 'return', self.parent)
                 output.print(
                     '.prototype.__repr__.call(this)'), output.end_statement()
-            output.indent(), output.spaced('return', '"<"', '+', '__name__',
-                                           '+', '"."', '+',
-                                           'this.constructor.name', '')
+            # A class can outlive (or be rendered outside) the JavaScript
+            # scope which compiled its definition.  Derive the display name
+            # from the class object instead of closing over the module's
+            # ``__name__`` global.  Besides matching Python's metadata model,
+            # this is essential for bootstrap classes whose defining scope
+            # intentionally has no Python module globals.
+            class_module = '(this.constructor.__module__ || "__main__")'
+            class_name = ('(this.constructor.__qualname__ || '
+                          'this.constructor.__name__ || '
+                          'this.constructor.name)')
+            output.indent(), output.spaced('return', '"<"', '+', class_module,
+                                           '+', '"."', '+', class_name, '')
             output.spaced('+', '" #"', '+', 'this.ρσ_object_id', '+', '">"')
             output.end_statement()
 

@@ -19,6 +19,8 @@ test("optimized calls, equality, and indexing retain Python semantics", async (t
     "print(True == 1, 1 == 1.0, 10**20 == 1e20)",
     "print('same' == 'same', 'left' == 'right')",
     "print([1, 2] == [1, 2], (1, 2) == (1, 2))",
+    "print((1 < 2) == (3 < 4), (1 < 2) == (3 > 4))",
+    "print(bool([]), bool([1]), bool(()), bool((1,)), not ())",
     "values = [10, 20, 30]",
     "frozen = (40, 50, 60)",
     "print(values[0], values[-1], frozen[1])",
@@ -27,14 +29,29 @@ test("optimized calls, equality, and indexing retain Python semantics", async (t
     "    def __class_getitem__(cls, key):",
     "        return (cls.__name__, key)",
     "print(Alias['parameter'])",
+    "class StaticBase:",
+    "    def selected(self): return 'base'",
+    "class StaticAlias(StaticBase):",
+    "    selected = staticmethod(lambda: 'static')",
+    "print(StaticAlias.selected(), StaticAlias().selected())",
+    "overridden = StaticAlias()",
+    "overridden.selected = lambda: 'instance'",
+    "print(overridden.selected())",
+    "values = [-999, -24, 24, 999]",
+    "print(sorted(values, key=lambda value: (0, value)))",
   ].join("\n"));
   assert.equal(result.stdout.trim(), [
     "5 6",
     "True True True",
     "True False",
     "True True",
+    "True False",
+    "False True False True True",
     "10 30 50",
     "('Alias', 'parameter')",
+    "static static",
+    "instance",
+    "[-999, -24, 24, 999]",
   ].join("\n"));
 });
 
@@ -56,6 +73,50 @@ test("core type metadata follows the Python object model", async (t) => {
     "NoneType builtins",
     "True True",
   ].join("\n"));
+});
+
+test("with statements expose Python exception type and traceback", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "class Expected(Exception): pass",
+    "class Suppress:",
+    "    def __enter__(self): return self",
+    "    def __exit__(self, exc_type, value, traceback):",
+    "        print(exc_type is type(value), traceback is value.__traceback__)",
+    "        return True",
+    "with Suppress():",
+    "    raise Expected('handled')",
+    "print('continued')",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "True True\ncontinued");
+});
+
+test("nested with statements clear suppressed inner exceptions", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "events = []",
+    "class Expected(Exception): pass",
+    "class Outer:",
+    "    def __enter__(self): return self",
+    "    def __exit__(self, exc_type, value, traceback):",
+    "        events.append(('outer', exc_type is None))",
+    "class Inner:",
+    "    def __enter__(self): return self",
+    "    def __exit__(self, exc_type, value, traceback):",
+    "        events.append(('inner', exc_type is Expected))",
+    "        return True",
+    "with Outer():",
+    "    with Inner():",
+    "        raise Expected('handled')",
+    "    events.append(('continued', True))",
+    "print(events)",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    "[('inner', True), ('continued', True), ('outer', True)]",
+  );
 });
 
 test("optimized comparisons and integer kernels retain Python semantics", async (t) => {
@@ -178,11 +239,41 @@ test("optimized own-field lookup preserves descriptor precedence", async (t) => 
     "print(late.answer is late_descriptor)",
     "LateDescriptor.__get__ = lambda self, instance, owner: 113",
     "print(late.answer)",
+    "class DynamicSet(set):",
+    "    pass",
+    "dynamic_set = DynamicSet()",
+    "DynamicSet.__contains__ = lambda self, item: item == 'needle'",
+    "print('needle' in dynamic_set, 'other' not in dynamic_set)",
+    "class Applicable:",
+    "    def __init__(self): self.ready = True",
+    "    def apply(self): return 127",
+    "applicable = Applicable()",
+    "print(applicable.ready, applicable.apply())",
   ].join("\n"));
   assert.equal(
     result.stdout.trim(),
-    ["71", "101", "103", "79", "107", "109", "True", "113"].join(
-      "\n",
-    ),
+    [
+      "71", "101", "103", "79", "107", "109", "True", "113",
+      "True True", "True 127",
+    ].join("\n"),
+  );
+});
+
+test("instance subscription ignores class-only generic hooks", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "from collections import defaultdict",
+    "groups = defaultdict(list)",
+    "groups['odd'].extend([1, 3])",
+    "print(groups['odd'])",
+    "class Derived(defaultdict):",
+    "    def __missing__(self, key):",
+    "        return ['override', key]",
+    "print(Derived(list)['x'])",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    ["[1, 3]", "['override', 'x']"].join("\n"),
   );
 });

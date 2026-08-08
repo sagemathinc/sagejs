@@ -380,6 +380,10 @@ class Z(Y):
 assrt.equal(Z().a, X().a)
 assrt.ok(repr(Z()).indexOf('<__main__.Z') == 0)
 assrt.ok(str(Z()).indexOf('<__main__.Z') == 0)
+Z.__module__ = 'example.models'
+Z.__qualname__ = 'Outer.Z'
+assrt.ok(repr(Z()).indexOf('<example.models.Outer.Z') == 0)
+assrt.ok(str(Z()).indexOf('<example.models.Outer.Z') == 0)
 
 from __python__ import bound_methods
 

@@ -14,6 +14,27 @@ def _internal_type_is(actual: Any, expected: str) -> bool:
 def _internal_get_member(value: Any, name: Any) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
+    member = runtime.native_get(value, name)
+    if _internal_get_member_raw(
+        member, '__sagejs_eager_bound_cache__'
+    ) is not True:
+        return member
+
+    # Eager method binding is an implementation cache, not an own Python
+    # attribute.  Resolve it through the authoritative descriptor machinery:
+    # a subclass may have overridden the method after the cache was created,
+    # and an override may itself later have been deleted.
+    resolver = runtime.reflect.get(
+        runtime.global_object, 'ρσ_getattr_internal')
+    if not _internal_type_is(runtime.jstype(resolver), 'function'):
+        return member
+    return runtime.reflect.apply(
+        resolver, runtime.undefined, [value, name, runtime.undefined])
+
+
+def _internal_get_member_raw(value: Any, name: Any) -> Any:
+    if value is None or value is runtime.undefined:
+        return runtime.undefined
     return runtime.native_get(value, name)
 
 
@@ -785,6 +806,7 @@ def ρσ_interpolate_kwargs(
         and not _internal_get_member(target_function, '__kwonly__')
         and _internal_get_member(
             target_function, '__sagejs_callable_instance_class__') is not True
+        and not _internal_has_own(target_function, '__bases__')
     ):
         # Descriptor lookup can expose a callable-instance adapter as another
         # host function (for example ``pytest.hookimpl``).  Such an adapter has
@@ -900,6 +922,7 @@ def ρσ_interpolate_kwargs_legacy(
         not _internal_get_member(target_function, '__argnames__')
         and _internal_get_member(
             target_function, '__sagejs_callable_instance_class__') is not True
+        and not _internal_has_own(target_function, '__bases__')
     ):
         callable_method = runtime.reflect.apply(
             runtime.reflect.get(runtime.global_object, 'ρσ_getattr'),
@@ -1178,8 +1201,9 @@ def ρσ_getitem(value: Any, key: Any) -> Any:
     # become the receiver when a subclass is subscribed.  Keep this after the
     # native list/tuple integer path: class subscription is rare, while tuple
     # indexing is one of the hottest operations in numerical Python code.
-    class_getitem = getattr(
-        value, '__class_getitem__', None)
+    class_getitem = None
+    if _internal_type_is(runtime.jstype(value), 'function'):
+        class_getitem = getattr(value, '__class_getitem__', None)
     if _internal_type_is(runtime.jstype(class_getitem), 'function'):
         bound_receiver = runtime.reflect.get(class_getitem, '__self__')
         receiver = (

@@ -39,15 +39,15 @@ async function main() {
     assert.equal(composed.display?.data.data[1].marker.color, "black");
     assert.equal(composed.display?.data.layout.showlegend, true);
     assert.equal((await session.evaluate("len(g)")).repr, "2");
-    assert.equal((await session.evaluate("g.xmin()")).repr, "0");
-    assert.equal((await session.evaluate("g.xmax()")).repr, "1");
-    assert.equal((await session.evaluate("g.ymin()")).repr, "0");
-    assert.equal((await session.evaluate("g.ymax()")).repr, "1");
+    assert.equal((await session.evaluate("g.xmin()")).repr, "0.0");
+    assert.equal((await session.evaluate("g.xmax()")).repr, "1.0");
+    assert.equal((await session.evaluate("g.ymin()")).repr, "0.0");
+    assert.equal((await session.evaluate("g.ymax()")).repr, "1.0");
     assert.equal(
       (await session.evaluate("g[0]")).repr,
       "Line defined by 2 points",
     );
-    assert.equal((await session.evaluate("g[0][1]")).repr, "(1, 1)");
+    assert.equal((await session.evaluate("g[0][1]")).repr, "(1.0, 1.0)");
 
     const sampled = await session.evaluate(
       [
@@ -150,7 +150,7 @@ async function main() {
     );
     assert.equal(
       (await session.evaluate("Color('purple')")).repr,
-      "RGB color (0.5019607843137255, 0, 0.5019607843137255)",
+      "RGB color (0.5019607843137255, 0.0, 0.5019607843137255)",
     );
     assert.equal(
       (await session.evaluate("Color('#8000ff').html_color()"))
@@ -736,7 +736,7 @@ async function main() {
         "plot_vector_field((x,y),(x,-1,1),(y,-1,1)," +
           "plot_points=2)[0].xpos_array",
       )).repr,
-      "[-1, -1, 1, 1]",
+      "[-1.0, -1.0, 1.0, 1.0]",
     );
     assert.equal(vectorField.display?.data.data[0].mode, "lines+markers");
     assert.equal(vectorField.display?.data.data[0].line.color, "navy");

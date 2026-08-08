@@ -246,22 +246,29 @@ def _g3d_linspace(
 
 def _g3d_finite_value(value: Any) -> float:
     numeric = float(value)
-    if not runtime.number.isFinite(numeric):
+    native = runtime.number(numeric)
+    if not runtime.number.isFinite(native):
         raise ValueError('3D plot function returned a non-finite value')
-    return numeric
+    return native
 
 
 def _g3d_sin(value: Any) -> Any:
-    if runtime.jstype(value) == 'number':
-        return runtime.math.sin(value)
+    if (
+        runtime.jstype(value) == 'number'
+        or runtime.native_get(value, '__sagejs_float__') is True
+    ):
+        return runtime.math.sin(runtime.number(value))
     function_value = runtime.reflect.get(runtime.global_object, 'sin')
     return runtime.reflect.apply(
         function_value, runtime.undefined, [value])
 
 
 def _g3d_cos(value: Any) -> Any:
-    if runtime.jstype(value) == 'number':
-        return runtime.math.cos(value)
+    if (
+        runtime.jstype(value) == 'number'
+        or runtime.native_get(value, '__sagejs_float__') is True
+    ):
+        return runtime.math.cos(runtime.number(value))
     function_value = runtime.reflect.get(runtime.global_object, 'cos')
     return runtime.reflect.apply(
         function_value, runtime.undefined, [value])

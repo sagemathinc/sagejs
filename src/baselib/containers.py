@@ -38,7 +38,21 @@ def _has_own(value: Any, key: Any) -> bool:
 def _get_member(value: Any, name: str) -> Any:
     if value is None or value is runtime.undefined:
         return runtime.undefined
-    return runtime.native_get(value, name)
+    member = runtime.native_get(value, name)
+    if (
+        member is None
+        or member is runtime.undefined
+        or runtime.native_get(
+            member, '__sagejs_eager_bound_cache__') is not True
+    ):
+        return member
+    resolver = runtime.reflect.get(
+        runtime.global_object, 'ρσ_getattr_internal')
+    if runtime.strict_equal(runtime.jstype(resolver), 'function'):
+        return runtime.reflect.apply(
+            resolver, runtime.undefined,
+            [value, name, runtime.undefined])
+    return member
 
 
 def _call_member(value: Any, name: str, args: Any) -> Any:
@@ -51,6 +65,20 @@ def _call_member(value: Any, name: str, args: Any) -> Any:
         return runtime.reflect.apply(
             method, runtime.undefined, explicit_args)
     return runtime.reflect.apply(method, value, args)
+
+
+def _has_concrete_override(value: Any, name: Any) -> bool:
+    """Return whether the concrete Python class owns ``name``."""
+    owner = runtime.native_get(value, '__class__')
+    if owner is None or owner is runtime.undefined:
+        owner = runtime.native_get(value, 'constructor')
+    if owner is None or owner is runtime.undefined:
+        return False
+    prototype = runtime.native_get(owner, 'prototype')
+    if prototype is None or prototype is runtime.undefined:
+        return False
+    return runtime.object.getOwnPropertyDescriptor(
+        prototype, name) is not runtime.undefined
 
 
 def _native_delete(container: Any, key: Any) -> bool:
@@ -473,9 +501,28 @@ def _list_count(self: Any, value: Any) -> int:
 
 
 def _list_less_than(left: Any, right: Any) -> bool:
+    if runtime.array.isArray(left) and runtime.array.isArray(right):
+        if (
+            runtime.object.isFrozen(left)
+            is not runtime.object.isFrozen(right)
+        ):
+            raise TypeError('cannot compare different sequence types')
+        common = min(left.length, right.length)
+        for index in range(common):
+            if equals(left[index], right[index]):
+                continue
+            return _list_less_than(left[index], right[index])
+        return left.length < right.length
     method = _get_member(left, '__lt__')
     if runtime.strict_equal(runtime.jstype(method), 'function'):
-        return runtime.reflect.apply(method, left, [right])
+        answer = runtime.reflect.apply(method, left, [right])
+        if answer is not NotImplemented:
+            return answer
+    reflected = _get_member(right, '__gt__')
+    if runtime.strict_equal(runtime.jstype(reflected), 'function'):
+        answer = runtime.reflect.apply(reflected, right, [left])
+        if answer is not NotImplemented:
+            return answer
     return runtime.native_lt(left, right)
 
 
@@ -647,9 +694,17 @@ def ρσ_list_decorate(answer: Any) -> Any:
 
 
 def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
+    python_iterator_override = (
+        iterable is not runtime.undefined
+        and runtime.arraylike(iterable)
+        and _has_concrete_override(iterable, '__iter__')
+    )
     if iterable is runtime.undefined:
         answer = _new_array()
-    elif runtime.arraylike(iterable):
+    elif (
+        runtime.arraylike(iterable)
+        and not python_iterator_override
+    ):
         answer = runtime.reflect.apply(
             runtime.array.prototype.slice, iterable, [])
     else:
@@ -657,7 +712,18 @@ def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
             iterable, runtime.iterator_symbol)
         python_iterator = _get_member(iterable, '__iter__')
         getitem = _get_member(iterable, '__getitem__')
-        if runtime.strict_equal(
+        if (
+            python_iterator_override
+            and runtime.strict_equal(
+                runtime.jstype(python_iterator), 'function')
+        ):
+            iterator = _call_member(iterable, '__iter__', [])
+            answer = runtime.reflect.apply(
+                runtime.reflect.get(runtime.array, 'from'),
+                runtime.array,
+                [iterator],
+            )
+        elif runtime.strict_equal(
             runtime.jstype(native_iterator), 'function'
         ):
             answer = runtime.reflect.apply(

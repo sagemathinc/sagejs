@@ -278,23 +278,30 @@ def print_with(self, output):
                     lambda: output.print(
                         clause
                         + '.__aexit__('
-                        + 'ρσ_with_exception.constructor, '
+                        + 'ρσ_type(ρσ_with_exception), '
                         + 'ρσ_with_exception, '
-                        + 'ρσ_with_exception.stack)'
+                        + 'ρσ_getattr_internal('
+                        + 'ρσ_with_exception, "__traceback__", null))'
                     ),
                 )
             else:
                 output.print(
                     clause
-                    + '.__exit__(ρσ_with_exception.constructor, '
+                    + '.__exit__(ρσ_type(ρσ_with_exception), '
                     + 'ρσ_with_exception, '
-                    + 'ρσ_with_exception.stack)'
+                    + 'ρσ_getattr_internal('
+                    + 'ρσ_with_exception, "__traceback__", null))'
                 )
             output.print(')')
             output.end_statement()
         output.indent(), output.spaced(
             'if', '(!ρσ_with_suppress)',
             'throw ρσ_with_exception'), output.end_statement()
+        # A suppressed inner exception must not remain visible to an enclosing
+        # ``with`` statement, since compiler temporaries are function-scoped.
+        # If suppression was false the preceding throw exits this block.
+        output.indent(), output.assign('ρσ_with_exception')
+        output.print('undefined'), output.end_statement()
 
     def f_cleanup():
         output.indent(), output.spaced(

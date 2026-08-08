@@ -344,8 +344,12 @@ def print_binary_op(self, output):
         else:
             self.right.print(output)
         output.print(')')
-    elif comparators[self.operator] and is_node_type(
-            self.left, AST_Binary) and comparators[self.left.operator]:
+    elif (
+        comparators[self.operator]
+        and is_node_type(self.left, AST_Binary)
+        and comparators[self.left.operator]
+        and not self.left.parenthesized
+    ):
         # Comparisons are represented as a left-associated binary tree.  A
         # pairwise rewrite works for ``a < b < c`` but accidentally compares
         # the boolean result of an inner chain once there are four or more
@@ -358,6 +362,7 @@ def print_binary_op(self, output):
         while (
             is_node_type(cursor, AST_Binary)
             and comparators[cursor.operator]
+            and not cursor.parenthesized
         ):
             operands.insert(0, cursor.right)
             operators.insert(0, cursor.operator)

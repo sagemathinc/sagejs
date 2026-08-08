@@ -3341,9 +3341,10 @@ runtime.reflect.set(stats, 'TimeSeries', TimeSeries)
 
 def _finite_value(value: Any) -> float:
     numeric = float(value)
-    if not runtime.number.isFinite(numeric):
+    native = runtime.number(numeric)
+    if not runtime.number.isFinite(native):
         raise ValueError('plot function returned a non-finite value')
-    return numeric
+    return native
 
 
 def _complex_numeric_parts(value: Any) -> tuple[float, float]:
@@ -3358,12 +3359,14 @@ def _complex_numeric_parts(value: Any) -> tuple[float, float]:
             imaginary_value, value, [])
     real_part = float(real_value)
     imaginary_part = float(imaginary_value)
+    real_native = runtime.number(real_part)
+    imaginary_native = runtime.number(imaginary_part)
     if (
-        not runtime.number.isFinite(real_part)
-        or not runtime.number.isFinite(imaginary_part)
+        not runtime.number.isFinite(real_native)
+        or not runtime.number.isFinite(imaginary_native)
     ):
         raise ValueError('complex plot function returned a non-finite value')
-    return (real_part, imaginary_part)
+    return (real_native, imaginary_native)
 
 
 def _complex_from_parts(
@@ -3933,9 +3936,10 @@ def _finite_or_none(value: Any) -> Any:
         numeric = float(value)
     except Exception:
         return None
-    if not runtime.number.isFinite(numeric):
+    native = runtime.number(numeric)
+    if not runtime.number.isFinite(native):
         return None
-    return numeric
+    return native
 
 
 def _sample_vector_grid_2d(

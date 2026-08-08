@@ -94,6 +94,50 @@ test("complex components and magnitudes retain float identity", async (t) => {
   ].join("\n"));
 });
 
+test("complex division by a real follows the direct binary64 path", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "value = complex(1e308, -1e308) / 1e308",
+    "print(value)",
+    "print(value.real == 1.0, value.imag == -1.0)",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "(1-1j)\nTrue True");
+});
+
+test("fractional powers of negative floats use the complex branch", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "value = (-5.0) ** (-1.5)",
+    "print(type(value) is complex)",
+    "print(abs(value - complex(-1.6430360947926078e-17, 0.08944271909999159)) < 1e-16)",
+    "print((-5.0) ** -1, type((-5.0) ** -1) is float)",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), "True\nTrue\n-0.2 True");
+});
+
+test("float() accepts real protocols and rejects complex values", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "class Indexed:",
+    "    def __index__(self): return 7",
+    "print(float(True), float(False), float(10**100), float(Indexed()))",
+    "for value in (1+0j, 1e-10j, object()):",
+    "    try:",
+    "        float(value)",
+    "    except TypeError as error:",
+    "        print(type(value).__name__, str(error))",
+  ].join("\n"));
+  assert.equal(result.stdout.trim(), [
+    "1.0 0.0 1e+100 7.0",
+    "complex float() argument must be a string or a real number, not 'complex'",
+    "complex float() argument must be a string or a real number, not 'complex'",
+    "object float() argument must be a string or a real number, not 'object'",
+  ].join("\n"));
+});
+
 test("complex() honors Python numeric conversion protocols", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());

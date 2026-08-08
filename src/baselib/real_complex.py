@@ -411,6 +411,16 @@ def _real_field_element(
     ):
         return _real_from_exact(field, value)
     if (
+        runtime.jstype(value) == 'object'
+        and value is not None
+        and runtime.native_get(value, '__sagejs_float__') is True
+    ):
+        return RealNumberElement(
+            field,
+            backend.realFromString(
+                str(float(value)), field._precision),
+        )
+    if (
         runtime.jstype(value) == 'number'
         or runtime.jstype(value) == 'string'
     ):
@@ -418,7 +428,7 @@ def _real_field_element(
             field,
             backend.realFromString(str(value), field._precision),
         )
-    if hasattr(value, '__float__'):
+    if value is not None and hasattr(value, '__float__'):
         return RealNumberElement(
             field,
             backend.realFromString(
@@ -763,6 +773,16 @@ class PythonComplex:
             parts = _python_complex_parts(other)
         except TypeError:
             return NotImplemented
+        if parts[1] == 0:
+            if parts[0] == 0:
+                raise ZeroDivisionError('complex division by zero')
+            # CPython's complex kernel takes this direct path.  Besides being
+            # both faster and overflow-safe, it avoids the extra rounding of
+            # ``(component * divisor) / divisor**2`` in numerical recurrences.
+            return PythonComplex(
+                self._real / parts[0],
+                self._imag / parts[0],
+            )
         denominator = parts[0] * parts[0] + parts[1] * parts[1]
         if denominator == 0:
             raise ZeroDivisionError('complex division by zero')
@@ -914,6 +934,9 @@ class PythonComplex:
 
 
 complex = PythonComplex
+runtime.reflect.set(PythonComplex, '__name__', 'complex')
+runtime.reflect.set(PythonComplex, '__qualname__', 'complex')
+runtime.reflect.set(PythonComplex, '__module__', 'builtins')
 runtime.set_class_repr(PythonComplex, "<class 'complex'>")
 
 

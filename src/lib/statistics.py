@@ -15,9 +15,19 @@ def _values(data):
     return values
 
 
+def _divide_preserving_integral_result(numerator, denominator, inputs):
+    """Match statistics' exact conversion for an all-integer calculation."""
+    if all(isinstance(value, int) for value in inputs):
+        quotient, remainder = divmod(numerator, denominator)
+        if remainder == 0:
+            return quotient
+    return numerator / denominator
+
+
 def mean(data):
     values = _values(data)
-    return sum(values) / len(values)
+    return _divide_preserving_integral_result(
+        sum(values), len(values), values)
 
 
 def fmean(data, weights=None):
@@ -120,7 +130,9 @@ def multimode(data):
 def pvariance(data, mu=None):
     values = _values(data)
     center = mean(values) if mu is None else mu
-    return sum((value - center) ** 2 for value in values) / len(values)
+    numerator = sum((value - center) ** 2 for value in values)
+    return _divide_preserving_integral_result(
+        numerator, len(values), values + [center])
 
 
 def variance(data, xbar=None):
@@ -128,7 +140,9 @@ def variance(data, xbar=None):
     if len(values) < 2:
         raise StatisticsError('variance requires at least two data points')
     center = mean(values) if xbar is None else xbar
-    return sum((value - center) ** 2 for value in values) / (len(values) - 1)
+    numerator = sum((value - center) ** 2 for value in values)
+    return _divide_preserving_integral_result(
+        numerator, len(values) - 1, values + [center])
 
 
 def pstdev(data, mu=None):

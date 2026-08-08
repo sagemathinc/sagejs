@@ -87,7 +87,7 @@ test("FLINT-backed exact and approximate spectral linear algebra", async () => {
           "matrix(RDF, [[1.2, 2], [3, 4.1]]).echelon_form()",
         )
       ).repr,
-      "[1 0]\n[0 1]",
+      "[1.0 0.0]\n[0.0 1.0]",
     );
 
     const complexEigenvalues = await session.evaluate(

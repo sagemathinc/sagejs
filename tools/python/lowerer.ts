@@ -2015,6 +2015,23 @@ export class PythonCstLowerer {
         )
         .map((method) => method.name.name)
       : [];
+    const inheritedBound = new Set<string>();
+    if (useBoundMethods) {
+      for (const base of bases) {
+        if (!(base instanceof this.compiler.AST_SymbolRef)) continue;
+        const inherited = this.knownClasses.get(base.name);
+        for (const method of inherited?.all_bound ?? inherited?.bound ?? []) {
+          inheritedBound.add(method);
+        }
+      }
+    }
+    const shadowedBound = [...inheritedBound].filter((method) =>
+      !!classvars[method]
+    );
+    const allBound = [...inheritedBound];
+    for (const method of bound) {
+      if (!allBound.includes(method)) allBound.push(method);
+    }
     const sequential = this.currentToplevel?.scoped_flags
       ?.sequential_definitions ??
       this.options.scoped_flags?.sequential_definitions ?? false;
@@ -2060,6 +2077,9 @@ export class PythonCstLowerer {
       bigint_fields: bigintFields,
       namedtuple_fields: namedtupleFields,
       bound,
+      all_bound: allBound,
+      shadowed_bound: shadowedBound,
+      bind_inherited_methods: useBoundMethods,
       decorators: decorators.filter(
         (decorator) => !compileTimeDecorators.has(decoratorName(decorator) ?? ""),
       ),
@@ -2747,6 +2767,18 @@ export class PythonCstLowerer {
         // unknown calls retain the legacy bootstrap optimization for now.
         const hasKeywordArguments = (args as any).kwargs.length > 0 ||
           (args as any).kwarg_items.length > 0;
+        // An assignment in a class body can install an arbitrary descriptor,
+        // including ``name = staticmethod(callable)``.  Calling such a value
+        // through ``C.prototype.name`` bypasses Python descriptor lookup and
+        // can even select an inherited instance method instead.  Only methods
+        // whose binding mode is known from their definition are safe targets
+        // for the direct class-call lowering.
+        if (classvar) {
+          return this.make("AST_Call", node, {
+            expression: callable,
+            args,
+          });
+        }
         if (!staticMethod && !classvar && hasKeywordArguments) {
           return this.make("AST_Call", node, {
             expression: callable,
@@ -2756,8 +2788,8 @@ export class PythonCstLowerer {
         return this.make("AST_ClassCall", node, {
           class: this.lowerExpression(ownerNode),
           method,
-          static: staticMethod || classvar,
-          classvar,
+          static: staticMethod,
+          classvar: false,
           args,
         });
       }

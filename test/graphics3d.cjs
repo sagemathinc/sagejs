@@ -210,7 +210,7 @@ async function main() {
       pointsAndLine.display?.data.data.map((trace) => trace.mode),
       ["lines", "markers"],
     );
-    assert.equal((await session.evaluate("q[0][1]")).repr, "(1, 2, 3)");
+    assert.equal((await session.evaluate("q[0][1]")).repr, "(1.0, 2.0, 3.0)");
 
     const constant = await session.evaluate(
       "plot3d(pi, (-1, 1), (-1, 1), plot_points=2)",
@@ -432,7 +432,7 @@ async function main() {
       (await session.evaluate(
         "line3d([(1,2,3),(-1,-2,-3)]).bounding_box()",
       )).repr,
-      "((-1, -2, -3), (1, 2, 3))",
+      "((-1.0, -2.0, -3.0), (1.0, 2.0, 3.0))",
     );
     const methodShown3d = await session.evaluate(
       "icosahedron().show(axes=False, figsize=(4,3), title='solid')",

@@ -192,7 +192,7 @@ assert.equal(
     ].join("\n"),
   ).trim(),
   [
-    "<class 'complex'> 3 4 5",
+    "<class 'complex'> 3.0 4.0 5.0",
     "(-7+24j) (5+4j) (-1-4j) (3-4j)",
   ].join("\n"),
 );
@@ -215,7 +215,7 @@ assert.match(
     ["compile", "--python", "--omit-baselib"],
     "def pooled_real(): return 1.5\n",
   ),
-  /var ρσ_const_0 = Number\("1\.5"\)/,
+  /var ρσ_const_0 = ρσ_float\("1\.5"\)/,
 );
 assert.doesNotMatch(
   run(

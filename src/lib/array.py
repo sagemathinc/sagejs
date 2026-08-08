@@ -52,7 +52,8 @@ def _float_to_bytes(value: Any, size: int) -> list[int]:
         view,
         [
             0,
-            value if runtime.jstype(value) == 'number' else float(value),
+            runtime.number(
+                value if runtime.jstype(value) == 'number' else float(value)),
             _LITTLE_ENDIAN,
         ],
     )
@@ -68,11 +69,11 @@ def _float_from_bytes(raw: Any, offset: int, size: int) -> float:
         runtime.reflect.set(octets, index, raw[offset + index])
     view = _typed_view('DataView', [buffer])
     method_name = 'getFloat32' if size == 4 else 'getFloat64'
-    return runtime.reflect.apply(
+    return float(runtime.reflect.apply(
         runtime.reflect.get(view, method_name),
         view,
         [0, _LITTLE_ENDIAN],
-    )
+    ))
 
 
 def _coerce_integer(value: Any, size: int, signed: bool) -> Any:

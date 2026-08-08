@@ -77,6 +77,31 @@ interface EvaluatorOptions {
   compilerFrontends?: Map<SageLanguageMode, PythonCompilerFrontend>;
 }
 
+function displayTransportValue(
+  value: unknown,
+  seen = new WeakMap<object, unknown>(),
+): unknown {
+  if (value === null || typeof value !== "object") return value;
+  if (Reflect.get(value, "__sagejs_float__") === true) {
+    return Number(value);
+  }
+  const previous = seen.get(value);
+  if (previous !== undefined) return previous;
+  if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) return value;
+  if (Array.isArray(value)) {
+    const answer: unknown[] = [];
+    seen.set(value, answer);
+    for (const item of value) answer.push(displayTransportValue(item, seen));
+    return answer;
+  }
+  const answer: Record<string, unknown> = {};
+  seen.set(value, answer);
+  for (const key of Object.keys(value)) {
+    answer[key] = displayTransportValue(Reflect.get(value, key), seen);
+  }
+  return answer;
+}
+
 function richDisplay(value: unknown): SageDisplayData | undefined {
   if (
     value === null ||
@@ -97,7 +122,7 @@ function richDisplay(value: unknown): SageDisplayData | undefined {
   }
   return {
     mime: Reflect.get(display, "mime"),
-    data: Reflect.get(display, "data"),
+    data: displayTransportValue(Reflect.get(display, "data")),
   };
 }
 

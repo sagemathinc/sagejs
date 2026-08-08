@@ -296,7 +296,7 @@
       "title": "Compose interactive 2D graphics",
       "language": "sage",
       "code": "g = line([(0, 0), (1, 1)], color='red', thickness=2)\ng += point((0, 1), color='black', size=12)\n(g, len(g), g.xmin(), g.xmax())",
-      "expected": "(Graphics object consisting of 2 graphics primitives, 2, 0, 1)",
+      "expected": "(Graphics object consisting of 2 graphics primitives, 2, 0.0, 1.0)",
       "note": "In Jupyter the graphics object also produces an interactive Plotly display."
     },
     {

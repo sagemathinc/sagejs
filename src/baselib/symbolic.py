@@ -1683,8 +1683,8 @@ def _adaptive_numerical_integral(
         return result, error
     intervals = [[lower, upper, result, error]]
     while (
-        runtime.number.isFinite(result)
-        and runtime.number.isFinite(error)
+        runtime.number.isFinite(runtime.number(result))
+        and runtime.number.isFinite(runtime.number(error))
         and error > max(eps_abs, eps_rel * abs(result))
         and len(intervals) < max_intervals
     ):
@@ -1809,8 +1809,8 @@ def numerical_integral(
             (upper - lower) * float(function_value),
             0.0,
         ])
-    finite_lower = runtime.number.isFinite(lower)
-    finite_upper = runtime.number.isFinite(upper)
+    finite_lower = runtime.number.isFinite(runtime.number(lower))
+    finite_upper = runtime.number.isFinite(runtime.number(upper))
     if not finite_lower and not finite_upper:
         if lower >= 0.0 or upper <= 0.0:
             raise ValueError('invalid infinite integration interval')

@@ -633,6 +633,27 @@ test("chained comparisons preserve Python dispatch and shared operands", async (
   }
 });
 
+test("parenthesized comparisons do not merge into comparison chains", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "same = (left < middle) == (first < last)\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /ρσ_equals\(ρσ_operator_lt\(left, middle\), \(?ρσ_operator_lt\(first, last\)\)?\)/,
+    );
+    assert.doesNotMatch(javascript, /ρσ_compare_/);
+  } finally {
+    frontend.close();
+  }
+});
+
 test("nested loop targets unpack only the target pattern", async () => {
   const compiler = createCompiler();
   const frontend = await createPythonCompilerFrontend(compiler, "python");
@@ -677,6 +698,60 @@ test("same-class static calls are not guessed to be unbound methods", async () =
     assert.doesNotMatch(
       javascript,
       /Config\.prototype\.name\.call\(value\)/,
+    );
+  } finally {
+    frontend.close();
+  }
+});
+
+test("callable class variables retain runtime descriptor lookup", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "class Base:\n" +
+        "    def selected(self):\n" +
+        "        return 'base'\n" +
+        "class Config(Base):\n" +
+        "    selected = staticmethod(lambda: 'static')\n" +
+        "result = Config.selected()\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /ρσ_getattr_internal\(Config, "selected", ρσ_getattr_missing\)/,
+    );
+    assert.doesNotMatch(javascript, /Config\.prototype\.selected\(\)/);
+    assert.match(javascript, /delete this\.selected/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("context managers receive Python exception metadata", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "with manager:\n" +
+        "    raise problem\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /ρσ_type\(ρσ_with_exception\)/);
+    assert.match(
+      javascript,
+      /ρσ_getattr_internal\(ρσ_with_exception, "__traceback__", null\)/,
+    );
+    assert.doesNotMatch(javascript, /ρσ_with_exception\.constructor/);
+    assert.equal(
+      (javascript.match(/ρσ_with_exception = undefined;/g) ?? []).length,
+      2,
     );
   } finally {
     frontend.close();

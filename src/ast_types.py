@@ -629,6 +629,12 @@ class AST_Class(AST_Scope):
         "[string*] fields declared by a typing.NamedTuple class",
         'bound':
         "[string*] list of methods that need to be bound to self",
+        'all_bound':
+        "[string*] inherited and local eagerly bound method names",
+        'shadowed_bound':
+        "[string*] inherited bound methods shadowed by class values",
+        'bind_inherited_methods':
+        "[boolean] invoke a dynamically inherited eager-method binder",
         'decorators':
         "[AST_Decorator*] function decorators, if any",
         'module_id':
@@ -1060,6 +1066,8 @@ class AST_Binary(AST_Node):
         'left': "[AST_Node] left-hand side expression",
         'operator': "[string] the operator",
         'right': "[AST_Node] right-hand side expression",
+        'parenthesized':
+        "[bool] Whether this binary expression was parenthesized",
         'native_operator':
         "[boolean] emit the JavaScript operator without Python dispatch",
         'inferred_type': "[string?] compiler-inferred primitive result type",

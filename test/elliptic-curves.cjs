@@ -100,7 +100,7 @@ test("long Weierstrass lift_x matches Sage root semantics", async () => {
           ].join("\n"),
         )
       ).repr,
-      "[-6, 2]",
+      "[-6.0, 2.0]",
     );
     await assert.rejects(
       session.evaluate(

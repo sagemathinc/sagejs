@@ -233,9 +233,12 @@ def _builtins_bind_python_function(
     bind_arguments = runtime.reflect.construct(runtime.array, [])
     bind_arguments.push(runtime.undefined)
     bind_arguments.push(receiver)
-    if _builtins_get_member(
-        target, '__sagejs_native_method__'
-    ) is True:
+    if (
+        _builtins_get_member(
+            target, '__sagejs_native_method__') is True
+        or _builtins_get_member(
+            target, '__sagejs_method_signature_excludes_self__') is True
+    ):
         bind_arguments = runtime.reflect.construct(runtime.array, [])
         bind_arguments.push(receiver)
     bound = runtime.reflect.apply(
@@ -312,6 +315,34 @@ def _builtins_class_attribute_resolution(
     else:
         owner_cache = runtime.map()
         _builtins_descriptor_cache.set(owner, owner_cache)
+    # Compiler-emitted ``staticmethod(...)``/``classmethod(...)`` class-body
+    # aliases live on the constructor so class access can avoid a wrapper.
+    # Instances must nevertheless see those descriptors through the class
+    # MRO before falling back to inherited prototype methods.
+    class_owners = runtime.native_get(owner, '__mro__')
+    if not runtime.array.isArray(class_owners):
+        class_owners = [owner]
+    for class_owner in class_owners:
+        class_descriptor = runtime.object.getOwnPropertyDescriptor(
+            class_owner, name)
+        if class_descriptor is runtime.undefined:
+            continue
+        class_value = runtime.reflect.get(class_descriptor, 'value')
+        if not (
+            _builtins_has_member(class_value, '__staticmethod__')
+            or _builtins_has_member(class_value, '__classmethod__')
+        ):
+            continue
+        class_kind = _BUILTINS_DESCRIPTOR_GENERIC
+        if _builtins_member_is_function(class_value, '__get__'):
+            class_kind = _BUILTINS_DESCRIPTOR_NONDATA
+        cache_entry = runtime.reflect.construct(runtime.array, [])
+        cache_entry.push(_builtins_descriptor_epoch)
+        cache_entry.push(class_descriptor)
+        cache_entry.push(class_kind)
+        cache_entry.push(class_value)
+        owner_cache.set(name, cache_entry)
+        return cache_entry
     prototype = runtime.native_get(owner, 'prototype')
     while prototype is not None and prototype is not runtime.undefined:
         descriptor = runtime.object.getOwnPropertyDescriptor(
@@ -343,6 +374,35 @@ def _builtins_class_attribute_resolution(
                     descriptor_kind = _BUILTINS_DESCRIPTOR_DATA
                 else:
                     descriptor_kind = _BUILTINS_DESCRIPTOR_NONDATA
+            elif _builtins_get_member(
+                descriptor_value, '__staticmethod__'
+            ) is True:
+                # A Python implementation of a CPython builtin can opt out
+                # of function-descriptor binding.  This is used by math.frexp
+                # and math.ldexp, which remain plain callables when assigned
+                # as class attributes just like their native CPython peers.
+                descriptor_kind = _BUILTINS_DESCRIPTOR_DIRECT
+            elif (
+                runtime.strict_equal(
+                    runtime.jstype(descriptor_value), 'function')
+                and not _builtins_is_python_class(descriptor_value)
+                and _builtins_is_python_class(owner)
+                and (
+                    _builtins_get_member(
+                        descriptor_value, '__python_descriptor__') is True
+                    or _builtins_get_member(
+                        descriptor_value,
+                        '__sagejs_method_signature_excludes_self__',
+                    ) is True
+                )
+            ):
+                # Every ordinary function stored in a Python class namespace
+                # is a non-data descriptor.  This includes compiler-emitted
+                # methods, functions assigned after construction, and methods
+                # overriding an eagerly cached implementation from an imported
+                # base.  Class objects and explicitly static callables retain
+                # their separate paths above.
+                descriptor_kind = _BUILTINS_DESCRIPTOR_NONDATA
             elif not runtime.strict_equal(
                 runtime.jstype(descriptor_value), 'function'
             ):
@@ -381,6 +441,15 @@ def ρσ_call_set_names(
     values: list[Any],
 ) -> None:
     """Register descriptors and call ``__set_name__`` from a namespace."""
+    global _builtins_descriptor_epoch
+    # Class construction first writes its namespace to the native prototype
+    # and constructor, then calls this finalizer.  Earlier class-body/default
+    # evaluation may already have cached an inherited attribute under the new
+    # owner.  Make the completed namespace authoritative before any instance
+    # can reuse that provisional lookup (notably for ``staticmethod`` aliases
+    # that replace an inherited instance method).
+    if _builtins_get_member(names, 'length'):
+        _builtins_descriptor_epoch += 1
     index = 0
     while index < _builtins_get_member(names, 'length'):
         value = values[index]
@@ -1289,6 +1358,23 @@ def ρσ_operator_div(left: Any, right: Any) -> Any:
         runtime.native_div(left, right))
 
 
+def _builtins_native_numeric_power(left: Any, right: Any) -> Any:
+    """Apply binary64 power with Python's negative-real branch semantics."""
+    result = runtime.native_pow(left, right)
+    if (
+        runtime.number.isNaN(result)
+        and left < 0
+        and runtime.number.isFinite(runtime.number(left))
+        and runtime.number.isFinite(runtime.number(right))
+    ):
+        # JavaScript returns NaN for a negative real raised to a fractional
+        # real power.  Python promotes that case to the principal complex
+        # branch.  Construct through the public builtin so the result retains
+        # the complete Python complex object model.
+        return complex(left) ** right
+    return _builtins_numeric_result(result, left, right)
+
+
 def ρσ_operator_pow(left: Any, right: Any) -> Any:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
@@ -1327,8 +1413,7 @@ def ρσ_operator_pow(left: Any, right: Any) -> Any:
             or runtime.strict_equal(left_type, 'bigint')
         )
     ):
-        return _builtins_numeric_result(
-            runtime.native_pow(left, right), left, right)
+        return _builtins_native_numeric_power(left, right)
     if _builtins_member_is_function(left, '__pow__'):
         result = _builtins_call_member(left, '__pow__', [right])
         if result is not NotImplemented:
@@ -1337,8 +1422,7 @@ def ρσ_operator_pow(left: Any, right: Any) -> Any:
         result = _builtins_call_member(right, '__rpow__', [left])
         if result is not NotImplemented:
             return result
-    return _builtins_numeric_result(
-        runtime.native_pow(left, right), left, right)
+    return _builtins_native_numeric_power(left, right)
 
 
 def ρσ_operator_pow_python_exact(left: Any, right: Any) -> Any:
@@ -1397,6 +1481,13 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
         if not runtime.strict_equal(left_type, 'number'):
             return result
         if (
+            runtime.number.isNaN(result)
+            and left < 0
+            and runtime.number.isFinite(runtime.number(left))
+            and runtime.number.isFinite(runtime.number(right))
+        ):
+            return complex(left) ** right
+        if (
             _builtins_is_python_float(left)
             or _builtins_is_python_float(right)
         ):
@@ -1450,6 +1541,13 @@ def ρσ_operator_pow_exact(left: Any, right: Any) -> Any:
     ):
         return runtime.native_pow(left, right)
     result = runtime.native_pow(left, right)
+    if (
+        runtime.number.isNaN(result)
+        and left < 0
+        and runtime.number.isFinite(runtime.number(left))
+        and runtime.number.isFinite(runtime.number(right))
+    ):
+        return complex(left) ** right
     if (
         _builtins_is_python_float(left)
         or _builtins_is_python_float(right)
@@ -1673,7 +1771,13 @@ def ρσ_operator_mod(left: Any, right: Any) -> Any:
             remainder = runtime.native_add(remainder, right)
         return remainder
     if _builtins_member_is_function(left, '__mod__'):
-        return _builtins_call_member(left, '__mod__', [right])
+        result = _builtins_call_member(left, '__mod__', [right])
+        if result is not NotImplemented:
+            return result
+    if _builtins_member_is_function(right, '__rmod__'):
+        result = _builtins_call_member(right, '__rmod__', [left])
+        if result is not NotImplemented:
+            return result
     if runtime.equals(right, 0):
         raise runtime.zero_division_error(
             'integer modulo by zero')
@@ -1992,6 +2096,11 @@ def ρσ_bool(value: Any) -> _Bool:
         and runtime.native_get(value, '__sagejs_float__') is True
     ):
         return runtime.number(value) != 0
+    # Lists and the optimized frozen-array tuple representation are native
+    # arrays.  Their truth value is their length even when a freshly created
+    # tuple has not inherited a Python ``__len__`` descriptor.
+    if runtime.array.isArray(value):
+        return value.length != 0
     if (
         runtime.strict_equal(value_type, 'object')
         or runtime.strict_equal(value_type, 'function')
@@ -2298,15 +2407,15 @@ def ρσ_int(value: Any = 0, base: Any = runtime.undefined) -> Any:
         )
     if (
         runtime.strict_equal(ρσ_python_jstype(answer), 'number')
-        and not runtime.number.isFinite(answer)
+        and not runtime.number.isFinite(runtime.number(answer))
     ):
         raise OverflowError('cannot convert float infinity to integer')
     if (
         runtime.strict_equal(ρσ_python_jstype(answer), 'number')
-        and not runtime.number.isSafeInteger(answer)
+        and not runtime.number.isSafeInteger(runtime.number(answer))
     ):
-        return runtime.bigint(answer)
-    return answer
+        return runtime.bigint(runtime.number(answer))
+    return runtime.number(answer)
 
 
 def ρσ_float(value: Any = 0) -> Any:
@@ -2316,6 +2425,10 @@ def ρσ_float(value: Any = 0) -> Any:
     reject_nan = False
     if runtime.strict_equal(value_type, 'number'):
         answer = value
+    elif runtime.strict_equal(value_type, 'bigint'):
+        answer = runtime.number(value)
+    elif runtime.strict_equal(value_type, 'boolean'):
+        answer = 1 if value else 0
     elif runtime.strict_equal(value_type, 'string'):
         normalized = value.strip().lower()
         if normalized in ('inf', '+inf', 'infinity', '+infinity'):
@@ -2330,11 +2443,22 @@ def ρσ_float(value: Any = 0) -> Any:
         # Number() rejects trailing junk which JavaScript parseFloat accepts.
         answer = runtime.number(value)
         reject_nan = True
+    elif (
+        value
+        and _builtins_member_is_function(value, 'decode')
+        and _builtins_member_is_function(value, '__len__')
+    ):
+        return ρσ_float(_builtins_call_member(value, 'decode', ['ascii']))
     elif value and _builtins_member_is_function(value, '__float__'):
         answer = _builtins_call_member(value, '__float__', [])
+    elif value and _builtins_member_is_function(value, '__index__'):
+        answer = runtime.number(
+            _builtins_call_member(value, '__index__', []))
     else:
-        answer = runtime.parse_float(value)
-        reject_nan = True
+        raise TypeError(
+            'float() argument must be a string or a real number, not '
+            + "'" + type(value).__name__ + "'"
+        )
     if reject_nan and runtime.is_nan(answer):
         raise ValueError(
             'Could not convert string to float: ' + str(value))
@@ -4323,12 +4447,21 @@ def ρσ_getattr_internal(
             and not _builtins_data_descriptor_names.has(name)
         ):
             own_member = runtime.native_get(value, name)
+            own_is_eager_bound_cache = (
+                _builtins_get_member(
+                    own_member,
+                    '__sagejs_eager_bound_cache__',
+                ) is True
+            )
             if own_member is runtime.undefined:
                 if default_value is not _BUILTINS_MISSING:
                     return default_value
                 raise AttributeError(
                     'The attribute ' + name + ' is not present')
-            return own_member
+            if not own_is_eager_bound_cache:
+                return own_member
+        else:
+            own_is_eager_bound_cache = False
         owner = runtime.native_get(value, 'constructor')
         descriptor_resolution = _builtins_class_attribute_resolution(
             owner, name)
@@ -4364,14 +4497,25 @@ def ρσ_getattr_internal(
                     return default_value
                 raise AttributeError(
                     'The attribute ' + name + ' is not present')
-            # Python functions stored directly on an instance are ordinary
-            # values, not descriptors.  Data-descriptor precedence was
-            # handled above, so every defined own value can return here.
-            return own_member
+            if not (
+                own_is_eager_bound_cache
+                and descriptor is not runtime.undefined
+            ):
+                # Python functions stored directly on an instance are
+                # ordinary values.  A marked eager cache is only an
+                # implementation detail, however: any different descriptor
+                # later installed by a subclass or setattr() must shadow it.
+                return own_member
         if runtime.strict_equal(
             descriptor_kind,
             _BUILTINS_DESCRIPTOR_NONDATA,
         ):
+            if (
+                runtime.strict_equal(
+                    runtime.jstype(descriptor), 'function')
+                and not _builtins_is_python_class(descriptor)
+            ):
+                return _builtins_bind_python_function(descriptor, value)
             return _builtins_call_member(
                 descriptor, '__get__', [value, owner])
         if runtime.strict_equal(
@@ -7767,6 +7911,9 @@ runtime.reflect.set(
     ),
 )
 runtime.set_class_repr(SageObject, "<class 'object'>")
+runtime.reflect.set(SageObject, '__name__', 'object')
+runtime.reflect.set(SageObject, '__qualname__', 'object')
+runtime.reflect.set(SageObject, '__module__', 'builtins')
 _type_bases = runtime.object.freeze(
     runtime.reflect.construct(runtime.array, [SageObject]))
 _type_mro = runtime.object.freeze(

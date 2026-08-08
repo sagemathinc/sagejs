@@ -152,13 +152,7 @@ def exp(x):
 
 
 def expm1(x):
-    # NOTE: Math.expm1() is currently only implemented in Firefox, this provides alternative implementation
-    # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/expm1
-    #return Math.expm1(x)
-    if Math.abs(x) < 1e-5:
-        return float(x + 0.5 * x * x)
-    else:
-        return float(Math.exp(x) - 1)
+    return float(Math.expm1(x))
 
 
 def log(x, base=e):
@@ -183,29 +177,17 @@ def log(x, base=e):
 
 
 def log1p(x):
-    # NOTE: Math.log1p() is currently only implemented in Firefox, this provides alternative implementation
-    # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log1p
-    # this version has been taken from http://phpjs.org/functions/log1p/
-    # admittedly it's not as accurate as MDN version, as you can see from math.log1p(1) result
-    ret = 0
-    n = 50
+    x = float(x)
     if x <= -1:
-        return Number.NEGATIVE_INFINITY
-    if x < 0 or x > 1:
-        return float(Math.log(1 + x))
-    for i in range(1, n):
-        if i % 2 is 0:
-            ret -= Math.pow(x, i) / i
-        else:
-            ret += Math.pow(x, i) / i
-    return float(ret)
+        raise ValueError('math domain error')
+    return float(Math.log1p(x))
 
 
 def log10(x):
-    # NOTE: Math.log10() is currently only implemented in Firefox, this provides alternative implementation
-    # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log10
-    # I didn't find a more accurate algorithm so I'm using the basic implementation
-    return float(Math.log(x) / Math.LN10)
+    x = float(x)
+    if x <= 0:
+        raise ValueError('math domain error')
+    return float(Math.log10(x))
 
 
 def pow(x, y):
@@ -273,28 +255,27 @@ def radians(x):
 # Hyperbolic functions
 ########################################
 def acosh(x):
-    # NOTE: will be replaced with official, when it becomes mainstream
-    # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/acosh
-    return float(Math.log(x + Math.sqrt(x * x - 1)))
+    x = float(x)
+    if x < 1:
+        raise ValueError('math domain error')
+    return float(Math.acosh(x))
 
 
 def asinh(x):
     x = float(x)
-    if x == 0:
-        return x
-    magnitude = Math.log(Math.abs(x) + Math.sqrt(x * x + 1))
-    return float(-magnitude if x < 0 else magnitude)
+    return float(Math.asinh(x))
 
 
 def atanh(x):
-    # NOTE: will be replaced with official, when it becomes mainstream
-    # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/atanh
-    return float(0.5 * Math.log((1 + x) / (1 - x)))
+    x = float(x)
+    if x <= -1 or x >= 1:
+        raise ValueError('math domain error')
+    return float(Math.atanh(x))
 
 
 def cosh(x):
     x = float(x)
-    answer = (Math.exp(x) + Math.exp(-x)) / 2
+    answer = Math.cosh(x)
     if isfinite(x) and not isfinite(answer):
         raise OverflowError('math range error')
     return float(answer)
@@ -302,18 +283,14 @@ def cosh(x):
 
 def sinh(x):
     x = float(x)
-    answer = (Math.exp(x) - Math.exp(-x)) / 2
+    answer = Math.sinh(x)
     if isfinite(x) and not isfinite(answer):
         raise OverflowError('math range error')
     return float(answer)
 
 
 def tanh(x):
-    # NOTE: will be replaced with official, when it becomes mainstream
-    # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/tanh
-    return float(
-        (Math.exp(x) - Math.exp(-x))
-        / (Math.exp(x) + Math.exp(-x)))
+    return float(Math.tanh(x))
 
 
 #import stdlib
