@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "updated": "2026-08-05",
+  "updated": "2026-08-08",
   "capabilities": [
     {
       "id": "sage-language",
@@ -629,13 +629,13 @@
         "summary": "Implements many modules needed by mathematical scripts and notebooks over Node APIs; unsupported CPython modules and edge semantics remain explicit.",
         "score": {
           "kind": "measured",
-          "value": 22.7,
-          "numerator": 44,
+          "value": 43.8,
+          "numerator": 85,
           "denominator": 194,
           "unit": "public top-level standard-library modules import successfully",
           "reference": "CPython 3.14 public top-level module set",
           "method": "Probe every name in CPython 3.14 sys.stdlib_module_names after excluding names beginning with an underscore. This measures module breadth only, not the fraction of APIs implemented inside each module.",
-          "audited": "2026-08-05"
+          "audited": "2026-08-08"
         },
         "includes": ["os and pathlib-style files", "time and datetime", "subprocess", "networking", "random", "serialization", "arrays", "multiprocessing foundations", "sqlite3"]
       },

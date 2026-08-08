@@ -100,12 +100,19 @@ function referencedBindings(
   for (const name of new Set(names)) {
     let value: unknown;
     if (globals !== null && typeof globals === "object") {
-      value = Reflect.get(globals, name);
+      // A Python module dictionary is also a JavaScript object with runtime
+      // implementation properties.  Looking through its prototype here can
+      // mistake property names in generated code (for example ``length`` or
+      // ``hasOwnProperty``) for Python globals and then try to serialize a
+      // native JavaScript function.  Only direct storage and the live lexical
+      // scope are candidates before consulting Python ``__getitem__``.
+      if (Object.hasOwn(globals, name)) value = Reflect.get(globals, name);
       const liveScope = Reflect.get(globals, "_scope");
       if (
         value === undefined &&
         liveScope !== null &&
-        typeof liveScope === "object"
+        typeof liveScope === "object" &&
+        Object.hasOwn(liveScope, name)
       ) {
         value = Reflect.get(liveScope, name);
       }

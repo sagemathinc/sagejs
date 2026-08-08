@@ -38,6 +38,11 @@ export function createTaskEvaluator({
   onOutput(text: string): void;
 }): TaskEvaluator {
   global.require = runtimeRequire as NodeJS.Require;
+  // The lightweight task runtime does not pass through runRuntimeBootstrap,
+  // so install the same collision-proof intrinsic that full Sage.js sessions
+  // expose.  Strict baselib modules use this name instead of the public
+  // ``require`` binding, which user code is allowed to shadow.
+  global.__sagejs_runtime_require__ = runtimeRequire;
   global.__sagejs_graph_database_bytes__ = () =>
     readResourceBytes(join(importPath, "sage", "graphs", "data", "graphs.db"));
   const uninstallNodeHost = installNodeHost(globalThis, mode);
@@ -85,6 +90,7 @@ export function createTaskEvaluator({
       uninstallNodeHost();
       delete global.__sagejs_output_write__;
       delete global.__sagejs_graph_database_bytes__;
+      delete global.__sagejs_runtime_require__;
     },
   };
 }

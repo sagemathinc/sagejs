@@ -305,9 +305,17 @@ export default async function Compile({
     const baselib = readBaselibSource(
       join(lib_path, "baselib-plain-pretty.js"),
     );
+    const standaloneRuntimeRequire =
+      "var __sagejs_runtime_require__ = " +
+      "typeof globalThis.__sagejs_runtime_require__ === 'function' " +
+      "? globalThis.__sagejs_runtime_require__ " +
+      ": (typeof require === 'function' ? require : function(name) { " +
+      "throw new Error('native runtime module is unavailable: ' + name); });\n";
     outputOptions.baselib_plain = argv.sage
-      ? "globalThis.__sagejs_sage_mode__ = true;\n" + baselib
-      : baselib;
+      ? standaloneRuntimeRequire +
+        "globalThis.__sagejs_sage_mode__ = true;\n" +
+        baselib
+      : standaloneRuntimeRequire + baselib;
   }
 
   // One-shot execution can initialize the base runtime from build-time V8
