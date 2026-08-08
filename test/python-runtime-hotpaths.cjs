@@ -64,8 +64,29 @@ test("optimized own-field lookup preserves descriptor precedence", async (t) => 
     "    pass",
     "dynamic = Dynamic()",
     "dynamic.answer = 103",
+    "print(dynamic.answer)",
     "setattr(Dynamic, 'answer', property(lambda self: 79))",
     "print(dynamic.answer)",
+    "class MutableClassField:",
+    "    answer = 107",
+    "mutable = MutableClassField()",
+    "print(mutable.answer)",
+    "MutableClassField.answer = 109",
+    "print(mutable.answer)",
+    "class LateDescriptor:",
+    "    pass",
+    "late_descriptor = LateDescriptor()",
+    "class WithLateDescriptor:",
+    "    answer = late_descriptor",
+    "late = WithLateDescriptor()",
+    "print(late.answer is late_descriptor)",
+    "LateDescriptor.__get__ = lambda self, instance, owner: 113",
+    "print(late.answer)",
   ].join("\n"));
-  assert.equal(result.stdout.trim(), ["71", "101", "79"].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    ["71", "101", "103", "79", "107", "109", "True", "113"].join(
+      "\n",
+    ),
+  );
 });

@@ -105,6 +105,11 @@ _BUILTINS_MISSING = _BuiltinsMissing()
 _BUILTINS_EMPTY = _BuiltinsMissing()
 _BUILTINS_DESCRIPTOR_MISSING = _BuiltinsMissing()
 _BUILTINS_HASATTR_MISSING = _BuiltinsMissing()
+_BUILTINS_DESCRIPTOR_GENERIC = 'generic'
+_BUILTINS_DESCRIPTOR_NATIVE_GETTER = 'native-getter'
+_BUILTINS_DESCRIPTOR_DATA = 'data-descriptor'
+_BUILTINS_DESCRIPTOR_NONDATA = 'nondata-descriptor'
+_BUILTINS_DESCRIPTOR_DIRECT = 'direct'
 # Compiler-emitted attribute reads use this reserved alias when calling the
 # fixed-arity lookup primitive.  Keeping it in the runtime namespace avoids a
 # collision with an ordinary user binding named ``_BUILTINS_MISSING``.
@@ -276,7 +281,7 @@ def _builtins_member_is_function(value: Any, name: Any) -> _Bool:
     )
 
 
-def _builtins_class_attribute_descriptor(
+def _builtins_class_attribute_resolution(
     owner: Any,
     name: Any,
 ) -> Any:
@@ -302,7 +307,7 @@ def _builtins_class_attribute_descriptor(
             return (
                 runtime.undefined
                 if cached[1] is _BUILTINS_DESCRIPTOR_MISSING
-                else cached[1]
+                else cached
             )
     else:
         owner_cache = runtime.map()
@@ -312,17 +317,62 @@ def _builtins_class_attribute_descriptor(
         descriptor = runtime.object.getOwnPropertyDescriptor(
             prototype, name)
         if descriptor is not runtime.undefined:
+            descriptor_value = runtime.reflect.get(
+                descriptor, 'value')
+            descriptor_kind = _BUILTINS_DESCRIPTOR_GENERIC
+            descriptor_target = descriptor_value
+            if descriptor_value is runtime.undefined:
+                native_getter = runtime.reflect.get(
+                    descriptor, 'get')
+                if runtime.strict_equal(
+                    runtime.jstype(native_getter), 'function'
+                ):
+                    descriptor_kind = (
+                        _BUILTINS_DESCRIPTOR_NATIVE_GETTER)
+                    descriptor_target = native_getter
+            elif _builtins_member_is_function(
+                descriptor_value, '__get__'
+            ):
+                descriptor_target = descriptor_value
+                if (
+                    _builtins_member_is_function(
+                        descriptor_value, '__set__')
+                    or _builtins_member_is_function(
+                        descriptor_value, '__delete__')
+                ):
+                    descriptor_kind = _BUILTINS_DESCRIPTOR_DATA
+                else:
+                    descriptor_kind = _BUILTINS_DESCRIPTOR_NONDATA
+            elif not runtime.strict_equal(
+                runtime.jstype(descriptor_value), 'function'
+            ):
+                # Non-callable values without ``__get__`` cannot require
+                # receiver binding.  This includes ordinary mutable class
+                # attributes as well as immutable primitives.
+                descriptor_kind = _BUILTINS_DESCRIPTOR_DIRECT
             cache_entry = runtime.reflect.construct(runtime.array, [])
             cache_entry.push(_builtins_descriptor_epoch)
             cache_entry.push(descriptor)
+            cache_entry.push(descriptor_kind)
+            cache_entry.push(descriptor_target)
             owner_cache.set(name, cache_entry)
-            return descriptor
+            return cache_entry
         prototype = runtime.object.getPrototypeOf(prototype)
     cache_entry = runtime.reflect.construct(runtime.array, [])
     cache_entry.push(_builtins_descriptor_epoch)
     cache_entry.push(_BUILTINS_DESCRIPTOR_MISSING)
     owner_cache.set(name, cache_entry)
     return runtime.undefined
+
+
+def _builtins_class_attribute_descriptor(
+    owner: Any,
+    name: Any,
+) -> Any:
+    resolution = _builtins_class_attribute_resolution(owner, name)
+    if resolution is runtime.undefined:
+        return runtime.undefined
+    return resolution[1]
 
 
 def ρσ_call_set_names(
@@ -4218,6 +4268,8 @@ def ρσ_getattr_internal(
         return function_descriptor_get
 
     descriptor = runtime.undefined
+    descriptor_resolution = runtime.undefined
+    descriptor_kind = _BUILTINS_DESCRIPTOR_GENERIC
     owner = runtime.undefined
     if (
         not runtime.strict_equal(runtime.jstype(value), 'function')
@@ -4241,20 +4293,26 @@ def ρσ_getattr_internal(
                     'The attribute ' + name + ' is not present')
             return own_member
         owner = runtime.native_get(value, 'constructor')
-        descriptor_info = _builtins_class_attribute_descriptor(
+        descriptor_resolution = _builtins_class_attribute_resolution(
             owner, name)
-        if descriptor_info is not runtime.undefined:
-            descriptor = runtime.reflect.get(
-                descriptor_info, 'value')
-            if (
-                descriptor is not runtime.undefined
-                and
-                _builtins_member_is_function(descriptor, '__get__')
-                and (
-                    _builtins_member_is_function(descriptor, '__set__')
-                    or _builtins_member_is_function(
-                        descriptor, '__delete__')
-                )
+        if descriptor_resolution is not runtime.undefined:
+            descriptor_kind = descriptor_resolution[2]
+            descriptor = descriptor_resolution[3]
+            if runtime.strict_equal(
+                descriptor_kind,
+                _BUILTINS_DESCRIPTOR_NATIVE_GETTER,
+            ):
+                native_value = runtime.reflect.apply(
+                    descriptor, value, [])
+                if native_value is runtime.undefined:
+                    if default_value is not _BUILTINS_MISSING:
+                        return default_value
+                    raise AttributeError(
+                        'The attribute ' + name + ' is not present')
+                return native_value
+            if runtime.strict_equal(
+                descriptor_kind,
+                _BUILTINS_DESCRIPTOR_DATA,
             ):
                 return _builtins_call_member(
                     descriptor, '__get__', [value, owner])
@@ -4273,6 +4331,17 @@ def ρσ_getattr_internal(
             # values, not descriptors.  Data-descriptor precedence was
             # handled above, so every defined own value can return here.
             return own_member
+        if runtime.strict_equal(
+            descriptor_kind,
+            _BUILTINS_DESCRIPTOR_NONDATA,
+        ):
+            return _builtins_call_member(
+                descriptor, '__get__', [value, owner])
+        if runtime.strict_equal(
+            descriptor_kind,
+            _BUILTINS_DESCRIPTOR_DIRECT,
+        ):
+            return descriptor
     if runtime.strict_equal(runtime.jstype(value), 'function'):
         class_prototype = _builtins_get_member(value, 'prototype')
         if (
