@@ -169,6 +169,7 @@
     "bench:arithmetic": "node bench/compare-sagelite.cjs",
     "bench:complex": "node bench/compare-complex.cjs",
     "bench:linear-algebra": "node bench/compare-exact-linear-algebra.cjs",
+    "bench:native:prime-field": "node bench/compare-native-prime-field-matrix.cjs",
     "bench:serialization": "node bench/compare-serialization.cjs",
     "bench:finite-fields": "node bench/compare-finite-fields.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",

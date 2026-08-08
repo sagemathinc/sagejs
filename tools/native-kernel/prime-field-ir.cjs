@@ -1,0 +1,136 @@
+"use strict";
+
+const OPERATIONS = new Map([
+  ["_prime_field_rank_fallback", "rank"],
+  ["_prime_field_determinant_fallback", "determinant"],
+  ["_prime_field_echelon_fallback", "echelon"],
+  ["_prime_field_solve_fallback", "solve"],
+]);
+
+const CONTRACTS = new Map([
+  ["rank", {
+    parameters: ["PrimeFieldMatrix"],
+    result: "uint64",
+  }],
+  ["determinant", {
+    parameters: ["PrimeFieldMatrix"],
+    result: "PrimeFieldElement",
+  }],
+  ["echelon", {
+    parameters: ["PrimeFieldMatrix"],
+    result: "PrimeFieldMatrix",
+  }],
+  ["solve", {
+    parameters: ["PrimeFieldMatrix", "PrimeFieldMatrix"],
+    result: "PrimeFieldMatrix",
+  }],
+]);
+
+function array(value) {
+  return Array.from(value || []);
+}
+
+function nodeType(node) {
+  return node?.constructor?.name;
+}
+
+function location(node, filename) {
+  const line = node?.start?.line;
+  const column = node?.start?.col;
+  return Number.isInteger(line)
+    ? `${filename}:${line}:${(column ?? 0) + 1}`
+    : filename;
+}
+
+function fail(fn, filename, node, message) {
+  throw new Error(
+    `native kernel: ${location(node, filename)}: ${fn.name?.name}: ${message}`,
+  );
+}
+
+function expect(fn, filename, node, condition, message) {
+  if (!condition) fail(fn, filename, node, message);
+}
+
+function isPrimeFieldSignature(signature) {
+  return (
+    signature.params.some((param) => param.type === "PrimeFieldMatrix") ||
+    signature.returnType === "PrimeFieldMatrix" ||
+    signature.returnType === "PrimeFieldElement"
+  );
+}
+
+function lowerPrimeFieldFunction(fn, signature, filename, decorated) {
+  const statements = array(fn.body).filter(
+    (statement) => nodeType(statement) !== "AST_EmptyStatement",
+  );
+  expect(
+    fn,
+    filename,
+    fn,
+    statements.length === 1 && nodeType(statements[0]) === "AST_Return",
+    "a prime-field matrix kernel must return one supported fallback call",
+  );
+  const call = statements[0].value;
+  expect(
+    fn,
+    filename,
+    call,
+    nodeType(call) === "AST_Call" &&
+      nodeType(call.expression) === "AST_SymbolRef",
+    "a prime-field matrix kernel must call its named fallback",
+  );
+  const operation = OPERATIONS.get(call.expression.name);
+  expect(
+    fn,
+    filename,
+    call,
+    operation !== undefined,
+    `unsupported prime-field matrix fallback ${call.expression.name}`,
+  );
+  const contract = CONTRACTS.get(operation);
+  expect(
+    fn,
+    filename,
+    fn,
+    signature.params.length === contract.parameters.length &&
+      signature.params.every(
+        (param, index) => param.type === contract.parameters[index],
+      ) && signature.returnType === contract.result,
+    `${operation} expects (${contract.parameters.join(", ")}) -> ${contract.result}`,
+  );
+  const args = array(call.args);
+  expect(
+    fn,
+    filename,
+    call,
+    args.length === signature.params.length &&
+      args.every(
+        (arg, index) => nodeType(arg) === "AST_SymbolRef" &&
+          arg.name === signature.params[index].name,
+      ),
+    "the fallback call must forward every matrix argument unchanged",
+  );
+  return {
+    name: signature.name,
+    decorated,
+    kernelKind: "prime-field-matrix",
+    operation,
+    params: signature.params,
+    returnType: signature.returnType,
+    locals: [],
+    body: [],
+    dependencies: [],
+    arithmetic: {
+      representations: ["u32", "u64"],
+      u32: "uint64 scalar products and Shoup-specialized row updates",
+      u64: "FLINT preinverse products and Shoup-specialized row updates",
+      portability: "nmod multiplication on platforms without a wider word",
+    },
+  };
+}
+
+module.exports = {
+  isPrimeFieldSignature,
+  lowerPrimeFieldFunction,
+};

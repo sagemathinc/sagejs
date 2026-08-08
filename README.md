@@ -882,19 +882,20 @@ sagejs --python compile input.py --output output.js
 node output.js
 ```
 
-## Native Kernel v7
+## Native Kernel v8
 
 The structured native compiler path parses `@native` Sage.js functions
 through the ordinary frontend, lowers them to an explicitly typed
 intermediate representation, and generates both a JavaScript fallback and a
 C/GMP/MPFR/MPC Node addon. In addition to `RealField` and `ComplexField` loops,
-v7 compiles exact `int`/`Integer` modules with comparisons, branching, `while`,
-floor division, remainder, and direct calls among compiled functions. Argument
+v8 compiles exact `int`/`Integer` modules and dense linear algebra over prime
+fields. Exact modules support comparisons, branching, `while`, floor division,
+remainder, and direct calls among compiled functions. Argument
 and return annotations in the source are the native signature; no parallel
 JavaScript type table is required. A
 content-addressed cache incorporates the source, typed IR, compiler
-implementation, native ABI, Node ABI, platform, and mathematical-library
-versions.
+implementation, native ABI, Node ABI, platform, compiler toolchain and flags,
+and mathematical-library versions.
 
 Generated native kernels cross Node-API once for the whole algorithm and
 return the same opaque native values used by the standard Sage.js
@@ -930,6 +931,20 @@ The compiler constructs a module call graph. Each exact-integer function gets
 a private C entry point, so a compiled `lcm()` can call compiled `gcd()` without
 crossing Node-API or returning through JavaScript. The same generated module
 contains an exact `BigInt` fallback.
+
+V8 also compiles rank, determinant, reduced echelon form, and matrix solve
+over `GF(p)`. It selects 32-bit or word-size modular arithmetic, uses
+precomputed Shoup row updates, keeps inputs immutable, and returns ordinary
+Sage.js matrices through a zero-copy shared ABI. On the dedicated benchmark
+host, the 22-KB generated addon beats user-facing Nemo and the available Magma
+2.18 on small and medium rank/determinant workloads; direct FLINT remains the
+algorithmic ceiling. See
+[`bench/PRIME-FIELD-NATIVE-BENCHMARK.md`](bench/PRIME-FIELD-NATIVE-BENCHMARK.md)
+and run:
+
+```sh
+pnpm run bench:native:prime-field
+```
 
 V7 can compile the complete unmodified CoWasm number-theory module—including
 its imports, defaults, tuple-returning extended GCD, destructuring, fixed wheel
@@ -971,7 +986,7 @@ kernel.gcd.gmp(a, b);    // start in GMP immediately
 benchmarking and diagnosis; `gmp` bypasses the int64 specialization and `auto`
 is the default.
 
-Native Kernel v7 also supports offset and exact-Integer `range` loops,
+Native Kernel v8 also supports offset and exact-Integer `range` loops,
 integer-to-field coercion, nested arithmetic, small constant powers, augmented
 and parallel assignment, exact `divmod`, literal defaults, fixed integer
 sequence lookup, typed tuple returns, checked `round(sqrt(Integer))`, explicit

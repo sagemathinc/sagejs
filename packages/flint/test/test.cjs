@@ -6,7 +6,7 @@ const flint = require("..");
 
 test("native FLINT arithmetic and exact algebra", () => {
 assert.equal(flint.version(), "3.6.0");
-assert.equal(flint.nativeAbiVersion(), 1);
+assert.equal(flint.nativeAbiVersion(), 2);
 assert.equal(flint.blasEnabled(), true);
 assert.equal(flint.mpfrVersion(), "4.2.2");
 assert.equal(

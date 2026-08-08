@@ -147,14 +147,14 @@ them to implement Sage-compatible `RealField(p)` and `ComplexField(p)` parents,
 with round-to-nearest arithmetic and exact conversion from `BigInt`
 numerators and denominators.
 
-The versioned header `include/sagejs/native.h` defines the initial shared
-MPFR/MPC element ABI. Separately compiled Sage.js native kernels use its
-stable Node-API type tags and ownership helpers, so their results can be
-consumed directly by this addon and wrapped as ordinary Sage.js
-`RealNumber`/`ComplexNumber` elements. `nativeAbiVersion()` reports the ABI
-version implemented by the addon. `mpfrVersion()`, `mpcVersion()`, and
-`gmpVersion()` expose the loaded mathematics-library versions for reproducible
-benchmarks.
+The versioned header `include/sagejs/native.h` defines the shared MPFR/MPC
+element ABI and, in version 2, the dense matrix layout used by generated
+prime-field kernels. Separately compiled Sage.js kernels use its stable
+Node-API type tags and ownership helpers, so their results can be consumed
+directly by this addon and wrapped as ordinary Sage.js elements without a
+JavaScript copy. `nativeAbiVersion()` reports the ABI version implemented by
+the addon. `mpfrVersion()`, `mpcVersion()`, and `gmpVersion()` expose the
+loaded mathematics-library versions for reproducible benchmarks.
 
 When this package is available to Sage.js, the language-level function loads
 it only upon first use and caches it:

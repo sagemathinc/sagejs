@@ -71,6 +71,8 @@ function backendFingerprint() {
       readFileSync(join(__dirname, "ir.cjs")),
       readFileSync(join(__dirname, "integer-ir.cjs")),
       readFileSync(join(__dirname, "exact-analysis.cjs")),
+      readFileSync(join(__dirname, "prime-field-ir.cjs")),
+      readFileSync(join(__dirname, "prime-field-backend.cjs")),
       readFileSync(join(__dirname, "word-backend.cjs")),
       readFileSync(join(__dirname, "tagged-backend.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
@@ -80,7 +82,30 @@ function backendFingerprint() {
   );
 }
 
-function bindingGyp() {
+function toolchainFingerprint() {
+  const compiler = process.env.CC ||
+    (process.platform === "win32" ? "ClangCL" : "cc");
+  const version = process.platform === "win32"
+    ? "selected by node-gyp"
+    : spawnSync(compiler, ["--version"], { encoding: "utf8" })
+      .stdout?.split("\n", 1)[0] || "unknown";
+  return {
+    compiler,
+    version,
+    cflags: process.env.CFLAGS || "",
+    cxx: process.env.CXX || "",
+    cxxflags: process.env.CXXFLAGS || "",
+    ldflags: process.env.LDFLAGS || "",
+  };
+}
+
+function bindingGyp(ir) {
+  const usesPrimeField = ir.functions.some(
+    (fn) => fn.kernelKind === "prime-field-matrix",
+  );
+  const matrixOnly = ir.functions.every(
+    (fn) => fn.kernelKind === "prime-field-matrix",
+  );
   const target = {
     target_name: "sagejs_native_kernel",
     win_delay_load_hook: "false",
@@ -90,12 +115,17 @@ function bindingGyp() {
   };
   if (process.platform === "win32") {
     target.libraries = [
-      nativeMpcLibrary,
-      join(nativePrefix, "lib", "mpfr.lib"),
-      join(nativePrefix, "lib", "gmp.lib"),
+      ...(!matrixOnly
+        ? [
+          nativeMpcLibrary,
+          join(nativePrefix, "lib", "mpfr.lib"),
+          join(nativePrefix, "lib", "gmp.lib"),
+        ]
+        : []),
     ];
     target.configurations = {
       Release: {
+        ...(usesPrimeField ? { msbuild_toolset: "ClangCL" } : {}),
         msvs_settings: {
           VCCLCompilerTool: { RuntimeLibrary: 2 },
         },
@@ -106,19 +136,34 @@ function bindingGyp() {
     };
   } else {
     target.libraries = [
-      nativeMpcLibrary,
-      join(nativePrefix, "lib", "libmpfr.a"),
-      join(nativePrefix, "lib", "libgmp.a"),
+      ...(!matrixOnly
+        ? [
+          nativeMpcLibrary,
+          join(nativePrefix, "lib", "libmpfr.a"),
+          join(nativePrefix, "lib", "libgmp.a"),
+        ]
+        : []),
       "-lm",
     ];
-    target.cflags = ["-O3", "-fPIC", "-Wall", "-Wextra"];
+    target.cflags = [
+      "-O3",
+      "-fPIC",
+      "-Wall",
+      "-Wextra",
+      "-ffunction-sections",
+      "-fdata-sections",
+    ];
     if (process.platform === "darwin") {
       target.xcode_settings = {
         GCC_OPTIMIZATION_LEVEL: "3",
         MACOSX_DEPLOYMENT_TARGET: "13.0",
       };
     } else {
-      target.ldflags = ["-Wl,--exclude-libs,ALL"];
+      target.ldflags = [
+        "-Wl,--gc-sections",
+        "-Wl,--exclude-libs,ALL",
+        "-Wl,--strip-all",
+      ];
     }
   }
   return {
@@ -142,6 +187,7 @@ async function compileKernel(options) {
     platform: process.platform,
     architecture: process.arch,
     nodeModulesAbi: process.versions.modules,
+    toolchain: toolchainFingerprint(),
     mpfr: "4.2.2",
     mpc: mpcVersion,
   };
@@ -175,7 +221,10 @@ async function compileKernel(options) {
     };
   }
 
-  if (!existsSync(nativeMpcLibrary)) {
+  const matrixOnly = ir.functions.every(
+    (fn) => fn.kernelKind === "prime-field-matrix",
+  );
+  if (!matrixOnly && !existsSync(nativeMpcLibrary)) {
     throw new Error(
       "native MPC dependencies are not built; run " +
         "pnpm --dir packages/flint build",
@@ -185,7 +234,7 @@ async function compileKernel(options) {
   writeFileSync(join(outputPath, "kernel.c"), generateC(ir));
   writeFileSync(
     join(outputPath, "binding.gyp"),
-    `${JSON.stringify(bindingGyp(), null, 2)}\n`,
+    `${JSON.stringify(bindingGyp(ir), null, 2)}\n`,
   );
   writeFileSync(
     modulePath,

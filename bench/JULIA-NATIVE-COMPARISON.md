@@ -81,9 +81,10 @@ implementation and 3.1x faster than idiomatic allocating `BigFloat`.
 ## GCC versus Clang
 
 The same generated C was compiled independently with `CC=gcc CXX=g++` and
-`CC=clang CXX=clang++`. Separate cache roots were mandatory because compiler
-identity is not yet part of the native-kernel cache fingerprint. ELF object
-metadata was inspected after the run to verify the compiler actually used.
+`CC=clang CXX=clang++`. Separate cache roots were used for this v7 measurement,
+and ELF object metadata was inspected after the run to verify the compiler
+actually used. Native Kernel v8 now includes compiler identity and effective
+flags in the cache fingerprint.
 
 Neither compiler dominates: GCC wins small GCD, recursion, overflow resume,
 and MPFR by 3--15%, while Clang wins large GCD and prime counting by 10--14%.
@@ -106,5 +107,4 @@ CC=clang CXX=clang++ \
 
 `SAGEJS_NATIVE_INTEGER_CACHE_ROOT` and
 `SAGEJS_MPMATH_AOT_CACHE_ROOT` provide the equivalent isolation for their
-benchmark runners. Compiler identity and effective flags should be added to
-the production cache key before compiler selection becomes a public option.
+benchmark runners.

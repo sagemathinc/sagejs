@@ -36,40 +36,6 @@
 #include "matrix.h"
 #include "sparse_rational.h"
 
-typedef enum
-{
-    SAGEJS_MATRIX_ZZ = 1,
-    SAGEJS_MATRIX_QQ = 2,
-    SAGEJS_MATRIX_NMOD = 3,
-    SAGEJS_MATRIX_ZMOD = 4,
-    SAGEJS_MATRIX_ACB = 5,
-    SAGEJS_MATRIX_QQBAR = 6
-} sagejs_matrix_kind;
-
-typedef struct
-{
-    uint64_t magic;
-    sagejs_matrix_kind kind;
-    fmpz_mat_t integer;
-    fmpq_mat_t rational;
-    nmod_mat_t modular;
-    acb_mat_t approximate;
-    gr_mat_t algebraic;
-    gr_ctx_t algebraic_context;
-    int algebraic_real;
-    ulong cyclotomic_order;
-    size_t cyclotomic_degree;
-    fmpq *cyclotomic_coordinates;
-    slong precision;
-} sagejs_matrix;
-
-#define SAGEJS_MATRIX_MAGIC UINT64_C(0x534147454A534D41)
-
-static const napi_type_tag sagejs_matrix_type_tag = {
-    UINT64_C(0x198a2dc27f5a47cc),
-    UINT64_C(0x98fb02f0ce7f6dc6)
-};
-
 static int check_napi(napi_env env, napi_status status)
 {
     const napi_extended_error_info *info;

@@ -8,8 +8,12 @@ const {
   lowerIntegerFunction,
   signatureFromFunction,
 } = require("./integer-ir.cjs");
+const {
+  isPrimeFieldSignature,
+  lowerPrimeFieldFunction,
+} = require("./prime-field-ir.cjs");
 
-const IR_VERSION = 7;
+const IR_VERSION = 8;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -674,8 +678,8 @@ async function lowerSource(source, filename, options = {}) {
     ) {
       const signature = signatureFromFunction(fn, filename);
       expect(
-        isIntegerSignature(signature),
-        `${fn.name.name} is not an exact-integer native signature`,
+        isIntegerSignature(signature) || isPrimeFieldSignature(signature),
+        `${fn.name.name} is not a supported native signature`,
       );
       signatures.set(signature.name, signature);
     }
@@ -684,13 +688,20 @@ async function lowerSource(source, filename, options = {}) {
     const signature = signatures.get(fn.name.name);
     return signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
-      : lowerIntegerFunction(
-          fn,
-          signature,
-          signatures,
-          filename,
-          decoratedMode,
-        );
+      : isPrimeFieldSignature(signature)
+        ? lowerPrimeFieldFunction(
+            fn,
+            signature,
+            filename,
+            decoratedMode,
+          )
+        : lowerIntegerFunction(
+            fn,
+            signature,
+            signatures,
+            filename,
+            decoratedMode,
+          );
   }));
   return {
     version: IR_VERSION,

@@ -513,6 +513,72 @@ ${fn.name}.taggedInteger = Object.freeze(${taggedInteger});
 ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
+function emitPrimeFieldPublicFunction(fn) {
+  const declaredParams = fn.params.map((param) => param.name).join(", ");
+  const descriptors = fn.params.map((param) =>
+    `  const sagejs_${param.name} = primeFieldMatrix(` +
+      `${param.name}, ${jsString(param.name)});`
+  ).join("\n");
+  const nativeArguments = fn.params
+    .map((param) => `sagejs_${param.name}.native`)
+    .join(", ");
+  const first = `sagejs_${fn.params[0].name}`;
+  let fallback;
+  let nativeResult;
+  if (fn.operation === "rank") {
+    fallback = `return primeFieldMethod(${first}.value, "rank");`;
+    nativeResult = `return primeFieldNativeCall(${jsString(fn.name)}, ` +
+      `[${nativeArguments}]);`;
+  } else if (fn.operation === "determinant") {
+    fallback = `return primeFieldMethod(${first}.value, "determinant");`;
+    nativeResult =
+      `const residue = primeFieldNativeCall(${jsString(fn.name)}, ` +
+      `[${nativeArguments}]);\n` +
+      `  return primeFieldMethod(${first}.base, "__call__", [residue]);`;
+  } else if (fn.operation === "echelon") {
+    fallback = `return primeFieldMethod(${first}.value, "echelon_form");`;
+    nativeResult =
+      `const native = primeFieldNativeCall(${jsString(fn.name)}, ` +
+      `[${nativeArguments}]);\n` +
+      `  return primeFieldMethod(${first}.value, "_new", [native]);`;
+  } else if (fn.operation === "solve") {
+    const second = `sagejs_${fn.params[1].name}`;
+    fallback = `return primeFieldMethod(${first}.value, "solve_right", ` +
+      `[${second}.value]);`;
+    nativeResult =
+      `const native = primeFieldNativeCall(${jsString(fn.name)}, ` +
+      `[${nativeArguments}]);\n` +
+      `  return primeFieldMethod(${second}.value, "_new", [native]);`;
+  } else {
+    throw new Error(`unsupported prime-field operation ${fn.operation}`);
+  }
+  const policy = JSON.stringify({
+    u32: "uint64 scalar products and Shoup-specialized row updates",
+    u64: "FLINT preinverse products and Shoup-specialized row updates",
+    mutation: "private elimination workspace; inputs remain immutable",
+  });
+  return `function ${fn.name}(${declaredParams}) {
+  if (arguments.length !== ${fn.params.length}) {
+    throw new TypeError(${jsString(fn.name)} + "() expects exactly " +
+      ${fn.params.length} + " argument(s)");
+  }
+${descriptors}
+  if (nativeAddon === null) {
+    ${fallback}
+  }
+  ${nativeResult}
+}
+${fn.name}.operation = ${jsString(fn.operation)};
+${fn.name}.backendFor = function (${fn.params[0].name}) {
+  const descriptor = primeFieldMatrix(
+    ${fn.params[0].name}, ${jsString(fn.params[0].name)});
+  const modulus = BigInt(Reflect.get(descriptor.base, "_modulus"));
+  return modulus <= 0xffffffffn ? "u32" : "u64";
+};
+${fn.name}.backendPolicy = Object.freeze(${policy});
+${fn.name}.nativeAvailable = nativeAddon !== null;`;
+}
+
 function generateJavaScript(ir, options = {}) {
   const exports = ir.functions.map((fn) => fn.name).join(", ");
   return `"use strict";
@@ -610,10 +676,51 @@ function nativeExactCall(name, args, backend = "tagged") {
   }
 }
 
+function primeFieldMatrix(value, argument) {
+  if (value === null || (typeof value !== "object" &&
+      typeof value !== "function")) {
+    throw new TypeError(argument + " must be a dense prime-field matrix");
+  }
+  const native = Reflect.get(value, "_native");
+  const baseMethod = Reflect.get(value, "base_ring");
+  if (native === undefined || typeof baseMethod !== "function") {
+    throw new TypeError(argument + " must be a dense prime-field matrix");
+  }
+  const base = Reflect.apply(baseMethod, value, []);
+  if (Reflect.get(base, "_kind") !== "GF") {
+    throw new TypeError(argument + " must be a dense matrix over GF(p)");
+  }
+  return { value, native, base };
+}
+
+function primeFieldMethod(value, name, args = []) {
+  const method = Reflect.get(value, name);
+  if (typeof method !== "function") {
+    throw new TypeError("prime-field matrix does not implement " + name);
+  }
+  return Reflect.apply(method, value, args);
+}
+
+function primeFieldNativeCall(name, args) {
+  try {
+    return nativeAddon[name](...args);
+  } catch (error) {
+    const message = String(error && error.message || error);
+    if (message.includes("singular") || message.includes("dimensions") ||
+        message.includes("square") || message.includes("compatible") ||
+        message.includes("base rings differ")) {
+      nativeRaise("ValueError", message);
+    }
+    throw error;
+  }
+}
+
 ${ir.functions.map((fn) =>
     fn.kernelKind === "integer"
       ? emitExactPublicFunction(fn)
-      : emitPublicFunction(fn)
+      : fn.kernelKind === "prime-field-matrix"
+        ? emitPrimeFieldPublicFunction(fn)
+        : emitPublicFunction(fn)
   ).join("\n\n")}
 
 const nativeFunctions = { ${exports} };

@@ -1,6 +1,6 @@
-# Native Kernel v7
+# Native Kernel v8
 
-Native Kernel v7 asks whether selected Sage.js library functions can compile
+Native Kernel v8 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v7 is currently a source-tree development feature and uses the
+Native Kernel v8 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -76,7 +76,7 @@ cache instead of the default `.sagejs-native-kernels` beside the source.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v7 supports:
+lowers marked functions to typed IR. Native Kernel v8 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -180,11 +180,12 @@ guard prevents that speculation for a future callee with observable writes.
 
 ## Shared native values
 
-`packages/flint/include/sagejs/native.h` is ABI version 1. It defines ownership
-and stable Node-API type tags for opaque MPFR and MPC elements. The generated
-kernel returns one of these ordinary native values. The supplied field verifies
-its precision and wraps it in the standard Sage.js `RealNumber` or
-`ComplexNumber` class.
+`packages/flint/include/sagejs/native.h` is ABI version 2. It defines ownership
+and stable Node-API type tags for opaque MPFR and MPC elements, plus the shared
+dense matrix layout used by prime-field kernels. Generated matrix results are
+accepted directly by the normal FLINT addon without copying through
+JavaScript. Scalar results remain ordinary native values that the supplied
+field wraps in the standard Sage.js `RealNumber` or `ComplexNumber` class.
 
 Consequently:
 
@@ -245,7 +246,7 @@ difference, not merely compiler or language overhead.
 
 ### Exact integers and CoWasm number theory
 
-Native Kernel v7 compiles every function directly from the complete unmodified
+Native Kernel v8 compiles every function directly from the complete unmodified
 [`cowasm/src/nt.py`](cowasm/src/nt.py):
 
 ```sh
@@ -292,7 +293,27 @@ pnpm run bench:native:cowasm
 SAGEJS_NATIVE_INTEGER_TERMS=4000000 pnpm run bench:native:integer
 ```
 
-## Deliberate v7 limits
+## Dense prime-field matrices
+
+V8 adds domain-specific lowering for annotated rank, determinant, reduced
+echelon form, and matrix solve operations over `GF(p)`. The readable reference
+implementation remains ordinary Python/Sage source. Generated code selects
+32-bit or word-size modular arithmetic, uses Shoup row updates, preserves
+inputs, and returns a zero-copy shared matrix. Its 1,000-matrix differential
+corpus covers primes from 2 through 61 bits; a further 200 systems exercise
+solve.
+
+Run the matched compiler/FLINT benchmark with:
+
+```sh
+pnpm run bench:native:prime-field
+```
+
+The dedicated-host comparison with Nemo and Magma, artifact-size accounting,
+and full methodology are in
+[`PRIME-FIELD-NATIVE-BENCHMARK.md`](PRIME-FIELD-NATIVE-BENCHMARK.md).
+
+## Deliberate v8 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements

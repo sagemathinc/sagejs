@@ -6,6 +6,8 @@ const TYPE_ALIASES = new Map([
   ["int", "Integer"],
   ["uint64", "uint64"],
   ["bool", "bool"],
+  ["PrimeFieldElement", "PrimeFieldElement"],
+  ["PrimeFieldMatrix", "PrimeFieldMatrix"],
 ]);
 const INTEGER_BINARY = new Map([
   ["+", "add"],
