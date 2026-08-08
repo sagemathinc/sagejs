@@ -73,7 +73,7 @@ function reference(runtime, command, args, extraEnvironment = {}) {
   });
   const kernel = require(generated.modulePath);
   const automatic = measure(
-    "Sage.js adaptive int64/GMP",
+    "Sage.js resumable int64/GMP",
     () => kernel.integer_quadratic_sum(terms),
     nativeRepetitions,
   );
@@ -111,7 +111,8 @@ function reference(runtime, command, args, extraEnvironment = {}) {
     workload: `${terms}-term exact quadratic integer sum`,
     selectedBackend: kernel.integer_quadratic_sum.backendFor(terms),
     backendPolicy: kernel.integer_quadratic_sum.backendPolicy,
-    machineWordProof: kernel.integer_quadratic_sum.machineWord,
+    taggedIntegerProof: kernel.integer_quadratic_sum.taggedInteger,
+    effects: kernel.integer_quadratic_sum.effects,
     cacheKey: generated.cacheKey,
     cached: generated.cached,
     rows: rows.map((row) => ({

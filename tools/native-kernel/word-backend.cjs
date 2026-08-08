@@ -2,19 +2,27 @@
 
 const { tupleElementTypes } = require("./integer-ir.cjs");
 
+const INT64_MIN = -(1n << 63n);
+const INT64_MAX = (1n << 63n) - 1n;
+
 function cString(value) {
   return JSON.stringify(String(value));
 }
 
-function wordName(name) {
-  return `sagejs_word_${name}`;
+function fitsInt64(value) {
+  const integer = BigInt(value);
+  return integer >= INT64_MIN && integer <= INT64_MAX;
 }
 
 function int64Constant(value) {
   const integer = BigInt(value);
-  if (integer === -(1n << 63n)) return "INT64_MIN";
+  if (integer === INT64_MIN) return "INT64_MIN";
   if (integer < 0n) return `(-INT64_C(${(-integer).toString()}))`;
   return `INT64_C(${integer.toString()})`;
+}
+
+function wordName(name) {
+  return `sagejs_word_${name}`;
 }
 
 function wordType(type) {
@@ -42,192 +50,239 @@ function wordSignature(fn, prototype = false) {
   return `static int word_${fn.name}(${parameters})${prototype ? ";" : ""}`;
 }
 
-function wordValue(name) {
-  return wordName(name);
+function walks(statements, visit) {
+  for (const statement of statements) {
+    if (statement.kind === "if") {
+      walks(statement.condition.operations, visit);
+      walks(statement.body, visit);
+      walks(statement.alternative, visit);
+    } else if (statement.kind === "while") {
+      walks(statement.condition.operations, visit);
+      walks(statement.body, visit);
+    } else if (
+      statement.kind === "loop.range" ||
+      statement.kind === "loop.range_exact"
+    ) {
+      walks(statement.body, visit);
+    } else if (statement.kind === "bool.short_circuit") {
+      visit(statement);
+      walks(statement.right.operations, visit);
+    } else {
+      visit(statement);
+    }
+  }
 }
 
-function emitDivisionError(indent) {
+function mayPromote(operation) {
+  if (operation.kind === "integer.constant") {
+    return !fitsInt64(operation.value);
+  }
+  if (operation.kind === "integer.sequence.get") {
+    return operation.values.some((value) => !fitsInt64(value));
+  }
+  return [
+    "integer.from_uint64",
+    "integer.neg",
+    "integer.abs",
+    "integer.pow_uint",
+    "integer.divmod",
+    "integer.binary",
+    "native.call",
+  ].includes(operation.kind);
+}
+
+function promotionSites(fn) {
+  const sites = new Map();
+  let next = 1;
+  walks(fn.body, (operation) => {
+    if (mayPromote(operation)) sites.set(operation, next++);
+  });
+  return sites;
+}
+
+function emitDivisionError(indent, failure) {
   return [
     `${indent}napi_throw_range_error(env, NULL, ` +
       '"integer division or modulo by zero");',
-    `${indent}return SAGEJS_WORD_ERROR;`,
+    `${indent}${failure}`,
   ].join("\n");
 }
 
 function emitWordOperation(operation, context, indent) {
-  const target = wordValue(operation.target);
+  const value = context.value;
+  const target = operation.target === undefined
+    ? undefined
+    : value(operation.target);
+  const promote = () => context.promote(operation, indent);
   if (operation.kind === "integer.constant") {
-    return `${indent}${target} = ${int64Constant(operation.value)};`;
+    return fitsInt64(operation.value)
+      ? `${indent}${target} = ${int64Constant(operation.value)};`
+      : promote();
   }
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
-  if (
-    operation.kind === "integer.copy" ||
-    operation.kind === "bool.copy" ||
-    operation.kind === "uint64.copy"
-  ) {
-    return `${indent}${target} = ${wordValue(operation.source)};`;
+  if (["integer.copy", "bool.copy", "uint64.copy"].includes(operation.kind)) {
+    return `${indent}${target} = ${value(operation.source)};`;
   }
   if (operation.kind === "integer.from_uint64") {
-    const source = wordValue(operation.source);
+    const source = value(operation.source);
     return [
       `${indent}if (${source} > (uint64_t) INT64_MAX)`,
-      `${indent}    return SAGEJS_WORD_PROMOTE;`,
+      promote(),
       `${indent}${target} = (int64_t) ${source};`,
     ].join("\n");
   }
-  if (operation.kind === "integer.neg") {
-    return [
-      `${indent}if (${wordValue(operation.source)} == INT64_MIN)`,
-      `${indent}    return SAGEJS_WORD_PROMOTE;`,
-      `${indent}${target} = -${wordValue(operation.source)};`,
-    ].join("\n");
-  }
-  if (operation.kind === "integer.abs") {
-    const source = wordValue(operation.source);
+  if (operation.kind === "integer.neg" || operation.kind === "integer.abs") {
+    const source = value(operation.source);
+    const expression = operation.kind === "integer.neg"
+      ? `-${source}`
+      : `${source} < 0 ? -${source} : ${source}`;
     return [
       `${indent}if (${source} == INT64_MIN)`,
-      `${indent}    return SAGEJS_WORD_PROMOTE;`,
-      `${indent}${target} = ${source} < 0 ? -${source} : ${source};`,
+      promote(),
+      `${indent}${target} = ${expression};`,
     ].join("\n");
   }
   if (operation.kind === "integer.pow_uint") {
     return [
-      `${indent}if (!sagejs_word_pow_int64(${wordValue(operation.base)}, ` +
+      `${indent}if (!sagejs_word_pow_int64(${value(operation.base)}, ` +
         `UINT64_C(${operation.exponent}), &${target}))`,
-      `${indent}    return SAGEJS_WORD_PROMOTE;`,
+      promote(),
     ].join("\n");
   }
   if (operation.kind === "integer.divmod") {
-    const left = wordValue(operation.left);
-    const right = wordValue(operation.right);
+    const left = value(operation.left);
+    const right = value(operation.right);
     return [
       `${indent}if (${right} == 0)`,
       `${indent}{`,
-      emitDivisionError(`${indent}    `),
+      emitDivisionError(`${indent}    `, context.failure),
       `${indent}}`,
       `${indent}if (${left} == INT64_MIN && ${right} == -1)`,
-      `${indent}    return SAGEJS_WORD_PROMOTE;`,
+      promote(),
       `${indent}sagejs_word_fdiv_int64(${left}, ${right}, ` +
-        `&${wordValue(operation.quotient)}, ` +
-        `&${wordValue(operation.remainder)});`,
+        `&${value(operation.quotient)}, &${value(operation.remainder)});`,
     ].join("\n");
   }
   if (operation.kind === "integer.round_sqrt") {
-    const source = wordValue(operation.source);
+    const source = value(operation.source);
     return [
       `${indent}if (${source} < 0)`,
       `${indent}{`,
       `${indent}    napi_throw_range_error(env, NULL, "math domain error");`,
-      `${indent}    return SAGEJS_WORD_ERROR;`,
+      `${indent}    ${context.failure}`,
       `${indent}}`,
       `${indent}${target} = (int64_t) nearbyint(sqrt((double) ${source}));`,
     ].join("\n");
   }
   if (operation.kind === "integer.sequence.get") {
-    const index = wordValue(operation.index);
-    const cases = operation.values.map((value, position) => [
+    const index = value(operation.index);
+    const cases = operation.values.map((item, position) => [
       `${indent}    case ${position}:`,
-      `${indent}        ${target} = ${int64Constant(value)};`,
+      fitsInt64(item)
+        ? `${indent}        ${target} = ${int64Constant(item)};`
+        : context.promote(operation, `${indent}        `),
       `${indent}        break;`,
     ].join("\n")).join("\n");
     return [
       `${indent}{`,
       `${indent}    int64_t sagejs_word_position = ${index};`,
       `${indent}    if (sagejs_word_position < 0)`,
-      `${indent}        sagejs_word_position += INT64_C(${operation.values.length});`,
+      `${indent}        sagejs_word_position += ` +
+        `INT64_C(${operation.values.length});`,
       `${indent}    switch (sagejs_word_position)`,
       `${indent}    {`,
       cases,
       `${indent}    default:`,
       `${indent}        napi_throw_range_error(env, NULL, ` +
         '"native sequence index out of range");',
-      `${indent}        return SAGEJS_WORD_ERROR;`,
+      `${indent}        ${context.failure}`,
       `${indent}    }`,
       `${indent}}`,
     ].join("\n");
   }
   if (operation.kind === "integer.binary") {
-    const left = wordValue(operation.left);
-    const right = wordValue(operation.right);
-    const checked = {
-      add: "add",
-      sub: "sub",
-      mul: "mul",
-    }[operation.operation];
+    const left = value(operation.left);
+    const right = value(operation.right);
+    const checked = { add: "add", sub: "sub", mul: "mul" }[
+      operation.operation
+    ];
     if (checked !== undefined) {
       return [
         `${indent}if (!sagejs_word_${checked}_int64(` +
           `${left}, ${right}, &${target}))`,
-        `${indent}    return SAGEJS_WORD_PROMOTE;`,
+        promote(),
       ].join("\n");
     }
-    if (operation.operation === "floordiv" || operation.operation === "mod") {
+    if (["floordiv", "mod"].includes(operation.operation)) {
       const output = operation.operation === "floordiv"
         ? `&${target}, NULL`
         : `NULL, &${target}`;
       return [
         `${indent}if (${right} == 0)`,
         `${indent}{`,
-        emitDivisionError(`${indent}    `),
+        emitDivisionError(`${indent}    `, context.failure),
         `${indent}}`,
         `${indent}if (${left} == INT64_MIN && ${right} == -1)`,
-        `${indent}    return SAGEJS_WORD_PROMOTE;`,
+        promote(),
         `${indent}sagejs_word_fdiv_int64(${left}, ${right}, ${output});`,
       ].join("\n");
     }
-    throw new Error(`unsupported machine-word operation ${operation.operation}`);
+    throw new Error(`unsupported word operation ${operation.operation}`);
   }
   if (operation.kind === "integer.compare" || operation.kind === "bool.compare") {
     const operator = {
       eq: "==", ne: "!=", lt: "<", le: "<=", gt: ">", ge: ">=",
     }[operation.operation];
-    return `${indent}${target} = ${wordValue(operation.left)} ${operator} ` +
-      `${wordValue(operation.right)};`;
+    return `${indent}${target} = ${value(operation.left)} ${operator} ` +
+      `${value(operation.right)};`;
   }
   if (operation.kind === "bool.binary") {
     const operator = operation.operation === "and" ? "&&" : "||";
-    return `${indent}${target} = ${wordValue(operation.left)} ${operator} ` +
-      `${wordValue(operation.right)};`;
+    return `${indent}${target} = ${value(operation.left)} ${operator} ` +
+      `${value(operation.right)};`;
   }
   if (operation.kind === "bool.short_circuit") {
     const test = operation.operation === "and" ? target : `!${target}`;
     return [
-      `${indent}${target} = ${wordValue(operation.left)};`,
+      `${indent}${target} = ${value(operation.left)};`,
       `${indent}if (${test})`,
       `${indent}{`,
       emitWordStatements(operation.right.operations, context, `${indent}    `),
-      `${indent}    ${target} = ${wordValue(operation.right.value)};`,
+      `${indent}    ${target} = ${value(operation.right.value)};`,
       `${indent}}`,
     ].join("\n");
   }
   if (operation.kind === "bool.not") {
-    return `${indent}${target} = !${wordValue(operation.source)};`;
+    return `${indent}${target} = !${value(operation.source)};`;
   }
   if (operation.kind === "integer.truth" || operation.kind === "uint64.truth") {
-    return `${indent}${target} = ${wordValue(operation.source)} != 0;`;
+    return `${indent}${target} = ${value(operation.source)} != 0;`;
   }
   if (operation.kind === "native.call") {
-    const callee = context.functions.get(operation.function);
-    if (!callee?.analysis?.machineWord?.eligible) {
-      throw new Error(`callee ${operation.function} lacks word specialization`);
+    const callee = context.functions?.get(operation.function);
+    if (callee !== undefined && !callee.analysis.effects.replaySafe) {
+      return promote();
     }
     const outputs = operation.results === undefined
       ? [`&${target}`]
-      : operation.results.map((result) => `&${wordValue(result.name)}`);
-    const args = operation.arguments.map((argument) => wordValue(argument.name));
+      : operation.results.map((result) => `&${value(result.name)}`);
+    const args = operation.arguments.map((argument) => value(argument.name));
+    const status = `sagejs_word_status_${context.sites.get(operation)}`;
     return [
       `${indent}{`,
-      `${indent}    const int sagejs_word_status = ` +
-        `word_${operation.function}(env, ${outputs.join(", ")}` +
+      `${indent}    const int ${status} = word_${operation.function}(` +
+        `env, ${outputs.join(", ")}` +
         `${args.length ? `, ${args.join(", ")}` : ""});`,
-      `${indent}    if (sagejs_word_status != SAGEJS_WORD_OK)`,
-      `${indent}        return sagejs_word_status;`,
+      `${indent}    if (${status} == SAGEJS_WORD_ERROR)`,
+      `${indent}        ${context.failure}`,
+      `${indent}    if (${status} == SAGEJS_WORD_PROMOTE)`,
+      context.promote(operation, `${indent}        `),
       `${indent}}`,
     ].join("\n");
   }
-  throw new Error(`unsupported machine-word IR operation ${operation.kind}`);
+  throw new Error(`unsupported word C IR operation ${operation.kind}`);
 }
 
 function emitWordStatements(statements, context, indent) {
@@ -236,15 +291,14 @@ function emitWordStatements(statements, context, indent) {
     if (statement.kind === "if") {
       lines.push(
         emitWordStatements(statement.condition.operations, context, indent),
-        `${indent}if (${wordValue(statement.condition.value)})`,
+        `${indent}if (${context.value(statement.condition.value)})`,
         `${indent}{`,
         emitWordStatements(statement.body, context, `${indent}    `),
         `${indent}}`,
       );
       if (statement.alternative.length > 0) {
         lines.push(
-          `${indent}else`,
-          `${indent}{`,
+          `${indent}else`, `${indent}{`,
           emitWordStatements(statement.alternative, context, `${indent}    `),
           `${indent}}`,
         );
@@ -253,14 +307,9 @@ function emitWordStatements(statements, context, indent) {
     }
     if (statement.kind === "while") {
       lines.push(
-        `${indent}for (;;)`,
-        `${indent}{`,
-        emitWordStatements(
-          statement.condition.operations,
-          context,
-          `${indent}    `,
-        ),
-        `${indent}    if (!${wordValue(statement.condition.value)})`,
+        `${indent}for (;;)`, `${indent}{`,
+        emitWordStatements(statement.condition.operations, context, `${indent}    `),
+        `${indent}    if (!${context.value(statement.condition.value)})`,
         `${indent}        break;`,
         emitWordStatements(statement.body, context, `${indent}    `),
         `${indent}}`,
@@ -268,11 +317,11 @@ function emitWordStatements(statements, context, indent) {
       continue;
     }
     if (statement.kind === "loop.range") {
-      const index = wordValue(statement.index);
+      const index = context.value(statement.index);
       lines.push(
         `${indent}for (${index} = UINT64_C(${statement.start}); ` +
           `(${index} - UINT64_C(${statement.start})) < ` +
-          `${wordValue(statement.count)}; ${index}++)`,
+          `${context.value(statement.count)}; ${index}++)`,
         `${indent}{`,
         emitWordStatements(statement.body, context, `${indent}    `),
         `${indent}}`,
@@ -280,10 +329,10 @@ function emitWordStatements(statements, context, indent) {
       continue;
     }
     if (statement.kind === "loop.range_exact") {
-      const index = wordValue(statement.index);
+      const index = context.value(statement.index);
       lines.push(
-        `${indent}${index} = ${wordValue(statement.start)};`,
-        `${indent}while (${index} < ${wordValue(statement.stop)})`,
+        `${indent}${index} = ${context.value(statement.start)};`,
+        `${indent}while (${index} < ${context.value(statement.stop)})`,
         `${indent}{`,
         emitWordStatements(statement.body, context, `${indent}    `),
         `${indent}    ${index} += INT64_C(1);`,
@@ -293,19 +342,22 @@ function emitWordStatements(statements, context, indent) {
     }
     if (statement.kind === "return") {
       const values = statement.values || [statement.value];
-      values.forEach((value, index) => {
-        lines.push(
-          `${indent}*sagejs_word_output_${index} = ${wordValue(value)};`,
-        );
-      });
-      lines.push(`${indent}return SAGEJS_WORD_OK;`);
+      if (context.returnWord !== undefined) {
+        lines.push(context.returnWord(statement, values, indent));
+      } else {
+        values.forEach((value, index) => {
+          lines.push(
+            `${indent}*sagejs_word_output_${index} = ${context.value(value)};`,
+          );
+        });
+        lines.push(`${indent}return SAGEJS_WORD_OK;`);
+      }
       continue;
     }
     if (statement.kind === "raise") {
       lines.push(
-        `${indent}napi_throw_range_error(env, NULL, ` +
-          `${cString(statement.message)});`,
-        `${indent}return SAGEJS_WORD_ERROR;`,
+        `${indent}napi_throw_range_error(env, NULL, ${cString(statement.message)});`,
+        `${indent}${context.failure}`,
       );
       continue;
     }
@@ -315,17 +367,26 @@ function emitWordStatements(statements, context, indent) {
 }
 
 function emitWordFunction(fn, functions) {
-  if (!fn.analysis.machineWord.eligible) return "";
+  const sites = promotionSites(fn);
   const params = new Set(fn.params.map((param) => param.name));
   const declarations = fn.locals
     .filter((local) =>
       !params.has(local.name) && !local.type.startsWith("IntegerSequence[")
     )
     .map((local) => `    ${wordType(local.type)} ${wordName(local.name)} = 0;`);
+  const context = {
+    failure: "return SAGEJS_WORD_ERROR;",
+    promote(_operation, indent) {
+      return `${indent}return SAGEJS_WORD_PROMOTE;`;
+    },
+    functions,
+    sites,
+    value: wordName,
+  };
   return `${wordSignature(fn)}
 {
 ${declarations.join("\n")}
-${emitWordStatements(fn.body, { functions }, "    ")}
+${emitWordStatements(fn.body, context, "    ")}
     napi_throw_error(env, NULL, "native word function completed without returning");
     return SAGEJS_WORD_ERROR;
 }`;
@@ -333,20 +394,20 @@ ${emitWordStatements(fn.body, { functions }, "    ")}
 
 function generateWordFunctions(functions) {
   const functionMap = new Map(functions.map((fn) => [fn.name, fn]));
-  const eligible = functions.filter(
-    (fn) => fn.analysis.machineWord.eligible,
-  );
   return {
-    prototypes: eligible.map((fn) => wordSignature(fn, true)).join("\n"),
-    functions: eligible
+    prototypes: functions.map((fn) => wordSignature(fn, true)).join("\n"),
+    functions: functions
       .map((fn) => emitWordFunction(fn, functionMap))
       .join("\n\n"),
   };
 }
 
 module.exports = {
+  emitWordStatements,
+  fitsInt64,
   generateWordFunctions,
   int64Constant,
+  promotionSites,
   wordName,
   wordResults,
   wordSignature,

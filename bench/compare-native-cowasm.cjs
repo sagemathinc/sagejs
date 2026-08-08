@@ -154,8 +154,8 @@ function interpreter(command, args, mode, count) {
       platform: process.platform,
     },
     completeUnmodifiedNtCallGraph: complete.ir.callGraph,
-    completeMachineWordProofs: Object.fromEntries(
-      complete.ir.functions.map((fn) => [fn.name, fn.analysis.machineWord]),
+    completeTaggedIntegerProofs: Object.fromEntries(
+      complete.ir.functions.map((fn) => [fn.name, fn.analysis.taggedInteger]),
     ),
     completeUnmodifiedNtGcd: String(selectedGcd),
     callGraph: algorithms.ir.callGraph,
@@ -250,25 +250,25 @@ function interpreter(command, args, mode, count) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return;
   }
-  console.log("Native Kernel v6 — CoWasm number theory");
+  console.log("Native Kernel v7 — CoWasm number theory");
   console.log(`complete unmodified nt.py gcd(92250, 922350): ${selectedGcd}`);
   console.table({
-    "GCD adaptive int64/GMP": automaticGcd.seconds,
+    "GCD resumable int64/GMP": automaticGcd.seconds,
     "GCD forced GMP": nativeGcd.seconds,
     "GCD exact BigInt": bigintGcd.seconds,
     "GCD CPython": cpythonGcd.seconds,
     "GCD Sage.js Python": sagejsGcd.seconds,
-    "large GCD adaptive int64/GMP": automaticLargeGcd.seconds,
+    "large GCD selected exact backend": automaticLargeGcd.seconds,
     "large GCD forced GMP": nativeLargeGcd.seconds,
     "large GCD exact BigInt": bigintLargeGcd.seconds,
     "large GCD CPython": cpythonLargeGcd.seconds,
     "large GCD Sage.js Python": sagejsLargeGcd.seconds,
-    "rfib adaptive int64/GMP": automaticFibonacci.seconds,
+    "rfib resumable int64/GMP": automaticFibonacci.seconds,
     "rfib forced GMP": nativeFibonacci.seconds,
     "rfib exact BigInt": bigintFibonacci.seconds,
     "rfib CPython": cpythonFibonacci.seconds,
     "rfib Sage.js Python": sagejsFibonacci.seconds,
-    "pi adaptive int64/GMP": automaticPi.seconds,
+    "pi resumable int64/GMP": automaticPi.seconds,
     "pi forced GMP": nativePi.seconds,
     "pi exact BigInt": bigintPi.seconds,
     "pi CPython": cpythonPi.seconds,

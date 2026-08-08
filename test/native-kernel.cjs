@@ -72,7 +72,7 @@ const completeNumberTheoryIr = await lowerSource(
 );
 const completeNumberTheoryC = generateC(completeNumberTheoryIr);
 
-assert.equal(ir.version, 6);
+assert.equal(ir.version, 7);
 assert.equal(complexFunction.params[0].type, "ComplexField");
 assert.equal(complexFunction.params[1].type, "uint64");
 assert.equal(complexFunction.returnType, "ComplexNumber");
@@ -143,13 +143,22 @@ assert.equal(
   "100000",
 );
 assert.match(completeNumberTheoryC, /mpz_fdiv_qr\(/);
-assert.match(completeNumberTheoryC, /static int word_pi\(/);
+assert.match(completeNumberTheoryC, /static int tagged_pi\(/);
+assert.match(completeNumberTheoryC, /sagejs_tagged_int/);
+assert.match(completeNumberTheoryC, /sagejs_tagged_make_big\(/);
 assert.match(completeNumberTheoryC, /sagejs_word_mul_int64\(/);
 assert.match(completeNumberTheoryC, /SAGEJS_WORD_PROMOTE/);
+assert.match(completeNumberTheoryC, /sagejs_tagged_promote:/);
 assert.match(completeNumberTheoryC, /compiled_pi_gmp/);
 assert.ok(
   completeNumberTheoryIr.functions.every(
-    (fn) => fn.analysis.machineWord.eligible,
+    (fn) => fn.analysis.taggedInteger.eligible &&
+      fn.analysis.taggedInteger.publicReplay === "never",
+  ),
+);
+assert.ok(
+  completeNumberTheoryIr.functions.every(
+    (fn) => fn.analysis.effects.externalWrites.length === 0,
   ),
 );
 assert.match(
@@ -159,6 +168,10 @@ assert.match(
 assert.match(
   completeNumberTheoryC,
   /native_pi[\s\S]*native_is_prime\(env/,
+);
+assert.match(
+  completeNumberTheoryC,
+  /tagged_pi[\s\S]*tagged_is_prime\(env/,
 );
 assert.match(
   harmonicC,
@@ -182,6 +195,7 @@ assert.deepEqual(
   new Set(["integer.from_uint64", "integer.binary"]),
 );
 assert.match(integerC, /mpz_mul\(/);
+assert.match(integerC, /sagejs_tagged_mul\(/);
 assert.match(integerC, /napi_create_bigint_words\(/);
 assert.deepEqual(integerAlgorithmsIr.callGraph.native_lcm, ["native_gcd"]);
 assert.deepEqual(integerAlgorithmsIr.callGraph.native_coprime, ["native_gcd"]);
@@ -216,6 +230,24 @@ assert.deepEqual(
     .analysis.storage.mutableParameters,
   ["a", "b"],
 );
+assert.deepEqual(
+  integerAlgorithmsIr.functions.find((fn) => fn.name === "native_lcm")
+    .analysis.effects,
+  {
+    pure: true,
+    deterministic: true,
+    localWrites: 12,
+    externalWrites: [],
+    calls: ["native_gcd"],
+    mayRaise: ["ZeroDivisionError"],
+    replaySafe: true,
+  },
+);
+assert.equal(
+  integerAlgorithmsIr.functions.find((fn) => fn.name === "native_lcm")
+    .analysis.taggedInteger.promotion,
+  "in-place-at-current-instruction",
+);
 assert.match(
   integerAlgorithmsC,
   /native_native_lcm[\s\S]*native_native_gcd\(env/,
@@ -232,12 +264,12 @@ assert.equal(
 assert.equal(
   nativeNumberTheoryIr.functions.find((fn) => fn.name === "native_rfib")
     .analysis.backend.kind,
-  "gmp",
+  "tagged",
 );
 assert.equal(
   nativeNumberTheoryIr.functions.find((fn) => fn.name === "native_bench_gcd")
     .analysis.backend.kind,
-  "gmp",
+  "tagged",
 );
 assert.equal(
   nativeNumberTheoryIr.functions.find(
@@ -357,9 +389,17 @@ try {
   });
   const integerModule = require(integerKernel.modulePath);
   assert.equal(integerModule.integer_quadratic_sum(10), -275n);
-  assert.equal(integerModule.integer_quadratic_sum.backendFor(10), "gmp");
-  assert.equal(integerModule.integer_quadratic_sum.backendPolicy.kind, "gmp");
-  assert.equal(integerModule.integer_quadratic_sum.machineWord.eligible, true);
+  assert.equal(integerModule.integer_quadratic_sum.backendFor(10), "tagged");
+  assert.equal(integerModule.integer_quadratic_sum.backendPolicy.kind, "tagged");
+  assert.equal(
+    integerModule.integer_quadratic_sum.taggedInteger.promotion,
+    "in-place-at-current-instruction",
+  );
+  assert.equal(
+    integerModule.integer_quadratic_sum.taggedInteger.publicReplay,
+    "never",
+  );
+  assert.equal(integerModule.integer_quadratic_sum.effects.pure, true);
   assert.equal(
     integerModule.integer_quadratic_sum(1_000_000),
     -333332833332500000n,
@@ -379,6 +419,22 @@ try {
     integerModule.integer_quadratic_sum.gmp(Number(promotedTerms)),
     promotedExpected,
   );
+  assert.equal(
+    integerModule.integer_quadratic_sum.tagged(Number(promotedTerms)),
+    promotedExpected,
+  );
+  const adaptiveWrapperStart = integerC.indexOf(
+    "static napi_value compiled_integer_quadratic_sum(",
+  );
+  const forcedWrapperStart = integerC.indexOf(
+    "static napi_value compiled_integer_quadratic_sum_gmp(",
+  );
+  const adaptiveWrapper = integerC.slice(
+    adaptiveWrapperStart,
+    forcedWrapperStart,
+  );
+  assert.match(adaptiveWrapper, /tagged_integer_quadratic_sum\(/);
+  assert.doesNotMatch(adaptiveWrapper, /native_integer_quadratic_sum\(/);
   const integerAlgorithmsCache = join(
     temporary,
     "integer-algorithms-cache",
@@ -389,7 +445,7 @@ try {
   });
   assert.match(
     readFileSync(integerAlgorithms.modulePath, "utf8"),
-    /integerBackendOverride === "gmp" \? "gmp" : "adaptive"/,
+    /sagejs_native_backend !== "bigint"/,
   );
   const integerAlgorithmsModule = require(integerAlgorithms.modulePath);
   const integerAlgorithmsAddon = require(integerAlgorithms.addonPath);
@@ -414,7 +470,7 @@ try {
       2n ** 100n - 1n,
       2n ** 50n - 1n,
     ),
-    "gmp",
+    "tagged",
   );
   assert.equal(
     integerAlgorithmsModule.native_gcd.backendPolicy.minimumBits,
@@ -479,6 +535,14 @@ try {
     int64Min, int64Min + 1n, -3_037_000_500n, -2n, -1n, 0n, 1n, 2n,
     3_037_000_499n, 3_037_000_500n, int64Max - 1n, int64Max,
   ];
+  const taggedBoundaries = [
+    ...boundaryWords,
+    int64Min - 1n,
+    int64Max + 1n,
+    -(2n ** 100n),
+    2n ** 100n,
+    2n ** 200n + 17n,
+  ];
   const pythonFloorDiv = (left, right) => {
     let quotient = left / right;
     const remainder = left % right;
@@ -528,6 +592,39 @@ try {
       );
     }
   }
+  for (const left of taggedBoundaries) {
+    assert.equal(integerAlgorithmsAddon.native_neg(left), -left);
+    assert.equal(
+      integerAlgorithmsAddon.native_abs(left),
+      left < 0n ? -left : left,
+    );
+    assert.equal(integerAlgorithmsAddon.native_square(left), left * left);
+    for (const right of taggedBoundaries) {
+      assert.equal(integerAlgorithmsAddon.native_add(left, right), left + right);
+      assert.equal(integerAlgorithmsAddon.native_sub(left, right), left - right);
+      assert.equal(integerAlgorithmsAddon.native_mul(left, right), left * right);
+      if (right === 0n) continue;
+      const quotient = pythonFloorDiv(left, right);
+      const remainder = left - quotient * right;
+      assert.equal(
+        integerAlgorithmsAddon.native_floordiv(left, right),
+        quotient,
+      );
+      assert.equal(integerAlgorithmsAddon.native_mod(left, right), remainder);
+      assert.deepEqual(
+        integerAlgorithmsAddon.native_divmod(left, right),
+        [quotient, remainder],
+      );
+    }
+  }
+  assert.equal(
+    integerAlgorithmsModule.native_call_square(int64Max),
+    int64Max * int64Max + 1n,
+  );
+  assert.equal(
+    integerAlgorithmsModule.native_call_square.tagged(2n ** 100n),
+    2n ** 200n + 1n,
+  );
   assert.equal(
     integerAlgorithmsModule.native_gcd.gmp(92250, 922350),
     150n,
@@ -547,7 +644,7 @@ try {
   const nativeNumberTheoryModule = require(nativeNumberTheory.modulePath);
   assert.equal(
     nativeNumberTheoryModule.native_bench_gcd.backendFor(100),
-    "gmp",
+    "tagged",
   );
   assert.equal(
     nativeNumberTheoryModule.native_bench_large_gcd.backendFor(2),
@@ -556,12 +653,12 @@ try {
   assert.equal(
     nativeNumberTheory.ir.functions.find(
       (fn) => fn.name === "native_bench_large_gcd",
-    ).analysis.machineWord.eligible,
-    false,
+    ).analysis.taggedInteger.eligible,
+    true,
   );
   assert.equal(
     nativeNumberTheoryModule.native_rfib.backendFor(10),
-    "gmp",
+    "tagged",
   );
   assert.equal(nativeNumberTheoryModule.native_rfib(10), 89n);
   assert.equal(
@@ -587,7 +684,7 @@ try {
     is_prime: ["trial_division"],
     pi: ["is_prime"],
   });
-  for (const backend of ["javascript", "gmp"]) {
+  for (const backend of ["javascript", "tagged", "gmp"]) {
     const api = (name) => completeNumberTheoryModule[name][backend];
     assert.equal(api("gcd")(92250, 922350), 150n);
     for (const [a, b, expected] of [
@@ -623,9 +720,9 @@ try {
   assert.equal(completeNumberTheoryModule.trial_division(49), 7n);
   assert.equal(completeNumberTheoryAddon.trial_division(49), 7n);
   assert.equal(completeNumberTheoryModule.pi(), 9592n);
-  assert.equal(completeNumberTheoryModule.pi.backendFor(100000), "gmp");
+  assert.equal(completeNumberTheoryModule.pi.backendFor(100000), "tagged");
   assert.equal(Object.isFrozen(completeNumberTheoryModule.xgcd(240, 46)), true);
-  for (const backend of ["javascript", "gmp"]) {
+  for (const backend of ["javascript", "tagged", "gmp"]) {
     assert.throws(
       () => completeNumberTheoryModule.inverse_mod[backend](2, 4),
       /division by zero/,
@@ -896,7 +993,7 @@ print(is_compiled(native_powmod))
   rmSync(temporary, { recursive: true, force: true });
 }
 
-console.log("Native Kernel v6 analysis, selection, ABI, and fallback passed.");
+console.log("Native Kernel v7 analysis, deoptimization, ABI, and fallback passed.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

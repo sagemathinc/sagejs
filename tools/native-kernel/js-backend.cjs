@@ -408,7 +408,7 @@ function normalizedArgument(param) {
 
 function backendDecision(fn) {
   const policy = fn.analysis.backend;
-  if (policy.kind === "gmp" || policy.kind === "bigint") {
+  if (["tagged", "gmp", "bigint"].includes(policy.kind)) {
     return `  return ${jsString(policy.kind)};`;
   }
   if (policy.kind === "iterations") {
@@ -416,7 +416,7 @@ function backendDecision(fn) {
     const minimum = BigInt(policy.minimumIterations);
     return `  return (typeof ${value} === "bigint" ` +
       `? ${value} >= ${minimum}n : ${value} >= ${minimum}) ` +
-      `? "gmp" : "bigint";`;
+      `? "tagged" : "bigint";`;
   }
   if (policy.kind === "operand-bits") {
     const threshold = 1n << BigInt(policy.minimumBits - 1);
@@ -426,7 +426,7 @@ function backendDecision(fn) {
     });
     return conditions.length === 0
       ? "  return \"bigint\";"
-      : `  return (${conditions.join(" || ")}) ? "gmp" : "bigint";`;
+      : `  return (${conditions.join(" || ")}) ? "tagged" : "bigint";`;
   }
   throw new Error(`unsupported exact backend policy ${policy.kind}`);
 }
@@ -452,7 +452,8 @@ function emitExactPublicFunction(fn) {
       : `sagejs_native_${param.name}`
   ).join(", ");
   const policy = JSON.stringify(fn.analysis.backend);
-  const machineWord = JSON.stringify(fn.analysis.machineWord);
+  const effects = JSON.stringify(fn.analysis.effects);
+  const taggedInteger = JSON.stringify(fn.analysis.taggedInteger);
   return `${emitExactFallback(fn)}
 
 function validate_${fn.name}(${params}) {
@@ -471,8 +472,9 @@ ${backendDecision(fn)}
 function ${fn.name}(${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
-  if (backend_${fn.name}(${args}) === "gmp") {
-    return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}], integerBackendOverride === "gmp" ? "gmp" : "adaptive")`)};
+  const sagejs_native_backend = backend_${fn.name}(${args});
+  if (sagejs_native_backend !== "bigint") {
+    return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}], sagejs_native_backend)`)};
   }
 ${fallbackGuards.join("\n")}
   return ${exactReturn(fn, `javascript_${fn.name}(${fallbackArgs})`)};
@@ -484,6 +486,14 @@ ${fallbackGuards.join("\n")}
   return ${exactReturn(fn, `javascript_${fn.name}(${fallbackArgs})`)};
 };
 ${fn.name}.bigint = ${fn.name}.javascript;
+${fn.name}.tagged = function (${declaredParams}) {
+  validate_${fn.name}(${params});
+${normalized.join("\n")}
+  if (nativeAddon === null) {
+    throw new Error("tagged native backend is not available");
+  }
+  return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}], "tagged")`)};
+};
 ${fn.name}.gmp = function (${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
@@ -498,7 +508,8 @@ ${normalized.join("\n")}
   return backend_${fn.name}(${args});
 };
 ${fn.name}.backendPolicy = Object.freeze(${policy});
-${fn.name}.machineWord = Object.freeze(${machineWord});
+${fn.name}.effects = Object.freeze(${effects});
+${fn.name}.taggedInteger = Object.freeze(${taggedInteger});
 ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
@@ -581,7 +592,7 @@ function nativeRaise(name, message) {
   throw new RangeError(message);
 }
 
-function nativeExactCall(name, args, backend = "adaptive") {
+function nativeExactCall(name, args, backend = "tagged") {
   try {
     const property = backend === "gmp" ? name + "$gmp" : name;
     return nativeAddon[property](...args);

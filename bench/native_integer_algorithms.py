@@ -1,4 +1,4 @@
-"""Small exact-integer module used to validate Native Kernel v6."""
+"""Small exact-integer module used to validate Native Kernel v7."""
 
 from typing import Tuple
 
@@ -45,6 +45,12 @@ def native_abs(value: int) -> int:
 def native_square(value: int) -> int:
     """Square with checked machine-word promotion."""
     return value ** 2
+
+
+@native
+def native_call_square(value: int) -> int:
+    """Exercise promotion from a direct word-call boundary."""
+    return native_square(value) + 1
 
 
 @native

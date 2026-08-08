@@ -1,8 +1,5 @@
 "use strict";
 
-const INT64_MIN = -(1n << 63n);
-const INT64_MAX = (1n << 63n) - 1n;
-
 function exactTypes(fn) {
   return new Map(
     [...fn.params, ...fn.locals].map((value) => [value.name, value.type]),
@@ -291,97 +288,116 @@ function recursiveFunctions(functions) {
   return recursive;
 }
 
-function fitsInt64(value) {
-  const integer = BigInt(value);
-  return integer >= INT64_MIN && integer <= INT64_MAX;
-}
-
-function localMachineWordProof(fn) {
-  const checkedOperations = new Set();
-  let obstruction;
+function localEffects(fn) {
+  const mayRaise = new Set();
+  let localWrites = 0;
   walkStatements(fn.body, {
-    loop(kind) {
-      if (kind === "range") checkedOperations.add("range-bound");
-    },
+    loop() {},
     operation(operation) {
+      localWrites += operationTargets(operation).length;
       if (
-        operation.kind === "integer.constant" &&
-        !fitsInt64(operation.value)
+        operation.kind === "integer.divmod" ||
+        (operation.kind === "integer.binary" &&
+          ["floordiv", "mod"].includes(operation.operation))
       ) {
-        obstruction ??= `integer constant ${operation.value} is outside int64`;
+        mayRaise.add("ZeroDivisionError");
+      }
+      if (operation.kind === "integer.round_sqrt") {
+        mayRaise.add("ValueError");
+        mayRaise.add("OverflowError");
       }
       if (operation.kind === "integer.sequence.get") {
-        const outside = operation.values.find((value) => !fitsInt64(value));
-        if (outside !== undefined) {
-          obstruction ??= `sequence constant ${outside} is outside int64`;
-        }
-        checkedOperations.add("sequence-index");
+        mayRaise.add("IndexError");
       }
-      const proof = {
-        "integer.binary": `checked-${operation.operation}`,
-        "integer.divmod": "checked-divmod",
-        "integer.neg": "checked-negation",
-        "integer.abs": "checked-absolute-value",
-        "integer.pow_uint": "checked-power",
-        "integer.from_uint64": "checked-uint64-conversion",
-        "integer.round_sqrt": "checked-float-conversion",
-        "native.call": "callee-status-propagation",
-      }[operation.kind];
-      if (proof !== undefined) checkedOperations.add(proof);
+      if (operation.kind === "raise") mayRaise.add(operation.errorType);
     },
     read() {},
-    write() {},
+    write() {
+      localWrites += 1;
+    },
   });
   return {
-    eligible: obstruction === undefined,
-    representation: "signed-int64",
-    entryGuards: fn.params
-      .filter((param) => param.type === "Integer")
-      .map((param) => param.name),
-    checkedOperations: Array.from(checkedOperations).sort(),
-    proof: obstruction === undefined
-      ? "entry guards and checked operations inductively preserve int64"
-      : obstruction,
-    overflow: "restart-gmp",
+    pure: true,
+    deterministic: true,
+    localWrites,
+    externalWrites: [],
+    calls: [...fn.dependencies],
+    mayRaise: Array.from(mayRaise).filter(Boolean).sort(),
     replaySafe: true,
   };
 }
 
-function machineWordProofs(functions) {
+function effectAnalyses(functions) {
   const exact = new Map(
     functions
       .filter((fn) => fn.kernelKind === "integer")
       .map((fn) => [fn.name, fn]),
   );
-  const proofs = new Map(
-    Array.from(exact, ([name, fn]) => [name, localMachineWordProof(fn)]),
+  const effects = new Map(
+    Array.from(exact, ([name, fn]) => [name, localEffects(fn)]),
   );
   let changed = true;
   while (changed) {
     changed = false;
     for (const [name, fn] of exact) {
-      const proof = proofs.get(name);
-      if (!proof.eligible) continue;
-      const blocked = fn.dependencies.find(
-        (dependency) => !proofs.get(dependency)?.eligible,
-      );
-      if (blocked === undefined) continue;
-      proofs.set(name, {
-        ...proof,
-        eligible: false,
-        proof: `callee ${blocked} has no machine-word specialization`,
-      });
-      changed = true;
+      const effect = effects.get(name);
+      const transitiveRaises = new Set(effect.mayRaise);
+      for (const dependency of fn.dependencies) {
+        for (const error of effects.get(dependency)?.mayRaise || []) {
+          transitiveRaises.add(error);
+        }
+      }
+      const next = Array.from(transitiveRaises).sort();
+      if (next.join("\0") !== effect.mayRaise.join("\0")) {
+        effect.mayRaise = next;
+        changed = true;
+      }
     }
   }
-  return proofs;
+  return effects;
+}
+
+function taggedIntegerProof(fn, effects) {
+  const operations = new Set();
+  walkStatements(fn.body, {
+    loop(kind) {
+      operations.add(kind === "range" ? "tagged-range" : "tagged-while");
+    },
+    operation(operation) {
+      if (operation.kind.startsWith("integer.")) {
+        operations.add(operation.kind.replace("integer.", "tagged-"));
+      }
+      if (operation.kind === "native.call") operations.add("direct-tagged-call");
+    },
+    read() {},
+    write() {},
+  });
+  return {
+    eligible: true,
+    representation: "tagged-int64-gmp",
+    smallRepresentation: "signed-int64",
+    largeRepresentation: "lazy-owned-mpz",
+    entry: "lossless-int64-or-gmp",
+    operations: Array.from(operations).sort(),
+    promotion: "in-place-at-current-instruction",
+    deoptimization: "resume-at-failing-instruction",
+    publicReplay: "never",
+    calleeSpeculation: effects.replaySafe
+      ? "word-prefix-may-retry-at-direct-call-boundary"
+      : "disabled",
+    directCalls: [...fn.dependencies],
+    effectsChecked: effects.pure && effects.deterministic &&
+      effects.externalWrites.length === 0,
+    proof:
+      "every exact value is tagged; checked int64 failure promotes live values before the operation continues",
+  };
 }
 
 function backendPolicy(fn, profile, recursive) {
   if (recursive) {
     return {
-      kind: "gmp",
-      reason: "scratch-coalesced recursive exact frames favor direct GMP calls",
+      kind: "tagged",
+      reason: "lazy tagged recursive frames avoid allocating GMP values",
     };
   }
   if (
@@ -390,8 +406,8 @@ function backendPolicy(fn, profile, recursive) {
     profile.dependencyDepth >= 2
   ) {
     return {
-      kind: "gmp",
-      reason: "a range loop drives a multi-level exact native call graph",
+      kind: "tagged",
+      reason: "a range loop drives a direct tagged native call graph",
     };
   }
   if (
@@ -401,7 +417,7 @@ function backendPolicy(fn, profile, recursive) {
   ) {
     return {
       kind: "gmp",
-      reason: "a range loop repeatedly calls exact kernels on large constants",
+      reason: "a range loop whose constants are already large stays in GMP",
     };
   }
   if (
@@ -416,8 +432,8 @@ function backendPolicy(fn, profile, recursive) {
   }
   if (profile.rangeLoops > 0) {
     return {
-      kind: "gmp",
-      reason: "a complete arithmetic range loop amortizes the GMP boundary",
+      kind: "tagged",
+      reason: "a complete arithmetic range loop amortizes native entry",
     };
   }
   if (
@@ -454,7 +470,7 @@ function backendPolicy(fn, profile, recursive) {
 
 function analyzeExactModule(functions) {
   const recursive = recursiveFunctions(functions);
-  const machineWords = machineWordProofs(functions);
+  const effects = effectAnalyses(functions);
   const exact = new Map(
     functions
       .filter((fn) => fn.kernelKind === "integer")
@@ -478,19 +494,20 @@ function analyzeExactModule(functions) {
       ...executionProfile(fn),
       dependencyDepth: dependencyDepth(fn.name),
     };
-    const machineWord = machineWords.get(fn.name);
     let backend = backendPolicy(fn, profile, recursive.has(fn.name));
-    if (machineWord.eligible && profile.rangeLoops > 0) {
+    if (profile.rangeLoops > 0 && backend.kind !== "gmp") {
       backend = {
-        kind: "gmp",
-        reason: "an exact range loop amortizes the adaptive int64 native entry",
+        kind: "tagged",
+        reason: "an exact range loop amortizes tagged native entry",
       };
     }
+    const effect = effects.get(fn.name);
     fn.analysis = {
       storage: storageAnalysis(fn),
       execution: { ...profile, recursive: recursive.has(fn.name) },
       backend,
-      machineWord,
+      effects: effect,
+      taggedInteger: taggedIntegerProof(fn, effect),
     };
   }
   return functions;
@@ -499,7 +516,9 @@ function analyzeExactModule(functions) {
 module.exports = {
   analyzeExactModule,
   backendPolicy,
+  effectAnalyses,
   executionProfile,
-  localMachineWordProof,
+  localEffects,
   storageAnalysis,
+  taggedIntegerProof,
 };
