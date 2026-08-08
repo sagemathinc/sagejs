@@ -2100,18 +2100,23 @@ class Matrix(sage.Element):
                 leading = relation[-1]
                 if leading == 0:
                     continue
-                coefficients = [
-                    coefficient / leading
-                    for coefficient in relation
-                ]
-                base = sage.ZZ
                 finite_coefficients = (
                     getattr(
                         self.base_ring(), '_kind', None
                     ) in ['GF', 'GF_EXTENSION']
                 )
                 if finite_coefficients:
+                    coefficients = [
+                        coefficient / leading
+                        for coefficient in relation
+                    ]
                     base = self.base_ring()
+                else:
+                    coefficients = [
+                        sage.QQ(coefficient) / sage.QQ(leading)
+                        for coefficient in relation
+                    ]
+                    base = sage.ZZ
                 integer_coefficients = []
                 if not finite_coefficients:
                     for coefficient in coefficients:
@@ -2128,7 +2133,7 @@ class Matrix(sage.Element):
                 answer = ring(0)
                 power = ring(1)
                 for coefficient in coefficients:
-                    answer += ring(coefficient) * power
+                    answer += ring(base(coefficient)) * power
                     power *= generator
                 self._minpoly_cache.set(variable, answer)
                 return answer

@@ -149,6 +149,15 @@ class IntegerRing(Ring):
         self._kind = 'ZZ'
 
     def __call__(self, value: object) -> Any:
+        candidate = _untyped(value)
+        if (
+            getattr(candidate, '_parent', None) is QQ
+            and hasattr(candidate, '_numerator')
+            and hasattr(candidate, '_denominator')
+        ):
+            if candidate._denominator != 1:
+                raise TypeError('not an integer')
+            value = candidate._numerator
         if not is_exact_integer(value) and hasattr(value, 'lift'):
             lift = _untyped(value).lift
             if callable(lift):
@@ -973,6 +982,27 @@ def _tuple_slice(self: Any, *slice_args: Any) -> Any:
     return math_tuple(values)
 
 
+@runtime.native_method
+def _tuple_index(
+    self: Any,
+    value: Any,
+    start: int = 0,
+    stop: Any = None,
+) -> int:
+    length = len(self)
+    start = int(start)
+    stop = length if stop is None else int(stop)
+    if start < 0:
+        start = max(0, length + start)
+    if stop < 0:
+        stop = max(0, length + stop)
+    stop = min(length, stop)
+    for index in range(start, stop):
+        if runtime.equals(self[index], value):
+            return index
+    raise ValueError('tuple.index(x): x not in tuple')
+
+
 _tuple_array_prototype_cache = runtime.undefined
 
 
@@ -997,6 +1027,7 @@ def _tuple_array_prototype(
             '__repr__': {'value': _tuple_repr},
             '__str__': {'value': _tuple_repr},
             'append': {'value': _tuple_append},
+            'index': {'value': _tuple_index},
             'slice': {'value': _tuple_slice},
             'toString': {'value': _tuple_repr},
         }

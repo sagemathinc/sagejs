@@ -7,12 +7,11 @@
 
 import { basename, join } from "path";
 import { readFileSync, readdirSync, writeFileSync } from "fs";
+import { spawnSync } from "child_process";
 import createCompiler from "./compiler";
 import { createPythonCompilerFrontend } from "./python/compiler-frontend";
 import { colored } from "./utils";
-import { deepEqual as origDeepEqual, AssertionError } from "assert";
 import { tmpdir } from "os";
-import { runInNewContext } from "vm";
 
 export interface CompilerTestResult {
   durationMs: number;
@@ -73,14 +72,14 @@ export async function createCompilerTestHarness(
       keep_docstrings: true,
       python_tuples: true,
       python_truthiness: true,
+      private_scope: false,
+      module_registry: "",
     });
     toplevel.print(output);
 
     // test that output performs correct JS operations
     const jsfile = join(tmpdir(), basename(filename) + ".js");
     const code = output.toString();
-    const assrt = { ...require("assert"), deepEqual };
-
     // We save and restore the console attributes since some tests,
     // e.g., repl, have a side effect of stealing them, which means
     // we suddenly can't report results.
@@ -91,26 +90,33 @@ export async function createCompilerTestHarness(
       }
     };
     let failure: any = undefined;
+    writeFileSync(jsfile, code);
     try {
-      runInNewContext(
-        code,
-        {
-          assrt, // patched version
-          __name__: jsfile,
-          require: require,
-          fs: require("fs"),
-          PyLang,
-          console,
-          compiler_dir: libPath,
-          test_path: testPath,
-          Buffer,
-          outerRealmError: new RangeError("outside the test VM"),
-        },
-        { filename: jsfile }
+      // Native addons construct values in the current V8 realm. Running these
+      // historical whole-runtime fixtures in a VM context invalidates Array
+      // prototypes and Python parent identity. A fresh process gives each
+      // fixture the real CLI's realm without leaking its global bootstrap into
+      // the next fixture.
+      const child = spawnSync(
+        process.execPath,
+        [
+          join(basePath, "scripts", "run-compiler-fixture.cjs"),
+          jsfile,
+          libPath,
+          testPath,
+        ],
+        { cwd: basePath, encoding: "utf8", timeout: 30_000 },
       );
+      if (child.error) throw child.error;
+      if (child.status !== 0) {
+        throw new Error(
+          child.stderr ||
+            child.stdout ||
+            `compiler fixture exited ${child.status}`,
+        );
+      }
     } catch (err) {
       failure = err;
-      writeFileSync(jsfile, code);
     } finally {
       restoreConsole();
     }
@@ -195,37 +201,4 @@ export default async function (
     );
   }
   process.exit(failures.length ? 1 : 0);
-}
-
-// Modified version of deepEqual test assertion that is more suitable
-// for testing python code.
-function deepEqual(a: any, b: any, message: any): void {
-  if (Array.isArray(a) && Array.isArray(b)) {
-    // Compare array objects that have extra properties as simple arrays
-    if (a === b) return;
-    if (a.length !== b.length)
-      throw new AssertionError({
-        actual: a,
-        expected: b,
-        operator: "deepEqual",
-        stackStartFn: deepEqual,
-      });
-    for (let i = 0; i < a.length; i++) {
-      deepEqual(a[i], b[i], message);
-    }
-  } else if (typeof a?.__eq__ === "function") {
-    // Python operator overloading
-    if (!a.__eq__(b))
-      throw new AssertionError({
-        actual: a,
-        expected: b,
-        operator: "deepEqual",
-        stackStartFn: deepEqual,
-      });
-  } else {
-    // Fallback to standard version in nodejs library.
-    return message === undefined
-      ? origDeepEqual(a, b)
-      : origDeepEqual(a, b, message);
-  }
 }
