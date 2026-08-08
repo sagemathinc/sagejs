@@ -1,6 +1,6 @@
-# Native Kernel v5
+# Native Kernel v6
 
-Native Kernel v5 asks whether selected Sage.js library functions can compile
+Native Kernel v6 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. It is a small but structured compiler path, replacing the earlier
 single-function code-generation proof.
@@ -64,7 +64,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v5 is currently a source-tree development feature and uses the
+Native Kernel v6 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -75,7 +75,7 @@ cache instead of the default `.sagejs-native-kernels` beside the source.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v5 supports:
+lowers marked functions to typed IR. Native Kernel v6 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -90,6 +90,10 @@ lowers marked functions to typed IR. Native Kernel v5 supports:
 - conservative exact-value mutability, escape, and lifetime analysis, with
   immutable inputs borrowed and nonoverlapping locals assigned to reusable GMP
   scratch slots;
+- a separately generated signed-64-bit call graph whose entry guards, checked
+  arithmetic, and propagated callee statuses form an explicit representation
+  proof; overflow restarts the replay-safe function through GMP instead of
+  wrapping or exposing a machine integer;
 - generated, inspectable BigInt-versus-GMP selection based on call/loop shape,
   constant sizes, recursion, and runtime operand magnitude;
 
@@ -109,12 +113,14 @@ marks the returned local separately from non-escaping temporaries: the C
 backend allocates only the result in the shared native heap representation and
 keeps other MPFR/MPC values as local storage.
 
-Two backends consume the same IR:
+Three exact representations consume the same IR:
 
 - the JavaScript backend uses exact `BigInt` or ordinary immutable Sage.js real
   and complex operations;
-- the C backend uses GMP, MPFR, or MPC and mutates non-escaping native locals
-  in place.
+- the adaptive C entry uses checked `int64_t` values whenever the generated
+  proof succeeds;
+- the general C entry uses GMP, MPFR, or MPC and mutates non-escaping native
+  locals in place.
 
 The generated module validates the Sage.js parent and iteration count. It uses
 the C addon when available and otherwise uses the JavaScript implementation.
@@ -141,14 +147,23 @@ The exact wrapper exposes its decision and both implementations:
 ```js
 kernel.native_gcd.backendFor(a, b); // "bigint" or "gmp"
 kernel.native_gcd.backendPolicy;
+kernel.native_gcd.machineWord;
 kernel.native_gcd.bigint(a, b);
-kernel.native_gcd.gmp(a, b);
+kernel.native_gcd.gmp(a, b); // force GMP, bypassing adaptive int64
 ```
 
 Automatic dispatch first honors addon availability, then uses the generated
 policy. `SAGEJS_NATIVE_INTEGER_BACKEND=bigint`, `gmp`, or `auto` provides an
-explicit process-wide override; `auto` is the default. The policy is deliberately
-simple and auditable rather than a hidden online benchmark.
+explicit process-wide override; `gmp` bypasses adaptive int64 execution and
+`auto` is the default. The policy is deliberately simple and auditable rather
+than a hidden online benchmark.
+
+For an eligible function, `machineWord` records the signed representation,
+guarded parameters, checked operation classes, replay-safety result, and
+promotion action. The adaptive C graph returns one of `OK`, `PROMOTE`, or
+`ERROR`. A callee propagates that status without crossing Node-API. `PROMOTE`
+restarts only at the public pure-function boundary with the original GMP
+arguments; `ERROR` retains the already-raised Python-compatible exception.
 
 ## Shared native values
 
@@ -217,7 +232,7 @@ difference, not merely compiler or language overhead.
 
 ### Exact integers and CoWasm number theory
 
-Native Kernel v5 compiles every function directly from the complete unmodified
+Native Kernel v6 compiles every function directly from the complete unmodified
 [`cowasm/src/nt.py`](cowasm/src/nt.py):
 
 ```sh
@@ -227,12 +242,13 @@ sagejs native compile bench/cowasm/src/nt.py
 The resulting private C call graph contains `inverse_mod → xgcd`,
 `is_prime → trial_division`, and `pi → is_prime`; none of those internal calls
 returns through JavaScript or Python. On the dedicated 16-vCPU AMD EPYC 7B13
-host with Node 26.7.0, seven-sample medians for `pi(100000)` were 127.8 ms with
-automatic dispatch, 130.3 ms with forced GMP, 236.7 ms with generated BigInt,
-74.9 ms in CPython 3.12, and 290.0 ms in interpreted Sage.js. Automatic dispatch
-selected GMP from the transitive call-graph shape. Thus v5 makes this unchanged
-multi-function workload 2.27x faster than interpreted Sage.js while leaving a
-clear machine-integer specialization target relative to CPython.
+host with Node 26.7.0, seven-sample medians for `pi(100000)` were 2.212 ms with
+adaptive int64/GMP execution, 121.67 ms with forced GMP, 224.21 ms with
+generated BigInt, 70.02 ms in CPython 3.12, and 266.00 ms in interpreted
+Sage.js. Thus v6 makes this unchanged multi-function workload about 32x faster
+than CPython and 120x faster than interpreted Sage.js. Every one of its six
+functions has an inspectable machine-word proof; an out-of-range input or
+checked intermediate overflow replays the same pure call through GMP.
 
 The matched module benchmark in
 [`native_number_theory.py`](cowasm/src/native_number_theory.py) moves the loop
@@ -240,31 +256,30 @@ inside the compiled module and exercises direct `native_bench_gcd → native_gcd
 calls. On the dedicated 16-vCPU AMD EPYC 7B13 host with Node 26.7.0, medians
 were:
 
-| Workload | Automatic | AOT/GMP | exact BigInt | CPython 3.12 | Sage.js Python |
+| Workload | Adaptive int64/GMP | Forced GMP | exact BigInt | CPython 3.12 | Sage.js Python |
 |---|---:|---:|---:|---:|---:|
-| 100,000 small GCDs | 17.65 ms (BigInt) | 47.53 ms | 17.52 ms | 54.44 ms | 25.00 ms |
-| 100 GCDs of 314-digit consecutive Fibonacci numbers | 9.341 ms (GMP) | 9.573 ms | 51.311 ms | 21.281 ms | 59.000 ms |
-| recursive Fibonacci, `n=30` | 294.06 ms (GMP) | 293.70 ms | 468.23 ms | 135.65 ms | 136.00 ms |
+| 100,000 small GCDs | 4.512 ms | 45.05 ms | 15.66 ms | 51.01 ms | 24.00 ms |
+| 100 GCDs of 314-digit consecutive Fibonacci numbers | 9.550 ms | 9.606 ms | 49.60 ms | 20.29 ms | 63.00 ms |
+| recursive Fibonacci, `n=30` | 5.407 ms | 267.95 ms | 433.26 ms | 139.52 ms | 142.00 ms |
 
-These results expose both sides of the design. V8 BigInt remains 2.7x faster
-than GMP for the small-GCD module, while GMP is 5.4x faster for the 314-digit
-case. Scratch coalescing reverses the earlier generated-backend result for the
-call-heavy recursive case: GMP is now 1.6x faster than generated BigInt,
-though both still trail CPython and interpreted Sage.js there. The
-automatic policy selects the faster generated backend in all three workloads.
+These results expose all three representations. Checked machine words dominate
+small exact loops and recursion. The 314-digit constants mechanically disable
+the specialization and adaptive execution immediately takes the same GMP path
+as the forced run. Generated BigInt remains useful as the portable backend.
 
-The separate ten-million-term exact quadratic sum performs substantial GMP
-work without repeated internal calls. A later v4 run took 229.22 ms in
-AOT/GMP, 417.32 ms in the generated BigInt backend, 849.96 ms in CPython, and
-1072.00 ms in interpreted Sage.js on the same host. Automatic selection chose
-GMP and added no measurable overhead. Reproduce both tables with:
+The separate one-million-term exact quadratic sum took 2.276 ms adaptively,
+21.15 ms with forced GMP, 22.84 ms with generated BigInt, 82.94 ms in CPython,
+and 77.40 ms in interpreted Sage.js on the same host. Its result remains within
+int64. A four-million-term regression crosses the boundary during accumulation
+and verifies that adaptive execution restarts in GMP and returns the exact
+arbitrary-precision result. Reproduce both tables with:
 
 ```sh
 pnpm run bench:native:cowasm
 SAGEJS_NATIVE_INTEGER_TERMS=10000000 pnpm run bench:native:integer
 ```
 
-## Deliberate v5 limits
+## Deliberate v6 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements
@@ -273,7 +288,10 @@ prebuilt kernels. Exact modules currently return one scalar `Integer`, `bool`,
 or a flat typed tuple. Mutable containers, keyword-only native ABI arguments,
 general iterators, exception handlers, and calls into uncompiled Python remain
 outside the typed subset. Fixed local integer sequences are compile-time values,
-not general lists. Unsupported constructs fail during compilation instead of
+not general lists. Machine-word promotion currently restarts an entire
+side-effect-free native function; expanding the typed subset to observable I/O
+will require finer-grained tagged storage or an effect proof. Unsupported
+constructs fail during compilation instead of
 silently changing Python semantics. The next compiler work should be driven by
 real Sage.js library code and Sage-compatible semantics rather than by
 accumulating unconnected AST cases.

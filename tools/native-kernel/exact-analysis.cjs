@@ -1,5 +1,8 @@
 "use strict";
 
+const INT64_MIN = -(1n << 63n);
+const INT64_MAX = (1n << 63n) - 1n;
+
 function exactTypes(fn) {
   return new Map(
     [...fn.params, ...fn.locals].map((value) => [value.name, value.type]),
@@ -288,6 +291,92 @@ function recursiveFunctions(functions) {
   return recursive;
 }
 
+function fitsInt64(value) {
+  const integer = BigInt(value);
+  return integer >= INT64_MIN && integer <= INT64_MAX;
+}
+
+function localMachineWordProof(fn) {
+  const checkedOperations = new Set();
+  let obstruction;
+  walkStatements(fn.body, {
+    loop(kind) {
+      if (kind === "range") checkedOperations.add("range-bound");
+    },
+    operation(operation) {
+      if (
+        operation.kind === "integer.constant" &&
+        !fitsInt64(operation.value)
+      ) {
+        obstruction ??= `integer constant ${operation.value} is outside int64`;
+      }
+      if (operation.kind === "integer.sequence.get") {
+        const outside = operation.values.find((value) => !fitsInt64(value));
+        if (outside !== undefined) {
+          obstruction ??= `sequence constant ${outside} is outside int64`;
+        }
+        checkedOperations.add("sequence-index");
+      }
+      const proof = {
+        "integer.binary": `checked-${operation.operation}`,
+        "integer.divmod": "checked-divmod",
+        "integer.neg": "checked-negation",
+        "integer.abs": "checked-absolute-value",
+        "integer.pow_uint": "checked-power",
+        "integer.from_uint64": "checked-uint64-conversion",
+        "integer.round_sqrt": "checked-float-conversion",
+        "native.call": "callee-status-propagation",
+      }[operation.kind];
+      if (proof !== undefined) checkedOperations.add(proof);
+    },
+    read() {},
+    write() {},
+  });
+  return {
+    eligible: obstruction === undefined,
+    representation: "signed-int64",
+    entryGuards: fn.params
+      .filter((param) => param.type === "Integer")
+      .map((param) => param.name),
+    checkedOperations: Array.from(checkedOperations).sort(),
+    proof: obstruction === undefined
+      ? "entry guards and checked operations inductively preserve int64"
+      : obstruction,
+    overflow: "restart-gmp",
+    replaySafe: true,
+  };
+}
+
+function machineWordProofs(functions) {
+  const exact = new Map(
+    functions
+      .filter((fn) => fn.kernelKind === "integer")
+      .map((fn) => [fn.name, fn]),
+  );
+  const proofs = new Map(
+    Array.from(exact, ([name, fn]) => [name, localMachineWordProof(fn)]),
+  );
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [name, fn] of exact) {
+      const proof = proofs.get(name);
+      if (!proof.eligible) continue;
+      const blocked = fn.dependencies.find(
+        (dependency) => !proofs.get(dependency)?.eligible,
+      );
+      if (blocked === undefined) continue;
+      proofs.set(name, {
+        ...proof,
+        eligible: false,
+        proof: `callee ${blocked} has no machine-word specialization`,
+      });
+      changed = true;
+    }
+  }
+  return proofs;
+}
+
 function backendPolicy(fn, profile, recursive) {
   if (recursive) {
     return {
@@ -365,6 +454,7 @@ function backendPolicy(fn, profile, recursive) {
 
 function analyzeExactModule(functions) {
   const recursive = recursiveFunctions(functions);
+  const machineWords = machineWordProofs(functions);
   const exact = new Map(
     functions
       .filter((fn) => fn.kernelKind === "integer")
@@ -388,10 +478,19 @@ function analyzeExactModule(functions) {
       ...executionProfile(fn),
       dependencyDepth: dependencyDepth(fn.name),
     };
+    const machineWord = machineWords.get(fn.name);
+    let backend = backendPolicy(fn, profile, recursive.has(fn.name));
+    if (machineWord.eligible && profile.rangeLoops > 0) {
+      backend = {
+        kind: "gmp",
+        reason: "an exact range loop amortizes the adaptive int64 native entry",
+      };
+    }
     fn.analysis = {
       storage: storageAnalysis(fn),
       execution: { ...profile, recursive: recursive.has(fn.name) },
-      backend: backendPolicy(fn, profile, recursive.has(fn.name)),
+      backend,
+      machineWord,
     };
   }
   return functions;
@@ -401,5 +500,6 @@ module.exports = {
   analyzeExactModule,
   backendPolicy,
   executionProfile,
+  localMachineWordProof,
   storageAnalysis,
 };

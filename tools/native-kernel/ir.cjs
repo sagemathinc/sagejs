@@ -9,7 +9,7 @@ const {
   signatureFromFunction,
 } = require("./integer-ir.cjs");
 
-const IR_VERSION = 5;
+const IR_VERSION = 6;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([

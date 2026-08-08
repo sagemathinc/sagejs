@@ -452,6 +452,7 @@ function emitExactPublicFunction(fn) {
       : `sagejs_native_${param.name}`
   ).join(", ");
   const policy = JSON.stringify(fn.analysis.backend);
+  const machineWord = JSON.stringify(fn.analysis.machineWord);
   return `${emitExactFallback(fn)}
 
 function validate_${fn.name}(${params}) {
@@ -471,7 +472,7 @@ function ${fn.name}(${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
   if (backend_${fn.name}(${args}) === "gmp") {
-    return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}])`)};
+    return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}], integerBackendOverride === "gmp" ? "gmp" : "adaptive")`)};
   }
 ${fallbackGuards.join("\n")}
   return ${exactReturn(fn, `javascript_${fn.name}(${fallbackArgs})`)};
@@ -489,7 +490,7 @@ ${normalized.join("\n")}
   if (nativeAddon === null) {
     throw new Error("GMP backend is not available");
   }
-  return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}])`)};
+  return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}], "gmp")`)};
 };
 ${fn.name}.backendFor = function (${declaredParams}) {
   validate_${fn.name}(${params});
@@ -497,6 +498,7 @@ ${normalized.join("\n")}
   return backend_${fn.name}(${args});
 };
 ${fn.name}.backendPolicy = Object.freeze(${policy});
+${fn.name}.machineWord = Object.freeze(${machineWord});
 ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
@@ -579,9 +581,10 @@ function nativeRaise(name, message) {
   throw new RangeError(message);
 }
 
-function nativeExactCall(name, args) {
+function nativeExactCall(name, args, backend = "adaptive") {
   try {
-    return nativeAddon[name](...args);
+    const property = backend === "gmp" ? name + "$gmp" : name;
+    return nativeAddon[property](...args);
   } catch (error) {
     const message = String(error && error.message || error);
     if (message.includes("division") || message.includes("modulo")) {

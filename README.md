@@ -882,13 +882,13 @@ sagejs --python compile input.py --output output.js
 node output.js
 ```
 
-## Native Kernel v5
+## Native Kernel v6
 
 The structured native compiler path parses `@native` Sage.js functions
 through the ordinary frontend, lowers them to an explicitly typed
 intermediate representation, and generates both a JavaScript fallback and a
 C/GMP/MPFR/MPC Node addon. In addition to `RealField` and `ComplexField` loops,
-v5 compiles exact `int`/`Integer` modules with comparisons, branching, `while`,
+v6 compiles exact `int`/`Integer` modules with comparisons, branching, `while`,
 floor division, remainder, and direct calls among compiled functions. Argument
 and return annotations in the source are the native signature; no parallel
 JavaScript type table is required. A
@@ -932,7 +932,7 @@ crossing Node-API or returning through JavaScript. The same generated module
 contains an exact `BigInt` fallback. A comma-separated selector can also audit
 and compile typed functions in an undecorated module; for example:
 
-V5 can compile the complete unmodified CoWasm number-theory module—including
+V6 can compile the complete unmodified CoWasm number-theory module—including
 its imports, defaults, tuple-returning extended GCD, destructuring, fixed wheel
 sequence, exceptions, and prime-counting call graph:
 
@@ -940,23 +940,33 @@ sequence, exceptions, and prime-counting call graph:
 sagejs native compile bench/cowasm/src/nt.py
 ```
 
-V5 performs exact-value lifetime and mutability analysis before generating C.
+On the dedicated 16-vCPU benchmark host, adaptive v6 runs that unchanged
+module's `pi(100000)` in 2.21 ms, versus 121.67 ms with forced GMP, 70.02 ms
+in CPython, and 266.00 ms in interpreted Sage.js.
+
+V6 performs exact-value lifetime and mutability analysis before generating C.
 Immutable integer parameters are borrowed, while nonescaping locals are
-interval-colored onto reusable GMP scratch slots. The generated wrapper then
-selects GMP or BigInt from the function's loop/call profile and runtime operand
-sizes. Selection is inspectable and both backends remain directly callable:
+interval-colored onto reusable GMP scratch slots. It also proves a checked
+signed-64-bit specialization for replay-safe call graphs. Entry guards and
+checked arithmetic preserve the proof inductively; any failed guard or
+overflow restarts the pure function through GMP, so Python integers never wrap.
+The generated wrapper selects adaptive native execution or BigInt from the
+function's loop/call profile and runtime operand sizes. Selection and proof
+metadata are inspectable, while BigInt and forced GMP remain directly callable:
 
 ```js
 kernel.gcd.backendFor(a, b); // "bigint" or "gmp"
 kernel.gcd.backendPolicy;
+kernel.gcd.machineWord;
 kernel.gcd.bigint(a, b);
-kernel.gcd.gmp(a, b);
+kernel.gcd.gmp(a, b); // bypass the int64 specialization
 ```
 
 `SAGEJS_NATIVE_INTEGER_BACKEND=bigint|gmp|auto` overrides selection for
-benchmarking and diagnosis; `auto` is the default.
+benchmarking and diagnosis; `gmp` bypasses the int64 specialization and `auto`
+is the default.
 
-Native Kernel v5 also supports offset and exact-Integer `range` loops,
+Native Kernel v6 also supports offset and exact-Integer `range` loops,
 integer-to-field coercion, nested arithmetic, small constant powers, augmented
 and parallel assignment, exact `divmod`, literal defaults, fixed integer
 sequence lookup, typed tuple returns, checked `round(sqrt(Integer))`, explicit

@@ -72,7 +72,7 @@ const completeNumberTheoryIr = await lowerSource(
 );
 const completeNumberTheoryC = generateC(completeNumberTheoryIr);
 
-assert.equal(ir.version, 5);
+assert.equal(ir.version, 6);
 assert.equal(complexFunction.params[0].type, "ComplexField");
 assert.equal(complexFunction.params[1].type, "uint64");
 assert.equal(complexFunction.returnType, "ComplexNumber");
@@ -143,6 +143,15 @@ assert.equal(
   "100000",
 );
 assert.match(completeNumberTheoryC, /mpz_fdiv_qr\(/);
+assert.match(completeNumberTheoryC, /static int word_pi\(/);
+assert.match(completeNumberTheoryC, /sagejs_word_mul_int64\(/);
+assert.match(completeNumberTheoryC, /SAGEJS_WORD_PROMOTE/);
+assert.match(completeNumberTheoryC, /compiled_pi_gmp/);
+assert.ok(
+  completeNumberTheoryIr.functions.every(
+    (fn) => fn.analysis.machineWord.eligible,
+  ),
+);
 assert.match(
   completeNumberTheoryC,
   /native_inverse_mod[\s\S]*native_xgcd\(env/,
@@ -228,7 +237,7 @@ assert.equal(
 assert.equal(
   nativeNumberTheoryIr.functions.find((fn) => fn.name === "native_bench_gcd")
     .analysis.backend.kind,
-  "bigint",
+  "gmp",
 );
 assert.equal(
   nativeNumberTheoryIr.functions.find(
@@ -350,6 +359,7 @@ try {
   assert.equal(integerModule.integer_quadratic_sum(10), -275n);
   assert.equal(integerModule.integer_quadratic_sum.backendFor(10), "gmp");
   assert.equal(integerModule.integer_quadratic_sum.backendPolicy.kind, "gmp");
+  assert.equal(integerModule.integer_quadratic_sum.machineWord.eligible, true);
   assert.equal(
     integerModule.integer_quadratic_sum(1_000_000),
     -333332833332500000n,
@@ -357,6 +367,17 @@ try {
   assert.equal(
     integerModule.integer_quadratic_sum.javascript(10),
     -275n,
+  );
+  const promotedTerms = 4_000_000n;
+  const promotedExpected = promotedTerms -
+    ((promotedTerms - 1n) * promotedTerms * (2n * promotedTerms - 1n)) / 6n;
+  assert.equal(
+    integerModule.integer_quadratic_sum(Number(promotedTerms)),
+    promotedExpected,
+  );
+  assert.equal(
+    integerModule.integer_quadratic_sum.gmp(Number(promotedTerms)),
+    promotedExpected,
   );
   const integerAlgorithmsCache = join(
     temporary,
@@ -366,7 +387,12 @@ try {
     sourcePath: integerAlgorithmsPath,
     cacheRoot: integerAlgorithmsCache,
   });
+  assert.match(
+    readFileSync(integerAlgorithms.modulePath, "utf8"),
+    /integerBackendOverride === "gmp" \? "gmp" : "adaptive"/,
+  );
   const integerAlgorithmsModule = require(integerAlgorithms.modulePath);
+  const integerAlgorithmsAddon = require(integerAlgorithms.addonPath);
   assert.equal(
     integerAlgorithmsModule.native_identity(2n ** 200n),
     2n ** 200n,
@@ -415,6 +441,94 @@ try {
     2n ** 50n - 1n,
   );
   assert.equal(
+    integerAlgorithmsAddon.native_gcd(-(2n ** 63n), 0n),
+    2n ** 63n,
+  );
+  assert.equal(
+    integerAlgorithmsAddon.native_floordiv(-(2n ** 63n), -1n),
+    2n ** 63n,
+  );
+  assert.equal(
+    integerAlgorithmsAddon.native_lcm(3_037_000_500n, 3_037_000_501n),
+    3_037_000_500n * 3_037_000_501n,
+  );
+  const int64Min = -(2n ** 63n);
+  const int64Max = 2n ** 63n - 1n;
+  for (const [name, args, expected] of [
+    ["native_add", [int64Max, 1n], int64Max + 1n],
+    ["native_add", [int64Min, -1n], int64Min - 1n],
+    ["native_sub", [int64Min, 1n], int64Min - 1n],
+    ["native_sub", [int64Max, -1n], int64Max + 1n],
+    ["native_mul", [int64Max, 2n], int64Max * 2n],
+    ["native_mul", [int64Min, -1n], -int64Min],
+    ["native_neg", [int64Min], -int64Min],
+    ["native_abs", [int64Min], -int64Min],
+    ["native_square", [3_037_000_500n], 3_037_000_500n ** 2n],
+  ]) {
+    assert.equal(integerAlgorithmsAddon[name](...args), expected);
+  }
+  assert.deepEqual(
+    integerAlgorithmsAddon.native_divmod(int64Min, -1n),
+    [2n ** 63n, 0n],
+  );
+  assert.deepEqual(
+    integerAlgorithmsAddon.native_divmod(-7n, 3n),
+    [-3n, 2n],
+  );
+  const boundaryWords = [
+    int64Min, int64Min + 1n, -3_037_000_500n, -2n, -1n, 0n, 1n, 2n,
+    3_037_000_499n, 3_037_000_500n, int64Max - 1n, int64Max,
+  ];
+  const pythonFloorDiv = (left, right) => {
+    let quotient = left / right;
+    const remainder = left % right;
+    if (remainder !== 0n && (remainder < 0n) !== (right < 0n)) quotient -= 1n;
+    return quotient;
+  };
+  for (const left of boundaryWords) {
+    assert.equal(
+      integerAlgorithmsAddon.native_neg(left),
+      -left,
+    );
+    assert.equal(
+      integerAlgorithmsAddon.native_abs(left),
+      left < 0n ? -left : left,
+    );
+    assert.equal(
+      integerAlgorithmsAddon.native_square(left),
+      left * left,
+    );
+    for (const right of boundaryWords) {
+      assert.equal(
+        integerAlgorithmsAddon.native_add(left, right),
+        left + right,
+      );
+      assert.equal(
+        integerAlgorithmsAddon.native_sub(left, right),
+        left - right,
+      );
+      assert.equal(
+        integerAlgorithmsAddon.native_mul(left, right),
+        left * right,
+      );
+      if (right === 0n) continue;
+      const quotient = pythonFloorDiv(left, right);
+      const remainder = left - quotient * right;
+      assert.equal(
+        integerAlgorithmsAddon.native_floordiv(left, right),
+        quotient,
+      );
+      assert.equal(
+        integerAlgorithmsAddon.native_mod(left, right),
+        remainder,
+      );
+      assert.deepEqual(
+        integerAlgorithmsAddon.native_divmod(left, right),
+        [quotient, remainder],
+      );
+    }
+  }
+  assert.equal(
     integerAlgorithmsModule.native_gcd.gmp(92250, 922350),
     150n,
   );
@@ -433,11 +547,17 @@ try {
   const nativeNumberTheoryModule = require(nativeNumberTheory.modulePath);
   assert.equal(
     nativeNumberTheoryModule.native_bench_gcd.backendFor(100),
-    "bigint",
+    "gmp",
   );
   assert.equal(
     nativeNumberTheoryModule.native_bench_large_gcd.backendFor(2),
     "gmp",
+  );
+  assert.equal(
+    nativeNumberTheory.ir.functions.find(
+      (fn) => fn.name === "native_bench_large_gcd",
+    ).analysis.machineWord.eligible,
+    false,
   );
   assert.equal(
     nativeNumberTheoryModule.native_rfib.backendFor(10),
@@ -776,7 +896,7 @@ print(is_compiled(native_powmod))
   rmSync(temporary, { recursive: true, force: true });
 }
 
-console.log("Native Kernel v5 analysis, selection, ABI, and fallback passed.");
+console.log("Native Kernel v6 analysis, selection, ABI, and fallback passed.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

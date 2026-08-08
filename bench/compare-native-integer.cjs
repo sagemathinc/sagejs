@@ -73,12 +73,12 @@ function reference(runtime, command, args, extraEnvironment = {}) {
   });
   const kernel = require(generated.modulePath);
   const automatic = measure(
-    "Sage.js automatic",
+    "Sage.js adaptive int64/GMP",
     () => kernel.integer_quadratic_sum(terms),
     nativeRepetitions,
   );
   const native = measure(
-    "Sage.js AOT/GMP",
+    "Sage.js forced GMP",
     () => kernel.integer_quadratic_sum.gmp(terms),
     nativeRepetitions,
   );
@@ -111,11 +111,12 @@ function reference(runtime, command, args, extraEnvironment = {}) {
     workload: `${terms}-term exact quadratic integer sum`,
     selectedBackend: kernel.integer_quadratic_sum.backendFor(terms),
     backendPolicy: kernel.integer_quadratic_sum.backendPolicy,
+    machineWordProof: kernel.integer_quadratic_sum.machineWord,
     cacheKey: generated.cacheKey,
     cached: generated.cached,
     rows: rows.map((row) => ({
       ...row,
-      versusAot: row.milliseconds / native.milliseconds,
+      versusAdaptive: row.milliseconds / automatic.milliseconds,
     })),
   };
   if (json) {
@@ -123,13 +124,13 @@ function reference(runtime, command, args, extraEnvironment = {}) {
     return;
   }
   console.log(report.workload);
-  console.log("runtime".padEnd(28), "median/call".padStart(14), "versus AOT".padStart(12));
+  console.log("runtime".padEnd(28), "median/call".padStart(14), "versus adaptive".padStart(16));
   console.log("-".repeat(56));
   for (const row of report.rows) {
     console.log(
       row.runtime.padEnd(28),
       `${row.milliseconds.toFixed(3)} ms`.padStart(14),
-      `${row.versusAot.toFixed(1)}x`.padStart(12),
+      `${row.versusAdaptive.toFixed(1)}x`.padStart(16),
     );
   }
   console.log(`result: ${native.value}`);

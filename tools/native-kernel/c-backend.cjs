@@ -4,8 +4,12 @@ const {
   isTupleType,
   tupleElementTypes,
 } = require("./integer-ir.cjs");
+const {
+  generateWordFunctions,
+  wordType,
+} = require("./word-backend.cjs");
 
-const NATIVE_ABI_VERSION = 3;
+const NATIVE_ABI_VERSION = 4;
 
 function cString(value) {
   return JSON.stringify(String(value));
@@ -539,7 +543,7 @@ function wrapperValue(param) {
   return `sagejs_wrapper_${param.name}`;
 }
 
-function emitExactWrapper(fn) {
+function emitExactWrapper(fn, adaptive) {
   const declarations = [];
   const initialization = [];
   const parsing = [];
@@ -589,10 +593,12 @@ function emitExactWrapper(fn) {
   const resultTypes = tupleElementTypes(fn.returnType) || [fn.returnType];
   const tupleResult = isTupleType(fn.returnType);
   const resultArguments = [];
+  const resultValues = [];
   const resultCreation = [];
   resultTypes.forEach((type, index) => {
     const suffix = tupleResult ? `_${index}` : "";
     const value = `sagejs_wrapper_result${suffix}`;
+    resultValues.push(value);
     if (type === "Integer") {
       declarations.push(`    mpz_t ${value};`, `    int ${value}_initialized = 0;`);
       initialization.push(`    mpz_init(${value});`, `    ${value}_initialized = 1;`);
@@ -634,8 +640,72 @@ function emitExactWrapper(fn) {
     declarations.push("    napi_value sagejs_wrapper_item = NULL;");
   }
   const argumentsList = fn.params.map(wrapperValue);
+  const gmpCall = `if (!native_${fn.name}(env, ${resultArguments.join(", ")}` +
+    `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
+    "        goto fail;";
+  const wordEligible = adaptive && fn.analysis.machineWord.eligible;
+  let execution = `    ${gmpCall}`;
+  if (wordEligible) {
+    const wordArguments = fn.params.map((param) =>
+      param.type === "Integer"
+        ? `sagejs_word_argument_${param.name}`
+        : wrapperValue(param)
+    );
+    const inputChecks = fn.params
+      .filter((param) => param.type === "Integer")
+      .map((param) =>
+        `mpz_to_int64(${wrapperValue(param)}, ` +
+          `&sagejs_word_argument_${param.name})`
+      );
+    for (const param of fn.params) {
+      if (param.type === "Integer") {
+        declarations.push(
+          `    int64_t sagejs_word_argument_${param.name} = 0;`,
+        );
+      }
+    }
+    const wordResultArguments = resultTypes.map((type, index) => {
+      const suffix = tupleResult ? `_${index}` : "";
+      const value = `sagejs_word_result${suffix}`;
+      declarations.push(`    ${wordType(type)} ${value} = 0;`);
+      return `&${value}`;
+    });
+    declarations.push(
+      "    int sagejs_word_status = SAGEJS_WORD_PROMOTE;",
+    );
+    const promoteResults = resultTypes.map((type, index) => {
+      const suffix = tupleResult ? `_${index}` : "";
+      const source = `sagejs_word_result${suffix}`;
+      return type === "Integer"
+        ? `        set_mpz_int64(${resultValues[index]}, ${source});`
+        : `        ${resultValues[index]} = ${source};`;
+    });
+    execution = [
+      inputChecks.length > 0
+        ? `    if (${inputChecks.join(" &&\n        ")})`
+        : "    if (1)",
+      "    {",
+      `        sagejs_word_status = word_${fn.name}(env, ` +
+        `${wordResultArguments.join(", ")}` +
+        `${wordArguments.length ? `, ${wordArguments.join(", ")}` : ""});`,
+      "    }",
+      "    if (sagejs_word_status == SAGEJS_WORD_ERROR)",
+      "        goto fail;",
+      "    if (sagejs_word_status == SAGEJS_WORD_OK)",
+      "    {",
+      ...promoteResults,
+      "    }",
+      "    else",
+      "    {",
+      `        ${gmpCall}`,
+      "    }",
+    ].join("\n");
+  }
+  const wrapperName = adaptive
+    ? `compiled_${fn.name}`
+    : `compiled_${fn.name}_gmp`;
   return `
-static napi_value compiled_${fn.name}(napi_env env, napi_callback_info info)
+static napi_value ${wrapperName}(napi_env env, napi_callback_info info)
 {
     napi_value args[${Math.max(1, fn.params.length)}];
     size_t argc = ${fn.params.length};
@@ -652,9 +722,7 @@ ${declarations.join("\n")}
     }
 ${initialization.join("\n")}
 ${parsing.join("\n")}
-    if (!native_${fn.name}(env, ${resultArguments.join(", ")}` +
-      `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))
-        goto fail;
+${execution}
 ${resultCreation.join("\n")}
 ${cleanup.join("\n")}
     return result;
@@ -663,6 +731,10 @@ fail:
 ${cleanup.join("\n")}
     return NULL;
 }`;
+}
+
+function emitExactWrappers(fn) {
+  return [emitExactWrapper(fn, true), emitExactWrapper(fn, false)].join("\n\n");
 }
 
 function emitFieldFunction(fn) {
@@ -782,20 +854,30 @@ function generateC(ir) {
   const prototypes = exactFunctions
     .map((fn) => internalSignature(fn, true))
     .join("\n");
+  const word = generateWordFunctions(exactFunctions);
   const functions = [
     prototypes,
+    word.prototypes,
+    word.functions,
     ...exactFunctions.map((fn) => emitExactInternalFunction(fn, functionMap)),
-    ...exactFunctions.map(emitExactWrapper),
+    ...exactFunctions.map(emitExactWrappers),
     ...fieldFunctions.map(emitFunction),
   ].filter(Boolean).join("\n\n");
   const properties = ir.functions
-    .map(
-      (fn) =>
+    .flatMap((fn) => {
+      const ordinary =
         `        {${cString(fn.name)}, NULL, compiled_${fn.name}, ` +
-        "NULL, NULL, NULL, napi_default, NULL}",
-    )
+        "NULL, NULL, NULL, napi_default, NULL}";
+      return fn.kernelKind === "integer"
+        ? [
+          ordinary,
+          `        {${cString(`${fn.name}$gmp`)}, NULL, ` +
+            `compiled_${fn.name}_gmp, NULL, NULL, NULL, napi_default, NULL}`,
+        ]
+        : [ordinary];
+    })
     .join(",\n");
-  return `// Generated by Sage.js Native Kernel v5.
+  return `// Generated by Sage.js Native Kernel v6.
 #include <math.h>
 #include <limits.h>
 #include <stdint.h>
@@ -812,6 +894,121 @@ static void set_mpz_uint64(mpz_t target, uint64_t value)
 #else
     mpz_import(target, 1, -1, sizeof(value), 0, 0, &value);
 #endif
+}
+
+static void set_mpz_int64(mpz_t target, int64_t value)
+{
+    const int negative = value < 0;
+    const uint64_t magnitude = negative
+        ? (uint64_t) (-(value + 1)) + UINT64_C(1)
+        : (uint64_t) value;
+    set_mpz_uint64(target, magnitude);
+    if (negative)
+        mpz_neg(target, target);
+}
+
+static int mpz_to_int64(const mpz_t value, int64_t *result)
+{
+    const int sign = mpz_sgn(value);
+    size_t count = 0;
+    uint64_t magnitude = 0;
+    if (sign == 0)
+    {
+        *result = 0;
+        return 1;
+    }
+    mpz_export(&magnitude, &count, -1, sizeof(magnitude), 0, 0, value);
+    if (count > 1)
+        return 0;
+    if (sign > 0)
+    {
+        if (magnitude > (uint64_t) INT64_MAX)
+            return 0;
+        *result = (int64_t) magnitude;
+        return 1;
+    }
+    if (magnitude > (UINT64_C(1) << 63))
+        return 0;
+    if (magnitude == (UINT64_C(1) << 63))
+        *result = INT64_MIN;
+    else
+        *result = -(int64_t) magnitude;
+    return 1;
+}
+
+#define SAGEJS_WORD_PROMOTE 0
+#define SAGEJS_WORD_OK 1
+#define SAGEJS_WORD_ERROR -1
+
+static int sagejs_word_add_int64(int64_t left, int64_t right, int64_t *result)
+{
+    if ((right > 0 && left > INT64_MAX - right) ||
+        (right < 0 && left < INT64_MIN - right))
+        return 0;
+    *result = left + right;
+    return 1;
+}
+
+static int sagejs_word_sub_int64(int64_t left, int64_t right, int64_t *result)
+{
+    if ((right > 0 && left < INT64_MIN + right) ||
+        (right < 0 && left > INT64_MAX + right))
+        return 0;
+    *result = left - right;
+    return 1;
+}
+
+static int sagejs_word_mul_int64(int64_t left, int64_t right, int64_t *result)
+{
+    if (left == 0 || right == 0)
+    {
+        *result = 0;
+        return 1;
+    }
+    if ((left == -1 && right == INT64_MIN) ||
+        (right == -1 && left == INT64_MIN))
+        return 0;
+    if ((left > 0 && right > 0 && left > INT64_MAX / right) ||
+        (left > 0 && right < 0 && right < INT64_MIN / left) ||
+        (left < 0 && right > 0 && left < INT64_MIN / right) ||
+        (left < 0 && right < 0 && left < INT64_MAX / right))
+        return 0;
+    *result = left * right;
+    return 1;
+}
+
+static int sagejs_word_pow_int64(
+    int64_t base, uint64_t exponent, int64_t *result)
+{
+    int64_t answer = 1;
+    while (exponent != 0)
+    {
+        if ((exponent & UINT64_C(1)) != 0 &&
+            !sagejs_word_mul_int64(answer, base, &answer))
+            return 0;
+        exponent >>= 1;
+        if (exponent != 0 &&
+            !sagejs_word_mul_int64(base, base, &base))
+            return 0;
+    }
+    *result = answer;
+    return 1;
+}
+
+static void sagejs_word_fdiv_int64(
+    int64_t left, int64_t right, int64_t *quotient, int64_t *remainder)
+{
+    int64_t q = left / right;
+    int64_t r = left % right;
+    if (r != 0 && ((r < 0) != (right < 0)))
+    {
+        q -= 1;
+        r += right;
+    }
+    if (quotient != NULL)
+        *quotient = q;
+    if (remainder != NULL)
+        *remainder = r;
 }
 
 static napi_value create_bigint(napi_env env, const mpz_t value)

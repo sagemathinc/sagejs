@@ -1,4 +1,6 @@
-"""Small exact-integer module used to validate Native Kernel v4."""
+"""Small exact-integer module used to validate Native Kernel v6."""
+
+from typing import Tuple
 
 from sagejs.native import native
 
@@ -7,6 +9,48 @@ from sagejs.native import native
 def native_identity(value: int) -> int:
     """Return a borrowed exact input without allocating a local value."""
     return value
+
+
+@native
+def native_add(a: int, b: int) -> int:
+    """Add with checked machine-word promotion."""
+    return a + b
+
+
+@native
+def native_sub(a: int, b: int) -> int:
+    """Subtract with checked machine-word promotion."""
+    return a - b
+
+
+@native
+def native_mul(a: int, b: int) -> int:
+    """Multiply with checked machine-word promotion."""
+    return a * b
+
+
+@native
+def native_neg(value: int) -> int:
+    """Negate with checked machine-word promotion."""
+    return -value
+
+
+@native
+def native_abs(value: int) -> int:
+    """Take an absolute value with checked machine-word promotion."""
+    return abs(value)
+
+
+@native
+def native_square(value: int) -> int:
+    """Square with checked machine-word promotion."""
+    return value ** 2
+
+
+@native
+def native_divmod(a: int, b: int) -> Tuple[int, int]:
+    """Return Python's floor quotient and divisor-signed remainder."""
+    return divmod(a, b)
 
 
 @native
