@@ -882,13 +882,13 @@ sagejs --python compile input.py --output output.js
 node output.js
 ```
 
-## Native Kernel v4
+## Native Kernel v5
 
 The structured native compiler path parses `@native` Sage.js functions
 through the ordinary frontend, lowers them to an explicitly typed
 intermediate representation, and generates both a JavaScript fallback and a
 C/GMP/MPFR/MPC Node addon. In addition to `RealField` and `ComplexField` loops,
-v4 compiles exact `int`/`Integer` modules with comparisons, branching, `while`,
+v5 compiles exact `int`/`Integer` modules with comparisons, branching, `while`,
 floor division, remainder, and direct calls among compiled functions. Argument
 and return annotations in the source are the native signature; no parallel
 JavaScript type table is required. A
@@ -932,11 +932,15 @@ crossing Node-API or returning through JavaScript. The same generated module
 contains an exact `BigInt` fallback. A comma-separated selector can also audit
 and compile typed functions in an undecorated module; for example:
 
+V5 can compile the complete unmodified CoWasm number-theory module—including
+its imports, defaults, tuple-returning extended GCD, destructuring, fixed wheel
+sequence, exceptions, and prime-counting call graph:
+
 ```sh
-sagejs native compile bench/cowasm/src/nt.py --functions gcd
+sagejs native compile bench/cowasm/src/nt.py
 ```
 
-V4 performs exact-value lifetime and mutability analysis before generating C.
+V5 performs exact-value lifetime and mutability analysis before generating C.
 Immutable integer parameters are borrowed, while nonescaping locals are
 interval-colored onto reusable GMP scratch slots. The generated wrapper then
 selects GMP or BigInt from the function's loop/call profile and runtime operand
@@ -952,9 +956,12 @@ kernel.gcd.gmp(a, b);
 `SAGEJS_NATIVE_INTEGER_BACKEND=bigint|gmp|auto` overrides selection for
 benchmarking and diagnosis; `auto` is the default.
 
-Native Kernel v4 also supports offset `range` loops, integer-to-field coercion,
-nested arithmetic, small constant powers, augmented assignment, and recursive
-native calls. Run the exact module and CoWasm comparisons with:
+Native Kernel v5 also supports offset and exact-Integer `range` loops,
+integer-to-field coercion, nested arithmetic, small constant powers, augmented
+and parallel assignment, exact `divmod`, literal defaults, fixed integer
+sequence lookup, typed tuple returns, checked `round(sqrt(Integer))`, explicit
+`ZeroDivisionError`, and recursive native calls. Run the exact module and
+CoWasm comparisons with:
 
 ```sh
 pnpm run bench:native:integer

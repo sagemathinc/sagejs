@@ -32,6 +32,13 @@ const nativeNumberTheoryPath = join(
   "src",
   "native_number_theory.py",
 );
+const completeNumberTheoryPath = join(
+  root,
+  "bench",
+  "cowasm",
+  "src",
+  "nt.py",
+);
 const source = readFileSync(sourcePath, "utf8");
 const ir = await lowerSource(source, sourcePath);
 const complexFunction = ir.functions.find(
@@ -59,8 +66,13 @@ const nativeNumberTheoryIr = await lowerSource(
   readFileSync(nativeNumberTheoryPath, "utf8"),
   nativeNumberTheoryPath,
 );
+const completeNumberTheoryIr = await lowerSource(
+  readFileSync(completeNumberTheoryPath, "utf8"),
+  completeNumberTheoryPath,
+);
+const completeNumberTheoryC = generateC(completeNumberTheoryIr);
 
-assert.equal(ir.version, 4);
+assert.equal(ir.version, 5);
 assert.equal(complexFunction.params[0].type, "ComplexField");
 assert.equal(complexFunction.params[1].type, "uint64");
 assert.equal(complexFunction.returnType, "ComplexNumber");
@@ -106,6 +118,38 @@ assert.equal(
   harmonicFunction.body.filter((item) => item.kind === "real.constant")
     .length,
   2,
+);
+assert.deepEqual(completeNumberTheoryIr.callGraph, {
+  gcd: [],
+  xgcd: [],
+  inverse_mod: ["xgcd"],
+  trial_division: [],
+  is_prime: ["trial_division"],
+  pi: ["is_prime"],
+});
+assert.equal(
+  completeNumberTheoryIr.functions.find((fn) => fn.name === "xgcd")
+    .returnType,
+  "Tuple[Integer,Integer,Integer]",
+);
+assert.deepEqual(
+  completeNumberTheoryIr.functions.find((fn) => fn.name === "trial_division")
+    .params.map((param) => param.default),
+  [undefined, "0", "2"],
+);
+assert.equal(
+  completeNumberTheoryIr.functions.find((fn) => fn.name === "pi")
+    .params[0].default,
+  "100000",
+);
+assert.match(completeNumberTheoryC, /mpz_fdiv_qr\(/);
+assert.match(
+  completeNumberTheoryC,
+  /native_inverse_mod[\s\S]*native_xgcd\(env/,
+);
+assert.match(
+  completeNumberTheoryC,
+  /native_pi[\s\S]*native_is_prime\(env/,
 );
 assert.match(
   harmonicC,
@@ -409,8 +453,87 @@ try {
     () => integerAlgorithmsModule.native_mod.javascript(1, 0),
     /division or modulo by zero/,
   );
+  const completeNumberTheory = await nativeApi.compile({
+    sourcePath: completeNumberTheoryPath,
+    cacheRoot: join(temporary, "complete-number-theory-cache"),
+  });
+  const completeNumberTheoryModule = require(completeNumberTheory.modulePath);
+  const completeNumberTheoryAddon = require(completeNumberTheory.addonPath);
+  assert.deepEqual(completeNumberTheory.ir.callGraph, {
+    gcd: [],
+    xgcd: [],
+    inverse_mod: ["xgcd"],
+    trial_division: [],
+    is_prime: ["trial_division"],
+    pi: ["is_prime"],
+  });
+  for (const backend of ["javascript", "gmp"]) {
+    const api = (name) => completeNumberTheoryModule[name][backend];
+    assert.equal(api("gcd")(92250, 922350), 150n);
+    for (const [a, b, expected] of [
+      [240, 46, [2n, -9n, 47n]],
+      [-84, 30, [6n, 1n, 3n]],
+      [84, -30, [-6n, 1n, 3n]],
+      [-84, -30, [-6n, -1n, 3n]],
+      [0, 7, [7n, 0n, 1n]],
+      [7, 0, [7n, 1n, 0n]],
+    ]) {
+      assert.deepEqual(api("xgcd")(a, b), expected);
+    }
+    assert.equal(api("inverse_mod")(3, 4000), 2667n);
+    for (const [n, bound, start, expected] of [
+      [-5, 0, 2, -5n], [0, 0, 2, 0n], [1, 0, 2, 1n],
+      [2, 0, 2, 2n], [4, 0, 2, 2n], [25, 0, 2, 5n],
+      [49, 0, 2, 7n], [91, 0, 2, 7n], [97, 0, 2, 97n],
+      [121, 0, 2, 11n], [169, 0, 2, 13n], [221, 0, 2, 13n],
+      [9973, 0, 2, 9973n], [49, 0, 8, 49n], [91, 5, 2, 91n],
+      [91, 10, 2, 7n], [221, 0, 12, 13n], [221, 12, 12, 221n],
+    ]) {
+      assert.equal(api("trial_division")(n, bound, start), expected);
+    }
+    assert.equal(api("is_prime")(97), true);
+    assert.equal(api("is_prime")(91), false);
+    for (const [n, expected] of [
+      [-2, 0n], [0, 0n], [1, 0n], [2, 1n], [10, 4n],
+      [100, 25n], [1000, 168n],
+    ]) {
+      assert.equal(api("pi")(n), expected);
+    }
+  }
+  assert.equal(completeNumberTheoryModule.trial_division(49), 7n);
+  assert.equal(completeNumberTheoryAddon.trial_division(49), 7n);
+  assert.equal(completeNumberTheoryModule.pi(), 9592n);
+  assert.equal(completeNumberTheoryModule.pi.backendFor(100000), "gmp");
+  assert.equal(Object.isFrozen(completeNumberTheoryModule.xgcd(240, 46)), true);
+  for (const backend of ["javascript", "gmp"]) {
+    assert.throws(
+      () => completeNumberTheoryModule.inverse_mod[backend](2, 4),
+      /division by zero/,
+    );
+  }
+  const completeModulePath = JSON.stringify(completeNumberTheory.modulePath);
+  assert.deepEqual(
+    runSage(`kernel = require(${completeModulePath})
+value = kernel.xgcd(240, 46)
+print(value)
+print(type(value))
+for inverse in [kernel.inverse_mod.javascript, kernel.inverse_mod.gmp]:
+    try:
+        inverse(2, 4)
+    except Exception as error:
+        print(type(error))
+print(kernel.pi(1000))
+`),
+    [
+      "(2, -9, 47)",
+      "<class 'tuple'>",
+      "<class 'ZeroDivisionError'>",
+      "<class 'ZeroDivisionError'>",
+      "168",
+    ],
+  );
   const selectedNt = await nativeApi.compile({
-    sourcePath: join(root, "bench", "cowasm", "src", "nt.py"),
+    sourcePath: completeNumberTheoryPath,
     functions: ["gcd"],
     cacheRoot: join(temporary, "selected-nt-cache"),
   });
@@ -653,7 +776,7 @@ print(is_compiled(native_powmod))
   rmSync(temporary, { recursive: true, force: true });
 }
 
-console.log("Native Kernel v4 analysis, selection, ABI, and fallback passed.");
+console.log("Native Kernel v5 analysis, selection, ABI, and fallback passed.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

@@ -16,27 +16,37 @@ function operationInputs(operation) {
     case "integer.neg":
     case "integer.abs":
     case "integer.truth":
+    case "integer.round_sqrt":
     case "bool.not":
     case "uint64.truth":
       return [operation.source];
     case "integer.pow_uint":
       return [operation.base];
     case "integer.binary":
+    case "integer.divmod":
     case "integer.compare":
     case "bool.compare":
     case "bool.binary":
       return [operation.left, operation.right];
+    case "integer.sequence.get":
+      return [operation.index];
     case "native.call":
       return operation.arguments.map((argument) => argument.name);
     case "return":
-      return [operation.value];
+      return operation.values || [operation.value];
     default:
       return [];
   }
 }
 
-function operationTarget(operation) {
-  return typeof operation.target === "string" ? operation.target : undefined;
+function operationTargets(operation) {
+  if (operation.kind === "integer.divmod") {
+    return [operation.quotient, operation.remainder];
+  }
+  if (Array.isArray(operation.results)) {
+    return operation.results.map((result) => result.name);
+  }
+  return typeof operation.target === "string" ? [operation.target] : [];
 }
 
 function walkStatements(statements, handlers) {
@@ -57,10 +67,21 @@ function walkStatements(statements, handlers) {
       handlers.exitLoop?.("while");
       continue;
     }
-    if (statement.kind === "loop.range") {
+    if (statement.kind === "loop.range" ||
+        statement.kind === "loop.range_exact") {
       handlers.loop("range");
       handlers.enterLoop?.("range");
+      if (statement.kind === "loop.range_exact") {
+        handlers.read(statement.start);
+        handlers.read(statement.stop);
+        handlers.write(statement.index);
+        handlers.read(statement.index);
+      }
       walkStatements(statement.body, handlers);
+      if (statement.kind === "loop.range_exact") {
+        handlers.read(statement.index);
+        handlers.write(statement.index);
+      }
       handlers.exitLoop?.("range");
       continue;
     }
@@ -87,8 +108,9 @@ function storageAnalysis(fn) {
   walkStatements(fn.body, {
     loop() {},
     operation(operation) {
-      const target = operationTarget(operation);
-      if (integerParams.has(target)) mutatedParams.add(target);
+      for (const target of operationTargets(operation)) {
+        if (integerParams.has(target)) mutatedParams.add(target);
+      }
     },
     read() {},
     write(name) {
@@ -124,10 +146,11 @@ function storageAnalysis(fn) {
         touch(name);
         recordLoopUse(name);
       }
-      const target = operationTarget(operation);
-      if (types.get(target) === "Integer") {
-        touch(target);
-        recordLoopUse(target);
+      for (const target of operationTargets(operation)) {
+        if (types.get(target) === "Integer") {
+          touch(target);
+          recordLoopUse(target);
+        }
       }
     },
     read(name) {
@@ -220,7 +243,9 @@ function executionProfile(fn) {
     operation(operation) {
       if (
         operation.kind === "integer.binary" ||
-        operation.kind === "integer.pow_uint"
+        operation.kind === "integer.pow_uint" ||
+        operation.kind === "integer.divmod" ||
+        operation.kind === "integer.round_sqrt"
       ) {
         profile.arithmeticOperations += 1;
       }
@@ -268,6 +293,16 @@ function backendPolicy(fn, profile, recursive) {
     return {
       kind: "gmp",
       reason: "scratch-coalesced recursive exact frames favor direct GMP calls",
+    };
+  }
+  if (
+    profile.rangeLoops > 0 &&
+    profile.nativeCalls > 0 &&
+    profile.dependencyDepth >= 2
+  ) {
+    return {
+      kind: "gmp",
+      reason: "a range loop drives a multi-level exact native call graph",
     };
   }
   if (
@@ -330,9 +365,29 @@ function backendPolicy(fn, profile, recursive) {
 
 function analyzeExactModule(functions) {
   const recursive = recursiveFunctions(functions);
+  const exact = new Map(
+    functions
+      .filter((fn) => fn.kernelKind === "integer")
+      .map((fn) => [fn.name, fn]),
+  );
+  const dependencyDepth = (name, path = new Set()) => {
+    if (path.has(name)) return 0;
+    const fn = exact.get(name);
+    if (fn === undefined || fn.dependencies.length === 0) return 0;
+    const next = new Set(path);
+    next.add(name);
+    return 1 + Math.max(
+      ...fn.dependencies.map((dependency) =>
+        dependencyDepth(dependency, next)
+      ),
+    );
+  };
   for (const fn of functions) {
     if (fn.kernelKind !== "integer") continue;
-    const profile = executionProfile(fn);
+    const profile = {
+      ...executionProfile(fn),
+      dependencyDepth: dependencyDepth(fn.name),
+    };
     fn.analysis = {
       storage: storageAnalysis(fn),
       execution: { ...profile, recursive: recursive.has(fn.name) },

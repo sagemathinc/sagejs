@@ -3,12 +3,13 @@
 const createCompiler = require("../..");
 const { analyzeExactModule } = require("./exact-analysis.cjs");
 const {
+  canonicalType,
   isIntegerSignature,
   lowerIntegerFunction,
   signatureFromFunction,
 } = require("./integer-ir.cjs");
 
-const IR_VERSION = 4;
+const IR_VERSION = 5;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -596,6 +597,21 @@ function isEmptyDecoratorStatement(statement) {
   );
 }
 
+function supportedModulePreamble(statement) {
+  if (isEmptyDecoratorStatement(statement) ||
+      nodeType(statement) === "AST_EmptyStatement") return true;
+  if (nodeType(statement) !== "AST_Imports") return false;
+  return array(statement.imports).every((item) => {
+    const moduleName = item.module?.name;
+    const names = array(item.argnames).map((arg) => arg.name);
+    return (
+      moduleName === "math" && names.every((name) => name === "sqrt")
+    ) || (
+      moduleName === "typing" && names.every((name) => name === "Tuple")
+    );
+  });
+}
+
 async function lowerSource(source, filename, options = {}) {
   const compiler = createCompiler();
   const { createPythonCompilerFrontend } = require(
@@ -630,7 +646,7 @@ async function lowerSource(source, filename, options = {}) {
     selectedDefinitions = decorated;
   } else {
     selectedDefinitions = topLevel
-      .filter((statement) => !isEmptyDecoratorStatement(statement))
+      .filter((statement) => !supportedModulePreamble(statement))
       .map((statement) => {
         expect(
           nodeType(statement) === "AST_Function",
@@ -648,23 +664,13 @@ async function lowerSource(source, filename, options = {}) {
     !(Array.isArray(options.functions) && options.functions.length > 0);
   const signatures = new Map();
   for (const fn of selectedDefinitions) {
-    const rawReturn = annotationName(
-      fn.return_annotation,
-      `native function ${fn.name.name} return annotation`,
-    );
-    const rawParams = array(fn.argnames).map((arg) =>
-      annotationName(
-        arg.annotation,
-        `native argument ${fn.name.name}.${arg.name} annotation`,
-      ),
+    const returnType = canonicalType(fn.return_annotation);
+    const paramTypes = array(fn.argnames).map((arg) =>
+      canonicalType(arg.annotation)
     );
     if (
-      rawReturn === "Integer" ||
-      rawReturn === "int" ||
-      rawReturn === "bool" ||
-      rawParams.some(
-        (type) => type === "Integer" || type === "int" || type === "bool",
-      )
+      returnType !== undefined ||
+      paramTypes.some((type) => type === "Integer" || type === "bool")
     ) {
       const signature = signatureFromFunction(fn, filename);
       expect(

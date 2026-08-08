@@ -1,6 +1,6 @@
-# Native Kernel v4
+# Native Kernel v5
 
-Native Kernel v4 asks whether selected Sage.js library functions can compile
+Native Kernel v5 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. It is a small but structured compiler path, replacing the earlier
 single-function code-generation proof.
@@ -64,7 +64,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v4 is currently a source-tree development feature and uses the
+Native Kernel v5 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -75,12 +75,16 @@ cache instead of the default `.sagejs-native-kernels` beside the source.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v4 supports:
+lowers marked functions to typed IR. Native Kernel v5 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
 - comparisons, Boolean conditions, short-circuit logic, `if`, `while`, early
   returns, unary negation, absolute value, Python floor division, and modulo;
+- exact tuple returns, parallel tuple/list destructuring, `divmod`, literal
+  positional defaults, fixed local integer sequences and checked indexing;
+- exact-Integer `range` loops, `round(sqrt(Integer))`, and propagation of
+  `ZeroDivisionError` through both generated backends;
 - a module dependency graph and direct private-C calls among compiled exact
   functions, including recursion;
 - conservative exact-value mutability, escape, and lifetime analysis, with
@@ -213,12 +217,22 @@ difference, not merely compiler or language overhead.
 
 ### Exact integers and CoWasm number theory
 
-Native Kernel v4 also compiles the `gcd` function directly from the unmodified
+Native Kernel v5 compiles every function directly from the complete unmodified
 [`cowasm/src/nt.py`](cowasm/src/nt.py):
 
 ```sh
-sagejs native compile bench/cowasm/src/nt.py --functions gcd
+sagejs native compile bench/cowasm/src/nt.py
 ```
+
+The resulting private C call graph contains `inverse_mod → xgcd`,
+`is_prime → trial_division`, and `pi → is_prime`; none of those internal calls
+returns through JavaScript or Python. On the dedicated 16-vCPU AMD EPYC 7B13
+host with Node 26.7.0, seven-sample medians for `pi(100000)` were 127.8 ms with
+automatic dispatch, 130.3 ms with forced GMP, 236.7 ms with generated BigInt,
+74.9 ms in CPython 3.12, and 290.0 ms in interpreted Sage.js. Automatic dispatch
+selected GMP from the transitive call-graph shape. Thus v5 makes this unchanged
+multi-function workload 2.27x faster than interpreted Sage.js while leaving a
+clear machine-integer specialization target relative to CPython.
 
 The matched module benchmark in
 [`native_number_theory.py`](cowasm/src/native_number_theory.py) moves the loop
@@ -250,15 +264,16 @@ pnpm run bench:native:cowasm
 SAGEJS_NATIVE_INTEGER_TERMS=10000000 pnpm run bench:native:integer
 ```
 
-## Deliberate v4 limits
+## Deliberate v5 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements
 as arguments, release the event loop, build asynchronously, or provide
-prebuilt kernels. Exact modules currently return one scalar `Integer` or
-`bool`; tuples, containers, keyword-only native ABI arguments, general
-iterators, exception handlers, and calls into uncompiled Python remain outside
-the typed subset. Unsupported constructs fail during compilation instead of
+prebuilt kernels. Exact modules currently return one scalar `Integer`, `bool`,
+or a flat typed tuple. Mutable containers, keyword-only native ABI arguments,
+general iterators, exception handlers, and calls into uncompiled Python remain
+outside the typed subset. Fixed local integer sequences are compile-time values,
+not general lists. Unsupported constructs fail during compilation instead of
 silently changing Python semantics. The next compiler work should be driven by
 real Sage.js library code and Sage-compatible semantics rather than by
 accumulating unconnected AST cases.

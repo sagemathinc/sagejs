@@ -37,6 +37,11 @@ elif mode == 'rfib':
 
     def workload():
         return rfib(count)
+elif mode == 'pi':
+    from nt import pi
+
+    def workload():
+        return pi(count)
 else:
     raise ValueError('unknown native CoWasm workload')
 

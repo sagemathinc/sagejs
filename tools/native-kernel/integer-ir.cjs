@@ -65,8 +65,48 @@ function rawAnnotationName(annotation) {
   return undefined;
 }
 
+function sequenceElements(node) {
+  if (nodeType(node) === "AST_Array") return array(node.elements);
+  if (nodeType(node) !== "AST_Seq") return undefined;
+  const result = [node.car];
+  let rest = node.cdr;
+  while (nodeType(rest) === "AST_Seq") {
+    result.push(rest.car);
+    rest = rest.cdr;
+  }
+  result.push(rest);
+  return result;
+}
+
+function tupleType(elements) {
+  return `Tuple[${elements.join(",")}]`;
+}
+
+function tupleElementTypes(type) {
+  if (typeof type !== "string" || !type.startsWith("Tuple[") ||
+      !type.endsWith("]")) return undefined;
+  const body = type.slice(6, -1);
+  return body === "" ? [] : body.split(",");
+}
+
+function isTupleType(type) {
+  return tupleElementTypes(type) !== undefined;
+}
+
 function canonicalType(annotation) {
-  return TYPE_ALIASES.get(rawAnnotationName(annotation));
+  const scalar = TYPE_ALIASES.get(rawAnnotationName(annotation));
+  if (scalar !== undefined) return scalar;
+  if (
+    nodeType(annotation) !== "AST_ItemAccess" ||
+    !["Tuple", "tuple"].includes(rawAnnotationName(annotation.expression))
+  ) return undefined;
+  const elements = sequenceElements(annotation.property) ||
+    [annotation.property];
+  const types = elements.map(canonicalType);
+  if (types.some((type) => type === undefined || isTupleType(type))) {
+    return undefined;
+  }
+  return tupleType(types);
 }
 
 function integerLiteral(node) {
@@ -110,6 +150,7 @@ function signatureFromFunction(fn, filename) {
     isCIdentifier(fn.name?.name),
     "function name must also be a C identifier",
   );
+  const defaults = fn.argnames?.defaults || {};
   const params = array(fn.argnames).map((arg) => {
     const type = canonicalType(arg.annotation);
     expect(
@@ -121,10 +162,48 @@ function signatureFromFunction(fn, filename) {
     expect(
       context,
       arg,
+      !isTupleType(type),
+      "tuple arguments are not yet supported by the native ABI",
+    );
+    expect(
+      context,
+      arg,
       isCIdentifier(arg.name),
       `argument ${arg.name} must also be a C identifier`,
     );
-    return { name: arg.name, type };
+    const defaultNode = defaults[arg.name];
+    let defaultValue;
+    if (defaultNode !== undefined) {
+      if (type === "Integer" || type === "uint64") {
+        const value = integerLiteral(defaultNode);
+        expect(
+          context,
+          defaultNode,
+          value !== undefined,
+          `default for ${arg.name} must be an integer literal`,
+        );
+        if (type === "uint64") {
+          expect(
+            context,
+            defaultNode,
+            value >= 0n && value <= 18446744073709551615n,
+            `default for ${arg.name} is outside uint64`,
+          );
+        }
+        defaultValue = value.toString();
+      } else if (type === "bool") {
+        defaultValue = booleanLiteral(defaultNode);
+        expect(
+          context,
+          defaultNode,
+          defaultValue !== undefined,
+          `default for ${arg.name} must be a bool literal`,
+        );
+      } else {
+        fail(context, defaultNode, "tuple arguments cannot have defaults");
+      }
+    }
+    return { name: arg.name, type, default: defaultValue };
   });
   const returnType = canonicalType(fn.return_annotation);
   expect(
@@ -140,6 +219,7 @@ function isIntegerSignature(signature) {
   return (
     signature.returnType === "Integer" ||
     signature.returnType === "bool" ||
+    isTupleType(signature.returnType) ||
     signature.params.some(
       (param) => param.type === "Integer" || param.type === "bool",
     )
@@ -161,6 +241,7 @@ function createContext(fn, signature, signatures, filename, decorated) {
     params: signature.params,
     returnType: signature.returnType,
     scalarCoercions: new Map(),
+    sequenceConstants: new Map(),
     signatures,
     variables,
     fn,
@@ -258,38 +339,135 @@ function lowerCall(node, context, operations) {
     return { name: target, type: "Integer" };
   }
 
+  if (name === "divmod") {
+    expect(context, node, args.length === 2, "divmod() requires two arguments");
+    const left = coerceInteger(
+      lowerExpression(args[0], context, operations),
+      context,
+      args[0],
+      operations,
+    );
+    const right = coerceInteger(
+      lowerExpression(args[1], context, operations),
+      context,
+      args[1],
+      operations,
+    );
+    const quotient = temporary(context, node, "Integer");
+    const remainder = temporary(context, node, "Integer");
+    operations.push({
+      kind: "integer.divmod",
+      quotient,
+      remainder,
+      left: left.name,
+      right: right.name,
+    });
+    return {
+      type: tupleType(["Integer", "Integer"]),
+      elements: [
+        { name: quotient, type: "Integer" },
+        { name: remainder, type: "Integer" },
+      ],
+    };
+  }
+
+  if (name === "round") {
+    expect(context, node, args.length === 1, "round() requires one argument");
+    const sqrtCall = args[0];
+    expect(
+      context,
+      sqrtCall,
+      nodeType(sqrtCall) === "AST_Call" &&
+        nodeType(sqrtCall.expression) === "AST_SymbolRef" &&
+        sqrtCall.expression.name === "sqrt" &&
+        array(sqrtCall.args).length === 1,
+      "native round() currently supports round(sqrt(Integer))",
+    );
+    const sourceNode = array(sqrtCall.args)[0];
+    const source = coerceInteger(
+      lowerExpression(sourceNode, context, operations),
+      context,
+      sourceNode,
+      operations,
+    );
+    const target = temporary(context, node, "Integer");
+    operations.push({
+      kind: "integer.round_sqrt",
+      target,
+      source: source.name,
+    });
+    return { name: target, type: "Integer" };
+  }
+
   const signature = context.signatures.get(name);
   expect(context, node, signature !== undefined, `unsupported call to ${name}`);
   expect(
     context,
     node,
-    args.length === signature.params.length,
-    `${name} expects ${signature.params.length} arguments, got ${args.length}`,
+    args.length <= signature.params.length &&
+      signature.params.slice(args.length).every(
+        (param) => param.default !== undefined,
+      ),
+    `${name} expects ${signature.params.filter((param) => param.default === undefined).length}` +
+      ` through ${signature.params.length} arguments, got ${args.length}`,
   );
-  const lowered = args.map((arg, index) => {
-    let value = lowerExpression(arg, context, operations);
+  const lowered = signature.params.map((param, index) => {
+    const arg = args[index];
+    let value;
+    if (arg === undefined) {
+      if (param.type === "bool") {
+        value = emitBoolean(context, node, operations, param.default);
+      } else {
+        value = emitConstant(
+          context,
+          node,
+          operations,
+          BigInt(param.default),
+        );
+      }
+    } else {
+      value = lowerExpression(arg, context, operations);
+    }
     const expectedType = signature.params[index].type;
     if (expectedType === "Integer") {
-      value = coerceInteger(value, context, arg, operations);
+      value = coerceInteger(value, context, arg || node, operations);
     }
     expect(
       context,
-      arg,
+      arg || node,
       value.type === expectedType,
       `${name} argument ${index + 1} expects ${expectedType}, got ${value.type}`,
     );
     return value;
   });
-  const target = temporary(context, node, signature.returnType);
-  operations.push({
-    kind: "native.call",
-    target,
-    function: name,
-    arguments: lowered,
-    returnType: signature.returnType,
-  });
+  const returnElements = tupleElementTypes(signature.returnType);
+  let result;
+  if (returnElements !== undefined) {
+    const elements = returnElements.map((type) => ({
+      name: temporary(context, node, type),
+      type,
+    }));
+    operations.push({
+      kind: "native.call",
+      results: elements,
+      function: name,
+      arguments: lowered,
+      returnType: signature.returnType,
+    });
+    result = { type: signature.returnType, elements };
+  } else {
+    const target = temporary(context, node, signature.returnType);
+    operations.push({
+      kind: "native.call",
+      target,
+      function: name,
+      arguments: lowered,
+      returnType: signature.returnType,
+    });
+    result = { name: target, type: signature.returnType };
+  }
   context.dependencies.add(name);
-  return { name: target, type: signature.returnType };
+  return result;
 }
 
 function lowerExpression(node, context, operations) {
@@ -314,6 +492,46 @@ function lowerExpression(node, context, operations) {
   }
   if (nodeType(node) === "AST_Call") {
     return lowerCall(node, context, operations);
+  }
+  const elements = sequenceElements(node);
+  if (elements !== undefined) {
+    const lowered = elements.map((element) =>
+      lowerExpression(element, context, operations)
+    );
+    expect(
+      context,
+      node,
+      lowered.every((value) => !isTupleType(value.type)),
+      "nested native tuples are not yet supported",
+    );
+    return {
+      type: tupleType(lowered.map((value) => value.type)),
+      elements: lowered,
+    };
+  }
+  if (nodeType(node) === "AST_ItemAccess") {
+    expect(
+      context,
+      node.expression,
+      nodeType(node.expression) === "AST_SymbolRef" &&
+        context.sequenceConstants.has(node.expression.name) &&
+        context.initialized.has(node.expression.name),
+      "native indexing currently requires a local constant sequence",
+    );
+    const index = coerceInteger(
+      lowerExpression(node.property, context, operations),
+      context,
+      node.property,
+      operations,
+    );
+    const target = temporary(context, node, "Integer");
+    operations.push({
+      kind: "integer.sequence.get",
+      target,
+      index: index.name,
+      values: context.sequenceConstants.get(node.expression.name),
+    });
+    return { name: target, type: "Integer" };
   }
   if (nodeType(node) === "AST_UnaryPrefix") {
     if (node.operator === "-") {
@@ -462,6 +680,38 @@ function lowerCondition(node, context, operations) {
   fail(context, node, `cannot use ${value.type} as a condition`);
 }
 
+function materializeValue(value, context, node, operations) {
+  expect(
+    context,
+    node,
+    !isTupleType(value.type),
+    "cannot materialize a composite native value as a scalar",
+  );
+  const target = temporary(context, node, value.type);
+  operations.push({
+    kind: `${value.type.toLowerCase()}.copy`,
+    target,
+    source: value.name,
+  });
+  return { name: target, type: value.type };
+}
+
+function assignScalar(targetNode, value, context, operations) {
+  expect(
+    context,
+    targetNode,
+    nodeType(targetNode) === "AST_SymbolRef",
+    "native assignment targets must be local names",
+  );
+  ensureVariable(context, targetNode, targetNode.name, value.type);
+  operations.push({
+    kind: `${value.type.toLowerCase()}.copy`,
+    target: targetNode.name,
+    source: value.name,
+  });
+  context.initialized.add(targetNode.name);
+}
+
 function lowerAssignment(statement, context) {
   context.scalarCoercions = new Map();
   const assign = statement.body;
@@ -469,23 +719,66 @@ function lowerAssignment(statement, context) {
     context,
     statement,
     nodeType(statement) === "AST_SimpleStatement" &&
-      nodeType(assign) === "AST_Assign" &&
-      nodeType(assign.left) === "AST_SymbolRef",
-    "native assignments require a single local-name target",
+      nodeType(assign) === "AST_Assign",
+    "native assignments require an assignment statement",
   );
   const operations = [];
-  const target = assign.left.name;
   if (assign.operator === "=") {
+    if (
+      nodeType(assign.left) === "AST_SymbolRef" &&
+      nodeType(assign.right) === "AST_Array" &&
+      !assign.right.is_tuple
+    ) {
+      const constants = array(assign.right.elements).map((element) => {
+        const value = integerLiteral(element);
+        expect(
+          context,
+          element,
+          value !== undefined,
+          "native sequence constants require integer literal elements",
+        );
+        return value.toString();
+      });
+      const target = assign.left.name;
+      const type = `IntegerSequence[${constants.length}]`;
+      ensureVariable(context, assign.left, target, type);
+      context.sequenceConstants.set(target, constants);
+      context.initialized.add(target);
+      return operations;
+    }
     const value = lowerExpression(assign.right, context, operations);
-    ensureVariable(context, assign.left, target, value.type);
-    operations.push({
-      kind: `${value.type.toLowerCase()}.copy`,
-      target,
-      source: value.name,
-    });
-    context.initialized.add(target);
+    const targets = sequenceElements(assign.left);
+    if (targets !== undefined) {
+      expect(
+        context,
+        assign.left,
+        isTupleType(value.type) && value.elements.length === targets.length,
+        `cannot unpack ${value.type} into ${targets.length} targets`,
+      );
+      const snapshots = value.elements.map((element) =>
+        materializeValue(element, context, assign.right, operations)
+      );
+      targets.forEach((target, index) =>
+        assignScalar(target, snapshots[index], context, operations)
+      );
+      return operations;
+    }
+    expect(
+      context,
+      assign.left,
+      !isTupleType(value.type),
+      "a native tuple value must be unpacked",
+    );
+    assignScalar(assign.left, value, context, operations);
     return operations;
   }
+  expect(
+    context,
+    assign.left,
+    nodeType(assign.left) === "AST_SymbolRef",
+    "augmented native assignments require a local-name target",
+  );
+  const target = assign.left.name;
   const symbol = assign.operator.endsWith("=")
     ? assign.operator.slice(0, -1)
     : "";
@@ -546,22 +839,17 @@ function lowerRange(node, context) {
   );
   const start = args.length === 1 ? 0n : integerLiteral(args[0]);
   const countNode = args.length === 1 ? args[0] : args[1];
-  expect(
-    context,
-    node,
-    start !== undefined && start >= 0n && start <= BigInt(Number.MAX_SAFE_INTEGER),
-    "native range start must be a nonnegative safe integer literal",
-  );
   let countName;
-  if (nodeType(countNode) === "AST_SymbolRef") {
-    expect(
-      context,
-      countNode,
-      context.variables.get(countNode.name) === "uint64",
-      "native range bound must be a uint64 argument",
-    );
+  if (
+    start !== undefined && start >= 0n &&
+    start <= BigInt(Number.MAX_SAFE_INTEGER) &&
+    nodeType(countNode) === "AST_SymbolRef" &&
+    context.variables.get(countNode.name) === "uint64"
+  ) {
     countName = countNode.name;
   } else if (
+    start !== undefined && start >= 0n &&
+    start <= BigInt(Number.MAX_SAFE_INTEGER) &&
     nodeType(countNode) === "AST_Binary" &&
     countNode.operator === "+" &&
     nodeType(countNode.left) === "AST_SymbolRef" &&
@@ -569,14 +857,32 @@ function lowerRange(node, context) {
     integerLiteral(countNode.right) === start
   ) {
     countName = countNode.left.name;
-  } else {
-    fail(
-      context,
-      countNode,
-      "native range bound must be uint64 or uint64 + start",
-    );
   }
-  return { start: Number(start), count: countName };
+  if (countName !== undefined) {
+    return {
+      kind: "loop.range",
+      start: Number(start),
+      count: countName,
+      indexType: "uint64",
+      operations: [],
+    };
+  }
+
+  const operations = [];
+  const startNode = args.length === 1 ? null : args[0];
+  let startValue = startNode === null
+    ? emitConstant(context, node, operations, 0n)
+    : lowerExpression(startNode, context, operations);
+  let stopValue = lowerExpression(countNode, context, operations);
+  startValue = coerceInteger(startValue, context, startNode || node, operations);
+  stopValue = coerceInteger(stopValue, context, countNode, operations);
+  return {
+    kind: "loop.range_exact",
+    start: startValue.name,
+    stop: stopValue.name,
+    indexType: "Integer",
+    operations,
+  };
 }
 
 function lowerStatements(statements, context) {
@@ -599,7 +905,11 @@ function lowerStatements(statements, context) {
         value.type === context.returnType,
         `return expects ${context.returnType}, got ${value.type}`,
       );
-      result.push(...operations, {
+      result.push(...operations, isTupleType(value.type) ? {
+        kind: "return",
+        values: value.elements.map((element) => element.name),
+        type: value.type,
+      } : {
         kind: "return",
         value: value.name,
         type: value.type,
@@ -669,7 +979,8 @@ function lowerStatements(statements, context) {
         "native range loop requires a local-name index",
       );
       const index = statement.init.name;
-      ensureVariable(context, statement.init, index, "uint64");
+      const range = lowerRange(statement.object, context);
+      ensureVariable(context, statement.init, index, range.indexType);
       const before = new Set(context.initialized);
       context.initialized.add(index);
       const body = lowerBlock(statement.body, context);
@@ -686,11 +997,28 @@ function lowerStatements(statements, context) {
           loopBody.push(operation);
         }
       }
-      result.push(...hoisted, {
-        kind: "loop.range",
+      result.push(...range.operations, ...hoisted, {
+        kind: range.kind,
         index,
-        ...lowerRange(statement.object, context),
+        ...(range.kind === "loop.range"
+          ? { start: range.start, count: range.count }
+          : { start: range.start, stop: range.stop }),
         body: loopBody,
+      });
+      continue;
+    }
+    if (nodeType(statement) === "AST_Throw") {
+      expect(
+        context,
+        statement,
+        nodeType(statement.value) === "AST_SymbolRef" &&
+          statement.value.name === "ZeroDivisionError",
+        "native raise currently supports ZeroDivisionError",
+      );
+      result.push({
+        kind: "raise",
+        exception: "ZeroDivisionError",
+        message: "division by zero",
       });
       continue;
     }
@@ -706,7 +1034,8 @@ function containsReturn(statements) {
       (statement.kind === "if" &&
         (containsReturn(statement.body) ||
           containsReturn(statement.alternative))) ||
-      ((statement.kind === "while" || statement.kind === "loop.range") &&
+      ((statement.kind === "while" || statement.kind === "loop.range" ||
+        statement.kind === "loop.range_exact") &&
         containsReturn(statement.body))
     ) {
       return true;
@@ -740,6 +1069,8 @@ function lowerIntegerFunction(fn, signature, signatures, filename, decorated) {
 module.exports = {
   canonicalType,
   isIntegerSignature,
+  isTupleType,
   lowerIntegerFunction,
   signatureFromFunction,
+  tupleElementTypes,
 };

@@ -10,6 +10,7 @@ const sourceRoot = join(root, "src", "lib");
 const pythonWorkload = join(__dirname, "native_cowasm_workload.py");
 const iterations = Number(process.env.SAGEJS_NATIVE_COWASM_ITERATIONS || 100000);
 const fibonacciInput = Number(process.env.SAGEJS_NATIVE_COWASM_FIBONACCI || 30);
+const piInput = Number(process.env.SAGEJS_NATIVE_COWASM_PI || 100000);
 const largeGcdIterations = Number(
   process.env.SAGEJS_NATIVE_COWASM_LARGE_GCD_ITERATIONS || 100,
 );
@@ -58,11 +59,10 @@ function interpreter(command, args, mode, count) {
 }
 
 (async () => {
-  const selected = await compile({
+  const complete = await compile({
     sourcePath: join(__dirname, "cowasm", "src", "nt.py"),
-    functions: ["gcd"],
   });
-  const selectedModule = require(selected.modulePath);
+  const completeModule = require(complete.modulePath);
   const algorithms = await compile({
     sourcePath: join(__dirname, "cowasm", "src", "native_number_theory.py"),
   });
@@ -98,7 +98,10 @@ function interpreter(command, args, mode, count) {
     [fibonacciInput],
     recursiveRepetitions,
   );
-  const selectedGcd = selectedModule.gcd(92250, 922350);
+  const selectedGcd = completeModule.gcd(92250, 922350);
+  const automaticPi = measure(completeModule.pi, [piInput]);
+  const nativePi = measure(completeModule.pi.gmp, [piInput]);
+  const bigintPi = measure(completeModule.pi.bigint, [piInput]);
 
   const cpythonGcd = interpreter(
     "python3",
@@ -136,6 +139,13 @@ function interpreter(command, args, mode, count) {
     "rfib",
     fibonacciInput,
   );
+  const cpythonPi = interpreter("python3", [pythonWorkload], "pi", piInput);
+  const sagejsPi = interpreter(
+    process.execPath,
+    [join(root, "bin", "sagejs"), "--python", pythonWorkload],
+    "pi",
+    piInput,
+  );
 
   const report = {
     environment: {
@@ -143,7 +153,8 @@ function interpreter(command, args, mode, count) {
       node: process.version,
       platform: process.platform,
     },
-    selectedUnmodifiedNtGcd: String(selectedGcd),
+    completeUnmodifiedNtCallGraph: complete.ir.callGraph,
+    completeUnmodifiedNtGcd: String(selectedGcd),
     callGraph: algorithms.ir.callGraph,
     backendPolicies: Object.fromEntries(
       [
@@ -181,6 +192,15 @@ function interpreter(command, args, mode, count) {
       cpython: cpythonFibonacci,
       sagejsPython: sagejsFibonacci,
     },
+    primeCounting: {
+      input: piInput,
+      selectedBackend: completeModule.pi.backendFor(piInput),
+      automatic: automaticPi,
+      nativeGmp: nativePi,
+      generatedBigInt: bigintPi,
+      cpython: cpythonPi,
+      sagejsPython: sagejsPi,
+    },
   };
   const expectedGcd = "2414484";
   const gcdAnswers = [
@@ -213,12 +233,22 @@ function interpreter(command, args, mode, count) {
   if (new Set(fibonacciAnswers).size !== 1) {
     throw new Error(`Fibonacci result mismatch: ${fibonacciAnswers.join(", ")}`);
   }
+  const piAnswers = [
+    automaticPi.answer,
+    nativePi.answer,
+    bigintPi.answer,
+    cpythonPi.answer,
+    sagejsPi.answer,
+  ];
+  if (new Set(piAnswers).size !== 1) {
+    throw new Error(`prime-counting mismatch: ${piAnswers.join(", ")}`);
+  }
   if (process.argv.includes("--json")) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return;
   }
-  console.log("Native Kernel v4 — CoWasm number theory");
-  console.log(`unmodified nt.py gcd(92250, 922350): ${selectedGcd}`);
+  console.log("Native Kernel v5 — CoWasm number theory");
+  console.log(`complete unmodified nt.py gcd(92250, 922350): ${selectedGcd}`);
   console.table({
     "GCD automatic": automaticGcd.seconds,
     "GCD AOT/GMP": nativeGcd.seconds,
@@ -235,6 +265,11 @@ function interpreter(command, args, mode, count) {
     "rfib exact BigInt": bigintFibonacci.seconds,
     "rfib CPython": cpythonFibonacci.seconds,
     "rfib Sage.js Python": sagejsFibonacci.seconds,
+    "pi automatic": automaticPi.seconds,
+    "pi AOT/GMP": nativePi.seconds,
+    "pi exact BigInt": bigintPi.seconds,
+    "pi CPython": cpythonPi.seconds,
+    "pi Sage.js Python": sagejsPi.seconds,
   });
 })().catch((error) => {
   console.error(error);

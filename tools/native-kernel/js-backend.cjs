@@ -1,5 +1,10 @@
 "use strict";
 
+const {
+  isTupleType,
+  tupleElementTypes,
+} = require("./integer-ir.cjs");
+
 const METHOD = {
   add: "_add_",
   sub: "_sub_",
@@ -203,6 +208,18 @@ function emitExactStatement(operation, indent) {
     return `${indent}${operation.target} = ${operation.base} ** ` +
       `${BigInt(operation.exponent)}n;`;
   }
+  if (operation.kind === "integer.divmod") {
+    return `${indent}[${operation.quotient}, ${operation.remainder}] = ` +
+      `integerDivmod(${operation.left}, ${operation.right});`;
+  }
+  if (operation.kind === "integer.round_sqrt") {
+    return `${indent}${operation.target} = ` +
+      `integerRoundSqrt(${operation.source});`;
+  }
+  if (operation.kind === "integer.sequence.get") {
+    return `${indent}${operation.target} = integerSequenceGet(` +
+      `${JSON.stringify(operation.values.map(String))}, ${operation.index});`;
+  }
   if (operation.kind === "integer.binary") {
     const operator = { add: "+", sub: "-", mul: "*" }[
       operation.operation
@@ -263,7 +280,10 @@ function emitExactStatement(operation, indent) {
     return `${indent}${operation.target} = ${operation.source} !== 0;`;
   }
   if (operation.kind === "native.call") {
-    return `${indent}${operation.target} = javascript_${operation.function}(` +
+    const targets = operation.results === undefined
+      ? operation.target
+      : `[${operation.results.map((result) => result.name).join(", ")}]`;
+    return `${indent}${targets} = javascript_${operation.function}(` +
       `${operation.arguments.map((argument) => argument.name).join(", ")});`;
   }
   if (operation.kind === "if") {
@@ -310,8 +330,26 @@ function emitExactStatement(operation, indent) {
       `${indent}}`,
     ].join("\n");
   }
+  if (operation.kind === "loop.range_exact") {
+    return [
+      `${indent}for (${operation.index} = ${operation.start}; ` +
+        `${operation.index} < ${operation.stop}; ` +
+        `${operation.index} += 1n) {`,
+      ...operation.body.map((item) =>
+        emitExactStatement(item, `${indent}  `)
+      ),
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "return") {
+    if (isTupleType(operation.type)) {
+      return `${indent}return [${operation.values.join(", ")}];`;
+    }
     return `${indent}return ${operation.value};`;
+  }
+  if (operation.kind === "raise") {
+    return `${indent}nativeRaise(${jsString(operation.exception)}, ` +
+      `${jsString(operation.message)});`;
   }
   throw new Error(`unsupported exact JavaScript IR statement ${operation.kind}`);
 }
@@ -324,6 +362,24 @@ ${locals.length ? `  let ${locals.join(", ")};\n` : ""}${
     fn.body.map((item) => emitExactStatement(item, "  ")).join("\n")
   }
 }`;
+}
+
+function exactDefault(param) {
+  if (param.default === undefined) return param.name;
+  const value = param.type === "bool"
+    ? String(param.default)
+    : `${BigInt(param.default)}n`;
+  return `${param.name} = ${value}`;
+}
+
+function exactParameters(fn) {
+  return fn.params.map(exactDefault).join(", ");
+}
+
+function exactReturn(fn, expression) {
+  return tupleElementTypes(fn.returnType) === undefined
+    ? expression
+    : `nativeTuple(${expression})`;
 }
 
 function exactValidation(param) {
@@ -377,6 +433,7 @@ function backendDecision(fn) {
 
 function emitExactPublicFunction(fn) {
   const params = fn.params.map((param) => param.name).join(", ");
+  const declaredParams = exactParameters(fn);
   const normalized = fn.params.map((param) =>
     `  const sagejs_native_${param.name} = ${normalizedArgument(param)};`
   );
@@ -410,31 +467,31 @@ function backend_${fn.name}(${args}) {
 ${backendDecision(fn)}
 }
 
-function ${fn.name}(${params}) {
+function ${fn.name}(${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
   if (backend_${fn.name}(${args}) === "gmp") {
-    return nativeAddon.${fn.name}(${args});
+    return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}])`)};
   }
 ${fallbackGuards.join("\n")}
-  return javascript_${fn.name}(${fallbackArgs});
+  return ${exactReturn(fn, `javascript_${fn.name}(${fallbackArgs})`)};
 }
-${fn.name}.javascript = function (${params}) {
+${fn.name}.javascript = function (${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
 ${fallbackGuards.join("\n")}
-  return javascript_${fn.name}(${fallbackArgs});
+  return ${exactReturn(fn, `javascript_${fn.name}(${fallbackArgs})`)};
 };
 ${fn.name}.bigint = ${fn.name}.javascript;
-${fn.name}.gmp = function (${params}) {
+${fn.name}.gmp = function (${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
   if (nativeAddon === null) {
     throw new Error("GMP backend is not available");
   }
-  return nativeAddon.${fn.name}(${args});
+  return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}])`)};
 };
-${fn.name}.backendFor = function (${params}) {
+${fn.name}.backendFor = function (${declaredParams}) {
   validate_${fn.name}(${params});
 ${normalized.join("\n")}
   return backend_${fn.name}(${args});
@@ -473,6 +530,70 @@ function integerFloorDiv(left, right) {
 
 function integerMod(left, right) {
   return left - integerFloorDiv(left, right) * right;
+}
+
+function integerDivmod(left, right) {
+  const quotient = integerFloorDiv(left, right);
+  return [quotient, left - quotient * right];
+}
+
+function integerRoundSqrt(value) {
+  if (value < 0n) throw new RangeError("math domain error");
+  const input = Number(value);
+  if (!Number.isFinite(input)) {
+    throw new RangeError("int too large to convert to float");
+  }
+  const root = Math.sqrt(input);
+  const floor = Math.floor(root);
+  const fraction = root - floor;
+  const rounded = fraction < 0.5
+    ? floor
+    : fraction > 0.5
+      ? floor + 1
+      : floor % 2 === 0 ? floor : floor + 1;
+  return BigInt(rounded);
+}
+
+function integerSequenceGet(values, index) {
+  let position = Number(index);
+  if (!Number.isSafeInteger(position)) {
+    throw new RangeError("native sequence index is too large");
+  }
+  if (position < 0) position += values.length;
+  if (position < 0 || position >= values.length) {
+    throw new RangeError("native sequence index out of range");
+  }
+  return BigInt(values[position]);
+}
+
+function nativeTuple(values) {
+  const factory = globalThis.__sagejs_native_tuple__ || globalThis.tuple;
+  return typeof factory === "function"
+    ? factory(values)
+    : Object.freeze(Array.from(values));
+}
+
+function nativeRaise(name, message) {
+  const factory = globalThis[name];
+  if (typeof factory === "function") throw new factory(message);
+  throw new RangeError(message);
+}
+
+function nativeExactCall(name, args) {
+  try {
+    return nativeAddon[name](...args);
+  } catch (error) {
+    const message = String(error && error.message || error);
+    if (message.includes("division") || message.includes("modulo")) {
+      nativeRaise("ZeroDivisionError", message);
+    }
+    if (message.includes("math domain")) nativeRaise("ValueError", message);
+    if (message.includes("too large to convert")) {
+      nativeRaise("OverflowError", message);
+    }
+    if (message.includes("sequence index")) nativeRaise("IndexError", message);
+    throw error;
+  }
 }
 
 ${ir.functions.map((fn) =>
