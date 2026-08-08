@@ -44,11 +44,32 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+function writeDiscoveryIndex(cacheRoot, sourcePath, sourceHash, cacheKey) {
+  const indexPath = join(cacheRoot, "index.json");
+  let index = {
+    schema: "sagejs.native-cache/v1",
+    sources: {},
+  };
+  try {
+    const current = JSON.parse(readFileSync(indexPath, "utf8"));
+    if (
+      current?.schema === index.schema &&
+      current.sources !== null &&
+      typeof current.sources === "object"
+    ) {
+      index = current;
+    }
+  } catch (_error) {}
+  index.sources[sourcePath] = { cacheKey, sourceHash };
+  writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
+}
+
 function backendFingerprint() {
   return sha256(
     [
       readFileSync(__filename),
       readFileSync(join(__dirname, "ir.cjs")),
+      readFileSync(join(__dirname, "integer-ir.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
       readFileSync(join(__dirname, "js-backend.cjs")),
       readFileSync(header),
@@ -105,8 +126,12 @@ function bindingGyp() {
 async function compileKernel(options) {
   const sourcePath = resolve(options.sourcePath);
   const source = readFileSync(sourcePath, "utf8");
-  const ir = await lowerSource(source, sourcePath);
+  const sourceHash = sha256(source);
+  const ir = await lowerSource(source, sourcePath, {
+    functions: options.functions,
+  });
   const identity = {
+    sourcePath,
     source,
     ir,
     nativeAbi: NATIVE_ABI_VERSION,
@@ -136,6 +161,7 @@ async function compileKernel(options) {
     existsSync(modulePath) &&
     existsSync(manifestPath)
   ) {
+    writeDiscoveryIndex(cacheRoot, sourcePath, sourceHash, cacheKey);
     return {
       addonPath,
       cacheKey,
@@ -160,7 +186,7 @@ async function compileKernel(options) {
   );
   writeFileSync(
     modulePath,
-    generateJavaScript(ir, { cacheKey }),
+    generateJavaScript(ir, { cacheKey, sourceHash, sourcePath }),
   );
   writeFileSync(
     manifestPath,
@@ -188,6 +214,7 @@ async function compileKernel(options) {
     process.stderr.write(build.stderr);
     throw new Error(`node-gyp exited with status ${build.status}`);
   }
+  writeDiscoveryIndex(cacheRoot, sourcePath, sourceHash, cacheKey);
   return {
     addonPath,
     cacheKey,

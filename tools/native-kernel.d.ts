@@ -1,6 +1,7 @@
 export interface NativeCompileOptions {
   sourcePath: string;
   cacheRoot?: string;
+  functions?: string[];
 }
 
 export interface NativeCompileResult {
@@ -9,7 +10,11 @@ export interface NativeCompileResult {
   cached: boolean;
   ir: {
     version: number;
-    functions: ReadonlyArray<Record<string, unknown>>;
+    functions: ReadonlyArray<{
+      name: string;
+      [key: string]: unknown;
+    }>;
+    callGraph: Readonly<Record<string, ReadonlyArray<string>>>;
   };
   modulePath: string;
   outputPath: string;

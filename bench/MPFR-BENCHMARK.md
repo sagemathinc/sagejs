@@ -26,7 +26,7 @@ def real_multiply_loop(field, iterations):
     return value
 ```
 
-The scalar loop runs unchanged in Sage.js and SageMath. Native Kernel v1
+The scalar loop runs unchanged in Sage.js and SageMath. Native Kernel v3
 lowers the same body to typed IR and then C. Since `value` cannot escape during
 the loop, generated C updates its MPFR storage in place and constructs only
 the final immutable Sage.js `RealNumber`.

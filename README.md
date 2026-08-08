@@ -882,14 +882,16 @@ sagejs --python compile input.py --output output.js
 node output.js
 ```
 
-## Native Kernel v1
+## Native Kernel v3
 
 The structured native compiler path parses `@native` Sage.js functions
 through the ordinary frontend, lowers them to an explicitly typed
 intermediate representation, and generates both a JavaScript fallback and a
-C/MPFR/MPC Node addon. It currently accepts deliberately narrow `RealField`
-and `ComplexField` loop subsets. Argument and return annotations in the source
-are the native signature; no parallel JavaScript type table is required. A
+C/GMP/MPFR/MPC Node addon. In addition to `RealField` and `ComplexField` loops,
+v3 compiles exact `int`/`Integer` modules with comparisons, branching, `while`,
+floor division, remainder, and direct calls among compiled functions. Argument
+and return annotations in the source are the native signature; no parallel
+JavaScript type table is required. A
 content-addressed cache incorporates the source, typed IR, compiler
 implementation, native ABI, Node ABI, platform, and mathematical-library
 versions.
@@ -916,9 +918,32 @@ pnpm run bench:native
 
 The public `@sagemath/sagejs/native` Node subpath compiles content-addressed
 kernel modules, while `from sagejs.native import native` marks ordinary Python
-functions without changing their fallback behavior. Native Kernel v1 also
-supports offset `range` loops, integer-to-field coercion, nested arithmetic,
-small constant powers, and augmented assignment.
+functions and automatically resolves a source-hash-matched artifact. Compile a
+module and then import it normally:
+
+```sh
+sagejs native compile algorithms.py
+sagejs --python algorithms.py
+```
+
+The compiler constructs a module call graph. Each exact-integer function gets
+a private C entry point, so a compiled `lcm()` can call compiled `gcd()` without
+crossing Node-API or returning through JavaScript. The same generated module
+contains an exact `BigInt` fallback. A comma-separated selector can also audit
+and compile typed functions in an undecorated module; for example:
+
+```sh
+sagejs native compile bench/cowasm/src/nt.py --functions gcd
+```
+
+Native Kernel v3 also supports offset `range` loops, integer-to-field coercion,
+nested arithmetic, small constant powers, augmented assignment, and recursive
+native calls. Run the exact module and CoWasm comparisons with:
+
+```sh
+pnpm run bench:native:integer
+pnpm run bench:native:cowasm
+```
 
 For a matched comparison where both Sage.js and SageMath call MPFR's
 `mpfr_mul`, see

@@ -1,12 +1,13 @@
-# Native Kernel v1
+# Native Kernel v3
 
-Native Kernel v1 asks whether selected Sage.js library functions can compile
+Native Kernel v3 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. It is a small but structured compiler path, replacing the earlier
 single-function code-generation proof.
 
-The input is ordinary Sage.js source.  ``@native`` is a no-op under CPython
-and ordinary Sage.js execution, so the body remains its own readable fallback:
+The input is ordinary Sage.js source. `@native` is a no-op under CPython and
+remains the readable fallback in Sage.js. When a source-hash-matched compiled
+artifact exists, Sage.js resolves it automatically without changing call sites:
 
 ```python
 from sagejs.native import native
@@ -40,6 +41,12 @@ pnpm --dir packages/flint build
 node tools/native-kernel.cjs bench/native-kernel.config.cjs
 ```
 
+The first-class module command needs no JavaScript configuration file:
+
+```sh
+sagejs native compile algorithms.py
+```
+
 Applications can use the same content-addressed compiler through the public
 Node subpath:
 
@@ -57,13 +64,25 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v1 is currently a source-tree development feature and uses the
+Native Kernel v3 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
+
+Importing `algorithms` normally in a fresh Sage.js process then resolves every
+decorated function from that artifact. `SAGEJS_NATIVE_AUTOLOAD=0` forces the
+original Python implementation. `SAGEJS_NATIVE_CACHE_DIR` selects a hermetic
+cache instead of the default `.sagejs-native-kernels` beside the source.
 
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v1 supports:
+lowers marked functions to typed IR. Native Kernel v3 supports:
+
+- multi-function exact `int`/`Integer` modules backed by GMP, with multiple
+  exact arguments and exact `BigInt` fallback;
+- comparisons, Boolean conditions, short-circuit logic, `if`, `while`, early
+  returns, unary negation, absolute value, Python floor division, and modulo;
+- a module dependency graph and direct private-C calls among compiled exact
+  functions, including recursion;
 
 - one `RealField` or `ComplexField` parent and one nonnegative `uint64`
   argument;
@@ -83,10 +102,10 @@ keeps other MPFR/MPC values as local storage.
 
 Two backends consume the same IR:
 
-- the JavaScript backend uses ordinary immutable Sage.js real or complex
-  operations;
-- the C backend uses MPFR or MPC and mutates non-escaping native locals in
-  place.
+- the JavaScript backend uses exact `BigInt` or ordinary immutable Sage.js real
+  and complex operations;
+- the C backend uses GMP, MPFR, or MPC and mutates non-escaping native locals
+  in place.
 
 The generated module validates the Sage.js parent and iteration count. It uses
 the C addon when available and otherwise uses the JavaScript implementation.
@@ -112,6 +131,20 @@ The regression test compiles real and complex kernels into a fresh cache,
 checks a cache hit, consumes results across the two independently built addons
 at 53, 1000, and 10000 bits, and runs the same generated module through both
 backends.
+
+Exact integer results cross Node-API as ordinary JavaScript `BigInt` values and
+therefore appear as normal Sage.js/Python integers; they need no opaque wrapper.
+For an exact module, every public Node callback delegates to a private C entry
+point. A call such as `native_lcm(a, b) -> native_gcd(a, b)` invokes that entry
+point directly and reuses GMP values without another JavaScript or Python
+transition.
+
+Run the exact-integer comparisons with:
+
+```sh
+pnpm run bench:native:integer
+pnpm run bench:native:cowasm
+```
 
 For the matched real-number comparison against SageMath, see
 [`MPFR-BENCHMARK.md`](MPFR-BENCHMARK.md).
@@ -144,14 +177,58 @@ multiplications, while this backend calls MPC. The remaining
 large-precision difference therefore includes a kernel implementation
 difference, not merely compiler or language overhead.
 
-## Deliberate v1 limits
+### Exact integers and CoWasm number theory
+
+Native Kernel v3 also compiles the `gcd` function directly from the unmodified
+[`cowasm/src/nt.py`](cowasm/src/nt.py):
+
+```sh
+sagejs native compile bench/cowasm/src/nt.py --functions gcd
+```
+
+The matched module benchmark in
+[`native_number_theory.py`](cowasm/src/native_number_theory.py) moves the loop
+inside the compiled module and exercises direct `native_bench_gcd → native_gcd`
+calls. On the dedicated 16-vCPU AMD EPYC 7B13 host with Node 26.7.0, medians
+were:
+
+| Workload | AOT/GMP | exact BigInt | CPython 3.12 | Sage.js Python |
+|---|---:|---:|---:|---:|
+| 100,000 small GCDs | 41.28 ms | 14.55 ms | 45.10 ms | 22.00 ms |
+| 100 GCDs of 314-digit consecutive Fibonacci numbers | 8.787 ms | 45.321 ms | 20.353 ms | 60.000 ms |
+| recursive Fibonacci, `n=30` | 469.84 ms | 405.65 ms | 137.56 ms | 134.00 ms |
+
+These results deliberately expose both sides of the design. Repeated `mpz_t`
+initialization is too expensive for tiny integers and a call-heavy recursive
+algorithm; V8's compact `BigInt` implementation or the existing interpreter is
+better there. Once Euclid performs sustained arithmetic on 314-digit values,
+the same generated GMP module is 2.3x faster than CPython, 5.2x faster than the
+generated BigInt backend, and 6.8x faster than interpreted Sage.js. Backend
+selection and future escape/scratch-storage analysis should therefore be
+driven by value shape and algorithm, not by a blanket assumption that C wins.
+
+The separate ten-million-term exact quadratic sum performs substantial GMP
+work without repeated internal calls. It took 193.86 ms in AOT/GMP, 336.57 ms
+in the generated BigInt backend, 763.71 ms in CPython, and 886.00 ms in
+interpreted Sage.js on the same host. Reproduce both tables with:
+
+```sh
+pnpm run bench:native:cowasm
+SAGEJS_NATIVE_INTEGER_TERMS=10000000 pnpm run bench:native:integer
+```
+
+## Deliberate v3 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements
 as arguments, release the event loop, build asynchronously, or provide
-prebuilt kernels. The next compiler work should be driven by real Sage.js
-library code and Sage-compatible semantics rather than by accumulating
-unconnected AST cases.
+prebuilt kernels. Exact modules currently return one scalar `Integer` or
+`bool`; tuples, containers, keyword-only native ABI arguments, general
+iterators, exception handlers, and calls into uncompiled Python remain outside
+the typed subset. Unsupported constructs fail during compilation instead of
+silently changing Python semantics. The next compiler work should be driven by
+real Sage.js library code and Sage-compatible semantics rather than by
+accumulating unconnected AST cases.
 
 The architectural seams are now present: ordinary Python decorator markers,
 typed IR, escape-aware native
@@ -189,7 +266,7 @@ but does not claim that arbitrary unmodified mpmath functions are
 automatically compilable.
 
 On a dedicated 16-vCPU AMD EPYC 7B13 VM with Node 26.7.0, the Python-shaped
-v1 kernel took 0.119 ms per 400-term sum, versus 1.989 ms for CPython 3.12 with
+v3 kernel took 0.119 ms per 400-term sum, versus 1.989 ms for CPython 3.12 with
 mpmath 1.3.0 and 26.850 ms for unmodified mpmath under Sage.js. All paths
 agreed to the reported 60 decimal digits. These are whole-call measurements
 after warmup; compilation and process startup are excluded. The compiler also

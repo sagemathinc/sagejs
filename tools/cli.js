@@ -164,6 +164,7 @@ function print_top_level_usage() {
   console.log("  docs            search and export installed API documentation");
   console.log("  pip             install pure-Python packages for Sage.js");
   console.log("  pytest          run installed pytest with Sage.js Python");
+  console.log("  native          compile typed @native mathematical functions");
   console.log("  compile         compile Sage.js source to JavaScript");
   console.log("  repl            start a REPL with detailed options");
   console.log("  lint            check Python/Sage source");
@@ -629,6 +630,36 @@ Install the Jupyter kernelspec under Jupyter's current sys.prefix.
 opt("prefix", "", "string", "", function () {
   /*
 Install the Jupyter kernelspec under the given prefix.
+*/
+});
+
+create_group(
+  "native",
+  "compile SOURCE",
+  function () {
+    /*
+Compile typed @native functions to a content-addressed native module. Imported
+functions automatically use a source-hash-matched artifact when available.
+*/
+  }
+);
+
+opt("cache_root", "", "string", "", function () {
+  /*
+Write artifacts and the discovery index into this cache directory.
+*/
+});
+
+opt("functions", "f", "string", "", function () {
+  /*
+Compile this comma-separated set of functions, including from an undecorated
+typed module.
+*/
+});
+
+opt("json", "", "bool", false, function () {
+  /*
+Write structured compilation metadata.
 */
 });
 

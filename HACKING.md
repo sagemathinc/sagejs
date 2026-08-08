@@ -163,14 +163,19 @@ instead. `test/typed-math-lowering.cjs` guards the generated fast path, while
 `test/baselib-boundaries.cjs` prevents escape syntax from returning to
 mathematical modules which have been migrated.
 
-`tools/native-kernel/` contains Native Kernel v1. The frontend lowers a
-restricted Sage.js AST to typed IR; independent JavaScript and C/MPC backends
+`tools/native-kernel/` contains Native Kernel v3. The frontend lowers a
+restricted Sage.js AST to typed IR; independent JavaScript and
+C/GMP/MPFR/MPC backends
 consume that IR. Generated addons and `packages/flint` share the native
 MPFR/MPC element ABI in `packages/flint/include/sagejs/native.h`. Keep ABI
 changes explicit and versioned, and preserve a JavaScript fallback for every
 supported kernel. Native argument and result types come from the function's
 ordinary annotations; do not add a second signature table to build
 configuration.
+
+Exact-integer modules also carry a call graph. Generated public Node callbacks
+delegate to private C entry points, and calls among compiled functions use
+those entry points directly rather than crossing Node-API again.
 
 ## Modes
 

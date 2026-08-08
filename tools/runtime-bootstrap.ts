@@ -8,7 +8,7 @@
 
 import { mkdirSync, statSync, writeFileSync } from "fs";
 import { homedir } from "os";
-import { dirname, join } from "path";
+import { dirname, join, resolve } from "path";
 import { Script } from "vm";
 
 import type { Compiler } from "./compiler";
@@ -209,6 +209,109 @@ export function runRuntimeBootstrap(
     }
   }
   Reflect.set(globalThis, "__sagejs_module_namespaces__", moduleNamespaces);
+  const nativeModules = new Map<
+    string,
+    { sourceHash: string; functions: Record<string, unknown> }
+  >();
+  const nativeSourceHashes = new Map<string, string>();
+  const nativeSourceHash = (filename: string): string | undefined => {
+    const cached = nativeSourceHashes.get(filename);
+    if (cached !== undefined) return cached;
+    try {
+      // Keep crypto off the ordinary startup path. It is only needed when an
+      // imported function actually carries @native and asks for resolution.
+      const { createHash } = require("crypto") as typeof import("crypto");
+      const digest = createHash("sha256")
+        .update(readResourceText(filename))
+        .digest("hex");
+      nativeSourceHashes.set(filename, digest);
+      return digest;
+    } catch (_error) {
+      return undefined;
+    }
+  };
+  const registerNativeModule = (
+    filename: string,
+    sourceHash: string,
+    functions: Record<string, unknown>,
+  ): void => {
+    if (
+      typeof filename !== "string" ||
+      !filename ||
+      !/^[a-f0-9]{64}$/.test(sourceHash) ||
+      functions === null ||
+      typeof functions !== "object"
+    ) {
+      throw new TypeError("invalid Sage.js native-module registration");
+    }
+    nativeModules.set(resolve(filename), { sourceHash, functions });
+  };
+  const resolveNativeFunction = (
+    filename: string,
+    name: string,
+  ): unknown => {
+    if (
+      process.env.SAGEJS_NATIVE_AUTOLOAD === "0" ||
+      typeof internalRequire !== "function" ||
+      typeof filename !== "string" ||
+      !filename ||
+      typeof name !== "string" ||
+      !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)
+    ) {
+      return null;
+    }
+    const sourcePath = resolve(filename);
+    const sourceHash = nativeSourceHash(sourcePath);
+    if (sourceHash === undefined) return null;
+    const registered = nativeModules.get(sourcePath);
+    if (registered?.sourceHash === sourceHash) {
+      const candidate = Reflect.get(registered.functions, name);
+      if (typeof candidate === "function") return candidate;
+    }
+
+    // An explicit cache directory is an override, not an additional search
+    // path. This makes hermetic builds/tests possible and prevents a stale or
+    // deliberately isolated cache from silently falling through to a sibling
+    // artifact next to the source.
+    const cacheRoots = process.env.SAGEJS_NATIVE_CACHE_DIR
+      ? [process.env.SAGEJS_NATIVE_CACHE_DIR]
+      : [join(dirname(sourcePath), ".sagejs-native-kernels")];
+    for (const cacheRootValue of new Set(cacheRoots)) {
+      const cacheRoot = resolve(cacheRootValue);
+      try {
+        const index = JSON.parse(
+          readResourceText(join(cacheRoot, "index.json")),
+        );
+        const record = index?.sources?.[sourcePath];
+        if (
+          index?.schema !== "sagejs.native-cache/v1" ||
+          record?.sourceHash !== sourceHash ||
+          !/^[a-f0-9]{64}$/.test(record?.cacheKey ?? "")
+        ) {
+          continue;
+        }
+        const modulePath = join(cacheRoot, record.cacheKey, "index.cjs");
+        const loaded = Reflect.apply(internalRequire, undefined, [modulePath]);
+        const candidate = Reflect.get(loaded, name);
+        if (typeof candidate !== "function") continue;
+        registerNativeModule(sourcePath, sourceHash, loaded);
+        return candidate;
+      } catch (error) {
+        if (process.env.SAGEJS_NATIVE_REQUIRED === "1") throw error;
+      }
+    }
+    return null;
+  };
+  Reflect.set(
+    globalThis,
+    "__sagejs_native_register__",
+    registerNativeModule,
+  );
+  Reflect.set(
+    globalThis,
+    "__sagejs_native_resolve__",
+    resolveNativeFunction,
+  );
   const loadModule = (name: string): any => {
     if (!/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/.test(name)) {
       throw new TypeError(`invalid lazy module name ${JSON.stringify(name)}`);

@@ -1,8 +1,13 @@
 "use strict";
 
 const createCompiler = require("../..");
+const {
+  isIntegerSignature,
+  lowerIntegerFunction,
+  signatureFromFunction,
+} = require("./integer-ir.cjs");
 
-const IR_VERSION = 1;
+const IR_VERSION = 3;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -11,6 +16,7 @@ const PARENT_ELEMENT_TYPES = new Map([
 ]);
 const SUPPORTED_ARGUMENT_TYPES = new Set([
   ...PARENT_ELEMENT_TYPES.keys(),
+  "Integer",
   "uint64",
 ]);
 const BINARY_OPERATIONS = new Map([
@@ -50,9 +56,16 @@ function assignment(statement, description) {
 }
 
 function integerLiteral(node) {
+  if (
+    nodeType(node) === "AST_UnaryPrefix" &&
+    node.operator === "-"
+  ) {
+    const magnitude = integerLiteral(node.expression);
+    return magnitude === undefined ? undefined : -magnitude;
+  }
   if (nodeType(node) === "AST_Number") {
     const value = String(node.value);
-    return /^\+?[0-9]+$/.test(value) ? BigInt(value) : undefined;
+    return /^[0-9]+$/.test(value) ? BigInt(value) : undefined;
   }
   if (
     nodeType(node) !== "AST_Call" ||
@@ -65,7 +78,7 @@ function integerLiteral(node) {
   if (
     args.length !== 1 ||
     nodeType(args[0]) !== "AST_String" ||
-    !/^\+?[0-9]+$/.test(args[0].value)
+    !/^[+-]?[0-9]+$/.test(args[0].value)
   ) {
     return undefined;
   }
@@ -123,7 +136,13 @@ function temporary(context) {
 }
 
 function elementKind(context, suffix) {
-  return `${context.elementType === "RealNumber" ? "real" : "complex"}.${suffix}`;
+  const prefix =
+    context.elementType === "RealNumber"
+      ? "real"
+      : context.elementType === "ComplexNumber"
+        ? "complex"
+        : "integer";
+  return `${prefix}.${suffix}`;
 }
 
 function lowerFieldCall(node, target, context, operations) {
@@ -189,6 +208,23 @@ function lowerOperand(node, context, operations) {
   ) {
     return node.name;
   }
+  if (
+    context.elementType === "Integer" &&
+    nodeType(node) === "AST_SymbolRef" &&
+    context.scalarTypes.get(node.name) === "uint64"
+  ) {
+    let target = context.scalarCoercions.get(node.name);
+    if (target === undefined) {
+      target = temporary(context);
+      context.scalarCoercions.set(node.name, target);
+      operations.push({
+        kind: "integer.from_uint64",
+        target,
+        source: node.name,
+      });
+    }
+    return target;
+  }
   const target = temporary(context);
   lowerExpression(node, target, context, operations);
   return target;
@@ -196,6 +232,29 @@ function lowerOperand(node, context, operations) {
 
 function lowerExpression(node, target, context, operations) {
   ensureLocal(context, target);
+
+  if (context.elementType === "Integer") {
+    const value = integerLiteral(node);
+    if (value !== undefined) {
+      operations.push({
+        kind: "integer.constant",
+        target,
+        value: value.toString(),
+      });
+      return;
+    }
+    if (
+      nodeType(node) === "AST_SymbolRef" &&
+      context.scalarTypes.get(node.name) === "uint64"
+    ) {
+      operations.push({
+        kind: "integer.from_uint64",
+        target,
+        source: node.name,
+      });
+      return;
+    }
+  }
 
   if (
     nodeType(node) === "AST_Call" &&
@@ -241,7 +300,8 @@ function lowerExpression(node, target, context, operations) {
 
   const operation = BINARY_OPERATIONS.get(node.operator);
   expect(
-    operation !== undefined,
+    operation !== undefined &&
+      !(context.elementType === "Integer" && operation === "div"),
     `unsupported native binary operator ${node.operator}`,
   );
   const left = lowerOperand(node.left, context, operations);
@@ -360,7 +420,8 @@ function hoistSyntheticConstants(operations) {
   for (const operation of operations) {
     if (
       (operation.kind === "real.constant" ||
-        operation.kind === "complex.constant") &&
+        operation.kind === "complex.constant" ||
+        operation.kind === "integer.constant") &&
       operation.target.startsWith("sagejs_native_tmp_") &&
       writes.get(operation.target) === 1
     ) {
@@ -372,7 +433,7 @@ function hoistSyntheticConstants(operations) {
   return { body, hoisted };
 }
 
-function lowerFunction(fn, decorated = false) {
+function lowerLegacyFunction(fn, decorated = false) {
   expect(
     isCIdentifier(fn.name.name),
     "native function names must also be C identifiers",
@@ -396,28 +457,46 @@ function lowerFunction(fn, decorated = false) {
   const parentParams = params.filter((param) =>
     PARENT_ELEMENT_TYPES.has(param.type),
   );
+  const integerParams = params.filter((param) => param.type === "Integer");
   const iterationParams = params.filter((param) => param.type === "uint64");
-  expect(
-    parentParams.length === 1 && iterationParams.length === 1,
-    "Native Kernel v1 requires one supported field and one uint64 argument",
-  );
-  const parent = parentParams[0];
-  const elementType = PARENT_ELEMENT_TYPES.get(parent.type);
   const returnType = annotationName(
     fn.return_annotation,
     `native function ${fn.name.name} return annotation`,
   );
-  expect(
-    returnType === elementType,
-    `${fn.name.name} with ${parent.type} must return ${elementType}`,
-  );
+  let elementType;
+  let parent;
+  if (returnType === "Integer") {
+    expect(
+      parentParams.length === 0 &&
+        integerParams.length === 0 &&
+        iterationParams.length === 1 &&
+        params.length === 1,
+      "an Integer native kernel currently requires exactly one uint64 argument",
+    );
+    elementType = "Integer";
+  } else {
+    expect(
+      parentParams.length === 1 &&
+        integerParams.length === 0 &&
+        iterationParams.length === 1 &&
+        params.length === 2,
+      "a real or complex native kernel requires one supported field and one uint64 argument",
+    );
+    parent = parentParams[0];
+    elementType = PARENT_ELEMENT_TYPES.get(parent.type);
+    expect(
+      returnType === elementType,
+      `${fn.name.name} with ${parent.type} must return ${elementType}`,
+    );
+  }
   const iterationName = iterationParams[0].name;
   const context = {
     elementType,
     localTypes: new Map(),
     nextTemporary: 0,
     paramNames: new Set(params.map((param) => param.name)),
-    parentName: parent.name,
+    parentName: parent?.name,
+    scalarCoercions: new Map(),
     scalarTypes: new Map(
       params
         .filter((param) => param.type === "uint64")
@@ -453,6 +532,7 @@ function lowerFunction(fn, decorated = false) {
       );
       const range = lowerRange(statement.object, iterationName);
       context.scalarTypes.set(index, "uint64");
+      context.scalarCoercions = new Map();
       const loopBody = [];
       for (const item of array(statement.body?.body)) {
         loopBody.push(
@@ -515,7 +595,7 @@ function isEmptyDecoratorStatement(statement) {
   );
 }
 
-async function lowerSource(source, filename) {
+async function lowerSource(source, filename, options = {}) {
   const compiler = createCompiler();
   const { createPythonCompilerFrontend } = require(
     "../../dist/tools/python/compiler-frontend.js"
@@ -533,11 +613,22 @@ async function lowerSource(source, filename) {
     (statement) => nodeType(statement) === "AST_Function",
   );
   const decorated = definitions.filter(nativeDecorator);
-  let selected;
-  if (decorated.length > 0) {
-    selected = decorated.map((fn) => lowerFunction(fn, true));
+  let selectedDefinitions;
+  if (Array.isArray(options.functions) && options.functions.length > 0) {
+    const requested = new Set(options.functions);
+    selectedDefinitions = definitions.filter((fn) =>
+      requested.has(fn.name.name)
+    );
+    const found = new Set(selectedDefinitions.map((fn) => fn.name.name));
+    const missing = Array.from(requested).filter((name) => !found.has(name));
+    expect(
+      missing.length === 0,
+      `requested native functions are not defined: ${missing.join(", ")}`,
+    );
+  } else if (decorated.length > 0) {
+    selectedDefinitions = decorated;
   } else {
-    selected = topLevel
+    selectedDefinitions = topLevel
       .filter((statement) => !isEmptyDecoratorStatement(statement))
       .map((statement) => {
         expect(
@@ -545,13 +636,61 @@ async function lowerSource(source, filename) {
           "native kernel source without @native may only contain " +
             "function definitions",
         );
-        return lowerFunction(statement, false);
+        return statement;
       });
   }
-  expect(selected.length > 0, "native kernel source defines no functions");
+  expect(
+    selectedDefinitions.length > 0,
+    "native kernel source defines no functions",
+  );
+  const decoratedMode = decorated.length > 0 &&
+    !(Array.isArray(options.functions) && options.functions.length > 0);
+  const signatures = new Map();
+  for (const fn of selectedDefinitions) {
+    const rawReturn = annotationName(
+      fn.return_annotation,
+      `native function ${fn.name.name} return annotation`,
+    );
+    const rawParams = array(fn.argnames).map((arg) =>
+      annotationName(
+        arg.annotation,
+        `native argument ${fn.name.name}.${arg.name} annotation`,
+      ),
+    );
+    if (
+      rawReturn === "Integer" ||
+      rawReturn === "int" ||
+      rawReturn === "bool" ||
+      rawParams.some(
+        (type) => type === "Integer" || type === "int" || type === "bool",
+      )
+    ) {
+      const signature = signatureFromFunction(fn, filename);
+      expect(
+        isIntegerSignature(signature),
+        `${fn.name.name} is not an exact-integer native signature`,
+      );
+      signatures.set(signature.name, signature);
+    }
+  }
+  const selected = selectedDefinitions.map((fn) => {
+    const signature = signatures.get(fn.name.name);
+    return signature === undefined
+      ? lowerLegacyFunction(fn, decoratedMode)
+      : lowerIntegerFunction(
+          fn,
+          signature,
+          signatures,
+          filename,
+          decoratedMode,
+        );
+  });
   return {
     version: IR_VERSION,
     functions: selected,
+    callGraph: Object.fromEntries(
+      selected.map((fn) => [fn.name, fn.dependencies || []]),
+    ),
   };
 }
 

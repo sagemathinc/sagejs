@@ -19,6 +19,12 @@ const root = join(__dirname, "..");
 (async () => {
 const sourcePath = join(root, "bench", "native-kernel-input.sage");
 const mpmathSourcePath = join(root, "bench", "native-mpmath-kernel.sage");
+const integerSourcePath = join(root, "bench", "native_integer_kernel.py");
+const integerAlgorithmsPath = join(
+  root,
+  "bench",
+  "native_integer_algorithms.py",
+);
 const source = readFileSync(sourcePath, "utf8");
 const ir = await lowerSource(source, sourcePath);
 const complexFunction = ir.functions.find(
@@ -32,8 +38,18 @@ const mpmathSource = readFileSync(mpmathSourcePath, "utf8");
 const mpmathIr = await lowerSource(mpmathSource, mpmathSourcePath);
 const harmonicFunction = mpmathIr.functions[0];
 const harmonicC = generateC(mpmathIr);
+const integerSource = readFileSync(integerSourcePath, "utf8");
+const integerIr = await lowerSource(integerSource, integerSourcePath);
+const integerFunction = integerIr.functions[0];
+const integerC = generateC(integerIr);
+const integerAlgorithmsSource = readFileSync(integerAlgorithmsPath, "utf8");
+const integerAlgorithmsIr = await lowerSource(
+  integerAlgorithmsSource,
+  integerAlgorithmsPath,
+);
+const integerAlgorithmsC = generateC(integerAlgorithmsIr);
 
-assert.equal(ir.version, 1);
+assert.equal(ir.version, 3);
 assert.equal(complexFunction.params[0].type, "ComplexField");
 assert.equal(complexFunction.params[1].type, "uint64");
 assert.equal(complexFunction.returnType, "ComplexNumber");
@@ -92,6 +108,25 @@ assert.match(
   harmonicC,
   /sagejs_denominator - UINT64_C\(1\).*sagejs_terms/,
 );
+assert.equal(integerFunction.name, "integer_quadratic_sum");
+assert.equal(integerFunction.returnType, "Integer");
+assert.deepEqual(
+  new Set(
+    integerFunction.body.find((item) => item.kind === "loop.range").body
+      .map((item) => item.kind),
+  ),
+  new Set(["integer.from_uint64", "integer.binary"]),
+);
+assert.match(integerC, /mpz_mul\(/);
+assert.match(integerC, /napi_create_bigint_words\(/);
+assert.deepEqual(integerAlgorithmsIr.callGraph.native_lcm, ["native_gcd"]);
+assert.deepEqual(integerAlgorithmsIr.callGraph.native_coprime, ["native_gcd"]);
+assert.match(
+  integerAlgorithmsC,
+  /native_native_lcm[\s\S]*native_native_gcd\(env/,
+);
+assert.match(integerAlgorithmsC, /mpz_fdiv_q\(/);
+assert.match(integerAlgorithmsC, /mpz_fdiv_r\(/);
 await assert.rejects(
   () =>
     lowerSource(
@@ -133,6 +168,30 @@ await assert.rejects(
     ),
   /nonnegative integer exponent at most 64/,
 );
+await assert.rejects(
+  () =>
+    lowerSource(
+      "from sagejs.native import native\n" +
+        "@native\n" +
+        "def f(n: int) -> int:\n" +
+        "    if n:\n" +
+        "        value = 1\n" +
+        "    return value\n",
+      "uninitialized.py",
+    ),
+  /uninitialized\.py:\d+:\d+: f: native value value may be uninitialized/,
+);
+await assert.rejects(
+  () =>
+    lowerSource(
+      "from sagejs.native import native\n" +
+        "@native\n" +
+        "def f(a: int, b: int) -> bool:\n" +
+        "    return a or b\n",
+      "non-boolean-short-circuit.py",
+    ),
+  /short-circuit operands must be bool, got Integer/,
+);
 
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-native-kernel-"));
 
@@ -173,6 +232,90 @@ try {
     sourcePath: mpmathSourcePath,
     cacheRoot: join(temporary, "mpmath-cache"),
   });
+  const integerCache = join(temporary, "integer-cache");
+  const integerKernel = await nativeApi.compile({
+    sourcePath: integerSourcePath,
+    cacheRoot: integerCache,
+  });
+  const integerModule = require(integerKernel.modulePath);
+  assert.equal(integerModule.integer_quadratic_sum(10), -275n);
+  assert.equal(
+    integerModule.integer_quadratic_sum(1_000_000),
+    -333332833332500000n,
+  );
+  assert.equal(
+    integerModule.integer_quadratic_sum.javascript(10),
+    -275n,
+  );
+  const integerAlgorithmsCache = join(
+    temporary,
+    "integer-algorithms-cache",
+  );
+  const integerAlgorithms = await nativeApi.compile({
+    sourcePath: integerAlgorithmsPath,
+    cacheRoot: integerAlgorithmsCache,
+  });
+  const integerAlgorithmsModule = require(integerAlgorithms.modulePath);
+  for (const [name, args, expected] of [
+    ["native_gcd", [92250, 922350], 150n],
+    ["native_gcd", [-84, 30], 6n],
+    ["native_lcm", [-21, 6], 42n],
+    ["native_powmod", [7n, 560n, 561n], 1n],
+    ["native_coprime", [35, 64], true],
+    ["native_floordiv", [-7, 3], -3n],
+    ["native_floordiv", [7, -3], -3n],
+    ["native_mod", [-7, 3], 2n],
+    ["native_mod", [7, -3], -2n],
+    ["native_zero_or_divides", [0, 19], true],
+    ["native_zero_or_divides", [7, 21], true],
+  ]) {
+    assert.equal(integerAlgorithmsModule[name](...args), expected);
+    assert.equal(integerAlgorithmsModule[name].javascript(...args), expected);
+  }
+  assert.equal(
+    integerAlgorithmsModule.native_gcd(2n ** 100n - 1n, 2n ** 50n - 1n),
+    2n ** 50n - 1n,
+  );
+  assert.throws(
+    () => integerAlgorithmsModule.native_floordiv(1, 0),
+    /division or modulo by zero/,
+  );
+  assert.throws(
+    () => integerAlgorithmsModule.native_mod.javascript(1, 0),
+    /division or modulo by zero/,
+  );
+  const selectedNt = await nativeApi.compile({
+    sourcePath: join(root, "bench", "cowasm", "src", "nt.py"),
+    functions: ["gcd"],
+    cacheRoot: join(temporary, "selected-nt-cache"),
+  });
+  assert.deepEqual(selectedNt.ir.callGraph, { gcd: [] });
+  assert.equal(require(selectedNt.modulePath).gcd(92250, 922350), 150n);
+  const cli = spawnSync(
+    process.execPath,
+    [
+      join(root, "bin", "sagejs"),
+      "native",
+      "compile",
+      integerAlgorithmsPath,
+      "--cache-root",
+      join(temporary, "cli-cache"),
+      "--json",
+    ],
+    { cwd: root, encoding: "utf8" },
+  );
+  assert.equal(cli.status, 0, `${cli.stdout}\n${cli.stderr}`);
+  const cliResult = JSON.parse(cli.stdout);
+  assert.equal(cliResult.functions.includes("native_gcd"), true);
+  assert.deepEqual(cliResult.callGraph.native_lcm, ["native_gcd"]);
+  const integerIndex = JSON.parse(
+    readFileSync(join(integerCache, "index.json"), "utf8"),
+  );
+  assert.equal(integerIndex.schema, "sagejs.native-cache/v1");
+  assert.equal(
+    integerIndex.sources[integerSourcePath].cacheKey,
+    integerKernel.cacheKey,
+  );
   const harmonicAddon = require(mpmathKernel.addonPath);
   const flint = require("../packages/flint");
   assert.match(
@@ -273,11 +416,94 @@ print(is_native(square))
 `),
     ["81", "True"],
   );
+  const integerScript = `import sys
+sys.path.append(${JSON.stringify(join(root, "bench"))})
+
+from native_integer_kernel import integer_quadratic_sum
+from sagejs.native import is_compiled, is_native
+
+answer = integer_quadratic_sum(1000000)
+print(answer)
+print(type(answer))
+print(is_native(integer_quadratic_sum))
+print(is_compiled(integer_quadratic_sum))
+print(getattr(integer_quadratic_sum, 'nativeAvailable', None))
+`;
+  const integerEnvironment = {
+    SAGEJS_NATIVE_CACHE_DIR: integerCache,
+  };
+  assert.deepEqual(runSage(integerScript, integerEnvironment), [
+    "-333332833332500000",
+    "<class 'int'>",
+    "True",
+    "True",
+    "True",
+  ]);
+  assert.deepEqual(
+    runSage(integerScript, {
+      ...integerEnvironment,
+      SAGEJS_NATIVE_DISABLE: "1",
+    }),
+    [
+      "-333332833332500000",
+      "<class 'int'>",
+      "True",
+      "True",
+      "False",
+    ],
+  );
+  assert.deepEqual(
+    runSage(integerScript, {
+      ...integerEnvironment,
+      SAGEJS_NATIVE_AUTOLOAD: "0",
+    }),
+    [
+      "-333332833332500000",
+      "<class 'int'>",
+      "True",
+      "False",
+      "None",
+    ],
+  );
+  const integerAlgorithmsScript = `import sys
+sys.path.append(${JSON.stringify(join(root, "bench"))})
+
+from native_integer_algorithms import native_lcm, native_powmod
+from sagejs.native import is_compiled
+
+print(native_lcm(-21, 6))
+print(native_powmod(7, 560, 561))
+print(is_compiled(native_lcm))
+print(is_compiled(native_powmod))
+`;
+  assert.deepEqual(
+    runSage(integerAlgorithmsScript, {
+      SAGEJS_NATIVE_CACHE_DIR: integerAlgorithmsCache,
+    }),
+    ["42", "1", "True", "True"],
+  );
+  integerIndex.sources[integerSourcePath].sourceHash = "0".repeat(64);
+  writeFileSync(
+    join(integerCache, "index.json"),
+    `${JSON.stringify(integerIndex, null, 2)}\n`,
+  );
+  assert.deepEqual(runSage(integerScript, integerEnvironment), [
+    "-333332833332500000",
+    "<class 'int'>",
+    "True",
+    "False",
+    "None",
+  ]);
+  const restoredIntegerKernel = await nativeApi.compile({
+    sourcePath: integerSourcePath,
+    cacheRoot: integerCache,
+  });
+  assert.equal(restoredIntegerKernel.cached, true);
 } finally {
   rmSync(temporary, { recursive: true, force: true });
 }
 
-console.log("Native Kernel v1 typed IR, cache, ABI, and fallback passed.");
+console.log("Native Kernel v3 typed IR, cache, ABI, and fallback passed.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

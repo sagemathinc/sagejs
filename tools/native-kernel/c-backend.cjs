@@ -1,6 +1,6 @@
 "use strict";
 
-const NATIVE_ABI_VERSION = 1;
+const NATIVE_ABI_VERSION = 2;
 
 function cString(value) {
   return JSON.stringify(String(value));
@@ -11,12 +11,23 @@ function cName(name) {
 }
 
 function nativeValue(local) {
+  if (local.type === "Integer") return cName(local.name);
   return local.storage === "return"
     ? `${cName(local.name)}->value`
     : cName(local.name);
 }
 
 function emitOperation(operation, locals, indent) {
+  if (operation.kind === "integer.constant") {
+    return [
+      `${indent}if (mpz_set_str(${nativeValue(locals.get(operation.target))}, ` +
+        `${cString(operation.value)}, 10) != 0)`,
+      `${indent}{`,
+      `${indent}    napi_throw_type_error(env, NULL, "invalid native integer literal");`,
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
   if (operation.kind === "real.constant") {
     const target = locals.get(operation.target);
     return [
@@ -55,6 +66,13 @@ function emitOperation(operation, locals, indent) {
     return `${indent}mpc_${operation.operation}(${nativeValue(target)}, ` +
       `${nativeValue(left)}, ${nativeValue(right)}, MPC_RNDNN);`;
   }
+  if (operation.kind === "integer.binary") {
+    const target = locals.get(operation.target);
+    const left = locals.get(operation.left);
+    const right = locals.get(operation.right);
+    return `${indent}mpz_${operation.operation}(${nativeValue(target)}, ` +
+      `${nativeValue(left)}, ${nativeValue(right)});`;
+  }
   if (operation.kind === "real.copy") {
     return `${indent}mpfr_set(${nativeValue(locals.get(operation.target))}, ` +
       `${nativeValue(locals.get(operation.source))}, MPFR_RNDN);`;
@@ -62,6 +80,10 @@ function emitOperation(operation, locals, indent) {
   if (operation.kind === "complex.copy") {
     return `${indent}mpc_set(${nativeValue(locals.get(operation.target))}, ` +
       `${nativeValue(locals.get(operation.source))}, MPC_RNDNN);`;
+  }
+  if (operation.kind === "integer.copy") {
+    return `${indent}mpz_set(${nativeValue(locals.get(operation.target))}, ` +
+      `${nativeValue(locals.get(operation.source))});`;
   }
   if (operation.kind === "real.from_uint64") {
     return `${indent}mpfr_set_uj(` +
@@ -76,6 +98,11 @@ function emitOperation(operation, locals, indent) {
       `${indent}mpfr_set_zero(mpc_imagref(${target}), 0);`,
     ].join("\n");
   }
+  if (operation.kind === "integer.from_uint64") {
+    return `${indent}set_mpz_uint64(` +
+      `${nativeValue(locals.get(operation.target))}, ` +
+      `${cName(operation.source)});`;
+  }
   if (operation.kind === "real.pow_uint") {
     return `${indent}mpfr_pow_ui(` +
       `${nativeValue(locals.get(operation.target))}, ` +
@@ -88,10 +115,364 @@ function emitOperation(operation, locals, indent) {
       `${nativeValue(locals.get(operation.base))}, ` +
       `${operation.exponent}, MPC_RNDNN);`;
   }
+  if (operation.kind === "integer.pow_uint") {
+    return `${indent}mpz_pow_ui(` +
+      `${nativeValue(locals.get(operation.target))}, ` +
+      `${nativeValue(locals.get(operation.base))}, ` +
+      `${operation.exponent});`;
+  }
   throw new Error(`unsupported C IR operation ${operation.kind}`);
 }
 
-function emitFunction(fn) {
+function exactValue(name) {
+  return cName(name);
+}
+
+function internalArgument(param) {
+  const name = `sagejs_arg_${param.name}`;
+  if (param.type === "Integer") return `const mpz_t ${name}`;
+  if (param.type === "uint64") return `uint64_t ${name}`;
+  if (param.type === "bool") return `int ${name}`;
+  throw new Error(`unsupported exact native parameter ${param.type}`);
+}
+
+function internalResult(type) {
+  if (type === "Integer") return "mpz_t sagejs_native_output";
+  if (type === "uint64") return "uint64_t *sagejs_native_output";
+  if (type === "bool") return "int *sagejs_native_output";
+  throw new Error(`unsupported exact native return ${type}`);
+}
+
+function internalSignature(fn, prototype = false) {
+  const argumentsList = [
+    "napi_env env",
+    internalResult(fn.returnType),
+    ...fn.params.map(internalArgument),
+  ].join(", ");
+  return `static int native_${fn.name}(${argumentsList})${prototype ? ";" : ""}`;
+}
+
+function emitExactOperation(operation, functions, indent) {
+  const target = exactValue(operation.target);
+  if (operation.kind === "integer.constant") {
+    return [
+      `${indent}if (mpz_set_str(${target}, ${cString(operation.value)}, 10) != 0)`,
+      `${indent}{`,
+      `${indent}    napi_throw_type_error(env, NULL, "invalid native integer literal");`,
+      `${indent}    goto fail;`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "bool.constant") {
+    return `${indent}${target} = ${operation.value ? 1 : 0};`;
+  }
+  if (operation.kind === "integer.copy") {
+    return `${indent}mpz_set(${target}, ${exactValue(operation.source)});`;
+  }
+  if (operation.kind === "bool.copy" || operation.kind === "uint64.copy") {
+    return `${indent}${target} = ${exactValue(operation.source)};`;
+  }
+  if (operation.kind === "integer.from_uint64") {
+    return `${indent}set_mpz_uint64(${target}, ${exactValue(operation.source)});`;
+  }
+  if (operation.kind === "integer.neg") {
+    return `${indent}mpz_neg(${target}, ${exactValue(operation.source)});`;
+  }
+  if (operation.kind === "integer.abs") {
+    return `${indent}mpz_abs(${target}, ${exactValue(operation.source)});`;
+  }
+  if (operation.kind === "integer.pow_uint") {
+    return `${indent}mpz_pow_ui(${target}, ${exactValue(operation.base)}, ` +
+      `${operation.exponent});`;
+  }
+  if (operation.kind === "integer.binary") {
+    const left = exactValue(operation.left);
+    const right = exactValue(operation.right);
+    const simple = { add: "add", sub: "sub", mul: "mul" }[
+      operation.operation
+    ];
+    if (simple !== undefined) {
+      return `${indent}mpz_${simple}(${target}, ${left}, ${right});`;
+    }
+    const division = {
+      floordiv: "fdiv_q",
+      mod: "fdiv_r",
+    }[operation.operation];
+    if (division !== undefined) {
+      return [
+        `${indent}if (mpz_sgn(${right}) == 0)`,
+        `${indent}{`,
+        `${indent}    napi_throw_range_error(env, NULL, "integer division or modulo by zero");`,
+        `${indent}    goto fail;`,
+        `${indent}}`,
+        `${indent}mpz_${division}(${target}, ${left}, ${right});`,
+      ].join("\n");
+    }
+    throw new Error(`unsupported exact integer operation ${operation.operation}`);
+  }
+  if (operation.kind === "integer.compare") {
+    const comparison = {
+      eq: "== 0",
+      ne: "!= 0",
+      lt: "< 0",
+      le: "<= 0",
+      gt: "> 0",
+      ge: ">= 0",
+    }[operation.operation];
+    return `${indent}${target} = mpz_cmp(${exactValue(operation.left)}, ` +
+      `${exactValue(operation.right)}) ${comparison};`;
+  }
+  if (operation.kind === "bool.compare") {
+    const operator = {
+      eq: "==",
+      ne: "!=",
+      lt: "<",
+      le: "<=",
+      gt: ">",
+      ge: ">=",
+    }[operation.operation];
+    return `${indent}${target} = ${exactValue(operation.left)} ${operator} ` +
+      `${exactValue(operation.right)};`;
+  }
+  if (operation.kind === "bool.binary") {
+    const operator = operation.operation === "and" ? "&&" : "||";
+    return `${indent}${target} = ${exactValue(operation.left)} ${operator} ` +
+      `${exactValue(operation.right)};`;
+  }
+  if (operation.kind === "bool.short_circuit") {
+    const test = operation.operation === "and" ? target : `!${target}`;
+    return [
+      `${indent}${target} = ${exactValue(operation.left)};`,
+      `${indent}if (${test})`,
+      `${indent}{`,
+      emitExactStatements(operation.right.operations, functions, `${indent}    `),
+      `${indent}    ${target} = ${exactValue(operation.right.value)};`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "bool.not") {
+    return `${indent}${target} = !${exactValue(operation.source)};`;
+  }
+  if (operation.kind === "integer.truth") {
+    return `${indent}${target} = mpz_sgn(${exactValue(operation.source)}) != 0;`;
+  }
+  if (operation.kind === "uint64.truth") {
+    return `${indent}${target} = ${exactValue(operation.source)} != 0;`;
+  }
+  if (operation.kind === "native.call") {
+    const callee = functions.get(operation.function);
+    if (callee === undefined) {
+      throw new Error(`unknown exact native callee ${operation.function}`);
+    }
+    const output = operation.returnType === "Integer" ? target : `&${target}`;
+    const args = operation.arguments.map((argument) =>
+      exactValue(argument.name)
+    );
+    return [
+      `${indent}if (!native_${operation.function}(env, ${output}` +
+        `${args.length ? `, ${args.join(", ")}` : ""}))`,
+      `${indent}    goto fail;`,
+    ].join("\n");
+  }
+  throw new Error(`unsupported exact C IR operation ${operation.kind}`);
+}
+
+function emitExactStatements(statements, functions, indent) {
+  const lines = [];
+  for (const statement of statements) {
+    if (statement.kind === "if") {
+      lines.push(
+        emitExactStatements(statement.condition.operations, functions, indent),
+        `${indent}if (${exactValue(statement.condition.value)})`,
+        `${indent}{`,
+        emitExactStatements(statement.body, functions, `${indent}    `),
+        `${indent}}`,
+      );
+      if (statement.alternative.length > 0) {
+        lines.push(
+          `${indent}else`,
+          `${indent}{`,
+          emitExactStatements(statement.alternative, functions, `${indent}    `),
+          `${indent}}`,
+        );
+      }
+      continue;
+    }
+    if (statement.kind === "while") {
+      lines.push(`${indent}for (;;)`, `${indent}{`);
+      lines.push(
+        emitExactStatements(
+          statement.condition.operations,
+          functions,
+          `${indent}    `,
+        ),
+        `${indent}    if (!${exactValue(statement.condition.value)})`,
+        `${indent}        break;`,
+        emitExactStatements(statement.body, functions, `${indent}    `),
+        `${indent}}`,
+      );
+      continue;
+    }
+    if (statement.kind === "loop.range") {
+      lines.push(
+        `${indent}for (${exactValue(statement.index)} = UINT64_C(${statement.start}); ` +
+          `(${exactValue(statement.index)} - UINT64_C(${statement.start})) < ` +
+          `${exactValue(statement.count)}; ${exactValue(statement.index)}++)`,
+        `${indent}{`,
+        emitExactStatements(statement.body, functions, `${indent}    `),
+        `${indent}}`,
+      );
+      continue;
+    }
+    if (statement.kind === "return") {
+      if (statement.type === "Integer") {
+        lines.push(`${indent}mpz_set(sagejs_native_output, ${exactValue(statement.value)});`);
+      } else {
+        lines.push(`${indent}*sagejs_native_output = ${exactValue(statement.value)};`);
+      }
+      lines.push(`${indent}goto success;`);
+      continue;
+    }
+    lines.push(emitExactOperation(statement, functions, indent));
+  }
+  return lines.filter(Boolean).join("\n");
+}
+
+function exactDeclarations(fn) {
+  const variables = [
+    ...fn.params.map((param) => ({ ...param, parameter: true })),
+    ...fn.locals.map((local) => ({ ...local, parameter: false })),
+  ];
+  const declarations = [];
+  const initialization = [];
+  const cleanup = [];
+  for (const variable of variables) {
+    const name = exactValue(variable.name);
+    if (variable.type === "Integer") {
+      declarations.push(`    mpz_t ${name};`);
+      declarations.push(`    int ${name}_initialized = 0;`);
+      initialization.push(
+        variable.parameter
+          ? `    mpz_init_set(${name}, sagejs_arg_${variable.name});`
+          : `    mpz_init(${name});`,
+        `    ${name}_initialized = 1;`,
+      );
+      cleanup.push(
+        `    if (${name}_initialized)`,
+        `        mpz_clear(${name});`,
+      );
+    } else {
+      declarations.push(
+        `    ${variable.type === "uint64" ? "uint64_t" : "int"} ${name}` +
+          `${variable.parameter ? ` = sagejs_arg_${variable.name}` : " = 0"};`,
+      );
+    }
+  }
+  return { declarations, initialization, cleanup };
+}
+
+function emitExactInternalFunction(fn, functions) {
+  const { declarations, initialization, cleanup } = exactDeclarations(fn);
+  return `${internalSignature(fn)}
+{
+${declarations.join("\n")}
+${initialization.join("\n")}
+${emitExactStatements(fn.body, functions, "    ")}
+    napi_throw_error(env, NULL, "native function completed without returning");
+    goto fail;
+
+success:
+${cleanup.join("\n")}
+    return 1;
+
+fail:
+${cleanup.join("\n")}
+    return 0;
+}`;
+}
+
+function wrapperValue(param) {
+  return `sagejs_wrapper_${param.name}`;
+}
+
+function emitExactWrapper(fn) {
+  const declarations = [];
+  const initialization = [];
+  const parsing = [];
+  const cleanup = [];
+  for (const [index, param] of fn.params.entries()) {
+    const value = wrapperValue(param);
+    if (param.type === "Integer") {
+      declarations.push(`    mpz_t ${value};`, `    int ${value}_initialized = 0;`);
+      initialization.push(`    mpz_init(${value});`, `    ${value}_initialized = 1;`);
+      parsing.push(`    if (!get_integer(env, args[${index}], ${value}))`, "        goto fail;");
+      cleanup.push(`    if (${value}_initialized)`, `        mpz_clear(${value});`);
+    } else if (param.type === "uint64") {
+      declarations.push(`    uint64_t ${value};`);
+      parsing.push(`    if (!get_uint64(env, args[${index}], &${value}))`, "        goto fail;");
+    } else {
+      declarations.push(`    int ${value};`);
+      parsing.push(`    if (!get_bool(env, args[${index}], &${value}))`, "        goto fail;");
+    }
+  }
+  let resultDeclaration;
+  let resultInitialization = "";
+  let resultCleanup = "";
+  let resultArgument;
+  let resultCreation;
+  if (fn.returnType === "Integer") {
+    resultDeclaration = "    mpz_t sagejs_wrapper_result;\n" +
+      "    int sagejs_wrapper_result_initialized = 0;";
+    resultInitialization = "    mpz_init(sagejs_wrapper_result);\n" +
+      "    sagejs_wrapper_result_initialized = 1;";
+    resultCleanup = "    if (sagejs_wrapper_result_initialized)\n" +
+      "        mpz_clear(sagejs_wrapper_result);";
+    resultArgument = "sagejs_wrapper_result";
+    resultCreation = "    result = create_bigint(env, sagejs_wrapper_result);";
+  } else {
+    resultDeclaration = `    ${fn.returnType === "uint64" ? "uint64_t" : "int"} sagejs_wrapper_result;`;
+    resultArgument = "&sagejs_wrapper_result";
+    resultCreation = fn.returnType === "bool"
+      ? "    if (!sagejs_native_check_napi(env, napi_get_boolean(env, sagejs_wrapper_result != 0, &result)))\n        goto fail;"
+      : "    if (!sagejs_native_check_napi(env, napi_create_bigint_uint64(env, sagejs_wrapper_result, &result)))\n        goto fail;";
+  }
+  const argumentsList = fn.params.map(wrapperValue);
+  return `
+static napi_value compiled_${fn.name}(napi_env env, napi_callback_info info)
+{
+    napi_value args[${Math.max(1, fn.params.length)}];
+    size_t argc = ${fn.params.length};
+${declarations.join("\n")}
+${resultDeclaration}
+    napi_value result = NULL;
+
+    if (!sagejs_native_check_napi(env,
+        napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
+        return NULL;
+    if (argc != ${fn.params.length})
+    {
+        napi_throw_type_error(env, NULL, "wrong native argument count");
+        return NULL;
+    }
+${initialization.join("\n")}
+${resultInitialization}
+${parsing.join("\n")}
+    if (!native_${fn.name}(env, ${resultArgument}` +
+      `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))
+        goto fail;
+${resultCreation}
+${cleanup.join("\n")}
+${resultCleanup}
+    return result;
+
+fail:
+${cleanup.join("\n")}
+${resultCleanup}
+    return NULL;
+}`;
+}
+
+function emitFieldFunction(fn) {
   const real = fn.returnType === "RealNumber";
   const prefix = real ? "real" : "complex";
   const parentType = real ? "RealField" : "ComplexField";
@@ -193,8 +574,27 @@ ${cleanup.join("\n")}
 }`;
 }
 
+function emitFunction(fn) {
+  return emitFieldFunction(fn);
+}
+
 function generateC(ir) {
-  const functions = ir.functions.map(emitFunction).join("\n");
+  const functionMap = new Map(ir.functions.map((fn) => [fn.name, fn]));
+  const exactFunctions = ir.functions.filter(
+    (fn) => fn.kernelKind === "integer",
+  );
+  const fieldFunctions = ir.functions.filter(
+    (fn) => fn.kernelKind !== "integer",
+  );
+  const prototypes = exactFunctions
+    .map((fn) => internalSignature(fn, true))
+    .join("\n");
+  const functions = [
+    prototypes,
+    ...exactFunctions.map((fn) => emitExactInternalFunction(fn, functionMap)),
+    ...exactFunctions.map(emitExactWrapper),
+    ...fieldFunctions.map(emitFunction),
+  ].filter(Boolean).join("\n\n");
   const properties = ir.functions
     .map(
       (fn) =>
@@ -202,12 +602,54 @@ function generateC(ir) {
         "NULL, NULL, NULL, napi_default, NULL}",
     )
     .join(",\n");
-  return `// Generated by Sage.js Native Kernel v1.
+  return `// Generated by Sage.js Native Kernel v3.
 #include <math.h>
+#include <limits.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include <node_api.h>
+#include <gmp.h>
 #include <sagejs/native.h>
+
+static void set_mpz_uint64(mpz_t target, uint64_t value)
+{
+#if ULONG_MAX >= UINT64_MAX
+    mpz_set_ui(target, (unsigned long) value);
+#else
+    mpz_import(target, 1, -1, sizeof(value), 0, 0, &value);
+#endif
+}
+
+static napi_value create_bigint(napi_env env, const mpz_t value)
+{
+    const int sign = mpz_sgn(value) < 0;
+    const size_t capacity =
+        (mpz_sizeinbase(value, 2) + (sizeof(uint64_t) * 8 - 1)) /
+        (sizeof(uint64_t) * 8);
+    size_t count = 0;
+    uint64_t *words = NULL;
+    napi_value result;
+
+    if (capacity != 0)
+    {
+        words = (uint64_t *) calloc(capacity, sizeof(*words));
+        if (words == NULL)
+        {
+            napi_throw_error(env, NULL, "unable to allocate BigInt limbs");
+            return NULL;
+        }
+        mpz_export(words, &count, -1, sizeof(*words), 0, 0, value);
+    }
+    if (!sagejs_native_check_napi(env,
+        napi_create_bigint_words(env, sign, count, words, &result)))
+    {
+        free(words);
+        return NULL;
+    }
+    free(words);
+    return result;
+}
 
 static int get_precision(
     napi_env env, napi_value value, mpfr_prec_t *precision)
@@ -261,6 +703,100 @@ static int get_uint64(
     }
     *result = (uint64_t) number;
     return 1;
+}
+
+static int get_bool(napi_env env, napi_value value, int *result)
+{
+    napi_valuetype type;
+    bool boolean;
+    if (!sagejs_native_check_napi(env, napi_typeof(env, value, &type)))
+        return 0;
+    if (type != napi_boolean ||
+        !sagejs_native_check_napi(
+            env, napi_get_value_bool(env, value, &boolean)))
+    {
+        napi_throw_type_error(env, NULL, "expected a bool argument");
+        return 0;
+    }
+    *result = boolean ? 1 : 0;
+    return 1;
+}
+
+static int get_integer(napi_env env, napi_value value, mpz_t result)
+{
+    napi_valuetype type;
+    if (!sagejs_native_check_napi(env, napi_typeof(env, value, &type)))
+        return 0;
+    if (type == napi_bigint)
+    {
+        int64_t small;
+        bool lossless;
+        if (!sagejs_native_check_napi(env,
+            napi_get_value_bigint_int64(env, value, &small, &lossless)))
+            return 0;
+        if (lossless)
+        {
+            const int negative = small < 0;
+            const uint64_t magnitude = negative
+                ? (uint64_t) (-(small + 1)) + UINT64_C(1)
+                : (uint64_t) small;
+            set_mpz_uint64(result, magnitude);
+            if (negative)
+                mpz_neg(result, result);
+            return 1;
+        }
+        else
+        {
+            napi_value string;
+            size_t length = 0;
+            char *digits;
+            if (!sagejs_native_check_napi(
+                env, napi_coerce_to_string(env, value, &string)) ||
+                !sagejs_native_check_napi(env,
+                    napi_get_value_string_utf8(
+                        env, string, NULL, 0, &length)))
+                return 0;
+            digits = (char *) malloc(length + 1);
+            if (digits == NULL)
+            {
+                napi_throw_error(env, NULL, "unable to allocate integer digits");
+                return 0;
+            }
+            if (!sagejs_native_check_napi(env,
+                napi_get_value_string_utf8(
+                    env, string, digits, length + 1, &length)))
+            {
+                free(digits);
+                return 0;
+            }
+            if (mpz_set_str(result, digits, 10) != 0)
+            {
+                free(digits);
+                napi_throw_type_error(env, NULL, "invalid exact integer digits");
+                return 0;
+            }
+            free(digits);
+            return 1;
+        }
+    }
+    if (type == napi_number)
+    {
+        double number;
+        if (!sagejs_native_check_napi(
+            env, napi_get_value_double(env, value, &number)))
+            return 0;
+        if (!isfinite(number) || floor(number) != number ||
+            number < -9007199254740991.0 ||
+            number > 9007199254740991.0)
+        {
+            napi_throw_range_error(env, NULL, "invalid exact integer argument");
+            return 0;
+        }
+        mpz_set_d(result, number);
+        return 1;
+    }
+    napi_throw_type_error(env, NULL, "expected an exact integer argument");
+    return 0;
 }
 ${functions}
 

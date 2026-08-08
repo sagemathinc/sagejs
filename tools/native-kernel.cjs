@@ -10,6 +10,16 @@ async function compile(options) {
   if (typeof options.sourcePath !== "string" || !options.sourcePath) {
     throw new TypeError("native compile sourcePath must be a non-empty string");
   }
+  if (
+    options.functions !== undefined &&
+    (!Array.isArray(options.functions) ||
+      options.functions.some(
+        (name) => typeof name !== "string" ||
+          !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name),
+      ))
+  ) {
+    throw new TypeError("native compile functions must be function names");
+  }
   return compileKernel({
     ...options,
     sourcePath: resolve(options.sourcePath),
