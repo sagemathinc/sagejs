@@ -659,8 +659,14 @@ def generate_code():
                         and scope.annotated_locals.indexOf(self.name) is not -1
                     )
                     module_name_fallback = (
-                        output.module_control_flow_names
-                        and output.module_control_flow_names[self.name]
+                        (
+                            is_node_type(scope, AST_Toplevel)
+                            and check_unbound
+                        )
+                        or (
+                            output.module_control_flow_names
+                            and output.module_control_flow_names[self.name]
+                        )
                         and (
                             is_node_type(scope, AST_Toplevel)
                             or not def_

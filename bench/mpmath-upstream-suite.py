@@ -56,10 +56,17 @@ FULL_MODULES = (
 )
 full_suite = os.environ.get('SAGEJS_MPMATH_FULL_SUITE') == '1'
 MODULES = FULL_MODULES if full_suite else CURATED_MODULES
+selection_text = os.environ.get('SAGEJS_MPMATH_SUITE_TESTS', '')
+selection = set(selection_text.split(',')) if selection_text else None
 module_selection_text = os.environ.get(
     'SAGEJS_MPMATH_SUITE_MODULES', '')
 if module_selection_text:
     selected_modules = set(module_selection_text.split(','))
+    MODULES = tuple(
+        module for module in MODULES if module in selected_modules)
+elif selection is not None:
+    selected_modules = set(
+        name.split('.', 1)[0] for name in selection)
     MODULES = tuple(
         module for module in MODULES if module in selected_modules)
 # This test silently changes scope according to whether the host happens to
@@ -69,8 +76,7 @@ EXCLUDED_TESTS = (
     set() if full_suite else {'test_convert.test_compatibility'}
 )
 
-selection_text = os.environ.get('SAGEJS_MPMATH_SUITE_TESTS', '')
-selection = set(selection_text.split(',')) if selection_text else None
+reraise = os.environ.get('SAGEJS_MPMATH_SUITE_RERAISE') == '1'
 total_passed = 0
 total_failed = 0
 suite_started = perf_counter()
@@ -80,6 +86,8 @@ for module_name in MODULES:
     try:
         module = __import__('mpmath.tests.' + module_name, fromlist=['*'])
     except BaseException as error:
+        if reraise:
+            raise
         import_seconds = perf_counter() - import_started
         total_failed += 1
         try:
@@ -113,6 +121,8 @@ for module_name in MODULES:
         try:
             getattr(module, name)()
         except BaseException as error:
+            if reraise:
+                raise
             failed += 1
             status = 'FAIL'
             # Keep the machine-readable stream one record per line.  Detailed

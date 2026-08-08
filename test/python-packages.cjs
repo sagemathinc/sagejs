@@ -312,6 +312,33 @@ test("dictionary tuple keys use structural equality", async () => {
   assert.equal(result.stdout.trim(), "tuple keys work");
 });
 
+test("dictionary object keys honor cross-type Python equality", async () => {
+  const source = [
+    "class Zero:",
+    "    def __hash__(self): return hash(0)",
+    "    def __eq__(self, other): return other == 0",
+    "mapping = {0: 'zero'}",
+    "key = Zero()",
+    "assert key in mapping",
+    "assert mapping[key] == 'zero'",
+    "mapping[key] = 'updated'",
+    "assert len(mapping) == 1",
+    "assert mapping[0] == 'updated'",
+    "print('object keys use Python equality')",
+    "",
+  ].join("\n");
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-object-keys-"));
+  const program = join(directory, "check.py");
+  writeFileSync(program, source);
+  const result = await child(
+    process.execPath,
+    [join(__dirname, "..", "bin", "sagejs-source.cjs"), program],
+    { stdio: ["ignore", "pipe", "pipe"] },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "object keys use Python equality");
+});
+
 test("Python methods named like JavaScript function helpers remain bound", async () => {
   const source = [
     "class Transformer:",

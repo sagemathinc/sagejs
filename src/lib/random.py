@@ -17,17 +17,24 @@
 _seed_state = {'value': 1}
 
 
-def seed(x=Date().getTime()):
-    if jstype(x) is 'number':
+def _seed_from_value(x):
+    if x is None:
+        x = Date().getTime()
+    value_type = jstype(x)
+    if value_type is 'number' or value_type is 'bigint':
         x = x.toString()
-    elif jstype(x) is not 'string':
-        raise TypeError("unhashable type: '" + jstype(x) + "'")
+    elif value_type is not 'string':
+        x = str(x)
     value = 5381
     for i in range(x.length):
         value = (value * 33 + x.charCodeAt(i)) % 4294967296
     if value == 0:
         value = 1
-    _seed_state.value = value
+    return value
+
+
+def seed(x=Date().getTime()):
+    _seed_state.value = _seed_from_value(x)
 
 
 seed()
@@ -39,6 +46,85 @@ def random():
     ) % 4294967296
     _seed_state.value = value
     return value / 4294967296
+
+
+class Random:
+    """Deterministic random-number generator with independent state.
+
+    This implements the core CPython ``random.Random`` interface using the
+    same lightweight generator as this compatibility module.  The exact
+    stream intentionally differs from CPython's Mersenne Twister, but seeded
+    instances are independent and reproducible.
+    """
+
+    def __init__(self, x=None):
+        self._state = {'value': 1}
+        self.seed(x)
+
+    def seed(self, x=None, version=2):
+        self._state.value = _seed_from_value(x)
+        return None
+
+    def random(self):
+        value = (
+            1664525 * self._state.value + 1013904223
+        ) % 4294967296
+        self._state.value = value
+        return value / 4294967296
+
+    def getrandbits(self, k):
+        k = _as_index(k)
+        if k < 0:
+            raise ValueError('number of bits must be non-negative')
+        answer = BigInt(0)
+        remaining = k
+        while remaining > 0:
+            take = min(remaining, 32)
+            word = Math.floor(self.random() * 4294967296)
+            if take < 32:
+                word = word % (2 ** take)
+            answer = (answer << BigInt(take)) | BigInt(word)
+            remaining -= take
+        return int(answer)
+
+    def _randbelow(self, upper):
+        if upper <= Number.MAX_SAFE_INTEGER:
+            return Math.floor(self.random() * float(upper))
+        bits = upper.bit_length()
+        while True:
+            candidate = self.getrandbits(bits)
+            if candidate < upper:
+                return candidate
+
+    def randrange(self, start, stop=None, step=1):
+        start = _as_index(start)
+        if stop is None:
+            stop = start
+            start = 0
+        else:
+            stop = _as_index(stop)
+        step = _as_index(step)
+        if step == 0:
+            raise ValueError('zero step for randrange()')
+        width = stop - start
+        if step > 0:
+            count = 0 if width <= 0 else (width + step - 1) // step
+        else:
+            count = 0 if width >= 0 else (width + step + 1) // step
+        if count <= 0:
+            raise ValueError('empty range for randrange()')
+        return start + step * self._randbelow(count)
+
+    def randint(self, a, b):
+        return self.randrange(a, b + 1)
+
+    def uniform(self, a, b):
+        return self.random() * (b - a) + a
+
+    def choice(self, seq):
+        if len(seq) == 0:
+            raise IndexError('Cannot choose from an empty sequence')
+        return seq[self._randbelow(len(seq))]
 
 
 def _type_name(value):

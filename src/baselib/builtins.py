@@ -1527,6 +1527,12 @@ def ρσ_operator_idiv(left: Any, right: Any) -> Any:
     return _builtins_inplace(left, right, '__idiv__', ρσ_operator_div)
 
 
+def ρσ_operator_idiv_python(left: Any, right: Any) -> Any:
+    """Implement Python 3 ``/=`` independently of Sage rational division."""
+    return _builtins_inplace(
+        left, right, '__itruediv__', ρσ_operator_truediv)
+
+
 def ρσ_operator_ipow(left: Any, right: Any) -> Any:
     left_type = runtime.jstype(left)
     if (
@@ -1574,6 +1580,11 @@ def ρσ_operator_ipow_exact(left: Any, right: Any) -> Any:
 def ρσ_operator_idiv_exact(left: Any, right: Any) -> Any:
     return _builtins_inplace(
         left, right, '__itruediv__', ρσ_operator_truediv_exact)
+
+
+def ρσ_operator_idiv_python_exact(left: Any, right: Any) -> Any:
+    return _builtins_inplace(
+        left, right, '__itruediv__', ρσ_operator_truediv)
 
 
 def ρσ_operator_truediv(left: Any, right: Any) -> Any:

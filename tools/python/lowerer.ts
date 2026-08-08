@@ -1442,16 +1442,25 @@ export class PythonCstLowerer {
     }
     const loweredLeft = this.lowerExpression(left);
     const loweredRight = this.lowerExpression(right);
+    // A subscript or slice assignment is normally represented directly on
+    // the target node for compatibility with the stage-zero AST.  In a
+    // chained assignment, however, that representation would make the outer
+    // target consume the inner ``__setitem__`` call's return value.  Preserve
+    // an AST_Assign wrapper so the established chained-assignment emitter can
+    // evaluate the RHS once and invoke every observable target left-to-right.
+    const chainedTarget = operator === "=" && right.type === "assignment";
     if (
       operator === "=" &&
-      loweredLeft instanceof this.compiler.AST_ItemAccess
+      loweredLeft instanceof this.compiler.AST_ItemAccess &&
+      !chainedTarget
     ) {
       loweredLeft.assignment = loweredRight;
       return loweredLeft;
     }
     if (
       operator === "=" &&
-      loweredLeft instanceof this.compiler.AST_Splice
+      loweredLeft instanceof this.compiler.AST_Splice &&
+      !chainedTarget
     ) {
       loweredLeft.assignment = loweredRight;
       return loweredLeft;

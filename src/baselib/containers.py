@@ -649,34 +649,45 @@ def ρσ_list_decorate(answer: Any) -> Any:
 def ρσ_list_constructor(iterable: Any = runtime.undefined) -> Any:
     if iterable is runtime.undefined:
         answer = _new_array()
-    elif (
-        runtime.strict_equal(runtime.jstype(iterable), 'object')
-        or runtime.strict_equal(runtime.jstype(iterable), 'function')
-    ) and _get_member(
-        _get_member(iterable, '__iter__'),
-        '__python_descriptor__',
-    ) is True:
-        python_iterator = runtime.reflect.apply(
-            _get_member(iterable, '__iter__'),
-            runtime.undefined,
-            [iterable],
-        )
-        answer = runtime.reflect.apply(
-            runtime.reflect.get(runtime.array, 'from'),
-            runtime.array,
-            [python_iterator],
-        )
     elif runtime.arraylike(iterable):
         answer = runtime.reflect.apply(
             runtime.array.prototype.slice, iterable, [])
-    elif runtime.strict_equal(runtime.jstype(iterable), 'number'):
-        answer = _new_array(iterable)
     else:
-        answer = runtime.reflect.apply(
-            runtime.reflect.get(runtime.array, 'from'),
-            runtime.array,
-            [iterable],
-        )
+        native_iterator = _get_member(
+            iterable, runtime.iterator_symbol)
+        python_iterator = _get_member(iterable, '__iter__')
+        getitem = _get_member(iterable, '__getitem__')
+        if runtime.strict_equal(
+            runtime.jstype(native_iterator), 'function'
+        ):
+            answer = runtime.reflect.apply(
+                runtime.reflect.get(runtime.array, 'from'),
+                runtime.array,
+                [iterable],
+            )
+        elif runtime.strict_equal(
+            runtime.jstype(python_iterator), 'function'
+        ):
+            iterator = _call_member(iterable, '__iter__', [])
+            answer = runtime.reflect.apply(
+                runtime.reflect.get(runtime.array, 'from'),
+                runtime.array,
+                [iterator],
+            )
+        elif runtime.strict_equal(runtime.jstype(getitem), 'function'):
+            answer = _new_array()
+            index = 0
+            while True:
+                try:
+                    answer.push(_call_member(
+                        iterable, '__getitem__', [index]))
+                except IndexError:
+                    break
+                except StopIteration:
+                    break
+                index += 1
+        else:
+            raise TypeError('object is not iterable')
     return list_decorate(answer)
 
 
@@ -1176,28 +1187,31 @@ def _dict_normalize_key(key: Any) -> Any:
 
 
 def _dict_resolve_key(mapping: Any, key: Any) -> Any:
-    """Return the stored identity for an equal immutable tuple key.
+    """Return the stored identity for an equal Python key.
 
     Native JavaScript ``Map`` compares objects by identity, whereas Python
-    dictionaries compare tuple keys structurally.  Keep the fast primitive
-    and identity paths, then scan existing tuple keys only after an identity
-    miss.  This is intentionally a correctness-first fallback; a hash-bucket
-    index can replace the scan when tuple-key workloads warrant it.
+    dictionaries use ``__hash__`` followed by ``__eq__``.  Keep the fast
+    primitive and identity paths, then scan existing keys for an equal object
+    only after an identity miss.  Besides structural tuple keys, this is
+    required for cross-type numeric equality such as ``mpf(0) == 0``.  This
+    is intentionally a correctness-first fallback; a hash-bucket index can
+    replace the scan when object-key workloads warrant it.
     """
     normalized_key = _dict_normalize_key(key)
     if mapping.jsmap.has(normalized_key):
         return normalized_key
+    key_type = runtime.jstype(key)
     if (
-        runtime.array.isArray(key)
-        and runtime.object.isFrozen(key)
+        (
+            runtime.array.isArray(key)
+            and runtime.object.isFrozen(key)
+        )
+        or runtime.strict_equal(key_type, 'object')
+        or runtime.strict_equal(key_type, 'function')
     ):
         for candidate in mapping.jsmap.keys():
             original = mapping.keymap.get(candidate)
-            if (
-                runtime.array.isArray(original)
-                and runtime.object.isFrozen(original)
-                and equals(original, key)
-            ):
+            if equals(original, key):
                 return candidate
     return normalized_key
 

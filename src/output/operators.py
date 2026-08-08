@@ -719,7 +719,11 @@ def print_assign(self, output):
         '-=': 'ρσ_operator_isub',
         '*=': 'ρσ_operator_imul',
         '**=': 'ρσ_operator_ipow',
-        '/=': 'ρσ_operator_idiv',
+        '/=': (
+            'ρσ_operator_idiv'
+            if output.options.rational_division
+            else 'ρσ_operator_idiv_python'
+        ),
     }
     compound_functions = {
         '//=': 'ρσ_operator_ifloordiv',
@@ -829,13 +833,6 @@ def print_assign(self, output):
         print_arithmetic_call(output, 'ρσ_operator_imul')
         self.left.print(output), output.comma(), self.right.print(
             output), output.print(')')
-        return
-    if self.operator is '/=':
-        output.assign(self.left)
-        print_arithmetic_call(output, 'ρσ_operator_idiv')
-        self.left.print(
-            output), output.comma(), self.right.print(output), output.print(
-                ')')
         return
     if self.operator is '=' and self.is_chained():
         left_hand_sides, rhs = self.traverse_chain()

@@ -216,8 +216,35 @@ test("module fallback names and explicit line continuations preserve Python sema
     const output = new compiler.OutputStream(outputOptions);
     ast.print(output);
     const javascript = output.get();
-    assert.match(javascript, /ρσ_check_unbound\(optional_name/);
+    assert.match(
+      javascript,
+      /ρσ_check_unbound\(ρσ_resolve_module_name\(optional_name/,
+    );
+    assert.match(
+      javascript,
+      /ρσ_resolve_module_name\(optional_name, "optional_name"/,
+    );
     assert.doesNotMatch(javascript, /<= \\/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("same-named module assignments fall back to Python builtins", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse(
+      "try:\n    next = next\nexcept NameError:\n    next = lambda value: value.next()\n",
+      parserOptions,
+    );
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(
+      javascript,
+      /next = ρσ_check_unbound\(ρσ_resolve_module_name\(next, "next"/,
+    );
   } finally {
     frontend.close();
   }
@@ -298,6 +325,24 @@ test("observable chained assignments use Python hooks from left to right", async
       itemJavascript.indexOf("shared = ρσ_chain_assign_temp") <
         itemJavascript.indexOf("ρσ_setitem(values"),
     );
+
+    const chainedItemsAst = frontend.parse(
+      "values[0] = values[1] = marker\n",
+      parserOptions,
+    );
+    const chainedItemsOutput = new compiler.OutputStream(outputOptions);
+    chainedItemsAst.print(chainedItemsOutput);
+    const chainedItemsJavascript = chainedItemsOutput.get();
+    assert.match(chainedItemsJavascript, /function\(ρσ_chain_assign_temp\)/);
+    assert.equal((chainedItemsJavascript.match(/ρσ_setitem/g) ?? []).length, 2);
+    assert.ok(
+      chainedItemsJavascript.indexOf(
+        'ρσ_setitem(values, ρσ_resolve_callable(Integer)("0")',
+      ) <
+        chainedItemsJavascript.indexOf(
+          'ρσ_setitem(values, ρσ_resolve_callable(Integer)("1")',
+        ),
+    );
   } finally {
     frontend.close();
   }
@@ -318,6 +363,21 @@ test("chained assignment initializes annotated names without reading them", asyn
     const javascript = output.get();
     assert.match(javascript, /__version__ = version = "9\.1\.1"/);
     assert.doesNotMatch(javascript, /ρσ_check_unbound\(version/);
+  } finally {
+    frontend.close();
+  }
+});
+
+test("Python augmented division selects true division instead of Sage rationals", async () => {
+  const compiler = createCompiler();
+  const frontend = await createPythonCompilerFrontend(compiler, "python");
+  try {
+    const ast = frontend.parse("value /= 4\n", parserOptions);
+    const output = new compiler.OutputStream(outputOptions);
+    ast.print(output);
+    const javascript = output.get();
+    assert.match(javascript, /ρσ_operator_idiv_python_exact/);
+    assert.doesNotMatch(javascript, /ρσ_operator_idiv_exact/);
   } finally {
     frontend.close();
   }

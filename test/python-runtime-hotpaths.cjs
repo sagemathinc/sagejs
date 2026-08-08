@@ -58,6 +58,9 @@ test("optimized comparisons and integer kernels retain Python semantics", async 
     "        return 119",
     "print(Compared() == object(), Compared() < object())",
     "print(-5 // 2, -5 % 2, 5 // -2, 5 % -2)",
+    "quotient = 0",
+    "quotient /= 4",
+    "print(quotient, isinstance(quotient, float), quotient < 0.5)",
     "numerator = 123456789012345678901234567890",
     "denominator = -1000000007",
     "print(numerator // denominator, numerator % denominator)",
@@ -75,8 +78,38 @@ test("optimized comparisons and integer kernels retain Python semantics", async 
       "False True",
       "117 119",
       "-3 1 -3 -1",
+      "0.0 True True",
       "-123456788148148161865 -802565165",
       "zero zero zero",
+    ].join("\n"),
+  );
+});
+
+test("list construction rejects scalars and honors Python iteration protocols", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "errors = []",
+    "for value in (0, 1, 2.0, object()):",
+    "    try:",
+    "        list(value)",
+    "    except TypeError:",
+    "        errors.append('not-iterable')",
+    "class Items:",
+    "    def __getitem__(self, index):",
+    "        if index >= 3:",
+    "            raise IndexError",
+    "        return index + 10",
+    "print(' '.join(errors))",
+    "print(list(Items()))",
+    "print(list(iter([4, 5, 6])))",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "not-iterable not-iterable not-iterable not-iterable",
+      "[10, 11, 12]",
+      "[4, 5, 6]",
     ].join("\n"),
   );
 });
