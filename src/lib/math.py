@@ -109,7 +109,7 @@ def frexp(x):
     if x == 0.0 or isinf(x) or isnan(x):
         return x, 0
     exponent = int(Math.floor(Math.log2(Math.abs(x)))) + 1
-    mantissa = x / Math.pow(2, exponent)
+    mantissa = x / Math.pow(2, Number(exponent))
     return mantissa, exponent
 
 
@@ -117,7 +117,11 @@ def ldexp(x, i):
     """Return ``x * (2**i)`` using the platform floating-point format."""
     x = float(x)
     i = int(i)
-    result = x * Math.pow(2, i)
+    # Python integers are represented exactly with BigInt when necessary,
+    # while JavaScript Math methods require Number operands.  Coerce only at
+    # this native boundary; an enormous exponent then naturally becomes
+    # +/-Infinity and follows the overflow/underflow handling below.
+    result = x * Math.pow(2, Number(i))
     if isFinite(x) and x != 0.0 and not isFinite(result):
         raise OverflowError('math range error')
     return float(result)

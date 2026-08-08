@@ -172,6 +172,10 @@ test("runtime descriptors preserve Python binding semantics", async (t) => {
     "    frexp = math.frexp",
     "    ldexp = math.ldexp",
     "print(BuiltinAliases().frexp(8.0), BuiltinAliases().ldexp(0.5, 4))",
+    "try:",
+    "    math.ldexp(1.0, 10**100)",
+    "except OverflowError:",
+    "    print('large ldexp overflows')",
   ].join("\n"));
   assert.equal(result.stdout.trim(), [
     "5 5 5",
@@ -179,6 +183,7 @@ test("runtime descriptors preserve Python binding semantics", async (t) => {
     "True True",
     "42",
     "(0.5, 4) 8.0",
+    "large ldexp overflows",
   ].join("\n"));
 });
 
