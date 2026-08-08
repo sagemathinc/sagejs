@@ -81,34 +81,67 @@ def equals(left: Any, right: Any) -> Any:
     right_type = runtime.jstype(right)
 
     # Primitive equality is overwhelmingly common in numerical inner loops.
-    # Resolve it before probing Python special members or the uncommon boxed
-    # representation used by integral-valued floats.  In particular, avoid a
-    # megamorphic ``__sagejs_float__`` property lookup on every integer.
-    if (
+    # Branch on the left shape first so the overwhelmingly common number/
+    # number and bigint/bigint cases use only two type comparisons.  The old
+    # symmetric predicate performed roughly nine comparisons before reaching
+    # the same primitive identity check.
+    if runtime.strict_equal(left_type, 'number'):
+        if runtime.strict_equal(right_type, 'number'):
+            return left is right
+        if runtime.strict_equal(right_type, 'bigint'):
+            return (
+                runtime.number.isInteger(left)
+                and runtime.bigint(left) is right
+            )
+        if runtime.strict_equal(right_type, 'boolean'):
+            return left is (1 if right else 0)
+        if (
+            not runtime.strict_equal(right_type, 'object')
+            and not runtime.strict_equal(right_type, 'function')
+        ):
+            return False
+    elif runtime.strict_equal(left_type, 'bigint'):
+        if runtime.strict_equal(right_type, 'bigint'):
+            return left is right
+        if runtime.strict_equal(right_type, 'number'):
+            return (
+                runtime.number.isInteger(right)
+                and left is runtime.bigint(right)
+            )
+        if runtime.strict_equal(right_type, 'boolean'):
+            return left is runtime.bigint(1 if right else 0)
+        if (
+            not runtime.strict_equal(right_type, 'object')
+            and not runtime.strict_equal(right_type, 'function')
+        ):
+            return False
+    elif runtime.strict_equal(left_type, 'string'):
+        if runtime.strict_equal(right_type, 'string'):
+            return left is right
+        if (
+            not runtime.strict_equal(right_type, 'object')
+            and not runtime.strict_equal(right_type, 'function')
+        ):
+            return False
+    elif runtime.strict_equal(left_type, 'boolean'):
+        numeric_left = 1 if left else 0
+        if runtime.strict_equal(right_type, 'boolean'):
+            return left is right
+        if runtime.strict_equal(right_type, 'number'):
+            return numeric_left is right
+        if runtime.strict_equal(right_type, 'bigint'):
+            return runtime.bigint(numeric_left) is right
+        if (
+            not runtime.strict_equal(right_type, 'object')
+            and not runtime.strict_equal(right_type, 'function')
+        ):
+            return False
+    elif (
         not runtime.strict_equal(left_type, 'object')
         and not runtime.strict_equal(left_type, 'function')
         and not runtime.strict_equal(right_type, 'object')
         and not runtime.strict_equal(right_type, 'function')
     ):
-        if runtime.strict_equal(left_type, 'boolean'):
-            left = 1 if left else 0
-            left_type = 'number'
-        if runtime.strict_equal(right_type, 'boolean'):
-            right = 1 if right else 0
-            right_type = 'number'
-        if (
-            (
-                runtime.strict_equal(left_type, 'bigint')
-                and runtime.strict_equal(right_type, 'number')
-                and runtime.number.isInteger(right)
-            )
-            or (
-                runtime.strict_equal(right_type, 'bigint')
-                and runtime.strict_equal(left_type, 'number')
-                and runtime.number.isInteger(left)
-            )
-        ):
-            return runtime.bigint(left) is runtime.bigint(right)
         if runtime.strict_equal(left_type, right_type):
             return left is right
         return False

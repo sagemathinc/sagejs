@@ -839,6 +839,8 @@ def _builtins_rich_compare(
     left: Any,
     right: Any,
     operation: _Str,
+    left_method: _Str,
+    right_method: _Str,
 ) -> _Bool:
     left_type = ρσ_python_jstype(left)
     right_type = ρσ_python_jstype(right)
@@ -864,11 +866,11 @@ def _builtins_rich_compare(
         )
     )
     if numeric or same_primitive:
-        if operation == 'lt':
+        if runtime.strict_equal(operation, 'lt'):
             return runtime.native_lt(left, right)
-        if operation == 'le':
+        if runtime.strict_equal(operation, 'le'):
             return runtime.native_le(left, right)
-        if operation == 'gt':
+        if runtime.strict_equal(operation, 'gt'):
             return runtime.native_gt(left, right)
         return runtime.native_ge(left, right)
 
@@ -887,35 +889,26 @@ def _builtins_rich_compare(
         for index in range(common):
             if runtime.equals(left_values[index], right_values[index]):
                 continue
-            if operation == 'lt' or operation == 'le':
+            if (
+                runtime.strict_equal(operation, 'lt')
+                or runtime.strict_equal(operation, 'le')
+            ):
                 return ρσ_operator_lt(
                     left_values[index], right_values[index])
             return ρσ_operator_gt(
                 left_values[index], right_values[index])
-        if operation == 'lt':
+        if runtime.strict_equal(operation, 'lt'):
             return runtime.native_lt(
                 len(left_values), len(right_values))
-        if operation == 'le':
+        if runtime.strict_equal(operation, 'le'):
             return runtime.native_le(
                 len(left_values), len(right_values))
-        if operation == 'gt':
+        if runtime.strict_equal(operation, 'gt'):
             return runtime.native_gt(
                 len(left_values), len(right_values))
         return runtime.native_ge(
             len(left_values), len(right_values))
 
-    left_method = {
-        'lt': '__lt__',
-        'le': '__le__',
-        'gt': '__gt__',
-        'ge': '__ge__',
-    }[operation]
-    right_method = {
-        'lt': '__gt__',
-        'le': '__ge__',
-        'gt': '__lt__',
-        'ge': '__le__',
-    }[operation]
     if _builtins_member_is_function(left, left_method):
         result = _builtins_call_member(
             left, left_method, [right])
@@ -929,29 +922,33 @@ def _builtins_rich_compare(
 
     if not numeric and not same_primitive:
         raise TypeError('objects are not orderable')
-    if operation == 'lt':
+    if runtime.strict_equal(operation, 'lt'):
         return runtime.native_lt(left, right)
-    if operation == 'le':
+    if runtime.strict_equal(operation, 'le'):
         return runtime.native_le(left, right)
-    if operation == 'gt':
+    if runtime.strict_equal(operation, 'gt'):
         return runtime.native_gt(left, right)
     return runtime.native_ge(left, right)
 
 
 def ρσ_operator_lt(left: Any, right: Any) -> _Bool:
-    return _builtins_rich_compare(left, right, 'lt')
+    return _builtins_rich_compare(
+        left, right, 'lt', '__lt__', '__gt__')
 
 
 def ρσ_operator_le(left: Any, right: Any) -> _Bool:
-    return _builtins_rich_compare(left, right, 'le')
+    return _builtins_rich_compare(
+        left, right, 'le', '__le__', '__ge__')
 
 
 def ρσ_operator_gt(left: Any, right: Any) -> _Bool:
-    return _builtins_rich_compare(left, right, 'gt')
+    return _builtins_rich_compare(
+        left, right, 'gt', '__gt__', '__lt__')
 
 
 def ρσ_operator_ge(left: Any, right: Any) -> _Bool:
-    return _builtins_rich_compare(left, right, 'ge')
+    return _builtins_rich_compare(
+        left, right, 'ge', '__ge__', '__le__')
 
 
 def ρσ_operator_sub(left: Any, right: Any) -> Any:
@@ -1639,17 +1636,17 @@ def ρσ_operator_mod(left: Any, right: Any) -> Any:
         and runtime.number.isSafeInteger(left)
         and runtime.number.isSafeInteger(right)
     ):
-        if right == 0:
+        if runtime.strict_equal(right, 0):
             raise runtime.zero_division_error(
                 'integer modulo by zero')
         remainder = runtime.native_mod(left, right)
-        if remainder == 0:
+        if runtime.strict_equal(remainder, 0):
             return 0
         if (
             remainder < 0 and right > 0
             or remainder > 0 and right < 0
         ):
-            remainder += right
+            remainder = runtime.native_add(remainder, right)
         return remainder
     if _builtins_member_is_function(left, '__mod__'):
         return _builtins_call_member(left, '__mod__', [right])
@@ -1664,13 +1661,15 @@ def ρσ_operator_mod(left: Any, right: Any) -> Any:
         right_bigint = runtime.bigint(right)
         remainder = runtime.native_mod(left_bigint, right_bigint)
         if (
-            remainder != 0
+            not runtime.strict_equal(
+                remainder, runtime.bigint(0))
             and (
                 remainder < 0 and right_bigint > 0
                 or remainder > 0 and right_bigint < 0
             )
         ):
-            remainder += right_bigint
+            remainder = runtime.native_add(
+                remainder, right_bigint)
         return runtime.normalize_integer(remainder)
     if (
         runtime.strict_equal(left_type, 'bigint')
@@ -1896,7 +1895,11 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
         _builtins_exact_integer_primitive(left)
         and _builtins_exact_integer_primitive(right)
     ):
-        if right == 0:
+        if (
+            runtime.strict_equal(right, 0)
+            or runtime.strict_equal(right, runtime.bigint(0))
+            or right is False
+        ):
             raise runtime.zero_division_error(
                 'integer division or modulo by zero')
         if (
@@ -1908,13 +1911,15 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
             quotient = runtime.native_div(left_bigint, right_bigint)
             remainder = runtime.native_mod(left_bigint, right_bigint)
             if (
-                remainder != 0
+                not runtime.strict_equal(
+                    remainder, runtime.bigint(0))
                 and (
                     left_bigint < 0 and right_bigint > 0
                     or left_bigint > 0 and right_bigint < 0
                 )
             ):
-                quotient -= runtime.bigint(1)
+                quotient = runtime.native_sub(
+                    quotient, runtime.bigint(1))
             return runtime.normalize_integer(quotient)
         return runtime.math.floor(runtime.native_div(left, right))
     if _builtins_member_is_function(left, '__floordiv__'):
@@ -1952,9 +1957,17 @@ def ρσ_operator_floordiv(left: Any, right: Any) -> Any:
 def ρσ_bool(value: Any) -> _Bool:
     if value is None or value is runtime.undefined:
         return False
-    if _builtins_is_boxed_float(value):
-        return runtime.number(value) != 0
     value_type = runtime.jstype(value)
+    if (
+        not runtime.strict_equal(value_type, 'object')
+        and not runtime.strict_equal(value_type, 'function')
+    ):
+        return not not value
+    if (
+        runtime.strict_equal(value_type, 'object')
+        and runtime.native_get(value, '__sagejs_float__') is True
+    ):
+        return runtime.number(value) != 0
     if (
         runtime.strict_equal(value_type, 'object')
         or runtime.strict_equal(value_type, 'function')
@@ -1976,7 +1989,7 @@ def ρσ_bool(value: Any) -> _Bool:
             if length < 0:
                 raise ValueError('__len__() should return >= 0')
             return length != 0
-    return not not value
+    return True
 
 
 def ρσ_round(

@@ -183,6 +183,8 @@
     "bench:mpmath": "node bench/compare-mpmath.cjs",
     "bench:mpmath:suite": "node bench/compare-mpmath-suite.cjs",
     "bench:attributes": "node bench/compare-python-attributes.cjs",
+    "bench:comparisons": "node bench/compare-python-comparisons.cjs",
+    "bench:integers": "node bench/compare-python-exact-integers.cjs",
     "bench:cowasm:ceilings": "node bench/cowasm/direct-ceilings.cjs",
     "bench:native": "node bench/compare-native-compiler.cjs",
     "bench:polyglot": "node bench/polyglot.cjs",

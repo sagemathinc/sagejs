@@ -38,6 +38,49 @@ test("optimized calls, equality, and indexing retain Python semantics", async (t
   ].join("\n"));
 });
 
+test("optimized comparisons and integer kernels retain Python semantics", async (t) => {
+  const session = await createSage({ mode: "python" });
+  t.after(() => session.close());
+  const result = await session.evaluate([
+    "print(False == 0, True == 1, 0 == 0.0, 10**20 == 1e20)",
+    "print(bool(0), bool(1), bool(0.0), bool(1.0), bool(object()))",
+    "class Sized:",
+    "    def __len__(self):",
+    "        return 0",
+    "class Truthful:",
+    "    def __bool__(self):",
+    "        return True",
+    "print(bool(Sized()), bool(Truthful()))",
+    "class Compared:",
+    "    def __eq__(self, other):",
+    "        return 117",
+    "    def __lt__(self, other):",
+    "        return 119",
+    "print(Compared() == object(), Compared() < object())",
+    "print(-5 // 2, -5 % 2, 5 // -2, 5 % -2)",
+    "numerator = 123456789012345678901234567890",
+    "denominator = -1000000007",
+    "print(numerator // denominator, numerator % denominator)",
+    "for zero in (0, False, 0.0):",
+    "    try:",
+    "        1 // zero",
+    "    except ZeroDivisionError:",
+    "        print('zero', end=' ')",
+  ].join("\n"));
+  assert.equal(
+    result.stdout.trim(),
+    [
+      "True True True True",
+      "False True False True True",
+      "False True",
+      "117 119",
+      "-3 1 -3 -1",
+      "-123456788148148161865 -802565165",
+      "zero zero zero",
+    ].join("\n"),
+  );
+});
+
 test("optimized own-field lookup preserves descriptor precedence", async (t) => {
   const session = await createSage({ mode: "python" });
   t.after(() => session.close());
