@@ -70,7 +70,7 @@ def _ec_cubic_root_count(a_value: Any, b_value: Any, prime: int) -> int:
         0,
         1,
     ]
-    power = [0, 1]
+    power = [1]
     base = [0, 1]
     exponent = prime
     while exponent:

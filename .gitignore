@@ -14,5 +14,6 @@ __pycache__/
 bench/.native-kernel-cache
 bench/.native-mpmath-cache
 bench/.native-prime-source-cache
+bench/.native-tate-corpus
 bench/.native-poc
 build/*

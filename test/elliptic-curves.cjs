@@ -283,6 +283,27 @@ test("Tate local data covers wild 2- and 3-adic reduction", async () => {
   }
 });
 
+test("Tate I0* root counting agrees with a large-prime cubic", async () => {
+  const session = await createSage();
+  try {
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "p = 101",
+            "d = EllipticCurve([0, 0, 0, 0, p ** 3]).local_data(p)",
+            "[d.conductor_valuation(), str(d.kodaira_symbol()), " +
+              "d.tamagawa_number()]",
+          ].join("\n"),
+        )
+      ).repr,
+      "[2, 'I0*', 2]",
+    );
+  } finally {
+    await session.close();
+  }
+});
+
 test("global minimal models drive general conductors and local-data lists", async () => {
   const session = await createSage();
   try {

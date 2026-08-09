@@ -172,6 +172,7 @@
     "bench:native:prime-field": "node bench/compare-native-prime-field-matrix.cjs",
     "bench:native:prime-source": "node bench/compare-native-prime-field-source.cjs",
     "bench:native:tate": "node bench/compare-native-tate.cjs",
+    "bench:native:tate:corpus": "node bench/generate-native-tate-corpus.cjs",
     "bench:serialization": "node bench/compare-serialization.cjs",
     "bench:finite-fields": "node bench/compare-finite-fields.cjs",
     "bench:elliptic-curves": "node bench/compare-elliptic-curves.cjs",

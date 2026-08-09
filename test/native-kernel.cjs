@@ -556,12 +556,16 @@ try {
   assert.deepEqual(
     Object.keys(nativeTateKernel.ir.callGraph).sort(),
     [
+      "tate_cubic_multiply_mod",
       "tate_cubic_root_count",
+      "tate_inverse_mod",
+      "tate_jacobi",
       "tate_large_prime",
+      "tate_large_prime_invariants",
       "tate_legendre",
       "tate_power",
-      "tate_powmod",
       "tate_valuation",
+      "tate_x_power_mod_cubic",
     ],
   );
   const nativeTateModule = require(nativeTateKernel.modulePath);
@@ -579,6 +583,8 @@ try {
     [[1, -16, 0, -9, 16], 11, [1n, 5n, 1n]],
     [[7, 1, 17, 16, 0], 17, [1n, 6n, 2n]],
     [[3, 20, -4, -7, -10], 13, [1n, 7n, 1n]],
+    [[0, 0, 0, 0, 101 ** 3], 101, [2n, -1n, 2n]],
+    [[0, 0, 0, 0, 1000003n ** 3n], 1000003n, [2n, -1n, 4n]],
   ];
   for (const [coefficients, prime, expected] of tateCases) {
     const args = [...coefficients, prime];
@@ -591,6 +597,20 @@ try {
       nativeTateModule.tate_large_prime.tagged(...args),
       expected,
     );
+  }
+  for (const prime of [5, 7, 11, 13, 17, 19]) {
+    for (let aValue = 0; aValue < prime; aValue += 1) {
+      for (let bValue = 0; bValue < prime; bValue += 1) {
+        let roots = 0;
+        for (let xValue = 0; xValue < prime; xValue += 1) {
+          if ((xValue ** 3 + aValue * xValue + bValue) % prime === 0) roots += 1;
+        }
+        assert.equal(
+          nativeTateModule.tate_cubic_root_count(aValue, bValue, prime),
+          BigInt(roots),
+        );
+      }
+    }
   }
   const primeFieldSourceAddon = require(primeFieldSourceKernel.addonPath);
   const primeFieldSourceModule = require(primeFieldSourceKernel.modulePath);
