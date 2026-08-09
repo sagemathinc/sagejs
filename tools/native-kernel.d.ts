@@ -20,6 +20,37 @@ export interface NativeCompileResult {
   outputPath: string;
 }
 
+export interface NativeAnalysisResult {
+  sourcePath: string;
+  source: string;
+  ir: NativeCompileResult["ir"];
+}
+
+export interface NativeEmissionResult extends NativeAnalysisResult {
+  cSource: string;
+  cSourceMap: ReadonlyArray<{
+    id: string;
+    location: string;
+    origins: ReadonlyArray<string>;
+    generated: { startLine: number; endLine: number };
+  }>;
+}
+
+/** Lower source to the optimized, source-provenance-carrying typed IR. */
+export function analyze(
+  options: NativeCompileOptions,
+): Promise<NativeAnalysisResult>;
+
+/** Explain eligibility, inferred storage, dispatch, and optimizations. */
+export function explain(
+  options: NativeCompileOptions,
+): Promise<Record<string, unknown>>;
+
+/** Emit deterministic annotated C without invoking a C compiler. */
+export function emitC(
+  options: NativeCompileOptions,
+): Promise<NativeEmissionResult>;
+
 /** Compile every `@native` function in a Sage.js source file. */
 export function compile(
   options: NativeCompileOptions,

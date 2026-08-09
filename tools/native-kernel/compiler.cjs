@@ -76,6 +76,7 @@ function backendFingerprint() {
       readFileSync(join(__dirname, "prime-source-ir.cjs")),
       readFileSync(join(__dirname, "prime-source-optimize.cjs")),
       readFileSync(join(__dirname, "prime-source-backend.cjs")),
+      readFileSync(join(__dirname, "provenance.cjs")),
       readFileSync(join(__dirname, "word-backend.cjs")),
       readFileSync(join(__dirname, "tagged-backend.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
@@ -296,7 +297,10 @@ async function compileKernel(options) {
     );
   }
   mkdirSync(outputPath, { recursive: true });
-  writeFileSync(join(outputPath, "kernel.c"), generateC(ir));
+  const cSource = generateC(ir);
+  const { generatedCSourceMap } = require("./provenance.cjs");
+  const cSourceMap = generatedCSourceMap(cSource);
+  writeFileSync(join(outputPath, "kernel.c"), cSource);
   writeFileSync(
     join(outputPath, "binding.gyp"),
     `${JSON.stringify(bindingGyp(ir, sourceBoundsChecked), null, 2)}\n`,
@@ -320,6 +324,7 @@ async function compileKernel(options) {
         primeFieldTuning: tuning,
         sourceBoundsChecked,
         sourcePath,
+        cSourceMap,
         ir,
       },
       null,

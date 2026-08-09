@@ -2,6 +2,11 @@
 
 const { resolve } = require("node:path");
 const { compileKernel } = require("./native-kernel/compiler.cjs");
+const {
+  analyzeKernel,
+  emitKernelC,
+  explainKernel,
+} = require("./native-kernel/introspection.cjs");
 
 async function compile(options) {
   if (options === null || typeof options !== "object") {
@@ -54,7 +59,34 @@ async function main() {
   );
 }
 
-module.exports = { compile, compileKernel };
+async function analyze(options) {
+  return analyzeKernel({
+    ...options,
+    sourcePath: resolve(options.sourcePath),
+  });
+}
+
+async function explain(options) {
+  return explainKernel({
+    ...options,
+    sourcePath: resolve(options.sourcePath),
+  });
+}
+
+async function emitC(options) {
+  return emitKernelC({
+    ...options,
+    sourcePath: resolve(options.sourcePath),
+  });
+}
+
+module.exports = {
+  analyze,
+  compile,
+  compileKernel,
+  emitC,
+  explain,
+};
 
 if (require.main === module) {
   main().catch((error) => {

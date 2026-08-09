@@ -1,5 +1,10 @@
 "use strict";
 
+const {
+  annotateOperations,
+  sourceSpan,
+} = require("./provenance.cjs");
+
 const MAX_SMALL_POWER = 64n;
 const TYPE_ALIASES = new Map([
   ["Integer", "Integer"],
@@ -98,8 +103,22 @@ function isTupleType(type) {
 }
 
 function canonicalType(annotation) {
-  const scalar = TYPE_ALIASES.get(rawAnnotationName(annotation));
+  const raw = rawAnnotationName(annotation);
+  const scalar = TYPE_ALIASES.get(raw);
   if (scalar !== undefined) return scalar;
+  // ``from __future__ import annotations`` deliberately stores annotations as
+  // strings.  Accept the same flat tuple grammar as the ordinary AST form so
+  // native compilation does not depend on that module-level Python choice.
+  if (nodeType(annotation) === "AST_String") {
+    const match = /^(?:Tuple|tuple)\[([^\[\]]*)\]$/.exec(raw);
+    if (match !== null) {
+      const names = match[1].split(",").map((name) => name.trim());
+      const types = names.map((name) => TYPE_ALIASES.get(name));
+      if (types.length > 0 && types.every((type) => type !== undefined)) {
+        return tupleType(types);
+      }
+    }
+  }
   if (
     nodeType(annotation) !== "AST_ItemAccess" ||
     !["Tuple", "tuple"].includes(rawAnnotationName(annotation.expression))
@@ -893,7 +912,9 @@ function lowerStatements(statements, context) {
   const result = [];
   for (const statement of statements) {
     if (nodeType(statement) === "AST_SimpleStatement") {
-      result.push(...lowerAssignment(statement, context));
+      const operations = lowerAssignment(statement, context);
+      annotateOperations(operations, sourceSpan(statement, context.filename));
+      result.push(...operations);
       continue;
     }
     if (nodeType(statement) === "AST_Return") {
@@ -909,7 +930,7 @@ function lowerStatements(statements, context) {
         value.type === context.returnType,
         `return expects ${context.returnType}, got ${value.type}`,
       );
-      result.push(...operations, isTupleType(value.type) ? {
+      operations.push(isTupleType(value.type) ? {
         kind: "return",
         values: value.elements.map((element) => element.name),
         type: value.type,
@@ -918,6 +939,8 @@ function lowerStatements(statements, context) {
         value: value.name,
         type: value.type,
       });
+      annotateOperations(operations, sourceSpan(statement, context.filename));
+      result.push(...operations);
       continue;
     }
     if (nodeType(statement) === "AST_If") {
@@ -942,12 +965,14 @@ function lowerStatements(statements, context) {
           alternativeInitialized.has(name)
         ),
       );
-      result.push({
+      const operation = {
         kind: "if",
         condition: { operations: conditionOperations, value: condition.name },
         body,
         alternative,
-      });
+      };
+      annotateOperations([operation], sourceSpan(statement, context.filename));
+      result.push(operation);
       continue;
     }
     if (nodeType(statement) === "AST_While") {
@@ -968,11 +993,13 @@ function lowerStatements(statements, context) {
       context.initialized = new Set(before);
       const body = lowerBlock(statement.body, context);
       context.initialized = before;
-      result.push({
+      const operation = {
         kind: "while",
         condition: { operations: conditionOperations, value: condition.name },
         body,
-      });
+      };
+      annotateOperations([operation], sourceSpan(statement, context.filename));
+      result.push(operation);
       continue;
     }
     if (nodeType(statement) === "AST_ForIn") {
@@ -1001,14 +1028,16 @@ function lowerStatements(statements, context) {
           loopBody.push(operation);
         }
       }
-      result.push(...range.operations, ...hoisted, {
+      const operations = [...range.operations, ...hoisted, {
         kind: range.kind,
         index,
         ...(range.kind === "loop.range"
           ? { start: range.start, count: range.count }
           : { start: range.start, stop: range.stop }),
         body: loopBody,
-      });
+      }];
+      annotateOperations(operations, sourceSpan(statement, context.filename));
+      result.push(...operations);
       continue;
     }
     if (nodeType(statement) === "AST_Throw") {
@@ -1019,11 +1048,13 @@ function lowerStatements(statements, context) {
           statement.value.name === "ZeroDivisionError",
         "native raise currently supports ZeroDivisionError",
       );
-      result.push({
+      const operation = {
         kind: "raise",
         exception: "ZeroDivisionError",
         message: "division by zero",
-      });
+      };
+      annotateOperations([operation], sourceSpan(statement, context.filename));
+      result.push(operation);
       continue;
     }
     fail(context, statement, `unsupported ${nodeType(statement)} statement`);

@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v10 currently accepts a deliberately narrow typed numerical
+Native Kernel v11 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels and reusable dense
 decompositions over prime fields. Explicit AOT compilation produces a native
 implementation plus an exact fallback or reports a compile-time diagnostic.

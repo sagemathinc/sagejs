@@ -164,7 +164,7 @@ function print_top_level_usage() {
   console.log("  docs            search and export installed API documentation");
   console.log("  pip             install pure-Python packages for Sage.js");
   console.log("  pytest          run installed pytest with Sage.js Python");
-  console.log("  native          compile typed @native mathematical functions");
+  console.log("  native          inspect and compile typed @native functions");
   console.log("  compile         compile Sage.js source to JavaScript");
   console.log("  repl            start a REPL with detailed options");
   console.log("  lint            check Python/Sage source");
@@ -635,11 +635,11 @@ Install the Jupyter kernelspec under the given prefix.
 
 create_group(
   "native",
-  "compile SOURCE",
+  "<explain|ir|emit-c|compile|benchmark> SOURCE",
   function () {
     /*
-Compile typed @native functions to a content-addressed native module. Imported
-functions automatically use a source-hash-matched artifact when available.
+Inspect or compile typed @native functions. Imported functions automatically
+use a source-hash-matched artifact when available.
 */
   }
 );
@@ -654,6 +654,42 @@ opt("functions", "f", "string", "", function () {
   /*
 Compile this comma-separated set of functions, including from an undecorated
 typed module.
+*/
+});
+
+opt("function", "", "string", "", function () {
+  /*
+Select one function for inspection or benchmarking.
+*/
+});
+
+opt("stage", "", "string", "optimized", function () {
+  /*
+Select the IR stage to display (currently optimized).
+*/
+}, ["optimized"]);
+
+opt("args", "", "string", "[]", function () {
+  /*
+JSON argument array for `native benchmark`.
+*/
+});
+
+opt("warmup", "", "string", "10", function () {
+  /*
+Warmup calls for each native benchmark implementation.
+*/
+});
+
+opt("repeat", "", "string", "100", function () {
+  /*
+Calls per timed native benchmark sample.
+*/
+});
+
+opt("output", "o", "string", "", function () {
+  /*
+Write generated C to this file instead of standard output.
 */
 });
 

@@ -20,6 +20,10 @@ const {
   emitPrimeSourceFunction,
   generatePrimeSourceSupport,
 } = require("./prime-source-backend.cjs");
+const {
+  cOperationComment,
+  cSourceDirective,
+} = require("./provenance.cjs");
 
 const NATIVE_ABI_VERSION = 8;
 
@@ -400,6 +404,10 @@ function emitExactOperation(operation, context, indent) {
 function emitExactStatements(statements, context, indent) {
   const lines = [];
   for (const statement of statements) {
+    const comment = cOperationComment(statement, indent);
+    if (comment) lines.push(comment);
+    const directive = cSourceDirective(statement);
+    if (directive) lines.push(directive);
     if (statement.kind === "if") {
       lines.push(
         emitExactStatements(statement.condition.operations, context, indent),

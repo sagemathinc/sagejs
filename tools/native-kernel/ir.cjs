@@ -16,8 +16,11 @@ const {
 const {
   lowerPrimeSourceFunction,
 } = require("./prime-source-ir.cjs");
+const {
+  finalizeFunctionProvenance,
+} = require("./provenance.cjs");
 
-const IR_VERSION = 10;
+const IR_VERSION = 11;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -671,15 +674,25 @@ async function lowerSource(source, filename, options = {}) {
   const decoratedMode = decorated.length > 0 &&
     !(Array.isArray(options.functions) && options.functions.length > 0);
   const signatures = new Map();
-  for (const fn of selectedDefinitions) {
+  const initiallySelected = new Set(
+    selectedDefinitions.map((fn) => fn.name.name),
+  );
+  // Record every supported signature before lowering a selected subset.  A
+  // requested function may call an unrequested helper, and that helper must
+  // be compiled into the same native dependency graph rather than becoming
+  // an unresolved call or a name-based intrinsic.
+  for (const fn of definitions) {
     const returnType = canonicalType(fn.return_annotation);
     const paramTypes = array(fn.argnames).map((arg) =>
       canonicalType(arg.annotation)
     );
-    if (
+    const completeSignature = returnType !== undefined &&
+      paramTypes.every((type) => type !== undefined);
+    const partiallyTypedSelected = initiallySelected.has(fn.name.name) && (
       returnType !== undefined ||
       paramTypes.some((type) => type === "Integer" || type === "bool")
-    ) {
+    );
+    if (completeSignature || partiallyTypedSelected) {
       const signature = signatureFromFunction(fn, filename);
       expect(
         isIntegerSignature(signature) || isPrimeFieldSignature(signature),
@@ -688,7 +701,7 @@ async function lowerSource(source, filename, options = {}) {
       signatures.set(signature.name, signature);
     }
   }
-  const selected = analyzeExactModule(selectedDefinitions.map((fn) => {
+  function lowerDefinition(fn) {
     const signature = signatures.get(fn.name.name);
     return signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
@@ -713,7 +726,32 @@ async function lowerSource(source, filename, options = {}) {
             filename,
             decoratedMode,
           );
-  }));
+  }
+  const loweredDefinitions = [...selectedDefinitions];
+  const lowered = [];
+  const included = new Set(loweredDefinitions.map((fn) => fn.name.name));
+  const definitionsByName = new Map(
+    definitions.map((fn) => [fn.name.name, fn]),
+  );
+  for (let index = 0; index < loweredDefinitions.length; index += 1) {
+    const result = lowerDefinition(loweredDefinitions[index]);
+    lowered.push(result);
+    for (const dependency of result.dependencies || []) {
+      if (included.has(dependency)) continue;
+      const definition = definitionsByName.get(dependency);
+      expect(
+        definition !== undefined,
+        `${result.name} calls missing native function ${dependency}`,
+      );
+      included.add(dependency);
+      loweredDefinitions.push(definition);
+    }
+  }
+  const selected = analyzeExactModule(lowered).map((fn, index) => finalizeFunctionProvenance(
+    fn,
+    loweredDefinitions[index],
+    filename,
+  ));
   return {
     version: IR_VERSION,
     functions: selected,

@@ -437,6 +437,16 @@ function backendPolicy(fn, profile, recursive) {
     };
   }
   if (
+    profile.maximumConstantBits <= 64 &&
+    (profile.arithmeticOperations >= 16 || profile.nativeCalls >= 4)
+  ) {
+    return {
+      kind: "tagged",
+      reason:
+        "a substantial small-integer call graph amortizes checked native entry",
+    };
+  }
+  if (
     profile.arithmeticOperations === 0 &&
     profile.nativeCalls === 0 &&
     profile.whileLoops === 0

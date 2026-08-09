@@ -50,6 +50,7 @@ const primeFieldSourcePath = join(
   "bench",
   "native_prime_field_source.py",
 );
+const nativeTatePath = join(root, "bench", "native_tate_large_prime.py");
 const source = readFileSync(sourcePath, "utf8");
 const ir = await lowerSource(source, sourcePath);
 const complexFunction = ir.functions.find(
@@ -99,28 +100,45 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 10);
+assert.equal(ir.version, 11);
 assert.equal(complexFunction.params[0].type, "ComplexField");
 assert.equal(complexFunction.params[1].type, "uint64");
 assert.equal(complexFunction.returnType, "ComplexNumber");
 assert.equal(complexFunction.locals[0].storage, "return");
-assert.deepEqual(complexFunction.body[2].body[0], {
+const {
+  id: complexOperationId,
+  origins: complexOperationOrigins,
+  provenance: complexOperationProvenance,
+  ...complexOperation
+} = complexFunction.body[2].body[0];
+assert.deepEqual(complexOperation, {
   kind: "complex.binary",
   operation: "mul",
   target: "value",
   left: "value",
   right: "step",
 });
+assert.match(complexOperationId, /^multiply_loop:/);
+assert.deepEqual(complexOperationOrigins, [complexOperationId]);
+assert.equal(complexOperationProvenance.file, sourcePath);
 assert.equal(realFunction.params[0].type, "RealField");
 assert.equal(realFunction.returnType, "RealNumber");
 assert.equal(realFunction.locals[0].type, "RealNumber");
-assert.deepEqual(realFunction.body[2].body[0], {
+const {
+  id: realOperationId,
+  origins: realOperationOrigins,
+  provenance: realOperationProvenance,
+  ...realOperation
+} = realFunction.body[2].body[0];
+assert.deepEqual(realOperation, {
   kind: "real.binary",
   operation: "mul",
   target: "value",
   left: "value",
   right: "step",
 });
+assert.deepEqual(realOperationOrigins, [realOperationId]);
+assert.equal(realOperationProvenance.file, sourcePath);
 assert.match(
   generatedC,
   /mpc_mul\(sagejs_value->value, sagejs_value->value, sagejs_step/,
@@ -530,6 +548,50 @@ try {
     sourcePath: primeFieldSourcePath,
     cacheRoot: join(temporary, "prime-field-source-cache"),
   });
+  const nativeTateKernel = await compileKernel({
+    sourcePath: nativeTatePath,
+    functions: ["tate_large_prime"],
+    cacheRoot: join(temporary, "native-tate-cache"),
+  });
+  assert.deepEqual(
+    Object.keys(nativeTateKernel.ir.callGraph).sort(),
+    [
+      "tate_cubic_root_count",
+      "tate_large_prime",
+      "tate_legendre",
+      "tate_power",
+      "tate_powmod",
+      "tate_valuation",
+    ],
+  );
+  const nativeTateModule = require(nativeTateKernel.modulePath);
+  const tateCases = [
+    [[0, 0, 1, -1, 0], 5, [0n, 1n, 1n]],
+    [[0, 0, 0, 0, 5], 5, [2n, 2n, 1n]],
+    [[0, 0, 0, 0, 25], 5, [2n, 4n, 3n]],
+    [[0, 0, 0, 0, 125], 5, [2n, -1n, 2n]],
+    [[0, 0, 0, 0, 625], 5, [2n, -4n, 3n]],
+    [[0, 0, 0, 0, 3125], 5, [2n, -2n, 1n]],
+    [[0, 0, 0, 5, 0], 5, [2n, 3n, 2n]],
+    [[0, 0, 0, 25, 0], 5, [2n, -1n, 4n]],
+    [[0, 0, 0, 125, 0], 5, [2n, -3n, 2n]],
+    [[0, -1, 1, -10, -20], 11, [1n, 9n, 5n]],
+    [[1, -16, 0, -9, 16], 11, [1n, 5n, 1n]],
+    [[7, 1, 17, 16, 0], 17, [1n, 6n, 2n]],
+    [[3, 20, -4, -7, -10], 13, [1n, 7n, 1n]],
+  ];
+  for (const [coefficients, prime, expected] of tateCases) {
+    const args = [...coefficients, prime];
+    assert.deepEqual(nativeTateModule.tate_large_prime(...args), expected);
+    assert.deepEqual(
+      nativeTateModule.tate_large_prime.javascript(...args),
+      expected,
+    );
+    assert.deepEqual(
+      nativeTateModule.tate_large_prime.tagged(...args),
+      expected,
+    );
+  }
   const primeFieldSourceAddon = require(primeFieldSourceKernel.addonPath);
   const primeFieldSourceModule = require(primeFieldSourceKernel.modulePath);
   const primeFieldSourceManifest = JSON.parse(
@@ -537,6 +599,15 @@ try {
       join(primeFieldSourceKernel.outputPath, "manifest.json"),
       "utf8",
     ),
+  );
+  assert.ok(primeFieldSourceManifest.cSourceMap.length > 0);
+  assert.equal(
+    primeFieldSourceManifest.cSourceMap[0].location,
+    `${primeFieldSourcePath}:29:5`,
+  );
+  assert.match(
+    readFileSync(join(primeFieldSourceKernel.outputPath, "kernel.c"), "utf8"),
+    new RegExp(`#line 29 ${JSON.stringify(primeFieldSourcePath)}`),
   );
   const primeFieldAddon = require(primeFieldKernel.addonPath);
   const primeFieldModule = require(primeFieldKernel.modulePath);
@@ -1474,6 +1545,68 @@ print(kernel.pi(1000))
   assert.deepEqual(cliResult.callGraph.native_lcm, ["native_gcd"]);
   assert.equal(cliResult.analysis.native_gcd.backend.minimumBits, 64);
   assert.equal(cliResult.analysis.native_lcm.storage.scratchSlots, 2);
+  const explainCli = spawnSync(
+    process.execPath,
+    [
+      join(root, "bin", "sagejs"),
+      "native",
+      "explain",
+      integerAlgorithmsPath,
+      "--function",
+      "native_gcd",
+      "--json",
+    ],
+    { cwd: root, encoding: "utf8" },
+  );
+  assert.equal(explainCli.status, 0, explainCli.stderr);
+  const explanation = JSON.parse(explainCli.stdout);
+  assert.equal(explanation.eligible, true);
+  assert.equal(explanation.functions[0].analysis.backend.minimumBits, 64);
+  assert.ok(explanation.functions[0].ir.operations > 0);
+  const emitCli = spawnSync(
+    process.execPath,
+    [
+      join(root, "bin", "sagejs"),
+      "native",
+      "emit-c",
+      primeFieldSourcePath,
+      "--function",
+      "source_prime_rank",
+      "--json",
+    ],
+    { cwd: root, encoding: "utf8", maxBuffer: 10 * 1024 * 1024 },
+  );
+  assert.equal(emitCli.status, 0, emitCli.stderr);
+  const emission = JSON.parse(emitCli.stdout);
+  assert.match(emission.cSource, /sagejs-ir source_prime_rank:1/);
+  assert.ok(emission.sourceMap.length > 0);
+  const benchmarkCli = spawnSync(
+    process.execPath,
+    [
+      join(root, "bin", "sagejs"),
+      "native",
+      "benchmark",
+      integerAlgorithmsPath,
+      "--function",
+      "native_gcd",
+      "--args",
+      "[92250,922350]",
+      "--warmup",
+      "1",
+      "--repeat",
+      "2",
+      "--cache-root",
+      join(temporary, "cli-cache"),
+      "--json",
+    ],
+    { cwd: root, encoding: "utf8" },
+  );
+  assert.equal(benchmarkCli.status, 0, benchmarkCli.stderr);
+  const benchmarkResult = JSON.parse(benchmarkCli.stdout);
+  assert.deepEqual(
+    benchmarkResult.implementations.map((item) => item.name),
+    ["selected", "javascript", "tagged", "gmp"],
+  );
   const integerIndex = JSON.parse(
     readFileSync(join(integerCache, "index.json"), "utf8"),
   );
@@ -1669,7 +1802,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v10 source lowering, analysis, ABI, and fallback passed.",
+  "Native Kernel v11 provenance, Tate lowering, ABI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);

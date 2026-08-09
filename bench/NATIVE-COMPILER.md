@@ -1,6 +1,6 @@
-# Native Kernel v9
+# Native Kernel v11
 
-Native Kernel v9 asks whether selected Sage.js library functions can compile
+Native Kernel v11 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,13 +65,43 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v9 is currently a source-tree development feature and uses the
+Native Kernel v11 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
 decorated function from that artifact. `SAGEJS_NATIVE_AUTOLOAD=0` forces the
 original Python implementation. `SAGEJS_NATIVE_CACHE_DIR` selects a hermetic
 cache instead of the default `.sagejs-native-kernels` beside the source.
+
+## Transparent compiler tooling
+
+V11 makes the compiler pipeline inspectable without finding files inside the
+content-addressed cache:
+
+```sh
+sagejs native explain algorithms.py --function gcd
+sagejs native ir algorithms.py --function gcd
+sagejs native emit-c algorithms.py --function gcd
+sagejs native compile algorithms.py
+sagejs native benchmark algorithms.py --function gcd --args '[92250,922350]'
+```
+
+Every command supports `--json`. `explain` reports eligibility, signatures,
+dependency edges, storage/effect/backend analysis, recognized generic
+optimizations, and rejection reasons. `ir` and `emit-c` perform no native
+build. `benchmark` requires an explicit function and JSON argument array when
+the module has multiple entries; it checks that automatic, JavaScript,
+tagged-word/GMP, and forced-GMP forms agree before reporting warm medians.
+It does not invent representative arguments for an arbitrary mathematical
+function.
+
+Every serializable IR operation has a stable ID, its exact Python file,
+line/column and byte range, and an origin list. Data-flow fusion retains the
+IDs of all operations it replaces. Generated C contains corresponding
+`sagejs-ir` comments and C `#line` directives, while the cache manifest maps
+generated C line ranges back to those operations. Consequently compiler
+diagnostics and later profiling tools can point to mathematical source rather
+than opaque generated code.
 
 ## Pipeline
 
@@ -332,7 +362,43 @@ and algorithm quality. See
 [`PRIME-FIELD-SOURCE-COMPILER-EXPERIMENT.md`](PRIME-FIELD-SOURCE-COMPILER-EXPERIMENT.md)
 for code-size, safety, GCC/Clang, interpreted, handwritten-C, and FLINT data.
 
-## Deliberate v10 limits
+## Tate local reduction experiment
+
+[`native_tate_large_prime.py`](native_tate_large_prime.py) is the second
+source-transparency workload. It expresses the actual `p > 3` branch of Tate's
+algorithm using typed ordinary Python, including invariant construction,
+valuation, Legendre symbols, direct helper calls, many early returns, exact
+tuple results, and automatic word-to-GMP promotion. There is no Tate-specific
+intrinsic or name substitution. The same body executes as the portable
+fallback.
+
+The experiment uncovered two general frontend defects: postponed flat-tuple
+annotations were not recognized, and compiling one selected entry did not
+include its transitive typed dependencies. Both are now general features. Its
+larger call graph also supplies enough work to select tagged native entry even
+for small inputs, rather than paying dynamic BigInt dispatch throughout the
+algorithm.
+
+The differential corpus was generated with PARI 2.17.3 `elllocalred` and
+covers good and multiplicative reduction plus II, III, IV, I0*, IV*, III*,
+and II* branches. On the shared development host, warm medians across the
+13-case corpus were approximately 1.17 microseconds per case for compiled
+tagged Python, 56.8 microseconds for the production interpreted Sage.js
+routine, and 0.33 microseconds for PARI/GP. Thus this initial transparent
+compiler version is about 49x faster than interpreted Sage.js and within about
+3.6x of PARI's mature C implementation, including one Node-API crossing per
+case. Reproduce the checked comparison with:
+
+```sh
+pnpm run bench:native:tate
+```
+
+The production small-prime branch remains ordinary Python. Its mutable
+coefficient lists and more involved structured state make it the next honest
+compiler-capability test rather than a reason to introduce a hidden native
+Tate implementation.
+
+## Deliberate v11 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements

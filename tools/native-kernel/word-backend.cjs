@@ -1,5 +1,10 @@
 "use strict";
 
+const {
+  cOperationComment,
+  cSourceDirective,
+} = require("./provenance.cjs");
+
 const { tupleElementTypes } = require("./integer-ir.cjs");
 
 const INT64_MIN = -(1n << 63n);
@@ -288,6 +293,10 @@ function emitWordOperation(operation, context, indent) {
 function emitWordStatements(statements, context, indent) {
   const lines = [];
   for (const statement of statements) {
+    const comment = cOperationComment(statement, indent);
+    if (comment) lines.push(comment);
+    const directive = cSourceDirective(statement);
+    if (directive) lines.push(directive);
     if (statement.kind === "if") {
       lines.push(
         emitWordStatements(statement.condition.operations, context, indent),

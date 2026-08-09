@@ -3,6 +3,11 @@
 const {
   optimizePrimeSourceBody,
 } = require("./prime-source-optimize.cjs");
+const {
+  annotateOperations,
+  assignOperationIds,
+  sourceSpan,
+} = require("./provenance.cjs");
 
 /*
  * Source-transparent lowering for the prime-field compiler experiment.
@@ -411,7 +416,9 @@ function lowerStatements(statements, context) {
   for (const statement of statements) {
     if (nodeType(statement) === "AST_EmptyStatement") continue;
     if (nodeType(statement) === "AST_SimpleStatement") {
-      result.push(...lowerAssignment(statement, context));
+      const operations = lowerAssignment(statement, context);
+      annotateOperations(operations, sourceSpan(statement, context.filename));
+      result.push(...operations);
       continue;
     }
     if (nodeType(statement) === "AST_Return") {
@@ -419,27 +426,33 @@ function lowerStatements(statements, context) {
       const value = lowerExpression(statement.value, context, operations);
       expect(context, statement, value.type === context.returnType,
         `return expects ${context.returnType}, got ${value.type}`);
-      result.push(...operations, { kind: "source.return", value: value.name,
+      operations.push({ kind: "source.return", value: value.name,
         type: value.type });
+      annotateOperations(operations, sourceSpan(statement, context.filename));
+      result.push(...operations);
       continue;
     }
     if (nodeType(statement) === "AST_If") {
       const conditionOperations = [];
       const condition = lowerExpression(statement.condition, context, conditionOperations);
       expectType(context, statement.condition, condition, "bool", "if condition");
-      result.push({ kind: "source.if",
+      const operation = { kind: "source.if",
         condition: { operations: conditionOperations, value: condition.name },
         body: lowerBlock(statement.body, context),
-        alternative: lowerBlock(statement.alternative, context) });
+        alternative: lowerBlock(statement.alternative, context) };
+      annotateOperations([operation], sourceSpan(statement, context.filename));
+      result.push(operation);
       continue;
     }
     if (nodeType(statement) === "AST_While") {
       const conditionOperations = [];
       const condition = lowerExpression(statement.condition, context, conditionOperations);
       expectType(context, statement.condition, condition, "bool", "while condition");
-      result.push({ kind: "source.while",
+      const operation = { kind: "source.while",
         condition: { operations: conditionOperations, value: condition.name },
-        body: lowerBlock(statement.body, context) });
+        body: lowerBlock(statement.body, context) };
+      annotateOperations([operation], sourceSpan(statement, context.filename));
+      result.push(operation);
       continue;
     }
     if (nodeType(statement) === "AST_ForIn") {
@@ -449,13 +462,17 @@ function lowerStatements(statements, context) {
       const index = statement.init.name;
       ensureVariable(context, statement.init, index, "uint64");
       context.initialized.add(index);
-      result.push(...range.operations, { kind: "source.loop.range", index,
+      const operations = [...range.operations, { kind: "source.loop.range", index,
         start: range.start, stop: range.stop,
-        body: lowerBlock(statement.body, context) });
+        body: lowerBlock(statement.body, context) }];
+      annotateOperations(operations, sourceSpan(statement, context.filename));
+      result.push(...operations);
       continue;
     }
     if (nodeType(statement) === "AST_Throw") {
-      result.push(lowerRaise(statement, context));
+      const operation = lowerRaise(statement, context);
+      annotateOperations([operation], sourceSpan(statement, context.filename));
+      result.push(operation);
       continue;
     }
     fail(context, statement, `unsupported ${nodeType(statement)} statement`);
@@ -475,8 +492,13 @@ function lowerPrimeSourceFunction(fn, signature, filename, decorated) {
   const context = createContext(fn, signature, filename, decorated);
   const loweredBody = lowerStatements(array(fn.body), context);
   expect(context, fn, containsReturn(loweredBody), "function has no return");
+  const lowered = {
+    name: signature.name,
+    body: loweredBody,
+  };
+  assignOperationIds(lowered);
   const optimized = optimizePrimeSourceBody(loweredBody);
-  return {
+  const result = {
     name: signature.name,
     decorated,
     kernelKind: "prime-field-source",
@@ -488,6 +510,10 @@ function lowerPrimeSourceFunction(fn, signature, filename, decorated) {
     optimizations: optimized.optimizations,
     dependencies: [],
   };
+  // Optimized operations retain the IDs of the operations they replace and
+  // receive a fresh stable ID of their own.
+  assignOperationIds(result);
+  return result;
 }
 
 module.exports = {

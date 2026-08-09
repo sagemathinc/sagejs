@@ -1,5 +1,7 @@
 "use strict";
 
+const { generatedOperation } = require("./provenance.cjs");
+
 /*
  * Name-independent loop idioms for source-transparent prime-field kernels.
  *
@@ -60,7 +62,7 @@ function matchRowSubmul(loop) {
       ? multiply.left
       : null;
   if (factor === null) return null;
-  return {
+  return generatedOperation(loop, {
     kind: "source.prime.row_submul",
     buffer: sourceGet.buffer,
     targetRow: targetMul.left,
@@ -70,7 +72,7 @@ function matchRowSubmul(loop) {
     stop: loop.stop,
     factor,
     modulus: multiply.modulus,
-  };
+  });
 }
 
 function matchDotAccumulate(loop) {
@@ -100,7 +102,7 @@ function matchDotAccumulate(loop) {
       add.left !== accumulatorCopy.target) {
     return null;
   }
-  return {
+  return generatedOperation(loop, {
     kind: "source.prime.dot_accumulate",
     leftBuffer: leftGet.buffer,
     rightBuffer: rightGet.buffer,
@@ -112,7 +114,7 @@ function matchDotAccumulate(loop) {
     stop: loop.stop,
     accumulator: accumulatorCopy.target,
     modulus: multiply.modulus,
-  };
+  });
 }
 
 function optimizeStatements(statements, counts) {

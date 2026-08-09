@@ -1,5 +1,10 @@
 "use strict";
 
+const {
+  cOperationComment,
+  cSourceDirective,
+} = require("./provenance.cjs");
+
 function cString(value) {
   return JSON.stringify(String(value));
 }
@@ -352,7 +357,7 @@ function comparison(operation) {
   }[operation];
 }
 
-function emitStatement(operation, indent) {
+function emitStatementBody(operation, indent) {
   const target = operation.target === undefined ? null : cName(operation.target);
   if (operation.kind === "source.uint64.constant") {
     return `${indent}${target} = UINT64_C(${operation.value});`;
@@ -578,6 +583,13 @@ function emitStatement(operation, indent) {
     }
   }
   throw new Error(`unsupported source-transparent C operation ${operation.kind}`);
+}
+
+function emitStatement(operation, indent) {
+  const body = emitStatementBody(operation, indent);
+  const comment = cOperationComment(operation, indent);
+  const directive = cSourceDirective(operation);
+  return [comment, directive, body].filter(Boolean).join("\n");
 }
 
 function emitPrimeSourceFunction(fn) {
