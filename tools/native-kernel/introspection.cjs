@@ -3,7 +3,7 @@
 const { createHash } = require("node:crypto");
 const { readFileSync, readdirSync, statSync } = require("node:fs");
 const { basename, relative, resolve } = require("node:path");
-const { generateC } = require("./c-backend.cjs");
+const { generateC, generateHostCore } = require("./c-backend.cjs");
 const { lowerSource } = require("./ir.cjs");
 const { generatedCSourceMap } = require("./provenance.cjs");
 
@@ -52,6 +52,16 @@ function explainFunction(fn) {
     decorated: fn.decorated,
     kernelKind: fn.kernelKind || "field",
     sourceTransparent: fn.sourceTransparent === true,
+    hostIsolation: fn.kernelKind === "integer"
+      ? {
+        eligible: true,
+        normalPathHostCallbacks: 0,
+        boundary: "packed-c-abi",
+      }
+      : {
+        eligible: false,
+        reason: "this kernel kind has not yet migrated to the isolated core ABI",
+      },
     provenance: fn.provenance,
     signature: {
       parameters: fn.params,
@@ -244,10 +254,23 @@ async function emitKernelC(options) {
   };
 }
 
+async function emitHostCore(options) {
+  const result = await analyzeKernel(options);
+  const core = generateHostCore(result.ir);
+  return {
+    ...result,
+    coreSource: core.source,
+    coreHeader: core.header,
+    coreSourceMap: generatedCSourceMap(core.source),
+    hostIsolation: core.audit,
+  };
+}
+
 module.exports = {
   analyzeKernel,
   auditKernels,
   emitKernelC,
+  emitHostCore,
   explainFunction,
   explainKernel,
   operationStatistics,

@@ -635,7 +635,7 @@ Install the Jupyter kernelspec under the given prefix.
 
 create_group(
   "native",
-  "<audit|explain|ir|emit-c|compile|benchmark> SOURCE",
+  "<audit|explain|ir|emit-c|emit-core-c|emit-header|compile|benchmark> SOURCE",
   function () {
     /*
 Inspect or compile typed @native functions. Imported functions automatically

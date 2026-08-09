@@ -5,6 +5,7 @@ const { compileKernel } = require("./native-kernel/compiler.cjs");
 const {
   analyzeKernel,
   auditKernels,
+  emitHostCore,
   emitKernelC,
   explainKernel,
 } = require("./native-kernel/introspection.cjs");
@@ -81,6 +82,13 @@ async function emitC(options) {
   });
 }
 
+async function emitCore(options) {
+  return emitHostCore({
+    ...options,
+    sourcePath: resolve(options.sourcePath),
+  });
+}
+
 async function audit(options) {
   return auditKernels({
     ...options,
@@ -94,6 +102,7 @@ module.exports = {
   compile,
   compileKernel,
   emitC,
+  emitCore,
   explain,
 };
 

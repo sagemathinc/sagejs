@@ -1,6 +1,6 @@
-# Native Kernel v15
+# Native Kernel v16
 
-Native Kernel v15 asks whether selected Sage.js library functions can compile
+Native Kernel v16 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v15 is currently a source-tree development feature and uses the
+Native Kernel v16 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -75,7 +75,7 @@ cache instead of the default `.sagejs-native-kernels` beside the source.
 
 ## Transparent compiler tooling
 
-V14 makes the compiler pipeline inspectable without finding files inside the
+V16 makes the compiler pipeline inspectable without finding files inside the
 content-addressed cache:
 
 ```sh
@@ -84,6 +84,8 @@ sagejs native audit bench/cowasm/src
 sagejs native audit bench/cowasm/src --json
 sagejs native ir algorithms.py --function gcd
 sagejs native emit-c algorithms.py --function gcd
+sagejs native emit-core-c algorithms.py --function gcd
+sagejs native emit-header algorithms.py --function gcd
 sagejs native compile algorithms.py
 sagejs native benchmark algorithms.py --function gcd --args '[92250,922350]'
 ```
@@ -93,12 +95,36 @@ function below a file or directory, recording stable source hashes, detected
 source features, exact rejection diagnostics, and summarized rejection
 categories. `explain` reports eligibility, signatures,
 dependency edges, storage/effect/backend analysis, recognized generic
-optimizations, and rejection reasons. `ir` and `emit-c` perform no native
-build. `benchmark` requires an explicit function and JSON argument array when
+optimizations, host-isolation eligibility, and rejection reasons. `ir`,
+`emit-c`, `emit-core-c`, and `emit-header` perform no native build. The latter
+two expose the Node-independent C ABI for certified exact-integer kernels.
+`benchmark` requires an explicit function and JSON argument array when
 the module has multiple entries; it checks that automatic, JavaScript,
 tagged-word/GMP, and forced-GMP forms agree before reporting warm medians.
 It does not invent representative arguments for an arbitrary mathematical
 function.
+
+## Host-isolated exact kernels
+
+For an exact-integer module, a successful v16 build writes three distinct
+artifacts:
+
+- `kernel_core.c` contains the transitive compiled mathematical graph, tagged
+  machine-word/GMP promotion, packed-buffer primitives, and status returns;
+- `kernel_core.h` declares standalone C entry points and ownership rules;
+- `kernel.c` is the Node-API adapter that marshals values, includes the core,
+  and translates a returned status into a JavaScript exception.
+
+The core contains no Node-API, CPython, JavaScript-engine, or interpreter
+symbols. Direct compiled calls stay inside it. Unsupported calls fail lowering
+instead of becoming callbacks. This is stronger than merely observing that a
+particular hot loop does not happen to call the host.
+
+Tests compile the generated core into an independent native executable. When
+the CoWasm WASI SDK and GMP archive are present, that identical file is also
+compiled to `wasm32-wasip1` and executed through WASI. The remaining numerical
+and specialized matrix backends are explicitly reported as
+`migration-required` until they use the same status ABI.
 
 Every serializable IR operation has a stable ID, its exact Python file,
 line/column and byte range, and an origin list. Data-flow fusion retains the
@@ -111,7 +137,7 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v15 supports:
+lowers marked functions to typed IR. Native Kernel v16 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -545,7 +571,7 @@ coefficient lists and more involved structured state make it the next honest
 compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
-## Deliberate v15 limits
+## Deliberate v16 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements

@@ -25,7 +25,17 @@ const {
   cSourceDirective,
 } = require("./provenance.cjs");
 
-const NATIVE_ABI_VERSION = 12;
+const NATIVE_ABI_VERSION = 13;
+
+function statusFailure(kind, message, indent) {
+  const code = {
+    error: "SAGEJS_NATIVE_ERROR",
+    type: "SAGEJS_NATIVE_TYPE_ERROR",
+    range: "SAGEJS_NATIVE_RANGE_ERROR",
+  }[kind];
+  if (code === undefined) throw new Error(`unknown native status kind ${kind}`);
+  return `${indent}sagejs_native_status_set(status, ${code}, ${cString(message)});`;
+}
 
 function isInt64BufferType(type) {
   return type === "Int64Buffer" || type === "Int64Record";
@@ -206,7 +216,7 @@ function internalResults(type) {
 
 function internalSignature(fn, prototype = false) {
   const argumentsList = [
-    "napi_env env",
+    "sagejs_native_status *status",
     ...internalResults(fn.returnType),
     ...fn.params.map(internalArgument),
   ].join(", ");
@@ -219,7 +229,7 @@ function emitExactOperation(operation, context, indent) {
     return [
       `${indent}if (mpz_set_str(${target}, ${cString(operation.value)}, 10) != 0)`,
       `${indent}{`,
-      `${indent}    napi_throw_type_error(env, NULL, "invalid native integer literal");`,
+      statusFailure("type", "invalid native integer literal", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
     ].join("\n");
@@ -259,8 +269,7 @@ function emitExactOperation(operation, context, indent) {
         `(uint64_t) ${buffer}.length - ` +
         `(uint64_t) sagejs_record_start)`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
-        `"Int64Record is outside its buffer");`,
+      statusFailure("range", "Int64Record is outside its buffer", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
       `${indent}    ${target}.data = ${buffer}.data + ` +
@@ -278,8 +287,7 @@ function emitExactOperation(operation, context, indent) {
         `${exactValue(operation.index, context)}, ` +
         `&sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
-        `"Int64 buffer index out of range");`,
+      statusFailure("range", "Int64 buffer index out of range", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
       `${indent}    set_mpz_int64(${target}, ` +
@@ -297,15 +305,13 @@ function emitExactOperation(operation, context, indent) {
         `${exactValue(operation.index, context)}, ` +
         `&sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
-        `"Int64 buffer index out of range");`,
+      statusFailure("range", "Int64 buffer index out of range", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
       `${indent}    if (!mpz_to_int64(` +
         `${exactValue(operation.value, context)}, &sagejs_buffer_value))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
-        `"Int64Buffer value is outside signed 64-bit");`,
+      statusFailure("range", "Int64Buffer value is outside signed 64-bit", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
       `${indent}    ${buffer}.data[sagejs_buffer_position] = ` +
@@ -328,8 +334,7 @@ function emitExactOperation(operation, context, indent) {
       `${indent}    if (!sagejs_mpz_integer_buffer_index(&${buffer}, ` +
         `${exactValue(operation.index, context)}, &sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
-        `"IntegerBuffer index out of range");`,
+      statusFailure("range", "IntegerBuffer index out of range", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
       `${indent}    sagejs_integer_buffer_get_mpz(` +
@@ -345,11 +350,10 @@ function emitExactOperation(operation, context, indent) {
       `${indent}    if (!sagejs_mpz_integer_buffer_index(&${buffer}, ` +
         `${exactValue(operation.index, context)}, &sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
-        `"IntegerBuffer index out of range");`,
+      statusFailure("range", "IntegerBuffer index out of range", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
-      `${indent}    if (!sagejs_integer_buffer_set_mpz(env, ` +
+      `${indent}    if (!sagejs_integer_buffer_set_mpz(status, ` +
         `&${buffer}, sagejs_buffer_position, ` +
         `${exactValue(operation.value, context)}))`,
       `${indent}        goto fail;`,
@@ -378,7 +382,7 @@ function emitExactOperation(operation, context, indent) {
     return [
       `${indent}if (mpz_sgn(${right}) == 0)`,
       `${indent}{`,
-      `${indent}    napi_throw_range_error(env, NULL, "integer division or modulo by zero");`,
+      statusFailure("range", "integer division or modulo by zero", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
       `${indent}mpz_fdiv_qr(` +
@@ -392,14 +396,14 @@ function emitExactOperation(operation, context, indent) {
     return [
       `${indent}if (mpz_sgn(${source}) < 0)`,
       `${indent}{`,
-      `${indent}    napi_throw_range_error(env, NULL, "math domain error");`,
+      statusFailure("range", "math domain error", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
       `${indent}{`,
       `${indent}    const double sagejs_input = mpz_get_d(${source});`,
       `${indent}    if (!isfinite(sagejs_input))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, "int too large to convert to float");`,
+      statusFailure("range", "int too large to convert to float", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
       `${indent}    mpz_set_d(${target}, nearbyint(sqrt(sagejs_input)));`,
@@ -420,7 +424,7 @@ function emitExactOperation(operation, context, indent) {
       `${indent}    long ${position};`,
       `${indent}    if (!mpz_fits_slong_p(${index}))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, "native sequence index is too large");`,
+      statusFailure("range", "native sequence index is too large", `${indent}        `),
       `${indent}        goto fail;`,
       `${indent}    }`,
       `${indent}    ${position} = mpz_get_si(${index});`,
@@ -429,7 +433,7 @@ function emitExactOperation(operation, context, indent) {
       `${indent}    {`,
       cases,
       `${indent}        default:`,
-      `${indent}            napi_throw_range_error(env, NULL, "native sequence index out of range");`,
+      statusFailure("range", "native sequence index out of range", `${indent}            `),
       `${indent}            goto fail;`,
       `${indent}    }`,
       `${indent}}`,
@@ -452,7 +456,7 @@ function emitExactOperation(operation, context, indent) {
       return [
         `${indent}if (mpz_sgn(${right}) == 0)`,
         `${indent}{`,
-        `${indent}    napi_throw_range_error(env, NULL, "integer division or modulo by zero");`,
+        statusFailure("range", "integer division or modulo by zero", `${indent}    `),
         `${indent}    goto fail;`,
         `${indent}}`,
         `${indent}mpz_${division}(${target}, ${left}, ${right});`,
@@ -531,7 +535,7 @@ function emitExactOperation(operation, context, indent) {
       exactValue(argument.name, context)
     );
     return [
-      `${indent}if (!native_${operation.function}(env, ${outputs.join(", ")}` +
+      `${indent}if (!native_${operation.function}(status, ${outputs.join(", ")}` +
         `${args.length ? `, ${args.join(", ")}` : ""}))`,
       `${indent}    goto fail;`,
     ].join("\n");
@@ -635,8 +639,7 @@ function emitExactStatements(statements, context, indent) {
     }
     if (statement.kind === "raise") {
       lines.push(
-        `${indent}napi_throw_range_error(env, NULL, ` +
-          `${cString(statement.message)});`,
+        statusFailure("range", statement.message, indent),
         `${indent}goto fail;`,
       );
       continue;
@@ -697,7 +700,8 @@ function emitExactInternalFunction(fn, functions) {
 ${declarations.join("\n")}
 ${initialization.join("\n")}
 ${emitExactStatements(fn.body, context, "    ")}
-    napi_throw_error(env, NULL, "native function completed without returning");
+    sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+        "native function completed without returning");
     goto fail;
 
 success:
@@ -715,7 +719,7 @@ function wrapperValue(param) {
 }
 
 function emitTaggedWrapper(fn) {
-  const declarations = [];
+  const declarations = ["    sagejs_native_status sagejs_wrapper_status = {0, NULL};"];
   const initialization = [];
   const parsing = [];
   const cleanup = [];
@@ -826,10 +830,13 @@ function emitTaggedWrapper(fn) {
       ? `&${wrapperValue(param)}`
       : wrapperValue(param)
   );
-  const execution = `    if (!tagged_${fn.name}(env, ` +
+  const execution = `    if (!tagged_${fn.name}(&sagejs_wrapper_status, ` +
     `${resultArguments.join(", ")}` +
     `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
-    "        goto fail;";
+    "    {\n" +
+    "        sagejs_native_throw_status(env, &sagejs_wrapper_status);\n" +
+    "        goto fail;\n" +
+    "    }";
   return `
 static napi_value compiled_${fn.name}(napi_env env, napi_callback_info info)
 {
@@ -860,7 +867,7 @@ ${cleanup.join("\n")}
 }
 
 function emitExactWrapper(fn) {
-  const declarations = [];
+  const declarations = ["    sagejs_native_status sagejs_wrapper_status = {0, NULL};"];
   const initialization = [];
   const parsing = [];
   const cleanup = [];
@@ -964,9 +971,12 @@ function emitExactWrapper(fn) {
     declarations.push("    napi_value sagejs_wrapper_item = NULL;");
   }
   const argumentsList = fn.params.map(wrapperValue);
-  const execution = `    if (!native_${fn.name}(env, ${resultArguments.join(", ")}` +
+  const execution = `    if (!native_${fn.name}(&sagejs_wrapper_status, ${resultArguments.join(", ")}` +
     `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))\n` +
-    "        goto fail;";
+    "    {\n" +
+    "        sagejs_native_throw_status(env, &sagejs_wrapper_status);\n" +
+    "        goto fail;\n" +
+    "    }";
   return `
 static napi_value compiled_${fn.name}_gmp(napi_env env, napi_callback_info info)
 {
@@ -1458,7 +1468,7 @@ static void sagejs_integer_buffer_get_mpz(
 }
 
 static int sagejs_integer_buffer_set_mpz(
-    napi_env env,
+    sagejs_native_status *status,
     sagejs_integer_buffer *buffer,
     size_t position,
     const mpz_t value)
@@ -1470,7 +1480,7 @@ static int sagejs_integer_buffer_set_mpz(
     size_t actual = 0;
     if (count > buffer->word_capacity || count > (size_t) INT32_MAX)
     {
-        napi_throw_range_error(env, NULL,
+        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
             "IntegerBuffer word capacity exceeded");
         return 0;
     }
@@ -1541,7 +1551,7 @@ static void sagejs_integer_buffer_get_tagged(
 }
 
 static int sagejs_integer_buffer_set_tagged(
-    napi_env env,
+    sagejs_native_status *status,
     sagejs_integer_buffer *buffer,
     size_t position,
     sagejs_tagged_int *value)
@@ -1552,7 +1562,7 @@ static int sagejs_integer_buffer_set_tagged(
         return 1;
     }
     return sagejs_integer_buffer_set_mpz(
-        env, buffer, position, value->big);
+        status, buffer, position, value->big);
 }
 
 static int sagejs_native_get_integer_buffer(
@@ -1612,7 +1622,7 @@ static int sagejs_native_get_integer_buffer(
 }`;
 }
 
-function generateC(ir) {
+function generateCombinedC(ir) {
   const functionMap = new Map(ir.functions.map((fn) => [fn.name, fn]));
   const exactFunctions = ir.functions.filter(
     (fn) => fn.kernelKind === "integer",
@@ -1698,7 +1708,9 @@ function generateC(ir) {
 #include <node_api.h>
 #include <sagejs/native.h>
 
+/* SAGEJS_GENERATED_FUNCTIONS_BEGIN */
 ${functions}
+/* SAGEJS_GENERATED_FUNCTIONS_END */
 
 static napi_value initialize(napi_env env, napi_value exports)
 {
@@ -1715,7 +1727,7 @@ ${properties}
 NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
 `;
   }
-  return `// Generated by Sage.js Native Kernel v15.
+  return `// Generated by Sage.js Native Kernel v16.
 #include <math.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -1726,6 +1738,54 @@ NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
 #include <node_api.h>
 #include <gmp.h>
 #include <sagejs/native.h>
+
+typedef enum
+{
+    SAGEJS_NATIVE_OK = 0,
+    SAGEJS_NATIVE_ERROR = 1,
+    SAGEJS_NATIVE_TYPE_ERROR = 2,
+    SAGEJS_NATIVE_RANGE_ERROR = 3
+} sagejs_native_status_code;
+
+typedef struct
+{
+    sagejs_native_status_code code;
+    const char *message;
+} sagejs_native_status;
+
+static void sagejs_native_status_set(
+    sagejs_native_status *status,
+    sagejs_native_status_code code,
+    const char *message)
+{
+    if (status != NULL && status->code == SAGEJS_NATIVE_OK)
+    {
+        status->code = code;
+        status->message = message;
+    }
+}
+
+static void sagejs_native_status_reset(sagejs_native_status *status)
+{
+    if (status != NULL)
+    {
+        status->code = SAGEJS_NATIVE_OK;
+        status->message = NULL;
+    }
+}
+
+static void sagejs_native_throw_status(
+    napi_env env, const sagejs_native_status *status)
+{
+    const char *message = status != NULL && status->message != NULL
+        ? status->message : "native kernel failed";
+    if (status != NULL && status->code == SAGEJS_NATIVE_TYPE_ERROR)
+        napi_throw_type_error(env, NULL, message);
+    else if (status != NULL && status->code == SAGEJS_NATIVE_RANGE_ERROR)
+        napi_throw_range_error(env, NULL, message);
+    else
+        napi_throw_error(env, NULL, message);
+}
 
 static void set_mpz_uint64(mpz_t target, uint64_t value)
 {
@@ -2453,7 +2513,9 @@ static int get_tagged_integer(
     napi_throw_type_error(env, NULL, "expected an exact integer argument");
     return 0;
 }
+/* SAGEJS_GENERATED_FUNCTIONS_BEGIN */
 ${functions}
+/* SAGEJS_GENERATED_FUNCTIONS_END */
 
 static napi_value initialize(napi_env env, napi_value exports)
 {
@@ -2471,7 +2533,311 @@ NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
 `;
 }
 
+function exactFunctions(ir) {
+  return ir.functions.filter((fn) => fn.kernelKind === "integer");
+}
+
+function exactOnly(ir) {
+  return ir.functions.length > 0 &&
+    ir.functions.every((fn) => fn.kernelKind === "integer");
+}
+
+function beforeMarker(source, marker) {
+  const position = source.indexOf(marker);
+  if (position < 0) throw new Error(`generated C marker is missing: ${marker}`);
+  return source.slice(0, position).trim();
+}
+
+function fromMarker(source, marker) {
+  const position = source.indexOf(marker);
+  if (position < 0) throw new Error(`generated C marker is missing: ${marker}`);
+  return source.slice(position).trim();
+}
+
+function publicCoreSignature(fn, prototype = false) {
+  const parameters = [
+    "sagejs_native_status *status",
+    ...internalResults(fn.returnType),
+    ...fn.params.map(internalArgument),
+  ].join(", ");
+  return `int sagejs_kernel_${fn.name}(${parameters})${prototype ? ";" : ""}`;
+}
+
+function publicCoreFunction(fn) {
+  const outputs = tupleElementTypes(fn.returnType) === undefined
+    ? ["sagejs_native_output"]
+    : tupleElementTypes(fn.returnType).map((_type, index) =>
+      `sagejs_native_output_${index}`
+    );
+  const args = fn.params.map((param) => `sagejs_arg_${param.name}`);
+  return `${publicCoreSignature(fn)}
+{
+    sagejs_native_status_reset(status);
+    return native_${fn.name}(status, ${outputs.join(", ")}` +
+    `${args.length ? `, ${args.join(", ")}` : ""});
+}`;
+}
+
+function coreHeader(ir) {
+  const functions = exactFunctions(ir);
+  const usesInt64Buffers = functions.some((fn) =>
+    fn.params.some((param) => isInt64BufferType(param.type)) ||
+    fn.locals.some((local) => isInt64BufferType(local.type))
+  );
+  const usesIntegerBuffers = functions.some((fn) =>
+    fn.params.some((param) => isIntegerBufferType(param.type)) ||
+    fn.locals.some((local) => isIntegerBufferType(local.type))
+  );
+  return `/* Generated by Sage.js Native Kernel v16. */
+#ifndef SAGEJS_GENERATED_KERNEL_CORE_H
+#define SAGEJS_GENERATED_KERNEL_CORE_H
+
+#include <stddef.h>
+#include <stdint.h>
+#include <gmp.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum
+{
+    SAGEJS_NATIVE_OK = 0,
+    SAGEJS_NATIVE_ERROR = 1,
+    SAGEJS_NATIVE_TYPE_ERROR = 2,
+    SAGEJS_NATIVE_RANGE_ERROR = 3
+} sagejs_native_status_code;
+
+typedef struct
+{
+    sagejs_native_status_code code;
+    const char *message;
+} sagejs_native_status;
+${usesInt64Buffers ? `
+typedef struct
+{
+    int64_t *data;
+    size_t length;
+} sagejs_int64_buffer;
+` : ""}${usesIntegerBuffers ? `
+typedef struct
+{
+    int32_t *sizes;
+    uint64_t *limbs;
+    size_t length;
+    size_t word_capacity;
+} sagejs_integer_buffer;
+` : ""}
+/* Integer outputs are initialized mpz_t values owned by the caller. */
+${functions.map((fn) => publicCoreSignature(fn, true)).join("\n")}
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+`;
+}
+
+function generateHostCore(ir) {
+  if (!exactOnly(ir)) {
+    const kinds = Array.from(new Set(ir.functions.map((fn) => fn.kernelKind)));
+    throw new Error(
+      "host-isolated core emission currently requires exact-integer kernels; " +
+      `found ${kinds.join(", ")}`,
+    );
+  }
+  const functions = exactFunctions(ir);
+  const functionMap = new Map(functions.map((fn) => [fn.name, fn]));
+  const combined = generateCombinedC(ir);
+  const runtimeStart = combined.indexOf("static void sagejs_native_status_set");
+  const runtimeEnd = combined.indexOf("static napi_value create_bigint");
+  if (runtimeStart < 0 || runtimeEnd < 0 || runtimeEnd <= runtimeStart) {
+    throw new Error("unable to locate the generated host-core runtime");
+  }
+  const runtime = combined.slice(runtimeStart, runtimeEnd)
+    .replace(
+      /static void sagejs_native_throw_status\([\s\S]*?\n\}\n\n/,
+      "",
+    )
+    .trim();
+  const tagged = generateTaggedFunctions(functions);
+  const word = generateWordFunctions(functions);
+  const usesInt64Buffers = functions.some((fn) =>
+    fn.params.some((param) => isInt64BufferType(param.type)) ||
+    fn.locals.some((local) => isInt64BufferType(local.type))
+  );
+  const usesIntegerBuffers = functions.some((fn) =>
+    fn.params.some((param) => isIntegerBufferType(param.type)) ||
+    fn.locals.some((local) => isIntegerBufferType(local.type))
+  );
+  const pieces = [
+    runtime,
+    usesInt64Buffers
+      ? beforeMarker(
+          fromMarker(
+            generateInt64BufferSupport(),
+            "static int sagejs_int64_buffer_index",
+          ),
+          "static int sagejs_native_get_int64_buffer",
+        )
+      : "",
+    usesIntegerBuffers
+      ? beforeMarker(
+          fromMarker(
+            generateIntegerBufferSupport(),
+            "static int sagejs_integer_buffer_index",
+          ),
+          "static int sagejs_native_get_integer_buffer",
+        )
+      : "",
+    functions.map((fn) => internalSignature(fn, true)).join("\n"),
+    word.prototypes,
+    tagged.prototypes,
+    word.functions,
+    tagged.functions,
+    ...functions.map((fn) => emitExactInternalFunction(fn, functionMap)),
+    ...functions.map(publicCoreFunction),
+  ].filter(Boolean);
+  const source = `/* Generated by Sage.js Native Kernel v16.
+ * Host-isolated mathematical core: no Node, JavaScript, or Python runtime.
+ */
+#include <math.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <gmp.h>
+#include "kernel_core.h"
+
+${pieces.join("\n\n")}
+`;
+  const forbidden = [
+    ["Node-API", /\bnapi_/],
+    ["Node header", /node_api/],
+    ["CPython API", /\b(?:PyObject|Py_|_Py)/],
+    ["JavaScript engine API", /\b(?:JSValue|v8::)/],
+  ];
+  const violations = forbidden
+    .filter(([_name, pattern]) => pattern.test(source))
+    .map(([name]) => name);
+  if (violations.length > 0) {
+    throw new Error(
+      `host-isolation audit failed: ${violations.join(", ")}`,
+    );
+  }
+  return {
+    source,
+    header: coreHeader(ir),
+    audit: {
+      isolated: true,
+      boundary: "packed-c-abi",
+      hostCallbacks: 0,
+      forbiddenApis: forbidden.map(([name]) => name),
+      nativeDependencies: ["libc", "libm", "GMP"],
+      functions: functions.map((fn) => fn.name),
+    },
+  };
+}
+
+function generateExactNodeAdapter(ir) {
+  const functions = exactFunctions(ir);
+  const combined = generateCombinedC(ir);
+  const helpersStart = combined.indexOf("static napi_value create_bigint");
+  const helpersEnd = combined.indexOf("/* SAGEJS_GENERATED_FUNCTIONS_BEGIN */");
+  if (helpersStart < 0 || helpersEnd < 0 || helpersEnd <= helpersStart) {
+    throw new Error("unable to locate the generated Node adapter runtime");
+  }
+  const helpers = combined.slice(helpersStart, helpersEnd).trim();
+  const usesInt64Buffers = functions.some((fn) =>
+    fn.params.some((param) => isInt64BufferType(param.type)) ||
+    fn.locals.some((local) => isInt64BufferType(local.type))
+  );
+  const usesIntegerBuffers = functions.some((fn) =>
+    fn.params.some((param) => isIntegerBufferType(param.type)) ||
+    fn.locals.some((local) => isIntegerBufferType(local.type))
+  );
+  const bufferAdapters = [
+    usesInt64Buffers
+      ? fromMarker(
+          generateInt64BufferSupport(),
+          "static int sagejs_native_get_int64_buffer",
+        )
+      : "",
+    usesIntegerBuffers
+      ? fromMarker(
+          generateIntegerBufferSupport(),
+          "static int sagejs_native_get_integer_buffer",
+        )
+      : "",
+  ].filter(Boolean).join("\n\n");
+  const wrappers = functions.map(emitExactWrappers).join("\n\n");
+  const properties = functions.flatMap((fn) => [
+    `        {${cString(fn.name)}, NULL, compiled_${fn.name}, ` +
+      "NULL, NULL, NULL, napi_default, NULL}",
+    `        {${cString(`${fn.name}$gmp`)}, NULL, ` +
+      `compiled_${fn.name}_gmp, NULL, NULL, NULL, napi_default, NULL}`,
+  ]).join(",\n");
+  return `/* Generated by Sage.js Native Kernel v16.
+ * Node adapter only; mathematical execution lives in kernel_core.c.
+ */
+#include <math.h>
+#include <limits.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <node_api.h>
+#include <gmp.h>
+#include <sagejs/native.h>
+
+#include "kernel_core.c"
+
+static void sagejs_native_throw_status(
+    napi_env env, const sagejs_native_status *status)
+{
+    const char *message = status != NULL && status->message != NULL
+        ? status->message : "native kernel failed";
+    if (status != NULL && status->code == SAGEJS_NATIVE_TYPE_ERROR)
+        napi_throw_type_error(env, NULL, message);
+    else if (status != NULL && status->code == SAGEJS_NATIVE_RANGE_ERROR)
+        napi_throw_range_error(env, NULL, message);
+    else
+        napi_throw_error(env, NULL, message);
+}
+
+${helpers}
+
+${bufferAdapters}
+
+${wrappers}
+
+static napi_value initialize(napi_env env, napi_value exports)
+{
+    napi_property_descriptor properties[] = {
+${properties}
+    };
+    if (!sagejs_native_check_napi(env,
+        napi_define_properties(env, exports,
+            sizeof(properties) / sizeof(properties[0]), properties)))
+        return NULL;
+    return exports;
+}
+
+NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
+`;
+}
+
+function generateC(ir) {
+  return exactOnly(ir) ? generateExactNodeAdapter(ir) : generateCombinedC(ir);
+}
+
 module.exports = {
   NATIVE_ABI_VERSION,
   generateC,
+  generateHostCore,
 };

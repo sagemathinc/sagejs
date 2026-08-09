@@ -34,11 +34,18 @@ real algorithm merely because a benchmark was urgent.
   undeclared globals do not belong in strict mathematical modules.
 - Native compilation MUST lower the selected typed Python body.  Selecting a
   replacement implementation from a Python function's name is prohibited.
+- After host argument marshalling, a native kernel's complete transitive call
+  graph MUST NOT call Python, JavaScript, Node-API, or another interpreter
+  runtime. Unsupported operations fail compilation instead of inserting a
+  host callback. Explicitly declared native libraries and packed C ABI calls
+  are allowed. Existing kernel kinds not yet satisfying this invariant are
+  recorded as `migration-required` rather than being silently certified.
 - Every compiled function MUST retain a correct dynamic same-source fallback,
   unless an explicit capability boundary and tested fallback are documented.
 - Generated IR and target code MUST retain source provenance.  `native
-  explain`, `native ir`, and `native emit-c` are public developer interfaces,
-  not incidental debugging output.
+  explain`, `native ir`, `native emit-c`, `native emit-core-c`, and `native
+  emit-header` are public developer interfaces, not incidental debugging
+  output.
 - Native ABIs SHOULD use packed typed storage, explicit dimensions, explicit
   ownership, and batched calls.  Object-at-a-time crossings through JavaScript
   are not a scalable mathematical representation.
@@ -86,6 +93,14 @@ exact integer promotion, dense prime-field computation, packed binary64
 storage, mutable signed exact-integer records, and packed arbitrary-precision
 integer vectors.  Compiler changes preserve their same-source fallback,
 provenance, introspection, differential tests, and benchmarks.
+
+Exact-integer kernels additionally emit a host-independent `kernel_core.c` and
+`kernel_core.h`.  Their generated source is mechanically rejected if it
+contains Node-API, CPython, or JavaScript-engine symbols.  The Node addon is an
+adapter: it validates and borrows packed inputs, calls the isolated core, and
+translates the returned status only after native execution finishes.  The same
+core is compiled and executed as a standalone C program and as WebAssembly
+when the WASI/GMP toolchain is available.
 
 ## Parallel work
 

@@ -50,7 +50,7 @@ function wordResults(type) {
 
 function wordSignature(fn, prototype = false) {
   const parameters = [
-    "napi_env env",
+    "sagejs_native_status *status",
     ...wordResults(fn.returnType),
     ...fn.params.map((param) =>
       `${wordType(param.type)} ${wordName(param.name)}`
@@ -115,7 +115,7 @@ function promotionSites(fn) {
 
 function emitDivisionError(indent, failure) {
   return [
-    `${indent}napi_throw_range_error(env, NULL, ` +
+    `${indent}sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
       '"integer division or modulo by zero");',
     `${indent}${failure}`,
   ].join("\n");
@@ -154,7 +154,7 @@ function emitWordOperation(operation, context, indent) {
       `${indent}    (uint64_t) ${length} > ` +
         `(uint64_t) ${buffer}.length - (uint64_t) ${start})`,
       `${indent}{`,
-      `${indent}    napi_throw_range_error(env, NULL, ` +
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"Int64Record is outside its buffer");`,
       `${indent}    ${context.failure}`,
       `${indent}}`,
@@ -171,7 +171,7 @@ function emitWordOperation(operation, context, indent) {
       `${indent}    if (!sagejs_int64_buffer_index(` +
         `&${buffer}, ${index}, &sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"Int64 buffer index out of range");`,
       `${indent}        ${context.failure}`,
       `${indent}    }`,
@@ -188,7 +188,7 @@ function emitWordOperation(operation, context, indent) {
       `${indent}    if (!sagejs_int64_buffer_index(` +
         `&${buffer}, ${index}, &sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"Int64 buffer index out of range");`,
       `${indent}        ${context.failure}`,
       `${indent}    }`,
@@ -212,7 +212,7 @@ function emitWordOperation(operation, context, indent) {
       `${indent}    if (!sagejs_integer_buffer_index(` +
         `&${buffer}, ${index}, &sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"IntegerBuffer index out of range");`,
       `${indent}        ${context.failure}`,
       `${indent}    }`,
@@ -231,7 +231,7 @@ function emitWordOperation(operation, context, indent) {
       `${indent}    if (!sagejs_integer_buffer_index(` +
         `&${buffer}, ${index}, &sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"IntegerBuffer index out of range");`,
       `${indent}        ${context.failure}`,
       `${indent}    }`,
@@ -285,7 +285,7 @@ function emitWordOperation(operation, context, indent) {
     return [
       `${indent}if (${source} < 0)`,
       `${indent}{`,
-      `${indent}    napi_throw_range_error(env, NULL, "math domain error");`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, "math domain error");`,
       `${indent}    ${context.failure}`,
       `${indent}}`,
       `${indent}${target} = (int64_t) nearbyint(sqrt((double) ${source}));`,
@@ -310,7 +310,7 @@ function emitWordOperation(operation, context, indent) {
       `${indent}    {`,
       cases,
       `${indent}    default:`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         '"native sequence index out of range");',
       `${indent}        ${context.failure}`,
       `${indent}    }`,
@@ -388,7 +388,7 @@ function emitWordOperation(operation, context, indent) {
     return [
       `${indent}{`,
       `${indent}    const int ${status} = word_${operation.function}(` +
-        `env, ${outputs.join(", ")}` +
+        `status, ${outputs.join(", ")}` +
         `${args.length ? `, ${args.join(", ")}` : ""});`,
       `${indent}    if (${status} == SAGEJS_WORD_ERROR)`,
       `${indent}        ${context.failure}`,
@@ -479,7 +479,7 @@ function emitWordStatements(statements, context, indent) {
     }
     if (statement.kind === "raise") {
       lines.push(
-        `${indent}napi_throw_range_error(env, NULL, ${cString(statement.message)});`,
+        `${indent}sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ${cString(statement.message)});`,
         `${indent}${context.failure}`,
       );
       continue;
@@ -513,7 +513,8 @@ function emitWordFunction(fn, functions) {
 {
 ${declarations.join("\n")}
 ${emitWordStatements(fn.body, context, "    ")}
-    napi_throw_error(env, NULL, "native word function completed without returning");
+    sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+        "native word function completed without returning");
     return SAGEJS_WORD_ERROR;
 }`;
 }

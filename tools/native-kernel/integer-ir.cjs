@@ -1116,6 +1116,16 @@ function lowerStatements(statements, context) {
   const result = [];
   for (const statement of statements) {
     if (nodeType(statement) === "AST_SimpleStatement") {
+      if (nodeType(statement.body) === "AST_Call") {
+        const operations = [];
+        lowerExpression(statement.body, context, operations);
+        fail(
+          context,
+          statement,
+          "native expression statements are unsupported; " +
+            "host callbacks are prohibited",
+        );
+      }
       const operations = lowerAssignment(statement, context);
       annotateOperations(operations, sourceSpan(statement, context.filename));
       result.push(...operations);
@@ -1302,6 +1312,7 @@ function lowerIntegerFunction(fn, signature, signatures, filename, decorated) {
     name: signature.name,
     decorated,
     kernelKind: "integer",
+    sourceTransparent: true,
     params: signature.params,
     returnType: signature.returnType,
     locals: Array.from(context.locals, ([name, type]) => ({ name, type })),

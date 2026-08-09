@@ -13,6 +13,7 @@ const { lowerSource } = require("./ir.cjs");
 const {
   NATIVE_ABI_VERSION,
   generateC,
+  generateHostCore,
 } = require("./c-backend.cjs");
 const { generateJavaScript } = require("./js-backend.cjs");
 
@@ -272,10 +273,20 @@ async function compileKernel(options) {
   );
   const modulePath = join(outputPath, "index.cjs");
   const manifestPath = join(outputPath, "manifest.json");
+  const hostCoreEligible = ir.functions.length > 0 &&
+    ir.functions.every((fn) => fn.kernelKind === "integer");
+  const coreSourcePath = hostCoreEligible
+    ? join(outputPath, "kernel_core.c")
+    : null;
+  const coreHeaderPath = hostCoreEligible
+    ? join(outputPath, "kernel_core.h")
+    : null;
   if (
     existsSync(addonPath) &&
     existsSync(modulePath) &&
-    existsSync(manifestPath)
+    existsSync(manifestPath) &&
+    (!hostCoreEligible ||
+      (existsSync(coreSourcePath) && existsSync(coreHeaderPath)))
   ) {
     writeDiscoveryIndex(cacheRoot, sourcePath, sourceHash, cacheKey);
     return {
@@ -285,6 +296,8 @@ async function compileKernel(options) {
       ir,
       modulePath,
       outputPath,
+      coreSourcePath,
+      coreHeaderPath,
     };
   }
 
@@ -298,10 +311,18 @@ async function compileKernel(options) {
     );
   }
   mkdirSync(outputPath, { recursive: true });
+  const core = hostCoreEligible ? generateHostCore(ir) : null;
   const cSource = generateC(ir);
   const { generatedCSourceMap } = require("./provenance.cjs");
   const cSourceMap = generatedCSourceMap(cSource);
+  const coreSourceMap = core === null
+    ? []
+    : generatedCSourceMap(core.source);
   writeFileSync(join(outputPath, "kernel.c"), cSource);
+  if (core !== null) {
+    writeFileSync(coreSourcePath, core.source);
+    writeFileSync(coreHeaderPath, core.header);
+  }
   writeFileSync(
     join(outputPath, "binding.gyp"),
     `${JSON.stringify(bindingGyp(ir, sourceBoundsChecked), null, 2)}\n`,
@@ -326,6 +347,11 @@ async function compileKernel(options) {
         sourceBoundsChecked,
         sourcePath,
         cSourceMap,
+        coreSourceMap,
+        hostIsolation: core?.audit || {
+          isolated: false,
+          reason: "kernel kind does not yet have a host-isolated core backend",
+        },
         ir,
       },
       null,
@@ -353,6 +379,8 @@ async function compileKernel(options) {
     ir,
     modulePath,
     outputPath,
+    coreSourcePath,
+    coreHeaderPath,
   };
 }
 

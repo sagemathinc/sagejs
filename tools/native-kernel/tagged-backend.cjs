@@ -65,7 +65,7 @@ function taggedParameter(param) {
 
 function taggedSignature(fn, prototype = false) {
   const parameters = [
-    "napi_env env",
+    "sagejs_native_status *status",
     ...taggedResults(fn.returnType),
     ...fn.params.map(taggedParameter),
   ].join(", ");
@@ -90,7 +90,7 @@ function setInteger(target, value, indent) {
     `${indent}if (!sagejs_tagged_set_decimal(${target}, ` +
       `${cString(value)}))`,
     `${indent}{`,
-    `${indent}    napi_throw_type_error(env, NULL, ` +
+    `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_TYPE_ERROR, ` +
       '"invalid native integer literal");',
     `${indent}    goto fail;`,
     `${indent}}`,
@@ -101,7 +101,7 @@ function emitDivisionGuard(right, indent) {
   return [
     `${indent}if (sagejs_tagged_sgn(${right}) == 0)`,
     `${indent}{`,
-    `${indent}    napi_throw_range_error(env, NULL, ` +
+    `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
       '"integer division or modulo by zero");',
     `${indent}    goto fail;`,
     `${indent}}`,
@@ -152,7 +152,7 @@ function emitTaggedOperation(operation, context, indent) {
         `(uint64_t) ${buffer}.length - ` +
         `(uint64_t) sagejs_record_start)`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"Int64Record is outside its buffer");`,
       `${indent}        goto fail;`,
       `${indent}    }`,
@@ -174,7 +174,7 @@ function emitTaggedOperation(operation, context, indent) {
       `${indent}        !sagejs_int64_buffer_index(&${buffer}, ` +
         `sagejs_buffer_index, &sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"Int64 buffer index out of range");`,
       `${indent}        goto fail;`,
       `${indent}    }`,
@@ -197,14 +197,14 @@ function emitTaggedOperation(operation, context, indent) {
       `${indent}        !sagejs_int64_buffer_index(&${buffer}, ` +
         `sagejs_buffer_index, &sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"Int64 buffer index out of range");`,
       `${indent}        goto fail;`,
       `${indent}    }`,
       `${indent}    if (!sagejs_tagged_to_int64(${source}, ` +
         `&sagejs_buffer_value))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"Int64Buffer value is outside signed 64-bit");`,
       `${indent}        goto fail;`,
       `${indent}    }`,
@@ -232,7 +232,7 @@ function emitTaggedOperation(operation, context, indent) {
       `${indent}        !sagejs_integer_buffer_index(&${buffer}, ` +
         `sagejs_buffer_index, &sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"IntegerBuffer index out of range");`,
       `${indent}        goto fail;`,
       `${indent}    }`,
@@ -254,11 +254,11 @@ function emitTaggedOperation(operation, context, indent) {
       `${indent}        !sagejs_integer_buffer_index(&${buffer}, ` +
         `sagejs_buffer_index, &sagejs_buffer_position))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         `"IntegerBuffer index out of range");`,
       `${indent}        goto fail;`,
       `${indent}    }`,
-      `${indent}    if (!sagejs_integer_buffer_set_tagged(env, ` +
+      `${indent}    if (!sagejs_integer_buffer_set_tagged(status, ` +
         `&${buffer}, sagejs_buffer_position, ${source}))`,
       `${indent}        goto fail;`,
       `${indent}}`,
@@ -292,7 +292,7 @@ function emitTaggedOperation(operation, context, indent) {
     return [
       `${indent}if (sagejs_tagged_sgn(${source}) < 0)`,
       `${indent}{`,
-      `${indent}    napi_throw_range_error(env, NULL, "math domain error");`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, "math domain error");`,
       `${indent}    goto fail;`,
       `${indent}}`,
       `${indent}{`,
@@ -300,7 +300,7 @@ function emitTaggedOperation(operation, context, indent) {
         `sagejs_tagged_get_double(${source});`,
       `${indent}    if (!isfinite(sagejs_input))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         '"int too large to convert to float");',
       `${indent}        goto fail;`,
       `${indent}    }`,
@@ -322,7 +322,7 @@ function emitTaggedOperation(operation, context, indent) {
       `${indent}    int64_t ${position};`,
       `${indent}    if (!sagejs_tagged_to_int64(${index}, &${position}))`,
       `${indent}    {`,
-      `${indent}        napi_throw_range_error(env, NULL, ` +
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         '"native sequence index is too large");',
       `${indent}        goto fail;`,
       `${indent}    }`,
@@ -332,7 +332,7 @@ function emitTaggedOperation(operation, context, indent) {
       `${indent}    {`,
       cases,
       `${indent}        default:`,
-      `${indent}            napi_throw_range_error(env, NULL, ` +
+      `${indent}            sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
         '"native sequence index out of range");',
       `${indent}            goto fail;`,
       `${indent}    }`,
@@ -413,7 +413,7 @@ function emitTaggedOperation(operation, context, indent) {
       taggedValue(argument.name, context)
     );
     return [
-      `${indent}if (!tagged_${operation.function}(env, ${outputs.join(", ")}` +
+      `${indent}if (!tagged_${operation.function}(status, ${outputs.join(", ")}` +
         `${args.length ? `, ${args.join(", ")}` : ""}))`,
       `${indent}    goto fail;`,
     ].join("\n");
@@ -516,7 +516,7 @@ function emitTaggedStatements(statements, context, indent) {
     }
     if (statement.kind === "raise") {
       lines.push(
-        `${indent}napi_throw_range_error(env, NULL, ${cString(statement.message)});`,
+        `${indent}sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ${cString(statement.message)});`,
         `${indent}goto fail;`,
       );
       continue;
@@ -654,7 +654,8 @@ sagejs_tagged_entry:
 ${initializeTags}
 ${entryCopies.join("\n")}
 ${emitTaggedStatements(fn.body, context, "    ")}
-    napi_throw_error(env, NULL, "tagged native function completed without returning");
+    sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+        "tagged native function completed without returning");
     goto fail;
 
 success:

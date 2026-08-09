@@ -19,6 +19,8 @@ interface NativeCompileResult {
   ir: NativeIR;
   modulePath: string;
   outputPath: string;
+  coreSourcePath: string | null;
+  coreHeaderPath: string | null;
 }
 
 interface NativeExplainResult {
@@ -45,6 +47,14 @@ const nativeCompiler = require(
     ir: NativeIR;
     cSource: string;
     cSourceMap: unknown[];
+  }>;
+  emitCore(options: NativeOptions): Promise<{
+    sourcePath: string;
+    ir: NativeIR;
+    coreSource: string;
+    coreHeader: string;
+    coreSourceMap: unknown[];
+    hostIsolation: Record<string, unknown>;
   }>;
   explain(options: NativeOptions): Promise<NativeExplainResult>;
 };
@@ -116,6 +126,8 @@ function compileJson(result: NativeCompileResult, source: string) {
     ),
     modulePath: result.modulePath,
     outputPath: result.outputPath,
+    coreSourcePath: result.coreSourcePath,
+    coreHeaderPath: result.coreHeaderPath,
     sourcePath: resolve(source),
   };
 }
@@ -139,6 +151,8 @@ function printExplanation(result: NativeExplainResult): void {
       `\n${fn.name}(${parameters}) -> ${signature.returnType}\n` +
       `  kernel: ${fn.kernelKind}\n` +
       `  source-transparent: ${fn.sourceTransparent ? "yes" : "no"}\n` +
+      `  host-isolated core: ` +
+      `${(fn.hostIsolation as { eligible: boolean }).eligible ? "yes" : "no"}\n` +
       `  dependencies: ${(fn.dependencies as string[]).join(", ") || "none"}\n`,
     );
     const optimizations = fn.optimizations as Record<string, number>;
@@ -247,9 +261,9 @@ function benchmarkImplementations(
 export async function runNativeCompilerCli(argv: NativeCliArguments): Promise<void> {
   const [command, source, ...extra] = argv.files;
   if (!command || !source || extra.length !== 0 ||
-      !["audit", "explain", "ir", "emit-c", "compile", "benchmark"].includes(command)) {
+      !["audit", "explain", "ir", "emit-c", "emit-core-c", "emit-header", "compile", "benchmark"].includes(command)) {
     throw new Error(
-      "usage: sagejs native <audit|explain|ir|emit-c|compile|benchmark> SOURCE " +
+      "usage: sagejs native <audit|explain|ir|emit-c|emit-core-c|emit-header|compile|benchmark> SOURCE " +
       "[--function NAME] [--json]",
     );
   }
@@ -292,6 +306,30 @@ export async function runNativeCompilerCli(argv: NativeCliArguments): Promise<vo
       process.stdout.write(`${resolve(argv.output)}\n`);
     } else {
       process.stdout.write(result.cSource);
+    }
+    return;
+  }
+  if (command === "emit-core-c" || command === "emit-header") {
+    const result = await nativeCompiler.emitCore(nativeOptions);
+    if (argv.json) {
+      writeJson({
+        sourcePath: result.sourcePath,
+        irVersion: result.ir.version,
+        sourceMap: result.coreSourceMap,
+        hostIsolation: result.hostIsolation,
+        coreSource: result.coreSource,
+        coreHeader: result.coreHeader,
+      });
+    } else {
+      const emitted = command === "emit-core-c"
+        ? result.coreSource
+        : result.coreHeader;
+      if (argv.output) {
+        writeFileSync(resolve(argv.output), emitted);
+        process.stdout.write(`${resolve(argv.output)}\n`);
+      } else {
+        process.stdout.write(emitted);
+      }
     }
     return;
   }

@@ -18,6 +18,8 @@ export interface NativeCompileResult {
   };
   modulePath: string;
   outputPath: string;
+  coreSourcePath: string | null;
+  coreHeaderPath: string | null;
 }
 
 export interface NativeAnalysisResult {
@@ -34,6 +36,20 @@ export interface NativeEmissionResult extends NativeAnalysisResult {
     origins: ReadonlyArray<string>;
     generated: { startLine: number; endLine: number };
   }>;
+}
+
+export interface NativeCoreEmissionResult extends NativeAnalysisResult {
+  coreSource: string;
+  coreHeader: string;
+  coreSourceMap: NativeEmissionResult["cSourceMap"];
+  hostIsolation: {
+    isolated: true;
+    boundary: "packed-c-abi";
+    hostCallbacks: 0;
+    forbiddenApis: ReadonlyArray<string>;
+    nativeDependencies: ReadonlyArray<string>;
+    functions: ReadonlyArray<string>;
+  };
 }
 
 export interface NativeAuditResult {
@@ -68,6 +84,11 @@ export function explain(
 export function emitC(
   options: NativeCompileOptions,
 ): Promise<NativeEmissionResult>;
+
+/** Emit the host-independent mathematical core and its public C header. */
+export function emitCore(
+  options: NativeCompileOptions,
+): Promise<NativeCoreEmissionResult>;
 
 /** Compile every `@native` function in a Sage.js source file. */
 export function compile(

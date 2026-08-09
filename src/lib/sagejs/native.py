@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v15 currently accepts a deliberately narrow typed numerical
+Native Kernel v16 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels and reusable dense
 decompositions over prime fields. It also supports packed binary64 buffers and
 mutable signed exact-integer buffers with bounded record views. Mutable

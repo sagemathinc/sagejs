@@ -192,6 +192,22 @@ function validateKernelRegistry(manifest, options = {}) {
   if (manifest.policy?.fallback !== "same-source") {
     throw new Error("native-kernel policy must require a same-source fallback");
   }
+  if (manifest.policy?.host_isolation !== "mandatory-after-marshalling") {
+    throw new Error(
+      "native-kernel policy must prohibit host callbacks after marshalling",
+    );
+  }
+  const requiredIntrospection = new Set(
+    manifest.policy.required_introspection || [],
+  );
+  for (const command of ["explain", "ir", "emit-c", "emit-core-c", "emit-header"]) {
+    if (!requiredIntrospection.has(command)) {
+      throw new Error(`native-kernel policy is missing ${command} introspection`);
+    }
+  }
+  const isolationStatuses = new Set(
+    manifest.policy.host_isolation_statuses || [],
+  );
   const packages = readJson(join(root, "package.json"));
   const requiredOracles = new Set(manifest.policy.required_oracles || []);
   const compilerSources = sourceFiles(join(root, "tools", "native-kernel"));
@@ -207,6 +223,11 @@ function validateKernelRegistry(manifest, options = {}) {
     if (!existsSync(filename)) throw new Error(`${kernel.id} source is missing: ${sourcePath}`);
     if (kernel.fallback !== "same-source") {
       throw new Error(`${kernel.id} must retain a same-source fallback`);
+    }
+    if (!isolationStatuses.has(kernel.host_isolation)) {
+      throw new Error(
+        `${kernel.id} has invalid host-isolation status ${kernel.host_isolation}`,
+      );
     }
     if (!Array.isArray(kernel.functions) || kernel.functions.length === 0) {
       throw new Error(`${kernel.id} must list compiled functions`);

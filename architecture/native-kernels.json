@@ -3,7 +3,9 @@
   "policy": {
     "implementation": "source-transparent-typed-python",
     "fallback": "same-source",
-    "required_introspection": ["explain", "ir", "emit-c"],
+    "required_introspection": ["explain", "ir", "emit-c", "emit-core-c", "emit-header"],
+    "host_isolation": "mandatory-after-marshalling",
+    "host_isolation_statuses": ["certified", "migration-required"],
     "required_oracles": ["cpython", "javascript"]
   },
   "kernels": [
@@ -13,6 +15,7 @@
       "functions": ["native_gcd", "native_bench_gcd", "native_bench_large_gcd", "native_rfib"],
       "semantic_domain": "exact integers with machine-word specialization and GMP promotion",
       "fallback": "same-source",
+      "host_isolation": "certified",
       "oracles": ["cpython", "javascript"],
       "benchmark": "bench:native:cowasm",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
@@ -23,6 +26,7 @@
       "functions": ["source_prime_rank", "source_prime_matmul"],
       "semantic_domain": "source-transparent dense linear algebra over prime fields",
       "fallback": "same-source",
+      "host_isolation": "migration-required",
       "oracles": ["cpython", "javascript", "flint"],
       "benchmark": "bench:native:prime-source",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
@@ -33,6 +37,7 @@
       "functions": ["nbody_advance_energy", "matrix_multiply_repeated"],
       "semantic_domain": "packed binary64 buffers, bounded records, mutation, and nested loops",
       "fallback": "same-source",
+      "host_isolation": "migration-required",
       "oracles": ["cpython", "javascript", "handwritten-c"],
       "benchmark": "bench:cowasm:buffers",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
@@ -43,6 +48,7 @@
       "functions": ["tate_large_prime_invariants", "tate_large_prime"],
       "semantic_domain": "exact control-heavy elliptic-curve reduction at primes greater than three",
       "fallback": "same-source",
+      "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "pari"],
       "benchmark": "bench:native:tate",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
@@ -74,6 +80,7 @@
       ],
       "semantic_domain": "packed Heilbronn representatives, P1 coset transport, arbitrary-precision polynomial action, and rational quotient reduction used by modular symbols",
       "fallback": "same-source",
+      "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "handwritten-c", "flint"],
       "benchmark": "bench:native:p1",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]

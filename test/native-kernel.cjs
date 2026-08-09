@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const {
+  existsSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -12,7 +13,10 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
-const { generateC } = require("../tools/native-kernel/c-backend.cjs");
+const {
+  generateC,
+  generateHostCore,
+} = require("../tools/native-kernel/c-backend.cjs");
 const { auditKernels } = require("../tools/native-kernel/introspection.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 const nativeApi = require("@sagemath/sagejs/native");
@@ -94,7 +98,9 @@ const harmonicC = generateC(mpmathIr);
 const integerSource = readFileSync(integerSourcePath, "utf8");
 const integerIr = await lowerSource(integerSource, integerSourcePath);
 const integerFunction = integerIr.functions[0];
-const integerC = generateC(integerIr);
+const integerAdapterC = generateC(integerIr);
+const integerCore = generateHostCore(integerIr);
+const integerC = integerCore.source;
 assert.match(integerC, /__builtin_add_overflow/);
 assert.match(integerC, /__builtin_sub_overflow/);
 assert.match(integerC, /__builtin_mul_overflow/);
@@ -104,7 +110,9 @@ const integerAlgorithmsIr = await lowerSource(
   integerAlgorithmsSource,
   integerAlgorithmsPath,
 );
-const integerAlgorithmsC = generateC(integerAlgorithmsIr);
+const integerAlgorithmsAdapterC = generateC(integerAlgorithmsIr);
+const integerAlgorithmsCore = generateHostCore(integerAlgorithmsIr);
+const integerAlgorithmsC = integerAlgorithmsCore.source;
 const nativeNumberTheoryIr = await lowerSource(
   readFileSync(nativeNumberTheoryPath, "utf8"),
   nativeNumberTheoryPath,
@@ -131,7 +139,20 @@ assert.deepEqual(
   scalarAudit.modules.map((module) => module.path),
   ["numerical_buffers.py", "scalar_exact.py", "scalar_float.py"],
 );
-const completeNumberTheoryC = generateC(completeNumberTheoryIr);
+const completeNumberTheoryAdapterC = generateC(completeNumberTheoryIr);
+const completeNumberTheoryCore = generateHostCore(completeNumberTheoryIr);
+const completeNumberTheoryC = completeNumberTheoryCore.source;
+assert.equal(completeNumberTheoryCore.audit.isolated, true);
+assert.equal(completeNumberTheoryCore.audit.hostCallbacks, 0);
+assert.deepEqual(
+  completeNumberTheoryCore.audit.functions,
+  completeNumberTheoryIr.functions.map((fn) => fn.name),
+);
+assert.doesNotMatch(
+  completeNumberTheoryC,
+  /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/,
+);
+assert.match(completeNumberTheoryAdapterC, /#include "kernel_core\.c"/);
 const scalarExactIr = await lowerSource(
   readFileSync(scalarExactPath, "utf8"),
   scalarExactPath,
@@ -150,7 +171,9 @@ const signedBuffersIr = await lowerSource(
   readFileSync(signedBuffersPath, "utf8"),
   signedBuffersPath,
 );
-const signedBuffersC = generateC(signedBuffersIr);
+const signedBuffersAdapterC = generateC(signedBuffersIr);
+const signedBuffersC = generateHostCore(signedBuffersIr).source;
+assert.match(integerAlgorithmsAdapterC, /#include "kernel_core\.c"/);
 const primeFieldMatrixIr = await lowerSource(
   readFileSync(primeFieldMatrixPath, "utf8"),
   primeFieldMatrixPath,
@@ -168,9 +191,9 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 15);
-assert.equal(scalarExactIr.version, 15);
-assert.equal(scalarFloatIr.version, 15);
+assert.equal(ir.version, 16);
+assert.equal(scalarExactIr.version, 16);
+assert.equal(scalarFloatIr.version, 16);
 assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
@@ -218,7 +241,7 @@ assert.deepEqual(
     ["write_then_overflow", ["Int64Buffer", "Integer"], ["output"]],
   ],
 );
-assert.match(signedBuffersC, /napi_bigint64_array/);
+assert.match(signedBuffersAdapterC, /napi_bigint64_array/);
 assert.match(signedBuffersC, /sagejs_int64_buffer_index/);
 assert.match(signedBuffersC, /Int64Record is outside its buffer/);
 const strideLoop = scalarExactIr.functions
@@ -433,7 +456,7 @@ assert.match(completeNumberTheoryC, /sagejs_tagged_make_big\(/);
 assert.match(completeNumberTheoryC, /sagejs_word_mul_int64\(/);
 assert.match(completeNumberTheoryC, /SAGEJS_WORD_PROMOTE/);
 assert.match(completeNumberTheoryC, /sagejs_tagged_promote:/);
-assert.match(completeNumberTheoryC, /compiled_pi_gmp/);
+assert.match(completeNumberTheoryAdapterC, /compiled_pi_gmp/);
 assert.ok(
   completeNumberTheoryIr.functions.every(
     (fn) => fn.analysis.taggedInteger.eligible &&
@@ -447,15 +470,15 @@ assert.ok(
 );
 assert.match(
   completeNumberTheoryC,
-  /native_inverse_mod[\s\S]*native_xgcd\(env/,
+  /native_inverse_mod[\s\S]*native_xgcd\(status/,
 );
 assert.match(
   completeNumberTheoryC,
-  /native_pi[\s\S]*native_is_prime\(env/,
+  /native_pi[\s\S]*native_is_prime\(status/,
 );
 assert.match(
   completeNumberTheoryC,
-  /tagged_pi[\s\S]*tagged_is_prime\(env/,
+  /tagged_pi[\s\S]*tagged_is_prime\(status/,
 );
 assert.match(
   harmonicC,
@@ -480,7 +503,7 @@ assert.deepEqual(
 );
 assert.match(integerC, /mpz_mul\(/);
 assert.match(integerC, /sagejs_tagged_mul\(/);
-assert.match(integerC, /napi_create_bigint_words\(/);
+assert.match(integerAdapterC, /napi_create_bigint_words\(/);
 assert.deepEqual(integerAlgorithmsIr.callGraph.native_lcm, ["native_gcd"]);
 assert.deepEqual(integerAlgorithmsIr.callGraph.native_coprime, ["native_gcd"]);
 assert.deepEqual(
@@ -534,7 +557,7 @@ assert.equal(
 );
 assert.match(
   integerAlgorithmsC,
-  /native_native_lcm[\s\S]*native_native_gcd\(env/,
+  /native_native_lcm[\s\S]*native_native_gcd\(status/,
 );
 assert.match(integerAlgorithmsC, /mpz_t sagejs_scratch_0/);
 assert.doesNotMatch(integerAlgorithmsC, /mpz_t sagejs_a;/);
@@ -639,6 +662,18 @@ await assert.rejects(
       "exact-step.py",
     ),
   /range step currently requires a uint64 stop/,
+);
+await assert.rejects(
+  () =>
+    lowerSource(
+      "from sagejs.native import native\n" +
+        "@native\n" +
+        "def f(value: int) -> int:\n" +
+        "    print(value)\n" +
+        "    return value\n",
+      "host-callback.py",
+    ),
+  /unsupported call to print/,
 );
 
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-native-kernel-"));
@@ -1651,6 +1686,82 @@ except Exception as error:
     sourcePath: integerSourcePath,
     cacheRoot: integerCache,
   });
+  assert.equal(typeof integerKernel.coreSourcePath, "string");
+  assert.equal(typeof integerKernel.coreHeaderPath, "string");
+  const emittedCore = readFileSync(integerKernel.coreSourcePath, "utf8");
+  assert.doesNotMatch(
+    emittedCore,
+    /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/,
+  );
+  const standaloneDriver = join(temporary, "native-core-driver.c");
+  writeFileSync(standaloneDriver, `#include <stdio.h>
+#include "kernel_core.h"
+int main(void)
+{
+    mpz_t answer;
+    sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
+    mpz_init(answer);
+    if (!sagejs_kernel_integer_quadratic_sum(&status, answer, 10))
+    {
+        fprintf(stderr, "%s\\n", status.message);
+        return 1;
+    }
+    gmp_printf("%Zd\\n", answer);
+    mpz_clear(answer);
+    return 0;
+}
+`);
+  if (process.platform !== "win32" &&
+      spawnSync(process.env.CC || "cc", ["--version"]).status === 0) {
+    const standalone = join(temporary, "native-core-standalone");
+    const nativePrefix = join(root, "packages", "flint", ".native", "prefix");
+    const buildStandalone = spawnSync(process.env.CC || "cc", [
+      "-O3",
+      `-I${integerKernel.outputPath}`,
+      `-I${join(nativePrefix, "include")}`,
+      integerKernel.coreSourcePath,
+      standaloneDriver,
+      join(nativePrefix, "lib", "libgmp.a"),
+      "-lm",
+      "-o", standalone,
+    ], { encoding: "utf8" });
+    assert.equal(buildStandalone.status, 0, buildStandalone.stderr);
+    const runStandalone = spawnSync(standalone, [], { encoding: "utf8" });
+    assert.equal(runStandalone.status, 0, runStandalone.stderr);
+    assert.equal(runStandalone.stdout.trim(), "-275");
+
+    const cowasmRoot = join(root, "..", "cowasm");
+    const wasiSdk = join(
+      cowasmRoot, "core", "build", "build", "wasi-sdk", "dist",
+      "wasi-sdk-next", "native",
+    );
+    const wasiClang = join(wasiSdk, "bin", "clang");
+    const wasiGmp = join(cowasmRoot, "sagemath", "gmp", "dist", "wasi-sdk");
+    const wasiRun = join(
+      root, "packages", "flint-wasm", "node_modules", ".bin", "wasi-run",
+    );
+    if (existsSync(wasiClang) && existsSync(wasiRun) &&
+        existsSync(join(wasiGmp, "lib", "libgmp.a"))) {
+      const wasm = join(temporary, "native-core.wasm");
+      const buildWasm = spawnSync(wasiClang, [
+        "--target=wasm32-wasip1",
+        `--sysroot=${join(wasiSdk, "share", "wasi-sysroot")}`,
+        "-O3",
+        `-I${integerKernel.outputPath}`,
+        `-I${join(wasiGmp, "include")}`,
+        integerKernel.coreSourcePath,
+        standaloneDriver,
+        join(root, "packages", "flint-wasm", "src", "wasi-stubs.c"),
+        `-L${join(wasiGmp, "lib")}`,
+        "-lgmp", "-lm", "-lwasi-emulated-signal",
+        "-o", wasm,
+      ], { encoding: "utf8" });
+      assert.equal(buildWasm.status, 0, buildWasm.stderr);
+      const runWasm = spawnSync(wasiRun, [wasm], { encoding: "utf8" });
+      assert.equal(runWasm.status, 0, runWasm.stderr);
+      assert.equal(runWasm.stdout.trim(), "-275");
+    }
+  }
   const integerModule = require(integerKernel.modulePath);
   assert.equal(integerModule.integer_quadratic_sum(10), -275n);
   assert.equal(integerModule.integer_quadratic_sum.backendFor(10), "tagged");
@@ -1687,13 +1798,13 @@ except Exception as error:
     integerModule.integer_quadratic_sum.tagged(Number(promotedTerms)),
     promotedExpected,
   );
-  const adaptiveWrapperStart = integerC.indexOf(
+  const adaptiveWrapperStart = integerAdapterC.indexOf(
     "static napi_value compiled_integer_quadratic_sum(",
   );
-  const forcedWrapperStart = integerC.indexOf(
+  const forcedWrapperStart = integerAdapterC.indexOf(
     "static napi_value compiled_integer_quadratic_sum_gmp(",
   );
-  const adaptiveWrapper = integerC.slice(
+  const adaptiveWrapper = integerAdapterC.slice(
     adaptiveWrapperStart,
     forcedWrapperStart,
   );
@@ -2059,6 +2170,8 @@ print(kernel.pi(1000))
   assert.equal(cli.status, 0, `${cli.stdout}\n${cli.stderr}`);
   const cliResult = JSON.parse(cli.stdout);
   assert.equal(cliResult.functions.includes("native_gcd"), true);
+  assert.equal(typeof cliResult.coreSourcePath, "string");
+  assert.equal(typeof cliResult.coreHeaderPath, "string");
   assert.deepEqual(cliResult.callGraph.native_lcm, ["native_gcd"]);
   assert.equal(cliResult.analysis.native_gcd.backend.minimumBits, 64);
   assert.equal(cliResult.analysis.native_lcm.storage.scratchSlots, 2);
@@ -2097,6 +2210,43 @@ print(kernel.pi(1000))
   const emission = JSON.parse(emitCli.stdout);
   assert.match(emission.cSource, /sagejs-ir source_prime_rank:1/);
   assert.ok(emission.sourceMap.length > 0);
+  const emitCoreCli = spawnSync(
+    process.execPath,
+    [
+      join(root, "bin", "sagejs"),
+      "native",
+      "emit-core-c",
+      integerAlgorithmsPath,
+      "--function",
+      "native_gcd",
+      "--json",
+    ],
+    { cwd: root, encoding: "utf8", maxBuffer: 10 * 1024 * 1024 },
+  );
+  assert.equal(emitCoreCli.status, 0, emitCoreCli.stderr);
+  const coreEmission = JSON.parse(emitCoreCli.stdout);
+  assert.equal(coreEmission.hostIsolation.isolated, true);
+  assert.equal(coreEmission.hostIsolation.hostCallbacks, 0);
+  assert.match(coreEmission.coreSource, /sagejs_kernel_native_gcd/);
+  assert.doesNotMatch(coreEmission.coreSource, /\bnapi_/);
+  assert.match(coreEmission.coreHeader, /sagejs_kernel_native_gcd/);
+  const emittedHeaderPath = join(temporary, "emitted-kernel-core.h");
+  const emitHeaderCli = spawnSync(
+    process.execPath,
+    [
+      join(root, "bin", "sagejs"),
+      "native",
+      "emit-header",
+      integerAlgorithmsPath,
+      "--function",
+      "native_gcd",
+      "--output",
+      emittedHeaderPath,
+    ],
+    { cwd: root, encoding: "utf8" },
+  );
+  assert.equal(emitHeaderCli.status, 0, emitHeaderCli.stderr);
+  assert.match(readFileSync(emittedHeaderPath, "utf8"), /sagejs_kernel_native_gcd/);
   const benchmarkCli = spawnSync(
     process.execPath,
     [
@@ -2346,7 +2496,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v15 exact buffers, provenance, P1, ABI, and fallback passed.",
+  "Native Kernel v16 isolated cores, exact buffers, provenance, P1, ABI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);
