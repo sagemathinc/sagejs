@@ -184,6 +184,7 @@
     "bench:character-modular-symbols": "node bench/compare-character-modular-symbols.cjs",
     "bench:cowasm": "node bench/cowasm/run.cjs",
     "bench:cowasm:landscape": "node bench/cowasm/landscape/run.cjs",
+    "bench:cowasm:buffers": "node bench/cowasm/buffer-landscape/run.cjs",
     "bench:numbers": "node bench/cowasm/run.cjs --suite numbers",
     "bench:numbers:check": "node bench/cowasm/run.cjs --budget bench/cowasm/numbers-budget.json",
     "bench:brython": "node bench/cowasm/run.cjs --suite brython",

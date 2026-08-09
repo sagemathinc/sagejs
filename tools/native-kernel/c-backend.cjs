@@ -25,7 +25,7 @@ const {
   cSourceDirective,
 } = require("./provenance.cjs");
 
-const NATIVE_ABI_VERSION = 9;
+const NATIVE_ABI_VERSION = 10;
 
 function cString(value) {
   return JSON.stringify(String(value));
@@ -941,6 +941,9 @@ function emitFunction(fn) {
 
 function emitFloat64Operation(operation, indent) {
   const target = cName(operation.target);
+  if (operation.kind === "uint64.constant") {
+    return `${indent}${target} = UINT64_C(${operation.value});`;
+  }
   if (operation.kind === "float64.constant") {
     return `${indent}${target} = ${operation.value};`;
   }
@@ -952,6 +955,66 @@ function emitFloat64Operation(operation, indent) {
   }
   if (operation.kind === "float64.abs") {
     return `${indent}${target} = fabs(${cName(operation.source)});`;
+  }
+  if (operation.kind === "float64.sqrt") {
+    const source = cName(operation.source);
+    return [
+      `${indent}if (${source} < 0.0)`,
+      `${indent}{`,
+      `${indent}    napi_throw_range_error(env, NULL, "math domain error");`,
+      `${indent}    return NULL;`,
+      `${indent}}`,
+      `${indent}${target} = sqrt(${source});`,
+    ].join("\n");
+  }
+  if (operation.kind === "uint64.binary") {
+    return `${indent}${target} = ${cName(operation.left)} ` +
+      `${operation.operation} ${cName(operation.right)};`;
+  }
+  if (operation.kind === "float64.buffer.copy") {
+    return `${indent}${target} = ${cName(operation.source)};`;
+  }
+  if (operation.kind === "float64.buffer.length") {
+    return `${indent}${target} = (uint64_t) ${cName(operation.buffer)}.length;`;
+  }
+  if (operation.kind === "float64.record.view") {
+    const buffer = cName(operation.buffer);
+    const start = cName(operation.start);
+    const length = cName(operation.length);
+    return [
+      `${indent}if (${start} > (uint64_t) ${buffer}.length ||`,
+      `${indent}    ${length} > (uint64_t) ${buffer}.length - ${start})`,
+      `${indent}{`,
+      `${indent}    napi_throw_range_error(env, NULL, "Float64Record is outside its buffer");`,
+      `${indent}    return NULL;`,
+      `${indent}}`,
+      `${indent}${target}.data = ${buffer}.data + (size_t) ${start};`,
+      `${indent}${target}.length = (size_t) ${length};`,
+    ].join("\n");
+  }
+  if (operation.kind === "float64.buffer.get") {
+    const buffer = cName(operation.buffer);
+    const index = cName(operation.index);
+    return [
+      `${indent}if (${index} >= (uint64_t) ${buffer}.length)`,
+      `${indent}{`,
+      `${indent}    napi_throw_range_error(env, NULL, "Float64 buffer index out of range");`,
+      `${indent}    return NULL;`,
+      `${indent}}`,
+      `${indent}${target} = ${buffer}.data[(size_t) ${index}];`,
+    ].join("\n");
+  }
+  if (operation.kind === "float64.buffer.set") {
+    const buffer = cName(operation.buffer);
+    const index = cName(operation.index);
+    return [
+      `${indent}if (${index} >= (uint64_t) ${buffer}.length)`,
+      `${indent}{`,
+      `${indent}    napi_throw_range_error(env, NULL, "Float64 buffer index out of range");`,
+      `${indent}    return NULL;`,
+      `${indent}}`,
+      `${indent}${buffer}.data[(size_t) ${index}] = ${cName(operation.value)};`,
+    ].join("\n");
   }
   if (operation.kind === "float64.binary") {
     const operator = { add: "+", sub: "-", mul: "*", div: "/" }[
@@ -984,9 +1047,12 @@ function emitFloat64Statements(statements, indent) {
     if (directive) lines.push(directive);
     if (statement.kind === "loop.range") {
       const index = cName(statement.index);
-      const bound = cName(statement.count);
+      const start = statement.stop === undefined
+        ? `UINT64_C(${statement.start})`
+        : cName(statement.start);
+      const bound = cName(statement.stop ?? statement.count);
       lines.push(
-        `${indent}for (${index} = UINT64_C(${statement.start}); ` +
+        `${indent}for (${index} = ${start}; ` +
           `${index} < ${bound}; ` +
           `${index} += UINT64_C(${statement.step || 1}))`,
         `${indent}{`,
@@ -1019,7 +1085,7 @@ function emitFloat64Function(fn) {
       parsing.push(
         `    if (!get_uint64(env, args[${index}], &${name})) return NULL;`,
       );
-    } else {
+    } else if (param.type === "Float64") {
       declarations.push(`    double ${name};`);
       parsing.push(
         `    if (napi_get_value_double(env, args[${index}], &${name}) ` +
@@ -1030,15 +1096,24 @@ function emitFloat64Function(fn) {
         "        return NULL;",
         "    }",
       );
+    } else {
+      declarations.push(`    sagejs_float64_buffer ${name};`);
+      parsing.push(
+        `    if (!sagejs_native_get_float64_buffer(env, args[${index}], ` +
+          `&${name}, ${cString(param.name + " must be a Float64Array")})) ` +
+          `return NULL;`,
+      );
     }
   }
   const params = new Set(fn.params.map((param) => param.name));
   for (const local of fn.locals) {
     if (params.has(local.name)) continue;
-    declarations.push(
-      `    ${local.type === "uint64" ? "uint64_t" : "double"} ` +
-        `${cName(local.name)} = 0;`,
-    );
+    const type = local.type === "uint64"
+      ? "uint64_t"
+      : ["Float64Buffer", "Float64Record"].includes(local.type)
+        ? "sagejs_float64_buffer"
+        : "double";
+    declarations.push(`    ${type} ${cName(local.name)} = {0};`);
   }
   return `
 static napi_value compiled_${fn.name}(napi_env env, napi_callback_info info)
@@ -1057,6 +1132,40 @@ ${parsing.join("\n")}
 ${emitFloat64Statements(fn.body, "    ")}
     napi_throw_error(env, NULL, "binary64 function completed without returning");
     return NULL;
+}`;
+}
+
+function generateFloat64BufferSupport() {
+  return `
+typedef struct
+{
+    double *data;
+    size_t length;
+} sagejs_float64_buffer;
+
+static int sagejs_native_get_float64_buffer(
+    napi_env env,
+    napi_value value,
+    sagejs_float64_buffer *result,
+    const char *argument)
+{
+    bool typed = false;
+    napi_typedarray_type type;
+    size_t length = 0;
+    void *data = NULL;
+    napi_value array_buffer;
+    size_t byte_offset = 0;
+    if (napi_is_typedarray(env, value, &typed) != napi_ok || !typed ||
+        napi_get_typedarray_info(env, value, &type, &length, &data,
+            &array_buffer, &byte_offset) != napi_ok ||
+        type != napi_float64_array)
+    {
+        napi_throw_type_error(env, NULL, argument);
+        return 0;
+    }
+    result->data = (double *) data;
+    result->length = length;
+    return 1;
 }`;
 }
 
@@ -1095,6 +1204,12 @@ function generateC(ir) {
     tagged.functions,
     primeFieldFunctions.length > 0 ? generatePrimeFieldSupport() : "",
     primeSourceFunctions.length > 0 ? generatePrimeSourceSupport() : "",
+    float64Functions.some((fn) =>
+      fn.params.some((param) => param.type === "Float64Buffer") ||
+      fn.locals.some((local) =>
+        ["Float64Buffer", "Float64Record"].includes(local.type)
+      )
+    ) ? generateFloat64BufferSupport() : "",
     ...exactFunctions.map((fn) => emitExactInternalFunction(fn, functionMap)),
     ...exactFunctions.map(emitExactWrappers),
     ...float64Functions.map(emitFloat64Function),
@@ -1122,6 +1237,7 @@ function generateC(ir) {
   ) {
     return `// Generated by Sage.js source-transparent Native Kernel experiment.
 #include <limits.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1146,9 +1262,10 @@ ${properties}
 NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
 `;
   }
-  return `// Generated by Sage.js Native Kernel v10.
+  return `// Generated by Sage.js Native Kernel v13.
 #include <math.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

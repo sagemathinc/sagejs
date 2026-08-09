@@ -5,6 +5,9 @@ const {
   sourceSpan,
 } = require("./provenance.cjs");
 
+const UINT64_MAX = 18446744073709551615n;
+const BUFFER_TYPES = new Set(["Float64Buffer", "Float64Record"]);
+
 function nodeType(node) {
   return node?.constructor?.name;
 }
@@ -23,7 +26,7 @@ function location(node, filename) {
 function fail(context, node, message) {
   throw new Error(
     "native kernel: " + location(node, context.filename) + ": " +
-    context.functionName + ": " + message,
+      context.functionName + ": " + message,
   );
 }
 
@@ -52,6 +55,24 @@ function numericString(node) {
     : undefined;
 }
 
+function uint64Literal(node) {
+  let text;
+  if (nodeType(node) === "AST_Number" && /^\d+$/.test(String(node.value))) {
+    text = String(node.value);
+  } else if (
+    nodeType(node) === "AST_Call" &&
+    nodeType(node.expression) === "AST_SymbolRef" &&
+    node.expression.name === "Integer"
+  ) {
+    const args = array(node.args);
+    if (args.length === 1 && nodeType(args[0]) === "AST_String" &&
+        /^\d+$/.test(args[0].value)) text = args[0].value;
+  }
+  if (text === undefined) return undefined;
+  const value = BigInt(text);
+  return value <= UINT64_MAX ? value.toString() : undefined;
+}
+
 function createContext(fn, signature, filename, decorated) {
   return {
     decorated,
@@ -59,6 +80,7 @@ function createContext(fn, signature, filename, decorated) {
     functionName: signature.name,
     initialized: new Set(signature.params.map((param) => param.name)),
     locals: new Map(),
+    mutatedBuffers: new Set(),
     nextTemporary: 0,
     params: signature.params,
     returnType: signature.returnType,
@@ -91,6 +113,7 @@ function temporary(context, node, type) {
     name = "sagejs_native_float_tmp_" + context.nextTemporary++;
   } while (context.variables.has(name));
   ensureVariable(context, node, name, type);
+  context.initialized.add(name);
   return name;
 }
 
@@ -100,7 +123,33 @@ function emitFloatConstant(context, node, operations, value) {
   return { name: target, type: "Float64" };
 }
 
-function lowerCall(node, context, operations) {
+function emitUint64Constant(context, node, operations, value) {
+  const target = temporary(context, node, "uint64");
+  operations.push({ kind: "uint64.constant", target, value });
+  return { name: target, type: "uint64" };
+}
+
+function staticType(node, context) {
+  if (nodeType(node) === "AST_SymbolRef") return context.variables.get(node.name);
+  const literal = numericLiteral(node);
+  if (literal !== undefined && !/^\d+$/.test(literal)) return "Float64";
+  if (nodeType(node) === "AST_ItemAccess") return "Float64";
+  if (nodeType(node) === "AST_Call" &&
+      nodeType(node.expression) === "AST_SymbolRef") {
+    const name = node.expression.name;
+    if (["float", "RealNumber", "abs", "sqrt"].includes(name)) {
+      return "Float64";
+    }
+    if (name === "len") return "uint64";
+    if (name === "float64_record") return "Float64Record";
+  }
+  if (nodeType(node) === "AST_Binary") {
+    return staticType(node.left, context) || staticType(node.right, context);
+  }
+  return undefined;
+}
+
+function lowerCall(node, context, operations, expectedType) {
   expect(
     context,
     node,
@@ -109,11 +158,8 @@ function lowerCall(node, context, operations) {
   );
   const name = node.expression.name;
   const args = array(node.args);
-  expect(context, node, args.length === 1, name + "() requires one argument");
   if (name === "float" || name === "RealNumber") {
-    // The ordinary Sage.js frontend preserves a decimal source literal as
-    // RealNumber("...").  Keep the spelling in the native IR instead of
-    // routing it through the dynamic RealNumber constructor.
+    expect(context, node, args.length === 1, name + "() requires one argument");
     const literal = name === "RealNumber" ? numericString(args[0]) : undefined;
     if (literal !== undefined) {
       return emitFloatConstant(context, node, operations, literal);
@@ -134,24 +180,121 @@ function lowerCall(node, context, operations) {
     });
     return { name: target, type: "Float64" };
   }
-  if (name === "abs") {
-    const source = lowerExpression(args[0], context, operations);
+  if (name === "abs" || name === "sqrt") {
+    expect(context, node, args.length === 1, name + "() requires one argument");
+    const source = lowerExpression(args[0], context, operations, "Float64");
     expect(
       context,
       args[0],
       source.type === "Float64",
-      "binary64 abs() requires Float64",
+      "binary64 " + name + "() requires Float64",
     );
     const target = temporary(context, node, "Float64");
-    operations.push({ kind: "float64.abs", target, source: source.name });
+    operations.push({
+      kind: name === "abs" ? "float64.abs" : "float64.sqrt",
+      target,
+      source: source.name,
+    });
     return { name: target, type: "Float64" };
   }
-  fail(context, node, "unsupported binary64 call to " + name);
+  if (name === "len") {
+    expect(context, node, args.length === 1, "len() requires one argument");
+    const source = lowerExpression(args[0], context, operations);
+    expect(
+      context,
+      args[0],
+      BUFFER_TYPES.has(source.type),
+      "binary64 len() requires a Float64Buffer or Float64Record",
+    );
+    const target = temporary(context, node, "uint64");
+    operations.push({
+      kind: "float64.buffer.length",
+      target,
+      buffer: source.name,
+      bufferType: source.type,
+    });
+    return { name: target, type: "uint64" };
+  }
+  if (name === "float64_record") {
+    expect(
+      context,
+      node,
+      args.length === 3,
+      "float64_record() requires a buffer, start, and length",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    expect(
+      context,
+      args[0],
+      buffer.type === "Float64Buffer",
+      "float64_record() requires a Float64Buffer",
+    );
+    const start = lowerExpression(args[1], context, operations, "uint64");
+    const length = lowerExpression(args[2], context, operations, "uint64");
+    const target = temporary(context, node, "Float64Record");
+    operations.push({
+      kind: "float64.record.view",
+      target,
+      buffer: buffer.name,
+      start: start.name,
+      length: length.name,
+    });
+    return { name: target, type: "Float64Record" };
+  }
+  fail(context, node, "unsupported binary64 call to " + name +
+    (expectedType ? " while expecting " + expectedType : ""));
 }
 
-function lowerExpression(node, context, operations) {
+function lowerBinary(node, context, operations, expectedType) {
+  let type = expectedType || staticType(node.left, context) ||
+    staticType(node.right, context) || "Float64";
+  if (type === "Float64Record" || type === "Float64Buffer") type = "Float64";
+  expect(
+    context,
+    node,
+    type === "Float64" || type === "uint64",
+    "cannot use " + type + " in binary64 arithmetic",
+  );
+  const allowed = type === "Float64" ? ["+", "-", "*", "/"] : ["+", "-", "*"];
+  expect(
+    context,
+    node,
+    allowed.includes(node.operator),
+    "unsupported " + type + " operator " + node.operator,
+  );
+  const left = lowerExpression(node.left, context, operations, type);
+  const right = lowerExpression(node.right, context, operations, type);
+  expect(
+    context,
+    node,
+    left.type === type && right.type === type,
+    type + " arithmetic requires matching operands",
+  );
+  const target = temporary(context, node, type);
+  operations.push({
+    kind: type === "Float64" ? "float64.binary" : "uint64.binary",
+    operation: type === "Float64"
+      ? { "+": "add", "-": "sub", "*": "mul", "/": "div" }[node.operator]
+      : node.operator,
+    target,
+    left: left.name,
+    right: right.name,
+  });
+  return { name: target, type };
+}
+
+function lowerExpression(node, context, operations, expectedType) {
+  if (expectedType === "uint64") {
+    const integer = uint64Literal(node);
+    if (integer !== undefined) {
+      return emitUint64Constant(context, node, operations, integer);
+    }
+  }
   const literal = numericLiteral(node);
   if (literal !== undefined) {
+    if (expectedType === "uint64") {
+      fail(context, node, "uint64 expression requires a nonnegative integer literal");
+    }
     return emitFloatConstant(context, node, operations, literal);
   }
   if (nodeType(node) === "AST_SymbolRef") {
@@ -163,58 +306,128 @@ function lowerExpression(node, context, operations) {
       context.initialized.has(node.name),
       "value " + node.name + " may be uninitialized",
     );
+    if (expectedType !== undefined) {
+      expect(
+        context,
+        node,
+        type === expectedType,
+        "expected " + expectedType + ", got " + type,
+      );
+    }
     return { name: node.name, type };
   }
   if (nodeType(node) === "AST_Call") {
-    return lowerCall(node, context, operations);
+    return lowerCall(node, context, operations, expectedType);
+  }
+  if (nodeType(node) === "AST_ItemAccess") {
+    const buffer = lowerExpression(node.expression, context, operations);
+    expect(
+      context,
+      node.expression,
+      BUFFER_TYPES.has(buffer.type),
+      "binary64 indexing requires a Float64Buffer or Float64Record",
+    );
+    const index = lowerExpression(node.property, context, operations, "uint64");
+    const target = temporary(context, node, "Float64");
+    operations.push({
+      kind: "float64.buffer.get",
+      target,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      index: index.name,
+    });
+    return { name: target, type: "Float64" };
   }
   expect(
     context,
     node,
-    nodeType(node) === "AST_Binary" &&
-      ["+", "-", "*", "/"].includes(node.operator),
+    nodeType(node) === "AST_Binary",
     "unsupported " + nodeType(node) + " binary64 expression",
   );
-  const left = lowerExpression(node.left, context, operations);
-  const right = lowerExpression(node.right, context, operations);
+  return lowerBinary(node, context, operations, expectedType);
+}
+
+function bufferSet(assign, context, operator = "=") {
+  const operations = [];
+  const buffer = lowerExpression(assign.expression, context, operations);
   expect(
     context,
-    node,
-    left.type === "Float64" && right.type === "Float64",
-    "binary64 arithmetic requires Float64 operands",
+    assign.expression,
+    BUFFER_TYPES.has(buffer.type),
+    "binary64 buffer assignment requires a Float64Buffer or Float64Record",
   );
-  const target = temporary(context, node, "Float64");
+  const index = lowerExpression(assign.property, context, operations, "uint64");
+  let value = lowerExpression(assign.assignment, context, operations, "Float64");
+  if (operator !== "=") {
+    const current = temporary(context, assign, "Float64");
+    operations.push({
+      kind: "float64.buffer.get",
+      target: current,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      index: index.name,
+    });
+    const target = temporary(context, assign, "Float64");
+    operations.push({
+      kind: "float64.binary",
+      operation: { "+=": "add", "-=": "sub", "*=": "mul", "/=": "div" }[
+        operator
+      ],
+      target,
+      left: current,
+      right: value.name,
+    });
+    value = { name: target, type: "Float64" };
+  }
   operations.push({
-    kind: "float64.binary",
-    operation: { "+": "add", "-": "sub", "*": "mul", "/": "div" }[
-      node.operator
-    ],
-    target,
-    left: left.name,
-    right: right.name,
+    kind: "float64.buffer.set",
+    buffer: buffer.name,
+    bufferType: buffer.type,
+    index: index.name,
+    value: value.name,
   });
-  return { name: target, type: "Float64" };
+  context.mutatedBuffers.add(buffer.name);
+  return operations;
 }
 
 function assign(statement, context) {
   const node = statement.body;
+  if (nodeType(node) === "AST_ItemAccess" && node.assignment !== undefined) {
+    return bufferSet(node, context, node.operator || "=");
+  }
   expect(
     context,
     statement,
     nodeType(statement) === "AST_SimpleStatement" &&
-      nodeType(node) === "AST_Assign" &&
-      nodeType(node.left) === "AST_SymbolRef",
-    "binary64 assignments require a local-name target",
+      nodeType(node) === "AST_Assign",
+    "binary64 assignment expected",
+  );
+  if (nodeType(node.left) === "AST_ItemAccess") {
+    const item = node.left;
+    item.assignment = node.right;
+    return bufferSet(item, context, node.operator);
+  }
+  expect(
+    context,
+    node.left,
+    nodeType(node.left) === "AST_SymbolRef",
+    "binary64 assignments require a local-name or indexed target",
   );
   const operations = [];
   const target = node.left.name;
   if (node.operator === "=") {
-    const value = lowerExpression(node.right, context, operations);
+    const desired = context.variables.get(target);
+    const value = lowerExpression(node.right, context, operations, desired);
     ensureVariable(context, node.left, target, value.type);
     operations.push({
-      kind: value.type === "Float64" ? "float64.copy" : "uint64.copy",
+      kind: value.type === "Float64"
+        ? "float64.copy"
+        : value.type === "uint64"
+          ? "uint64.copy"
+          : "float64.buffer.copy",
       target,
       source: value.name,
+      type: value.type,
     });
   } else {
     expect(
@@ -225,8 +438,7 @@ function assign(statement, context) {
         context.initialized.has(target),
       "unsupported binary64 augmented assignment " + node.operator,
     );
-    const value = lowerExpression(node.right, context, operations);
-    expect(context, node.right, value.type === "Float64", "expected Float64");
+    const value = lowerExpression(node.right, context, operations, "Float64");
     operations.push({
       kind: "float64.binary",
       operation: { "+=": "add", "-=": "sub", "*=": "mul", "/=": "div" }[
@@ -241,12 +453,37 @@ function assign(statement, context) {
   return operations;
 }
 
+function lowerRange(node, context) {
+  expect(
+    context,
+    node,
+    nodeType(node) === "AST_Call" &&
+      nodeType(node.expression) === "AST_SymbolRef" &&
+      node.expression.name === "range",
+    "binary64 for loops require range(...)" ,
+  );
+  const args = array(node.args);
+  expect(
+    context,
+    node,
+    args.length === 1 || args.length === 2,
+    "binary64 range accepts one or two arguments",
+  );
+  const operations = [];
+  const start = args.length === 1
+    ? emitUint64Constant(context, node, operations, "0")
+    : lowerExpression(args[0], context, operations, "uint64");
+  const stop = lowerExpression(args[args.length - 1], context, operations, "uint64");
+  return { operations, start: start.name, stop: stop.name };
+}
+
 function lowerBlock(block, context) {
   const statements = nodeType(block) === "AST_BlockStatement"
     ? array(block.body)
     : Array.isArray(block) ? block : [block];
   const result = [];
   for (const statement of statements) {
+    if (nodeType(statement) === "AST_EmptyStatement") continue;
     if (nodeType(statement) === "AST_SimpleStatement") {
       const operations = assign(statement, context);
       annotateOperations(operations, sourceSpan(statement, context.filename));
@@ -257,21 +494,10 @@ function lowerBlock(block, context) {
       expect(
         context,
         statement,
-        nodeType(statement.init) === "AST_SymbolRef" &&
-          nodeType(statement.object) === "AST_Call" &&
-          nodeType(statement.object.expression) === "AST_SymbolRef" &&
-          statement.object.expression.name === "range",
-        "binary64 for loops require a local index and range(...)",
+        nodeType(statement.init) === "AST_SymbolRef",
+        "binary64 range index must be a local name",
       );
-      const args = array(statement.object.args);
-      expect(
-        context,
-        statement.object,
-        args.length === 1 &&
-          nodeType(args[0]) === "AST_SymbolRef" &&
-          context.variables.get(args[0].name) === "uint64",
-        "binary64 range currently requires one uint64 stop",
-      );
+      const range = lowerRange(statement.object, context);
       const index = statement.init.name;
       ensureVariable(context, statement.init, index, "uint64");
       const before = new Set(context.initialized);
@@ -281,19 +507,24 @@ function lowerBlock(block, context) {
       const operation = {
         kind: "loop.range",
         index,
-        start: 0,
-        count: args[0].name,
+        start: range.start,
+        stop: range.stop,
         step: 1,
-        boundIsStop: true,
         body,
       };
+      annotateOperations(range.operations, sourceSpan(statement, context.filename));
       annotateOperations([operation], sourceSpan(statement, context.filename));
-      result.push(operation);
+      result.push(...range.operations, operation);
       continue;
     }
     if (nodeType(statement) === "AST_Return") {
       const operations = [];
-      const value = lowerExpression(statement.value, context, operations);
+      const value = lowerExpression(
+        statement.value,
+        context,
+        operations,
+        context.returnType,
+      );
       expect(
         context,
         statement.value,
@@ -314,6 +545,43 @@ function lowerBlock(block, context) {
   return result;
 }
 
+function mutationRoots(statements, aliases, result) {
+  function addAliases(target, sources) {
+    const current = aliases.get(target) || new Set();
+    const before = current.size;
+    for (const source of sources) current.add(source);
+    aliases.set(target, current);
+    return current.size !== before;
+  }
+  let changed = false;
+  for (const statement of statements) {
+    if (statement.kind === "float64.buffer.copy") {
+      changed = addAliases(
+        statement.target,
+        aliases.get(statement.source) || new Set([statement.source]),
+      ) || changed;
+    } else if (statement.kind === "float64.record.view") {
+      changed = addAliases(
+        statement.target,
+        aliases.get(statement.buffer) || new Set([statement.buffer]),
+      ) || changed;
+    } else if (statement.kind === "float64.buffer.set") {
+      const roots = aliases.get(statement.buffer) || new Set([statement.buffer]);
+      for (const root of roots) result.add(root);
+    } else if (statement.kind === "loop.range") {
+      // A buffer variable may rotate through several borrowed parameters in a
+      // loop (double buffering). Iterate the finite alias lattice to a fixed
+      // point before reporting externally visible writes.
+      let nestedChanged;
+      do {
+        nestedChanged = mutationRoots(statement.body, aliases, result);
+        changed = nestedChanged || changed;
+      } while (nestedChanged);
+    }
+  }
+  return changed;
+}
+
 function lowerFloat64Function(fn, signature, filename, decorated) {
   const context = createContext(fn, signature, filename, decorated);
   const body = lowerBlock(fn.body, context);
@@ -323,6 +591,13 @@ function lowerFloat64Function(fn, signature, filename, decorated) {
     body.some((operation) => operation.kind === "return"),
     "binary64 function has no return",
   );
+  const aliases = new Map(
+    signature.params
+      .filter((param) => param.type === "Float64Buffer")
+      .map((param) => [param.name, new Set([param.name])]),
+  );
+  const mutated = new Set();
+  mutationRoots(body, aliases, mutated);
   return {
     name: signature.name,
     decorated,
@@ -333,14 +608,18 @@ function lowerFloat64Function(fn, signature, filename, decorated) {
     locals: Array.from(context.locals, ([name, type]) => ({
       name,
       type,
-      storage: "local",
+      storage: BUFFER_TYPES.has(type) ? "borrowed-view" : "local",
     })),
     dependencies: [],
     optimizations: {},
     analysis: {
-      representation: "IEEE-754 binary64",
-      backend: { kind: "native-double" },
-      effects: { pure: true, mayRaise: [] },
+      representation: "IEEE-754 binary64 with borrowed packed buffers",
+      backend: { kind: "native-double-buffer" },
+      effects: {
+        pure: mutated.size === 0,
+        mutates: Array.from(mutated).sort(),
+        mayRaise: ["IndexError", "ZeroDivisionError", "ValueError"],
+      },
     },
     body,
   };
@@ -349,7 +628,7 @@ function lowerFloat64Function(fn, signature, filename, decorated) {
 function isFloat64Signature(signature) {
   return signature.returnType === "Float64" &&
     signature.params.every((param) =>
-      param.type === "Float64" || param.type === "uint64"
+      ["Float64", "uint64", "Float64Buffer"].includes(param.type)
     );
 }
 

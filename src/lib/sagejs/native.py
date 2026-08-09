@@ -18,9 +18,10 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v11 currently accepts a deliberately narrow typed numerical
+Native Kernel v13 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels and reusable dense
-decompositions over prime fields. Explicit AOT compilation produces a native
+decompositions over prime fields. It also supports packed binary64 buffers and
+bounded record views for source-transparent numerical loops. Explicit AOT compilation produces a native
 implementation plus an exact fallback or reports a compile-time diagnostic.
 """
 
@@ -32,6 +33,54 @@ from typing import Any
 # Annotation-only marker understood by the source-transparent prime-field
 # compiler experiment.  At runtime its values are ordinary Python lists.
 UInt64Buffer = list[int]
+Float64Buffer = list[float]
+
+
+class Float64Record:
+    """A mutable bounded view into an ordinary binary64 fallback buffer."""
+
+    def __init__(
+        self, buffer: Float64Buffer, start: int, length: int,
+    ) -> None:
+        if start < 0 or length < 0 or start > len(buffer) - length:
+            raise IndexError('Float64Record is outside its buffer')
+        self._buffer = buffer
+        self._start = start
+        self._length = length
+
+    def __len__(self) -> int:
+        return self._length
+
+    def __getitem__(self, index: int) -> float:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError('Float64Record index out of range')
+        return self._buffer[self._start + index]
+
+    def __setitem__(self, index: int, value: float) -> None:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError('Float64Record index out of range')
+        self._buffer[self._start + index] = float(value)
+
+
+def float64_buffer(source: Any) -> Float64Buffer:
+    """Copy an iterable into an ordinary binary64 fallback buffer."""
+    return [float(value) for value in source]
+
+
+def float64_zeros(length: int) -> Float64Buffer:
+    """Allocate a zero-filled binary64 fallback buffer."""
+    return [0.0 for _index in range(length)]
+
+
+def float64_record(
+    buffer: Float64Buffer, start: int, length: int,
+) -> Float64Record:
+    """Return a bounded mutable record view into ``buffer``."""
+    return Float64Record(buffer, start, length)
 
 
 def prime_rows(source: Any) -> int:
@@ -170,7 +219,12 @@ def is_compiled(function: Any) -> bool:
 
 
 __all__ = [
+    'Float64Buffer',
+    'Float64Record',
     'UInt64Buffer',
+    'float64_buffer',
+    'float64_record',
+    'float64_zeros',
     'is_compiled',
     'is_native',
     'native',

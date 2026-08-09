@@ -1,6 +1,6 @@
-# Native Kernel v12
+# Native Kernel v13
 
-Native Kernel v12 asks whether selected Sage.js library functions can compile
+Native Kernel v13 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v12 is currently a source-tree development feature and uses the
+Native Kernel v13 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -75,7 +75,7 @@ cache instead of the default `.sagejs-native-kernels` beside the source.
 
 ## Transparent compiler tooling
 
-V12 makes the compiler pipeline inspectable without finding files inside the
+V13 makes the compiler pipeline inspectable without finding files inside the
 content-addressed cache:
 
 ```sh
@@ -111,7 +111,7 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v12 supports:
+lowers marked functions to typed IR. Native Kernel v13 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -140,6 +140,9 @@ lowers marked functions to typed IR. Native Kernel v12 supports:
 - source-transparent binary64 kernels with mixed `uint64`/`Float64`
   signatures, integer-to-double coercion, `abs`, arithmetic, and counted
   loops, returning ordinary JavaScript/Python floats;
+- borrowed packed `Float64Buffer` parameters, bounded `Float64Record` views,
+  checked indexed reads/writes, buffer aliasing, `sqrt`, dynamic one- and
+  two-bound ranges, and arbitrarily nested counted loops;
 - dense prime-field rank, determinant, echelon, and solve contracts;
 - immutable packed prime-field decompositions reusable across all four
   operations and across arbitrarily many right sides;
@@ -247,6 +250,59 @@ For an exact module, every public Node callback delegates to a private C entry
 point. A call such as `native_lcm(a, b) -> native_gcd(a, b)` invokes that entry
 point directly and reuses GMP values without another JavaScript or Python
 transition.
+
+## Packed binary64 buffers and records
+
+V13 compiles numerical algorithms over mutable one-dimensional
+`Float64Buffer` values. A `Float64Record` is a checked, non-owning view into a
+contiguous portion of a buffer; it gives structured algorithms readable names
+without changing the packed representation:
+
+```python
+from sagejs.native import Float64Buffer, float64_record, native
+
+
+@native
+def advance(records: Float64Buffer, count: uint64) -> float:
+    total = 0.0
+    for index in range(count):
+        record = float64_record(records, index * 3, 3)
+        record[0] += record[1] * record[2]
+        total += record[0]
+    return total
+```
+
+The addon borrows `Float64Array` memory directly for the duration of the call.
+Ordinary Python/Sage.js lists remain supported by the generated module through
+a temporary packed copy whose mutations are copied back in a `finally` block.
+The portable implementation executes the same IR against arrays or lists.
+Every view construction and indexed access is bounds checked; generated C does
+not retain a borrowed pointer after returning.
+
+[`cowasm/native/numerical_buffers.py`](cowasm/native/numerical_buffers.py)
+contains complete source-transparent n-body and repeated classical matrix
+multiplication bodies. There is no operation-name substitution: record views,
+index arithmetic, nested loops, binary64 operations, and mutation all appear
+in inspectable IR and generated C. Run the matched CPython, PyPy, generated-JS,
+Julia, and C comparison with:
+
+```sh
+pnpm bench:cowasm:buffers
+```
+
+On the dedicated 16-vCPU AMD EPYC 7B13 host, with nine measured passes after
+three warmups, GCC-generated n-body takes 1.715 ms versus 1.356 ms for
+handwritten C, 1.529 ms for Julia, 73.32 ms for PyPy 7.3.15, and 739.13 ms for
+CPython 3.12. Repeated 30-by-30 multiplication takes 1.471 ms generated versus
+0.608 ms C, 1.062 ms Julia, 3.140 ms PyPy, and 124.03 ms CPython. Clang produces
+1.641 ms and 1.017 ms generated artifacts respectively. The stripped addon is
+18.6 KB; generated C is 112.9 KB and the portable module is 31.6 KB.
+
+The n-body result establishes near-C performance for nested mutable records.
+The larger handwritten-C matrix advantage identifies the next optimization:
+prove and hoist buffer bounds from loop/shape constraints instead of emitting
+a branch at every inner-loop access. V13 deliberately retains those checks;
+the benchmark does not compare unsafe generated code with checked source.
 
 Run the exact-integer comparisons with:
 
@@ -416,7 +472,7 @@ coefficient lists and more involved structured state make it the next honest
 compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
-## Deliberate v12 limits
+## Deliberate v13 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements

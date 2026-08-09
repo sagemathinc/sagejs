@@ -55,6 +55,13 @@ const scalarFloatPath = join(
   "native",
   "scalar_float.py",
 );
+const numericalBuffersPath = join(
+  root,
+  "bench",
+  "cowasm",
+  "native",
+  "numerical_buffers.py",
+);
 const primeFieldMatrixPath = join(
   root,
   "bench",
@@ -108,12 +115,12 @@ assert.equal(completeNumberTheoryAudit.summary.rejectedFunctions, 0);
 const scalarAudit = await auditKernels({
   sourcePath: join(root, "bench", "cowasm", "native"),
 });
-assert.equal(scalarAudit.summary.modules, 2);
-assert.equal(scalarAudit.summary.functions, 8);
-assert.equal(scalarAudit.summary.eligibleFunctions, 8);
+assert.equal(scalarAudit.summary.modules, 3);
+assert.equal(scalarAudit.summary.functions, 10);
+assert.equal(scalarAudit.summary.eligibleFunctions, 10);
 assert.deepEqual(
   scalarAudit.modules.map((module) => module.path),
-  ["scalar_exact.py", "scalar_float.py"],
+  ["numerical_buffers.py", "scalar_exact.py", "scalar_float.py"],
 );
 const completeNumberTheoryC = generateC(completeNumberTheoryIr);
 const scalarExactIr = await lowerSource(
@@ -125,6 +132,11 @@ const scalarFloatIr = await lowerSource(
   scalarFloatPath,
 );
 const scalarFloatC = generateC(scalarFloatIr);
+const numericalBuffersIr = await lowerSource(
+  readFileSync(numericalBuffersPath, "utf8"),
+  numericalBuffersPath,
+);
+const numericalBuffersC = generateC(numericalBuffersIr);
 const primeFieldMatrixIr = await lowerSource(
   readFileSync(primeFieldMatrixPath, "utf8"),
   primeFieldMatrixPath,
@@ -142,15 +154,44 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 12);
-assert.equal(scalarExactIr.version, 12);
-assert.equal(scalarFloatIr.version, 12);
+assert.equal(ir.version, 13);
+assert.equal(scalarExactIr.version, 13);
+assert.equal(scalarFloatIr.version, 13);
 assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
 );
 assert.match(scalarFloatC, /fabs\(/);
 assert.match(scalarFloatC, /\(double\)/);
+assert.deepEqual(
+  numericalBuffersIr.functions.map((fn) => [
+    fn.name,
+    fn.params.map((param) => param.type),
+    fn.analysis.effects.mutates,
+  ]),
+  [
+    [
+      "nbody_advance_energy",
+      ["Float64Buffer", "Float64", "uint64", "uint64"],
+      ["state"],
+    ],
+    [
+      "matrix_multiply_repeated",
+      [
+        "Float64Buffer",
+        "Float64Buffer",
+        "Float64Buffer",
+        "uint64",
+        "uint64",
+      ],
+      ["left", "scratch"],
+    ],
+  ],
+);
+assert.match(numericalBuffersC, /napi_float64_array/);
+assert.match(numericalBuffersC, /sagejs_native_get_float64_buffer/);
+assert.match(numericalBuffersC, /sqrt\(/);
+assert.match(numericalBuffersC, /sagejs_left\.data/);
 const strideLoop = scalarExactIr.functions
   .find((fn) => fn.name === "sum_stride").body
   .find((operation) => operation.kind === "loop.range");
@@ -632,6 +673,48 @@ try {
   assert.ok(
     0.999999 <= javascriptAbsoluteSum / 44349638911.052574 &&
       javascriptAbsoluteSum / 44349638911.052574 <= 1.000001,
+  );
+  const numericalBuffersKernel = await compileKernel({
+    sourcePath: numericalBuffersPath,
+    cacheRoot: join(temporary, "numerical-buffers-cache"),
+  });
+  const numericalBuffersModule = require(numericalBuffersKernel.modulePath);
+  const matrixLeft = new Float64Array([1, 2, 3, 4]);
+  const matrixRight = new Float64Array([1, 0, 0, 1]);
+  const matrixScratch = new Float64Array(4);
+  assert.equal(
+    numericalBuffersModule.matrix_multiply_repeated(
+      matrixLeft, matrixRight, matrixScratch, 2, 1,
+    ),
+    10,
+  );
+  assert.deepEqual(Array.from(matrixScratch), [1, 2, 3, 4]);
+  const fallbackLeft = new Float64Array([1, 2, 3, 4]);
+  const fallbackScratch = new Float64Array(4);
+  assert.equal(
+    numericalBuffersModule.matrix_multiply_repeated.javascript(
+      fallbackLeft, matrixRight, fallbackScratch, 2, 1,
+    ),
+    10,
+  );
+  assert.deepEqual(Array.from(fallbackScratch), [1, 2, 3, 4]);
+  const twoBodyState = new Float64Array([
+    0, 0, 0, 0, 0, 0, 1,
+    1, 0, 0, 0, 1, 0, 1,
+  ]);
+  const fallbackTwoBodyState = twoBodyState.slice();
+  const twoBodyEnergy = numericalBuffersModule.nbody_advance_energy(
+    twoBodyState, 0.01, 1, 2,
+  );
+  const fallbackTwoBodyEnergy =
+    numericalBuffersModule.nbody_advance_energy.javascript(
+      fallbackTwoBodyState, 0.01, 1, 2,
+    );
+  assert.equal(twoBodyEnergy, fallbackTwoBodyEnergy);
+  assert.deepEqual(Array.from(twoBodyState), Array.from(fallbackTwoBodyState));
+  assert.equal(
+    numericalBuffersModule.nbody_advance_energy.backendPolicy.kind,
+    "native-double-buffer",
   );
   const scalarExactKernel = await compileKernel({
     sourcePath: scalarExactPath,
@@ -1765,6 +1848,33 @@ print(kernel.nativeAvailable)
     ["True", "True", "False"],
   );
 
+  const numericalBuffersScript = `import sys
+sys.path.append(${JSON.stringify(join(root, "bench", "cowasm", "native"))})
+
+from numerical_buffers import matrix_multiply_repeated
+from sagejs.native import is_compiled
+
+left = [1.0, 2.0, 3.0, 4.0]
+right = [1.0, 0.0, 0.0, 1.0]
+scratch = [0.0, 0.0, 0.0, 0.0]
+print(matrix_multiply_repeated(left, right, scratch, 2, 1))
+print(scratch)
+print(is_compiled(matrix_multiply_repeated))
+`;
+  assert.deepEqual(
+    runSage(numericalBuffersScript, {
+      SAGEJS_NATIVE_CACHE_DIR: join(temporary, "numerical-buffers-cache"),
+    }),
+    ["10", "[1, 2, 3, 4]", "True"],
+  );
+  assert.deepEqual(
+    runSage(numericalBuffersScript, {
+      SAGEJS_NATIVE_CACHE_DIR: join(temporary, "numerical-buffers-cache"),
+      SAGEJS_NATIVE_DISABLE: "1",
+    }),
+    ["10", "[1, 2, 3, 4]", "True"],
+  );
+
   const direct = spawnSync(
     process.execPath,
     [join(__dirname, "native-kernel-addon-child.cjs"), first.addonPath],
@@ -1927,7 +2037,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v12 binary64, provenance, Tate, ABI, and fallback passed.",
+  "Native Kernel v13 buffers, provenance, Tate, ABI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);

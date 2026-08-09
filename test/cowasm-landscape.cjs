@@ -30,6 +30,24 @@ test("cross-language landscape validates the unchanged Sage.js source", () => {
   assert.match(result.stdout, /Sage.js/);
 });
 
+test("packed-buffer landscape validates the C translation", () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      join(root, "bench", "cowasm", "buffer-landscape", "run.cjs"),
+      "--warmups", "0",
+      "--samples", "1",
+      "--only", "matrix_multiplication",
+      "--runtime", "c",
+      "--strict",
+    ],
+    { cwd: root, encoding: "utf8", timeout: 30000 },
+  );
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /matrix_multiplication/);
+  assert.match(result.stdout, /C -O3/);
+});
+
 test("standalone benchmark artifacts receive the explicit Node host", () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-cowasm-host-"));
   try {

@@ -13,6 +13,8 @@ const TYPE_ALIASES = new Map([
   ["bool", "bool"],
   ["float", "Float64"],
   ["Float64", "Float64"],
+  ["Float64Buffer", "Float64Buffer"],
+  ["Float64Record", "Float64Record"],
   ["PrimeFieldElement", "PrimeFieldElement"],
   ["PrimeFieldMatrix", "PrimeFieldMatrix"],
   ["PrimeFieldDecomposition", "PrimeFieldDecomposition"],

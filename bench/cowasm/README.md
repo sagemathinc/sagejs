@@ -161,3 +161,21 @@ cases. Audit the complete source tree without building native artifacts with:
 sagejs native audit bench/cowasm/src
 sagejs native audit bench/cowasm/src --json
 ```
+
+## Packed-buffer numerical landscape
+
+Native Kernel v13's focused packed-buffer comparison compiles the actual typed
+Python n-body and repeated matrix-multiplication bodies in
+`native/numerical_buffers.py`. It compares those bodies with their generated
+JavaScript fallback, CPython, PyPy, Julia, and an algorithm-equivalent C
+translation. Inputs are prepared outside the measured region, every runtime
+checks the same deterministic result, and native compilation happens before
+measurement:
+
+```sh
+pnpm bench:cowasm:buffers
+pnpm bench:cowasm:buffers -- --runtime native --runtime c --json report.json
+```
+
+The runner accepts `--only`, `--runtime`, `--samples`, `--warmups`, `--strict`,
+and `--json`. Set `SAGEJS_COWASM_JULIA` when Julia is not on `PATH`.

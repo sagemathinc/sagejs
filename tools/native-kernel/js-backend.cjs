@@ -668,6 +668,9 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 
 function generateJavaScript(ir, options = {}) {
   function emitFloat64Statement(operation, indent) {
+    if (operation.kind === "uint64.constant") {
+      return `${indent}${operation.target} = ${operation.value};`;
+    }
     if (operation.kind === "float64.constant") {
       return `${indent}${operation.target} = ${operation.value};`;
     }
@@ -679,6 +682,33 @@ function generateJavaScript(ir, options = {}) {
     }
     if (operation.kind === "float64.abs") {
       return `${indent}${operation.target} = Math.abs(${operation.source});`;
+    }
+    if (operation.kind === "float64.sqrt") {
+      return `${indent}if (${operation.source} < 0) ` +
+        `throw new RangeError("math domain error");\n` +
+        `${indent}${operation.target} = Math.sqrt(${operation.source});`;
+    }
+    if (operation.kind === "uint64.binary") {
+      return `${indent}${operation.target} = ${operation.left} ` +
+        `${operation.operation} ${operation.right};`;
+    }
+    if (operation.kind === "float64.buffer.copy") {
+      return `${indent}${operation.target} = ${operation.source};`;
+    }
+    if (operation.kind === "float64.buffer.length") {
+      return `${indent}${operation.target} = ${operation.buffer}.length;`;
+    }
+    if (operation.kind === "float64.record.view") {
+      return `${indent}${operation.target} = float64RecordView(` +
+        `${operation.buffer}, ${operation.start}, ${operation.length});`;
+    }
+    if (operation.kind === "float64.buffer.get") {
+      return `${indent}${operation.target} = float64BufferGet(` +
+        `${operation.buffer}, ${operation.index});`;
+    }
+    if (operation.kind === "float64.buffer.set") {
+      return `${indent}float64BufferSet(${operation.buffer}, ` +
+        `${operation.index}, ${operation.value});`;
     }
     if (operation.kind === "float64.binary") {
       const operator = { add: "+", sub: "-", mul: "*", div: "/" }[
@@ -692,9 +722,10 @@ function generateJavaScript(ir, options = {}) {
         `${operator} ${operation.right};`;
     }
     if (operation.kind === "loop.range") {
+      const stop = operation.stop ?? operation.count;
       return [
         `${indent}for (${operation.index} = ${operation.start}; ` +
-          `${operation.index} < ${operation.count}; ` +
+          `${operation.index} < ${stop}; ` +
           `${operation.index} += ${operation.step || 1}) {`,
         ...operation.body.map((item) =>
           emitFloat64Statement(item, `${indent}  `)
@@ -712,7 +743,13 @@ function generateJavaScript(ir, options = {}) {
     const params = fn.params.map((param) => param.name).join(", ");
     const locals = fn.locals.map((local) => local.name);
     const declaration = locals.length === 0 ? "" : `  let ${locals.join(", ")};\n`;
+    const bufferNormalization = fn.params
+      .filter((param) => param.type === "Float64Buffer")
+      .map((param) => `  ${param.name} = float64BufferView(${param.name}, ` +
+        `${jsString(param.name)});`)
+      .join("\n");
     const fallback = `function javascript_${fn.name}(${params}) {\n` +
+      (bufferNormalization ? bufferNormalization + "\n" : "") +
       declaration + fn.body.map((operation) =>
         emitFloat64Statement(operation, "  ")
       ).join("\n") + "\n}";
@@ -722,21 +759,39 @@ function generateJavaScript(ir, options = {}) {
         `        : Number.isSafeInteger(${param.name}) && ${param.name} >= 0)) {\n` +
         `    throw new RangeError("${param.name} must be a nonnegative uint64");\n` +
         "  }"
-      : `  if (typeof ${param.name} !== "number") {\n` +
+      : param.type === "Float64"
+      ? `  if (typeof ${param.name} !== "number") {\n` +
         `    throw new TypeError("${param.name} must be a binary64 float");\n` +
         "  }"
+      : `  const sagejs_native_buffer_${param.name} = ` +
+        `float64NativeBuffer(${param.name}, ${jsString(param.name)});`
     ).join("\n");
-    const nativeArgs = fn.params.map((param) => param.name).join(", ");
+    const nativeArgs = fn.params.map((param) => param.type === "Float64Buffer"
+      ? `sagejs_native_buffer_${param.name}.typed`
+      : param.name
+    ).join(", ");
     const fallbackArgs = fn.params.map((param) => param.type === "uint64"
       ? `Number(${param.name})`
       : param.name
     ).join(", ");
+    const copyBack = fn.params
+      .filter((param) => param.type === "Float64Buffer" &&
+        fn.analysis.effects.mutates.includes(param.name))
+      .map((param) => `    sagejs_native_buffer_${param.name}.copyBack();`)
+      .join("\n");
+    const nativeCall = copyBack
+      ? `  let sagejs_native_result;\n` +
+        `  try {\n` +
+        `    sagejs_native_result = nativeAddon.${fn.name}(${nativeArgs});\n` +
+        `  } finally {\n${copyBack}\n  }\n` +
+        `  return sagejs_native_result;`
+      : `  return nativeAddon.${fn.name}(${nativeArgs});`;
     return `${fallback}\n\nfunction ${fn.name}(${params}) {\n` +
       `  if (arguments.length !== ${fn.params.length}) {\n` +
       `    throw new TypeError("${fn.name}() expects exactly ` +
         `${fn.params.length} arguments");\n` +
       "  }\n" + validation + "\n" +
-      `  if (nativeAddon !== null) return nativeAddon.${fn.name}(${nativeArgs});\n` +
+      `  if (nativeAddon !== null) {\n${nativeCall}\n  }\n` +
       `  return javascript_${fn.name}(${fallbackArgs});\n` +
       `}\n${fn.name}.javascript = javascript_${fn.name};\n` +
       `${fn.name}.nativeAvailable = nativeAddon !== null;\n` +
@@ -763,6 +818,75 @@ const integerBackendOverride =
 if (!["auto", "bigint", "gmp"].includes(integerBackendOverride)) {
   throw new RangeError(
     "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, or gmp");
+}
+
+const float64BufferViewTag = Symbol("sagejs.native.Float64BufferView");
+
+function float64BufferView(value, argument = "buffer") {
+  if (value !== null && typeof value === "object" &&
+      value[float64BufferViewTag] === true) return value;
+  if (value === null || (typeof value !== "object" &&
+      typeof value !== "function")) {
+    throw new TypeError(argument + " must be a Float64Buffer");
+  }
+  const length = Number(Reflect.get(value, "length"));
+  if (!Number.isSafeInteger(length) || length < 0) {
+    throw new TypeError(argument + " must have a nonnegative safe length");
+  }
+  return { [float64BufferViewTag]: true, data: value, offset: 0, length };
+}
+
+function float64RecordView(buffer, start, length) {
+  const view = float64BufferView(buffer);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(length) ||
+      start < 0 || length < 0 || start > view.length ||
+      length > view.length - start) {
+    throw new RangeError("Float64Record is outside its buffer");
+  }
+  return {
+    [float64BufferViewTag]: true,
+    data: view.data,
+    offset: view.offset + start,
+    length,
+  };
+}
+
+function float64BufferGet(buffer, index) {
+  const view = float64BufferView(buffer);
+  if (!Number.isSafeInteger(index) || index < 0 || index >= view.length) {
+    throw new RangeError("Float64 buffer index out of range");
+  }
+  return Number(Reflect.get(view.data, String(view.offset + index)));
+}
+
+function float64BufferSet(buffer, index, value) {
+  const view = float64BufferView(buffer);
+  if (!Number.isSafeInteger(index) || index < 0 || index >= view.length) {
+    throw new RangeError("Float64 buffer index out of range");
+  }
+  if (!Reflect.set(view.data, String(view.offset + index), Number(value))) {
+    throw new TypeError("Float64 buffer is not writable");
+  }
+}
+
+function float64NativeBuffer(value, argument) {
+  const view = float64BufferView(value, argument);
+  if (view.offset === 0 && view.data instanceof Float64Array &&
+      view.length === view.data.length) {
+    return { typed: view.data, copyBack() {} };
+  }
+  const typed = new Float64Array(view.length);
+  for (let index = 0; index < view.length; index += 1) {
+    typed[index] = float64BufferGet(view, index);
+  }
+  return {
+    typed,
+    copyBack() {
+      for (let index = 0; index < view.length; index += 1) {
+        float64BufferSet(view, index, typed[index]);
+      }
+    },
+  };
 }
 
 function integerFloorDiv(left, right) {

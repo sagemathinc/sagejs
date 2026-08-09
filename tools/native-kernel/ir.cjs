@@ -24,7 +24,7 @@ const {
   finalizeFunctionProvenance,
 } = require("./provenance.cjs");
 
-const IR_VERSION = 12;
+const IR_VERSION = 13;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -695,7 +695,8 @@ async function lowerSource(source, filename, options = {}) {
     const partiallyTypedSelected = initiallySelected.has(fn.name.name) && (
       returnType !== undefined ||
       paramTypes.some((type) =>
-        type === "Integer" || type === "bool" || type === "Float64"
+        type === "Integer" || type === "bool" || type === "Float64" ||
+        type === "Float64Buffer"
       )
     );
     if (completeSignature || partiallyTypedSelected) {

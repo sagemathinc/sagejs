@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "description": "Packed-buffer translations of the CoWasm n-body and matrix workloads",
+  "benchmarks": [
+    {
+      "id": "nbody",
+      "sourceBenchmark": "nbody",
+      "expected": -0.16908926275527303,
+      "equivalence": "Advance the canonical five-body system for 20000 steps with dt=0.01, then compute total energy."
+    },
+    {
+      "id": "matrix_multiplication",
+      "sourceBenchmark": "matrix multiplication",
+      "expected": 166742891853.24692,
+      "equivalence": "Perform 50 classical 30x30 row-major binary64 matrix products using deterministic input matrices, then sum the result."
+    }
+  ]
+}
