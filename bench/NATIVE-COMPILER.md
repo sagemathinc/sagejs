@@ -379,15 +379,17 @@ larger call graph also supplies enough work to select tagged native entry even
 for small inputs, rather than paying dynamic BigInt dispatch throughout the
 algorithm.
 
-The differential corpus was generated with PARI 2.17.3 `elllocalred` and
-covers good and multiplicative reduction plus II, III, IV, I0*, IV*, III*,
-and II* branches. On the shared development host, warm medians across the
-13-case corpus were approximately 1.17 microseconds per case for compiled
-tagged Python, 56.8 microseconds for the production interpreted Sage.js
-routine, and 0.33 microseconds for PARI/GP. Thus this initial transparent
-compiler version is about 49x faster than interpreted Sage.js and within about
-3.6x of PARI's mature C implementation, including one Node-API crossing per
-case. Reproduce the checked comparison with:
+The differential corpus was generated with PARI 2.17.3 `elllocalred`, checked
+again with PARI 2.15.4, and covers good and multiplicative reduction plus II,
+III, IV, I0*, IV*, III*, and II* branches. On an otherwise idle 16-vCPU,
+64-GB dedicated host, warm medians across the 13-case corpus were approximately
+1.30 microseconds per case for compiled tagged Python, 57.7 microseconds for
+the production interpreted Sage.js routine, and 0.37 microseconds for PARI/GP.
+Thus this initial transparent compiler version is about 44x faster than
+interpreted Sage.js and within about 3.5x of PARI's mature C implementation,
+including one Node-API crossing per case. The resulting cache entry occupies
+2.0 MB, of which the loadable native addon is 450 KB. Reproduce the checked
+comparison with:
 
 ```sh
 pnpm run bench:native:tate
