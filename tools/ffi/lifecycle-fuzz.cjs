@@ -24,6 +24,19 @@ function dynamicLifecycleFuzz() {
     const view = graph.ffiGraphEdgesBorrow(owner);
     assert.equal(graph.ffiGraphVertexCount(owner), vertices);
     checksum ^= graph.ffiGraphEdgeChecksum(view);
+    if ((round & 15) === 0) {
+      const cycleVertices = 2 + (round % 31);
+      const edges = [];
+      for (let index = 0; index < cycleVertices; index += 1) {
+        edges.push(BigInt(index), BigInt((index + 1) % cycleVertices));
+      }
+      const labels = Array(cycleVertices).fill(0n);
+      assert.equal(graph.ffiCanonicalPermutationPacked(
+        labels, edges, BigInt(cycleVertices), BigInt(edges.length), false,
+      ), true);
+      assert.deepEqual([...labels].sort((a, b) => Number(a - b)),
+        Array.from({ length: cycleVertices }, (_, index) => BigInt(index)));
+    }
     graph.ffiGraphClose(owner);
     graph.ffiGraphClose(owner);
     assert.throws(() => graph.ffiGraphEdgeCount(view), /closed/);
@@ -76,6 +89,25 @@ int main(void)
             return 4;
         aggregate ^= sagejs_igraph_edge_checksum(first);
         sagejs_igraph_graph_clear(graph);
+        if ((round & 15U) == 0) {
+            uint64_t cycle_edges[96];
+            uint64_t labels[48];
+            unsigned seen[48] = {0};
+            const uint64_t cycle_vertices = UINT64_C(2) +
+                next_value(&random_state) % UINT64_C(46);
+            for (uint64_t index = 0; index < cycle_vertices; index++) {
+                cycle_edges[2 * index] = index;
+                cycle_edges[2 * index + 1] = (index + 1) % cycle_vertices;
+            }
+            if (!sagejs_igraph_canonical_permutation_packed(
+                    labels, cycle_edges, cycle_vertices,
+                    2 * cycle_vertices, 0))
+                return 5;
+            for (uint64_t index = 0; index < cycle_vertices; index++) {
+                if (labels[index] >= cycle_vertices || seen[labels[index]]++)
+                    return 6;
+            }
+        }
     }
     printf("rounds=4000 aggregate=%llu\n", (unsigned long long) aggregate);
     return 0;
@@ -106,10 +138,12 @@ try {
   const args = [
     "-std=c11", "-O1", "-g", "-fno-omit-frame-pointer",
     "-fsanitize=address,undefined",
+    `-I${join(root, "packages", "graph", "include")}`,
     `-I${join(prefix, "include")}`,
     `-I${join(prefix, "include", "igraph")}`,
     sourcePath,
     join(prefix, "lib", "libigraph.a"),
+    process.platform === "darwin" ? "-lc++" : "-lstdc++",
     "-lm", "-lpthread", "-o", executable,
   ];
   run(compiler, args);

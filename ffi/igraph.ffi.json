@@ -1,5 +1,5 @@
 {
-  "schema_version": 4,
+  "schema_version": 5,
   "library": {
     "id": "igraph",
     "python_module": "sagejs.ffi.igraph",
@@ -15,7 +15,8 @@
         "prefix_environment": "SAGEJS_GRAPH_PREFIX",
         "unix_default": "packages/graph/.native/prefix",
         "windows_default": "packages/graph/.native/prefix",
-        "include_dirs": ["include", "include/igraph"]
+        "include_dirs": ["include", "include/igraph"],
+        "source_include_dirs": ["packages/graph/include"]
       }
     }
   },
@@ -145,6 +146,37 @@
       ]},
       "effects": {"pure": true, "deterministic": true, "thread_safe": true, "may_allocate": false, "may_raise": [], "writes": []},
       "errors": {"policy": "none", "exception": null, "message": null},
+      "targets": {"dynamic": true, "native": true, "wasm": false}
+    },
+    {
+      "id": "canonical_permutation",
+      "python_name": "canonical_permutation",
+      "signature": {
+        "parameters": [
+          {"name": "output", "type": "UInt64Buffer", "ownership": "borrowed_mut", "mutability": "write", "aliasing": "allowed"},
+          {"name": "edges", "type": "UInt64Buffer", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"},
+          {"name": "vertex_count", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
+          {"name": "edge_entries", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
+          {"name": "directed", "type": "bool", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"}
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {"export": "ffiCanonicalPermutationPacked"},
+      "native": {
+        "symbol": "sagejs_igraph_canonical_permutation_packed",
+        "return_type": "int",
+        "arguments": [
+          {"source": "labels", "abi_type": "uint64_t_ptr", "direction": "out", "adapter": {"kind": "packed_slice", "data": "output", "length": "vertex_count", "access": "write", "aliasing": "allowed", "transactional": true}},
+          {"source": "edge_data", "abi_type": "uint64_t_ptr", "direction": "in", "adapter": {"kind": "packed_slice", "data": "edges", "length": "edge_entries", "access": "read", "aliasing": "allowed", "transactional": false}},
+          {"source": "vertex_count", "abi_type": "uint64_t", "direction": "in", "adapter": null},
+          {"source": "edge_entries", "abi_type": "uint64_t", "direction": "in", "adapter": null},
+          {"source": "directed", "abi_type": "int", "direction": "in", "adapter": null}
+        ]
+      },
+      "effects": {"pure": false, "deterministic": true, "thread_safe": true, "may_allocate": true, "may_raise": ["RuntimeError"], "writes": ["output"]},
+      "errors": {"policy": "zero_is_error", "exception": "RuntimeError", "message": "igraph canonical labeling failed"},
       "targets": {"dynamic": true, "native": true, "wasm": false}
     }
   ]

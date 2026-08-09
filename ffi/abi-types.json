@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "semantic_types": {
+    "Integer": {
+      "kind": "exact_integer",
+      "python_type": "int",
+      "input_abis": ["fmpz_t"],
+      "input_ownership": "borrowed",
+      "input_mutability": "read",
+      "input_aliasing": "allowed",
+      "return_ownership": "owned"
+    },
+    "UInt64Buffer": {
+      "kind": "buffer",
+      "python_type": "UInt64Buffer",
+      "element_abi": "uint64_t",
+      "input_abis": [],
+      "input_ownership": "borrowed",
+      "input_mutability": "read",
+      "input_aliasing": "allowed",
+      "return_ownership": "value"
+    },
+    "bool": {
+      "kind": "scalar",
+      "python_type": "bool",
+      "input_abis": ["int"],
+      "input_ownership": "value",
+      "input_mutability": "value",
+      "input_aliasing": "not_applicable",
+      "return_ownership": "value"
+    },
+    "uint64": {
+      "kind": "scalar",
+      "python_type": "int",
+      "input_abis": ["ulong", "uint64_t"],
+      "input_ownership": "value",
+      "input_mutability": "value",
+      "input_aliasing": "not_applicable",
+      "return_ownership": "value"
+    }
+  },
+  "abi_types": {
+    "fmpz_t": {"kind": "exact_integer", "c_type": "fmpz_t", "return": false},
+    "int": {"kind": "scalar", "c_type": "int", "return": true},
+    "nmod_mat_t": {"kind": "aggregate", "c_type": "nmod_mat_t", "return": false},
+    "slong": {"kind": "scalar", "c_type": "slong", "return": true},
+    "ulong": {"kind": "scalar", "c_type": "ulong", "return": true},
+    "uint64_t": {"kind": "scalar", "c_type": "uint64_t", "return": true},
+    "uint64_t_ptr": {"kind": "pointer", "c_type": "uint64_t *", "return": false},
+    "void": {"kind": "void", "c_type": "void", "return": true}
+  },
+  "adapters": {
+    "packed_nmod_matrix": {
+      "abi_type": "nmod_mat_t",
+      "parameter_fields": {
+        "data": "UInt64Buffer",
+        "rows": "uint64",
+        "columns": "uint64",
+        "modulus": "uint64"
+      },
+      "consumes": ["data", "rows", "columns", "modulus"],
+      "dimensions": ["rows", "columns"],
+      "access_field": "access",
+      "aliasing_field": "aliasing",
+      "transactional_field": "transactional",
+      "transactional_writes": true
+    },
+    "packed_slice": {
+      "abi_type": "uint64_t_ptr",
+      "parameter_fields": {
+        "data": "UInt64Buffer",
+        "length": "uint64"
+      },
+      "consumes": ["data"],
+      "dimensions": ["length"],
+      "access_field": "access",
+      "aliasing_field": "aliasing",
+      "transactional_field": "transactional",
+      "transactional_writes": true
+    }
+  }
+}

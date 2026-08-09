@@ -13,8 +13,8 @@
     "new_boundaries_require": "explicit-regeneration-and-review"
   },
   "counts": {
-    "classified-native-file": 52,
-    "declared-ffi": 12,
+    "classified-native-file": 53,
+    "declared-ffi": 14,
     "declared-ffi-resource": 3,
     "napi-export": 291,
     "runtime-intrinsic": 113,
@@ -129,6 +129,28 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNmodMatRank",
       "symbol": "nmod_mat_rank",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_poly_mul",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_poly_mul",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodPolyMul",
+      "symbol": "sagejs_flint_nmod_poly_mul_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:igraph:canonical_permutation",
+      "kind": "declared-ffi",
+      "path": "ffi/igraph.ffi.json",
+      "library": "igraph",
+      "export": "canonical_permutation",
+      "dynamic_package": "@sagemath/sagejs-graph",
+      "dynamic_export": "ffiCanonicalPermutationPacked",
+      "symbol": "sagejs_igraph_canonical_permutation_packed",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -2859,6 +2881,14 @@
       "disposition": "portability-shim",
       "review_status": "accepted",
       "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/flint/include/sagejs/ffi_algorithms.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/ffi_algorithms.h",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "native-compiler"
     },
     {
       "id": "native-file:packages/flint/include/sagejs/native.h",

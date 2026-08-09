@@ -7,25 +7,14 @@ const {
   readdirSync,
 } = require("node:fs");
 const { join, resolve } = require("node:path");
+const { loadCatalog } = require("./abi-catalog.cjs");
 
 const repositoryRoot = resolve(__dirname, "..", "..");
-const schema = "sagejs.ffi/declaration-v4";
-const scalarSemanticTypes = new Set([
-  "Integer", "UInt64Buffer", "bool", "uint64",
-]);
-const abiTypes = new Set([
-  "dirichlet_group_t", "fmpz_t", "int", "nmod_mat_t", "slong", "ulong",
-  "sagejs_igraph_graph_t", "sagejs_igraph_edges_view_t", "uint64_t",
-]);
+const schema = "sagejs.ffi/declaration-v5";
 const ownership = new Set(["borrowed", "borrowed_mut", "owned", "value"]);
 const errorExceptions = new Set([
   "OverflowError", "RuntimeError", "TypeError", "ValueError",
 ]);
-const inputAbiBySemanticType = Object.freeze({
-  Integer: "fmpz_t",
-  bool: "int",
-  uint64: "ulong",
-});
 
 function fail(filename, message) {
   throw new Error(`FFI declaration ${filename}: ${message}`);
@@ -91,7 +80,7 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
   if (!identifier(resource.python_name) || pythonNames.has(resource.python_name)) {
     fail(filename, `invalid or duplicate resource Python name ${resource.python_name}`);
   }
-  if (!abiTypes.has(resource.abi_type) || abiNames.has(resource.abi_type)) {
+  if (!identifier(resource.abi_type) || abiNames.has(resource.abi_type)) {
     fail(filename, `unsupported or duplicate resource ABI ${resource.abi_type}`);
   }
   if (!new Set(["owned", "borrowed"]).has(resource.ownership)) {
@@ -137,11 +126,76 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
   return Object.freeze({ ...resource, semantic_type: resource.python_name });
 }
 
+function callPlan(library, fn, catalog, resourcesByType) {
+  const parameters = new Map(fn.signature.parameters.map((item, index) => [
+    item.name, { ...item, index },
+  ]));
+  const arguments_ = fn.native.arguments.map((argument, position) => {
+    const resource = argument.source === "result" ? undefined :
+      resourcesByType.get(parameters.get(argument.source)?.type);
+    const abi = catalog.abiTypes.get(argument.abi_type);
+    const lowering = argument.adapter !== null
+      ? {
+          kind: "adapter",
+          adapter: argument.adapter.kind,
+          fields: { ...argument.adapter },
+        }
+      : argument.source === "result"
+        ? { kind: "result" }
+        : resource !== undefined
+          ? { kind: "resource", resource: resource.id }
+          : { kind: abi.kind, c_type: abi.c_type };
+    return Object.freeze({
+      position, source: argument.source, abi_type: argument.abi_type,
+      direction: argument.direction, lowering: Object.freeze(lowering),
+    });
+  });
+  const constraints = [];
+  const transactions = [];
+  for (const argument of fn.native.arguments) {
+    if (argument.adapter === null) continue;
+    const spec = catalog.adapters.get(argument.adapter.kind);
+    constraints.push(Object.freeze({
+      kind: "buffer_length",
+      buffer: argument.adapter.data,
+      dimensions: Object.freeze(spec.dimensions.map((field) =>
+        argument.adapter[field])),
+      parameter_names: Object.freeze(fn.signature.parameters.map(
+        (parameter) => parameter.name)),
+    }));
+    if (argument.adapter[spec.access_field] === "write") {
+      transactions.push(Object.freeze({
+        buffer: argument.adapter.data,
+        commit: "success",
+        staging: argument.adapter[spec.transactional_field]
+          ? "temporary" : "direct",
+      }));
+    }
+  }
+  const resultArgument = fn.native.arguments.find((item) =>
+    item.source === "result");
+  return Object.freeze({
+    schema: "sagejs.ffi/call-plan-v1",
+    declaration_id: `${library.id}:${fn.id}`,
+    symbol: fn.native.symbol,
+    native_return: fn.native.return_type,
+    result: Object.freeze({
+      mode: resultArgument !== undefined ? "out" :
+        fn.errors.policy === "zero_is_error" ? "checked_status" : "direct",
+      semantic_type: fn.signature.return_type,
+      error_policy: fn.errors.policy,
+    }),
+    arguments: Object.freeze(arguments_),
+    constraints: Object.freeze(constraints),
+    transactions: Object.freeze(transactions),
+  });
+}
+
 function validateFunction(
-  filename, library, fn, ids, pythonNames, resourcesByType,
+  filename, library, fn, ids, pythonNames, resourcesByType, catalog,
 ) {
   const semanticTypes = new Set([
-    ...scalarSemanticTypes, ...resourcesByType.keys(),
+    ...catalog.semanticTypes.keys(), ...resourcesByType.keys(),
   ]);
   exactKeys(filename, fn, [
     "id", "python_name", "signature", "dynamic", "native", "effects",
@@ -187,30 +241,26 @@ function validateFunction(
       fail(filename, `${fn.id}.${parameter.name} has invalid ownership`);
     }
     const resourceType = resourcesByType.get(parameter.type);
-    const expectedOwnership = resourceType !== undefined ||
-        parameter.type === "Integer"
+    const semanticType = catalog.semanticTypes.get(parameter.type);
+    const expectedOwnership = resourceType !== undefined
       ? "borrowed"
-      : parameter.type === "UInt64Buffer"
-        ? parameter.mutability === "write" ? "borrowed_mut" : "borrowed"
-        : "value";
+      : semanticType.kind === "buffer" && parameter.mutability === "write"
+        ? "borrowed_mut" : semanticType.input_ownership;
     if (parameter.ownership !== expectedOwnership) {
       fail(filename,
         `${fn.id}.${parameter.name} ${parameter.type} inputs must use ` +
         `${expectedOwnership} ownership`);
     }
-    const expectedMutability = resourceType !== undefined
-      ? "read"
-      : parameter.type === "UInt64Buffer"
-      ? parameter.ownership === "borrowed_mut" ? "write" : "read"
-      : parameter.type === "Integer" ? "read" : "value";
+    const expectedMutability = resourceType !== undefined ? "read"
+      : semanticType.kind === "buffer" && parameter.ownership === "borrowed_mut"
+        ? "write" : semanticType.input_mutability;
     if (parameter.mutability !== expectedMutability) {
       fail(filename,
         `${fn.id}.${parameter.name} ${parameter.type} requires ` +
         `${expectedMutability} mutability`);
     }
-    const expectedAliasing = resourceType !== undefined ||
-      new Set(["Integer", "UInt64Buffer"]).has(parameter.type)
-      ? "allowed" : "not_applicable";
+    const expectedAliasing = resourceType !== undefined
+      ? "allowed" : semanticType.input_aliasing;
     if (parameter.aliasing !== expectedAliasing) {
       fail(filename,
         `${fn.id}.${parameter.name} ${parameter.type} requires ` +
@@ -228,7 +278,7 @@ function validateFunction(
   const returnResource = resourcesByType.get(fn.signature.return_type);
   const expectedReturnOwnership = returnResource !== undefined
     ? returnResource.ownership
-    : fn.signature.return_type === "Integer" ? "owned" : "value";
+    : catalog.semanticTypes.get(fn.signature.return_type).return_ownership;
   if (fn.signature.return_ownership !== expectedReturnOwnership) {
     fail(filename,
       `${fn.id} ${fn.signature.return_type} results must use ` +
@@ -258,8 +308,7 @@ function validateFunction(
   if (!identifier(fn.native.symbol)) {
     fail(filename, `${fn.id}.native.symbol must be a C identifier`);
   }
-  if (!new Set(["int", "slong", "ulong", "uint64_t", "void"])
-    .has(fn.native.return_type)) {
+  if (!catalog.abiTypes.get(fn.native.return_type)?.return) {
     fail(filename, `${fn.id}.native.return_type is unsupported`);
   }
   if (!Array.isArray(fn.native.arguments)) {
@@ -273,7 +322,10 @@ function validateFunction(
     if (!identifier(argument.source)) {
       fail(filename, `${fn.id} native argument source must be an identifier`);
     }
-    if (!abiTypes.has(argument.abi_type)) {
+    const resourceAbi = Array.from(resourcesByType.values()).find(
+      (resource) => resource.abi_type === argument.abi_type,
+    );
+    if (!catalog.abiTypes.has(argument.abi_type) && resourceAbi === undefined) {
       fail(filename, `${fn.id} has unsupported ABI type ${argument.abi_type}`);
     }
     if (!new Set(["in", "out"]).has(argument.direction)) {
@@ -287,44 +339,52 @@ function validateFunction(
       if ((argument.source === "result") !== (argument.direction === "out")) {
         fail(filename, `${fn.id} only result may be a direct out argument`);
       }
-      if (argument.abi_type === "nmod_mat_t") {
-        fail(filename, `${fn.id} nmod_mat_t requires a packed matrix adapter`);
-      }
     } else {
-      if (argument.abi_type !== "nmod_mat_t") {
-        fail(filename, `${fn.id} only nmod_mat_t currently accepts an adapter`);
-      }
-      exactKeys(filename, argument.adapter, [
-        "kind", "data", "rows", "columns", "modulus", "access", "aliasing",
-      ], `${fn.id}.${argument.source} adapter`);
       const adapter = argument.adapter;
-      if (adapter.kind !== "packed_nmod_matrix") {
+      const adapterSpec = catalog.adapters.get(adapter.kind);
+      if (adapterSpec === undefined) {
         fail(filename, `${fn.id} has unsupported adapter ${adapter.kind}`);
       }
-      for (const field of ["data", "rows", "columns", "modulus"]) {
+      if (argument.abi_type !== adapterSpec.abi_type) {
+        fail(filename, `${fn.id}.${argument.source} ${adapter.kind} requires ` +
+          `${adapterSpec.abi_type}, not ${argument.abi_type}`);
+      }
+      const policyFields = [
+        adapterSpec.access_field, adapterSpec.aliasing_field,
+        adapterSpec.transactional_field,
+      ];
+      exactKeys(filename, adapter,
+        ["kind", ...Object.keys(adapterSpec.parameter_fields), ...policyFields],
+        `${fn.id}.${argument.source} adapter`);
+      for (const [field, type] of Object.entries(adapterSpec.parameter_fields)) {
         if (!parameterNames.has(adapter[field])) {
           fail(filename,
             `${fn.id}.${argument.source} adapter has unknown ${field} ${adapter[field]}`);
         }
-        nativeInputSources.add(adapter[field]);
-      }
-      if (parametersByName.get(adapter.data).type !== "UInt64Buffer") {
-        fail(filename, `${fn.id}.${argument.source} adapter data must be UInt64Buffer`);
-      }
-      for (const field of ["rows", "columns", "modulus"]) {
-        if (parametersByName.get(adapter[field]).type !== "uint64") {
-          fail(filename, `${fn.id}.${argument.source} adapter ${field} must be uint64`);
+        if (parametersByName.get(adapter[field]).type !== type) {
+          fail(filename, `${fn.id}.${argument.source} adapter ${field} must be ${type}`);
         }
       }
-      if (!new Set(["read", "write"]).has(adapter.access) ||
-          adapter.access !== parametersByName.get(adapter.data).mutability) {
+      for (const field of adapterSpec.consumes) {
+        nativeInputSources.add(adapter[field]);
+      }
+      const access = adapter[adapterSpec.access_field];
+      if (!new Set(["read", "write"]).has(access) ||
+          access !== parametersByName.get(adapter.data).mutability) {
         fail(filename, `${fn.id}.${argument.source} adapter access is inconsistent`);
       }
-      if (adapter.aliasing !== parametersByName.get(adapter.data).aliasing) {
+      if (adapter[adapterSpec.aliasing_field] !==
+          parametersByName.get(adapter.data).aliasing) {
         fail(filename, `${fn.id}.${argument.source} adapter aliasing is inconsistent`);
       }
-      if ((adapter.access === "write") !== (argument.direction === "out")) {
+      if ((access === "write") !== (argument.direction === "out")) {
         fail(filename, `${fn.id}.${argument.source} adapter direction is inconsistent`);
+      }
+      const transactional = adapter[adapterSpec.transactional_field];
+      if (typeof transactional !== "boolean" ||
+          (access === "write" && adapterSpec.transactional_writes && !transactional) ||
+          (access === "read" && transactional)) {
+        fail(filename, `${fn.id}.${argument.source} adapter has invalid transaction policy`);
       }
     }
     if (argument.adapter === null && argument.source !== "result") {
@@ -333,14 +393,14 @@ function validateFunction(
       }
       nativeInputSources.add(argument.source);
       const semantic = parametersByName.get(argument.source);
-      const expectedAbi = resourcesByType.get(semantic.type)?.abi_type ||
-        inputAbiBySemanticType[semantic.type];
-      if (argument.abi_type !== expectedAbi) {
-        if (!(semantic.type === "uint64" && argument.abi_type === "uint64_t")) {
-          fail(filename,
-            `${fn.id}.${argument.source} ${semantic.type} requires ` +
-            `${expectedAbi}, not ${argument.abi_type}`);
-        }
+      const resource = resourcesByType.get(semantic.type);
+      const accepted = resource === undefined
+        ? catalog.semanticTypes.get(semantic.type).input_abis
+        : [resource.abi_type];
+      if (!accepted.includes(argument.abi_type)) {
+        fail(filename,
+          `${fn.id}.${argument.source} ${semantic.type} requires ` +
+          `${accepted.join(" or ")}, not ${argument.abi_type}`);
       }
     }
   }
@@ -352,6 +412,13 @@ function validateFunction(
   const result = fn.native.arguments.find((argument) =>
     argument.source === "result"
   );
+  const usesForeignResource = returnResource !== undefined ||
+    fn.signature.parameters.some((parameter) =>
+      resourcesByType.has(parameter.type));
+  if (usesForeignResource && fn.native.arguments.some((argument) =>
+    argument.adapter !== null)) {
+    fail(filename, `${fn.id} cannot yet mix resource and aggregate adapters`);
+  }
   if (returnResource !== undefined) {
     if (fn.native.return_type !== "int" || resultArguments !== 1 ||
         result?.abi_type !== returnResource.abi_type) {
@@ -433,13 +500,15 @@ function validateFunction(
     fail(filename, `${fn.id} must provide dynamic and native implementations`);
   }
 
-  return Object.freeze({
+  const enriched = {
     ...fn,
     declaration_id: `${library.id}:${fn.id}`,
-  });
+  };
+  enriched.call_plan = callPlan(library, enriched, catalog, resourcesByType);
+  return Object.freeze(enriched);
 }
 
-function loadDeclaration(filename) {
+function loadDeclaration(filename, catalog = loadCatalog(repositoryRoot)) {
   const source = readFileSync(filename, "utf8");
   let document;
   try {
@@ -451,7 +520,7 @@ function loadDeclaration(filename) {
     "schema_version", "library", "resources", "functions",
   ],
     "document");
-  if (document.schema_version !== 4) fail(filename, "unsupported schema_version");
+  if (document.schema_version !== 5) fail(filename, "unsupported schema_version");
   exactKeys(filename, document.library,
     ["id", "python_module", "dynamic", "native"], "library");
   const library = document.library;
@@ -478,7 +547,8 @@ function loadDeclaration(filename) {
   safeStrings(filename, library.native.link.windows,
     "library.native.link.windows", /^[A-Za-z0-9_+.-]+$/);
   exactKeys(filename, library.native.toolchain,
-    ["prefix_environment", "unix_default", "windows_default", "include_dirs"],
+    ["prefix_environment", "unix_default", "windows_default", "include_dirs",
+      "source_include_dirs"],
     "library.native.toolchain");
   if (!/^[A-Z][A-Z0-9_]*$/.test(library.native.toolchain.prefix_environment)) {
     fail(filename, "library.native.toolchain.prefix_environment is invalid");
@@ -493,6 +563,13 @@ function loadDeclaration(filename) {
   }
   safeStrings(filename, library.native.toolchain.include_dirs,
     "library.native.toolchain.include_dirs", /^[A-Za-z0-9_+./-]+$/);
+  safeStrings(filename, library.native.toolchain.source_include_dirs,
+    "library.native.toolchain.source_include_dirs", /^[A-Za-z0-9_+./-]+$/);
+  for (const directory of library.native.toolchain.source_include_dirs) {
+    if (directory.startsWith("/") || directory.split("/").includes("..")) {
+      fail(filename, "library.native.toolchain.source_include_dirs must be repository-relative");
+    }
+  }
   if (!Array.isArray(document.functions) || document.functions.length === 0) {
     fail(filename, "functions must be a nonempty array");
   }
@@ -529,10 +606,11 @@ function loadDeclaration(filename) {
   );
   const ids = new Set();
   const pythonNames = new Set(resourceNames);
-  const digest = createHash("sha256").update(source).digest("hex");
+  const digest = createHash("sha256")
+    .update(source).update("\0").update(catalog.hash).digest("hex");
   const functions = document.functions.map((fn) =>
     validateFunction(
-      filename, library, fn, ids, pythonNames, resourcesByType,
+      filename, library, fn, ids, pythonNames, resourcesByType, catalog,
     )
   );
   const enrichedResources = resources.map((resource) => {
@@ -558,6 +636,7 @@ function loadDeclaration(filename) {
     resources: Object.freeze(enrichedResources),
     ownershipGraph,
     functions: Object.freeze(functions),
+    abiCatalog: catalog,
   });
 }
 
@@ -572,7 +651,9 @@ function declarationFiles(root = repositoryRoot) {
 
 function loadRegistry(options = {}) {
   const root = resolve(options.root || repositoryRoot);
-  const libraries = declarationFiles(root).map(loadDeclaration);
+  const catalog = loadCatalog(root);
+  const libraries = declarationFiles(root).map((filename) =>
+    loadDeclaration(filename, catalog));
   const byId = new Map();
   const byModule = new Map();
   for (const declaration of libraries) {
@@ -599,7 +680,7 @@ function loadRegistry(options = {}) {
     byId.set(id, entry);
     byModule.set(moduleName, entry);
   }
-  return Object.freeze({ schema, root, libraries, byId, byModule });
+  return Object.freeze({ schema, root, catalog, libraries, byId, byModule });
 }
 
 function generatePythonModule(declaration) {
@@ -616,7 +697,7 @@ function generatePythonModule(declaration) {
     value === null ? "None" : JSON.stringify(value)
   ).join(", ")}]`;
   const pythonType = (type) => type === "bool"
-    ? "bool" : type === "UInt64Buffer" ? "UInt64Buffer"
+    ? "bool" : type === "UInt64Buffer" ? "list[int]"
       : resourcesByType.has(type) ? type : "int";
   const resourceClasses = declaration.resources.map((resource) => {
     const identity = resourceIdentity(resource);
@@ -630,10 +711,11 @@ function generatePythonModule(declaration) {
         `    def valid(self) -> bool:\n` +
         `        return _runtime.ffi_view_valid(self._token)\n\n`;
     const contextManager = resource.ownership === "owned"
-      ? `\n    def __enter__(self):\n` +
+      ? `\n    def __enter__(self) -> ${resource.python_name}:\n` +
         `        self._ffi_borrow()\n` +
         `        return self\n\n` +
-        `    def __exit__(self, exception_type, exception, traceback) -> bool:\n` +
+        `    def __exit__(self, exception_type: Any, exception: Any, ` +
+        `traceback: Any) -> bool:\n` +
         `        self.close()\n` +
         `        return False\n`
       : "";
@@ -641,10 +723,10 @@ function generatePythonModule(declaration) {
       `    \"\"\"Opaque ${resource.ownership} ${library.id}:` +
       `${resource.id} ${resource.ownership === "owned" ? "resource" : "view"}.` +
       `\"\"\"\n\n` +
-      `    def __init__(self, token):\n` +
+      `    def __init__(self, token: Any) -> None:\n` +
       `        self._token = token\n\n` +
       lifetime +
-      `    def _ffi_borrow(self):\n` +
+      `    def _ffi_borrow(self) -> Any:\n` +
       `        return _runtime.ffi_resource_borrow(\n` +
       `            self._token, ${JSON.stringify(identity)}\n` +
       `        )\n` + contextManager;
@@ -662,6 +744,16 @@ function generatePythonModule(declaration) {
       return resource === undefined ? param.type : resourceIdentity(resource);
     });
     const returnedResource = resourcesByType.get(fn.signature.return_type);
+    // Python dictionaries lower to runtime mapping objects rather than plain
+    // JavaScript objects.  Keep the generated dynamic-call wire format to
+    // lists and scalars so the bootstrap boundary remains representation
+    // independent.
+    const dynamicConstraints = fn.call_plan.constraints.map((constraint) => [
+      constraint.kind,
+      constraint.buffer,
+      [...constraint.dimensions],
+      [...constraint.parameter_names],
+    ]);
     const call = returnedResource === undefined
       ? `_runtime.ffi_call(\n` +
         `        __sagejs_ffi_declaration__ + ${JSON.stringify(`:${fn.id}`)},\n` +
@@ -675,6 +767,7 @@ function generatePythonModule(declaration) {
           ? "None" : JSON.stringify(fn.errors.exception)},\n` +
         `        ${fn.errors.message === null
           ? "None" : JSON.stringify(fn.errors.message)},\n` +
+        `        ${JSON.stringify(dynamicConstraints)},\n` +
         `    )`
       : returnedResource.ownership === "owned"
       ? `${returnedResource.python_name}(_runtime.ffi_resource_create(\n` +
@@ -714,13 +807,11 @@ function generatePythonModule(declaration) {
       `    \"\"\"Call declared ${library.id}:${fn.id}.\"\"\"\n` +
       `    return ${call}\n`;
   }).join("\n\n");
-  const usesUInt64Buffer = declaration.functions.some((fn) =>
-    fn.signature.parameters.some((param) => param.type === "UInt64Buffer")
-  );
   return `\"\"\"Generated safe FFI surface for ${library.id}; do not edit by hand.\"\"\"\n\n` +
     `from __future__ import annotations\n\n` +
+    `from typing import Any\n\n` +
     `import sagejs.runtime as _runtime\n` +
-    `${usesUInt64Buffer ? "from sagejs.native import UInt64Buffer\n" : ""}\n` +
+    `\n` +
     `__sagejs_ffi_declaration__ = ${JSON.stringify(declaration.identity)}\n\n\n` +
     `${resourceClasses}${resourceClasses ? "\n\n\n" : ""}${functions}`;
 }
@@ -730,10 +821,24 @@ function generatedModulePath(root, declaration) {
   return join(root, "src", "lib", ...moduleParts) + ".py";
 }
 
+function generatedBootstrapModulePath(root, declaration) {
+  const moduleParts = declaration.library.python_module.split(".");
+  return join(root, "src", "baselib", ...moduleParts) + ".py";
+}
+
+function generatedModulePaths(root, declaration) {
+  return [
+    generatedModulePath(root, declaration),
+    generatedBootstrapModulePath(root, declaration),
+  ];
+}
+
 module.exports = {
   declarationFiles,
   generatePythonModule,
+  generatedBootstrapModulePath,
   generatedModulePath,
+  generatedModulePaths,
   loadDeclaration,
   loadRegistry,
   repositoryRoot,

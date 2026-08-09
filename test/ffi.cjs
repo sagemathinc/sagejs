@@ -24,6 +24,12 @@ const witness = join(root, "bench", "native-ffi-flint.py");
 const matrixWitness = join(root, "bench", "native-ffi-flint-matrix.py");
 const resourceWitness = join(root, "bench", "native-ffi-flint-resource.py");
 const igraphWitness = join(root, "bench", "native-ffi-igraph.py");
+const igraphCanonicalWitness = join(
+  root, "bench", "native-ffi-igraph-canonical.py",
+);
+const polynomialWitness = join(
+  root, "bench", "native-ffi-flint-polynomial.py",
+);
 
 function runSage(args, input = undefined) {
   const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), ...args], {
@@ -50,7 +56,8 @@ function runSageDiagnostic(args, input) {
 
 test("FFI declarations are strict and generated modules are current", () => {
   const registry = declarations.loadRegistry({ root });
-  assert.equal(registry.schema, "sagejs.ffi/declaration-v4");
+  assert.equal(registry.schema, "sagejs.ffi/declaration-v5");
+  assert.equal(registry.catalog.schema, "sagejs.ffi/abi-catalog-v1");
   assert.equal(registry.libraries.length, 2);
   const flint = registry.byId.get("flint");
   assert.equal(flint.library.python_module, "sagejs.ffi.flint");
@@ -59,7 +66,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     [
       "dirichlet_group_init", "dirichlet_group_size",
       "dirichlet_group_num_primitive", "n_is_prime", "fmpz_gcd",
-      "nmod_mat_rank", "nmod_mat_inv",
+      "nmod_mat_rank", "nmod_mat_inv", "nmod_poly_mul",
     ],
   );
   assert.deepEqual(
@@ -72,6 +79,11 @@ test("FFI declarations are strict and generated modules are current", () => {
     readFileSync(generated, "utf8"),
     declarations.generatePythonModule(flint),
   );
+  assert.deepEqual(
+    declarations.generatedModulePaths(root, flint).map((filename) =>
+      readFileSync(filename, "utf8")),
+    [declarations.generatePythonModule(flint), declarations.generatePythonModule(flint)],
+  );
   assert.match(
     readFileSync(generated, "utf8"),
     /_runtime\.ffi_call\(\n\s+__sagejs_ffi_declaration__ \+ ":n_is_prime"/,
@@ -81,7 +93,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /12 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /14 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -90,6 +102,15 @@ test("FFI declarations are strict and generated modules are current", () => {
     inspection.functions.find((fn) => fn.id === "fmpz_gcd").native.symbol,
     "fmpz_gcd",
   );
+  const polynomialPlan = inspection.functions.find(
+    (fn) => fn.id === "nmod_poly_mul",
+  ).call_plan;
+  assert.equal(polynomialPlan.schema, "sagejs.ffi/call-plan-v1");
+  assert.equal(polynomialPlan.result.mode, "checked_status");
+  assert.deepEqual(polynomialPlan.transactions, [
+    { buffer: "output", commit: "success", staging: "temporary" },
+  ]);
+  assert.equal(polynomialPlan.arguments[0].lowering.adapter, "packed_slice");
   assert.equal(inspection.resources[0].native.clear_symbol, "dirichlet_group_clear");
 });
 
@@ -99,7 +120,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 12);
+  assert.equal(current.counts["declared-ffi"], 14);
   assert.equal(current.counts["declared-ffi-resource"], 3);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   const stale = structuredClone(snapshot);
@@ -161,7 +182,7 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
     (document) => {
       document.functions[3].native.arguments[0].abi_type = "fmpz_t";
     },
-    /uint64 requires ulong, not fmpz_t/,
+    /uint64 requires ulong or uint64_t, not fmpz_t/,
   );
   invalid(
     (document) => {
@@ -251,6 +272,23 @@ test("packed FLINT matrix declarations work in ordinary Sage.js", () => {
   assert.equal(
     output.trim(),
     "2\nTrue [3, 1, 4, 2]\nValueError matrix is singular",
+  );
+});
+
+test("packed-slice declarations work through both ordinary dynamic adapters", () => {
+  const output = runSage(["--python"], [
+    "from sagejs.ffi.igraph import canonical_permutation",
+    "from sagejs.ffi.flint import nmod_poly_mul",
+    "labels = [99] * 6",
+    "edges = [0,1,1,2,2,3,3,4,4,5,5,0]",
+    "print(canonical_permutation(labels, edges, 6, 12, False), labels)",
+    "product = [99] * 5",
+    "print(nmod_poly_mul(product, [1,2,3], [4,5,6], 5, 3, 3, 101), product)",
+    "",
+  ].join("\n"));
+  assert.equal(
+    output.trim(),
+    "True [3, 4, 2, 5, 1, 0]\nTrue [4, 13, 28, 27, 18]",
   );
 });
 
@@ -468,6 +506,79 @@ test("compiled packed matrix FFI agrees with fallback and supports aliasing", as
     );
     assert.deepEqual(Array.from(failedOutput), [9n, 9n, 9n, 9n]);
     assert.deepEqual(module.flint_nmod_inverse.effects.externalWrites, ["output"]);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test("generic packed slices compile igraph and FLINT without symbol intrinsics", async () => {
+  const codeGenerator = readFileSync(
+    join(root, "tools", "native-kernel", "ffi-codegen.cjs"), "utf8",
+  );
+  assert.doesNotMatch(codeGenerator,
+    /sagejs_igraph_canonical_permutation_packed|sagejs_flint_nmod_poly_mul_packed/);
+  for (const sourcePath of [igraphCanonicalWitness, polynomialWitness]) {
+    const source = readFileSync(sourcePath, "utf8");
+    const ir = await lowerSource(source, sourcePath);
+    const operation = ir.functions[0].body.find((item) => item.kind === "ffi.call");
+    assert.equal(operation.foreign.function.call_plan.schema,
+      "sagejs.ffi/call-plan-v1");
+    assert.equal(operation.foreign.function.call_plan.arguments[0]
+      .lowering.adapter, "packed_slice");
+    const core = generateHostCore(ir);
+    assert.equal(core.audit.hostCallbacks, 0);
+    assert.match(core.source, /unable to stage FFI output/);
+    assert.match(core.source, /memcpy\(/);
+    assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/);
+  }
+});
+
+test("compiled packed slices agree with fallbacks and commit outputs transactionally", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-slices-"));
+  try {
+    const graphResult = await compileKernel({
+      sourcePath: igraphCanonicalWitness,
+      cacheRoot: join(temporary, "graph"),
+    });
+    const graph = require(graphResult.modulePath);
+    const edges = graph.createUInt64Buffer([
+      0n, 1n, 1n, 2n, 2n, 3n, 3n, 4n, 4n, 5n, 5n, 0n,
+    ]);
+    const labels = graph.createUInt64Buffer(6);
+    assert.equal(graph.igraph_canonical_labels(labels, edges, 6n, 12n, false), true);
+    const dynamicLabels = [0n, 0n, 0n, 0n, 0n, 0n];
+    assert.equal(graph.igraph_canonical_labels.javascript(
+      dynamicLabels, Array.from(edges), 6n, 12n, false,
+    ), true);
+    assert.deepEqual(Array.from(labels), dynamicLabels);
+    const failedLabels = graph.createUInt64Buffer([
+      91n, 92n, 93n, 94n, 95n, 96n,
+    ]);
+    const oddEdges = graph.createUInt64Buffer([0n, 1n, 2n]);
+    assert.throws(() => graph.igraph_canonical_labels(
+      failedLabels, oddEdges, 6n, 3n, false,
+    ), /canonical labeling failed/);
+    assert.deepEqual(Array.from(failedLabels), [91n, 92n, 93n, 94n, 95n, 96n]);
+
+    const polynomialResult = await compileKernel({
+      sourcePath: polynomialWitness,
+      cacheRoot: join(temporary, "flint"),
+    });
+    const polynomial = require(polynomialResult.modulePath);
+    const left = polynomial.createUInt64Buffer([1n, 2n, 3n]);
+    const right = polynomial.createUInt64Buffer([4n, 5n, 6n]);
+    const product = polynomial.createUInt64Buffer(5);
+    assert.equal(polynomial.flint_nmod_polynomial_product(
+      product, left, right, 5n, 3n, 3n, 101n,
+    ), true);
+    assert.deepEqual(Array.from(product), [4n, 13n, 28n, 27n, 18n]);
+    const failedProduct = polynomial.createUInt64Buffer([
+      81n, 82n, 83n, 84n,
+    ]);
+    assert.throws(() => polynomial.flint_nmod_polynomial_product(
+      failedProduct, left, right, 4n, 3n, 3n, 101n,
+    ), /invalid packed polynomial multiplication/);
+    assert.deepEqual(Array.from(failedProduct), [81n, 82n, 83n, 84n]);
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }

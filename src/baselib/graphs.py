@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import Any, Iterator, Sequence
 
 import sagejs.runtime as runtime
+from sagejs.ffi.igraph import canonical_permutation as _canonical_permutation
 
 
 _PLOTLY_MIME = 'application/vnd.plotly.v1+json'
@@ -1859,10 +1860,17 @@ class GenericGraph:
             backend = self._native_simple_backend()
             if backend is not None:
                 try:
-                    native_function = runtime.reflect.get(
-                        backend, 'canonicalPermutation')
-                    permutation = list(runtime.reflect.apply(
-                        native_function, backend, [self._native_data()]))
+                    packed_edges = []
+                    for edge in self._edges:
+                        packed_edges.extend([edge.source, edge.target])
+                    permutation = [0] * self.order()
+                    _canonical_permutation(
+                        permutation,
+                        packed_edges,
+                        self.order(),
+                        len(packed_edges),
+                        self._directed,
+                    )
                     answer = self._new(
                         loops=self._loops, multiedges=self._multiedges,
                         weighted=self._weighted)

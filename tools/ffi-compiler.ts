@@ -9,6 +9,7 @@ import { dirname, relative } from "node:path";
 const declarations = require("../../tools/ffi/declarations.cjs") as {
   generatePythonModule(declaration: FfiDeclaration): string;
   generatedModulePath(root: string, declaration: FfiDeclaration): string;
+  generatedModulePaths(root: string, declaration: FfiDeclaration): string[];
   loadRegistry(): FfiRegistry;
 };
 const boundaryAudit = require("../../tools/ffi/boundary-audit.cjs") as {
@@ -43,6 +44,11 @@ interface FfiDeclaration {
   resources: Array<Record<string, unknown>>;
   ownershipGraph: Array<Record<string, unknown>>;
   functions: FfiFunction[];
+  abiCatalog: {
+    schema: string;
+    filename: string;
+    hash: string;
+  };
 }
 
 interface FfiRegistry {
@@ -70,6 +76,11 @@ function publicDescription(root: string, declaration: FfiDeclaration) {
     identity: declaration.identity,
     declaration: relative(root, declaration.filename),
     library: declaration.library,
+    abi_catalog: {
+      schema: declaration.abiCatalog.schema,
+      declaration: relative(root, declaration.abiCatalog.filename),
+      hash: declaration.abiCatalog.hash,
+    },
     resources: declaration.resources,
     ownership_graph: declaration.ownershipGraph,
     functions: declaration.functions,
@@ -78,15 +89,18 @@ function publicDescription(root: string, declaration: FfiDeclaration) {
 
 function checkGenerated(registry: FfiRegistry, libraries: FfiDeclaration[]) {
   for (const declaration of libraries) {
-    const filename = declarations.generatedModulePath(registry.root, declaration);
     const expected = declarations.generatePythonModule(declaration);
-    if (!existsSync(filename)) {
-      throw new Error(`generated FFI module is missing: ${filename}`);
-    }
-    if (readFileSync(filename, "utf8") !== expected) {
-      throw new Error(
-        `generated FFI module is stale: ${filename}; run sagejs ffi generate`,
-      );
+    for (const filename of declarations.generatedModulePaths(
+      registry.root, declaration,
+    )) {
+      if (!existsSync(filename)) {
+        throw new Error(`generated FFI module is missing: ${filename}`);
+      }
+      if (readFileSync(filename, "utf8") !== expected) {
+        throw new Error(
+          `generated FFI module is stale: ${filename}; run sagejs ffi generate`,
+        );
+      }
     }
   }
 }
@@ -159,10 +173,13 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
   }
   if (action === "generate") {
     for (const declaration of libraries) {
-      const filename = declarations.generatedModulePath(registry.root, declaration);
-      mkdirSync(dirname(filename), { recursive: true });
-      writeFileSync(filename, declarations.generatePythonModule(declaration));
-      process.stdout.write(`${relative(registry.root, filename)}\n`);
+      for (const filename of declarations.generatedModulePaths(
+        registry.root, declaration,
+      )) {
+        mkdirSync(dirname(filename), { recursive: true });
+        writeFileSync(filename, declarations.generatePythonModule(declaration));
+        process.stdout.write(`${relative(registry.root, filename)}\n`);
+      }
     }
     return;
   }

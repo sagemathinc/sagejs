@@ -52,11 +52,22 @@ function resourceForFunctionType(fn, type) {
   );
 }
 
+function nativeArguments(fn) {
+  return fn.call_plan.arguments.map((argument) => ({
+    source: argument.source,
+    abi_type: argument.abi_type,
+    direction: argument.direction,
+    adapter: argument.lowering.kind === "adapter"
+      ? argument.lowering.fields : null,
+  }));
+}
+
 function emitResourceCall(operation, context, indent) {
   const fn = operation.foreign.function;
   const native = fn.native;
+  const callArguments = nativeArguments(fn);
   const returned = resourceForType(operation, fn.signature.return_type);
-  const args = native.arguments.map((argument) => {
+  const args = callArguments.map((argument) => {
     if (argument.source === "result") return context.result(operation.target);
     const source = argumentBySource(operation, argument.source);
     const resource = resourceForType(operation, source.type);
@@ -113,15 +124,17 @@ function usesResource(operation) {
 }
 
 function emitFmpzCall(operation, value, resultValue, indent, tagged) {
-  const native = operation.foreign.function.native;
+  const fn = operation.foreign.function;
+  const native = fn.native;
   const prefix = `sagejs_ffi_${cName(operation.target)}`;
   const declarations = [];
   const setup = [];
   const cleanup = [];
   const callArguments = [];
   let resultVariable;
-  for (let index = 0; index < native.arguments.length; index += 1) {
-    const argument = native.arguments[index];
+  const arguments_ = nativeArguments(fn);
+  for (let index = 0; index < arguments_.length; index += 1) {
+    const argument = arguments_[index];
     if (argument.abi_type !== "fmpz_t") {
       const source = argumentBySource(operation, argument.source);
       if (argument.abi_type === "ulong" || argument.abi_type === "uint64_t") {
@@ -176,8 +189,9 @@ function emitFmpzCall(operation, value, resultValue, indent, tagged) {
 }
 
 function emitDirectCall(operation, value, resultValue, indent) {
-  const native = operation.foreign.function.native;
-  const args = native.arguments.map((argument) => {
+  const fn = operation.foreign.function;
+  const native = fn.native;
+  const args = nativeArguments(fn).map((argument) => {
     const source = argumentBySource(operation, argument.source);
     if (argument.abi_type === "ulong" || argument.abi_type === "uint64_t") {
       return `(${argument.abi_type}) ${value(source.name)}`;
@@ -192,11 +206,13 @@ function emitDirectCall(operation, value, resultValue, indent) {
 }
 
 function emitPackedNmodCall(operation, context, indent) {
-  const native = operation.foreign.function.native;
-  const adapters = native.arguments.filter((argument) =>
+  const fn = operation.foreign.function;
+  const native = fn.native;
+  const arguments_ = nativeArguments(fn);
+  const adapters = arguments_.filter((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   );
-  if (adapters.length !== native.arguments.length) {
+  if (adapters.length !== arguments_.length) {
     throw new Error(
       `${operation.foreign.declarationId} mixes packed matrices and direct arguments`,
     );
@@ -305,17 +321,122 @@ function emitPackedNmodCall(operation, context, indent) {
   ].join("\n");
 }
 
+function emitPackedSliceCall(operation, context, indent) {
+  const fn = operation.foreign.function;
+  const native = fn.native;
+  const arguments_ = nativeArguments(fn);
+  const declarations = [];
+  const validation = [];
+  const stages = [];
+  const copyOutput = [];
+  const cleanup = [];
+  const callArguments = [];
+  const parameter = (name) => context.value(argumentBySource(operation, name).name);
+
+  for (const [index, argument] of arguments_.entries()) {
+    if (argument.adapter?.kind === "packed_slice") {
+      const adapter = argument.adapter;
+      const data = parameter(adapter.data);
+      const length = parameter(adapter.length);
+      validation.push(
+        `${indent}    if (${length} > (uint64_t) SIZE_MAX ||`,
+        `${indent}        ${data}.length != (size_t) ${length})`,
+        `${indent}    {`,
+        `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+          `"packed slice length does not match its declaration");`,
+        `${indent}        ${context.failure}`,
+        `${indent}    }`,
+      );
+      if (adapter.access === "read") {
+        callArguments.push(`${data}.data`);
+      } else {
+        const stage = `sagejs_ffi_${cName(operation.target)}_${index}_stage`;
+        declarations.push(`${indent}    uint64_t *${stage} = NULL;`);
+        stages.push({ stage, length });
+        callArguments.push(stage);
+        copyOutput.push(
+          `${indent}    if (${length} != 0)`,
+          `${indent}        memcpy(${data}.data, ${stage}, ` +
+            `(size_t) ${length} * sizeof(uint64_t));`,
+        );
+        cleanup.unshift(`${indent}    free(${stage});`);
+      }
+      continue;
+    }
+    if (argument.adapter !== null) {
+      throw new Error(
+        `${operation.foreign.declarationId} mixes incompatible ABI adapters`,
+      );
+    }
+    const source = argumentBySource(operation, argument.source);
+    if (argument.abi_type === "ulong" || argument.abi_type === "uint64_t") {
+      callArguments.push(`(${argument.abi_type}) ${context.value(source.name)}`);
+    } else if (argument.abi_type === "int") {
+      callArguments.push(`(int) ${context.value(source.name)}`);
+    } else {
+      throw new Error(
+        `${operation.foreign.declarationId} uses unsupported mixed slice ABI ` +
+        `${argument.abi_type}`,
+      );
+    }
+  }
+  const raw = `sagejs_ffi_${cName(operation.target)}_result`;
+  declarations.push(`${indent}    ${native.return_type} ${raw};`);
+  const allocation = stages.flatMap(({ stage, length }) => [
+    `${indent}    if (${length} != 0)`,
+    `${indent}    {`,
+    `${indent}        ${stage} = (uint64_t *) calloc(` +
+      `(size_t) ${length}, sizeof(uint64_t));`,
+    `${indent}        if (${stage} == NULL)`,
+    `${indent}        {`,
+    ...stages.map((item) => `${indent}            free(${item.stage});`),
+    `${indent}            sagejs_native_status_set(status, ` +
+      `SAGEJS_NATIVE_ERROR, "unable to stage FFI output");`,
+    `${indent}            ${context.failure}`,
+    `${indent}        }`,
+    `${indent}    }`,
+  ]);
+  const checked = fn.errors.policy === "zero_is_error" ? [
+    `${indent}    if (${raw} == 0)`,
+    `${indent}    {`,
+    ...cleanup,
+    `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR, ` +
+      `${JSON.stringify(fn.errors.message)});`,
+    `${indent}        ${context.failure}`,
+    `${indent}    }`,
+  ] : [];
+  const result = native.return_type === "slong" ||
+      native.return_type === "ulong" || native.return_type === "uint64_t"
+    ? `${indent}    ${context.result(operation.target)} = (uint64_t) ${raw};`
+    : `${indent}    ${context.result(operation.target)} = ${raw} != 0;`;
+  return [
+    `${indent}{`,
+    ...declarations,
+    ...validation,
+    ...allocation,
+    `${indent}    ${raw} = ${native.symbol}(${callArguments.join(", ")});`,
+    ...checked,
+    ...copyOutput,
+    ...cleanup,
+    result,
+    `${indent}}`,
+  ].join("\n");
+}
+
 function usesFmpz(operation) {
-  return operation.foreign.function.native.arguments.some(
+  return nativeArguments(operation.foreign.function).some(
     (argument) => argument.abi_type === "fmpz_t",
   );
 }
 
 function emitExactForeignCall(operation, context, indent) {
   if (usesResource(operation)) return emitResourceCall(operation, context, indent);
-  if (operation.foreign.function.native.arguments.some((argument) =>
+  if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
+  if (nativeArguments(operation.foreign.function).some((argument) =>
+    argument.adapter?.kind === "packed_slice"
+  )) return emitPackedSliceCall(operation, context, indent);
   return usesFmpz(operation)
     ? emitFmpzCall(operation, context.value, context.result, indent, false)
     : emitDirectCall(operation, context.value, context.result, indent);
@@ -323,9 +444,12 @@ function emitExactForeignCall(operation, context, indent) {
 
 function emitTaggedForeignCall(operation, context, indent) {
   if (usesResource(operation)) return emitResourceCall(operation, context, indent);
-  if (operation.foreign.function.native.arguments.some((argument) =>
+  if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
+  if (nativeArguments(operation.foreign.function).some((argument) =>
+    argument.adapter?.kind === "packed_slice"
+  )) return emitPackedSliceCall(operation, context, indent);
   return usesFmpz(operation)
     ? emitFmpzCall(operation, context.value, context.result, indent, true)
     : emitDirectCall(operation, context.value, context.result, indent);
@@ -333,9 +457,12 @@ function emitTaggedForeignCall(operation, context, indent) {
 
 function emitWordForeignCall(operation, context, indent) {
   if (usesResource(operation)) return context.promote(operation, indent);
-  if (operation.foreign.function.native.arguments.some((argument) =>
+  if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
+  if (nativeArguments(operation.foreign.function).some((argument) =>
+    argument.adapter?.kind === "packed_slice"
+  )) return emitPackedSliceCall(operation, context, indent);
   if (usesFmpz(operation) ||
       operation.foreign.function.signature.return_type === "Integer") {
     return context.promote(operation, indent);
@@ -363,6 +490,12 @@ function javascriptForeignCall(operation, indent) {
         `resource:${foreign.declarationIdentity.split(":")[0]}:${resource.id}`;
     }),
     minimums: signature.parameters.map((parameter) => parameter.minimum ?? null),
+    constraints: foreign.function.call_plan.constraints.map((constraint) => ({
+      kind: constraint.kind,
+      buffer: constraint.parameter_names.indexOf(constraint.buffer),
+      dimensions: constraint.dimensions.map((name) =>
+        constraint.parameter_names.indexOf(name)),
+    })),
   };
   const resourceStack = metadata.returned !== null ||
     metadata.parameters.some((identity) => identity !== null)
@@ -448,6 +581,23 @@ function sagejsFfiCall(
     }
     throw new TypeError("invalid dynamic FFI argument for " + type);
   });
+  for (const constraint of resourceMetadata.constraints) {
+    if (constraint.kind !== "buffer_length" || constraint.buffer < 0 ||
+        constraint.dimensions.some((index) => index < 0)) {
+      throw new TypeError("invalid FFI call-plan constraint");
+    }
+    let expected = 1n;
+    for (const index of constraint.dimensions) {
+      if (typeof marshalled[index] !== "bigint") {
+        throw new TypeError("FFI call-plan dimension is not an integer");
+      }
+      expected *= marshalled[index];
+    }
+    if (BigInt(marshalled[constraint.buffer].length) !== expected) {
+      nativeRaise("ValueError",
+        "packed buffer length does not match its declared dimensions");
+    }
+  }
   const result = Reflect.apply(fn, library, marshalled);
   if (errors.policy === "zero_is_error" && result === false) {
     nativeRaise(errors.exception, errors.message);

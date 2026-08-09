@@ -171,7 +171,7 @@ def ρσ_documentation_registry():
 
 def ρσ_ffi_call(
     declaration_identity, package_name, export_name, values, parameter_types,
-    return_type, error_policy, error_exception, error_message
+    return_type, error_policy, error_exception, error_message, constraints
 ):
     """Marshal a checked declaration call to its ordinary dynamic backend."""
     return r"""%js (() => {
@@ -263,6 +263,35 @@ def ρσ_ffi_call(
                 `invalid dynamic FFI argument for ${parameter_type}`
             );
         });
+        for (const constraint of constraints) {
+            const [kind, buffer, dimensions, parameter_names] = constraint;
+            if (
+                kind !== "buffer_length"
+                || typeof buffer !== "string"
+                || !Array.isArray(dimensions)
+                || !Array.isArray(parameter_names)
+            ) {
+                throw new TypeError("invalid FFI call-plan constraint");
+            }
+            const buffer_index = parameter_types.length === 0 ? -1 :
+                parameter_names.indexOf(buffer);
+            if (buffer_index < 0) {
+                throw new TypeError("FFI call plan names an unknown buffer");
+            }
+            let expected = 1n;
+            for (const dimension of dimensions) {
+                const index = parameter_names.indexOf(dimension);
+                if (index < 0 || typeof marshalled[index] !== "bigint") {
+                    throw new TypeError("FFI call plan names an invalid dimension");
+                }
+                expected *= marshalled[index];
+            }
+            if (BigInt(marshalled[buffer_index].length) !== expected) {
+                throw new ValueError(
+                    "packed buffer length does not match its declared dimensions"
+                );
+            }
+        }
         const result = Reflect.apply(callable_value, backend, marshalled);
         if (error_policy === "zero_is_error" && result === false) {
             const exception_classes = {

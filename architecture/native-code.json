@@ -60,6 +60,13 @@
       "rationale": "WASI compatibility symbols required by the browser build."
     },
     {
+      "path": "packages/flint/include/sagejs/ffi_algorithms.h",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "native-compiler",
+      "rationale": "Host-neutral packed-slice adapter to mature FLINT polynomial algorithms for declaration-generated kernels."
+    },
+    {
       "path": "packages/flint/include/sagejs/native.h",
       "category": "public-abi",
       "review_status": "accepted",

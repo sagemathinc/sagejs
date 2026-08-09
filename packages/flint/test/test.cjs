@@ -1488,4 +1488,15 @@ assert.equal(
   true,
 );
 
+const packedProduct = Array(5).fill(99n);
+assert.equal(flint.ffiNmodPolyMul(
+  packedProduct, [1n, 2n, 3n], [4n, 5n, 6n], 5n, 3n, 3n, 101n,
+), true);
+assert.deepEqual(packedProduct, [4n, 13n, 28n, 27n, 18n]);
+const rejectedProduct = [91n, 92n, 93n, 94n];
+assert.equal(flint.ffiNmodPolyMul(
+  rejectedProduct, [1n, 2n, 3n], [4n, 5n, 6n], 4n, 3n, 3n, 101n,
+), false);
+assert.deepEqual(rejectedProduct, [91n, 92n, 93n, 94n]);
+
 });

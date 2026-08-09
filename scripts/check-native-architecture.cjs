@@ -296,14 +296,16 @@ function run() {
   );
   const generatedFfiModules = new Set();
   for (const declaration of ffi.libraries) {
-    const generated = ffiDeclarations.generatedModulePath(ROOT, declaration);
-    generatedFfiModules.add(resolve(generated));
-    if (!existsSync(generated) ||
-        readFileSync(generated, "utf8") !==
-          ffiDeclarations.generatePythonModule(declaration)) {
-      throw new Error(
-        `generated FFI module is missing or stale: ${relative(ROOT, generated)}`,
-      );
+    for (const generated of
+      ffiDeclarations.generatedModulePaths(ROOT, declaration)) {
+      generatedFfiModules.add(resolve(generated));
+      if (!existsSync(generated) ||
+          readFileSync(generated, "utf8") !==
+            ffiDeclarations.generatePythonModule(declaration)) {
+        throw new Error(
+          `generated FFI module is missing or stale: ${relative(ROOT, generated)}`,
+        );
+      }
     }
   }
   for (const filename of sourceFiles(join(ROOT, "src"), ".py")) {

@@ -187,9 +187,12 @@ function bindingGyp(ir, sourceBoundsChecked) {
   const foreignIncludes = Array.from(new Set(
     (ir.foreignLibraries || []).flatMap((library) => {
       const prefix = foreignPrefix(library);
-      return library.native.toolchain.include_dirs.map((directory) =>
-        join(prefix, directory)
-      );
+      return [
+        ...library.native.toolchain.source_include_dirs.map((directory) =>
+          join(root, directory)),
+        ...library.native.toolchain.include_dirs.map((directory) =>
+          join(prefix, directory)),
+      ];
     }),
   ));
   const usesForeignLibraries = foreignLibraries.length > 0;

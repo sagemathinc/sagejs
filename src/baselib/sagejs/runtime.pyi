@@ -220,6 +220,7 @@ def ffi_call(
     error_policy: str,
     error_exception: str | None,
     error_message: str | None,
+    constraints: list[Any],
 ) -> Any: ...
 def ffi_resource_create(
     declaration_identity: str,

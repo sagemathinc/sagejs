@@ -67,6 +67,51 @@ binding.ffiNmodMatInv = function ffiNmodMatInv(
   return true;
 };
 
+function ffiNmodPolynomial(coefficients, modulus) {
+  const x = binding.nmodPolyGen(modulus);
+  let result = binding.nmodPolyConstant(0n, modulus);
+  for (let index = coefficients.length - 1; index >= 0; index -= 1) {
+    result = binding.polyAdd(
+      binding.polyMul(result, x),
+      binding.nmodPolyConstant(coefficients[index], modulus),
+    );
+  }
+  return result;
+}
+
+/* A second substantial FLINT migration through the generic packed-slice ABI.
+ * The dynamic path deliberately uses existing safe polynomial objects as its
+ * differential oracle; native kernels call the packed host-neutral adapter. */
+binding.ffiNmodPolyMul = function ffiNmodPolyMul(
+  output, left, right, outputLengthValue, leftLengthValue, rightLengthValue,
+  modulusValue,
+) {
+  const outputLength = ffiDimension(outputLengthValue, "output_length");
+  const leftLength = ffiDimension(leftLengthValue, "left_length");
+  const rightLength = ffiDimension(rightLengthValue, "right_length");
+  const expected = leftLength === 0 || rightLength === 0
+    ? 0 : leftLength + rightLength - 1;
+  if (!Number.isSafeInteger(expected) || outputLength !== expected) return false;
+  ffiEntries(output, outputLength, "output");
+  const leftEntries = ffiEntries(left, leftLength, "left");
+  const rightEntries = ffiEntries(right, rightLength, "right");
+  const modulus = BigInt(modulusValue);
+  if (!binding.wordIsPrime(modulus)) return false;
+  const product = binding.polyMul(
+    ffiNmodPolynomial(leftEntries, modulus),
+    ffiNmodPolynomial(rightEntries, modulus),
+  );
+  const coefficients = binding.polyCoefficients(product);
+  const staged = Array.from({ length: outputLength }, (_, index) =>
+    BigInt(coefficients[index] ?? 0n));
+  for (let index = 0; index < outputLength; index += 1) {
+    if (!Reflect.set(output, String(index), staged[index])) {
+      throw new TypeError("output buffer is not writable");
+    }
+  }
+  return true;
+};
+
 /* Generated-resource adapters keep the public declaration surface independent
  * of the older high-level package naming.  Only the close adapter owns a
  * lifetime transition; borrowed queries never retain the handle.

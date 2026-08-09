@@ -11,6 +11,7 @@
   },
   "files": [
     "build/Release/sagejs_graph.node",
+    "include",
     "index.cjs",
     "README.md"
   ],

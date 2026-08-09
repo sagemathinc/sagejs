@@ -7,7 +7,7 @@ signature, concrete C ABI, ownership, effects, error policy, dynamic adapter,
 native link requirements, and supported targets for each callable function.
 
 The first declaration is [`ffi/flint.ffi.json`](ffi/flint.ffi.json). It
-exports seven deliberately different witnesses:
+exports eight deliberately different witnesses:
 
 - `dirichlet_group(uint64) -> DirichletGroup`, a generated opaque owned
   resource with explicit `close`, context-manager support, and finalization;
@@ -22,11 +22,16 @@ exports seven deliberately different witnesses:
 - `nmod_mat_inv(output, source, size, modulus) -> bool`, whose caller-owned
   output is copied back only after success and whose zero status becomes
   `ValueError("matrix is singular")`. Input and output may alias safely.
+- `nmod_poly_mul(output, left, right, ...) -> bool`, a substantial mature
+  FLINT algorithm reached through reusable packed-slice declarations.
 
 [`ffi/igraph.ffi.json`](ffi/igraph.ffi.json) is the first independent library
 adapter. It declares an owned `IGraph`, a borrowed `IGraphEdges` view, and an
 acyclic ownership edge from the view to the graph. This is intentionally a
-different native package and toolchain from FLINT.
+different native package and toolchain from FLINT. Its packed canonical
+labeling operation uses the same slice adapter as FLINT polynomial
+multiplication, proving that the adapter is an ABI facility rather than a
+compiler branch keyed by library or symbol.
 
 ## One declaration, two execution paths
 
@@ -64,8 +69,9 @@ to Node, JavaScript, or Python. For `fmpz_t`, the compiler generates scoped
 initialization, GMP/FLINT conversion, and cleanup from the ABI types. This is
 generic type-adapter lowering, not a special case for a function named `gcd`.
 
-Every generated artifact includes the declaration hash in its cache identity.
-Changing an ABI, effect, ownership rule, or link dependency invalidates it.
+Every generated artifact includes the declaration and central ABI-catalog
+hashes in its cache identity. Changing an ABI type, adapter, effect, ownership
+rule, or link dependency invalidates it.
 
 ## Commands
 
@@ -97,16 +103,27 @@ N-API exports, runtime intrinsics, and visible Wasm exports. A new boundary
 fails CI until `sagejs ffi audit --write` is run and its complete diff is
 reviewed. Regeneration is an explicit acknowledgement, not an allowlist bypass.
 
-## Version 4 safety envelope
+## Version 5 declarative ABI and safety envelope
 
-Version 4 supports `uint64`, `bool`, exact `Integer`, and borrowed mutable or
+[`ffi/abi-types.json`](ffi/abi-types.json) is the checked catalog of semantic
+types, C ABI representations, and reusable adapters. Declarations can add a
+new function using cataloged representations without editing the compiler.
+Every validated function receives a normalized `sagejs.ffi/call-plan-v1`,
+visible in `sagejs ffi explain --json`, containing ordered ABI arguments,
+lowering kinds, shape constraints, checked-result policy, and transactional
+writes. Dynamic fallback generation and the isolated C core consume the same
+plan.
+
+Version 5 supports `uint64`, `bool`, exact `Integer`, and borrowed mutable or
 immutable `UInt64Buffer` semantics. In addition to scalar `ulong`, `slong`,
 `int`, and `fmpz_t` adapters, a reusable `packed_nmod_matrix` adapter declares
 the data, shape, modulus, access, and aliasing used to initialize and clear a
-FLINT matrix. The generic `zero_is_error` policy checks C status before any
-output copyback. Calls explicitly declare purity, writes, determinism,
-thread-safety, allocation, and possible exceptions. Native and dynamic
-implementations remain mandatory.
+FLINT matrix. A reusable `packed_slice` adapter relates typed storage to an
+explicit length and stages mutable output in temporary native memory. The
+generic `zero_is_error` policy checks C status before any output copyback, so
+failure is transactional. Calls explicitly declare purity, writes,
+determinism, thread-safety, allocation, and possible exceptions. Native and
+dynamic implementations remain mandatory.
 
 A generated opaque owned-resource declaration names
 its semantic Python class, hidden ABI type, dynamic close export, native clear
@@ -150,7 +167,7 @@ This narrow surface gives useful safety without attempting to recreate Rust:
 - dynamic and native results are tested differentially;
 - Windows and Wasm availability are explicit target properties.
 
-Version 4 adds borrowed views and explicit ownership graphs. Each borrowed
+Borrowed views and explicit ownership graphs remain part of the envelope. Each borrowed
 view names one resource owner; schema validation rejects missing owners and
 cycles and computes the owned root shown by `sagejs ffi explain`. Dynamic
 views retain their owner strongly and consult root state on every borrow, so
@@ -159,7 +176,7 @@ closing the owner immediately invalidates all descendants. A view has no
 emits view ABI storage without cleanup and keeps the lexical owned root live
 until every exit has run its generated destructor.
 
-The second declaration also makes native toolchain roots per-library data.
+Declarations also make native toolchain roots and source headers per-library data.
 `SAGEJS_FLINT_PREFIX` and `SAGEJS_GRAPH_PREFIX` can independently select
 installed artifacts; headers and archives are never accidentally resolved
 through FLINT's prefix merely because FLINT was the first adapter.
@@ -171,8 +188,8 @@ borrow, and use-after-close schedules. Windows reports this sanitizer job as
 an explicit unavailable capability while retaining ordinary and native
 lifecycle coverage.
 
-Future revisions should add generated C++ exception shims, additional typed
-slices, nullable results, callbacks with a
+Future revisions should add generated C++ exception shims, nullable results,
+more element and record layouts, callbacks with a
 clearly marked host-effect boundary, and richer status translation. Those
 features extend the schema and adapter library; they must not become ad hoc
 compiler branches for individual symbols.

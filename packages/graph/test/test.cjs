@@ -53,6 +53,20 @@ test("canonical labeling is a permutation", () => {
     Array.from({ length: 12 }, (_, index) => index));
 });
 
+test("declarative packed canonical labeling commits a uint64 output", () => {
+  const graphInput = cycle(12);
+  const output = Array(12).fill(99n);
+  assert.equal(graph.ffiCanonicalPermutationPacked(
+    output,
+    graphInput.edges.map(BigInt),
+    12n,
+    BigInt(graphInput.edges.length),
+    false,
+  ), true);
+  assert.deepEqual([...output].sort((a, b) => Number(a - b)),
+    Array.from({ length: 12 }, (_, index) => BigInt(index)));
+});
+
 test("native layouts return finite coordinates", () => {
   for (const algorithm of ["fr", "kk", "circle", "grid"]) {
     const coordinates = graph.layout(cycle(8), algorithm);
