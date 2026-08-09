@@ -20,6 +20,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_arraylike
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
+# globals: ρσ_ffi_call
 # globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
 # globals: ρσ_non_exception_throw
 # globals: ρσ_float, ρσ_int, ρσ_list_constructor, ρσ_list_contains, ρσ_str
@@ -245,6 +246,7 @@ factor_pair = ρσ_factor_pair
 finalization_registry_class = FinalizationRegistry
 float_builtin = ρσ_float
 flint_backend = ρσ_flint_backend
+ffi_call = ρσ_ffi_call
 global_object = globalThis
 int_builtin = ρσ_int
 bool_builtin = ρσ_bool

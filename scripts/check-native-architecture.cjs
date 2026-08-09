@@ -14,6 +14,7 @@ const ROOT = resolve(__dirname, "..");
 const CODE_MANIFEST = join(ROOT, "architecture", "native-code.json");
 const AUDIT_MANIFEST = join(ROOT, "architecture", "native-audit.json");
 const KERNEL_MANIFEST = join(ROOT, "architecture", "native-kernels.json");
+const ffiDeclarations = require("../tools/ffi/declarations.cjs");
 
 function readJson(filename) {
   return JSON.parse(readFileSync(filename, "utf8"));
@@ -288,6 +289,30 @@ function run() {
   const code = validateNativeCode(readJson(CODE_MANIFEST));
   const audit = validateNativeAudit(readJson(AUDIT_MANIFEST), code);
   const kernels = validateKernelRegistry(readJson(KERNEL_MANIFEST));
+  const ffi = ffiDeclarations.loadRegistry({ root: ROOT });
+  const generatedFfiModules = new Set();
+  for (const declaration of ffi.libraries) {
+    const generated = ffiDeclarations.generatedModulePath(ROOT, declaration);
+    generatedFfiModules.add(resolve(generated));
+    if (!existsSync(generated) ||
+        readFileSync(generated, "utf8") !==
+          ffiDeclarations.generatePythonModule(declaration)) {
+      throw new Error(
+        `generated FFI module is missing or stale: ${relative(ROOT, generated)}`,
+      );
+    }
+  }
+  for (const filename of sourceFiles(join(ROOT, "src"), ".py")) {
+    if (
+      readFileSync(filename, "utf8").includes("_runtime.ffi_call(") &&
+      !generatedFfiModules.has(resolve(filename))
+    ) {
+      throw new Error(
+        `raw dynamic FFI call outside a generated safe module: ` +
+        `${relative(ROOT, filename)}`,
+      );
+    }
+  }
   console.log(
     `Native architecture is classified: ${code.entries.length} native files, ` +
     `${audit.entries.length} with completed focused audits.`,
@@ -295,6 +320,10 @@ function run() {
   console.log(
     `Source-transparent compiler witness set is valid: ` +
     `${kernels.kernels.length} kernel families.`,
+  );
+  console.log(
+    `Explicit FFI registry is valid: ${ffi.libraries.length} libraries, ` +
+    `${ffi.libraries.reduce((sum, item) => sum + item.functions.length, 0)} functions.`,
   );
 }
 

@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "library": {
+    "id": "flint",
+    "python_module": "sagejs.ffi.flint",
+    "dynamic": {
+      "package": "@sagemath/sagejs-flint"
+    },
+    "native": {
+      "headers": [
+        "flint/fmpz.h",
+        "flint/ulong_extras.h"
+      ],
+      "link": {
+        "unix": ["libflint.a", "libopenblas.a"],
+        "windows": ["flint.lib", "openblas.lib", "pthreadVC3.lib"]
+      },
+      "dependencies": ["GMP", "OpenBLAS", "pthreads"]
+    }
+  },
+  "functions": [
+    {
+      "id": "n_is_prime",
+      "python_name": "n_is_prime",
+      "signature": {
+        "parameters": [
+          {"name": "value", "type": "uint64", "ownership": "value"}
+        ],
+        "return_type": "bool",
+        "return_ownership": "value"
+      },
+      "dynamic": {
+        "export": "wordIsPrime"
+      },
+      "native": {
+        "symbol": "n_is_prime",
+        "return_type": "int",
+        "arguments": [
+          {"source": "value", "abi_type": "ulong", "direction": "in"}
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": false,
+        "may_raise": []
+      },
+      "errors": {"policy": "none"},
+      "targets": {"dynamic": true, "native": true, "wasm": true}
+    },
+    {
+      "id": "fmpz_gcd",
+      "python_name": "fmpz_gcd",
+      "signature": {
+        "parameters": [
+          {"name": "left", "type": "Integer", "ownership": "borrowed"},
+          {"name": "right", "type": "Integer", "ownership": "borrowed"}
+        ],
+        "return_type": "Integer",
+        "return_ownership": "owned"
+      },
+      "dynamic": {
+        "export": "gcd"
+      },
+      "native": {
+        "symbol": "fmpz_gcd",
+        "return_type": "void",
+        "arguments": [
+          {"source": "result", "abi_type": "fmpz_t", "direction": "out"},
+          {"source": "left", "abi_type": "fmpz_t", "direction": "in"},
+          {"source": "right", "abi_type": "fmpz_t", "direction": "in"}
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": []
+      },
+      "errors": {"policy": "none"},
+      "targets": {"dynamic": true, "native": true, "wasm": true}
+    }
+  ]
+}

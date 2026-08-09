@@ -12,6 +12,7 @@ const {
   wordName,
   wordType,
 } = require("./word-backend.cjs");
+const { emitTaggedForeignCall } = require("./ffi-codegen.cjs");
 
 const INT64_MIN = -(1n << 63n);
 const INT64_MAX = (1n << 63n) - 1n;
@@ -417,6 +418,12 @@ function emitTaggedOperation(operation, context, indent) {
         `${args.length ? `, ${args.join(", ")}` : ""}))`,
       `${indent}    goto fail;`,
     ].join("\n");
+  }
+  if (operation.kind === "ffi.call") {
+    return emitTaggedForeignCall(operation, {
+      value: (name) => taggedValue(name, context),
+      result: (name) => taggedValue(name, context),
+    }, indent);
   }
   throw new Error(`unsupported tagged C IR operation ${operation.kind}`);
 }

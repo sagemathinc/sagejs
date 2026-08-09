@@ -266,13 +266,22 @@ function copyKind(type) {
     : `${type.toLowerCase()}.copy`;
 }
 
-function createContext(fn, signature, signatures, filename, decorated) {
+function createContext(
+  fn,
+  signature,
+  signatures,
+  foreignFunctions,
+  filename,
+  decorated,
+) {
   const variables = new Map(
     signature.params.map((param) => [param.name, param.type]),
   );
   return {
     decorated,
     dependencies: new Set(),
+    foreignDependencies: new Set(),
+    foreignFunctions,
     filename,
     functionName: signature.name,
     initialized: new Set(signature.params.map((param) => param.name)),
@@ -365,6 +374,49 @@ function lowerCall(node, context, operations) {
   );
   const name = node.expression.name;
   const args = array(node.args);
+
+  // An explicit module import shadows a builtin with the same local name,
+  // exactly as it does in Python. The declaration identity, rather than that
+  // local spelling, determines the native operation.
+  const foreign = context.foreignFunctions.get(name);
+  if (foreign !== undefined) {
+    const signature = foreign.function.signature;
+    expect(
+      context,
+      node,
+      foreign.function.targets.native,
+      `${foreign.declarationId} is not available to native kernels`,
+    );
+    expect(
+      context,
+      node,
+      args.length === signature.parameters.length,
+      `${name} expects ${signature.parameters.length} arguments, got ${args.length}`,
+    );
+    const lowered = signature.parameters.map((param, index) => {
+      let value = lowerExpression(args[index], context, operations);
+      if (param.type === "Integer") {
+        value = coerceInteger(value, context, args[index], operations);
+      }
+      expect(
+        context,
+        args[index],
+        value.type === param.type,
+        `${name} argument ${index + 1} expects ${param.type}, got ${value.type}`,
+      );
+      return value;
+    });
+    const target = temporary(context, node, signature.return_type);
+    operations.push({
+      kind: "ffi.call",
+      target,
+      arguments: lowered,
+      returnType: signature.return_type,
+      foreign,
+    });
+    context.foreignDependencies.add(foreign.declarationIdentity);
+    return { name: target, type: signature.return_type };
+  }
 
   if (name === "len") {
     expect(context, node, args.length === 1, "len() requires one argument");
@@ -1298,11 +1350,19 @@ function containsReturn(statements) {
   return false;
 }
 
-function lowerIntegerFunction(fn, signature, signatures, filename, decorated) {
+function lowerIntegerFunction(
+  fn,
+  signature,
+  signatures,
+  foreignFunctions,
+  filename,
+  decorated,
+) {
   const context = createContext(
     fn,
     signature,
     signatures,
+    foreignFunctions,
     filename,
     decorated,
   );
@@ -1318,6 +1378,7 @@ function lowerIntegerFunction(fn, signature, signatures, filename, decorated) {
     locals: Array.from(context.locals, ([name, type]) => ({ name, type })),
     body,
     dependencies: Array.from(context.dependencies).sort(),
+    foreignDependencies: Array.from(context.foreignDependencies).sort(),
   };
 }
 

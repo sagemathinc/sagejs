@@ -155,6 +155,10 @@ function printExplanation(result: NativeExplainResult): void {
       `${(fn.hostIsolation as { eligible: boolean }).eligible ? "yes" : "no"}\n` +
       `  dependencies: ${(fn.dependencies as string[]).join(", ") || "none"}\n`,
     );
+    const foreign = (fn.foreignDependencies as string[] | undefined) || [];
+    if (foreign.length > 0) {
+      process.stdout.write(`  foreign calls: ${foreign.join(", ")}\n`);
+    }
     const optimizations = fn.optimizations as Record<string, number>;
     if (Object.keys(optimizations).length > 0) {
       process.stdout.write(

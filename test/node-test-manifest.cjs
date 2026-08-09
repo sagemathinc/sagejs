@@ -31,6 +31,7 @@ const integration = [
   "test/coverage-graphs.cjs",
   "test/native-launcher.cjs",
   "test/cli-smoke.cjs",
+  "test/ffi.cjs",
   "test/math-module.cjs",
   "test/datetime-module.cjs",
   "test/calendar-module.cjs",

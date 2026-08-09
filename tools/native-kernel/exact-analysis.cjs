@@ -49,6 +49,7 @@ function operationInputs(operation) {
     case "integer.buffer.set":
       return [operation.buffer, operation.index, operation.value];
     case "native.call":
+    case "ffi.call":
       return operation.arguments.map((argument) => argument.name);
     case "return":
       return operation.values || [operation.value];
@@ -267,7 +268,9 @@ function executionProfile(fn) {
       ) {
         profile.arithmeticOperations += 1;
       }
-      if (operation.kind === "native.call") profile.nativeCalls += 1;
+      if (operation.kind === "native.call" || operation.kind === "ffi.call") {
+        profile.nativeCalls += 1;
+      }
       if (operation.kind === "integer.constant") {
         profile.maximumConstantBits = Math.max(
           profile.maximumConstantBits,
@@ -309,6 +312,11 @@ function recursiveFunctions(functions) {
 function localEffects(fn) {
   const mayRaise = new Set();
   let localWrites = 0;
+  let foreignPure = true;
+  let foreignDeterministic = true;
+  let foreignReplaySafe = true;
+  let foreignThreadSafe = true;
+  let foreignMayAllocate = false;
   walkStatements(fn.body, {
     loop() {},
     operation(operation) {
@@ -341,6 +349,16 @@ function localEffects(fn) {
         mayRaise.add("OverflowError");
       }
       if (operation.kind === "raise") mayRaise.add(operation.errorType);
+      if (operation.kind === "ffi.call") {
+        const effects = operation.foreign.function.effects;
+        foreignPure = foreignPure && effects.pure;
+        foreignDeterministic = foreignDeterministic && effects.deterministic;
+        foreignReplaySafe = foreignReplaySafe && effects.pure &&
+          effects.deterministic;
+        foreignThreadSafe = foreignThreadSafe && effects.thread_safe;
+        foreignMayAllocate = foreignMayAllocate || effects.may_allocate;
+        for (const error of effects.may_raise) mayRaise.add(error);
+      }
     },
     read() {},
     write() {
@@ -348,15 +366,23 @@ function localEffects(fn) {
     },
   });
   const externalWrites = bufferWrites(fn, new Map());
-  return {
-    pure: externalWrites.length === 0,
-    deterministic: true,
+  const result = {
+    pure: foreignPure && externalWrites.length === 0,
+    deterministic: foreignDeterministic,
+    threadSafe: foreignThreadSafe,
+    mayAllocate: foreignMayAllocate,
     localWrites,
     externalWrites,
-    calls: [...fn.dependencies],
+    calls: [...fn.dependencies, ...(fn.foreignDependencies || [])],
     mayRaise: Array.from(mayRaise).filter(Boolean).sort(),
-    replaySafe: externalWrites.length === 0,
+    replaySafe: foreignReplaySafe && externalWrites.length === 0,
   };
+  result.directPure = result.pure;
+  result.directDeterministic = result.deterministic;
+  result.directThreadSafe = result.threadSafe;
+  result.directMayAllocate = result.mayAllocate;
+  result.directReplaySafe = result.replaySafe;
+  return result;
 }
 
 function bufferWrites(fn, dependencyEffects) {
@@ -457,13 +483,39 @@ function effectAnalyses(functions) {
       const externalWrites = bufferWrites(fn, effects);
       if (externalWrites.join("\0") !== effect.externalWrites.join("\0")) {
         effect.externalWrites = externalWrites;
-        effect.pure = externalWrites.length === 0;
-        effect.replaySafe = externalWrites.length === 0;
+        effect.pure = effect.pure && externalWrites.length === 0;
+        effect.replaySafe = effect.replaySafe && externalWrites.length === 0;
         changed = true;
+      }
+      const dependencies = fn.dependencies
+        .map((dependency) => effects.get(dependency))
+        .filter(Boolean);
+      const nextFlags = {
+        pure: effect.directPure && effect.externalWrites.length === 0 &&
+          dependencies.every((dependency) => dependency.pure),
+        deterministic: effect.directDeterministic &&
+          dependencies.every((dependency) => dependency.deterministic),
+        threadSafe: effect.directThreadSafe &&
+          dependencies.every((dependency) => dependency.threadSafe),
+        mayAllocate: effect.directMayAllocate ||
+          dependencies.some((dependency) => dependency.mayAllocate),
+        replaySafe: effect.directReplaySafe && effect.externalWrites.length === 0 &&
+          dependencies.every((dependency) => dependency.replaySafe),
+      };
+      for (const [key, value] of Object.entries(nextFlags)) {
+        if (effect[key] !== value) {
+          effect[key] = value;
+          changed = true;
+        }
       }
     }
   }
-  for (const effect of effects.values()) delete effect.params;
+  for (const effect of effects.values()) {
+    for (const key of [
+      "params", "directPure", "directDeterministic", "directThreadSafe",
+      "directMayAllocate", "directReplaySafe",
+    ]) delete effect[key];
+  }
   return effects;
 }
 
@@ -478,6 +530,7 @@ function taggedIntegerProof(fn, effects) {
         operations.add(operation.kind.replace("integer.", "tagged-"));
       }
       if (operation.kind === "native.call") operations.add("direct-tagged-call");
+      if (operation.kind === "ffi.call") operations.add("direct-ffi-call");
     },
     read() {},
     write() {},
@@ -495,7 +548,7 @@ function taggedIntegerProof(fn, effects) {
     calleeSpeculation: effects.replaySafe
       ? "word-prefix-may-retry-at-direct-call-boundary"
       : "disabled",
-    directCalls: [...fn.dependencies],
+    directCalls: [...fn.dependencies, ...(fn.foreignDependencies || [])],
     effectsChecked: effects.pure && effects.deterministic &&
       effects.externalWrites.length === 0,
     proof:
@@ -504,6 +557,12 @@ function taggedIntegerProof(fn, effects) {
 }
 
 function backendPolicy(fn, profile, recursive) {
+  if ((fn.foreignDependencies || []).length > 0) {
+    return {
+      kind: "tagged",
+      reason: "an explicitly declared FFI call executes in the isolated native core",
+    };
+  }
   if (recursive) {
     return {
       kind: "tagged",

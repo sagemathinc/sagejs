@@ -164,6 +164,7 @@ function print_top_level_usage() {
   console.log("  docs            search and export installed API documentation");
   console.log("  pip             install pure-Python packages for Sage.js");
   console.log("  pytest          run installed pytest with Sage.js Python");
+  console.log("  ffi             validate and inspect foreign-library declarations");
   console.log("  native          inspect and compile typed @native functions");
   console.log("  compile         compile Sage.js source to JavaScript");
   console.log("  repl            start a REPL with detailed options");
@@ -630,6 +631,23 @@ Install the Jupyter kernelspec under Jupyter's current sys.prefix.
 opt("prefix", "", "string", "", function () {
   /*
 Install the Jupyter kernelspec under the given prefix.
+*/
+});
+
+create_group(
+  "ffi",
+  "<check|explain|generate> [library]",
+  function () {
+    /*
+Validate, inspect, or generate explicit safe foreign-library interfaces.
+Declarations are the shared source of truth for dynamic and @native calls.
+*/
+  }
+);
+
+opt("json", "", "bool", false, function () {
+  /*
+Write structured JSON.
 */
 });
 

@@ -9,7 +9,8 @@ has no source-level spelling for.
 # globals: AlgebraicExtensionFunctor, Atomics, Date, Element, Factorization
 # globals: FiniteFieldElement, Int32Array, Number, Parent, PolynomialRing
 # globals: QQ, QuotientFunctor
-# globals: Rational, RuntimeError, SharedArrayBuffer, ZZ, ZeroDivisionError
+# globals: BigInt, Rational, Reflect, RuntimeError, SharedArrayBuffer, TypeError
+# globals: ZZ, ZeroDivisionError, __sagejs_runtime_require__
 # globals: divisors, factor, is_prime, parent, prime_divisors
 
 algebraic_extension_functor = AlgebraicExtensionFunctor
@@ -166,6 +167,73 @@ def ρσ_register_doc(name, value, metadata):
 
 def ρσ_documentation_registry():
     return r"%js globalThis.__sagejs_doc_registry__ ?? []"
+
+
+def ρσ_ffi_call(
+    declaration_identity, package_name, export_name, values, parameter_types,
+    return_type
+):
+    """Marshal a checked declaration call to its ordinary dynamic backend."""
+    return r"""%js (() => {
+        if (
+            typeof declaration_identity !== "string"
+            || !/^[a-z][a-z0-9_]*@[0-9a-f]{64}:[A-Za-z_][A-Za-z0-9_]*$/
+                .test(declaration_identity)
+        ) {
+            throw new TypeError("invalid FFI declaration identity");
+        }
+        if (values.length !== parameter_types.length) {
+            throw new TypeError(
+                `FFI declaration ${declaration_identity} argument count mismatch`
+            );
+        }
+        const backend = __sagejs_runtime_require__(package_name);
+        const callable_value = Reflect.get(backend, export_name);
+        if (typeof callable_value !== "function") {
+            throw new RuntimeError(
+                `FFI declaration ${declaration_identity} backend `
+                + `${package_name} does not export ${export_name}`
+            );
+        }
+        const marshalled = values.map((value, index) => {
+            const parameter_type = parameter_types[index];
+            if (parameter_type === "Integer") {
+                if (typeof value === "bigint") return value;
+                if (Number.isSafeInteger(value)) return BigInt(value);
+            }
+            if (parameter_type === "uint64") {
+                const exact = typeof value === "bigint"
+                    ? value
+                    : Number.isSafeInteger(value) ? BigInt(value) : -1n;
+                if (exact >= 0n && exact <= 18446744073709551615n) {
+                    return exact;
+                }
+            }
+            if (parameter_type === "bool" && typeof value === "boolean") {
+                return value;
+            }
+            throw new TypeError(
+                `invalid dynamic FFI argument for ${parameter_type}`
+            );
+        });
+        const result = Reflect.apply(callable_value, backend, marshalled);
+        if (return_type === "bool" && typeof result === "boolean") {
+            return result;
+        }
+        if (return_type === "Integer" && typeof result === "bigint") {
+            return result;
+        }
+        if (
+            return_type === "uint64" && typeof result === "bigint"
+            && result >= 0n && result <= 18446744073709551615n
+        ) {
+            return result;
+        }
+        throw new TypeError(
+            `FFI declaration ${declaration_identity} returned invalid `
+            + `${return_type}`
+        );
+    })()"""
 
 
 ρσ_interrupt_counter = 0

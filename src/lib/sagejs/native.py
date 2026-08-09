@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v17 currently accepts a deliberately narrow typed numerical
+Native Kernel v18 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels and reusable dense
 decompositions over prime fields. It also supports packed binary64 buffers and
 mutable signed exact-integer buffers with bounded record views. Mutable
@@ -29,6 +29,11 @@ a host-independent C core, a thin host adapter, and an exact fallback, or
 reports a compile-time diagnostic. After argument marshalling, the core cannot
 call Python, JavaScript, Node-API, or another interpreter runtime; unsupported
 source fails compilation instead of silently inserting a callback.
+
+Explicit imports from generated ``sagejs.ffi`` modules are also declaration-
+checked at compile time. Supported calls lower directly into the isolated core
+using generic ABI type adapters; they never become a host callback or a
+function-name-based compiler substitution.
 """
 
 from __future__ import annotations

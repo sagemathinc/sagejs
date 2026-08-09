@@ -6,6 +6,7 @@ const {
 } = require("./provenance.cjs");
 
 const { tupleElementTypes } = require("./integer-ir.cjs");
+const { emitWordForeignCall } = require("./ffi-codegen.cjs");
 
 const INT64_MIN = -(1n << 63n);
 const INT64_MAX = (1n << 63n) - 1n;
@@ -101,6 +102,7 @@ function mayPromote(operation) {
     "integer.divmod",
     "integer.binary",
     "native.call",
+    "ffi.call",
   ].includes(operation.kind);
 }
 
@@ -396,6 +398,13 @@ function emitWordOperation(operation, context, indent) {
       context.promote(operation, `${indent}        `),
       `${indent}}`,
     ].join("\n");
+  }
+  if (operation.kind === "ffi.call") {
+    return emitWordForeignCall(operation, {
+      value,
+      result: value,
+      promote: context.promote,
+    }, indent);
   }
   throw new Error(`unsupported word C IR operation ${operation.kind}`);
 }

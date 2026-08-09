@@ -15,6 +15,14 @@ export interface NativeCompileResult {
       [key: string]: unknown;
     }>;
     callGraph: Readonly<Record<string, ReadonlyArray<string>>>;
+    foreignLibraries: ReadonlyArray<{
+      id: string;
+      declarationHash: string;
+      declarationIdentity: string;
+      pythonModule: string;
+      dynamic: Readonly<Record<string, unknown>>;
+      native: Readonly<Record<string, unknown>>;
+    }>;
   };
   modulePath: string;
   outputPath: string;

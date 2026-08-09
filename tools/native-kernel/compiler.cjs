@@ -15,6 +15,7 @@ const {
   generateArtifacts,
 } = require("./c-backend.cjs");
 const { generateJavaScript } = require("./js-backend.cjs");
+const { declarationFiles } = require("../ffi/declarations.cjs");
 
 const root = resolve(__dirname, "..", "..");
 const windowsTriplet = "x64-windows-static-md-release";
@@ -84,6 +85,8 @@ function backendFingerprint() {
       readFileSync(join(__dirname, "exact-runtime.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
       readFileSync(join(__dirname, "js-backend.cjs")),
+      readFileSync(join(__dirname, "ffi-codegen.cjs")),
+      ...declarationFiles(root).map((filename) => readFileSync(filename)),
       readFileSync(header),
     ].join("\0"),
   );
@@ -139,6 +142,20 @@ function sourceBoundsCheck() {
   );
 }
 
+function windowsClangBuiltins() {
+  const result = spawnSync(process.execPath, [
+    join(root, "packages", "flint", "scripts", "windows-clang-builtins.cjs"),
+  ], { encoding: "utf8" });
+  const library = result.stdout?.trim();
+  if (result.status !== 0 || !library) {
+    throw new Error(
+      "unable to resolve Windows Clang compiler builtins for declared FFI: " +
+      (result.stderr?.trim() || `status ${result.status}`),
+    );
+  }
+  return library;
+}
+
 function bindingGyp(ir, sourceBoundsChecked) {
   const usesPrimeField = ir.functions.some(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
@@ -150,6 +167,13 @@ function bindingGyp(ir, sourceBoundsChecked) {
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
   const tuning = usesSpecializedPrimeField ? primeFieldTuning() : null;
+  const foreignLibraries = Array.from(new Set(
+    (ir.foreignLibraries || []).flatMap((library) =>
+    library.native.link[process.platform === "win32" ? "windows" : "unix"]
+      .map((name) => join(nativePrefix, "lib", name))
+    ),
+  ));
+  const usesForeignLibraries = foreignLibraries.length > 0;
   const target = {
     target_name: "sagejs_native_kernel",
     win_delay_load_hook: "false",
@@ -174,6 +198,7 @@ function bindingGyp(ir, sourceBoundsChecked) {
   };
   if (process.platform === "win32") {
     target.libraries = [
+      ...foreignLibraries,
       ...(!matrixOnly
         ? [
           nativeMpcLibrary,
@@ -181,10 +206,15 @@ function bindingGyp(ir, sourceBoundsChecked) {
           join(nativePrefix, "lib", "gmp.lib"),
         ]
         : []),
+      ...(usesForeignLibraries
+        ? [windowsClangBuiltins()]
+        : []),
     ];
     target.configurations = {
       Release: {
-        ...(usesPrimeField ? { msbuild_toolset: "ClangCL" } : {}),
+        ...(usesPrimeField || usesForeignLibraries
+          ? { msbuild_toolset: "ClangCL" }
+          : {}),
         msvs_settings: {
           VCCLCompilerTool: { RuntimeLibrary: 2 },
         },
@@ -195,6 +225,7 @@ function bindingGyp(ir, sourceBoundsChecked) {
     };
   } else {
     target.libraries = [
+      ...foreignLibraries,
       ...(!matrixOnly
         ? [
           nativeMpcLibrary,
@@ -203,6 +234,7 @@ function bindingGyp(ir, sourceBoundsChecked) {
         ]
         : []),
       "-lm",
+      ...((ir.foreignLibraries || []).length > 0 ? ["-lpthread"] : []),
     ];
     target.cflags = [
       "-O3",

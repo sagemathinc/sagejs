@@ -86,6 +86,33 @@ An exception for handwritten mathematical native code records:
 
 Exceptions are allowed and visible.  Quietly bypassing the policy is not.
 
+## Declared foreign libraries
+
+Foreign-library calls use the strict declarations documented in
+[`FFI.md`](FFI.md). A declaration is the shared source of truth for the
+ordinary dynamic wrapper and host-isolated native lowering. Mathematical code
+imports only generated safe modules under `sagejs.ffi`; it does not load an
+addon, name a C symbol, own a raw pointer, or encode cleanup itself.
+
+Native lowering resolves an imported function by Python module, declaration
+identity, and declaration content hash. It MUST NOT infer a foreign call from
+an unqualified function name. The IR retains the foreign identity, semantic
+signature, ABI signature, ownership, effects, error policy, target support,
+and source provenance. The declaration hash participates in the native cache
+identity.
+
+Only ABI type adapters are compiler primitives. Adding another function with
+an already supported ABI requires a declaration and generated wrapper, not a
+function-specific compiler branch. Unknown declarations, fields, types,
+effects, error policies, and target combinations fail closed. The dynamic and
+native paths are differential oracles for each other; mature upstream tests
+remain additional oracles.
+
+Calls admitted to `@native` are part of the isolated core call graph. They may
+call declared C/C++ libraries but MUST NOT call Node-API, JavaScript, Python,
+or a host callback after marshalling. Ownership and cleanup are explicit and
+lexically generated. Raw pointers are not a public mathematical type.
+
 ## Compiled-kernel witnesses
 
 [`architecture/native-kernels.json`](architecture/native-kernels.json) lists

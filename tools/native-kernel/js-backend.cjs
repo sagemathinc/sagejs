@@ -4,6 +4,10 @@ const {
   isTupleType,
   tupleElementTypes,
 } = require("./integer-ir.cjs");
+const {
+  javascriptForeignCall,
+  javascriptRuntime,
+} = require("./ffi-codegen.cjs");
 
 const METHOD = {
   add: "_add_",
@@ -318,6 +322,9 @@ function emitExactStatement(operation, indent) {
     return `${indent}${targets} = javascript_${operation.function}(` +
       `${operation.arguments.map((argument) => argument.name).join(", ")});`;
   }
+  if (operation.kind === "ffi.call") {
+    return javascriptForeignCall(operation, indent);
+  }
   if (operation.kind === "if") {
     const lines = [
       ...operation.condition.operations.map((item) =>
@@ -536,8 +543,12 @@ function emitExactPublicFunction(fn) {
     `  const sagejs_native_${param.name} = ${normalizedArgument(param)};`
   );
   const args = fn.params.map((param) => `sagejs_native_${param.name}`).join(", ");
+  const ffiPassThrough = fn.body.every((operation) =>
+    operation.kind === "ffi.call" || operation.kind === "return"
+  );
   const fallbackGuards = fn.params
     .filter((param) => param.type === "uint64")
+    .filter(() => !ffiPassThrough)
     .map((param) =>
       `  if (typeof sagejs_native_${param.name} === "bigint" &&\n` +
       `      sagejs_native_${param.name} > BigInt(Number.MAX_SAFE_INTEGER)) {\n` +
@@ -545,7 +556,7 @@ function emitExactPublicFunction(fn) {
       "  }"
     );
   const fallbackArgs = fn.params.map((param) =>
-    param.type === "uint64"
+    param.type === "uint64" && !ffiPassThrough
       ? `Number(sagejs_native_${param.name})`
       : `sagejs_native_${param.name}`
   ).join(", ");
@@ -917,6 +928,8 @@ if (!["auto", "bigint", "gmp"].includes(integerBackendOverride)) {
   throw new RangeError(
     "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, or gmp");
 }
+
+${javascriptRuntime(ir)}
 
 const float64BufferViewTag = Symbol("sagejs.native.Float64BufferView");
 const int64BufferViewTag = Symbol("sagejs.native.Int64BufferView");

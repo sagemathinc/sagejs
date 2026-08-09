@@ -65,6 +65,7 @@ function explainFunction(fn) {
       returnType: fn.returnType,
     },
     dependencies: fn.dependencies || [],
+    foreignDependencies: fn.foreignDependencies || [],
     locals: fn.locals,
     optimizations: fn.optimizations || {},
     analysis: fn.analysis || {},
@@ -90,6 +91,7 @@ async function explainKernel(options) {
       version: result.ir.version,
       functions: result.ir.functions.map(explainFunction),
       callGraph: result.ir.callGraph,
+      foreignLibraries: result.ir.foreignLibraries || [],
     };
   } catch (error) {
     if (selectedFunctions(options) !== undefined) {

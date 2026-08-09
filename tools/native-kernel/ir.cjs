@@ -23,8 +23,9 @@ const {
 const {
   finalizeFunctionProvenance,
 } = require("./provenance.cjs");
+const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 
-const IR_VERSION = 17;
+const IR_VERSION = 18;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -629,8 +630,63 @@ function supportedModulePreamble(statement) {
       moduleName === "math" && names.every((name) => name === "sqrt")
     ) || (
       moduleName === "typing" && names.every((name) => name === "Tuple")
+    ) || (
+      typeof item.key === "string" && item.key.startsWith("sagejs.ffi.")
     );
   });
+}
+
+function ffiImports(topLevel, filename) {
+  const registry = loadFfiRegistry();
+  const imports = new Map();
+  for (const statement of topLevel) {
+    if (nodeType(statement) !== "AST_Imports") continue;
+    for (const item of array(statement.imports)) {
+      const moduleName = item.key;
+      if (typeof moduleName !== "string" ||
+          !moduleName.startsWith("sagejs.ffi.")) continue;
+      const library = registry.byModule.get(moduleName);
+      expect(
+        library !== undefined,
+        `${filename} imports undeclared FFI module ${moduleName}`,
+      );
+      expect(!item.star, "native FFI imports may not use star imports");
+      for (const imported of array(item.argnames)) {
+        const declaration = library.byPythonName.get(imported.name);
+        expect(
+          declaration !== undefined,
+          `${moduleName} has no declared FFI function ${imported.name}`,
+        );
+        const localName = imported.alias?.name || imported.name;
+        expect(
+          !imports.has(localName),
+          `duplicate native FFI import name ${localName}`,
+        );
+        imports.set(localName, Object.freeze({
+          declarationId: declaration.declaration_id,
+          declarationIdentity: declaration.declaration_identity,
+          declarationHash: declaration.declaration_hash,
+          library: declaration.library,
+          function: {
+            id: declaration.id,
+            pythonName: declaration.python_name,
+            signature: declaration.signature,
+            dynamic: declaration.dynamic,
+            native: declaration.native,
+            effects: declaration.effects,
+            errors: declaration.errors,
+            targets: declaration.targets,
+          },
+          import: {
+            module: moduleName,
+            name: imported.name,
+            localName,
+          },
+        }));
+      }
+    }
+  }
+  return imports;
 }
 
 async function lowerSource(source, filename, options = {}) {
@@ -647,6 +703,7 @@ async function lowerSource(source, filename, options = {}) {
   }
 
   const topLevel = array(toplevel.body);
+  const foreignFunctions = ffiImports(topLevel, filename);
   const definitions = topLevel.filter(
     (statement) => nodeType(statement) === "AST_Function",
   );
@@ -716,6 +773,12 @@ async function lowerSource(source, filename, options = {}) {
       signatures.set(signature.name, signature);
     }
   }
+  for (const name of foreignFunctions.keys()) {
+    expect(
+      !signatures.has(name),
+      `native function ${name} conflicts with an imported FFI function`,
+    );
+  }
   function lowerDefinition(fn) {
     const signature = signatures.get(fn.name.name);
     return signature === undefined
@@ -745,6 +808,7 @@ async function lowerSource(source, filename, options = {}) {
             fn,
             signature,
             signatures,
+            foreignFunctions,
             filename,
             decoratedMode,
           );
@@ -777,6 +841,19 @@ async function lowerSource(source, filename, options = {}) {
   return {
     version: IR_VERSION,
     functions: selected,
+    foreignLibraries: Array.from(new Map(
+      Array.from(foreignFunctions.values(), (foreign) => [
+        foreign.library.id,
+        {
+          id: foreign.library.id,
+          declarationHash: foreign.declarationHash,
+          declarationIdentity: `${foreign.library.id}@${foreign.declarationHash}`,
+          pythonModule: foreign.library.python_module,
+          dynamic: foreign.library.dynamic,
+          native: foreign.library.native,
+        },
+      ]),
+    ).values()).sort((left, right) => left.id.localeCompare(right.id)),
     callGraph: Object.fromEntries(
       selected.map((fn) => [fn.name, fn.dependencies || []]),
     ),
