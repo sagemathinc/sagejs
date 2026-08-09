@@ -36,6 +36,7 @@ pnpm bench:brython
 pnpm bench:programs
 pnpm bench:numbers:check
 pnpm bench:cowasm:ceilings
+pnpm bench:cowasm:landscape
 ```
 
 The compatibility command runs all registered workloads under Sage.js and
@@ -120,3 +121,43 @@ separate synthetic test.
 hot paths. They are deliberately not compatibility tests or a competing
 score: they answer the narrower question “is V8 the limit here, or is the
 generated/runtime machinery the limit?”
+
+## Cross-language landscape
+
+The landscape command compares a deliberately narrower scalar subset with
+algorithm-equivalent Julia, PARI/GP, Magma, and C translations. It also runs
+the unchanged Python bodies under Sage.js, CPython, and PyPy, plus
+source-transparent Native Kernel adaptations where the current typed subset
+can express the same operation counts. The manifest in the landscape directory
+states the equivalence contract and expected checksum for every workload.
+Translations use the same loops and algorithms instead of replacing them with
+language or library builtins.
+
+The AOT inputs live in `native/`. They receive runtime parameters where needed
+to prevent fixed-input constant folding, but retain the source algorithms.
+They currently cover all nine landscape workloads: exact integer loops,
+recursive calls, checked overflow-capable arithmetic, integer division, and
+binary64 conversion/absolute-value loops. This is a compiler experiment, not a
+claim that the remaining object-model-heavy corpus is naturally expressible in
+C, GP, or the current typed subset.
+
+Unavailable optional runtimes are reported and skipped. To include Magma from
+a nonstandard installation and require every selected runtime, run:
+
+    SAGEJS_COWASM_MAGMA=/work/bin/magma \
+      pnpm bench:cowasm:landscape -- --strict
+
+The command accepts `--only ID`, `--runtime NAME`, `--samples`, `--warmups`,
+and `--json`.
+This comparison is intentionally separate from the 61-workload compatibility
+score. Translating dynamic object-model microbenchmarks to C or GP would
+measure different language constructs rather than the same program.
+
+The compatibility corpus currently contains 61 registered workloads; the
+older 58-workload description predates three additional dictionary and parsing
+cases. Audit the complete source tree without building native artifacts with:
+
+```sh
+sagejs native audit bench/cowasm/src
+sagejs native audit bench/cowasm/src --json
+```

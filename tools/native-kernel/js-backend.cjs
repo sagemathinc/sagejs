@@ -79,7 +79,7 @@ function emitStatement(operation, indent) {
     const lines = [
       `${indent}for (let ${operation.index} = ${operation.start}; ` +
         `${operation.index} - ${operation.start} < ${operation.count}; ` +
-        `${operation.index} += 1) {`,
+        `${operation.index} += ${operation.step || 1}) {`,
     ];
     for (const item of operation.body)
       lines.push(emitStatement(item, `${indent}  `));
@@ -320,10 +320,13 @@ function emitExactStatement(operation, indent) {
     ].join("\n");
   }
   if (operation.kind === "loop.range") {
+    const condition = operation.boundIsStop
+      ? `${operation.index} < ${operation.count}`
+      : `${operation.index} - ${operation.start} < ${operation.count}`;
     return [
       `${indent}for (${operation.index} = ${operation.start}; ` +
-        `${operation.index} - ${operation.start} < ${operation.count}; ` +
-        `${operation.index} += 1) {`,
+        `${condition}; ` +
+        `${operation.index} += ${operation.step || 1}) {`,
       ...operation.body.map((item) =>
         emitExactStatement(item, `${indent}  `)
       ),
@@ -664,6 +667,85 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
 function generateJavaScript(ir, options = {}) {
+  function emitFloat64Statement(operation, indent) {
+    if (operation.kind === "float64.constant") {
+      return `${indent}${operation.target} = ${operation.value};`;
+    }
+    if (operation.kind === "float64.copy" || operation.kind === "uint64.copy") {
+      return `${indent}${operation.target} = ${operation.source};`;
+    }
+    if (operation.kind === "float64.from_uint64") {
+      return `${indent}${operation.target} = Number(${operation.source});`;
+    }
+    if (operation.kind === "float64.abs") {
+      return `${indent}${operation.target} = Math.abs(${operation.source});`;
+    }
+    if (operation.kind === "float64.binary") {
+      const operator = { add: "+", sub: "-", mul: "*", div: "/" }[
+        operation.operation
+      ];
+      const guard = operation.operation === "div"
+        ? `${indent}if (${operation.right} === 0) ` +
+          `throw new RangeError("float division by zero");\n`
+        : "";
+      return guard + `${indent}${operation.target} = ${operation.left} ` +
+        `${operator} ${operation.right};`;
+    }
+    if (operation.kind === "loop.range") {
+      return [
+        `${indent}for (${operation.index} = ${operation.start}; ` +
+          `${operation.index} < ${operation.count}; ` +
+          `${operation.index} += ${operation.step || 1}) {`,
+        ...operation.body.map((item) =>
+          emitFloat64Statement(item, `${indent}  `)
+        ),
+        `${indent}}`,
+      ].join("\n");
+    }
+    if (operation.kind === "return") {
+      return `${indent}return ${operation.value};`;
+    }
+    throw new Error(`unsupported binary64 JavaScript operation ${operation.kind}`);
+  }
+
+  function emitFloat64PublicFunction(fn) {
+    const params = fn.params.map((param) => param.name).join(", ");
+    const locals = fn.locals.map((local) => local.name);
+    const declaration = locals.length === 0 ? "" : `  let ${locals.join(", ")};\n`;
+    const fallback = `function javascript_${fn.name}(${params}) {\n` +
+      declaration + fn.body.map((operation) =>
+        emitFloat64Statement(operation, "  ")
+      ).join("\n") + "\n}";
+    const validation = fn.params.map((param) => param.type === "uint64"
+      ? `  if (!(typeof ${param.name} === "bigint"\n` +
+        `        ? ${param.name} >= 0n && ${param.name} <= 18446744073709551615n\n` +
+        `        : Number.isSafeInteger(${param.name}) && ${param.name} >= 0)) {\n` +
+        `    throw new RangeError("${param.name} must be a nonnegative uint64");\n` +
+        "  }"
+      : `  if (typeof ${param.name} !== "number") {\n` +
+        `    throw new TypeError("${param.name} must be a binary64 float");\n` +
+        "  }"
+    ).join("\n");
+    const nativeArgs = fn.params.map((param) => param.name).join(", ");
+    const fallbackArgs = fn.params.map((param) => param.type === "uint64"
+      ? `Number(${param.name})`
+      : param.name
+    ).join(", ");
+    return `${fallback}\n\nfunction ${fn.name}(${params}) {\n` +
+      `  if (arguments.length !== ${fn.params.length}) {\n` +
+      `    throw new TypeError("${fn.name}() expects exactly ` +
+        `${fn.params.length} arguments");\n` +
+      "  }\n" + validation + "\n" +
+      `  if (nativeAddon !== null) return nativeAddon.${fn.name}(${nativeArgs});\n` +
+      `  return javascript_${fn.name}(${fallbackArgs});\n` +
+      `}\n${fn.name}.javascript = javascript_${fn.name};\n` +
+      `${fn.name}.nativeAvailable = nativeAddon !== null;\n` +
+      `${fn.name}.backendFor = () => nativeAddon === null ` +
+        `? "javascript-number" : "native-double";\n` +
+      `${fn.name}.backendPolicy = Object.freeze(` +
+        `${JSON.stringify(fn.analysis.backend)});`;
+  }
+
   const exports = ir.functions.map((fn) => fn.name).join(", ");
   return `"use strict";
 
@@ -840,6 +922,8 @@ function primeFieldNativeCall(name, args) {
 ${ir.functions.map((fn) =>
     fn.kernelKind === "integer"
       ? emitExactPublicFunction(fn)
+      : fn.kernelKind === "float64"
+        ? emitFloat64PublicFunction(fn)
       : fn.kernelKind === "prime-field-matrix"
         ? emitPrimeFieldPublicFunction(fn)
         : fn.kernelKind === "prime-field-source"

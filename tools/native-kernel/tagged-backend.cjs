@@ -320,10 +320,14 @@ function emitTaggedStatements(statements, context, indent) {
     }
     if (statement.kind === "loop.range") {
       const index = taggedValue(statement.index, context);
+      const bound = taggedValue(statement.count, context);
+      const condition = statement.boundIsStop
+        ? `${index} < ${bound}`
+        : `(${index} - UINT64_C(${statement.start})) < ${bound}`;
       lines.push(
         `${indent}for (${index} = UINT64_C(${statement.start}); ` +
-          `(${index} - UINT64_C(${statement.start})) < ` +
-          `${taggedValue(statement.count, context)}; ${index}++)`,
+          `${condition}; ` +
+          `${index} += UINT64_C(${statement.step || 1}))`,
         `${indent}{`,
         emitTaggedStatements(statement.body, context, `${indent}    `),
         `${indent}}`,

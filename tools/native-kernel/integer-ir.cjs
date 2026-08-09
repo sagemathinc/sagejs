@@ -11,6 +11,8 @@ const TYPE_ALIASES = new Map([
   ["int", "Integer"],
   ["uint64", "uint64"],
   ["bool", "bool"],
+  ["float", "Float64"],
+  ["Float64", "Float64"],
   ["PrimeFieldElement", "PrimeFieldElement"],
   ["PrimeFieldMatrix", "PrimeFieldMatrix"],
   ["PrimeFieldDecomposition", "PrimeFieldDecomposition"],
@@ -857,12 +859,21 @@ function lowerRange(node, context) {
   expect(
     context,
     node,
-    args.length === 1 || args.length === 2,
-    "native range currently accepts one or two arguments",
+    args.length >= 1 && args.length <= 3,
+    "native range currently accepts one through three arguments",
   );
   const start = args.length === 1 ? 0n : integerLiteral(args[0]);
   const countNode = args.length === 1 ? args[0] : args[1];
+  const step = args.length === 3 ? integerLiteral(args[2]) : 1n;
+  expect(
+    context,
+    args[2] || node,
+    step !== undefined && step > 0n &&
+      step <= BigInt(Number.MAX_SAFE_INTEGER),
+    "native range step must be a positive integer literal",
+  );
   let countName;
+  let boundIsStop = false;
   if (
     start !== undefined && start >= 0n &&
     start <= BigInt(Number.MAX_SAFE_INTEGER) &&
@@ -870,6 +881,7 @@ function lowerRange(node, context) {
     context.variables.get(countNode.name) === "uint64"
   ) {
     countName = countNode.name;
+    boundIsStop = true;
   } else if (
     start !== undefined && start >= 0n &&
     start <= BigInt(Number.MAX_SAFE_INTEGER) &&
@@ -886,10 +898,19 @@ function lowerRange(node, context) {
       kind: "loop.range",
       start: Number(start),
       count: countName,
+      boundIsStop,
+      step: Number(step),
       indexType: "uint64",
       operations: [],
     };
   }
+
+  expect(
+    context,
+    args[2] || node,
+    step === 1n,
+    "native range step currently requires a uint64 stop",
+  );
 
   const operations = [];
   const startNode = args.length === 1 ? null : args[0];
@@ -1032,7 +1053,12 @@ function lowerStatements(statements, context) {
         kind: range.kind,
         index,
         ...(range.kind === "loop.range"
-          ? { start: range.start, count: range.count }
+          ? {
+              start: range.start,
+              count: range.count,
+              step: range.step,
+              boundIsStop: range.boundIsStop,
+            }
           : { start: range.start, stop: range.stop }),
         body: loopBody,
       }];

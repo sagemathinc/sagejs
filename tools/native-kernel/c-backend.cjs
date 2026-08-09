@@ -25,7 +25,7 @@ const {
   cSourceDirective,
 } = require("./provenance.cjs");
 
-const NATIVE_ABI_VERSION = 8;
+const NATIVE_ABI_VERSION = 9;
 
 function cString(value) {
   return JSON.stringify(String(value));
@@ -442,13 +442,17 @@ function emitExactStatements(statements, context, indent) {
       continue;
     }
     if (statement.kind === "loop.range") {
+      const index = exactValue(statement.index, context);
+      const bound = exactValue(statement.count, context);
+      const condition = statement.boundIsStop
+        ? `${index} < ${bound}`
+        : `(${index} - UINT64_C(${statement.start})) < ${bound}`;
       lines.push(
-        `${indent}for (${exactValue(statement.index, context)} = ` +
+        `${indent}for (${index} = ` +
           `UINT64_C(${statement.start}); ` +
-          `(${exactValue(statement.index, context)} - ` +
-          `UINT64_C(${statement.start})) < ` +
-          `${exactValue(statement.count, context)}; ` +
-          `${exactValue(statement.index, context)}++)`,
+          `${condition}; ` +
+          `${index} += ` +
+          `UINT64_C(${statement.step || 1}))`,
         `${indent}{`,
         emitExactStatements(statement.body, context, `${indent}    `),
         `${indent}}`,
@@ -881,7 +885,7 @@ function emitFieldFunction(fn) {
           `UINT64_C(${operation.start}); ` +
           `(${cName(operation.index)} - UINT64_C(${operation.start})) < ` +
           `${cName(operation.count)}; ` +
-          `${cName(operation.index)}++)`,
+          `${cName(operation.index)} += UINT64_C(${operation.step || 1}))`,
         "    {",
       );
       for (const item of operation.body)
@@ -935,6 +939,127 @@ function emitFunction(fn) {
   return emitFieldFunction(fn);
 }
 
+function emitFloat64Operation(operation, indent) {
+  const target = cName(operation.target);
+  if (operation.kind === "float64.constant") {
+    return `${indent}${target} = ${operation.value};`;
+  }
+  if (operation.kind === "float64.copy" || operation.kind === "uint64.copy") {
+    return `${indent}${target} = ${cName(operation.source)};`;
+  }
+  if (operation.kind === "float64.from_uint64") {
+    return `${indent}${target} = (double)${cName(operation.source)};`;
+  }
+  if (operation.kind === "float64.abs") {
+    return `${indent}${target} = fabs(${cName(operation.source)});`;
+  }
+  if (operation.kind === "float64.binary") {
+    const operator = { add: "+", sub: "-", mul: "*", div: "/" }[
+      operation.operation
+    ];
+    const left = cName(operation.left);
+    const right = cName(operation.right);
+    if (operation.operation === "div") {
+      return [
+        `${indent}if (${right} == 0.0)`,
+        `${indent}{`,
+        `${indent}    napi_throw_range_error(env, NULL, ` +
+          `"float division by zero");`,
+        `${indent}    return NULL;`,
+        `${indent}}`,
+        `${indent}${target} = ${left} ${operator} ${right};`,
+      ].join("\n");
+    }
+    return `${indent}${target} = ${left} ${operator} ${right};`;
+  }
+  throw new Error(`unsupported binary64 C operation ${operation.kind}`);
+}
+
+function emitFloat64Statements(statements, indent) {
+  const lines = [];
+  for (const statement of statements) {
+    const comment = cOperationComment(statement, indent);
+    if (comment) lines.push(comment);
+    const directive = cSourceDirective(statement);
+    if (directive) lines.push(directive);
+    if (statement.kind === "loop.range") {
+      const index = cName(statement.index);
+      const bound = cName(statement.count);
+      lines.push(
+        `${indent}for (${index} = UINT64_C(${statement.start}); ` +
+          `${index} < ${bound}; ` +
+          `${index} += UINT64_C(${statement.step || 1}))`,
+        `${indent}{`,
+        emitFloat64Statements(statement.body, `${indent}    `),
+        `${indent}}`,
+      );
+      continue;
+    }
+    if (statement.kind === "return") {
+      lines.push(
+        `${indent}if (napi_create_double(env, ${cName(statement.value)}, ` +
+          `&sagejs_float64_result) != napi_ok)`,
+        `${indent}    return NULL;`,
+        `${indent}return sagejs_float64_result;`,
+      );
+      continue;
+    }
+    lines.push(emitFloat64Operation(statement, indent));
+  }
+  return lines.filter(Boolean).join("\n");
+}
+
+function emitFloat64Function(fn) {
+  const declarations = ["    napi_value sagejs_float64_result;"];
+  const parsing = [];
+  for (const [index, param] of fn.params.entries()) {
+    const name = cName(param.name);
+    if (param.type === "uint64") {
+      declarations.push(`    uint64_t ${name};`);
+      parsing.push(
+        `    if (!get_uint64(env, args[${index}], &${name})) return NULL;`,
+      );
+    } else {
+      declarations.push(`    double ${name};`);
+      parsing.push(
+        `    if (napi_get_value_double(env, args[${index}], &${name}) ` +
+          `!= napi_ok)`,
+        "    {",
+        `        napi_throw_type_error(env, NULL, ` +
+          `${cString(param.name + " must be a binary64 float")});`,
+        "        return NULL;",
+        "    }",
+      );
+    }
+  }
+  const params = new Set(fn.params.map((param) => param.name));
+  for (const local of fn.locals) {
+    if (params.has(local.name)) continue;
+    declarations.push(
+      `    ${local.type === "uint64" ? "uint64_t" : "double"} ` +
+        `${cName(local.name)} = 0;`,
+    );
+  }
+  return `
+static napi_value compiled_${fn.name}(napi_env env, napi_callback_info info)
+{
+    napi_value args[${fn.params.length}];
+    size_t argc = ${fn.params.length};
+${declarations.join("\n")}
+    if (napi_get_cb_info(env, info, &argc, args, NULL, NULL) != napi_ok)
+        return NULL;
+    if (argc != ${fn.params.length})
+    {
+        napi_throw_type_error(env, NULL, "${fn.name}() expects exactly ${fn.params.length} arguments");
+        return NULL;
+    }
+${parsing.join("\n")}
+${emitFloat64Statements(fn.body, "    ")}
+    napi_throw_error(env, NULL, "binary64 function completed without returning");
+    return NULL;
+}`;
+}
+
 function generateC(ir) {
   const functionMap = new Map(ir.functions.map((fn) => [fn.name, fn]));
   const exactFunctions = ir.functions.filter(
@@ -946,9 +1071,13 @@ function generateC(ir) {
   const primeSourceFunctions = ir.functions.filter(
     (fn) => fn.kernelKind === "prime-field-source",
   );
+  const float64Functions = ir.functions.filter(
+    (fn) => fn.kernelKind === "float64",
+  );
   const fieldFunctions = ir.functions.filter(
     (fn) => ![
       "integer",
+      "float64",
       "prime-field-matrix",
       "prime-field-source",
     ].includes(fn.kernelKind),
@@ -968,6 +1097,7 @@ function generateC(ir) {
     primeSourceFunctions.length > 0 ? generatePrimeSourceSupport() : "",
     ...exactFunctions.map((fn) => emitExactInternalFunction(fn, functionMap)),
     ...exactFunctions.map(emitExactWrappers),
+    ...float64Functions.map(emitFloat64Function),
     ...primeFieldFunctions.map(emitPrimeFieldFunction),
     ...primeSourceFunctions.map(emitPrimeSourceFunction),
     ...fieldFunctions.map(emitFunction),

@@ -9,6 +9,10 @@ const {
   signatureFromFunction,
 } = require("./integer-ir.cjs");
 const {
+  isFloat64Signature,
+  lowerFloat64Function,
+} = require("./float64-ir.cjs");
+const {
   isPrimeFieldIntrinsicFunction,
   isPrimeFieldSignature,
   lowerPrimeFieldFunction,
@@ -20,7 +24,7 @@ const {
   finalizeFunctionProvenance,
 } = require("./provenance.cjs");
 
-const IR_VERSION = 11;
+const IR_VERSION = 12;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -690,12 +694,15 @@ async function lowerSource(source, filename, options = {}) {
       paramTypes.every((type) => type !== undefined);
     const partiallyTypedSelected = initiallySelected.has(fn.name.name) && (
       returnType !== undefined ||
-      paramTypes.some((type) => type === "Integer" || type === "bool")
+      paramTypes.some((type) =>
+        type === "Integer" || type === "bool" || type === "Float64"
+      )
     );
     if (completeSignature || partiallyTypedSelected) {
       const signature = signatureFromFunction(fn, filename);
       expect(
-        isIntegerSignature(signature) || isPrimeFieldSignature(signature),
+        isIntegerSignature(signature) || isFloat64Signature(signature) ||
+          isPrimeFieldSignature(signature),
         `${fn.name.name} is not a supported native signature`,
       );
       signatures.set(signature.name, signature);
@@ -705,7 +712,14 @@ async function lowerSource(source, filename, options = {}) {
     const signature = signatures.get(fn.name.name);
     return signature === undefined
       ? lowerLegacyFunction(fn, decoratedMode)
-      : isPrimeFieldSignature(signature)
+      : isFloat64Signature(signature)
+        ? lowerFloat64Function(
+            fn,
+            signature,
+            filename,
+            decoratedMode,
+          )
+        : isPrimeFieldSignature(signature)
         ? isPrimeFieldIntrinsicFunction(fn)
           ? lowerPrimeFieldFunction(
               fn,

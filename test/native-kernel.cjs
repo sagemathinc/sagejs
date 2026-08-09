@@ -13,6 +13,7 @@ const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { generateC } = require("../tools/native-kernel/c-backend.cjs");
+const { auditKernels } = require("../tools/native-kernel/introspection.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 const nativeApi = require("@sagemath/sagejs/native");
 
@@ -39,6 +40,20 @@ const completeNumberTheoryPath = join(
   "cowasm",
   "src",
   "nt.py",
+);
+const scalarExactPath = join(
+  root,
+  "bench",
+  "cowasm",
+  "native",
+  "scalar_exact.py",
+);
+const scalarFloatPath = join(
+  root,
+  "bench",
+  "cowasm",
+  "native",
+  "scalar_float.py",
 );
 const primeFieldMatrixPath = join(
   root,
@@ -82,7 +97,34 @@ const completeNumberTheoryIr = await lowerSource(
   readFileSync(completeNumberTheoryPath, "utf8"),
   completeNumberTheoryPath,
 );
+const completeNumberTheoryAudit = await auditKernels({
+  sourcePath: completeNumberTheoryPath,
+});
+assert.equal(completeNumberTheoryAudit.schemaVersion, 1);
+assert.equal(completeNumberTheoryAudit.summary.modules, 1);
+assert.equal(completeNumberTheoryAudit.summary.functions, 6);
+assert.equal(completeNumberTheoryAudit.summary.eligibleFunctions, 6);
+assert.equal(completeNumberTheoryAudit.summary.rejectedFunctions, 0);
+const scalarAudit = await auditKernels({
+  sourcePath: join(root, "bench", "cowasm", "native"),
+});
+assert.equal(scalarAudit.summary.modules, 2);
+assert.equal(scalarAudit.summary.functions, 8);
+assert.equal(scalarAudit.summary.eligibleFunctions, 8);
+assert.deepEqual(
+  scalarAudit.modules.map((module) => module.path),
+  ["scalar_exact.py", "scalar_float.py"],
+);
 const completeNumberTheoryC = generateC(completeNumberTheoryIr);
+const scalarExactIr = await lowerSource(
+  readFileSync(scalarExactPath, "utf8"),
+  scalarExactPath,
+);
+const scalarFloatIr = await lowerSource(
+  readFileSync(scalarFloatPath, "utf8"),
+  scalarFloatPath,
+);
+const scalarFloatC = generateC(scalarFloatIr);
 const primeFieldMatrixIr = await lowerSource(
   readFileSync(primeFieldMatrixPath, "utf8"),
   primeFieldMatrixPath,
@@ -100,7 +142,21 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 11);
+assert.equal(ir.version, 12);
+assert.equal(scalarExactIr.version, 12);
+assert.equal(scalarFloatIr.version, 12);
+assert.deepEqual(
+  scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
+  [["int_to_float", "float64"], ["float_abs", "float64"]],
+);
+assert.match(scalarFloatC, /fabs\(/);
+assert.match(scalarFloatC, /\(double\)/);
+const strideLoop = scalarExactIr.functions
+  .find((fn) => fn.name === "sum_stride").body
+  .find((operation) => operation.kind === "loop.range");
+assert.equal(strideLoop.start, 0);
+assert.equal(strideLoop.step, 3);
+assert.equal(strideLoop.boundIsStop, true);
 assert.equal(complexFunction.params[0].type, "ComplexField");
 assert.equal(complexFunction.params[1].type, "uint64");
 assert.equal(complexFunction.returnType, "ComplexNumber");
@@ -500,6 +556,20 @@ await assert.rejects(
     ),
   /short-circuit operands must be bool, got Integer/,
 );
+await assert.rejects(
+  () =>
+    lowerSource(
+      "from sagejs.native import native\n" +
+        "@native\n" +
+        "def f() -> Integer:\n" +
+        "    total = 0\n" +
+        "    for index in range(0, 10, 3):\n" +
+        "        total += index\n" +
+        "    return total\n",
+      "exact-step.py",
+    ),
+  /range step currently requires a uint64 stop/,
+);
 
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-native-kernel-"));
 
@@ -535,6 +605,41 @@ try {
   assert.equal(second.cached, true);
   assert.equal(first.cacheKey, second.cacheKey);
   assert.equal(first.modulePath, second.modulePath);
+
+  const scalarFloatKernel = await compileKernel({
+    sourcePath: scalarFloatPath,
+    cacheRoot: join(temporary, "scalar-float-cache"),
+  });
+  const scalarFloatModule = require(scalarFloatKernel.modulePath);
+  assert.equal(
+    scalarFloatModule.int_to_float(1000000, 1, 4, 6, 7, 8, 9),
+    35000000,
+  );
+  assert.equal(
+    scalarFloatModule.int_to_float.javascript(1000000, 1, 4, 6, 7, 8, 9),
+    35000000,
+  );
+  const absoluteSum = scalarFloatModule.float_abs(
+    1000000, 1, -1.234567, 44324, 23.4, -43.44e-4,
+  );
+  assert.ok(
+    0.999999 <= absoluteSum / 44349638911.052574 &&
+      absoluteSum / 44349638911.052574 <= 1.000001,
+  );
+  const javascriptAbsoluteSum = scalarFloatModule.float_abs.javascript(
+    1000000, 1, -1.234567, 44324, 23.4, -43.44e-4,
+  );
+  assert.ok(
+    0.999999 <= javascriptAbsoluteSum / 44349638911.052574 &&
+      javascriptAbsoluteSum / 44349638911.052574 <= 1.000001,
+  );
+  const scalarExactKernel = await compileKernel({
+    sourcePath: scalarExactPath,
+    cacheRoot: join(temporary, "scalar-exact-cache"),
+  });
+  const scalarExactModule = require(scalarExactKernel.modulePath);
+  assert.equal(scalarExactModule.sum_stride(), 333334n);
+  assert.equal(scalarExactModule.xgcd_loop(), 2414484n);
 
   const mpmathKernel = await compileKernel({
     sourcePath: mpmathSourcePath,
@@ -1822,7 +1927,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v11 provenance, Tate lowering, ABI, and fallback passed.",
+  "Native Kernel v12 binary64, provenance, Tate, ABI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);

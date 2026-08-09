@@ -25,8 +25,12 @@ const replCache = join(temporary, "repl-cache");
 const portableReplCache = join(temporary, "portable-repl-cache");
 const portableCache = join(temporary, "portable-cache");
 const dynamicCache = join(temporary, "dynamic-cache");
+const circularCache = join(temporary, "circular-cache");
 const modulePath = join(sourceDirectory, "cached_value.py");
 const mainPath = join(sourceDirectory, "main.py");
+const circularAPath = join(sourceDirectory, "circular_a.py");
+const circularBPath = join(sourceDirectory, "circular_b.py");
+const circularMainPath = join(sourceDirectory, "circular_main.py");
 const precompiledNumpyCache = join(
   root,
   "dist",
@@ -109,6 +113,22 @@ try {
   assert.equal(typeof cached.version, "string");
   assert.equal(typeof cached.signature, "string");
   assert.ok(cached.outputs["beautify:true keep_docstrings:false"]);
+
+  writeFileSync(circularAPath, "import circular_b\nvalue = 1\n");
+  writeFileSync(circularBPath, "import circular_a\nvalue = 2\n");
+  writeFileSync(
+    circularMainPath,
+    "import circular_a\nimport circular_b\n" +
+      "print(circular_a.value + circular_b.value)\n",
+  );
+  const circularArgs = [
+    "compile", "--cache-dir", circularCache, "--execute", circularMainPath,
+  ];
+  assert.equal(run(circularArgs), "3");
+  // The second compile loads both sides of the cycle from their module cache.
+  // Cached namespaces must be published before their dependency lists are
+  // traversed, just as source-lowered namespaces are.
+  assert.equal(run(circularArgs), "3");
 
   assert.equal(
     run([], { input: "import cached_value\nprint(cached_value.value)\n" }),

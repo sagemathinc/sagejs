@@ -327,10 +327,14 @@ function emitWordStatements(statements, context, indent) {
     }
     if (statement.kind === "loop.range") {
       const index = context.value(statement.index);
+      const bound = context.value(statement.count);
+      const condition = statement.boundIsStop
+        ? `${index} < ${bound}`
+        : `(${index} - UINT64_C(${statement.start})) < ${bound}`;
       lines.push(
         `${indent}for (${index} = UINT64_C(${statement.start}); ` +
-          `(${index} - UINT64_C(${statement.start})) < ` +
-          `${context.value(statement.count)}; ${index}++)`,
+          `${condition}; ` +
+          `${index} += UINT64_C(${statement.step || 1}))`,
         `${indent}{`,
         emitWordStatements(statement.body, context, `${indent}    `),
         `${indent}}`,

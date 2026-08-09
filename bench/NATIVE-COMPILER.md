@@ -1,6 +1,6 @@
-# Native Kernel v11
+# Native Kernel v12
 
-Native Kernel v11 asks whether selected Sage.js library functions can compile
+Native Kernel v12 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v11 is currently a source-tree development feature and uses the
+Native Kernel v12 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -75,18 +75,23 @@ cache instead of the default `.sagejs-native-kernels` beside the source.
 
 ## Transparent compiler tooling
 
-V11 makes the compiler pipeline inspectable without finding files inside the
+V12 makes the compiler pipeline inspectable without finding files inside the
 content-addressed cache:
 
 ```sh
 sagejs native explain algorithms.py --function gcd
+sagejs native audit bench/cowasm/src
+sagejs native audit bench/cowasm/src --json
 sagejs native ir algorithms.py --function gcd
 sagejs native emit-c algorithms.py --function gcd
 sagejs native compile algorithms.py
 sagejs native benchmark algorithms.py --function gcd --args '[92250,922350]'
 ```
 
-Every command supports `--json`. `explain` reports eligibility, signatures,
+Every command supports `--json`. `audit` recursively classifies every Python
+function below a file or directory, recording stable source hashes, detected
+source features, exact rejection diagnostics, and summarized rejection
+categories. `explain` reports eligibility, signatures,
 dependency edges, storage/effect/backend analysis, recognized generic
 optimizations, and rejection reasons. `ir` and `emit-c` perform no native
 build. `benchmark` requires an explicit function and JSON argument array when
@@ -106,7 +111,7 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v9 supports:
+lowers marked functions to typed IR. Native Kernel v12 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -132,6 +137,9 @@ lowers marked functions to typed IR. Native Kernel v9 supports:
   safe at a direct-call boundary;
 - generated, inspectable BigInt-versus-GMP selection based on call/loop shape,
   constant sizes, recursion, and runtime operand magnitude;
+- source-transparent binary64 kernels with mixed `uint64`/`Float64`
+  signatures, integer-to-double coercion, `abs`, arithmetic, and counted
+  loops, returning ordinary JavaScript/Python floats;
 - dense prime-field rank, determinant, echelon, and solve contracts;
 - immutable packed prime-field decompositions reusable across all four
   operations and across arbitrarily many right sides;
@@ -408,7 +416,7 @@ coefficient lists and more involved structured state make it the next honest
 compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
-## Deliberate v11 limits
+## Deliberate v12 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements

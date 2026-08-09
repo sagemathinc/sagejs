@@ -36,10 +36,28 @@ export interface NativeEmissionResult extends NativeAnalysisResult {
   }>;
 }
 
+export interface NativeAuditResult {
+  schemaVersion: 1;
+  rootPath: string;
+  summary: {
+    modules: number;
+    functions: number;
+    eligibleFunctions: number;
+    rejectedFunctions: number;
+    rejectionCategories: Readonly<Record<string, number>>;
+  };
+  modules: ReadonlyArray<Record<string, unknown>>;
+}
+
 /** Lower source to the optimized, source-provenance-carrying typed IR. */
 export function analyze(
   options: NativeCompileOptions,
 ): Promise<NativeAnalysisResult>;
+
+/** Recursively explain every Python function below a file or directory. */
+export function audit(
+  options: NativeCompileOptions,
+): Promise<NativeAuditResult>;
 
 /** Explain eligibility, inferred storage, dispatch, and optimizations. */
 export function explain(

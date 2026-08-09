@@ -611,7 +611,7 @@ function main() {
         key: "sagejs",
         label: "Sage.js",
         command: process.execPath,
-        args: [compiled],
+        args: [join(__dirname, "standalone-host.cjs"), compiled],
         corpusArguments:
           benchmarkNames.length === allBenchmarkNames.length
             ? []

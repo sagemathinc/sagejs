@@ -3,6 +3,7 @@
 const unit = [
   "test/test-manifest.test.cjs",
   "test/completer.cjs",
+  "test/cowasm-landscape.cjs",
   "test/module-cache.cjs",
   "test/runtime-cache.cjs",
   "test/startup-budget.cjs",

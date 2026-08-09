@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "description": "Algorithm-equivalent scalar translations of the unchanged CoWasm Python corpus",
+  "benchmarks": [
+    {
+      "id": "prime_counting",
+      "sourceBenchmark": "pi(10**5)",
+      "domain": "exact-integer",
+      "expected": "9592",
+      "equivalence": "The same wheel-30 trial-division algorithm counts primes through 100000."
+    },
+    {
+      "id": "gcd_loop",
+      "sourceBenchmark": "gcd",
+      "domain": "exact-integer",
+      "expected": "2414484",
+      "equivalence": "100000 calls to the same Euclidean loop and accumulated gcd result."
+    },
+    {
+      "id": "xgcd_loop",
+      "sourceBenchmark": "xgcd",
+      "domain": "exact-integer",
+      "expected": "2414484",
+      "equivalence": "100000 calls to the same extended-Euclidean loop; accumulate the gcd coordinate."
+    },
+    {
+      "id": "inverse_mod_loop",
+      "sourceBenchmark": "bench_inverse_mod",
+      "domain": "exact-integer",
+      "expected": "53532319533988",
+      "equivalence": "Invert every integer from 1 through 99999 modulo 1073741827 using the translated xgcd."
+    },
+    {
+      "id": "sum_stride",
+      "sourceBenchmark": "sum_loop",
+      "domain": "exact-integer",
+      "expected": "333334",
+      "optimizerMayElide": true,
+      "equivalence": "Count iterations of range(0, 1000000, 3) with an explicit loop."
+    },
+    {
+      "id": "recursive_fibonacci",
+      "sourceBenchmark": "recursive fibonacci",
+      "domain": "function-calls",
+      "expected": "1346269",
+      "equivalence": "The same deliberately naive binary recursion with F(0)=F(1)=1 at n=30."
+    },
+    {
+      "id": "int_to_float",
+      "sourceBenchmark": "int_to_float",
+      "domain": "binary64",
+      "expected": "ok",
+      "equivalence": "Six million integer-to-binary64 conversions and additions; checked against 35000000.0."
+    },
+    {
+      "id": "float_abs",
+      "sourceBenchmark": "float_abs",
+      "domain": "binary64",
+      "expected": "ok",
+      "equivalence": "Five million binary64 absolute values and additions with the upstream tolerance."
+    },
+    {
+      "id": "int_divmod",
+      "sourceBenchmark": "int_divmod",
+      "domain": "exact-integer",
+      "expected": "17167493000000",
+      "optimizerMayElide": true,
+      "equivalence": "Five million quotient/remainder pairs with Python floor-division semantics, including a negative dividend."
+    }
+  ]
+}

@@ -396,12 +396,24 @@ export class PythonModuleResolver {
       moduleOptions,
     );
     if (cached) {
-      for (const importedKey of cached.imported_module_ids ?? []) {
-        this.ensureImported(importedKey, node, moduleOptions);
+      // Publish cached metadata before walking its dependency list. Cached
+      // modules can be mutually recursive just like source modules; delaying
+      // publication until after dependencies makes A -> B -> A recurse
+      // forever. Keep the temporary shell out of the final dependency order,
+      // then replace it with the ordinary dependency-ordered cached stub.
+      this.importedModules[key] = this.cachedStub(key, cached, false);
+      let completed = false;
+      try {
+        for (const importedKey of cached.imported_module_ids ?? []) {
+          this.ensureImported(importedKey, node, moduleOptions);
+        }
+        const stub = this.cachedStub(key, cached);
+        stub.srchash = sourceHash;
+        this.importedModules[key] = stub;
+        completed = true;
+      } finally {
+        if (!completed) delete this.importedModules[key];
       }
-      const stub = this.cachedStub(key, cached);
-      stub.srchash = sourceHash;
-      this.importedModules[key] = stub;
       return;
     }
 
@@ -468,13 +480,13 @@ export class PythonModuleResolver {
     return undefined;
   }
 
-  private cachedStub(key: string, cached: any): any {
+  private cachedStub(key: string, cached: any, assignOrder = true): any {
     return {
       is_cached: true,
       classes: cached.classes ?? nullObject(),
       outputs: cached.outputs ?? nullObject(),
       module_id: key,
-      import_order: this.nextImportOrder++,
+      import_order: assignOrder ? this.nextImportOrder++ : -1,
       nonlocalvars: cached.nonlocalvars ?? [],
       baselib: cached.baselib ?? nullObject(),
       exports: cached.exports ?? [],

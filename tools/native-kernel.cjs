@@ -4,6 +4,7 @@ const { resolve } = require("node:path");
 const { compileKernel } = require("./native-kernel/compiler.cjs");
 const {
   analyzeKernel,
+  auditKernels,
   emitKernelC,
   explainKernel,
 } = require("./native-kernel/introspection.cjs");
@@ -80,8 +81,16 @@ async function emitC(options) {
   });
 }
 
+async function audit(options) {
+  return auditKernels({
+    ...options,
+    sourcePath: resolve(options.sourcePath),
+  });
+}
+
 module.exports = {
   analyze,
+  audit,
   compile,
   compileKernel,
   emitC,

@@ -38,6 +38,7 @@ const nativeCompiler = require(
   join(__dirname, "..", "..", "tools", "native-kernel.cjs"),
 ) as {
   analyze(options: NativeOptions): Promise<{ sourcePath: string; ir: NativeIR }>;
+  audit(options: NativeOptions): Promise<NativeAuditResult>;
   compile(options: NativeOptions): Promise<NativeCompileResult>;
   emitC(options: NativeOptions): Promise<{
     sourcePath: string;
@@ -65,6 +66,23 @@ interface NativeCliArguments {
   args?: string;
   warmup?: string;
   repeat?: string;
+}
+
+interface NativeAuditResult {
+  schemaVersion: number;
+  rootPath: string;
+  summary: {
+    modules: number;
+    functions: number;
+    eligibleFunctions: number;
+    rejectedFunctions: number;
+    rejectionCategories: Record<string, number>;
+  };
+  modules: Array<{
+    path: string;
+    eligible: boolean;
+    functions: Array<{ name: string; eligible: boolean; category?: string }>;
+  }>;
 }
 
 function options(argv: NativeCliArguments, source: string): NativeOptions {
@@ -141,6 +159,35 @@ function printExplanation(result: NativeExplainResult): void {
   }
 }
 
+function printAudit(result: NativeAuditResult): void {
+  process.stdout.write(`Native Kernel audit: ${result.rootPath}\n`);
+  process.stdout.write(
+    `${result.summary.modules} module(s), ${result.summary.functions} function(s): ` +
+    `${result.summary.eligibleFunctions} eligible, ` +
+    `${result.summary.rejectedFunctions} rejected\n`,
+  );
+  for (const module of result.modules) {
+    const eligible = module.functions.filter((fn) => fn.eligible).length;
+    const rejected = module.functions.length - eligible;
+    process.stdout.write(
+      `\n${module.path}: ${eligible} eligible, ${rejected} rejected\n`,
+    );
+    for (const fn of module.functions) {
+      process.stdout.write(
+        `  ${fn.eligible ? "yes" : "no "} ${fn.name}` +
+        `${fn.category ? ` [${fn.category}]` : ""}\n`,
+      );
+    }
+  }
+  const categories = Object.entries(result.summary.rejectionCategories);
+  if (categories.length > 0) {
+    process.stdout.write("\nRejection categories:\n");
+    for (const [name, count] of categories) {
+      process.stdout.write(`  ${name}: ${count}\n`);
+    }
+  }
+}
+
 function comparable(value: unknown): string {
   return JSON.stringify(value, (_key, current) =>
     typeof current === "bigint" ? { bigint: current.toString() } : current
@@ -200,13 +247,22 @@ function benchmarkImplementations(
 export async function runNativeCompilerCli(argv: NativeCliArguments): Promise<void> {
   const [command, source, ...extra] = argv.files;
   if (!command || !source || extra.length !== 0 ||
-      !["explain", "ir", "emit-c", "compile", "benchmark"].includes(command)) {
+      !["audit", "explain", "ir", "emit-c", "compile", "benchmark"].includes(command)) {
     throw new Error(
-      "usage: sagejs native <explain|ir|emit-c|compile|benchmark> SOURCE " +
+      "usage: sagejs native <audit|explain|ir|emit-c|compile|benchmark> SOURCE " +
       "[--function NAME] [--json]",
     );
   }
   const nativeOptions = options(argv, source);
+  if (command === "audit") {
+    const result = await nativeCompiler.audit(nativeOptions);
+    if (argv.output) {
+      writeFileSync(resolve(argv.output), `${JSON.stringify(result, null, 2)}\n`);
+      process.stdout.write(`${resolve(argv.output)}\n`);
+    } else if (argv.json) writeJson(result);
+    else printAudit(result);
+    return;
+  }
   if (command === "explain") {
     const result = await nativeCompiler.explain(nativeOptions);
     if (argv.json) writeJson(result);

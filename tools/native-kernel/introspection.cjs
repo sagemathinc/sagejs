@@ -1,7 +1,8 @@
 "use strict";
 
-const { readFileSync } = require("node:fs");
-const { resolve } = require("node:path");
+const { createHash } = require("node:crypto");
+const { readFileSync, readdirSync, statSync } = require("node:fs");
+const { basename, relative, resolve } = require("node:path");
 const { generateC } = require("./c-backend.cjs");
 const { lowerSource } = require("./ir.cjs");
 const { generatedCSourceMap } = require("./provenance.cjs");
@@ -119,6 +120,120 @@ async function explainKernel(options) {
   }
 }
 
+function pythonSources(rootPath) {
+  if (!statSync(rootPath).isDirectory()) return [rootPath];
+  const result = [];
+  function visit(directory) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name))) {
+      if (entry.isDirectory()) {
+        if (entry.name === "__pycache__" || entry.name.startsWith(".")) continue;
+        visit(resolve(directory, entry.name));
+      } else if (entry.isFile() && entry.name.endsWith(".py")) {
+        result.push(resolve(directory, entry.name));
+      }
+    }
+  }
+  visit(rootPath);
+  return result;
+}
+
+function sourceFeatures(source) {
+  const features = new Set();
+  const checks = [
+    ["annotations", /(?:^|\n)\s*def\s+\w+\s*\([^\n]*:[^\n]*\)|->\s*[^:\n]+\s*:/],
+    ["float", /\bfloat\b|\d+\.\d*|\.\d+|\d+[eE][+-]?\d+/],
+    ["complex", /\bcomplex\b|\d+[jJ]\b/],
+    ["string", /(?:^|[^\w])(?:[rubf]{0,2})(?:'[^'\n]*'|"[^"\n]*")/i],
+    ["list", /\blist\s*\(|\[[^\]]*\]/],
+    ["dict", /\bdict\s*\(|\{[^}\n]*:/],
+    ["set", /\bset\s*\(/],
+    ["class", /(?:^|\n)\s*class\s+/],
+    ["lambda", /\blambda\b/],
+    ["generator", /\byield\b/],
+    ["comprehension", /\[[^\]\n]+\bfor\b[^\]\n]+\]/],
+    ["exception", /\b(?:try|except|raise|finally)\b/],
+    ["imports", /(?:^|\n)\s*(?:from|import)\s+/],
+    ["bitwise", /(?:<<|>>|\^|~|(?<!\*)\|(?!\*)|(?<!\*)&(?!\*))/],
+    ["attribute", /\.[A-Za-z_]\w*/],
+    ["async", /\b(?:async|await)\b/],
+  ];
+  for (const [name, pattern] of checks) {
+    if (pattern.test(source)) features.add(name);
+  }
+  return Array.from(features).sort();
+}
+
+function rejectionCategory(reason) {
+  const text = String(reason || "").toLowerCase();
+  if (text.includes("annotation")) return "missing-or-unsupported-annotation";
+  if (text.includes("signature")) return "unsupported-signature";
+  if (text.includes("may only contain") || text.includes("module")) {
+    return "unsupported-module-structure";
+  }
+  if (text.includes("calls missing") || text.includes("dependency")) {
+    return "unsupported-dependency";
+  }
+  if (text.includes("parse") || text.includes("syntax")) return "parse-error";
+  if (text.includes("unsupported")) return "unsupported-syntax";
+  return "other";
+}
+
+/** Recursively explain native eligibility without compiling any artifacts. */
+async function auditKernels(options) {
+  const rootPath = resolve(options.sourcePath);
+  const directory = statSync(rootPath).isDirectory();
+  const files = pythonSources(rootPath);
+  const modules = await Promise.all(files.map(async (sourcePath) => {
+    const source = readFileSync(sourcePath, "utf8");
+    const explanation = await explainKernel({ sourcePath });
+    const functions = explanation.functions.map((fn) => {
+      if (fn.eligible) return fn;
+      const category = rejectionCategory(fn.reason);
+      return { ...fn, category };
+    });
+    return {
+      path: directory ? relative(rootPath, sourcePath) : basename(sourcePath),
+      sha256: createHash("sha256").update(source).digest("hex"),
+      features: sourceFeatures(source),
+      eligible: functions.some((fn) => fn.eligible),
+      moduleReason: explanation.moduleReason,
+      error: explanation.error,
+      functions,
+    };
+  }));
+  const rejectionCounts = new Map();
+  let eligibleFunctions = 0;
+  let rejectedFunctions = 0;
+  for (const module of modules) {
+    for (const fn of module.functions) {
+      if (fn.eligible) eligibleFunctions += 1;
+      else {
+        rejectedFunctions += 1;
+        rejectionCounts.set(
+          fn.category,
+          (rejectionCounts.get(fn.category) || 0) + 1,
+        );
+      }
+    }
+  }
+  return {
+    schemaVersion: 1,
+    rootPath,
+    summary: {
+      modules: modules.length,
+      functions: eligibleFunctions + rejectedFunctions,
+      eligibleFunctions,
+      rejectedFunctions,
+      rejectionCategories: Object.fromEntries(
+        Array.from(rejectionCounts).sort(([left], [right]) =>
+          left.localeCompare(right)),
+      ),
+    },
+    modules,
+  };
+}
+
 async function emitKernelC(options) {
   const result = await analyzeKernel(options);
   const source = generateC(result.ir);
@@ -131,6 +246,7 @@ async function emitKernelC(options) {
 
 module.exports = {
   analyzeKernel,
+  auditKernels,
   emitKernelC,
   explainFunction,
   explainKernel,
