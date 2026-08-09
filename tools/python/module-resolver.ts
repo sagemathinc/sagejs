@@ -72,8 +72,8 @@ export class PythonModuleResolver {
     this.importDirectories = [];
     for (const location of [
       ...(options.import_dirs ?? []),
-      options.libdir,
       options.basedir,
+      options.libdir,
     ]) {
       if (location && !this.importDirectories.includes(location)) {
         this.importDirectories.push(location);

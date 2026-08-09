@@ -180,7 +180,13 @@ function parseCorpusOutput(label, output, expectedWarmups, expectedSamples) {
     completed.benchmarks !== benchmarkNames.length
   ) {
     throw new Error(
-      `${label} reported inconsistent COMPLETE metadata`,
+      `${label} reported inconsistent COMPLETE metadata: ` +
+        `${JSON.stringify(completed)}; expected ` +
+        `${JSON.stringify({
+          warmups: expectedWarmups,
+          samples: expectedSamples,
+          benchmarks: benchmarkNames.length,
+        })}`,
     );
   }
   for (const [kind, samples] of Object.entries(passes)) {

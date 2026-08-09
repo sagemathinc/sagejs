@@ -31,6 +31,9 @@ const mainPath = join(sourceDirectory, "main.py");
 const circularAPath = join(sourceDirectory, "circular_a.py");
 const circularBPath = join(sourceDirectory, "circular_b.py");
 const circularMainPath = join(sourceDirectory, "circular_main.py");
+const localNumbersPath = join(sourceDirectory, "numbers.py");
+const shadowMainPath = join(sourceDirectory, "shadow_main.py");
+const shadowOutputPath = join(temporary, "shadow-main.cjs");
 const precompiledNumpyCache = join(
   root,
   "dist",
@@ -129,6 +132,22 @@ try {
   // Cached namespaces must be published before their dependency lists are
   // traversed, just as source-lowered namespaces are.
   assert.equal(run(circularArgs), "3");
+
+  writeFileSync(localNumbersPath, "local_marker = 1729\n");
+  writeFileSync(
+    shadowMainPath,
+    "import numbers\nprint(numbers.local_marker)\n",
+  );
+  run(
+    ["compile", "--python", "--output", shadowOutputPath, shadowMainPath],
+    { env: { SAGEJSPATH: "" } },
+  );
+  const shadowResult = spawnSync(process.execPath, [shadowOutputPath], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert.equal(shadowResult.status, 0, shadowResult.stderr);
+  assert.equal(shadowResult.stdout.trim(), "1729");
 
   assert.equal(
     run([], { input: "import cached_value\nprint(cached_value.value)\n" }),
