@@ -3880,6 +3880,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             NULL, NULL, NULL, napi_default, NULL},
         {"dirichletGroup", NULL, sagejs_dirichlet_group,
             NULL, NULL, NULL, napi_default, NULL},
+        {"dirichletGroupClose", NULL, sagejs_dirichlet_group_close,
+            NULL, NULL, NULL, napi_default, NULL},
         {"dirichletGroupData", NULL, sagejs_dirichlet_group_data,
             NULL, NULL, NULL, napi_default, NULL},
         {"dirichletCharacterData", NULL,

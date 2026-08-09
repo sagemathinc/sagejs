@@ -72,6 +72,15 @@ test("native Dirichlet boundary rejects invalid handles and indices", () => {
   );
 });
 
+test("declared Dirichlet resource adapter closes its native handle", () => {
+  const group = flint.ffiDirichletGroupCreate(5n);
+  assert.equal(flint.ffiDirichletGroupSize(group), 4n);
+  assert.equal(flint.ffiDirichletGroupNumPrimitive(group), 3n);
+  assert.equal(flint.ffiDirichletGroupClose(group), undefined);
+  assert.throws(() => flint.ffiDirichletGroupSize(group));
+  assert.throws(() => flint.ffiDirichletGroupClose(group));
+});
+
 test("native Dirichlet analytic functions use exact qqbar and Arb", () => {
   const group = flint.dirichletGroup(5n);
   const gaussExact = flint.dirichletGaussSumExact(group, 1n, 1n);

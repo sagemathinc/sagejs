@@ -398,7 +398,10 @@ function emitExactStatement(operation, indent) {
 
 function emitExactFallback(fn) {
   const params = fn.params.map((param) => param.name).join(", ");
-  const locals = fn.locals.map((local) => local.name);
+  const aliases = new Set(Object.keys(fn.resourceAliases || {}));
+  const locals = fn.locals
+    .filter((local) => !aliases.has(local.name))
+    .map((local) => local.name);
   const buffers = fn.params
     .filter((param) => param.type === "Int64Buffer" ||
       param.type === "Int64Record" || param.type === "IntegerBuffer" ||
@@ -408,10 +411,15 @@ function emitExactFallback(fn) {
         ? "uint64BufferView" : "int64BufferView"}(` +
       `${param.name}, ${jsString(param.name)});`)
     .join("\n");
+  const body = fn.body.map((item) => emitExactStatement(
+    item, fn.foreignResources?.length ? "    " : "  ",
+  )).join("\n");
+  const resources = fn.foreignResources?.length
+    ? `  const sagejsFfiResources = [];\n  try {\n${body}\n` +
+      `  } finally {\n    sagejsFfiCloseResources(sagejsFfiResources);\n  }`
+    : body;
   return `function javascript_${fn.name}(${params}) {
-${buffers ? buffers + "\n" : ""}${locals.length ? `  let ${locals.join(", ")};\n` : ""}${
-    fn.body.map((item) => emitExactStatement(item, "  ")).join("\n")
-  }
+${buffers ? buffers + "\n" : ""}${locals.length ? `  let ${locals.join(", ")};\n` : ""}${resources}
 }`;
 }
 

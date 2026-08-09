@@ -22,6 +22,7 @@ const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 const root = join(__dirname, "..");
 const witness = join(root, "bench", "native-ffi-flint.py");
 const matrixWitness = join(root, "bench", "native-ffi-flint-matrix.py");
+const resourceWitness = join(root, "bench", "native-ffi-flint-resource.py");
 
 function runSage(args, input = undefined) {
   const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), ...args], {
@@ -48,13 +49,21 @@ function runSageDiagnostic(args, input) {
 
 test("FFI declarations are strict and generated modules are current", () => {
   const registry = declarations.loadRegistry({ root });
-  assert.equal(registry.schema, "sagejs.ffi/declaration-v2");
+  assert.equal(registry.schema, "sagejs.ffi/declaration-v3");
   assert.equal(registry.libraries.length, 1);
   const flint = registry.byId.get("flint");
   assert.equal(flint.library.python_module, "sagejs.ffi.flint");
   assert.deepEqual(
     flint.functions.map((fn) => fn.id),
-    ["n_is_prime", "fmpz_gcd", "nmod_mat_rank", "nmod_mat_inv"],
+    [
+      "dirichlet_group_init", "dirichlet_group_size",
+      "dirichlet_group_num_primitive", "n_is_prime", "fmpz_gcd",
+      "nmod_mat_rank", "nmod_mat_inv",
+    ],
+  );
+  assert.deepEqual(
+    flint.resources.map((resource) => resource.python_name),
+    ["DirichletGroup"],
   );
   assert.match(flint.identity, /^flint@[0-9a-f]{64}$/);
   const generated = declarations.generatedModulePath(root, flint);
@@ -66,12 +75,16 @@ test("FFI declarations are strict and generated modules are current", () => {
     readFileSync(generated, "utf8"),
     /_runtime\.ffi_call\(\n\s+__sagejs_ffi_declaration__ \+ ":n_is_prime"/,
   );
-  assert.match(runSage(["ffi", "check"]), /4 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /7 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
   assert.equal(inspection.identity, flint.identity);
-  assert.equal(inspection.functions[1].native.symbol, "fmpz_gcd");
+  assert.equal(
+    inspection.functions.find((fn) => fn.id === "fmpz_gcd").native.symbol,
+    "fmpz_gcd",
+  );
+  assert.equal(inspection.resources[0].native.clear_symbol, "dirichlet_group_clear");
 });
 
 test("native-boundary audit is a reviewed exact ratchet", () => {
@@ -80,7 +93,8 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 4);
+  assert.equal(current.counts["declared-ffi"], 7);
+  assert.equal(current.counts["declared-ffi-resource"], 1);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   const stale = structuredClone(snapshot);
   stale.boundaries.pop();
@@ -133,39 +147,45 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
   }
   invalid(
     (document) => {
-      document.functions[1].signature.parameters[0].ownership = "owned";
+      document.functions[4].signature.parameters[0].ownership = "owned";
     },
     /Integer inputs must use borrowed ownership/,
   );
   invalid(
     (document) => {
-      document.functions[0].native.arguments[0].abi_type = "fmpz_t";
+      document.functions[3].native.arguments[0].abi_type = "fmpz_t";
     },
     /uint64 requires ulong, not fmpz_t/,
   );
   invalid(
     (document) => {
-      document.functions[1].native.arguments.pop();
+      document.functions[4].native.arguments.pop();
     },
     /omits native source right/,
   );
   invalid(
     (document) => {
-      document.functions[2].native.arguments[0].adapter.data = "rows";
+      document.functions[5].native.arguments[0].adapter.data = "rows";
     },
     /adapter data must be UInt64Buffer/,
   );
   invalid(
     (document) => {
-      document.functions[3].effects.pure = true;
+      document.functions[6].effects.pure = true;
     },
     /effects.pure functions may not declare writes/,
   );
   invalid(
     (document) => {
-      document.functions[3].errors.exception = "KeyError";
+      document.functions[6].errors.exception = "KeyError";
     },
     /uses unsupported error exception KeyError/,
+  );
+  invalid(
+    (document) => {
+      document.resources[0].native.clear_symbol = "not a C symbol";
+    },
+    /clear_symbol must be a C identifier/,
   );
 });
 
@@ -208,10 +228,33 @@ test("packed FLINT matrix declarations work in ordinary Sage.js", () => {
   );
 });
 
+test("generated opaque FLINT resources close deterministically", () => {
+  const output = runSage(["--python"], [
+    "from sagejs.ffi.flint import dirichlet_group, dirichlet_group_size, dirichlet_group_num_primitive",
+    "group = dirichlet_group(5)",
+    "print(dirichlet_group_size(group), dirichlet_group_num_primitive(group), group.closed)",
+    "group.close()",
+    "group.close()",
+    "print(group.closed)",
+    "try:",
+    "    dirichlet_group_size(group)",
+    "except ValueError as error:",
+    "    print(type(error).__name__, str(error))",
+    "with dirichlet_group(7) as scoped:",
+    "    print(dirichlet_group_size(scoped))",
+    "print(scoped.closed)",
+    "",
+  ].join("\n"));
+  assert.equal(
+    output.trim(),
+    "4 3 False\nTrue\nValueError FFI resource is closed\n6\nTrue",
+  );
+});
+
 test("typed FFI imports lower to declared host-isolated calls", async () => {
   const source = readFileSync(witness, "utf8");
   const ir = await lowerSource(source, witness);
-  assert.equal(ir.version, 18);
+  assert.equal(ir.version, 19);
   assert.equal(ir.foreignLibraries.length, 1);
   assert.equal(ir.foreignLibraries[0].id, "flint");
   assert.match(ir.foreignLibraries[0].declarationHash, /^[0-9a-f]{64}$/);
@@ -239,6 +282,53 @@ test("typed FFI imports lower to declared host-isolated calls", async () => {
   assert.match(core.source, /fmpz_set_mpz\(/);
   assert.match(core.source, /fmpz_get_mpz\(/);
   assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/);
+});
+
+test("owned FLINT resources lower to lexical init and all-exit cleanup", async () => {
+  const source = readFileSync(resourceWitness, "utf8");
+  const ir = await lowerSource(source, resourceWitness);
+  const fn = ir.functions[0];
+  assert.equal(fn.foreignResources[0].python_name, "DirichletGroup");
+  assert.match(fn.resourceAliases.group, /^sagejs_native_tmp_/);
+  assert.equal(fn.analysis.effects.pure, false);
+  assert.equal(fn.analysis.effects.replaySafe, false);
+  const core = generateHostCore(ir);
+  assert.equal(core.audit.isolated, true);
+  assert.equal(core.audit.hostCallbacks, 0);
+  assert.match(core.source, /dirichlet_group_init\(/);
+  assert.match(core.source, /dirichlet_group_size\(/);
+  assert.match(core.source, /dirichlet_group_num_primitive\(/);
+  assert.match(core.source, /if \([^\n]*_initialized\)/);
+  assert.match(core.source, /dirichlet_group_clear\(/);
+  assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/);
+});
+
+test("compiled owned resources agree with fallback and reject loop allocation", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-resource-"));
+  try {
+    const result = await compileKernel({
+      sourcePath: resourceWitness,
+      cacheRoot: temporary,
+    });
+    const module = require(result.modulePath);
+    assert.deepEqual(module.dirichlet_summary(5n), [4n, 3n]);
+    assert.deepEqual(module.dirichlet_summary.javascript(5n), [4n, 3n]);
+    assert.throws(() => module.dirichlet_summary(0n));
+    assert.throws(() => module.dirichlet_summary.javascript(0n));
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+  await assert.rejects(
+    () => lowerSource(
+      "from sagejs.ffi.flint import dirichlet_group\n" +
+      "def f(modulus: uint64, count: uint64) -> bool:\n" +
+      "    for index in range(count):\n" +
+      "        group = dirichlet_group(modulus)\n" +
+      "    return True\n",
+      "resource-in-loop.py",
+    ),
+    /owned FFI resources must be created in the top-level native block/,
+  );
 });
 
 test("packed matrix FFI lowers to lexical FLINT storage with checked status", async () => {

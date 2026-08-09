@@ -25,7 +25,7 @@ const {
 } = require("./provenance.cjs");
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 
-const IR_VERSION = 18;
+const IR_VERSION = 19;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -667,6 +667,7 @@ function ffiImports(topLevel, filename) {
           declarationIdentity: declaration.declaration_identity,
           declarationHash: declaration.declaration_hash,
           library: declaration.library,
+          resources: library.resources,
           function: {
             id: declaration.id,
             pythonName: declaration.python_name,
@@ -852,6 +853,7 @@ async function lowerSource(source, filename, options = {}) {
           pythonModule: foreign.library.python_module,
           dynamic: foreign.library.dynamic,
           native: foreign.library.native,
+          resources: foreign.resources,
         },
       ]),
     ).values()).sort((left, right) => left.id.localeCompare(right.id)),

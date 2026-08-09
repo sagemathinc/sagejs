@@ -67,4 +67,18 @@ binding.ffiNmodMatInv = function ffiNmodMatInv(
   return true;
 };
 
+/* Generated-resource adapters keep the public declaration surface independent
+ * of the older high-level package naming.  Only the close adapter owns a
+ * lifetime transition; borrowed queries never retain the handle.
+ */
+binding.ffiDirichletGroupCreate = binding.dirichletGroup;
+binding.ffiDirichletGroupClose = binding.dirichletGroupClose;
+binding.ffiDirichletGroupSize = function ffiDirichletGroupSize(group) {
+  return BigInt(binding.dirichletGroupData(group).size);
+};
+binding.ffiDirichletGroupNumPrimitive =
+function ffiDirichletGroupNumPrimitive(group) {
+  return BigInt(binding.dirichletGroupData(group).numberPrimitive);
+};
+
 module.exports = binding;

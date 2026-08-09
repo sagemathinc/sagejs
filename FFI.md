@@ -7,8 +7,13 @@ signature, concrete C ABI, ownership, effects, error policy, dynamic adapter,
 native link requirements, and supported targets for each callable function.
 
 The first declaration is [`ffi/flint.ffi.json`](ffi/flint.ffi.json). It
-exports four deliberately different witnesses:
+exports seven deliberately different witnesses:
 
+- `dirichlet_group(uint64) -> DirichletGroup`, a generated opaque owned
+  resource with explicit `close`, context-manager support, and finalization;
+- `dirichlet_group_size(DirichletGroup) -> uint64` and
+  `dirichlet_group_num_primitive(DirichletGroup) -> uint64`, two borrowed
+  operations which cannot retain or close the resource;
 - `n_is_prime(uint64) -> bool`, a direct C return with value semantics;
 - `fmpz_gcd(Integer, Integer) -> Integer`, with borrowed exact inputs, an owned
   exact result, allocation, and FLINT's leading `fmpz_t` out-parameter.
@@ -72,6 +77,7 @@ sagejs native emit-core-c bench/native-ffi-flint.py
 sagejs native compile bench/native-ffi-flint.py
 pnpm bench:native:ffi
 pnpm bench:native:ffi:matrix
+pnpm bench:native:ffi:resource
 ```
 
 `ffi check` validates the strict schema and rejects stale generated Python.
@@ -85,9 +91,9 @@ N-API exports, runtime intrinsics, and visible Wasm exports. A new boundary
 fails CI until `sagejs ffi audit --write` is run and its complete diff is
 reviewed. Regeneration is an explicit acknowledgement, not an allowlist bypass.
 
-## Version 2 safety envelope
+## Version 3 safety envelope
 
-Version 2 supports `uint64`, `bool`, exact `Integer`, and borrowed mutable or
+Version 3 supports `uint64`, `bool`, exact `Integer`, and borrowed mutable or
 immutable `UInt64Buffer` semantics. In addition to scalar `ulong`, `slong`,
 `int`, and `fmpz_t` adapters, a reusable `packed_nmod_matrix` adapter declares
 the data, shape, modulus, access, and aliasing used to initialize and clear a
@@ -95,6 +101,38 @@ FLINT matrix. The generic `zero_is_error` policy checks C status before any
 output copyback. Calls explicitly declare purity, writes, determinism,
 thread-safety, allocation, and possible exceptions. Native and dynamic
 implementations remain mandatory.
+
+Version 3 adds generated opaque owned resources. A resource declaration names
+its semantic Python class, hidden ABI type, dynamic close export, native clear
+symbol, ownership, and target availability. Ordinary Sage.js receives an
+unforgeable generated wrapper:
+
+```python
+from sagejs.ffi.flint import dirichlet_group, dirichlet_group_size
+
+with dirichlet_group(101) as group:
+    assert dirichlet_group_size(group) == 100
+
+assert group.closed
+```
+
+`close()` is idempotent and deterministic; use-after-close and cross-resource
+borrows fail before entering the addon. `FinalizationRegistry` is a leak
+safety net, not the primary lifetime protocol. The dynamic package adapter
+performs the actual library-specific close exactly once.
+
+Inside `@native`, owned resources are deliberately narrower. They are lexical
+locals only: they cannot be public parameters or results, are currently
+constructed only in the top-level function block, and cannot escape. The compiler emits the concrete ABI
+storage plus an initialization flag, calls the declared initializer, and calls
+the declared clear symbol on every success and failure exit. The JavaScript
+same-source fallback uses a reverse-order `try/finally` resource stack. This is
+resource-specific generated RAII, not a general borrow checker and not raw
+pointer access.
+
+Scalar constructor preconditions such as a positive modulus are declaration
+data. They lower to both dynamic validation and isolated-core guards, so an
+invalid value cannot reach a foreign routine that assumes its precondition.
 
 This narrow surface gives useful safety without attempting to recreate Rust:
 
@@ -106,8 +144,8 @@ This narrow surface gives useful safety without attempting to recreate Rust:
 - dynamic and native results are tested differentially;
 - Windows and Wasm availability are explicit target properties.
 
-Future revisions should add opaque owned/borrowed handles, generated C++
-exception shims, additional typed slices, nullable results, callbacks with a
+Future revisions should add generated C++ exception shims, additional typed
+slices, nullable results, non-owning resource views, callbacks with a
 clearly marked host-effect boundary, and richer status translation. Those
 features extend the schema and adapter library; they must not become ad hoc
 compiler branches for individual symbols.

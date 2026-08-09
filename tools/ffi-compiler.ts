@@ -40,6 +40,7 @@ interface FfiDeclaration {
     dynamic: Record<string, unknown>;
     native: Record<string, unknown>;
   };
+  resources: Array<Record<string, unknown>>;
   functions: FfiFunction[];
 }
 
@@ -68,6 +69,7 @@ function publicDescription(root: string, declaration: FfiDeclaration) {
     identity: declaration.identity,
     declaration: relative(root, declaration.filename),
     library: declaration.library,
+    resources: declaration.resources,
     functions: declaration.functions,
   };
 }
@@ -180,6 +182,16 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
       `  Python: ${description.library.python_module}\n` +
       `  dynamic: ${(description.library.dynamic as { package: string }).package}\n`,
     );
+    for (const resource of description.resources as Array<{
+      python_name: string;
+      ownership: string;
+      native: { clear_symbol: string };
+    }>) {
+      process.stdout.write(
+        `  resource ${resource.python_name} [${resource.ownership}]; ` +
+        `clear=${resource.native.clear_symbol}\n`,
+      );
+    }
     for (const fn of description.functions as FfiFunction[]) {
       const signature = fn.signature as {
         parameters: Array<{ name: string; type: string; ownership: string }>;

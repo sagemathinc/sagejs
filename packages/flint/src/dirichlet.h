@@ -13,6 +13,8 @@ int sagejs_dirichlet_character_init_native(
 
 napi_value sagejs_dirichlet_group(
     napi_env env, napi_callback_info info);
+napi_value sagejs_dirichlet_group_close(
+    napi_env env, napi_callback_info info);
 napi_value sagejs_dirichlet_group_data(
     napi_env env, napi_callback_info info);
 napi_value sagejs_dirichlet_character_data(

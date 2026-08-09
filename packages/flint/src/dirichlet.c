@@ -336,6 +336,38 @@ napi_value sagejs_dirichlet_group(
     return wrap_group(env, group);
 }
 
+napi_value sagejs_dirichlet_group_close(
+    napi_env env, napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value result;
+    bool tagged = false;
+    sagejs_dirichlet_group_value *group = NULL;
+
+    if (!require_arguments(env, info, 1, args) ||
+        !check_napi(env, napi_check_object_type_tag(
+            env, args[0], &sagejs_dirichlet_group_type_tag, &tagged)))
+        return NULL;
+    if (!tagged)
+    {
+        napi_throw_type_error(
+            env, NULL, "expected an open Sage.js FLINT Dirichlet group");
+        return NULL;
+    }
+    if (!check_napi(env, napi_remove_wrap(env, args[0], (void **) &group)))
+        return NULL;
+    if (group == NULL || group->magic != SAGEJS_DIRICHLET_GROUP_MAGIC)
+    {
+        napi_throw_type_error(
+            env, NULL, "expected an open Sage.js FLINT Dirichlet group");
+        return NULL;
+    }
+    finalize_group(env, group, NULL);
+    if (!check_napi(env, napi_get_undefined(env, &result)))
+        return NULL;
+    return result;
+}
+
 napi_value sagejs_dirichlet_group_data(
     napi_env env, napi_callback_info info)
 {

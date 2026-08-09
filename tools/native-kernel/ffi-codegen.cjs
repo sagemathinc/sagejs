@@ -34,6 +34,82 @@ function argumentBySource(operation, source) {
   return operation.arguments[index];
 }
 
+function resourceForType(operation, type) {
+  return (operation.foreign.resources || []).find(
+    (resource) => resource.python_name === type,
+  );
+}
+
+function isForeignResourceType(fn, type) {
+  return (fn.foreignResources || []).some(
+    (resource) => resource.python_name === type,
+  );
+}
+
+function resourceForFunctionType(fn, type) {
+  return (fn.foreignResources || []).find(
+    (resource) => resource.python_name === type,
+  );
+}
+
+function emitResourceCall(operation, context, indent) {
+  const fn = operation.foreign.function;
+  const native = fn.native;
+  const returned = resourceForType(operation, fn.signature.return_type);
+  const args = native.arguments.map((argument) => {
+    if (argument.source === "result") return context.result(operation.target);
+    const source = argumentBySource(operation, argument.source);
+    const resource = resourceForType(operation, source.type);
+    if (resource !== undefined) return context.value(source.name);
+    if (argument.abi_type === "ulong") {
+      return `(ulong) ${context.value(source.name)}`;
+    }
+    if (argument.abi_type === "int") {
+      return `(int) ${context.value(source.name)}`;
+    }
+    throw new Error(
+      `${operation.foreign.declarationId} uses unsupported resource ABI ` +
+      `${argument.abi_type}`,
+    );
+  });
+  if (returned !== undefined) {
+    const validation = fn.signature.parameters.flatMap((parameter, index) => {
+      if (parameter.minimum === undefined) return [];
+      const source = operation.arguments[index];
+      return [
+        `${indent}if (${context.value(source.name)} < ` +
+          `UINT64_C(${parameter.minimum}))`,
+        `${indent}{`,
+        `${indent}    sagejs_native_status_set(status, ` +
+          `SAGEJS_NATIVE_RANGE_ERROR, "FFI resource argument is below minimum ` +
+          `${parameter.minimum}");`,
+        `${indent}    ${context.failure}`,
+        `${indent}}`,
+      ];
+    });
+    return [
+      ...validation,
+      `${indent}if (!${native.symbol}(${args.join(", ")}))`,
+      `${indent}{`,
+      `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR, ` +
+        `${JSON.stringify(fn.errors.message)});`,
+      `${indent}    ${context.failure}`,
+      `${indent}}`,
+      `${indent}${context.resourceInitialized(operation.target)} = 1;`,
+    ].join("\n");
+  }
+  return `${indent}${context.result(operation.target)} = ` +
+    `${native.symbol}(${args.join(", ")});`;
+}
+
+function usesResource(operation) {
+  const signature = operation.foreign.function.signature;
+  return resourceForType(operation, signature.return_type) !== undefined ||
+    signature.parameters.some((parameter) =>
+      resourceForType(operation, parameter.type) !== undefined
+    );
+}
+
 function emitFmpzCall(operation, value, resultValue, indent, tagged) {
   const native = operation.foreign.function.native;
   const prefix = `sagejs_ffi_${cName(operation.target)}`;
@@ -232,6 +308,7 @@ function usesFmpz(operation) {
 }
 
 function emitExactForeignCall(operation, context, indent) {
+  if (usesResource(operation)) return emitResourceCall(operation, context, indent);
   if (operation.foreign.function.native.arguments.some((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
@@ -241,6 +318,7 @@ function emitExactForeignCall(operation, context, indent) {
 }
 
 function emitTaggedForeignCall(operation, context, indent) {
+  if (usesResource(operation)) return emitResourceCall(operation, context, indent);
   if (operation.foreign.function.native.arguments.some((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
@@ -250,6 +328,7 @@ function emitTaggedForeignCall(operation, context, indent) {
 }
 
 function emitWordForeignCall(operation, context, indent) {
+  if (usesResource(operation)) return context.promote(operation, indent);
   if (operation.foreign.function.native.arguments.some((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
@@ -263,13 +342,30 @@ function emitWordForeignCall(operation, context, indent) {
 function javascriptForeignCall(operation, indent) {
   const foreign = operation.foreign;
   const signature = foreign.function.signature;
+  const returned = resourceForType(operation, signature.return_type);
+  const metadata = {
+    returned: returned === undefined ? null : {
+      identity: `resource:${foreign.declarationIdentity.split(":")[0]}:${returned.id}`,
+      closeExport: returned.dynamic.close_export,
+    },
+    parameters: signature.parameters.map((parameter) => {
+      const resource = resourceForType(operation, parameter.type);
+      return resource === undefined ? null :
+        `resource:${foreign.declarationIdentity.split(":")[0]}:${resource.id}`;
+    }),
+    minimums: signature.parameters.map((parameter) => parameter.minimum ?? null),
+  };
+  const resourceStack = metadata.returned !== null ||
+    metadata.parameters.some((identity) => identity !== null)
+    ? "sagejsFfiResources" : "null";
   return `${indent}${operation.target} = sagejsFfiCall(` +
     `${JSON.stringify(foreign.library.dynamic.package)}, ` +
     `${JSON.stringify(foreign.function.dynamic.export)}, ` +
     `[${operation.arguments.map((argument) => argument.name).join(", ")}], ` +
     `${JSON.stringify(signature.parameters.map((parameter) => parameter.type))}, ` +
     `${JSON.stringify(signature.return_type)}, ` +
-    `${JSON.stringify(foreign.function.errors)});`;
+    `${JSON.stringify(foreign.function.errors)}, ` +
+    `${JSON.stringify(metadata)}, ${resourceStack});`;
 }
 
 function javascriptRuntime(ir) {
@@ -278,7 +374,8 @@ function javascriptRuntime(ir) {
 const sagejsFfiLibraries = new Map();
 
 function sagejsFfiCall(
-  packageName, exportName, args, parameterTypes, returnType, errors
+  packageName, exportName, args, parameterTypes, returnType, errors,
+  resourceMetadata, resourceStack
 ) {
   let library = sagejsFfiLibraries.get(packageName);
   if (library === undefined) {
@@ -299,6 +396,14 @@ function sagejsFfiCall(
   }
   const marshalled = args.map((value, index) => {
     const type = parameterTypes[index];
+    const resourceIdentity = resourceMetadata.parameters[index];
+    if (resourceIdentity !== null) {
+      if (value === null || value.identity !== resourceIdentity) {
+        throw new TypeError("invalid declared FFI resource");
+      }
+      if (value.closed) throw new Error("FFI resource is closed");
+      return value.handle;
+    }
     if (type === "Integer") {
       if (typeof value === "bigint") return value;
       if (Number.isSafeInteger(value)) return BigInt(value);
@@ -307,7 +412,14 @@ function sagejsFfiCall(
       const exact = typeof value === "bigint"
         ? value
         : Number.isSafeInteger(value) ? BigInt(value) : -1n;
-      if (exact >= 0n && exact <= 18446744073709551615n) return exact;
+      if (exact >= 0n && exact <= 18446744073709551615n) {
+        const minimum = resourceMetadata.minimums[index];
+        if (minimum !== null && exact < BigInt(minimum)) {
+          nativeRaise("ValueError", "FFI resource argument is below minimum " +
+            minimum);
+        }
+        return exact;
+      }
     }
     if (type === "bool" && typeof value === "boolean") return value;
     if (type === "UInt64Buffer" && value !== null &&
@@ -331,6 +443,25 @@ function sagejsFfiCall(
   if (errors.policy === "zero_is_error" && result === false) {
     nativeRaise(errors.exception, errors.message);
   }
+  if (resourceMetadata.returned !== null) {
+    if (result === null || (typeof result !== "object" &&
+        typeof result !== "function")) {
+      throw new TypeError("FFI backend returned invalid resource");
+    }
+    const close = Reflect.get(library, resourceMetadata.returned.closeExport);
+    if (typeof close !== "function") {
+      throw new Error("FFI backend lacks declared resource close export");
+    }
+    const resource = {
+      identity: resourceMetadata.returned.identity,
+      handle: result,
+      backend: library,
+      close,
+      closed: false,
+    };
+    resourceStack.push(resource);
+    return resource;
+  }
   if (returnType === "bool" && typeof result === "boolean") return result;
   if (returnType === "Integer" && typeof result === "bigint") return result;
   if (returnType === "uint64" && typeof result === "bigint" &&
@@ -338,6 +469,16 @@ function sagejsFfiCall(
   throw new TypeError(
     "FFI backend " + packageName + "." + exportName +
     " returned invalid " + returnType);
+}
+
+function sagejsFfiCloseResources(resources) {
+  for (let index = resources.length - 1; index >= 0; index -= 1) {
+    const resource = resources[index];
+    if (resource.closed) continue;
+    Reflect.apply(resource.close, resource.backend, [resource.handle]);
+    resource.closed = true;
+    resource.handle = null;
+  }
 }
 `;
 }
@@ -349,6 +490,8 @@ module.exports = {
   foreignDependencies,
   foreignHeaders,
   foreignLibraries,
+  isForeignResourceType,
   javascriptForeignCall,
   javascriptRuntime,
+  resourceForFunctionType,
 };

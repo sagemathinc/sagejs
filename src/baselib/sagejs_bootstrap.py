@@ -197,6 +197,29 @@ def ρσ_ffi_call(
         }
         const marshalled = values.map((value, index) => {
             const parameter_type = parameter_types[index];
+            if (
+                typeof parameter_type === "string"
+                && parameter_type.startsWith("resource:")
+            ) {
+                const tag = (
+                    globalThis.__sagejs_ffi_resource_tag__ ??= Symbol(
+                        "Sage.js declared FFI resource"
+                    )
+                );
+                const state = value?.[tag];
+                if (
+                    state === undefined
+                    || state.identity !== parameter_type
+                ) {
+                    throw new TypeError(
+                        `invalid dynamic FFI argument for ${parameter_type}`
+                    );
+                }
+                if (state.closed) {
+                    throw new ValueError("FFI resource is closed");
+                }
+                return state.handle;
+            }
             if (parameter_type === "Integer") {
                 if (typeof value === "bigint") return value;
                 if (Number.isSafeInteger(value)) return BigInt(value);
@@ -269,6 +292,159 @@ def ρσ_ffi_call(
             `FFI declaration ${declaration_identity} returned invalid `
             + `${return_type}`
         );
+    })()"""
+
+
+def ρσ_ffi_resource_create(
+    declaration_identity, resource_identity, package_name, create_export,
+    close_export, values, parameter_types, parameter_minimums,
+    error_policy, error_exception,
+    error_message
+):
+    """Create an opaque owned resource through a checked declaration."""
+    return r"""%js (() => {
+        if (
+            typeof declaration_identity !== "string"
+            || !/^[a-z][a-z0-9_]*@[0-9a-f]{64}:[A-Za-z_][A-Za-z0-9_]*$/
+                .test(declaration_identity)
+            || typeof resource_identity !== "string"
+            || !/^resource:[a-z][a-z0-9_]*@[0-9a-f]{64}:[A-Za-z_][A-Za-z0-9_]*$/
+                .test(resource_identity)
+        ) {
+            throw new TypeError("invalid FFI resource declaration identity");
+        }
+        if (
+            values.length !== parameter_types.length
+            || values.length !== parameter_minimums.length
+        ) {
+            throw new TypeError(
+                `FFI declaration ${declaration_identity} argument count mismatch`
+            );
+        }
+        const backend = __sagejs_runtime_require__(package_name);
+        const create = Reflect.get(backend, create_export);
+        const close = Reflect.get(backend, close_export);
+        if (typeof create !== "function" || typeof close !== "function") {
+            throw new RuntimeError(
+                `FFI resource backend ${package_name} lacks `
+                + `${create_export}/${close_export}`
+            );
+        }
+        const marshalled = values.map((value, index) => {
+            const type = parameter_types[index];
+            if (type === "Integer") {
+                if (typeof value === "bigint") return value;
+                if (Number.isSafeInteger(value)) return BigInt(value);
+            }
+            if (type === "uint64") {
+                const exact = typeof value === "bigint"
+                    ? value
+                    : Number.isSafeInteger(value) ? BigInt(value) : -1n;
+                if (exact >= 0n && exact <= 18446744073709551615n) {
+                    const minimum = parameter_minimums[index];
+                    if (minimum !== null && exact < BigInt(minimum)) {
+                        throw new ValueError(
+                            `FFI resource argument is below minimum ${minimum}`
+                        );
+                    }
+                    return exact;
+                }
+            }
+            if (type === "bool" && typeof value === "boolean") return value;
+            throw new TypeError(
+                `invalid dynamic FFI resource argument for ${type}`
+            );
+        });
+        const handle = Reflect.apply(create, backend, marshalled);
+        if (error_policy === "zero_is_error" && handle === false) {
+            const exceptions = {
+                OverflowError, RuntimeError, TypeError, ValueError
+            };
+            const exception = exceptions[error_exception];
+            if (typeof exception !== "function") {
+                throw new RuntimeError(
+                    `unsupported FFI exception ${error_exception}`
+                );
+            }
+            throw new exception(error_message);
+        }
+        if (
+            handle === null
+            || (typeof handle !== "object" && typeof handle !== "function")
+        ) {
+            throw new TypeError(
+                `FFI declaration ${declaration_identity} returned invalid resource`
+            );
+        }
+        const tag = (
+            globalThis.__sagejs_ffi_resource_tag__ ??= Symbol(
+                "Sage.js declared FFI resource"
+            )
+        );
+        const registry = (
+            globalThis.__sagejs_ffi_resource_registry__ ??=
+                new FinalizationRegistry((state) => {
+                    if (state.closed) return;
+                    try {
+                        Reflect.apply(state.close, state.backend, [state.handle]);
+                    } catch (_error) {
+                        // Finalizers cannot report recoverable errors to user code.
+                    } finally {
+                        state.closed = true;
+                        state.handle = null;
+                    }
+                })
+        );
+        const state = {
+            identity: resource_identity,
+            declaration: declaration_identity,
+            backend,
+            close,
+            handle,
+            closed: false
+        };
+        const token = Object.create(null);
+        Object.defineProperty(token, tag, {value: state});
+        registry.register(token, state, token);
+        return token;
+    })()"""
+
+
+def ρσ_ffi_resource_borrow(token, resource_identity):
+    """Validate an opaque resource and retain only its unforgeable token."""
+    return r"""%js (() => {
+        const tag = globalThis.__sagejs_ffi_resource_tag__;
+        const state = tag === undefined ? undefined : token?.[tag];
+        if (state === undefined || state.identity !== resource_identity) {
+            throw new TypeError(`expected ${resource_identity}`);
+        }
+        if (state.closed) throw new ValueError("FFI resource is closed");
+        return token;
+    })()"""
+
+
+def ρσ_ffi_resource_close(token):
+    """Close an owned resource once; repeated close operations are harmless."""
+    return r"""%js (() => {
+        const tag = globalThis.__sagejs_ffi_resource_tag__;
+        const state = tag === undefined ? undefined : token?.[tag];
+        if (state === undefined) throw new TypeError("invalid FFI resource");
+        if (state.closed) return undefined;
+        Reflect.apply(state.close, state.backend, [state.handle]);
+        state.closed = true;
+        state.handle = null;
+        globalThis.__sagejs_ffi_resource_registry__?.unregister(token);
+        return undefined;
+    })()"""
+
+
+def ρσ_ffi_resource_closed(token):
+    """Return whether an opaque owned resource has been closed."""
+    return r"""%js (() => {
+        const tag = globalThis.__sagejs_ffi_resource_tag__;
+        const state = tag === undefined ? undefined : token?.[tag];
+        if (state === undefined) throw new TypeError("invalid FFI resource");
+        return state.closed;
     })()"""
 
 

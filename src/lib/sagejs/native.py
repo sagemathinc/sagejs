@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v18 currently accepts a deliberately narrow typed numerical
+Native Kernel v19 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels and reusable dense
 decompositions over prime fields. It also supports packed binary64 buffers and
 mutable signed exact-integer buffers with bounded record views. Mutable
@@ -34,6 +34,8 @@ Explicit imports from generated ``sagejs.ffi`` modules are also declaration-
 checked at compile time. Supported calls lower directly into the isolated core
 using generic ABI type adapters; they never become a host callback or a
 function-name-based compiler substitution.
+Opaque owned FFI resources may be lexical native locals when their declaration
+provides construction and cleanup; they do not become public pointer types.
 """
 
 from __future__ import annotations

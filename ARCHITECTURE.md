@@ -120,6 +120,16 @@ call declared C/C++ libraries but MUST NOT call Node-API, JavaScript, Python,
 or a host callback after marshalling. Ownership and cleanup are explicit and
 lexically generated. Raw pointers are not a public mathematical type.
 
+Owned foreign resources follow the same rule. The declaration, rather than
+mathematical source, specifies the ABI storage, constructor, close operation,
+and scalar preconditions. Ordinary execution uses a generated opaque wrapper
+with deterministic idempotent close and a finalizer fallback. Native execution
+currently admits owned resources only as non-escaping lexical locals and emits
+initialization flags plus all-exit cleanup in the isolated core. Resource
+construction inside control-flow blocks and resources in public kernel signatures fail
+compilation until a future ownership model proves them safe. A compiler change
+MUST NOT silently turn such a resource into a raw pointer or host callback.
+
 ## Compiled-kernel witnesses
 
 [`architecture/native-kernels.json`](architecture/native-kernels.json) lists

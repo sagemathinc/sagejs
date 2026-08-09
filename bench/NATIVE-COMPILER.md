@@ -1,6 +1,6 @@
-# Native Kernel v18
+# Native Kernel v19
 
-Native Kernel v18 asks whether selected Sage.js library functions can compile
+Native Kernel v19 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v18 is currently a source-tree development feature and uses the
+Native Kernel v19 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -140,7 +140,7 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v18 supports:
+lowers marked functions to typed IR. Native Kernel v19 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -168,6 +168,9 @@ lowers marked functions to typed IR. Native Kernel v18 supports:
   with semantic/ABI type checking, ownership, transitive effects, direct
   foreign-library calls in the host-isolated core, and the same declaration's
   checked dynamic adapter as fallback;
+- non-escaping opaque owned FFI resources created in the top-level native
+  block, with declaration-driven initialization flags, all-exit cleanup, and
+  reverse-order cleanup in the generated JavaScript fallback;
 - generated, inspectable BigInt-versus-GMP selection based on call/loop shape,
   constant sizes, recursion, and runtime operand magnitude;
 - source-transparent binary64 kernels with mixed `uint64`/`Float64`

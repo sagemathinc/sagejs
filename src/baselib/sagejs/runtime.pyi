@@ -210,6 +210,33 @@ def dynamic_eval(
     module_id: str,
 ) -> Any: ...
 def factor_pair(factor: Any, exponent: int) -> list[Any]: ...
+def ffi_call(
+    declaration_identity: str,
+    package_name: str,
+    export_name: str,
+    values: list[Any],
+    parameter_types: list[str],
+    return_type: str,
+    error_policy: str,
+    error_exception: str | None,
+    error_message: str | None,
+) -> Any: ...
+def ffi_resource_create(
+    declaration_identity: str,
+    resource_identity: str,
+    package_name: str,
+    create_export: str,
+    close_export: str,
+    values: list[Any],
+    parameter_types: list[str],
+    parameter_minimums: list[str | None],
+    error_policy: str,
+    error_exception: str | None,
+    error_message: str | None,
+) -> Any: ...
+def ffi_resource_borrow(token: Any, resource_identity: str) -> Any: ...
+def ffi_resource_close(token: Any) -> None: ...
+def ffi_resource_closed(token: Any) -> bool: ...
 def flint_backend() -> Any: ...
 def integer_bigint(value: object) -> int: ...
 def instance_of(value: object, constructor: Any) -> bool: ...

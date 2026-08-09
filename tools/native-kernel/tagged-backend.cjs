@@ -12,7 +12,10 @@ const {
   wordName,
   wordType,
 } = require("./word-backend.cjs");
-const { emitTaggedForeignCall } = require("./ffi-codegen.cjs");
+const {
+  emitTaggedForeignCall,
+  resourceForFunctionType,
+} = require("./ffi-codegen.cjs");
 
 const INT64_MIN = -(1n << 63n);
 const INT64_MAX = (1n << 63n) - 1n;
@@ -37,7 +40,7 @@ function taggedName(name) {
   return `sagejs_tagged_${name}`;
 }
 
-function scalarType(type) {
+function scalarType(type, fn) {
   if (type === "uint64") return "uint64_t";
   if (type === "bool") return "int";
   if (type === "Int64Buffer" || type === "Int64Record") {
@@ -45,6 +48,8 @@ function scalarType(type) {
   }
   if (type === "UInt64Buffer") return "sagejs_uint64_buffer";
   if (type === "IntegerBuffer") return "sagejs_integer_buffer";
+  const resource = fn === undefined ? undefined : resourceForFunctionType(fn, type);
+  if (resource !== undefined) return resource.abi_type;
   throw new Error(`unsupported tagged scalar type ${type}`);
 }
 
@@ -425,6 +430,7 @@ function emitTaggedOperation(operation, context, indent) {
       value: (name) => taggedValue(name, context),
       result: (name) => taggedValue(name, context),
       failure: "goto fail;",
+      resourceInitialized: context.resourceInitialized,
     }, indent);
   }
   throw new Error(`unsupported tagged C IR operation ${operation.kind}`);
@@ -566,15 +572,28 @@ function emitTaggedFunction(fn, functions) {
   for (const param of fn.params) {
     if (param.type === "Integer") continue;
     declarations.push(
-      `    ${scalarType(param.type)} ${taggedName(param.name)} = ` +
+      `    ${scalarType(param.type, fn)} ${taggedName(param.name)} = ` +
         `sagejs_tagged_arg_${param.name};`,
     );
   }
   for (const local of fn.locals) {
+    if ((fn.resourceAliases || {})[local.name] !== undefined) continue;
+    const resource = resourceForFunctionType(fn, local.type);
+    if (resource !== undefined) {
+      declarations.push(
+        `    ${resource.abi_type} ${taggedName(local.name)};`,
+        `    int ${taggedName(local.name)}_initialized = 0;`,
+      );
+      cleanup.unshift(
+        `        if (${taggedName(local.name)}_initialized)`,
+        `            ${resource.native.clear_symbol}(${taggedName(local.name)});`,
+      );
+      continue;
+    }
     if (local.type === "Integer" || local.type.startsWith("IntegerSequence[")) {
       continue;
     }
-    declarations.push(`    ${scalarType(local.type)} ${taggedName(local.name)} = ` +
+    declarations.push(`    ${scalarType(local.type, fn)} ${taggedName(local.name)} = ` +
       `${local.type === "Int64Buffer" || local.type === "Int64Record" ||
         local.type === "IntegerBuffer" || local.type === "UInt64Buffer"
         ? "{0}" : "0"};`);
@@ -586,7 +605,16 @@ function emitTaggedFunction(fn, functions) {
   for (const value of integerNames) {
     declarations.push(`    int64_t ${wordName(value.name)} = 0;`);
   }
-  const context = { functions, sites, storage, tagLocals, types };
+  const context = {
+    functions,
+    sites,
+    storage,
+    tagLocals,
+    types,
+    resourceInitialized(name) {
+      return `${taggedName(name)}_initialized`;
+    },
+  };
   const wordContext = {
     failure: "goto fail;",
     functions,

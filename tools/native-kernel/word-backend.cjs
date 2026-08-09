@@ -7,6 +7,7 @@ const {
 
 const { tupleElementTypes } = require("./integer-ir.cjs");
 const { emitWordForeignCall } = require("./ffi-codegen.cjs");
+const { isForeignResourceType } = require("./ffi-codegen.cjs");
 
 const INT64_MIN = -(1n << 63n);
 const INT64_MAX = (1n << 63n) - 1n;
@@ -505,7 +506,8 @@ function emitWordFunction(fn, functions) {
   const params = new Set(fn.params.map((param) => param.name));
   const declarations = fn.locals
     .filter((local) =>
-      !params.has(local.name) && !local.type.startsWith("IntegerSequence[")
+      !params.has(local.name) && !local.type.startsWith("IntegerSequence[") &&
+      !isForeignResourceType(fn, local.type)
     )
     .map((local) => `    ${wordType(local.type)} ${wordName(local.name)} = ` +
       `${local.type === "Int64Buffer" || local.type === "Int64Record" ||

@@ -5,6 +5,7 @@
     "scopes": [
       "classified-native-files",
       "declared-ffi-functions",
+      "declared-ffi-resources",
       "napi-exports",
       "runtime-intrinsics",
       "wasm-exports"
@@ -13,12 +14,57 @@
   },
   "counts": {
     "classified-native-file": 51,
-    "declared-ffi": 4,
-    "napi-export": 284,
-    "runtime-intrinsic": 107,
+    "declared-ffi": 7,
+    "declared-ffi-resource": 1,
+    "napi-export": 285,
+    "runtime-intrinsic": 111,
     "wasm-export": 46
   },
   "boundaries": [
+    {
+      "id": "ffi-resource:flint:dirichlet_group",
+      "kind": "declared-ffi-resource",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "DirichletGroup",
+      "abi_type": "dirichlet_group_t",
+      "close_export": "ffiDirichletGroupClose",
+      "clear_symbol": "dirichlet_group_clear",
+      "disposition": "declared-owned-ffi-resource"
+    },
+    {
+      "id": "ffi:flint:dirichlet_group_init",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "dirichlet_group",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiDirichletGroupCreate",
+      "symbol": "dirichlet_group_init",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:dirichlet_group_num_primitive",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "dirichlet_group_num_primitive",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiDirichletGroupNumPrimitive",
+      "symbol": "dirichlet_group_num_primitive",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:dirichlet_group_size",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "dirichlet_group_size",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiDirichletGroupSize",
+      "symbol": "dirichlet_group_size",
+      "disposition": "declared-safe-ffi"
+    },
     {
       "id": "ffi:flint:fmpz_gcd",
       "kind": "declared-ffi",
@@ -376,6 +422,15 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletGroup",
       "symbol": "sagejs_dirichlet_group",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletGroupClose",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletGroupClose",
+      "symbol": "sagejs_dirichlet_group_close",
       "disposition": "legacy-handwritten-dynamic"
     },
     {
@@ -3180,6 +3235,38 @@
       "export": "ffi_call",
       "symbol": "ρσ_ffi_call",
       "disposition": "declared-ffi-gateway"
+    },
+    {
+      "id": "runtime:ffi_resource_borrow",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "ffi_resource_borrow",
+      "symbol": "ρσ_ffi_resource_borrow",
+      "disposition": "declared-ffi-resource-gateway"
+    },
+    {
+      "id": "runtime:ffi_resource_close",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "ffi_resource_close",
+      "symbol": "ρσ_ffi_resource_close",
+      "disposition": "declared-ffi-resource-gateway"
+    },
+    {
+      "id": "runtime:ffi_resource_closed",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "ffi_resource_closed",
+      "symbol": "ρσ_ffi_resource_closed",
+      "disposition": "declared-ffi-resource-gateway"
+    },
+    {
+      "id": "runtime:ffi_resource_create",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "ffi_resource_create",
+      "symbol": "ρσ_ffi_resource_create",
+      "disposition": "declared-ffi-resource-gateway"
     },
     {
       "id": "runtime:finalization_registry_class",

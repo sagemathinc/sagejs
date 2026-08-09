@@ -201,6 +201,7 @@
     "bench:native:integer": "node bench/compare-native-integer.cjs",
     "bench:native:ffi": "node bench/compare-native-ffi.cjs",
     "bench:native:ffi:matrix": "node bench/compare-native-ffi-matrix.cjs",
+    "bench:native:ffi:resource": "node bench/compare-native-ffi-resource.cjs",
     "bench:native:cowasm": "node bench/compare-native-cowasm.cjs",
     "bench:native:julia": "julia --startup-file=no bench/julia-math-comparison.jl",
     "bench:mpmath:suite": "node bench/compare-mpmath-suite.cjs",

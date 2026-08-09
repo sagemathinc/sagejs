@@ -102,6 +102,8 @@ function runtimeIntrinsics(root) {
       symbol: match[2],
       disposition: match[1] === "ffi_call"
         ? "declared-ffi-gateway"
+        : match[1].startsWith("ffi_resource_")
+          ? "declared-ffi-resource-gateway"
         : "runtime-primitive",
     });
   }
@@ -121,6 +123,22 @@ function declaredFunctions(registry) {
       dynamic_export: fn.dynamic.export,
       symbol: fn.native.symbol,
       disposition: "declared-safe-ffi",
+    }))
+  );
+}
+
+function declaredResources(registry) {
+  return registry.libraries.flatMap((library) =>
+    library.resources.map((resource) => ({
+      id: `ffi-resource:${library.library.id}:${resource.id}`,
+      kind: "declared-ffi-resource",
+      path: relative(registry.root, library.filename),
+      library: library.library.id,
+      export: resource.python_name,
+      abi_type: resource.abi_type,
+      close_export: resource.dynamic.close_export,
+      clear_symbol: resource.native.clear_symbol,
+      disposition: "declared-owned-ffi-resource",
     }))
   );
 }
@@ -156,6 +174,7 @@ function createBoundarySnapshot(options = {}) {
     ...wasmExports(root, files),
     ...runtimeIntrinsics(root),
     ...declaredFunctions(registry),
+    ...declaredResources(registry),
   ].sort((left, right) => left.id.localeCompare(right.id));
   const duplicate = boundaries.find((item, index) =>
     index > 0 && item.id === boundaries[index - 1].id
@@ -174,6 +193,7 @@ function createBoundarySnapshot(options = {}) {
       scopes: [
         "classified-native-files",
         "declared-ffi-functions",
+        "declared-ffi-resources",
         "napi-exports",
         "runtime-intrinsics",
         "wasm-exports",

@@ -277,21 +277,31 @@ function createContext(
   const variables = new Map(
     signature.params.map((param) => [param.name, param.type]),
   );
+  const foreignResources = new Map();
+  for (const foreign of foreignFunctions.values()) {
+    for (const resource of foreign.resources || []) {
+      foreignResources.set(resource.python_name, resource);
+    }
+  }
   return {
     decorated,
     dependencies: new Set(),
     foreignDependencies: new Set(),
     foreignFunctions,
+    foreignResources,
     filename,
     functionName: signature.name,
     initialized: new Set(signature.params.map((param) => param.name)),
+    controlDepth: 0,
     locals: new Map(),
     nextTemporary: 0,
     params: signature.params,
+    resourceAliases: new Map(),
     returnType: signature.returnType,
     scalarCoercions: new Map(),
     sequenceConstants: new Map(),
     signatures,
+    usedForeignResources: new Map(),
     variables,
     fn,
   };
@@ -381,6 +391,15 @@ function lowerCall(node, context, operations) {
   const foreign = context.foreignFunctions.get(name);
   if (foreign !== undefined) {
     const signature = foreign.function.signature;
+    for (const type of [
+      signature.return_type,
+      ...signature.parameters.map((parameter) => parameter.type),
+    ]) {
+      const resource = context.foreignResources.get(type);
+      if (resource !== undefined) {
+        context.usedForeignResources.set(type, resource);
+      }
+    }
     expect(
       context,
       node,
@@ -407,6 +426,14 @@ function lowerCall(node, context, operations) {
       return value;
     });
     const target = temporary(context, node, signature.return_type);
+    if (context.foreignResources.has(signature.return_type)) {
+      expect(
+        context,
+        node,
+        context.controlDepth === 0,
+        "owned FFI resources must be created in the top-level native block",
+      );
+    }
     operations.push({
       kind: "ffi.call",
       target,
@@ -638,7 +665,10 @@ function lowerExpression(node, context, operations) {
       context.initialized.has(node.name),
       `native value ${node.name} may be uninitialized`,
     );
-    return { name: node.name, type };
+    return {
+      name: context.resourceAliases.get(node.name) || node.name,
+      type,
+    };
   }
   if (nodeType(node) === "AST_Call") {
     return lowerCall(node, context, operations);
@@ -877,6 +907,14 @@ function assignScalar(targetNode, value, context, operations) {
     "native assignment targets must be local names",
   );
   ensureVariable(context, targetNode, targetNode.name, value.type);
+  if (context.foreignResources.has(value.type)) {
+    context.resourceAliases.set(
+      targetNode.name,
+      context.resourceAliases.get(value.name) || value.name,
+    );
+    context.initialized.add(targetNode.name);
+    return;
+  }
   operations.push({
     kind: copyKind(value.type),
     target: targetNode.name,
@@ -1219,10 +1257,14 @@ function lowerStatements(statements, context) {
       );
       const before = new Set(context.initialized);
       context.initialized = new Set(before);
+      context.controlDepth += 1;
       const body = lowerBlock(statement.body, context);
+      context.controlDepth -= 1;
       const bodyInitialized = new Set(context.initialized);
       context.initialized = new Set(before);
+      context.controlDepth += 1;
       const alternative = lowerBlock(statement.alternative, context);
+      context.controlDepth -= 1;
       const alternativeInitialized = statement.alternative == null
         ? before
         : new Set(context.initialized);
@@ -1257,7 +1299,9 @@ function lowerStatements(statements, context) {
       );
       const before = new Set(context.initialized);
       context.initialized = new Set(before);
+      context.controlDepth += 1;
       const body = lowerBlock(statement.body, context);
+      context.controlDepth -= 1;
       context.initialized = before;
       const operation = {
         kind: "while",
@@ -1280,7 +1324,9 @@ function lowerStatements(statements, context) {
       ensureVariable(context, statement.init, index, range.indexType);
       const before = new Set(context.initialized);
       context.initialized.add(index);
+      context.controlDepth += 1;
       const body = lowerBlock(statement.body, context);
+      context.controlDepth -= 1;
       context.initialized = before;
       const hoisted = [];
       const loopBody = [];
@@ -1379,6 +1425,8 @@ function lowerIntegerFunction(
     body,
     dependencies: Array.from(context.dependencies).sort(),
     foreignDependencies: Array.from(context.foreignDependencies).sort(),
+    foreignResources: Array.from(context.usedForeignResources.values()),
+    resourceAliases: Object.fromEntries(context.resourceAliases),
   };
 }
 

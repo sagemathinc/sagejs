@@ -5,7 +5,82 @@ from __future__ import annotations
 import sagejs.runtime as _runtime
 from sagejs.native import UInt64Buffer
 
-__sagejs_ffi_declaration__ = "flint@faa556e5c01d2a259d4c7cc40e3ae46ff0bd98b38a4eeff671abd52b2a469706"
+__sagejs_ffi_declaration__ = "flint@a4a9b7bdea201d04a8c29ca122311470764f87b2e61f027cb4a7fcdf25ef6489"
+
+
+class DirichletGroup:
+    """Opaque owned flint:dirichlet_group resource."""
+
+    def __init__(self, token):
+        self._token = token
+
+    @property
+    def closed(self) -> bool:
+        return _runtime.ffi_resource_closed(self._token)
+
+    def close(self) -> None:
+        _runtime.ffi_resource_close(self._token)
+
+    def _ffi_borrow(self):
+        return _runtime.ffi_resource_borrow(
+            self._token, "resource:flint@a4a9b7bdea201d04a8c29ca122311470764f87b2e61f027cb4a7fcdf25ef6489:dirichlet_group"
+        )
+
+    def __enter__(self):
+        self._ffi_borrow()
+        return self
+
+    def __exit__(self, exception_type, exception, traceback) -> bool:
+        self.close()
+        return False
+
+
+
+def dirichlet_group(modulus: int) -> DirichletGroup:
+    """Call declared flint:dirichlet_group_init."""
+    return DirichletGroup(_runtime.ffi_resource_create(
+        __sagejs_ffi_declaration__ + ":dirichlet_group_init",
+        "resource:flint@a4a9b7bdea201d04a8c29ca122311470764f87b2e61f027cb4a7fcdf25ef6489:dirichlet_group",
+        "@sagemath/sagejs-flint",
+        "ffiDirichletGroupCreate",
+        "ffiDirichletGroupClose",
+        [modulus],
+        ["uint64"],
+        ["1"],
+        "zero_is_error",
+        "ValueError",
+        "FLINT could not initialize this Dirichlet modulus",
+    ))
+
+
+def dirichlet_group_size(group: DirichletGroup) -> int:
+    """Call declared flint:dirichlet_group_size."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":dirichlet_group_size",
+        "@sagemath/sagejs-flint",
+        "ffiDirichletGroupSize",
+        [group._ffi_borrow()],
+        ["resource:flint@a4a9b7bdea201d04a8c29ca122311470764f87b2e61f027cb4a7fcdf25ef6489:dirichlet_group"],
+        "uint64",
+        "none",
+        None,
+        None,
+    )
+
+
+def dirichlet_group_num_primitive(group: DirichletGroup) -> int:
+    """Call declared flint:dirichlet_group_num_primitive."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":dirichlet_group_num_primitive",
+        "@sagemath/sagejs-flint",
+        "ffiDirichletGroupNumPrimitive",
+        [group._ffi_borrow()],
+        ["resource:flint@a4a9b7bdea201d04a8c29ca122311470764f87b2e61f027cb4a7fcdf25ef6489:dirichlet_group"],
+        "uint64",
+        "none",
+        None,
+        None,
+    )
 
 
 def n_is_prime(value: int) -> bool:
