@@ -12,6 +12,18 @@ import sagejs as sage
 import sagejs.runtime as runtime
 
 
+def _native_p1_modules() -> tuple[Any, Any]:
+    loader = runtime.reflect.get(
+        runtime.global_object, '__sagejs_load_module__')
+    if loader is runtime.undefined:
+        raise RuntimeError('the native P1 kernel loader is unavailable')
+    return (
+        runtime.reflect.apply(
+            loader, runtime.undefined, ['sagejs.native']),
+        runtime.reflect.apply(
+            loader, runtime.undefined, ['sagejs.kernels.p1']))
+
+
 def _exact_integer(value: Any, name: str) -> int:
     value = runtime.normalize_integer(value)
     if (
@@ -1991,6 +2003,7 @@ class HigherWeightManinPresentation:
             runtime.number(value)
             for value in runtime.reflect.get(raw, 'basisGenerators')
         ]
+        self._native_kernel_data_cache = None
 
     def dimension(self) -> int:
         return self._dimension
@@ -2022,6 +2035,25 @@ class HigherWeightManinPresentation:
     def basis_generators(self) -> list[int]:
         """Return original triple indices chosen as the quotient basis."""
         return list(self._basis_generators)
+
+    def _native_kernel_data(
+        self,
+    ) -> tuple[list[int], list[int], list[int]]:
+        if self._native_kernel_data_cache is None:
+            native_api, kernels = _native_p1_modules()
+            kernel = kernels.heilbronn_higher_weight_hecke_fill
+            numerators = []
+            denominators = []
+            for entry in self.reduction_matrix().list():
+                numerators.append(entry.numerator())
+                denominators.append(entry.denominator())
+            self._native_kernel_data_cache = (
+                native_api.kernel_int64_buffer(
+                    kernel, self._basis_generators),
+                native_api.kernel_integer_buffer(kernel, numerators),
+                native_api.kernel_integer_buffer(kernel, denominators)
+            )
+        return self._native_kernel_data_cache
 
     def __repr__(self) -> str:
         return (
@@ -2064,6 +2096,8 @@ class P1List:
         self._higher_weight_degeneracy_cache = runtime.map()
         self._character_presentation_cache = runtime.map()
         self._character_hecke_cache = runtime.map()
+        self._native_kernel_pairs_cache = None
+        self._native_kernel_heilbronn_cache = runtime.map()
 
     def N(self) -> int:
         return self._level
@@ -2088,6 +2122,41 @@ class P1List:
 
     def list(self) -> list[Any]:
         return [self.__getitem__(index) for index in range(len(self))]
+
+    def _native_kernel_pairs(self) -> list[int]:
+        if self._native_kernel_pairs_cache is None:
+            native_api, kernels = _native_p1_modules()
+            entries = []
+            for u, v in self.list():
+                entries.append(u)
+                entries.append(v)
+            self._native_kernel_pairs_cache = native_api.kernel_int64_buffer(
+                kernels.heilbronn_higher_weight_hecke_fill,
+                entries,
+            )
+        return self._native_kernel_pairs_cache
+
+    def _native_kernel_heilbronn(
+        self, prime: int,
+    ) -> tuple[int, list[int]]:
+        key = str(prime)
+        cached = self._native_kernel_heilbronn_cache.get(key)
+        if cached is runtime.undefined:
+            native_api, kernels = _native_p1_modules()
+            count = runtime.number(
+                kernels.heilbronn_cremona_count(prime))
+            matrices = native_api.kernel_int64_zeros(
+                kernels.heilbronn_higher_weight_hecke_fill,
+                count * 4,
+            )
+            written = runtime.number(
+                kernels.heilbronn_cremona_fill(prime, matrices))
+            if written != count:
+                raise ArithmeticError(
+                    'Heilbronn representative count changed during fill')
+            cached = (count, matrices)
+            self._native_kernel_heilbronn_cache.set(key, cached)
+        return cached
 
     def normalize(self, u: Any, v: Any) -> Any:
         u = _exact_integer(u, 'projective numerator')
@@ -2193,16 +2262,84 @@ class P1List:
         if cached is not runtime.undefined:
             return cached
         presentation = self.higher_weight_presentation(weight, sign)
+        native_api, kernels = _native_p1_modules()
+        kernel = kernels.heilbronn_higher_weight_hecke_fill
+        if (
+            not native_api.is_compiled(kernel)
+            or not getattr(kernel, 'nativeAvailable', False)
+        ):
+            cached = self._higher_weight_hecke_matrix_flint(
+                weight, sign, prime, presentation)
+            self._higher_weight_hecke_cache.set(key, cached)
+            return cached
+        dimension = presentation.dimension()
+        pairs = self._native_kernel_pairs()
+        matrix_count, matrices = self._native_kernel_heilbronn(prime)
+        basis, reduction_numerators, reduction_denominators = (
+            presentation._native_kernel_data())
+        output_length = dimension * dimension
+        word_capacity = 16
+        while True:
+            output_numerators = native_api.kernel_integer_zeros(
+                kernel, output_length, word_capacity)
+            output_denominators = native_api.kernel_integer_zeros(
+                kernel, output_length, word_capacity)
+            try:
+                kernel(
+                    weight,
+                    self._level,
+                    pairs,
+                    len(self),
+                    matrices,
+                    matrix_count,
+                    basis,
+                    dimension,
+                    reduction_numerators,
+                    reduction_denominators,
+                    output_numerators,
+                    output_denominators,
+                )
+                break
+            except Exception as error:
+                if (
+                    not native_api.is_compiled(kernel)
+                    or 'word capacity exceeded' not in str(error)
+                    or word_capacity >= 65536
+                ):
+                    raise
+                word_capacity *= 2
+        numerator_values = native_api.integer_buffer_values(
+            output_numerators)
+        denominator_values = native_api.integer_buffer_values(
+            output_denominators)
+        rational_class = runtime.rational_class
+        entries = [
+            rational_class._from_reduced(
+                numerator_values[index],
+                denominator_values[index],
+            )
+            for index in range(output_length)
+        ]
+        cached = MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
+            sage.QQ, dimension, dimension)(entries)
+        self._higher_weight_hecke_cache.set(key, cached)
+        return cached
+
+    def _higher_weight_hecke_matrix_flint(
+        self,
+        weight: int,
+        sign: int,
+        prime: int,
+        presentation: HigherWeightManinPresentation,
+    ) -> Any:
         dimension = presentation.dimension()
         native = runtime.flint_backend().p1ListHigherWeightHeckeMatrix(
             self._native, weight, sign, prime, presentation._native)
-        cached = Matrix(  # type: ignore[name-defined]  # noqa: F821
+        return Matrix(  # type: ignore[name-defined]  # noqa: F821
             MatrixSpace(  # type: ignore[name-defined]  # noqa: F821
                 sage.QQ, dimension, dimension),
             native,
         )
-        self._higher_weight_hecke_cache.set(key, cached)
-        return cached
 
     def higher_weight_degeneracy_matrix(
         self,

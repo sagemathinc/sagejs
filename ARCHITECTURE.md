@@ -38,8 +38,9 @@ real algorithm merely because a benchmark was urgent.
   graph MUST NOT call Python, JavaScript, Node-API, or another interpreter
   runtime. Unsupported operations fail compilation instead of inserting a
   host callback. Explicitly declared native libraries and packed C ABI calls
-  are allowed. Existing kernel kinds not yet satisfying this invariant are
-  recorded as `migration-required` rather than being silently certified.
+  are allowed. There is no accepted partially isolated backend: a new kernel
+  kind remains experimental outside the canonical compiler until it emits a
+  certified isolated core.
 - Every compiled function MUST retain a correct dynamic same-source fallback,
   unless an explicit capability boundary and tested fallback are documented.
 - Generated IR and target code MUST retain source provenance.  `native
@@ -94,13 +95,24 @@ storage, mutable signed exact-integer records, and packed arbitrary-precision
 integer vectors.  Compiler changes preserve their same-source fallback,
 provenance, introspection, differential tests, and benchmarks.
 
-Exact-integer kernels additionally emit a host-independent `kernel_core.c` and
-`kernel_core.h`.  Their generated source is mechanically rejected if it
+Every successful native compilation emits a host-independent `kernel_core.c`
+and `kernel_core.h` as its canonical mathematical artifact.  The core owns the
+entire lowered transitive call graph; a generated Node addon is only one host
+adapter that includes that core.  Exact integers, packed binary64 buffers,
+MPFR/MPC fields, source-transparent prime-field matrices, and the legacy
+specialized prime-field backend all use this pipeline.  Core source is
+mechanically rejected if it
 contains Node-API, CPython, or JavaScript-engine symbols.  The Node addon is an
 adapter: it validates and borrows packed inputs, calls the isolated core, and
 translates the returned status only after native execution finishes.  The same
 core is compiled and executed as a standalone C program and as WebAssembly
 when the WASI/GMP toolchain is available.
+
+The compiler MUST generate the isolated core first and fail closed before it
+generates a host adapter.  `kernel.c` is never an alternative mathematical
+implementation and MUST contain the generated core only through the explicit
+`kernel_core.c` boundary.  Cache identities include the core ABI and every
+generator module that contributes to either artifact.
 
 ## Parallel work
 

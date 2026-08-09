@@ -71,10 +71,20 @@ test("unclassified and stale native files fail closed", () => {
 test("compiler witnesses retain same-source fallbacks and avoid name substitution", () => {
   const result = validateKernelRegistry(kernelManifest);
   assert.ok(result.kernels.length >= 3);
+  assert.ok(result.kernels.every((kernel) =>
+    kernel.host_isolation === "certified"
+  ));
   const changed = structuredClone(kernelManifest);
   changed.kernels[0].fallback = "replacement";
   assert.throws(
     () => validateKernelRegistry(changed),
     /same-source fallback/,
+  );
+  const migration = structuredClone(kernelManifest);
+  migration.policy.host_isolation_statuses.push("migration-required");
+  migration.kernels[0].host_isolation = "migration-required";
+  assert.throws(
+    () => validateKernelRegistry(migration),
+    /host-isolation certified/,
   );
 });

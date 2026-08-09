@@ -131,6 +131,36 @@ same generated source in 1.890 ms with identical output, 1.08x the
 contemporaneous 1.748 ms FLINT measurement. These are medians across five
 complete benchmark passes.
 
+The fused transport-and-reduction body is now the production implementation of
+`P1List.higher_weight_hecke_matrix`.  The public modular-symbols route obtains
+the mature FLINT Manin presentation, crosses one packed ABI for the P1 pairs,
+Heilbronn matrices, basis, and exact reduction data, executes the actual typed
+Python body, and reconstructs the exact rational matrix.  The previous FLINT
+Hecke assembly remains an explicit private differential oracle.  Regression
+coverage compares both routes over levels 5, 7, 11, and 13, weights 2 through
+6, every sign represented by the corpus, good and bad Hecke primes, and also
+proves the same-source body with native autoload disabled. The public method
+uses the mature FLINT implementation as its capability fallback when no
+compiled artifact is available, avoiding a performance regression in source
+checkouts and distributions that do not ship the trusted kernel yet.
+
+The production route caches caller-owned `BigInt64Array` and packed
+`IntegerBuffer` inputs rather than rebuilding them at every call. Exact output
+capacity grows and retries only on an explicit packed-capacity diagnostic; the
+portable fallback continues to use ordinary lists. On the dedicated 16-vCPU
+AMD EPYC 7B13 host, seven interleaved samples of 100 calls for level 11,
+weight 4, `T_101` measured a median 2.190 ms for the public production route
+and 1.690 ms for the retained FLINT oracle, a 1.30x ratio. This includes exact
+output materialization and public `Matrix` construction, which the lower-level
+1.08--1.09x kernel comparison intentionally excludes. The reproducible
+production measurement is part of `pnpm bench:native:p1`.
+
+This is a production replacement of one algorithmic stage, not a declaration
+that all 4,603 lines of `p1.c` should disappear.  Presentation construction,
+sparse exact elimination, and representation ownership remain mature FLINT
+operations until separately source-transparent replacements meet the same
+correctness, isolation, and performance bar.
+
 ## WebAssembly consequence
 
 The policy is compatible with WebAssembly because the mathematical source and

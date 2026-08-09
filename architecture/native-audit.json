@@ -120,10 +120,10 @@
         "Heilbronn representatives and Hecke assembly",
         "path reduction and result conversion"
       ],
-      "rationale": "This file is the clearest architecture violation: an adapter contains several independent research algorithms and low-level exact-memory management. The continued-fraction Heilbronn enumeration is the first same-source typed-Python pilot; sparse exact elimination follows only after packed records and rational storage are compiler features.",
-      "fallback": "The typed pilot is ordinary CPython source; the existing C implementation remains a differential and performance oracle until production replacement is justified.",
+      "rationale": "This file is the clearest architecture violation: an adapter contains several independent research algorithms and low-level exact-memory management. The continued-fraction Heilbronn enumeration and fused higher-weight Hecke traversal are now source-transparent typed-Python implementations; sparse exact elimination follows only after packed records and rational storage are compiler features.",
+      "fallback": "The production higher-weight Hecke traversal retains its ordinary CPython body as the same-source fallback; the existing C implementation remains an explicit differential and performance oracle.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "existing p1.c", "PARI/GP"],
-      "next": "Compile and benchmark the unchanged typed Heilbronn body, expose every representative for differential tests, then design packed output before replacing the C path.",
+      "next": "Keep the production traversal differential corpus representative, then isolate presentation construction or sparse rational elimination as the next independently justified migration stage.",
       "pilot": "src/lib/sagejs/kernels/p1.py"
     },
     {

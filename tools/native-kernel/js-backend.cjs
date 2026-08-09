@@ -608,6 +608,9 @@ ${normalized.join("\n")}
 ${fn.name}.backendPolicy = Object.freeze(${policy});
 ${fn.name}.effects = Object.freeze(${effects});
 ${fn.name}.taggedInteger = Object.freeze(${taggedInteger});
+${fn.name}.createInt64Buffer = createInt64Buffer;
+${fn.name}.createIntegerBuffer = createIntegerBuffer;
+${fn.name}.packIntegerBuffer = packIntegerBuffer;
 ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
@@ -1033,6 +1036,29 @@ function createIntegerBuffer(length, wordCapacity = 8, source = undefined) {
     return answer;
   };
   return packed;
+}
+
+function packIntegerBuffer(source, minimumWordCapacity = 8) {
+  if (!Number.isSafeInteger(minimumWordCapacity) ||
+      minimumWordCapacity <= 0) {
+    throw new RangeError("invalid minimum IntegerBuffer word capacity");
+  }
+  const values = Array.from(source, (value) => BigInt(value));
+  let wordCapacity = minimumWordCapacity;
+  for (const value of values) {
+    const magnitude = value < 0n ? -value : value;
+    const words = magnitude === 0n
+      ? 0 : Math.ceil(magnitude.toString(2).length / 64);
+    wordCapacity = Math.max(wordCapacity, words);
+  }
+  return createIntegerBuffer(values.length, wordCapacity, values);
+}
+
+function createInt64Buffer(source) {
+  if (Number.isSafeInteger(source) && source >= 0) {
+    return new BigInt64Array(source);
+  }
+  return BigInt64Array.from(source, (value) => BigInt(value));
 }
 
 function integerNativeBuffer(value, argument) {

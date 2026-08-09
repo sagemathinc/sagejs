@@ -29,17 +29,19 @@ primitives, and explicitly owned or borrowed packed storage are not host
 callbacks and remain permitted.
 
 Generated kernels return a small structured status through a C ABI. Host
-adapters translate that status only after the kernel returns. Exact-integer
-kernels emit two independently useful artifacts:
+adapters translate that status only after the kernel returns. Every supported
+kernel kind emits two independently useful artifacts:
 
 - `kernel_core.c`, containing the generated mathematical graph and native
   representation runtime;
 - `kernel_core.h`, declaring stable packed types, statuses, and entry points.
 
-The Node addon is a separate adapter around this core. Compiler introspection
-reports whether a kernel kind is certified as isolated. Migration is explicit:
-kernel kinds whose generated bodies still contain host APIs are marked
-`migration-required` and cannot claim host isolation.
+The Node addon is a separate adapter around this core. The compiler constructs
+and audits the core before generating that adapter; there is no monolithic or
+partially isolated fallback pipeline. Compiler introspection reports the
+certified isolation boundary for every accepted kernel kind. A proposed
+backend that cannot satisfy the boundary is rejected rather than registered as
+partially migrated.
 
 ## Enforcement
 
@@ -47,12 +49,13 @@ kernel kinds whose generated bodies still contain host APIs are marked
 - `sagejs native emit-core-c` and `emit-header` expose the boundary.
 - Core generation scans for Node-API, CPython, and JavaScript-engine symbols
   and fails closed if any are present.
-- Tests compile the emitted exact core into a standalone executable and compare
-  its result with the JavaScript/native paths.
+- Tests compile an emitted exact core into a standalone executable, compile
+  and execute every backend family through its adapter, inspect every emitted
+  core for forbidden host APIs, and compare results with JavaScript/native
+  paths.
 - When the repository's WASI/GMP toolchain is present, the identical core is
   also compiled to WebAssembly and executed differentially.
-- The native-kernel registry records every witness as `certified` or
-  `migration-required`.
+- The native-kernel registry accepts only `certified` witnesses.
 
 ## Consequences
 
@@ -64,7 +67,9 @@ kernel kinds whose generated bodies still contain host APIs are marked
 - I/O such as `print` requires a future explicit native capability or buffered
   output ABI; it cannot accidentally resolve to Python's or JavaScript's
   implementation.
-- Some compiler backends require follow-up migration to the status ABI.
+- Exact/GMP, packed binary64, MPFR/MPC, source-transparent prime-field, and
+  specialized prime-field backends share the status ABI and isolated-core
+  pipeline.
 
 ## Rejected alternatives
 

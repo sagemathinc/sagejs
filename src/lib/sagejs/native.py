@@ -18,15 +18,17 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v16 currently accepts a deliberately narrow typed numerical
+Native Kernel v17 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels and reusable dense
 decompositions over prime fields. It also supports packed binary64 buffers and
 mutable signed exact-integer buffers with bounded record views. Mutable
 ``IntegerBuffer`` values retain arbitrary precision through an explicit packed
 signed-limb ABI, so source-transparent algebraic loops can exchange whole GMP
 vectors without object-at-a-time host calls. Explicit AOT compilation produces
-a native implementation plus an exact fallback or reports a compile-time
-diagnostic.
+a host-independent C core, a thin host adapter, and an exact fallback, or
+reports a compile-time diagnostic. After argument marshalling, the core cannot
+call Python, JavaScript, Node-API, or another interpreter runtime; unsupported
+source fails compilation instead of silently inserting a callback.
 """
 
 from __future__ import annotations
@@ -112,6 +114,46 @@ def integer_buffer(source: Any) -> IntegerBuffer:
 def integer_zeros(length: int) -> IntegerBuffer:
     """Allocate a zero-filled arbitrary-precision exact buffer fallback."""
     return [0 for _index in range(length)]
+
+
+def kernel_int64_buffer(kernel: Any, source: Any) -> Any:
+    """Pack a signed span when ``kernel`` is compiled, else return a list."""
+    factory = getattr(kernel, 'createInt64Buffer', None)
+    if is_compiled(kernel) and callable(factory):
+        return factory(source)
+    return int64_buffer(source)
+
+
+def kernel_int64_zeros(kernel: Any, length: int) -> Any:
+    """Allocate caller-owned signed output for a compiled kernel."""
+    factory = getattr(kernel, 'createInt64Buffer', None)
+    if is_compiled(kernel) and callable(factory):
+        return factory(length)
+    return int64_zeros(length)
+
+
+def kernel_integer_buffer(kernel: Any, source: Any) -> Any:
+    """Pack arbitrary-precision input once for a compiled kernel."""
+    factory = getattr(kernel, 'packIntegerBuffer', None)
+    if is_compiled(kernel) and callable(factory):
+        return factory(source)
+    return integer_buffer(source)
+
+
+def kernel_integer_zeros(
+    kernel: Any, length: int, word_capacity: int = 8,
+) -> Any:
+    """Allocate caller-owned exact output for a compiled kernel."""
+    factory = getattr(kernel, 'createIntegerBuffer', None)
+    if is_compiled(kernel) and callable(factory):
+        return factory(length, word_capacity)
+    return integer_zeros(length)
+
+
+def integer_buffer_values(buffer: Any) -> Any:
+    """Materialize packed exact values after an isolated kernel returns."""
+    converter = getattr(buffer, 'toArray', None)
+    return converter() if callable(converter) else buffer
 
 
 class Float64Record:
@@ -311,9 +353,14 @@ __all__ = [
     'int64_record',
     'int64_zeros',
     'integer_buffer',
+    'integer_buffer_values',
     'integer_zeros',
     'is_compiled',
     'is_native',
+    'kernel_int64_buffer',
+    'kernel_int64_zeros',
+    'kernel_integer_buffer',
+    'kernel_integer_zeros',
     'native',
     'prime_add',
     'prime_buffer',

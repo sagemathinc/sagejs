@@ -1,9 +1,13 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { spawnSync } = require("node:child_process");
+const { join } = require("node:path");
 const test = require("node:test");
 
 const { createSage } = require("../dist/tools/kernel.js");
+
+const root = join(__dirname, "..");
 
 test("level one and Gamma0(11) modular-symbol Hecke models", async () => {
   const session = await createSage();
@@ -389,9 +393,58 @@ test("higher-weight Gamma0 Manin symbols, signs, and Hecke", async () => {
         "(100, 0, 18, 72), (100, 1, 12, 36), " +
         "(100, -1, 6, 36)]",
     );
+    assert.equal(
+      (
+        await session.evaluate(
+          [
+            "checks = []",
+            "for N,k,sign,p in [(5,2,0,2),(7,4,-1,3)," +
+              "(11,4,0,5),(11,6,1,7),(13,4,0,13)]:",
+            "    P = P1List(N)",
+            "    presentation = P.higher_weight_presentation(k,sign)",
+            "    T = P.higher_weight_hecke_matrix(k,sign,p)",
+            "    oracle = P._higher_weight_hecke_matrix_flint(" +
+              "k,sign,p,presentation)",
+            "    checks.append((T == oracle, T is " +
+              "P.higher_weight_hecke_matrix(k,sign,p)))",
+            "checks",
+          ].join("\n"),
+        )
+      ).repr,
+      "[(True, True), (True, True), (True, True), " +
+        "(True, True), (True, True)]",
+    );
   } finally {
     await session.close();
   }
+});
+
+test("production P1 retains FLINT and same-source capability fallbacks", () => {
+  const result = spawnSync(
+    process.execPath,
+    [join(root, "bin", "sagejs")],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: { ...process.env, SAGEJS_NATIVE_AUTOLOAD: "0" },
+      input: [
+        "from sagejs.kernels.p1 import heilbronn_cremona_digest",
+        "from sagejs.native import is_compiled",
+        "P = P1List(5)",
+        "presentation = P.higher_weight_presentation(2,0)",
+        "T = P.higher_weight_hecke_matrix(2,0,2)",
+        "F = P._higher_weight_hecke_matrix_flint(2,0,2,presentation)",
+        "print(is_compiled(heilbronn_cremona_digest))",
+        "print(heilbronn_cremona_digest(5))",
+        "print(T == F, T)",
+      ].join("\n"),
+    },
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.stdout.trim(),
+    "False\n(12, 28, 2, 4, 20, 683)\nTrue [3]",
+  );
 });
 
 test("native P1List representatives, normalization, and actions", async () => {

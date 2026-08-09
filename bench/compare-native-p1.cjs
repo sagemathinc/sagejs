@@ -12,6 +12,7 @@ const { compile } = require("../tools/native-kernel.cjs");
 const root = resolve(__dirname, "..");
 const sourcePath = join(root, "src", "lib", "sagejs", "kernels", "p1.py");
 const workloadPath = join(__dirname, "native_p1_workload.py");
+const productionWorkloadPath = join(__dirname, "native_p1_production.py");
 const referencePath = join(__dirname, "native-p1-heilbronn-reference.c");
 const cacheRoot = process.env.SAGEJS_NATIVE_P1_CACHE_ROOT ||
   join(os.tmpdir(), "sagejs-native-p1-benchmark");
@@ -109,6 +110,52 @@ function command(runtime, executable, args, environment = {}) {
     runtime,
     value: fields.slice(0, 6),
     nanoseconds: Number(fields[6]) * (runtime === "handwritten C" ? 1 : 1e9),
+  };
+}
+
+function productionRouteBenchmark() {
+  const result = spawnSync(
+    process.execPath,
+    [join(root, "bin", "sagejs"), productionWorkloadPath],
+    {
+      cwd: root,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        SAGEJS_NATIVE_CACHE_DIR: cacheRoot,
+        SAGEJS_NATIVE_P1_ACTION_WEIGHT: String(actionWeight),
+        SAGEJS_NATIVE_P1_PRESENTATION_PRIME: String(presentationPrime),
+      },
+    },
+  );
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(
+      `production P1 benchmark exited with ${result.status}\n` +
+      `${result.stdout}\n${result.stderr}`,
+    );
+  }
+  const line = result.stdout.trim().split(/\r?\n/).find((value) =>
+    value.startsWith("PRODUCTION|")
+  );
+  assert(line, `production P1 benchmark produced no result: ${result.stdout}`);
+  const [
+    level, weight, sign, primeValue, compiled, equal,
+    productionNanoseconds, flintNanoseconds, samples, repetitions,
+  ] = line.split("|").slice(1);
+  assert.equal(compiled, "True");
+  assert.equal(equal, "True");
+  return {
+    level: Number(level),
+    weight: Number(weight),
+    sign: Number(sign),
+    prime: Number(primeValue),
+    compiled: true,
+    equal: true,
+    productionNanoseconds: Number(productionNanoseconds),
+    flintNanoseconds: Number(flintNanoseconds),
+    samples: Number(samples),
+    repetitions: Number(repetitions),
   };
 }
 
@@ -491,6 +538,7 @@ function compileReference() {
       })),
     },
     higherWeightPresentation: presentationBenchmark,
+    productionRoute: productionRouteBenchmark(),
   };
   if (json) console.log(JSON.stringify(report, null, 2));
   else {
@@ -549,6 +597,14 @@ function compileReference() {
         );
       }
     }
+    console.log(
+      "public production route: " +
+      `${(report.productionRoute.productionNanoseconds / 1e6).toFixed(3)} ms ` +
+      "versus FLINT oracle " +
+      `${(report.productionRoute.flintNanoseconds / 1e6).toFixed(3)} ms ` +
+      `(${(report.productionRoute.productionNanoseconds /
+        report.productionRoute.flintNanoseconds).toFixed(2)}x)`,
+    );
   }
 })().catch((error) => {
   console.error(error.stack || error);

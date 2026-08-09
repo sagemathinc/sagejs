@@ -13,19 +13,35 @@ const {
   int64Constant,
 } = require("./word-backend.cjs");
 const {
-  emitPrimeFieldFunction,
+  emitPrimeFieldCoreFunction,
+  emitPrimeFieldNodeAdapter,
+  generatePrimeFieldNodeSupport,
   generatePrimeFieldSupport,
+  primeFieldCoreSignature,
 } = require("./prime-field-backend.cjs");
 const {
-  emitPrimeSourceFunction,
+  emitPrimeSourceCoreFunction,
+  emitPrimeSourceNodeAdapter,
   generatePrimeSourceSupport,
+  generatePrimeSourceNodeSupport,
+  primeSourceCoreSignature,
 } = require("./prime-source-backend.cjs");
 const {
   cOperationComment,
   cSourceDirective,
 } = require("./provenance.cjs");
+const {
+  auditHostCore,
+  generateNodeStatusAdapter,
+  generateStatusDeclarations,
+  generateStatusRuntime,
+} = require("./core-abi.cjs");
+const {
+  generateExactCoreRuntime,
+  generateExactNodeHelpers,
+} = require("./exact-runtime.cjs");
 
-const NATIVE_ABI_VERSION = 13;
+const NATIVE_ABI_VERSION = 14;
 
 function statusFailure(kind, message, indent) {
   const code = {
@@ -62,7 +78,7 @@ function cName(name) {
 function nativeValue(local) {
   if (local.type === "Integer") return cName(local.name);
   return local.storage === "return"
-    ? `${cName(local.name)}->value`
+    ? "sagejs_native_output"
     : cName(local.name);
 }
 
@@ -72,7 +88,7 @@ function emitOperation(operation, locals, indent) {
       `${indent}if (mpz_set_str(${nativeValue(locals.get(operation.target))}, ` +
         `${cString(operation.value)}, 10) != 0)`,
       `${indent}{`,
-      `${indent}    napi_throw_type_error(env, NULL, "invalid native integer literal");`,
+      statusFailure("type", "invalid native integer literal", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
     ].join("\n");
@@ -83,7 +99,7 @@ function emitOperation(operation, locals, indent) {
       `${indent}if (mpfr_set_str(${nativeValue(target)}, ` +
         `${cString(operation.value)}, 10, MPFR_RNDN) != 0)`,
       `${indent}{`,
-      `${indent}    napi_throw_type_error(env, NULL, "invalid native literal");`,
+      statusFailure("type", "invalid native literal", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
     ].join("\n");
@@ -96,7 +112,7 @@ function emitOperation(operation, locals, indent) {
       `${indent}    mpfr_set_str(mpc_imagref(${nativeValue(target)}), ` +
         `${cString(operation.imag)}, 10, MPFR_RNDN) != 0)`,
       `${indent}{`,
-      `${indent}    napi_throw_type_error(env, NULL, "invalid native literal");`,
+      statusFailure("type", "invalid native literal", `${indent}    `),
       `${indent}    goto fail;`,
       `${indent}}`,
     ].join("\n");
@@ -1010,16 +1026,31 @@ function emitExactWrappers(fn) {
   return [emitTaggedWrapper(fn), emitExactWrapper(fn)].join("\n\n");
 }
 
-function emitFieldFunction(fn) {
+function fieldKind(fn) {
+  return fn.returnType === "RealNumber" ? "real" : "complex";
+}
+
+function fieldCoreSignature(fn, prototype = false) {
+  const valueType = fieldKind(fn) === "real" ? "mpfr_t" : "mpc_t";
+  const parameters = fn.params.map((param) =>
+    param.type === "uint64"
+      ? `uint64_t ${cName(param.name)}`
+      : `mpfr_prec_t ${cName(param.name)}_precision`
+  );
+  return `int sagejs_kernel_${fn.name}(` + [
+    "sagejs_native_status *status",
+    `${valueType} sagejs_native_output`,
+    ...parameters,
+  ].join(", ") + `)${prototype ? ";" : ""}`;
+}
+
+function emitFieldCoreFunction(fn) {
   const real = fn.returnType === "RealNumber";
   const prefix = real ? "real" : "complex";
   const parentType = real ? "RealField" : "ComplexField";
-  const nativeType = real ? "sagejs_real" : "sagejs_complex";
   const localType = real ? "mpfr_t" : "mpc_t";
   const parent = fn.params.find((param) => param.type === parentType);
-  const iterations = fn.params.find((param) => param.type === "uint64");
   const locals = new Map(fn.locals.map((local) => [local.name, local]));
-  const returned = fn.locals.find((local) => local.storage === "return");
   const declarations = [];
   const initialization = [];
   const cleanup = [];
@@ -1030,15 +1061,7 @@ function emitFieldFunction(fn) {
   );
 
   for (const local of fn.locals) {
-    if (local.storage === "return") {
-      declarations.push(`    ${nativeType} *${cName(local.name)} = NULL;`);
-      initialization.push(
-        `    ${cName(local.name)} = sagejs_native_new_${prefix}` +
-          "(env, precision);",
-        `    if (${cName(local.name)} == NULL)`,
-        "        goto fail;",
-      );
-    } else {
+    if (local.storage !== "return") {
       declarations.push(`    ${localType} ${cName(local.name)};`);
       declarations.push(`    int ${cName(local.name)}_initialized = 0;`);
       initialization.push(
@@ -1073,17 +1096,47 @@ function emitFieldFunction(fn) {
     }
   }
 
-  return `
-static napi_value compiled_${fn.name}(napi_env env, napi_callback_info info)
+  return `${fieldCoreSignature(fn)}
+{
+    const mpfr_prec_t precision = ${cName(parent.name)}_precision;
+${Array.from(loopIndexes, (name) => `    uint64_t ${cName(name)};`).join("\n")}
+${declarations.join("\n")}
+    sagejs_native_status_reset(status);
+${initialization.join("\n")}
+${statements.join("\n")}
+    goto success;
+
+success:
+${cleanup.join("\n")}
+    return 1;
+
+fail:
+${cleanup.join("\n")}
+    return 0;
+}`;
+}
+
+function emitFieldNodeAdapter(fn) {
+  const prefix = fieldKind(fn);
+  const nativeType = prefix === "real" ? "sagejs_real" : "sagejs_complex";
+  const parentType = prefix === "real" ? "RealField" : "ComplexField";
+  const parent = fn.params.find((param) => param.type === parentType);
+  const iterations = fn.params.find((param) => param.type === "uint64");
+  const coreArguments = fn.params.map((param) =>
+    param.type === "uint64"
+      ? cName(param.name)
+      : `${cName(param.name)}_precision`
+  );
+  return `static napi_value compiled_${fn.name}(
+    napi_env env, napi_callback_info info)
 {
     napi_value args[${fn.params.length}];
     size_t argc = ${fn.params.length};
-    mpfr_prec_t precision;
+    sagejs_native_status status = {0, NULL};
+    mpfr_prec_t ${cName(parent.name)}_precision;
     uint64_t ${cName(iterations.name)};
-${Array.from(loopIndexes, (name) => `    uint64_t ${cName(name)};`).join("\n")}
-${declarations.join("\n")}
+    ${nativeType} *result = NULL;
     napi_value wrapped;
-
     if (!sagejs_native_check_napi(env,
         napi_get_cb_info(env, info, &argc, args, NULL, NULL)))
         return NULL;
@@ -1092,28 +1145,25 @@ ${declarations.join("\n")}
         napi_throw_type_error(env, NULL, "wrong native argument count");
         return NULL;
     }
-    if (!get_precision(env, args[${fn.params.indexOf(parent)}], &precision) ||
+    if (!get_precision(env, args[${fn.params.indexOf(parent)}],
+            &${cName(parent.name)}_precision) ||
         !get_uint64(env, args[${fn.params.indexOf(iterations)}],
             &${cName(iterations.name)}))
         return NULL;
-${initialization.join("\n")}
-${statements.join("\n")}
-${cleanup.join("\n")}
-    wrapped = sagejs_native_wrap_${prefix}(env, ${cName(returned.name)});
-    ${cName(returned.name)} = NULL;
+    result = sagejs_native_new_${prefix}(
+        env, ${cName(parent.name)}_precision);
+    if (result == NULL)
+        return NULL;
+    if (!sagejs_kernel_${fn.name}(&status, result->value,
+            ${coreArguments.join(", ")}))
+    {
+        sagejs_native_throw_status(env, &status);
+        sagejs_native_finalize_${prefix}(env, result, NULL);
+        return NULL;
+    }
+    wrapped = sagejs_native_wrap_${prefix}(env, result);
     return wrapped;
-
-fail:
-${cleanup.join("\n")}
-    if (${cName(returned.name)} != NULL)
-        sagejs_native_finalize_${prefix}(
-            env, ${cName(returned.name)}, NULL);
-    return NULL;
 }`;
-}
-
-function emitFunction(fn) {
-  return emitFieldFunction(fn);
 }
 
 function emitFloat64Operation(operation, indent) {
@@ -1138,8 +1188,8 @@ function emitFloat64Operation(operation, indent) {
     return [
       `${indent}if (${source} < 0.0)`,
       `${indent}{`,
-      `${indent}    napi_throw_range_error(env, NULL, "math domain error");`,
-      `${indent}    return NULL;`,
+      statusFailure("range", "math domain error", `${indent}    `),
+      `${indent}    goto fail;`,
       `${indent}}`,
       `${indent}${target} = sqrt(${source});`,
     ].join("\n");
@@ -1162,8 +1212,8 @@ function emitFloat64Operation(operation, indent) {
       `${indent}if (${start} > (uint64_t) ${buffer}.length ||`,
       `${indent}    ${length} > (uint64_t) ${buffer}.length - ${start})`,
       `${indent}{`,
-      `${indent}    napi_throw_range_error(env, NULL, "Float64Record is outside its buffer");`,
-      `${indent}    return NULL;`,
+      statusFailure("range", "Float64Record is outside its buffer", `${indent}    `),
+      `${indent}    goto fail;`,
       `${indent}}`,
       `${indent}${target}.data = ${buffer}.data + (size_t) ${start};`,
       `${indent}${target}.length = (size_t) ${length};`,
@@ -1175,8 +1225,8 @@ function emitFloat64Operation(operation, indent) {
     return [
       `${indent}if (${index} >= (uint64_t) ${buffer}.length)`,
       `${indent}{`,
-      `${indent}    napi_throw_range_error(env, NULL, "Float64 buffer index out of range");`,
-      `${indent}    return NULL;`,
+      statusFailure("range", "Float64 buffer index out of range", `${indent}    `),
+      `${indent}    goto fail;`,
       `${indent}}`,
       `${indent}${target} = ${buffer}.data[(size_t) ${index}];`,
     ].join("\n");
@@ -1187,8 +1237,8 @@ function emitFloat64Operation(operation, indent) {
     return [
       `${indent}if (${index} >= (uint64_t) ${buffer}.length)`,
       `${indent}{`,
-      `${indent}    napi_throw_range_error(env, NULL, "Float64 buffer index out of range");`,
-      `${indent}    return NULL;`,
+      statusFailure("range", "Float64 buffer index out of range", `${indent}    `),
+      `${indent}    goto fail;`,
       `${indent}}`,
       `${indent}${buffer}.data[(size_t) ${index}] = ${cName(operation.value)};`,
     ].join("\n");
@@ -1203,9 +1253,8 @@ function emitFloat64Operation(operation, indent) {
       return [
         `${indent}if (${right} == 0.0)`,
         `${indent}{`,
-        `${indent}    napi_throw_range_error(env, NULL, ` +
-          `"float division by zero");`,
-        `${indent}    return NULL;`,
+        statusFailure("range", "float division by zero", `${indent}    `),
+        `${indent}    goto fail;`,
         `${indent}}`,
         `${indent}${target} = ${left} ${operator} ${right};`,
       ].join("\n");
@@ -1240,10 +1289,8 @@ function emitFloat64Statements(statements, indent) {
     }
     if (statement.kind === "return") {
       lines.push(
-        `${indent}if (napi_create_double(env, ${cName(statement.value)}, ` +
-          `&sagejs_float64_result) != napi_ok)`,
-        `${indent}    return NULL;`,
-        `${indent}return sagejs_float64_result;`,
+        `${indent}*sagejs_native_output = ${cName(statement.value)};`,
+        `${indent}goto success;`,
       );
       continue;
     }
@@ -1252,8 +1299,57 @@ function emitFloat64Statements(statements, indent) {
   return lines.filter(Boolean).join("\n");
 }
 
-function emitFloat64Function(fn) {
-  const declarations = ["    napi_value sagejs_float64_result;"];
+function float64Parameter(param) {
+  if (param.type === "uint64") return `uint64_t ${cName(param.name)}`;
+  if (param.type === "Float64") return `double ${cName(param.name)}`;
+  if (param.type === "Float64Buffer") {
+    return `sagejs_float64_buffer ${cName(param.name)}`;
+  }
+  throw new Error(`unsupported binary64 parameter ${param.type}`);
+}
+
+function float64CoreSignature(fn, prototype = false) {
+  return `int sagejs_kernel_${fn.name}(` + [
+    "sagejs_native_status *status",
+    "double *sagejs_native_output",
+    ...fn.params.map(float64Parameter),
+  ].join(", ") + `)${prototype ? ";" : ""}`;
+}
+
+function emitFloat64CoreFunction(fn) {
+  const declarations = [];
+  const params = new Set(fn.params.map((param) => param.name));
+  for (const local of fn.locals) {
+    if (params.has(local.name)) continue;
+    const type = local.type === "uint64"
+      ? "uint64_t"
+      : ["Float64Buffer", "Float64Record"].includes(local.type)
+        ? "sagejs_float64_buffer"
+        : "double";
+    declarations.push(`    ${type} ${cName(local.name)} = {0};`);
+  }
+  return `${float64CoreSignature(fn)}
+{
+${declarations.join("\n")}
+    sagejs_native_status_reset(status);
+${emitFloat64Statements(fn.body, "    ")}
+    sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+        "binary64 function completed without returning");
+    goto fail;
+
+success:
+    return 1;
+fail:
+    return 0;
+}`;
+}
+
+function emitFloat64NodeAdapter(fn) {
+  const declarations = [
+    "    sagejs_native_status sagejs_wrapper_status = {0, NULL};",
+    "    double sagejs_float64_result = 0.0;",
+    "    napi_value result;",
+  ];
   const parsing = [];
   for (const [index, param] of fn.params.entries()) {
     const name = cName(param.name);
@@ -1282,16 +1378,6 @@ function emitFloat64Function(fn) {
       );
     }
   }
-  const params = new Set(fn.params.map((param) => param.name));
-  for (const local of fn.locals) {
-    if (params.has(local.name)) continue;
-    const type = local.type === "uint64"
-      ? "uint64_t"
-      : ["Float64Buffer", "Float64Record"].includes(local.type)
-        ? "sagejs_float64_buffer"
-        : "double";
-    declarations.push(`    ${type} ${cName(local.name)} = {0};`);
-  }
   return `
 static napi_value compiled_${fn.name}(napi_env env, napi_callback_info info)
 {
@@ -1306,20 +1392,30 @@ ${declarations.join("\n")}
         return NULL;
     }
 ${parsing.join("\n")}
-${emitFloat64Statements(fn.body, "    ")}
-    napi_throw_error(env, NULL, "binary64 function completed without returning");
-    return NULL;
+    if (!sagejs_kernel_${fn.name}(&sagejs_wrapper_status,
+            &sagejs_float64_result, ${fn.params.map((param) => cName(param.name)).join(", ")}))
+    {
+        sagejs_native_throw_status(env, &sagejs_wrapper_status);
+        return NULL;
+    }
+    if (!sagejs_native_check_napi(env,
+            napi_create_double(env, sagejs_float64_result, &result)))
+        return NULL;
+    return result;
 }`;
 }
 
-function generateFloat64BufferSupport() {
+function generateFloat64BufferDeclaration() {
   return `
 typedef struct
 {
     double *data;
     size_t length;
-} sagejs_float64_buffer;
+} sagejs_float64_buffer;`;
+}
 
+function generateFloat64BufferNodeAdapter() {
+  return `
 static int sagejs_native_get_float64_buffer(
     napi_env env,
     napi_value value,
@@ -1346,14 +1442,17 @@ static int sagejs_native_get_float64_buffer(
 }`;
 }
 
-function generateInt64BufferSupport() {
+function generateInt64BufferDeclaration() {
   return `
 typedef struct
 {
     int64_t *data;
     size_t length;
-} sagejs_int64_buffer;
+} sagejs_int64_buffer;`;
+}
 
+function generateInt64BufferCoreSupport() {
+  return `
 static int sagejs_int64_buffer_index(
     const sagejs_int64_buffer *buffer,
     int64_t index,
@@ -1381,8 +1480,11 @@ static int sagejs_mpz_buffer_index(
     int64_t small;
     return mpz_to_int64(index, &small) &&
         sagejs_int64_buffer_index(buffer, small, position);
+}`;
 }
 
+function generateInt64BufferNodeAdapter() {
+  return `
 static int sagejs_native_get_int64_buffer(
     napi_env env,
     napi_value value,
@@ -1409,7 +1511,7 @@ static int sagejs_native_get_int64_buffer(
 }`;
 }
 
-function generateIntegerBufferSupport() {
+function generateIntegerBufferDeclaration() {
   return `
 typedef struct
 {
@@ -1417,8 +1519,11 @@ typedef struct
     uint64_t *limbs;
     size_t length;
     size_t word_capacity;
-} sagejs_integer_buffer;
+} sagejs_integer_buffer;`;
+}
 
+function generateIntegerBufferCoreSupport() {
+  return `
 static int sagejs_integer_buffer_index(
     const sagejs_integer_buffer *buffer,
     int64_t index,
@@ -1563,8 +1668,11 @@ static int sagejs_integer_buffer_set_tagged(
     }
     return sagejs_integer_buffer_set_mpz(
         status, buffer, position, value->big);
+}`;
 }
 
+function generateIntegerBufferNodeAdapter() {
+  return `
 static int sagejs_native_get_integer_buffer(
     napi_env env,
     napi_value value,
@@ -1622,688 +1730,247 @@ static int sagejs_native_get_integer_buffer(
 }`;
 }
 
-function generateCombinedC(ir) {
-  const functionMap = new Map(ir.functions.map((fn) => [fn.name, fn]));
-  const exactFunctions = ir.functions.filter(
-    (fn) => fn.kernelKind === "integer",
+function exactFunctions(ir) {
+  return ir.functions.filter((fn) => fn.kernelKind === "integer");
+}
+
+function publicCoreSignature(fn, prototype = false) {
+  const parameters = [
+    "sagejs_native_status *status",
+    ...internalResults(fn.returnType),
+    ...fn.params.map(internalArgument),
+  ].join(", ");
+  return `int sagejs_kernel_${fn.name}(${parameters})${prototype ? ";" : ""}`;
+}
+
+function publicCoreFunction(fn) {
+  const outputs = tupleElementTypes(fn.returnType) === undefined
+    ? ["sagejs_native_output"]
+    : tupleElementTypes(fn.returnType).map((_type, index) =>
+      `sagejs_native_output_${index}`
+    );
+  const args = fn.params.map((param) => `sagejs_arg_${param.name}`);
+  return `${publicCoreSignature(fn)}
+{
+    sagejs_native_status_reset(status);
+    return native_${fn.name}(status, ${outputs.join(", ")}` +
+    `${args.length ? `, ${args.join(", ")}` : ""});
+}`;
+}
+
+function coreHeader(ir) {
+  const functions = ir.functions;
+  const exact = exactFunctions(ir);
+  const floats = functions.filter((fn) => fn.kernelKind === "float64");
+  const fields = functions.filter((fn) =>
+    ["real-field", "complex-field"].includes(fn.kernelKind)
   );
-  const primeFieldFunctions = ir.functions.filter(
-    (fn) => fn.kernelKind === "prime-field-matrix",
+  const primeSources = functions.filter((fn) =>
+    fn.kernelKind === "prime-field-source"
   );
-  const primeSourceFunctions = ir.functions.filter(
-    (fn) => fn.kernelKind === "prime-field-source",
+  const primeFields = functions.filter((fn) =>
+    fn.kernelKind === "prime-field-matrix"
   );
-  const float64Functions = ir.functions.filter(
-    (fn) => fn.kernelKind === "float64",
-  );
-  const fieldFunctions = ir.functions.filter(
-    (fn) => ![
-      "integer",
-      "float64",
-      "prime-field-matrix",
-      "prime-field-source",
-    ].includes(fn.kernelKind),
-  );
-  const prototypes = exactFunctions
-    .map((fn) => internalSignature(fn, true))
-    .join("\n");
-  const tagged = generateTaggedFunctions(exactFunctions);
-  const word = generateWordFunctions(exactFunctions);
-  const usesInt64Buffers = exactFunctions.some((fn) =>
+  const usesInt64Buffers = exact.some((fn) =>
     fn.params.some((param) => isInt64BufferType(param.type)) ||
     fn.locals.some((local) => isInt64BufferType(local.type))
   );
-  const usesIntegerBuffers = exactFunctions.some((fn) =>
+  const usesIntegerBuffers = exact.some((fn) =>
     fn.params.some((param) => isIntegerBufferType(param.type)) ||
     fn.locals.some((local) => isIntegerBufferType(local.type))
   );
-  const functions = [
-    usesInt64Buffers ? generateInt64BufferSupport() : "",
-    usesIntegerBuffers ? generateIntegerBufferSupport() : "",
-    prototypes,
+  return `/* Generated by Sage.js Native Kernel v17. */
+#ifndef SAGEJS_GENERATED_KERNEL_CORE_H
+#define SAGEJS_GENERATED_KERNEL_CORE_H
+
+#include <stddef.h>
+#include <stdint.h>
+${exact.length > 0 ? "#include <gmp.h>" : ""}
+${fields.some((fn) => fn.kernelKind === "real-field") ? "#include <mpfr.h>" : ""}
+${fields.some((fn) => fn.kernelKind === "complex-field") ? "#include <mpc.h>" : ""}
+${primeSources.length + primeFields.length > 0
+    ? [
+      "#include <flint/nmod.h>",
+      "#include <flint/nmod_mat.h>",
+      "#include <flint/ulong_extras.h>",
+    ].join("\n") : ""}
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+${generateStatusDeclarations()}
+${primeFields.length > 0
+    ? "typedef struct sagejs_prime_factor sagejs_prime_factor;" : ""}
+${usesInt64Buffers ? `
+typedef struct
+{
+    int64_t *data;
+    size_t length;
+} sagejs_int64_buffer;
+` : ""}${usesIntegerBuffers ? `
+typedef struct
+{
+    int32_t *sizes;
+    uint64_t *limbs;
+    size_t length;
+    size_t word_capacity;
+} sagejs_integer_buffer;
+` : ""}${floats.some((fn) =>
+    fn.params.some((param) => param.type === "Float64Buffer") ||
+    fn.locals.some((local) =>
+      ["Float64Buffer", "Float64Record"].includes(local.type)
+    )
+  ) ? `
+typedef struct
+{
+    double *data;
+    size_t length;
+} sagejs_float64_buffer;
+` : ""}
+/* Exact-integer outputs are initialized mpz_t values owned by the caller. */
+${functions.map((fn) => fn.kernelKind === "integer"
+    ? publicCoreSignature(fn, true)
+    : fn.kernelKind === "float64"
+      ? float64CoreSignature(fn, true)
+      : fn.kernelKind === "prime-field-source"
+        ? primeSourceCoreSignature(fn, true)
+        : fn.kernelKind === "prime-field-matrix"
+          ? primeFieldCoreSignature(fn, true)
+          : fieldCoreSignature(fn, true)).join("\n")}
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+`;
+}
+
+function generateHostCore(ir) {
+  const supported = new Set([
+    "integer", "float64", "real-field", "complex-field",
+    "prime-field-source", "prime-field-matrix",
+  ]);
+  if (ir.functions.length === 0 ||
+      ir.functions.some((fn) => !supported.has(fn.kernelKind))) {
+    const kinds = Array.from(new Set(ir.functions.map((fn) => fn.kernelKind)));
+    throw new Error(
+      "host-isolated core emission currently requires certified kernel kinds; " +
+      `found ${kinds.join(", ")}`,
+    );
+  }
+  const functions = ir.functions;
+  const exact = exactFunctions(ir);
+  const floats = functions.filter((fn) => fn.kernelKind === "float64");
+  const fields = functions.filter((fn) =>
+    ["real-field", "complex-field"].includes(fn.kernelKind)
+  );
+  const primeSources = functions.filter((fn) =>
+    fn.kernelKind === "prime-field-source"
+  );
+  const primeFields = functions.filter((fn) =>
+    fn.kernelKind === "prime-field-matrix"
+  );
+  const functionMap = new Map(exact.map((fn) => [fn.name, fn]));
+  const tagged = generateTaggedFunctions(exact);
+  const word = generateWordFunctions(exact);
+  const usesInt64Buffers = exact.some((fn) =>
+    fn.params.some((param) => isInt64BufferType(param.type)) ||
+    fn.locals.some((local) => isInt64BufferType(local.type))
+  );
+  const usesIntegerBuffers = exact.some((fn) =>
+    fn.params.some((param) => isIntegerBufferType(param.type)) ||
+    fn.locals.some((local) => isIntegerBufferType(local.type))
+  );
+  const pieces = [
+    generateStatusRuntime(),
+    exact.length > 0 ? generateExactCoreRuntime() : "",
+    usesInt64Buffers ? generateInt64BufferCoreSupport() : "",
+    usesIntegerBuffers ? generateIntegerBufferCoreSupport() : "",
+    exact.map((fn) => internalSignature(fn, true)).join("\n"),
     word.prototypes,
     tagged.prototypes,
     word.functions,
     tagged.functions,
-    primeFieldFunctions.length > 0 ? generatePrimeFieldSupport() : "",
-    primeSourceFunctions.length > 0 ? generatePrimeSourceSupport() : "",
-    float64Functions.some((fn) =>
-      fn.params.some((param) => param.type === "Float64Buffer") ||
-      fn.locals.some((local) =>
-        ["Float64Buffer", "Float64Record"].includes(local.type)
-      )
-    ) ? generateFloat64BufferSupport() : "",
-    ...exactFunctions.map((fn) => emitExactInternalFunction(fn, functionMap)),
-    ...exactFunctions.map(emitExactWrappers),
-    ...float64Functions.map(emitFloat64Function),
-    ...primeFieldFunctions.map(emitPrimeFieldFunction),
-    ...primeSourceFunctions.map(emitPrimeSourceFunction),
-    ...fieldFunctions.map(emitFunction),
-  ].filter(Boolean).join("\n\n");
-  const properties = ir.functions
-    .flatMap((fn) => {
-      const ordinary =
-        `        {${cString(fn.name)}, NULL, compiled_${fn.name}, ` +
-        "NULL, NULL, NULL, napi_default, NULL}";
-      return fn.kernelKind === "integer"
-        ? [
-          ordinary,
-          `        {${cString(`${fn.name}$gmp`)}, NULL, ` +
-            `compiled_${fn.name}_gmp, NULL, NULL, NULL, napi_default, NULL}`,
-        ]
-        : [ordinary];
-    })
-    .join(",\n");
-  if (
-    primeFieldFunctions.length + primeSourceFunctions.length > 0 &&
-    primeFieldFunctions.length + primeSourceFunctions.length === ir.functions.length
-  ) {
-    return `// Generated by Sage.js source-transparent Native Kernel experiment.
-#include <limits.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <node_api.h>
-#include <sagejs/native.h>
-
-/* SAGEJS_GENERATED_FUNCTIONS_BEGIN */
-${functions}
-/* SAGEJS_GENERATED_FUNCTIONS_END */
-
-static napi_value initialize(napi_env env, napi_value exports)
-{
-    napi_property_descriptor properties[] = {
-${properties}
-    };
-    if (!sagejs_native_check_napi(env,
-        napi_define_properties(env, exports,
-            sizeof(properties) / sizeof(properties[0]), properties)))
-        return NULL;
-    return exports;
-}
-
-NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
-`;
-  }
-  return `// Generated by Sage.js Native Kernel v16.
+    ...exact.map((fn) => emitExactInternalFunction(fn, functionMap)),
+    ...exact.map(publicCoreFunction),
+    ...floats.map(emitFloat64CoreFunction),
+    ...fields.map(emitFieldCoreFunction),
+    primeSources.length > 0 ? generatePrimeSourceSupport() : "",
+    ...primeSources.map(emitPrimeSourceCoreFunction),
+    primeFields.length > 0 ? generatePrimeFieldSupport() : "",
+    ...primeFields.map(emitPrimeFieldCoreFunction),
+  ].filter(Boolean);
+  const source = `/* Generated by Sage.js Native Kernel v17.
+ * Host-isolated mathematical core: no Node, JavaScript, or Python runtime.
+ */
 #include <math.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <node_api.h>
-#include <gmp.h>
-#include <sagejs/native.h>
-
-typedef enum
-{
-    SAGEJS_NATIVE_OK = 0,
-    SAGEJS_NATIVE_ERROR = 1,
-    SAGEJS_NATIVE_TYPE_ERROR = 2,
-    SAGEJS_NATIVE_RANGE_ERROR = 3
-} sagejs_native_status_code;
-
-typedef struct
-{
-    sagejs_native_status_code code;
-    const char *message;
-} sagejs_native_status;
-
-static void sagejs_native_status_set(
-    sagejs_native_status *status,
-    sagejs_native_status_code code,
-    const char *message)
-{
-    if (status != NULL && status->code == SAGEJS_NATIVE_OK)
-    {
-        status->code = code;
-        status->message = message;
-    }
-}
-
-static void sagejs_native_status_reset(sagejs_native_status *status)
-{
-    if (status != NULL)
-    {
-        status->code = SAGEJS_NATIVE_OK;
-        status->message = NULL;
-    }
-}
-
-static void sagejs_native_throw_status(
-    napi_env env, const sagejs_native_status *status)
-{
-    const char *message = status != NULL && status->message != NULL
-        ? status->message : "native kernel failed";
-    if (status != NULL && status->code == SAGEJS_NATIVE_TYPE_ERROR)
-        napi_throw_type_error(env, NULL, message);
-    else if (status != NULL && status->code == SAGEJS_NATIVE_RANGE_ERROR)
-        napi_throw_range_error(env, NULL, message);
-    else
-        napi_throw_error(env, NULL, message);
-}
-
-static void set_mpz_uint64(mpz_t target, uint64_t value)
-{
-#if ULONG_MAX >= UINT64_MAX
-    mpz_set_ui(target, (unsigned long) value);
-#else
-    mpz_import(target, 1, -1, sizeof(value), 0, 0, &value);
-#endif
-}
-
-static void set_mpz_int64(mpz_t target, int64_t value)
-{
-    const int negative = value < 0;
-    const uint64_t magnitude = negative
-        ? (uint64_t) (-(value + 1)) + UINT64_C(1)
-        : (uint64_t) value;
-    set_mpz_uint64(target, magnitude);
-    if (negative)
-        mpz_neg(target, target);
-}
-
-static int mpz_to_int64(const mpz_t value, int64_t *result)
-{
-    const int sign = mpz_sgn(value);
-    size_t count = 0;
-    uint64_t magnitude = 0;
-    if (sign == 0)
-    {
-        *result = 0;
-        return 1;
-    }
-    mpz_export(&magnitude, &count, -1, sizeof(magnitude), 0, 0, value);
-    if (count > 1)
-        return 0;
-    if (sign > 0)
-    {
-        if (magnitude > (uint64_t) INT64_MAX)
-            return 0;
-        *result = (int64_t) magnitude;
-        return 1;
-    }
-    if (magnitude > (UINT64_C(1) << 63))
-        return 0;
-    if (magnitude == (UINT64_C(1) << 63))
-        *result = INT64_MIN;
-    else
-        *result = -(int64_t) magnitude;
-    return 1;
-}
-
-#define SAGEJS_WORD_PROMOTE 0
-#define SAGEJS_WORD_OK 1
-#define SAGEJS_WORD_ERROR -1
-
 #if defined(_MSC_VER)
-#define SAGEJS_WORD_INLINE static __forceinline
-#elif defined(__GNUC__) || defined(__clang__)
-#define SAGEJS_WORD_INLINE static inline __attribute__((always_inline))
-#else
-#define SAGEJS_WORD_INLINE static inline
+#include <intrin.h>
 #endif
 
-static int sagejs_word_add_int64(int64_t left, int64_t right, int64_t *result)
-{
-#if defined(__GNUC__) || defined(__clang__)
-    int64_t temporary;
-    if (__builtin_add_overflow(left, right, &temporary))
-        return 0;
-    *result = temporary;
-    return 1;
-#else
-    if ((right > 0 && left > INT64_MAX - right) ||
-        (right < 0 && left < INT64_MIN - right))
-        return 0;
-    *result = left + right;
-    return 1;
-#endif
+${exact.length > 0 ? "#include <gmp.h>" : ""}
+${fields.some((fn) => fn.kernelKind === "real-field") ? "#include <mpfr.h>" : ""}
+${fields.some((fn) => fn.kernelKind === "complex-field") ? "#include <mpc.h>" : ""}
+${primeSources.length + primeFields.length > 0
+    ? [
+      "#include <flint/nmod.h>",
+      "#include <flint/nmod_mat.h>",
+      "#include <flint/ulong_extras.h>",
+    ].join("\n") : ""}
+#include "kernel_core.h"
+
+${pieces.join("\n\n")}
+`;
+  return {
+    source,
+    header: coreHeader(ir),
+    audit: auditHostCore(source, {
+      nativeDependencies: [
+        "libc",
+        "libm",
+        ...(exact.length > 0 ? ["GMP"] : []),
+        ...(fields.some((fn) => fn.kernelKind === "real-field")
+          ? ["MPFR"] : []),
+        ...(fields.some((fn) => fn.kernelKind === "complex-field")
+          ? ["MPC"] : []),
+        ...(primeSources.length > 0 ? ["FLINT"] : []),
+        ...(primeFields.length > 0 ? ["FLINT"] : []),
+      ],
+      functions: functions.map((fn) => fn.name),
+      kernelKinds: Array.from(new Set(functions.map((fn) => fn.kernelKind))),
+    }),
+  };
 }
 
-static int sagejs_word_sub_int64(int64_t left, int64_t right, int64_t *result)
-{
-#if defined(__GNUC__) || defined(__clang__)
-    int64_t temporary;
-    if (__builtin_sub_overflow(left, right, &temporary))
-        return 0;
-    *result = temporary;
-    return 1;
-#else
-    if ((right > 0 && left < INT64_MIN + right) ||
-        (right < 0 && left > INT64_MAX + right))
-        return 0;
-    *result = left - right;
-    return 1;
-#endif
-}
-
-static int sagejs_word_mul_int64(int64_t left, int64_t right, int64_t *result)
-{
-#if defined(__GNUC__) || defined(__clang__)
-    int64_t temporary;
-    if (__builtin_mul_overflow(left, right, &temporary))
-        return 0;
-    *result = temporary;
-    return 1;
-#else
-    if (left == 0 || right == 0)
-    {
-        *result = 0;
-        return 1;
-    }
-    if ((left == -1 && right == INT64_MIN) ||
-        (right == -1 && left == INT64_MIN))
-        return 0;
-    if ((left > 0 && right > 0 && left > INT64_MAX / right) ||
-        (left > 0 && right < 0 && right < INT64_MIN / left) ||
-        (left < 0 && right > 0 && left < INT64_MIN / right) ||
-        (left < 0 && right < 0 && left < INT64_MAX / right))
-        return 0;
-    *result = left * right;
-    return 1;
-#endif
-}
-
-static int sagejs_word_pow_int64(
-    int64_t base, uint64_t exponent, int64_t *result)
-{
-    int64_t answer = 1;
-    while (exponent != 0)
-    {
-        if ((exponent & UINT64_C(1)) != 0 &&
-            !sagejs_word_mul_int64(answer, base, &answer))
-            return 0;
-        exponent >>= 1;
-        if (exponent != 0 &&
-            !sagejs_word_mul_int64(base, base, &base))
-            return 0;
-    }
-    *result = answer;
-    return 1;
-}
-
-static void sagejs_word_fdiv_int64(
-    int64_t left, int64_t right, int64_t *quotient, int64_t *remainder)
-{
-    int64_t q = left / right;
-    int64_t r = left % right;
-    if (r != 0 && ((r < 0) != (right < 0)))
-    {
-        q -= 1;
-        r += right;
-    }
-    if (quotient != NULL)
-        *quotient = q;
-    if (remainder != NULL)
-        *remainder = r;
-}
-
-typedef struct
-{
-    int is_big;
-    int big_initialized;
-    int64_t small;
-    mpz_t big;
-} sagejs_tagged_int;
-
-static void sagejs_tagged_init(sagejs_tagged_int *value)
-{
-    value->is_big = 0;
-    value->big_initialized = 0;
-    value->small = 0;
-}
-
-static void sagejs_tagged_clear(sagejs_tagged_int *value)
-{
-    if (value->big_initialized)
-        mpz_clear(value->big);
-    value->is_big = 0;
-    value->big_initialized = 0;
-    value->small = 0;
-}
-
-static void sagejs_tagged_set_small(
-    sagejs_tagged_int *value, int64_t small)
-{
-    value->small = small;
-    value->is_big = 0;
-}
-
-static void sagejs_tagged_make_big(sagejs_tagged_int *value)
-{
-    if (!value->big_initialized)
-    {
-        mpz_init(value->big);
-        value->big_initialized = 1;
-    }
-    if (!value->is_big)
-        set_mpz_int64(value->big, value->small);
-    value->is_big = 1;
-}
-
-static void sagejs_tagged_copy(
-    sagejs_tagged_int *target, sagejs_tagged_int *source)
-{
-    if (target == source)
-        return;
-    if (!source->is_big)
-    {
-        sagejs_tagged_set_small(target, source->small);
-        return;
-    }
-    sagejs_tagged_make_big(target);
-    mpz_set(target->big, source->big);
-}
-
-static int sagejs_tagged_set_decimal(
-    sagejs_tagged_int *target, const char *value)
-{
-    sagejs_tagged_make_big(target);
-    return mpz_set_str(target->big, value, 10) == 0;
-}
-
-static void sagejs_tagged_set_uint64(
-    sagejs_tagged_int *target, uint64_t value)
-{
-    if (value <= (uint64_t) INT64_MAX)
-    {
-        sagejs_tagged_set_small(target, (int64_t) value);
-        return;
-    }
-    sagejs_tagged_make_big(target);
-    set_mpz_uint64(target->big, value);
-}
-
-static void sagejs_tagged_set_double(
-    sagejs_tagged_int *target, double value)
-{
-    if (value >= -9223372036854775808.0 &&
-        value < 9223372036854775808.0)
-    {
-        sagejs_tagged_set_small(target, (int64_t) value);
-        return;
-    }
-    sagejs_tagged_make_big(target);
-    mpz_set_d(target->big, value);
-}
-
-static int sagejs_tagged_to_int64(
-    sagejs_tagged_int *value, int64_t *result)
-{
-    if (!value->is_big)
-    {
-        *result = value->small;
-        return 1;
-    }
-    return mpz_to_int64(value->big, result);
-}
-
-static int sagejs_tagged_sgn(sagejs_tagged_int *value)
-{
-    if (value->is_big)
-        return mpz_sgn(value->big);
-    return (value->small > 0) - (value->small < 0);
-}
-
-static double sagejs_tagged_get_double(sagejs_tagged_int *value)
-{
-    return value->is_big ? mpz_get_d(value->big) : (double) value->small;
-}
-
-static void sagejs_tagged_add(
-    sagejs_tagged_int *target,
-    sagejs_tagged_int *left,
-    sagejs_tagged_int *right)
-{
-    int64_t result;
-    if (!left->is_big && !right->is_big &&
-        sagejs_word_add_int64(left->small, right->small, &result))
-    {
-        sagejs_tagged_set_small(target, result);
-        return;
-    }
-    sagejs_tagged_make_big(left);
-    sagejs_tagged_make_big(right);
-    sagejs_tagged_make_big(target);
-    mpz_add(target->big, left->big, right->big);
-}
-
-static void sagejs_tagged_sub(
-    sagejs_tagged_int *target,
-    sagejs_tagged_int *left,
-    sagejs_tagged_int *right)
-{
-    int64_t result;
-    if (!left->is_big && !right->is_big &&
-        sagejs_word_sub_int64(left->small, right->small, &result))
-    {
-        sagejs_tagged_set_small(target, result);
-        return;
-    }
-    sagejs_tagged_make_big(left);
-    sagejs_tagged_make_big(right);
-    sagejs_tagged_make_big(target);
-    mpz_sub(target->big, left->big, right->big);
-}
-
-static void sagejs_tagged_mul(
-    sagejs_tagged_int *target,
-    sagejs_tagged_int *left,
-    sagejs_tagged_int *right)
-{
-    int64_t result;
-    if (!left->is_big && !right->is_big &&
-        sagejs_word_mul_int64(left->small, right->small, &result))
-    {
-        sagejs_tagged_set_small(target, result);
-        return;
-    }
-    sagejs_tagged_make_big(left);
-    sagejs_tagged_make_big(right);
-    sagejs_tagged_make_big(target);
-    mpz_mul(target->big, left->big, right->big);
-}
-
-static void sagejs_tagged_neg(
-    sagejs_tagged_int *target, sagejs_tagged_int *source)
-{
-    if (!source->is_big && source->small != INT64_MIN)
-    {
-        sagejs_tagged_set_small(target, -source->small);
-        return;
-    }
-    sagejs_tagged_make_big(source);
-    sagejs_tagged_make_big(target);
-    mpz_neg(target->big, source->big);
-}
-
-static void sagejs_tagged_abs(
-    sagejs_tagged_int *target, sagejs_tagged_int *source)
-{
-    if (!source->is_big && source->small != INT64_MIN)
-    {
-        sagejs_tagged_set_small(
-            target, source->small < 0 ? -source->small : source->small);
-        return;
-    }
-    sagejs_tagged_make_big(source);
-    sagejs_tagged_make_big(target);
-    mpz_abs(target->big, source->big);
-}
-
-static void sagejs_tagged_pow_ui(
-    sagejs_tagged_int *target,
-    sagejs_tagged_int *base,
-    uint64_t exponent)
-{
-    int64_t result;
-    if (!base->is_big &&
-        sagejs_word_pow_int64(base->small, exponent, &result))
-    {
-        sagejs_tagged_set_small(target, result);
-        return;
-    }
-    sagejs_tagged_make_big(base);
-    sagejs_tagged_make_big(target);
-    mpz_pow_ui(target->big, base->big, (unsigned long) exponent);
-}
-
-static int sagejs_tagged_cmp(
-    sagejs_tagged_int *left, sagejs_tagged_int *right)
-{
-    if (!left->is_big && !right->is_big)
-        return (left->small > right->small) - (left->small < right->small);
-    sagejs_tagged_make_big(left);
-    sagejs_tagged_make_big(right);
-    return mpz_cmp(left->big, right->big);
-}
-
-static void sagejs_tagged_floordiv(
-    sagejs_tagged_int *target,
-    sagejs_tagged_int *left,
-    sagejs_tagged_int *right)
-{
-    int64_t quotient;
-    if (!left->is_big && !right->is_big &&
-        !(left->small == INT64_MIN && right->small == -1))
-    {
-        sagejs_word_fdiv_int64(left->small, right->small, &quotient, NULL);
-        sagejs_tagged_set_small(target, quotient);
-        return;
-    }
-    sagejs_tagged_make_big(left);
-    sagejs_tagged_make_big(right);
-    sagejs_tagged_make_big(target);
-    mpz_fdiv_q(target->big, left->big, right->big);
-}
-
-static void sagejs_tagged_mod(
-    sagejs_tagged_int *target,
-    sagejs_tagged_int *left,
-    sagejs_tagged_int *right)
-{
-    int64_t remainder;
-    if (!left->is_big && !right->is_big &&
-        !(left->small == INT64_MIN && right->small == -1))
-    {
-        sagejs_word_fdiv_int64(left->small, right->small, NULL, &remainder);
-        sagejs_tagged_set_small(target, remainder);
-        return;
-    }
-    sagejs_tagged_make_big(left);
-    sagejs_tagged_make_big(right);
-    sagejs_tagged_make_big(target);
-    mpz_fdiv_r(target->big, left->big, right->big);
-}
-
-static void sagejs_tagged_divmod(
-    sagejs_tagged_int *quotient,
-    sagejs_tagged_int *remainder,
-    sagejs_tagged_int *left,
-    sagejs_tagged_int *right)
-{
-    int64_t q;
-    int64_t r;
-    if (!left->is_big && !right->is_big &&
-        !(left->small == INT64_MIN && right->small == -1))
-    {
-        sagejs_word_fdiv_int64(left->small, right->small, &q, &r);
-        sagejs_tagged_set_small(quotient, q);
-        sagejs_tagged_set_small(remainder, r);
-        return;
-    }
-    sagejs_tagged_make_big(left);
-    sagejs_tagged_make_big(right);
-    sagejs_tagged_make_big(quotient);
-    sagejs_tagged_make_big(remainder);
-    mpz_fdiv_qr(quotient->big, remainder->big, left->big, right->big);
-}
-
-static void sagejs_tagged_add_one(sagejs_tagged_int *value)
-{
-    if (!value->is_big && value->small != INT64_MAX)
-    {
-        value->small += 1;
-        return;
-    }
-    sagejs_tagged_make_big(value);
-    mpz_add_ui(value->big, value->big, 1);
-}
-
-static napi_value create_bigint(napi_env env, const mpz_t value)
-{
-    const int sign = mpz_sgn(value) < 0;
-    const size_t capacity =
-        (mpz_sizeinbase(value, 2) + (sizeof(uint64_t) * 8 - 1)) /
-        (sizeof(uint64_t) * 8);
-    size_t count = 0;
-    uint64_t inline_words[4];
-    uint64_t *words = inline_words;
-    napi_value result;
-
-    if (capacity != 0)
-    {
-        if (capacity > sizeof(inline_words) / sizeof(inline_words[0]))
-            words = (uint64_t *) malloc(capacity * sizeof(*words));
-        if (words == NULL)
-        {
-            napi_throw_error(env, NULL, "unable to allocate BigInt limbs");
-            return NULL;
-        }
-        mpz_export(words, &count, -1, sizeof(*words), 0, 0, value);
-    }
-    if (!sagejs_native_check_napi(env,
-        napi_create_bigint_words(env, sign, count, words, &result)))
-    {
-        if (words != inline_words)
-            free(words);
-        return NULL;
-    }
-    if (words != inline_words)
-        free(words);
-    return result;
-}
-
-static napi_value create_tagged_bigint(
-    napi_env env, sagejs_tagged_int *value)
-{
-    napi_value result;
-    if (value->is_big)
-        return create_bigint(env, value->big);
-    if (!sagejs_native_check_napi(
-        env, napi_create_bigint_int64(env, value->small, &result)))
-        return NULL;
-    return result;
-}
-
-static int get_precision(
-    napi_env env, napi_value value, mpfr_prec_t *precision)
-{
-    int64_t result;
-    if (!sagejs_native_check_napi(
-        env, napi_get_value_int64(env, value, &result)))
-        return 0;
-    if (result < MPFR_PREC_MIN || (uint64_t) result > MPFR_PREC_MAX)
-    {
-        napi_throw_range_error(env, NULL, "invalid field precision");
-        return 0;
-    }
-    *precision = (mpfr_prec_t) result;
-    return 1;
-}
-
-static int get_uint64(
+function generateNodeAdapter(ir) {
+  const functions = ir.functions;
+  const exact = exactFunctions(ir);
+  const floats = functions.filter((fn) => fn.kernelKind === "float64");
+  const fields = functions.filter((fn) =>
+    ["real-field", "complex-field"].includes(fn.kernelKind)
+  );
+  const primeSources = functions.filter((fn) =>
+    fn.kernelKind === "prime-field-source"
+  );
+  const primeFields = functions.filter((fn) =>
+    fn.kernelKind === "prime-field-matrix"
+  );
+  let helpers = exact.length > 0
+    ? generateExactNodeHelpers()
+    : `static int get_uint64(
     napi_env env, napi_value value, uint64_t *result)
 {
     napi_valuetype type;
     bool lossless;
     double number;
-
     if (!sagejs_native_check_napi(env, napi_typeof(env, value, &type)))
         return 0;
     if (type == napi_bigint)
@@ -2333,455 +2000,63 @@ static int get_uint64(
     }
     *result = (uint64_t) number;
     return 1;
-}
-
-static int get_bool(napi_env env, napi_value value, int *result)
-{
-    napi_valuetype type;
-    bool boolean;
-    if (!sagejs_native_check_napi(env, napi_typeof(env, value, &type)))
-        return 0;
-    if (type != napi_boolean ||
-        !sagejs_native_check_napi(
-            env, napi_get_value_bool(env, value, &boolean)))
-    {
-        napi_throw_type_error(env, NULL, "expected a bool argument");
-        return 0;
-    }
-    *result = boolean ? 1 : 0;
-    return 1;
-}
-
-static int get_integer(napi_env env, napi_value value, mpz_t result)
-{
-    napi_valuetype type;
-    if (!sagejs_native_check_napi(env, napi_typeof(env, value, &type)))
-        return 0;
-    if (type == napi_bigint)
-    {
-        int64_t small;
-        bool lossless;
-        if (!sagejs_native_check_napi(env,
-            napi_get_value_bigint_int64(env, value, &small, &lossless)))
-            return 0;
-        if (lossless)
-        {
-            const int negative = small < 0;
-            const uint64_t magnitude = negative
-                ? (uint64_t) (-(small + 1)) + UINT64_C(1)
-                : (uint64_t) small;
-            set_mpz_uint64(result, magnitude);
-            if (negative)
-                mpz_neg(result, result);
-            return 1;
-        }
-        else
-        {
-            int sign = 0;
-            size_t count = 0;
-            uint64_t inline_words[4];
-            uint64_t *words = inline_words;
-            if (!sagejs_native_check_napi(
-                env, napi_get_value_bigint_words(
-                    env, value, NULL, &count, NULL)))
-                return 0;
-            if (count != 0)
-            {
-                size_t actual = count;
-                if (count > sizeof(inline_words) / sizeof(inline_words[0]))
-                    words = (uint64_t *) malloc(count * sizeof(*words));
-                if (words == NULL)
-                {
-                    napi_throw_error(env, NULL, "unable to allocate BigInt limbs");
-                    return 0;
-                }
-                if (!sagejs_native_check_napi(env,
-                    napi_get_value_bigint_words(
-                        env, value, &sign, &actual, words)))
-                {
-                    if (words != inline_words)
-                        free(words);
-                    return 0;
-                }
-                mpz_import(result, actual, -1, sizeof(*words), 0, 0, words);
-                if (words != inline_words)
-                    free(words);
-                if (sign)
-                    mpz_neg(result, result);
-            }
-            return 1;
-        }
-    }
-    if (type == napi_number)
-    {
-        double number;
-        if (!sagejs_native_check_napi(
-            env, napi_get_value_double(env, value, &number)))
-            return 0;
-        if (!isfinite(number) || floor(number) != number ||
-            number < -9007199254740991.0 ||
-            number > 9007199254740991.0)
-        {
-            napi_throw_range_error(env, NULL, "invalid exact integer argument");
-            return 0;
-        }
-        mpz_set_d(result, number);
-        return 1;
-    }
-    napi_throw_type_error(env, NULL, "expected an exact integer argument");
-    return 0;
-}
-
-static int get_tagged_integer(
-    napi_env env, napi_value value, sagejs_tagged_int *result)
-{
-    napi_valuetype type;
-    if (!sagejs_native_check_napi(env, napi_typeof(env, value, &type)))
-        return 0;
-    if (type == napi_bigint)
-    {
-        int64_t small;
-        bool lossless;
-        if (!sagejs_native_check_napi(env,
-            napi_get_value_bigint_int64(env, value, &small, &lossless)))
-            return 0;
-        if (lossless)
-        {
-            sagejs_tagged_set_small(result, small);
-            return 1;
-        }
-        else
-        {
-            int sign = 0;
-            size_t count = 0;
-            uint64_t inline_words[4];
-            uint64_t *words = inline_words;
-            if (!sagejs_native_check_napi(
-                env, napi_get_value_bigint_words(
-                    env, value, NULL, &count, NULL)))
-                return 0;
-            if (count == 0)
-            {
-                sagejs_tagged_set_small(result, 0);
-                return 1;
-            }
-            else
-            {
-                size_t actual = count;
-                if (count > sizeof(inline_words) / sizeof(inline_words[0]))
-                    words = (uint64_t *) malloc(count * sizeof(*words));
-                if (words == NULL)
-                {
-                    napi_throw_error(env, NULL, "unable to allocate BigInt limbs");
-                    return 0;
-                }
-                if (!sagejs_native_check_napi(env,
-                    napi_get_value_bigint_words(
-                        env, value, &sign, &actual, words)))
-                {
-                    if (words != inline_words)
-                        free(words);
-                    return 0;
-                }
-                sagejs_tagged_make_big(result);
-                mpz_import(
-                    result->big, actual, -1, sizeof(*words), 0, 0, words);
-                if (words != inline_words)
-                    free(words);
-                if (sign)
-                    mpz_neg(result->big, result->big);
-                return 1;
-            }
-        }
-    }
-    if (type == napi_number)
-    {
-        double number;
-        if (!sagejs_native_check_napi(
-            env, napi_get_value_double(env, value, &number)))
-            return 0;
-        if (!isfinite(number) || floor(number) != number ||
-            number < -9007199254740991.0 ||
-            number > 9007199254740991.0)
-        {
-            napi_throw_range_error(env, NULL, "invalid exact integer argument");
-            return 0;
-        }
-        sagejs_tagged_set_small(result, (int64_t) number);
-        return 1;
-    }
-    napi_throw_type_error(env, NULL, "expected an exact integer argument");
-    return 0;
-}
-/* SAGEJS_GENERATED_FUNCTIONS_BEGIN */
-${functions}
-/* SAGEJS_GENERATED_FUNCTIONS_END */
-
-static napi_value initialize(napi_env env, napi_value exports)
-{
-    napi_property_descriptor properties[] = {
-${properties}
-    };
-    if (!sagejs_native_check_napi(env,
-        napi_define_properties(env, exports,
-            sizeof(properties) / sizeof(properties[0]), properties)))
-        return NULL;
-    return exports;
-}
-
-NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
-`;
-}
-
-function exactFunctions(ir) {
-  return ir.functions.filter((fn) => fn.kernelKind === "integer");
-}
-
-function exactOnly(ir) {
-  return ir.functions.length > 0 &&
-    ir.functions.every((fn) => fn.kernelKind === "integer");
-}
-
-function beforeMarker(source, marker) {
-  const position = source.indexOf(marker);
-  if (position < 0) throw new Error(`generated C marker is missing: ${marker}`);
-  return source.slice(0, position).trim();
-}
-
-function fromMarker(source, marker) {
-  const position = source.indexOf(marker);
-  if (position < 0) throw new Error(`generated C marker is missing: ${marker}`);
-  return source.slice(position).trim();
-}
-
-function publicCoreSignature(fn, prototype = false) {
-  const parameters = [
-    "sagejs_native_status *status",
-    ...internalResults(fn.returnType),
-    ...fn.params.map(internalArgument),
-  ].join(", ");
-  return `int sagejs_kernel_${fn.name}(${parameters})${prototype ? ";" : ""}`;
-}
-
-function publicCoreFunction(fn) {
-  const outputs = tupleElementTypes(fn.returnType) === undefined
-    ? ["sagejs_native_output"]
-    : tupleElementTypes(fn.returnType).map((_type, index) =>
-      `sagejs_native_output_${index}`
-    );
-  const args = fn.params.map((param) => `sagejs_arg_${param.name}`);
-  return `${publicCoreSignature(fn)}
-{
-    sagejs_native_status_reset(status);
-    return native_${fn.name}(status, ${outputs.join(", ")}` +
-    `${args.length ? `, ${args.join(", ")}` : ""});
 }`;
-}
+  if (exact.length === 0 && fields.length > 0) {
+    helpers += `
 
-function coreHeader(ir) {
-  const functions = exactFunctions(ir);
-  const usesInt64Buffers = functions.some((fn) =>
+static int get_precision(
+    napi_env env, napi_value value, mpfr_prec_t *result)
+{
+    uint64_t precision;
+    if (!get_uint64(env, value, &precision))
+        return 0;
+    if (precision < MPFR_PREC_MIN || precision > MPFR_PREC_MAX)
+    {
+        napi_throw_range_error(env, NULL, "invalid field precision");
+        return 0;
+    }
+    *result = (mpfr_prec_t) precision;
+    return 1;
+}`;
+  }
+  const usesInt64Buffers = exact.some((fn) =>
     fn.params.some((param) => isInt64BufferType(param.type)) ||
     fn.locals.some((local) => isInt64BufferType(local.type))
   );
-  const usesIntegerBuffers = functions.some((fn) =>
-    fn.params.some((param) => isIntegerBufferType(param.type)) ||
-    fn.locals.some((local) => isIntegerBufferType(local.type))
-  );
-  return `/* Generated by Sage.js Native Kernel v16. */
-#ifndef SAGEJS_GENERATED_KERNEL_CORE_H
-#define SAGEJS_GENERATED_KERNEL_CORE_H
-
-#include <stddef.h>
-#include <stdint.h>
-#include <gmp.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef enum
-{
-    SAGEJS_NATIVE_OK = 0,
-    SAGEJS_NATIVE_ERROR = 1,
-    SAGEJS_NATIVE_TYPE_ERROR = 2,
-    SAGEJS_NATIVE_RANGE_ERROR = 3
-} sagejs_native_status_code;
-
-typedef struct
-{
-    sagejs_native_status_code code;
-    const char *message;
-} sagejs_native_status;
-${usesInt64Buffers ? `
-typedef struct
-{
-    int64_t *data;
-    size_t length;
-} sagejs_int64_buffer;
-` : ""}${usesIntegerBuffers ? `
-typedef struct
-{
-    int32_t *sizes;
-    uint64_t *limbs;
-    size_t length;
-    size_t word_capacity;
-} sagejs_integer_buffer;
-` : ""}
-/* Integer outputs are initialized mpz_t values owned by the caller. */
-${functions.map((fn) => publicCoreSignature(fn, true)).join("\n")}
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-`;
-}
-
-function generateHostCore(ir) {
-  if (!exactOnly(ir)) {
-    const kinds = Array.from(new Set(ir.functions.map((fn) => fn.kernelKind)));
-    throw new Error(
-      "host-isolated core emission currently requires exact-integer kernels; " +
-      `found ${kinds.join(", ")}`,
-    );
-  }
-  const functions = exactFunctions(ir);
-  const functionMap = new Map(functions.map((fn) => [fn.name, fn]));
-  const combined = generateCombinedC(ir);
-  const runtimeStart = combined.indexOf("static void sagejs_native_status_set");
-  const runtimeEnd = combined.indexOf("static napi_value create_bigint");
-  if (runtimeStart < 0 || runtimeEnd < 0 || runtimeEnd <= runtimeStart) {
-    throw new Error("unable to locate the generated host-core runtime");
-  }
-  const runtime = combined.slice(runtimeStart, runtimeEnd)
-    .replace(
-      /static void sagejs_native_throw_status\([\s\S]*?\n\}\n\n/,
-      "",
-    )
-    .trim();
-  const tagged = generateTaggedFunctions(functions);
-  const word = generateWordFunctions(functions);
-  const usesInt64Buffers = functions.some((fn) =>
-    fn.params.some((param) => isInt64BufferType(param.type)) ||
-    fn.locals.some((local) => isInt64BufferType(local.type))
-  );
-  const usesIntegerBuffers = functions.some((fn) =>
-    fn.params.some((param) => isIntegerBufferType(param.type)) ||
-    fn.locals.some((local) => isIntegerBufferType(local.type))
-  );
-  const pieces = [
-    runtime,
-    usesInt64Buffers
-      ? beforeMarker(
-          fromMarker(
-            generateInt64BufferSupport(),
-            "static int sagejs_int64_buffer_index",
-          ),
-          "static int sagejs_native_get_int64_buffer",
-        )
-      : "",
-    usesIntegerBuffers
-      ? beforeMarker(
-          fromMarker(
-            generateIntegerBufferSupport(),
-            "static int sagejs_integer_buffer_index",
-          ),
-          "static int sagejs_native_get_integer_buffer",
-        )
-      : "",
-    functions.map((fn) => internalSignature(fn, true)).join("\n"),
-    word.prototypes,
-    tagged.prototypes,
-    word.functions,
-    tagged.functions,
-    ...functions.map((fn) => emitExactInternalFunction(fn, functionMap)),
-    ...functions.map(publicCoreFunction),
-  ].filter(Boolean);
-  const source = `/* Generated by Sage.js Native Kernel v16.
- * Host-isolated mathematical core: no Node, JavaScript, or Python runtime.
- */
-#include <math.h>
-#include <limits.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <gmp.h>
-#include "kernel_core.h"
-
-${pieces.join("\n\n")}
-`;
-  const forbidden = [
-    ["Node-API", /\bnapi_/],
-    ["Node header", /node_api/],
-    ["CPython API", /\b(?:PyObject|Py_|_Py)/],
-    ["JavaScript engine API", /\b(?:JSValue|v8::)/],
-  ];
-  const violations = forbidden
-    .filter(([_name, pattern]) => pattern.test(source))
-    .map(([name]) => name);
-  if (violations.length > 0) {
-    throw new Error(
-      `host-isolation audit failed: ${violations.join(", ")}`,
-    );
-  }
-  return {
-    source,
-    header: coreHeader(ir),
-    audit: {
-      isolated: true,
-      boundary: "packed-c-abi",
-      hostCallbacks: 0,
-      forbiddenApis: forbidden.map(([name]) => name),
-      nativeDependencies: ["libc", "libm", "GMP"],
-      functions: functions.map((fn) => fn.name),
-    },
-  };
-}
-
-function generateExactNodeAdapter(ir) {
-  const functions = exactFunctions(ir);
-  const combined = generateCombinedC(ir);
-  const helpersStart = combined.indexOf("static napi_value create_bigint");
-  const helpersEnd = combined.indexOf("/* SAGEJS_GENERATED_FUNCTIONS_BEGIN */");
-  if (helpersStart < 0 || helpersEnd < 0 || helpersEnd <= helpersStart) {
-    throw new Error("unable to locate the generated Node adapter runtime");
-  }
-  const helpers = combined.slice(helpersStart, helpersEnd).trim();
-  const usesInt64Buffers = functions.some((fn) =>
-    fn.params.some((param) => isInt64BufferType(param.type)) ||
-    fn.locals.some((local) => isInt64BufferType(local.type))
-  );
-  const usesIntegerBuffers = functions.some((fn) =>
+  const usesIntegerBuffers = exact.some((fn) =>
     fn.params.some((param) => isIntegerBufferType(param.type)) ||
     fn.locals.some((local) => isIntegerBufferType(local.type))
   );
   const bufferAdapters = [
-    usesInt64Buffers
-      ? fromMarker(
-          generateInt64BufferSupport(),
-          "static int sagejs_native_get_int64_buffer",
-        )
-      : "",
-    usesIntegerBuffers
-      ? fromMarker(
-          generateIntegerBufferSupport(),
-          "static int sagejs_native_get_integer_buffer",
-        )
-      : "",
+    usesInt64Buffers ? generateInt64BufferNodeAdapter() : "",
+    usesIntegerBuffers ? generateIntegerBufferNodeAdapter() : "",
   ].filter(Boolean).join("\n\n");
-  const wrappers = functions.map(emitExactWrappers).join("\n\n");
-  const properties = functions.flatMap((fn) => [
-    `        {${cString(fn.name)}, NULL, compiled_${fn.name}, ` +
-      "NULL, NULL, NULL, napi_default, NULL}",
-    `        {${cString(`${fn.name}$gmp`)}, NULL, ` +
-      `compiled_${fn.name}_gmp, NULL, NULL, NULL, napi_default, NULL}`,
-  ]).join(",\n");
-  return `/* Generated by Sage.js Native Kernel v16.
+  const floatBuffers = floats.some((fn) =>
+    fn.params.some((param) => param.type === "Float64Buffer") ||
+    fn.locals.some((local) =>
+      ["Float64Buffer", "Float64Record"].includes(local.type)
+    )
+  );
+  const wrappers = [
+    ...exact.map(emitExactWrappers),
+    ...floats.map(emitFloat64NodeAdapter),
+    ...fields.map(emitFieldNodeAdapter),
+    ...primeSources.map(emitPrimeSourceNodeAdapter),
+    ...primeFields.map(emitPrimeFieldNodeAdapter),
+  ].join("\n\n");
+  const properties = functions.flatMap((fn) => {
+    const ordinary =
+      `        {${cString(fn.name)}, NULL, compiled_${fn.name}, ` +
+      "NULL, NULL, NULL, napi_default, NULL}";
+    return fn.kernelKind === "integer"
+      ? [
+        ordinary,
+        `        {${cString(`${fn.name}$gmp`)}, NULL, ` +
+          `compiled_${fn.name}_gmp, NULL, NULL, NULL, napi_default, NULL}`,
+      ]
+      : [ordinary];
+  }).join(",\n");
+  return `/* Generated by Sage.js Native Kernel v17.
  * Node adapter only; mathematical execution lives in kernel_core.c.
  */
 #include <math.h>
@@ -2792,27 +2067,26 @@ function generateExactNodeAdapter(ir) {
 #include <string.h>
 
 #include <node_api.h>
-#include <gmp.h>
+${exact.length > 0 ? "#include <gmp.h>" : ""}
+${fields.some((fn) => fn.kernelKind === "real-field") ? "#include <mpfr.h>" : ""}
+${fields.some((fn) => fn.kernelKind === "complex-field") ? "#include <mpc.h>" : ""}
+${primeSources.length + primeFields.length > 0
+    ? "#include <flint/nmod_mat.h>" : ""}
 #include <sagejs/native.h>
 
 #include "kernel_core.c"
 
-static void sagejs_native_throw_status(
-    napi_env env, const sagejs_native_status *status)
-{
-    const char *message = status != NULL && status->message != NULL
-        ? status->message : "native kernel failed";
-    if (status != NULL && status->code == SAGEJS_NATIVE_TYPE_ERROR)
-        napi_throw_type_error(env, NULL, message);
-    else if (status != NULL && status->code == SAGEJS_NATIVE_RANGE_ERROR)
-        napi_throw_range_error(env, NULL, message);
-    else
-        napi_throw_error(env, NULL, message);
-}
+${generateNodeStatusAdapter()}
 
 ${helpers}
 
 ${bufferAdapters}
+
+${floatBuffers ? generateFloat64BufferNodeAdapter() : ""}
+
+${primeSources.length > 0 ? generatePrimeSourceNodeSupport() : ""}
+
+${primeFields.length > 0 ? generatePrimeFieldNodeSupport() : ""}
 
 ${wrappers}
 
@@ -2833,11 +2107,22 @@ NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
 }
 
 function generateC(ir) {
-  return exactOnly(ir) ? generateExactNodeAdapter(ir) : generateCombinedC(ir);
+  return generateNodeAdapter(ir);
+}
+
+function generateArtifacts(ir) {
+  const core = generateHostCore(ir);
+  return {
+    adapterSource: generateNodeAdapter(ir),
+    coreSource: core.source,
+    coreHeader: core.header,
+    hostIsolation: core.audit,
+  };
 }
 
 module.exports = {
   NATIVE_ABI_VERSION,
+  generateArtifacts,
   generateC,
   generateHostCore,
 };

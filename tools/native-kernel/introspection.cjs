@@ -52,16 +52,13 @@ function explainFunction(fn) {
     decorated: fn.decorated,
     kernelKind: fn.kernelKind || "field",
     sourceTransparent: fn.sourceTransparent === true,
-    hostIsolation: fn.kernelKind === "integer"
-      ? {
-        eligible: true,
-        normalPathHostCallbacks: 0,
-        boundary: "packed-c-abi",
-      }
-      : {
-        eligible: false,
-        reason: "this kernel kind has not yet migrated to the isolated core ABI",
-      },
+    hostIsolation: {
+      eligible: true,
+      normalPathHostCallbacks: 0,
+      boundary: fn.kernelKind === "integer" || fn.kernelKind === "float64"
+        ? "packed-c-abi"
+        : "owned-or-borrowed-native-value-abi",
+    },
     provenance: fn.provenance,
     signature: {
       parameters: fn.params,

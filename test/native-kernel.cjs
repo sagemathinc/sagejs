@@ -91,10 +91,12 @@ const realFunction = ir.functions.find(
   (fn) => fn.name === "real_multiply_loop",
 );
 const generatedC = generateC(ir);
+const generatedFieldCore = generateHostCore(ir);
 const mpmathSource = readFileSync(mpmathSourcePath, "utf8");
 const mpmathIr = await lowerSource(mpmathSource, mpmathSourcePath);
 const harmonicFunction = mpmathIr.functions[0];
 const harmonicC = generateC(mpmathIr);
+const harmonicCoreC = generateHostCore(mpmathIr).source;
 const integerSource = readFileSync(integerSourcePath, "utf8");
 const integerIr = await lowerSource(integerSource, integerSourcePath);
 const integerFunction = integerIr.functions[0];
@@ -161,12 +163,16 @@ const scalarFloatIr = await lowerSource(
   readFileSync(scalarFloatPath, "utf8"),
   scalarFloatPath,
 );
-const scalarFloatC = generateC(scalarFloatIr);
+const scalarFloatAdapterC = generateC(scalarFloatIr);
+const scalarFloatCore = generateHostCore(scalarFloatIr);
+const scalarFloatC = scalarFloatCore.source;
 const numericalBuffersIr = await lowerSource(
   readFileSync(numericalBuffersPath, "utf8"),
   numericalBuffersPath,
 );
-const numericalBuffersC = generateC(numericalBuffersIr);
+const numericalBuffersAdapterC = generateC(numericalBuffersIr);
+const numericalBuffersCore = generateHostCore(numericalBuffersIr);
+const numericalBuffersC = numericalBuffersCore.source;
 const signedBuffersIr = await lowerSource(
   readFileSync(signedBuffersPath, "utf8"),
   signedBuffersPath,
@@ -179,11 +185,13 @@ const primeFieldMatrixIr = await lowerSource(
   primeFieldMatrixPath,
 );
 const primeFieldMatrixC = generateC(primeFieldMatrixIr);
+const primeFieldMatrixCore = generateHostCore(primeFieldMatrixIr);
 const primeFieldSourceIr = await lowerSource(
   readFileSync(primeFieldSourcePath, "utf8"),
   primeFieldSourcePath,
 );
 const primeFieldSourceC = generateC(primeFieldSourceIr);
+const primeFieldSourceCore = generateHostCore(primeFieldSourceIr);
 const renamedPrimeFieldSourceIr = await lowerSource(
   readFileSync(primeFieldSourcePath, "utf8")
     .replaceAll("source_prime_rank", "renamed_rank_kernel")
@@ -191,9 +199,9 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 16);
-assert.equal(scalarExactIr.version, 16);
-assert.equal(scalarFloatIr.version, 16);
+assert.equal(ir.version, 17);
+assert.equal(scalarExactIr.version, 17);
+assert.equal(scalarFloatIr.version, 17);
 assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
@@ -225,9 +233,12 @@ assert.deepEqual(
     ],
   ],
 );
-assert.match(numericalBuffersC, /napi_float64_array/);
-assert.match(numericalBuffersC, /sagejs_native_get_float64_buffer/);
+assert.match(numericalBuffersAdapterC, /napi_float64_array/);
+assert.match(numericalBuffersAdapterC, /sagejs_native_get_float64_buffer/);
 assert.match(numericalBuffersC, /sqrt\(/);
+assert.equal(scalarFloatCore.audit.hostCallbacks, 0);
+assert.equal(numericalBuffersCore.audit.hostCallbacks, 0);
+assert.doesNotMatch(numericalBuffersC, /\bnapi_/);
 assert.match(numericalBuffersC, /sagejs_left\.data/);
 assert.deepEqual(
   signedBuffersIr.functions.map((fn) => [
@@ -289,13 +300,15 @@ assert.deepEqual(realOperation, {
 assert.deepEqual(realOperationOrigins, [realOperationId]);
 assert.equal(realOperationProvenance.file, sourcePath);
 assert.match(
-  generatedC,
-  /mpc_mul\(sagejs_value->value, sagejs_value->value, sagejs_step/,
+  generatedFieldCore.source,
+  /mpc_mul\(sagejs_native_output, sagejs_native_output, sagejs_step/,
 );
 assert.match(
-  generatedC,
-  /mpfr_mul\(sagejs_value->value, sagejs_value->value, sagejs_step/,
+  generatedFieldCore.source,
+  /mpfr_mul\(sagejs_native_output, sagejs_native_output, sagejs_step/,
 );
+assert.equal(generatedFieldCore.audit.hostCallbacks, 0);
+assert.doesNotMatch(generatedFieldCore.source, /\bnapi_/);
 assert.equal(harmonicFunction.name, "harmonic_cubic_loop");
 assert.equal(harmonicFunction.decorated, true);
 assert.deepEqual(
@@ -399,11 +412,13 @@ assert.deepEqual(
   primeFieldMatrixIr.functions[0].arithmetic.representations,
   ["u32", "u64"],
 );
-assert.match(primeFieldMatrixC, /sagejs_prime_factor_blocked/);
-assert.match(primeFieldMatrixC, /sagejs_prime_factor_classical/);
-assert.match(primeFieldMatrixC, /sagejs_prime_factor_solve/);
-assert.match(primeFieldMatrixC, /nmod_mul\(left, right/);
+assert.match(primeFieldMatrixCore.source, /sagejs_prime_factor_blocked/);
+assert.match(primeFieldMatrixCore.source, /sagejs_prime_factor_classical/);
+assert.match(primeFieldMatrixCore.source, /sagejs_prime_factor_solve/);
+assert.match(primeFieldMatrixCore.source, /nmod_mul\(left, right/);
 assert.match(primeFieldMatrixC, /sagejs_native_wrap_prime_matrix/);
+assert.equal(primeFieldMatrixCore.audit.hostCallbacks, 0);
+assert.doesNotMatch(primeFieldMatrixCore.source, /\bnapi_/);
 assert.deepEqual(
   primeFieldSourceIr.functions.map((fn) => [
     fn.name,
@@ -426,10 +441,12 @@ assert.deepEqual(
     ],
   ],
 );
-assert.match(primeFieldSourceC, /sagejs_source_prime_row_submul/);
-assert.match(primeFieldSourceC, /sagejs_source_prime_dot_accumulate/);
+assert.match(primeFieldSourceCore.source, /sagejs_source_prime_row_submul/);
+assert.match(primeFieldSourceCore.source, /sagejs_source_prime_dot_accumulate/);
 assert.match(primeFieldSourceC, /compiled_source_prime_rank/);
-assert.doesNotMatch(primeFieldSourceC, /sagejs_prime_factor/);
+assert.doesNotMatch(primeFieldSourceCore.source, /sagejs_prime_factor/);
+assert.equal(primeFieldSourceCore.audit.hostCallbacks, 0);
+assert.doesNotMatch(primeFieldSourceCore.source, /\bnapi_/);
 assert.deepEqual(
   renamedPrimeFieldSourceIr.functions.map((fn) => fn.optimizations),
   primeFieldSourceIr.functions.map((fn) => fn.optimizations),
@@ -481,15 +498,15 @@ assert.match(
   /tagged_pi[\s\S]*tagged_is_prime\(status/,
 );
 assert.match(
-  harmonicC,
+  harmonicCoreC,
   /mpfr_set_uj\(sagejs_sagejs_native_tmp_3, sagejs_denominator/,
 );
 assert.match(
-  harmonicC,
+  harmonicCoreC,
   /mpfr_pow_ui\(sagejs_sagejs_native_tmp_2, sagejs_sagejs_native_tmp_3, 3/,
 );
 assert.match(
-  harmonicC,
+  harmonicCoreC,
   /sagejs_denominator - UINT64_C\(1\).*sagejs_terms/,
 );
 assert.equal(integerFunction.name, "integer_quadratic_sum");
@@ -902,7 +919,61 @@ try {
     sourcePath: nativeP1Path,
     cacheRoot: join(temporary, "native-p1-cache"),
   });
+  for (const [family, compiled, expectedKinds] of [
+    ["MPFR/MPC fields", first, ["complex-field", "real-field"]],
+    ["packed binary64", numericalBuffersKernel, ["float64"]],
+    ["exact integer", scalarExactKernel, ["integer"]],
+    ["source prime field", primeFieldSourceKernel, ["prime-field-source"]],
+    ["specialized prime field", primeFieldKernel, ["prime-field-matrix"]],
+  ]) {
+    const manifest = JSON.parse(
+      readFileSync(join(compiled.outputPath, "manifest.json"), "utf8"),
+    );
+    assert.equal(manifest.hostIsolation.isolated, true, family);
+    assert.equal(manifest.hostIsolation.hostCallbacks, 0, family);
+    assert.deepEqual(
+      [...manifest.hostIsolation.kernelKinds].sort(),
+      [...expectedKinds].sort(),
+      family,
+    );
+    assert.doesNotMatch(
+      readFileSync(compiled.coreSourcePath, "utf8"),
+      /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/,
+      family,
+    );
+    assert.match(
+      readFileSync(join(compiled.outputPath, "kernel.c"), "utf8"),
+      /#include "kernel_core\.c"/,
+      family,
+    );
+    if (process.platform !== "win32" &&
+        spawnSync(process.env.CC || "cc", ["--version"]).status === 0) {
+      const objectPath = join(
+        temporary,
+        `isolated-${family.replaceAll(/[^a-z0-9]+/gi, "-")}.o`,
+      );
+      const nativePrefix = join(root, "packages", "flint", ".native", "prefix");
+      const independent = spawnSync(process.env.CC || "cc", [
+        "-std=c11", "-O2", "-fPIC", "-c",
+        `-I${compiled.outputPath}`,
+        `-I${join(nativePrefix, "include")}`,
+        compiled.coreSourcePath,
+        "-o", objectPath,
+      ], { encoding: "utf8" });
+      assert.equal(independent.status, 0, `${family}: ${independent.stderr}`);
+    }
+  }
   const nativeP1Module = require(nativeP1Kernel.modulePath);
+  const p1Fused = nativeP1Module.heilbronn_higher_weight_hecke_fill;
+  assert.ok(p1Fused.createInt64Buffer([1, -2, 3]) instanceof BigInt64Array);
+  assert.deepEqual(
+    p1Fused.packIntegerBuffer([1n << 700n, -(1n << 900n)]).toArray(),
+    [1n << 700n, -(1n << 900n)],
+  );
+  assert.deepEqual(
+    p1Fused.createIntegerBuffer(3, 4).toArray(),
+    [0n, 0n, 0n],
+  );
   for (const [p, expected] of [
     [2, [4n, 6n, 1n, 1n, 6n, 61n]],
     [3, [6n, 10n, 0n, 2n, 6n, 83n]],
@@ -1054,13 +1125,15 @@ try {
       "utf8",
     ),
   );
-  assert.ok(primeFieldSourceManifest.cSourceMap.length > 0);
+  assert.ok(primeFieldSourceManifest.coreSourceMap.length > 0);
   assert.equal(
-    primeFieldSourceManifest.cSourceMap[0].location,
+    primeFieldSourceManifest.coreSourceMap[0].location,
     `${primeFieldSourcePath}:29:5`,
   );
   assert.match(
-    readFileSync(join(primeFieldSourceKernel.outputPath, "kernel.c"), "utf8"),
+    readFileSync(
+      join(primeFieldSourceKernel.outputPath, "kernel_core.c"), "utf8",
+    ),
     new RegExp(`#line 29 ${JSON.stringify(primeFieldSourcePath)}`),
   );
   const primeFieldAddon = require(primeFieldKernel.addonPath);
@@ -2208,8 +2281,8 @@ print(kernel.pi(1000))
   );
   assert.equal(emitCli.status, 0, emitCli.stderr);
   const emission = JSON.parse(emitCli.stdout);
-  assert.match(emission.cSource, /sagejs-ir source_prime_rank:1/);
-  assert.ok(emission.sourceMap.length > 0);
+  assert.match(emission.cSource, /#include "kernel_core\.c"/);
+  assert.equal(emission.sourceMap.length, 0);
   const emitCoreCli = spawnSync(
     process.execPath,
     [
@@ -2496,7 +2569,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v16 isolated cores, exact buffers, provenance, P1, ABI, and fallback passed.",
+  "Native Kernel v17 canonical isolated cores, buffers, provenance, P1, ABI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);

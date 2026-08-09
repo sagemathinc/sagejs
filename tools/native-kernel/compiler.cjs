@@ -12,8 +12,7 @@ const { spawnSync } = require("node:child_process");
 const { lowerSource } = require("./ir.cjs");
 const {
   NATIVE_ABI_VERSION,
-  generateC,
-  generateHostCore,
+  generateArtifacts,
 } = require("./c-backend.cjs");
 const { generateJavaScript } = require("./js-backend.cjs");
 
@@ -81,6 +80,8 @@ function backendFingerprint() {
       readFileSync(join(__dirname, "provenance.cjs")),
       readFileSync(join(__dirname, "word-backend.cjs")),
       readFileSync(join(__dirname, "tagged-backend.cjs")),
+      readFileSync(join(__dirname, "core-abi.cjs")),
+      readFileSync(join(__dirname, "exact-runtime.cjs")),
       readFileSync(join(__dirname, "c-backend.cjs")),
       readFileSync(join(__dirname, "js-backend.cjs")),
       readFileSync(header),
@@ -273,20 +274,13 @@ async function compileKernel(options) {
   );
   const modulePath = join(outputPath, "index.cjs");
   const manifestPath = join(outputPath, "manifest.json");
-  const hostCoreEligible = ir.functions.length > 0 &&
-    ir.functions.every((fn) => fn.kernelKind === "integer");
-  const coreSourcePath = hostCoreEligible
-    ? join(outputPath, "kernel_core.c")
-    : null;
-  const coreHeaderPath = hostCoreEligible
-    ? join(outputPath, "kernel_core.h")
-    : null;
+  const coreSourcePath = join(outputPath, "kernel_core.c");
+  const coreHeaderPath = join(outputPath, "kernel_core.h");
   if (
     existsSync(addonPath) &&
     existsSync(modulePath) &&
     existsSync(manifestPath) &&
-    (!hostCoreEligible ||
-      (existsSync(coreSourcePath) && existsSync(coreHeaderPath)))
+    existsSync(coreSourcePath) && existsSync(coreHeaderPath)
   ) {
     writeDiscoveryIndex(cacheRoot, sourcePath, sourceHash, cacheKey);
     return {
@@ -311,18 +305,14 @@ async function compileKernel(options) {
     );
   }
   mkdirSync(outputPath, { recursive: true });
-  const core = hostCoreEligible ? generateHostCore(ir) : null;
-  const cSource = generateC(ir);
+  const artifacts = generateArtifacts(ir);
+  const cSource = artifacts.adapterSource;
   const { generatedCSourceMap } = require("./provenance.cjs");
   const cSourceMap = generatedCSourceMap(cSource);
-  const coreSourceMap = core === null
-    ? []
-    : generatedCSourceMap(core.source);
+  const coreSourceMap = generatedCSourceMap(artifacts.coreSource);
   writeFileSync(join(outputPath, "kernel.c"), cSource);
-  if (core !== null) {
-    writeFileSync(coreSourcePath, core.source);
-    writeFileSync(coreHeaderPath, core.header);
-  }
+  writeFileSync(coreSourcePath, artifacts.coreSource);
+  writeFileSync(coreHeaderPath, artifacts.coreHeader);
   writeFileSync(
     join(outputPath, "binding.gyp"),
     `${JSON.stringify(bindingGyp(ir, sourceBoundsChecked), null, 2)}\n`,
@@ -348,10 +338,7 @@ async function compileKernel(options) {
         sourcePath,
         cSourceMap,
         coreSourceMap,
-        hostIsolation: core?.audit || {
-          isolated: false,
-          reason: "kernel kind does not yet have a host-isolated core backend",
-        },
+        hostIsolation: artifacts.hostIsolation,
         ir,
       },
       null,

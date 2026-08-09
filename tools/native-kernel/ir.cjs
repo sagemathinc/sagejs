@@ -24,7 +24,7 @@ const {
   finalizeFunctionProvenance,
 } = require("./provenance.cjs");
 
-const IR_VERSION = 16;
+const IR_VERSION = 17;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -598,6 +598,12 @@ function lowerLegacyFunction(fn, decorated = false) {
   return {
     name: fn.name.name,
     decorated,
+    kernelKind: elementType === "RealNumber"
+      ? "real-field"
+      : elementType === "ComplexNumber"
+        ? "complex-field"
+        : "integer",
+    sourceTransparent: true,
     params,
     returnType: elementType,
     locals,

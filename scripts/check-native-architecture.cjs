@@ -208,6 +208,14 @@ function validateKernelRegistry(manifest, options = {}) {
   const isolationStatuses = new Set(
     manifest.policy.host_isolation_statuses || [],
   );
+  if (
+    isolationStatuses.size !== 1 ||
+    !isolationStatuses.has("certified")
+  ) {
+    throw new Error(
+      "every accepted native-kernel witness must be host-isolation certified",
+    );
+  }
   const packages = readJson(join(root, "package.json"));
   const requiredOracles = new Set(manifest.policy.required_oracles || []);
   const compilerSources = sourceFiles(join(root, "tools", "native-kernel"));
@@ -228,6 +236,9 @@ function validateKernelRegistry(manifest, options = {}) {
       throw new Error(
         `${kernel.id} has invalid host-isolation status ${kernel.host_isolation}`,
       );
+    }
+    if (kernel.host_isolation !== "certified") {
+      throw new Error(`${kernel.id} is not host-isolation certified`);
     }
     if (!Array.isArray(kernel.functions) || kernel.functions.length === 0) {
       throw new Error(`${kernel.id} must list compiled functions`);
