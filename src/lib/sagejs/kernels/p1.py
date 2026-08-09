@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from sagejs.native import native, uint64
+from sagejs.native import Int64Buffer, int64_record, native, uint64
 
 
 @native
@@ -241,6 +241,77 @@ def heilbronn_cremona_entry(
 
 
 @native
+def heilbronn_cremona_fill(
+    prime: uint64, output: Int64Buffer,
+) -> int:
+    """Write all Cremona representatives to a packed signed buffer.
+
+    Each consecutive record is ``(a, b, c, d)``.  The caller allocates
+    ``4 * heilbronn_cremona_count(prime)`` entries.  Bounds and signed-64-bit
+    representability are checked identically by the native and Python paths.
+    """
+    exact_prime = prime + 0
+    position = 0
+    matrix = int64_record(output, position * 4, 4)
+    matrix[0] = 1
+    matrix[1] = 0
+    matrix[2] = 0
+    matrix[3] = exact_prime
+    position += 1
+    if prime == 2:
+        matrix = int64_record(output, position * 4, 4)
+        matrix[0] = 2
+        matrix[1] = 0
+        matrix[2] = 0
+        matrix[3] = 1
+        position += 1
+        matrix = int64_record(output, position * 4, 4)
+        matrix[0] = 2
+        matrix[1] = 1
+        matrix[2] = 0
+        matrix[3] = 1
+        position += 1
+        matrix = int64_record(output, position * 4, 4)
+        matrix[0] = 1
+        matrix[1] = 0
+        matrix[2] = 1
+        matrix[3] = 2
+        return position + 1
+    half = prime // 2
+    for residue in range(-half, half + 1):
+        x1 = exact_prime
+        x2 = -residue
+        y1 = 0
+        y2 = 1
+        matrix = int64_record(output, position * 4, 4)
+        matrix[0] = x1
+        matrix[1] = x2
+        matrix[2] = y1
+        matrix[3] = y2
+        position += 1
+        left = -prime
+        right = residue
+        while right != 0:
+            quotient = p1_round_quotient(left, right)
+            remainder = left - right * quotient
+            left = -right
+            right = remainder
+            x3 = quotient * x2 - x1
+            x1 = x2
+            x2 = x3
+            y3 = quotient * y2 - y1
+            y1 = y2
+            y2 = y3
+            matrix = int64_record(output, position * 4, 4)
+            matrix[0] = x1
+            matrix[1] = x2
+            matrix[2] = y1
+            matrix[3] = y2
+            position += 1
+    return position
+
+
+@native
 def heilbronn_merel_digest(
     index: uint64,
 ) -> Tuple[int, int, int, int, int, int]:
@@ -310,3 +381,137 @@ def heilbronn_merel_entry(
                         return True, a, b, c, d
                     position += 1
     return False, 0, 0, 0, 0
+
+
+@native
+def heilbronn_merel_fill(
+    index: uint64, output: Int64Buffer,
+) -> int:
+    """Write Merel's determinant-``index`` representatives in source order."""
+    exact_index = index + 0
+    position = 0
+    for a in range(1, exact_index + 1):
+        quotient = exact_index // a
+        if quotient * a == exact_index:
+            d = quotient
+            for b in range(0, a):
+                matrix = int64_record(output, position * 4, 4)
+                matrix[0] = a
+                matrix[1] = b
+                matrix[2] = 0
+                matrix[3] = d
+                position += 1
+            for c in range(1, d):
+                matrix = int64_record(output, position * 4, 4)
+                matrix[0] = a
+                matrix[1] = 0
+                matrix[2] = c
+                matrix[3] = d
+                position += 1
+        for d in range(quotient + 1, exact_index + 1):
+            bc = a * d - exact_index
+            for c in range(bc // a + 1, d):
+                if bc % c == 0:
+                    matrix = int64_record(output, position * 4, 4)
+                    matrix[0] = a
+                    matrix[1] = bc // c
+                    matrix[2] = c
+                    matrix[3] = d
+                    position += 1
+    return position
+
+
+@native
+def p1_integer_power(base: int, exponent: int) -> int:
+    """Raise an integer to a nonnegative dynamic exponent."""
+    answer = 1
+    for _index in range(0, exponent):
+        answer *= base
+    return answer
+
+
+@native
+def p1_binomial(top: int, bottom: int) -> int:
+    """Return a binomial coefficient for nonnegative exact arguments."""
+    if bottom < 0 or bottom > top:
+        return 0
+    if bottom > top - bottom:
+        bottom = top - bottom
+    answer = 1
+    for step in range(1, bottom + 1):
+        answer = (answer * (top - bottom + step)) // step
+    return answer
+
+
+@native
+def p1_monomial_matrix_coefficient(
+    source_degree: int,
+    weight_degree: int,
+    target_degree: int,
+    a: int,
+    b: int,
+    c: int,
+    d: int,
+) -> int:
+    """Coefficient of one transformed homogeneous monomial.
+
+    This is the ordinary-Python body corresponding to
+    ``p1_monomial_matrix_coefficient`` in ``p1.c``.
+    """
+    right_degree = weight_degree - source_degree
+    answer = 0
+    for left_x in range(0, source_degree + 1):
+        if target_degree >= left_x:
+            right_x = target_degree - left_x
+            if right_x <= right_degree:
+                term = p1_binomial(source_degree, left_x)
+                term *= p1_binomial(right_degree, right_x)
+                term *= p1_integer_power(a, left_x)
+                term *= p1_integer_power(b, source_degree - left_x)
+                term *= p1_integer_power(c, right_x)
+                term *= p1_integer_power(d, right_degree - right_x)
+                answer += term
+    return answer
+
+
+@native
+def heilbronn_higher_weight_action_fill(
+    weight: uint64,
+    matrices: Int64Buffer,
+    matrix_count: uint64,
+    output: Int64Buffer,
+) -> int:
+    """Assemble every homogeneous-polynomial action block.
+
+    For each packed Heilbronn matrix, write the full ``(weight - 1)`` square
+    monomial-action matrix in row-major order.  This is the complete
+    higher-weight coefficient-assembly stage used inside the P1 Hecke loop;
+    coset transport and quotient-presentation reduction remain separate.
+    """
+    if weight < 2:
+        return 0
+    width = weight - 1
+    weight_degree = weight - 2
+    for matrix_index in range(matrix_count):
+        matrix = int64_record(matrices, matrix_index * 4, 4)
+        a = matrix[0]
+        b = matrix[1]
+        c = matrix[2]
+        d = matrix[3]
+        for source_degree in range(0, width):
+            for target_degree in range(0, width):
+                output_index = (
+                    matrix_index * width * width
+                    + source_degree * width
+                    + target_degree
+                )
+                output[output_index] = p1_monomial_matrix_coefficient(
+                    source_degree,
+                    weight_degree,
+                    target_degree,
+                    a,
+                    b,
+                    c,
+                    d,
+                )
+    return matrix_count * width * width

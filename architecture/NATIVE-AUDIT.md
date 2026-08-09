@@ -37,8 +37,10 @@ ordinary CPython-parseable bodies for:
 - P1 gcd, extended gcd, and normalization with scalar;
 - Cremona's continued-fraction Heilbronn representatives for `T_p`;
 - Merel's determinant-`n` Heilbronn representatives used by degeneracy maps;
-- representative counting, complete per-entry differential access, and an
-  ordered benchmark digest.
+- representative counting, complete packed signed-matrix output, per-entry
+  differential access, and an ordered benchmark digest;
+- the full homogeneous-polynomial action block for every Heilbronn matrix,
+  matching the coefficient-assembly stage of the higher-weight Hecke loop.
 
 The compiler receives no P1 or Heilbronn function names.  It lowers nested
 exact loops and direct typed helper calls from their bodies.  The same bodies
@@ -47,6 +49,8 @@ representative for seven primes between generated C and JavaScript, compares
 1,200 normalizations to `p1_core.c`, and compares the complete enumeration
 digest with the standalone handwritten-C transcription in
 [`native-p1-heilbronn-reference.c`](../bench/native-p1-heilbronn-reference.c).
+The packed action stage is also checked coefficient-for-coefficient against
+the generated JavaScript fallback and by an independent C digest.
 
 Run it with:
 
@@ -83,14 +87,23 @@ substitution:
    unrelated expansion of the module from changing whether a small helper in
    the inner Euclidean loop is inlined.
 
-The remaining roughly twofold C gap is a useful next target.  The typed pilot
-currently computes a digest because the exact compiler does not yet expose a
-packed signed matrix-record output.  Production migration should add that
-general ABI, compile the generator directly into caller-owned storage, and
-compare the complete higher-weight Hecke assembly before deleting the static C
-implementation.  Sparse rational star elimination is deliberately later: it
-needs explicit rational values, sparse records, and scratch ownership rather
-than a benchmark-only intrinsic.
+The signed matrix-record ABI is now implemented generally rather than as a P1
+intrinsic. `Int64Buffer` borrows caller-owned `BigInt64Array` storage,
+`Int64Record` creates checked non-owning views, and exact reads re-enter the
+tagged word/GMP data flow. Writes are signed-range checked. Mutation roots are
+part of effect analysis, so externally visible writes disable unsafe replay.
+
+At `p=1009`, weight 4, the compiled typed-Python action stage writes 49,284
+coefficients in median 0.745 milliseconds with GCC and 0.447 milliseconds with
+Clang on the dedicated 16-vCPU AMD EPYC 7B13 host. The standalone C
+transcription takes 0.353 and 0.695 milliseconds respectively; compiler choice
+therefore changes generated typed Python from 2.11x behind to 1.55x faster.
+Generated JavaScript takes about 79 milliseconds. This is strong evidence for
+continuing the readable typed-Python migration, and against drawing conclusions
+from one C compiler. It is not yet permission to delete the production C path:
+coset transport, retained presentation data, and rational quotient reduction
+still need suitable packed ABIs and complete production differential coverage.
+Sparse rational star elimination remains later for the same reason.
 
 ## WebAssembly consequence
 

@@ -82,9 +82,10 @@ Exceptions are allowed and visible.  Quietly bypassing the policy is not.
 
 [`architecture/native-kernels.json`](architecture/native-kernels.json) lists
 representative source-transparent kernels.  At minimum, the witness set covers
-exact integer promotion, dense prime-field computation, and packed binary64
-storage.  Compiler changes preserve their same-source fallback, provenance,
-introspection, differential tests, and benchmarks.
+exact integer promotion, dense prime-field computation, packed binary64
+storage, and mutable signed exact-integer records.  Compiler changes preserve
+their same-source fallback, provenance, introspection, differential tests, and
+benchmarks.
 
 ## Parallel work
 

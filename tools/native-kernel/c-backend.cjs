@@ -25,7 +25,11 @@ const {
   cSourceDirective,
 } = require("./provenance.cjs");
 
-const NATIVE_ABI_VERSION = 10;
+const NATIVE_ABI_VERSION = 11;
+
+function isInt64BufferType(type) {
+  return type === "Int64Buffer" || type === "Int64Record";
+}
 
 function cString(value) {
   return JSON.stringify(String(value));
@@ -163,6 +167,7 @@ function internalArgument(param) {
   if (param.type === "Integer") return `const mpz_t ${name}`;
   if (param.type === "uint64") return `uint64_t ${name}`;
   if (param.type === "bool") return `int ${name}`;
+  if (isInt64BufferType(param.type)) return `sagejs_int64_buffer ${name}`;
   throw new Error(`unsupported exact native parameter ${param.type}`);
 }
 
@@ -217,6 +222,85 @@ function emitExactOperation(operation, context, indent) {
   }
   if (operation.kind === "bool.copy" || operation.kind === "uint64.copy") {
     return `${indent}${target} = ${exactValue(operation.source, context)};`;
+  }
+  if (operation.kind === "int64.buffer.copy") {
+    return `${indent}${target} = ${exactValue(operation.source, context)};`;
+  }
+  if (operation.kind === "int64.buffer.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${exactValue(operation.buffer, context)}.length;`;
+  }
+  if (operation.kind === "int64.record.view") {
+    const buffer = exactValue(operation.buffer, context);
+    const start = exactValue(operation.start, context);
+    const length = exactValue(operation.length, context);
+    return [
+      `${indent}{`,
+      `${indent}    int64_t sagejs_record_start;`,
+      `${indent}    int64_t sagejs_record_length;`,
+      `${indent}    if (!mpz_to_int64(${start}, &sagejs_record_start) ||`,
+      `${indent}        !mpz_to_int64(${length}, &sagejs_record_length) ||`,
+      `${indent}        sagejs_record_start < 0 || ` +
+        `sagejs_record_length < 0 ||`,
+      `${indent}        (uint64_t) sagejs_record_start > ` +
+        `(uint64_t) ${buffer}.length ||`,
+      `${indent}        (uint64_t) sagejs_record_length > ` +
+        `(uint64_t) ${buffer}.length - ` +
+        `(uint64_t) sagejs_record_start)`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"Int64Record is outside its buffer");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    ${target}.data = ${buffer}.data + ` +
+        `(size_t) sagejs_record_start;`,
+      `${indent}    ${target}.length = (size_t) sagejs_record_length;`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.buffer.get") {
+    const buffer = exactValue(operation.buffer, context);
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (!sagejs_mpz_buffer_index(&${buffer}, ` +
+        `${exactValue(operation.index, context)}, ` +
+        `&sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"Int64 buffer index out of range");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    set_mpz_int64(${target}, ` +
+        `${buffer}.data[sagejs_buffer_position]);`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.buffer.set") {
+    const buffer = exactValue(operation.buffer, context);
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    int64_t sagejs_buffer_value;`,
+      `${indent}    if (!sagejs_mpz_buffer_index(&${buffer}, ` +
+        `${exactValue(operation.index, context)}, ` +
+        `&sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"Int64 buffer index out of range");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (!mpz_to_int64(` +
+        `${exactValue(operation.value, context)}, &sagejs_buffer_value))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"Int64Buffer value is outside signed 64-bit");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    ${buffer}.data[sagejs_buffer_position] = ` +
+        `sagejs_buffer_value;`,
+      `${indent}}`,
+    ].join("\n");
   }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}set_mpz_uint64(${target}, ` +
@@ -520,7 +604,11 @@ function exactDeclarations(fn) {
   }
   for (const param of fn.params) {
     if (param.type === "Integer") continue;
-    const type = param.type === "uint64" ? "uint64_t" : "int";
+    const type = param.type === "uint64"
+      ? "uint64_t"
+      : isInt64BufferType(param.type)
+        ? "sagejs_int64_buffer"
+        : "int";
     declarations.push(
       `    ${type} ${cName(param.name)} = sagejs_arg_${param.name};`,
     );
@@ -529,8 +617,13 @@ function exactDeclarations(fn) {
     if (local.type === "Integer" || local.type.startsWith("IntegerSequence[")) {
       continue;
     }
-    const type = local.type === "uint64" ? "uint64_t" : "int";
-    declarations.push(`    ${type} ${cName(local.name)} = 0;`);
+    const type = local.type === "uint64"
+      ? "uint64_t"
+      : isInt64BufferType(local.type)
+        ? "sagejs_int64_buffer"
+        : "int";
+    declarations.push(`    ${type} ${cName(local.name)} = ` +
+      `${isInt64BufferType(local.type) ? "{0}" : "0"};`);
   }
   const context = { storage };
   for (const name of storage.mutableParameters) {
@@ -596,6 +689,11 @@ function emitTaggedWrapper(fn) {
       parse = `if (!get_uint64(env, args[${index}], &${value}))\n` +
         "            goto fail;";
       defaultValue = `${value} = UINT64_C(${param.default});`;
+    } else if (isInt64BufferType(param.type)) {
+      declarations.push(`    sagejs_int64_buffer ${value};`);
+      parse = `if (!sagejs_native_get_int64_buffer(env, args[${index}], ` +
+        `&${value}, ${cString(param.name + " must be a BigInt64Array")}))\n` +
+        "            goto fail;";
     } else {
       declarations.push(`    int ${value};`);
       parse = `if (!get_bool(env, args[${index}], &${value}))\n` +
@@ -728,6 +826,11 @@ function emitExactWrapper(fn) {
       parse = `if (!get_uint64(env, args[${index}], &${value}))\n` +
         "            goto fail;";
       defaultValue = `${value} = UINT64_C(${param.default});`;
+    } else if (isInt64BufferType(param.type)) {
+      declarations.push(`    sagejs_int64_buffer ${value};`);
+      parse = `if (!sagejs_native_get_int64_buffer(env, args[${index}], ` +
+        `&${value}, ${cString(param.name + " must be a BigInt64Array")}))\n` +
+        "            goto fail;";
     } else {
       declarations.push(`    int ${value};`);
       parse = `if (!get_bool(env, args[${index}], &${value}))\n` +
@@ -1169,6 +1272,69 @@ static int sagejs_native_get_float64_buffer(
 }`;
 }
 
+function generateInt64BufferSupport() {
+  return `
+typedef struct
+{
+    int64_t *data;
+    size_t length;
+} sagejs_int64_buffer;
+
+static int sagejs_int64_buffer_index(
+    const sagejs_int64_buffer *buffer,
+    int64_t index,
+    size_t *position)
+{
+    if (index >= 0)
+    {
+        if ((uint64_t) index >= (uint64_t) buffer->length)
+            return 0;
+        *position = (size_t) index;
+        return 1;
+    }
+    const uint64_t magnitude = (uint64_t) (-(index + 1)) + UINT64_C(1);
+    if (magnitude > (uint64_t) buffer->length)
+        return 0;
+    *position = buffer->length - (size_t) magnitude;
+    return 1;
+}
+
+static int sagejs_mpz_buffer_index(
+    const sagejs_int64_buffer *buffer,
+    const mpz_t index,
+    size_t *position)
+{
+    int64_t small;
+    return mpz_to_int64(index, &small) &&
+        sagejs_int64_buffer_index(buffer, small, position);
+}
+
+static int sagejs_native_get_int64_buffer(
+    napi_env env,
+    napi_value value,
+    sagejs_int64_buffer *result,
+    const char *argument)
+{
+    bool typed = false;
+    napi_typedarray_type type;
+    size_t length = 0;
+    void *data = NULL;
+    napi_value array_buffer;
+    size_t byte_offset = 0;
+    if (napi_is_typedarray(env, value, &typed) != napi_ok || !typed ||
+        napi_get_typedarray_info(env, value, &type, &length, &data,
+            &array_buffer, &byte_offset) != napi_ok ||
+        type != napi_bigint64_array)
+    {
+        napi_throw_type_error(env, NULL, argument);
+        return 0;
+    }
+    result->data = (int64_t *) data;
+    result->length = length;
+    return 1;
+}`;
+}
+
 function generateC(ir) {
   const functionMap = new Map(ir.functions.map((fn) => [fn.name, fn]));
   const exactFunctions = ir.functions.filter(
@@ -1196,7 +1362,12 @@ function generateC(ir) {
     .join("\n");
   const tagged = generateTaggedFunctions(exactFunctions);
   const word = generateWordFunctions(exactFunctions);
+  const usesInt64Buffers = exactFunctions.some((fn) =>
+    fn.params.some((param) => isInt64BufferType(param.type)) ||
+    fn.locals.some((local) => isInt64BufferType(local.type))
+  );
   const functions = [
+    usesInt64Buffers ? generateInt64BufferSupport() : "",
     prototypes,
     word.prototypes,
     tagged.prototypes,
@@ -1262,7 +1433,7 @@ ${properties}
 NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
 `;
   }
-  return `// Generated by Sage.js Native Kernel v13.
+  return `// Generated by Sage.js Native Kernel v14.
 #include <math.h>
 #include <limits.h>
 #include <stdbool.h>

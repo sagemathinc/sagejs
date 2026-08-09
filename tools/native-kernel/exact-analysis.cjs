@@ -30,6 +30,16 @@ function operationInputs(operation) {
       return [operation.left, operation.right];
     case "integer.sequence.get":
       return [operation.index];
+    case "int64.buffer.copy":
+      return [operation.source];
+    case "int64.buffer.length":
+      return [operation.buffer];
+    case "int64.record.view":
+      return [operation.buffer, operation.start, operation.length];
+    case "int64.buffer.get":
+      return [operation.buffer, operation.index];
+    case "int64.buffer.set":
+      return [operation.buffer, operation.index, operation.value];
     case "native.call":
       return operation.arguments.map((argument) => argument.name);
     case "return":
@@ -309,6 +319,16 @@ function localEffects(fn) {
       if (operation.kind === "integer.sequence.get") {
         mayRaise.add("IndexError");
       }
+      if (
+        operation.kind === "int64.buffer.get" ||
+        operation.kind === "int64.buffer.set" ||
+        operation.kind === "int64.record.view"
+      ) {
+        mayRaise.add("IndexError");
+      }
+      if (operation.kind === "int64.buffer.set") {
+        mayRaise.add("OverflowError");
+      }
       if (operation.kind === "raise") mayRaise.add(operation.errorType);
     },
     read() {},
@@ -316,15 +336,78 @@ function localEffects(fn) {
       localWrites += 1;
     },
   });
+  const externalWrites = bufferWrites(fn, new Map());
   return {
-    pure: true,
+    pure: externalWrites.length === 0,
     deterministic: true,
     localWrites,
-    externalWrites: [],
+    externalWrites,
     calls: [...fn.dependencies],
     mayRaise: Array.from(mayRaise).filter(Boolean).sort(),
-    replaySafe: true,
+    replaySafe: externalWrites.length === 0,
   };
+}
+
+function bufferWrites(fn, dependencyEffects) {
+  const bufferTypes = new Set(["Int64Buffer", "Int64Record"]);
+  const aliases = new Map(
+    fn.params
+      .filter((param) => bufferTypes.has(param.type))
+      .map((param) => [param.name, new Set([param.name])]),
+  );
+  const writes = new Set();
+  function addAlias(target, roots) {
+    const current = aliases.get(target) || new Set();
+    const before = current.size;
+    for (const root of roots) current.add(root);
+    aliases.set(target, current);
+    return current.size !== before;
+  }
+  function roots(name) {
+    return aliases.get(name) || new Set([name]);
+  }
+  function visit(statements) {
+    let changed = false;
+    for (const statement of statements) {
+      if (statement.kind === "int64.buffer.copy") {
+        changed = addAlias(statement.target, roots(statement.source)) || changed;
+      } else if (statement.kind === "int64.record.view") {
+        changed = addAlias(statement.target, roots(statement.buffer)) || changed;
+      } else if (statement.kind === "int64.buffer.set") {
+        for (const root of roots(statement.buffer)) writes.add(root);
+      } else if (statement.kind === "native.call") {
+        const effect = dependencyEffects.get(statement.function);
+        const callee = effect?.params || [];
+        for (const written of effect?.externalWrites || []) {
+          const position = callee.indexOf(written);
+          if (position < 0) continue;
+          const argument = statement.arguments[position];
+          if (argument !== undefined) {
+            for (const root of roots(argument.name)) writes.add(root);
+          }
+        }
+      } else if (statement.kind === "if") {
+        changed = visit(statement.condition.operations) || changed;
+        changed = visit(statement.body) || changed;
+        changed = visit(statement.alternative) || changed;
+      } else if (statement.kind === "while" ||
+          statement.kind === "loop.range" ||
+          statement.kind === "loop.range_exact") {
+        if (statement.condition?.operations) {
+          changed = visit(statement.condition.operations) || changed;
+        }
+        changed = visit(statement.body) || changed;
+      } else if (statement.kind === "bool.short_circuit") {
+        changed = visit(statement.right.operations) || changed;
+      }
+    }
+    return changed;
+  }
+  let changed;
+  do changed = visit(fn.body); while (changed);
+  return Array.from(writes)
+    .filter((name) => fn.params.some((param) => param.name === name))
+    .sort();
 }
 
 function effectAnalyses(functions) {
@@ -334,7 +417,11 @@ function effectAnalyses(functions) {
       .map((fn) => [fn.name, fn]),
   );
   const effects = new Map(
-    Array.from(exact, ([name, fn]) => [name, localEffects(fn)]),
+    Array.from(exact, ([name, fn]) => {
+      const effect = localEffects(fn);
+      effect.params = fn.params.map((param) => param.name);
+      return [name, effect];
+    }),
   );
   let changed = true;
   while (changed) {
@@ -352,8 +439,16 @@ function effectAnalyses(functions) {
         effect.mayRaise = next;
         changed = true;
       }
+      const externalWrites = bufferWrites(fn, effects);
+      if (externalWrites.join("\0") !== effect.externalWrites.join("\0")) {
+        effect.externalWrites = externalWrites;
+        effect.pure = externalWrites.length === 0;
+        effect.replaySafe = externalWrites.length === 0;
+        changed = true;
+      }
     }
   }
+  for (const effect of effects.values()) delete effect.params;
   return effects;
 }
 

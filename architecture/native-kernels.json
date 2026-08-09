@@ -58,10 +58,14 @@
         "heilbronn_cremona_count",
         "heilbronn_cremona_digest",
         "heilbronn_cremona_entry",
+        "heilbronn_cremona_fill",
         "heilbronn_merel_digest",
-        "heilbronn_merel_entry"
+        "heilbronn_merel_entry",
+        "heilbronn_merel_fill",
+        "p1_monomial_matrix_coefficient",
+        "heilbronn_higher_weight_action_fill"
       ],
-      "semantic_domain": "exact continued-fraction Heilbronn representatives used by higher-weight modular symbols",
+      "semantic_domain": "packed signed Heilbronn representatives and exact higher-weight polynomial action used by modular symbols",
       "fallback": "same-source",
       "oracles": ["cpython", "javascript", "handwritten-c"],
       "benchmark": "bench:native:p1",

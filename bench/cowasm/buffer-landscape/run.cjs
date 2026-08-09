@@ -209,7 +209,7 @@ function main() {
       {
         key: "native", label: "Sage.js AOT", command: node,
         args: [nativeScript], env: {},
-        version: "Native Kernel v13; " + process.version + "; CC=" + compiler,
+        version: "Native Kernel v14; " + process.version + "; CC=" + compiler,
       },
       {
         key: "javascript", label: "Generated JS", command: node,

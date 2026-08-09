@@ -15,11 +15,14 @@ const TYPE_ALIASES = new Map([
   ["Float64", "Float64"],
   ["Float64Buffer", "Float64Buffer"],
   ["Float64Record", "Float64Record"],
+  ["Int64Buffer", "Int64Buffer"],
+  ["Int64Record", "Int64Record"],
   ["PrimeFieldElement", "PrimeFieldElement"],
   ["PrimeFieldMatrix", "PrimeFieldMatrix"],
   ["PrimeFieldDecomposition", "PrimeFieldDecomposition"],
   ["UInt64Buffer", "UInt64Buffer"],
 ]);
+const INT64_BUFFER_TYPES = new Set(["Int64Buffer", "Int64Record"]);
 const INTEGER_BINARY = new Map([
   ["+", "add"],
   ["-", "sub"],
@@ -248,9 +251,16 @@ function isIntegerSignature(signature) {
     signature.returnType === "bool" ||
     isTupleType(signature.returnType) ||
     signature.params.some(
-      (param) => param.type === "Integer" || param.type === "bool",
+      (param) => param.type === "Integer" || param.type === "bool" ||
+        INT64_BUFFER_TYPES.has(param.type),
     )
   );
+}
+
+function copyKind(type) {
+  return INT64_BUFFER_TYPES.has(type)
+    ? "int64.buffer.copy"
+    : `${type.toLowerCase()}.copy`;
 }
 
 function createContext(fn, signature, signatures, filename, decorated) {
@@ -352,6 +362,62 @@ function lowerCall(node, context, operations) {
   );
   const name = node.expression.name;
   const args = array(node.args);
+
+  if (name === "len") {
+    expect(context, node, args.length === 1, "len() requires one argument");
+    const buffer = lowerExpression(args[0], context, operations);
+    expect(
+      context,
+      args[0],
+      INT64_BUFFER_TYPES.has(buffer.type),
+      "exact len() requires an Int64Buffer or Int64Record",
+    );
+    const target = temporary(context, node, "uint64");
+    operations.push({
+      kind: "int64.buffer.length",
+      target,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+    });
+    return { name: target, type: "uint64" };
+  }
+
+  if (name === "int64_record") {
+    expect(
+      context,
+      node,
+      args.length === 3,
+      "int64_record() requires a buffer, start, and length",
+    );
+    const buffer = lowerExpression(args[0], context, operations);
+    expect(
+      context,
+      args[0],
+      buffer.type === "Int64Buffer",
+      "int64_record() requires an Int64Buffer",
+    );
+    const start = coerceInteger(
+      lowerExpression(args[1], context, operations),
+      context,
+      args[1],
+      operations,
+    );
+    const length = coerceInteger(
+      lowerExpression(args[2], context, operations),
+      context,
+      args[2],
+      operations,
+    );
+    const target = temporary(context, node, "Int64Record");
+    operations.push({
+      kind: "int64.record.view",
+      target,
+      buffer: buffer.name,
+      start: start.name,
+      length: length.name,
+    });
+    return { name: target, type: "Int64Record" };
+  }
 
   if (name === "abs") {
     expect(context, node, args.length === 1, "abs() requires one argument");
@@ -537,6 +603,27 @@ function lowerExpression(node, context, operations) {
     };
   }
   if (nodeType(node) === "AST_ItemAccess") {
+    const bufferType = nodeType(node.expression) === "AST_SymbolRef"
+      ? context.variables.get(node.expression.name)
+      : undefined;
+    if (INT64_BUFFER_TYPES.has(bufferType)) {
+      const buffer = lowerExpression(node.expression, context, operations);
+      const index = coerceInteger(
+        lowerExpression(node.property, context, operations),
+        context,
+        node.property,
+        operations,
+      );
+      const target = temporary(context, node, "Integer");
+      operations.push({
+        kind: "int64.buffer.get",
+        target,
+        buffer: buffer.name,
+        bufferType: buffer.type,
+        index: index.name,
+      });
+      return { name: target, type: "Integer" };
+    }
     expect(
       context,
       node.expression,
@@ -716,7 +803,7 @@ function materializeValue(value, context, node, operations) {
   );
   const target = temporary(context, node, value.type);
   operations.push({
-    kind: `${value.type.toLowerCase()}.copy`,
+    kind: copyKind(value.type),
     target,
     source: value.name,
   });
@@ -732,16 +819,83 @@ function assignScalar(targetNode, value, context, operations) {
   );
   ensureVariable(context, targetNode, targetNode.name, value.type);
   operations.push({
-    kind: `${value.type.toLowerCase()}.copy`,
+    kind: copyKind(value.type),
     target: targetNode.name,
     source: value.name,
   });
   context.initialized.add(targetNode.name);
 }
 
+function lowerBufferAssignment(item, right, operator, context) {
+  const operations = [];
+  const buffer = lowerExpression(item.expression, context, operations);
+  expect(
+    context,
+    item.expression,
+    INT64_BUFFER_TYPES.has(buffer.type),
+    "indexed exact assignment requires an Int64Buffer or Int64Record",
+  );
+  const index = coerceInteger(
+    lowerExpression(item.property, context, operations),
+    context,
+    item.property,
+    operations,
+  );
+  let value = coerceInteger(
+    lowerExpression(right, context, operations),
+    context,
+    right,
+    operations,
+  );
+  if (operator !== "=") {
+    const arithmetic = INTEGER_BINARY.get(
+      operator.endsWith("=") ? operator.slice(0, -1) : "",
+    );
+    expect(
+      context,
+      item,
+      arithmetic !== undefined,
+      `unsupported indexed augmented operator ${operator}`,
+    );
+    const current = temporary(context, item, "Integer");
+    operations.push({
+      kind: "int64.buffer.get",
+      target: current,
+      buffer: buffer.name,
+      bufferType: buffer.type,
+      index: index.name,
+    });
+    const target = temporary(context, item, "Integer");
+    operations.push({
+      kind: "integer.binary",
+      operation: arithmetic,
+      target,
+      left: current,
+      right: value.name,
+    });
+    value = { name: target, type: "Integer" };
+  }
+  operations.push({
+    kind: "int64.buffer.set",
+    buffer: buffer.name,
+    bufferType: buffer.type,
+    index: index.name,
+    value: value.name,
+  });
+  return operations;
+}
+
 function lowerAssignment(statement, context) {
   context.scalarCoercions = new Map();
   const assign = statement.body;
+  if (nodeType(assign) === "AST_ItemAccess" && assign.assignment !== undefined) {
+    return lowerBufferAssignment(
+      assign,
+      assign.assignment,
+      assign.operator || "=",
+      context,
+    );
+  }
   expect(
     context,
     statement,
@@ -751,6 +905,14 @@ function lowerAssignment(statement, context) {
   );
   const operations = [];
   if (assign.operator === "=") {
+    if (nodeType(assign.left) === "AST_ItemAccess") {
+      return lowerBufferAssignment(
+        assign.left,
+        assign.right,
+        assign.operator,
+        context,
+      );
+    }
     if (
       nodeType(assign.left) === "AST_SymbolRef" &&
       nodeType(assign.right) === "AST_Array" &&
@@ -798,6 +960,14 @@ function lowerAssignment(statement, context) {
     );
     assignScalar(assign.left, value, context, operations);
     return operations;
+  }
+  if (nodeType(assign.left) === "AST_ItemAccess") {
+    return lowerBufferAssignment(
+      assign.left,
+      assign.right,
+      assign.operator,
+      context,
+    );
   }
   expect(
     context,

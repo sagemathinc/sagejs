@@ -18,11 +18,13 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v13 currently accepts a deliberately narrow typed numerical
+Native Kernel v14 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels and reusable dense
 decompositions over prime fields. It also supports packed binary64 buffers and
-bounded record views for source-transparent numerical loops. Explicit AOT compilation produces a native
-implementation plus an exact fallback or reports a compile-time diagnostic.
+mutable signed exact-integer buffers with bounded record views for
+source-transparent numerical and algebraic loops. Explicit AOT compilation
+produces a native implementation plus an exact fallback or reports a
+compile-time diagnostic.
 """
 
 from __future__ import annotations
@@ -34,7 +36,69 @@ from typing import Any, TypeAlias
 # compiler experiment.  At runtime its values are ordinary Python lists.
 uint64: TypeAlias = int
 UInt64Buffer = list[int]
+Int64Buffer = list[int]
 Float64Buffer = list[float]
+
+
+class Int64Record:
+    """A mutable bounded view into an ordinary signed-64-bit buffer.
+
+    The native ABI represents both buffers and records as borrowed spans.  The
+    Python fallback deliberately performs the same bounds and signed-range
+    checks so differential execution observes one contract.
+    """
+
+    def __init__(
+        self, buffer: Int64Buffer, start: int, length: int,
+    ) -> None:
+        if start < 0 or length < 0 or start > len(buffer) - length:
+            raise IndexError('Int64Record is outside its buffer')
+        self._buffer = buffer
+        self._start = start
+        self._length = length
+
+    def __len__(self) -> int:
+        return self._length
+
+    def __getitem__(self, index: int) -> int:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError('Int64Record index out of range')
+        return self._buffer[self._start + index]
+
+    def __setitem__(self, index: int, value: int) -> None:
+        if index < 0:
+            index += self._length
+        if index < 0 or index >= self._length:
+            raise IndexError('Int64Record index out of range')
+        exact = int(value)
+        if exact < -(1 << 63) or exact >= (1 << 63):
+            raise OverflowError('Int64Buffer value is outside signed 64-bit')
+        self._buffer[self._start + index] = exact
+
+
+def int64_buffer(source: Any) -> Int64Buffer:
+    """Copy an iterable into a checked signed-64-bit fallback buffer."""
+    answer = []
+    for value in source:
+        exact = int(value)
+        if exact < -(1 << 63) or exact >= (1 << 63):
+            raise OverflowError('Int64Buffer value is outside signed 64-bit')
+        answer.append(exact)
+    return answer
+
+
+def int64_zeros(length: int) -> Int64Buffer:
+    """Allocate a zero-filled signed-64-bit fallback buffer."""
+    return [0 for _index in range(length)]
+
+
+def int64_record(
+    buffer: Int64Buffer, start: int, length: int,
+) -> Int64Record:
+    """Return a bounded mutable signed-64-bit record view."""
+    return Int64Record(buffer, start, length)
 
 
 class Float64Record:
@@ -222,11 +286,16 @@ def is_compiled(function: Any) -> bool:
 __all__ = [
     'Float64Buffer',
     'Float64Record',
+    'Int64Buffer',
+    'Int64Record',
     'UInt64Buffer',
     'uint64',
     'float64_buffer',
     'float64_record',
     'float64_zeros',
+    'int64_buffer',
+    'int64_record',
+    'int64_zeros',
     'is_compiled',
     'is_native',
     'native',

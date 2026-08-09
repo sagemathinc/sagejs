@@ -39,6 +39,9 @@ function taggedName(name) {
 function scalarType(type) {
   if (type === "uint64") return "uint64_t";
   if (type === "bool") return "int";
+  if (type === "Int64Buffer" || type === "Int64Record") {
+    return "sagejs_int64_buffer";
+  }
   throw new Error(`unsupported tagged scalar type ${type}`);
 }
 
@@ -120,6 +123,94 @@ function emitTaggedOperation(operation, context, indent) {
   }
   if (operation.kind === "bool.copy" || operation.kind === "uint64.copy") {
     return `${indent}${target} = ${taggedValue(operation.source, context)};`;
+  }
+  if (operation.kind === "int64.buffer.copy") {
+    return `${indent}${target} = ${taggedValue(operation.source, context)};`;
+  }
+  if (operation.kind === "int64.buffer.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${taggedValue(operation.buffer, context)}.length;`;
+  }
+  if (operation.kind === "int64.record.view") {
+    const buffer = taggedValue(operation.buffer, context);
+    const start = taggedValue(operation.start, context);
+    const length = taggedValue(operation.length, context);
+    return [
+      `${indent}{`,
+      `${indent}    int64_t sagejs_record_start;`,
+      `${indent}    int64_t sagejs_record_length;`,
+      `${indent}    if (!sagejs_tagged_to_int64(${start}, ` +
+        `&sagejs_record_start) ||`,
+      `${indent}        !sagejs_tagged_to_int64(${length}, ` +
+        `&sagejs_record_length) ||`,
+      `${indent}        sagejs_record_start < 0 || ` +
+        `sagejs_record_length < 0 ||`,
+      `${indent}        (uint64_t) sagejs_record_start > ` +
+        `(uint64_t) ${buffer}.length ||`,
+      `${indent}        (uint64_t) sagejs_record_length > ` +
+        `(uint64_t) ${buffer}.length - ` +
+        `(uint64_t) sagejs_record_start)`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"Int64Record is outside its buffer");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    ${target}.data = ${buffer}.data + ` +
+        `(size_t) sagejs_record_start;`,
+      `${indent}    ${target}.length = (size_t) sagejs_record_length;`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.buffer.get") {
+    const buffer = taggedValue(operation.buffer, context);
+    const index = taggedValue(operation.index, context);
+    return [
+      `${indent}{`,
+      `${indent}    int64_t sagejs_buffer_index;`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (!sagejs_tagged_to_int64(${index}, ` +
+        `&sagejs_buffer_index) ||`,
+      `${indent}        !sagejs_int64_buffer_index(&${buffer}, ` +
+        `sagejs_buffer_index, &sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"Int64 buffer index out of range");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    sagejs_tagged_set_small(${target}, ` +
+        `${buffer}.data[sagejs_buffer_position]);`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.buffer.set") {
+    const buffer = taggedValue(operation.buffer, context);
+    const index = taggedValue(operation.index, context);
+    const source = taggedValue(operation.value, context);
+    return [
+      `${indent}{`,
+      `${indent}    int64_t sagejs_buffer_index;`,
+      `${indent}    int64_t sagejs_buffer_value;`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (!sagejs_tagged_to_int64(${index}, ` +
+        `&sagejs_buffer_index) ||`,
+      `${indent}        !sagejs_int64_buffer_index(&${buffer}, ` +
+        `sagejs_buffer_index, &sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"Int64 buffer index out of range");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (!sagejs_tagged_to_int64(${source}, ` +
+        `&sagejs_buffer_value))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"Int64Buffer value is outside signed 64-bit");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    ${buffer}.data[sagejs_buffer_position] = ` +
+        `sagejs_buffer_value;`,
+      `${indent}}`,
+    ].join("\n");
   }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}sagejs_tagged_set_uint64(${target}, ` +
@@ -422,7 +513,9 @@ function emitTaggedFunction(fn, functions) {
     if (local.type === "Integer" || local.type.startsWith("IntegerSequence[")) {
       continue;
     }
-    declarations.push(`    ${scalarType(local.type)} ${taggedName(local.name)} = 0;`);
+    declarations.push(`    ${scalarType(local.type)} ${taggedName(local.name)} = ` +
+      `${local.type === "Int64Buffer" || local.type === "Int64Record"
+        ? "{0}" : "0"};`);
   }
   const integerNames = [
     ...fn.params,

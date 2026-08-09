@@ -194,6 +194,24 @@ function emitExactStatement(operation, indent) {
   ) {
     return `${indent}${operation.target} = ${operation.source};`;
   }
+  if (operation.kind === "int64.buffer.copy") {
+    return `${indent}${operation.target} = ${operation.source};`;
+  }
+  if (operation.kind === "int64.buffer.length") {
+    return `${indent}${operation.target} = ${operation.buffer}.length;`;
+  }
+  if (operation.kind === "int64.record.view") {
+    return `${indent}${operation.target} = int64RecordView(` +
+      `${operation.buffer}, ${operation.start}, ${operation.length});`;
+  }
+  if (operation.kind === "int64.buffer.get") {
+    return `${indent}${operation.target} = int64BufferGet(` +
+      `${operation.buffer}, ${operation.index});`;
+  }
+  if (operation.kind === "int64.buffer.set") {
+    return `${indent}int64BufferSet(${operation.buffer}, ` +
+      `${operation.index}, ${operation.value});`;
+  }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
   }
@@ -360,8 +378,14 @@ function emitExactStatement(operation, indent) {
 function emitExactFallback(fn) {
   const params = fn.params.map((param) => param.name).join(", ");
   const locals = fn.locals.map((local) => local.name);
+  const buffers = fn.params
+    .filter((param) => param.type === "Int64Buffer" ||
+      param.type === "Int64Record")
+    .map((param) => `  ${param.name} = int64BufferView(` +
+      `${param.name}, ${jsString(param.name)});`)
+    .join("\n");
   return `function javascript_${fn.name}(${params}) {
-${locals.length ? `  let ${locals.join(", ")};\n` : ""}${
+${buffers ? buffers + "\n" : ""}${locals.length ? `  let ${locals.join(", ")};\n` : ""}${
     fn.body.map((item) => emitExactStatement(item, "  ")).join("\n")
   }
 }`;
@@ -399,6 +423,9 @@ function exactValidation(param) {
       `    throw new RangeError("${param.name} must be a nonnegative uint64");\n` +
       "  }";
   }
+  if (param.type === "Int64Buffer" || param.type === "Int64Record") {
+    return `  int64BufferView(${param.name}, ${jsString(param.name)});`;
+  }
   return `  if (typeof ${param.name} !== "boolean") {\n` +
     `    throw new TypeError("${param.name} must be a bool");\n` +
     "  }";
@@ -406,7 +433,49 @@ function exactValidation(param) {
 
 function normalizedArgument(param) {
   if (param.type === "Integer") return `BigInt(${param.name})`;
+  if (param.type === "Int64Buffer" || param.type === "Int64Record") {
+    return `int64BufferView(${param.name}, ${jsString(param.name)})`;
+  }
   return param.name;
+}
+
+function exactNativeExpression(fn, backend) {
+  const buffers = fn.params.filter((param) =>
+    param.type === "Int64Buffer" || param.type === "Int64Record"
+  );
+  if (buffers.length === 0) {
+    const args = fn.params.map((param) =>
+      `sagejs_native_${param.name}`
+    ).join(", ");
+    return `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend})`;
+  }
+  const declarations = buffers.map((param) =>
+    `    const sagejs_native_descriptor_${param.name} = int64NativeBuffer(` +
+      `sagejs_native_${param.name}, ${jsString(param.name)});`
+  );
+  const args = fn.params.map((param) =>
+    param.type === "Int64Buffer" || param.type === "Int64Record"
+      ? `sagejs_native_descriptor_${param.name}.typed`
+      : `sagejs_native_${param.name}`
+  ).join(", ");
+  const copies = buffers
+    .filter((param) => fn.analysis.effects.externalWrites.includes(param.name))
+    .map((param) => `      sagejs_native_descriptor_${param.name}.copyBack();`);
+  const call = `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend})`;
+  return [
+    "(() => {",
+    ...declarations,
+    ...(copies.length === 0
+      ? [`    return ${call};`]
+      : [
+          "    try {",
+          `      return ${call};`,
+          "    } finally {",
+          ...copies,
+          "    }",
+        ]),
+    "  })()",
+  ].join("\n");
 }
 
 function backendDecision(fn) {
@@ -477,7 +546,7 @@ function ${fn.name}(${declaredParams}) {
 ${normalized.join("\n")}
   const sagejs_native_backend = backend_${fn.name}(${args});
   if (sagejs_native_backend !== "bigint") {
-    return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}], sagejs_native_backend)`)};
+    return ${exactReturn(fn, exactNativeExpression(fn, "sagejs_native_backend"))};
   }
 ${fallbackGuards.join("\n")}
   return ${exactReturn(fn, `javascript_${fn.name}(${fallbackArgs})`)};
@@ -495,7 +564,7 @@ ${normalized.join("\n")}
   if (nativeAddon === null) {
     throw new Error("tagged native backend is not available");
   }
-  return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}], "tagged")`)};
+  return ${exactReturn(fn, exactNativeExpression(fn, '"tagged"'))};
 };
 ${fn.name}.gmp = function (${declaredParams}) {
   validate_${fn.name}(${params});
@@ -503,7 +572,7 @@ ${normalized.join("\n")}
   if (nativeAddon === null) {
     throw new Error("GMP backend is not available");
   }
-  return ${exactReturn(fn, `nativeExactCall(${jsString(fn.name)}, [${args}], "gmp")`)};
+  return ${exactReturn(fn, exactNativeExpression(fn, '"gmp"'))};
 };
 ${fn.name}.backendFor = function (${declaredParams}) {
   validate_${fn.name}(${params});
@@ -821,6 +890,92 @@ if (!["auto", "bigint", "gmp"].includes(integerBackendOverride)) {
 }
 
 const float64BufferViewTag = Symbol("sagejs.native.Float64BufferView");
+const int64BufferViewTag = Symbol("sagejs.native.Int64BufferView");
+
+function int64BufferView(value, argument = "buffer") {
+  if (value !== null && typeof value === "object" &&
+      value[int64BufferViewTag] === true) return value;
+  if (value === null || (typeof value !== "object" &&
+      typeof value !== "function")) {
+    throw new TypeError(argument + " must be an Int64Buffer");
+  }
+  const length = Number(Reflect.get(value, "length"));
+  if (!Number.isSafeInteger(length) || length < 0) {
+    throw new TypeError(argument + " must have a nonnegative safe length");
+  }
+  return { [int64BufferViewTag]: true, data: value, offset: 0, length };
+}
+
+function int64SafeIndex(index, length, message) {
+  const exact = typeof index === "bigint" ? index : BigInt(index);
+  if (exact < BigInt(-length) || exact >= BigInt(length)) {
+    throw new RangeError(message);
+  }
+  const position = Number(exact < 0n ? BigInt(length) + exact : exact);
+  if (!Number.isSafeInteger(position)) throw new RangeError(message);
+  return position;
+}
+
+function int64RecordView(buffer, start, length) {
+  const view = int64BufferView(buffer);
+  const exactStart = typeof start === "bigint" ? start : BigInt(start);
+  const exactLength = typeof length === "bigint" ? length : BigInt(length);
+  if (exactStart < 0n || exactLength < 0n ||
+      exactStart > BigInt(view.length) ||
+      exactLength > BigInt(view.length) - exactStart) {
+    throw new RangeError("Int64Record is outside its buffer");
+  }
+  return {
+    [int64BufferViewTag]: true,
+    data: view.data,
+    offset: view.offset + Number(exactStart),
+    length: Number(exactLength),
+  };
+}
+
+function int64BufferGet(buffer, index) {
+  const view = int64BufferView(buffer);
+  const position = int64SafeIndex(
+    index, view.length, "Int64 buffer index out of range");
+  const value = BigInt(Reflect.get(view.data, String(view.offset + position)));
+  if (value < -9223372036854775808n || value > 9223372036854775807n) {
+    throw new RangeError("Int64Buffer value is outside signed 64-bit");
+  }
+  return value;
+}
+
+function int64BufferSet(buffer, index, value) {
+  const view = int64BufferView(buffer);
+  const position = int64SafeIndex(
+    index, view.length, "Int64 buffer index out of range");
+  const exact = BigInt(value);
+  if (exact < -9223372036854775808n || exact > 9223372036854775807n) {
+    throw new RangeError("Int64Buffer value is outside signed 64-bit");
+  }
+  if (!Reflect.set(view.data, String(view.offset + position), exact)) {
+    throw new TypeError("Int64 buffer is not writable");
+  }
+}
+
+function int64NativeBuffer(value, argument) {
+  const view = int64BufferView(value, argument);
+  if (view.offset === 0 && view.data instanceof BigInt64Array &&
+      view.length === view.data.length) {
+    return { typed: view.data, copyBack() {} };
+  }
+  const typed = new BigInt64Array(view.length);
+  for (let index = 0; index < view.length; index += 1) {
+    typed[index] = int64BufferGet(view, index);
+  }
+  return {
+    typed,
+    copyBack() {
+      for (let index = 0; index < view.length; index += 1) {
+        int64BufferSet(view, index, typed[index]);
+      }
+    },
+  };
+}
 
 function float64BufferView(value, argument = "buffer") {
   if (value !== null && typeof value === "object" &&
@@ -960,6 +1115,13 @@ function nativeExactCall(name, args, backend = "tagged") {
     if (message.includes("math domain")) nativeRaise("ValueError", message);
     if (message.includes("too large to convert")) {
       nativeRaise("OverflowError", message);
+    }
+    if (message.includes("outside signed 64-bit")) {
+      nativeRaise("OverflowError", message);
+    }
+    if (message.includes("Int64 buffer index") ||
+        message.includes("Int64Record")) {
+      nativeRaise("IndexError", message);
     }
     if (message.includes("sequence index")) nativeRaise("IndexError", message);
     throw error;

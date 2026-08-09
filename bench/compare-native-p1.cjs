@@ -17,6 +17,7 @@ const cacheRoot = process.env.SAGEJS_NATIVE_P1_CACHE_ROOT ||
   join(os.tmpdir(), "sagejs-native-p1-benchmark");
 const prime = Number(process.env.SAGEJS_NATIVE_P1_PRIME || 1009);
 const merelIndex = Number(process.env.SAGEJS_NATIVE_P1_MEREL_INDEX || 75);
+const actionWeight = Number(process.env.SAGEJS_NATIVE_P1_ACTION_WEIGHT || 4);
 const nativeRepetitions = Number(
   process.env.SAGEJS_NATIVE_P1_NATIVE_REPETITIONS || 50,
 );
@@ -42,6 +43,32 @@ function measure(runtime, operation, repetitions, samples = 7) {
     timings.push((performance.now() - start) * 1e6 / repetitions);
   }
   return { runtime, value: value.map(String), nanoseconds: median(timings) };
+}
+
+function measureMutation(runtime, operation, result, repetitions, samples = 7) {
+  for (let warmup = 0; warmup < 3; warmup += 1) operation();
+  const timings = [];
+  for (let sample = 0; sample < samples; sample += 1) {
+    const start = performance.now();
+    for (let repetition = 0; repetition < repetitions; repetition += 1) {
+      operation();
+    }
+    timings.push((performance.now() - start) * 1e6 / repetitions);
+  }
+  return { runtime, value: result().map(String), nanoseconds: median(timings) };
+}
+
+function actionDigest(values) {
+  const answer = [BigInt(values.length), 0n, 0n, 0n, 0n, 0n];
+  for (let index = 0; index < values.length; index += 1) {
+    const value = BigInt(values[index]);
+    answer[1] += value;
+    answer[2] += BigInt(index % 3 + 1) * value;
+    answer[3] += BigInt(index % 5 + 1) * value;
+    answer[4] += BigInt(index % 7 + 1) * value;
+    answer[5] += BigInt(index + 1) * value;
+  }
+  return answer;
 }
 
 function command(runtime, executable, args, environment = {}) {
@@ -107,10 +134,28 @@ function compileReference() {
       BigInt(count),
       kernel.heilbronn_cremona_count.javascript(validationPrime),
     );
+    const packed = Array(4 * count).fill(0);
+    const fallbackPacked = Array(4 * count).fill(0);
+    assert.equal(
+      kernel.heilbronn_cremona_fill(validationPrime, packed),
+      BigInt(count),
+    );
+    assert.equal(
+      kernel.heilbronn_cremona_fill.javascript(
+        validationPrime, fallbackPacked,
+      ),
+      BigInt(count),
+    );
+    assert.deepEqual(packed.map(BigInt), fallbackPacked.map(BigInt));
     for (let position = 0; position < count; position += 1) {
+      const entry = kernel.heilbronn_cremona_entry(validationPrime, position);
       assert.deepEqual(
-        kernel.heilbronn_cremona_entry(validationPrime, position),
+        entry,
         kernel.heilbronn_cremona_entry.javascript(validationPrime, position),
+      );
+      assert.deepEqual(
+        packed.slice(4 * position, 4 * position + 4).map(BigInt),
+        entry.slice(1),
       );
       validatedMatrices += 1;
     }
@@ -123,10 +168,17 @@ function compileReference() {
     const expected = kernel.heilbronn_merel_digest.javascript(index);
     assert.deepEqual(kernel.heilbronn_merel_digest(index), expected);
     const count = Number(expected[0]);
+    const packed = Array(4 * count).fill(0);
+    assert.equal(kernel.heilbronn_merel_fill(index, packed), BigInt(count));
     for (let position = 0; position < count; position += 1) {
+      const entry = kernel.heilbronn_merel_entry(index, position);
       assert.deepEqual(
-        kernel.heilbronn_merel_entry(index, position),
+        entry,
         kernel.heilbronn_merel_entry.javascript(index, position),
+      );
+      assert.deepEqual(
+        packed.slice(4 * position, 4 * position + 4).map(BigInt),
+        entry.slice(1),
       );
       validatedMerelMatrices += 1;
     }
@@ -183,6 +235,40 @@ function compileReference() {
       ["merel", String(merelIndex), String(Math.max(10, nativeRepetitions))],
     ),
   ];
+  const actionCount = Number(kernel.heilbronn_cremona_count(prime));
+  const actionMatrices = new BigInt64Array(4 * actionCount);
+  kernel.heilbronn_cremona_fill(prime, actionMatrices);
+  const actionWidth = actionWeight - 1;
+  const actionOutput = new BigInt64Array(
+    actionCount * actionWidth * actionWidth,
+  );
+  const fallbackActionOutput = new BigInt64Array(actionOutput.length);
+  const actionRows = [
+    measureMutation(
+      "compiled typed Python",
+      () => kernel.heilbronn_higher_weight_action_fill(
+        actionWeight, actionMatrices, actionCount, actionOutput,
+      ),
+      () => actionDigest(actionOutput),
+      nativeRepetitions,
+    ),
+    measureMutation(
+      "generated JavaScript fallback",
+      () => kernel.heilbronn_higher_weight_action_fill.javascript(
+        actionWeight, actionMatrices, actionCount, fallbackActionOutput,
+      ),
+      () => actionDigest(fallbackActionOutput),
+      Math.max(1, Math.floor(nativeRepetitions / 5)),
+    ),
+    command(
+      "handwritten C", reference.output,
+      ["action", String(prime), String(actionWeight),
+        String(Math.max(10, nativeRepetitions))],
+    ),
+  ];
+  for (const row of actionRows) {
+    assert.deepEqual(row.value, actionRows[0].value, `action ${row.runtime}`);
+  }
   for (const index of [1, 2, 3, 5, 11, 20]) {
     const typed = kernel.heilbronn_merel_digest(index).map(String);
     const c = command("handwritten C", reference.output, ["merel", String(index), "1"]);
@@ -247,6 +333,15 @@ function compileReference() {
         versusCompiled: row.nanoseconds / merelRows[0].nanoseconds,
       })),
     },
+    higherWeightAction: {
+      weight: actionWeight,
+      matrixCount: actionCount,
+      coefficients: actionOutput.length,
+      rows: actionRows.map((row) => ({
+        ...row,
+        versusCompiled: row.nanoseconds / actionRows[0].nanoseconds,
+      })),
+    },
   };
   if (json) console.log(JSON.stringify(report, null, 2));
   else {
@@ -276,6 +371,18 @@ function compileReference() {
       );
     }
     console.log(`digest: ${expectedMerel.join(", ")}`);
+    console.log(
+      `weight-${actionWeight} polynomial action: ` +
+      `${actionOutput.length} coefficients`,
+    );
+    for (const row of report.higherWeightAction.rows) {
+      console.log(
+        row.runtime.padEnd(32),
+        `${(row.nanoseconds / 1e3).toFixed(3)} us`.padStart(16),
+        `${row.versusCompiled.toFixed(2)}x`.padStart(14),
+      );
+    }
+    console.log(`digest: ${actionRows[0].value.join(", ")}`);
   }
 })().catch((error) => {
   console.error(error.stack || error);

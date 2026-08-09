@@ -62,6 +62,7 @@ const numericalBuffersPath = join(
   "native",
   "numerical_buffers.py",
 );
+const signedBuffersPath = join(root, "bench", "native_signed_buffers.py");
 const primeFieldMatrixPath = join(
   root,
   "bench",
@@ -144,6 +145,11 @@ const numericalBuffersIr = await lowerSource(
   numericalBuffersPath,
 );
 const numericalBuffersC = generateC(numericalBuffersIr);
+const signedBuffersIr = await lowerSource(
+  readFileSync(signedBuffersPath, "utf8"),
+  signedBuffersPath,
+);
+const signedBuffersC = generateC(signedBuffersIr);
 const primeFieldMatrixIr = await lowerSource(
   readFileSync(primeFieldMatrixPath, "utf8"),
   primeFieldMatrixPath,
@@ -161,9 +167,9 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 13);
-assert.equal(scalarExactIr.version, 13);
-assert.equal(scalarFloatIr.version, 13);
+assert.equal(ir.version, 14);
+assert.equal(scalarExactIr.version, 14);
+assert.equal(scalarFloatIr.version, 14);
 assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
@@ -199,6 +205,21 @@ assert.match(numericalBuffersC, /napi_float64_array/);
 assert.match(numericalBuffersC, /sagejs_native_get_float64_buffer/);
 assert.match(numericalBuffersC, /sqrt\(/);
 assert.match(numericalBuffersC, /sagejs_left\.data/);
+assert.deepEqual(
+  signedBuffersIr.functions.map((fn) => [
+    fn.name,
+    fn.params.map((param) => param.type),
+    fn.analysis.effects.externalWrites,
+  ]),
+  [
+    ["fill_signed_records", ["Int64Buffer", "uint64"], ["output"]],
+    ["sum_signed_records", ["Int64Buffer", "uint64"], []],
+    ["write_then_overflow", ["Int64Buffer", "Integer"], ["output"]],
+  ],
+);
+assert.match(signedBuffersC, /napi_bigint64_array/);
+assert.match(signedBuffersC, /sagejs_int64_buffer_index/);
+assert.match(signedBuffersC, /Int64Record is outside its buffer/);
 const strideLoop = scalarExactIr.functions
   .find((fn) => fn.name === "sum_stride").body
   .find((operation) => operation.kind === "loop.range");
@@ -723,6 +744,58 @@ try {
     numericalBuffersModule.nbody_advance_energy.backendPolicy.kind,
     "native-double-buffer",
   );
+  const signedBuffersKernel = await compileKernel({
+    sourcePath: signedBuffersPath,
+    cacheRoot: join(temporary, "signed-buffers-cache"),
+  });
+  const signedBuffersModule = require(signedBuffersKernel.modulePath);
+  const signedRecords = Array(12).fill(0);
+  assert.equal(
+    signedBuffersModule.fill_signed_records(signedRecords, 3),
+    -3n,
+  );
+  assert.deepEqual(
+    signedRecords.map(BigInt),
+    [0n, 0n, 0n, 1n, 1n, -1n, 1n, 0n, 2n, -2n, 4n, -3n],
+  );
+  assert.equal(signedBuffersModule.sum_signed_records(signedRecords, 3), 3n);
+  assert.equal(
+    signedBuffersModule.sum_signed_records.javascript(signedRecords, 3),
+    3n,
+  );
+  assert.deepEqual(
+    signedBuffersModule.fill_signed_records.effects.externalWrites,
+    ["output"],
+  );
+  assert.equal(
+    signedBuffersModule.fill_signed_records.taggedInteger.calleeSpeculation,
+    "disabled",
+  );
+  for (const backend of ["tagged", "gmp"]) {
+    const packed = new BigInt64Array(12);
+    assert.equal(
+      signedBuffersModule.fill_signed_records[backend](packed, 3),
+      -3n,
+    );
+    assert.deepEqual(
+      Array.from(packed),
+      [0n, 0n, 0n, 1n, 1n, -1n, 1n, 0n, 2n, -2n, 4n, -3n],
+    );
+  }
+  for (const backend of ["javascript", "tagged", "gmp"]) {
+    const partiallyWritten = [0n, 0n];
+    assert.throws(
+      () => signedBuffersModule.write_then_overflow[backend](
+        partiallyWritten, 1n << 63n,
+      ),
+      /outside signed 64-bit/,
+    );
+    assert.deepEqual(partiallyWritten, [7n, 0n]);
+  }
+  assert.throws(
+    () => signedBuffersModule.fill_signed_records(Array(3).fill(0), 1),
+    /Int64Record is outside its buffer/,
+  );
   const scalarExactKernel = await compileKernel({
     sourcePath: scalarExactPath,
     cacheRoot: join(temporary, "scalar-exact-cache"),
@@ -765,12 +838,45 @@ try {
       nativeP1Module.heilbronn_cremona_digest.javascript(p), expected,
     );
     const count = Number(expected[0]);
+    const packed = Array(4 * count).fill(0);
+    const fallbackPacked = Array(4 * count).fill(0);
+    assert.equal(nativeP1Module.heilbronn_cremona_fill(p, packed), expected[0]);
+    assert.equal(
+      nativeP1Module.heilbronn_cremona_fill.javascript(p, fallbackPacked),
+      expected[0],
+    );
+    assert.deepEqual(packed.map(BigInt), fallbackPacked.map(BigInt));
     for (let index = 0; index < count; index += 1) {
+      const entry = nativeP1Module.heilbronn_cremona_entry(p, index);
       assert.deepEqual(
-        nativeP1Module.heilbronn_cremona_entry(p, index),
+        entry,
         nativeP1Module.heilbronn_cremona_entry.javascript(p, index),
       );
+      assert.deepEqual(
+        packed.slice(4 * index, 4 * index + 4).map(BigInt),
+        entry.slice(1),
+      );
     }
+    const width = 3;
+    const action = Array(count * width * width).fill(0);
+    const fallbackAction = Array(action.length).fill(0);
+    assert.equal(
+      nativeP1Module.heilbronn_higher_weight_action_fill(
+        4, packed, count, action,
+      ),
+      BigInt(action.length),
+    );
+    assert.equal(
+      nativeP1Module.heilbronn_higher_weight_action_fill.javascript(
+        4, fallbackPacked, count, fallbackAction,
+      ),
+      BigInt(action.length),
+    );
+    assert.deepEqual(action.map(BigInt), fallbackAction.map(BigInt));
+    assert.deepEqual(
+      action.slice(0, 9).map(BigInt),
+      [BigInt(p * p), 0n, 0n, 0n, BigInt(p), 0n, 0n, 0n, 1n],
+    );
   }
   for (const [args, expected] of [
     [[12, 7, 15], [true, 1n, 9n, 7n]],
@@ -794,6 +900,15 @@ try {
     assert.deepEqual(
       nativeP1Module.heilbronn_merel_digest.javascript(index), expected,
     );
+    const count = Number(expected[0]);
+    const packed = Array(4 * count).fill(0);
+    assert.equal(nativeP1Module.heilbronn_merel_fill(index, packed), expected[0]);
+    for (let position = 0; position < count; position += 1) {
+      assert.deepEqual(
+        packed.slice(4 * position, 4 * position + 4).map(BigInt),
+        nativeP1Module.heilbronn_merel_entry(index, position).slice(1),
+      );
+    }
   }
   assert.deepEqual(
     Object.keys(nativeTateKernel.ir.callGraph).sort(),
@@ -2091,7 +2206,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v13 buffers, provenance, Tate, P1, ABI, and fallback passed.",
+  "Native Kernel v14 signed buffers, provenance, Tate, P1, ABI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);

@@ -284,7 +284,7 @@ function main() {
         label: "Sage.js AOT",
         command: process.execPath,
         args: [join(directory, "native.cjs")],
-        version: "Native Kernel v13; " + process.version +
+        version: "Native Kernel v14; " + process.version +
           "; CC=" + (process.env.CC || "cc"),
         available: true,
         supportedIds: [

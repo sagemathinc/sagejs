@@ -164,7 +164,7 @@ sagejs native audit bench/cowasm/src --json
 
 ## Packed-buffer numerical landscape
 
-Native Kernel v13's focused packed-buffer comparison compiles the actual typed
+Native Kernel v14's focused packed-buffer comparison compiles the actual typed
 Python n-body and repeated matrix-multiplication bodies in
 `native/numerical_buffers.py`. It compares those bodies with their generated
 JavaScript fallback, CPython, PyPy, Julia, and an algorithm-equivalent C

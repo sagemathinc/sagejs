@@ -34,6 +34,9 @@ function wordType(type) {
   if (type === "Integer") return "int64_t";
   if (type === "uint64") return "uint64_t";
   if (type === "bool") return "int";
+  if (type === "Int64Buffer" || type === "Int64Record") {
+    return "sagejs_int64_buffer";
+  }
   throw new Error(`unsupported machine-word type ${type}`);
 }
 
@@ -132,6 +135,65 @@ function emitWordOperation(operation, context, indent) {
   }
   if (["integer.copy", "bool.copy", "uint64.copy"].includes(operation.kind)) {
     return `${indent}${target} = ${value(operation.source)};`;
+  }
+  if (operation.kind === "int64.buffer.copy") {
+    return `${indent}${target} = ${value(operation.source)};`;
+  }
+  if (operation.kind === "int64.buffer.length") {
+    return `${indent}${target} = (uint64_t) ${value(operation.buffer)}.length;`;
+  }
+  if (operation.kind === "int64.record.view") {
+    const buffer = value(operation.buffer);
+    const start = value(operation.start);
+    const length = value(operation.length);
+    return [
+      `${indent}if (${start} < 0 || ${length} < 0 ||`,
+      `${indent}    (uint64_t) ${start} > (uint64_t) ${buffer}.length ||`,
+      `${indent}    (uint64_t) ${length} > ` +
+        `(uint64_t) ${buffer}.length - (uint64_t) ${start})`,
+      `${indent}{`,
+      `${indent}    napi_throw_range_error(env, NULL, ` +
+        `"Int64Record is outside its buffer");`,
+      `${indent}    ${context.failure}`,
+      `${indent}}`,
+      `${indent}${target}.data = ${buffer}.data + (size_t) ${start};`,
+      `${indent}${target}.length = (size_t) ${length};`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.buffer.get") {
+    const buffer = value(operation.buffer);
+    const index = value(operation.index);
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (!sagejs_int64_buffer_index(` +
+        `&${buffer}, ${index}, &sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"Int64 buffer index out of range");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+      `${indent}    ${target} = ${buffer}.data[sagejs_buffer_position];`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "int64.buffer.set") {
+    const buffer = value(operation.buffer);
+    const index = value(operation.index);
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (!sagejs_int64_buffer_index(` +
+        `&${buffer}, ${index}, &sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"Int64 buffer index out of range");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+      `${indent}    ${buffer}.data[sagejs_buffer_position] = ` +
+        `${value(operation.value)};`,
+      `${indent}}`,
+    ].join("\n");
   }
   if (operation.kind === "integer.from_uint64") {
     const source = value(operation.source);
@@ -389,7 +451,9 @@ function emitWordFunction(fn, functions) {
     .filter((local) =>
       !params.has(local.name) && !local.type.startsWith("IntegerSequence[")
     )
-    .map((local) => `    ${wordType(local.type)} ${wordName(local.name)} = 0;`);
+    .map((local) => `    ${wordType(local.type)} ${wordName(local.name)} = ` +
+      `${local.type === "Int64Buffer" || local.type === "Int64Record"
+        ? "{0}" : "0"};`);
   const context = {
     failure: "return SAGEJS_WORD_ERROR;",
     promote(_operation, indent) {

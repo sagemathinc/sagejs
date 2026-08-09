@@ -1,6 +1,6 @@
-# Native Kernel v13
+# Native Kernel v14
 
-Native Kernel v13 asks whether selected Sage.js library functions can compile
+Native Kernel v14 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v13 is currently a source-tree development feature and uses the
+Native Kernel v14 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -75,7 +75,7 @@ cache instead of the default `.sagejs-native-kernels` beside the source.
 
 ## Transparent compiler tooling
 
-V13 makes the compiler pipeline inspectable without finding files inside the
+V14 makes the compiler pipeline inspectable without finding files inside the
 content-addressed cache:
 
 ```sh
@@ -111,7 +111,7 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v13 supports:
+lowers marked functions to typed IR. Native Kernel v14 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -253,7 +253,7 @@ transition.
 
 ## Packed binary64 buffers and records
 
-V13 compiles numerical algorithms over mutable one-dimensional
+V14 compiles numerical algorithms over mutable one-dimensional
 `Float64Buffer` values. A `Float64Record` is a checked, non-owning view into a
 contiguous portion of a buffer; it gives structured algorithms readable names
 without changing the packed representation:
@@ -301,8 +301,46 @@ CPython 3.12. Repeated 30-by-30 multiplication takes 1.471 ms generated versus
 The n-body result establishes near-C performance for nested mutable records.
 The larger handwritten-C matrix advantage identifies the next optimization:
 prove and hoist buffer bounds from loop/shape constraints instead of emitting
-a branch at every inner-loop access. V13 deliberately retains those checks;
+a branch at every inner-loop access. V14 deliberately retains those checks;
 the benchmark does not compare unsafe generated code with checked source.
+
+## Packed signed exact buffers
+
+V14 adds mutable `Int64Buffer` values and bounded `Int64Record` views to the
+exact-integer compiler. The native boundary borrows a `BigInt64Array`; ordinary
+Python/Sage.js lists use a checked temporary and copy mutations back. Reads
+enter the tagged exact-integer data flow, so later arithmetic still promotes
+from machine words to GMP. Writes require signed-64-bit representability and
+raise `OverflowError` instead of truncating. Negative indexing, record bounds,
+and mutation behavior agree across CPython, generated JavaScript, tagged C,
+and forced-GMP C.
+
+Buffer mutation participates in effect analysis. A function that writes a
+borrowed buffer reports the originating parameter in `externalWrites`, is not
+pure, and cannot replay a speculative direct call after a visible write. The
+generated JavaScript wrapper copies buffers back in `finally`, including when
+the native function raises.
+
+[`src/lib/sagejs/kernels/p1.py`](../src/lib/sagejs/kernels/p1.py) is the first
+mathematical witness. It writes complete Cremona and Merel Heilbronn
+representative arrays, then compiles the actual higher-weight homogeneous
+polynomial action into packed output. The latter emits every
+`(weight - 1)`-square action block used inside the P1 Hecke loop; coset
+transport and quotient-presentation reduction remain distinct later stages.
+At `p=1009`, weight 4, the checked typed-Python body writes 49,284 exact
+coefficients in a median 0.745 ms with GCC and 0.447 ms with Clang on the
+dedicated 16-vCPU AMD EPYC 7B13 host. The same standalone C transcription
+takes 0.353 ms with GCC and 0.695 ms with Clang; thus compiler choice reverses
+the ranking, from generated code 2.11x behind C to 1.55x faster. The generated
+JavaScript fallback takes about 79 ms. These are medians across three complete
+benchmark passes after each pass's internal warmups and samples. The complete
+module's generated C is 1.68 MB, its portable module is 139 KB, and the
+unstripped addon is 597 KB with GCC or 531 KB with Clang. Reproduce the
+differential benchmark with:
+
+```sh
+pnpm bench:native:p1
+```
 
 Run the exact-integer comparisons with:
 
@@ -472,15 +510,17 @@ coefficient lists and more involved structured state make it the next honest
 compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
-## Deliberate v13 limits
+## Deliberate v14 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements
 as arguments, release the event loop, build asynchronously, or provide
 prebuilt kernels. Exact modules currently return one scalar `Integer`, `bool`,
-or a flat typed tuple. Mutable containers, keyword-only native ABI arguments,
-general iterators, exception handlers, and calls into uncompiled Python remain
-outside the typed subset. Fixed local integer sequences are compile-time values,
+or a flat typed tuple. Their supported mutable exact container is deliberately
+limited to packed signed-64-bit buffers and bounded record views; arbitrary
+lists, keyword-only native ABI arguments, general iterators, exception
+handlers, and calls into uncompiled Python remain outside the typed subset.
+Fixed local integer sequences are compile-time values,
 not general lists. Tagged promotion is per value and per instruction, but a
 pure direct callee's speculative word prefix can be retried through its tagged
 entry if the callee itself overflows. Effect analysis makes this behavior
