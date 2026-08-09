@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "library": {
     "id": "flint",
     "python_module": "sagejs.ffi.flint",
@@ -9,6 +9,7 @@
     "native": {
       "headers": [
         "flint/fmpz.h",
+        "flint/nmod_mat.h",
         "flint/ulong_extras.h"
       ],
       "link": {
@@ -24,7 +25,7 @@
       "python_name": "n_is_prime",
       "signature": {
         "parameters": [
-          {"name": "value", "type": "uint64", "ownership": "value"}
+          {"name": "value", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"}
         ],
         "return_type": "bool",
         "return_ownership": "value"
@@ -36,7 +37,7 @@
         "symbol": "n_is_prime",
         "return_type": "int",
         "arguments": [
-          {"source": "value", "abi_type": "ulong", "direction": "in"}
+          {"source": "value", "abi_type": "ulong", "direction": "in", "adapter": null}
         ]
       },
       "effects": {
@@ -44,9 +45,10 @@
         "deterministic": true,
         "thread_safe": true,
         "may_allocate": false,
-        "may_raise": []
+        "may_raise": [],
+        "writes": []
       },
-      "errors": {"policy": "none"},
+      "errors": {"policy": "none", "exception": null, "message": null},
       "targets": {"dynamic": true, "native": true, "wasm": true}
     },
     {
@@ -54,8 +56,8 @@
       "python_name": "fmpz_gcd",
       "signature": {
         "parameters": [
-          {"name": "left", "type": "Integer", "ownership": "borrowed"},
-          {"name": "right", "type": "Integer", "ownership": "borrowed"}
+          {"name": "left", "type": "Integer", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"},
+          {"name": "right", "type": "Integer", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"}
         ],
         "return_type": "Integer",
         "return_ownership": "owned"
@@ -67,9 +69,9 @@
         "symbol": "fmpz_gcd",
         "return_type": "void",
         "arguments": [
-          {"source": "result", "abi_type": "fmpz_t", "direction": "out"},
-          {"source": "left", "abi_type": "fmpz_t", "direction": "in"},
-          {"source": "right", "abi_type": "fmpz_t", "direction": "in"}
+          {"source": "result", "abi_type": "fmpz_t", "direction": "out", "adapter": null},
+          {"source": "left", "abi_type": "fmpz_t", "direction": "in", "adapter": null},
+          {"source": "right", "abi_type": "fmpz_t", "direction": "in", "adapter": null}
         ]
       },
       "effects": {
@@ -77,9 +79,122 @@
         "deterministic": true,
         "thread_safe": true,
         "may_allocate": true,
-        "may_raise": []
+        "may_raise": [],
+        "writes": []
       },
-      "errors": {"policy": "none"},
+      "errors": {"policy": "none", "exception": null, "message": null},
+      "targets": {"dynamic": true, "native": true, "wasm": true}
+    },
+    {
+      "id": "nmod_mat_rank",
+      "python_name": "nmod_mat_rank",
+      "signature": {
+        "parameters": [
+          {"name": "entries", "type": "UInt64Buffer", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"},
+          {"name": "rows", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
+          {"name": "columns", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
+          {"name": "modulus", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"}
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value"
+      },
+      "dynamic": {
+        "export": "ffiNmodMatRank"
+      },
+      "native": {
+        "symbol": "nmod_mat_rank",
+        "return_type": "slong",
+        "arguments": [
+          {
+            "source": "matrix",
+            "abi_type": "nmod_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_nmod_matrix",
+              "data": "entries",
+              "rows": "rows",
+              "columns": "columns",
+              "modulus": "modulus",
+              "access": "read",
+              "aliasing": "allowed"
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": true,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": ["ValueError", "OverflowError"],
+        "writes": []
+      },
+      "errors": {"policy": "none", "exception": null, "message": null},
+      "targets": {"dynamic": true, "native": true, "wasm": true}
+    },
+    {
+      "id": "nmod_mat_inv",
+      "python_name": "nmod_mat_inv",
+      "signature": {
+        "parameters": [
+          {"name": "output", "type": "UInt64Buffer", "ownership": "borrowed_mut", "mutability": "write", "aliasing": "allowed"},
+          {"name": "source", "type": "UInt64Buffer", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"},
+          {"name": "size", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
+          {"name": "modulus", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"}
+        ],
+        "return_type": "bool",
+        "return_ownership": "value"
+      },
+      "dynamic": {
+        "export": "ffiNmodMatInv"
+      },
+      "native": {
+        "symbol": "nmod_mat_inv",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "inverse",
+            "abi_type": "nmod_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_nmod_matrix",
+              "data": "output",
+              "rows": "size",
+              "columns": "size",
+              "modulus": "modulus",
+              "access": "write",
+              "aliasing": "allowed"
+            }
+          },
+          {
+            "source": "matrix",
+            "abi_type": "nmod_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_nmod_matrix",
+              "data": "source",
+              "rows": "size",
+              "columns": "size",
+              "modulus": "modulus",
+              "access": "read",
+              "aliasing": "allowed"
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": ["ValueError", "OverflowError"],
+        "writes": ["output"]
+      },
+      "errors": {
+        "policy": "zero_is_error",
+        "exception": "ValueError",
+        "message": "matrix is singular"
+      },
       "targets": {"dynamic": true, "native": true, "wasm": true}
     }
   ]

@@ -7,11 +7,16 @@ signature, concrete C ABI, ownership, effects, error policy, dynamic adapter,
 native link requirements, and supported targets for each callable function.
 
 The first declaration is [`ffi/flint.ffi.json`](ffi/flint.ffi.json). It
-exports two deliberately different witnesses:
+exports four deliberately different witnesses:
 
 - `n_is_prime(uint64) -> bool`, a direct C return with value semantics;
 - `fmpz_gcd(Integer, Integer) -> Integer`, with borrowed exact inputs, an owned
   exact result, allocation, and FLINT's leading `fmpz_t` out-parameter.
+- `nmod_mat_rank(UInt64Buffer, rows, columns, modulus) -> uint64`, whose
+  borrowed packed entries become a lexical `nmod_mat_t` copy;
+- `nmod_mat_inv(output, source, size, modulus) -> bool`, whose caller-owned
+  output is copied back only after success and whose zero status becomes
+  `ValueError("matrix is singular")`. Input and output may alias safely.
 
 ## One declaration, two execution paths
 
@@ -56,6 +61,7 @@ Changing an ABI, effect, ownership rule, or link dependency invalidates it.
 
 ```sh
 sagejs ffi check
+sagejs ffi audit
 sagejs ffi explain flint
 sagejs ffi explain flint --json
 sagejs ffi generate flint
@@ -65,19 +71,30 @@ sagejs native ir bench/native-ffi-flint.py
 sagejs native emit-core-c bench/native-ffi-flint.py
 sagejs native compile bench/native-ffi-flint.py
 pnpm bench:native:ffi
+pnpm bench:native:ffi:matrix
 ```
 
 `ffi check` validates the strict schema and rejects stale generated Python.
 `architecture:check` runs the same registry and drift checks, so an agent
 cannot quietly add an unchecked native call.
 
-## Version 1 safety envelope
+`ffi audit` also verifies
+[`architecture/native-boundaries.json`](architecture/native-boundaries.json),
+the exact reviewed inventory of classified native files, declared FFI calls,
+N-API exports, runtime intrinsics, and visible Wasm exports. A new boundary
+fails CI until `sagejs ffi audit --write` is run and its complete diff is
+reviewed. Regeneration is an explicit acknowledgement, not an allowlist bypass.
 
-Version 1 intentionally supports only `uint64`, `bool`, and exact `Integer`
-semantics, with `ulong`, `int`, and `fmpz_t` ABI adapters. Error policy is
-currently `none`; calls must explicitly declare purity, determinism,
+## Version 2 safety envelope
+
+Version 2 supports `uint64`, `bool`, exact `Integer`, and borrowed mutable or
+immutable `UInt64Buffer` semantics. In addition to scalar `ulong`, `slong`,
+`int`, and `fmpz_t` adapters, a reusable `packed_nmod_matrix` adapter declares
+the data, shape, modulus, access, and aliasing used to initialize and clear a
+FLINT matrix. The generic `zero_is_error` policy checks C status before any
+output copyback. Calls explicitly declare purity, writes, determinism,
 thread-safety, allocation, and possible exceptions. Native and dynamic
-implementations are both mandatory.
+implementations remain mandatory.
 
 This narrow surface gives useful safety without attempting to recreate Rust:
 
@@ -90,7 +107,7 @@ This narrow surface gives useful safety without attempting to recreate Rust:
 - Windows and Wasm availability are explicit target properties.
 
 Future revisions should add opaque owned/borrowed handles, generated C++
-exception shims, slices and packed buffers, nullable results, callbacks with a
+exception shims, additional typed slices, nullable results, callbacks with a
 clearly marked host-effect boundary, and richer status translation. Those
 features extend the schema and adapter library; they must not become ad hoc
 compiler branches for individual symbols.

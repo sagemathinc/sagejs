@@ -1,6 +1,6 @@
 "use strict";
 
-const HOST_ABI_VERSION = 1;
+const HOST_ABI_VERSION = 2;
 
 function generateStatusDeclarations() {
   return `typedef enum

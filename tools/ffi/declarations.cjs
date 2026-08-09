@@ -9,10 +9,13 @@ const {
 const { join, resolve } = require("node:path");
 
 const repositoryRoot = resolve(__dirname, "..", "..");
-const schema = "sagejs.ffi/declaration-v1";
-const semanticTypes = new Set(["Integer", "bool", "uint64"]);
-const abiTypes = new Set(["fmpz_t", "int", "ulong"]);
-const ownership = new Set(["borrowed", "owned", "value"]);
+const schema = "sagejs.ffi/declaration-v2";
+const semanticTypes = new Set(["Integer", "UInt64Buffer", "bool", "uint64"]);
+const abiTypes = new Set(["fmpz_t", "int", "nmod_mat_t", "slong", "ulong"]);
+const ownership = new Set(["borrowed", "borrowed_mut", "owned", "value"]);
+const errorExceptions = new Set([
+  "OverflowError", "RuntimeError", "TypeError", "ValueError",
+]);
 const inputAbiBySemanticType = Object.freeze({
   Integer: "fmpz_t",
   bool: "int",
@@ -39,6 +42,12 @@ function exactKeys(filename, value, keys, label) {
   }
   for (const key of keys) {
     if (!(key in value)) fail(filename, `${label} is missing ${key}`);
+  }
+}
+
+function nullableString(filename, value, label) {
+  if (value !== null && (typeof value !== "string" || value.length === 0)) {
+    fail(filename, `${label} must be null or a nonempty string`);
   }
 }
 
@@ -80,7 +89,9 @@ function validateFunction(filename, library, fn, ids, pythonNames) {
   const parameterNames = new Set();
   const parametersByName = new Map();
   for (const parameter of fn.signature.parameters) {
-    exactKeys(filename, parameter, ["name", "type", "ownership"],
+    exactKeys(filename, parameter, [
+      "name", "type", "ownership", "mutability", "aliasing",
+    ],
       `${fn.id} parameter`);
     if (!identifier(parameter.name) || parameterNames.has(parameter.name)) {
       fail(filename, `${fn.id} has an invalid or duplicate parameter name`);
@@ -91,11 +102,30 @@ function validateFunction(filename, library, fn, ids, pythonNames) {
     if (!ownership.has(parameter.ownership)) {
       fail(filename, `${fn.id}.${parameter.name} has invalid ownership`);
     }
-    const expectedOwnership = parameter.type === "Integer" ? "borrowed" : "value";
+    const expectedOwnership = parameter.type === "Integer"
+      ? "borrowed"
+      : parameter.type === "UInt64Buffer"
+        ? parameter.mutability === "write" ? "borrowed_mut" : "borrowed"
+        : "value";
     if (parameter.ownership !== expectedOwnership) {
       fail(filename,
         `${fn.id}.${parameter.name} ${parameter.type} inputs must use ` +
         `${expectedOwnership} ownership`);
+    }
+    const expectedMutability = parameter.type === "UInt64Buffer"
+      ? parameter.ownership === "borrowed_mut" ? "write" : "read"
+      : parameter.type === "Integer" ? "read" : "value";
+    if (parameter.mutability !== expectedMutability) {
+      fail(filename,
+        `${fn.id}.${parameter.name} ${parameter.type} requires ` +
+        `${expectedMutability} mutability`);
+    }
+    const expectedAliasing = new Set(["Integer", "UInt64Buffer"])
+      .has(parameter.type) ? "allowed" : "not_applicable";
+    if (parameter.aliasing !== expectedAliasing) {
+      fail(filename,
+        `${fn.id}.${parameter.name} ${parameter.type} requires ` +
+        `${expectedAliasing} aliasing`);
     }
     parameterNames.add(parameter.name);
     parametersByName.set(parameter.name, parameter);
@@ -124,7 +154,7 @@ function validateFunction(filename, library, fn, ids, pythonNames) {
   if (!identifier(fn.native.symbol)) {
     fail(filename, `${fn.id}.native.symbol must be a C identifier`);
   }
-  if (!new Set(["int", "void"]).has(fn.native.return_type)) {
+  if (!new Set(["int", "slong", "void"]).has(fn.native.return_type)) {
     fail(filename, `${fn.id}.native.return_type is unsupported`);
   }
   if (!Array.isArray(fn.native.arguments)) {
@@ -133,11 +163,10 @@ function validateFunction(filename, library, fn, ids, pythonNames) {
   let resultArguments = 0;
   const nativeInputSources = new Set();
   for (const argument of fn.native.arguments) {
-    exactKeys(filename, argument, ["source", "abi_type", "direction"],
+    exactKeys(filename, argument, ["source", "abi_type", "direction", "adapter"],
       `${fn.id} native argument`);
-    if (argument.source === "result") resultArguments += 1;
-    else if (!parameterNames.has(argument.source)) {
-      fail(filename, `${fn.id} native argument has unknown source ${argument.source}`);
+    if (!identifier(argument.source)) {
+      fail(filename, `${fn.id} native argument source must be an identifier`);
     }
     if (!abiTypes.has(argument.abi_type)) {
       fail(filename, `${fn.id} has unsupported ABI type ${argument.abi_type}`);
@@ -145,10 +174,55 @@ function validateFunction(filename, library, fn, ids, pythonNames) {
     if (!new Set(["in", "out"]).has(argument.direction)) {
       fail(filename, `${fn.id} has invalid native argument direction`);
     }
-    if ((argument.source === "result") !== (argument.direction === "out")) {
-      fail(filename, `${fn.id} only result may be an out argument`);
+    if (argument.adapter === null) {
+      if (argument.source === "result") resultArguments += 1;
+      else if (!parameterNames.has(argument.source)) {
+        fail(filename, `${fn.id} native argument has unknown source ${argument.source}`);
+      }
+      if ((argument.source === "result") !== (argument.direction === "out")) {
+        fail(filename, `${fn.id} only result may be a direct out argument`);
+      }
+      if (argument.abi_type === "nmod_mat_t") {
+        fail(filename, `${fn.id} nmod_mat_t requires a packed matrix adapter`);
+      }
+    } else {
+      if (argument.abi_type !== "nmod_mat_t") {
+        fail(filename, `${fn.id} only nmod_mat_t currently accepts an adapter`);
+      }
+      exactKeys(filename, argument.adapter, [
+        "kind", "data", "rows", "columns", "modulus", "access", "aliasing",
+      ], `${fn.id}.${argument.source} adapter`);
+      const adapter = argument.adapter;
+      if (adapter.kind !== "packed_nmod_matrix") {
+        fail(filename, `${fn.id} has unsupported adapter ${adapter.kind}`);
+      }
+      for (const field of ["data", "rows", "columns", "modulus"]) {
+        if (!parameterNames.has(adapter[field])) {
+          fail(filename,
+            `${fn.id}.${argument.source} adapter has unknown ${field} ${adapter[field]}`);
+        }
+        nativeInputSources.add(adapter[field]);
+      }
+      if (parametersByName.get(adapter.data).type !== "UInt64Buffer") {
+        fail(filename, `${fn.id}.${argument.source} adapter data must be UInt64Buffer`);
+      }
+      for (const field of ["rows", "columns", "modulus"]) {
+        if (parametersByName.get(adapter[field]).type !== "uint64") {
+          fail(filename, `${fn.id}.${argument.source} adapter ${field} must be uint64`);
+        }
+      }
+      if (!new Set(["read", "write"]).has(adapter.access) ||
+          adapter.access !== parametersByName.get(adapter.data).mutability) {
+        fail(filename, `${fn.id}.${argument.source} adapter access is inconsistent`);
+      }
+      if (adapter.aliasing !== parametersByName.get(adapter.data).aliasing) {
+        fail(filename, `${fn.id}.${argument.source} adapter aliasing is inconsistent`);
+      }
+      if ((adapter.access === "write") !== (argument.direction === "out")) {
+        fail(filename, `${fn.id}.${argument.source} adapter direction is inconsistent`);
+      }
     }
-    if (argument.source !== "result") {
+    if (argument.adapter === null && argument.source !== "result") {
       if (nativeInputSources.has(argument.source)) {
         fail(filename, `${fn.id} repeats native source ${argument.source}`);
       }
@@ -177,15 +251,17 @@ function validateFunction(filename, library, fn, ids, pythonNames) {
     if (fn.signature.return_type !== "Integer" || result.abi_type !== "fmpz_t") {
       fail(filename, `${fn.id} void/out ABI currently requires an Integer/fmpz_t result`);
     }
-  } else if (
-    fn.native.return_type !== "int" ||
-    fn.signature.return_type !== "bool"
-  ) {
-    fail(filename, `${fn.id} direct ABI currently requires an int/bool result`);
+  } else if (!(
+    (fn.native.return_type === "int" && fn.signature.return_type === "bool") ||
+    (fn.native.return_type === "slong" && fn.signature.return_type === "uint64")
+  )) {
+    fail(filename,
+      `${fn.id} direct ABI requires int/bool or slong/uint64 result`);
   }
 
   exactKeys(filename, fn.effects, [
     "pure", "deterministic", "thread_safe", "may_allocate", "may_raise",
+    "writes",
   ], `${fn.id}.effects`);
   for (const key of ["pure", "deterministic", "thread_safe", "may_allocate"]) {
     if (typeof fn.effects[key] !== "boolean") {
@@ -193,9 +269,37 @@ function validateFunction(filename, library, fn, ids, pythonNames) {
     }
   }
   strings(filename, fn.effects.may_raise, `${fn.id}.effects.may_raise`);
-  exactKeys(filename, fn.errors, ["policy"], `${fn.id}.errors`);
-  if (fn.errors.policy !== "none") {
+  strings(filename, fn.effects.writes, `${fn.id}.effects.writes`);
+  for (const name of fn.effects.writes) {
+    const parameter = parametersByName.get(name);
+    if (parameter === undefined || parameter.ownership !== "borrowed_mut") {
+      fail(filename, `${fn.id}.effects.writes contains non-mutable ${name}`);
+    }
+  }
+  if (fn.effects.pure && fn.effects.writes.length !== 0) {
+    fail(filename, `${fn.id}.effects.pure functions may not declare writes`);
+  }
+  exactKeys(filename, fn.errors, ["policy", "exception", "message"],
+    `${fn.id}.errors`);
+  nullableString(filename, fn.errors.exception, `${fn.id}.errors.exception`);
+  nullableString(filename, fn.errors.message, `${fn.id}.errors.message`);
+  if (fn.errors.exception !== null &&
+      !errorExceptions.has(fn.errors.exception)) {
+    fail(filename, `${fn.id} uses unsupported error exception ` +
+      `${fn.errors.exception}`);
+  }
+  if (!new Set(["none", "zero_is_error"]).has(fn.errors.policy)) {
     fail(filename, `${fn.id} uses unsupported error policy ${fn.errors.policy}`);
+  }
+  if (fn.errors.policy === "none" &&
+      (fn.errors.exception !== null || fn.errors.message !== null)) {
+    fail(filename, `${fn.id} no-error policy requires null exception and message`);
+  }
+  if (fn.errors.policy === "zero_is_error" &&
+      (fn.native.return_type !== "int" || fn.signature.return_type !== "bool" ||
+       fn.errors.exception === null || fn.errors.message === null ||
+       !fn.effects.may_raise.includes(fn.errors.exception))) {
+    fail(filename, `${fn.id} zero_is_error needs int/bool and a declared exception`);
   }
   exactKeys(filename, fn.targets, ["dynamic", "native", "wasm"],
     `${fn.id}.targets`);
@@ -222,7 +326,7 @@ function loadDeclaration(filename) {
   }
   exactKeys(filename, document, ["schema_version", "library", "functions"],
     "document");
-  if (document.schema_version !== 1) fail(filename, "unsupported schema_version");
+  if (document.schema_version !== 2) fail(filename, "unsupported schema_version");
   exactKeys(filename, document.library,
     ["id", "python_module", "dynamic", "native"], "library");
   const library = document.library;
@@ -307,7 +411,8 @@ function loadRegistry(options = {}) {
 function generatePythonModule(declaration) {
   const library = declaration.library;
   const functions = declaration.functions.map((fn) => {
-    const pythonType = (type) => type === "bool" ? "bool" : "int";
+    const pythonType = (type) => type === "bool"
+      ? "bool" : type === "UInt64Buffer" ? "UInt64Buffer" : "int";
     const params = fn.signature.parameters.map((param) =>
       `${param.name}: ${pythonType(param.type)}`
     );
@@ -323,10 +428,20 @@ function generatePythonModule(declaration) {
       `        [${names.join(", ")}],\n` +
       `        [${types.map((type) => JSON.stringify(type)).join(", ")}],\n` +
       `        ${JSON.stringify(fn.signature.return_type)},\n` +
+      `        ${JSON.stringify(fn.errors.policy)},\n` +
+      `        ${fn.errors.exception === null
+        ? "None" : JSON.stringify(fn.errors.exception)},\n` +
+      `        ${fn.errors.message === null
+        ? "None" : JSON.stringify(fn.errors.message)},\n` +
       `    )\n`;
   }).join("\n\n");
+  const usesUInt64Buffer = declaration.functions.some((fn) =>
+    fn.signature.parameters.some((param) => param.type === "UInt64Buffer")
+  );
   return `\"\"\"Generated safe FFI surface for ${library.id}; do not edit by hand.\"\"\"\n\n` +
-    `import sagejs.runtime as _runtime\n\n` +
+    `from __future__ import annotations\n\n` +
+    `import sagejs.runtime as _runtime\n` +
+    `${usesUInt64Buffer ? "from sagejs.native import UInt64Buffer\n" : ""}\n` +
     `__sagejs_ffi_declaration__ = ${JSON.stringify(declaration.identity)}\n\n\n` +
     functions;
 }

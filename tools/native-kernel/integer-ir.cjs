@@ -254,7 +254,7 @@ function isIntegerSignature(signature) {
     isTupleType(signature.returnType) ||
     signature.params.some(
       (param) => param.type === "Integer" || param.type === "bool" ||
-        EXACT_BUFFER_TYPES.has(param.type),
+        param.type === "UInt64Buffer" || EXACT_BUFFER_TYPES.has(param.type),
     )
   );
 }

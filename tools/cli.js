@@ -636,7 +636,7 @@ Install the Jupyter kernelspec under the given prefix.
 
 create_group(
   "ffi",
-  "<check|explain|generate> [library]",
+  "<audit|check|explain|generate> [library]",
   function () {
     /*
 Validate, inspect, or generate explicit safe foreign-library interfaces.
@@ -648,6 +648,12 @@ Declarations are the shared source of truth for dynamic and @native calls.
 opt("json", "", "bool", false, function () {
   /*
 Write structured JSON.
+*/
+});
+
+opt("write", "", "bool", false, function () {
+  /*
+Regenerate the reviewed native-boundary inventory (ffi audit only).
 */
 });
 

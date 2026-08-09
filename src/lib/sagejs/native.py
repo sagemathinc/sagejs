@@ -161,6 +161,38 @@ def integer_buffer_values(buffer: Any) -> Any:
     return converter() if callable(converter) else buffer
 
 
+def uint64_buffer(source: Any) -> UInt64Buffer:
+    """Copy an iterable into a checked unsigned-64-bit fallback buffer."""
+    answer = []
+    for value in source:
+        exact = int(value)
+        if exact < 0 or exact >= (1 << 64):
+            raise OverflowError('UInt64Buffer value is outside unsigned 64-bit')
+        answer.append(exact)
+    return answer
+
+
+def uint64_zeros(length: int) -> UInt64Buffer:
+    """Allocate a zero-filled unsigned-64-bit fallback buffer."""
+    return [0 for _index in range(length)]
+
+
+def kernel_uint64_buffer(kernel: Any, source: Any) -> Any:
+    """Pack an unsigned span when ``kernel`` is compiled, else return a list."""
+    factory = getattr(kernel, 'createUInt64Buffer', None)
+    if is_compiled(kernel) and callable(factory):
+        return factory(source)
+    return uint64_buffer(source)
+
+
+def kernel_uint64_zeros(kernel: Any, length: int) -> Any:
+    """Allocate caller-owned unsigned output for a compiled kernel."""
+    factory = getattr(kernel, 'createUInt64Buffer', None)
+    if is_compiled(kernel) and callable(factory):
+        return factory(length)
+    return uint64_zeros(length)
+
+
 class Float64Record:
     """A mutable bounded view into an ordinary binary64 fallback buffer."""
 
@@ -366,6 +398,8 @@ __all__ = [
     'kernel_int64_zeros',
     'kernel_integer_buffer',
     'kernel_integer_zeros',
+    'kernel_uint64_buffer',
+    'kernel_uint64_zeros',
     'native',
     'prime_add',
     'prime_buffer',
@@ -377,4 +411,6 @@ __all__ = [
     'prime_rows',
     'prime_sub',
     'prime_zeros',
+    'uint64_buffer',
+    'uint64_zeros',
 ]

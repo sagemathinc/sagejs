@@ -11,6 +11,13 @@ const declarations = require("../../tools/ffi/declarations.cjs") as {
   generatedModulePath(root: string, declaration: FfiDeclaration): string;
   loadRegistry(): FfiRegistry;
 };
+const boundaryAudit = require("../../tools/ffi/boundary-audit.cjs") as {
+  createBoundarySnapshot(options?: { root?: string }): Record<string, unknown>;
+  snapshotPath(root?: string): string;
+  validateBoundarySnapshot(
+    snapshot: Record<string, unknown>, options?: { root?: string },
+  ): Record<string, unknown>;
+};
 
 interface FfiFunction {
   id: string;
@@ -45,6 +52,7 @@ interface FfiRegistry {
 interface FfiCliArguments {
   files: string[];
   json?: boolean;
+  write?: boolean;
 }
 
 function selected(registry: FfiRegistry, id?: string): FfiDeclaration[] {
@@ -82,27 +90,65 @@ function checkGenerated(registry: FfiRegistry, libraries: FfiDeclaration[]) {
 /** Validate, inspect, or generate explicit safe foreign-library interfaces. */
 export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
   const [action = "check", libraryId, ...extra] = argv.files;
-  if (extra.length > 0 || !["check", "explain", "generate"].includes(action)) {
+  if (extra.length > 0 || !["audit", "check", "explain", "generate"].includes(action)) {
     throw new Error(
-      "usage: sagejs ffi <check|explain|generate> [library] [--json]",
+      "usage: sagejs ffi <audit|check|explain|generate> [library] [--json] [--write]",
     );
   }
+  if (argv.write && action !== "audit") {
+    throw new Error("--write is only valid with sagejs ffi audit");
+  }
   const registry = declarations.loadRegistry();
+  if (action === "audit") {
+    if (libraryId !== undefined) throw new Error("sagejs ffi audit takes no library");
+    const expected = boundaryAudit.createBoundarySnapshot({ root: registry.root });
+    const filename = boundaryAudit.snapshotPath(registry.root);
+    if (argv.write) {
+      writeFileSync(filename, `${JSON.stringify(expected, null, 2)}\n`);
+    } else {
+      if (!existsSync(filename)) {
+        throw new Error("native-boundary inventory is missing; run sagejs ffi audit --write");
+      }
+      boundaryAudit.validateBoundarySnapshot(
+        JSON.parse(readFileSync(filename, "utf8")), { root: registry.root },
+      );
+    }
+    if (argv.json) {
+      process.stdout.write(`${JSON.stringify(expected, null, 2)}\n`);
+    } else {
+      const counts = expected.counts as Record<string, number>;
+      const total = Object.values(counts).reduce((sum, value) => sum + value, 0);
+      process.stdout.write(
+        `${argv.write ? "Wrote" : "Checked"} ${total} inventoried native ` +
+        `boundaries across ${Object.keys(counts).length} scopes.\n`,
+      );
+    }
+    return;
+  }
   const libraries = selected(registry, libraryId);
   if (action === "check") {
     checkGenerated(registry, libraries);
+    const boundaryFilename = boundaryAudit.snapshotPath(registry.root);
+    const boundarySnapshot = boundaryAudit.validateBoundarySnapshot(
+      JSON.parse(readFileSync(boundaryFilename, "utf8")),
+      { root: registry.root },
+    );
+    const boundaryCount = (
+      boundarySnapshot.boundaries as Array<Record<string, unknown>>
+    ).length;
     if (argv.json) {
       process.stdout.write(`${JSON.stringify({
         schema: "sagejs.ffi/check-v1",
         libraries: libraries.map((item) => item.identity),
         functions: libraries.reduce((sum, item) => sum + item.functions.length, 0),
         generated: true,
+        native_boundaries: boundaryCount,
       }, null, 2)}\n`);
     } else {
       const count = libraries.reduce((sum, item) => sum + item.functions.length, 0);
       process.stdout.write(
         `Checked ${libraries.length} FFI declaration(s), ${count} function(s), ` +
-        "and generated safe modules.\n",
+        `generated safe modules, and ${boundaryCount} native boundaries.\n`,
       );
     }
     return;

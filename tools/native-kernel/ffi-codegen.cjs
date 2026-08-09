@@ -111,6 +111,120 @@ function emitDirectCall(operation, value, resultValue, indent) {
     `${native.symbol}(${args.join(", ")});`;
 }
 
+function emitPackedNmodCall(operation, context, indent) {
+  const native = operation.foreign.function.native;
+  const adapters = native.arguments.filter((argument) =>
+    argument.adapter?.kind === "packed_nmod_matrix"
+  );
+  if (adapters.length !== native.arguments.length) {
+    throw new Error(
+      `${operation.foreign.declarationId} mixes packed matrices and direct arguments`,
+    );
+  }
+  const declarations = [];
+  const validation = [];
+  const initialization = [];
+  const copyInput = [];
+  const copyOutput = [];
+  const cleanup = [];
+  const callArguments = [];
+  const parameter = (name) => context.value(argumentBySource(operation, name).name);
+  for (const [index, argument] of adapters.entries()) {
+    const adapter = argument.adapter;
+    const prefix = `sagejs_ffi_${cName(operation.target)}_${index}`;
+    const matrix = `${prefix}_matrix`;
+    const data = parameter(adapter.data);
+    const rows = parameter(adapter.rows);
+    const columns = parameter(adapter.columns);
+    const modulus = parameter(adapter.modulus);
+    const count = `${prefix}_count`;
+    declarations.push(
+      `${indent}    nmod_mat_t ${matrix};`,
+      `${indent}    size_t ${count};`,
+    );
+    validation.push(
+      `${indent}    if (${modulus} < UINT64_C(2))`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"nmod matrix modulus must be at least 2");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+      `${indent}    if (${rows} > (uint64_t) WORD_MAX || ` +
+        `${columns} > (uint64_t) WORD_MAX ||`,
+      `${indent}        (${rows} != 0 && ${columns} > ` +
+        `(uint64_t) SIZE_MAX / ${rows}))`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"nmod matrix is too large to convert");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+      `${indent}    ${count} = (size_t) ${rows} * (size_t) ${columns};`,
+      `${indent}    if (${data}.length != ${count})`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"nmod matrix buffer length does not match dimensions");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+    );
+    initialization.push(
+      `${indent}    nmod_mat_init(${matrix}, (slong) ${rows}, ` +
+        `(slong) ${columns}, (ulong) ${modulus});`,
+    );
+    if (adapter.access === "read") {
+      copyInput.push(
+        `${indent}    for (size_t sagejs_index = 0; ` +
+          `sagejs_index < ${count}; sagejs_index++)`,
+        `${indent}        nmod_mat_entry(${matrix},`,
+        `${indent}            (slong) (sagejs_index / (size_t) ${columns}),`,
+        `${indent}            (slong) (sagejs_index % (size_t) ${columns})) =`,
+        `${indent}            (ulong) (${data}.data[sagejs_index] % ${modulus});`,
+      );
+    } else {
+      copyOutput.push(
+        `${indent}    for (size_t sagejs_index = 0; ` +
+          `sagejs_index < ${count}; sagejs_index++)`,
+        `${indent}        ${data}.data[sagejs_index] = (uint64_t) nmod_mat_entry(`,
+        `${indent}            ${matrix},`,
+        `${indent}            (slong) (sagejs_index / (size_t) ${columns}),`,
+        `${indent}            (slong) (sagejs_index % (size_t) ${columns}));`,
+      );
+    }
+    cleanup.unshift(`${indent}    nmod_mat_clear(${matrix});`);
+    callArguments.push(matrix);
+  }
+  const raw = `sagejs_ffi_${cName(operation.target)}_result`;
+  declarations.push(`${indent}    ${native.return_type} ${raw};`);
+  const call = `${indent}    ${raw} = ${native.symbol}(` +
+    `${callArguments.join(", ")});`;
+  const checked = operation.foreign.function.errors.policy === "zero_is_error"
+    ? [
+        `${indent}    if (${raw} == 0)`,
+        `${indent}    {`,
+        ...cleanup,
+        `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR, ` +
+          `${JSON.stringify(operation.foreign.function.errors.message)});`,
+        `${indent}        ${context.failure}`,
+        `${indent}    }`,
+      ]
+    : [];
+  const result = native.return_type === "slong"
+    ? `${indent}    ${context.result(operation.target)} = (uint64_t) ${raw};`
+    : `${indent}    ${context.result(operation.target)} = ${raw} != 0;`;
+  return [
+    `${indent}{`,
+    ...declarations,
+    ...validation,
+    ...initialization,
+    ...copyInput,
+    call,
+    ...checked,
+    ...copyOutput,
+    ...cleanup,
+    result,
+    `${indent}}`,
+  ].join("\n");
+}
+
 function usesFmpz(operation) {
   return operation.foreign.function.native.arguments.some(
     (argument) => argument.abi_type === "fmpz_t",
@@ -118,18 +232,27 @@ function usesFmpz(operation) {
 }
 
 function emitExactForeignCall(operation, context, indent) {
+  if (operation.foreign.function.native.arguments.some((argument) =>
+    argument.adapter?.kind === "packed_nmod_matrix"
+  )) return emitPackedNmodCall(operation, context, indent);
   return usesFmpz(operation)
     ? emitFmpzCall(operation, context.value, context.result, indent, false)
     : emitDirectCall(operation, context.value, context.result, indent);
 }
 
 function emitTaggedForeignCall(operation, context, indent) {
+  if (operation.foreign.function.native.arguments.some((argument) =>
+    argument.adapter?.kind === "packed_nmod_matrix"
+  )) return emitPackedNmodCall(operation, context, indent);
   return usesFmpz(operation)
     ? emitFmpzCall(operation, context.value, context.result, indent, true)
     : emitDirectCall(operation, context.value, context.result, indent);
 }
 
 function emitWordForeignCall(operation, context, indent) {
+  if (operation.foreign.function.native.arguments.some((argument) =>
+    argument.adapter?.kind === "packed_nmod_matrix"
+  )) return emitPackedNmodCall(operation, context, indent);
   if (usesFmpz(operation) ||
       operation.foreign.function.signature.return_type === "Integer") {
     return context.promote(operation, indent);
@@ -145,7 +268,8 @@ function javascriptForeignCall(operation, indent) {
     `${JSON.stringify(foreign.function.dynamic.export)}, ` +
     `[${operation.arguments.map((argument) => argument.name).join(", ")}], ` +
     `${JSON.stringify(signature.parameters.map((parameter) => parameter.type))}, ` +
-    `${JSON.stringify(signature.return_type)});`;
+    `${JSON.stringify(signature.return_type)}, ` +
+    `${JSON.stringify(foreign.function.errors)});`;
 }
 
 function javascriptRuntime(ir) {
@@ -154,7 +278,7 @@ function javascriptRuntime(ir) {
 const sagejsFfiLibraries = new Map();
 
 function sagejsFfiCall(
-  packageName, exportName, args, parameterTypes, returnType
+  packageName, exportName, args, parameterTypes, returnType, errors
 ) {
   let library = sagejsFfiLibraries.get(packageName);
   if (library === undefined) {
@@ -186,9 +310,27 @@ function sagejsFfiCall(
       if (exact >= 0n && exact <= 18446744073709551615n) return exact;
     }
     if (type === "bool" && typeof value === "boolean") return value;
+    if (type === "UInt64Buffer" && value !== null &&
+        (typeof value === "object" || typeof value === "function")) {
+      const length = Number(Reflect.get(value, "length"));
+      if (Number.isSafeInteger(length) && length >= 0) {
+        for (let position = 0; position < length; position += 1) {
+          const entry = Reflect.get(value, String(position));
+          const exact = typeof entry === "bigint"
+            ? entry : Number.isSafeInteger(entry) ? BigInt(entry) : -1n;
+          if (exact < 0n || exact > 18446744073709551615n) {
+            throw new TypeError("invalid UInt64Buffer entry");
+          }
+        }
+        return value;
+      }
+    }
     throw new TypeError("invalid dynamic FFI argument for " + type);
   });
   const result = Reflect.apply(fn, library, marshalled);
+  if (errors.policy === "zero_is_error" && result === false) {
+    nativeRaise(errors.exception, errors.message);
+  }
   if (returnType === "bool" && typeof result === "boolean") return result;
   if (returnType === "Integer" && typeof result === "bigint") return result;
   if (returnType === "uint64" && typeof result === "bigint" &&

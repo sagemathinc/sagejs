@@ -401,9 +401,11 @@ function emitExactFallback(fn) {
   const locals = fn.locals.map((local) => local.name);
   const buffers = fn.params
     .filter((param) => param.type === "Int64Buffer" ||
-      param.type === "Int64Record" || param.type === "IntegerBuffer")
+      param.type === "Int64Record" || param.type === "IntegerBuffer" ||
+      param.type === "UInt64Buffer")
     .map((param) => `  ${param.name} = ${param.type === "IntegerBuffer"
-      ? "integerBufferView" : "int64BufferView"}(` +
+      ? "integerBufferView" : param.type === "UInt64Buffer"
+        ? "uint64BufferView" : "int64BufferView"}(` +
       `${param.name}, ${jsString(param.name)});`)
     .join("\n");
   return `function javascript_${fn.name}(${params}) {
@@ -448,6 +450,9 @@ function exactValidation(param) {
   if (param.type === "Int64Buffer" || param.type === "Int64Record") {
     return `  int64BufferView(${param.name}, ${jsString(param.name)});`;
   }
+  if (param.type === "UInt64Buffer") {
+    return `  uint64BufferView(${param.name}, ${jsString(param.name)});`;
+  }
   if (param.type === "IntegerBuffer") {
     return `  integerBufferView(${param.name}, ${jsString(param.name)});`;
   }
@@ -461,32 +466,66 @@ function normalizedArgument(param) {
   if (param.type === "Int64Buffer" || param.type === "Int64Record") {
     return `int64BufferView(${param.name}, ${jsString(param.name)})`;
   }
+  if (param.type === "UInt64Buffer") {
+    return `uint64BufferView(${param.name}, ${jsString(param.name)})`;
+  }
   if (param.type === "IntegerBuffer") {
     return `integerBufferView(${param.name}, ${jsString(param.name)})`;
   }
   return param.name;
 }
 
+function declaredFfiErrors(fn) {
+  const translations = Object.create(null);
+  const visit = (operations) => {
+    for (const operation of operations || []) {
+      if (operation.kind === "ffi.call") {
+        const errors = operation.foreign.function.errors;
+        if (errors.policy !== "none") {
+          const previous = translations[errors.message];
+          if (previous !== undefined && previous !== errors.exception) {
+            throw new Error(
+              `conflicting FFI exception translations for ${errors.message}`,
+            );
+          }
+          translations[errors.message] = errors.exception;
+        }
+      }
+      visit(operation.body);
+      visit(operation.alternative);
+      visit(operation.condition?.operations);
+      visit(operation.right?.operations);
+    }
+  };
+  visit(fn.body);
+  return JSON.stringify(translations);
+}
+
 function exactNativeExpression(fn, backend) {
+  const ffiErrors = declaredFfiErrors(fn);
   const buffers = fn.params.filter((param) =>
     param.type === "Int64Buffer" || param.type === "Int64Record" ||
-    param.type === "IntegerBuffer"
+    param.type === "IntegerBuffer" || param.type === "UInt64Buffer"
   );
   if (buffers.length === 0) {
     const args = fn.params.map((param) =>
       `sagejs_native_${param.name}`
     ).join(", ");
-    return `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend})`;
+    return `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend}, ` +
+      `${ffiErrors})`;
   }
   const declarations = buffers.map((param) =>
     `    const sagejs_native_descriptor_${param.name} = ` +
       `${param.type === "IntegerBuffer"
-        ? "integerNativeBuffer" : "int64NativeBuffer"}(` +
+        ? "integerNativeBuffer" : param.type === "UInt64Buffer"
+          ? "uint64NativeBuffer" : "int64NativeBuffer"}(` +
       `sagejs_native_${param.name}, ${jsString(param.name)});`
   );
   const args = fn.params.map((param) =>
     param.type === "Int64Buffer" || param.type === "Int64Record"
       ? `sagejs_native_descriptor_${param.name}.typed`
+      : param.type === "UInt64Buffer"
+        ? `sagejs_native_descriptor_${param.name}.typed`
       : param.type === "IntegerBuffer"
         ? `sagejs_native_descriptor_${param.name}.packed`
       : `sagejs_native_${param.name}`
@@ -494,7 +533,8 @@ function exactNativeExpression(fn, backend) {
   const copies = buffers
     .filter((param) => fn.analysis.effects.externalWrites.includes(param.name))
     .map((param) => `      sagejs_native_descriptor_${param.name}.copyBack();`);
-  const call = `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend})`;
+  const call = `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend}, ` +
+    `${ffiErrors})`;
   return [
     "(() => {",
     ...declarations,
@@ -620,6 +660,7 @@ ${fn.name}.backendPolicy = Object.freeze(${policy});
 ${fn.name}.effects = Object.freeze(${effects});
 ${fn.name}.taggedInteger = Object.freeze(${taggedInteger});
 ${fn.name}.createInt64Buffer = createInt64Buffer;
+${fn.name}.createUInt64Buffer = createUInt64Buffer;
 ${fn.name}.createIntegerBuffer = createIntegerBuffer;
 ${fn.name}.packIntegerBuffer = packIntegerBuffer;
 ${fn.name}.nativeAvailable = nativeAddon !== null;`;
@@ -1074,6 +1115,54 @@ function createInt64Buffer(source) {
   return BigInt64Array.from(source, (value) => BigInt(value));
 }
 
+function createUInt64Buffer(source) {
+  if (Number.isSafeInteger(source) && source >= 0) {
+    return new BigUint64Array(source);
+  }
+  return BigUint64Array.from(source, (value) => BigInt(value));
+}
+
+function uint64BufferView(value, argument = "buffer") {
+  if (value === null || (typeof value !== "object" &&
+      typeof value !== "function")) {
+    throw new TypeError(argument + " must be a UInt64Buffer");
+  }
+  const length = Number(Reflect.get(value, "length"));
+  if (!Number.isSafeInteger(length) || length < 0) {
+    throw new TypeError(argument + " must have a nonnegative safe length");
+  }
+  for (let index = 0; index < length; index += 1) {
+    const entry = Reflect.get(value, String(index));
+    const exact = typeof entry === "bigint"
+      ? entry : Number.isSafeInteger(entry) ? BigInt(entry) : -1n;
+    if (exact < 0n || exact > 18446744073709551615n) {
+      throw new RangeError("UInt64Buffer value is outside unsigned 64-bit");
+    }
+  }
+  return value;
+}
+
+function uint64NativeBuffer(value, argument) {
+  const view = uint64BufferView(value, argument);
+  if (view instanceof BigUint64Array) {
+    return { typed: view, copyBack() {} };
+  }
+  const typed = new BigUint64Array(view.length);
+  for (let index = 0; index < view.length; index += 1) {
+    typed[index] = BigInt(Reflect.get(view, String(index)));
+  }
+  return {
+    typed,
+    copyBack() {
+      for (let index = 0; index < view.length; index += 1) {
+        if (!Reflect.set(view, String(index), typed[index])) {
+          throw new TypeError("UInt64Buffer is not writable");
+        }
+      }
+    },
+  };
+}
+
 function integerNativeBuffer(value, argument) {
   const view = integerBufferView(value, argument);
   if (view.offset === 0 && view.packed !== undefined &&
@@ -1311,12 +1400,17 @@ function nativeRaise(name, message) {
   throw new RangeError(message);
 }
 
-function nativeExactCall(name, args, backend = "tagged") {
+function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) {
   try {
     const property = backend === "gmp" ? name + "$gmp" : name;
     return nativeAddon[property](...args);
   } catch (error) {
     const message = String(error && error.message || error);
+    const declaredException = declaredErrors === null
+      ? undefined : declaredErrors[message];
+    if (declaredException !== undefined) {
+      nativeRaise(declaredException, message);
+    }
     if (message.includes("division") || message.includes("modulo")) {
       nativeRaise("ZeroDivisionError", message);
     }
@@ -1335,6 +1429,14 @@ function nativeExactCall(name, args, backend = "tagged") {
         message.includes("Int64 buffer index") ||
         message.includes("Int64Record")) {
       nativeRaise("IndexError", message);
+    }
+    if (message.includes("matrix modulus must be at least") ||
+        message.includes("buffer length does not match dimensions")) {
+      nativeRaise("ValueError", message);
+    }
+    if (message.includes("nmod matrix is too large to convert") ||
+        message.includes("outside unsigned 64-bit")) {
+      nativeRaise("OverflowError", message);
     }
     if (message.includes("sequence index")) nativeRaise("IndexError", message);
     throw error;
@@ -1443,6 +1545,7 @@ if (typeof nativeRegister === "function") {
 module.exports = {
   ...nativeFunctions,
   createIntegerBuffer,
+  createUInt64Buffer,
   cacheKey: ${jsString(options.cacheKey || "")},
   nativeAvailable: nativeAddon !== null,
   primeFieldTuning: Object.freeze(${JSON.stringify(

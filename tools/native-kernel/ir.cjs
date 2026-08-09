@@ -760,7 +760,8 @@ async function lowerSource(source, filename, options = {}) {
       paramTypes.some((type) =>
         type === "Integer" || type === "bool" || type === "Float64" ||
         type === "Float64Buffer" || type === "Int64Buffer" ||
-        type === "Int64Record" || type === "IntegerBuffer"
+        type === "Int64Record" || type === "IntegerBuffer" ||
+        type === "UInt64Buffer"
       )
     );
     if (completeSignature || partiallyTypedSelected) {

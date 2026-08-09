@@ -43,6 +43,7 @@ function scalarType(type) {
   if (type === "Int64Buffer" || type === "Int64Record") {
     return "sagejs_int64_buffer";
   }
+  if (type === "UInt64Buffer") return "sagejs_uint64_buffer";
   if (type === "IntegerBuffer") return "sagejs_integer_buffer";
   throw new Error(`unsupported tagged scalar type ${type}`);
 }
@@ -423,6 +424,7 @@ function emitTaggedOperation(operation, context, indent) {
     return emitTaggedForeignCall(operation, {
       value: (name) => taggedValue(name, context),
       result: (name) => taggedValue(name, context),
+      failure: "goto fail;",
     }, indent);
   }
   throw new Error(`unsupported tagged C IR operation ${operation.kind}`);
@@ -574,7 +576,7 @@ function emitTaggedFunction(fn, functions) {
     }
     declarations.push(`    ${scalarType(local.type)} ${taggedName(local.name)} = ` +
       `${local.type === "Int64Buffer" || local.type === "Int64Record" ||
-        local.type === "IntegerBuffer"
+        local.type === "IntegerBuffer" || local.type === "UInt64Buffer"
         ? "{0}" : "0"};`);
   }
   const integerNames = [

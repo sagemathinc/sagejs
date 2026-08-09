@@ -15,6 +15,7 @@ const CODE_MANIFEST = join(ROOT, "architecture", "native-code.json");
 const AUDIT_MANIFEST = join(ROOT, "architecture", "native-audit.json");
 const KERNEL_MANIFEST = join(ROOT, "architecture", "native-kernels.json");
 const ffiDeclarations = require("../tools/ffi/declarations.cjs");
+const ffiBoundaryAudit = require("../tools/ffi/boundary-audit.cjs");
 
 function readJson(filename) {
   return JSON.parse(readFileSync(filename, "utf8"));
@@ -290,6 +291,9 @@ function run() {
   const audit = validateNativeAudit(readJson(AUDIT_MANIFEST), code);
   const kernels = validateKernelRegistry(readJson(KERNEL_MANIFEST));
   const ffi = ffiDeclarations.loadRegistry({ root: ROOT });
+  const boundaries = ffiBoundaryAudit.validateBoundarySnapshot(
+    readJson(ffiBoundaryAudit.snapshotPath(ROOT)), { root: ROOT },
+  );
   const generatedFfiModules = new Set();
   for (const declaration of ffi.libraries) {
     const generated = ffiDeclarations.generatedModulePath(ROOT, declaration);
@@ -324,6 +328,10 @@ function run() {
   console.log(
     `Explicit FFI registry is valid: ${ffi.libraries.length} libraries, ` +
     `${ffi.libraries.reduce((sum, item) => sum + item.functions.length, 0)} functions.`,
+  );
+  console.log(
+    `Native boundary ratchet is current: ${boundaries.boundaries.length} ` +
+    `classified files and exported interfaces.`,
   );
 }
 

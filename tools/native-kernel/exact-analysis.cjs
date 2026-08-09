@@ -387,7 +387,7 @@ function localEffects(fn) {
 
 function bufferWrites(fn, dependencyEffects) {
   const bufferTypes = new Set([
-    "IntegerBuffer", "Int64Buffer", "Int64Record",
+    "IntegerBuffer", "Int64Buffer", "Int64Record", "UInt64Buffer",
   ]);
   const aliases = new Map(
     fn.params
@@ -421,6 +421,16 @@ function bufferWrites(fn, dependencyEffects) {
         const callee = effect?.params || [];
         for (const written of effect?.externalWrites || []) {
           const position = callee.indexOf(written);
+          if (position < 0) continue;
+          const argument = statement.arguments[position];
+          if (argument !== undefined) {
+            for (const root of roots(argument.name)) writes.add(root);
+          }
+        }
+      } else if (statement.kind === "ffi.call") {
+        const parameters = statement.foreign.function.signature.parameters;
+        for (const written of statement.foreign.function.effects.writes || []) {
+          const position = parameters.findIndex((param) => param.name === written);
           if (position < 0) continue;
           const argument = statement.arguments[position];
           if (argument !== undefined) {

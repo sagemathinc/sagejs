@@ -1,0 +1,4303 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "default": "reject-drift",
+    "scopes": [
+      "classified-native-files",
+      "declared-ffi-functions",
+      "napi-exports",
+      "runtime-intrinsics",
+      "wasm-exports"
+    ],
+    "new_boundaries_require": "explicit-regeneration-and-review"
+  },
+  "counts": {
+    "classified-native-file": 51,
+    "declared-ffi": 4,
+    "napi-export": 284,
+    "runtime-intrinsic": 107,
+    "wasm-export": 46
+  },
+  "boundaries": [
+    {
+      "id": "ffi:flint:fmpz_gcd",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_gcd",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "gcd",
+      "symbol": "fmpz_gcd",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:n_is_prime",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "n_is_prime",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "wordIsPrime",
+      "symbol": "n_is_prime",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_mat_inv",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_mat_inv",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatInv",
+      "symbol": "nmod_mat_inv",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_mat_rank",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_mat_rank",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatRank",
+      "symbol": "nmod_mat_rank",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:acbMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "acbMatrix",
+      "symbol": "sagejs_acb_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:acbMatrixScalarMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "acbMatrixScalarMul",
+      "symbol": "sagejs_acb_matrix_scalar_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:binomial",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "binomial",
+      "symbol": "binomial",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:blasEnabled",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "blasEnabled",
+      "symbol": "blas_enabled",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:characterPresentationBoundaryData",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "characterPresentationBoundaryData",
+      "symbol": "sagejs_character_presentation_boundary_data",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:characterPresentationReduction",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "characterPresentationReduction",
+      "symbol": "sagejs_character_presentation_reduction",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexAdd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexAdd",
+      "symbol": "sagejs_complex_add",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexBesselI",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexBesselI",
+      "symbol": "sagejs_complex_bessel_i",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexDiv",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexDiv",
+      "symbol": "sagejs_complex_div",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexEi",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexEi",
+      "symbol": "sagejs_complex_ei",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexEqual",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexEqual",
+      "symbol": "sagejs_complex_equal",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexFromReals",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexFromReals",
+      "symbol": "sagejs_complex_from_reals",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexImag",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexImag",
+      "symbol": "sagejs_complex_imag",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexImagDouble",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexImagDouble",
+      "symbol": "sagejs_complex_imag_double",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexMul",
+      "symbol": "sagejs_complex_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexNeg",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexNeg",
+      "symbol": "sagejs_complex_neg",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexPowInt",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexPowInt",
+      "symbol": "sagejs_complex_pow_int",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexPrecision",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexPrecision",
+      "symbol": "sagejs_complex_precision",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexReal",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexReal",
+      "symbol": "sagejs_complex_real",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexRealDouble",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexRealDouble",
+      "symbol": "sagejs_complex_real_double",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexRound",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexRound",
+      "symbol": "sagejs_complex_round",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexSub",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexSub",
+      "symbol": "sagejs_complex_sub",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:complexToString",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "complexToString",
+      "symbol": "sagejs_complex_to_string",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicElementCoefficients",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "cyclotomicElementCoefficients",
+      "symbol": "sagejs_cyclotomic_element_coefficients",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixPolyEvaluate",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "cyclotomicMatrixPolyEvaluate",
+      "symbol": "sagejs_cyclotomic_matrix_poly_evaluate",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRightKernel",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "cyclotomicMatrixRightKernel",
+      "symbol": "sagejs_cyclotomic_matrix_right_kernel",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicPolyFactor",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "cyclotomicPolyFactor",
+      "symbol": "sagejs_cyclotomic_poly_factor",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:cyclotomicRootCoefficients",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "cyclotomicRootCoefficients",
+      "symbol": "sagejs_cyclotomic_root_coefficients",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletBernoulli",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletBernoulli",
+      "symbol": "sagejs_dirichlet_bernoulli",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletCharacterData",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletCharacterData",
+      "symbol": "sagejs_dirichlet_character_data",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletCharacterExponent",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletCharacterExponent",
+      "symbol": "sagejs_dirichlet_character_exponent",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletCharacterExponents",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletCharacterExponents",
+      "symbol": "sagejs_dirichlet_character_exponents",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletGaussSum",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletGaussSum",
+      "symbol": "sagejs_dirichlet_gauss_sum",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletGaussSumExact",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletGaussSumExact",
+      "symbol": "sagejs_dirichlet_gauss_sum_exact",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletGroup",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletGroup",
+      "symbol": "sagejs_dirichlet_group",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletGroupData",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletGroupData",
+      "symbol": "sagejs_dirichlet_group_data",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletJacobiSum",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletJacobiSum",
+      "symbol": "sagejs_dirichlet_jacobi_sum",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletJacobiSumExact",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletJacobiSumExact",
+      "symbol": "sagejs_dirichlet_jacobi_sum_exact",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletLValue",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletLValue",
+      "symbol": "sagejs_dirichlet_l_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:dirichletRootNumber",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "dirichletRootNumber",
+      "symbol": "sagejs_dirichlet_root_number",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:ecAnlistIntegral",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "ecAnlistIntegral",
+      "symbol": "elliptic_anlist_integral",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:ecApIntegral",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "ecApIntegral",
+      "symbol": "elliptic_ap_smalljac_integral",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:ecScalarMulPrime",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "ecScalarMulPrime",
+      "symbol": "elliptic_scalar_mul_prime",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:ecScalarMulRational",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "ecScalarMulRational",
+      "symbol": "elliptic_scalar_mul_rational",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:factor",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "factor",
+      "symbol": "factor",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:factorial",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "factorial",
+      "symbol": "factorial",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fibonacci",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fibonacci",
+      "symbol": "fibonacci",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqAdd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqAdd",
+      "symbol": "sagejs_fq_add",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqContext",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqContext",
+      "symbol": "sagejs_fq_context",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqContextModulus",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqContextModulus",
+      "symbol": "sagejs_fq_context_modulus",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqContextWithModulus",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqContextWithModulus",
+      "symbol": "sagejs_fq_context_with_modulus",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqDiv",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqDiv",
+      "symbol": "sagejs_fq_div",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqEqual",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqEqual",
+      "symbol": "sagejs_fq_equal",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqFromBigInt",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqFromBigInt",
+      "symbol": "sagejs_fq_from_bigint",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqGen",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqGen",
+      "symbol": "sagejs_fq_gen",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqIsOne",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqIsOne",
+      "symbol": "sagejs_fq_is_one",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqIsZero",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqIsZero",
+      "symbol": "sagejs_fq_is_zero",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrix",
+      "symbol": "sagejs_fq_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixAdd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixAdd",
+      "symbol": "sagejs_fq_matrix_add",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixCharpoly",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixCharpoly",
+      "symbol": "sagejs_fq_matrix_charpoly",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixDet",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixDet",
+      "symbol": "sagejs_fq_matrix_det",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixEntry",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixEntry",
+      "symbol": "sagejs_fq_matrix_entry",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixEqual",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixEqual",
+      "symbol": "sagejs_fq_matrix_equal",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixInverse",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixInverse",
+      "symbol": "sagejs_fq_matrix_inverse",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixMul",
+      "symbol": "sagejs_fq_matrix_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixNeg",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixNeg",
+      "symbol": "sagejs_fq_matrix_neg",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixRank",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixRank",
+      "symbol": "sagejs_fq_matrix_rank",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixRightKernel",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixRightKernel",
+      "symbol": "sagejs_fq_matrix_right_kernel",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixRref",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixRref",
+      "symbol": "sagejs_fq_matrix_rref",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixScalarMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixScalarMul",
+      "symbol": "sagejs_fq_matrix_scalar_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixSolve",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixSolve",
+      "symbol": "sagejs_fq_matrix_solve",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixSub",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixSub",
+      "symbol": "sagejs_fq_matrix_sub",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMatrixTranspose",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMatrixTranspose",
+      "symbol": "sagejs_fq_matrix_transpose",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqMul",
+      "symbol": "sagejs_fq_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqNeg",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqNeg",
+      "symbol": "sagejs_fq_neg",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyAdd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyAdd",
+      "symbol": "sagejs_fq_poly_add",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyCoefficients",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyCoefficients",
+      "symbol": "sagejs_fq_poly_coefficients",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyConstant",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyConstant",
+      "symbol": "sagejs_fq_poly_constant",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyDivExact",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyDivExact",
+      "symbol": "sagejs_fq_poly_divexact",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyEqual",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyEqual",
+      "symbol": "sagejs_fq_poly_equal",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyFactor",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyFactor",
+      "symbol": "sagejs_fq_poly_factor",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyGcd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyGcd",
+      "symbol": "sagejs_fq_poly_gcd",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyGen",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyGen",
+      "symbol": "sagejs_fq_poly_gen",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyIsIrreducible",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyIsIrreducible",
+      "symbol": "sagejs_fq_poly_is_irreducible",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyMul",
+      "symbol": "sagejs_fq_poly_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyNeg",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyNeg",
+      "symbol": "sagejs_fq_poly_neg",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyPow",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyPow",
+      "symbol": "sagejs_fq_poly_pow",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyRoots",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyRoots",
+      "symbol": "sagejs_fq_poly_roots",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolySub",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolySub",
+      "symbol": "sagejs_fq_poly_sub",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPolyToString",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPolyToString",
+      "symbol": "sagejs_fq_poly_to_string",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqPow",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqPow",
+      "symbol": "sagejs_fq_pow",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqSub",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqSub",
+      "symbol": "sagejs_fq_sub",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:fqToString",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "fqToString",
+      "symbol": "sagejs_fq_to_string",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:gcd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "gcd",
+      "symbol": "gcd",
+      "disposition": "declared-ffi-dynamic",
+      "declaration": "flint:fmpz_gcd"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:gmpVersion",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "gmpVersion",
+      "symbol": "gmp_version_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:higherWeightPresentationReduction",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "higherWeightPresentationReduction",
+      "symbol": "sagejs_higher_weight_presentation_reduction",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:identity",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "identity",
+      "symbol": "identity",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:isPrime",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "isPrime",
+      "symbol": "is_prime",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:maninRelationsInfo",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "maninRelationsInfo",
+      "symbol": "sagejs_manin_relations_info",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:maninRelationsRank",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "maninRelationsRank",
+      "symbol": "sagejs_manin_relations_rank",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:maninRelationsRow",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "maninRelationsRow",
+      "symbol": "sagejs_manin_relations_row",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixAdd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixAdd",
+      "symbol": "sagejs_matrix_add",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixApproxEigensystem",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixApproxEigensystem",
+      "symbol": "sagejs_matrix_approx_eigensystem",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixAugment",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixAugment",
+      "symbol": "sagejs_matrix_augment",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixCharpoly",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixCharpoly",
+      "symbol": "sagejs_matrix_charpoly",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixDet",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixDet",
+      "symbol": "sagejs_matrix_det",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixEntry",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixEntry",
+      "symbol": "sagejs_matrix_entry",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixEqual",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixEqual",
+      "symbol": "sagejs_matrix_equal",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixExactEigenvalues",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixExactEigenvalues",
+      "symbol": "sagejs_matrix_exact_eigenvalues",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixExportPacked",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixExportPacked",
+      "symbol": "sagejs_matrix_export_packed",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixHermite",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixHermite",
+      "symbol": "sagejs_matrix_hermite",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixHermiteTransform",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixHermiteTransform",
+      "symbol": "sagejs_matrix_hermite_transform",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixHowell",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixHowell",
+      "symbol": "sagejs_matrix_howell",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixInverse",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixInverse",
+      "symbol": "sagejs_matrix_inverse",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixIsZero",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixIsZero",
+      "symbol": "sagejs_matrix_is_zero",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixMul",
+      "symbol": "sagejs_matrix_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixMulBlas",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixMulBlas",
+      "symbol": "sagejs_matrix_mul_blas",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixNeg",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixNeg",
+      "symbol": "sagejs_matrix_neg",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixPivots",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixPivots",
+      "symbol": "sagejs_matrix_pivots",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixRank",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixRank",
+      "symbol": "sagejs_matrix_rank",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixRightKernel",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixRightKernel",
+      "symbol": "sagejs_matrix_right_kernel",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixRref",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixRref",
+      "symbol": "sagejs_matrix_rref",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixScalarMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixScalarMul",
+      "symbol": "sagejs_matrix_scalar_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixSelectColumns",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixSelectColumns",
+      "symbol": "sagejs_matrix_select_columns",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixSelectRows",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixSelectRows",
+      "symbol": "sagejs_matrix_select_rows",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixSmith",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixSmith",
+      "symbol": "sagejs_matrix_smith",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixSolve",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixSolve",
+      "symbol": "sagejs_matrix_solve",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixSparseLeftMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixSparseLeftMul",
+      "symbol": "sagejs_matrix_sparse_left_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixStack",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixStack",
+      "symbol": "sagejs_matrix_stack",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixSub",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixSub",
+      "symbol": "sagejs_matrix_sub",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixTranspose",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixTranspose",
+      "symbol": "sagejs_matrix_transpose",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpcVersion",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpcVersion",
+      "symbol": "mpc_version",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpfrVersion",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpfrVersion",
+      "symbol": "mpfr_version_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyAdd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyAdd",
+      "symbol": "sagejs_mpoly_add",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyCompare",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyCompare",
+      "symbol": "sagejs_mpoly_compare",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyComposeGen",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyComposeGen",
+      "symbol": "sagejs_mpoly_compose_gen",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyConstant",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyConstant",
+      "symbol": "sagejs_mpoly_constant",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyContext",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyContext",
+      "symbol": "sagejs_mpoly_context",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyDegree",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyDegree",
+      "symbol": "sagejs_mpoly_degree",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyDivExact",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyDivExact",
+      "symbol": "sagejs_mpoly_divexact",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyEqual",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyEqual",
+      "symbol": "sagejs_mpoly_equal",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyGcd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyGcd",
+      "symbol": "sagejs_mpoly_gcd",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyGen",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyGen",
+      "symbol": "sagejs_mpoly_gen",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyGroebner",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyGroebner",
+      "symbol": "sagejs_mpoly_groebner",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyIrreducibleFactors",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyIrreducibleFactors",
+      "symbol": "sagejs_mpoly_irreducible_factors",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyLength",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyLength",
+      "symbol": "sagejs_mpoly_length",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyMul",
+      "symbol": "sagejs_mpoly_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyNeg",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyNeg",
+      "symbol": "sagejs_mpoly_neg",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyPow",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyPow",
+      "symbol": "sagejs_mpoly_pow",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyReduce",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyReduce",
+      "symbol": "sagejs_mpoly_reduce",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyResultant",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyResultant",
+      "symbol": "sagejs_mpoly_resultant",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolySub",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolySub",
+      "symbol": "sagejs_mpoly_sub",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyToString",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyToString",
+      "symbol": "sagejs_mpoly_to_string",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyTotalDegree",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyTotalDegree",
+      "symbol": "sagejs_mpoly_total_degree",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:mpolyUnivariateCoefficients",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "mpolyUnivariateCoefficients",
+      "symbol": "sagejs_mpoly_univariate_coefficients",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nativeAbiVersion",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nativeAbiVersion",
+      "symbol": "native_abi_version",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nextPrime",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nextPrime",
+      "symbol": "next_prime",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nmodMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nmodMatrix",
+      "symbol": "sagejs_nmod_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nmodMatrixPacked",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nmodMatrixPacked",
+      "symbol": "sagejs_nmod_matrix_packed",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nmodMatrixRandom",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nmodMatrixRandom",
+      "symbol": "sagejs_nmod_matrix_random",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nmodPolyConstant",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nmodPolyConstant",
+      "symbol": "nmod_poly_constant",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nmodPolyFactor",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nmodPolyFactor",
+      "symbol": "nmod_poly_factor_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nmodPolyGcd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nmodPolyGcd",
+      "symbol": "nmod_poly_gcd_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nmodPolyGen",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nmodPolyGen",
+      "symbol": "nmod_poly_gen_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nmodPolyIsIrreducible",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nmodPolyIsIrreducible",
+      "symbol": "nmod_poly_is_irreducible_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:nmodPolyRoots",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "nmodPolyRoots",
+      "symbol": "nmod_poly_roots_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1List",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1List",
+      "symbol": "sagejs_p1list",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListApplyI",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListApplyI",
+      "symbol": "sagejs_p1list_apply_i",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListApplyR",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListApplyR",
+      "symbol": "sagejs_p1list_apply_r",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListApplyS",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListApplyS",
+      "symbol": "sagejs_p1list_apply_s",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListApplyT",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListApplyT",
+      "symbol": "sagejs_p1list_apply_t",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListBoundaryData",
+      "symbol": "sagejs_p1list_boundary_data",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListCharacterHeckeMatrix",
+      "symbol": "sagejs_p1list_character_hecke_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListCharacterPresentation",
+      "symbol": "sagejs_p1list_character_presentation",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCount",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListCount",
+      "symbol": "sagejs_p1list_count",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListCuspidalBasis",
+      "symbol": "sagejs_p1list_cuspidal_basis",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListDegeneracyMatrix",
+      "symbol": "sagejs_p1list_degeneracy_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListEntry",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListEntry",
+      "symbol": "sagejs_p1list_entry",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListHeckeMatrix",
+      "symbol": "sagejs_p1list_hecke_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListHigherWeightDegeneracyMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListHigherWeightDegeneracyMatrix",
+      "symbol": "sagejs_p1list_higher_weight_degeneracy_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListHigherWeightHeckeMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListHigherWeightHeckeMatrix",
+      "symbol": "sagejs_p1list_higher_weight_hecke_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListHigherWeightPresentation",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListHigherWeightPresentation",
+      "symbol": "sagejs_p1list_higher_weight_presentation",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListIndex",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListIndex",
+      "symbol": "sagejs_p1list_index",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListLevel",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListLevel",
+      "symbol": "sagejs_p1list_level",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListManinPresentationInfo",
+      "symbol": "sagejs_p1list_manin_presentation_info",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListManinRelations",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListManinRelations",
+      "symbol": "sagejs_p1list_manin_relations",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListNormalize",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListNormalize",
+      "symbol": "sagejs_p1list_normalize",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListReducePath",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListReducePath",
+      "symbol": "sagejs_p1list_reduce_path",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListStarEigenspaceBasis",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListStarEigenspaceBasis",
+      "symbol": "sagejs_p1list_star_eigenspace_basis",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:p1ListStarMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "p1ListStarMatrix",
+      "symbol": "sagejs_p1list_star_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyAdd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyAdd",
+      "symbol": "poly_add",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyCoefficients",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyCoefficients",
+      "symbol": "poly_coefficients",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyDivExact",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyDivExact",
+      "symbol": "poly_divexact_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyEqual",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyEqual",
+      "symbol": "poly_equal",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyExactRoots",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyExactRoots",
+      "symbol": "exact_poly_roots",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyFactor",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyFactor",
+      "symbol": "poly_factor_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyInflate",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyInflate",
+      "symbol": "poly_inflate",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyInvSeries",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyInvSeries",
+      "symbol": "poly_inv_series",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyMul",
+      "symbol": "poly_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyMullow",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyMullow",
+      "symbol": "poly_mullow",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyNeg",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyNeg",
+      "symbol": "poly_neg",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyPow",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyPow",
+      "symbol": "poly_pow",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyPowTrunc",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyPowTrunc",
+      "symbol": "poly_pow_trunc",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyShiftLeft",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyShiftLeft",
+      "symbol": "poly_shift_left",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyShiftRight",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyShiftRight",
+      "symbol": "poly_shift_right",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polySub",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polySub",
+      "symbol": "poly_sub",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyToString",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyToString",
+      "symbol": "poly_to_string",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyTruncate",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyTruncate",
+      "symbol": "poly_truncate",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:polyValuation",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "polyValuation",
+      "symbol": "poly_valuation",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:primePi",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "primePi",
+      "symbol": "prime_pi_count",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:primorial",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "primorial",
+      "symbol": "primorial",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qfbClassGroupData",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qfbClassGroupData",
+      "symbol": "qfb_class_group_data_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qfbClassNumber",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qfbClassNumber",
+      "symbol": "qfb_class_number_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qfbNucomp",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qfbNucomp",
+      "symbol": "qfb_nucomp_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qfbPow",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qfbPow",
+      "symbol": "qfb_pow_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qfbReducedForms",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qfbReducedForms",
+      "symbol": "qfb_reduced_forms_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarAbs",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarAbs",
+      "symbol": "sagejs_qqbar_abs",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarAdd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarAdd",
+      "symbol": "sagejs_qqbar_add",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarApprox",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarApprox",
+      "symbol": "sagejs_qqbar_approx",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarCompareReal",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarCompareReal",
+      "symbol": "sagejs_qqbar_compare_real",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarConjugate",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarConjugate",
+      "symbol": "sagejs_qqbar_conjugate",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarDegree",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarDegree",
+      "symbol": "sagejs_qqbar_degree",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarDiv",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarDiv",
+      "symbol": "sagejs_qqbar_div",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarEqual",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarEqual",
+      "symbol": "sagejs_qqbar_equal",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarFromRational",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarFromRational",
+      "symbol": "sagejs_qqbar_from_rational",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarI",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarI",
+      "symbol": "sagejs_qqbar_i",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarImag",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarImag",
+      "symbol": "sagejs_qqbar_imag",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarIsRational",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarIsRational",
+      "symbol": "sagejs_qqbar_is_rational",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarIsReal",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarIsReal",
+      "symbol": "sagejs_qqbar_is_real",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarMatrix",
+      "symbol": "sagejs_qqbar_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarMatrixScalarMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarMatrixScalarMul",
+      "symbol": "sagejs_qqbar_matrix_scalar_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarMinpolyCoefficients",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarMinpolyCoefficients",
+      "symbol": "sagejs_qqbar_minpoly_coefficients",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarMul",
+      "symbol": "sagejs_qqbar_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarNeg",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarNeg",
+      "symbol": "sagejs_qqbar_neg",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarPow",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarPow",
+      "symbol": "sagejs_qqbar_pow",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarPowRational",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarPowRational",
+      "symbol": "sagejs_qqbar_pow_rational",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarReal",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarReal",
+      "symbol": "sagejs_qqbar_real",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarRootOfUnity",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarRootOfUnity",
+      "symbol": "sagejs_qqbar_root_of_unity",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarSqrt",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarSqrt",
+      "symbol": "sagejs_qqbar_sqrt",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarSub",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarSub",
+      "symbol": "sagejs_qqbar_sub",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqbarToString",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqbarToString",
+      "symbol": "sagejs_qqbar_to_string",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqEisensteinSeries",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqEisensteinSeries",
+      "symbol": "qq_eisenstein_series",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqMatrix",
+      "symbol": "sagejs_qq_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqMatrixExportPacked",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqMatrixExportPacked",
+      "symbol": "sagejs_qq_matrix_export_packed",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqMatrixPacked",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqMatrixPacked",
+      "symbol": "sagejs_qq_matrix_packed",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyConstant",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqPolyConstant",
+      "symbol": "qq_poly_constant",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:qqPolyGen",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "qqPolyGen",
+      "symbol": "qq_poly_gen",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realAdd",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realAdd",
+      "symbol": "sagejs_real_add",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realDiv",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realDiv",
+      "symbol": "sagejs_real_div",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realEqual",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realEqual",
+      "symbol": "sagejs_real_equal",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realFromBigInt",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realFromBigInt",
+      "symbol": "sagejs_real_from_bigint",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realFromRational",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realFromRational",
+      "symbol": "sagejs_real_from_rational",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realFromString",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realFromString",
+      "symbol": "sagejs_real_from_string",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realMul",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realMul",
+      "symbol": "sagejs_real_mul",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realNeg",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realNeg",
+      "symbol": "sagejs_real_neg",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realPowInt",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realPowInt",
+      "symbol": "sagejs_real_pow_int",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realPrecision",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realPrecision",
+      "symbol": "sagejs_real_precision",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realRound",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realRound",
+      "symbol": "sagejs_real_round",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realSub",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realSub",
+      "symbol": "sagejs_real_sub",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realToDouble",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realToDouble",
+      "symbol": "sagejs_real_to_double",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:realToString",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "realToString",
+      "symbol": "sagejs_real_to_string",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:smalljacVersion",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "smalljacVersion",
+      "symbol": "smalljac_version_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:version",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "version",
+      "symbol": "version",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:wordIsPrime",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "wordIsPrime",
+      "symbol": "word_is_prime",
+      "disposition": "declared-ffi-dynamic",
+      "declaration": "flint:n_is_prime"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:wordPrimitiveRootPrime",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "wordPrimitiveRootPrime",
+      "symbol": "word_primitive_root_prime",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zetaZeros",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zetaZeros",
+      "symbol": "sagejs_zeta_zeros",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zmodMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zmodMatrix",
+      "symbol": "sagejs_zmod_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zmodMatrixPacked",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zmodMatrixPacked",
+      "symbol": "sagejs_zmod_matrix_packed",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zmodMatrixRandom",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zmodMatrixRandom",
+      "symbol": "sagejs_zmod_matrix_random",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zmodPolyConstant",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zmodPolyConstant",
+      "symbol": "zmod_poly_constant",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zmodPolyGen",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zmodPolyGen",
+      "symbol": "zmod_poly_gen_value",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzMatrix",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zzMatrix",
+      "symbol": "sagejs_zz_matrix",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzMatrixExportPacked",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zzMatrixExportPacked",
+      "symbol": "sagejs_zz_matrix_export_packed",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzMatrixPacked",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zzMatrixPacked",
+      "symbol": "sagejs_zz_matrix_packed",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzMatrixToQQ",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zzMatrixToQQ",
+      "symbol": "sagejs_zz_matrix_to_qq",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzPolyConstant",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zzPolyConstant",
+      "symbol": "zz_poly_constant",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzPolyGen",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zzPolyGen",
+      "symbol": "zz_poly_gen",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzPolyToNmod",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zzPolyToNmod",
+      "symbol": "zz_poly_to_nmod",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzPolyToQQ",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zzPolyToQQ",
+      "symbol": "zz_poly_to_qq",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:zzPolyToZmod",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "zzPolyToZmod",
+      "symbol": "zz_poly_to_zmod",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-graph:automorphismGroup",
+      "kind": "napi-export",
+      "path": "packages/graph/src/addon.c",
+      "package": "@sagemath/sagejs-graph",
+      "export": "automorphismGroup",
+      "symbol": "automorphism_group",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-graph:canonicalPermutation",
+      "kind": "napi-export",
+      "path": "packages/graph/src/addon.c",
+      "package": "@sagemath/sagejs-graph",
+      "export": "canonicalPermutation",
+      "symbol": "canonical_permutation",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-graph:isomorphic",
+      "kind": "napi-export",
+      "path": "packages/graph/src/addon.c",
+      "package": "@sagemath/sagejs-graph",
+      "export": "isomorphic",
+      "symbol": "isomorphic",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-graph:layout",
+      "kind": "napi-export",
+      "path": "packages/graph/src/addon.c",
+      "package": "@sagemath/sagejs-graph",
+      "export": "layout",
+      "symbol": "layout",
+      "disposition": "legacy-handwritten-dynamic"
+    },
+    {
+      "id": "native-file:bench/cowasm/buffer-landscape/c.c",
+      "kind": "classified-native-file",
+      "path": "bench/cowasm/buffer-landscape/c.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler"
+    },
+    {
+      "id": "native-file:bench/cowasm/landscape/c.c",
+      "kind": "classified-native-file",
+      "path": "bench/cowasm/landscape/c.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler"
+    },
+    {
+      "id": "native-file:bench/native-p1-heilbronn-reference.c",
+      "kind": "classified-native-file",
+      "path": "bench/native-p1-heilbronn-reference.c",
+      "disposition": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler"
+    },
+    {
+      "id": "native-file:packages/flint-wasm/src/factor.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/factor.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/flint-wasm/src/modsym.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "disposition": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/flint-wasm/src/wasi-stubs.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint-wasm/src/wasi-stubs.c",
+      "disposition": "portability-shim",
+      "review_status": "accepted",
+      "lane": "distribution"
+    },
+    {
+      "id": "native-file:packages/flint/include/sagejs/native.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/include/sagejs/native.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "native-compiler"
+    },
+    {
+      "id": "native-file:packages/flint/src/addon.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/addon.c",
+      "disposition": "mixed-native",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/algebraic.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/algebraic.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/algebraic.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/algebraic.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/charpoly.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/charpoly.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/charpoly.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/charpoly.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/cyclotomic_rref.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/cyclotomic_rref.c",
+      "disposition": "mathematical-algorithm",
+      "review_status": "audited",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/cyclotomic_rref.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/cyclotomic_rref.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/dirichlet.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/dirichlet.c",
+      "disposition": "mixed-native",
+      "review_status": "audited",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/dirichlet.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/dirichlet.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/extension_field.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/extension_field.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/extension_field.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/extension_field.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/floating.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/floating.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/floating.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/floating.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/matrix.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/matrix.c",
+      "disposition": "mixed-native",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/matrix.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/matrix.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/modsym_core.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/modsym_core.c",
+      "disposition": "mathematical-algorithm",
+      "review_status": "audited",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/modsym_core.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/modsym_core.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/multivariate.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/multivariate.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/multivariate.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/multivariate.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/number_field_factor.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/number_field_factor.c",
+      "disposition": "mixed-native",
+      "review_status": "audited",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/number_field_factor.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/number_field_factor.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/p1_core.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/p1_core.c",
+      "disposition": "representation-primitive",
+      "review_status": "audited",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/p1_core.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/p1_core.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/p1.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/p1.c",
+      "disposition": "mixed-native",
+      "review_status": "audited",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/p1.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/p1.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/prime_count.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/prime_count.c",
+      "disposition": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/prime_count.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/prime_count.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra"
+    },
+    {
+      "id": "native-file:packages/flint/src/sparse_rational.c",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/sparse_rational.c",
+      "disposition": "mathematical-algorithm",
+      "review_status": "audited",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/flint/src/sparse_rational.h",
+      "kind": "classified-native-file",
+      "path": "packages/flint/src/sparse_rational.h",
+      "disposition": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms"
+    },
+    {
+      "id": "native-file:packages/graph/src/addon.c",
+      "kind": "classified-native-file",
+      "path": "packages/graph/src/addon.c",
+      "disposition": "host-adapter",
+      "review_status": "audited",
+      "lane": "combinatorics-groups"
+    },
+    {
+      "id": "native-file:tools/maple/src/parser.c",
+      "kind": "classified-native-file",
+      "path": "tools/maple/src/parser.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "polyglot"
+    },
+    {
+      "id": "native-file:tools/maple/src/tree_sitter/alloc.h",
+      "kind": "classified-native-file",
+      "path": "tools/maple/src/tree_sitter/alloc.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "polyglot"
+    },
+    {
+      "id": "native-file:tools/maple/src/tree_sitter/array.h",
+      "kind": "classified-native-file",
+      "path": "tools/maple/src/tree_sitter/array.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "polyglot"
+    },
+    {
+      "id": "native-file:tools/maple/src/tree_sitter/parser.h",
+      "kind": "classified-native-file",
+      "path": "tools/maple/src/tree_sitter/parser.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "polyglot"
+    },
+    {
+      "id": "native-file:tools/tree-sitter-python/src/parser.c",
+      "kind": "classified-native-file",
+      "path": "tools/tree-sitter-python/src/parser.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime"
+    },
+    {
+      "id": "native-file:tools/tree-sitter-python/src/scanner.c",
+      "kind": "classified-native-file",
+      "path": "tools/tree-sitter-python/src/scanner.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime"
+    },
+    {
+      "id": "native-file:tools/tree-sitter-python/src/tree_sitter/alloc.h",
+      "kind": "classified-native-file",
+      "path": "tools/tree-sitter-python/src/tree_sitter/alloc.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime"
+    },
+    {
+      "id": "native-file:tools/tree-sitter-python/src/tree_sitter/array.h",
+      "kind": "classified-native-file",
+      "path": "tools/tree-sitter-python/src/tree_sitter/array.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime"
+    },
+    {
+      "id": "native-file:tools/tree-sitter-python/src/tree_sitter/parser.h",
+      "kind": "classified-native-file",
+      "path": "tools/tree-sitter-python/src/tree_sitter/parser.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime"
+    },
+    {
+      "id": "native-file:tools/tree-sitter-sage/src/parser.c",
+      "kind": "classified-native-file",
+      "path": "tools/tree-sitter-sage/src/parser.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime"
+    },
+    {
+      "id": "native-file:tools/tree-sitter-sage/src/scanner.c",
+      "kind": "classified-native-file",
+      "path": "tools/tree-sitter-sage/src/scanner.c",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime"
+    },
+    {
+      "id": "native-file:tools/tree-sitter-sage/src/tree_sitter/alloc.h",
+      "kind": "classified-native-file",
+      "path": "tools/tree-sitter-sage/src/tree_sitter/alloc.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime"
+    },
+    {
+      "id": "native-file:tools/tree-sitter-sage/src/tree_sitter/array.h",
+      "kind": "classified-native-file",
+      "path": "tools/tree-sitter-sage/src/tree_sitter/array.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime"
+    },
+    {
+      "id": "native-file:tools/tree-sitter-sage/src/tree_sitter/parser.h",
+      "kind": "classified-native-file",
+      "path": "tools/tree-sitter-sage/src/tree_sitter/parser.h",
+      "disposition": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime"
+    },
+    {
+      "id": "runtime:array",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "array",
+      "symbol": "Array",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:arraylike",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "arraylike",
+      "symbol": "ρσ_arraylike",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:bigint",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "bigint",
+      "symbol": "BigInt",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:bigint_divexact",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "bigint_divexact",
+      "symbol": "ρσ_bigint_divexact",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:bigint_fields",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "bigint_fields",
+      "symbol": "ρσ_bigint_fields",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:bigint_gcd",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "bigint_gcd",
+      "symbol": "ρσ_bigint_gcd",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:blocking_sleep",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "blocking_sleep",
+      "symbol": "ρσ_blocking_sleep",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:bool_builtin",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "bool_builtin",
+      "symbol": "ρσ_bool",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:callable_instance_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "callable_instance_class",
+      "symbol": "ρσ_callable_instance_class",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:check_interrupt",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "check_interrupt",
+      "symbol": "ρσ_check_interrupt",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:coercion_model",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "coercion_model",
+      "symbol": "ρσ_coercion_model",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:console_object",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "console_object",
+      "symbol": "console",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:documentation_registry",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "documentation_registry",
+      "symbol": "ρσ_documentation_registry",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:dynamic_eval",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "dynamic_eval",
+      "symbol": "ρσ_dynamic_eval",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:element",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "element",
+      "symbol": "Element",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:equals",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "equals",
+      "symbol": "ρσ_equals",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:error",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "error",
+      "symbol": "Error",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:factor_pair",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "factor_pair",
+      "symbol": "ρσ_factor_pair",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:ffi_call",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "ffi_call",
+      "symbol": "ρσ_ffi_call",
+      "disposition": "declared-ffi-gateway"
+    },
+    {
+      "id": "runtime:finalization_registry_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "finalization_registry_class",
+      "symbol": "FinalizationRegistry",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:flint_backend",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "flint_backend",
+      "symbol": "ρσ_flint_backend",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:float_builtin",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "float_builtin",
+      "symbol": "ρσ_float",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:function_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "function_class",
+      "symbol": "Function",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:global_object",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "global_object",
+      "symbol": "globalThis",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:instance_of",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "instance_of",
+      "symbol": "ρσ_native_instanceof",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:int_builtin",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "int_builtin",
+      "symbol": "ρσ_int",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:integer_bigint",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "integer_bigint",
+      "symbol": "ρσ_integer_bigint",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:integer_factorization",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "integer_factorization",
+      "symbol": "IntegerFactorization",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:is_exact_integer",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "is_exact_integer",
+      "symbol": "ρσ_is_exact_integer",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:is_math_element",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "is_math_element",
+      "symbol": "ρσ_is_math_element",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:is_nan",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "is_nan",
+      "symbol": "isNaN",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:iterator_symbol",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "iterator_symbol",
+      "symbol": "ρσ_iterator_symbol",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:json",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "json",
+      "symbol": "JSON",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:jstype",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "jstype",
+      "symbol": "jstype",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:kwargs_symbol",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "kwargs_symbol",
+      "symbol": "ρσ_kwargs_symbol",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:last_exception",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "last_exception",
+      "symbol": "ρσ_last_exception",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:lightweight_math_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "lightweight_math_class",
+      "symbol": "ρσ_lightweight_math_class",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:list_constructor",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "list_constructor",
+      "symbol": "ρσ_list_constructor",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:list_contains",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "list_contains",
+      "symbol": "ρσ_list_contains",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:live_scope_dict",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "live_scope_dict",
+      "symbol": "ρσ_live_scope_dict",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:map",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "map",
+      "symbol": "ρσ_new_map",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:map_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "map_class",
+      "symbol": "Map",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:math",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "math",
+      "symbol": "Math",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:math_tuple",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "math_tuple",
+      "symbol": "ρσ_math_tuple",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:modular_inverse",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "modular_inverse",
+      "symbol": "ρσ_modular_inverse",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:modular_power",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "modular_power",
+      "symbol": "ρσ_modular_power",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:modules",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "modules",
+      "symbol": "ρσ_modules",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:named_tuple",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "named_tuple",
+      "symbol": "ρσ_named_tuple",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_add",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_add",
+      "symbol": "ρσ_native_add",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_bitand",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_bitand",
+      "symbol": "ρσ_native_bitand",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_bitor",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_bitor",
+      "symbol": "ρσ_native_bitor",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_bitxor",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_bitxor",
+      "symbol": "ρσ_native_bitxor",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_div",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_div",
+      "symbol": "ρσ_native_div",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_freeze_tuple",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_freeze_tuple",
+      "symbol": "ρσ_native_freeze_tuple",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_ge",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_ge",
+      "symbol": "ρσ_native_ge",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_get",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_get",
+      "symbol": "ρσ_native_get",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_gt",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_gt",
+      "symbol": "ρσ_native_gt",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_le",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_le",
+      "symbol": "ρσ_native_le",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_lshift",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_lshift",
+      "symbol": "ρσ_native_lshift",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_lt",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_lt",
+      "symbol": "ρσ_native_lt",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_method",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_method",
+      "symbol": "ρσ_native_method",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_method_adapter",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_method_adapter",
+      "symbol": "ρσ_native_method_adapter",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_mod",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_mod",
+      "symbol": "ρσ_native_mod",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_mul",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_mul",
+      "symbol": "ρσ_native_mul",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_neg",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_neg",
+      "symbol": "ρσ_native_neg",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_number_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_number_class",
+      "symbol": "Number",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_pow",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_pow",
+      "symbol": "ρσ_native_pow",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_rshift",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_rshift",
+      "symbol": "ρσ_native_rshift",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:native_sub",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "native_sub",
+      "symbol": "ρσ_native_sub",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:non_exception_throw",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "non_exception_throw",
+      "symbol": "ρσ_non_exception_throw",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:normalize_integer",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "normalize_integer",
+      "symbol": "ρσ_normalize_integer",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:number",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "number",
+      "symbol": "_builtins_number_class",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:object",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "object",
+      "symbol": "Object",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:operator_add_exact",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "operator_add_exact",
+      "symbol": "ρσ_operator_add_exact",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:operator_mul_exact",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "operator_mul_exact",
+      "symbol": "ρσ_operator_mul_exact",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:operator_pow_exact",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "operator_pow_exact",
+      "symbol": "ρσ_operator_pow_exact",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:output_write",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "output_write",
+      "symbol": "ρσ_output_write",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:parse_float",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "parse_float",
+      "symbol": "parseFloat",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:parse_int",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "parse_int",
+      "symbol": "parseInt",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:polynomial_ring",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "polynomial_ring",
+      "symbol": "ρσ_polynomial_ring",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:proxy_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "proxy_class",
+      "symbol": "Proxy",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:qq",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "qq",
+      "symbol": "QQ",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:rational_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "rational_class",
+      "symbol": "Rational",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:real_literal",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "real_literal",
+      "symbol": "create_real_literal",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:reference_error",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "reference_error",
+      "symbol": "ReferenceError",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:reflect",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "reflect",
+      "symbol": "Reflect",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:regexp",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "regexp",
+      "symbol": "RegExp",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:register_doc",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "register_doc",
+      "symbol": "ρσ_register_doc",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:repr",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "repr",
+      "symbol": "ρσ_repr",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:require_module",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "require_module",
+      "symbol": "__sagejs_runtime_require__",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:scope_dict",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "scope_dict",
+      "symbol": "ρσ_scope_dict",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:sequence_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "sequence_class",
+      "symbol": "ρσ_sequence_class",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:set_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "set_class",
+      "symbol": "Set",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:set_class_repr",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "set_class_repr",
+      "symbol": "ρσ_set_class_repr",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:strict_equal",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "strict_equal",
+      "symbol": "ρσ_strict_equal",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:string",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "string",
+      "symbol": "ρσ_string_primitive",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:string_builtin",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "string_builtin",
+      "symbol": "ρσ_str",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:string_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "string_class",
+      "symbol": "String",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:string_find",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "string_find",
+      "symbol": "ρσ_string_find",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:syntax_error",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "syntax_error",
+      "symbol": "SyntaxError",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:tuple_builtin",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "tuple_builtin",
+      "symbol": "ρσ_tuple",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:type_error",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "type_error",
+      "symbol": "TypeError",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:unbound_method_adapter",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "unbound_method_adapter",
+      "symbol": "ρσ_unbound_method_adapter",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:undefined",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "undefined",
+      "symbol": "undefined",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:wall_time",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "wall_time",
+      "symbol": "ρσ_wall_time",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:weak_ref_class",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "weak_ref_class",
+      "symbol": "WeakRef",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:zero_division_error",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "zero_division_error",
+      "symbol": "ZeroDivisionError",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_factor",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_factor",
+      "symbol": "sagejs_factor",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_factor_input",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_factor_input",
+      "symbol": "sagejs_factor_input",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_factor_input_capacity",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_factor_input_capacity",
+      "symbol": "sagejs_factor_input_capacity",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_factor_output",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_factor_output",
+      "symbol": "sagejs_factor_output",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_factor_output_capacity",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_factor_output_capacity",
+      "symbol": "sagejs_factor_output_capacity",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_integer_charpoly_begin",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_integer_charpoly_begin",
+      "symbol": "sagejs_integer_charpoly_begin",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_integer_charpoly_clear",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_integer_charpoly_clear",
+      "symbol": "sagejs_integer_charpoly_clear",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_integer_charpoly_coefficient",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_integer_charpoly_coefficient",
+      "symbol": "sagejs_integer_charpoly_coefficient",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_integer_charpoly_compute",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_integer_charpoly_compute",
+      "symbol": "sagejs_integer_charpoly_compute",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_integer_charpoly_set",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_integer_charpoly_set",
+      "symbol": "sagejs_integer_charpoly_set",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_is_prime",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_is_prime",
+      "symbol": "sagejs_is_prime",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_modsym_clear",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_modsym_clear",
+      "symbol": "sagejs_modsym_clear",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_modsym_dimension",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_modsym_dimension",
+      "symbol": "sagejs_modsym_dimension",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_modsym_farey_cusps",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_modsym_farey_cusps",
+      "symbol": "sagejs_modsym_farey_cusps",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_modsym_p1_checksum",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_modsym_p1_checksum",
+      "symbol": "sagejs_modsym_p1_checksum",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_modsym_p1_count",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_modsym_p1_count",
+      "symbol": "sagejs_modsym_p1_count",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_modsym_weight2_init",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_modsym_weight2_init",
+      "symbol": "sagejs_modsym_weight2_init",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_next_prime",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_next_prime",
+      "symbol": "sagejs_next_prime",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_apply",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_apply",
+      "symbol": "sagejs_p1_apply",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_boundary_data",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_boundary_data",
+      "symbol": "sagejs_p1_boundary_data",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_count",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_count",
+      "symbol": "sagejs_p1_count",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_create",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_create",
+      "symbol": "sagejs_p1_create",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_cusp_count",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_cusp_count",
+      "symbol": "sagejs_p1_cusp_count",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_cusp_denominator",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_cusp_denominator",
+      "symbol": "sagejs_p1_cusp_denominator",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_cusp_numerator",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_cusp_numerator",
+      "symbol": "sagejs_p1_cusp_numerator",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_cuspidal_basis",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_cuspidal_basis",
+      "symbol": "sagejs_p1_cuspidal_basis",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_destroy",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_destroy",
+      "symbol": "sagejs_p1_destroy",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_entry",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_entry",
+      "symbol": "sagejs_p1_entry",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_hecke_matrix",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_hecke_matrix",
+      "symbol": "sagejs_p1_hecke_matrix",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_index",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_index",
+      "symbol": "sagejs_p1_index",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_level",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_level",
+      "symbol": "sagejs_p1_level",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_matrix_columns",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_matrix_columns",
+      "symbol": "sagejs_p1_matrix_columns",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_matrix_data",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_matrix_data",
+      "symbol": "sagejs_p1_matrix_data",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_matrix_rows",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_matrix_rows",
+      "symbol": "sagejs_p1_matrix_rows",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_normalize",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_normalize",
+      "symbol": "sagejs_p1_normalize",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_normalized_scalar",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_normalized_scalar",
+      "symbol": "sagejs_p1_normalized_scalar",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_normalized_u",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_normalized_u",
+      "symbol": "sagejs_p1_normalized_u",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_normalized_v",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_normalized_v",
+      "symbol": "sagejs_p1_normalized_v",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_presentation_field",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_presentation_field",
+      "symbol": "sagejs_p1_presentation_field",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_reduce_path",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_reduce_path",
+      "symbol": "sagejs_p1_reduce_path",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_p1_star_matrix",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/modsym.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_p1_star_matrix",
+      "symbol": "sagejs_p1_star_matrix",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_rational_charpoly_begin",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_rational_charpoly_begin",
+      "symbol": "sagejs_rational_charpoly_begin",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_rational_charpoly_clear",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_rational_charpoly_clear",
+      "symbol": "sagejs_rational_charpoly_clear",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_rational_charpoly_coefficient",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_rational_charpoly_coefficient",
+      "symbol": "sagejs_rational_charpoly_coefficient",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_rational_charpoly_compute",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_rational_charpoly_compute",
+      "symbol": "sagejs_rational_charpoly_compute",
+      "disposition": "legacy-handwritten-wasm"
+    },
+    {
+      "id": "wasm:@sagemath/sagejs-flint-wasm:sagejs_rational_charpoly_set",
+      "kind": "wasm-export",
+      "path": "packages/flint-wasm/src/factor.c",
+      "package": "@sagemath/sagejs-flint-wasm",
+      "export": "sagejs_rational_charpoly_set",
+      "symbol": "sagejs_rational_charpoly_set",
+      "disposition": "legacy-handwritten-wasm"
+    }
+  ]
+}

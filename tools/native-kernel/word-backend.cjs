@@ -38,6 +38,7 @@ function wordType(type) {
   if (type === "Int64Buffer" || type === "Int64Record") {
     return "sagejs_int64_buffer";
   }
+  if (type === "UInt64Buffer") return "sagejs_uint64_buffer";
   if (type === "IntegerBuffer") return "sagejs_integer_buffer";
   throw new Error(`unsupported machine-word type ${type}`);
 }
@@ -404,6 +405,7 @@ function emitWordOperation(operation, context, indent) {
       value,
       result: value,
       promote: context.promote,
+      failure: context.failure,
     }, indent);
   }
   throw new Error(`unsupported word C IR operation ${operation.kind}`);
@@ -507,7 +509,7 @@ function emitWordFunction(fn, functions) {
     )
     .map((local) => `    ${wordType(local.type)} ${wordName(local.name)} = ` +
       `${local.type === "Int64Buffer" || local.type === "Int64Record" ||
-        local.type === "IntegerBuffer"
+        local.type === "IntegerBuffer" || local.type === "UInt64Buffer"
         ? "{0}" : "0"};`);
   const context = {
     failure: "return SAGEJS_WORD_ERROR;",

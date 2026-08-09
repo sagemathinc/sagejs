@@ -94,6 +94,13 @@ ordinary dynamic wrapper and host-isolated native lowering. Mathematical code
 imports only generated safe modules under `sagejs.ffi`; it does not load an
 addon, name a C symbol, own a raw pointer, or encode cleanup itself.
 
+The complete exported native surface is ratcheted in
+[`architecture/native-boundaries.json`](architecture/native-boundaries.json).
+`sagejs ffi audit` and `pnpm architecture:check` reject unreviewed N-API,
+Wasm, runtime-intrinsic, declaration, or classified-native-file drift. Updating
+the inventory requires explicit regeneration and review; regeneration does not
+classify or justify a new boundary by itself.
+
 Native lowering resolves an imported function by Python module, declaration
 identity, and declaration content hash. It MUST NOT infer a foreign call from
 an unqualified function name. The IR retains the foreign identity, semantic

@@ -14,12 +14,14 @@ const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const declarations = require("../tools/ffi/declarations.cjs");
+const boundaryAudit = require("../tools/ffi/boundary-audit.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 
 const root = join(__dirname, "..");
 const witness = join(root, "bench", "native-ffi-flint.py");
+const matrixWitness = join(root, "bench", "native-ffi-flint-matrix.py");
 
 function runSage(args, input = undefined) {
   const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), ...args], {
@@ -46,13 +48,13 @@ function runSageDiagnostic(args, input) {
 
 test("FFI declarations are strict and generated modules are current", () => {
   const registry = declarations.loadRegistry({ root });
-  assert.equal(registry.schema, "sagejs.ffi/declaration-v1");
+  assert.equal(registry.schema, "sagejs.ffi/declaration-v2");
   assert.equal(registry.libraries.length, 1);
   const flint = registry.byId.get("flint");
   assert.equal(flint.library.python_module, "sagejs.ffi.flint");
   assert.deepEqual(
     flint.functions.map((fn) => fn.id),
-    ["n_is_prime", "fmpz_gcd"],
+    ["n_is_prime", "fmpz_gcd", "nmod_mat_rank", "nmod_mat_inv"],
   );
   assert.match(flint.identity, /^flint@[0-9a-f]{64}$/);
   const generated = declarations.generatedModulePath(root, flint);
@@ -64,12 +66,28 @@ test("FFI declarations are strict and generated modules are current", () => {
     readFileSync(generated, "utf8"),
     /_runtime\.ffi_call\(\n\s+__sagejs_ffi_declaration__ \+ ":n_is_prime"/,
   );
-  assert.match(runSage(["ffi", "check"]), /2 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /4 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
   assert.equal(inspection.identity, flint.identity);
   assert.equal(inspection.functions[1].native.symbol, "fmpz_gcd");
+});
+
+test("native-boundary audit is a reviewed exact ratchet", () => {
+  const filename = boundaryAudit.snapshotPath(root);
+  const snapshot = JSON.parse(readFileSync(filename, "utf8"));
+  const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
+  assert.ok(current.counts["napi-export"] >= 280);
+  assert.ok(current.counts["runtime-intrinsic"] >= 100);
+  assert.equal(current.counts["declared-ffi"], 4);
+  assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
+  const stale = structuredClone(snapshot);
+  stale.boundaries.pop();
+  assert.throws(
+    () => boundaryAudit.validateBoundarySnapshot(stale, { root }),
+    /native-boundary inventory has drifted/,
+  );
 });
 
 test("FFI declarations fail closed on unknown fields", () => {
@@ -131,6 +149,24 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
     },
     /omits native source right/,
   );
+  invalid(
+    (document) => {
+      document.functions[2].native.arguments[0].adapter.data = "rows";
+    },
+    /adapter data must be UInt64Buffer/,
+  );
+  invalid(
+    (document) => {
+      document.functions[3].effects.pure = true;
+    },
+    /effects.pure functions may not declare writes/,
+  );
+  invalid(
+    (document) => {
+      document.functions[3].errors.exception = "KeyError";
+    },
+    /uses unsupported error exception KeyError/,
+  );
 });
 
 test("safe generated FLINT surface works in ordinary Sage.js", () => {
@@ -151,6 +187,24 @@ test("safe generated FLINT surface works in ordinary Sage.js", () => {
     runSageDiagnostic(["--python"],
       "from sagejs.ffi.flint import fmpz_gcd\nfmpz_gcd(1.5, 2)\n"),
     /invalid dynamic FFI argument for Integer/,
+  );
+});
+
+test("packed FLINT matrix declarations work in ordinary Sage.js", () => {
+  const output = runSage(["--python"], [
+    "from sagejs.ffi.flint import nmod_mat_rank, nmod_mat_inv",
+    "print(nmod_mat_rank([1, 2, 3, 4], 2, 2, 5))",
+    "out = [0, 0, 0, 0]",
+    "print(nmod_mat_inv(out, [1, 2, 3, 4], 2, 5), out)",
+    "try:",
+    "    nmod_mat_inv([0, 0, 0, 0], [1, 2, 2, 4], 2, 5)",
+    "except ValueError as error:",
+    "    print(type(error).__name__, str(error))",
+    "",
+  ].join("\n"));
+  assert.equal(
+    output.trim(),
+    "2\nTrue [3, 1, 4, 2]\nValueError matrix is singular",
   );
 });
 
@@ -185,6 +239,66 @@ test("typed FFI imports lower to declared host-isolated calls", async () => {
   assert.match(core.source, /fmpz_set_mpz\(/);
   assert.match(core.source, /fmpz_get_mpz\(/);
   assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/);
+});
+
+test("packed matrix FFI lowers to lexical FLINT storage with checked status", async () => {
+  const source = readFileSync(matrixWitness, "utf8");
+  const ir = await lowerSource(source, matrixWitness);
+  assert.deepEqual(
+    ir.functions.map((fn) => fn.analysis.effects.externalWrites),
+    [[], ["output"]],
+  );
+  assert.equal(ir.functions[0].analysis.effects.replaySafe, true);
+  assert.equal(ir.functions[1].analysis.effects.replaySafe, false);
+  const core = generateHostCore(ir);
+  assert.equal(core.audit.hostCallbacks, 0);
+  assert.match(core.header, /sagejs_uint64_buffer/);
+  assert.match(core.source, /nmod_mat_init\(/);
+  assert.match(core.source, /nmod_mat_rank\(/);
+  assert.match(core.source, /nmod_mat_inv\(/);
+  assert.match(core.source, /nmod_mat_clear\(/);
+  assert.match(core.source, /matrix is singular/);
+  assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/);
+});
+
+test("compiled packed matrix FFI agrees with fallback and supports aliasing", async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-matrix-"));
+  try {
+    const result = await compileKernel({
+      sourcePath: matrixWitness,
+      cacheRoot: temporary,
+    });
+    const module = require(result.modulePath);
+    const source = module.createUInt64Buffer([1n, 2n, 3n, 4n]);
+    assert.equal(module.flint_nmod_rank(source, 2n, 2n, 5n), 2n);
+    assert.equal(
+      module.flint_nmod_rank.javascript(source, 2n, 2n, 5n),
+      2n,
+    );
+    const output = module.createUInt64Buffer(4);
+    assert.equal(module.flint_nmod_inverse(output, source, 2n, 5n), true);
+    assert.deepEqual(Array.from(output), [3n, 1n, 4n, 2n]);
+    const alias = module.createUInt64Buffer([1n, 2n, 3n, 4n]);
+    assert.equal(module.flint_nmod_inverse(alias, alias, 2n, 5n), true);
+    assert.deepEqual(Array.from(alias), [3n, 1n, 4n, 2n]);
+    const dynamicOutput = [0n, 0n, 0n, 0n];
+    assert.equal(module.flint_nmod_inverse.javascript(
+      dynamicOutput, [1n, 2n, 3n, 4n], 2n, 5n,
+    ), true);
+    assert.deepEqual(dynamicOutput, [3n, 1n, 4n, 2n]);
+    const singular = module.createUInt64Buffer([1n, 2n, 2n, 4n]);
+    const failedOutput = module.createUInt64Buffer([9n, 9n, 9n, 9n]);
+    assert.throws(
+      () => module.flint_nmod_inverse(
+        failedOutput, singular, 2n, 5n,
+      ),
+      /matrix is singular/,
+    );
+    assert.deepEqual(Array.from(failedOutput), [9n, 9n, 9n, 9n]);
+    assert.deepEqual(module.flint_nmod_inverse.effects.externalWrites, ["output"]);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test("declared FLINT functions execute identically through native and fallback paths", async () => {

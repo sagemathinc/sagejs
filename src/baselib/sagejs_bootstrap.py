@@ -171,7 +171,7 @@ def ρσ_documentation_registry():
 
 def ρσ_ffi_call(
     declaration_identity, package_name, export_name, values, parameter_types,
-    return_type
+    return_type, error_policy, error_exception, error_message
 ):
     """Marshal a checked declaration call to its ordinary dynamic backend."""
     return r"""%js (() => {
@@ -212,11 +212,47 @@ def ρσ_ffi_call(
             if (parameter_type === "bool" && typeof value === "boolean") {
                 return value;
             }
+            if (parameter_type === "UInt64Buffer") {
+                if (
+                    value !== null
+                    && (typeof value === "object"
+                        || typeof value === "function")
+                ) {
+                    const length = Number(Reflect.get(value, "length"));
+                    if (Number.isSafeInteger(length) && length >= 0) {
+                        for (let position = 0; position < length; position++) {
+                            const entry = Reflect.get(value, String(position));
+                            const exact = typeof entry === "bigint"
+                                ? entry
+                                : Number.isSafeInteger(entry)
+                                    ? BigInt(entry) : -1n;
+                            if (exact < 0n || exact > 18446744073709551615n) {
+                                throw new TypeError(
+                                    "invalid UInt64Buffer entry"
+                                );
+                            }
+                        }
+                        return value;
+                    }
+                }
+            }
             throw new TypeError(
                 `invalid dynamic FFI argument for ${parameter_type}`
             );
         });
         const result = Reflect.apply(callable_value, backend, marshalled);
+        if (error_policy === "zero_is_error" && result === false) {
+            const exception_classes = {
+                OverflowError, RuntimeError, TypeError, ValueError
+            };
+            const exception_class = exception_classes[error_exception];
+            if (typeof exception_class !== "function") {
+                throw new RuntimeError(
+                    `unsupported FFI exception ${error_exception}`
+                );
+            }
+            throw new exception_class(error_message);
+        }
         if (return_type === "bool" && typeof result === "boolean") {
             return result;
         }

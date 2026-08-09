@@ -46,7 +46,7 @@ const {
   foreignHeaders,
 } = require("./ffi-codegen.cjs");
 
-const NATIVE_ABI_VERSION = 15;
+const NATIVE_ABI_VERSION = 16;
 
 function statusFailure(kind, message, indent) {
   const code = {
@@ -66,8 +66,13 @@ function isIntegerBufferType(type) {
   return type === "IntegerBuffer";
 }
 
+function isUInt64BufferType(type) {
+  return type === "UInt64Buffer";
+}
+
 function exactBufferCType(type) {
   if (isInt64BufferType(type)) return "sagejs_int64_buffer";
+  if (isUInt64BufferType(type)) return "sagejs_uint64_buffer";
   if (isIntegerBufferType(type)) return "sagejs_integer_buffer";
   return undefined;
 }
@@ -209,6 +214,7 @@ function internalArgument(param) {
   if (param.type === "uint64") return `uint64_t ${name}`;
   if (param.type === "bool") return `int ${name}`;
   if (isInt64BufferType(param.type)) return `sagejs_int64_buffer ${name}`;
+  if (isUInt64BufferType(param.type)) return `sagejs_uint64_buffer ${name}`;
   if (isIntegerBufferType(param.type)) return `sagejs_integer_buffer ${name}`;
   throw new Error(`unsupported exact native parameter ${param.type}`);
 }
@@ -565,6 +571,7 @@ function emitExactOperation(operation, context, indent) {
     return emitExactForeignCall(operation, {
       value: (name) => exactValue(name, context),
       result: (name) => exactValue(name, context),
+      failure: "goto fail;",
     }, indent);
   }
   throw new Error(`unsupported exact C IR operation ${operation.kind}`);
@@ -779,6 +786,11 @@ function emitTaggedWrapper(fn) {
       parse = `if (!sagejs_native_get_int64_buffer(env, args[${index}], ` +
         `&${value}, ${cString(param.name + " must be a BigInt64Array")}))\n` +
         "            goto fail;";
+    } else if (isUInt64BufferType(param.type)) {
+      declarations.push(`    sagejs_uint64_buffer ${value};`);
+      parse = `if (!sagejs_native_get_uint64_buffer(env, args[${index}], ` +
+        `&${value}, ${cString(param.name + " must be a BigUint64Array")}))\n` +
+        "            goto fail;";
     } else if (isIntegerBufferType(param.type)) {
       declarations.push(`    sagejs_integer_buffer ${value};`);
       parse = `if (!sagejs_native_get_integer_buffer(env, args[${index}], ` +
@@ -923,6 +935,11 @@ function emitExactWrapper(fn) {
       declarations.push(`    sagejs_int64_buffer ${value};`);
       parse = `if (!sagejs_native_get_int64_buffer(env, args[${index}], ` +
         `&${value}, ${cString(param.name + " must be a BigInt64Array")}))\n` +
+        "            goto fail;";
+    } else if (isUInt64BufferType(param.type)) {
+      declarations.push(`    sagejs_uint64_buffer ${value};`);
+      parse = `if (!sagejs_native_get_uint64_buffer(env, args[${index}], ` +
+        `&${value}, ${cString(param.name + " must be a BigUint64Array")}))\n` +
         "            goto fail;";
     } else if (isIntegerBufferType(param.type)) {
       declarations.push(`    sagejs_integer_buffer ${value};`);
@@ -1462,6 +1479,34 @@ typedef struct
 } sagejs_int64_buffer;`;
 }
 
+function generateUInt64BufferNodeAdapter() {
+  return `
+static int sagejs_native_get_uint64_buffer(
+    napi_env env,
+    napi_value value,
+    sagejs_uint64_buffer *result,
+    const char *argument)
+{
+    bool typed = false;
+    napi_typedarray_type type;
+    size_t length = 0;
+    void *data = NULL;
+    napi_value array_buffer;
+    size_t byte_offset = 0;
+    if (napi_is_typedarray(env, value, &typed) != napi_ok || !typed ||
+        napi_get_typedarray_info(env, value, &type, &length, &data,
+            &array_buffer, &byte_offset) != napi_ok ||
+        type != napi_biguint64_array)
+    {
+        napi_throw_type_error(env, NULL, argument);
+        return 0;
+    }
+    result->data = (uint64_t *) data;
+    result->length = length;
+    return 1;
+}`;
+}
+
 function generateInt64BufferCoreSupport() {
   return `
 static int sagejs_int64_buffer_index(
@@ -1786,6 +1831,10 @@ function coreHeader(ir) {
     fn.params.some((param) => isInt64BufferType(param.type)) ||
     fn.locals.some((local) => isInt64BufferType(local.type))
   );
+  const usesUInt64Buffers = exact.some((fn) =>
+    fn.params.some((param) => isUInt64BufferType(param.type)) ||
+    fn.locals.some((local) => isUInt64BufferType(local.type))
+  );
   const usesIntegerBuffers = exact.some((fn) =>
     fn.params.some((param) => isIntegerBufferType(param.type)) ||
     fn.locals.some((local) => isIntegerBufferType(local.type))
@@ -1820,6 +1869,12 @@ typedef struct
     int64_t *data;
     size_t length;
 } sagejs_int64_buffer;
+` : ""}${usesUInt64Buffers ? `
+typedef struct
+{
+    uint64_t *data;
+    size_t length;
+} sagejs_uint64_buffer;
 ` : ""}${usesIntegerBuffers ? `
 typedef struct
 {
@@ -1890,6 +1945,10 @@ function generateHostCore(ir) {
   const usesInt64Buffers = exact.some((fn) =>
     fn.params.some((param) => isInt64BufferType(param.type)) ||
     fn.locals.some((local) => isInt64BufferType(local.type))
+  );
+  const usesUInt64Buffers = exact.some((fn) =>
+    fn.params.some((param) => isUInt64BufferType(param.type)) ||
+    fn.locals.some((local) => isUInt64BufferType(local.type))
   );
   const usesIntegerBuffers = exact.some((fn) =>
     fn.params.some((param) => isIntegerBufferType(param.type)) ||
@@ -2037,12 +2096,17 @@ static int get_precision(
     fn.params.some((param) => isInt64BufferType(param.type)) ||
     fn.locals.some((local) => isInt64BufferType(local.type))
   );
+  const usesUInt64Buffers = exact.some((fn) =>
+    fn.params.some((param) => isUInt64BufferType(param.type)) ||
+    fn.locals.some((local) => isUInt64BufferType(local.type))
+  );
   const usesIntegerBuffers = exact.some((fn) =>
     fn.params.some((param) => isIntegerBufferType(param.type)) ||
     fn.locals.some((local) => isIntegerBufferType(local.type))
   );
   const bufferAdapters = [
     usesInt64Buffers ? generateInt64BufferNodeAdapter() : "",
+    usesUInt64Buffers ? generateUInt64BufferNodeAdapter() : "",
     usesIntegerBuffers ? generateIntegerBufferNodeAdapter() : "",
   ].filter(Boolean).join("\n\n");
   const floatBuffers = floats.some((fn) =>
