@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "decision_values": [
+      "retain-bridge",
+      "retain-primitive",
+      "split-and-migrate",
+      "typed-remediation-pilot"
+    ],
+    "priority_values": ["critical", "high", "medium", "low"],
+    "required_oracles": ["CPython", "Sage.js JavaScript fallback"]
+  },
+  "files": [
+    {
+      "path": "packages/flint/src/addon.c",
+      "lines": 4399,
+      "bytes": 141198,
+      "decision": "split-and-migrate",
+      "priority": "high",
+      "responsibilities": [
+        "Node-API module registration and value conversion",
+        "GMP and FLINT representation wrappers",
+        "locally implemented integer, polynomial, and factoring helpers"
+      ],
+      "rationale": "The boundary is legitimate, but a 4,399-line adapter cannot make ownership of locally implemented mathematics visible. Split registration and representation primitives from algorithms, then assess each local algorithm against typed Python and mature FLINT operations.",
+      "fallback": "Existing ordinary Python arithmetic remains the capability fallback while each exported operation is separated.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
+      "next": "Create a symbol-level inventory and extract one representation-neutral helper family per change set."
+    },
+    {
+      "path": "packages/flint/src/cyclotomic_rref.c",
+      "lines": 1008,
+      "bytes": 33170,
+      "decision": "split-and-migrate",
+      "priority": "medium",
+      "responsibilities": [
+        "exact cyclotomic row reduction",
+        "FLINT polynomial storage and arithmetic",
+        "native result ownership"
+      ],
+      "rationale": "This is Sage.js-owned mathematical code over a mature FLINT representation. Keep FLINT polynomial primitives, but make the row-reduction control flow a future typed-Python witness once packed polynomial buffers are available.",
+      "fallback": "The current native implementation remains capability-gated until an ordinary Python body has matching correctness and performance evidence.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
+      "next": "Define a packed cyclotomic-row ABI and differential corpus before attempting migration."
+    },
+    {
+      "path": "packages/flint/src/dirichlet.c",
+      "lines": 971,
+      "bytes": 27884,
+      "decision": "split-and-migrate",
+      "priority": "medium",
+      "responsibilities": [
+        "Node-API conversion",
+        "FLINT Dirichlet group and character calls",
+        "locally assembled character values and metadata"
+      ],
+      "rationale": "The FLINT bridge belongs natively, while character-level orchestration is readable mathematical policy. Separate the packed group/character ABI and move orchestration to strict Python as coverage permits.",
+      "fallback": "Dynamic Python character construction remains correct without the native capability.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
+      "next": "Separate conversion-only exports from character assembly and benchmark batched packed output."
+    },
+    {
+      "path": "packages/flint/src/matrix.c",
+      "lines": 5803,
+      "bytes": 189778,
+      "decision": "split-and-migrate",
+      "priority": "high",
+      "responsibilities": [
+        "Node-API matrix representation",
+        "FLINT dense and sparse matrix calls",
+        "locally implemented matrix algorithms and conversion paths"
+      ],
+      "rationale": "The largest mixed native source combines an essential packed FLINT boundary with Sage.js-owned algorithms. Retain mature FLINT calls, split the ABI by representation, and use existing prime-field typed witnesses to migrate local control flow where it is competitive.",
+      "fallback": "Every matrix operation retains its tested Python/JavaScript implementation or an explicit native capability diagnostic.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
+      "next": "Generate an export-to-implementation map and prioritize algorithms that do not directly delegate to FLINT."
+    },
+    {
+      "path": "packages/flint/src/modsym_core.c",
+      "lines": 1458,
+      "bytes": 46410,
+      "decision": "split-and-migrate",
+      "priority": "high",
+      "responsibilities": [
+        "weight-two Manin presentation construction",
+        "boundary, Hecke, star, and cuspidal computations",
+        "host-neutral packed result ownership shared by Node and Wasm"
+      ],
+      "rationale": "The host-neutral core is substantially better than duplicating Node and Wasm algorithms, but it remains Sage.js-owned mathematical C adapted from PARI. Preserve its packed ABI as an oracle and migrate control flow after P1 and sparse exact storage are proven compiler domains.",
+      "fallback": "Strict Python modular-symbol algorithms remain the semantic reference; Node and Wasm continue using this core during staged migration.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "PARI/GP"],
+      "next": "Use the P1 pilot to establish packed records, then select one complete Manin relation stage for source-transparent compilation."
+    },
+    {
+      "path": "packages/flint/src/number_field_factor.c",
+      "lines": 516,
+      "bytes": 16714,
+      "decision": "retain-bridge",
+      "priority": "low",
+      "responsibilities": [
+        "Node-API polynomial conversion",
+        "FLINT cyclotomic number-field factorization calls",
+        "result normalization and ownership"
+      ],
+      "rationale": "The core mathematics is a mature FLINT algorithm and should not be recreated. Keep the bridge, but isolate conversion and ownership from any policy-level factor selection.",
+      "fallback": "The operation is an explicit FLINT capability with tested dynamic behavior when unavailable.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
+      "next": "Document the packed polynomial ABI and keep further mathematical control flow out of the adapter."
+    },
+    {
+      "path": "packages/flint/src/p1.c",
+      "lines": 4603,
+      "bytes": 161898,
+      "decision": "typed-remediation-pilot",
+      "priority": "critical",
+      "responsibilities": [
+        "Node-API P1 and presentation wrappers",
+        "integer and rational sparse star eigenspaces",
+        "higher-weight and character presentations",
+        "Heilbronn representatives and Hecke assembly",
+        "path reduction and result conversion"
+      ],
+      "rationale": "This file is the clearest architecture violation: an adapter contains several independent research algorithms and low-level exact-memory management. The continued-fraction Heilbronn enumeration is the first same-source typed-Python pilot; sparse exact elimination follows only after packed records and rational storage are compiler features.",
+      "fallback": "The typed pilot is ordinary CPython source; the existing C implementation remains a differential and performance oracle until production replacement is justified.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "existing p1.c", "PARI/GP"],
+      "next": "Compile and benchmark the unchanged typed Heilbronn body, expose every representative for differential tests, then design packed output before replacing the C path.",
+      "pilot": "src/lib/sagejs/kernels/p1.py"
+    },
+    {
+      "path": "packages/flint/src/p1_core.c",
+      "lines": 338,
+      "bytes": 8803,
+      "decision": "retain-primitive",
+      "priority": "medium",
+      "responsibilities": [
+        "canonical P1 pair normalization and hashing",
+        "packed P1 list construction",
+        "host-neutral ownership shared by Node and Wasm"
+      ],
+      "rationale": "This is a compact representation primitive with a useful cross-host ABI, not an adapter accident. Retain it while using normalization as the next typed-Python compiler witness; replacement should occur only if packed typed output matches its clarity and speed.",
+      "fallback": "Dynamic P1 normalization and enumeration remain available in mathematical Python.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "existing p1_core.c"],
+      "next": "Add source-transparent normalization and packed pair-buffer witnesses after the Heilbronn pilot."
+    },
+    {
+      "path": "packages/flint/src/sparse_rational.c",
+      "lines": 1186,
+      "bytes": 39704,
+      "decision": "split-and-migrate",
+      "priority": "high",
+      "responsibilities": [
+        "sparse rational packed storage",
+        "exact row operations and elimination",
+        "Node-API conversion and ownership"
+      ],
+      "rationale": "The representation is a plausible primitive, but elimination policy is Sage.js-owned mathematics. Separate packed fmpq storage from algorithms and revisit after the compiler has explicit rational values, sparse records, and scratch ownership.",
+      "fallback": "Ordinary Python sparse rational arithmetic is the semantic oracle during migration.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
+      "next": "Specify sparse-row ownership independently of elimination and construct adversarial differential matrices."
+    },
+    {
+      "path": "packages/graph/src/addon.c",
+      "lines": 503,
+      "bytes": 16596,
+      "decision": "retain-bridge",
+      "priority": "low",
+      "responsibilities": [
+        "Node-API graph conversion",
+        "nauty/Traces invocation",
+        "canonical labels and automorphism result conversion"
+      ],
+      "rationale": "The sophisticated algorithms live in nauty rather than Sage.js. Keep this as a narrow external-library bridge and resist adding graph algorithms directly to it.",
+      "fallback": "Dynamic graph methods provide tested behavior when the native graph capability is absent.",
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "nauty"],
+      "next": "Document the graph ABI and split registration from conversion if the adapter grows."
+    }
+  ]
+}

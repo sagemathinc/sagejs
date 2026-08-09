@@ -26,15 +26,21 @@ function allFiles(directory) {
 }
 
 function ownerOf(filename, packages) {
+  const exactOwners = packages.filter((component) =>
+    component.files.includes(filename),
+  );
+  if (exactOwners.length > 0) return exactOwners;
   return packages.filter((component) =>
-    component.files.includes(filename) ||
     component.prefixes.some((prefix) => filename.startsWith(prefix)),
   );
 }
 
 function typescriptOwnerOf(filename, packages) {
+  const exactOwners = packages.filter((component) =>
+    (component.typescript_files ?? []).includes(filename),
+  );
+  if (exactOwners.length > 0) return exactOwners;
   return packages.filter((component) =>
-    (component.typescript_files ?? []).includes(filename) ||
     (component.typescript_prefixes ?? []).some((prefix) => filename.startsWith(prefix)),
   );
 }

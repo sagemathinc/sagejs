@@ -1327,26 +1327,57 @@ static int mpz_to_int64(const mpz_t value, int64_t *result)
 #define SAGEJS_WORD_OK 1
 #define SAGEJS_WORD_ERROR -1
 
+#if defined(_MSC_VER)
+#define SAGEJS_WORD_INLINE static __forceinline
+#elif defined(__GNUC__) || defined(__clang__)
+#define SAGEJS_WORD_INLINE static inline __attribute__((always_inline))
+#else
+#define SAGEJS_WORD_INLINE static inline
+#endif
+
 static int sagejs_word_add_int64(int64_t left, int64_t right, int64_t *result)
 {
+#if defined(__GNUC__) || defined(__clang__)
+    int64_t temporary;
+    if (__builtin_add_overflow(left, right, &temporary))
+        return 0;
+    *result = temporary;
+    return 1;
+#else
     if ((right > 0 && left > INT64_MAX - right) ||
         (right < 0 && left < INT64_MIN - right))
         return 0;
     *result = left + right;
     return 1;
+#endif
 }
 
 static int sagejs_word_sub_int64(int64_t left, int64_t right, int64_t *result)
 {
+#if defined(__GNUC__) || defined(__clang__)
+    int64_t temporary;
+    if (__builtin_sub_overflow(left, right, &temporary))
+        return 0;
+    *result = temporary;
+    return 1;
+#else
     if ((right > 0 && left < INT64_MIN + right) ||
         (right < 0 && left > INT64_MAX + right))
         return 0;
     *result = left - right;
     return 1;
+#endif
 }
 
 static int sagejs_word_mul_int64(int64_t left, int64_t right, int64_t *result)
 {
+#if defined(__GNUC__) || defined(__clang__)
+    int64_t temporary;
+    if (__builtin_mul_overflow(left, right, &temporary))
+        return 0;
+    *result = temporary;
+    return 1;
+#else
     if (left == 0 || right == 0)
     {
         *result = 0;
@@ -1362,6 +1393,7 @@ static int sagejs_word_mul_int64(int64_t left, int64_t right, int64_t *result)
         return 0;
     *result = left * right;
     return 1;
+#endif
 }
 
 static int sagejs_word_pow_int64(

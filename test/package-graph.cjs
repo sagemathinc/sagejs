@@ -25,6 +25,10 @@ test("the checked-in package graph owns every Python source and respects budgets
   );
   assert.equal(result.ownership.get("src/baselib/modular.py"), "modular-forms");
   assert.equal(
+    result.ownership.get("src/lib/sagejs/kernels/p1.py"),
+    "modular-forms",
+  );
+  assert.equal(
     result.typescriptOwnership.get("tools/serialization-codecs/arithmetic.ts"),
     "arithmetic",
   );

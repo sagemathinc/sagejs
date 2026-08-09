@@ -61,6 +61,12 @@ Every tracked C/C++ source or header is classified in
 [`architecture/native-code.json`](architecture/native-code.json).  New files
 are rejected by `pnpm architecture:check` until classified.  The categories
 distinguish adapters and generated parsers from mathematical algorithms.
+Focused reviews of mixed and mathematical sources live in
+[`architecture/native-audit.json`](architecture/native-audit.json).  The gate
+checks that audited sources still have the reviewed byte and line counts, so a
+later edit cannot quietly rely on a stale architectural conclusion.
+The current human-readable findings and P1 remediation evidence are in
+[`architecture/NATIVE-AUDIT.md`](architecture/NATIVE-AUDIT.md).
 
 An exception for handwritten mathematical native code records:
 

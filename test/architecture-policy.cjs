@@ -7,6 +7,7 @@ const { join, resolve } = require("node:path");
 
 const {
   nativeFiles,
+  validateNativeAudit,
   validateKernelRegistry,
   validateNativeCode,
 } = require("../scripts/check-native-architecture.cjs");
@@ -20,13 +21,32 @@ const kernelManifest = JSON.parse(readFileSync(
   join(root, "architecture", "native-kernels.json"),
   "utf8",
 ));
+const auditManifest = JSON.parse(readFileSync(
+  join(root, "architecture", "native-audit.json"),
+  "utf8",
+));
 
 test("every tracked native file has an architectural classification", () => {
   const result = validateNativeCode(codeManifest);
   assert.equal(result.entries.length, nativeFiles().length);
-  assert.ok(result.auditRequired.some((entry) =>
+  assert.ok(result.audited.some((entry) =>
     entry.path === "packages/flint/src/p1.c"
   ));
+});
+
+test("focused native audits are complete and metric-checked", () => {
+  const code = validateNativeCode(codeManifest);
+  const result = validateNativeAudit(auditManifest, code);
+  assert.equal(result.entries.length, code.audited.length);
+  assert.equal(code.auditRequired.length, 0);
+  assert.equal(
+    result.entries.find((entry) => entry.path === "packages/flint/src/p1.c")
+      .decision,
+    "typed-remediation-pilot",
+  );
+  const stale = structuredClone(auditManifest);
+  stale.files[0].bytes += 1;
+  assert.throws(() => validateNativeAudit(stale, code), /metrics are stale/);
 });
 
 test("unclassified and stale native files fail closed", () => {

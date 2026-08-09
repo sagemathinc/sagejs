@@ -46,6 +46,26 @@
       "oracles": ["cpython", "javascript", "pari"],
       "benchmark": "bench:native:tate",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "p1-heilbronn-witness",
+      "source": "src/lib/sagejs/kernels/p1.py",
+      "functions": [
+        "p1_gcd",
+        "p1_xgcd_left",
+        "p1_normalize_with_scalar",
+        "p1_round_quotient",
+        "heilbronn_cremona_count",
+        "heilbronn_cremona_digest",
+        "heilbronn_cremona_entry",
+        "heilbronn_merel_digest",
+        "heilbronn_merel_entry"
+      ],
+      "semantic_domain": "exact continued-fraction Heilbronn representatives used by higher-weight modular symbols",
+      "fallback": "same-source",
+      "oracles": ["cpython", "javascript", "handwritten-c"],
+      "benchmark": "bench:native:p1",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     }
   ]
 }

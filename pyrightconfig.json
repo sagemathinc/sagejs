@@ -39,6 +39,8 @@
     "src/lib/sagejs/__init__.py",
     "src/lib/sagejs/javascript.py",
     "src/lib/sagejs/native.py",
+    "src/lib/sagejs/kernels/__init__.py",
+    "src/lib/sagejs/kernels/p1.py",
     "src/lib/sage/modular/__init__.py",
     "src/lib/sage/modular/dims.py",
     "src/lib/magma.py",

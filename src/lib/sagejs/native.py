@@ -28,10 +28,11 @@ implementation plus an exact fallback or reports a compile-time diagnostic.
 from __future__ import annotations
 
 import builtins
-from typing import Any
+from typing import Any, TypeAlias
 
 # Annotation-only marker understood by the source-transparent prime-field
 # compiler experiment.  At runtime its values are ordinary Python lists.
+uint64: TypeAlias = int
 UInt64Buffer = list[int]
 Float64Buffer = list[float]
 
@@ -222,6 +223,7 @@ __all__ = [
     'Float64Buffer',
     'Float64Record',
     'UInt64Buffer',
+    'uint64',
     'float64_buffer',
     'float64_record',
     'float64_zeros',

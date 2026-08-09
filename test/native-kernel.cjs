@@ -73,6 +73,9 @@ const primeFieldSourcePath = join(
   "native_prime_field_source.py",
 );
 const nativeTatePath = join(root, "bench", "native_tate_large_prime.py");
+const nativeP1Path = join(
+  root, "src", "lib", "sagejs", "kernels", "p1.py",
+);
 const source = readFileSync(sourcePath, "utf8");
 const ir = await lowerSource(source, sourcePath);
 const complexFunction = ir.functions.find(
@@ -90,6 +93,10 @@ const integerSource = readFileSync(integerSourcePath, "utf8");
 const integerIr = await lowerSource(integerSource, integerSourcePath);
 const integerFunction = integerIr.functions[0];
 const integerC = generateC(integerIr);
+assert.match(integerC, /__builtin_add_overflow/);
+assert.match(integerC, /__builtin_sub_overflow/);
+assert.match(integerC, /__builtin_mul_overflow/);
+assert.match(integerC, /SAGEJS_WORD_INLINE int word_integer_quadratic_sum/);
 const integerAlgorithmsSource = readFileSync(integerAlgorithmsPath, "utf8");
 const integerAlgorithmsIr = await lowerSource(
   integerAlgorithmsSource,
@@ -741,6 +748,53 @@ try {
     functions: ["tate_large_prime"],
     cacheRoot: join(temporary, "native-tate-cache"),
   });
+  const nativeP1Kernel = await compileKernel({
+    sourcePath: nativeP1Path,
+    cacheRoot: join(temporary, "native-p1-cache"),
+  });
+  const nativeP1Module = require(nativeP1Kernel.modulePath);
+  for (const [p, expected] of [
+    [2, [4n, 6n, 1n, 1n, 6n, 61n]],
+    [3, [6n, 10n, 0n, 2n, 6n, 83n]],
+    [5, [12n, 28n, 2n, 4n, 20n, 683n]],
+    [11, [30n, 126n, 4n, 10n, 66n, 5411n]],
+    [101, [412n, 10062n, -140n, -538n, -1850n, -2900275n]],
+  ]) {
+    assert.deepEqual(nativeP1Module.heilbronn_cremona_digest(p), expected);
+    assert.deepEqual(
+      nativeP1Module.heilbronn_cremona_digest.javascript(p), expected,
+    );
+    const count = Number(expected[0]);
+    for (let index = 0; index < count; index += 1) {
+      assert.deepEqual(
+        nativeP1Module.heilbronn_cremona_entry(p, index),
+        nativeP1Module.heilbronn_cremona_entry.javascript(p, index),
+      );
+    }
+  }
+  for (const [args, expected] of [
+    [[12, 7, 15], [true, 1n, 9n, 7n]],
+    [[12, 2, 3], [true, 2n, 3n, 1n]],
+    [[1, 9, 4], [true, 0n, 0n, 1n]],
+    [[11, -4, 19], [true, 1n, 9n, 7n]],
+    [[100, 50, 25], [false, 0n, 0n, 0n]],
+  ]) {
+    assert.deepEqual(nativeP1Module.p1_normalize_with_scalar(...args), expected);
+    assert.deepEqual(
+      nativeP1Module.p1_normalize_with_scalar.javascript(...args), expected,
+    );
+  }
+  for (const [index, expected] of [
+    [1, [1n, 1n, 0n, 0n, 1n, 8n]],
+    [2, [4n, 6n, 1n, 1n, 6n, 130n]],
+    [5, [15n, 44n, 18n, 18n, 44n, 3342n]],
+    [20, [159n, 1258n, 712n, 712n, 1258n, 1043247n]],
+  ]) {
+    assert.deepEqual(nativeP1Module.heilbronn_merel_digest(index), expected);
+    assert.deepEqual(
+      nativeP1Module.heilbronn_merel_digest.javascript(index), expected,
+    );
+  }
   assert.deepEqual(
     Object.keys(nativeTateKernel.ir.callGraph).sort(),
     [
@@ -2037,7 +2091,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v13 buffers, provenance, Tate, ABI, and fallback passed.",
+  "Native Kernel v13 buffers, provenance, Tate, P1, ABI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);

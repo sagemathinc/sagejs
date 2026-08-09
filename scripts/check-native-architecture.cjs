@@ -12,6 +12,7 @@ const { extname, join, relative, resolve } = require("node:path");
 
 const ROOT = resolve(__dirname, "..");
 const CODE_MANIFEST = join(ROOT, "architecture", "native-code.json");
+const AUDIT_MANIFEST = join(ROOT, "architecture", "native-audit.json");
 const KERNEL_MANIFEST = join(ROOT, "architecture", "native-kernels.json");
 
 function readJson(filename) {
@@ -104,7 +105,80 @@ function validateNativeCode(manifest, options = {}) {
     auditRequired: [...byPath.values()].filter(
       (entry) => entry.review_status === "audit-required",
     ),
+    audited: [...byPath.values()].filter(
+      (entry) => entry.review_status === "audited",
+    ),
   };
+}
+
+function validateNativeAudit(manifest, code, options = {}) {
+  const root = options.root || ROOT;
+  if (manifest.schema_version !== 1) {
+    throw new Error("unsupported native-audit manifest schema");
+  }
+  const decisions = new Set(manifest.policy?.decision_values || []);
+  const priorities = new Set(manifest.policy?.priority_values || []);
+  const requiredOracles = new Set(manifest.policy?.required_oracles || []);
+  const nativeByPath = new Map(code.entries.map((entry) => [entry.path, entry]));
+  const byPath = new Map();
+  for (const entry of manifest.files || []) {
+    const path = repositoryPath(entry.path, "native-audit path");
+    if (byPath.has(path)) throw new Error(`duplicate native-audit entry: ${path}`);
+    const native = nativeByPath.get(path);
+    if (native === undefined) {
+      throw new Error(`${path} is audited but has no native-code classification`);
+    }
+    if (native.review_status !== "audited") {
+      throw new Error(`${path} has an audit but review status is ${native.review_status}`);
+    }
+    if (!decisions.has(entry.decision)) {
+      throw new Error(`${path} has unknown audit decision ${entry.decision}`);
+    }
+    if (!priorities.has(entry.priority)) {
+      throw new Error(`${path} has unknown audit priority ${entry.priority}`);
+    }
+    if (!Array.isArray(entry.responsibilities) ||
+        entry.responsibilities.length < 2 ||
+        entry.responsibilities.some((value) =>
+          typeof value !== "string" || value.trim().length < 10
+        )) {
+      throw new Error(`${path} needs at least two substantive responsibilities`);
+    }
+    for (const field of ["rationale", "fallback", "next"]) {
+      if (typeof entry[field] !== "string" || entry[field].trim().length < 40) {
+        throw new Error(`${path} needs a substantive audit ${field}`);
+      }
+    }
+    const oracles = new Set(entry.oracles || []);
+    for (const oracle of requiredOracles) {
+      if (!oracles.has(oracle)) throw new Error(`${path} audit is missing ${oracle} oracle`);
+    }
+    const filename = join(root, path);
+    const source = readFileSync(filename);
+    const actualLines = source.toString("utf8").match(/\n/g)?.length || 0;
+    if (entry.lines !== actualLines || entry.bytes !== source.length) {
+      throw new Error(
+        `${path} audit metrics are stale: expected ${actualLines} lines/` +
+          `${source.length} bytes, got ${entry.lines}/${entry.bytes}`,
+      );
+    }
+    if (entry.pilot !== undefined) {
+      const pilot = repositoryPath(entry.pilot, `${path}.pilot`);
+      if (!existsSync(join(root, pilot))) throw new Error(`${path} pilot is missing: ${pilot}`);
+    }
+    byPath.set(path, entry);
+  }
+  const missing = code.audited
+    .map((entry) => entry.path)
+    .filter((path) => !byPath.has(path));
+  const unresolved = code.auditRequired.map((entry) => entry.path);
+  if (missing.length) {
+    throw new Error(`audited native files lack audit records:\n  ${missing.join("\n  ")}`);
+  }
+  if (unresolved.length) {
+    throw new Error(`native architecture audit remains unresolved:\n  ${unresolved.join("\n  ")}`);
+  }
+  return { entries: [...byPath.values()] };
 }
 
 function validateKernelRegistry(manifest, options = {}) {
@@ -180,10 +254,11 @@ function validateKernelRegistry(manifest, options = {}) {
 
 function run() {
   const code = validateNativeCode(readJson(CODE_MANIFEST));
+  const audit = validateNativeAudit(readJson(AUDIT_MANIFEST), code);
   const kernels = validateKernelRegistry(readJson(KERNEL_MANIFEST));
   console.log(
     `Native architecture is classified: ${code.entries.length} native files, ` +
-    `${code.auditRequired.length} requiring focused audit.`,
+    `${audit.entries.length} with completed focused audits.`,
   );
   console.log(
     `Source-transparent compiler witness set is valid: ` +
@@ -202,6 +277,7 @@ if (require.main === module) {
 
 module.exports = {
   nativeFiles,
+  validateNativeAudit,
   validateKernelRegistry,
   validateNativeCode,
 };

@@ -52,7 +52,10 @@ function wordSignature(fn, prototype = false) {
       `${wordType(param.type)} ${wordName(param.name)}`
     ),
   ].join(", ");
-  return `static int word_${fn.name}(${parameters})${prototype ? ";" : ""}`;
+  const prefix = fn.analysis?.execution?.recursive
+    ? "static"
+    : "SAGEJS_WORD_INLINE";
+  return `${prefix} int word_${fn.name}(${parameters})${prototype ? ";" : ""}`;
 }
 
 function walks(statements, visit) {

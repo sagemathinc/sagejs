@@ -143,9 +143,13 @@
       "id": "modular-forms",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 230000,
+      "max_source_bytes": 235000,
       "depends_on": ["core-runtime", "arithmetic", "linear-algebra"],
-      "files": ["src/baselib/dirichlet.py", "src/baselib/modular.py"],
+      "files": [
+        "src/baselib/dirichlet.py",
+        "src/baselib/modular.py",
+        "src/lib/sagejs/kernels/p1.py"
+      ],
       "typescript_files": ["tools/serialization-codecs/modular-forms.ts"],
       "prefixes": []
     },
