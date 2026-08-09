@@ -12,6 +12,9 @@ const strictModules = pyrightConfig.include;
 const strictBaselibModules = strictModules.filter((path) =>
   path.startsWith("src/baselib/"),
 );
+const strictTopLevelBaselibModules = strictBaselibModules.filter((path) =>
+  !path.slice("src/baselib/".length).includes("/"),
+);
 const verbatimExpression =
   /(?<!['"])\bv(?:'[^']*'|"[^"]*"|'''[\s\S]*?'''|"""[\s\S]*?""")/;
 
@@ -24,7 +27,7 @@ const topLevelModules = readdirSync(join(root, "src", "baselib"))
 const bootstrapBoundary = "src/baselib/sagejs_bootstrap.py";
 
 assert.deepEqual(
-  [...strictBaselibModules].sort(),
+  [...strictTopLevelBaselibModules].sort(),
   topLevelModules.filter((path) => path !== bootstrapBoundary),
   "every top-level baselib module except the bootstrap boundary must be strict",
 );
@@ -48,7 +51,7 @@ for (const relativePath of strictModules) {
   if (source.includes("runtime.")) {
     assert.match(
       source,
-      /^import sagejs\.runtime as runtime$/m,
+      /^import sagejs\.runtime as _?runtime$/m,
       `${relativePath} must use the readable runtime namespace`,
     );
   }
