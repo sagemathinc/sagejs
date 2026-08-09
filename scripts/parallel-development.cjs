@@ -106,6 +106,12 @@ Options:
   --path DIRECTORY       Defaults to ../sagejs-worktrees/ID
   --reference VALUE      Paper, upstream source, or URL; repeatable
   --dependency ID        Another task contract; repeatable
+  --architecture VALUE   dynamic-python, source-transparent-native,
+                         external-library, native-primitive, mixed,
+                         compiler-infrastructure, or not-applicable
+  --fallback VALUE       same-source, tested-capability, or not-applicable
+  --oracle VALUE         Correctness oracle; repeatable
+  --exception TEXT       Architecture exception; repeatable
   --windows POLICY       required, fallback, or not-applicable
   --no-install           Do not run pnpm install
 `);
@@ -125,6 +131,10 @@ Options:
   const claims = values(args, "--claim").map(normalizePath);
   const references = values(args, "--reference");
   const dependencies = values(args, "--dependency");
+  const requestedArchitecture = value(args, "--architecture");
+  const requestedFallback = value(args, "--fallback");
+  const requestedOracles = values(args, "--oracle");
+  const architectureExceptions = values(args, "--exception");
   const noInstall = flag(args, "--no-install");
   const [id, laneId, ...unexpected] = args;
   if (unexpected.length || !id || !laneId) usage(2);
@@ -142,10 +152,38 @@ Options:
   );
   if (existsSync(worktree)) throw new Error(`worktree path exists: ${worktree}`);
   const baseCommit = git(["rev-parse", base]);
+  const mathematicalLanes = new Set([
+    "arithmetic-algebra",
+    "elliptic-curves",
+    "modular-forms",
+    "symbolic",
+    "combinatorics-groups",
+  ]);
+  const defaultArchitecture = mathematicalLanes.has(laneId)
+    ? "dynamic-python"
+    : laneId === "native-compiler"
+      ? "compiler-infrastructure"
+      : "not-applicable";
+  const architectureStrategy = requestedArchitecture || defaultArchitecture;
+  const defaultFallback = architectureStrategy === "source-transparent-native" ||
+      architectureStrategy === "dynamic-python"
+    ? "same-source"
+    : ["external-library", "native-primitive", "mixed"].includes(
+        architectureStrategy,
+      )
+      ? "tested-capability"
+      : "not-applicable";
+  const architectureOracles = requestedOracles.length > 0
+    ? requestedOracles
+    : architectureStrategy === "source-transparent-native"
+      ? ["cpython", "javascript"]
+      : mathematicalLanes.has(laneId)
+        ? ["sage"]
+        : [];
 
   const task = {
     $schema: "../task.schema.json",
-    schema_version: 1,
+    schema_version: 2,
     id,
     title: title || id.split("-").map(
       (word) => word[0].toUpperCase() + word.slice(1),
@@ -158,6 +196,12 @@ Options:
     claims,
     dependencies,
     references,
+    architecture: {
+      strategy: architectureStrategy,
+      fallback: requestedFallback || defaultFallback,
+      oracles: architectureOracles,
+      exceptions: architectureExceptions,
+    },
     platforms: {
       "linux-x64": "required",
       "linux-arm64": "required",

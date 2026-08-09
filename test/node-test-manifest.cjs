@@ -19,6 +19,7 @@ const unit = [
   "test/browser-compiler-frontend.cjs",
   "test/parallel-development.cjs",
   "test/package-graph.cjs",
+  "test/architecture-policy.cjs",
   "test/pnpm-invocation.cjs",
   "test/website.cjs",
   "test/audit-gaps.cjs",

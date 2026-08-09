@@ -27,7 +27,7 @@ const taskSchema = require("../.agents/task.schema.json");
 
 function task(overrides = {}) {
   return {
-    schema_version: 1,
+    schema_version: 2,
     id: "modsym-newspace",
     title: "Fast newspace decomposition",
     lane: "modular-forms",
@@ -42,6 +42,14 @@ function task(overrides = {}) {
     ],
     dependencies: [],
     references: ["https://wstein.org/books/modform/"],
+    architecture: {
+      strategy: "mixed",
+      fallback: "tested-capability",
+      oracles: ["sage"],
+      exceptions: [
+        "The fixture claims an existing native file to test native task policy.",
+      ],
+    },
     platforms: {
       "linux-x64": "required",
       "linux-arm64": "required",
@@ -123,6 +131,7 @@ test("changed-file checks rebuild native code before testing it", () => {
   assert.deepEqual(
     validationCommandsForFiles(["packages/flint/src/p1.c"]),
     [
+      ["pnpm", "architecture:check"],
       ["pnpm", "--dir", "packages/flint", "build"],
       ["pnpm", "test:native"],
     ],
@@ -131,6 +140,7 @@ test("changed-file checks rebuild native code before testing it", () => {
     ["pnpm", "docs:check"],
   ]);
   assert.deepEqual(validationCommandsForFiles([".agents/lanes.json"]), [
+    ["pnpm", "architecture:check"],
     ["pnpm", "test:unit"],
   ]);
   assert.deepEqual(
@@ -140,6 +150,20 @@ test("changed-file checks rebuild native code before testing it", () => {
   assert.deepEqual(validationCommandsForFiles(["test/graphics.cjs"]), [
     ["pnpm", "test:integration"],
   ]);
+});
+
+test("task contracts enforce source-transparent compiler policy", () => {
+  const errors = validateTask(task({
+    architecture: {
+      strategy: "source-transparent-native",
+      fallback: "tested-capability",
+      oracles: ["sage"],
+      exceptions: [],
+    },
+  }), "modsym-newspace.json");
+  assert.ok(errors.some((message) => message.includes("same-source fallback")));
+  assert.ok(errors.some((message) => message.includes("cpython oracle")));
+  assert.ok(errors.some((message) => message.includes("javascript oracle")));
 });
 
 test("validation fingerprints ignore manifests and Git staging state", () => {

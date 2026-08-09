@@ -16,6 +16,7 @@
     "claims",
     "dependencies",
     "references",
+    "architecture",
     "platforms",
     "validation",
     "runs",
@@ -23,7 +24,7 @@
   ],
   "properties": {
     "$schema": { "type": "string" },
-    "schema_version": { "const": 1 },
+    "schema_version": { "const": 2 },
     "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
     "title": { "type": "string", "minLength": 4 },
     "lane": {
@@ -37,6 +38,7 @@
         "combinatorics-groups",
         "polyglot",
         "documentation-compat",
+        "native-compiler",
         "distribution",
         "integration"
       ]
@@ -53,6 +55,37 @@
     },
     "dependencies": { "type": "array", "items": { "type": "string" } },
     "references": { "type": "array", "items": { "type": "string" } },
+    "architecture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "fallback", "oracles", "exceptions"],
+      "properties": {
+        "strategy": {
+          "enum": [
+            "dynamic-python",
+            "source-transparent-native",
+            "external-library",
+            "native-primitive",
+            "mixed",
+            "compiler-infrastructure",
+            "not-applicable"
+          ]
+        },
+        "fallback": {
+          "enum": ["same-source", "tested-capability", "not-applicable"]
+        },
+        "oracles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "exceptions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 20 }
+        }
+      }
+    },
     "platforms": {
       "type": "object",
       "additionalProperties": false,

@@ -22,6 +22,27 @@ const platformNames = [
   "macos-arm64",
 ];
 const platformPolicies = new Set(["required", "fallback", "not-applicable"]);
+const architectureStrategies = new Set([
+  "dynamic-python",
+  "source-transparent-native",
+  "external-library",
+  "native-primitive",
+  "mixed",
+  "compiler-infrastructure",
+  "not-applicable",
+]);
+const fallbackPolicies = new Set([
+  "same-source",
+  "tested-capability",
+  "not-applicable",
+]);
+const mathematicalLanes = new Set([
+  "arithmetic-algebra",
+  "elliptic-curves",
+  "modular-forms",
+  "symbolic",
+  "combinatorics-groups",
+]);
 
 function git(args, cwd = root, options = {}) {
   return execFileSync("git", args, {
@@ -95,7 +116,7 @@ function readTasks(directory) {
 function validateTask(task, filename = "task.json") {
   const errors = [];
   const expectedId = basename(filename, ".json");
-  if (task.schema_version !== 1) errors.push("schema_version must be 1");
+  if (task.schema_version !== 2) errors.push("schema_version must be 2");
   if (!/^[a-z][a-z0-9-]*$/.test(task.id || "")) {
     errors.push("id must use lowercase letters, digits, and hyphens");
   } else if (expectedId !== task.id) {
@@ -138,6 +159,45 @@ function validateTask(task, filename = "task.json") {
   for (const field of ["dependencies", "references", "validation", "runs"]) {
     if (!Array.isArray(task[field])) errors.push(`${field} must be an array`);
   }
+  const architecture = task.architecture;
+  if (!architecture || typeof architecture !== "object") {
+    errors.push("architecture policy is required");
+  } else {
+    if (!architectureStrategies.has(architecture.strategy)) {
+      errors.push("architecture.strategy is invalid");
+    }
+    if (!fallbackPolicies.has(architecture.fallback)) {
+      errors.push("architecture.fallback is invalid");
+    }
+    for (const field of ["oracles", "exceptions"]) {
+      if (!Array.isArray(architecture[field])) {
+        errors.push(`architecture.${field} must be an array`);
+      }
+    }
+    if (
+      mathematicalLanes.has(task.lane) &&
+      architecture.strategy === "not-applicable"
+    ) {
+      errors.push("mathematical lanes require an architecture strategy");
+    }
+    if (architecture.strategy === "source-transparent-native") {
+      if (architecture.fallback !== "same-source") {
+        errors.push("source-transparent native work requires a same-source fallback");
+      }
+      for (const oracle of ["cpython", "javascript"]) {
+        if (!architecture.oracles?.includes(oracle)) {
+          errors.push(`source-transparent native work requires ${oracle} oracle`);
+        }
+      }
+    }
+    if (
+      ["native-primitive", "mixed"].includes(architecture.strategy) &&
+      (!Array.isArray(architecture.exceptions) ||
+        architecture.exceptions.length === 0)
+    ) {
+      errors.push(`${architecture.strategy} work requires an architecture exception`);
+    }
+  }
   if (lane && Array.isArray(task.validation)) {
     for (const command of lane.required_checks) {
       if (!task.validation.includes(command)) {
@@ -167,6 +227,21 @@ function validateTask(task, filename = "task.json") {
     errors.push(
       "native FLINT work must require Windows or declare a tested fallback",
     );
+  }
+  const handwrittenClaim = Array.isArray(task.claims) && task.claims.some(
+    (claim) => /\.(?:c|cc|cpp|h)$/.test(claim),
+  );
+  if (
+    handwrittenClaim && architecture &&
+    ![
+      "external-library",
+      "native-primitive",
+      "mixed",
+      "compiler-infrastructure",
+      "not-applicable",
+    ].includes(architecture.strategy)
+  ) {
+    errors.push("handwritten native claims require an explicit native architecture strategy");
   }
   if (
     !task.handoff ||
@@ -270,6 +345,13 @@ function validationCommandsForFiles(files) {
   const matches = (pattern) => files.some((filename) => pattern.test(filename));
 
   if (has("src/") || has("tools/") || has("scripts/")) add("pnpm", "build");
+  if (
+    has("architecture/") || has("ARCHITECTURE.md") || has("AGENTS.md") ||
+    has(".agents/lanes.json") || has(".agents/task.schema.json") ||
+    matches(/\.(?:c|cc|cpp|h)$/) || has("tools/native-kernel/")
+  ) {
+    add("pnpm", "architecture:check");
+  }
   if (has(".agents/") || has("scripts/parallel-")) add("pnpm", "test:unit");
   if (has("src/baselib/")) {
     add("pnpm", "test:baselib:strict");

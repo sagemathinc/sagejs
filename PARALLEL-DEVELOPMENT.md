@@ -31,6 +31,13 @@ the pinned dependency graph, initializes submodules, and writes
 - Linux, Windows, macOS, and architecture policy;
 - reproducible validation receipts and a concise handoff.
 
+Every contract also records an architecture strategy, fallback, correctness
+oracles, and exceptions. Mathematical lanes default to ordinary Python.
+Source-transparent compiler work declares `source-transparent-native` and the
+CPython/JavaScript oracles. `native-primitive` and `mixed` work requires an
+explicit exception explaining why the implementation order in
+[`ARCHITECTURE.md`](ARCHITECTURE.md) is insufficient.
+
 Use `--no-install` when an external provisioning system will prepare the
 worktree. Run `pnpm parallel:new -- --help` for all options.
 
@@ -77,6 +84,8 @@ implementation. Prefer one explicit algorithm or compatibility surface over
 4. A benchmark when performance is part of the objective.
 5. Native Windows support or an explicit, tested capability fallback.
 6. Documentation and provenance for public behavior and imported algorithms.
+7. An architecture classification and an explicit explanation for new
+   handwritten mathematical native code.
 
 Merge small completed projects frequently. Rebase or merge `origin/main`
 before final validation, then regenerate receipts. The coordinator owns shared
@@ -93,6 +102,7 @@ short integration project.
 | `pnpm parallel:status` | Summarize every worktree and detect overlap |
 | `pnpm parallel:run` | Run and record an exact validation command |
 | `pnpm test:changed` | Run the deterministic checks implied by a diff |
+| `pnpm architecture:check` | Enforce package, native-code, and kernel policy |
 
 Lane definitions live in [`.agents/lanes.json`](.agents/lanes.json). They are
 machine-readable policy, not an ownership wall: extend them through a reviewed

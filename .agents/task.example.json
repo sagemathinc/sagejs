@@ -1,6 +1,6 @@
 {
   "$schema": "./task.schema.json",
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "modsym-decomposition",
   "title": "Fast newspace decomposition",
   "lane": "modular-forms",
@@ -19,6 +19,12 @@
   "references": [
     "https://wstein.org/books/modform/"
   ],
+  "architecture": {
+    "strategy": "source-transparent-native",
+    "fallback": "same-source",
+    "oracles": ["sage", "cpython", "javascript"],
+    "exceptions": []
+  },
   "platforms": {
     "linux-x64": "required",
     "linux-arm64": "required",

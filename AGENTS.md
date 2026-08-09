@@ -17,6 +17,24 @@
 - Commit coherent completed work and push each commit to GitHub promptly.
 - Do not commit `*.chat` files or generated build artifacts that are already ignored.
 
+## Mathematical implementation architecture
+
+- Read `ARCHITECTURE.md` before implementing or accelerating mathematical
+  algorithms. Prefer ordinary CPython-parseable Python, then source-transparent
+  `@native` compilation, then mature external libraries.
+- Handwritten C/C++ is reserved for host adapters, representation primitives,
+  foreign-library bindings, or a measured compiler limitation recorded as an
+  architecture exception. Classify every new native file in
+  `architecture/native-code.json`.
+- Do not select an unrelated implementation based on a Python function name.
+  Native compilation lowers the actual typed source body and preserves source
+  provenance.
+- Every compiled mathematical function requires a correct dynamic fallback,
+  differential oracles, inspectable IR/target code, and a representative
+  benchmark when performance motivates the work.
+- Run `pnpm architecture:check` for architecture, native compiler, or native
+  mathematical changes.
+
 ## Parallel projects
 
 - Use `pnpm parallel:new` for work explicitly assigned as one lane in a

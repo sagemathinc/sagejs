@@ -1,0 +1,371 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "default": "reject-unclassified",
+    "tracked_extensions": [".c", ".cc", ".cpp", ".h"],
+    "categories": [
+      "benchmark-reference",
+      "external-library-bridge",
+      "generated-upstream",
+      "host-adapter",
+      "mathematical-algorithm",
+      "mixed-native",
+      "portability-shim",
+      "public-abi",
+      "representation-primitive"
+    ],
+    "review_statuses": ["accepted", "audit-required", "generated"]
+  },
+  "files": [
+    {
+      "path": "bench/cowasm/buffer-landscape/c.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler",
+      "rationale": "Matched handwritten-C reference for a source-transparent compiler benchmark."
+    },
+    {
+      "path": "bench/cowasm/landscape/c.c",
+      "category": "benchmark-reference",
+      "review_status": "accepted",
+      "lane": "native-compiler",
+      "rationale": "Cross-runtime reference implementation; it is not linked into Sage.js."
+    },
+    {
+      "path": "packages/flint-wasm/src/factor.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Narrow Wasm ABI over FLINT factorization and primality operations."
+    },
+    {
+      "path": "packages/flint-wasm/src/modsym.c",
+      "category": "host-adapter",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "Wasm adapter over the host-neutral P1 and modular-symbol core."
+    },
+    {
+      "path": "packages/flint-wasm/src/wasi-stubs.c",
+      "category": "portability-shim",
+      "review_status": "accepted",
+      "lane": "distribution",
+      "rationale": "WASI compatibility symbols required by the browser build."
+    },
+    {
+      "path": "packages/flint/include/sagejs/native.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "native-compiler",
+      "rationale": "Shared Sage.js native mathematical ABI declarations."
+    },
+    {
+      "path": "packages/flint/src/addon.c",
+      "category": "mixed-native",
+      "review_status": "audit-required",
+      "lane": "arithmetic-algebra",
+      "rationale": "Large Node-API adapter containing both boundary code and locally implemented helpers."
+    },
+    {
+      "path": "packages/flint/src/algebraic.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Node-API bridge to FLINT algebraic-number operations."
+    },
+    {
+      "path": "packages/flint/src/algebraic.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Declarations for the algebraic-number bridge."
+    },
+    {
+      "path": "packages/flint/src/charpoly.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "modular-forms",
+      "rationale": "Packed boundary to established FLINT characteristic-polynomial algorithms."
+    },
+    {
+      "path": "packages/flint/src/charpoly.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms",
+      "rationale": "Declarations for the characteristic-polynomial bridge."
+    },
+    {
+      "path": "packages/flint/src/cyclotomic_rref.c",
+      "category": "mathematical-algorithm",
+      "review_status": "audit-required",
+      "lane": "modular-forms",
+      "rationale": "Sage.js-owned exact cyclotomic row-reduction algorithm over FLINT storage."
+    },
+    {
+      "path": "packages/flint/src/cyclotomic_rref.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms",
+      "rationale": "Declarations for cyclotomic row reduction."
+    },
+    {
+      "path": "packages/flint/src/dirichlet.c",
+      "category": "mixed-native",
+      "review_status": "audit-required",
+      "lane": "modular-forms",
+      "rationale": "Combines Node-API adaptation, FLINT/Arb calls, and locally assembled character operations."
+    },
+    {
+      "path": "packages/flint/src/dirichlet.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms",
+      "rationale": "Declarations for Dirichlet-character native operations."
+    },
+    {
+      "path": "packages/flint/src/extension_field.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Node-API bridge to FLINT finite extension-field operations."
+    },
+    {
+      "path": "packages/flint/src/extension_field.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Declarations for finite extension-field operations."
+    },
+    {
+      "path": "packages/flint/src/floating.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Node-API bridge to MPFR/MPC/Arb floating-point operations."
+    },
+    {
+      "path": "packages/flint/src/floating.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Declarations for native floating-point operations."
+    },
+    {
+      "path": "packages/flint/src/matrix.c",
+      "category": "mixed-native",
+      "review_status": "audit-required",
+      "lane": "arithmetic-algebra",
+      "rationale": "Large matrix adapter containing FLINT calls, storage management, and locally implemented algorithms."
+    },
+    {
+      "path": "packages/flint/src/matrix.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Declarations for native matrix operations."
+    },
+    {
+      "path": "packages/flint/src/modsym_core.c",
+      "category": "mathematical-algorithm",
+      "review_status": "audit-required",
+      "lane": "modular-forms",
+      "rationale": "Host-neutral Sage.js implementation of weight-2 modular-symbol algorithms adapted from PARI."
+    },
+    {
+      "path": "packages/flint/src/modsym_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms",
+      "rationale": "Host-neutral modular-symbol core ABI shared by Node and Wasm."
+    },
+    {
+      "path": "packages/flint/src/multivariate.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Node-API bridge to FLINT multivariate polynomial operations."
+    },
+    {
+      "path": "packages/flint/src/multivariate.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Declarations for multivariate polynomial operations."
+    },
+    {
+      "path": "packages/flint/src/number_field_factor.c",
+      "category": "mixed-native",
+      "review_status": "audit-required",
+      "lane": "arithmetic-algebra",
+      "rationale": "Cyclotomic factorization bridge with substantial Sage.js-owned conversion and algorithm control."
+    },
+    {
+      "path": "packages/flint/src/number_field_factor.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Declarations for number-field factorization."
+    },
+    {
+      "path": "packages/flint/src/p1.c",
+      "category": "mixed-native",
+      "review_status": "audit-required",
+      "lane": "modular-forms",
+      "rationale": "Large Node adapter mixing P1, higher-weight, character, sparse exact linear algebra, and Hecke algorithms."
+    },
+    {
+      "path": "packages/flint/src/p1.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms",
+      "rationale": "Declarations for P1 and modular-symbol Node operations."
+    },
+    {
+      "path": "packages/flint/src/p1_core.c",
+      "category": "representation-primitive",
+      "review_status": "audit-required",
+      "lane": "modular-forms",
+      "rationale": "Host-neutral packed P1 construction, normalization, indexing, and actions shared by Node and Wasm."
+    },
+    {
+      "path": "packages/flint/src/p1_core.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms",
+      "rationale": "Host-neutral P1 core ABI."
+    },
+    {
+      "path": "packages/flint/src/prime_count.c",
+      "category": "external-library-bridge",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Narrow bridge to native prime-counting implementation."
+    },
+    {
+      "path": "packages/flint/src/prime_count.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "arithmetic-algebra",
+      "rationale": "Declarations for prime counting."
+    },
+    {
+      "path": "packages/flint/src/sparse_rational.c",
+      "category": "mathematical-algorithm",
+      "review_status": "audit-required",
+      "lane": "modular-forms",
+      "rationale": "Sage.js-owned sparse exact-rational elimination and kernel algorithms over FLINT scalars."
+    },
+    {
+      "path": "packages/flint/src/sparse_rational.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "modular-forms",
+      "rationale": "Declarations for sparse rational linear algebra."
+    },
+    {
+      "path": "packages/graph/src/addon.c",
+      "category": "host-adapter",
+      "review_status": "audit-required",
+      "lane": "combinatorics-groups",
+      "rationale": "Node adapter around nauty/Traces with some graph data conversion and orchestration."
+    },
+    {
+      "path": "tools/maple/src/parser.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "polyglot",
+      "rationale": "Generated Tree-sitter parser."
+    },
+    {
+      "path": "tools/maple/src/tree_sitter/alloc.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "polyglot",
+      "rationale": "Tree-sitter runtime header."
+    },
+    {
+      "path": "tools/maple/src/tree_sitter/array.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "polyglot",
+      "rationale": "Tree-sitter runtime header."
+    },
+    {
+      "path": "tools/maple/src/tree_sitter/parser.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "polyglot",
+      "rationale": "Tree-sitter runtime header."
+    },
+    {
+      "path": "tools/tree-sitter-python/src/parser.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime",
+      "rationale": "Generated upstream Python grammar parser."
+    },
+    {
+      "path": "tools/tree-sitter-python/src/scanner.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime",
+      "rationale": "Upstream Python grammar external scanner."
+    },
+    {
+      "path": "tools/tree-sitter-python/src/tree_sitter/alloc.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime",
+      "rationale": "Tree-sitter runtime header."
+    },
+    {
+      "path": "tools/tree-sitter-python/src/tree_sitter/array.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime",
+      "rationale": "Tree-sitter runtime header."
+    },
+    {
+      "path": "tools/tree-sitter-python/src/tree_sitter/parser.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime",
+      "rationale": "Tree-sitter runtime header."
+    },
+    {
+      "path": "tools/tree-sitter-sage/src/parser.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime",
+      "rationale": "Generated Sage grammar parser derived from tree-sitter-python."
+    },
+    {
+      "path": "tools/tree-sitter-sage/src/scanner.c",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime",
+      "rationale": "Sage grammar external scanner derived from tree-sitter-python."
+    },
+    {
+      "path": "tools/tree-sitter-sage/src/tree_sitter/alloc.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime",
+      "rationale": "Tree-sitter runtime header."
+    },
+    {
+      "path": "tools/tree-sitter-sage/src/tree_sitter/array.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime",
+      "rationale": "Tree-sitter runtime header."
+    },
+    {
+      "path": "tools/tree-sitter-sage/src/tree_sitter/parser.h",
+      "category": "generated-upstream",
+      "review_status": "generated",
+      "lane": "compiler-runtime",
+      "rationale": "Tree-sitter runtime header."
+    }
+  ]
+}
