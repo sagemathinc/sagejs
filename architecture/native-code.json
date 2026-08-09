@@ -270,6 +270,13 @@
       "rationale": "Declarations for sparse rational linear algebra."
     },
     {
+      "path": "packages/graph/include/sagejs/igraph_ffi.h",
+      "category": "public-abi",
+      "review_status": "accepted",
+      "lane": "native-compiler",
+      "rationale": "Host-neutral igraph resource and borrowed-view ABI shared by generated kernels and the Node adapter."
+    },
+    {
       "path": "packages/graph/src/addon.c",
       "category": "host-adapter",
       "review_status": "audited",

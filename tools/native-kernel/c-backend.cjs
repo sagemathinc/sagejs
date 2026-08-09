@@ -710,14 +710,14 @@ function exactDeclarations(fn) {
     if ((fn.resourceAliases || {})[local.name] !== undefined) continue;
     const resource = resourceForFunctionType(fn, local.type);
     if (resource !== undefined) {
-      declarations.push(
-        `    ${resource.abi_type} ${cName(local.name)};`,
-        `    int ${cName(local.name)}_initialized = 0;`,
-      );
-      cleanup.unshift(
-        `    if (${cName(local.name)}_initialized)`,
-        `        ${resource.native.clear_symbol}(${cName(local.name)});`,
-      );
+      declarations.push(`    ${resource.abi_type} ${cName(local.name)};`);
+      if (resource.ownership === "owned") {
+        declarations.push(`    int ${cName(local.name)}_initialized = 0;`);
+        cleanup.unshift(
+          `    if (${cName(local.name)}_initialized)`,
+          `        ${resource.native.clear_symbol}(${cName(local.name)});`,
+        );
+      }
       continue;
     }
     if (local.type === "Integer" || local.type.startsWith("IntegerSequence[")) {

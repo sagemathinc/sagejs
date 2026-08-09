@@ -7,6 +7,12 @@
 #include <node_api.h>
 
 #include <igraph.h>
+#include <sagejs/igraph_ffi.h>
+
+typedef struct {
+    sagejs_igraph_graph_t graph;
+    int initialized;
+} sagejs_ffi_graph_t;
 
 typedef struct {
     igraph_t graph;
@@ -45,6 +51,150 @@ static int require_arguments(
         return 0;
     }
     return 1;
+}
+
+static int uint64_from_value(napi_env env, napi_value value, uint64_t *result)
+{
+    bool lossless;
+    if (!check_napi(env,
+            napi_get_value_bigint_uint64(env, value, result, &lossless)))
+        return 0;
+    if (!lossless) {
+        napi_throw_range_error(env, NULL, "expected a uint64 value");
+        return 0;
+    }
+    return 1;
+}
+
+static sagejs_ffi_graph_t *ffi_graph_from_value(
+    napi_env env, napi_value value)
+{
+    sagejs_ffi_graph_t *graph = NULL;
+    if (!check_napi(env, napi_get_value_external(env, value, (void **) &graph)))
+        return NULL;
+    if (graph == NULL || !graph->initialized) {
+        napi_throw_error(env, NULL, "igraph resource is closed");
+        return NULL;
+    }
+    return graph;
+}
+
+static void ffi_graph_finalize(napi_env env, void *data, void *hint)
+{
+    sagejs_ffi_graph_t *graph = data;
+    (void) env;
+    (void) hint;
+    if (graph != NULL && graph->initialized) {
+        sagejs_igraph_graph_clear(graph->graph);
+        graph->initialized = 0;
+    }
+    free(graph);
+}
+
+static napi_value ffi_graph_complete_create(
+    napi_env env, napi_callback_info info)
+{
+    napi_value arguments[3];
+    napi_value result;
+    uint64_t vertex_count;
+    bool directed;
+    bool loops;
+    sagejs_ffi_graph_t *graph;
+
+    if (!require_arguments(env, info, 3, arguments) ||
+        !uint64_from_value(env, arguments[0], &vertex_count) ||
+        !check_napi(env, napi_get_value_bool(env, arguments[1], &directed)) ||
+        !check_napi(env, napi_get_value_bool(env, arguments[2], &loops)))
+        return NULL;
+    graph = calloc(1, sizeof(*graph));
+    if (graph == NULL) {
+        napi_throw_error(env, NULL, "unable to allocate igraph resource");
+        return NULL;
+    }
+    if (!sagejs_igraph_complete_init(
+            graph->graph, vertex_count, directed, loops)) {
+        free(graph);
+        napi_throw_error(env, NULL, "igraph could not construct complete graph");
+        return NULL;
+    }
+    graph->initialized = 1;
+    if (!check_napi(env, napi_create_external(
+            env, graph, ffi_graph_finalize, NULL, &result))) {
+        ffi_graph_finalize(env, graph, NULL);
+        return NULL;
+    }
+    return result;
+}
+
+static napi_value ffi_graph_close(napi_env env, napi_callback_info info)
+{
+    napi_value argument;
+    sagejs_ffi_graph_t *graph = NULL;
+    if (!require_arguments(env, info, 1, &argument) ||
+        !check_napi(env,
+            napi_get_value_external(env, argument, (void **) &graph)))
+        return NULL;
+    if (graph != NULL && graph->initialized) {
+        sagejs_igraph_graph_clear(graph->graph);
+        graph->initialized = 0;
+    }
+    return NULL;
+}
+
+static napi_value ffi_graph_vertex_count(
+    napi_env env, napi_callback_info info)
+{
+    napi_value argument;
+    napi_value result;
+    sagejs_ffi_graph_t *graph;
+    if (!require_arguments(env, info, 1, &argument) ||
+        (graph = ffi_graph_from_value(env, argument)) == NULL ||
+        !check_napi(env, napi_create_bigint_uint64(env,
+            sagejs_igraph_vertex_count(graph->graph), &result)))
+        return NULL;
+    return result;
+}
+
+static napi_value ffi_graph_edges_borrow(
+    napi_env env, napi_callback_info info)
+{
+    napi_value argument;
+    if (!require_arguments(env, info, 1, &argument) ||
+        ffi_graph_from_value(env, argument) == NULL)
+        return NULL;
+    /* The generated borrowed-view wrapper pins and validates this owner. */
+    return argument;
+}
+
+static napi_value ffi_graph_edge_measure(
+    napi_env env, napi_callback_info info, int checksum)
+{
+    napi_value argument;
+    napi_value result;
+    sagejs_ffi_graph_t *graph;
+    sagejs_igraph_edges_view_t view;
+    uint64_t value;
+    if (!require_arguments(env, info, 1, &argument) ||
+        (graph = ffi_graph_from_value(env, argument)) == NULL ||
+        !sagejs_igraph_edges_borrow(view, graph->graph))
+        return NULL;
+    value = checksum ? sagejs_igraph_edge_checksum(view) :
+        sagejs_igraph_edge_count(view);
+    if (!check_napi(env, napi_create_bigint_uint64(env, value, &result)))
+        return NULL;
+    return result;
+}
+
+static napi_value ffi_graph_edge_count(
+    napi_env env, napi_callback_info info)
+{
+    return ffi_graph_edge_measure(env, info, 0);
+}
+
+static napi_value ffi_graph_edge_checksum(
+    napi_env env, napi_callback_info info)
+{
+    return ffi_graph_edge_measure(env, info, 1);
 }
 
 static int throw_igraph(napi_env env, igraph_error_t code, const char *context)
@@ -491,6 +641,18 @@ static napi_value initialize(napi_env env, napi_value exports)
         {"automorphismGroup", NULL, automorphism_group,
             NULL, NULL, NULL, napi_default, NULL},
         {"layout", NULL, layout, NULL, NULL, NULL, napi_default, NULL},
+        {"ffiGraphCompleteCreate", NULL, ffi_graph_complete_create,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"ffiGraphClose", NULL, ffi_graph_close,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"ffiGraphVertexCount", NULL, ffi_graph_vertex_count,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"ffiGraphEdgesBorrow", NULL, ffi_graph_edges_borrow,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"ffiGraphEdgeCount", NULL, ffi_graph_edge_count,
+            NULL, NULL, NULL, napi_default, NULL},
+        {"ffiGraphEdgeChecksum", NULL, ffi_graph_edge_checksum,
+            NULL, NULL, NULL, napi_default, NULL},
     };
 
     igraph_set_error_handler(igraph_error_handler_ignore);

@@ -61,8 +61,8 @@ function emitResourceCall(operation, context, indent) {
     const source = argumentBySource(operation, argument.source);
     const resource = resourceForType(operation, source.type);
     if (resource !== undefined) return context.value(source.name);
-    if (argument.abi_type === "ulong") {
-      return `(ulong) ${context.value(source.name)}`;
+    if (argument.abi_type === "ulong" || argument.abi_type === "uint64_t") {
+      return `(${argument.abi_type}) ${context.value(source.name)}`;
     }
     if (argument.abi_type === "int") {
       return `(int) ${context.value(source.name)}`;
@@ -95,7 +95,9 @@ function emitResourceCall(operation, context, indent) {
         `${JSON.stringify(fn.errors.message)});`,
       `${indent}    ${context.failure}`,
       `${indent}}`,
-      `${indent}${context.resourceInitialized(operation.target)} = 1;`,
+      ...(returned.ownership === "owned"
+        ? [`${indent}${context.resourceInitialized(operation.target)} = 1;`]
+        : []),
     ].join("\n");
   }
   return `${indent}${context.result(operation.target)} = ` +
@@ -122,8 +124,8 @@ function emitFmpzCall(operation, value, resultValue, indent, tagged) {
     const argument = native.arguments[index];
     if (argument.abi_type !== "fmpz_t") {
       const source = argumentBySource(operation, argument.source);
-      if (argument.abi_type === "ulong") {
-        callArguments.push(`(ulong) ${value(source.name)}`);
+      if (argument.abi_type === "ulong" || argument.abi_type === "uint64_t") {
+        callArguments.push(`(${argument.abi_type}) ${value(source.name)}`);
         continue;
       }
       if (argument.abi_type === "int") {
@@ -177,7 +179,9 @@ function emitDirectCall(operation, value, resultValue, indent) {
   const native = operation.foreign.function.native;
   const args = native.arguments.map((argument) => {
     const source = argumentBySource(operation, argument.source);
-    if (argument.abi_type === "ulong") return `(ulong) ${value(source.name)}`;
+    if (argument.abi_type === "ulong" || argument.abi_type === "uint64_t") {
+      return `(${argument.abi_type}) ${value(source.name)}`;
+    }
     if (argument.abi_type === "int") return `(int) ${value(source.name)}`;
     throw new Error(
       `${operation.foreign.declarationId} uses unsupported direct ABI ${argument.abi_type}`,
@@ -347,6 +351,11 @@ function javascriptForeignCall(operation, indent) {
     returned: returned === undefined ? null : {
       identity: `resource:${foreign.declarationIdentity.split(":")[0]}:${returned.id}`,
       closeExport: returned.dynamic.close_export,
+      ownership: returned.ownership,
+      borrowFrom: signature.borrow_from === null ? null :
+        signature.parameters.findIndex((parameter) =>
+          parameter.name === signature.borrow_from
+        ),
     },
     parameters: signature.parameters.map((parameter) => {
       const resource = resourceForType(operation, parameter.type);
@@ -401,7 +410,7 @@ function sagejsFfiCall(
       if (value === null || value.identity !== resourceIdentity) {
         throw new TypeError("invalid declared FFI resource");
       }
-      if (value.closed) throw new Error("FFI resource is closed");
+      if ((value.root || value).closed) throw new Error("FFI resource is closed");
       return value.handle;
     }
     if (type === "Integer") {
@@ -448,18 +457,29 @@ function sagejsFfiCall(
         typeof result !== "function")) {
       throw new TypeError("FFI backend returned invalid resource");
     }
-    const close = Reflect.get(library, resourceMetadata.returned.closeExport);
-    if (typeof close !== "function") {
+    const close = resourceMetadata.returned.closeExport === null ? null :
+      Reflect.get(library, resourceMetadata.returned.closeExport);
+    if (resourceMetadata.returned.ownership === "owned" &&
+        typeof close !== "function") {
       throw new Error("FFI backend lacks declared resource close export");
     }
+    const owner = resourceMetadata.returned.borrowFrom === null
+      ? null : args[resourceMetadata.returned.borrowFrom];
+    const root = owner === null ? null : (owner.root || owner);
     const resource = {
       identity: resourceMetadata.returned.identity,
       handle: result,
       backend: library,
       close,
       closed: false,
+      ownership: resourceMetadata.returned.ownership,
+      owner,
+      root: root || null,
     };
-    resourceStack.push(resource);
+    if (resource.ownership === "owned") {
+      resource.root = resource;
+      resourceStack.push(resource);
+    }
     return resource;
   }
   if (returnType === "bool" && typeof result === "boolean") return result;
@@ -474,7 +494,7 @@ function sagejsFfiCall(
 function sagejsFfiCloseResources(resources) {
   for (let index = resources.length - 1; index >= 0; index -= 1) {
     const resource = resources[index];
-    if (resource.closed) continue;
+    if (resource.ownership !== "owned" || resource.closed) continue;
     Reflect.apply(resource.close, resource.backend, [resource.handle]);
     resource.closed = true;
     resource.handle = null;

@@ -9,12 +9,13 @@ const {
 const { join, resolve } = require("node:path");
 
 const repositoryRoot = resolve(__dirname, "..", "..");
-const schema = "sagejs.ffi/declaration-v3";
+const schema = "sagejs.ffi/declaration-v4";
 const scalarSemanticTypes = new Set([
   "Integer", "UInt64Buffer", "bool", "uint64",
 ]);
 const abiTypes = new Set([
   "dirichlet_group_t", "fmpz_t", "int", "nmod_mat_t", "slong", "ulong",
+  "sagejs_igraph_graph_t", "sagejs_igraph_edges_view_t", "uint64_t",
 ]);
 const ownership = new Set(["borrowed", "borrowed_mut", "owned", "value"]);
 const errorExceptions = new Set([
@@ -81,8 +82,8 @@ function safeStrings(filename, value, label, pattern) {
 
 function validateResource(filename, resource, ids, pythonNames, abiNames) {
   exactKeys(filename, resource, [
-    "id", "python_name", "abi_type", "ownership", "dynamic", "native",
-    "targets",
+    "id", "python_name", "abi_type", "ownership", "owner", "dynamic",
+    "native", "targets",
   ], `resource ${resource.id || "?"}`);
   if (!identifier(resource.id) || ids.has(resource.id)) {
     fail(filename, `invalid or duplicate resource id ${resource.id}`);
@@ -93,18 +94,36 @@ function validateResource(filename, resource, ids, pythonNames, abiNames) {
   if (!abiTypes.has(resource.abi_type) || abiNames.has(resource.abi_type)) {
     fail(filename, `unsupported or duplicate resource ABI ${resource.abi_type}`);
   }
-  if (resource.ownership !== "owned") {
-    fail(filename, `${resource.id} resources must use owned lifetime`);
+  if (!new Set(["owned", "borrowed"]).has(resource.ownership)) {
+    fail(filename, `${resource.id} must be an owned resource or borrowed view`);
+  }
+  nullableString(filename, resource.owner, `${resource.id}.owner`);
+  if ((resource.ownership === "owned") !== (resource.owner === null)) {
+    fail(filename,
+      `${resource.id} owned resources require a null owner and borrowed ` +
+      "views require an owner");
   }
   exactKeys(filename, resource.dynamic, ["close_export"],
     `${resource.id}.dynamic`);
-  if (!identifier(resource.dynamic.close_export)) {
+  if (resource.dynamic.close_export !== null &&
+      !identifier(resource.dynamic.close_export)) {
     fail(filename, `${resource.id}.dynamic.close_export must be an identifier`);
+  }
+  if ((resource.ownership === "owned") !==
+      (resource.dynamic.close_export !== null)) {
+    fail(filename,
+      `${resource.id} close export is required only for owned resources`);
   }
   exactKeys(filename, resource.native, ["clear_symbol"],
     `${resource.id}.native`);
-  if (!identifier(resource.native.clear_symbol)) {
+  if (resource.native.clear_symbol !== null &&
+      !identifier(resource.native.clear_symbol)) {
     fail(filename, `${resource.id}.native.clear_symbol must be a C identifier`);
+  }
+  if ((resource.ownership === "owned") !==
+      (resource.native.clear_symbol !== null)) {
+    fail(filename,
+      `${resource.id} clear symbol is required only for owned resources`);
   }
   exactKeys(filename, resource.targets, ["dynamic", "native", "wasm"],
     `${resource.id}.targets`);
@@ -140,7 +159,7 @@ function validateFunction(
   pythonNames.add(fn.python_name);
 
   exactKeys(filename, fn.signature, [
-    "parameters", "return_type", "return_ownership",
+    "parameters", "return_type", "return_ownership", "borrow_from",
   ], `${fn.id}.signature`);
   if (!Array.isArray(fn.signature.parameters)) {
     fail(filename, `${fn.id}.signature.parameters must be an array`);
@@ -207,14 +226,27 @@ function validateFunction(
     fail(filename, `${fn.id} has invalid return ownership`);
   }
   const returnResource = resourcesByType.get(fn.signature.return_type);
-  const expectedReturnOwnership = returnResource !== undefined ||
-      fn.signature.return_type === "Integer"
-    ? "owned"
-    : "value";
+  const expectedReturnOwnership = returnResource !== undefined
+    ? returnResource.ownership
+    : fn.signature.return_type === "Integer" ? "owned" : "value";
   if (fn.signature.return_ownership !== expectedReturnOwnership) {
     fail(filename,
       `${fn.id} ${fn.signature.return_type} results must use ` +
       `${expectedReturnOwnership} ownership`);
+  }
+  nullableString(filename, fn.signature.borrow_from,
+    `${fn.id}.signature.borrow_from`);
+  if (returnResource?.ownership === "borrowed") {
+    const ownerParameter = parametersByName.get(fn.signature.borrow_from);
+    const ownerResource = ownerParameter === undefined
+      ? undefined : resourcesByType.get(ownerParameter.type);
+    if (ownerResource?.id !== returnResource.owner) {
+      fail(filename,
+        `${fn.id} borrowed ${returnResource.id} result must borrow_from a ` +
+        `${returnResource.owner} parameter`);
+    }
+  } else if (fn.signature.borrow_from !== null) {
+    fail(filename, `${fn.id} borrow_from is only valid for borrowed-view results`);
   }
 
   exactKeys(filename, fn.dynamic, ["export"], `${fn.id}.dynamic`);
@@ -226,7 +258,7 @@ function validateFunction(
   if (!identifier(fn.native.symbol)) {
     fail(filename, `${fn.id}.native.symbol must be a C identifier`);
   }
-  if (!new Set(["int", "slong", "ulong", "void"])
+  if (!new Set(["int", "slong", "ulong", "uint64_t", "void"])
     .has(fn.native.return_type)) {
     fail(filename, `${fn.id}.native.return_type is unsupported`);
   }
@@ -304,9 +336,11 @@ function validateFunction(
       const expectedAbi = resourcesByType.get(semantic.type)?.abi_type ||
         inputAbiBySemanticType[semantic.type];
       if (argument.abi_type !== expectedAbi) {
-        fail(filename,
-          `${fn.id}.${argument.source} ${semantic.type} requires ${expectedAbi}, ` +
-          `not ${argument.abi_type}`);
+        if (!(semantic.type === "uint64" && argument.abi_type === "uint64_t")) {
+          fail(filename,
+            `${fn.id}.${argument.source} ${semantic.type} requires ` +
+            `${expectedAbi}, not ${argument.abi_type}`);
+        }
       }
     }
   }
@@ -334,7 +368,7 @@ function validateFunction(
   } else {
     if (resultArguments !== 0 || !(
       (fn.native.return_type === "int" && fn.signature.return_type === "bool") ||
-      (new Set(["slong", "ulong"]).has(fn.native.return_type) &&
+      (new Set(["slong", "ulong", "uint64_t"]).has(fn.native.return_type) &&
         fn.signature.return_type === "uint64")
     )) {
       fail(filename,
@@ -362,7 +396,7 @@ function validateFunction(
   if (fn.effects.pure && fn.effects.writes.length !== 0) {
     fail(filename, `${fn.id}.effects.pure functions may not declare writes`);
   }
-  if (returnResource !== undefined &&
+  if (returnResource?.ownership === "owned" &&
       (fn.effects.pure || !fn.effects.may_allocate)) {
     fail(filename, `${fn.id} resource construction must allocate and be impure`);
   }
@@ -417,7 +451,7 @@ function loadDeclaration(filename) {
     "schema_version", "library", "resources", "functions",
   ],
     "document");
-  if (document.schema_version !== 3) fail(filename, "unsupported schema_version");
+  if (document.schema_version !== 4) fail(filename, "unsupported schema_version");
   exactKeys(filename, document.library,
     ["id", "python_module", "dynamic", "native"], "library");
   const library = document.library;
@@ -432,7 +466,7 @@ function loadDeclaration(filename) {
     fail(filename, "library.dynamic.package must be a package name");
   }
   exactKeys(filename, library.native,
-    ["headers", "link", "dependencies"], "library.native");
+    ["headers", "link", "dependencies", "toolchain"], "library.native");
   safeStrings(filename, library.native.headers, "library.native.headers",
     /^[A-Za-z0-9_+./-]+$/);
   safeStrings(filename, library.native.dependencies,
@@ -443,6 +477,22 @@ function loadDeclaration(filename) {
     /^[A-Za-z0-9_+.-]+$/);
   safeStrings(filename, library.native.link.windows,
     "library.native.link.windows", /^[A-Za-z0-9_+.-]+$/);
+  exactKeys(filename, library.native.toolchain,
+    ["prefix_environment", "unix_default", "windows_default", "include_dirs"],
+    "library.native.toolchain");
+  if (!/^[A-Z][A-Z0-9_]*$/.test(library.native.toolchain.prefix_environment)) {
+    fail(filename, "library.native.toolchain.prefix_environment is invalid");
+  }
+  for (const key of ["unix_default", "windows_default"]) {
+    if (typeof library.native.toolchain[key] !== "string" ||
+        library.native.toolchain[key].startsWith("/") ||
+        library.native.toolchain[key].includes("..")) {
+      fail(filename,
+        `library.native.toolchain.${key} must be a repository-relative path`);
+    }
+  }
+  safeStrings(filename, library.native.toolchain.include_dirs,
+    "library.native.toolchain.include_dirs", /^[A-Za-z0-9_+./-]+$/);
   if (!Array.isArray(document.functions) || document.functions.length === 0) {
     fail(filename, "functions must be a nonempty array");
   }
@@ -457,6 +507,23 @@ function loadDeclaration(filename) {
       filename, resource, resourceIds, resourceNames, resourceAbis,
     )
   );
+  const resourcesById = new Map(
+    resources.map((resource) => [resource.id, resource]),
+  );
+  for (const resource of resources) {
+    if (resource.owner !== null && !resourcesById.has(resource.owner)) {
+      fail(filename, `${resource.id} has unknown owner ${resource.owner}`);
+    }
+    const seen = new Set([resource.id]);
+    let current = resource;
+    while (current.owner !== null) {
+      if (seen.has(current.owner)) {
+        fail(filename, `ownership graph contains a cycle through ${current.owner}`);
+      }
+      seen.add(current.owner);
+      current = resourcesById.get(current.owner);
+    }
+  }
   const resourcesByType = new Map(
     resources.map((resource) => [resource.python_name, resource]),
   );
@@ -468,6 +535,19 @@ function loadDeclaration(filename) {
       filename, library, fn, ids, pythonNames, resourcesByType,
     )
   );
+  const enrichedResources = resources.map((resource) => {
+    let root = resource;
+    while (root.owner !== null) root = resourcesById.get(root.owner);
+    return Object.freeze({ ...resource, root_owner: root.id });
+  });
+  const ownershipGraph = Object.freeze(enrichedResources.map((resource) =>
+    Object.freeze({
+      resource: resource.id,
+      ownership: resource.ownership,
+      owner: resource.owner,
+      root: resource.root_owner,
+    })
+  ));
   return Object.freeze({
     schema,
     schemaVersion: document.schema_version,
@@ -475,7 +555,8 @@ function loadDeclaration(filename) {
     hash: digest,
     identity: `${library.id}@${digest}`,
     library: Object.freeze(library),
-    resources: Object.freeze(resources),
+    resources: Object.freeze(enrichedResources),
+    ownershipGraph,
     functions: Object.freeze(functions),
   });
 }
@@ -526,32 +607,47 @@ function generatePythonModule(declaration) {
   const resourcesByType = new Map(
     declaration.resources.map((resource) => [resource.python_name, resource]),
   );
+  const resourcesById = new Map(
+    declaration.resources.map((resource) => [resource.id, resource]),
+  );
   const resourceIdentity = (resource) =>
     `resource:${declaration.identity}:${resource.id}`;
+  const pythonNullableStrings = (values) => `[${values.map((value) =>
+    value === null ? "None" : JSON.stringify(value)
+  ).join(", ")}]`;
   const pythonType = (type) => type === "bool"
     ? "bool" : type === "UInt64Buffer" ? "UInt64Buffer"
       : resourcesByType.has(type) ? type : "int";
   const resourceClasses = declaration.resources.map((resource) => {
     const identity = resourceIdentity(resource);
+    const lifetime = resource.ownership === "owned"
+      ? `    @property\n` +
+        `    def closed(self) -> bool:\n` +
+        `        return _runtime.ffi_resource_closed(self._token)\n\n` +
+        `    def close(self) -> None:\n` +
+        `        _runtime.ffi_resource_close(self._token)\n\n`
+      : `    @property\n` +
+        `    def valid(self) -> bool:\n` +
+        `        return _runtime.ffi_view_valid(self._token)\n\n`;
+    const contextManager = resource.ownership === "owned"
+      ? `\n    def __enter__(self):\n` +
+        `        self._ffi_borrow()\n` +
+        `        return self\n\n` +
+        `    def __exit__(self, exception_type, exception, traceback) -> bool:\n` +
+        `        self.close()\n` +
+        `        return False\n`
+      : "";
     return `class ${resource.python_name}:\n` +
-      `    \"\"\"Opaque owned ${library.id}:${resource.id} resource.\"\"\"\n\n` +
+      `    \"\"\"Opaque ${resource.ownership} ${library.id}:` +
+      `${resource.id} ${resource.ownership === "owned" ? "resource" : "view"}.` +
+      `\"\"\"\n\n` +
       `    def __init__(self, token):\n` +
       `        self._token = token\n\n` +
-      `    @property\n` +
-      `    def closed(self) -> bool:\n` +
-      `        return _runtime.ffi_resource_closed(self._token)\n\n` +
-      `    def close(self) -> None:\n` +
-      `        _runtime.ffi_resource_close(self._token)\n\n` +
+      lifetime +
       `    def _ffi_borrow(self):\n` +
       `        return _runtime.ffi_resource_borrow(\n` +
       `            self._token, ${JSON.stringify(identity)}\n` +
-      `        )\n\n` +
-      `    def __enter__(self):\n` +
-      `        self._ffi_borrow()\n` +
-      `        return self\n\n` +
-      `    def __exit__(self, exception_type, exception, traceback) -> bool:\n` +
-      `        self.close()\n` +
-      `        return False\n`;
+      `        )\n` + contextManager;
   }).join("\n\n");
   const functions = declaration.functions.map((fn) => {
     const params = fn.signature.parameters.map((param) =>
@@ -580,7 +676,8 @@ function generatePythonModule(declaration) {
         `        ${fn.errors.message === null
           ? "None" : JSON.stringify(fn.errors.message)},\n` +
         `    )`
-      : `${returnedResource.python_name}(_runtime.ffi_resource_create(\n` +
+      : returnedResource.ownership === "owned"
+      ? `${returnedResource.python_name}(_runtime.ffi_resource_create(\n` +
         `        __sagejs_ffi_declaration__ + ${JSON.stringify(`:${fn.id}`)},\n` +
         `        ${JSON.stringify(resourceIdentity(returnedResource))},\n` +
         `        ${JSON.stringify(library.dynamic.package)},\n` +
@@ -588,9 +685,24 @@ function generatePythonModule(declaration) {
         `        ${JSON.stringify(returnedResource.dynamic.close_export)},\n` +
         `        [${names.join(", ")}],\n` +
         `        [${types.map((type) => JSON.stringify(type)).join(", ")}],\n` +
-        `        ${JSON.stringify(fn.signature.parameters.map(
+        `        ${pythonNullableStrings(fn.signature.parameters.map(
           (param) => param.minimum ?? null,
         ))},\n` +
+        `        ${JSON.stringify(fn.errors.policy)},\n` +
+        `        ${fn.errors.exception === null
+          ? "None" : JSON.stringify(fn.errors.exception)},\n` +
+        `        ${fn.errors.message === null
+          ? "None" : JSON.stringify(fn.errors.message)},\n` +
+        `    ))`
+      : `${returnedResource.python_name}(_runtime.ffi_view_create(\n` +
+        `        __sagejs_ffi_declaration__ + ${JSON.stringify(`:${fn.id}`)},\n` +
+        `        ${JSON.stringify(resourceIdentity(returnedResource))},\n` +
+        `        ${JSON.stringify(resourceIdentity(resourcesById.get(returnedResource.owner)))},\n` +
+        `        ${fn.signature.borrow_from}._ffi_borrow(),\n` +
+        `        ${JSON.stringify(library.dynamic.package)},\n` +
+        `        ${JSON.stringify(fn.dynamic.export)},\n` +
+        `        [${names.join(", ")}],\n` +
+        `        [${types.map((type) => JSON.stringify(type)).join(", ")}],\n` +
         `        ${JSON.stringify(fn.errors.policy)},\n` +
         `        ${fn.errors.exception === null
           ? "None" : JSON.stringify(fn.errors.exception)},\n` +

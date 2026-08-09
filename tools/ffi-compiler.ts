@@ -41,6 +41,7 @@ interface FfiDeclaration {
     native: Record<string, unknown>;
   };
   resources: Array<Record<string, unknown>>;
+  ownershipGraph: Array<Record<string, unknown>>;
   functions: FfiFunction[];
 }
 
@@ -70,6 +71,7 @@ function publicDescription(root: string, declaration: FfiDeclaration) {
     declaration: relative(root, declaration.filename),
     library: declaration.library,
     resources: declaration.resources,
+    ownership_graph: declaration.ownershipGraph,
     functions: declaration.functions,
   };
 }

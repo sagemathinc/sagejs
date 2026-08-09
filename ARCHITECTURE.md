@@ -130,6 +130,17 @@ construction inside control-flow blocks and resources in public kernel signature
 compilation until a future ownership model proves them safe. A compiler change
 MUST NOT silently turn such a resource into a raw pointer or host callback.
 
+Borrowed foreign views form a declaration-validated acyclic ownership graph.
+Every view names its immediate owner and computed owned root. Ordinary
+execution strongly retains that owner and rejects every view operation after
+explicit root closure. Native execution represents a view as non-owning ABI
+storage, emits no destructor for it, and keeps the lexical owned root alive
+through all uses. Views cannot escape a kernel or appear in its public ABI.
+This is intentionally a narrow foreign-resource protocol, not a general
+borrow checker: unsupported ownership patterns fail schema validation or
+compilation. Unix native CI exercises real resource/view schedules under
+AddressSanitizer, UndefinedBehaviorSanitizer, and leak detection.
+
 ## Compiled-kernel witnesses
 
 [`architecture/native-kernels.json`](architecture/native-kernels.json) lists

@@ -22,6 +22,7 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
 # globals: ρσ_ffi_call, ρσ_ffi_resource_borrow, ρσ_ffi_resource_close
 # globals: ρσ_ffi_resource_closed, ρσ_ffi_resource_create
+# globals: ρσ_ffi_view_create, ρσ_ffi_view_valid
 # globals: ρσ_iterator_symbol, ρσ_kwargs_symbol
 # globals: ρσ_non_exception_throw
 # globals: ρσ_float, ρσ_int, ρσ_list_constructor, ρσ_list_contains, ρσ_str
@@ -252,6 +253,8 @@ ffi_resource_borrow = ρσ_ffi_resource_borrow
 ffi_resource_close = ρσ_ffi_resource_close
 ffi_resource_closed = ρσ_ffi_resource_closed
 ffi_resource_create = ρσ_ffi_resource_create
+ffi_view_create = ρσ_ffi_view_create
+ffi_view_valid = ρσ_ffi_view_valid
 global_object = globalThis
 int_builtin = ρσ_int
 bool_builtin = ρσ_bool

@@ -7,6 +7,7 @@ const {
   mkdirSync,
   readFileSync,
   rmSync,
+  copyFileSync,
   writeFileSync,
 } = require("node:fs");
 const { basename, join, resolve } = require("node:path");
@@ -21,6 +22,13 @@ const downloads = join(buildRoot, "downloads");
 const sources = join(buildRoot, "sources");
 const build = join(buildRoot, "build", "igraph-1.0.1");
 const stamp = join(prefix, ".sagejs-igraph-1.0.1");
+const publicHeader = join(packageRoot, "include", "sagejs", "igraph_ffi.h");
+
+function installSagejsHeader() {
+  const destination = join(prefix, "include", "sagejs", "igraph_ffi.h");
+  mkdirSync(join(prefix, "include", "sagejs"), { recursive: true });
+  copyFileSync(publicHeader, destination);
+}
 const configuredJobs = process.env.SAGEJS_BUILD_JOBS;
 if (configuredJobs !== undefined && !/^[1-9][0-9]*$/.test(configuredJobs)) {
   throw new Error(
@@ -149,6 +157,7 @@ function configureAndBuild(source) {
 
 async function main() {
   if (existsSync(stamp)) {
+    installSagejsHeader();
     process.stdout.write(`Reusing igraph ${dependency.version} from ${prefix}\n`);
     return;
   }
@@ -159,6 +168,7 @@ async function main() {
     run("cmake", ["-E", "tar", "xzf", archive], { cwd: sources });
   }
   configureAndBuild(source);
+  installSagejsHeader();
 }
 
 main().catch((error) => {

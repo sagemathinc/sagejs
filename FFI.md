@@ -23,6 +23,11 @@ exports seven deliberately different witnesses:
   output is copied back only after success and whose zero status becomes
   `ValueError("matrix is singular")`. Input and output may alias safely.
 
+[`ffi/igraph.ffi.json`](ffi/igraph.ffi.json) is the first independent library
+adapter. It declares an owned `IGraph`, a borrowed `IGraphEdges` view, and an
+acyclic ownership edge from the view to the graph. This is intentionally a
+different native package and toolchain from FLINT.
+
 ## One declaration, two execution paths
 
 Ordinary code imports a generated, safe Python surface:
@@ -70,6 +75,7 @@ sagejs ffi audit
 sagejs ffi explain flint
 sagejs ffi explain flint --json
 sagejs ffi generate flint
+sagejs ffi explain igraph --json
 
 sagejs native explain bench/native-ffi-flint.py
 sagejs native ir bench/native-ffi-flint.py
@@ -91,9 +97,9 @@ N-API exports, runtime intrinsics, and visible Wasm exports. A new boundary
 fails CI until `sagejs ffi audit --write` is run and its complete diff is
 reviewed. Regeneration is an explicit acknowledgement, not an allowlist bypass.
 
-## Version 3 safety envelope
+## Version 4 safety envelope
 
-Version 3 supports `uint64`, `bool`, exact `Integer`, and borrowed mutable or
+Version 4 supports `uint64`, `bool`, exact `Integer`, and borrowed mutable or
 immutable `UInt64Buffer` semantics. In addition to scalar `ulong`, `slong`,
 `int`, and `fmpz_t` adapters, a reusable `packed_nmod_matrix` adapter declares
 the data, shape, modulus, access, and aliasing used to initialize and clear a
@@ -102,7 +108,7 @@ output copyback. Calls explicitly declare purity, writes, determinism,
 thread-safety, allocation, and possible exceptions. Native and dynamic
 implementations remain mandatory.
 
-Version 3 adds generated opaque owned resources. A resource declaration names
+A generated opaque owned-resource declaration names
 its semantic Python class, hidden ABI type, dynamic close export, native clear
 symbol, ownership, and target availability. Ordinary Sage.js receives an
 unforgeable generated wrapper:
@@ -144,8 +150,29 @@ This narrow surface gives useful safety without attempting to recreate Rust:
 - dynamic and native results are tested differentially;
 - Windows and Wasm availability are explicit target properties.
 
+Version 4 adds borrowed views and explicit ownership graphs. Each borrowed
+view names one resource owner; schema validation rejects missing owners and
+cycles and computes the owned root shown by `sagejs ffi explain`. Dynamic
+views retain their owner strongly and consult root state on every borrow, so
+closing the owner immediately invalidates all descendants. A view has no
+`close()` because it owns nothing. In a host-isolated kernel, the compiler
+emits view ABI storage without cleanup and keeps the lexical owned root live
+until every exit has run its generated destructor.
+
+The second declaration also makes native toolchain roots per-library data.
+`SAGEJS_FLINT_PREFIX` and `SAGEJS_GRAPH_PREFIX` can independently select
+installed artifacts; headers and archives are never accidentally resolved
+through FLINT's prefix merely because FLINT was the first adapter.
+
+Run `pnpm ffi:lifecycle:fuzz` to compile and execute a deterministic igraph
+owner/view lifecycle corpus with ASan, UBSan, and leak detection on Unix. The
+ordinary and generated-JavaScript paths separately test repeated close,
+borrow, and use-after-close schedules. Windows reports this sanitizer job as
+an explicit unavailable capability while retaining ordinary and native
+lifecycle coverage.
+
 Future revisions should add generated C++ exception shims, additional typed
-slices, nullable results, non-owning resource views, callbacks with a
+slices, nullable results, callbacks with a
 clearly marked host-effect boundary, and richer status translation. Those
 features extend the schema and adapter library; they must not become ad hoc
 compiler branches for individual symbols.

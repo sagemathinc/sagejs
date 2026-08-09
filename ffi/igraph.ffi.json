@@ -1,0 +1,151 @@
+{
+  "schema_version": 4,
+  "library": {
+    "id": "igraph",
+    "python_module": "sagejs.ffi.igraph",
+    "dynamic": {"package": "@sagemath/sagejs-graph"},
+    "native": {
+      "headers": ["sagejs/igraph_ffi.h"],
+      "link": {
+        "unix": ["libigraph.a"],
+        "windows": ["igraph.lib"]
+      },
+      "dependencies": ["igraph"],
+      "toolchain": {
+        "prefix_environment": "SAGEJS_GRAPH_PREFIX",
+        "unix_default": "packages/graph/.native/prefix",
+        "windows_default": "packages/graph/.native/prefix",
+        "include_dirs": ["include", "include/igraph"]
+      }
+    }
+  },
+  "resources": [
+    {
+      "id": "graph",
+      "python_name": "IGraph",
+      "abi_type": "sagejs_igraph_graph_t",
+      "ownership": "owned",
+      "owner": null,
+      "dynamic": {"close_export": "ffiGraphClose"},
+      "native": {"clear_symbol": "sagejs_igraph_graph_clear"},
+      "targets": {"dynamic": true, "native": true, "wasm": false}
+    },
+    {
+      "id": "edges",
+      "python_name": "IGraphEdges",
+      "abi_type": "sagejs_igraph_edges_view_t",
+      "ownership": "borrowed",
+      "owner": "graph",
+      "dynamic": {"close_export": null},
+      "native": {"clear_symbol": null},
+      "targets": {"dynamic": true, "native": true, "wasm": false}
+    }
+  ],
+  "functions": [
+    {
+      "id": "complete_graph",
+      "python_name": "complete_graph",
+      "signature": {
+        "parameters": [
+          {"name": "vertex_count", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
+          {"name": "directed", "type": "bool", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
+          {"name": "loops", "type": "bool", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"}
+        ],
+        "return_type": "IGraph",
+        "return_ownership": "owned",
+        "borrow_from": null
+      },
+      "dynamic": {"export": "ffiGraphCompleteCreate"},
+      "native": {
+        "symbol": "sagejs_igraph_complete_init",
+        "return_type": "int",
+        "arguments": [
+          {"source": "result", "abi_type": "sagejs_igraph_graph_t", "direction": "out", "adapter": null},
+          {"source": "vertex_count", "abi_type": "uint64_t", "direction": "in", "adapter": null},
+          {"source": "directed", "abi_type": "int", "direction": "in", "adapter": null},
+          {"source": "loops", "abi_type": "int", "direction": "in", "adapter": null}
+        ]
+      },
+      "effects": {"pure": false, "deterministic": true, "thread_safe": true, "may_allocate": true, "may_raise": ["RuntimeError"], "writes": []},
+      "errors": {"policy": "zero_is_error", "exception": "RuntimeError", "message": "igraph could not construct complete graph"},
+      "targets": {"dynamic": true, "native": true, "wasm": false}
+    },
+    {
+      "id": "vertex_count",
+      "python_name": "vertex_count",
+      "signature": {
+        "parameters": [
+          {"name": "graph", "type": "IGraph", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"}
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {"export": "ffiGraphVertexCount"},
+      "native": {"symbol": "sagejs_igraph_vertex_count", "return_type": "uint64_t", "arguments": [
+        {"source": "graph", "abi_type": "sagejs_igraph_graph_t", "direction": "in", "adapter": null}
+      ]},
+      "effects": {"pure": true, "deterministic": true, "thread_safe": true, "may_allocate": false, "may_raise": [], "writes": []},
+      "errors": {"policy": "none", "exception": null, "message": null},
+      "targets": {"dynamic": true, "native": true, "wasm": false}
+    },
+    {
+      "id": "edges",
+      "python_name": "edges",
+      "signature": {
+        "parameters": [
+          {"name": "graph", "type": "IGraph", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"}
+        ],
+        "return_type": "IGraphEdges",
+        "return_ownership": "borrowed",
+        "borrow_from": "graph"
+      },
+      "dynamic": {"export": "ffiGraphEdgesBorrow"},
+      "native": {"symbol": "sagejs_igraph_edges_borrow", "return_type": "int", "arguments": [
+        {"source": "result", "abi_type": "sagejs_igraph_edges_view_t", "direction": "out", "adapter": null},
+        {"source": "graph", "abi_type": "sagejs_igraph_graph_t", "direction": "in", "adapter": null}
+      ]},
+      "effects": {"pure": true, "deterministic": true, "thread_safe": true, "may_allocate": false, "may_raise": ["RuntimeError"], "writes": []},
+      "errors": {"policy": "zero_is_error", "exception": "RuntimeError", "message": "igraph could not borrow edge storage"},
+      "targets": {"dynamic": true, "native": true, "wasm": false}
+    },
+    {
+      "id": "edge_count",
+      "python_name": "edge_count",
+      "signature": {
+        "parameters": [
+          {"name": "edges", "type": "IGraphEdges", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"}
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {"export": "ffiGraphEdgeCount"},
+      "native": {"symbol": "sagejs_igraph_edge_count", "return_type": "uint64_t", "arguments": [
+        {"source": "edges", "abi_type": "sagejs_igraph_edges_view_t", "direction": "in", "adapter": null}
+      ]},
+      "effects": {"pure": true, "deterministic": true, "thread_safe": true, "may_allocate": false, "may_raise": [], "writes": []},
+      "errors": {"policy": "none", "exception": null, "message": null},
+      "targets": {"dynamic": true, "native": true, "wasm": false}
+    },
+    {
+      "id": "edge_checksum",
+      "python_name": "edge_checksum",
+      "signature": {
+        "parameters": [
+          {"name": "edges", "type": "IGraphEdges", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"}
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {"export": "ffiGraphEdgeChecksum"},
+      "native": {"symbol": "sagejs_igraph_edge_checksum", "return_type": "uint64_t", "arguments": [
+        {"source": "edges", "abi_type": "sagejs_igraph_edges_view_t", "direction": "in", "adapter": null}
+      ]},
+      "effects": {"pure": true, "deterministic": true, "thread_safe": true, "may_allocate": false, "may_raise": [], "writes": []},
+      "errors": {"policy": "none", "exception": null, "message": null},
+      "targets": {"dynamic": true, "native": true, "wasm": false}
+    }
+  ]
+}

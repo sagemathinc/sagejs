@@ -215,7 +215,7 @@ def ρσ_ffi_call(
                         `invalid dynamic FFI argument for ${parameter_type}`
                     );
                 }
-                if (state.closed) {
+                if ((state.root ?? state).closed) {
                     throw new ValueError("FFI resource is closed");
                 }
                 return state.handle;
@@ -401,8 +401,11 @@ def ρσ_ffi_resource_create(
             backend,
             close,
             handle,
-            closed: false
+            closed: false,
+            root: null,
+            borrowed: false
         };
+        state.root = state;
         const token = Object.create(null);
         Object.defineProperty(token, tag, {value: state});
         registry.register(token, state, token);
@@ -418,8 +421,104 @@ def ρσ_ffi_resource_borrow(token, resource_identity):
         if (state === undefined || state.identity !== resource_identity) {
             throw new TypeError(`expected ${resource_identity}`);
         }
-        if (state.closed) throw new ValueError("FFI resource is closed");
+        if ((state.root ?? state).closed) {
+            throw new ValueError("FFI resource is closed");
+        }
         return token;
+    })()"""
+
+
+def ρσ_ffi_view_create(
+    declaration_identity, view_identity, owner_identity, owner_token, package_name,
+    create_export, values, parameter_types, error_policy, error_exception,
+    error_message
+):
+    """Construct an opaque borrowed view which strongly retains its owner."""
+    return r"""%js (() => {
+        const tag = globalThis.__sagejs_ffi_resource_tag__;
+        const owner = tag === undefined ? undefined : owner_token?.[tag];
+        const root = owner?.root ?? owner;
+        if (
+            owner === undefined || owner.identity !== owner_identity || root.closed
+            || typeof declaration_identity !== "string"
+            || !/^[a-z][a-z0-9_]*@[0-9a-f]{64}:[A-Za-z_][A-Za-z0-9_]*$/
+                .test(declaration_identity)
+            || typeof view_identity !== "string"
+            || !/^resource:[a-z][a-z0-9_]*@[0-9a-f]{64}:[A-Za-z_][A-Za-z0-9_]*$/
+                .test(view_identity)
+        ) {
+            if (owner !== undefined && root.closed) {
+                throw new ValueError("FFI resource is closed");
+            }
+            throw new TypeError("invalid FFI borrowed-view owner");
+        }
+        if (values.length !== parameter_types.length) {
+            throw new TypeError("FFI borrowed-view argument count mismatch");
+        }
+        const backend = __sagejs_runtime_require__(package_name);
+        const create = Reflect.get(backend, create_export);
+        if (typeof create !== "function") {
+            throw new RuntimeError(
+                `FFI borrowed-view backend lacks ${create_export}`
+            );
+        }
+        const marshalled = values.map((value, index) => {
+            const type = parameter_types[index];
+            if (typeof type === "string" && type.startsWith("resource:")) {
+                const state = value?.[tag];
+                if (state === undefined || state.identity !== type) {
+                    throw new TypeError(`invalid dynamic FFI argument for ${type}`);
+                }
+                if ((state.root ?? state).closed) {
+                    throw new ValueError("FFI resource is closed");
+                }
+                return state.handle;
+            }
+            if (type === "uint64") {
+                const exact = typeof value === "bigint"
+                    ? value : Number.isSafeInteger(value) ? BigInt(value) : -1n;
+                if (exact >= 0n && exact <= 18446744073709551615n) return exact;
+            }
+            if (type === "bool" && typeof value === "boolean") return value;
+            throw new TypeError(`invalid dynamic FFI argument for ${type}`);
+        });
+        const handle = Reflect.apply(create, backend, marshalled);
+        if (error_policy === "zero_is_error" && handle === false) {
+            const exceptions = {OverflowError, RuntimeError, TypeError, ValueError};
+            throw new exceptions[error_exception](error_message);
+        }
+        if (handle === null || (typeof handle !== "object" &&
+            typeof handle !== "function")) {
+            throw new TypeError(
+                `FFI declaration ${declaration_identity} returned invalid view`
+            );
+        }
+        const state = {
+            identity: view_identity,
+            declaration: declaration_identity,
+            backend,
+            handle,
+            owner,
+            owner_token,
+            root,
+            closed: false,
+            borrowed: true
+        };
+        const token = Object.create(null);
+        Object.defineProperty(token, tag, {value: state});
+        return token;
+    })()"""
+
+
+def ρσ_ffi_view_valid(token):
+    """Return whether a borrowed view's ownership root remains live."""
+    return r"""%js (() => {
+        const tag = globalThis.__sagejs_ffi_resource_tag__;
+        const state = tag === undefined ? undefined : token?.[tag];
+        if (state === undefined || !state.borrowed) {
+            throw new TypeError("invalid FFI borrowed view");
+        }
+        return !(state.root ?? state).closed;
     })()"""
 
 
@@ -429,6 +528,7 @@ def ρσ_ffi_resource_close(token):
         const tag = globalThis.__sagejs_ffi_resource_tag__;
         const state = tag === undefined ? undefined : token?.[tag];
         if (state === undefined) throw new TypeError("invalid FFI resource");
+        if (state.borrowed) throw new TypeError("borrowed FFI views cannot close");
         if (state.closed) return undefined;
         Reflect.apply(state.close, state.backend, [state.handle]);
         state.closed = true;
@@ -444,7 +544,7 @@ def ρσ_ffi_resource_closed(token):
         const tag = globalThis.__sagejs_ffi_resource_tag__;
         const state = tag === undefined ? undefined : token?.[tag];
         if (state === undefined) throw new TypeError("invalid FFI resource");
-        return state.closed;
+        return (state.root ?? state).closed;
     })()"""
 
 

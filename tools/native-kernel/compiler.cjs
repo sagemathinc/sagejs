@@ -156,6 +156,15 @@ function windowsClangBuiltins() {
   return library;
 }
 
+function foreignPrefix(library) {
+  const toolchain = library.native.toolchain;
+  return resolve(
+    process.env[toolchain.prefix_environment] ||
+      join(root, process.platform === "win32"
+        ? toolchain.windows_default : toolchain.unix_default),
+  );
+}
+
 function bindingGyp(ir, sourceBoundsChecked) {
   const usesPrimeField = ir.functions.some(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
@@ -168,17 +177,29 @@ function bindingGyp(ir, sourceBoundsChecked) {
   );
   const tuning = usesSpecializedPrimeField ? primeFieldTuning() : null;
   const foreignLibraries = Array.from(new Set(
-    (ir.foreignLibraries || []).flatMap((library) =>
-    library.native.link[process.platform === "win32" ? "windows" : "unix"]
-      .map((name) => join(nativePrefix, "lib", name))
-    ),
+    (ir.foreignLibraries || []).flatMap((library) => {
+      const prefix = foreignPrefix(library);
+      return library.native.link[
+        process.platform === "win32" ? "windows" : "unix"
+      ].map((name) => join(prefix, "lib", name));
+    }),
+  ));
+  const foreignIncludes = Array.from(new Set(
+    (ir.foreignLibraries || []).flatMap((library) => {
+      const prefix = foreignPrefix(library);
+      return library.native.toolchain.include_dirs.map((directory) =>
+        join(prefix, directory)
+      );
+    }),
   ));
   const usesForeignLibraries = foreignLibraries.length > 0;
   const target = {
     target_name: "sagejs_native_kernel",
     win_delay_load_hook: "false",
     sources: ["kernel.c"],
-    include_dirs: [join(nativePrefix, "include"), nativeInclude],
+    include_dirs: [
+      join(nativePrefix, "include"), nativeInclude, ...foreignIncludes,
+    ],
     defines: [
       "NAPI_VERSION=8",
       ...(usesSpecializedPrimeField
@@ -287,6 +308,10 @@ async function compileKernel(options) {
     architecture: process.arch,
     nodeModulesAbi: process.versions.modules,
     toolchain: toolchainFingerprint(),
+    foreignToolchains: (ir.foreignLibraries || []).map((library) => ({
+      id: library.id,
+      prefix: foreignPrefix(library),
+    })),
     primeFieldTuning: tuning,
     sourceBoundsChecked,
     mpfr: "4.2.2",

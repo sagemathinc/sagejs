@@ -160,19 +160,19 @@
     },
     {
       "path": "packages/graph/src/addon.c",
-      "lines": 503,
-      "bytes": 16596,
+      "lines": 665,
+      "bytes": 21764,
       "decision": "retain-bridge",
       "priority": "low",
       "responsibilities": [
-        "Node-API graph conversion",
-        "nauty/Traces invocation",
-        "canonical labels and automorphism result conversion"
+        "Node-API graph conversion and igraph invocation",
+        "Opaque owned graph resource lifecycle adaptation",
+        "Borrowed edge-view validation and result conversion"
       ],
-      "rationale": "The sophisticated algorithms live in nauty rather than Sage.js. Keep this as a narrow external-library bridge and resist adding graph algorithms directly to it.",
+      "rationale": "The sophisticated algorithms live in igraph rather than Sage.js. Keep this as a narrow external-library bridge, with ownership generated from declarations, and resist adding graph algorithms directly to it.",
       "fallback": "Dynamic graph methods provide tested behavior when the native graph capability is absent.",
-      "oracles": ["CPython", "Sage.js JavaScript fallback", "nauty"],
-      "next": "Document the graph ABI and split registration from conversion if the adapter grows."
+      "oracles": ["CPython", "Sage.js JavaScript fallback", "igraph"],
+      "next": "Keep registration separate from ownership adaptation and migrate further igraph calls only through checked declarations."
     }
   ]
 }

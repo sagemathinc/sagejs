@@ -23,6 +23,7 @@ const root = join(__dirname, "..");
 const witness = join(root, "bench", "native-ffi-flint.py");
 const matrixWitness = join(root, "bench", "native-ffi-flint-matrix.py");
 const resourceWitness = join(root, "bench", "native-ffi-flint-resource.py");
+const igraphWitness = join(root, "bench", "native-ffi-igraph.py");
 
 function runSage(args, input = undefined) {
   const result = spawnSync(process.execPath, [join(root, "bin", "sagejs"), ...args], {
@@ -49,8 +50,8 @@ function runSageDiagnostic(args, input) {
 
 test("FFI declarations are strict and generated modules are current", () => {
   const registry = declarations.loadRegistry({ root });
-  assert.equal(registry.schema, "sagejs.ffi/declaration-v3");
-  assert.equal(registry.libraries.length, 1);
+  assert.equal(registry.schema, "sagejs.ffi/declaration-v4");
+  assert.equal(registry.libraries.length, 2);
   const flint = registry.byId.get("flint");
   assert.equal(flint.library.python_module, "sagejs.ffi.flint");
   assert.deepEqual(
@@ -75,7 +76,12 @@ test("FFI declarations are strict and generated modules are current", () => {
     readFileSync(generated, "utf8"),
     /_runtime\.ffi_call\(\n\s+__sagejs_ffi_declaration__ \+ ":n_is_prime"/,
   );
-  assert.match(runSage(["ffi", "check"]), /7 function\(s\)/);
+  const igraph = registry.byId.get("igraph");
+  assert.deepEqual(igraph.ownershipGraph, [
+    { resource: "graph", ownership: "owned", owner: null, root: "graph" },
+    { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
+  ]);
+  assert.match(runSage(["ffi", "check"]), /12 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -93,8 +99,8 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 7);
-  assert.equal(current.counts["declared-ffi-resource"], 1);
+  assert.equal(current.counts["declared-ffi"], 12);
+  assert.equal(current.counts["declared-ffi-resource"], 3);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   const stale = structuredClone(snapshot);
   stale.boundaries.pop();
@@ -189,6 +195,26 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
   );
 });
 
+test("FFI ownership graphs reject cycles", () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-cycle-"));
+  try {
+    const directory = join(temporary, "ffi");
+    mkdirSync(directory);
+    const document = JSON.parse(
+      readFileSync(join(root, "ffi", "igraph.ffi.json"), "utf8"),
+    );
+    document.resources[1].owner = "edges";
+    writeFileSync(join(directory, "invalid.ffi.json"),
+      `${JSON.stringify(document, null, 2)}\n`);
+    assert.throws(
+      () => declarations.loadRegistry({ root: temporary }),
+      /ownership graph contains a cycle/,
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
 test("safe generated FLINT surface works in ordinary Sage.js", () => {
   const output = runSage(["--python"], [
     "from sagejs.ffi.flint import n_is_prime, fmpz_gcd",
@@ -248,6 +274,28 @@ test("generated opaque FLINT resources close deterministically", () => {
   assert.equal(
     output.trim(),
     "4 3 False\nTrue\nValueError FFI resource is closed\n6\nTrue",
+  );
+});
+
+test("generated igraph views pin owners and invalidate on explicit close", () => {
+  const output = runSage(["--python"], [
+    "from sagejs.ffi.igraph import complete_graph, vertex_count, edges, edge_count, edge_checksum",
+    "graph = complete_graph(5, False, False)",
+    "view = edges(graph)",
+    "print(vertex_count(graph), edge_count(view), edge_checksum(view), view.valid, graph.closed)",
+    "graph.close()",
+    "graph.close()",
+    "print(view.valid, graph.closed)",
+    "try:",
+    "    edge_count(view)",
+    "except ValueError as error:",
+    "    print(type(error).__name__, str(error))",
+    "",
+  ].join("\n"));
+  assert.equal(
+    output.trim(),
+    "5 10 4663669198664987395 True False\nFalse True\n" +
+      "ValueError FFI resource is closed",
   );
 });
 
@@ -329,6 +377,40 @@ test("compiled owned resources agree with fallback and reject loop allocation", 
     ),
     /owned FFI resources must be created in the top-level native block/,
   );
+});
+
+test("borrowed igraph views lower without cleanup and agree across paths", async () => {
+  const source = readFileSync(igraphWitness, "utf8");
+  const ir = await lowerSource(source, igraphWitness);
+  const fn = ir.functions[0];
+  assert.deepEqual(
+    fn.foreignResources.map((resource) => [resource.python_name, resource.ownership]),
+    [["IGraph", "owned"], ["IGraphEdges", "borrowed"]],
+  );
+  const core = generateHostCore(ir);
+  assert.equal(core.audit.isolated, true);
+  assert.equal(core.audit.hostCallbacks, 0);
+  assert.match(core.source, /sagejs_igraph_edges_borrow\(/);
+  assert.match(core.source, /sagejs_igraph_graph_clear\(/);
+  assert.doesNotMatch(core.source, /napi_|PyObject|JSValue|v8::/);
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-igraph-"));
+  try {
+    const result = await compileKernel({
+      sourcePath: igraphWitness,
+      cacheRoot: temporary,
+    });
+    const module = require(result.modulePath);
+    assert.deepEqual(
+      module.complete_graph_summary(5n),
+      [5n, 10n, 4663669198664987395n],
+    );
+    assert.deepEqual(
+      module.complete_graph_summary.javascript(5n),
+      [5n, 10n, 4663669198664987395n],
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test("packed matrix FFI lowers to lexical FLINT storage with checked status", async () => {

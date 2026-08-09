@@ -6,7 +6,7 @@
     {
       "target_name": "sagejs_graph",
       "sources": ["src/addon.c"],
-      "include_dirs": ["<(native_prefix)/include/igraph"],
+      "include_dirs": ["<(native_prefix)/include", "<(native_prefix)/include/igraph", "include"],
       "defines": ["NAPI_VERSION=8", "IGRAPH_STATIC=1"],
       "conditions": [
         ["OS=='linux'", {
