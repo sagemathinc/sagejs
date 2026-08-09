@@ -217,7 +217,7 @@ def ffi_call(
     values: list[Any],
     parameter_types: list[str],
     return_type: str,
-    error_policy: str,
+    result_domain: list[Any],
     error_exception: str | None,
     error_message: str | None,
     constraints: list[Any],

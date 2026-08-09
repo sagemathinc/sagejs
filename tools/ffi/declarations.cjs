@@ -10,7 +10,7 @@ const { join, resolve } = require("node:path");
 const { loadCatalog } = require("./abi-catalog.cjs");
 
 const repositoryRoot = resolve(__dirname, "..", "..");
-const schema = "sagejs.ffi/declaration-v5";
+const schema = "sagejs.ffi/declaration-v6";
 const ownership = new Set(["borrowed", "borrowed_mut", "owned", "value"]);
 const errorExceptions = new Set([
   "OverflowError", "RuntimeError", "TypeError", "ValueError",
@@ -134,16 +134,35 @@ function callPlan(library, fn, catalog, resourcesByType) {
     const resource = argument.source === "result" ? undefined :
       resourcesByType.get(parameters.get(argument.source)?.type);
     const abi = catalog.abiTypes.get(argument.abi_type);
-    const lowering = argument.adapter !== null
+    const lowering = argument.adapter?.kind === "record"
       ? {
+          kind: "record",
+          adapter: "record",
+          fields: { ...argument.adapter.fields },
+          c_type: abi.c_type,
+          pass: abi.pass,
+          record_fields: abi.fields.map((field) => ({
+            ...field,
+            c_type: catalog.abiTypes.get(field.abi_type).c_type,
+          })),
+        }
+      : argument.adapter !== null ? {
           kind: "adapter",
           adapter: argument.adapter.kind,
           fields: { ...argument.adapter },
+          c_type: abi.c_type,
         }
       : argument.source === "result"
-        ? { kind: "result" }
+        ? {
+            kind: "result",
+            c_type: abi?.c_type || argument.abi_type,
+          }
         : resource !== undefined
-          ? { kind: "resource", resource: resource.id }
+          ? {
+              kind: "resource",
+              resource: resource.id,
+              c_type: argument.abi_type,
+            }
           : { kind: abi.kind, c_type: abi.c_type };
     return Object.freeze({
       position, source: argument.source, abi_type: argument.abi_type,
@@ -155,6 +174,7 @@ function callPlan(library, fn, catalog, resourcesByType) {
   for (const argument of fn.native.arguments) {
     if (argument.adapter === null) continue;
     const spec = catalog.adapters.get(argument.adapter.kind);
+    if (spec.kind === "record") continue;
     constraints.push(Object.freeze({
       kind: "buffer_length",
       buffer: argument.adapter.data,
@@ -175,15 +195,19 @@ function callPlan(library, fn, catalog, resourcesByType) {
   const resultArgument = fn.native.arguments.find((item) =>
     item.source === "result");
   return Object.freeze({
-    schema: "sagejs.ffi/call-plan-v1",
+    schema: "sagejs.ffi/call-plan-v2",
     declaration_id: `${library.id}:${fn.id}`,
-    symbol: fn.native.symbol,
+    symbol: fn.exceptions.policy === "cxx_to_status"
+      ? `sagejs_ffi_shield_${library.id}_${fn.id}` : fn.native.symbol,
+    foreign_symbol: fn.native.symbol,
     native_return: fn.native.return_type,
+    native_return_c_type: catalog.abiTypes.get(fn.native.return_type).c_type,
     result: Object.freeze({
-      mode: resultArgument !== undefined ? "out" :
-        fn.errors.policy === "zero_is_error" ? "checked_status" : "direct",
+      transfer: resultArgument !== undefined ? "out" : "direct",
+      domain: fn.result.domain,
+      success: Object.freeze([...fn.result.success]),
+      absence: fn.result.absence,
       semantic_type: fn.signature.return_type,
-      error_policy: fn.errors.policy,
     }),
     arguments: Object.freeze(arguments_),
     constraints: Object.freeze(constraints),
@@ -199,7 +223,7 @@ function validateFunction(
   ]);
   exactKeys(filename, fn, [
     "id", "python_name", "signature", "dynamic", "native", "effects",
-    "errors", "targets",
+    "result", "errors", "exceptions", "targets",
   ], `function ${fn.id || "?"}`);
   if (!identifier(fn.id)) fail(filename, "function id must be a C identifier");
   if (!identifier(fn.python_name)) {
@@ -345,6 +369,40 @@ function validateFunction(
       if (adapterSpec === undefined) {
         fail(filename, `${fn.id} has unsupported adapter ${adapter.kind}`);
       }
+      if (adapterSpec.kind === "record") {
+        const recordAbi = catalog.abiTypes.get(argument.abi_type);
+        if (recordAbi?.kind !== "record") {
+          fail(filename,
+            `${fn.id}.${argument.source} record adapter requires a record ABI`);
+        }
+        exactKeys(filename, adapter, ["kind", "fields"],
+          `${fn.id}.${argument.source} adapter`);
+        exactKeys(filename, adapter.fields,
+          recordAbi.fields.map((field) => field.name),
+          `${fn.id}.${argument.source} record fields`);
+        if (argument.direction !== "in") {
+          fail(filename, `${fn.id}.${argument.source} records are input-only`);
+        }
+        for (const field of recordAbi.fields) {
+          const parameterName = adapter.fields[field.name];
+          const parameter = parametersByName.get(parameterName);
+          if (!identifier(parameterName) || parameter === undefined) {
+            fail(filename,
+              `${fn.id}.${argument.source}.${field.name} names an unknown parameter`);
+          }
+          const accepted = catalog.semanticTypes.get(parameter.type)?.input_abis || [];
+          if (!accepted.includes(field.abi_type)) {
+            fail(filename,
+              `${fn.id}.${argument.source}.${field.name} ${parameter.type} cannot ` +
+              `lower to ${field.abi_type}`);
+          }
+          if (nativeInputSources.has(parameterName)) {
+            fail(filename, `${fn.id} repeats native source ${parameterName}`);
+          }
+          nativeInputSources.add(parameterName);
+        }
+        continue;
+      }
       if (argument.abi_type !== adapterSpec.abi_type) {
         fail(filename, `${fn.id}.${argument.source} ${adapter.kind} requires ` +
           `${adapterSpec.abi_type}, not ${argument.abi_type}`);
@@ -433,13 +491,16 @@ function validateFunction(
         `${fn.id} void/out ABI currently requires an Integer/fmpz_t result`);
     }
   } else {
-    if (resultArguments !== 0 || !(
+    const returnedAbi = catalog.abiTypes.get(fn.native.return_type);
+    const nullableWord = returnedAbi?.kind === "pointer" &&
+      returnedAbi.pointee === "uint64_t" && fn.signature.return_type === "uint64";
+    if (resultArguments !== 0 || !(nullableWord ||
       (fn.native.return_type === "int" && fn.signature.return_type === "bool") ||
       (new Set(["slong", "ulong", "uint64_t"]).has(fn.native.return_type) &&
-        fn.signature.return_type === "uint64")
-    )) {
+        fn.signature.return_type === "uint64"))) {
       fail(filename,
-        `${fn.id} direct ABI requires int/bool or word/uint64 result`);
+        `${fn.id} direct ABI requires int/bool, word/uint64, or ` +
+        `nullable uint64 pointer result`);
     }
   }
 
@@ -467,7 +528,15 @@ function validateFunction(
       (fn.effects.pure || !fn.effects.may_allocate)) {
     fail(filename, `${fn.id} resource construction must allocate and be impure`);
   }
-  exactKeys(filename, fn.errors, ["policy", "exception", "message"],
+  exactKeys(filename, fn.result, ["domain", "success", "absence"],
+    `${fn.id}.result`);
+  if (!new Set(["direct", "nullable", "status"]).has(fn.result.domain) ||
+      !Array.isArray(fn.result.success) ||
+      fn.result.success.some((value) => !Number.isSafeInteger(value)) ||
+      !new Set([null, "error"]).has(fn.result.absence)) {
+    fail(filename, `${fn.id} has an invalid result domain`);
+  }
+  exactKeys(filename, fn.errors, ["exception", "message"],
     `${fn.id}.errors`);
   nullableString(filename, fn.errors.exception, `${fn.id}.errors.exception`);
   nullableString(filename, fn.errors.message, `${fn.id}.errors.message`);
@@ -476,20 +545,46 @@ function validateFunction(
     fail(filename, `${fn.id} uses unsupported error exception ` +
       `${fn.errors.exception}`);
   }
-  if (!new Set(["none", "zero_is_error"]).has(fn.errors.policy)) {
-    fail(filename, `${fn.id} uses unsupported error policy ${fn.errors.policy}`);
-  }
-  if (fn.errors.policy === "none" &&
-      (fn.errors.exception !== null || fn.errors.message !== null)) {
-    fail(filename, `${fn.id} no-error policy requires null exception and message`);
-  }
-  if (fn.errors.policy === "zero_is_error" &&
-      (fn.native.return_type !== "int" ||
-       (fn.signature.return_type !== "bool" && returnResource === undefined) ||
-       fn.errors.exception === null || fn.errors.message === null ||
+  const returnedAbi = catalog.abiTypes.get(fn.native.return_type);
+  const hasError = fn.errors.exception !== null || fn.errors.message !== null;
+  if ((fn.errors.exception === null) !== (fn.errors.message === null) ||
+      (fn.errors.exception !== null &&
        !fn.effects.may_raise.includes(fn.errors.exception))) {
+    fail(filename, `${fn.id} errors must match effects.may_raise`);
+  }
+  if (fn.result.domain === "direct" &&
+      (fn.result.success.length !== 0 || fn.result.absence !== null || hasError)) {
+    fail(filename, `${fn.id} direct result cannot declare failures`);
+  }
+  if (fn.result.domain === "status" &&
+      (returnedAbi?.kind !== "scalar" || fn.result.success.length === 0 ||
+       fn.result.absence !== null || !hasError)) {
     fail(filename,
-      `${fn.id} zero_is_error needs int status and a declared exception`);
+      `${fn.id} status result needs scalar success values and a declared error`);
+  }
+  if (fn.result.domain === "nullable" &&
+      (returnedAbi?.kind !== "pointer" || fn.result.success.length !== 0 ||
+       fn.result.absence !== "error" || !hasError)) {
+    fail(filename,
+      `${fn.id} nullable result needs a pointer ABI and declared absence error`);
+  }
+  exactKeys(filename, fn.exceptions, ["policy", "failure_status"],
+    `${fn.id}.exceptions`);
+  if (!new Set(["none", "cxx_to_status"]).has(fn.exceptions.policy) ||
+      (fn.exceptions.failure_status !== null &&
+       !Number.isSafeInteger(fn.exceptions.failure_status))) {
+    fail(filename, `${fn.id} has an invalid exception shield policy`);
+  }
+  if (fn.exceptions.policy === "none" &&
+      fn.exceptions.failure_status !== null) {
+    fail(filename, `${fn.id} unshielded calls require null failure_status`);
+  }
+  if (fn.exceptions.policy === "cxx_to_status" &&
+      (fn.result.domain !== "status" || fn.exceptions.failure_status === null ||
+       fn.result.success.includes(fn.exceptions.failure_status) ||
+       fn.targets?.wasm !== false)) {
+    fail(filename,
+      `${fn.id} C++ shields require a distinct failure status and no wasm target`);
   }
   exactKeys(filename, fn.targets, ["dynamic", "native", "wasm"],
     `${fn.id}.targets`);
@@ -520,7 +615,7 @@ function loadDeclaration(filename, catalog = loadCatalog(repositoryRoot)) {
     "schema_version", "library", "resources", "functions",
   ],
     "document");
-  if (document.schema_version !== 5) fail(filename, "unsupported schema_version");
+  if (document.schema_version !== 6) fail(filename, "unsupported schema_version");
   exactKeys(filename, document.library,
     ["id", "python_module", "dynamic", "native"], "library");
   const library = document.library;
@@ -696,6 +791,9 @@ function generatePythonModule(declaration) {
   const pythonNullableStrings = (values) => `[${values.map((value) =>
     value === null ? "None" : JSON.stringify(value)
   ).join(", ")}]`;
+  const pythonWire = (value) => value === null ? "None"
+    : Array.isArray(value) ? `[${value.map(pythonWire).join(", ")}]`
+      : JSON.stringify(value);
   const pythonType = (type) => type === "bool"
     ? "bool" : type === "UInt64Buffer" ? "list[int]"
       : resourcesByType.has(type) ? type : "int";
@@ -732,6 +830,10 @@ function generatePythonModule(declaration) {
       `        )\n` + contextManager;
   }).join("\n\n");
   const functions = declaration.functions.map((fn) => {
+    const resultWire = [fn.result.domain, [...fn.result.success], fn.result.absence];
+    const legacyResourcePolicy = fn.result.domain === "status"
+      ? "zero_is_error" : fn.result.domain === "nullable"
+        ? "null_is_error" : "none";
     const params = fn.signature.parameters.map((param) =>
       `${param.name}: ${pythonType(param.type)}`
     );
@@ -762,7 +864,7 @@ function generatePythonModule(declaration) {
         `        [${names.join(", ")}],\n` +
         `        [${types.map((type) => JSON.stringify(type)).join(", ")}],\n` +
         `        ${JSON.stringify(fn.signature.return_type)},\n` +
-        `        ${JSON.stringify(fn.errors.policy)},\n` +
+        `        ${pythonWire(resultWire)},\n` +
         `        ${fn.errors.exception === null
           ? "None" : JSON.stringify(fn.errors.exception)},\n` +
         `        ${fn.errors.message === null
@@ -781,7 +883,7 @@ function generatePythonModule(declaration) {
         `        ${pythonNullableStrings(fn.signature.parameters.map(
           (param) => param.minimum ?? null,
         ))},\n` +
-        `        ${JSON.stringify(fn.errors.policy)},\n` +
+        `        ${JSON.stringify(legacyResourcePolicy)},\n` +
         `        ${fn.errors.exception === null
           ? "None" : JSON.stringify(fn.errors.exception)},\n` +
         `        ${fn.errors.message === null
@@ -796,7 +898,7 @@ function generatePythonModule(declaration) {
         `        ${JSON.stringify(fn.dynamic.export)},\n` +
         `        [${names.join(", ")}],\n` +
         `        [${types.map((type) => JSON.stringify(type)).join(", ")}],\n` +
-        `        ${JSON.stringify(fn.errors.policy)},\n` +
+        `        ${JSON.stringify(legacyResourcePolicy)},\n` +
         `        ${fn.errors.exception === null
           ? "None" : JSON.stringify(fn.errors.exception)},\n` +
         `        ${fn.errors.message === null

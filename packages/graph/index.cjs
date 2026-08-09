@@ -60,4 +60,11 @@ function ffiCanonicalPermutationPacked(
   return true;
 };
 
+binding.ffiFirstEdgeEndpointPacked =
+function ffiFirstEdgeEndpointPacked(edges, edgeEntriesValue) {
+  const edgeEntries = ffiDimension(edgeEntriesValue, "edge_entries");
+  const packed = ffiPacked(edges, edgeEntries, "edges");
+  return edgeEntries === 0 ? null : BigInt(packed[0]);
+};
+
 module.exports = binding;

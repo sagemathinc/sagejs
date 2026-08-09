@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 53,
-    "declared-ffi": 14,
+    "declared-ffi": 15,
     "declared-ffi-resource": 3,
     "napi-export": 291,
     "runtime-intrinsic": 113,
@@ -195,6 +195,17 @@
       "dynamic_package": "@sagemath/sagejs-graph",
       "dynamic_export": "ffiGraphEdgesBorrow",
       "symbol": "sagejs_igraph_edges_borrow",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:igraph:first_edge_endpoint",
+      "kind": "declared-ffi",
+      "path": "ffi/igraph.ffi.json",
+      "library": "igraph",
+      "export": "first_edge_endpoint",
+      "dynamic_package": "@sagemath/sagejs-graph",
+      "dynamic_export": "ffiFirstEdgeEndpointPacked",
+      "symbol": "sagejs_igraph_first_edge_endpoint",
       "disposition": "declared-safe-ffi"
     },
     {

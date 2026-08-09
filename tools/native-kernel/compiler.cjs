@@ -15,6 +15,7 @@ const {
   generateArtifacts,
 } = require("./c-backend.cjs");
 const { generateJavaScript } = require("./js-backend.cjs");
+const { generateExceptionShims } = require("./ffi-codegen.cjs");
 const { declarationFiles } = require("../ffi/declarations.cjs");
 
 const root = resolve(__dirname, "..", "..");
@@ -165,7 +166,7 @@ function foreignPrefix(library) {
   );
 }
 
-function bindingGyp(ir, sourceBoundsChecked) {
+function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
   const usesPrimeField = ir.functions.some(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
@@ -199,7 +200,7 @@ function bindingGyp(ir, sourceBoundsChecked) {
   const target = {
     target_name: "sagejs_native_kernel",
     win_delay_load_hook: "false",
-    sources: ["kernel.c"],
+    sources: ["kernel.c", ...(hasExceptionShims ? ["ffi_shims.cc"] : [])],
     include_dirs: [
       join(nativePrefix, "include"), nativeInclude, ...foreignIncludes,
     ],
@@ -245,7 +246,11 @@ function bindingGyp(ir, sourceBoundsChecked) {
       },
     };
     target.msvs_settings = {
-      VCCLCompilerTool: { Optimization: 3, WarningLevel: 3 },
+      VCCLCompilerTool: {
+        Optimization: 3,
+        WarningLevel: 3,
+        ...(hasExceptionShims ? { ExceptionHandling: 1 } : {}),
+      },
     };
   } else {
     target.libraries = [
@@ -268,10 +273,15 @@ function bindingGyp(ir, sourceBoundsChecked) {
       "-ffunction-sections",
       "-fdata-sections",
     ];
+    if (hasExceptionShims) {
+      target["cflags_cc!"] = ["-fno-exceptions"];
+      target.cflags_cc = ["-fexceptions"];
+    }
     if (process.platform === "darwin") {
       target.xcode_settings = {
         GCC_OPTIMIZATION_LEVEL: "3",
         MACOSX_DEPLOYMENT_TARGET: "13.0",
+        ...(hasExceptionShims ? { GCC_ENABLE_CPP_EXCEPTIONS: "YES" } : {}),
       };
     } else {
       target.ldflags = [
@@ -336,11 +346,16 @@ async function compileKernel(options) {
   const manifestPath = join(outputPath, "manifest.json");
   const coreSourcePath = join(outputPath, "kernel_core.c");
   const coreHeaderPath = join(outputPath, "kernel_core.h");
+  const exceptionShims = generateExceptionShims(ir);
+  const shimSourcePath = join(outputPath, "ffi_shims.cc");
+  const shimHeaderPath = join(outputPath, "ffi_shims.h");
   if (
     existsSync(addonPath) &&
     existsSync(modulePath) &&
     existsSync(manifestPath) &&
-    existsSync(coreSourcePath) && existsSync(coreHeaderPath)
+    existsSync(coreSourcePath) && existsSync(coreHeaderPath) &&
+    (exceptionShims === null ||
+      (existsSync(shimSourcePath) && existsSync(shimHeaderPath)))
   ) {
     writeDiscoveryIndex(cacheRoot, sourcePath, sourceHash, cacheKey);
     return {
@@ -352,6 +367,8 @@ async function compileKernel(options) {
       outputPath,
       coreSourcePath,
       coreHeaderPath,
+      shimSourcePath: exceptionShims === null ? null : shimSourcePath,
+      shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
     };
   }
 
@@ -373,9 +390,15 @@ async function compileKernel(options) {
   writeFileSync(join(outputPath, "kernel.c"), cSource);
   writeFileSync(coreSourcePath, artifacts.coreSource);
   writeFileSync(coreHeaderPath, artifacts.coreHeader);
+  if (exceptionShims !== null) {
+    writeFileSync(shimSourcePath, exceptionShims.source);
+    writeFileSync(shimHeaderPath, exceptionShims.header);
+  }
   writeFileSync(
     join(outputPath, "binding.gyp"),
-    `${JSON.stringify(bindingGyp(ir, sourceBoundsChecked), null, 2)}\n`,
+    `${JSON.stringify(bindingGyp(
+      ir, sourceBoundsChecked, exceptionShims !== null,
+    ), null, 2)}\n`,
   );
   writeFileSync(
     modulePath,
@@ -399,6 +422,8 @@ async function compileKernel(options) {
         cSourceMap,
         coreSourceMap,
         hostIsolation: artifacts.hostIsolation,
+        exceptionShields: exceptionShims === null ? [] :
+          exceptionShims.functions.map((fn) => fn.declaration_id),
         ir,
       },
       null,
@@ -428,6 +453,8 @@ async function compileKernel(options) {
     outputPath,
     coreSourcePath,
     coreHeaderPath,
+    shimSourcePath: exceptionShims === null ? null : shimSourcePath,
+    shimHeaderPath: exceptionShims === null ? null : shimHeaderPath,
   };
 }
 

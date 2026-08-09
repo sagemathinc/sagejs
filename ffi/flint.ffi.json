@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "library": {
     "id": "flint",
     "python_module": "sagejs.ffi.flint",
@@ -69,11 +69,12 @@
         "may_raise": ["ValueError"],
         "writes": []
       },
+      "result": {"domain": "status", "success": [1], "absence": null},
       "errors": {
-        "policy": "zero_is_error",
         "exception": "ValueError",
         "message": "FLINT could not initialize this Dirichlet modulus"
       },
+      "exceptions": {"policy": "none", "failure_status": null},
       "targets": {"dynamic": true, "native": true, "wasm": true}
     },
     {
@@ -103,7 +104,9 @@
         "may_raise": ["ValueError"],
         "writes": []
       },
-      "errors": {"policy": "none", "exception": null, "message": null},
+      "result": {"domain": "direct", "success": [], "absence": null},
+      "errors": {"exception": null, "message": null},
+      "exceptions": {"policy": "none", "failure_status": null},
       "targets": {"dynamic": true, "native": true, "wasm": true}
     },
     {
@@ -133,7 +136,9 @@
         "may_raise": ["ValueError"],
         "writes": []
       },
-      "errors": {"policy": "none", "exception": null, "message": null},
+      "result": {"domain": "direct", "success": [], "absence": null},
+      "errors": {"exception": null, "message": null},
+      "exceptions": {"policy": "none", "failure_status": null},
       "targets": {"dynamic": true, "native": true, "wasm": true}
     },
     {
@@ -165,7 +170,9 @@
         "may_raise": [],
         "writes": []
       },
-      "errors": {"policy": "none", "exception": null, "message": null},
+      "result": {"domain": "direct", "success": [], "absence": null},
+      "errors": {"exception": null, "message": null},
+      "exceptions": {"policy": "none", "failure_status": null},
       "targets": {"dynamic": true, "native": true, "wasm": true}
     },
     {
@@ -200,7 +207,9 @@
         "may_raise": [],
         "writes": []
       },
-      "errors": {"policy": "none", "exception": null, "message": null},
+      "result": {"domain": "direct", "success": [], "absence": null},
+      "errors": {"exception": null, "message": null},
+      "exceptions": {"policy": "none", "failure_status": null},
       "targets": {"dynamic": true, "native": true, "wasm": true}
     },
     {
@@ -249,7 +258,9 @@
         "may_raise": ["ValueError", "OverflowError"],
         "writes": []
       },
-      "errors": {"policy": "none", "exception": null, "message": null},
+      "result": {"domain": "direct", "success": [], "absence": null},
+      "errors": {"exception": null, "message": null},
+      "exceptions": {"policy": "none", "failure_status": null},
       "targets": {"dynamic": true, "native": true, "wasm": true}
     },
     {
@@ -313,11 +324,12 @@
         "may_raise": ["ValueError", "OverflowError"],
         "writes": ["output"]
       },
+      "result": {"domain": "status", "success": [1], "absence": null},
       "errors": {
-        "policy": "zero_is_error",
         "exception": "ValueError",
         "message": "matrix is singular"
       },
+      "exceptions": {"policy": "none", "failure_status": null},
       "targets": {"dynamic": true, "native": true, "wasm": true}
     },
     {
@@ -352,7 +364,9 @@
         ]
       },
       "effects": {"pure": false, "deterministic": true, "thread_safe": true, "may_allocate": true, "may_raise": ["ValueError"], "writes": ["output"]},
-      "errors": {"policy": "zero_is_error", "exception": "ValueError", "message": "invalid packed polynomial multiplication"},
+      "result": {"domain": "status", "success": [1], "absence": null},
+      "errors": {"exception": "ValueError", "message": "invalid packed polynomial multiplication"},
+      "exceptions": {"policy": "none", "failure_status": null},
       "targets": {"dynamic": true, "native": true, "wasm": true}
     }
   ]

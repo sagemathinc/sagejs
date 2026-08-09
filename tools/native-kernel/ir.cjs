@@ -676,7 +676,9 @@ function ffiImports(topLevel, filename) {
             native: declaration.native,
             call_plan: declaration.call_plan,
             effects: declaration.effects,
+            result: declaration.result,
             errors: declaration.errors,
+            exceptions: declaration.exceptions,
             targets: declaration.targets,
           },
           import: {

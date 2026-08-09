@@ -171,7 +171,7 @@ def ρσ_documentation_registry():
 
 def ρσ_ffi_call(
     declaration_identity, package_name, export_name, values, parameter_types,
-    return_type, error_policy, error_exception, error_message, constraints
+    return_type, result_domain, error_exception, error_message, constraints
 ):
     """Marshal a checked declaration call to its ordinary dynamic backend."""
     return r"""%js (() => {
@@ -293,7 +293,18 @@ def ρσ_ffi_call(
             }
         }
         const result = Reflect.apply(callable_value, backend, marshalled);
-        if (error_policy === "zero_is_error" && result === false) {
+        if (
+            !Array.isArray(result_domain)
+            || result_domain.length !== 3
+            || !["direct", "nullable", "status"].includes(result_domain[0])
+        ) {
+            throw new TypeError("invalid FFI result domain");
+        }
+        const failed = (
+            (result_domain[0] === "status" && result === false)
+            || (result_domain[0] === "nullable" && result == null)
+        );
+        if (failed) {
             const exception_classes = {
                 OverflowError, RuntimeError, TypeError, ValueError
             };

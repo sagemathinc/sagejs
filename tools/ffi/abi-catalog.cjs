@@ -5,7 +5,7 @@ const { existsSync, readFileSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 
 const repositoryRoot = resolve(__dirname, "..", "..");
-const schema = "sagejs.ffi/abi-catalog-v1";
+const schema = "sagejs.ffi/abi-catalog-v2";
 
 function object(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -52,7 +52,7 @@ function loadCatalog(root = repositoryRoot) {
   }
   keys(filename, document,
     ["schema_version", "semantic_types", "abi_types", "adapters"], "document");
-  if (document.schema_version !== 1) fail(filename, "unsupported schema_version");
+  if (document.schema_version !== 2) fail(filename, "unsupported schema_version");
   if (!object(document.semantic_types) || !object(document.abi_types) ||
       !object(document.adapters)) fail(filename, "catalog maps must be objects");
 
@@ -75,13 +75,50 @@ function loadCatalog(root = repositoryRoot) {
   const abiTypes = new Map();
   for (const [name, item] of Object.entries(document.abi_types)) {
     if (!identifier(name)) fail(filename, `invalid ABI type ${name}`);
-    keys(filename, item, ["kind", "c_type", "return"], `ABI type ${name}`);
-    if (!new Set(["aggregate", "exact_integer", "pointer", "scalar", "void"])
+    const extra = item.kind === "pointer" ? ["pointee"]
+      : item.kind === "record" ? ["pass", "fields"] : [];
+    keys(filename, item, ["kind", "c_type", "return", ...extra],
+      `ABI type ${name}`);
+    if (!new Set([
+      "aggregate", "exact_integer", "pointer", "record", "scalar", "void",
+    ])
       .has(item.kind) || typeof item.c_type !== "string" ||
       !/^[A-Za-z0-9_ *]+$/.test(item.c_type) || typeof item.return !== "boolean") {
       fail(filename, `${name} has unsupported ABI representation`);
     }
+    if (item.kind === "pointer" && !identifier(item.pointee)) {
+      fail(filename, `${name}.pointee must be an ABI type identifier`);
+    }
+    if (item.kind === "record") {
+      if (item.pass !== "const_pointer" || !Array.isArray(item.fields) ||
+          item.fields.length === 0) {
+        fail(filename, `${name} requires const_pointer record fields`);
+      }
+      const fieldNames = new Set();
+      for (const field of item.fields) {
+        keys(filename, field, ["name", "abi_type"], `${name} record field`);
+        if (!identifier(field.name) || fieldNames.has(field.name) ||
+            !identifier(field.abi_type)) {
+          fail(filename, `${name} has an invalid or duplicate record field`);
+        }
+        fieldNames.add(field.name);
+      }
+    }
     abiTypes.set(name, Object.freeze({ id: name, ...item }));
+  }
+  for (const abi of abiTypes.values()) {
+    if (abi.kind === "pointer" && !abiTypes.has(abi.pointee)) {
+      fail(filename, `${abi.id} names unknown pointee ABI ${abi.pointee}`);
+    }
+    if (abi.kind === "record") {
+      for (const field of abi.fields) {
+        const fieldAbi = abiTypes.get(field.abi_type);
+        if (fieldAbi === undefined || fieldAbi.kind !== "scalar") {
+          fail(filename,
+            `${abi.id}.${field.name} requires a scalar ABI, not ${field.abi_type}`);
+        }
+      }
+    }
   }
   for (const semantic of semanticTypes.values()) {
     for (const abi of semantic.input_abis) {
@@ -95,12 +132,18 @@ function loadCatalog(root = repositoryRoot) {
   const adapters = new Map();
   for (const [name, item] of Object.entries(document.adapters)) {
     if (!identifier(name)) fail(filename, `invalid adapter ${name}`);
+    if (item.kind === "record") {
+      keys(filename, item, ["kind"], `adapter ${name}`);
+      adapters.set(name, Object.freeze({ id: name, ...item }));
+      continue;
+    }
     keys(filename, item, [
-      "abi_type", "parameter_fields", "consumes", "dimensions",
+      "kind", "abi_type", "parameter_fields", "consumes", "dimensions",
       "access_field", "aliasing_field", "transactional_field",
       "transactional_writes",
     ], `adapter ${name}`);
-    if (!abiTypes.has(item.abi_type) || !object(item.parameter_fields)) {
+    if (item.kind !== "packed" || !abiTypes.has(item.abi_type) ||
+        !object(item.parameter_fields)) {
       fail(filename, `${name} names an unknown ABI or invalid parameter_fields`);
     }
     for (const [field, type] of Object.entries(item.parameter_fields)) {

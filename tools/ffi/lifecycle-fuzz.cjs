@@ -95,13 +95,15 @@ int main(void)
             unsigned seen[48] = {0};
             const uint64_t cycle_vertices = UINT64_C(2) +
                 next_value(&random_state) % UINT64_C(46);
+            const sagejs_igraph_canonical_request_t request = {
+                cycle_vertices, 2 * cycle_vertices, 0
+            };
             for (uint64_t index = 0; index < cycle_vertices; index++) {
                 cycle_edges[2 * index] = index;
                 cycle_edges[2 * index + 1] = (index + 1) % cycle_vertices;
             }
             if (!sagejs_igraph_canonical_permutation_packed(
-                    labels, cycle_edges, cycle_vertices,
-                    2 * cycle_vertices, 0))
+                    labels, cycle_edges, &request))
                 return 5;
             for (uint64_t index = 0; index < cycle_vertices; index++) {
                 if (labels[index] >= cycle_vertices || seen[labels[index]]++)

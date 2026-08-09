@@ -23,6 +23,77 @@ function foreignDependencies(ir) {
   )).sort();
 }
 
+function shieldedFunctions(ir) {
+  const functions = new Map();
+  const seen = new Set();
+  function visit(value) {
+    if (value === null || typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    if (value.kind === "ffi.call" &&
+        value.foreign?.function?.exceptions?.policy === "cxx_to_status") {
+      const fn = value.foreign.function;
+      functions.set(fn.declaration_id, fn);
+    }
+    for (const item of Array.isArray(value) ? value : Object.values(value)) visit(item);
+  }
+  visit(ir.functions);
+  return Array.from(functions.values()).sort((left, right) =>
+    left.declaration_id.localeCompare(right.declaration_id));
+}
+
+function shieldParameter(argument) {
+  const name = `sagejs_argument_${argument.position}`;
+  const lowering = argument.lowering;
+  if (lowering.kind === "record" && lowering.pass === "const_pointer") {
+    return { declaration: `const ${lowering.c_type} *${name}`, name };
+  }
+  if (typeof lowering.c_type === "string") {
+    return { declaration: `${lowering.c_type} ${name}`, name };
+  }
+  throw new Error(
+    `C++ exception shields do not support ${lowering.kind} arguments yet`,
+  );
+}
+
+function generateExceptionShims(ir) {
+  const functions = shieldedFunctions(ir);
+  if (functions.length === 0) return null;
+  const declarations = [];
+  const definitions = [];
+  for (const fn of functions) {
+    const parameters = fn.call_plan.arguments.map(shieldParameter);
+    const signature = `${fn.call_plan.native_return_c_type} ` +
+      `${fn.call_plan.symbol}(` +
+      `${parameters.map((item) => item.declaration).join(", ")})`;
+    declarations.push(`${signature};`);
+    definitions.push(
+      `extern "C" ${signature}\n` +
+      `{\n` +
+      `    try {\n` +
+      `        return ${fn.call_plan.foreign_symbol}(` +
+        `${parameters.map((item) => item.name).join(", ")});\n` +
+      `    } catch (...) {\n` +
+      `        return ${fn.exceptions.failure_status};\n` +
+      `    }\n` +
+      `}`,
+    );
+  }
+  const header = `/* Generated C++ exception-to-status boundary. */\n` +
+    `#ifndef SAGEJS_GENERATED_FFI_SHIMS_H\n` +
+    `#define SAGEJS_GENERATED_FFI_SHIMS_H\n\n` +
+    `${foreignHeaders(ir).map((name) => `#include <${name}>`).join("\n")}\n\n` +
+    `#ifdef __cplusplus\nextern "C" {\n#endif\n\n` +
+    `${declarations.join("\n")}\n\n` +
+    `#ifdef __cplusplus\n}\n#endif\n\n#endif\n`;
+  const source = `/* Generated C++ exception-to-status boundary. */\n` +
+    `#include "ffi_shims.h"\n\n${definitions.join("\n\n")}\n`;
+  return Object.freeze({ header, source, functions: Object.freeze(functions) });
+}
+
+function exceptionShimInclude(ir) {
+  return shieldedFunctions(ir).length === 0 ? "" : '#include "ffi_shims.h"';
+}
+
 function argumentBySource(operation, source) {
   const parameters = operation.foreign.function.signature.parameters;
   const index = parameters.findIndex((parameter) => parameter.name === source);
@@ -59,7 +130,51 @@ function nativeArguments(fn) {
     direction: argument.direction,
     adapter: argument.lowering.kind === "adapter"
       ? argument.lowering.fields : null,
+    lowering: argument.lowering,
   }));
+}
+
+function nativeSymbol(fn) {
+  return fn.call_plan.symbol;
+}
+
+function nativeReturnType(fn) {
+  return fn.call_plan.native_return_c_type;
+}
+
+function successCondition(fn, raw) {
+  if (fn.result.domain === "status") {
+    return fn.result.success.map((value) => `${raw} == ${value}`).join(" || ");
+  }
+  if (fn.result.domain === "nullable") return `${raw} != NULL`;
+  return "1";
+}
+
+function failureLines(fn, raw, cleanup, context, indent) {
+  if (fn.result.domain === "direct") return [];
+  return [
+    `${indent}if (!(${successCondition(fn, raw)}))`,
+    `${indent}{`,
+    ...cleanup,
+    `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR, ` +
+      `${JSON.stringify(fn.errors.message)});`,
+    `${indent}    ${context.failure}`,
+    `${indent}}`,
+  ];
+}
+
+function assignRawResult(fn, raw, target, indent) {
+  const semantic = fn.signature.return_type;
+  if (fn.result.domain === "nullable") {
+    return `${indent}${target} = (uint64_t) *${raw};`;
+  }
+  if (semantic === "bool") {
+    return fn.result.domain === "status"
+      ? `${indent}${target} = true;`
+      : `${indent}${target} = ${raw} != 0;`;
+  }
+  if (semantic === "uint64") return `${indent}${target} = (uint64_t) ${raw};`;
+  throw new Error(`unsupported declared FFI result ${semantic}`);
 }
 
 function emitResourceCall(operation, context, indent) {
@@ -100,7 +215,8 @@ function emitResourceCall(operation, context, indent) {
     });
     return [
       ...validation,
-      `${indent}if (!${native.symbol}(${args.join(", ")}))`,
+      `${indent}if (!(${successCondition(fn,
+        `${nativeSymbol(fn)}(${args.join(", ")})`)}))`,
       `${indent}{`,
       `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR, ` +
         `${JSON.stringify(fn.errors.message)});`,
@@ -112,7 +228,7 @@ function emitResourceCall(operation, context, indent) {
     ].join("\n");
   }
   return `${indent}${context.result(operation.target)} = ` +
-    `${native.symbol}(${args.join(", ")});`;
+    `${nativeSymbol(fn)}(${args.join(", ")});`;
 }
 
 function usesResource(operation) {
@@ -181,28 +297,36 @@ function emitFmpzCall(operation, value, resultValue, indent, tagged) {
     `${indent}{`,
     ...declarations,
     ...setup,
-    `${indent}    ${native.symbol}(${callArguments.join(", ")});`,
+    `${indent}    ${nativeSymbol(fn)}(${callArguments.join(", ")});`,
     ...resultSetup,
     ...cleanup,
     `${indent}}`,
   ].join("\n");
 }
 
-function emitDirectCall(operation, value, resultValue, indent) {
+function emitDirectCall(operation, context, indent) {
   const fn = operation.foreign.function;
   const native = fn.native;
   const args = nativeArguments(fn).map((argument) => {
     const source = argumentBySource(operation, argument.source);
     if (argument.abi_type === "ulong" || argument.abi_type === "uint64_t") {
-      return `(${argument.abi_type}) ${value(source.name)}`;
+      return `(${argument.abi_type}) ${context.value(source.name)}`;
     }
-    if (argument.abi_type === "int") return `(int) ${value(source.name)}`;
+    if (argument.abi_type === "int") return `(int) ${context.value(source.name)}`;
     throw new Error(
       `${operation.foreign.declarationId} uses unsupported direct ABI ${argument.abi_type}`,
     );
   });
-  return `${indent}${resultValue(operation.target)} = ` +
-    `${native.symbol}(${args.join(", ")});`;
+  const raw = `sagejs_ffi_${cName(operation.target)}_result`;
+  const target = context.result(operation.target);
+  return [
+    `${indent}{`,
+    `${indent}    ${nativeReturnType(fn)} ${raw};`,
+    `${indent}    ${raw} = ${nativeSymbol(fn)}(${args.join(", ")});`,
+    ...failureLines(fn, raw, [], context, `${indent}    `),
+    assignRawResult(fn, raw, target, `${indent}    `),
+    `${indent}}`,
+  ].join("\n");
 }
 
 function emitPackedNmodCall(operation, context, indent) {
@@ -289,23 +413,13 @@ function emitPackedNmodCall(operation, context, indent) {
     callArguments.push(matrix);
   }
   const raw = `sagejs_ffi_${cName(operation.target)}_result`;
-  declarations.push(`${indent}    ${native.return_type} ${raw};`);
-  const call = `${indent}    ${raw} = ${native.symbol}(` +
+  declarations.push(`${indent}    ${nativeReturnType(fn)} ${raw};`);
+  const call = `${indent}    ${raw} = ${nativeSymbol(fn)}(` +
     `${callArguments.join(", ")});`;
-  const checked = operation.foreign.function.errors.policy === "zero_is_error"
-    ? [
-        `${indent}    if (${raw} == 0)`,
-        `${indent}    {`,
-        ...cleanup,
-        `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR, ` +
-          `${JSON.stringify(operation.foreign.function.errors.message)});`,
-        `${indent}        ${context.failure}`,
-        `${indent}    }`,
-      ]
-    : [];
-  const result = native.return_type === "slong"
-    ? `${indent}    ${context.result(operation.target)} = (uint64_t) ${raw};`
-    : `${indent}    ${context.result(operation.target)} = ${raw} != 0;`;
+  const checked = failureLines(fn, raw, cleanup, context, `${indent}    `);
+  const result = assignRawResult(
+    fn, raw, context.result(operation.target), `${indent}    `,
+  );
   return [
     `${indent}{`,
     ...declarations,
@@ -363,6 +477,20 @@ function emitPackedSliceCall(operation, context, indent) {
       }
       continue;
     }
+    if (argument.lowering.kind === "record") {
+      const record = `sagejs_ffi_${cName(operation.target)}_${index}_record`;
+      declarations.push(`${indent}    ${argument.lowering.c_type} ${record};`);
+      for (const field of argument.lowering.record_fields) {
+        const sourceName = argument.lowering.fields[field.name];
+        const source = argumentBySource(operation, sourceName);
+        validation.push(
+          `${indent}    ${record}.${field.name} = ` +
+            `(${field.c_type}) ${context.value(source.name)};`,
+        );
+      }
+      callArguments.push(`&${record}`);
+      continue;
+    }
     if (argument.adapter !== null) {
       throw new Error(
         `${operation.foreign.declarationId} mixes incompatible ABI adapters`,
@@ -381,7 +509,7 @@ function emitPackedSliceCall(operation, context, indent) {
     }
   }
   const raw = `sagejs_ffi_${cName(operation.target)}_result`;
-  declarations.push(`${indent}    ${native.return_type} ${raw};`);
+  declarations.push(`${indent}    ${nativeReturnType(fn)} ${raw};`);
   const allocation = stages.flatMap(({ stage, length }) => [
     `${indent}    if (${length} != 0)`,
     `${indent}    {`,
@@ -396,25 +524,16 @@ function emitPackedSliceCall(operation, context, indent) {
     `${indent}        }`,
     `${indent}    }`,
   ]);
-  const checked = fn.errors.policy === "zero_is_error" ? [
-    `${indent}    if (${raw} == 0)`,
-    `${indent}    {`,
-    ...cleanup,
-    `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR, ` +
-      `${JSON.stringify(fn.errors.message)});`,
-    `${indent}        ${context.failure}`,
-    `${indent}    }`,
-  ] : [];
-  const result = native.return_type === "slong" ||
-      native.return_type === "ulong" || native.return_type === "uint64_t"
-    ? `${indent}    ${context.result(operation.target)} = (uint64_t) ${raw};`
-    : `${indent}    ${context.result(operation.target)} = ${raw} != 0;`;
+  const checked = failureLines(fn, raw, cleanup, context, `${indent}    `);
+  const result = assignRawResult(
+    fn, raw, context.result(operation.target), `${indent}    `,
+  );
   return [
     `${indent}{`,
     ...declarations,
     ...validation,
     ...allocation,
-    `${indent}    ${raw} = ${native.symbol}(${callArguments.join(", ")});`,
+    `${indent}    ${raw} = ${nativeSymbol(fn)}(${callArguments.join(", ")});`,
     ...checked,
     ...copyOutput,
     ...cleanup,
@@ -435,11 +554,11 @@ function emitExactForeignCall(operation, context, indent) {
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
-    argument.adapter?.kind === "packed_slice"
+    argument.adapter?.kind === "packed_slice" || argument.lowering.kind === "record"
   )) return emitPackedSliceCall(operation, context, indent);
   return usesFmpz(operation)
     ? emitFmpzCall(operation, context.value, context.result, indent, false)
-    : emitDirectCall(operation, context.value, context.result, indent);
+    : emitDirectCall(operation, context, indent);
 }
 
 function emitTaggedForeignCall(operation, context, indent) {
@@ -448,11 +567,11 @@ function emitTaggedForeignCall(operation, context, indent) {
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
-    argument.adapter?.kind === "packed_slice"
+    argument.adapter?.kind === "packed_slice" || argument.lowering.kind === "record"
   )) return emitPackedSliceCall(operation, context, indent);
   return usesFmpz(operation)
     ? emitFmpzCall(operation, context.value, context.result, indent, true)
-    : emitDirectCall(operation, context.value, context.result, indent);
+    : emitDirectCall(operation, context, indent);
 }
 
 function emitWordForeignCall(operation, context, indent) {
@@ -461,13 +580,13 @@ function emitWordForeignCall(operation, context, indent) {
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
-    argument.adapter?.kind === "packed_slice"
+    argument.adapter?.kind === "packed_slice" || argument.lowering.kind === "record"
   )) return emitPackedSliceCall(operation, context, indent);
   if (usesFmpz(operation) ||
       operation.foreign.function.signature.return_type === "Integer") {
     return context.promote(operation, indent);
   }
-  return emitDirectCall(operation, context.value, context.result, indent);
+  return emitDirectCall(operation, context, indent);
 }
 
 function javascriptForeignCall(operation, indent) {
@@ -506,6 +625,7 @@ function javascriptForeignCall(operation, indent) {
     `[${operation.arguments.map((argument) => argument.name).join(", ")}], ` +
     `${JSON.stringify(signature.parameters.map((parameter) => parameter.type))}, ` +
     `${JSON.stringify(signature.return_type)}, ` +
+    `${JSON.stringify(foreign.function.result)}, ` +
     `${JSON.stringify(foreign.function.errors)}, ` +
     `${JSON.stringify(metadata)}, ${resourceStack});`;
 }
@@ -516,7 +636,7 @@ function javascriptRuntime(ir) {
 const sagejsFfiLibraries = new Map();
 
 function sagejsFfiCall(
-  packageName, exportName, args, parameterTypes, returnType, errors,
+  packageName, exportName, args, parameterTypes, returnType, resultDomain, errors,
   resourceMetadata, resourceStack
 ) {
   let library = sagejsFfiLibraries.get(packageName);
@@ -599,7 +719,10 @@ function sagejsFfiCall(
     }
   }
   const result = Reflect.apply(fn, library, marshalled);
-  if (errors.policy === "zero_is_error" && result === false) {
+  if (resultDomain.domain === "status" && result === false) {
+    nativeRaise(errors.exception, errors.message);
+  }
+  if (resultDomain.domain === "nullable" && result == null) {
     nativeRaise(errors.exception, errors.message);
   }
   if (resourceMetadata.returned !== null) {
@@ -657,9 +780,11 @@ module.exports = {
   emitExactForeignCall,
   emitTaggedForeignCall,
   emitWordForeignCall,
+  exceptionShimInclude,
   foreignDependencies,
   foreignHeaders,
   foreignLibraries,
+  generateExceptionShims,
   isForeignResourceType,
   javascriptForeignCall,
   javascriptRuntime,

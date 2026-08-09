@@ -42,12 +42,13 @@ const {
 } = require("./exact-runtime.cjs");
 const {
   emitExactForeignCall,
+  exceptionShimInclude,
   foreignDependencies,
   foreignHeaders,
   resourceForFunctionType,
 } = require("./ffi-codegen.cjs");
 
-const NATIVE_ABI_VERSION = 17;
+const NATIVE_ABI_VERSION = 18;
 
 function statusFailure(kind, message, indent) {
   const code = {
@@ -2017,6 +2018,7 @@ ${primeSources.length + primeFields.length > 0
       "#include <flint/ulong_extras.h>",
     ].join("\n") : ""}
 ${foreignHeaders(ir).map((header) => `#include <${header}>`).join("\n")}
+${exceptionShimInclude(ir)}
 #include "kernel_core.h"
 
 ${pieces.join("\n\n")}
@@ -2035,6 +2037,7 @@ ${pieces.join("\n\n")}
           ? ["MPC"] : []),
         ...(primeSources.length > 0 ? ["FLINT"] : []),
         ...(primeFields.length > 0 ? ["FLINT"] : []),
+        ...(exceptionShimInclude(ir) ? ["C++ runtime"] : []),
         ...foreignDependencies(ir),
       ])),
       functions: functions.map((fn) => fn.name),

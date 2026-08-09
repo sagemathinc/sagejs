@@ -6,7 +6,7 @@ from typing import Any
 
 import sagejs.runtime as _runtime
 
-__sagejs_ffi_declaration__ = "flint@9d62d779de4e83bf2b1a66d843fedc38212197081120db1f6e543d5da1662c4b"
+__sagejs_ffi_declaration__ = "flint@84072a64703ce953a5b116cb2ad3380a237b4392f6d075a7b73979f4e3e5b73f"
 
 
 class DirichletGroup:
@@ -24,7 +24,7 @@ class DirichletGroup:
 
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
-            self._token, "resource:flint@9d62d779de4e83bf2b1a66d843fedc38212197081120db1f6e543d5da1662c4b:dirichlet_group"
+            self._token, "resource:flint@84072a64703ce953a5b116cb2ad3380a237b4392f6d075a7b73979f4e3e5b73f:dirichlet_group"
         )
 
     def __enter__(self) -> DirichletGroup:
@@ -41,7 +41,7 @@ def dirichlet_group(modulus: int) -> DirichletGroup:
     """Call declared flint:dirichlet_group_init."""
     return DirichletGroup(_runtime.ffi_resource_create(
         __sagejs_ffi_declaration__ + ":dirichlet_group_init",
-        "resource:flint@9d62d779de4e83bf2b1a66d843fedc38212197081120db1f6e543d5da1662c4b:dirichlet_group",
+        "resource:flint@84072a64703ce953a5b116cb2ad3380a237b4392f6d075a7b73979f4e3e5b73f:dirichlet_group",
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupCreate",
         "ffiDirichletGroupClose",
@@ -61,9 +61,9 @@ def dirichlet_group_size(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupSize",
         [group._ffi_borrow()],
-        ["resource:flint@9d62d779de4e83bf2b1a66d843fedc38212197081120db1f6e543d5da1662c4b:dirichlet_group"],
+        ["resource:flint@84072a64703ce953a5b116cb2ad3380a237b4392f6d075a7b73979f4e3e5b73f:dirichlet_group"],
         "uint64",
-        "none",
+        ["direct", [], None],
         None,
         None,
         [],
@@ -77,9 +77,9 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupNumPrimitive",
         [group._ffi_borrow()],
-        ["resource:flint@9d62d779de4e83bf2b1a66d843fedc38212197081120db1f6e543d5da1662c4b:dirichlet_group"],
+        ["resource:flint@84072a64703ce953a5b116cb2ad3380a237b4392f6d075a7b73979f4e3e5b73f:dirichlet_group"],
         "uint64",
-        "none",
+        ["direct", [], None],
         None,
         None,
         [],
@@ -95,7 +95,7 @@ def n_is_prime(value: int) -> bool:
         [value],
         ["uint64"],
         "bool",
-        "none",
+        ["direct", [], None],
         None,
         None,
         [],
@@ -111,7 +111,7 @@ def fmpz_gcd(left: int, right: int) -> int:
         [left, right],
         ["Integer", "Integer"],
         "Integer",
-        "none",
+        ["direct", [], None],
         None,
         None,
         [],
@@ -127,7 +127,7 @@ def nmod_mat_rank(entries: list[int], rows: int, columns: int, modulus: int) -> 
         [entries, rows, columns, modulus],
         ["UInt64Buffer", "uint64", "uint64", "uint64"],
         "uint64",
-        "none",
+        ["direct", [], None],
         None,
         None,
         [["buffer_length","entries",["rows","columns"],["entries","rows","columns","modulus"]]],
@@ -143,7 +143,7 @@ def nmod_mat_inv(output: list[int], source: list[int], size: int, modulus: int) 
         [output, source, size, modulus],
         ["UInt64Buffer", "UInt64Buffer", "uint64", "uint64"],
         "bool",
-        "zero_is_error",
+        ["status", [1], None],
         "ValueError",
         "matrix is singular",
         [["buffer_length","output",["size","size"],["output","source","size","modulus"]],["buffer_length","source",["size","size"],["output","source","size","modulus"]]],
@@ -159,7 +159,7 @@ def nmod_poly_mul(output: list[int], left: list[int], right: list[int], output_l
         [output, left, right, output_length, left_length, right_length, modulus],
         ["UInt64Buffer", "UInt64Buffer", "UInt64Buffer", "uint64", "uint64", "uint64", "uint64"],
         "bool",
-        "zero_is_error",
+        ["status", [1], None],
         "ValueError",
         "invalid packed polynomial multiplication",
         [["buffer_length","output",["output_length"],["output","left","right","output_length","left_length","right_length","modulus"]],["buffer_length","left",["left_length"],["output","left","right","output_length","left_length","right_length","modulus"]],["buffer_length","right",["right_length"],["output","left","right","output_length","left_length","right_length","modulus"]]],

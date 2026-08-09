@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "semantic_types": {
     "Integer": {
       "kind": "exact_integer",
@@ -46,11 +46,24 @@
     "slong": {"kind": "scalar", "c_type": "slong", "return": true},
     "ulong": {"kind": "scalar", "c_type": "ulong", "return": true},
     "uint64_t": {"kind": "scalar", "c_type": "uint64_t", "return": true},
-    "uint64_t_ptr": {"kind": "pointer", "c_type": "uint64_t *", "return": false},
+    "const_uint64_t_ptr": {"kind": "pointer", "c_type": "const uint64_t *", "return": true, "pointee": "uint64_t"},
+    "sagejs_igraph_canonical_request_t": {
+      "kind": "record",
+      "c_type": "sagejs_igraph_canonical_request_t",
+      "return": false,
+      "pass": "const_pointer",
+      "fields": [
+        {"name": "vertex_count", "abi_type": "uint64_t"},
+        {"name": "edge_entries", "abi_type": "uint64_t"},
+        {"name": "directed", "abi_type": "int"}
+      ]
+    },
+    "uint64_t_ptr": {"kind": "pointer", "c_type": "uint64_t *", "return": false, "pointee": "uint64_t"},
     "void": {"kind": "void", "c_type": "void", "return": true}
   },
   "adapters": {
     "packed_nmod_matrix": {
+      "kind": "packed",
       "abi_type": "nmod_mat_t",
       "parameter_fields": {
         "data": "UInt64Buffer",
@@ -66,6 +79,7 @@
       "transactional_writes": true
     },
     "packed_slice": {
+      "kind": "packed",
       "abi_type": "uint64_t_ptr",
       "parameter_fields": {
         "data": "UInt64Buffer",
@@ -77,6 +91,9 @@
       "aliasing_field": "aliasing",
       "transactional_field": "transactional",
       "transactional_writes": true
+    },
+    "record": {
+      "kind": "record"
     }
   }
 }

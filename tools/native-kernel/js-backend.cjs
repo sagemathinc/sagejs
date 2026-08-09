@@ -489,7 +489,7 @@ function declaredFfiErrors(fn) {
     for (const operation of operations || []) {
       if (operation.kind === "ffi.call") {
         const errors = operation.foreign.function.errors;
-        if (errors.policy !== "none") {
+        if (errors.exception !== null) {
           const previous = translations[errors.message];
           if (previous !== undefined && previous !== errors.exception) {
             throw new Error(

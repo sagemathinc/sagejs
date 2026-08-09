@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -17,6 +18,9 @@ const declarations = require("../tools/ffi/declarations.cjs");
 const boundaryAudit = require("../tools/ffi/boundary-audit.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
+const {
+  generateExceptionShims,
+} = require("../tools/native-kernel/ffi-codegen.cjs");
 const { lowerSource } = require("../tools/native-kernel/ir.cjs");
 
 const root = join(__dirname, "..");
@@ -56,8 +60,8 @@ function runSageDiagnostic(args, input) {
 
 test("FFI declarations are strict and generated modules are current", () => {
   const registry = declarations.loadRegistry({ root });
-  assert.equal(registry.schema, "sagejs.ffi/declaration-v5");
-  assert.equal(registry.catalog.schema, "sagejs.ffi/abi-catalog-v1");
+  assert.equal(registry.schema, "sagejs.ffi/declaration-v6");
+  assert.equal(registry.catalog.schema, "sagejs.ffi/abi-catalog-v2");
   assert.equal(registry.libraries.length, 2);
   const flint = registry.byId.get("flint");
   assert.equal(flint.library.python_module, "sagejs.ffi.flint");
@@ -93,7 +97,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /14 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /15 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -105,12 +109,25 @@ test("FFI declarations are strict and generated modules are current", () => {
   const polynomialPlan = inspection.functions.find(
     (fn) => fn.id === "nmod_poly_mul",
   ).call_plan;
-  assert.equal(polynomialPlan.schema, "sagejs.ffi/call-plan-v1");
-  assert.equal(polynomialPlan.result.mode, "checked_status");
+  assert.equal(polynomialPlan.schema, "sagejs.ffi/call-plan-v2");
+  assert.equal(polynomialPlan.result.domain, "status");
+  assert.deepEqual(polynomialPlan.result.success, [1]);
   assert.deepEqual(polynomialPlan.transactions, [
     { buffer: "output", commit: "success", staging: "temporary" },
   ]);
   assert.equal(polynomialPlan.arguments[0].lowering.adapter, "packed_slice");
+  const canonical = registry.byId.get("igraph").functions.find(
+    (fn) => fn.id === "canonical_permutation",
+  );
+  assert.equal(canonical.call_plan.arguments[2].lowering.kind, "record");
+  assert.equal(canonical.exceptions.policy, "cxx_to_status");
+  assert.match(canonical.call_plan.symbol,
+    /^sagejs_ffi_shield_igraph_canonical_permutation$/);
+  const nullable = registry.byId.get("igraph").functions.find(
+    (fn) => fn.id === "first_edge_endpoint",
+  );
+  assert.equal(nullable.result.domain, "nullable");
+  assert.equal(nullable.call_plan.native_return_c_type, "const uint64_t *");
   assert.equal(inspection.resources[0].native.clear_symbol, "dirichlet_group_clear");
 });
 
@@ -120,7 +137,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 14);
+  assert.equal(current.counts["declared-ffi"], 15);
   assert.equal(current.counts["declared-ffi-resource"], 3);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   const stale = structuredClone(snapshot);
@@ -214,6 +231,51 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
     },
     /clear_symbol must be a C identifier/,
   );
+  invalid(
+    (document) => {
+      document.functions[3].result.success = [1];
+    },
+    /direct result cannot declare failures/,
+  );
+  invalid(
+    (document) => {
+      document.functions[6].exceptions = {
+        policy: "cxx_to_status", failure_status: 0,
+      };
+    },
+    /C\+\+ shields require a distinct failure status and no wasm target/,
+  );
+});
+
+test("FFI v6 records and nullable domains fail closed", () => {
+  function invalid(mutator, pattern) {
+    const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-v6-invalid-"));
+    try {
+      const directory = join(temporary, "ffi");
+      mkdirSync(directory);
+      const document = JSON.parse(
+        readFileSync(join(root, "ffi", "igraph.ffi.json"), "utf8"),
+      );
+      mutator(document);
+      writeFileSync(join(directory, "invalid.ffi.json"),
+        `${JSON.stringify(document, null, 2)}\n`);
+      assert.throws(() => declarations.loadRegistry({ root: temporary }), pattern);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  }
+  invalid(
+    (document) => {
+      delete document.functions[5].native.arguments[2].adapter.fields.directed;
+    },
+    /record fields is missing directed/,
+  );
+  invalid(
+    (document) => {
+      document.functions[6].native.return_type = "uint64_t";
+    },
+    /nullable result needs a pointer ABI/,
+  );
 });
 
 test("FFI ownership graphs reject cycles", () => {
@@ -277,18 +339,24 @@ test("packed FLINT matrix declarations work in ordinary Sage.js", () => {
 
 test("packed-slice declarations work through both ordinary dynamic adapters", () => {
   const output = runSage(["--python"], [
-    "from sagejs.ffi.igraph import canonical_permutation",
+    "from sagejs.ffi.igraph import canonical_permutation, first_edge_endpoint",
     "from sagejs.ffi.flint import nmod_poly_mul",
     "labels = [99] * 6",
     "edges = [0,1,1,2,2,3,3,4,4,5,5,0]",
     "print(canonical_permutation(labels, edges, 6, 12, False), labels)",
+    "print(first_edge_endpoint(edges, 12))",
+    "try:",
+    "    first_edge_endpoint([], 0)",
+    "except ValueError as error:",
+    "    print(type(error).__name__, str(error))",
     "product = [99] * 5",
     "print(nmod_poly_mul(product, [1,2,3], [4,5,6], 5, 3, 3, 101), product)",
     "",
   ].join("\n"));
   assert.equal(
     output.trim(),
-    "True [3, 4, 2, 5, 1, 0]\nTrue [4, 13, 28, 27, 18]",
+    "True [3, 4, 2, 5, 1, 0]\n0\n" +
+      "ValueError graph has no edge endpoints\nTrue [4, 13, 28, 27, 18]",
   );
 });
 
@@ -522,14 +590,84 @@ test("generic packed slices compile igraph and FLINT without symbol intrinsics",
     const ir = await lowerSource(source, sourcePath);
     const operation = ir.functions[0].body.find((item) => item.kind === "ffi.call");
     assert.equal(operation.foreign.function.call_plan.schema,
-      "sagejs.ffi/call-plan-v1");
+      "sagejs.ffi/call-plan-v2");
     assert.equal(operation.foreign.function.call_plan.arguments[0]
       .lowering.adapter, "packed_slice");
     const core = generateHostCore(ir);
     assert.equal(core.audit.hostCallbacks, 0);
     assert.match(core.source, /unable to stage FFI output/);
     assert.match(core.source, /memcpy\(/);
+    if (sourcePath === igraphCanonicalWitness) {
+      assert.ok(core.audit.nativeDependencies.includes("C++ runtime"));
+      assert.match(core.source, /sagejs_igraph_canonical_request_t/);
+      assert.match(core.source,
+        /sagejs_ffi_shield_igraph_canonical_permutation/);
+      assert.match(core.source, /graph has no edge endpoints/);
+    }
     assert.doesNotMatch(core.source, /\b(?:napi_|PyObject|Py_|JSValue|v8::)/);
+  }
+});
+
+test("generated C++ shields convert actual exceptions to declared status", (t) => {
+  if (process.platform === "win32") {
+    t.skip("portable compiler smoke test uses Unix C++ command-line syntax");
+    return;
+  }
+  const compiler = process.env.CXX || "c++";
+  if (spawnSync(compiler, ["--version"]).status !== 0) {
+    t.skip(`${compiler} is unavailable`);
+    return;
+  }
+  const fn = {
+    declaration_id: "witness:may_throw",
+    result: { domain: "status", success: [1], absence: null },
+    exceptions: { policy: "cxx_to_status", failure_status: -7 },
+    call_plan: {
+      symbol: "sagejs_ffi_shield_witness_may_throw",
+      foreign_symbol: "witness_may_throw",
+      native_return_c_type: "int",
+      arguments: [{
+        position: 0,
+        lowering: { kind: "scalar", c_type: "uint64_t" },
+      }],
+    },
+  };
+  const ir = {
+    foreignLibraries: [{ native: { headers: ["witness.hpp"] } }],
+    functions: [{
+      body: [{ kind: "ffi.call", foreign: { function: fn } }],
+    }],
+  };
+  const generated = generateExceptionShims(ir);
+  assert.ok(generated);
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-shield-"));
+  try {
+    writeFileSync(join(temporary, "ffi_shims.h"), generated.header);
+    writeFileSync(join(temporary, "ffi_shims.cc"), generated.source);
+    writeFileSync(join(temporary, "witness.hpp"),
+      "#include <stdint.h>\nextern \"C\" int witness_may_throw(uint64_t);\n");
+    writeFileSync(join(temporary, "witness.cc"),
+      "#include <stdexcept>\n#include \"witness.hpp\"\n" +
+      "extern \"C\" int witness_may_throw(uint64_t value) {\n" +
+      "  if (value == 7) throw std::runtime_error(\"witness\");\n" +
+      "  return 1;\n}\n");
+    writeFileSync(join(temporary, "main.cc"),
+      "#include \"ffi_shims.h\"\n" +
+      "int main() {\n" +
+      "  if (sagejs_ffi_shield_witness_may_throw(2) != 1) return 1;\n" +
+      "  if (sagejs_ffi_shield_witness_may_throw(7) != -7) return 2;\n" +
+      "  return 0;\n}\n");
+    const executable = join(temporary, "shield-test");
+    const build = spawnSync(compiler, [
+      "-std=c++17", `-I${temporary}`, join(temporary, "ffi_shims.cc"),
+      join(temporary, "witness.cc"), join(temporary, "main.cc"),
+      "-o", executable,
+    ], { encoding: "utf8" });
+    assert.equal(build.status, 0, `${build.stdout}\n${build.stderr}`);
+    const run = spawnSync(executable, [], { encoding: "utf8" });
+    assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
   }
 });
 
@@ -541,6 +679,12 @@ test("compiled packed slices agree with fallbacks and commit outputs transaction
       cacheRoot: join(temporary, "graph"),
     });
     const graph = require(graphResult.modulePath);
+    assert.ok(existsSync(graphResult.shimSourcePath));
+    assert.ok(existsSync(graphResult.shimHeaderPath));
+    assert.match(readFileSync(graphResult.shimSourcePath, "utf8"),
+      /catch \(\.\.\.\)/);
+    assert.match(readFileSync(graphResult.shimSourcePath, "utf8"),
+      /return 0;/);
     const edges = graph.createUInt64Buffer([
       0n, 1n, 1n, 2n, 2n, 3n, 3n, 4n, 4n, 5n, 5n, 0n,
     ]);
@@ -551,6 +695,15 @@ test("compiled packed slices agree with fallbacks and commit outputs transaction
       dynamicLabels, Array.from(edges), 6n, 12n, false,
     ), true);
     assert.deepEqual(Array.from(labels), dynamicLabels);
+    assert.equal(graph.igraph_first_endpoint(edges, 12n), 0n);
+    assert.equal(graph.igraph_first_endpoint.javascript(
+      Array.from(edges), 12n,
+    ), 0n);
+    const noEdges = graph.createUInt64Buffer(0);
+    assert.throws(() => graph.igraph_first_endpoint(noEdges, 0n),
+      /graph has no edge endpoints/);
+    assert.throws(() => graph.igraph_first_endpoint.javascript([], 0n),
+      /graph has no edge endpoints/);
     const failedLabels = graph.createUInt64Buffer([
       91n, 92n, 93n, 94n, 95n, 96n,
     ]);

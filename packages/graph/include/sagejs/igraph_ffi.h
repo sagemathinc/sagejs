@@ -20,6 +20,14 @@ typedef struct {
 } sagejs_igraph_edges_view_struct;
 typedef sagejs_igraph_edges_view_struct sagejs_igraph_edges_view_t[1];
 
+/* Declarative-record witness: this layout is described in ffi/abi-types.json
+ * and assembled by generated call code from ordinary typed-Python values. */
+typedef struct {
+    uint64_t vertex_count;
+    uint64_t edge_entries;
+    int directed;
+} sagejs_igraph_canonical_request_t;
+
 static inline int sagejs_igraph_complete_init(
     sagejs_igraph_graph_t result,
     uint64_t vertex_count,
@@ -77,9 +85,7 @@ static inline uint64_t sagejs_igraph_edge_checksum(
 static inline int sagejs_igraph_canonical_permutation_packed(
     uint64_t *output,
     uint64_t *edges,
-    uint64_t vertex_count,
-    uint64_t edge_entries,
-    int directed)
+    const sagejs_igraph_canonical_request_t *request)
 {
     igraph_vector_int_t edge_vector;
     igraph_vector_int_t labeling;
@@ -89,16 +95,18 @@ static inline int sagejs_igraph_canonical_permutation_packed(
     int graph_initialized = 0;
     int labeling_initialized = 0;
 
-    if (vertex_count > (uint64_t) IGRAPH_VCOUNT_MAX ||
-        edge_entries > (uint64_t) IGRAPH_ECOUNT_MAX * UINT64_C(2) ||
-        (edge_entries & UINT64_C(1)) != 0)
+    if (request == NULL ||
+        request->vertex_count > (uint64_t) IGRAPH_VCOUNT_MAX ||
+        request->edge_entries > (uint64_t) IGRAPH_ECOUNT_MAX * UINT64_C(2) ||
+        (request->edge_entries & UINT64_C(1)) != 0)
         return 0;
-    code = igraph_vector_int_init(&edge_vector, (igraph_int_t) edge_entries);
+    code = igraph_vector_int_init(
+        &edge_vector, (igraph_int_t) request->edge_entries);
     if (code != IGRAPH_SUCCESS)
         return 0;
     edge_initialized = 1;
-    for (uint64_t index = 0; index < edge_entries; index++) {
-        if (edges[index] >= vertex_count ||
+    for (uint64_t index = 0; index < request->edge_entries; index++) {
+        if (edges[index] >= request->vertex_count ||
             edges[index] > (uint64_t) IGRAPH_INTEGER_MAX) {
             code = IGRAPH_EINVAL;
             goto cleanup;
@@ -106,8 +114,8 @@ static inline int sagejs_igraph_canonical_permutation_packed(
         VECTOR(edge_vector)[(igraph_int_t) index] =
             (igraph_int_t) edges[index];
     }
-    code = igraph_create(&graph, &edge_vector, (igraph_int_t) vertex_count,
-        directed != 0);
+    code = igraph_create(&graph, &edge_vector,
+        (igraph_int_t) request->vertex_count, request->directed != 0);
     if (code != IGRAPH_SUCCESS)
         goto cleanup;
     graph_initialized = 1;
@@ -118,9 +126,9 @@ static inline int sagejs_igraph_canonical_permutation_packed(
     code = igraph_canonical_permutation_bliss(
         &graph, NULL, &labeling, IGRAPH_BLISS_FLM, NULL);
     if (code != IGRAPH_SUCCESS ||
-        (uint64_t) igraph_vector_int_size(&labeling) != vertex_count)
+        (uint64_t) igraph_vector_int_size(&labeling) != request->vertex_count)
         goto cleanup;
-    for (uint64_t index = 0; index < vertex_count; index++)
+    for (uint64_t index = 0; index < request->vertex_count; index++)
         output[index] = (uint64_t) VECTOR(labeling)[(igraph_int_t) index];
 
 cleanup:
@@ -131,6 +139,15 @@ cleanup:
     if (edge_initialized)
         igraph_vector_int_destroy(&edge_vector);
     return code == IGRAPH_SUCCESS;
+}
+
+/* Nullable-result witness.  The pointer never escapes the generated call;
+ * successful calls immediately copy the pointed-to value. */
+static inline const uint64_t *sagejs_igraph_first_edge_endpoint(
+    uint64_t *edges,
+    uint64_t edge_entries)
+{
+    return edge_entries == 0 ? NULL : edges;
 }
 
 #ifdef __cplusplus
