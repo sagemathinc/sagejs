@@ -37,6 +37,7 @@ function wordType(type) {
   if (type === "Int64Buffer" || type === "Int64Record") {
     return "sagejs_int64_buffer";
   }
+  if (type === "IntegerBuffer") return "sagejs_integer_buffer";
   throw new Error(`unsupported machine-word type ${type}`);
 }
 
@@ -91,6 +92,7 @@ function mayPromote(operation) {
   if (operation.kind === "integer.sequence.get") {
     return operation.values.some((value) => !fitsInt64(value));
   }
+  if (operation.kind === "integer.buffer.get") return true;
   return [
     "integer.from_uint64",
     "integer.neg",
@@ -192,6 +194,49 @@ function emitWordOperation(operation, context, indent) {
       `${indent}    }`,
       `${indent}    ${buffer}.data[sagejs_buffer_position] = ` +
         `${value(operation.value)};`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.copy") {
+    return `${indent}${target} = ${value(operation.source)};`;
+  }
+  if (operation.kind === "integer.buffer.length") {
+    return `${indent}${target} = (uint64_t) ${value(operation.buffer)}.length;`;
+  }
+  if (operation.kind === "integer.buffer.get") {
+    const buffer = value(operation.buffer);
+    const index = value(operation.index);
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (!sagejs_integer_buffer_index(` +
+        `&${buffer}, ${index}, &sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"IntegerBuffer index out of range");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+      `${indent}    if (!sagejs_integer_buffer_get_int64(` +
+        `&${buffer}, sagejs_buffer_position, &${target}))`,
+      promote(),
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.set") {
+    const buffer = value(operation.buffer);
+    const index = value(operation.index);
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (!sagejs_integer_buffer_index(` +
+        `&${buffer}, ${index}, &sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"IntegerBuffer index out of range");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+      `${indent}    sagejs_integer_buffer_set_int64(` +
+        `&${buffer}, sagejs_buffer_position, ${value(operation.value)});`,
       `${indent}}`,
     ].join("\n");
   }
@@ -452,7 +497,8 @@ function emitWordFunction(fn, functions) {
       !params.has(local.name) && !local.type.startsWith("IntegerSequence[")
     )
     .map((local) => `    ${wordType(local.type)} ${wordName(local.name)} = ` +
-      `${local.type === "Int64Buffer" || local.type === "Int64Record"
+      `${local.type === "Int64Buffer" || local.type === "Int64Record" ||
+        local.type === "IntegerBuffer"
         ? "{0}" : "0"};`);
   const context = {
     failure: "return SAGEJS_WORD_ERROR;",

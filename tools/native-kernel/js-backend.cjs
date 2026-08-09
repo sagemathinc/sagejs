@@ -212,6 +212,20 @@ function emitExactStatement(operation, indent) {
     return `${indent}int64BufferSet(${operation.buffer}, ` +
       `${operation.index}, ${operation.value});`;
   }
+  if (operation.kind === "integer.buffer.copy") {
+    return `${indent}${operation.target} = ${operation.source};`;
+  }
+  if (operation.kind === "integer.buffer.length") {
+    return `${indent}${operation.target} = ${operation.buffer}.length;`;
+  }
+  if (operation.kind === "integer.buffer.get") {
+    return `${indent}${operation.target} = integerBufferGet(` +
+      `${operation.buffer}, ${operation.index});`;
+  }
+  if (operation.kind === "integer.buffer.set") {
+    return `${indent}integerBufferSet(${operation.buffer}, ` +
+      `${operation.index}, ${operation.value});`;
+  }
   if (operation.kind === "integer.from_uint64") {
     return `${indent}${operation.target} = BigInt(${operation.source});`;
   }
@@ -380,8 +394,9 @@ function emitExactFallback(fn) {
   const locals = fn.locals.map((local) => local.name);
   const buffers = fn.params
     .filter((param) => param.type === "Int64Buffer" ||
-      param.type === "Int64Record")
-    .map((param) => `  ${param.name} = int64BufferView(` +
+      param.type === "Int64Record" || param.type === "IntegerBuffer")
+    .map((param) => `  ${param.name} = ${param.type === "IntegerBuffer"
+      ? "integerBufferView" : "int64BufferView"}(` +
       `${param.name}, ${jsString(param.name)});`)
     .join("\n");
   return `function javascript_${fn.name}(${params}) {
@@ -426,6 +441,9 @@ function exactValidation(param) {
   if (param.type === "Int64Buffer" || param.type === "Int64Record") {
     return `  int64BufferView(${param.name}, ${jsString(param.name)});`;
   }
+  if (param.type === "IntegerBuffer") {
+    return `  integerBufferView(${param.name}, ${jsString(param.name)});`;
+  }
   return `  if (typeof ${param.name} !== "boolean") {\n` +
     `    throw new TypeError("${param.name} must be a bool");\n` +
     "  }";
@@ -436,12 +454,16 @@ function normalizedArgument(param) {
   if (param.type === "Int64Buffer" || param.type === "Int64Record") {
     return `int64BufferView(${param.name}, ${jsString(param.name)})`;
   }
+  if (param.type === "IntegerBuffer") {
+    return `integerBufferView(${param.name}, ${jsString(param.name)})`;
+  }
   return param.name;
 }
 
 function exactNativeExpression(fn, backend) {
   const buffers = fn.params.filter((param) =>
-    param.type === "Int64Buffer" || param.type === "Int64Record"
+    param.type === "Int64Buffer" || param.type === "Int64Record" ||
+    param.type === "IntegerBuffer"
   );
   if (buffers.length === 0) {
     const args = fn.params.map((param) =>
@@ -450,12 +472,16 @@ function exactNativeExpression(fn, backend) {
     return `nativeExactCall(${jsString(fn.name)}, [${args}], ${backend})`;
   }
   const declarations = buffers.map((param) =>
-    `    const sagejs_native_descriptor_${param.name} = int64NativeBuffer(` +
+    `    const sagejs_native_descriptor_${param.name} = ` +
+      `${param.type === "IntegerBuffer"
+        ? "integerNativeBuffer" : "int64NativeBuffer"}(` +
       `sagejs_native_${param.name}, ${jsString(param.name)});`
   );
   const args = fn.params.map((param) =>
     param.type === "Int64Buffer" || param.type === "Int64Record"
       ? `sagejs_native_descriptor_${param.name}.typed`
+      : param.type === "IntegerBuffer"
+        ? `sagejs_native_descriptor_${param.name}.packed`
       : `sagejs_native_${param.name}`
   ).join(", ");
   const copies = buffers
@@ -891,6 +917,149 @@ if (!["auto", "bigint", "gmp"].includes(integerBackendOverride)) {
 
 const float64BufferViewTag = Symbol("sagejs.native.Float64BufferView");
 const int64BufferViewTag = Symbol("sagejs.native.Int64BufferView");
+const integerBufferViewTag = Symbol("sagejs.native.IntegerBufferView");
+
+function isPackedIntegerBuffer(value) {
+  return value !== null && typeof value === "object" &&
+    value.sizes instanceof Int32Array &&
+    value.limbs instanceof BigUint64Array &&
+    Number.isSafeInteger(value.length) && value.length >= 0 &&
+    Number.isSafeInteger(value.wordCapacity) && value.wordCapacity > 0 &&
+    value.sizes.length >= value.length &&
+    value.limbs.length >= value.length * value.wordCapacity;
+}
+
+function integerBufferView(value, argument = "buffer") {
+  if (value !== null && typeof value === "object" &&
+      value[integerBufferViewTag] === true) return value;
+  if (isPackedIntegerBuffer(value)) {
+    return {
+      [integerBufferViewTag]: true,
+      packed: value,
+      offset: 0,
+      length: value.length,
+    };
+  }
+  if (value === null || (typeof value !== "object" &&
+      typeof value !== "function")) {
+    throw new TypeError(argument + " must be an IntegerBuffer");
+  }
+  const length = Number(Reflect.get(value, "length"));
+  if (!Number.isSafeInteger(length) || length < 0) {
+    throw new TypeError(argument + " must have a nonnegative safe length");
+  }
+  return {
+    [integerBufferViewTag]: true, data: value, offset: 0, length,
+  };
+}
+
+function integerBufferGet(buffer, index) {
+  const view = integerBufferView(buffer);
+  const position = int64SafeIndex(
+    index, view.length, "IntegerBuffer index out of range");
+  const absolute = view.offset + position;
+  if (view.packed === undefined) {
+    return BigInt(Reflect.get(view.data, String(absolute)));
+  }
+  const packed = view.packed;
+  const signedSize = packed.sizes[absolute];
+  const size = Math.abs(signedSize);
+  if (size > packed.wordCapacity) {
+    throw new RangeError("IntegerBuffer slot exceeds its word capacity");
+  }
+  let answer = 0n;
+  const start = absolute * packed.wordCapacity;
+  for (let limb = size - 1; limb >= 0; limb -= 1) {
+    answer = (answer << 64n) + packed.limbs[start + limb];
+  }
+  return signedSize < 0 ? -answer : answer;
+}
+
+function integerBufferSet(buffer, index, value) {
+  const view = integerBufferView(buffer);
+  const position = int64SafeIndex(
+    index, view.length, "IntegerBuffer index out of range");
+  const absolute = view.offset + position;
+  let exact = BigInt(value);
+  if (view.packed === undefined) {
+    if (!Reflect.set(view.data, String(absolute), exact)) {
+      throw new TypeError("IntegerBuffer is not writable");
+    }
+    return;
+  }
+  const packed = view.packed;
+  const negative = exact < 0n;
+  if (negative) exact = -exact;
+  const words = exact === 0n
+    ? 0 : Math.ceil(exact.toString(2).length / 64);
+  if (words > packed.wordCapacity) {
+    throw new RangeError("IntegerBuffer word capacity exceeded");
+  }
+  const start = absolute * packed.wordCapacity;
+  packed.limbs.fill(0n, start, start + packed.wordCapacity);
+  for (let limb = 0; limb < words; limb += 1) {
+    packed.limbs[start + limb] = BigInt.asUintN(64, exact);
+    exact >>= 64n;
+  }
+  packed.sizes[absolute] = negative ? -words : words;
+}
+
+function createIntegerBuffer(length, wordCapacity = 8, source = undefined) {
+  if (!Number.isSafeInteger(length) || length < 0 ||
+      !Number.isSafeInteger(wordCapacity) || wordCapacity <= 0 ||
+      length !== 0 && wordCapacity > Math.floor(Number.MAX_SAFE_INTEGER / length)) {
+    throw new RangeError("invalid packed IntegerBuffer dimensions");
+  }
+  const packed = {
+    sizes: new Int32Array(length),
+    limbs: new BigUint64Array(length * wordCapacity),
+    length,
+    wordCapacity,
+  };
+  if (source !== undefined) {
+    const view = integerBufferView(source, "source");
+    if (view.length !== length) {
+      throw new RangeError("IntegerBuffer source length differs");
+    }
+    for (let index = 0; index < length; index += 1) {
+      integerBufferSet(packed, index, integerBufferGet(view, index));
+    }
+  }
+  packed.toArray = () => {
+    const answer = [];
+    for (let index = 0; index < length; index += 1) {
+      answer.push(integerBufferGet(packed, index));
+    }
+    return answer;
+  };
+  return packed;
+}
+
+function integerNativeBuffer(value, argument) {
+  const view = integerBufferView(value, argument);
+  if (view.offset === 0 && view.packed !== undefined &&
+      view.length === view.packed.length) {
+    return { packed: view.packed, copyBack() {} };
+  }
+  let wordCapacity = 8;
+  for (let index = 0; index < view.length; index += 1) {
+    const value = integerBufferGet(view, index);
+    const bits = (value < 0n ? -value : value).toString(2).length;
+    wordCapacity = Math.max(wordCapacity, Math.ceil(bits / 64));
+  }
+  const packed = createIntegerBuffer(view.length, wordCapacity);
+  for (let index = 0; index < view.length; index += 1) {
+    integerBufferSet(packed, index, integerBufferGet(view, index));
+  }
+  return {
+    packed,
+    copyBack() {
+      for (let index = 0; index < view.length; index += 1) {
+        integerBufferSet(view, index, integerBufferGet(packed, index));
+      }
+    },
+  };
+}
 
 function int64BufferView(value, argument = "buffer") {
   if (value !== null && typeof value === "object" &&
@@ -1119,7 +1288,12 @@ function nativeExactCall(name, args, backend = "tagged") {
     if (message.includes("outside signed 64-bit")) {
       nativeRaise("OverflowError", message);
     }
-    if (message.includes("Int64 buffer index") ||
+    if (message.includes("IntegerBuffer word capacity") ||
+        message.includes("IntegerBuffer slot exceeds")) {
+      nativeRaise("OverflowError", message);
+    }
+    if (message.includes("IntegerBuffer index") ||
+        message.includes("Int64 buffer index") ||
         message.includes("Int64Record")) {
       nativeRaise("IndexError", message);
     }
@@ -1229,6 +1403,7 @@ if (typeof nativeRegister === "function") {
 
 module.exports = {
   ...nativeFunctions,
+  createIntegerBuffer,
   cacheKey: ${jsString(options.cacheKey || "")},
   nativeAvailable: nativeAddon !== null,
   primeFieldTuning: Object.freeze(${JSON.stringify(

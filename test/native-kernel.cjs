@@ -63,6 +63,7 @@ const numericalBuffersPath = join(
   "numerical_buffers.py",
 );
 const signedBuffersPath = join(root, "bench", "native_signed_buffers.py");
+const integerBuffersPath = join(root, "bench", "native_integer_buffers.py");
 const primeFieldMatrixPath = join(
   root,
   "bench",
@@ -167,9 +168,9 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 14);
-assert.equal(scalarExactIr.version, 14);
-assert.equal(scalarFloatIr.version, 14);
+assert.equal(ir.version, 15);
+assert.equal(scalarExactIr.version, 15);
+assert.equal(scalarFloatIr.version, 15);
 assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
@@ -796,6 +797,47 @@ try {
     () => signedBuffersModule.fill_signed_records(Array(3).fill(0), 1),
     /Int64Record is outside its buffer/,
   );
+  const integerBuffersKernel = await compileKernel({
+    sourcePath: integerBuffersPath,
+    cacheRoot: join(temporary, "integer-buffers-cache"),
+  });
+  const integerBuffersModule = require(integerBuffersKernel.modulePath);
+  const exactValues = Array(3).fill(0n);
+  const exactSeed = 1n << 100n;
+  integerBuffersModule.fill_integer_powers(exactValues, 3, exactSeed);
+  const fallbackExactValues = Array(3).fill(0n);
+  integerBuffersModule.fill_integer_powers.javascript(
+    fallbackExactValues, 3, exactSeed,
+  );
+  assert.deepEqual(exactValues, fallbackExactValues);
+  assert.ok(exactValues[2] > (1n << 300n));
+  assert.equal(
+    integerBuffersModule.sum_integer_buffer(exactValues),
+    exactValues.reduce((left, right) => left + right, 0n),
+  );
+  const veryLargePacked = integerBuffersModule.createIntegerBuffer(4, 16);
+  integerBuffersModule.fill_integer_powers(veryLargePacked, 4, exactSeed);
+  let expectedPackedSum = 0n;
+  let expectedPackedValue = exactSeed;
+  for (let index = 0; index < 4; index += 1) {
+    expectedPackedSum += expectedPackedValue;
+    expectedPackedValue = expectedPackedValue ** 2n + BigInt(index + 1);
+  }
+  assert.equal(
+    integerBuffersModule.sum_integer_buffer(veryLargePacked),
+    expectedPackedSum,
+  );
+  const packedExact = integerBuffersModule.createIntegerBuffer(1, 1);
+  assert.throws(
+    () => integerBuffersModule.write_integer_value(packedExact, 1n << 80n),
+    /IntegerBuffer word capacity exceeded/,
+  );
+  for (const backend of ["javascript", "tagged", "gmp"]) {
+    assert.throws(
+      () => integerBuffersModule.write_integer_value[backend]([], 1),
+      /IntegerBuffer index out of range/,
+    );
+  }
   const scalarExactKernel = await compileKernel({
     sourcePath: scalarExactPath,
     cacheRoot: join(temporary, "scalar-exact-cache"),
@@ -1073,6 +1115,104 @@ try {
     33,
   );
   const flint = require("../packages/flint");
+  for (const [level, weight, sign, prime] of [
+    [5, 2, 0, 2],
+    [7, 4, -1, 3],
+    [11, 4, 0, 5],
+    [11, 6, 1, 7],
+    [13, 4, 0, 13],
+  ]) {
+    const line = flint.p1List(level);
+    const pairCount = flint.p1ListCount(line);
+    const pairs = [];
+    for (let index = 0; index < pairCount; index += 1) {
+      pairs.push(...flint.p1ListEntry(line, index));
+    }
+    const presentation = flint.p1ListHigherWeightPresentation(
+      line, weight, sign,
+    );
+    const reduction = flint.higherWeightPresentationReduction(presentation);
+    const matrixCount = Number(
+      nativeP1Module.heilbronn_cremona_count(prime),
+    );
+    const matrices = Array(4 * matrixCount).fill(0);
+    nativeP1Module.heilbronn_cremona_fill(prime, matrices);
+    const width = weight - 1;
+    const streamLength = width * pairCount * matrixCount * width;
+    const images = Array(streamLength).fill(0);
+    const coefficients = Array(streamLength).fill(0n);
+    nativeP1Module.heilbronn_transported_action_fill(
+      weight, level, pairs, pairCount, matrices, matrixCount,
+      images, coefficients,
+    );
+    const fallbackImages = Array(streamLength).fill(0);
+    const fallbackCoefficients = Array(streamLength).fill(0n);
+    nativeP1Module.heilbronn_transported_action_fill.javascript(
+      weight, level, pairs, pairCount, matrices, matrixCount,
+      fallbackImages, fallbackCoefficients,
+    );
+    assert.deepEqual(images.map(BigInt), fallbackImages.map(BigInt));
+    assert.deepEqual(coefficients, fallbackCoefficients);
+    const reductionNumerators = [];
+    const reductionDenominators = [];
+    for (let row = 0; row < presentation.generators; row += 1) {
+      for (let column = 0; column < presentation.dimension; column += 1) {
+        const entry = flint.matrixEntry(reduction, row, column);
+        reductionNumerators.push(entry.numerator);
+        reductionDenominators.push(entry.denominator);
+      }
+    }
+    const outputLength = presentation.dimension ** 2;
+    const outputNumerators = Array(outputLength).fill(0n);
+    const outputDenominators = Array(outputLength).fill(0n);
+    nativeP1Module.heilbronn_reduce_transported_action(
+      weight, matrixCount, presentation.basisGenerators,
+      presentation.dimension, images, coefficients,
+      reductionNumerators, reductionDenominators,
+      outputNumerators, outputDenominators,
+    );
+    const fallbackNumerators = Array(outputLength).fill(0n);
+    const fallbackDenominators = Array(outputLength).fill(0n);
+    nativeP1Module.heilbronn_reduce_transported_action.javascript(
+      weight, matrixCount, presentation.basisGenerators,
+      presentation.dimension, fallbackImages, fallbackCoefficients,
+      reductionNumerators, reductionDenominators,
+      fallbackNumerators, fallbackDenominators,
+    );
+    assert.deepEqual(outputNumerators, fallbackNumerators);
+    assert.deepEqual(outputDenominators, fallbackDenominators);
+    const fusedNumerators = Array(outputLength).fill(0n);
+    const fusedDenominators = Array(outputLength).fill(0n);
+    nativeP1Module.heilbronn_higher_weight_hecke_fill(
+      weight, level, pairs, pairCount, matrices, matrixCount,
+      presentation.basisGenerators, presentation.dimension,
+      reductionNumerators, reductionDenominators,
+      fusedNumerators, fusedDenominators,
+    );
+    assert.deepEqual(fusedNumerators, outputNumerators);
+    assert.deepEqual(fusedDenominators, outputDenominators);
+    const fallbackFusedNumerators = Array(outputLength).fill(0n);
+    const fallbackFusedDenominators = Array(outputLength).fill(0n);
+    nativeP1Module.heilbronn_higher_weight_hecke_fill.javascript(
+      weight, level, pairs, pairCount, matrices, matrixCount,
+      presentation.basisGenerators, presentation.dimension,
+      reductionNumerators, reductionDenominators,
+      fallbackFusedNumerators, fallbackFusedDenominators,
+    );
+    assert.deepEqual(fallbackFusedNumerators, outputNumerators);
+    assert.deepEqual(fallbackFusedDenominators, outputDenominators);
+    const expected = flint.p1ListHigherWeightHeckeMatrix(
+      line, weight, sign, prime, presentation,
+    );
+    for (let row = 0; row < presentation.dimension; row += 1) {
+      for (let column = 0; column < presentation.dimension; column += 1) {
+        const index = row * presentation.dimension + column;
+        const entry = flint.matrixEntry(expected, row, column);
+        assert.equal(outputNumerators[index], entry.numerator);
+        assert.equal(outputDenominators[index], entry.denominator);
+      }
+    }
+  }
   assert.ok(
     statSync(primeFieldKernel.addonPath).size < 1024 * 1024,
     "the prime-field addon must not accidentally statically link FLINT",
@@ -2206,7 +2346,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v14 signed buffers, provenance, Tate, P1, ABI, and fallback passed.",
+  "Native Kernel v15 exact buffers, provenance, P1, ABI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);

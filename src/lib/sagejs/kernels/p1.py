@@ -11,7 +11,13 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from sagejs.native import Int64Buffer, int64_record, native, uint64
+from sagejs.native import (
+    Int64Buffer,
+    IntegerBuffer,
+    int64_record,
+    native,
+    uint64,
+)
 
 
 @native
@@ -515,3 +521,320 @@ def heilbronn_higher_weight_action_fill(
                     d,
                 )
     return matrix_count * width * width
+
+
+@native
+def p1_index_normalized_packed(
+    pairs: Int64Buffer,
+    pair_count: uint64,
+    u: int,
+    v: int,
+) -> int:
+    """Find a normalized pair in a sorted packed P1 table."""
+    exact_pair_count = pair_count + 0
+    left = 0
+    right = exact_pair_count
+    while left < right:
+        middle = (left + right) // 2
+        middle_u = pairs[middle * 2]
+        middle_v = pairs[middle * 2 + 1]
+        if middle_u < u or (middle_u == u and middle_v < v):
+            left = middle + 1
+        else:
+            right = middle
+    if left < exact_pair_count:
+        if pairs[left * 2] == u and pairs[left * 2 + 1] == v:
+            return left
+    return -1
+
+
+@native
+def p1_apply_packed(
+    level: uint64,
+    pairs: Int64Buffer,
+    pair_count: uint64,
+    u: int,
+    v: int,
+) -> int:
+    """Normalize a projective pair and return its packed-table index."""
+    valid, normalized_u, normalized_v, _scalar = p1_normalize_with_scalar(
+        level, u, v,
+    )
+    if not valid:
+        return -1
+    return p1_index_normalized_packed(
+        pairs, pair_count, normalized_u, normalized_v,
+    )
+
+
+@native
+def heilbronn_coset_transport_fill(
+    level: uint64,
+    pairs: Int64Buffer,
+    pair_count: uint64,
+    matrices: Int64Buffer,
+    matrix_count: uint64,
+    output: Int64Buffer,
+) -> int:
+    """Transport every projective coset through every Heilbronn matrix."""
+    position = 0
+    for coset in range(pair_count):
+        u = pairs[coset * 2]
+        v = pairs[coset * 2 + 1]
+        for matrix_index in range(matrix_count):
+            matrix = int64_record(matrices, matrix_index * 4, 4)
+            image_u = u * matrix[0] + v * matrix[2]
+            image_v = u * matrix[1] + v * matrix[3]
+            output[position] = p1_apply_packed(
+                level, pairs, pair_count, image_u, image_v,
+            )
+            position += 1
+    return position
+
+
+@native
+def heilbronn_transported_action_fill(
+    weight: uint64,
+    level: uint64,
+    pairs: Int64Buffer,
+    pair_count: uint64,
+    matrices: Int64Buffer,
+    matrix_count: uint64,
+    image_generators: Int64Buffer,
+    coefficients: IntegerBuffer,
+) -> int:
+    """Emit the complete exact pre-reduction higher-weight Hecke stream.
+
+    Each source triple and Heilbronn representative contributes one entry for
+    every target monomial. ``image_generators`` records the transported triple
+    index (or ``-1`` for a non-projective bad-prime image), while
+    ``coefficients`` retains the unbounded exact polynomial coefficient.
+    Quotient-presentation reduction is deliberately emitted as the separate
+    stage below so both representations remain inspectable.
+    """
+    if weight < 2:
+        return 0
+    width = weight - 1
+    weight_degree = weight - 2
+    position = 0
+    for source_degree in range(0, width):
+        for coset in range(pair_count):
+            u = pairs[coset * 2]
+            v = pairs[coset * 2 + 1]
+            for matrix_index in range(matrix_count):
+                matrix = int64_record(matrices, matrix_index * 4, 4)
+                a = matrix[0]
+                b = matrix[1]
+                c = matrix[2]
+                d = matrix[3]
+                image_u = u * a + v * c
+                image_v = u * b + v * d
+                image_coset = p1_apply_packed(
+                    level, pairs, pair_count, image_u, image_v,
+                )
+                for target_degree in range(0, width):
+                    if image_coset < 0:
+                        image_generators[position] = -1
+                        coefficients[position] = 0
+                    else:
+                        image_generators[position] = (
+                            target_degree * pair_count + image_coset
+                        )
+                        coefficients[position] = (
+                            p1_monomial_matrix_coefficient(
+                                source_degree,
+                                weight_degree,
+                                target_degree,
+                                a,
+                                b,
+                                c,
+                                d,
+                            )
+                        )
+                    position += 1
+    return position
+
+
+@native
+def p1_rational_add_scaled_at(
+    numerators: IntegerBuffer,
+    denominators: IntegerBuffer,
+    index: int,
+    term_numerator: int,
+    term_denominator: int,
+    scale: int,
+) -> int:
+    """Add ``scale * term_numerator / term_denominator`` in canonical form."""
+    old_numerator = numerators[index]
+    old_denominator = denominators[index]
+    if old_denominator == 1 and term_denominator == 1:
+        numerator = old_numerator + scale * term_numerator
+        numerators[index] = numerator
+        return numerator
+    if old_denominator == term_denominator:
+        numerator = old_numerator + scale * term_numerator
+        denominator = old_denominator
+    else:
+        numerator = (
+            old_numerator * term_denominator
+            + scale * term_numerator * old_denominator
+        )
+        denominator = old_denominator * term_denominator
+    if numerator == 0:
+        numerators[index] = 0
+        denominators[index] = 1
+        return 0
+    common = p1_gcd(numerator, denominator)
+    numerator //= common
+    denominator //= common
+    if denominator < 0:
+        numerator = -numerator
+        denominator = -denominator
+    numerators[index] = numerator
+    denominators[index] = denominator
+    return numerator
+
+
+@native
+def heilbronn_reduce_transported_action(
+    weight: uint64,
+    matrix_count: uint64,
+    basis_generators: Int64Buffer,
+    dimension: uint64,
+    image_generators: Int64Buffer,
+    coefficients: IntegerBuffer,
+    reduction_numerators: IntegerBuffer,
+    reduction_denominators: IntegerBuffer,
+    output_numerators: IntegerBuffer,
+    output_denominators: IntegerBuffer,
+) -> int:
+    """Reduce the exact transported stream to the quotient basis.
+
+    ``reduction_*`` is the explicit row-major map from every original triple
+    generator to the chosen quotient basis.  Keeping this matrix an input
+    makes the compiler boundary mathematical and inspectable: construction of
+    the Manin presentation can remain in a mature backend while the actual
+    higher-weight Hecke traversal and exact rational accumulation are compiled
+    from this Python body.
+    """
+    if weight < 2:
+        return 0
+    width = weight - 1
+    output_length = dimension * dimension
+    for output_index in range(output_length):
+        output_numerators[output_index] = 0
+        output_denominators[output_index] = 1
+    contributions = 0
+    for source in range(dimension):
+        generator = basis_generators[source]
+        stream_start = generator * matrix_count * width
+        output_start = source * dimension
+        for matrix_index in range(matrix_count):
+            matrix_start = stream_start + matrix_index * width
+            for target_degree in range(0, width):
+                stream_index = matrix_start + target_degree
+                image_generator = image_generators[stream_index]
+                coefficient = coefficients[stream_index]
+                if image_generator >= 0 and coefficient != 0:
+                    reduction_start = image_generator * dimension
+                    for target in range(dimension):
+                        reduction_index = reduction_start + target
+                        term_numerator = reduction_numerators[reduction_index]
+                        if term_numerator != 0:
+                            _updated_numerator = p1_rational_add_scaled_at(
+                                output_numerators,
+                                output_denominators,
+                                output_start + target,
+                                term_numerator,
+                                reduction_denominators[reduction_index],
+                                coefficient,
+                            )
+                            contributions += 1
+    return contributions
+
+
+@native
+def heilbronn_higher_weight_hecke_fill(
+    weight: uint64,
+    level: uint64,
+    pairs: Int64Buffer,
+    pair_count: uint64,
+    matrices: Int64Buffer,
+    matrix_count: uint64,
+    basis_generators: Int64Buffer,
+    dimension: uint64,
+    reduction_numerators: IntegerBuffer,
+    reduction_denominators: IntegerBuffer,
+    output_numerators: IntegerBuffer,
+    output_denominators: IntegerBuffer,
+) -> int:
+    """Assemble and reduce a higher-weight Hecke matrix in one traversal.
+
+    This is the production-shaped counterpart to the two inspectable stages
+    above. It visits only the presentation's chosen source generators and
+    reduces each exact coefficient immediately, avoiding a large temporary
+    stream while lowering the same mathematical operations.
+    """
+    if weight < 2:
+        return 0
+    width = weight - 1
+    weight_degree = weight - 2
+    output_length = dimension * dimension
+    for output_index in range(output_length):
+        output_numerators[output_index] = 0
+        output_denominators[output_index] = 1
+    contributions = 0
+    for source in range(dimension):
+        generator = basis_generators[source]
+        source_degree = generator // pair_count
+        coset = generator % pair_count
+        u = pairs[coset * 2]
+        v = pairs[coset * 2 + 1]
+        output_start = source * dimension
+        for matrix_index in range(matrix_count):
+            matrix = int64_record(matrices, matrix_index * 4, 4)
+            a = matrix[0]
+            b = matrix[1]
+            c = matrix[2]
+            d = matrix[3]
+            image_u = u * a + v * c
+            image_v = u * b + v * d
+            image_coset = p1_apply_packed(
+                level, pairs, pair_count, image_u, image_v,
+            )
+            if image_coset >= 0:
+                for target_degree in range(0, width):
+                    coefficient = p1_monomial_matrix_coefficient(
+                        source_degree,
+                        weight_degree,
+                        target_degree,
+                        a,
+                        b,
+                        c,
+                        d,
+                    )
+                    if coefficient != 0:
+                        image_generator = (
+                            target_degree * pair_count + image_coset
+                        )
+                        reduction_start = image_generator * dimension
+                        for target in range(dimension):
+                            reduction_index = reduction_start + target
+                            term_numerator = (
+                                reduction_numerators[reduction_index]
+                            )
+                            if term_numerator != 0:
+                                _updated_numerator = (
+                                    p1_rational_add_scaled_at(
+                                        output_numerators,
+                                        output_denominators,
+                                        output_start + target,
+                                        term_numerator,
+                                        reduction_denominators[
+                                            reduction_index
+                                        ],
+                                        coefficient,
+                                    )
+                                )
+                                contributions += 1
+    return contributions

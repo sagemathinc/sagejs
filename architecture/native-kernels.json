@@ -63,11 +63,18 @@
         "heilbronn_merel_entry",
         "heilbronn_merel_fill",
         "p1_monomial_matrix_coefficient",
-        "heilbronn_higher_weight_action_fill"
+        "heilbronn_higher_weight_action_fill",
+        "p1_index_normalized_packed",
+        "p1_apply_packed",
+        "heilbronn_coset_transport_fill",
+        "heilbronn_transported_action_fill",
+        "p1_rational_add_scaled_at",
+        "heilbronn_reduce_transported_action",
+        "heilbronn_higher_weight_hecke_fill"
       ],
-      "semantic_domain": "packed signed Heilbronn representatives and exact higher-weight polynomial action used by modular symbols",
+      "semantic_domain": "packed Heilbronn representatives, P1 coset transport, arbitrary-precision polynomial action, and rational quotient reduction used by modular symbols",
       "fallback": "same-source",
-      "oracles": ["cpython", "javascript", "handwritten-c"],
+      "oracles": ["cpython", "javascript", "handwritten-c", "flint"],
       "benchmark": "bench:native:p1",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     }

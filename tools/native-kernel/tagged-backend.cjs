@@ -42,6 +42,7 @@ function scalarType(type) {
   if (type === "Int64Buffer" || type === "Int64Record") {
     return "sagejs_int64_buffer";
   }
+  if (type === "IntegerBuffer") return "sagejs_integer_buffer";
   throw new Error(`unsupported tagged scalar type ${type}`);
 }
 
@@ -209,6 +210,57 @@ function emitTaggedOperation(operation, context, indent) {
       `${indent}    }`,
       `${indent}    ${buffer}.data[sagejs_buffer_position] = ` +
         `sagejs_buffer_value;`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.copy") {
+    return `${indent}${target} = ${taggedValue(operation.source, context)};`;
+  }
+  if (operation.kind === "integer.buffer.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${taggedValue(operation.buffer, context)}.length;`;
+  }
+  if (operation.kind === "integer.buffer.get") {
+    const buffer = taggedValue(operation.buffer, context);
+    const index = taggedValue(operation.index, context);
+    return [
+      `${indent}{`,
+      `${indent}    int64_t sagejs_buffer_index;`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (!sagejs_tagged_to_int64(${index}, ` +
+        `&sagejs_buffer_index) ||`,
+      `${indent}        !sagejs_integer_buffer_index(&${buffer}, ` +
+        `sagejs_buffer_index, &sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"IntegerBuffer index out of range");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    sagejs_integer_buffer_get_tagged(` +
+        `&${buffer}, sagejs_buffer_position, ${target});`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.set") {
+    const buffer = taggedValue(operation.buffer, context);
+    const index = taggedValue(operation.index, context);
+    const source = taggedValue(operation.value, context);
+    return [
+      `${indent}{`,
+      `${indent}    int64_t sagejs_buffer_index;`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (!sagejs_tagged_to_int64(${index}, ` +
+        `&sagejs_buffer_index) ||`,
+      `${indent}        !sagejs_integer_buffer_index(&${buffer}, ` +
+        `sagejs_buffer_index, &sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"IntegerBuffer index out of range");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (!sagejs_integer_buffer_set_tagged(env, ` +
+        `&${buffer}, sagejs_buffer_position, ${source}))`,
+      `${indent}        goto fail;`,
       `${indent}}`,
     ].join("\n");
   }
@@ -514,7 +566,8 @@ function emitTaggedFunction(fn, functions) {
       continue;
     }
     declarations.push(`    ${scalarType(local.type)} ${taggedName(local.name)} = ` +
-      `${local.type === "Int64Buffer" || local.type === "Int64Record"
+      `${local.type === "Int64Buffer" || local.type === "Int64Record" ||
+        local.type === "IntegerBuffer"
         ? "{0}" : "0"};`);
   }
   const integerNames = [

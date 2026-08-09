@@ -18,6 +18,9 @@ const cacheRoot = process.env.SAGEJS_NATIVE_P1_CACHE_ROOT ||
 const prime = Number(process.env.SAGEJS_NATIVE_P1_PRIME || 1009);
 const merelIndex = Number(process.env.SAGEJS_NATIVE_P1_MEREL_INDEX || 75);
 const actionWeight = Number(process.env.SAGEJS_NATIVE_P1_ACTION_WEIGHT || 4);
+const presentationPrime = Number(
+  process.env.SAGEJS_NATIVE_P1_PRESENTATION_PRIME || 101,
+);
 const nativeRepetitions = Number(
   process.env.SAGEJS_NATIVE_P1_NATIVE_REPETITIONS || 50,
 );
@@ -67,6 +70,20 @@ function actionDigest(values) {
     answer[3] += BigInt(index % 5 + 1) * value;
     answer[4] += BigInt(index % 7 + 1) * value;
     answer[5] += BigInt(index + 1) * value;
+  }
+  return answer;
+}
+
+function rationalDigest(numerators, denominators) {
+  const answer = [BigInt(numerators.length), 0n, 0n, 0n, 0n, 0n];
+  for (let index = 0; index < numerators.length; index += 1) {
+    const numerator = BigInt(numerators[index]);
+    const denominator = BigInt(denominators[index]);
+    answer[1] += numerator;
+    answer[2] += denominator;
+    answer[3] += BigInt(index + 1) * numerator;
+    answer[4] += BigInt(index + 1) * denominator;
+    answer[5] += numerator * denominator;
   }
   return answer;
 }
@@ -164,6 +181,7 @@ function compileReference() {
 
   let validatedNormalizations = 0;
   let validatedMerelMatrices = 0;
+  let presentationBenchmark = null;
   for (const index of [1, 2, 3, 4, 5, 11, 20]) {
     const expected = kernel.heilbronn_merel_digest.javascript(index);
     assert.deepEqual(kernel.heilbronn_merel_digest(index), expected);
@@ -204,6 +222,136 @@ function compileReference() {
         validatedNormalizations += 1;
       }
     }
+    const level = 11;
+    const weight = actionWeight;
+    const sign = 0;
+    const line = flint.p1List(level);
+    const pairCount = flint.p1ListCount(line);
+    const pairs = new BigInt64Array(pairCount * 2);
+    for (let index = 0; index < pairCount; index += 1) {
+      const pair = flint.p1ListEntry(line, index);
+      pairs[index * 2] = BigInt(pair[0]);
+      pairs[index * 2 + 1] = BigInt(pair[1]);
+    }
+    const presentation = flint.p1ListHigherWeightPresentation(
+      line, weight, sign,
+    );
+    const reduction = flint.higherWeightPresentationReduction(presentation);
+    const reductionNumerators = [];
+    const reductionDenominators = [];
+    for (let row = 0; row < presentation.generators; row += 1) {
+      for (let column = 0; column < presentation.dimension; column += 1) {
+        const entry = flint.matrixEntry(reduction, row, column);
+        reductionNumerators.push(entry.numerator);
+        reductionDenominators.push(entry.denominator);
+      }
+    }
+    const matrixCount = Number(
+      kernel.heilbronn_cremona_count(presentationPrime),
+    );
+    const matrices = new BigInt64Array(matrixCount * 4);
+    kernel.heilbronn_cremona_fill(presentationPrime, matrices);
+    const width = weight - 1;
+    const streamLength = width * pairCount * matrixCount * width;
+    const images = new BigInt64Array(streamLength);
+    const coefficients = kernel.createIntegerBuffer(streamLength, 8);
+    const basisGenerators = BigInt64Array.from(
+      presentation.basisGenerators, BigInt,
+    );
+    const packedReductionNumerators = kernel.createIntegerBuffer(
+      reductionNumerators.length, 8, reductionNumerators,
+    );
+    const packedReductionDenominators = kernel.createIntegerBuffer(
+      reductionDenominators.length, 8, reductionDenominators,
+    );
+    const outputLength = presentation.dimension ** 2;
+    const outputNumerators = kernel.createIntegerBuffer(outputLength, 16);
+    const outputDenominators = kernel.createIntegerBuffer(outputLength, 16);
+    const checkedImages = Array(streamLength).fill(0);
+    const checkedCoefficients = Array(streamLength).fill(0n);
+    kernel.heilbronn_transported_action_fill(
+      weight, level, pairs, pairCount, matrices, matrixCount,
+      checkedImages, checkedCoefficients,
+    );
+    const checkedNumerators = Array(outputLength).fill(0n);
+    const checkedDenominators = Array(outputLength).fill(0n);
+    kernel.heilbronn_reduce_transported_action(
+      weight, matrixCount, basisGenerators, presentation.dimension,
+      checkedImages, checkedCoefficients,
+      reductionNumerators, reductionDenominators,
+      checkedNumerators, checkedDenominators,
+    );
+    const expectedMatrix = flint.p1ListHigherWeightHeckeMatrix(
+      line, weight, sign, presentationPrime, presentation,
+    );
+    for (let row = 0; row < presentation.dimension; row += 1) {
+      for (let column = 0; column < presentation.dimension; column += 1) {
+        const index = row * presentation.dimension + column;
+        const entry = flint.matrixEntry(expectedMatrix, row, column);
+        assert.equal(checkedNumerators[index], entry.numerator);
+        assert.equal(checkedDenominators[index], entry.denominator);
+      }
+    }
+    const expectedDigest = rationalDigest(
+      checkedNumerators, checkedDenominators,
+    );
+    const compiledOperation = () => {
+      kernel.heilbronn_higher_weight_hecke_fill(
+        weight, level, pairs, pairCount, matrices, matrixCount,
+        basisGenerators, presentation.dimension,
+        packedReductionNumerators, packedReductionDenominators,
+        outputNumerators, outputDenominators,
+      );
+    };
+    const fallbackNumerators = Array(outputLength).fill(0n);
+    const fallbackDenominators = Array(outputLength).fill(0n);
+    const fallbackOperation = () => {
+      kernel.heilbronn_higher_weight_hecke_fill.javascript(
+        weight, level, pairs, pairCount, matrices, matrixCount,
+        basisGenerators, presentation.dimension,
+        reductionNumerators, reductionDenominators,
+        fallbackNumerators, fallbackDenominators,
+      );
+    };
+    const rows = [
+      measureMutation(
+        "compiled typed Python", compiledOperation,
+        () => expectedDigest,
+        Math.max(1, Math.floor(nativeRepetitions / 5)),
+      ),
+      measureMutation(
+        "generated JavaScript fallback", fallbackOperation,
+        () => rationalDigest(fallbackNumerators, fallbackDenominators),
+        1,
+        3,
+      ),
+      measureMutation(
+        "production FLINT C",
+        () => flint.p1ListHigherWeightHeckeMatrix(
+          line, weight, sign, presentationPrime, presentation,
+        ),
+        () => expectedDigest,
+        Math.max(1, Math.floor(nativeRepetitions / 5)),
+      ),
+    ];
+    for (const row of rows) {
+      assert.deepEqual(row.value, rows[0].value, row.runtime);
+    }
+    presentationBenchmark = {
+      level,
+      weight,
+      sign,
+      prime: presentationPrime,
+      pairCount,
+      matrixCount,
+      dimension: presentation.dimension,
+      basisCoefficientCount: presentation.dimension * matrixCount * width,
+      diagnosticStreamLength: streamLength,
+      rows: rows.map((row) => ({
+        ...row,
+        versusCompiled: row.nanoseconds / rows[0].nanoseconds,
+      })),
+    };
   }
 
   const rows = [
@@ -342,6 +490,7 @@ function compileReference() {
         versusCompiled: row.nanoseconds / actionRows[0].nanoseconds,
       })),
     },
+    higherWeightPresentation: presentationBenchmark,
   };
   if (json) console.log(JSON.stringify(report, null, 2));
   else {
@@ -383,6 +532,23 @@ function compileReference() {
       );
     }
     console.log(`digest: ${actionRows[0].value.join(", ")}`);
+    if (report.higherWeightPresentation !== null) {
+      const presentation = report.higherWeightPresentation;
+      console.log(
+        `weight-${presentation.weight} full P1 transport/reduction: ` +
+        `level ${presentation.level}, T_${presentation.prime}, ` +
+        `dimension ${presentation.dimension}, ` +
+        `${presentation.basisCoefficientCount} basis coefficients ` +
+        `(${presentation.diagnosticStreamLength} in the full diagnostic stream)`,
+      );
+      for (const row of presentation.rows) {
+        console.log(
+          row.runtime.padEnd(32),
+          `${(row.nanoseconds / 1e3).toFixed(3)} us`.padStart(16),
+          `${row.versusCompiled.toFixed(2)}x`.padStart(14),
+        );
+      }
+    }
   }
 })().catch((error) => {
   console.error(error.stack || error);

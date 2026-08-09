@@ -18,13 +18,15 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v14 currently accepts a deliberately narrow typed numerical
+Native Kernel v15 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels and reusable dense
 decompositions over prime fields. It also supports packed binary64 buffers and
-mutable signed exact-integer buffers with bounded record views for
-source-transparent numerical and algebraic loops. Explicit AOT compilation
-produces a native implementation plus an exact fallback or reports a
-compile-time diagnostic.
+mutable signed exact-integer buffers with bounded record views. Mutable
+``IntegerBuffer`` values retain arbitrary precision through an explicit packed
+signed-limb ABI, so source-transparent algebraic loops can exchange whole GMP
+vectors without object-at-a-time host calls. Explicit AOT compilation produces
+a native implementation plus an exact fallback or reports a compile-time
+diagnostic.
 """
 
 from __future__ import annotations
@@ -36,6 +38,7 @@ from typing import Any, TypeAlias
 # compiler experiment.  At runtime its values are ordinary Python lists.
 uint64: TypeAlias = int
 UInt64Buffer = list[int]
+IntegerBuffer = list[int]
 Int64Buffer = list[int]
 Float64Buffer = list[float]
 
@@ -99,6 +102,16 @@ def int64_record(
 ) -> Int64Record:
     """Return a bounded mutable signed-64-bit record view."""
     return Int64Record(buffer, start, length)
+
+
+def integer_buffer(source: Any) -> IntegerBuffer:
+    """Copy an iterable into an arbitrary-precision exact buffer fallback."""
+    return [int(value) for value in source]
+
+
+def integer_zeros(length: int) -> IntegerBuffer:
+    """Allocate a zero-filled arbitrary-precision exact buffer fallback."""
+    return [0 for _index in range(length)]
 
 
 class Float64Record:
@@ -286,6 +299,7 @@ def is_compiled(function: Any) -> bool:
 __all__ = [
     'Float64Buffer',
     'Float64Record',
+    'IntegerBuffer',
     'Int64Buffer',
     'Int64Record',
     'UInt64Buffer',
@@ -296,6 +310,8 @@ __all__ = [
     'int64_buffer',
     'int64_record',
     'int64_zeros',
+    'integer_buffer',
+    'integer_zeros',
     'is_compiled',
     'is_native',
     'native',

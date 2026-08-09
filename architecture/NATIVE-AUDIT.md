@@ -40,7 +40,10 @@ ordinary CPython-parseable bodies for:
 - representative counting, complete packed signed-matrix output, per-entry
   differential access, and an ordered benchmark digest;
 - the full homogeneous-polynomial action block for every Heilbronn matrix,
-  matching the coefficient-assembly stage of the higher-weight Hecke loop.
+  matching the coefficient-assembly stage of the higher-weight Hecke loop;
+- sorted packed P1 lookup, complete coset transport, arbitrary-precision
+  coefficient streams, and rational reduction through an explicit Manin
+  presentation matrix.
 
 The compiler receives no P1 or Heilbronn function names.  It lowers nested
 exact loops and direct typed helper calls from their bodies.  The same bodies
@@ -50,7 +53,10 @@ representative for seven primes between generated C and JavaScript, compares
 digest with the standalone handwritten-C transcription in
 [`native-p1-heilbronn-reference.c`](../bench/native-p1-heilbronn-reference.c).
 The packed action stage is also checked coefficient-for-coefficient against
-the generated JavaScript fallback and by an independent C digest.
+the generated JavaScript fallback and by an independent C digest. The complete
+transport-and-reduction pipeline is checked entry-for-entry against production
+FLINT across good and bad primes, weights 2 through 6, and all three sign
+choices.
 
 Run it with:
 
@@ -93,6 +99,13 @@ intrinsic. `Int64Buffer` borrows caller-owned `BigInt64Array` storage,
 tagged word/GMP data flow. Writes are signed-range checked. Mutation roots are
 part of effect analysis, so externally visible writes disable unsafe replay.
 
+The follow-up arbitrary-precision `IntegerBuffer` ABI stores a signed limb
+count beside fixed-capacity 64-bit limb slots. It is shared by generated
+JavaScript, word-specialized C, tagged C, and GMP C; reads promote per value,
+and oversized writes fail explicitly. This makes exact vector exchange a
+portable representation boundary rather than an array of host-language GMP
+objects.
+
 At `p=1009`, weight 4, the compiled typed-Python action stage writes 49,284
 coefficients in median 0.745 milliseconds with GCC and 0.447 milliseconds with
 Clang on the dedicated 16-vCPU AMD EPYC 7B13 host. The standalone C
@@ -100,10 +113,23 @@ transcription takes 0.353 and 0.695 milliseconds respectively; compiler choice
 therefore changes generated typed Python from 2.11x behind to 1.55x faster.
 Generated JavaScript takes about 79 milliseconds. This is strong evidence for
 continuing the readable typed-Python migration, and against drawing conclusions
-from one C compiler. It is not yet permission to delete the production C path:
-coset transport, retained presentation data, and rational quotient reduction
-still need suitable packed ABIs and complete production differential coverage.
-Sparse rational star elimination remains later for the same reason.
+from one C compiler. Coset transport and rational quotient reduction now have
+suitable packed ABIs and production differential coverage. It is still not
+permission to delete the production C path: presentation construction and
+sparse rational star elimination remain mature backend operations until a
+separate compiler witness proves a maintainable replacement.
+
+The complete level 11, weight 4, `T_101` transport-and-reduction benchmark on
+the dedicated AMD EPYC 7B13 host visits the 7,416 coefficients belonging to
+the chosen basis generators and produces the 6-by-6 quotient matrix in median
+1.908 ms with GCC. The same-source JavaScript path takes 57.359 ms and
+production FLINT C takes 1.752 ms. Thus the typed source is 30.1x faster than
+its portable fallback and only 1.09x behind the mature C path. Presentation
+construction is precomputed for both; typed output buffers are reused while
+the current FLINT API allocates its result. Clang 18 independently builds the
+same generated source in 1.890 ms with identical output, 1.08x the
+contemporaneous 1.748 ms FLINT measurement. These are medians across five
+complete benchmark passes.
 
 ## WebAssembly consequence
 

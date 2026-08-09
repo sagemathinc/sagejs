@@ -143,7 +143,7 @@
       "id": "modular-forms",
       "layer": 3,
       "startup": "bootstrap",
-      "max_source_bytes": 245000,
+      "max_source_bytes": 255000,
       "depends_on": ["core-runtime", "arithmetic", "linear-algebra"],
       "files": [
         "src/baselib/dirichlet.py",

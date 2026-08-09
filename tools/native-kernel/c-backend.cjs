@@ -25,10 +25,20 @@ const {
   cSourceDirective,
 } = require("./provenance.cjs");
 
-const NATIVE_ABI_VERSION = 11;
+const NATIVE_ABI_VERSION = 12;
 
 function isInt64BufferType(type) {
   return type === "Int64Buffer" || type === "Int64Record";
+}
+
+function isIntegerBufferType(type) {
+  return type === "IntegerBuffer";
+}
+
+function exactBufferCType(type) {
+  if (isInt64BufferType(type)) return "sagejs_int64_buffer";
+  if (isIntegerBufferType(type)) return "sagejs_integer_buffer";
+  return undefined;
 }
 
 function cString(value) {
@@ -168,6 +178,7 @@ function internalArgument(param) {
   if (param.type === "uint64") return `uint64_t ${name}`;
   if (param.type === "bool") return `int ${name}`;
   if (isInt64BufferType(param.type)) return `sagejs_int64_buffer ${name}`;
+  if (isIntegerBufferType(param.type)) return `sagejs_integer_buffer ${name}`;
   throw new Error(`unsupported exact native parameter ${param.type}`);
 }
 
@@ -299,6 +310,49 @@ function emitExactOperation(operation, context, indent) {
       `${indent}    }`,
       `${indent}    ${buffer}.data[sagejs_buffer_position] = ` +
         `sagejs_buffer_value;`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.copy") {
+    return `${indent}${target} = ${exactValue(operation.source, context)};`;
+  }
+  if (operation.kind === "integer.buffer.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${exactValue(operation.buffer, context)}.length;`;
+  }
+  if (operation.kind === "integer.buffer.get") {
+    const buffer = exactValue(operation.buffer, context);
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (!sagejs_mpz_integer_buffer_index(&${buffer}, ` +
+        `${exactValue(operation.index, context)}, &sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"IntegerBuffer index out of range");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    sagejs_integer_buffer_get_mpz(` +
+        `&${buffer}, sagejs_buffer_position, ${target});`,
+      `${indent}}`,
+    ].join("\n");
+  }
+  if (operation.kind === "integer.buffer.set") {
+    const buffer = exactValue(operation.buffer, context);
+    return [
+      `${indent}{`,
+      `${indent}    size_t sagejs_buffer_position;`,
+      `${indent}    if (!sagejs_mpz_integer_buffer_index(&${buffer}, ` +
+        `${exactValue(operation.index, context)}, &sagejs_buffer_position))`,
+      `${indent}    {`,
+      `${indent}        napi_throw_range_error(env, NULL, ` +
+        `"IntegerBuffer index out of range");`,
+      `${indent}        goto fail;`,
+      `${indent}    }`,
+      `${indent}    if (!sagejs_integer_buffer_set_mpz(env, ` +
+        `&${buffer}, sagejs_buffer_position, ` +
+        `${exactValue(operation.value, context)}))`,
+      `${indent}        goto fail;`,
       `${indent}}`,
     ].join("\n");
   }
@@ -606,8 +660,8 @@ function exactDeclarations(fn) {
     if (param.type === "Integer") continue;
     const type = param.type === "uint64"
       ? "uint64_t"
-      : isInt64BufferType(param.type)
-        ? "sagejs_int64_buffer"
+      : exactBufferCType(param.type) !== undefined
+        ? exactBufferCType(param.type)
         : "int";
     declarations.push(
       `    ${type} ${cName(param.name)} = sagejs_arg_${param.name};`,
@@ -619,11 +673,11 @@ function exactDeclarations(fn) {
     }
     const type = local.type === "uint64"
       ? "uint64_t"
-      : isInt64BufferType(local.type)
-        ? "sagejs_int64_buffer"
+      : exactBufferCType(local.type) !== undefined
+        ? exactBufferCType(local.type)
         : "int";
     declarations.push(`    ${type} ${cName(local.name)} = ` +
-      `${isInt64BufferType(local.type) ? "{0}" : "0"};`);
+      `${exactBufferCType(local.type) !== undefined ? "{0}" : "0"};`);
   }
   const context = { storage };
   for (const name of storage.mutableParameters) {
@@ -693,6 +747,11 @@ function emitTaggedWrapper(fn) {
       declarations.push(`    sagejs_int64_buffer ${value};`);
       parse = `if (!sagejs_native_get_int64_buffer(env, args[${index}], ` +
         `&${value}, ${cString(param.name + " must be a BigInt64Array")}))\n` +
+        "            goto fail;";
+    } else if (isIntegerBufferType(param.type)) {
+      declarations.push(`    sagejs_integer_buffer ${value};`);
+      parse = `if (!sagejs_native_get_integer_buffer(env, args[${index}], ` +
+        `&${value}, ${cString(param.name + " must be a packed IntegerBuffer")}))\n` +
         "            goto fail;";
     } else {
       declarations.push(`    int ${value};`);
@@ -830,6 +889,11 @@ function emitExactWrapper(fn) {
       declarations.push(`    sagejs_int64_buffer ${value};`);
       parse = `if (!sagejs_native_get_int64_buffer(env, args[${index}], ` +
         `&${value}, ${cString(param.name + " must be a BigInt64Array")}))\n` +
+        "            goto fail;";
+    } else if (isIntegerBufferType(param.type)) {
+      declarations.push(`    sagejs_integer_buffer ${value};`);
+      parse = `if (!sagejs_native_get_integer_buffer(env, args[${index}], ` +
+        `&${value}, ${cString(param.name + " must be a packed IntegerBuffer")}))\n` +
         "            goto fail;";
     } else {
       declarations.push(`    int ${value};`);
@@ -1335,6 +1399,219 @@ static int sagejs_native_get_int64_buffer(
 }`;
 }
 
+function generateIntegerBufferSupport() {
+  return `
+typedef struct
+{
+    int32_t *sizes;
+    uint64_t *limbs;
+    size_t length;
+    size_t word_capacity;
+} sagejs_integer_buffer;
+
+static int sagejs_integer_buffer_index(
+    const sagejs_integer_buffer *buffer,
+    int64_t index,
+    size_t *position)
+{
+    if (index >= 0)
+    {
+        if ((uint64_t) index >= (uint64_t) buffer->length)
+            return 0;
+        *position = (size_t) index;
+        return 1;
+    }
+    const uint64_t magnitude = (uint64_t) (-(index + 1)) + UINT64_C(1);
+    if (magnitude > (uint64_t) buffer->length)
+        return 0;
+    *position = buffer->length - (size_t) magnitude;
+    return 1;
+}
+
+static int sagejs_mpz_integer_buffer_index(
+    const sagejs_integer_buffer *buffer,
+    const mpz_t index,
+    size_t *position)
+{
+    int64_t small;
+    return mpz_to_int64(index, &small) &&
+        sagejs_integer_buffer_index(buffer, small, position);
+}
+
+static void sagejs_integer_buffer_get_mpz(
+    const sagejs_integer_buffer *buffer,
+    size_t position,
+    mpz_t result)
+{
+    const int32_t signed_size = buffer->sizes[position];
+    const size_t count = signed_size < 0
+        ? (size_t) (-(int64_t) signed_size) : (size_t) signed_size;
+    if (count == 0)
+    {
+        mpz_set_ui(result, 0);
+        return;
+    }
+    mpz_import(result, count, -1, sizeof(uint64_t), 0, 0,
+        buffer->limbs + position * buffer->word_capacity);
+    if (signed_size < 0)
+        mpz_neg(result, result);
+}
+
+static int sagejs_integer_buffer_set_mpz(
+    napi_env env,
+    sagejs_integer_buffer *buffer,
+    size_t position,
+    const mpz_t value)
+{
+    const int sign = mpz_sgn(value);
+    const size_t count = sign == 0 ? 0 :
+        (mpz_sizeinbase(value, 2) + 63) / 64;
+    uint64_t *slot = buffer->limbs + position * buffer->word_capacity;
+    size_t actual = 0;
+    if (count > buffer->word_capacity || count > (size_t) INT32_MAX)
+    {
+        napi_throw_range_error(env, NULL,
+            "IntegerBuffer word capacity exceeded");
+        return 0;
+    }
+    memset(slot, 0, buffer->word_capacity * sizeof(*slot));
+    if (count != 0)
+        mpz_export(slot, &actual, -1, sizeof(*slot), 0, 0, value);
+    buffer->sizes[position] = sign < 0 ? -(int32_t) actual : (int32_t) actual;
+    return 1;
+}
+
+static int sagejs_integer_buffer_get_int64(
+    const sagejs_integer_buffer *buffer,
+    size_t position,
+    int64_t *result)
+{
+    const int32_t size = buffer->sizes[position];
+    if (size == 0)
+    {
+        *result = 0;
+        return 1;
+    }
+    if (size > 1 || size < -1)
+        return 0;
+    const uint64_t magnitude =
+        buffer->limbs[position * buffer->word_capacity];
+    if (size > 0)
+    {
+        if (magnitude > (uint64_t) INT64_MAX)
+            return 0;
+        *result = (int64_t) magnitude;
+        return 1;
+    }
+    if (magnitude > (UINT64_C(1) << 63))
+        return 0;
+    *result = magnitude == (UINT64_C(1) << 63)
+        ? INT64_MIN : -(int64_t) magnitude;
+    return 1;
+}
+
+static void sagejs_integer_buffer_set_int64(
+    sagejs_integer_buffer *buffer,
+    size_t position,
+    int64_t value)
+{
+    const int negative = value < 0;
+    const uint64_t magnitude = negative
+        ? (uint64_t) (-(value + 1)) + UINT64_C(1)
+        : (uint64_t) value;
+    uint64_t *slot = buffer->limbs + position * buffer->word_capacity;
+    memset(slot, 0, buffer->word_capacity * sizeof(*slot));
+    slot[0] = magnitude;
+    buffer->sizes[position] = magnitude == 0 ? 0 : (negative ? -1 : 1);
+}
+
+static void sagejs_integer_buffer_get_tagged(
+    const sagejs_integer_buffer *buffer,
+    size_t position,
+    sagejs_tagged_int *result)
+{
+    int64_t small;
+    if (sagejs_integer_buffer_get_int64(buffer, position, &small))
+    {
+        sagejs_tagged_set_small(result, small);
+        return;
+    }
+    sagejs_tagged_make_big(result);
+    sagejs_integer_buffer_get_mpz(buffer, position, result->big);
+}
+
+static int sagejs_integer_buffer_set_tagged(
+    napi_env env,
+    sagejs_integer_buffer *buffer,
+    size_t position,
+    sagejs_tagged_int *value)
+{
+    if (!value->is_big)
+    {
+        sagejs_integer_buffer_set_int64(buffer, position, value->small);
+        return 1;
+    }
+    return sagejs_integer_buffer_set_mpz(
+        env, buffer, position, value->big);
+}
+
+static int sagejs_native_get_integer_buffer(
+    napi_env env,
+    napi_value value,
+    sagejs_integer_buffer *result,
+    const char *argument)
+{
+    napi_value sizes_value, limbs_value, length_value, capacity_value;
+    bool sizes_typed = false, limbs_typed = false;
+    napi_typedarray_type sizes_type, limbs_type;
+    size_t sizes_length = 0, limbs_length = 0;
+    void *sizes_data = NULL, *limbs_data = NULL;
+    napi_value sizes_array_buffer, limbs_array_buffer;
+    size_t sizes_offset = 0, limbs_offset = 0;
+    uint64_t length = 0, capacity = 0;
+    if (napi_get_named_property(env, value, "sizes", &sizes_value) != napi_ok ||
+        napi_get_named_property(env, value, "limbs", &limbs_value) != napi_ok ||
+        napi_get_named_property(env, value, "length", &length_value) != napi_ok ||
+        napi_get_named_property(env, value, "wordCapacity", &capacity_value) != napi_ok ||
+        !get_uint64(env, length_value, &length) ||
+        !get_uint64(env, capacity_value, &capacity) || capacity == 0 ||
+        napi_is_typedarray(env, sizes_value, &sizes_typed) != napi_ok ||
+        !sizes_typed ||
+        napi_get_typedarray_info(env, sizes_value, &sizes_type, &sizes_length,
+            &sizes_data, &sizes_array_buffer, &sizes_offset) != napi_ok ||
+        sizes_type != napi_int32_array ||
+        napi_is_typedarray(env, limbs_value, &limbs_typed) != napi_ok ||
+        !limbs_typed ||
+        napi_get_typedarray_info(env, limbs_value, &limbs_type, &limbs_length,
+            &limbs_data, &limbs_array_buffer, &limbs_offset) != napi_ok ||
+        limbs_type != napi_biguint64_array ||
+        length > SIZE_MAX || capacity > SIZE_MAX ||
+        sizes_length < (size_t) length ||
+        ((size_t) length != 0 && (size_t) capacity > SIZE_MAX / (size_t) length) ||
+        limbs_length < (size_t) length * (size_t) capacity)
+    {
+        napi_throw_type_error(env, NULL, argument);
+        return 0;
+    }
+    result->sizes = (int32_t *) sizes_data;
+    result->limbs = (uint64_t *) limbs_data;
+    result->length = (size_t) length;
+    result->word_capacity = (size_t) capacity;
+    for (size_t index = 0; index < result->length; index++)
+    {
+        const int64_t size = result->sizes[index];
+        const uint64_t magnitude = size < 0 ? (uint64_t) -size : (uint64_t) size;
+        if (magnitude > capacity)
+        {
+            napi_throw_range_error(env, NULL,
+                "IntegerBuffer slot exceeds its word capacity");
+            return 0;
+        }
+    }
+    return 1;
+}`;
+}
+
 function generateC(ir) {
   const functionMap = new Map(ir.functions.map((fn) => [fn.name, fn]));
   const exactFunctions = ir.functions.filter(
@@ -1366,8 +1643,13 @@ function generateC(ir) {
     fn.params.some((param) => isInt64BufferType(param.type)) ||
     fn.locals.some((local) => isInt64BufferType(local.type))
   );
+  const usesIntegerBuffers = exactFunctions.some((fn) =>
+    fn.params.some((param) => isIntegerBufferType(param.type)) ||
+    fn.locals.some((local) => isIntegerBufferType(local.type))
+  );
   const functions = [
     usesInt64Buffers ? generateInt64BufferSupport() : "",
+    usesIntegerBuffers ? generateIntegerBufferSupport() : "",
     prototypes,
     word.prototypes,
     tagged.prototypes,
@@ -1433,7 +1715,7 @@ ${properties}
 NAPI_MODULE(NODE_GYP_MODULE_NAME, initialize)
 `;
   }
-  return `// Generated by Sage.js Native Kernel v14.
+  return `// Generated by Sage.js Native Kernel v15.
 #include <math.h>
 #include <limits.h>
 #include <stdbool.h>

@@ -1,6 +1,6 @@
-# Native Kernel v14
+# Native Kernel v15
 
-Native Kernel v14 asks whether selected Sage.js library functions can compile
+Native Kernel v15 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v14 is currently a source-tree development feature and uses the
+Native Kernel v15 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -111,7 +111,7 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v14 supports:
+lowers marked functions to typed IR. Native Kernel v15 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -304,9 +304,9 @@ prove and hoist buffer bounds from loop/shape constraints instead of emitting
 a branch at every inner-loop access. V14 deliberately retains those checks;
 the benchmark does not compare unsafe generated code with checked source.
 
-## Packed signed exact buffers
+## Packed exact buffers
 
-V14 adds mutable `Int64Buffer` values and bounded `Int64Record` views to the
+V14 added mutable `Int64Buffer` values and bounded `Int64Record` views to the
 exact-integer compiler. The native boundary borrows a `BigInt64Array`; ordinary
 Python/Sage.js lists use a checked temporary and copy mutations back. Reads
 enter the tagged exact-integer data flow, so later arithmetic still promotes
@@ -321,12 +321,28 @@ pure, and cannot replay a speculative direct call after a visible write. The
 generated JavaScript wrapper copies buffers back in `finally`, including when
 the native function raises.
 
+V15 adds mutable `IntegerBuffer` vectors without imposing a signed-64-bit
+limit. The host-neutral layout is a fixed-capacity signed-limb table:
+`Int32Array sizes` stores each entry's signed limb count and
+`BigUint64Array limbs` stores `wordCapacity` little-endian 64-bit limbs per
+entry. Native GMP and tagged backends read and write the same slots directly;
+the word backend promotes individual reads whose slots do not fit `int64_t`.
+Capacity is explicit and checked. A write that does not fit raises instead of
+silently reallocating a borrowed ABI or truncating a value. Ordinary lists are
+copied through the same representation, while `createIntegerBuffer()` exposes
+the zero-copy packed form for batched kernels and future WebAssembly linear
+memory.
+
 [`src/lib/sagejs/kernels/p1.py`](../src/lib/sagejs/kernels/p1.py) is the first
 mathematical witness. It writes complete Cremona and Merel Heilbronn
 representative arrays, then compiles the actual higher-weight homogeneous
 polynomial action into packed output. The latter emits every
 `(weight - 1)`-square action block used inside the P1 Hecke loop; coset
-transport and quotient-presentation reduction remain distinct later stages.
+transport, arbitrary-precision polynomial coefficients, and exact rational
+quotient-presentation reduction are now compiled from the actual typed Python
+body. FLINT still constructs the mature Manin presentation and supplies its
+explicit rational reduction matrix; the typed kernel consumes that mathematical
+interface rather than duplicating sparse rational row reduction.
 At `p=1009`, weight 4, the checked typed-Python body writes 49,284 exact
 coefficients in a median 0.745 ms with GCC and 0.447 ms with Clang on the
 dedicated 16-vCPU AMD EPYC 7B13 host. The same standalone C transcription
@@ -341,6 +357,25 @@ differential benchmark with:
 ```sh
 pnpm bench:native:p1
 ```
+
+The same benchmark now includes complete higher-weight P1 transport and
+rational quotient reduction. The full diagnostic pipeline materializes all
+44,496 arbitrary-precision source-generator coefficients; the production-shaped
+typed body fuses transport and reduction for the 7,416 coefficients belonging
+to the chosen quotient-basis generators. On the dedicated 16-vCPU AMD EPYC
+7B13 host, level 11, weight 4, and `T_101` produces a 6-by-6 rational matrix in
+median 1.908 ms with GCC. The generated JavaScript fallback takes 57.359 ms and
+the production FLINT C path takes 1.752 ms: compilation is 30.1x faster than
+the same-source fallback and only 1.09x behind the mature specialized C.
+Presentation construction is excluded for both paths. The compiled benchmark
+reuses its explicit output storage, whereas the current FLINT API allocates its
+returned matrix, so this is a close architectural comparison rather than a
+claim of identical allocation policy. Every rational entry is checked against
+FLINT before timing. An independent Clang 18 build of the generated kernel
+takes 1.890 ms on the same host and produces the same result, 1.08x the
+contemporaneous 1.748 ms FLINT measurement. These figures are medians across
+five complete benchmark invocations, each with its own internal warmups and
+sample medians.
 
 Run the exact-integer comparisons with:
 
@@ -510,15 +545,16 @@ coefficient lists and more involved structured state make it the next honest
 compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
-## Deliberate v14 limits
+## Deliberate v15 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements
 as arguments, release the event loop, build asynchronously, or provide
 prebuilt kernels. Exact modules currently return one scalar `Integer`, `bool`,
-or a flat typed tuple. Their supported mutable exact container is deliberately
-limited to packed signed-64-bit buffers and bounded record views; arbitrary
-lists, keyword-only native ABI arguments, general iterators, exception
+or a flat typed tuple. Their mutable exact containers are deliberately limited
+to fixed-shape signed-64-bit buffers, bounded record views, and fixed-capacity
+arbitrary-precision integer buffers; resizable lists, keyword-only native ABI
+arguments, general iterators, exception
 handlers, and calls into uncompiled Python remain outside the typed subset.
 Fixed local integer sequences are compile-time values,
 not general lists. Tagged promotion is per value and per instruction, but a

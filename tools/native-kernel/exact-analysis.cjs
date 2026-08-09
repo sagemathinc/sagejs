@@ -40,6 +40,14 @@ function operationInputs(operation) {
       return [operation.buffer, operation.index];
     case "int64.buffer.set":
       return [operation.buffer, operation.index, operation.value];
+    case "integer.buffer.copy":
+      return [operation.source];
+    case "integer.buffer.length":
+      return [operation.buffer];
+    case "integer.buffer.get":
+      return [operation.buffer, operation.index];
+    case "integer.buffer.set":
+      return [operation.buffer, operation.index, operation.value];
     case "native.call":
       return operation.arguments.map((argument) => argument.name);
     case "return":
@@ -322,11 +330,14 @@ function localEffects(fn) {
       if (
         operation.kind === "int64.buffer.get" ||
         operation.kind === "int64.buffer.set" ||
-        operation.kind === "int64.record.view"
+        operation.kind === "int64.record.view" ||
+        operation.kind === "integer.buffer.get" ||
+        operation.kind === "integer.buffer.set"
       ) {
         mayRaise.add("IndexError");
       }
-      if (operation.kind === "int64.buffer.set") {
+      if (operation.kind === "int64.buffer.set" ||
+          operation.kind === "integer.buffer.set") {
         mayRaise.add("OverflowError");
       }
       if (operation.kind === "raise") mayRaise.add(operation.errorType);
@@ -349,7 +360,9 @@ function localEffects(fn) {
 }
 
 function bufferWrites(fn, dependencyEffects) {
-  const bufferTypes = new Set(["Int64Buffer", "Int64Record"]);
+  const bufferTypes = new Set([
+    "IntegerBuffer", "Int64Buffer", "Int64Record",
+  ]);
   const aliases = new Map(
     fn.params
       .filter((param) => bufferTypes.has(param.type))
@@ -369,11 +382,13 @@ function bufferWrites(fn, dependencyEffects) {
   function visit(statements) {
     let changed = false;
     for (const statement of statements) {
-      if (statement.kind === "int64.buffer.copy") {
+      if (statement.kind === "int64.buffer.copy" ||
+          statement.kind === "integer.buffer.copy") {
         changed = addAlias(statement.target, roots(statement.source)) || changed;
       } else if (statement.kind === "int64.record.view") {
         changed = addAlias(statement.target, roots(statement.buffer)) || changed;
-      } else if (statement.kind === "int64.buffer.set") {
+      } else if (statement.kind === "int64.buffer.set" ||
+          statement.kind === "integer.buffer.set") {
         for (const root of roots(statement.buffer)) writes.add(root);
       } else if (statement.kind === "native.call") {
         const effect = dependencyEffects.get(statement.function);
