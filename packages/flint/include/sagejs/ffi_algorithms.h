@@ -5,6 +5,8 @@
 
 #include <flint/nmod_poly.h>
 #include <flint/nmod_mat.h>
+#include <flint/fmpz_mat.h>
+#include <flint/fmpz_poly.h>
 #include <flint/ulong_extras.h>
 
 #ifdef __cplusplus
@@ -163,6 +165,137 @@ static inline int sagejs_flint_nmod_mat_solve(
     nmod_mat_t output, const nmod_mat_t left, const nmod_mat_t right)
 {
     return nmod_mat_solve(output, left, right);
+}
+
+/* Host-neutral exact-matrix operations.  The generated declaration adapter
+ * owns initialization, conversion, transactional copy-back, and cleanup of
+ * every fmpz_mat_t.  These small wrappers express only algebraic shape rules
+ * that are absent from the raw FLINT signatures. */
+static inline int sagejs_flint_fmpz_mat_mul(
+    fmpz_mat_t output, const fmpz_mat_t left, const fmpz_mat_t right)
+{
+    if (fmpz_mat_nrows(output) != fmpz_mat_nrows(left) ||
+        fmpz_mat_ncols(left) != fmpz_mat_nrows(right) ||
+        fmpz_mat_ncols(output) != fmpz_mat_ncols(right))
+        return 0;
+    fmpz_mat_mul(output, left, right);
+    return 1;
+}
+
+static inline int sagejs_flint_fmpz_mat_det(
+    fmpz_mat_t output, const fmpz_mat_t source)
+{
+    if (fmpz_mat_nrows(output) != 1 || fmpz_mat_ncols(output) != 1 ||
+        fmpz_mat_nrows(source) != fmpz_mat_ncols(source))
+        return 0;
+    fmpz_mat_det(fmpz_mat_entry(output, 0, 0), source);
+    return 1;
+}
+
+static inline int sagejs_flint_fmpz_mat_charpoly(
+    fmpz_mat_t output, const fmpz_mat_t source)
+{
+    fmpz_poly_t polynomial;
+    const slong size = fmpz_mat_nrows(source);
+    if (fmpz_mat_ncols(source) != size ||
+        fmpz_mat_nrows(output) != 1 ||
+        fmpz_mat_ncols(output) != size + 1)
+        return 0;
+    fmpz_poly_init(polynomial);
+    fmpz_mat_charpoly(polynomial, source);
+    for (slong index = 0; index <= size; index++)
+        fmpz_poly_get_coeff_fmpz(
+            fmpz_mat_entry(output, 0, index), polynomial, index);
+    fmpz_poly_clear(polynomial);
+    return 1;
+}
+
+static inline int sagejs_flint_fmpz_mat_hnf(
+    fmpz_mat_t output, const fmpz_mat_t source)
+{
+    if (fmpz_mat_nrows(output) != fmpz_mat_nrows(source) ||
+        fmpz_mat_ncols(output) != fmpz_mat_ncols(source))
+        return 0;
+    fmpz_mat_hnf(output, source);
+    return 1;
+}
+
+static inline int sagejs_flint_fmpz_mat_hnf_transform(
+    fmpz_mat_t output, fmpz_mat_t transform, const fmpz_mat_t source)
+{
+    const slong rows = fmpz_mat_nrows(source);
+    if (fmpz_mat_nrows(output) != rows ||
+        fmpz_mat_ncols(output) != fmpz_mat_ncols(source) ||
+        fmpz_mat_nrows(transform) != rows ||
+        fmpz_mat_ncols(transform) != rows)
+        return 0;
+    fmpz_mat_hnf_transform(output, transform, source);
+    return 1;
+}
+
+static inline int sagejs_flint_fmpz_mat_snf_transform(
+    fmpz_mat_t output,
+    fmpz_mat_t left_transform,
+    fmpz_mat_t right_transform,
+    const fmpz_mat_t source)
+{
+    const slong rows = fmpz_mat_nrows(source);
+    const slong columns = fmpz_mat_ncols(source);
+    if (fmpz_mat_nrows(output) != rows ||
+        fmpz_mat_ncols(output) != columns ||
+        fmpz_mat_nrows(left_transform) != rows ||
+        fmpz_mat_ncols(left_transform) != rows ||
+        fmpz_mat_nrows(right_transform) != columns ||
+        fmpz_mat_ncols(right_transform) != columns)
+        return 0;
+    fmpz_mat_snf_transform(
+        output, left_transform, right_transform, source);
+    return 1;
+}
+
+static inline slong sagejs_flint_fmpz_mat_right_kernel(
+    fmpz_mat_t output, const fmpz_mat_t source)
+{
+    const slong rows = fmpz_mat_nrows(source);
+    const slong columns = fmpz_mat_ncols(source);
+    const slong rank = fmpz_mat_rank(source);
+    const slong nullity = columns - rank;
+    fmpz_mat_t transpose;
+    fmpz_mat_t hermite;
+    fmpz_mat_t transform;
+    fmpz_mat_t basis;
+    if (fmpz_mat_nrows(output) != columns ||
+        fmpz_mat_ncols(output) != columns)
+        return -1;
+    fmpz_mat_init(transpose, columns, rows);
+    fmpz_mat_init(hermite, columns, rows);
+    fmpz_mat_init(transform, columns, columns);
+    fmpz_mat_init(basis, nullity, columns);
+    fmpz_mat_transpose(transpose, source);
+    fmpz_mat_hnf_transform(hermite, transform, transpose);
+    for (slong row = 0; row < nullity; row++)
+        for (slong column = 0; column < columns; column++)
+            fmpz_set(
+                fmpz_mat_entry(basis, row, column),
+                fmpz_mat_entry(transform, rank + row, column));
+    fmpz_mat_zero(output);
+    if (nullity != 0)
+    {
+        fmpz_mat_t answer;
+        fmpz_mat_init(answer, nullity, columns);
+        fmpz_mat_hnf(answer, basis);
+        for (slong row = 0; row < nullity; row++)
+            for (slong column = 0; column < columns; column++)
+                fmpz_set(
+                    fmpz_mat_entry(output, row, column),
+                    fmpz_mat_entry(answer, row, column));
+        fmpz_mat_clear(answer);
+    }
+    fmpz_mat_clear(basis);
+    fmpz_mat_clear(transform);
+    fmpz_mat_clear(hermite);
+    fmpz_mat_clear(transpose);
+    return nullity;
 }
 
 #ifdef __cplusplus

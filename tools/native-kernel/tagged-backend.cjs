@@ -122,6 +122,9 @@ function emitTaggedOperation(operation, context, indent) {
   if (operation.kind === "integer.constant") {
     return setInteger(target, operation.value, indent);
   }
+  if (operation.kind === "uint64.constant") {
+    return `${indent}${target} = UINT64_C(${operation.value});`;
+  }
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
@@ -131,6 +134,31 @@ function emitTaggedOperation(operation, context, indent) {
   }
   if (operation.kind === "bool.copy" || operation.kind === "uint64.copy") {
     return `${indent}${target} = ${taggedValue(operation.source, context)};`;
+  }
+  if (operation.kind === "uint64.binary") {
+    const left = taggedValue(operation.left, context);
+    const right = taggedValue(operation.right, context);
+    if (operation.operation === "floordiv" || operation.operation === "mod") {
+      const operator = operation.operation === "floordiv" ? "/" : "%";
+      return [
+        `${indent}if (${right} == 0)`,
+        `${indent}{`,
+        `${indent}    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+          `"unsigned integer division or modulo by zero");`,
+        `${indent}    goto fail;`,
+        `${indent}}`,
+        `${indent}${target} = ${left} ${operator} ${right};`,
+      ].join("\n");
+    }
+    const operator = { add: "+", sub: "-", mul: "*" }[operation.operation];
+    return `${indent}${target} = ${left} ${operator} ${right};`;
+  }
+  if (operation.kind === "uint64.compare") {
+    const operator = {
+      eq: "==", ne: "!=", lt: "<", le: "<=", gt: ">", ge: ">=",
+    }[operation.operation];
+    return `${indent}${target} = ${taggedValue(operation.left, context)} ` +
+      `${operator} ${taggedValue(operation.right, context)};`;
   }
   if (operation.kind === "int64.buffer.copy") {
     return `${indent}${target} = ${taggedValue(operation.source, context)};`;

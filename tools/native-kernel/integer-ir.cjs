@@ -360,6 +360,22 @@ function emitConstant(context, node, operations, value) {
   return { name: target, type: "Integer" };
 }
 
+function emitUint64Constant(context, node, operations, value) {
+  expect(
+    context,
+    node,
+    value >= 0n && value <= 18446744073709551615n,
+    "uint64 literal is outside unsigned 64-bit",
+  );
+  const target = temporary(context, node, "uint64");
+  operations.push({
+    kind: "uint64.constant",
+    target,
+    value: value.toString(),
+  });
+  return { name: target, type: "uint64" };
+}
+
 function emitBoolean(context, node, operations, value) {
   const target = temporary(context, node, "bool");
   operations.push({ kind: "bool.constant", target, value });
@@ -967,14 +983,27 @@ function lowerExpression(node, context, operations) {
 
   const arithmetic = INTEGER_BINARY.get(node.operator);
   if (arithmetic !== undefined) {
-    const left = coerceInteger(
-      lowerExpression(node.left, context, operations),
+    let left = lowerExpression(node.left, context, operations);
+    let right = lowerExpression(node.right, context, operations);
+    if (left.type === "uint64" && right.type === "uint64") {
+      const target = temporary(context, node, "uint64");
+      operations.push({
+        kind: "uint64.binary",
+        operation: arithmetic,
+        target,
+        left: left.name,
+        right: right.name,
+      });
+      return { name: target, type: "uint64" };
+    }
+    left = coerceInteger(
+      left,
       context,
       node.left,
       operations,
     );
-    const right = coerceInteger(
-      lowerExpression(node.right, context, operations),
+    right = coerceInteger(
+      right,
       context,
       node.right,
       operations,
@@ -994,6 +1023,17 @@ function lowerExpression(node, context, operations) {
   if (comparison !== undefined) {
     let left = lowerExpression(node.left, context, operations);
     let right = lowerExpression(node.right, context, operations);
+    if (left.type === "uint64" && right.type === "uint64") {
+      const target = temporary(context, node, "bool");
+      operations.push({
+        kind: "uint64.compare",
+        operation: comparison,
+        target,
+        left: left.name,
+        right: right.name,
+      });
+      return { name: target, type: "bool" };
+    }
     if (left.type === "Integer" || left.type === "uint64") {
       left = coerceInteger(left, context, node.left, operations);
       right = coerceInteger(right, context, node.right, operations);
@@ -1189,6 +1229,15 @@ function lowerAssignment(statement, context) {
     );
     const operations = [];
     let value = lowerExpression(assign.value, context, operations);
+    if (declaredType === "uint64" && value.type === "Integer") {
+      const literal = integerLiteral(assign.value);
+      if (literal !== undefined) {
+        operations.length = 0;
+        value = emitUint64Constant(
+          context, assign.value, operations, literal,
+        );
+      }
+    }
     if (declaredType === "Integer") {
       value = coerceInteger(value, context, assign.value, operations);
     }

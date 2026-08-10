@@ -16,6 +16,35 @@ import sagejs.runtime as runtime
 
 _dense_prime_kernel_module_cache = runtime.undefined
 _dense_prime_flint_module_cache = runtime.undefined
+_dense_integer_kernel_module_cache = runtime.undefined
+_dense_integer_flint_module_cache = runtime.undefined
+
+
+class _PackedIntegerStorage:
+    """Distinguish compiler-owned exact storage from foreign handles."""
+
+    def __init__(self, entries: Any) -> None:
+        self.entries = entries
+
+
+def _dense_integer_kernel_module() -> Any:
+    """Load source-transparent dense ``ZZ`` structural kernels lazily."""
+    global _dense_integer_kernel_module_cache
+    if _dense_integer_kernel_module_cache is runtime.undefined:
+        _dense_integer_kernel_module_cache = __import__(
+            'sagejs.kernels.dense_integer', fromlist=['dense_integer'])
+    return _dense_integer_kernel_module_cache
+
+
+def _dense_integer_flint_module() -> Any:
+    """Load declared-FLINT packed integer algorithms lazily."""
+    global _dense_integer_flint_module_cache
+    if _dense_integer_flint_module_cache is runtime.undefined:
+        _dense_integer_flint_module_cache = __import__(
+            'sagejs.kernels.dense_integer_flint',
+            fromlist=['dense_integer_flint'],
+        )
+    return _dense_integer_flint_module_cache
 
 
 def _dense_prime_kernel_module() -> Any:
@@ -71,6 +100,21 @@ def _trace_dense_prime_selection(
             f'{rows}x{columns} -> {implementation}')
 
 
+def _trace_dense_integer_selection(
+    operation: str,
+    implementation: str,
+    rows: int,
+    columns: int,
+) -> None:
+    if runtime.reflect.get(
+        runtime.global_object,
+        '__sagejs_native_trace_enabled__',
+    ) is True:
+        print(
+            f'[sagejs native] Matrix.{operation} ZZ '
+            f'{rows}x{columns} -> {implementation}')
+
+
 def _is_packed_dense_prime_base(base: sage.Parent) -> bool:
     """Return whether canonical packed storage supports this prime field."""
     return (
@@ -103,6 +147,114 @@ def _dense_prime_zeros(kernel_function: Any, length: int) -> Any:
         if callable(factory):
             return factory(length)
     return [0 for _index in range(length)]
+
+
+def _integer_word_capacity(source: Any) -> int:
+    capacity = runtime.reflect.get(source, 'wordCapacity')
+    if capacity is not runtime.undefined:
+        return int(capacity)
+    maximum = 1
+    for value in source:
+        magnitude = abs(int(value))
+        words = max(1, (magnitude.bit_length() + 63) // 64)
+        maximum = max(maximum, words)
+    return maximum
+
+
+def _integer_used_word_capacity(source: Any) -> int:
+    """Return the largest limb count actually occupied by any entry."""
+    sizes = runtime.reflect.get(source, 'sizes')
+    if sizes is runtime.undefined:
+        return _integer_word_capacity(source)
+    return runtime.integer_buffer_used_word_capacity(source)
+
+
+def _integer_buffer_length(source: Any) -> int:
+    length = runtime.reflect.get(source, 'length')
+    return len(source) if length is runtime.undefined else int(length)
+
+
+def _integer_value_capacity(value: Any) -> int:
+    magnitude = abs(int(value))
+    return max(1, (magnitude.bit_length() + 63) // 64)
+
+
+def _dense_integer_buffer(
+    kernel_function: Any,
+    source: Any,
+    minimum_word_capacity: int = 1,
+) -> Any:
+    """Pack exact values into compiler-owned signed-limb storage."""
+    if _native_kernel_available(kernel_function):
+        return runtime.integer_buffer(source, minimum_word_capacity)
+    return [int(value) for value in source]
+
+
+def _dense_integer_zeros(
+    kernel_function: Any,
+    length: int,
+    word_capacity: int = 1,
+) -> Any:
+    if _native_kernel_available(kernel_function):
+        factory = getattr(kernel_function, 'createIntegerBuffer', None)
+        if callable(factory):
+            return runtime.reflect.apply(factory, runtime.undefined, [
+                length, word_capacity,
+            ])
+    return [0 for _index in range(length)]
+
+
+def _compact_integer_buffer(source: Any) -> Any:
+    """Shrink spare per-entry limbs without decoding exact values."""
+    kernel = _dense_integer_kernel_module().dense_integer_copy
+    if not _native_kernel_available(kernel):
+        return source
+    current = runtime.reflect.get(source, 'wordCapacity')
+    if current is runtime.undefined:
+        return source
+    used = _integer_used_word_capacity(source)
+    if used >= int(current) or int(current) < 8:
+        return source
+    return runtime.integer_buffer(source, used)
+
+
+def _integer_buffer_values(source: Any) -> list[Any]:
+    converter = runtime.reflect.get(source, 'toArray')
+    if runtime.jstype(converter) == 'function':
+        values = runtime.reflect.apply(converter, source, [])
+    else:
+        values = list(source)
+    return [runtime.normalize_integer(value) for value in values]
+
+
+def _integer_capacity_error(error: Exception) -> bool:
+    return 'IntegerBuffer word capacity exceeded' in str(error)
+
+
+def _run_integer_outputs(
+    kernel_function: Any,
+    lengths: list[int],
+    invoke: Any,
+    initial_capacity: int,
+) -> list[Any]:
+    """Retry a transactional declared-FFI result with wider limbs."""
+    capacity = max(1, initial_capacity)
+    while True:
+        outputs = [
+            _dense_integer_zeros(kernel_function, length, capacity)
+            for length in lengths
+        ]
+        try:
+            invoke(outputs)
+            return outputs
+        except Exception as error:
+            if not _integer_capacity_error(error):
+                raise
+            capacity *= 2
+            if capacity > 1048576:
+                raise OverflowError(  # noqa: B904
+                    'integer matrix output requires excessive limb capacity'
+                )
 
 
 def _packed_uint64(source: Any) -> Any:
@@ -275,10 +427,8 @@ def _native_matrix(
 ) -> Any:
     backend = runtime.flint_backend()
     if base is sage.ZZ:
-        entries = []
-        for value in values:
-            entries.append(runtime.integer_bigint(value))
-        return backend.zzMatrix(rows, cols, entries)
+        raise RuntimeError(
+            'dense ZZ matrices must use compiler-owned IntegerBuffer storage')
     if base is sage.QQ:
         entries = []
         for value in values:
@@ -593,6 +743,9 @@ class MatrixSpaceParent(sage.Parent):
 
     def _from_native(self, native_value: Any) -> Matrix:
         """Construct an element from a trusted native matrix handle."""
+        if self._base is sage.ZZ:
+            raise RuntimeError(
+                'dense ZZ matrices cannot be constructed from N-API handles')
         return Matrix(self, native_value)
 
     def _from_packed_residues(
@@ -659,11 +812,45 @@ class MatrixSpaceParent(sage.Parent):
 
     def _from_packed_integers(self, entries: Any) -> Matrix:
         """Construct an integer matrix from packed signed magnitudes."""
+        if self._base is not sage.ZZ:
+            raise TypeError('packed integer storage requires ZZ')
+        try:
+            packed = runtime.integer_buffer_from_packed_bytes(
+                entries, self._rows * self._cols)
+        except Exception:
+            packed = runtime.undefined
+        if packed is runtime.undefined:
+            raise ValueError('invalid packed integer matrix data')
+        return self._from_canonical_integer_entries(packed)
+
+    def _from_integer_values(self, entries: Any) -> Matrix:
+        """Coerce and pack row-major entries for a dense ``ZZ`` matrix."""
+        if self._base is not sage.ZZ:
+            raise TypeError('integer storage requires ZZ')
+        if len(entries) != self._rows * self._cols:
+            raise ValueError('matrix entry count does not match dimensions')
+        kernel = _dense_integer_kernel_module().dense_integer_copy
+        storage = runtime.undefined
+        if _native_kernel_available(kernel):
+            try:
+                storage = _dense_integer_buffer(kernel, entries, 1)
+            except Exception:
+                # General Sage coercion remains the semantic fallback for
+                # rationals, ring elements, and arbitrary iterable entries.
+                storage = runtime.undefined
+        if storage is runtime.undefined:
+            values = [sage.ZZ(entries[index]) for index in range(len(entries))]
+            storage = _dense_integer_buffer(kernel, values, 1)
+        return Matrix(self, _PackedIntegerStorage(storage))
+
+    def _from_canonical_integer_entries(self, entries: Any) -> Matrix:
+        """Take ownership of trusted compiler-owned exact storage."""
+        if self._base is not sage.ZZ:
+            raise TypeError('integer storage requires ZZ')
+        if _integer_buffer_length(entries) != self._rows * self._cols:
+            raise ValueError('matrix entry count does not match dimensions')
         return Matrix(
-            self,
-            runtime.flint_backend().zzMatrixPacked(
-                self._rows, self._cols, entries),
-        )
+            self, _PackedIntegerStorage(_compact_integer_buffer(entries)))
 
     def _from_packed_rationals(self, entries: Any) -> Matrix:
         """Construct a rational matrix from packed numerator/denominator data."""
@@ -748,6 +935,8 @@ class MatrixSpaceParent(sage.Parent):
         if _is_packed_dense_prime_base(self._base):
             storage = _prime_residue_values(self._base, values)
             return Matrix(self, storage)
+        if self._base is sage.ZZ:
+            return self._from_integer_values(values)
         coerced = _coerce_values(self._base, values)
         result = Matrix(
             self,
@@ -1227,15 +1416,30 @@ class Matrix(sage.Element):
             if source._has_packed_prime_storage():
                 native_value = _copy_packed_uint64(
                     source._prime_residues())
+            elif source._has_packed_integer_storage():
+                kernel = _dense_integer_kernel_module().dense_integer_copy
+                native_value = _PackedIntegerStorage(
+                    _dense_integer_buffer(
+                        kernel,
+                        source._integer_entries(),
+                        source._integer_capacity(),
+                    )
+                )
             else:
                 native_value = source._native
         self._parent = parent
         if _is_packed_uint64(native_value):
             self._native_handle = runtime.undefined
             self._prime_residues_cache = native_value
+            self._integer_entries_cache = runtime.undefined
+        elif isinstance(native_value, _PackedIntegerStorage):
+            self._native_handle = runtime.undefined
+            self._prime_residues_cache = runtime.undefined
+            self._integer_entries_cache = native_value.entries
         else:
             self._native_handle = native_value
             self._prime_residues_cache = runtime.undefined
+            self._integer_entries_cache = runtime.undefined
         self._immutable = False
         self._row_subdivisions = []
         self._col_subdivisions = []
@@ -1256,7 +1460,7 @@ class Matrix(sage.Element):
     def _native(self) -> Any:
         """Return a legacy handle only for matrix representations that own it.
 
-        Packed ``GF(p)`` matrices deliberately have no conversion escape
+        Packed ``GF(p)`` and ``ZZ`` matrices deliberately have no conversion escape
         hatch here.  Tests that compare with the former N-API implementation
         construct a separate oracle explicitly; production code cannot
         accidentally make a host object canonical again.
@@ -1264,6 +1468,9 @@ class Matrix(sage.Element):
         if self._has_packed_prime_storage():
             raise RuntimeError(
                 'packed GF(p) matrices have no N-API matrix handle')
+        if self._has_packed_integer_storage():
+            raise RuntimeError(
+                'packed ZZ matrices have no N-API matrix handle')
         return self._native_handle
 
     @_native.setter
@@ -1275,6 +1482,28 @@ class Matrix(sage.Element):
             self._prime_residues_cache is not runtime.undefined
             and _is_packed_dense_prime_base(self.base_ring())
         )
+
+    def _has_packed_integer_storage(self) -> bool:
+        return (
+            self.base_ring() is sage.ZZ
+            and self._integer_entries_cache is not runtime.undefined
+        )
+
+    def _integer_entries(self) -> Any:
+        if not self._has_packed_integer_storage():
+            raise TypeError('packed exact storage requires a ZZ matrix')
+        return self._integer_entries_cache
+
+    def _integer_capacity(self) -> int:
+        return _integer_word_capacity(self._integer_entries())
+
+    def _integer_kernel_buffer(self, kernel_function: Any) -> Any:
+        entries = self._integer_entries()
+        if _native_kernel_available(kernel_function):
+            capacity = runtime.reflect.get(entries, 'wordCapacity')
+            if capacity is not runtime.undefined:
+                return entries
+        return _integer_buffer_values(entries)
 
     def _new(self, native_value: Any) -> Matrix:
         return Matrix(self._parent, native_value)
@@ -1332,7 +1561,10 @@ class Matrix(sage.Element):
 
     def _packed_integers(self) -> Any:
         """Return ZZ entries as packed signed little-endian magnitudes."""
-        return runtime.flint_backend().zzMatrixExportPacked(self._native)
+        if not self._has_packed_integer_storage():
+            raise TypeError('packed integer export requires a ZZ matrix')
+        return runtime.integer_buffer_to_packed_bytes(
+            self._integer_entries())
 
     def _packed_rationals(self) -> Any:
         """Return QQ entries as packed numerator/denominator magnitudes."""
@@ -1355,6 +1587,14 @@ class Matrix(sage.Element):
         return self.nrows() == self.ncols()
 
     def is_zero(self) -> bool:
+        if self._has_packed_integer_storage():
+            kernel = _dense_integer_kernel_module().dense_integer_is_zero
+            result = bool(kernel(self._integer_kernel_buffer(kernel)))
+            _trace_dense_integer_selection(
+                'is_zero', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return result
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_is_zero
             result = bool(kernel(
@@ -1373,6 +1613,18 @@ class Matrix(sage.Element):
         return not self.is_zero()
 
     def is_one(self) -> bool:
+        if self._has_packed_integer_storage():
+            kernel = _dense_integer_kernel_module().dense_integer_is_one
+            result = bool(kernel(
+                self._integer_kernel_buffer(kernel),
+                self.nrows(),
+                self.ncols(),
+            ))
+            _trace_dense_integer_selection(
+                'is_one', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return result
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_is_one
             result = bool(kernel(
@@ -1406,6 +1658,13 @@ class Matrix(sage.Element):
             residue = int(
                 self._prime_residues_cache[row * self.ncols() + col])
             return self.base_ring()(residue)
+        if self._has_packed_integer_storage():
+            kernel = _dense_integer_kernel_module().dense_integer_get
+            value = kernel(
+                self._integer_kernel_buffer(kernel),
+                row * self.ncols() + col,
+            )
+            return runtime.normalize_integer(value)
         backend = runtime.flint_backend()
         if _is_extension_field_base(self.base_ring()):
             native_value = backend.fqMatrixEntry(
@@ -1443,11 +1702,37 @@ class Matrix(sage.Element):
             self._native_handle = runtime.undefined
             self._clear_cache()
             return
+        if self._has_packed_integer_storage():
+            kernel = _dense_integer_kernel_module().dense_integer_set
+            exact = sage.ZZ(value)
+            while True:
+                try:
+                    target = self._integer_kernel_buffer(kernel)
+                    kernel(
+                        target,
+                        row * self.ncols() + col,
+                        exact,
+                    )
+                    if not _native_kernel_available(kernel):
+                        self._integer_entries_cache = target
+                    break
+                except Exception as error:
+                    if not _integer_capacity_error(error):
+                        raise
+                    self._integer_entries_cache = _dense_integer_buffer(
+                        kernel,
+                        self._integer_entries(),
+                        self._integer_capacity() * 2,
+                    )
+            self._clear_cache()
+            return
         raise NotImplementedError(
             'matrix mutation is currently implemented for packed GF(p) '
             'matrices')
 
     def list(self) -> list[Any]:
+        if self._has_packed_integer_storage():
+            return _integer_buffer_values(self._integer_entries())
         answer = []
         for row in range(self.nrows()):
             for col in range(self.ncols()):
@@ -1497,10 +1782,7 @@ class Matrix(sage.Element):
         if base is self.base_ring():
             return self
         if base is sage.QQ and self.base_ring() is sage.ZZ:
-            return Matrix(
-                MatrixSpace(base, self.nrows(), self.ncols()),
-                runtime.flint_backend().zzMatrixToQQ(self._native),
-            )
+            return matrix(base, self.nrows(), self.ncols(), self.list())
         if (
             self.base_ring() is sage.ZZ
             and (
@@ -1544,6 +1826,27 @@ class Matrix(sage.Element):
     def __add__(self, other: object) -> Matrix:
         left, right = self._pair(other)
         if (
+            left._has_packed_integer_storage()
+            and right._has_packed_integer_storage()
+        ):
+            kernel = _dense_integer_kernel_module().dense_integer_add
+            entries = _dense_integer_zeros(
+                kernel,
+                left.nrows() * left.ncols(),
+                max(left._integer_capacity(), right._integer_capacity()) + 1,
+            )
+            if not kernel(
+                entries,
+                left._integer_kernel_buffer(kernel),
+                right._integer_kernel_buffer(kernel),
+            ):
+                raise RuntimeError('dense integer addition buffer mismatch')
+            _trace_dense_integer_selection(
+                'add', _typed_python_implementation(kernel),
+                left.nrows(), left.ncols(),
+            )
+            return left._parent._from_canonical_integer_entries(entries)
+        if (
             left._has_packed_prime_storage()
             and right._has_packed_prime_storage()
         ):
@@ -1580,6 +1883,28 @@ class Matrix(sage.Element):
     def __sub__(self, other: object) -> Matrix:
         left, right = self._pair(other)
         if (
+            left._has_packed_integer_storage()
+            and right._has_packed_integer_storage()
+        ):
+            kernel = _dense_integer_kernel_module().dense_integer_subtract
+            entries = _dense_integer_zeros(
+                kernel,
+                left.nrows() * left.ncols(),
+                max(left._integer_capacity(), right._integer_capacity()) + 1,
+            )
+            if not kernel(
+                entries,
+                left._integer_kernel_buffer(kernel),
+                right._integer_kernel_buffer(kernel),
+            ):
+                raise RuntimeError(
+                    'dense integer subtraction buffer mismatch')
+            _trace_dense_integer_selection(
+                'subtract', _typed_python_implementation(kernel),
+                left.nrows(), left.ncols(),
+            )
+            return left._parent._from_canonical_integer_entries(entries)
+        if (
             left._has_packed_prime_storage()
             and right._has_packed_prime_storage()
         ):
@@ -1614,6 +1939,20 @@ class Matrix(sage.Element):
         )
 
     def __neg__(self) -> Matrix:
+        if self._has_packed_integer_storage():
+            kernel = _dense_integer_kernel_module().dense_integer_negate
+            entries = _dense_integer_zeros(
+                kernel,
+                self.nrows() * self.ncols(),
+                self._integer_capacity(),
+            )
+            if not kernel(entries, self._integer_kernel_buffer(kernel)):
+                raise RuntimeError('dense integer negation buffer mismatch')
+            _trace_dense_integer_selection(
+                'negate', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return self._parent._from_canonical_integer_entries(entries)
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_negate
             modulus = int(_untyped(self.base_ring()).characteristic())
@@ -1697,6 +2036,27 @@ class Matrix(sage.Element):
             )
             return self._parent._from_canonical_uint64_residues(
                 entries)
+        if self._has_packed_integer_storage():
+            factor = sage.ZZ(scalar)
+            kernel = (
+                _dense_integer_kernel_module().dense_integer_scalar_multiply)
+            entries = _dense_integer_zeros(
+                kernel,
+                self.nrows() * self.ncols(),
+                self._integer_capacity() + _integer_value_capacity(factor),
+            )
+            if not kernel(
+                entries,
+                self._integer_kernel_buffer(kernel),
+                factor,
+            ):
+                raise RuntimeError(
+                    'dense integer scalar-multiplication buffer mismatch')
+            _trace_dense_integer_selection(
+                'scalar_multiply', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return self._parent._from_canonical_integer_entries(entries)
         scalar_base, numerator, denominator = _matrix_scalar_parts(
             self.base_ring(), scalar)
         base = _common_base(self.base_ring(), scalar_base)
@@ -1761,6 +2121,39 @@ class Matrix(sage.Element):
                     left.nrows(),
                     right.ncols(),
                 )._from_canonical_uint64_residues(output)
+            if (
+                left._has_packed_integer_storage()
+                and right._has_packed_integer_storage()
+            ):
+                kernel = (
+                    _dense_integer_flint_module().flint_dense_integer_mul)
+                def invoke_integer_multiply(values: list[Any]) -> None:
+                    kernel(
+                        values[0],
+                        left._integer_kernel_buffer(kernel),
+                        right._integer_kernel_buffer(kernel),
+                        left.nrows(),
+                        left.ncols(),
+                        right.ncols(),
+                    )
+                outputs = _run_integer_outputs(
+                    kernel,
+                    [left.nrows() * right.ncols()],
+                    invoke_integer_multiply,
+                    left._integer_capacity() + right._integer_capacity() + 2,
+                )
+                _trace_dense_integer_selection(
+                    'multiply',
+                    (
+                        'declared-flint-isolated'
+                        if _native_kernel_available(kernel)
+                        else 'declared-flint-adapter'
+                    ),
+                    left.nrows(), right.ncols(),
+                )
+                return MatrixSpace(
+                    base, left.nrows(), right.ncols(),
+                )._from_canonical_integer_entries(outputs[0])
             backend = runtime.flint_backend()
             if _is_extension_field_base(base):
                 native_value = backend.fqMatrixMul(
@@ -1789,6 +2182,8 @@ class Matrix(sage.Element):
             return self * other
         left = self.change_ring(base)
         right = other.change_ring(base)
+        if base is sage.ZZ:
+            return left * right
         native_value = runtime.flint_backend().matrixSparseLeftMul(
             left._native, right._native)
         return Matrix(
@@ -1875,6 +2270,30 @@ class Matrix(sage.Element):
             'the given exponent is not supported')
 
     def transpose(self) -> Matrix:
+        if self._has_packed_integer_storage():
+            kernel = _dense_integer_kernel_module().dense_integer_transpose
+            entries = _dense_integer_zeros(
+                kernel,
+                self.nrows() * self.ncols(),
+                self._integer_capacity(),
+            )
+            if not kernel(
+                entries,
+                self._integer_kernel_buffer(kernel),
+                self.nrows(),
+                self.ncols(),
+            ):
+                raise RuntimeError('dense integer transpose buffer mismatch')
+            answer = MatrixSpace(
+                self.base_ring(), self.ncols(), self.nrows(),
+            )._from_canonical_integer_entries(entries)
+            answer._row_subdivisions = list(self._col_subdivisions)
+            answer._col_subdivisions = list(self._row_subdivisions)
+            _trace_dense_integer_selection(
+                'transpose', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return answer
         if self._has_packed_prime_storage():
             kernel = _dense_prime_kernel_module().dense_prime_transpose
             entries = _dense_prime_zeros(
@@ -1936,6 +2355,33 @@ class Matrix(sage.Element):
             raise ValueError('unknown determinant algorithm')
         if self._determinant_cache is not runtime.undefined:
             return self._determinant_cache
+        if self._has_packed_integer_storage():
+            kernel = (
+                _dense_integer_flint_module().flint_dense_integer_determinant)
+            def invoke_integer_determinant(values: list[Any]) -> None:
+                kernel(
+                    values[0],
+                    self._integer_kernel_buffer(kernel),
+                    self.nrows(),
+                    1,
+                )
+            outputs = _run_integer_outputs(
+                kernel,
+                [1],
+                invoke_integer_determinant,
+                self._integer_capacity() * max(1, self.nrows()) + 2,
+            )
+            self._determinant_cache = _integer_buffer_values(outputs[0])[0]
+            _trace_dense_integer_selection(
+                'determinant',
+                (
+                    'declared-flint-isolated'
+                    if _native_kernel_available(kernel)
+                    else 'declared-flint-adapter'
+                ),
+                self.nrows(), self.ncols(),
+            )
+            return self._determinant_cache
         if self._has_packed_prime_storage():
             kernel = (
                 _dense_prime_flint_module().flint_dense_prime_determinant)
@@ -1986,7 +2432,24 @@ class Matrix(sage.Element):
                 "algorithm must be one of 'modp', 'flint' or 'linbox'")
         if self._rank_cache is runtime.undefined:
             backend = runtime.flint_backend()
-            if (
+            if self._has_packed_integer_storage():
+                kernel_function = (
+                    _dense_integer_flint_module().flint_dense_integer_rank)
+                self._rank_cache = runtime.number(kernel_function(
+                    self._integer_kernel_buffer(kernel_function),
+                    self.nrows(),
+                    self.ncols(),
+                ))
+                _trace_dense_integer_selection(
+                    'rank',
+                    (
+                        'declared-flint-isolated'
+                        if _native_kernel_available(kernel_function)
+                        else 'declared-flint-adapter'
+                    ),
+                    self.nrows(), self.ncols(),
+                )
+            elif (
                 self._has_packed_prime_storage()
                 and algorithm != 'modp'
             ):
@@ -2068,6 +2531,16 @@ class Matrix(sage.Element):
                 self.nrows(), self.ncols(), modulus,
             )
             return nonzero / (self.nrows() * self.ncols())
+        if self._has_packed_integer_storage():
+            kernel = (
+                _dense_integer_kernel_module().dense_integer_nonzero_count)
+            nonzero = runtime.number(kernel(
+                self._integer_kernel_buffer(kernel)))
+            _trace_dense_integer_selection(
+                'density', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return nonzero / (self.nrows() * self.ncols())
         nonzero = 0
         for value in self.list():
             if value != 0:
@@ -2081,6 +2554,10 @@ class Matrix(sage.Element):
         if algorithm not in [None, 'flint', 'modp']:
             raise ValueError("algorithm must be 'flint' or 'modp'")
         if self._rref_cache is runtime.undefined:
+            if self._has_packed_integer_storage():
+                self._rref_cache = self.change_ring(sage.QQ).rref(algorithm)
+                self._rref_cache.set_immutable()
+                return self._rref_cache
             base = sage.QQ
             if _is_approximate_base(self.base_ring()):
                 base = self.base_ring()
@@ -2182,14 +2659,41 @@ class Matrix(sage.Element):
                 'ntl only computes HNF for square matrices of full rank.')
         if transformation:
             if self._hermite_transform_cache is runtime.undefined:
-                raw = runtime.flint_backend().matrixHermiteTransform(
-                    self._native)
-                self._hermite_cache = Matrix(self._parent, raw[0])
+                kernel = (
+                    _dense_integer_flint_module()
+                    .flint_dense_integer_hnf_transform
+                )
+                count = self.nrows() * self.ncols()
+                transform_count = self.nrows() * self.nrows()
+                def invoke_integer_hnf_transform(values: list[Any]) -> None:
+                    kernel(
+                        values[0],
+                        values[1],
+                        self._integer_kernel_buffer(kernel),
+                        self.nrows(),
+                        self.ncols(),
+                    )
+                outputs = _run_integer_outputs(
+                    kernel,
+                    [count, transform_count],
+                    invoke_integer_hnf_transform,
+                    self._integer_capacity() * max(
+                        1, self.nrows(), self.ncols()) + 4,
+                )
+                self._hermite_cache = (
+                    self._parent._from_canonical_integer_entries(outputs[0]))
                 self._hermite_cache.set_immutable()
-                self._hermite_transform_cache = Matrix(
-                    MatrixSpace(
-                        sage.ZZ, self.nrows(), self.nrows()),
-                    raw[1],
+                self._hermite_transform_cache = MatrixSpace(
+                    sage.ZZ, self.nrows(), self.nrows(),
+                )._from_canonical_integer_entries(outputs[1])
+                _trace_dense_integer_selection(
+                    'hermite_form',
+                    (
+                        'declared-flint-isolated'
+                        if _native_kernel_available(kernel)
+                        else 'declared-flint-adapter'
+                    ),
+                    self.nrows(), self.ncols(),
                 )
             hermite = self._hermite_cache
             transform = self._hermite_transform_cache
@@ -2199,11 +2703,33 @@ class Matrix(sage.Element):
                 transform = transform.matrix_from_rows(indices)
             return runtime.math_tuple([hermite, transform])
         if self._hermite_cache is runtime.undefined:
-            self._hermite_cache = Matrix(
-                self._parent,
-                runtime.flint_backend().matrixHermite(self._native),
+            kernel = _dense_integer_flint_module().flint_dense_integer_hnf
+            def invoke_integer_hnf(values: list[Any]) -> None:
+                kernel(
+                    values[0],
+                    self._integer_kernel_buffer(kernel),
+                    self.nrows(),
+                    self.ncols(),
+                )
+            outputs = _run_integer_outputs(
+                kernel,
+                [self.nrows() * self.ncols()],
+                invoke_integer_hnf,
+                self._integer_capacity() * max(
+                    1, self.nrows(), self.ncols()) + 4,
             )
+            self._hermite_cache = (
+                self._parent._from_canonical_integer_entries(outputs[0]))
             self._hermite_cache.set_immutable()
+            _trace_dense_integer_selection(
+                'hermite_form',
+                (
+                    'declared-flint-isolated'
+                    if _native_kernel_available(kernel)
+                    else 'declared-flint-adapter'
+                ),
+                self.nrows(), self.ncols(),
+            )
         if not include_zero_rows:
             return self._hermite_cache.matrix_from_rows(
                 range(self.rank()))
@@ -2214,24 +2740,48 @@ class Matrix(sage.Element):
             raise TypeError(
                 'Smith form currently requires an integer matrix')
         if self._smith_cache is runtime.undefined:
-            raw = runtime.flint_backend().matrixSmith(self._native)
+            kernel = (
+                _dense_integer_flint_module().flint_dense_integer_snf_transform)
+            def invoke_integer_snf_transform(values: list[Any]) -> None:
+                kernel(
+                    values[0],
+                    values[1],
+                    values[2],
+                    self._integer_kernel_buffer(kernel),
+                    self.nrows(),
+                    self.ncols(),
+                )
+            outputs = _run_integer_outputs(
+                kernel,
+                [
+                    self.nrows() * self.ncols(),
+                    self.nrows() * self.nrows(),
+                    self.ncols() * self.ncols(),
+                ],
+                invoke_integer_snf_transform,
+                self._integer_capacity() * max(
+                    1, self.nrows(), self.ncols()) + 4,
+            )
             self._smith_cache = runtime.math_tuple([
-                Matrix(
-                    MatrixSpace(
-                        sage.ZZ, self.nrows(), self.ncols()),
-                    raw[0],
-                ),
-                Matrix(
-                    MatrixSpace(
-                        sage.ZZ, self.nrows(), self.nrows()),
-                    raw[1],
-                ),
-                Matrix(
-                    MatrixSpace(
-                        sage.ZZ, self.ncols(), self.ncols()),
-                    raw[2],
-                ),
+                MatrixSpace(
+                    sage.ZZ, self.nrows(), self.ncols(),
+                )._from_canonical_integer_entries(outputs[0]),
+                MatrixSpace(
+                    sage.ZZ, self.nrows(), self.nrows(),
+                )._from_canonical_integer_entries(outputs[1]),
+                MatrixSpace(
+                    sage.ZZ, self.ncols(), self.ncols(),
+                )._from_canonical_integer_entries(outputs[2]),
             ])
+            _trace_dense_integer_selection(
+                'smith_form',
+                (
+                    'declared-flint-isolated'
+                    if _native_kernel_available(kernel)
+                    else 'declared-flint-adapter'
+                ),
+                self.nrows(), self.ncols(),
+            )
         return self._smith_cache
 
     def howell_form(self) -> Matrix:
@@ -2289,15 +2839,16 @@ class Matrix(sage.Element):
 
     def pivots(self) -> Any:
         echelon = self.echelon_form()
-        if echelon._has_packed_prime_storage():
+        if (
+            echelon._has_packed_prime_storage()
+            or echelon._has_packed_integer_storage()
+        ):
             pivots = []
             previous = -1
             for row in range(echelon.nrows()):
                 pivot = None
                 for column in range(previous + 1, echelon.ncols()):
-                    if int(echelon._prime_residues_cache[
-                        row * echelon.ncols() + column
-                    ]) != 0:
+                    if echelon[row, column] != 0:
                         pivot = column
                         break
                 if pivot is not None:
@@ -2331,7 +2882,45 @@ class Matrix(sage.Element):
             backend = runtime.flint_backend()
             native_value = runtime.undefined
             basis = None
-            if self._has_packed_prime_storage():
+            if self._has_packed_integer_storage():
+                columns = int(self.ncols())
+                kernel_function = (
+                    _dense_integer_flint_module()
+                    .flint_dense_integer_right_kernel
+                )
+                captured_nullity = [0]
+
+                def invoke_integer_kernel(values: list[Any]) -> None:
+                    captured_nullity[0] = runtime.number(kernel_function(
+                        values[0],
+                        self._integer_kernel_buffer(kernel_function),
+                        self.nrows(),
+                        columns,
+                    ))
+
+                outputs = _run_integer_outputs(
+                    kernel_function,
+                    [columns * columns],
+                    invoke_integer_kernel,
+                    self._integer_capacity() * max(
+                        1, self.nrows(), self.ncols()) + 4,
+                )
+                nullity = captured_nullity[0]
+                self._rank_cache = columns - nullity
+                values = _integer_buffer_values(outputs[0])
+                basis = MatrixSpace(
+                    sage.ZZ, nullity, columns,
+                )._from_integer_values(values[:nullity * columns])
+                _trace_dense_integer_selection(
+                    'right_kernel',
+                    (
+                        'declared-flint-isolated'
+                        if _native_kernel_available(kernel_function)
+                        else 'declared-flint-adapter'
+                    ),
+                    self.nrows(), self.ncols(),
+                )
+            elif self._has_packed_prime_storage():
                 columns = int(self.ncols())
                 ffi_module = _dense_prime_flint_module()
                 kernel_function = ffi_module.flint_dense_prime_right_kernel
@@ -2395,7 +2984,10 @@ class Matrix(sage.Element):
                         self.ncols(),
                         int(_untyped(self.base_ring()).characteristic()),
                     )
-            if not self._has_packed_prime_storage():
+            if (
+                not self._has_packed_prime_storage()
+                and not self._has_packed_integer_storage()
+            ):
                 basis = Matrix(
                     MatrixSpace(
                         self.base_ring(), nullity, self.ncols()),
@@ -2477,6 +3069,8 @@ class Matrix(sage.Element):
         if not extend:
             raise NotImplementedError(
                 'eigenvalues with extend=False are not available yet')
+        if self._has_packed_integer_storage():
+            return self.change_ring(sage.QQ).eigenvalues(extend)
         native_values = runtime.flint_backend().matrixExactEigenvalues(
             self._native)
         algebraic_field = runtime.reflect.get(
@@ -2718,6 +3312,37 @@ class Matrix(sage.Element):
         if cached is not runtime.undefined:
             return cached
         ring = sage.PolynomialRing(self.base_ring(), variable)
+        if self._has_packed_integer_storage():
+            kernel = (
+                _dense_integer_flint_module().flint_dense_integer_charpoly)
+            coefficient_count = self.nrows() + 1
+            def invoke_integer_charpoly(values: list[Any]) -> None:
+                kernel(
+                    values[0],
+                    self._integer_kernel_buffer(kernel),
+                    coefficient_count,
+                    self.nrows(),
+                    1,
+                )
+            outputs = _run_integer_outputs(
+                kernel,
+                [coefficient_count],
+                invoke_integer_charpoly,
+                self._integer_capacity() * max(1, self.nrows()) + 4,
+            )
+            answer = ring._from_coefficients(
+                _integer_buffer_values(outputs[0]))
+            self._charpoly_cache.set(variable, answer)
+            _trace_dense_integer_selection(
+                'charpoly',
+                (
+                    'declared-flint-isolated'
+                    if _native_kernel_available(kernel)
+                    else 'declared-flint-adapter'
+                ),
+                self.nrows(), self.ncols(),
+            )
+            return answer
         if self._has_packed_prime_storage():
             kernel = _dense_prime_flint_module().flint_dense_prime_charpoly
             modulus = int(_untyped(self.base_ring()).characteristic())
@@ -2885,6 +3510,9 @@ class Matrix(sage.Element):
             raise ArithmeticError('matrix must be square')
         if self._inverse_cache is not runtime.undefined:
             return self._inverse_cache
+        if self._has_packed_integer_storage():
+            self._inverse_cache = self.change_ring(sage.QQ).inverse()
+            return self._inverse_cache
         if self._has_packed_prime_storage():
             ffi_module = _dense_prime_flint_module()
             kernel_function = ffi_module.flint_dense_prime_inverse
@@ -3009,7 +3637,10 @@ class Matrix(sage.Element):
                 )._from_canonical_uint64_residues(output)
                 return result.column(0) if vector_result else result
         native_value = runtime.undefined
-        if not left_matrix._has_packed_prime_storage():
+        if (
+            not left_matrix._has_packed_prime_storage()
+            and not left_matrix._has_packed_integer_storage()
+        ):
             try:
                 backend = runtime.flint_backend()
                 if _is_extension_field_base(base):
@@ -3103,6 +3734,32 @@ class Matrix(sage.Element):
         top = self.change_ring(base)
         bottom = other.change_ring(base)
         if (
+            top._has_packed_integer_storage()
+            and bottom._has_packed_integer_storage()
+        ):
+            kernel = _dense_integer_kernel_module().dense_integer_stack
+            output = _dense_integer_zeros(
+                kernel,
+                (top.nrows() + bottom.nrows()) * top.ncols(),
+                max(top._integer_capacity(), bottom._integer_capacity()),
+            )
+            if not kernel(
+                output,
+                top._integer_kernel_buffer(kernel),
+                bottom._integer_kernel_buffer(kernel),
+            ):
+                raise RuntimeError('dense integer stack buffer mismatch')
+            answer = MatrixSpace(
+                base, top.nrows() + bottom.nrows(), top.ncols(),
+            )._from_canonical_integer_entries(output)
+            if subdivide:
+                answer._row_subdivisions = [top.nrows()]
+            _trace_dense_integer_selection(
+                'stack', _typed_python_implementation(kernel),
+                answer.nrows(), answer.ncols(),
+            )
+            return answer
+        if (
             top._has_packed_prime_storage()
             and bottom._has_packed_prime_storage()
         ):
@@ -3172,6 +3829,37 @@ class Matrix(sage.Element):
             self.base_ring(), other.base_ring())
         left = self.change_ring(base)
         right = other.change_ring(base)
+        if (
+            left._has_packed_integer_storage()
+            and right._has_packed_integer_storage()
+        ):
+            kernel = _dense_integer_kernel_module().dense_integer_augment
+            output = _dense_integer_zeros(
+                kernel,
+                left.nrows() * (left.ncols() + right.ncols()),
+                max(left._integer_capacity(), right._integer_capacity()),
+            )
+            if not kernel(
+                output,
+                left._integer_kernel_buffer(kernel),
+                right._integer_kernel_buffer(kernel),
+                left.nrows(),
+                left.ncols(),
+                right.ncols(),
+            ):
+                raise RuntimeError('dense integer augment buffer mismatch')
+            answer = MatrixSpace(
+                base,
+                left.nrows(),
+                left.ncols() + right.ncols(),
+            )._from_canonical_integer_entries(output)
+            if subdivide:
+                answer._col_subdivisions = [left.ncols()]
+            _trace_dense_integer_selection(
+                'augment', _typed_python_implementation(kernel),
+                answer.nrows(), answer.ncols(),
+            )
+            return answer
         if (
             left._has_packed_prime_storage()
             and right._has_packed_prime_storage()
@@ -3249,6 +3937,32 @@ class Matrix(sage.Element):
 
     def matrix_from_rows(self, rows: Any) -> Matrix:
         indices = [int(index) for index in rows]
+        if self._has_packed_integer_storage():
+            indices = [
+                _normalize_index(row, self.nrows()) for row in indices]
+            kernel = _dense_integer_kernel_module().dense_integer_select_rows
+            output = _dense_integer_zeros(
+                kernel,
+                len(indices) * self.ncols(),
+                self._integer_capacity(),
+            )
+            index_buffer = _dense_integer_buffer(kernel, indices, 1)
+            if not kernel(
+                output,
+                self._integer_kernel_buffer(kernel),
+                index_buffer,
+                self.nrows(),
+                self.ncols(),
+            ):
+                raise RuntimeError(
+                    'dense integer row-selection buffer mismatch')
+            _trace_dense_integer_selection(
+                'matrix_from_rows', _typed_python_implementation(kernel),
+                len(indices), self.ncols(),
+            )
+            return MatrixSpace(
+                self.base_ring(), len(indices), self.ncols(),
+            )._from_canonical_integer_entries(output)
         if self._has_packed_prime_storage():
             indices = [
                 _normalize_index(row, self.nrows()) for row in indices]
@@ -3284,6 +3998,35 @@ class Matrix(sage.Element):
 
     def matrix_from_columns(self, columns: Any) -> Matrix:
         indices = [int(index) for index in columns]
+        if self._has_packed_integer_storage():
+            indices = [
+                _normalize_index(column, self.ncols())
+                for column in indices
+            ]
+            kernel = (
+                _dense_integer_kernel_module().dense_integer_select_columns)
+            output = _dense_integer_zeros(
+                kernel,
+                self.nrows() * len(indices),
+                self._integer_capacity(),
+            )
+            index_buffer = _dense_integer_buffer(kernel, indices, 1)
+            if not kernel(
+                output,
+                self._integer_kernel_buffer(kernel),
+                index_buffer,
+                self.nrows(),
+                self.ncols(),
+            ):
+                raise RuntimeError(
+                    'dense integer column-selection buffer mismatch')
+            _trace_dense_integer_selection(
+                'matrix_from_columns', _typed_python_implementation(kernel),
+                self.nrows(), len(indices),
+            )
+            return MatrixSpace(
+                self.base_ring(), self.nrows(), len(indices),
+            )._from_canonical_integer_entries(output)
         if self._has_packed_prime_storage():
             indices = [
                 _normalize_index(column, self.ncols())
@@ -3340,6 +4083,15 @@ class Matrix(sage.Element):
                 self.nrows(), self.ncols(), modulus,
             )
             return self.base_ring()(residue)
+        if self._has_packed_integer_storage():
+            kernel = _dense_integer_kernel_module().dense_integer_trace
+            value = kernel(
+                self._integer_kernel_buffer(kernel), self.nrows())
+            _trace_dense_integer_selection(
+                'trace', _typed_python_implementation(kernel),
+                self.nrows(), self.ncols(),
+            )
+            return runtime.normalize_integer(value)
         return sum(self.diagonal(), self.base_ring()(0))
 
     def __eq__(self, other: object) -> bool:
@@ -3365,6 +4117,20 @@ class Matrix(sage.Element):
         left = self.change_ring(base)
         right = other.change_ring(base)
         if (
+            left._has_packed_integer_storage()
+            and right._has_packed_integer_storage()
+        ):
+            kernel = _dense_integer_kernel_module().dense_integer_equal
+            result = bool(kernel(
+                left._integer_kernel_buffer(kernel),
+                right._integer_kernel_buffer(kernel),
+            ))
+            _trace_dense_integer_selection(
+                'equal', _typed_python_implementation(kernel),
+                left.nrows(), left.ncols(),
+            )
+            return result
+        if (
             left._has_packed_prime_storage()
             and right._has_packed_prime_storage()
         ):
@@ -3387,6 +4153,17 @@ class Matrix(sage.Element):
         return backend.matrixEqual(left._native, right._native)
 
     def __copy__(self) -> Matrix:
+        if self._has_packed_integer_storage():
+            kernel = _dense_integer_kernel_module().dense_integer_copy
+            entries = _dense_integer_buffer(
+                kernel,
+                self._integer_entries(),
+                self._integer_capacity(),
+            )
+            answer = self._parent._from_canonical_integer_entries(entries)
+            answer._row_subdivisions = list(self._row_subdivisions)
+            answer._col_subdivisions = list(self._col_subdivisions)
+            return answer
         if self._has_packed_prime_storage():
             answer = self._parent._from_canonical_uint64_residues(
                 _copy_packed_uint64(self._prime_residues_cache))
@@ -4063,6 +4840,74 @@ def random_matrix(
             _set_random_word_state(final_state)
         return MatrixSpace(base, rows, cols)._from_canonical_uint64_residues(
             storage)
+
+    integer_fast_lower = None
+    integer_fast_upper = None
+    if base is sage.ZZ and density == 1:
+        if lower is not None:
+            integer_fast_lower = 0 if upper is None else int(lower)
+            integer_fast_upper = int(lower) if upper is None else int(upper)
+        elif distribution == 'uniform':
+            integer_fast_lower = -2
+            integer_fast_upper = 3
+    if integer_fast_lower is not None and integer_fast_upper is not None:
+        span = integer_fast_upper - integer_fast_lower
+        if span <= 4294967296:
+            kernel = _dense_integer_kernel_module().dense_integer_random_fill
+            capacity = max(
+                _integer_value_capacity(integer_fast_lower),
+                _integer_value_capacity(integer_fast_upper - 1),
+            )
+            storage = _dense_integer_zeros(
+                kernel, rows * cols, capacity)
+            if rows * cols != 0:
+                state = _random_int(0, 4294967295)
+                final_state = kernel(
+                    storage,
+                    integer_fast_lower,
+                    span,
+                    state,
+                    4294967296,
+                    1664525,
+                    1013904223,
+                )
+                _set_random_word_state(final_state)
+            _trace_dense_integer_selection(
+                'random_matrix', _typed_python_implementation(kernel),
+                rows, cols,
+            )
+            return MatrixSpace(
+                sage.ZZ, rows, cols,
+            )._from_canonical_integer_entries(storage)
+
+    if (
+        base is sage.ZZ
+        and density == 1
+        and lower is None
+        and distribution is None
+    ):
+        kernel = (
+            _dense_integer_kernel_module().dense_integer_random_fill_default)
+        storage = _dense_integer_zeros(kernel, rows * cols, 1)
+        if rows * cols != 0:
+            state = _random_int(0, 4294967295)
+            final_state = kernel(
+                storage,
+                state,
+                4294967296,
+                858993459,
+                2147483648,
+                1664525,
+                1013904223,
+            )
+            _set_random_word_state(final_state)
+        _trace_dense_integer_selection(
+            'random_matrix', _typed_python_implementation(kernel),
+            rows, cols,
+        )
+        return MatrixSpace(
+            sage.ZZ, rows, cols,
+        )._from_canonical_integer_entries(storage)
 
     values = [0 for _ in range(rows * cols)]
     if density == 1:

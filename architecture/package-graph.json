@@ -37,7 +37,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 596000,
+      "max_source_bytes": 612000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -84,9 +84,15 @@
       "id": "linear-algebra",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 153000,
+      "max_source_bytes": 230000,
       "depends_on": ["core-runtime", "arithmetic"],
-      "files": ["src/baselib/matrix.py"],
+      "files": [
+        "src/baselib/matrix.py",
+        "src/lib/sagejs/kernels/dense_integer.py",
+        "src/lib/sagejs/kernels/dense_integer_flint.py",
+        "src/lib/sagejs/kernels/dense_prime.py",
+        "src/lib/sagejs/kernels/dense_prime_flint.py"
+      ],
       "typescript_files": ["tools/serialization-codecs/linear-algebra.ts"],
       "prefixes": []
     },

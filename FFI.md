@@ -27,6 +27,10 @@ exports eight deliberately different witnesses:
   `ValueError("matrix is singular")`. Input and output may alias safely.
 - `nmod_poly_mul(output, left, right, ...) -> bool`, a substantial mature
   FLINT algorithm reached through reusable packed-slice declarations.
+- `fmpz_mat_det`, `fmpz_mat_hnf_transform`, and their dense integer matrix
+  family, whose `IntegerBuffer` arguments become lexical `fmpz_mat_t` values;
+  generated code preflights every signed-limb result before transactional
+  copyback and clears all FLINT storage on every exit.
 
 [`ffi/igraph.ffi.py`](ffi/igraph.ffi.py), lowered to
 [`ffi/igraph.ffi.json`](ffi/igraph.ffi.json), is the first independent library
@@ -188,15 +192,16 @@ lowering kinds, shape constraints, a result domain, and transactional
 writes. Dynamic fallback generation and the isolated C core consume the same
 plan.
 
-Version 6 supports `uint64`, `bool`, exact `Integer`, and borrowed mutable or
-immutable `UInt64Buffer` semantics. In addition to scalar `ulong`, `slong`,
-`int`, and `fmpz_t` adapters, a reusable `packed_nmod_matrix` adapter declares
-the data, shape, modulus, access, and aliasing used to initialize and clear a
-FLINT matrix. A reusable `packed_slice` adapter relates typed storage to an
-explicit length and stages mutable output in temporary native memory. A
-`record` adapter maps named semantic parameters to every field of a cataloged
-C struct; generated C performs the casts, initializes the aggregate, and
-passes it according to its declared ABI.
+The normalized ABI supports `uint64`, `bool`, exact `Integer`, and borrowed
+mutable or immutable `UInt64Buffer` and `IntegerBuffer` semantics. In addition
+to scalar `ulong`, `slong`, `int`, and `fmpz_t` adapters, reusable
+`packed_nmod_matrix` and `packed_fmpz_matrix` adapters declare the data, shape,
+access, aliasing, initialization, and cleanup of lexical FLINT matrices. A
+reusable `packed_slice` adapter relates typed storage to an explicit length and
+stages mutable output in temporary native memory. A `record` adapter maps named
+semantic parameters to every field of a cataloged C struct; generated C
+performs the casts, initializes the aggregate, and passes it according to its
+declared ABI.
 
 Results have one of three explicit domains:
 

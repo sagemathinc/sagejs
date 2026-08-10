@@ -15,7 +15,8 @@ const sourceSchema = "sagejs.ffi/source-declaration-v1";
 const importModule = "sagejs.ffi.declare";
 const allowedImports = new Set([
   "CxxToStatus", "Direct", "Effects", "Library", "Min", "Nullable",
-  "Status", "Writable", "in_", "out", "packed_nmod_matrix",
+  "Status", "Writable", "in_", "out", "packed_fmpz_matrix",
+  "packed_nmod_matrix",
   "packed_slice", "record",
 ]);
 
@@ -346,6 +347,9 @@ function parseAdapter(filename, node) {
     return { kind: "record", fields };
   }
   const specs = {
+    packed_fmpz_matrix: [
+      "data", "rows", "columns", "access", "aliasing", "transactional",
+    ],
     packed_nmod_matrix: [
       "data", "rows", "columns", "modulus", "access", "aliasing", "transactional",
     ],

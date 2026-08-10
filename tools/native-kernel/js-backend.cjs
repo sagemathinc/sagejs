@@ -177,6 +177,9 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
 function emitExactStatement(operation, indent) {
+  if (operation.kind === "uint64.constant") {
+    return `${indent}${operation.target} = ${operation.value};`;
+  }
   if (operation.kind === "integer.constant") {
     return `${indent}${operation.target} = BigInt(${jsString(operation.value)});`;
   }
@@ -267,7 +270,23 @@ function emitExactStatement(operation, indent) {
     }
     throw new Error(`unsupported exact integer operation ${operation.operation}`);
   }
-  if (operation.kind === "integer.compare" || operation.kind === "bool.compare") {
+  if (operation.kind === "uint64.binary") {
+    const operator = { add: "+", sub: "-", mul: "*", mod: "%" }[
+      operation.operation
+    ];
+    if (operator !== undefined) {
+      return `${indent}${operation.target} = ${operation.left} ${operator} ` +
+        `${operation.right};`;
+    }
+    if (operation.operation === "floordiv") {
+      return `${indent}${operation.target} = Math.floor(` +
+        `${operation.left} / ${operation.right});`;
+    }
+    throw new Error(`unsupported uint64 operation ${operation.operation}`);
+  }
+  if (["integer.compare", "uint64.compare", "bool.compare"].includes(
+    operation.kind
+  )) {
     const operator = {
       eq: "===",
       ne: "!==",

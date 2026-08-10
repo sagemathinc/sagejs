@@ -594,7 +594,7 @@ assert.deepEqual(
     integerFunction.body.find((item) => item.kind === "loop.range").body
       .map((item) => item.kind),
   ),
-  new Set(["integer.from_uint64", "integer.binary"]),
+  new Set(["uint64.binary", "integer.from_uint64", "integer.binary"]),
 );
 assert.match(integerC, /mpz_mul\(/);
 assert.match(integerC, /sagejs_tagged_mul\(/);

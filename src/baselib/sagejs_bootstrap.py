@@ -154,6 +154,255 @@ def ρσ_uint64_buffer(source):
     })()"""
 
 
+def ρσ_integer_buffer(source, minimum_word_capacity=1):
+    """Pack primitive exact integers into owned signed-limb storage."""
+    return r"""%js (() => {
+        if (!Number.isSafeInteger(minimum_word_capacity) ||
+            minimum_word_capacity <= 0) {
+            throw new RangeError("invalid IntegerBuffer word capacity");
+        }
+        const packedSource = source !== null && typeof source === "object" &&
+            source.sizes instanceof Int32Array &&
+            source.limbs instanceof BigUint64Array &&
+            Number.isSafeInteger(source.length) && source.length >= 0 &&
+            Number.isSafeInteger(source.wordCapacity) &&
+            source.wordCapacity > 0 &&
+            source.sizes.length === source.length &&
+            source.limbs.length === source.length * source.wordCapacity;
+        const length = Number(Reflect.get(source, "length"));
+        if (!Number.isSafeInteger(length) || length < 0) {
+            throw new TypeError("IntegerBuffer source has invalid length");
+        }
+        const values = packedSource ? undefined : new Array(length);
+        let capacity = minimum_word_capacity;
+        for (let index = 0; index < length; index += 1) {
+            if (packedSource) {
+                capacity = Math.max(capacity, Math.abs(source.sizes[index]));
+                continue;
+            }
+            const exact = Reflect.get(source, String(index));
+            if (typeof exact !== "bigint" && !Number.isSafeInteger(exact)) {
+                throw new TypeError(
+                    "IntegerBuffer entries must be primitive exact integers"
+                );
+            }
+            values[index] = exact;
+            const magnitude = typeof exact === "number"
+                ? Math.abs(exact) : exact < 0n ? -exact : exact;
+            const words = magnitude === 0 || magnitude === 0n
+                ? 0
+                : typeof magnitude === "number"
+                    ? 1 : Math.ceil(magnitude.toString(2).length / 64);
+            capacity = Math.max(capacity, words);
+        }
+        if (length !== 0 &&
+            capacity > Math.floor(Number.MAX_SAFE_INTEGER / length)) {
+            throw new RangeError("invalid packed IntegerBuffer dimensions");
+        }
+        const packed = {
+            sizes: new Int32Array(length),
+            limbs: new BigUint64Array(length * capacity),
+            length,
+            wordCapacity: capacity,
+        };
+        if (packedSource) {
+            packed.sizes.set(source.sizes);
+            if (capacity === source.wordCapacity) {
+                packed.limbs.set(source.limbs);
+            } else {
+                for (let index = 0; index < length; index += 1) {
+                    const words = Math.abs(source.sizes[index]);
+                    packed.limbs.set(
+                        source.limbs.subarray(
+                            index * source.wordCapacity,
+                            index * source.wordCapacity + words,
+                        ),
+                        index * capacity,
+                    );
+                }
+            }
+        } else {
+            for (let index = 0; index < length; index += 1) {
+                const value = values[index];
+                const negative = value < 0 || value < 0n;
+                let magnitude = typeof value === "number"
+                    ? BigInt(Math.abs(value)) : negative ? -value : value;
+                let words = 0;
+                while (magnitude !== 0n) {
+                    packed.limbs[index * capacity + words] =
+                        BigInt.asUintN(64, magnitude);
+                    magnitude >>= 64n;
+                    words += 1;
+                }
+                packed.sizes[index] = negative ? -words : words;
+            }
+        }
+        packed.toArray = () => {
+            const answer = new Array(length);
+            for (let index = 0; index < length; index += 1) {
+                const signedSize = packed.sizes[index];
+                let value = 0n;
+                for (let word = Math.abs(signedSize) - 1; word >= 0; word--) {
+                    value = (value << 64n) +
+                        packed.limbs[index * capacity + word];
+                }
+                answer[index] = signedSize < 0 ? -value : value;
+            }
+            return answer;
+        };
+        return packed;
+    })()"""
+
+
+def ρσ_integer_buffer_from_packed_bytes(source, length):
+    """Decode SagePack signed magnitudes into owned IntegerBuffer storage."""
+    return r"""%js (() => {
+        if (!(source instanceof Uint8Array)) {
+            throw new TypeError("packed integer source must be a Uint8Array");
+        }
+        if (!Number.isSafeInteger(length) || length < 0) {
+            throw new RangeError("invalid packed integer entry count");
+        }
+        const view = new DataView(
+            source.buffer, source.byteOffset, source.byteLength
+        );
+        let offset = 0;
+        let capacity = 1;
+        for (let index = 0; index < length; index += 1) {
+            if (source.byteLength - offset < 4) {
+                throw new RangeError("packed integer matrix is truncated");
+            }
+            const header = view.getUint32(offset, true);
+            offset += 4;
+            const byteCount = header & 0x7fffffff;
+            if (byteCount > source.byteLength - offset) {
+                throw new RangeError("packed integer matrix is truncated");
+            }
+            capacity = Math.max(capacity, Math.ceil(byteCount / 8));
+            offset += byteCount;
+        }
+        if (offset !== source.byteLength) {
+            throw new RangeError("packed integer matrix has trailing data");
+        }
+        if (length !== 0 &&
+            capacity > Math.floor(Number.MAX_SAFE_INTEGER / length)) {
+            throw new RangeError("invalid packed IntegerBuffer dimensions");
+        }
+        const packed = {
+            sizes: new Int32Array(length),
+            limbs: new BigUint64Array(length * capacity),
+            length,
+            wordCapacity: capacity,
+        };
+        offset = 0;
+        for (let index = 0; index < length; index += 1) {
+            const header = view.getUint32(offset, true);
+            offset += 4;
+            const byteCount = header & 0x7fffffff;
+            const allocatedWords = Math.ceil(byteCount / 8);
+            for (let word = 0; word < allocatedWords; word += 1) {
+                let limb = 0n;
+                const wordBytes = Math.min(8, byteCount - word * 8);
+                for (let byte = 0; byte < wordBytes; byte += 1) {
+                    limb |= BigInt(source[offset + word * 8 + byte]) <<
+                        BigInt(byte * 8);
+                }
+                packed.limbs[index * capacity + word] = limb;
+            }
+            let words = allocatedWords;
+            while (words > 0 &&
+                packed.limbs[index * capacity + words - 1] === 0n) {
+                words -= 1;
+            }
+            packed.sizes[index] = (header & 0x80000000) !== 0
+                ? -words : words;
+            offset += byteCount;
+        }
+        packed.toArray = () => {
+            const answer = new Array(length);
+            for (let index = 0; index < length; index += 1) {
+                const signedSize = packed.sizes[index];
+                let value = 0n;
+                for (let word = Math.abs(signedSize) - 1; word >= 0; word--) {
+                    value = (value << 64n) +
+                        packed.limbs[index * capacity + word];
+                }
+                answer[index] = signedSize < 0 ? -value : value;
+            }
+            return answer;
+        };
+        return packed;
+    })()"""
+
+
+def ρσ_integer_buffer_to_packed_bytes(source):
+    """Encode owned IntegerBuffer storage as SagePack signed magnitudes."""
+    return r"""%js (() => {
+        const valid = source !== null && typeof source === "object" &&
+            source.sizes instanceof Int32Array &&
+            source.limbs instanceof BigUint64Array &&
+            Number.isSafeInteger(source.length) && source.length >= 0 &&
+            Number.isSafeInteger(source.wordCapacity) &&
+            source.wordCapacity > 0 &&
+            source.sizes.length === source.length &&
+            source.limbs.length === source.length * source.wordCapacity;
+        if (!valid) {
+            throw new TypeError("source must be a packed IntegerBuffer");
+        }
+        const byteCounts = new Uint32Array(source.length);
+        let total = source.length * 4;
+        for (let index = 0; index < source.length; index += 1) {
+            let words = Math.abs(source.sizes[index]);
+            if (words > source.wordCapacity) {
+                throw new RangeError("invalid IntegerBuffer signed size");
+            }
+            while (words > 0 &&
+                source.limbs[index * source.wordCapacity + words - 1] === 0n) {
+                words -= 1;
+            }
+            let bytes = 0;
+            if (words > 0) {
+                let high = source.limbs[
+                    index * source.wordCapacity + words - 1
+                ];
+                bytes = (words - 1) * 8;
+                while (high !== 0n) {
+                    bytes += 1;
+                    high >>= 8n;
+                }
+            }
+            byteCounts[index] = bytes;
+            total += bytes;
+            if (!Number.isSafeInteger(total)) {
+                throw new RangeError("packed integer output is too large");
+            }
+        }
+        const output = new Uint8Array(total);
+        const view = new DataView(output.buffer);
+        let offset = 0;
+        for (let index = 0; index < source.length; index += 1) {
+            const byteCount = byteCounts[index];
+            const negative = source.sizes[index] < 0 && byteCount !== 0;
+            view.setUint32(
+                offset,
+                byteCount | (negative ? 0x80000000 : 0),
+                true,
+            );
+            offset += 4;
+            for (let byte = 0; byte < byteCount; byte += 1) {
+                const word = Math.floor(byte / 8);
+                const shift = BigInt((byte % 8) * 8);
+                output[offset + byte] = Number(
+                    (source.limbs[index * source.wordCapacity + word] >> shift)
+                    & 0xffn
+                );
+            }
+            offset += byteCount;
+        }
+        return output;
+    })()"""
+
+
 def ρσ_uint64_buffer_prefix(source, length):
     """Copy a validated packed prefix into independently owned storage."""
     return r"""%js (() => {
@@ -170,6 +419,24 @@ def ρσ_uint64_buffer_prefix(source, length):
         const start = source.byteOffset;
         const stop = start + length * BigUint64Array.BYTES_PER_ELEMENT;
         return new BigUint64Array(source.buffer.slice(start, stop));
+    })()"""
+
+
+def ρσ_integer_buffer_used_word_capacity(source):
+    """Scan packed signed-limb metadata in the host representation layer."""
+    return r"""%js (() => {
+        const sizes = Reflect.get(source, "sizes");
+        const length = Number(Reflect.get(source, "length"));
+        if (!(sizes instanceof Int32Array) ||
+            !Number.isSafeInteger(length) || length < 0 ||
+            sizes.length !== length) {
+            throw new TypeError("source must be a packed IntegerBuffer");
+        }
+        let maximum = 1;
+        for (let index = 0; index < sizes.length; index += 1) {
+            maximum = Math.max(maximum, Math.abs(sizes[index]));
+        }
+        return maximum;
     })()"""
 
 
@@ -323,6 +590,44 @@ def ρσ_ffi_call(
                             if (exact < 0n || exact > 18446744073709551615n) {
                                 throw new TypeError(
                                     "invalid UInt64Buffer entry"
+                                );
+                            }
+                        }
+                        return value;
+                    }
+                }
+            }
+            if (parameter_type === "IntegerBuffer") {
+                if (
+                    value !== null
+                    && (typeof value === "object"
+                        || typeof value === "function")
+                ) {
+                    const length = Number(Reflect.get(value, "length"));
+                    if (Number.isSafeInteger(length) && length >= 0) {
+                        const sizes = Reflect.get(value, "sizes");
+                        const limbs = Reflect.get(value, "limbs");
+                        const capacity = Number(
+                            Reflect.get(value, "wordCapacity")
+                        );
+                        if (
+                            sizes instanceof Int32Array
+                            && limbs instanceof BigUint64Array
+                            && Number.isSafeInteger(capacity)
+                            && capacity > 0
+                            && sizes.length === length
+                            && limbs.length === length * capacity
+                        ) {
+                            return value;
+                        }
+                        for (let position = 0; position < length; position++) {
+                            const entry = Reflect.get(value, String(position));
+                            if (
+                                typeof entry !== "bigint"
+                                && !Number.isSafeInteger(entry)
+                            ) {
+                                throw new TypeError(
+                                    "invalid IntegerBuffer entry"
                                 );
                             }
                         }

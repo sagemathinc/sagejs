@@ -6,7 +6,7 @@ from typing import Any
 
 import sagejs.runtime as _runtime
 
-__sagejs_ffi_declaration__ = "flint@875d307463bfedb74ccb869ca7494d77b7a99baf1bebd8e3cf94c3c999b8147c"
+__sagejs_ffi_declaration__ = "flint@e03417ef925780f23c2e4ebf71dae147d41fedf4fc5c24589666920cb809147d"
 
 
 class DirichletGroup:
@@ -24,7 +24,7 @@ class DirichletGroup:
 
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
-            self._token, "resource:flint@875d307463bfedb74ccb869ca7494d77b7a99baf1bebd8e3cf94c3c999b8147c:dirichlet_group"
+            self._token, "resource:flint@e03417ef925780f23c2e4ebf71dae147d41fedf4fc5c24589666920cb809147d:dirichlet_group"
         )
 
     def __enter__(self) -> DirichletGroup:
@@ -41,7 +41,7 @@ def dirichlet_group(modulus: int) -> DirichletGroup:
     """Call declared flint:dirichlet_group_init."""
     return DirichletGroup(_runtime.ffi_resource_create(
         __sagejs_ffi_declaration__ + ":dirichlet_group_init",
-        "resource:flint@875d307463bfedb74ccb869ca7494d77b7a99baf1bebd8e3cf94c3c999b8147c:dirichlet_group",
+        "resource:flint@e03417ef925780f23c2e4ebf71dae147d41fedf4fc5c24589666920cb809147d:dirichlet_group",
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupCreate",
         "ffiDirichletGroupClose",
@@ -61,7 +61,7 @@ def dirichlet_group_size(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupSize",
         [group._ffi_borrow()],
-        ["resource:flint@875d307463bfedb74ccb869ca7494d77b7a99baf1bebd8e3cf94c3c999b8147c:dirichlet_group"],
+        ["resource:flint@e03417ef925780f23c2e4ebf71dae147d41fedf4fc5c24589666920cb809147d:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,
@@ -77,7 +77,7 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupNumPrimitive",
         [group._ffi_borrow()],
-        ["resource:flint@875d307463bfedb74ccb869ca7494d77b7a99baf1bebd8e3cf94c3c999b8147c:dirichlet_group"],
+        ["resource:flint@e03417ef925780f23c2e4ebf71dae147d41fedf4fc5c24589666920cb809147d:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,
@@ -115,6 +115,134 @@ def fmpz_gcd(left: int, right: int) -> int:
         None,
         None,
         [],
+    )
+
+
+def fmpz_mat_rank(entries: list[int], rows: int, columns: int) -> int:
+    """Call declared flint:fmpz_mat_rank."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpz_mat_rank",
+        "@sagemath/sagejs-flint",
+        "ffiFmpzMatRank",
+        [entries, rows, columns],
+        ["IntegerBuffer", "uint64", "uint64"],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [["buffer_length","entries",["rows","columns"],["entries","rows","columns"]]],
+    )
+
+
+def fmpz_mat_mul(output: list[int], left: list[int], right: list[int], left_rows: int, inner: int, right_columns: int) -> bool:
+    """Call declared flint:fmpz_mat_mul."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpz_mat_mul",
+        "@sagemath/sagejs-flint",
+        "ffiFmpzMatMul",
+        [output, left, right, left_rows, inner, right_columns],
+        ["IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "uint64", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT integer matrix multiplication failed",
+        [["buffer_length","output",["left_rows","right_columns"],["output","left","right","left_rows","inner","right_columns"]],["buffer_length","left",["left_rows","inner"],["output","left","right","left_rows","inner","right_columns"]],["buffer_length","right",["inner","right_columns"],["output","left","right","left_rows","inner","right_columns"]]],
+    )
+
+
+def fmpz_mat_det(output: list[int], source: list[int], size: int, one: int) -> bool:
+    """Call declared flint:fmpz_mat_det."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpz_mat_det",
+        "@sagemath/sagejs-flint",
+        "ffiFmpzMatDet",
+        [output, source, size, one],
+        ["IntegerBuffer", "IntegerBuffer", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT integer determinant failed",
+        [["buffer_length","output",["one","one"],["output","source","size","one"]],["buffer_length","source",["size","size"],["output","source","size","one"]]],
+    )
+
+
+def fmpz_mat_charpoly(output: list[int], source: list[int], output_length: int, size: int, one: int) -> bool:
+    """Call declared flint:fmpz_mat_charpoly."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpz_mat_charpoly",
+        "@sagemath/sagejs-flint",
+        "ffiFmpzMatCharpoly",
+        [output, source, output_length, size, one],
+        ["IntegerBuffer", "IntegerBuffer", "uint64", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT integer characteristic polynomial failed",
+        [["buffer_length","output",["one","output_length"],["output","source","output_length","size","one"]],["buffer_length","source",["size","size"],["output","source","output_length","size","one"]]],
+    )
+
+
+def fmpz_mat_hnf(output: list[int], source: list[int], rows: int, columns: int) -> bool:
+    """Call declared flint:fmpz_mat_hnf."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpz_mat_hnf",
+        "@sagemath/sagejs-flint",
+        "ffiFmpzMatHnf",
+        [output, source, rows, columns],
+        ["IntegerBuffer", "IntegerBuffer", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT integer Hermite form failed",
+        [["buffer_length","output",["rows","columns"],["output","source","rows","columns"]],["buffer_length","source",["rows","columns"],["output","source","rows","columns"]]],
+    )
+
+
+def fmpz_mat_hnf_transform(output: list[int], transform: list[int], source: list[int], rows: int, columns: int) -> bool:
+    """Call declared flint:fmpz_mat_hnf_transform."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpz_mat_hnf_transform",
+        "@sagemath/sagejs-flint",
+        "ffiFmpzMatHnfTransform",
+        [output, transform, source, rows, columns],
+        ["IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT integer Hermite transformation failed",
+        [["buffer_length","output",["rows","columns"],["output","transform","source","rows","columns"]],["buffer_length","transform",["rows","rows"],["output","transform","source","rows","columns"]],["buffer_length","source",["rows","columns"],["output","transform","source","rows","columns"]]],
+    )
+
+
+def fmpz_mat_snf_transform(output: list[int], left_transform: list[int], right_transform: list[int], source: list[int], rows: int, columns: int) -> bool:
+    """Call declared flint:fmpz_mat_snf_transform."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpz_mat_snf_transform",
+        "@sagemath/sagejs-flint",
+        "ffiFmpzMatSnfTransform",
+        [output, left_transform, right_transform, source, rows, columns],
+        ["IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "IntegerBuffer", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT integer Smith transformation failed",
+        [["buffer_length","output",["rows","columns"],["output","left_transform","right_transform","source","rows","columns"]],["buffer_length","left_transform",["rows","rows"],["output","left_transform","right_transform","source","rows","columns"]],["buffer_length","right_transform",["columns","columns"],["output","left_transform","right_transform","source","rows","columns"]],["buffer_length","source",["rows","columns"],["output","left_transform","right_transform","source","rows","columns"]]],
+    )
+
+
+def fmpz_mat_right_kernel(output: list[int], source: list[int], rows: int, columns: int) -> int:
+    """Call declared flint:fmpz_mat_right_kernel."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":fmpz_mat_right_kernel",
+        "@sagemath/sagejs-flint",
+        "ffiFmpzMatRightKernel",
+        [output, source, rows, columns],
+        ["IntegerBuffer", "IntegerBuffer", "uint64", "uint64"],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [["buffer_length","output",["columns","columns"],["output","source","rows","columns"]],["buffer_length","source",["rows","columns"],["output","source","rows","columns"]]],
     )
 
 

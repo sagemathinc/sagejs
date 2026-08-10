@@ -63,6 +63,37 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "dense-integer-production",
+      "source": "src/lib/sagejs/kernels/dense_integer.py",
+      "functions": [
+        "dense_integer_get",
+        "dense_integer_set",
+        "dense_integer_copy",
+        "dense_integer_add",
+        "dense_integer_subtract",
+        "dense_integer_negate",
+        "dense_integer_scalar_multiply",
+        "dense_integer_transpose",
+        "dense_integer_equal",
+        "dense_integer_is_zero",
+        "dense_integer_is_one",
+        "dense_integer_nonzero_count",
+        "dense_integer_trace",
+        "dense_integer_stack",
+        "dense_integer_augment",
+        "dense_integer_select_rows",
+        "dense_integer_select_columns",
+        "dense_integer_random_fill",
+        "dense_integer_random_fill_default"
+      ],
+      "semantic_domain": "production dense ZZ objects over canonical compiler-owned signed-limb storage with tagged machine-word/GMP structural arithmetic",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
+      "benchmark": "test:matrix:integer-performance",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "compiler-owned-record-witness",
       "source": "bench/native_record_witness.py",
       "functions": ["scaled_sum", "scale_first", "scaled_sum_constructed"],

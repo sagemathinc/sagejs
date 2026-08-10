@@ -23,8 +23,10 @@ function operationInputs(operation) {
     case "integer.pow_uint":
       return [operation.base];
     case "integer.binary":
+    case "uint64.binary":
     case "integer.divmod":
     case "integer.compare":
+    case "uint64.compare":
     case "bool.compare":
     case "bool.binary":
       return [operation.left, operation.right];

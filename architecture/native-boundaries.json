@@ -14,10 +14,10 @@
   },
   "counts": {
     "classified-native-file": 53,
-    "declared-ffi": 22,
+    "declared-ffi": 30,
     "declared-ffi-resource": 3,
     "napi-export": 292,
-    "runtime-intrinsic": 116,
+    "runtime-intrinsic": 120,
     "wasm-export": 46
   },
   "boundaries": [
@@ -96,6 +96,94 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "gcd",
       "symbol": "fmpz_gcd",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_charpoly",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_mat_charpoly",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatCharpoly",
+      "symbol": "sagejs_flint_fmpz_mat_charpoly",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_det",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_mat_det",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatDet",
+      "symbol": "sagejs_flint_fmpz_mat_det",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_hnf",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_mat_hnf",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatHnf",
+      "symbol": "sagejs_flint_fmpz_mat_hnf",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_hnf_transform",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_mat_hnf_transform",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatHnfTransform",
+      "symbol": "sagejs_flint_fmpz_mat_hnf_transform",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_mul",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_mat_mul",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatMul",
+      "symbol": "sagejs_flint_fmpz_mat_mul",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_rank",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_mat_rank",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatRank",
+      "symbol": "fmpz_mat_rank",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_right_kernel",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_mat_right_kernel",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatRightKernel",
+      "symbol": "sagejs_flint_fmpz_mat_right_kernel",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:fmpz_mat_snf_transform",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "fmpz_mat_snf_transform",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiFmpzMatSnfTransform",
+      "symbol": "sagejs_flint_fmpz_mat_snf_transform",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -3909,6 +3997,38 @@
       "path": "tools/python/contract.ts",
       "export": "integer_bigint",
       "symbol": "ρσ_integer_bigint",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:integer_buffer",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "integer_buffer",
+      "symbol": "ρσ_integer_buffer",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:integer_buffer_from_packed_bytes",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "integer_buffer_from_packed_bytes",
+      "symbol": "ρσ_integer_buffer_from_packed_bytes",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:integer_buffer_to_packed_bytes",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "integer_buffer_to_packed_bytes",
+      "symbol": "ρσ_integer_buffer_to_packed_bytes",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:integer_buffer_used_word_capacity",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "integer_buffer_used_word_capacity",
+      "symbol": "ρσ_integer_buffer_used_word_capacity",
       "disposition": "runtime-primitive"
     },
     {

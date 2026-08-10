@@ -20,6 +20,9 @@ are the bootstrap implementation used by older checked-in compilers.
 # globals: ρσ_arraylike
 # globals: ρσ_coercion_model, ρσ_equals, ρσ_factor_pair, ρσ_flint_backend
 # globals: ρσ_integer_bigint, ρσ_is_exact_integer, ρσ_is_math_element
+# globals: ρσ_integer_buffer, ρσ_integer_buffer_from_packed_bytes
+# globals: ρσ_integer_buffer_to_packed_bytes
+# globals: ρσ_integer_buffer_used_word_capacity
 # globals: ρσ_ffi_call, ρσ_ffi_resource_borrow, ρσ_ffi_resource_close
 # globals: ρσ_ffi_resource_closed, ρσ_ffi_resource_create
 # globals: ρσ_ffi_view_create, ρσ_ffi_view_valid
@@ -139,6 +142,21 @@ def uint64_buffer(source):
     })()"""
 
 
+def integer_buffer(source, minimum_word_capacity=1):
+    """Pack primitive exact integers into owned signed-limb storage."""
+    return ρσ_integer_buffer(source, minimum_word_capacity)
+
+
+def integer_buffer_from_packed_bytes(source, length):
+    """Decode SagePack signed magnitudes into owned IntegerBuffer storage."""
+    return ρσ_integer_buffer_from_packed_bytes(source, length)
+
+
+def integer_buffer_to_packed_bytes(source):
+    """Encode owned IntegerBuffer storage as SagePack signed magnitudes."""
+    return ρσ_integer_buffer_to_packed_bytes(source)
+
+
 def uint64_buffer_prefix(source, length):
     """Copy the first ``length`` entries into owned unsigned-64-bit storage.
 
@@ -161,6 +179,15 @@ def uint64_buffer_prefix(source, length):
         const stop = start + length * BigUint64Array.BYTES_PER_ELEMENT;
         return new BigUint64Array(source.buffer.slice(start, stop));
     })()"""
+
+
+def integer_buffer_used_word_capacity(source):
+    """Return the occupied signed-limb width of a packed IntegerBuffer.
+
+    The scan belongs to the representation boundary so mathematical Python
+    never pays an interpreted per-entry loop merely to inspect ABI metadata.
+    """
+    return ρσ_integer_buffer_used_word_capacity(source)
 
 
 def uint64_residue_buffer(source, modulus):

@@ -435,6 +435,135 @@ function emitPackedNmodCall(operation, context, indent) {
   ].join("\n");
 }
 
+function emitPackedFmpzCall(operation, context, indent) {
+  const fn = operation.foreign.function;
+  const arguments_ = nativeArguments(fn);
+  const adapters = arguments_.filter((argument) =>
+    argument.adapter?.kind === "packed_fmpz_matrix"
+  );
+  if (adapters.length !== arguments_.length) {
+    throw new Error(
+      `${operation.foreign.declarationId} mixes packed fmpz matrices and direct arguments`,
+    );
+  }
+  const declarations = [];
+  const validation = [];
+  const initialization = [];
+  const copyInput = [];
+  const outputAdapters = [];
+  const cleanup = [];
+  const callArguments = [];
+  const parameter = (name) => context.value(argumentBySource(operation, name).name);
+  declarations.push(`${indent}    mpz_t sagejs_ffi_integer_scratch;`);
+  initialization.push(`${indent}    mpz_init(sagejs_ffi_integer_scratch);`);
+  cleanup.unshift(`${indent}    mpz_clear(sagejs_ffi_integer_scratch);`);
+  for (const [index, argument] of adapters.entries()) {
+    const adapter = argument.adapter;
+    const prefix = `sagejs_ffi_${cName(operation.target)}_${index}`;
+    const matrix = `${prefix}_matrix`;
+    const data = parameter(adapter.data);
+    const rows = parameter(adapter.rows);
+    const columns = parameter(adapter.columns);
+    const count = `${prefix}_count`;
+    declarations.push(
+      `${indent}    fmpz_mat_t ${matrix};`,
+      `${indent}    size_t ${count};`,
+    );
+    validation.push(
+      `${indent}    if (${rows} > (uint64_t) WORD_MAX || ` +
+        `${columns} > (uint64_t) WORD_MAX ||`,
+      `${indent}        (${rows} != 0 && ${columns} > ` +
+        `(uint64_t) SIZE_MAX / ${rows}))`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"integer matrix is too large to convert");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+      `${indent}    ${count} = (size_t) ${rows} * (size_t) ${columns};`,
+      `${indent}    if (${data}.length != ${count})`,
+      `${indent}    {`,
+      `${indent}        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR, ` +
+        `"integer matrix buffer length does not match dimensions");`,
+      `${indent}        ${context.failure}`,
+      `${indent}    }`,
+    );
+    initialization.push(
+      `${indent}    fmpz_mat_init(${matrix}, (slong) ${rows}, ` +
+        `(slong) ${columns});`,
+    );
+    if (adapter.access === "read") {
+      copyInput.push(
+        `${indent}    for (size_t sagejs_index = 0; ` +
+          `sagejs_index < ${count}; sagejs_index++)`,
+        `${indent}    {`,
+        `${indent}        sagejs_integer_buffer_get_mpz(` +
+          `&${data}, sagejs_index, sagejs_ffi_integer_scratch);`,
+        `${indent}        fmpz_set_mpz(fmpz_mat_entry(${matrix},`,
+        `${indent}            (slong) (sagejs_index / (size_t) ${columns}),`,
+        `${indent}            (slong) (sagejs_index % (size_t) ${columns})),`,
+        `${indent}            sagejs_ffi_integer_scratch);`,
+        `${indent}    }`,
+      );
+    } else {
+      outputAdapters.push({ matrix, data, columns, count });
+    }
+    cleanup.unshift(`${indent}    fmpz_mat_clear(${matrix});`);
+    callArguments.push(matrix);
+  }
+  const raw = `sagejs_ffi_${cName(operation.target)}_result`;
+  declarations.push(`${indent}    ${nativeReturnType(fn)} ${raw};`);
+  const checked = failureLines(fn, raw, cleanup, context, `${indent}    `);
+  const preflight = outputAdapters.flatMap(({ matrix, data, columns, count }) => [
+    `${indent}    for (size_t sagejs_index = 0; sagejs_index < ${count}; ` +
+      `sagejs_index++)`,
+    `${indent}    {`,
+    `${indent}        fmpz_get_mpz(sagejs_ffi_integer_scratch,`,
+    `${indent}            fmpz_mat_entry(${matrix},`,
+    `${indent}                (slong) (sagejs_index / (size_t) ${columns}),`,
+    `${indent}                (slong) (sagejs_index % (size_t) ${columns})));`,
+    `${indent}        size_t sagejs_words = ` +
+      `mpz_sgn(sagejs_ffi_integer_scratch) == 0 ? 0 :`,
+    `${indent}            (mpz_sizeinbase(sagejs_ffi_integer_scratch, 2) + 63) / 64;`,
+    `${indent}        if (sagejs_words > ${data}.word_capacity)`,
+    `${indent}        {`,
+    ...cleanup.map((line) => line.replace(`${indent}    `, `${indent}        `)),
+    `${indent}            sagejs_native_status_set(status, ` +
+      `SAGEJS_NATIVE_RANGE_ERROR, "IntegerBuffer word capacity exceeded");`,
+    `${indent}            ${context.failure}`,
+    `${indent}        }`,
+    `${indent}    }`,
+  ]);
+  const copyOutput = outputAdapters.flatMap(({ matrix, data, columns, count }) => [
+    `${indent}    for (size_t sagejs_index = 0; sagejs_index < ${count}; ` +
+      `sagejs_index++)`,
+    `${indent}    {`,
+    `${indent}        fmpz_get_mpz(sagejs_ffi_integer_scratch,`,
+    `${indent}            fmpz_mat_entry(${matrix},`,
+    `${indent}                (slong) (sagejs_index / (size_t) ${columns}),`,
+    `${indent}                (slong) (sagejs_index % (size_t) ${columns})));`,
+    `${indent}        sagejs_integer_buffer_set_mpz(status, &${data}, ` +
+      `sagejs_index, sagejs_ffi_integer_scratch);`,
+    `${indent}    }`,
+  ]);
+  const result = assignRawResult(
+    fn, raw, context.result(operation.target), `${indent}    `,
+  );
+  return [
+    `${indent}{`,
+    ...declarations,
+    ...validation,
+    ...initialization,
+    ...copyInput,
+    `${indent}    ${raw} = ${nativeSymbol(fn)}(${callArguments.join(", ")});`,
+    ...checked,
+    ...preflight,
+    ...copyOutput,
+    ...cleanup,
+    result,
+    `${indent}}`,
+  ].join("\n");
+}
+
 function emitPackedSliceCall(operation, context, indent) {
   const fn = operation.foreign.function;
   const native = fn.native;
@@ -551,6 +680,9 @@ function usesFmpz(operation) {
 function emitExactForeignCall(operation, context, indent) {
   if (usesResource(operation)) return emitResourceCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
+    argument.adapter?.kind === "packed_fmpz_matrix"
+  )) return emitPackedFmpzCall(operation, context, indent);
+  if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
@@ -564,6 +696,9 @@ function emitExactForeignCall(operation, context, indent) {
 function emitTaggedForeignCall(operation, context, indent) {
   if (usesResource(operation)) return emitResourceCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
+    argument.adapter?.kind === "packed_fmpz_matrix"
+  )) return emitPackedFmpzCall(operation, context, indent);
+  if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
@@ -576,6 +711,9 @@ function emitTaggedForeignCall(operation, context, indent) {
 
 function emitWordForeignCall(operation, context, indent) {
   if (usesResource(operation)) return context.promote(operation, indent);
+  if (nativeArguments(operation.foreign.function).some((argument) =>
+    argument.adapter?.kind === "packed_fmpz_matrix"
+  )) return emitPackedFmpzCall(operation, context, indent);
   if (nativeArguments(operation.foreign.function).some((argument) =>
     argument.adapter?.kind === "packed_nmod_matrix"
   )) return emitPackedNmodCall(operation, context, indent);
@@ -694,6 +832,27 @@ function sagejsFfiCall(
             ? entry : Number.isSafeInteger(entry) ? BigInt(entry) : -1n;
           if (exact < 0n || exact > 18446744073709551615n) {
             throw new TypeError("invalid UInt64Buffer entry");
+          }
+        }
+        return value;
+      }
+    }
+    if (type === "IntegerBuffer" && value !== null &&
+        (typeof value === "object" || typeof value === "function")) {
+      const length = Number(Reflect.get(value, "length"));
+      if (Number.isSafeInteger(length) && length >= 0) {
+        const sizes = Reflect.get(value, "sizes");
+        const limbs = Reflect.get(value, "limbs");
+        const capacity = Number(Reflect.get(value, "wordCapacity"));
+        if (sizes instanceof Int32Array && limbs instanceof BigUint64Array &&
+            Number.isSafeInteger(capacity) && capacity > 0 &&
+            sizes.length === length && limbs.length === length * capacity) {
+          return value;
+        }
+        for (let position = 0; position < length; position += 1) {
+          const entry = Reflect.get(value, String(position));
+          if (typeof entry !== "bigint" && !Number.isSafeInteger(entry)) {
+            throw new TypeError("invalid IntegerBuffer entry");
           }
         }
         return value;

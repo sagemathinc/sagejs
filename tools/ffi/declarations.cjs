@@ -809,7 +809,7 @@ function generatePythonModule(declaration) {
     : Array.isArray(value) ? `[${value.map(pythonWire).join(", ")}]`
       : JSON.stringify(value);
   const pythonType = (type) => type === "bool"
-    ? "bool" : type === "UInt64Buffer" ? "list[int]"
+    ? "bool" : (type === "UInt64Buffer" || type === "IntegerBuffer") ? "list[int]"
       : resourcesByType.has(type) ? type : "int";
   const resourceClasses = declaration.resources.map((resource) => {
     const identity = resourceIdentity(resource);

@@ -101,6 +101,17 @@ With `SAGEJS_NATIVE_REQUIRED=1`, a missing compiled artifact fails at import
 instead of silently changing the performance tier. The retained legacy N-API
 matrix is a differential oracle, not a parallel production representation.
 
+Dense `ZZ` matrices use the analogous exact representation: signed limb counts
+plus caller-owned row-major 64-bit limbs. Structural operations execute the
+typed bodies in `sagejs.kernels.dense_integer`; machine-sized entries stay in
+checked signed words and promote per value to GMP when required. Mature
+algorithms such as determinant, HNF, SNF, and characteristic polynomial enter
+FLINT only through declared packed FFI. The Python `Matrix` object never owns a
+FLINT/N-API integer-matrix handle. Set `SAGEJS_FORBID_ZZ_MATRIX_NAPI=1` in an
+architecture test to make any regression to that legacy surface fail
+immediately, and use `pnpm test:matrix:integer-performance` for the warm public
+performance table.
+
 Code can inspect this distinction without guessing from a timing:
 
 ```python

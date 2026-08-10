@@ -56,6 +56,28 @@ physical migration work. The kernel-level and public-operation evidence is
 recorded in
 [`../bench/DENSE-PRIME-MIGRATION.md`](../bench/DENSE-PRIME-MIGRATION.md).
 
+Dense matrices over `ZZ` now follow the same ownership rule. Their canonical
+representation is an `IntegerBuffer`: one signed limb count per entry and a
+fixed-capacity row-major limb region. Loads in structural typed-Python kernels
+use tagged signed-64-bit values and promote the individual value to GMP at the
+overflowing instruction. Construction, random fill, indexing, mutation,
+copying, serialization, addition, subtraction, negation, scalar multiplication,
+equality, transpose, stacking, augmentation, selection, density, and trace do
+not construct an N-API matrix. Spare output limbs are compacted at the
+representation boundary when growth would otherwise compound; the scan is a
+tight host primitive over typed metadata, not interpreted mathematical code.
+
+Multiplication, rank, determinant, characteristic polynomial, Hermite form,
+Smith form, and exact right kernels cross declared `packed_fmpz_matrix` FFI
+contracts. Generated isolated C initializes lexical FLINT matrices, copies
+packed inputs, invokes FLINT, preflights every result's capacity, copies back
+transactionally, and clears every temporary on all exits. The public `Matrix`
+still owns only its packed storage. The generated dynamic adapter may construct
+a temporary legacy matrix as a differential oracle; `SAGEJS_FORBID_ZZ_MATRIX_NAPI=1`
+proves that no production object obtains or uses such a handle. The focused
+correctness gate is `test/dense-integer-migration.cjs`, and
+`pnpm test:matrix:integer-performance` ratchets the warm public surface.
+
 ## Retained representation primitives
 
 `acbMatrix`, `matrixExportPacked`, `nmodMatrix`, `nmodMatrixPacked`,
@@ -63,10 +85,13 @@ recorded in
 `qqMatrixPacked`, `zmodMatrix`, `zmodMatrixPacked`, `zmodMatrixRandom`,
 `zzMatrix`, `zzMatrixExportPacked`, `zzMatrixPacked`, and `zzMatrixToQQ`.
 
-These functions currently own opaque Node-facing matrix storage or conversion.
-They are legitimate native primitives, but they are not the portable public
-mathematical ABI. New hosts should use packed storage contracts and their own
-thin adapters rather than emulate JavaScript object lifetimes.
+These functions own opaque Node-facing matrix storage or conversion. The `ZZ`
+variants are now retained only for differential tests and generated dynamic
+adapters; they are no longer production representation primitives. The
+remaining functions are legitimate native primitives during their migrations,
+but they are not the portable public mathematical ABI. New hosts should use
+packed storage contracts and their own thin adapters rather than emulate
+JavaScript object lifetimes.
 
 ## Declaration migrations
 

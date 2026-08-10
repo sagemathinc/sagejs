@@ -20,6 +20,16 @@
       "input_aliasing": "allowed",
       "return_ownership": "value"
     },
+    "IntegerBuffer": {
+      "kind": "buffer",
+      "python_type": "IntegerBuffer",
+      "element_abi": "fmpz_t",
+      "input_abis": [],
+      "input_ownership": "borrowed",
+      "input_mutability": "read",
+      "input_aliasing": "allowed",
+      "return_ownership": "value"
+    },
     "bool": {
       "kind": "scalar",
       "python_type": "bool",
@@ -41,6 +51,7 @@
   },
   "abi_types": {
     "fmpz_t": {"kind": "exact_integer", "c_type": "fmpz_t", "return": false},
+    "fmpz_mat_t": {"kind": "aggregate", "c_type": "fmpz_mat_t", "return": false},
     "int": {"kind": "scalar", "c_type": "int", "return": true},
     "nmod_mat_t": {"kind": "aggregate", "c_type": "nmod_mat_t", "return": false},
     "slong": {"kind": "scalar", "c_type": "slong", "return": true},
@@ -62,6 +73,21 @@
     "void": {"kind": "void", "c_type": "void", "return": true}
   },
   "adapters": {
+    "packed_fmpz_matrix": {
+      "kind": "packed",
+      "abi_type": "fmpz_mat_t",
+      "parameter_fields": {
+        "data": "IntegerBuffer",
+        "rows": "uint64",
+        "columns": "uint64"
+      },
+      "consumes": ["data", "rows", "columns"],
+      "dimensions": ["rows", "columns"],
+      "access_field": "access",
+      "aliasing_field": "aliasing",
+      "transactional_field": "transactional",
+      "transactional_writes": true
+    },
     "packed_nmod_matrix": {
       "kind": "packed",
       "abi_type": "nmod_mat_t",

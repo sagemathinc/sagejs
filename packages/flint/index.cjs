@@ -22,6 +22,209 @@ function ffiEntries(source, expected, name) {
   return Array.from(source, (value) => BigInt(value));
 }
 
+function ffiIntegerBuffer(source, expected, name) {
+  if (source === null || (typeof source !== "object" &&
+      typeof source !== "function")) {
+    throw new TypeError(`${name} must be a packed exact-integer buffer`);
+  }
+  const length = Number(Reflect.get(source, "length"));
+  if (!Number.isSafeInteger(length) || length !== expected) {
+    throw new RangeError(`${name} length does not match matrix dimensions`);
+  }
+  const sizes = Reflect.get(source, "sizes");
+  const limbs = Reflect.get(source, "limbs");
+  const wordCapacity = Number(Reflect.get(source, "wordCapacity"));
+  if (sizes instanceof Int32Array && limbs instanceof BigUint64Array &&
+      Number.isSafeInteger(wordCapacity) && wordCapacity > 0 &&
+      sizes.length === length && limbs.length === length * wordCapacity) {
+    return { source, sizes, limbs, length, wordCapacity, packed: true };
+  }
+  return { source, length, packed: false };
+}
+
+function ffiIntegerEntries(source, expected, name) {
+  const buffer = ffiIntegerBuffer(source, expected, name);
+  if (!buffer.packed) return Array.from(source, (value) => BigInt(value));
+  const answer = new Array(expected);
+  for (let index = 0; index < expected; index += 1) {
+    const signedSize = buffer.sizes[index];
+    const count = Math.abs(signedSize);
+    let value = 0n;
+    for (let word = count - 1; word >= 0; word -= 1) {
+      value = (value << 64n) |
+        buffer.limbs[index * buffer.wordCapacity + word];
+    }
+    answer[index] = signedSize < 0 ? -value : value;
+  }
+  return answer;
+}
+
+function ffiWriteIntegers(output, values, name = "output") {
+  const buffer = ffiIntegerBuffer(output, values.length, name);
+  const staged = values.map((value) => BigInt(value));
+  if (!buffer.packed) {
+    for (let index = 0; index < staged.length; index += 1) {
+      if (!Reflect.set(output, String(index), staged[index])) {
+        throw new TypeError(`${name} buffer is not writable`);
+      }
+    }
+    return;
+  }
+  for (const value of staged) {
+    const magnitude = value < 0n ? -value : value;
+    const words = magnitude === 0n
+      ? 0 : Math.ceil(magnitude.toString(2).length / 64);
+    if (words > buffer.wordCapacity) {
+      throw new RangeError("IntegerBuffer word capacity exceeded");
+    }
+  }
+  buffer.limbs.fill(0n);
+  for (let index = 0; index < staged.length; index += 1) {
+    const value = staged[index];
+    let magnitude = value < 0n ? -value : value;
+    let words = 0;
+    while (magnitude !== 0n) {
+      buffer.limbs[index * buffer.wordCapacity + words] =
+        magnitude & 0xffffffffffffffffn;
+      magnitude >>= 64n;
+      words += 1;
+    }
+    buffer.sizes[index] = value < 0n ? -words : words;
+  }
+}
+
+function ffiFmpzMatrix(source, rows, columns, name) {
+  const count = rows * columns;
+  if (!Number.isSafeInteger(count)) throw new RangeError("matrix is too large");
+  return binding.zzMatrix(
+    rows, columns, ffiIntegerEntries(source, count, name),
+  );
+}
+
+function ffiWriteFmpzMatrix(output, matrix, rows, columns, name = "output") {
+  const values = [];
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      values.push(BigInt(binding.matrixEntry(matrix, row, column)));
+    }
+  }
+  ffiWriteIntegers(output, values, name);
+}
+
+binding.ffiFmpzMatRank = function ffiFmpzMatRank(
+  entries, rowsValue, columnsValue,
+) {
+  const rows = ffiDimension(rowsValue, "rows");
+  const columns = ffiDimension(columnsValue, "columns");
+  return BigInt(binding.matrixRank(
+    ffiFmpzMatrix(entries, rows, columns, "entries"),
+  ));
+};
+
+binding.ffiFmpzMatMul = function ffiFmpzMatMul(
+  output, left, right, leftRowsValue, innerValue, rightColumnsValue,
+) {
+  const leftRows = ffiDimension(leftRowsValue, "left_rows");
+  const inner = ffiDimension(innerValue, "inner");
+  const rightColumns = ffiDimension(rightColumnsValue, "right_columns");
+  const product = binding.matrixMul(
+    ffiFmpzMatrix(left, leftRows, inner, "left"),
+    ffiFmpzMatrix(right, inner, rightColumns, "right"),
+  );
+  ffiWriteFmpzMatrix(output, product, leftRows, rightColumns);
+  return true;
+};
+
+binding.ffiFmpzMatDet = function ffiFmpzMatDet(
+  output, source, sizeValue, oneValue,
+) {
+  const size = ffiDimension(sizeValue, "size");
+  const one = ffiDimension(oneValue, "one");
+  if (one !== 1) return false;
+  ffiWriteIntegers(output, [
+    BigInt(binding.matrixDet(ffiFmpzMatrix(source, size, size, "source"))),
+  ]);
+  return true;
+};
+
+binding.ffiFmpzMatCharpoly = function ffiFmpzMatCharpoly(
+  output, source, outputLengthValue, sizeValue, oneValue,
+) {
+  const outputLength = ffiDimension(outputLengthValue, "output_length");
+  const size = ffiDimension(sizeValue, "size");
+  const one = ffiDimension(oneValue, "one");
+  if (one !== 1 || outputLength !== size + 1) return false;
+  const coefficients = binding.matrixCharpoly(
+    ffiFmpzMatrix(source, size, size, "source"),
+  );
+  ffiWriteIntegers(output, coefficients.map((value) => BigInt(value)));
+  return true;
+};
+
+binding.ffiFmpzMatHnf = function ffiFmpzMatHnf(
+  output, source, rowsValue, columnsValue,
+) {
+  const rows = ffiDimension(rowsValue, "rows");
+  const columns = ffiDimension(columnsValue, "columns");
+  const answer = binding.matrixHermite(
+    ffiFmpzMatrix(source, rows, columns, "source"),
+  );
+  ffiWriteFmpzMatrix(output, answer, rows, columns);
+  return true;
+};
+
+binding.ffiFmpzMatHnfTransform = function ffiFmpzMatHnfTransform(
+  output, transform, source, rowsValue, columnsValue,
+) {
+  const rows = ffiDimension(rowsValue, "rows");
+  const columns = ffiDimension(columnsValue, "columns");
+  const answer = binding.matrixHermiteTransform(
+    ffiFmpzMatrix(source, rows, columns, "source"),
+  );
+  ffiWriteFmpzMatrix(output, answer[0], rows, columns, "output");
+  ffiWriteFmpzMatrix(transform, answer[1], rows, rows, "transform");
+  return true;
+};
+
+binding.ffiFmpzMatSnfTransform = function ffiFmpzMatSnfTransform(
+  output, leftTransform, rightTransform, source, rowsValue, columnsValue,
+) {
+  const rows = ffiDimension(rowsValue, "rows");
+  const columns = ffiDimension(columnsValue, "columns");
+  const answer = binding.matrixSmith(
+    ffiFmpzMatrix(source, rows, columns, "source"),
+  );
+  ffiWriteFmpzMatrix(output, answer[0], rows, columns, "output");
+  ffiWriteFmpzMatrix(leftTransform, answer[1], rows, rows, "left_transform");
+  ffiWriteFmpzMatrix(
+    rightTransform, answer[2], columns, columns, "right_transform",
+  );
+  return true;
+};
+
+binding.ffiFmpzMatRightKernel = function ffiFmpzMatRightKernel(
+  output, source, rowsValue, columnsValue,
+) {
+  const rows = ffiDimension(rowsValue, "rows");
+  const columns = ffiDimension(columnsValue, "columns");
+  const sourceMatrix = ffiFmpzMatrix(source, rows, columns, "source");
+  const rank = binding.matrixRank(sourceMatrix);
+  const nullity = columns - rank;
+  const basis = binding.matrixRightKernel(sourceMatrix);
+  const values = Array.from(
+    { length: columns * columns }, () => 0n,
+  );
+  for (let row = 0; row < nullity; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      values[row * columns + column] = BigInt(
+        binding.matrixEntry(basis, row, column),
+      );
+    }
+  }
+  ffiWriteIntegers(output, values);
+  return BigInt(nullity);
+};
+
 function ffiNmodMatrix(source, rows, columns, modulus, name) {
   const count = rows * columns;
   if (source instanceof BigUint64Array) {
@@ -346,17 +549,29 @@ function ffiDirichletGroupNumPrimitive(group) {
 /* A diagnostic hard boundary for the packed-matrix architecture tests.  The
  * proxy leaves declared FFI exports available but makes any accidental use of
  * the historical high-level N-API matrix surface fail at its first call. */
-module.exports = process.env.SAGEJS_FORBID_MATRIX_NAPI === "1"
-  ? new Proxy(binding, {
-    get(target, property, receiver) {
+const forbidMatrixNapi = process.env.SAGEJS_FORBID_MATRIX_NAPI === "1";
+const forbidZzMatrixNapi =
+  process.env.SAGEJS_FORBID_ZZ_MATRIX_NAPI === "1";
+
+module.exports = forbidMatrixNapi || forbidZzMatrixNapi
+  ? new Proxy(Object.create(null), {
+    has(_target, property) {
+      return Reflect.has(binding, property);
+    },
+    get(_target, property) {
       if (typeof property === "string" &&
-          (property === "nmodMatrix" || property === "nmodMatrixPacked" ||
-           /^matrix[A-Z]/.test(property))) {
+          ((forbidMatrixNapi &&
+            (property === "nmodMatrix" || property === "nmodMatrixPacked" ||
+             /^matrix[A-Z]/.test(property))) ||
+           (forbidZzMatrixNapi &&
+            (property === "zzMatrix" || property === "zzMatrixPacked" ||
+             property === "zzMatrixExportPacked" ||
+             property === "zzMatrixToQQ")))) {
         return function forbiddenMatrixNapi() {
           throw new Error(`forbidden legacy matrix N-API call: ${property}`);
         };
       }
-      return Reflect.get(target, property, receiver);
+      return Reflect.get(binding, property);
     },
   })
   : binding;

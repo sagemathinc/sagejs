@@ -66,7 +66,9 @@ function loadCatalog(root = repositoryRoot) {
     ], `semantic type ${name}`);
     strings(filename, item.input_abis, `${name}.input_abis`);
     if (!new Set(["buffer", "exact_integer", "scalar"]).has(item.kind) ||
-        !new Set(["int", "bool", "UInt64Buffer"]).has(item.python_type)) {
+        !new Set([
+          "int", "bool", "IntegerBuffer", "UInt64Buffer",
+        ]).has(item.python_type)) {
       fail(filename, `${name} has unsupported semantic representation`);
     }
     semanticTypes.set(name, Object.freeze({ id: name, ...item }));

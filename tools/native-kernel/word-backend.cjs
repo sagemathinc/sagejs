@@ -136,11 +136,37 @@ function emitWordOperation(operation, context, indent) {
       ? `${indent}${target} = ${int64Constant(operation.value)};`
       : promote();
   }
+  if (operation.kind === "uint64.constant") {
+    return `${indent}${target} = UINT64_C(${operation.value});`;
+  }
   if (operation.kind === "bool.constant") {
     return `${indent}${target} = ${operation.value ? 1 : 0};`;
   }
   if (["integer.copy", "bool.copy", "uint64.copy"].includes(operation.kind)) {
     return `${indent}${target} = ${value(operation.source)};`;
+  }
+  if (operation.kind === "uint64.binary") {
+    const left = value(operation.left);
+    const right = value(operation.right);
+    if (operation.operation === "floordiv" || operation.operation === "mod") {
+      const operator = operation.operation === "floordiv" ? "/" : "%";
+      return [
+        `${indent}if (${right} == 0)`,
+        `${indent}{`,
+        emitDivisionError(`${indent}    `, context.failure),
+        `${indent}}`,
+        `${indent}${target} = ${left} ${operator} ${right};`,
+      ].join("\n");
+    }
+    const operator = { add: "+", sub: "-", mul: "*" }[operation.operation];
+    return `${indent}${target} = ${left} ${operator} ${right};`;
+  }
+  if (operation.kind === "uint64.compare") {
+    const operator = {
+      eq: "==", ne: "!=", lt: "<", le: "<=", gt: ">", ge: ">=",
+    }[operation.operation];
+    return `${indent}${target} = ${value(operation.left)} ${operator} ` +
+      `${value(operation.right)};`;
   }
   if (operation.kind === "int64.buffer.copy") {
     return `${indent}${target} = ${value(operation.source)};`;

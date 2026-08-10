@@ -4794,8 +4794,8 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "packages/flint/index.cjs",
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -4839,8 +4839,8 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "packages/flint/index.cjs",
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -5566,8 +5566,8 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "packages/flint/index.cjs",
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -11574,8 +11574,8 @@
       "consumers": [
         "packages/flint-wasm/index.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
-        "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "packages/flint/index.cjs",
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -11627,8 +11627,7 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -11677,8 +11676,7 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },
@@ -11719,8 +11717,7 @@
       "consumers": [
         "packages/flint-wasm/index.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
-        "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "packages/flint/test/test.cjs"
       ],
       "declared_ffi": null
     },

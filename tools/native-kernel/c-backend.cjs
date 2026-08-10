@@ -105,6 +105,9 @@ function emitOperation(operation, locals, indent) {
       `${indent}}`,
     ].join("\n");
   }
+  if (operation.kind === "uint64.constant") {
+    return `${indent}${target} = UINT64_C(${operation.value});`;
+  }
   if (operation.kind === "real.constant") {
     const target = locals.get(operation.target);
     return [
@@ -493,6 +496,29 @@ function emitExactOperation(operation, context, indent) {
     }
     throw new Error(`unsupported exact integer operation ${operation.operation}`);
   }
+  if (operation.kind === "uint64.binary") {
+    const left = exactValue(operation.left, context);
+    const right = exactValue(operation.right, context);
+    if (operation.operation === "floordiv" || operation.operation === "mod") {
+      const operator = operation.operation === "floordiv" ? "/" : "%";
+      return [
+        `${indent}if (${right} == 0)`,
+        `${indent}{`,
+        statusFailure(
+          "range",
+          "unsigned integer division or modulo by zero",
+          `${indent}    `,
+        ),
+        `${indent}    goto fail;`,
+        `${indent}}`,
+        `${indent}${target} = ${left} ${operator} ${right};`,
+      ].join("\n");
+    }
+    const operator = { add: "+", sub: "-", mul: "*" }[
+      operation.operation
+    ];
+    return `${indent}${target} = ${left} ${operator} ${right};`;
+  }
   if (operation.kind === "integer.compare") {
     const comparison = {
       eq: "== 0",
@@ -505,6 +531,13 @@ function emitExactOperation(operation, context, indent) {
     return `${indent}${target} = mpz_cmp(` +
       `${exactValue(operation.left, context)}, ` +
       `${exactValue(operation.right, context)}) ${comparison};`;
+  }
+  if (operation.kind === "uint64.compare") {
+    const operator = {
+      eq: "==", ne: "!=", lt: "<", le: "<=", gt: ">", ge: ">=",
+    }[operation.operation];
+    return `${indent}${target} = ${exactValue(operation.left, context)} ` +
+      `${operator} ${exactValue(operation.right, context)};`;
   }
   if (operation.kind === "bool.compare") {
     const operator = {
