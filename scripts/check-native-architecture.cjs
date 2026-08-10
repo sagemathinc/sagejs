@@ -14,8 +14,10 @@ const ROOT = resolve(__dirname, "..");
 const CODE_MANIFEST = join(ROOT, "architecture", "native-code.json");
 const AUDIT_MANIFEST = join(ROOT, "architecture", "native-audit.json");
 const KERNEL_MANIFEST = join(ROOT, "architecture", "native-kernels.json");
+const EXPORT_MANIFEST = join(ROOT, "architecture", "native-exports.json");
 const ffiDeclarations = require("../tools/ffi/declarations.cjs");
 const ffiBoundaryAudit = require("../tools/ffi/boundary-audit.cjs");
+const ffiNativeExportAudit = require("../tools/ffi/native-export-audit.cjs");
 
 function readJson(filename) {
   return JSON.parse(readFileSync(filename, "utf8"));
@@ -294,6 +296,9 @@ function run() {
   const boundaries = ffiBoundaryAudit.validateBoundarySnapshot(
     readJson(ffiBoundaryAudit.snapshotPath(ROOT)), { root: ROOT },
   );
+  const nativeExports = ffiNativeExportAudit.validateNativeExportInventory(
+    readJson(EXPORT_MANIFEST), { root: ROOT },
+  );
   const generatedFfiModules = new Set();
   for (const declaration of ffi.libraries) {
     for (const generated of
@@ -334,6 +339,10 @@ function run() {
   console.log(
     `Native boundary ratchet is current: ${boundaries.boundaries.length} ` +
     `classified files and exported interfaces.`,
+  );
+  console.log(
+    `Every N-API export has a symbol-level decision: ` +
+    `${nativeExports.exports.length} classified exports.`,
   );
 }
 

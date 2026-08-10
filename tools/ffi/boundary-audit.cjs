@@ -5,6 +5,10 @@ const { readFileSync } = require("node:fs");
 const { dirname, join, relative, resolve } = require("node:path");
 
 const declarations = require("./declarations.cjs");
+const {
+  loadNativeExportPolicy,
+  validateNativeExportPolicy,
+} = require("./native-export-policy.cjs");
 
 const repositoryRoot = resolve(__dirname, "..", "..");
 
@@ -13,7 +17,9 @@ function readJson(filename) {
 }
 
 function trackedFiles(root) {
-  return execFileSync("git", ["ls-files", "-z"], {
+  return execFileSync("git", [
+    "ls-files", "-z", "--cached", "--others", "--exclude-standard",
+  ], {
     cwd: root,
     encoding: "utf8",
   }).split("\0").filter(Boolean).sort();
@@ -168,9 +174,22 @@ function createBoundarySnapshot(options = {}) {
       );
     }
   }
+  const nativeExports = validateNativeExportPolicy(
+    loadNativeExportPolicy({ root }), napiExports(root, files, dynamic),
+  ).map((item) => ({
+    id: item.id,
+    kind: item.kind,
+    path: item.path,
+    package: item.package,
+    export: item.export,
+    symbol: item.symbol,
+    disposition: item.policy.decision,
+    family: item.policy.family,
+    ...(item.declaration === undefined ? {} : { declaration: item.declaration }),
+  }));
   const boundaries = [
     ...classifiedNativeFiles(root),
-    ...napiExports(root, files, dynamic),
+    ...nativeExports,
     ...wasmExports(root, files),
     ...runtimeIntrinsics(root),
     ...declaredFunctions(registry),
@@ -232,7 +251,9 @@ function validateBoundarySnapshot(snapshot, options = {}) {
 
 module.exports = {
   createBoundarySnapshot,
+  napiExports,
   repositoryRoot,
   snapshotPath,
+  trackedFiles,
   validateBoundarySnapshot,
 };

@@ -17,6 +17,8 @@ const test = require("node:test");
 const declarations = require("../tools/ffi/declarations.cjs");
 const sourceDeclarations = require("../tools/ffi/source-declarations.cjs");
 const boundaryAudit = require("../tools/ffi/boundary-audit.cjs");
+const nativeExportAudit = require("../tools/ffi/native-export-audit.cjs");
+const nativeExportPolicy = require("../tools/ffi/native-export-policy.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
 const {
@@ -204,11 +206,59 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   assert.equal(current.counts["declared-ffi"], 15);
   assert.equal(current.counts["declared-ffi-resource"], 3);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
+  assert.equal(
+    current.boundaries.filter((item) =>
+      item.kind === "napi-export" &&
+      item.disposition === "legacy-handwritten-dynamic"
+    ).length,
+    0,
+  );
   const stale = structuredClone(snapshot);
   stale.boundaries.pop();
   assert.throws(
     () => boundaryAudit.validateBoundarySnapshot(stale, { root }),
     /native-boundary inventory has drifted/,
+  );
+});
+
+test("every N-API export has an exact symbol-level architecture decision", () => {
+  const filename = nativeExportAudit.inventoryPath(root);
+  const inventory = nativeExportAudit.validateNativeExportInventory(
+    JSON.parse(readFileSync(filename, "utf8")), { root },
+  );
+  assert.equal(inventory.schema, "sagejs.native-export-inventory/v1");
+  assert.equal(inventory.exports.length, 291);
+  assert.equal(inventory.exports.filter((item) =>
+    item.family.startsWith("dense-matrix")).length, 49);
+  assert.equal(inventory.exports.filter((item) =>
+    item.implementation.path === "packages/flint/src/matrix.c").length, 49);
+  assert.ok(inventory.exports.every((item) =>
+    /^[0-9a-f]{64}$/.test(item.implementation.sha256)));
+  assert.equal(inventory.exports.filter((item) =>
+    item.decision === "legacy-handwritten-dynamic").length, 0);
+  const policy = nativeExportPolicy.loadNativeExportPolicy({ root });
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(policy.document.matrix_remediation.groups)
+      .map(([id, group]) => [id, group.exports.length])),
+    {
+      "representation-primitives": 16,
+      "foreign-and-thin-bridges": 21,
+      "source-owned-algorithm-exceptions": 12,
+    },
+  );
+  assert.equal(policy.matrixExports.size, 49);
+  const missing = structuredClone(
+    inventory.exports.map((item) => ({
+      id: item.id,
+      declaration: item.declared_ffi === null ? undefined : item.declared_ffi,
+    })),
+  );
+  missing.push({
+    id: "napi:@sagemath/sagejs-flint:unreviewedNewExport",
+  });
+  assert.throws(
+    () => nativeExportPolicy.validateNativeExportPolicy(policy, missing),
+    /unclassified N-API exports/,
   );
 });
 

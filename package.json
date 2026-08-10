@@ -106,6 +106,7 @@
     "baselib:status": "node scripts/baselib-status.cjs",
     "architecture:packages": "node scripts/check-package-graph.cjs",
     "architecture:native": "node scripts/check-native-architecture.cjs",
+    "architecture:exports": "node scripts/audit-native-exports.cjs --check",
     "architecture:check": "pnpm run ffi:check && pnpm run architecture:packages && pnpm run architecture:native",
     "ffi:check": "node bin/sagejs ffi check",
     "ffi:lifecycle:fuzz": "node tools/ffi/lifecycle-fuzz.cjs",

@@ -73,7 +73,7 @@
       "rationale": "The largest mixed native source combines an essential packed FLINT boundary with Sage.js-owned algorithms. Retain mature FLINT calls, split the ABI by representation, and use existing prime-field typed witnesses to migrate local control flow where it is competitive.",
       "fallback": "Every matrix operation retains its tested Python/JavaScript implementation or an explicit native capability diagnostic.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
-      "next": "Generate an export-to-implementation map and prioritize algorithms that do not directly delegate to FLINT."
+      "next": "Preserve the exact 49-export symbol ratchet, migrate the 21 thin operations through declarations, and replace the 12 documented source-owned exceptions one typed algorithm at a time."
     },
     {
       "path": "packages/flint/src/modsym_core.c",

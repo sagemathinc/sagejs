@@ -29,6 +29,15 @@ foreign-library calls, and independent mathematical algorithms share enormous
 translation units.  The remediation unit is one algorithm and its packed ABI,
 not one whole file rewritten at once.
 
+The follow-up symbol ratchet now resolves all 291 registered N-API exports to
+their unique callback definitions and assigns an explicit architecture
+decision to each. The 49 `matrix.c` exports have additionally been partitioned
+exhaustively into 16 retained representation primitives, 21 declaration
+migrations, and 12 source-owned typed-Python migration exceptions. See
+[`DENSE-MATRIX-COMPLIANCE.md`](DENSE-MATRIX-COMPLIANCE.md). This completes the
+dense-matrix *compliance* remediation and freezes the mixed source; it does not
+misrepresent the remaining physical migrations as already rewritten.
+
 ## P1 remediation pilot
 
 [`src/lib/sagejs/kernels/p1.py`](../src/lib/sagejs/kernels/p1.py) now contains

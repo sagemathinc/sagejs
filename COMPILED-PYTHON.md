@@ -761,7 +761,7 @@ dynamic fallback.
 | How are repeated optimizations shared? | Through manually designed C helper libraries and coding conventions. | Through compiler passes and representation rules which benefit every accepted kernel. |
 | How is equivalence checked? | Native and fallback implementations require hand-maintained cross-tests. | The same source provenance supports routine differential execution across dynamic, JavaScript, and native tiers. |
 | Where can formal reasoning focus? | On both the algorithm and C's pointer, aliasing, overflow, and lifetime behavior. | On the typed algorithm and explicit effects, plus reusable proofs of compiler lowerings and stated assumptions about foreign libraries. |
-| What is the host dependency? | Usually a Node addon coupled to N-API, plus any linked libraries. | A host-independent core with a thin Node adapter; other adapters can target standalone C or WebAssembly. |
+| What is the host dependency? | Usually a Node addon coupled to N-API, plus any linked libraries. Reusing it from CPython requires another binding layer and may require separating algorithm code that assumed Node values or lifetimes. | A host-independent core and host-neutral FFI contract with a thin Node adapter; other adapters can target standalone C, WebAssembly, or a future CPython-hosted `sage.py`. |
 | What happens without a native artifact? | A separate fallback must exist or the feature is unavailable. | The same source body remains the required dynamic fallback. |
 | What happens when the compiler lacks a construct? | Not applicable; the C author implements it directly. | Compilation rejects the function clearly; use the fallback, improve a general compiler capability, call a declared library, or record a narrow C exception. |
 
@@ -778,6 +778,17 @@ This also changes how optimization work compounds. Improving one C function
 makes one C function better. Improving a sound compiler lowering can make an
 entire mathematical corpus better while leaving its reviewed source unchanged.
 The compiler is therefore infrastructure, not merely a convenient C generator.
+
+Host independence is also source-code leverage. Sage.js currently uses Node
+and JavaScript as its default dynamic host, but neither N-API nor V8 is part of
+an accepted kernel's mathematical semantics. The same CPython-parseable
+algorithm body, isolated kernel ABI, and declarative foreign-library contract
+could later be used by a CPython extension adapter. This does not make a
+complete `sage.py` distribution automatic: its dynamic object model, packaging,
+and generated bindings would still be substantial work. It does mean the
+mathematical corpus would not first have to be extracted from thousands of
+Node-specific C callbacks. N-API is a replaceable edge of the architecture,
+not the permanent owner of the algorithms.
 
 There are still cases where C or C++ is the right layer:
 

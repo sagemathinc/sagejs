@@ -50,6 +50,11 @@ real algorithm merely because a benchmark was urgent.
 - Native ABIs SHOULD use packed typed storage, explicit dimensions, explicit
   ownership, and batched calls.  Object-at-a-time crossings through JavaScript
   are not a scalable mathematical representation.
+- Mathematical algorithms, isolated kernel ABIs, and foreign-library
+  declarations MUST remain independent of a particular dynamic host ABI.
+  Node-API belongs only in replaceable host adapters. A future CPython adapter,
+  standalone executable, or WebAssembly host must not require extracting the
+  algorithm from an N-API callback first.
 - Trusted production kernels MAY ship precompiled.  User compilation remains
   optional; lack of a compiler MUST NOT make the dynamic implementation wrong.
 - Native artifacts MUST be content-addressed by source, compiler/IR/ABI,
@@ -75,6 +80,17 @@ checks that audited sources still have the reviewed byte and line counts, so a
 later edit cannot quietly rely on a stale architectural conclusion.
 The current human-readable findings and P1 remediation evidence are in
 [`architecture/NATIVE-AUDIT.md`](architecture/NATIVE-AUDIT.md).
+The exhaustive symbol-level dense-matrix result is in
+[`architecture/DENSE-MATRIX-COMPLIANCE.md`](architecture/DENSE-MATRIX-COMPLIANCE.md).
+
+Every registered N-API property also has an explicit decision in
+[`architecture/native-export-policy.json`](architecture/native-export-policy.json).
+The generated
+[`architecture/native-exports.json`](architecture/native-exports.json) resolves
+each property to its unique callback definition, source location, direct calls,
+known consumers, family, and decision. The default is reject-unclassified:
+regenerating the inventory cannot bless a new export, and the generic
+`legacy-handwritten-dynamic` disposition is prohibited.
 
 An exception for handwritten mathematical native code records:
 

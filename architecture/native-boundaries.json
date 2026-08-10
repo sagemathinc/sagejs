@@ -226,7 +226,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "acbMatrix",
       "symbol": "sagejs_acb_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:acbMatrixScalarMul",
@@ -235,7 +236,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "acbMatrixScalarMul",
       "symbol": "sagejs_acb_matrix_scalar_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:binomial",
@@ -244,7 +246,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "binomial",
       "symbol": "binomial",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:blasEnabled",
@@ -253,7 +256,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "blasEnabled",
       "symbol": "blas_enabled",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-host-adapter",
+      "family": "metadata"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:characterPresentationBoundaryData",
@@ -262,7 +266,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "characterPresentationBoundaryData",
       "symbol": "sagejs_character_presentation_boundary_data",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:characterPresentationReduction",
@@ -271,7 +276,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "characterPresentationReduction",
       "symbol": "sagejs_character_presentation_reduction",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexAdd",
@@ -280,7 +286,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexAdd",
       "symbol": "sagejs_complex_add",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexBesselI",
@@ -289,7 +296,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexBesselI",
       "symbol": "sagejs_complex_bessel_i",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexDiv",
@@ -298,7 +306,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexDiv",
       "symbol": "sagejs_complex_div",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexEi",
@@ -307,7 +316,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexEi",
       "symbol": "sagejs_complex_ei",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexEqual",
@@ -316,7 +326,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexEqual",
       "symbol": "sagejs_complex_equal",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexFromReals",
@@ -325,7 +336,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexFromReals",
       "symbol": "sagejs_complex_from_reals",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexImag",
@@ -334,7 +346,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexImag",
       "symbol": "sagejs_complex_imag",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexImagDouble",
@@ -343,7 +356,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexImagDouble",
       "symbol": "sagejs_complex_imag_double",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexMul",
@@ -352,7 +366,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexMul",
       "symbol": "sagejs_complex_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexNeg",
@@ -361,7 +376,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexNeg",
       "symbol": "sagejs_complex_neg",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexPowInt",
@@ -370,7 +386,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexPowInt",
       "symbol": "sagejs_complex_pow_int",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexPrecision",
@@ -379,7 +396,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexPrecision",
       "symbol": "sagejs_complex_precision",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexReal",
@@ -388,7 +406,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexReal",
       "symbol": "sagejs_complex_real",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexRealDouble",
@@ -397,7 +416,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexRealDouble",
       "symbol": "sagejs_complex_real_double",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexRound",
@@ -406,7 +426,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexRound",
       "symbol": "sagejs_complex_round",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexSub",
@@ -415,7 +436,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexSub",
       "symbol": "sagejs_complex_sub",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:complexToString",
@@ -424,7 +446,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "complexToString",
       "symbol": "sagejs_complex_to_string",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicElementCoefficients",
@@ -433,7 +456,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "cyclotomicElementCoefficients",
       "symbol": "sagejs_cyclotomic_element_coefficients",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixPolyEvaluate",
@@ -442,7 +466,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "cyclotomicMatrixPolyEvaluate",
       "symbol": "sagejs_cyclotomic_matrix_poly_evaluate",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicMatrixRightKernel",
@@ -451,7 +476,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "cyclotomicMatrixRightKernel",
       "symbol": "sagejs_cyclotomic_matrix_right_kernel",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicPolyFactor",
@@ -460,7 +486,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "cyclotomicPolyFactor",
       "symbol": "sagejs_cyclotomic_poly_factor",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:cyclotomicRootCoefficients",
@@ -469,7 +496,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "cyclotomicRootCoefficients",
       "symbol": "sagejs_cyclotomic_root_coefficients",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletBernoulli",
@@ -478,7 +506,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletBernoulli",
       "symbol": "sagejs_dirichlet_bernoulli",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletCharacterData",
@@ -487,7 +516,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletCharacterData",
       "symbol": "sagejs_dirichlet_character_data",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletCharacterExponent",
@@ -496,7 +526,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletCharacterExponent",
       "symbol": "sagejs_dirichlet_character_exponent",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletCharacterExponents",
@@ -505,7 +536,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletCharacterExponents",
       "symbol": "sagejs_dirichlet_character_exponents",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletGaussSum",
@@ -514,7 +546,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletGaussSum",
       "symbol": "sagejs_dirichlet_gauss_sum",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletGaussSumExact",
@@ -523,7 +556,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletGaussSumExact",
       "symbol": "sagejs_dirichlet_gauss_sum_exact",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletGroup",
@@ -532,7 +566,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletGroup",
       "symbol": "sagejs_dirichlet_group",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletGroupClose",
@@ -541,7 +576,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletGroupClose",
       "symbol": "sagejs_dirichlet_group_close",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletGroupData",
@@ -550,7 +586,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletGroupData",
       "symbol": "sagejs_dirichlet_group_data",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletJacobiSum",
@@ -559,7 +596,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletJacobiSum",
       "symbol": "sagejs_dirichlet_jacobi_sum",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletJacobiSumExact",
@@ -568,7 +606,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletJacobiSumExact",
       "symbol": "sagejs_dirichlet_jacobi_sum_exact",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletLValue",
@@ -577,7 +616,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletLValue",
       "symbol": "sagejs_dirichlet_l_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:dirichletRootNumber",
@@ -586,7 +626,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "dirichletRootNumber",
       "symbol": "sagejs_dirichlet_root_number",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dirichlet"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:ecAnlistIntegral",
@@ -595,7 +636,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "ecAnlistIntegral",
       "symbol": "elliptic_anlist_integral",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "elliptic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:ecApIntegral",
@@ -604,7 +646,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "ecApIntegral",
       "symbol": "elliptic_ap_smalljac_integral",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "elliptic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:ecScalarMulPrime",
@@ -613,7 +656,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "ecScalarMulPrime",
       "symbol": "elliptic_scalar_mul_prime",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "elliptic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:ecScalarMulRational",
@@ -622,7 +666,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "ecScalarMulRational",
       "symbol": "elliptic_scalar_mul_rational",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "elliptic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:factor",
@@ -631,7 +676,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "factor",
       "symbol": "factor",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:factorial",
@@ -640,7 +686,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "factorial",
       "symbol": "factorial",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fibonacci",
@@ -649,7 +696,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fibonacci",
       "symbol": "fibonacci",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqAdd",
@@ -658,7 +706,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqAdd",
       "symbol": "sagejs_fq_add",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqContext",
@@ -667,7 +716,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqContext",
       "symbol": "sagejs_fq_context",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqContextModulus",
@@ -676,7 +726,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqContextModulus",
       "symbol": "sagejs_fq_context_modulus",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqContextWithModulus",
@@ -685,7 +736,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqContextWithModulus",
       "symbol": "sagejs_fq_context_with_modulus",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqDiv",
@@ -694,7 +746,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqDiv",
       "symbol": "sagejs_fq_div",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqEqual",
@@ -703,7 +756,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqEqual",
       "symbol": "sagejs_fq_equal",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqFromBigInt",
@@ -712,7 +766,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqFromBigInt",
       "symbol": "sagejs_fq_from_bigint",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqGen",
@@ -721,7 +776,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqGen",
       "symbol": "sagejs_fq_gen",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqIsOne",
@@ -730,7 +786,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqIsOne",
       "symbol": "sagejs_fq_is_one",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqIsZero",
@@ -739,7 +796,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqIsZero",
       "symbol": "sagejs_fq_is_zero",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrix",
@@ -748,7 +806,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrix",
       "symbol": "sagejs_fq_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixAdd",
@@ -757,7 +816,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixAdd",
       "symbol": "sagejs_fq_matrix_add",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixCharpoly",
@@ -766,7 +826,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixCharpoly",
       "symbol": "sagejs_fq_matrix_charpoly",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixDet",
@@ -775,7 +836,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixDet",
       "symbol": "sagejs_fq_matrix_det",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixEntry",
@@ -784,7 +846,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixEntry",
       "symbol": "sagejs_fq_matrix_entry",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixEqual",
@@ -793,7 +856,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixEqual",
       "symbol": "sagejs_fq_matrix_equal",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixInverse",
@@ -802,7 +866,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixInverse",
       "symbol": "sagejs_fq_matrix_inverse",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixMul",
@@ -811,7 +876,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixMul",
       "symbol": "sagejs_fq_matrix_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixNeg",
@@ -820,7 +886,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixNeg",
       "symbol": "sagejs_fq_matrix_neg",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixRank",
@@ -829,7 +896,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixRank",
       "symbol": "sagejs_fq_matrix_rank",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixRightKernel",
@@ -838,7 +906,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixRightKernel",
       "symbol": "sagejs_fq_matrix_right_kernel",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixRref",
@@ -847,7 +916,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixRref",
       "symbol": "sagejs_fq_matrix_rref",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixScalarMul",
@@ -856,7 +926,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixScalarMul",
       "symbol": "sagejs_fq_matrix_scalar_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixSolve",
@@ -865,7 +936,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixSolve",
       "symbol": "sagejs_fq_matrix_solve",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixSub",
@@ -874,7 +946,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixSub",
       "symbol": "sagejs_fq_matrix_sub",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMatrixTranspose",
@@ -883,7 +956,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMatrixTranspose",
       "symbol": "sagejs_fq_matrix_transpose",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqMul",
@@ -892,7 +966,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqMul",
       "symbol": "sagejs_fq_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqNeg",
@@ -901,7 +976,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqNeg",
       "symbol": "sagejs_fq_neg",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyAdd",
@@ -910,7 +986,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyAdd",
       "symbol": "sagejs_fq_poly_add",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyCoefficients",
@@ -919,7 +996,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyCoefficients",
       "symbol": "sagejs_fq_poly_coefficients",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyConstant",
@@ -928,7 +1006,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyConstant",
       "symbol": "sagejs_fq_poly_constant",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyDivExact",
@@ -937,7 +1016,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyDivExact",
       "symbol": "sagejs_fq_poly_divexact",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyEqual",
@@ -946,7 +1026,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyEqual",
       "symbol": "sagejs_fq_poly_equal",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyFactor",
@@ -955,7 +1036,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyFactor",
       "symbol": "sagejs_fq_poly_factor",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyGcd",
@@ -964,7 +1046,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyGcd",
       "symbol": "sagejs_fq_poly_gcd",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyGen",
@@ -973,7 +1056,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyGen",
       "symbol": "sagejs_fq_poly_gen",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyIsIrreducible",
@@ -982,7 +1066,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyIsIrreducible",
       "symbol": "sagejs_fq_poly_is_irreducible",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyMul",
@@ -991,7 +1076,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyMul",
       "symbol": "sagejs_fq_poly_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyNeg",
@@ -1000,7 +1086,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyNeg",
       "symbol": "sagejs_fq_poly_neg",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyPow",
@@ -1009,7 +1096,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyPow",
       "symbol": "sagejs_fq_poly_pow",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyRoots",
@@ -1018,7 +1106,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyRoots",
       "symbol": "sagejs_fq_poly_roots",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolySub",
@@ -1027,7 +1116,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolySub",
       "symbol": "sagejs_fq_poly_sub",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPolyToString",
@@ -1036,7 +1126,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPolyToString",
       "symbol": "sagejs_fq_poly_to_string",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqPow",
@@ -1045,7 +1136,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqPow",
       "symbol": "sagejs_fq_pow",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqSub",
@@ -1054,7 +1146,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqSub",
       "symbol": "sagejs_fq_sub",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:fqToString",
@@ -1063,7 +1156,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "fqToString",
       "symbol": "sagejs_fq_to_string",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "extension-fields"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:gcd",
@@ -1072,7 +1166,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "gcd",
       "symbol": "gcd",
-      "disposition": "declared-ffi-dynamic",
+      "disposition": "declared-ffi",
+      "family": "exact-arithmetic",
       "declaration": "flint:fmpz_gcd"
     },
     {
@@ -1082,7 +1177,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "gmpVersion",
       "symbol": "gmp_version_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-host-adapter",
+      "family": "metadata"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:higherWeightPresentationReduction",
@@ -1091,7 +1187,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "higherWeightPresentationReduction",
       "symbol": "sagejs_higher_weight_presentation_reduction",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:identity",
@@ -1100,7 +1197,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "identity",
       "symbol": "identity",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-host-adapter",
+      "family": "metadata"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:isPrime",
@@ -1109,7 +1207,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "isPrime",
       "symbol": "is_prime",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:maninRelationsInfo",
@@ -1118,7 +1217,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "maninRelationsInfo",
       "symbol": "sagejs_manin_relations_info",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:maninRelationsRank",
@@ -1127,7 +1227,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "maninRelationsRank",
       "symbol": "sagejs_manin_relations_rank",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:maninRelationsRow",
@@ -1136,7 +1237,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "maninRelationsRow",
       "symbol": "sagejs_manin_relations_row",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixAdd",
@@ -1145,7 +1247,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixAdd",
       "symbol": "sagejs_matrix_add",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixApproxEigensystem",
@@ -1154,7 +1257,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixApproxEigensystem",
       "symbol": "sagejs_matrix_approx_eigensystem",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixAugment",
@@ -1163,7 +1267,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixAugment",
       "symbol": "sagejs_matrix_augment",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixCharpoly",
@@ -1172,7 +1277,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixCharpoly",
       "symbol": "sagejs_matrix_charpoly",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixDet",
@@ -1181,7 +1287,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixDet",
       "symbol": "sagejs_matrix_det",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixEntry",
@@ -1190,7 +1297,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixEntry",
       "symbol": "sagejs_matrix_entry",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixEqual",
@@ -1199,7 +1307,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixEqual",
       "symbol": "sagejs_matrix_equal",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixExactEigenvalues",
@@ -1208,7 +1317,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixExactEigenvalues",
       "symbol": "sagejs_matrix_exact_eigenvalues",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixExportPacked",
@@ -1217,7 +1327,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixExportPacked",
       "symbol": "sagejs_matrix_export_packed",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixHermite",
@@ -1226,7 +1337,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixHermite",
       "symbol": "sagejs_matrix_hermite",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixHermiteTransform",
@@ -1235,7 +1347,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixHermiteTransform",
       "symbol": "sagejs_matrix_hermite_transform",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixHowell",
@@ -1244,7 +1357,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixHowell",
       "symbol": "sagejs_matrix_howell",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixInverse",
@@ -1253,7 +1367,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixInverse",
       "symbol": "sagejs_matrix_inverse",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixIsZero",
@@ -1262,7 +1377,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixIsZero",
       "symbol": "sagejs_matrix_is_zero",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixMul",
@@ -1271,7 +1387,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixMul",
       "symbol": "sagejs_matrix_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixMulBlas",
@@ -1280,7 +1397,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixMulBlas",
       "symbol": "sagejs_matrix_mul_blas",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixNeg",
@@ -1289,7 +1407,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixNeg",
       "symbol": "sagejs_matrix_neg",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixPivots",
@@ -1298,7 +1417,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixPivots",
       "symbol": "sagejs_matrix_pivots",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixRank",
@@ -1307,7 +1427,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixRank",
       "symbol": "sagejs_matrix_rank",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixRightKernel",
@@ -1316,7 +1437,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixRightKernel",
       "symbol": "sagejs_matrix_right_kernel",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixRref",
@@ -1325,7 +1447,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixRref",
       "symbol": "sagejs_matrix_rref",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixScalarMul",
@@ -1334,7 +1457,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixScalarMul",
       "symbol": "sagejs_matrix_scalar_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixSelectColumns",
@@ -1343,7 +1467,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixSelectColumns",
       "symbol": "sagejs_matrix_select_columns",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixSelectRows",
@@ -1352,7 +1477,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixSelectRows",
       "symbol": "sagejs_matrix_select_rows",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixSmith",
@@ -1361,7 +1487,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixSmith",
       "symbol": "sagejs_matrix_smith",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixSolve",
@@ -1370,7 +1497,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixSolve",
       "symbol": "sagejs_matrix_solve",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixSparseLeftMul",
@@ -1379,7 +1507,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixSparseLeftMul",
       "symbol": "sagejs_matrix_sparse_left_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixStack",
@@ -1388,7 +1517,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixStack",
       "symbol": "sagejs_matrix_stack",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixSub",
@@ -1397,7 +1527,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixSub",
       "symbol": "sagejs_matrix_sub",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixTranspose",
@@ -1406,7 +1537,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixTranspose",
       "symbol": "sagejs_matrix_transpose",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpcVersion",
@@ -1415,7 +1547,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpcVersion",
       "symbol": "mpc_version",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-host-adapter",
+      "family": "metadata"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpfrVersion",
@@ -1424,7 +1557,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpfrVersion",
       "symbol": "mpfr_version_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-host-adapter",
+      "family": "metadata"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyAdd",
@@ -1433,7 +1567,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyAdd",
       "symbol": "sagejs_mpoly_add",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyCompare",
@@ -1442,7 +1577,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyCompare",
       "symbol": "sagejs_mpoly_compare",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyComposeGen",
@@ -1451,7 +1587,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyComposeGen",
       "symbol": "sagejs_mpoly_compose_gen",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyConstant",
@@ -1460,7 +1597,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyConstant",
       "symbol": "sagejs_mpoly_constant",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyContext",
@@ -1469,7 +1607,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyContext",
       "symbol": "sagejs_mpoly_context",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyDegree",
@@ -1478,7 +1617,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyDegree",
       "symbol": "sagejs_mpoly_degree",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyDivExact",
@@ -1487,7 +1627,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyDivExact",
       "symbol": "sagejs_mpoly_divexact",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyEqual",
@@ -1496,7 +1637,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyEqual",
       "symbol": "sagejs_mpoly_equal",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyGcd",
@@ -1505,7 +1647,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyGcd",
       "symbol": "sagejs_mpoly_gcd",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyGen",
@@ -1514,7 +1657,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyGen",
       "symbol": "sagejs_mpoly_gen",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyGroebner",
@@ -1523,7 +1667,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyGroebner",
       "symbol": "sagejs_mpoly_groebner",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyIrreducibleFactors",
@@ -1532,7 +1677,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyIrreducibleFactors",
       "symbol": "sagejs_mpoly_irreducible_factors",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyLength",
@@ -1541,7 +1687,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyLength",
       "symbol": "sagejs_mpoly_length",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyMul",
@@ -1550,7 +1697,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyMul",
       "symbol": "sagejs_mpoly_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyNeg",
@@ -1559,7 +1707,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyNeg",
       "symbol": "sagejs_mpoly_neg",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyPow",
@@ -1568,7 +1717,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyPow",
       "symbol": "sagejs_mpoly_pow",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyReduce",
@@ -1577,7 +1727,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyReduce",
       "symbol": "sagejs_mpoly_reduce",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyResultant",
@@ -1586,7 +1737,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyResultant",
       "symbol": "sagejs_mpoly_resultant",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolySub",
@@ -1595,7 +1747,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolySub",
       "symbol": "sagejs_mpoly_sub",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyToString",
@@ -1604,7 +1757,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyToString",
       "symbol": "sagejs_mpoly_to_string",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyTotalDegree",
@@ -1613,7 +1767,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyTotalDegree",
       "symbol": "sagejs_mpoly_total_degree",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:mpolyUnivariateCoefficients",
@@ -1622,7 +1777,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "mpolyUnivariateCoefficients",
       "symbol": "sagejs_mpoly_univariate_coefficients",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "multivariate"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nativeAbiVersion",
@@ -1631,7 +1787,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "nativeAbiVersion",
       "symbol": "native_abi_version",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-host-adapter",
+      "family": "metadata"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nextPrime",
@@ -1640,7 +1797,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "nextPrime",
       "symbol": "next_prime",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nmodMatrix",
@@ -1649,7 +1807,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "nmodMatrix",
       "symbol": "sagejs_nmod_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nmodMatrixPacked",
@@ -1658,7 +1817,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "nmodMatrixPacked",
       "symbol": "sagejs_nmod_matrix_packed",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nmodMatrixRandom",
@@ -1667,7 +1827,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "nmodMatrixRandom",
       "symbol": "sagejs_nmod_matrix_random",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nmodPolyConstant",
@@ -1676,7 +1837,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "nmodPolyConstant",
       "symbol": "nmod_poly_constant",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nmodPolyFactor",
@@ -1685,7 +1847,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "nmodPolyFactor",
       "symbol": "nmod_poly_factor_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nmodPolyGcd",
@@ -1694,7 +1857,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "nmodPolyGcd",
       "symbol": "nmod_poly_gcd_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nmodPolyGen",
@@ -1703,7 +1867,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "nmodPolyGen",
       "symbol": "nmod_poly_gen_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nmodPolyIsIrreducible",
@@ -1712,7 +1877,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "nmodPolyIsIrreducible",
       "symbol": "nmod_poly_is_irreducible_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:nmodPolyRoots",
@@ -1721,7 +1887,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "nmodPolyRoots",
       "symbol": "nmod_poly_roots_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1List",
@@ -1730,7 +1897,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1List",
       "symbol": "sagejs_p1list",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListApplyI",
@@ -1739,7 +1907,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListApplyI",
       "symbol": "sagejs_p1list_apply_i",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListApplyR",
@@ -1748,7 +1917,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListApplyR",
       "symbol": "sagejs_p1list_apply_r",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListApplyS",
@@ -1757,7 +1927,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListApplyS",
       "symbol": "sagejs_p1list_apply_s",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListApplyT",
@@ -1766,7 +1937,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListApplyT",
       "symbol": "sagejs_p1list_apply_t",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListBoundaryData",
@@ -1775,7 +1947,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListBoundaryData",
       "symbol": "sagejs_p1list_boundary_data",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterHeckeMatrix",
@@ -1784,7 +1957,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListCharacterHeckeMatrix",
       "symbol": "sagejs_p1list_character_hecke_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCharacterPresentation",
@@ -1793,7 +1967,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListCharacterPresentation",
       "symbol": "sagejs_p1list_character_presentation",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCount",
@@ -1802,7 +1977,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListCount",
       "symbol": "sagejs_p1list_count",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListCuspidalBasis",
@@ -1811,7 +1987,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListCuspidalBasis",
       "symbol": "sagejs_p1list_cuspidal_basis",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListDegeneracyMatrix",
@@ -1820,7 +1997,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListDegeneracyMatrix",
       "symbol": "sagejs_p1list_degeneracy_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListEntry",
@@ -1829,7 +2007,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListEntry",
       "symbol": "sagejs_p1list_entry",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListHeckeMatrix",
@@ -1838,7 +2017,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListHeckeMatrix",
       "symbol": "sagejs_p1list_hecke_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListHigherWeightDegeneracyMatrix",
@@ -1847,7 +2027,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListHigherWeightDegeneracyMatrix",
       "symbol": "sagejs_p1list_higher_weight_degeneracy_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListHigherWeightHeckeMatrix",
@@ -1856,7 +2037,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListHigherWeightHeckeMatrix",
       "symbol": "sagejs_p1list_higher_weight_hecke_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-differential-oracle",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListHigherWeightPresentation",
@@ -1865,7 +2047,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListHigherWeightPresentation",
       "symbol": "sagejs_p1list_higher_weight_presentation",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListIndex",
@@ -1874,7 +2057,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListIndex",
       "symbol": "sagejs_p1list_index",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListLevel",
@@ -1883,7 +2067,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListLevel",
       "symbol": "sagejs_p1list_level",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListManinPresentationInfo",
@@ -1892,7 +2077,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListManinPresentationInfo",
       "symbol": "sagejs_p1list_manin_presentation_info",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListManinRelations",
@@ -1901,7 +2087,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListManinRelations",
       "symbol": "sagejs_p1list_manin_relations",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListNormalize",
@@ -1910,7 +2097,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListNormalize",
       "symbol": "sagejs_p1list_normalize",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListReducePath",
@@ -1919,7 +2107,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListReducePath",
       "symbol": "sagejs_p1list_reduce_path",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListStarEigenspaceBasis",
@@ -1928,7 +2117,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListStarEigenspaceBasis",
       "symbol": "sagejs_p1list_star_eigenspace_basis",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:p1ListStarMatrix",
@@ -1937,7 +2127,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "p1ListStarMatrix",
       "symbol": "sagejs_p1list_star_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-typed-python",
+      "family": "modular-symbols"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyAdd",
@@ -1946,7 +2137,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyAdd",
       "symbol": "poly_add",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyCoefficients",
@@ -1955,7 +2147,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyCoefficients",
       "symbol": "poly_coefficients",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyDivExact",
@@ -1964,7 +2157,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyDivExact",
       "symbol": "poly_divexact_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyEqual",
@@ -1973,7 +2167,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyEqual",
       "symbol": "poly_equal",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyExactRoots",
@@ -1982,7 +2177,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyExactRoots",
       "symbol": "exact_poly_roots",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyFactor",
@@ -1991,7 +2187,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyFactor",
       "symbol": "poly_factor_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyInflate",
@@ -2000,7 +2197,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyInflate",
       "symbol": "poly_inflate",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyInvSeries",
@@ -2009,7 +2207,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyInvSeries",
       "symbol": "poly_inv_series",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyMul",
@@ -2018,7 +2217,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyMul",
       "symbol": "poly_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyMullow",
@@ -2027,7 +2227,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyMullow",
       "symbol": "poly_mullow",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyNeg",
@@ -2036,7 +2237,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyNeg",
       "symbol": "poly_neg",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyPow",
@@ -2045,7 +2247,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyPow",
       "symbol": "poly_pow",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyPowTrunc",
@@ -2054,7 +2257,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyPowTrunc",
       "symbol": "poly_pow_trunc",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyShiftLeft",
@@ -2063,7 +2267,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyShiftLeft",
       "symbol": "poly_shift_left",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyShiftRight",
@@ -2072,7 +2277,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyShiftRight",
       "symbol": "poly_shift_right",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polySub",
@@ -2081,7 +2287,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polySub",
       "symbol": "poly_sub",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyToString",
@@ -2090,7 +2297,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyToString",
       "symbol": "poly_to_string",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyTruncate",
@@ -2099,7 +2307,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyTruncate",
       "symbol": "poly_truncate",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:polyValuation",
@@ -2108,7 +2317,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "polyValuation",
       "symbol": "poly_valuation",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:primePi",
@@ -2117,7 +2327,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "primePi",
       "symbol": "prime_pi_count",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:primorial",
@@ -2126,7 +2337,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "primorial",
       "symbol": "primorial",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qfbClassGroupData",
@@ -2135,7 +2347,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qfbClassGroupData",
       "symbol": "qfb_class_group_data_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qfbClassNumber",
@@ -2144,7 +2357,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qfbClassNumber",
       "symbol": "qfb_class_number_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qfbNucomp",
@@ -2153,7 +2367,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qfbNucomp",
       "symbol": "qfb_nucomp_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qfbPow",
@@ -2162,7 +2377,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qfbPow",
       "symbol": "qfb_pow_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qfbReducedForms",
@@ -2171,7 +2387,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qfbReducedForms",
       "symbol": "qfb_reduced_forms_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarAbs",
@@ -2180,7 +2397,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarAbs",
       "symbol": "sagejs_qqbar_abs",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarAdd",
@@ -2189,7 +2407,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarAdd",
       "symbol": "sagejs_qqbar_add",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarApprox",
@@ -2198,7 +2417,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarApprox",
       "symbol": "sagejs_qqbar_approx",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarCompareReal",
@@ -2207,7 +2427,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarCompareReal",
       "symbol": "sagejs_qqbar_compare_real",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarConjugate",
@@ -2216,7 +2437,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarConjugate",
       "symbol": "sagejs_qqbar_conjugate",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarDegree",
@@ -2225,7 +2447,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarDegree",
       "symbol": "sagejs_qqbar_degree",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarDiv",
@@ -2234,7 +2457,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarDiv",
       "symbol": "sagejs_qqbar_div",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarEqual",
@@ -2243,7 +2467,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarEqual",
       "symbol": "sagejs_qqbar_equal",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarFromRational",
@@ -2252,7 +2477,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarFromRational",
       "symbol": "sagejs_qqbar_from_rational",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarI",
@@ -2261,7 +2487,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarI",
       "symbol": "sagejs_qqbar_i",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarImag",
@@ -2270,7 +2497,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarImag",
       "symbol": "sagejs_qqbar_imag",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarIsRational",
@@ -2279,7 +2507,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarIsRational",
       "symbol": "sagejs_qqbar_is_rational",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarIsReal",
@@ -2288,7 +2517,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarIsReal",
       "symbol": "sagejs_qqbar_is_real",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarMatrix",
@@ -2297,7 +2527,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarMatrix",
       "symbol": "sagejs_qqbar_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarMatrixScalarMul",
@@ -2306,7 +2537,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarMatrixScalarMul",
       "symbol": "sagejs_qqbar_matrix_scalar_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarMinpolyCoefficients",
@@ -2315,7 +2547,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarMinpolyCoefficients",
       "symbol": "sagejs_qqbar_minpoly_coefficients",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarMul",
@@ -2324,7 +2557,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarMul",
       "symbol": "sagejs_qqbar_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarNeg",
@@ -2333,7 +2567,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarNeg",
       "symbol": "sagejs_qqbar_neg",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarPow",
@@ -2342,7 +2577,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarPow",
       "symbol": "sagejs_qqbar_pow",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarPowRational",
@@ -2351,7 +2587,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarPowRational",
       "symbol": "sagejs_qqbar_pow_rational",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarReal",
@@ -2360,7 +2597,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarReal",
       "symbol": "sagejs_qqbar_real",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarRootOfUnity",
@@ -2369,7 +2607,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarRootOfUnity",
       "symbol": "sagejs_qqbar_root_of_unity",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarSqrt",
@@ -2378,7 +2617,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarSqrt",
       "symbol": "sagejs_qqbar_sqrt",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarSub",
@@ -2387,7 +2627,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarSub",
       "symbol": "sagejs_qqbar_sub",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqbarToString",
@@ -2396,7 +2637,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqbarToString",
       "symbol": "sagejs_qqbar_to_string",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "algebraic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqEisensteinSeries",
@@ -2405,7 +2647,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqEisensteinSeries",
       "symbol": "qq_eisenstein_series",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqMatrix",
@@ -2414,7 +2657,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqMatrix",
       "symbol": "sagejs_qq_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqMatrixExportPacked",
@@ -2423,7 +2667,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqMatrixExportPacked",
       "symbol": "sagejs_qq_matrix_export_packed",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqMatrixPacked",
@@ -2432,7 +2677,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqMatrixPacked",
       "symbol": "sagejs_qq_matrix_packed",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqPolyConstant",
@@ -2441,7 +2687,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqPolyConstant",
       "symbol": "qq_poly_constant",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:qqPolyGen",
@@ -2450,7 +2697,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "qqPolyGen",
       "symbol": "qq_poly_gen",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realAdd",
@@ -2459,7 +2707,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realAdd",
       "symbol": "sagejs_real_add",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realDiv",
@@ -2468,7 +2717,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realDiv",
       "symbol": "sagejs_real_div",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realEqual",
@@ -2477,7 +2727,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realEqual",
       "symbol": "sagejs_real_equal",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realFromBigInt",
@@ -2486,7 +2737,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realFromBigInt",
       "symbol": "sagejs_real_from_bigint",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realFromRational",
@@ -2495,7 +2747,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realFromRational",
       "symbol": "sagejs_real_from_rational",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realFromString",
@@ -2504,7 +2757,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realFromString",
       "symbol": "sagejs_real_from_string",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realMul",
@@ -2513,7 +2767,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realMul",
       "symbol": "sagejs_real_mul",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realNeg",
@@ -2522,7 +2777,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realNeg",
       "symbol": "sagejs_real_neg",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realPowInt",
@@ -2531,7 +2787,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realPowInt",
       "symbol": "sagejs_real_pow_int",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realPrecision",
@@ -2540,7 +2797,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realPrecision",
       "symbol": "sagejs_real_precision",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realRound",
@@ -2549,7 +2807,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realRound",
       "symbol": "sagejs_real_round",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realSub",
@@ -2558,7 +2817,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realSub",
       "symbol": "sagejs_real_sub",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realToDouble",
@@ -2567,7 +2827,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realToDouble",
       "symbol": "sagejs_real_to_double",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:realToString",
@@ -2576,7 +2837,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "realToString",
       "symbol": "sagejs_real_to_string",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:smalljacVersion",
@@ -2585,7 +2847,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "smalljacVersion",
       "symbol": "smalljac_version_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-host-adapter",
+      "family": "metadata"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:version",
@@ -2594,7 +2857,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "version",
       "symbol": "version",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-host-adapter",
+      "family": "metadata"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:wordIsPrime",
@@ -2603,7 +2867,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "wordIsPrime",
       "symbol": "word_is_prime",
-      "disposition": "declared-ffi-dynamic",
+      "disposition": "declared-ffi",
+      "family": "exact-arithmetic",
       "declaration": "flint:n_is_prime"
     },
     {
@@ -2613,7 +2878,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "wordPrimitiveRootPrime",
       "symbol": "word_primitive_root_prime",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "exact-arithmetic"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zetaZeros",
@@ -2622,7 +2888,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zetaZeros",
       "symbol": "sagejs_zeta_zeros",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "numerical"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zmodMatrix",
@@ -2631,7 +2898,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zmodMatrix",
       "symbol": "sagejs_zmod_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zmodMatrixPacked",
@@ -2640,7 +2908,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zmodMatrixPacked",
       "symbol": "sagejs_zmod_matrix_packed",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zmodMatrixRandom",
@@ -2649,7 +2918,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zmodMatrixRandom",
       "symbol": "sagejs_zmod_matrix_random",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zmodPolyConstant",
@@ -2658,7 +2928,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zmodPolyConstant",
       "symbol": "zmod_poly_constant",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zmodPolyGen",
@@ -2667,7 +2938,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zmodPolyGen",
       "symbol": "zmod_poly_gen_value",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zzMatrix",
@@ -2676,7 +2948,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zzMatrix",
       "symbol": "sagejs_zz_matrix",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zzMatrixExportPacked",
@@ -2685,7 +2958,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zzMatrixExportPacked",
       "symbol": "sagejs_zz_matrix_export_packed",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zzMatrixPacked",
@@ -2694,7 +2968,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zzMatrixPacked",
       "symbol": "sagejs_zz_matrix_packed",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zzMatrixToQQ",
@@ -2703,7 +2978,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zzMatrixToQQ",
       "symbol": "sagejs_zz_matrix_to_qq",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "retain-representation-primitive",
+      "family": "dense-matrix-storage"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zzPolyConstant",
@@ -2712,7 +2988,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zzPolyConstant",
       "symbol": "zz_poly_constant",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zzPolyGen",
@@ -2721,7 +2998,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zzPolyGen",
       "symbol": "zz_poly_gen",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zzPolyToNmod",
@@ -2730,7 +3008,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zzPolyToNmod",
       "symbol": "zz_poly_to_nmod",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zzPolyToQQ",
@@ -2739,7 +3018,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zzPolyToQQ",
       "symbol": "zz_poly_to_qq",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-flint:zzPolyToZmod",
@@ -2748,7 +3028,8 @@
       "package": "@sagemath/sagejs-flint",
       "export": "zzPolyToZmod",
       "symbol": "zz_poly_to_zmod",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "polynomials"
     },
     {
       "id": "napi:@sagemath/sagejs-graph:automorphismGroup",
@@ -2757,7 +3038,8 @@
       "package": "@sagemath/sagejs-graph",
       "export": "automorphismGroup",
       "symbol": "automorphism_group",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "graph"
     },
     {
       "id": "napi:@sagemath/sagejs-graph:canonicalPermutation",
@@ -2766,7 +3048,8 @@
       "package": "@sagemath/sagejs-graph",
       "export": "canonicalPermutation",
       "symbol": "canonical_permutation",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "graph"
     },
     {
       "id": "napi:@sagemath/sagejs-graph:ffiGraphClose",
@@ -2775,7 +3058,8 @@
       "package": "@sagemath/sagejs-graph",
       "export": "ffiGraphClose",
       "symbol": "ffi_graph_close",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "graph"
     },
     {
       "id": "napi:@sagemath/sagejs-graph:ffiGraphCompleteCreate",
@@ -2784,7 +3068,8 @@
       "package": "@sagemath/sagejs-graph",
       "export": "ffiGraphCompleteCreate",
       "symbol": "ffi_graph_complete_create",
-      "disposition": "declared-ffi-dynamic",
+      "disposition": "declared-ffi",
+      "family": "graph",
       "declaration": "igraph:complete_graph"
     },
     {
@@ -2794,7 +3079,8 @@
       "package": "@sagemath/sagejs-graph",
       "export": "ffiGraphEdgeChecksum",
       "symbol": "ffi_graph_edge_checksum",
-      "disposition": "declared-ffi-dynamic",
+      "disposition": "declared-ffi",
+      "family": "graph",
       "declaration": "igraph:edge_checksum"
     },
     {
@@ -2804,7 +3090,8 @@
       "package": "@sagemath/sagejs-graph",
       "export": "ffiGraphEdgeCount",
       "symbol": "ffi_graph_edge_count",
-      "disposition": "declared-ffi-dynamic",
+      "disposition": "declared-ffi",
+      "family": "graph",
       "declaration": "igraph:edge_count"
     },
     {
@@ -2814,7 +3101,8 @@
       "package": "@sagemath/sagejs-graph",
       "export": "ffiGraphEdgesBorrow",
       "symbol": "ffi_graph_edges_borrow",
-      "disposition": "declared-ffi-dynamic",
+      "disposition": "declared-ffi",
+      "family": "graph",
       "declaration": "igraph:edges"
     },
     {
@@ -2824,7 +3112,8 @@
       "package": "@sagemath/sagejs-graph",
       "export": "ffiGraphVertexCount",
       "symbol": "ffi_graph_vertex_count",
-      "disposition": "declared-ffi-dynamic",
+      "disposition": "declared-ffi",
+      "family": "graph",
       "declaration": "igraph:vertex_count"
     },
     {
@@ -2834,7 +3123,8 @@
       "package": "@sagemath/sagejs-graph",
       "export": "isomorphic",
       "symbol": "isomorphic",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "graph"
     },
     {
       "id": "napi:@sagemath/sagejs-graph:layout",
@@ -2843,7 +3133,8 @@
       "package": "@sagemath/sagejs-graph",
       "export": "layout",
       "symbol": "layout",
-      "disposition": "legacy-handwritten-dynamic"
+      "disposition": "migrate-to-declared-ffi",
+      "family": "graph"
     },
     {
       "id": "native-file:bench/cowasm/buffer-landscape/c.c",
