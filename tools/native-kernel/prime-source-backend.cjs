@@ -13,6 +13,23 @@ function cName(name) {
   return `sagejs_${name}`;
 }
 
+function recordCType(name) {
+  return `sagejs_native_record_${name}`;
+}
+
+function recordFieldCName(name) {
+  return `sagejs_field_${name}`;
+}
+
+function recordForType(fn, type) {
+  const name = type.startsWith("Record:") ? type.slice(7) : undefined;
+  const record = (fn.records || []).find((candidate) => candidate.name === name);
+  if (record === undefined) {
+    throw new Error(`missing compiler-owned record schema ${type}`);
+  }
+  return record;
+}
+
 function statusFailure(message, indent) {
   return `${indent}sagejs_native_status_set(status, ` +
     `SAGEJS_NATIVE_RANGE_ERROR, ${cString(message)});`;
@@ -495,10 +512,11 @@ static napi_value sagejs_source_wrap_matrix(
 }`;
 }
 
-function declaration(local) {
+function declaration(local, fn) {
   if (local.type === "uint64") return `    uint64_t ${cName(local.name)} = 0;`;
   if (local.type === "PrimeModulusValue") {
-    return `    uint64_t ${cName(local.name)} = 0;`;
+    return `    uint64_t ${cName(local.name)} = 0;\n` +
+      `    nmod_t ${cName(local.name)}_nmod;`;
   }
   if (local.type === "bool") return `    int ${cName(local.name)} = 0;`;
   if (local.type === "UInt64Buffer") {
@@ -509,6 +527,10 @@ function declaration(local) {
   }
   if (local.type === "PrimeModulus") {
     return `    const nmod_t *${cName(local.name)} = NULL;`;
+  }
+  if (local.type.startsWith("Record:")) {
+    const record = recordForType(fn, local.type);
+    return `    ${recordCType(record.name)} ${cName(local.name)} = {0};`;
   }
   throw new Error(`unsupported source-transparent local ${local.type}`);
 }
@@ -540,6 +562,9 @@ function emitStatementBody(operation, indent) {
   }
   if (operation.kind === "source.copy") {
     if (operation.type === "UInt64Buffer") {
+      if (operation.borrowed) {
+        return `${indent}${target} = ${cName(operation.source)};`;
+      }
       return [
         `${indent}sagejs_source_buffer_clear(&${target});`,
         `${indent}${target} = ${cName(operation.source)};`,
@@ -555,7 +580,34 @@ function emitStatementBody(operation, indent) {
         `${indent}${cName(operation.source)} = NULL;`,
       ].join("\n");
     }
+    if (operation.type === "PrimeModulusValue") {
+      return [
+        `${indent}${target} = ${cName(operation.source)};`,
+        `${indent}nmod_init(&${target}_nmod, (ulong) ${target});`,
+      ].join("\n");
+    }
     return `${indent}${target} = ${cName(operation.source)};`;
+  }
+  if (operation.kind === "source.record.construct") {
+    return operation.fields.map((field) =>
+      `${indent}${target}.${recordFieldCName(field.name)} = ` +
+        `${cName(field.value)};`
+    ).join("\n");
+  }
+  if (operation.kind === "source.record.get") {
+    const assignment = `${indent}${target} = ` +
+      `${cName(operation.source)}.${recordFieldCName(operation.field)};`;
+    if (operation.type !== "PrimeModulusValue") return assignment;
+    return [
+      assignment,
+      `${indent}if (${target} < UINT64_C(2) || ` +
+        `${target} > (uint64_t) UINT32_MAX)`,
+      `${indent}{`,
+      statusFailure(`${operation.record}.${operation.field} must be a prime between 2 and 2^32 - 1`, `${indent}    `),
+      `${indent}    goto fail;`,
+      `${indent}}`,
+      `${indent}nmod_init(&${target}_nmod, (ulong) ${target});`,
+    ].join("\n");
   }
   if (operation.kind.startsWith("source.matrix.") &&
       ["rows", "columns", "modulus"].includes(operation.kind.slice(14))) {
@@ -801,6 +853,10 @@ function primeSourceCoreSignature(fn, prototype = false) {
     if (["uint64", "PrimeModulusValue"].includes(param.type)) {
       return `uint64_t ${cName(param.name)}`;
     }
+    if (param.type.startsWith("Record:")) {
+      return `${recordCType(recordForType(fn, param.type).name)} ` +
+        `${cName(param.name)}`;
+    }
     throw new Error(`unsupported source-transparent parameter ${param.type}`);
   });
   return `int sagejs_kernel_${fn.name}(` + [
@@ -809,7 +865,9 @@ function primeSourceCoreSignature(fn, prototype = false) {
 }
 
 function emitPrimeSourceCoreFunction(fn) {
-  const buffers = fn.locals.filter((local) => local.type === "UInt64Buffer");
+  const buffers = fn.locals.filter((local) =>
+    local.type === "UInt64Buffer" && local.ownership !== "borrowed"
+  );
   const matrices = fn.locals.filter((local) => local.type === "PrimeFieldMatrix");
   const cleanup = [
     ...buffers.map((local) =>
@@ -837,14 +895,34 @@ function emitPrimeSourceCoreFunction(fn) {
       `    nmod_init(&${cName(param.name)}_nmod, (ulong) ${cName(param.name)});`,
     ].join("\n"))
     .join("\n");
+  const recordModulusValidation = fn.params.flatMap((param) => {
+    if (!param.type.startsWith("Record:")) return [];
+    const record = recordForType(fn, param.type);
+    return record.fields
+      .filter((field) => field.type === "PrimeModulusValue")
+      .map((field) => {
+        const value = `${cName(param.name)}.${recordFieldCName(field.name)}`;
+        return [
+          `    if (${value} < UINT64_C(2) ||`,
+          `        ${value} > (uint64_t) UINT32_MAX)`,
+          "    {",
+          "        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,",
+          `            ${cString(param.name + "." + field.name +
+            " must be a prime between 2 and 2^32 - 1")});`,
+          "        goto fail;",
+          "    }",
+        ].join("\n");
+      });
+  }).join("\n");
   return `${primeSourceCoreSignature(fn)}
 {
 ${modulusDeclarations}
-${fn.locals.map(declaration).join("\n")}
+${fn.locals.map((local) => declaration(local, fn)).join("\n")}
     sagejs_native_status_reset(status);
     ${fn.returnType === "PrimeFieldMatrix"
       ? "*sagejs_native_output = NULL;" : "*sagejs_native_output = 0;"}
 ${modulusInitialization}
+${recordModulusValidation}
 
 ${fn.body.map((item) => emitStatement(item, "    ")).join("\n")}
     sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
@@ -907,6 +985,46 @@ function emitPrimeSourceNodeAdapter(fn) {
           "        return NULL;",
           "    }",
         ].join("\n"));
+      }
+      args.push(cName(param.name));
+    } else if (param.type.startsWith("Record:")) {
+      const record = recordForType(fn, param.type);
+      declarations.push(
+        `    ${recordCType(record.name)} ${cName(param.name)} = {0};`,
+      );
+      for (const field of record.fields) {
+        const property = `sagejs_${param.name}_${field.name}_property`;
+        declarations.push(`    napi_value ${property} = NULL;`);
+        parse.push([
+          `    if (!sagejs_native_check_napi(env,`,
+          `            napi_get_named_property(env, args[${index}], ` +
+            `${cString(field.name)}, &${property})))`,
+          `        return NULL;`,
+        ].join("\n"));
+        const target = `${cName(param.name)}.${recordFieldCName(field.name)}`;
+        if (field.type === "UInt64Buffer") {
+          parse.push(
+            `    if (!sagejs_source_get_u64_buffer(env, ${property}, ` +
+              `&${target}, ${cString(param.name + "." + field.name +
+                " must be a BigUint64Array")})) return NULL;`,
+          );
+        } else {
+          parse.push(
+            `    if (!get_uint64(env, ${property}, &${target})) return NULL;`,
+          );
+          if (field.type === "PrimeModulusValue") {
+            parse.push([
+              `    if (${target} < UINT64_C(2) ||`,
+              `        ${target} > (uint64_t) UINT32_MAX)`,
+              "    {",
+              "        napi_throw_range_error(env, NULL,",
+              `            ${cString(param.name + "." + field.name +
+                " must be a prime between 2 and 2^32 - 1")});`,
+              "        return NULL;",
+              "    }",
+            ].join("\n"));
+          }
+        }
       }
       args.push(cName(param.name));
     } else {

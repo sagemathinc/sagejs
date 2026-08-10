@@ -142,6 +142,7 @@ they do not all mean “use the corresponding C primitive.”
 | `Int64Buffer` | Borrowed packed signed-64-bit exact storage; an unrepresentable write raises rather than truncates. |
 | `IntegerBuffer` | Packed arbitrary-precision exact integer storage with explicit capacity. |
 | `UInt64Buffer` | Borrowed packed unsigned-64-bit storage, commonly used at library boundaries. |
+| `NativeRecord` subclass | A fixed-layout value record containing checked scalars and borrowed buffers; the compiler owns its ABI layout. |
 
 The type vocabulary should grow in response to real mathematical code. A new
 type must specify:
@@ -302,6 +303,68 @@ loop bounds.
 Ordinary lists are useful for the fallback and small calls. Long-running code
 should generally pack data once, reuse storage across calls, and avoid
 repeated object conversion.
+
+### Group related values with compiler-owned records
+
+Small mathematical data structures should not force every helper to accept a
+long, error-prone list of parallel arguments. Define their schema using an
+ordinary CPython-parseable class:
+
+```python
+from sagejs.native import (
+    NativeRecord,
+    PrimeFieldModulus,
+    UInt64Buffer,
+    native,
+    uint64,
+)
+
+
+class DensePrimeMatrix(NativeRecord):
+    entries: UInt64Buffer
+    rows: uint64
+    columns: uint64
+    modulus: PrimeFieldModulus
+
+
+@native
+def trace(matrix: DensePrimeMatrix) -> uint64:
+    if matrix.rows != matrix.columns:
+        raise ValueError("trace requires a square matrix")
+    total = 0
+    for index in range(matrix.rows):
+        total += matrix.entries[index * matrix.columns + index]
+    return total % matrix.modulus
+```
+
+In fallback execution, `DensePrimeMatrix(entries, rows, columns, modulus)` is
+a normal Python object with those attributes. In native execution it is a
+compiler-generated C value struct. Passing it to another compiled function is
+a direct by-value core call: no dictionary lookup, host callback, allocation,
+or object-at-a-time N-API work occurs inside the kernel.
+
+This is intentionally not a public spelling for a C pointer. In the initial
+record model:
+
+- fields currently use `uint64`, `PrimeFieldModulus`, or `UInt64Buffer`;
+  additional scalar and packed-storage fields should extend the same general
+  record mechanism rather than introduce domain-specific struct intrinsics;
+- the schema contains checked scalar values and borrowed typed buffers;
+- fields have a fixed order and type, and have no defaults;
+- records may be constructed and read inside a kernel;
+- a borrowed buffer field's contents may be mutated, with the same checked
+  copy-back contract as a direct buffer argument, but fields cannot be rebound;
+- the record value and every borrowed field are valid only for the synchronous
+  call and may not be returned or retained; and
+- unknown fields, unsupported field types, methods, defaults, and escaping
+  records fail compilation.
+
+The host adapter accepts the fallback class instance or any object exposing
+the declared fields, validates each field once, and roots the underlying
+packed buffers until the call returns. The isolated core sees only the fixed C
+struct. This solves the useful part of the C “pointer to a dimensions-and-data
+struct” idiom without making pointer arithmetic, destructors, or borrowed
+lifetime bookkeeping part of mathematical source.
 
 ## Compiled functions call each other directly
 

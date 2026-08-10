@@ -1,15 +1,16 @@
 """Source-transparent dense linear algebra over small prime fields.
 
-The public ABI is deliberately independent of Node and FLINT: caller-owned
-row-major ``UInt64Buffer`` values, explicit dimensions, and an explicit prime.
-Every public function validates the complete storage shape before indexing it.
-The same ordinary Python bodies are the dynamic fallback and the input to the
-host-isolated native compiler.
+The public ABI is deliberately independent of Node and FLINT: a compiler-owned
+matrix value containing caller-owned row-major ``UInt64Buffer`` storage,
+explicit dimensions, and an explicit prime. Every public function validates
+the complete storage shape before indexing it. The same ordinary Python bodies
+are the dynamic fallback and the input to the host-isolated native compiler.
 """
 
 from __future__ import annotations
 
 from sagejs.native import (
+    NativeRecord,
     PrimeFieldModulus,
     UInt64Buffer,
     native,
@@ -20,13 +21,23 @@ from sagejs.native import (
 )
 
 
+class DensePrimeMatrix(NativeRecord):
+    """Borrowed packed storage and shape for a matrix over ``GF(modulus)``."""
+
+    entries: UInt64Buffer
+    rows: uint64
+    columns: uint64
+    modulus: PrimeFieldModulus
+
+
 @native
 def _dense_prime_blocked_full_rank(
-    entries: UInt64Buffer,
-    size: uint64,
-    modulus: PrimeFieldModulus,
+    matrix: DensePrimeMatrix,
 ) -> uint64:
     """Try a cache-aware row-pivoted panel LU factorization in place."""
+    entries = matrix.entries
+    size = matrix.rows
+    modulus = matrix.modulus
     panel = 0
     success = 1
     while panel < size and success != 0:
@@ -97,11 +108,12 @@ def _dense_prime_blocked_full_rank(
 
 @native
 def _dense_prime_rank_inplace(
-    entries: UInt64Buffer,
-    rows: uint64,
-    columns: uint64,
-    modulus: PrimeFieldModulus,
+    matrix: DensePrimeMatrix,
 ) -> uint64:
+    entries = matrix.entries
+    rows = matrix.rows
+    columns = matrix.columns
+    modulus = matrix.modulus
     rank = 0
     for column in range(columns):
         pivot = rank
@@ -141,11 +153,12 @@ def _dense_prime_rank_inplace(
 
 @native
 def _dense_prime_rref_inplace(
-    entries: UInt64Buffer,
-    rows: uint64,
-    columns: uint64,
-    modulus: PrimeFieldModulus,
+    matrix: DensePrimeMatrix,
 ) -> uint64:
+    entries = matrix.entries
+    rows = matrix.rows
+    columns = matrix.columns
+    modulus = matrix.modulus
     rank = 0
     for column in range(columns):
         pivot = rank
@@ -187,64 +200,65 @@ def _dense_prime_rref_inplace(
 
 @native
 def dense_prime_rank(
-    source: UInt64Buffer,
+    source: DensePrimeMatrix,
     workspace: UInt64Buffer,
-    rows: uint64,
-    columns: uint64,
-    modulus: PrimeFieldModulus,
 ) -> uint64:
     """Return rank without mutating ``source``; ``workspace`` is scratch."""
+    rows = source.rows
+    columns = source.columns
+    entries = source.entries
+    modulus = source.modulus
     if rows > 4294967295 or columns > 4294967295:
         raise ValueError('dense prime matrix dimensions are too large')
     count = rows * columns
-    if len(source) != count or len(workspace) != count:
+    if len(entries) != count or len(workspace) != count:
         raise ValueError('dense prime rank buffer shape mismatch')
     for index in range(count):
-        workspace[index] = source[index]
+        workspace[index] = entries[index]
+    working = DensePrimeMatrix(workspace, rows, columns, modulus)
     if rows == columns and rows >= 32:
-        if _dense_prime_blocked_full_rank(workspace, rows, modulus) != 0:
+        if _dense_prime_blocked_full_rank(working) != 0:
             return rows
         for index in range(count):
-            workspace[index] = source[index]
-    return _dense_prime_rank_inplace(workspace, rows, columns, modulus)
+            workspace[index] = entries[index]
+    return _dense_prime_rank_inplace(working)
 
 
 @native
 def dense_prime_rref(
-    source: UInt64Buffer,
+    source: DensePrimeMatrix,
     output: UInt64Buffer,
-    rows: uint64,
-    columns: uint64,
-    modulus: PrimeFieldModulus,
 ) -> uint64:
     """Write canonical RREF to ``output`` and return its rank."""
+    rows = source.rows
+    columns = source.columns
+    entries = source.entries
+    modulus = source.modulus
     if rows > 4294967295 or columns > 4294967295:
         raise ValueError('dense prime matrix dimensions are too large')
     count = rows * columns
-    if len(source) != count or len(output) != count:
+    if len(entries) != count or len(output) != count:
         raise ValueError('dense prime RREF buffer shape mismatch')
     for index in range(count):
-        output[index] = source[index]
+        output[index] = entries[index]
+    working = DensePrimeMatrix(output, rows, columns, modulus)
     if rows == columns and rows >= 32:
-        if _dense_prime_blocked_full_rank(output, rows, modulus) != 0:
+        if _dense_prime_blocked_full_rank(working) != 0:
             for index in range(count):
                 output[index] = 0
             for index in range(rows):
                 output[index * columns + index] = 1
             return rows
         for index in range(count):
-            output[index] = source[index]
-    return _dense_prime_rref_inplace(output, rows, columns, modulus)
+            output[index] = entries[index]
+    return _dense_prime_rref_inplace(working)
 
 
 @native
 def dense_prime_right_kernel(
-    source: UInt64Buffer,
+    source: DensePrimeMatrix,
     workspace: UInt64Buffer,
     output: UInt64Buffer,
-    rows: uint64,
-    columns: uint64,
-    modulus: PrimeFieldModulus,
 ) -> uint64:
     """Write a canonical RREF row basis of the right kernel.
 
@@ -252,15 +266,19 @@ def dense_prime_right_kernel(
     ``columns * columns`` entries, of which the returned nullity times
     ``columns`` entries are significant.
     """
+    rows = source.rows
+    columns = source.columns
+    entries = source.entries
+    modulus = source.modulus
     if rows > 4294967295 or columns > 4294967295:
         raise ValueError('dense prime matrix dimensions are too large')
     source_count = rows * columns
     output_count = columns * columns
-    if len(source) != source_count or len(workspace) != source_count:
+    if len(entries) != source_count or len(workspace) != source_count:
         raise ValueError('dense prime right-kernel input shape mismatch')
     if len(output) != output_count:
         raise ValueError('dense prime right-kernel output shape mismatch')
-    rank = dense_prime_rref(source, workspace, rows, columns, modulus)
+    rank = dense_prime_rref(source, workspace)
     nullity = columns - rank
     active = nullity * columns
     for index in range(active):
@@ -286,8 +304,8 @@ def dense_prime_right_kernel(
                     modulus,
                 )
             basis_row += 1
-    normalized_rank = _dense_prime_rref_inplace(
-        output, nullity, columns, modulus)
+    basis = DensePrimeMatrix(output, nullity, columns, modulus)
+    normalized_rank = _dense_prime_rref_inplace(basis)
     if normalized_rank != nullity:
         raise ValueError('internal right-kernel basis lost rank')
     return nullity
@@ -295,34 +313,41 @@ def dense_prime_right_kernel(
 
 @native
 def dense_prime_solve(
-    left: UInt64Buffer,
-    right: UInt64Buffer,
+    left: DensePrimeMatrix,
+    right: DensePrimeMatrix,
     workspace: UInt64Buffer,
     output: UInt64Buffer,
-    size: uint64,
-    right_columns: uint64,
-    modulus: PrimeFieldModulus,
 ) -> uint64:
     """Solve ``left * output == right``; return zero when singular."""
+    size = left.rows
+    right_columns = right.columns
+    modulus = left.modulus
+    left_entries = left.entries
+    right_entries = right.entries
     if size > 4294967295 or right_columns > 4294967295:
         raise ValueError('dense prime solve dimensions are too large')
+    if left.columns != size or right.rows != size:
+        raise ValueError('dense prime solve matrix dimensions disagree')
+    if right.modulus != modulus:
+        raise ValueError('dense prime solve moduli disagree')
     left_count = size * size
     right_count = size * right_columns
     augmented_columns = size + right_columns
     workspace_count = size * augmented_columns
-    if len(left) != left_count or len(right) != right_count:
+    if len(left_entries) != left_count or len(right_entries) != right_count:
         raise ValueError('dense prime solve input shape mismatch')
     if len(workspace) != workspace_count or len(output) != right_count:
         raise ValueError('dense prime solve output shape mismatch')
     for row in range(size):
         for column in range(size):
             workspace[row * augmented_columns + column] = (
-                left[row * size + column])
+                left_entries[row * size + column])
         for column in range(right_columns):
             workspace[row * augmented_columns + size + column] = (
-                right[row * right_columns + column])
-    rank = _dense_prime_rref_inplace(
+                right_entries[row * right_columns + column])
+    augmented = DensePrimeMatrix(
         workspace, size, augmented_columns, modulus)
+    rank = _dense_prime_rref_inplace(augmented)
     if rank != size:
         return 0
     for row in range(size):
@@ -340,6 +365,7 @@ def dense_prime_solve(
 
 
 __all__ = [
+    'DensePrimeMatrix',
     'dense_prime_rank',
     'dense_prime_rref',
     'dense_prime_right_kernel',

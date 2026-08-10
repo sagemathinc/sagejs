@@ -794,6 +794,39 @@ function emitPrimeSourcePublicFunction(fn) {
           `${jsString(param.name + " must be a prime between 2 and 2^32 - 1")});\n` +
         "  }";
     }
+    if (param.type.startsWith("Record:")) {
+      const recordName = param.type.slice(7);
+      const record = (fn.records || []).find((candidate) =>
+        candidate.name === recordName
+      );
+      if (record === undefined) {
+        throw new Error(`missing compiler-owned record ${recordName}`);
+      }
+      const lines = [
+        `  if (${param.name} === null || (typeof ${param.name} !== "object" && ` +
+          `typeof ${param.name} !== "function")) {`,
+        `    throw new TypeError(${jsString(param.name + " must be a " + recordName)});`,
+        "  }",
+      ];
+      const nativeFields = [];
+      for (const field of record.fields) {
+        const local = `sagejs_${param.name}_${field.name}`;
+        const access = `Reflect.get(${param.name}, ${jsString(field.name)})`;
+        if (field.type === "UInt64Buffer") {
+          lines.push(`  const ${local} = uint64NativeBuffer(${access}, ` +
+            `${jsString(param.name + "." + field.name)});`);
+          nativeFields.push(`${field.name}: ${local}.typed`);
+        } else {
+          lines.push(`  const ${local} = uint64RecordField(${access}, ` +
+            `${jsString(param.name + "." + field.name)}, ` +
+            `${field.type === "PrimeModulusValue"});`);
+          nativeFields.push(`${field.name}: ${local}`);
+        }
+      }
+      lines.push(`  const sagejs_${param.name} = { ` +
+        `${nativeFields.join(", ")} };`);
+      return lines.join("\n");
+    }
     throw new Error(`unsupported source-transparent argument ${param.type}`);
   }).join("\n");
   const nativeArguments = fn.params
@@ -801,9 +834,21 @@ function emitPrimeSourcePublicFunction(fn) {
       ? `sagejs_${param.name}.native`
       : param.type === "UInt64Buffer"
         ? `sagejs_${param.name}.typed`
+        : param.type.startsWith("Record:")
+          ? `sagejs_${param.name}`
         : param.name)
     .join(", ");
-  const buffers = fn.params.filter((param) => param.type === "UInt64Buffer");
+  const buffers = fn.params.flatMap((param) => {
+    if (param.type === "UInt64Buffer") return [`sagejs_${param.name}`];
+    if (!param.type.startsWith("Record:")) return [];
+    const recordName = param.type.slice(7);
+    const record = (fn.records || []).find((candidate) =>
+      candidate.name === recordName
+    );
+    return record.fields
+      .filter((field) => field.type === "UInt64Buffer")
+      .map((field) => `sagejs_${param.name}_${field.name}`);
+  });
   const nativeCall = `primeFieldNativeCall(${jsString(fn.name)}, ` +
     `[${nativeArguments}])`;
   let result;
@@ -814,8 +859,8 @@ function emitPrimeSourcePublicFunction(fn) {
           "try {",
           `    return ${nativeCall};`,
           "  } finally {",
-          ...buffers.map((param) =>
-            `    sagejs_${param.name}.copyBack();`
+          ...buffers.map((buffer) =>
+            `    ${buffer}.copyBack();`
           ),
           "  }",
         ].join("\n  ");
@@ -1226,6 +1271,20 @@ function uint64NativeBuffer(value, argument) {
       }
     },
   };
+}
+
+function uint64RecordField(value, argument, modulus = false) {
+  if (!(typeof value === "bigint" || Number.isSafeInteger(value))) {
+    nativeRaise("TypeError", argument + " must be an exact integer");
+  }
+  if (value < 0 || value > 18446744073709551615n) {
+    nativeRaise("OverflowError", argument + " is outside uint64");
+  }
+  if (modulus && (value < 2 || value > 4294967295n)) {
+    nativeRaise("ValueError", argument +
+      " must be a prime between 2 and 2^32 - 1");
+  }
+  return value;
 }
 
 function integerNativeBuffer(value, argument) {

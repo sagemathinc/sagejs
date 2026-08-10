@@ -25,7 +25,7 @@ const {
 } = require("./provenance.cjs");
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 
-const IR_VERSION = 20;
+const IR_VERSION = 21;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -619,9 +619,58 @@ function isEmptyDecoratorStatement(statement) {
   );
 }
 
+function isNativeRecordClass(statement) {
+  return nodeType(statement) === "AST_Class" &&
+    array(statement.bases).length === 1 &&
+    nodeType(array(statement.bases)[0]) === "AST_SymbolRef" &&
+    array(statement.bases)[0].name === "NativeRecord";
+}
+
+function nativeRecordSchemas(topLevel, filename) {
+  const declarations = topLevel.filter(isNativeRecordClass);
+  const names = new Set(declarations.map((record) => record.name?.name));
+  const recordTypes = new Map(Array.from(names, (name) => [name, true]));
+  const supportedFields = new Set([
+    "UInt64Buffer", "uint64", "PrimeModulusValue",
+  ]);
+  const schemas = declarations.map((record) => {
+    const name = record.name?.name;
+    expect(isCIdentifier(name), `${filename}: native record name must be a C identifier`);
+    expect(array(record.decorators).length === 0,
+      `${filename}: native record ${name} may not have decorators`);
+    const fields = array(record.body).map((statement) => {
+      expect(nodeType(statement) === "AST_SimpleStatement" &&
+        nodeType(statement.body) === "AST_AnnotatedAssignment",
+      `${filename}: native record ${name} may only contain annotated fields`);
+      const annotated = statement.body;
+      expect(nodeType(annotated.target) === "AST_SymbolRef",
+        `${filename}: native record ${name} fields must be simple names`);
+      expect(annotated.value === undefined || annotated.value === null,
+        `${filename}: native record ${name}.${annotated.target.name} may not have a default`);
+      const type = canonicalType(annotated.annotation, recordTypes);
+      expect(type !== undefined && supportedFields.has(type),
+        `${filename}: unsupported native record field ` +
+          `${name}.${annotated.target.name}`);
+      return { name: annotated.target.name, type };
+    });
+    expect(fields.length > 0, `${filename}: native record ${name} has no fields`);
+    expect(new Set(fields.map((field) => field.name)).size === fields.length,
+      `${filename}: native record ${name} has duplicate fields`);
+    return {
+      name,
+      type: `Record:${name}`,
+      layout: "compiler-owned-value",
+      ownership: "borrowed-fields",
+      fields,
+    };
+  });
+  return new Map(schemas.map((schema) => [schema.name, schema]));
+}
+
 function supportedModulePreamble(statement) {
   if (isEmptyDecoratorStatement(statement) ||
       nodeType(statement) === "AST_EmptyStatement") return true;
+  if (isNativeRecordClass(statement)) return true;
   if (nodeType(statement) !== "AST_Imports") return false;
   return array(statement.imports).every((item) => {
     const moduleName = item.module?.name;
@@ -630,6 +679,8 @@ function supportedModulePreamble(statement) {
       moduleName === "math" && names.every((name) => name === "sqrt")
     ) || (
       moduleName === "typing" && names.every((name) => name === "Tuple")
+    ) || (
+      item.key === "sagejs.native"
     ) || (
       typeof item.key === "string" && item.key.startsWith("sagejs.ffi.")
     );
@@ -707,6 +758,7 @@ async function lowerSource(source, filename, options = {}) {
   }
 
   const topLevel = array(toplevel.body);
+  const records = nativeRecordSchemas(topLevel, filename);
   const foreignFunctions = ffiImports(topLevel, filename);
   const definitions = topLevel.filter(
     (statement) => nodeType(statement) === "AST_Function",
@@ -753,9 +805,9 @@ async function lowerSource(source, filename, options = {}) {
   // be compiled into the same native dependency graph rather than becoming
   // an unresolved call or a name-based intrinsic.
   for (const fn of definitions) {
-    const returnType = canonicalType(fn.return_annotation);
+    const returnType = canonicalType(fn.return_annotation, records);
     const paramTypes = array(fn.argnames).map((arg) =>
-      canonicalType(arg.annotation)
+      canonicalType(arg.annotation, records)
     );
     const legacyFieldSignature = [
       fn.return_annotation,
@@ -775,11 +827,16 @@ async function lowerSource(source, filename, options = {}) {
         type === "Float64" ||
         type === "Float64Buffer" || type === "Int64Buffer" ||
         type === "Int64Record" || type === "IntegerBuffer" ||
-        type === "UInt64Buffer"
+        type === "UInt64Buffer" || type?.startsWith("Record:")
       )
     );
     if (completeSignature || partiallyTypedSelected) {
-      const signature = signatureFromFunction(fn, filename);
+      const signature = signatureFromFunction(fn, filename, records);
+      expect(
+        !signature.returnType.startsWith("Record:"),
+        `${fn.name.name}: compiler-owned records are borrowed values and ` +
+          "may not be returned from a native kernel",
+      );
       expect(
         isIntegerSignature(signature) || isFloat64Signature(signature) ||
           isPrimeFieldSignature(signature),
@@ -817,6 +874,7 @@ async function lowerSource(source, filename, options = {}) {
               fn,
               signature,
               signatures,
+              records,
               filename,
               decoratedMode,
             )
@@ -856,6 +914,7 @@ async function lowerSource(source, filename, options = {}) {
   ));
   return {
     version: IR_VERSION,
+    records: Array.from(records.values()),
     functions: selected,
     foreignLibraries: Array.from(new Map(
       Array.from(foreignFunctions.values(), (foreign) => [

@@ -40,11 +40,22 @@
         "dense_prime_right_kernel",
         "dense_prime_solve"
       ],
-      "semantic_domain": "production rank, RREF, right kernel, and solve over canonical packed GF(p) storage",
+      "semantic_domain": "production rank, RREF, right kernel, and solve over compiler-owned matrix records with canonical packed GF(p) storage",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
       "benchmark": "bench:native:dense-prime",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
+      "id": "compiler-owned-record-witness",
+      "source": "bench/native_record_witness.py",
+      "functions": ["scaled_sum", "scale_first", "scaled_sum_constructed"],
+      "semantic_domain": "fixed-layout value records with checked scalars, borrowed mutable packed storage, construction, and direct compiled calls",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript"],
+      "benchmark": "test:native",
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {

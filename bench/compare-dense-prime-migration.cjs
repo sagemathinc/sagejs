@@ -128,6 +128,9 @@ function firstWin(rows, operation, implementation, baseline) {
   const kernel = require(compiled.modulePath);
   const flintKernel = require(compiledFlint.modulePath);
   const packed = (source) => kernel.createUInt64Buffer(source);
+  const record = (entries, rows, columns) => ({
+    entries, rows, columns, modulus,
+  });
   const rows = [];
   for (const size of sizes) {
     const wideRows = Math.max(1, Math.floor(size * 3 / 4));
@@ -147,6 +150,10 @@ function firstWin(rows, operation, implementation, baseline) {
     const wideSource = packed(wideEntries);
     const leftSource = packed(leftEntries);
     const rightSource = packed(rightEntries);
+    const squareRecord = record(squareSource, size, size);
+    const wideRecord = record(wideSource, wideRows, size);
+    const leftRecord = record(leftSource, size, size);
+    const rightRecord = record(rightSource, size, 4);
     const rankWorkspace = packed(size * size);
     const rrefOutput = packed(size * size);
     const kernelWorkspace = packed(wideRows * size);
@@ -159,10 +166,10 @@ function firstWin(rows, operation, implementation, baseline) {
 
     const expectedRank = flint.matrixRank(square);
     assert.equal(kernel.dense_prime_rank(
-      squareSource, rankWorkspace, size, size, modulus,
+      squareRecord, rankWorkspace,
     ), expectedRank);
     assert.equal(kernel.dense_prime_rref(
-      squareSource, rrefOutput, size, size, modulus,
+      squareRecord, rrefOutput,
     ), expectedRank);
     assert.equal(flint.matrixEqual(
       flint.nmodMatrix(size, size, Array.from(rrefOutput), modulus),
@@ -170,12 +177,9 @@ function firstWin(rows, operation, implementation, baseline) {
     ), true);
     const expectedWideRank = flint.matrixRank(wide);
     const nullity = kernel.dense_prime_right_kernel(
-      wideSource,
+      wideRecord,
       kernelWorkspace,
       kernelOutput,
-      wideRows,
-      size,
-      modulus,
     );
     assert.equal(nullity, size - expectedWideRank);
     assert.equal(flint.matrixEqual(
@@ -188,13 +192,10 @@ function firstWin(rows, operation, implementation, baseline) {
       flint.matrixRightKernel(wide),
     ), true);
     assert.equal(kernel.dense_prime_solve(
-      leftSource,
-      rightSource,
+      leftRecord,
+      rightRecord,
       solveWorkspace,
       solveOutput,
-      size,
-      4,
-      modulus,
     ), 1);
     assert.equal(flint.matrixEqual(
       flint.nmodMatrix(size, 4, Array.from(solveOutput), modulus),
@@ -232,9 +233,9 @@ function firstWin(rows, operation, implementation, baseline) {
       size,
       rank: operationTimes(
         () => kernel.dense_prime_rank(
-          squareSource, rankWorkspace, size, size, modulus),
+          squareRecord, rankWorkspace),
         () => kernel.dense_prime_rank(
-          squareSource, packed(size * size), size, size, modulus),
+          squareRecord, packed(size * size)),
         () => flintKernel.flint_dense_prime_rank(
           squareSource, size, size, modulus),
         () => flintKernel.flint_dense_prime_rank(
@@ -244,9 +245,9 @@ function firstWin(rows, operation, implementation, baseline) {
       ),
       rref: operationTimes(
         () => kernel.dense_prime_rref(
-          squareSource, rrefOutput, size, size, modulus),
+          squareRecord, rrefOutput),
         () => kernel.dense_prime_rref(
-          squareSource, packed(size * size), size, size, modulus),
+          squareRecord, packed(size * size)),
         () => flintKernel.flint_dense_prime_rref(
           declaredRrefOutput, squareSource, size, size, modulus),
         () => flintKernel.flint_dense_prime_rref(
@@ -256,20 +257,14 @@ function firstWin(rows, operation, implementation, baseline) {
       ),
       rightKernel: operationTimes(
         () => kernel.dense_prime_right_kernel(
-          wideSource,
+          wideRecord,
           kernelWorkspace,
           kernelOutput,
-          wideRows,
-          size,
-          modulus,
         ),
         () => kernel.dense_prime_right_kernel(
-          wideSource,
+          wideRecord,
           packed(wideRows * size),
           packed(size * size),
-          wideRows,
-          size,
-          modulus,
         ),
         () => flintKernel.flint_dense_prime_right_kernel(
           declaredKernelOutput, wideSource, wideRows, size, modulus),
@@ -280,22 +275,16 @@ function firstWin(rows, operation, implementation, baseline) {
       ),
       solve: operationTimes(
         () => kernel.dense_prime_solve(
-          leftSource,
-          rightSource,
+          leftRecord,
+          rightRecord,
           solveWorkspace,
           solveOutput,
-          size,
-          4,
-          modulus,
         ),
         () => kernel.dense_prime_solve(
-          leftSource,
-          rightSource,
+          leftRecord,
+          rightRecord,
           packed(size * (size + 4)),
           packed(size * 4),
-          size,
-          4,
-          modulus,
         ),
         () => flintKernel.flint_dense_prime_solve(
           declaredSolveOutput,

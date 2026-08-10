@@ -85,6 +85,10 @@ function packed(kernel, entriesOrLength) {
   return kernel.createUInt64Buffer(entriesOrLength);
 }
 
+function denseRecord(entries, rows, columns, modulus) {
+  return { entries, rows, columns, modulus };
+}
+
 function runSage(source, environment) {
   const directory = mkdtempSync(join(tmpdir(), "sagejs-dense-prime-script-"));
   try {
@@ -110,6 +114,7 @@ function runSage(source, environment) {
 const productionScript = String.raw`
 import sagejs.runtime as runtime
 from sagejs.kernels.dense_prime import (
+    DensePrimeMatrix,
     dense_prime_rank,
     dense_prime_rref,
     dense_prime_right_kernel,
@@ -134,24 +139,23 @@ for modulus in [2, 3, 5, 101, 65521, 4294967291]:
             columns,
         )
         source_buffer = list(entries)
+        source_record = DensePrimeMatrix(
+            source_buffer, rows, columns, modulus)
         rank_workspace = [0 for _index in range(rows * columns)]
         assert dense_prime_rank(
-            source_buffer, rank_workspace, rows, columns, modulus,
+            source_record, rank_workspace,
         ) == legacy_rank
         rref_output = [0 for _index in range(rows * columns)]
         rref_rank = dense_prime_rref(
-            source_buffer, rref_output, rows, columns, modulus)
+            source_record, rref_output)
         assert rref_rank == legacy_rank
         assert matrix(field, rows, columns, rref_output) == legacy_rref
         kernel_workspace = [0 for _index in range(rows * columns)]
         kernel_output = [0 for _index in range(columns * columns)]
         nullity = dense_prime_right_kernel(
-            source_buffer,
+            source_record,
             kernel_workspace,
             kernel_output,
-            rows,
-            columns,
-            modulus,
         )
         assert matrix(
             field,
@@ -185,13 +189,10 @@ for modulus in [2, 3, 5, 101, 65521, 4294967291]:
     solve_workspace = [0 for _index in range(size * (size + 3))]
     solve_output = [0 for _index in range(size * 3)]
     assert dense_prime_solve(
-        left_entries,
-        right_entries,
+        DensePrimeMatrix(left_entries, size, size, modulus),
+        DensePrimeMatrix(right_entries, size, 3, modulus),
         solve_workspace,
         solve_output,
-        size,
-        3,
-        modulus,
     ) == 1
     assert matrix(field, size, 3, solve_output) == legacy_solution
     assert left.solve_right(right) == legacy_solution
@@ -228,7 +229,8 @@ print("dense-prime-production-ok")
     const header = readFileSync(compiled.coreHeaderPath, "utf8");
     assert.doesNotMatch(core, /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/);
     assert.match(header, /sagejs_source_u64_buffer/);
-    assert.doesNotMatch(header, /sagejs_matrix|napi_value/);
+    assert.match(header, /sagejs_native_record_DensePrimeMatrix/);
+    assert.doesNotMatch(header, /\bsagejs_matrix\s*\*|napi_value/);
 
     const shapes = [
       [0, 0], [0, 5], [5, 0], [1, 1], [2, 7], [7, 2], [8, 8],
@@ -244,19 +246,22 @@ print("dense-prime-production-ok")
           const expectedRref = flint.matrixRref(sourceMatrix);
           const expectedKernel = flint.matrixRightKernel(sourceMatrix);
           const source = packed(kernel, entries);
+          const sourceRecord = denseRecord(
+            source, rows, columns, modulus,
+          );
           const original = Array.from(source);
 
           const rankWorkspace = packed(kernel, rows * columns);
           assert.equal(
             kernel.dense_prime_rank(
-              source, rankWorkspace, rows, columns, modulus,
+              sourceRecord, rankWorkspace,
             ),
             expectedRank,
           );
 
           const rref = packed(kernel, rows * columns);
           assert.equal(
-            kernel.dense_prime_rref(source, rref, rows, columns, modulus),
+            kernel.dense_prime_rref(sourceRecord, rref),
             expectedRank,
           );
           assert.equal(
@@ -270,12 +275,9 @@ print("dense-prime-production-ok")
           const kernelWorkspace = packed(kernel, rows * columns);
           const kernelOutput = packed(kernel, columns * columns);
           const nullity = kernel.dense_prime_right_kernel(
-            source,
+            sourceRecord,
             kernelWorkspace,
             kernelOutput,
-            rows,
-            columns,
-            modulus,
           );
           assert.equal(nullity, columns - expectedRank);
           assert.equal(
@@ -333,7 +335,10 @@ print("dense-prime-production-ok")
         const output = packed(kernel, size * 3);
         assert.equal(
           kernel.dense_prime_solve(
-            left, right, workspace, output, size, 3, modulus,
+            denseRecord(left, size, size, modulus),
+            denseRecord(right, size, 3, modulus),
+            workspace,
+            output,
           ),
           1,
         );
@@ -372,11 +377,8 @@ print("dense-prime-production-ok")
       const workspace = packed(kernel, blockedSize * blockedSize);
       assert.equal(
         kernel.dense_prime_rank(
-          source,
+          denseRecord(source, blockedSize, blockedSize, boundaryPrime),
           workspace,
-          blockedSize,
-          blockedSize,
-          boundaryPrime,
         ),
         singular ? blockedSize - 1 : blockedSize,
       );
@@ -386,19 +388,16 @@ print("dense-prime-production-ok")
     const singularRight = packed(kernel, [1n, 0n]);
     assert.equal(
       kernel.dense_prime_solve(
-        singularLeft,
-        singularRight,
+        denseRecord(singularLeft, 2, 2, 5n),
+        denseRecord(singularRight, 2, 1, 5n),
         packed(kernel, 6),
         packed(kernel, 2),
-        2,
-        1,
-        5n,
       ),
       0,
     );
     assert.throws(
       () => kernel.dense_prime_rank(
-        packed(kernel, 3), packed(kernel, 4), 2, 2, 5n,
+        denseRecord(packed(kernel, 3), 2, 2, 5n), packed(kernel, 4),
       ),
       /shape mismatch/,
     );

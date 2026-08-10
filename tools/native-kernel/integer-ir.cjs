@@ -112,8 +112,9 @@ function isTupleType(type) {
   return tupleElementTypes(type) !== undefined;
 }
 
-function canonicalType(annotation) {
+function canonicalType(annotation, recordTypes = new Map()) {
   const raw = rawAnnotationName(annotation);
+  if (recordTypes.has(raw)) return `Record:${raw}`;
   const scalar = TYPE_ALIASES.get(raw);
   if (scalar !== undefined) return scalar;
   // ``from __future__ import annotations`` deliberately stores annotations as
@@ -135,7 +136,9 @@ function canonicalType(annotation) {
   ) return undefined;
   const elements = sequenceElements(annotation.property) ||
     [annotation.property];
-  const types = elements.map(canonicalType);
+  const types = elements.map((element) =>
+    canonicalType(element, recordTypes)
+  );
   if (types.some((type) => type === undefined || isTupleType(type))) {
     return undefined;
   }
@@ -175,7 +178,7 @@ function booleanLiteral(node) {
   return undefined;
 }
 
-function signatureFromFunction(fn, filename) {
+function signatureFromFunction(fn, filename, recordTypes = new Map()) {
   const context = { filename, functionName: fn.name?.name || "<function>" };
   expect(
     context,
@@ -191,7 +194,7 @@ function signatureFromFunction(fn, filename) {
       arg.annotation !== undefined && arg.annotation !== null,
       `parameter ${arg.name} requires a native type annotation`,
     );
-    const type = canonicalType(arg.annotation);
+    const type = canonicalType(arg.annotation, recordTypes);
     expect(
       context,
       arg,
@@ -244,7 +247,7 @@ function signatureFromFunction(fn, filename) {
     }
     return { name: arg.name, type, default: defaultValue };
   });
-  const returnType = canonicalType(fn.return_annotation);
+  const returnType = canonicalType(fn.return_annotation, recordTypes);
   expect(
     context,
     fn.return_annotation ?? fn,

@@ -70,6 +70,7 @@ const signedBuffersPath = join(root, "bench", "native_signed_buffers.py");
 const integerBuffersPath = join(root, "bench", "native_integer_buffers.py");
 const reductionsPath = join(root, "bench", "native_reductions.py");
 const ergonomicsPath = join(root, "bench", "native_v20_ergonomics.py");
+const nativeRecordPath = join(root, "bench", "native_record_witness.py");
 const primeFieldMatrixPath = join(
   root,
   "bench",
@@ -190,6 +191,38 @@ const ergonomicsIr = await lowerSource(
   readFileSync(ergonomicsPath, "utf8"),
   ergonomicsPath,
 );
+const nativeRecordIr = await lowerSource(
+  readFileSync(nativeRecordPath, "utf8"),
+  nativeRecordPath,
+);
+const undecoratedNativeRecordIr = await lowerSource(
+  readFileSync(nativeRecordPath, "utf8").replaceAll("@native\n", ""),
+  "undecorated-native-record.py",
+);
+assert.deepEqual(
+  undecoratedNativeRecordIr.records,
+  nativeRecordIr.records,
+);
+assert.deepEqual(nativeRecordIr.records, [{
+  name: "PrimeVector",
+  type: "Record:PrimeVector",
+  layout: "compiler-owned-value",
+  ownership: "borrowed-fields",
+  fields: [
+    { name: "entries", type: "UInt64Buffer" },
+    { name: "length", type: "uint64" },
+    { name: "modulus", type: "PrimeModulusValue" },
+  ],
+}]);
+assert.deepEqual(nativeRecordIr.callGraph, {
+  scaled_sum: [],
+  scale_first: [],
+  scaled_sum_constructed: ["scaled_sum"],
+});
+const nativeRecordCore = generateHostCore(nativeRecordIr);
+assert.match(nativeRecordCore.header, /sagejs_native_record_PrimeVector/);
+assert.doesNotMatch(nativeRecordCore.source,
+  /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/);
 assert.deepEqual(
   ergonomicsIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [
@@ -243,10 +276,10 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 20);
-assert.equal(scalarExactIr.version, 20);
-assert.equal(scalarFloatIr.version, 20);
-assert.equal(reductionsIr.version, 20);
+assert.equal(ir.version, 21);
+assert.equal(scalarExactIr.version, 21);
+assert.equal(scalarFloatIr.version, 21);
+assert.equal(reductionsIr.version, 21);
 assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
@@ -714,6 +747,43 @@ await assert.rejects(
   /short-circuit operands must be bool, got Integer/,
 );
 await assert.rejects(
+  () => lowerSource(
+    "from sagejs.native import NativeRecord, UInt64Buffer, native, uint64\n" +
+      "class Span(NativeRecord):\n" +
+      "    entries: UInt64Buffer\n" +
+      "    length: uint64\n" +
+      "@native\n" +
+      "def f(span: Span) -> uint64:\n" +
+      "    return span.missing\n",
+    "record-field.py",
+  ),
+  /Span has no field missing/,
+);
+await assert.rejects(
+  () => lowerSource(
+    "from sagejs.native import NativeRecord, UInt64Buffer, native\n" +
+      "class Span(NativeRecord):\n" +
+      "    entries: UInt64Buffer = []\n" +
+      "@native\n" +
+      "def f(span: Span) -> Span:\n" +
+      "    return span\n",
+    "record-default.py",
+  ),
+  /Span\.entries may not have a default/,
+);
+await assert.rejects(
+  () => lowerSource(
+    "from sagejs.native import NativeRecord, UInt64Buffer, native\n" +
+      "class Span(NativeRecord):\n" +
+      "    entries: UInt64Buffer\n" +
+      "@native\n" +
+      "def f(span: Span) -> Span:\n" +
+      "    return span\n",
+    "record-escape.py",
+  ),
+  /compiler-owned records are borrowed values and may not be returned/,
+);
+await assert.rejects(
   () =>
     lowerSource(
       "from sagejs.native import native\n" +
@@ -1037,6 +1107,10 @@ try {
     sourcePath: ergonomicsPath,
     cacheRoot: join(temporary, "ergonomics-cache"),
   });
+  const nativeRecordKernel = await compileKernel({
+    sourcePath: nativeRecordPath,
+    cacheRoot: join(temporary, "native-record-cache"),
+  });
   const ergonomicsModule = require(ergonomicsKernel.modulePath);
   assert.equal(ergonomicsModule.quadratic_sum(1000), 332833500n);
   assert.equal(
@@ -1099,6 +1173,7 @@ try {
     ["packed binary64", numericalBuffersKernel, ["float64"]],
     ["exact integer", scalarExactKernel, ["integer"]],
     ["source prime field", primeFieldSourceKernel, ["prime-field-source"]],
+    ["compiler-owned record", nativeRecordKernel, ["prime-field-source"]],
     ["specialized prime field", primeFieldKernel, ["prime-field-matrix"]],
   ]) {
     const manifest = JSON.parse(
@@ -1138,6 +1213,22 @@ try {
       assert.equal(independent.status, 0, `${family}: ${independent.stderr}`);
     }
   }
+  const nativeRecordModule = require(nativeRecordKernel.modulePath);
+  assert.equal(nativeRecordModule.scaled_sum({
+    entries: [1, 2, 3], length: 3, modulus: 101,
+  }, 7), 42);
+  assert.equal(
+    nativeRecordModule.scaled_sum_constructed([1, 2, 3], 3, 101, 7),
+    42,
+  );
+  const mutableRecordEntries = [3];
+  assert.equal(nativeRecordModule.scale_first({
+    entries: mutableRecordEntries, length: 1, modulus: 101,
+  }, 7), 21);
+  assert.deepEqual(mutableRecordEntries.map(Number), [21]);
+  assert.throws(() => nativeRecordModule.scaled_sum({
+    entries: [1], length: 1, modulus: 1,
+  }, 7), /must be a prime/);
   const nativeP1Module = require(nativeP1Kernel.modulePath);
   const p1Fused = nativeP1Module.heilbronn_higher_weight_hecke_fill;
   assert.ok(p1Fused.createInt64Buffer([1, -2, 3]) instanceof BigInt64Array);
@@ -2827,7 +2918,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v20 canonical isolated cores, reductions, buffers, provenance, P1, ABI, FFI, and fallback passed.",
+  "Native Kernel v21 canonical isolated cores, records, reductions, buffers, provenance, P1, ABI, FFI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);

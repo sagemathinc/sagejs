@@ -91,6 +91,7 @@ async function explainKernel(options) {
       sourcePath,
       eligible: true,
       version: result.ir.version,
+      records: result.ir.records || [],
       functions: result.ir.functions.map(explainFunction),
       callGraph: result.ir.callGraph,
       foreignLibraries: result.ir.foreignLibraries || [],

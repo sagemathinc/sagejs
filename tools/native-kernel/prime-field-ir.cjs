@@ -86,6 +86,9 @@ function isPrimeFieldSignature(signature) {
     signature.params.some(
       (param) => param.type === "PrimeModulusValue",
     ) ||
+    signature.params.some(
+      (param) => param.type.startsWith("Record:"),
+    ) ||
     signature.returnType === "PrimeFieldMatrix" ||
     signature.returnType === "PrimeFieldDecomposition" ||
     signature.returnType === "PrimeFieldElement"

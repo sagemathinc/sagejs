@@ -10,6 +10,14 @@ interface NativeIR {
   version: number;
   callGraph: Record<string, string[]>;
   functions: NativeFunctionIR[];
+  records?: NativeRecordIR[];
+}
+
+interface NativeRecordIR {
+  name: string;
+  layout: string;
+  ownership: string;
+  fields: Array<{ name: string; type: string }>;
 }
 
 interface NativeCompileResult {
@@ -29,6 +37,7 @@ interface NativeExplainResult {
   moduleReason?: string;
   error?: string;
   callGraph?: Record<string, string[]>;
+  records?: NativeRecordIR[];
   functions: Array<Record<string, unknown> & {
     name: string;
     eligible: boolean;
@@ -136,6 +145,17 @@ function printExplanation(result: NativeExplainResult): void {
   process.stdout.write(`Native Kernel explanation: ${result.sourcePath}\n`);
   if (result.moduleReason) process.stdout.write(`Module: ${result.moduleReason}\n`);
   if (result.error) process.stdout.write(`Rejected: ${result.error}\n`);
+  if (result.records && result.records.length > 0) {
+    process.stdout.write("Compiler-owned records:\n");
+    for (const record of result.records) {
+      const fields = record.fields
+        .map((field) => `${field.name}: ${field.type}`).join(", ");
+      process.stdout.write(
+        `  ${record.name}(${fields})\n` +
+        `    ${record.layout}; ${record.ownership}\n`,
+      );
+    }
+  }
   for (const fn of result.functions) {
     if (!fn.eligible) {
       process.stdout.write(`\n${fn.name}: rejected\n  ${fn.reason}\n`);
@@ -145,10 +165,13 @@ function printExplanation(result: NativeExplainResult): void {
       parameters: Array<{ name: string; type: string }>;
       returnType: string;
     };
+    const displayType = (type: string): string =>
+      type.startsWith("Record:") ? type.slice(7) : type;
     const parameters = signature.parameters
-      .map((param) => `${param.name}: ${param.type}`).join(", ");
+      .map((param) => `${param.name}: ${displayType(param.type)}`).join(", ");
     process.stdout.write(
-      `\n${fn.name}(${parameters}) -> ${signature.returnType}\n` +
+      `\n${fn.name}(${parameters}) -> ` +
+      `${displayType(signature.returnType)}\n` +
       `  kernel: ${fn.kernelKind}\n` +
       `  source-transparent: ${fn.sourceTransparent ? "yes" : "no"}\n` +
       `  host-isolated core: ` +

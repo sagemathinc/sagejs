@@ -1656,18 +1656,21 @@ class Matrix(sage.Element):
                         int(_untyped(self.base_ring()).characteristic()),
                     ))
                 else:
-                    kernel_function = (
-                        _dense_prime_kernel_module().dense_prime_rank)
+                    kernel_module = _dense_prime_kernel_module()
+                    kernel_function = kernel_module.dense_prime_rank
                     count = self.nrows() * self.ncols()
                     source = self._prime_kernel_buffer(kernel_function)
                     workspace = _dense_prime_zeros(
                         kernel_function, count)
-                    self._rank_cache = int(kernel_function(
+                    source_record = kernel_module.DensePrimeMatrix(
                         source,
-                        workspace,
                         self.nrows(),
                         self.ncols(),
                         int(_untyped(self.base_ring()).characteristic()),
+                    )
+                    self._rank_cache = int(kernel_function(
+                        source_record,
+                        workspace,
                     ))
             elif (
                 algorithm == 'flint'
@@ -1722,8 +1725,8 @@ class Matrix(sage.Element):
             if _is_extension_field_base(self.base_ring()):
                 native_value = backend.fqMatrixRref(self._native)
             elif _uses_dense_prime_kernel(self.base_ring()):
-                python_function = (
-                    _dense_prime_kernel_module().dense_prime_rref)
+                kernel_module = _dense_prime_kernel_module()
+                python_function = kernel_module.dense_prime_rref
                 flint_function = (
                     _dense_prime_flint_kernel_module()
                     .flint_dense_prime_rref)
@@ -1738,12 +1741,15 @@ class Matrix(sage.Element):
                 source = self._prime_kernel_buffer(kernel_function)
                 output = _dense_prime_zeros(kernel_function, count)
                 if use_python:
-                    rank = int(kernel_function(
+                    source_record = kernel_module.DensePrimeMatrix(
                         source,
-                        output,
                         self.nrows(),
                         self.ncols(),
                         int(_untyped(self.base_ring()).characteristic()),
+                    )
+                    rank = int(kernel_function(
+                        source_record,
+                        output,
                     ))
                 else:
                     rank = int(kernel_function(
@@ -1914,8 +1920,8 @@ class Matrix(sage.Element):
                 native_value = backend.fqMatrixRightKernel(
                     self._native)
             elif _uses_dense_prime_kernel(self.base_ring()):
-                python_function = (
-                    _dense_prime_kernel_module().dense_prime_right_kernel)
+                kernel_module = _dense_prime_kernel_module()
+                python_function = kernel_module.dense_prime_right_kernel
                 flint_function = (
                     _dense_prime_flint_kernel_module()
                     .flint_dense_prime_right_kernel)
@@ -1933,13 +1939,16 @@ class Matrix(sage.Element):
                 if use_python:
                     workspace = _dense_prime_zeros(
                         kernel_function, source_count)
-                    nullity = int(kernel_function(
+                    source_record = kernel_module.DensePrimeMatrix(
                         source,
-                        workspace,
-                        output,
                         self.nrows(),
                         self.ncols(),
                         int(_untyped(self.base_ring()).characteristic()),
+                    )
+                    nullity = int(kernel_function(
+                        source_record,
+                        workspace,
+                        output,
                     ))
                 else:
                     nullity = int(kernel_function(
@@ -2473,8 +2482,8 @@ class Matrix(sage.Element):
             _uses_dense_prime_kernel(base)
             and left_matrix.is_square()
         ):
-            python_function = (
-                _dense_prime_kernel_module().dense_prime_solve)
+            kernel_module = _dense_prime_kernel_module()
+            python_function = kernel_module.dense_prime_solve
             flint_function = (
                 _dense_prime_flint_kernel_module()
                 .flint_dense_prime_solve)
@@ -2494,14 +2503,16 @@ class Matrix(sage.Element):
             if use_python:
                 workspace = _dense_prime_zeros(
                     kernel_function, size * (size + right_columns))
+                modulus = int(_untyped(base).characteristic())
+                left_record = kernel_module.DensePrimeMatrix(
+                    left, size, size, modulus)
+                right_record = kernel_module.DensePrimeMatrix(
+                    right_buffer, size, right_columns, modulus)
                 solved = int(kernel_function(
-                    left,
-                    right_buffer,
+                    left_record,
+                    right_record,
                     workspace,
                     output,
-                    size,
-                    right_columns,
-                    int(_untyped(base).characteristic()),
                 ))
             else:
                 solved = int(kernel_function(

@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v20 currently accepts a deliberately narrow typed numerical
+Native Kernel v21 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels and reusable dense
 decompositions over prime fields. It also supports packed binary64 buffers and
 mutable signed exact-integer buffers with bounded record views. Mutable
@@ -34,6 +34,9 @@ Explicit imports from generated ``sagejs.ffi`` modules are also declaration-
 checked at compile time. Supported calls lower directly into the isolated core
 using generic ABI type adapters; they never become a host callback or a
 function-name-based compiler substitution.
+Fixed-schema :class:`NativeRecord` subclasses group checked scalar fields and
+borrowed packed buffers into compiler-owned value structs without exposing
+addresses or cleanup to mathematical source.
 Opaque owned FFI resources may be lexical native locals when their declaration
 provides construction and cleanup; they do not become public pointer types.
 """
@@ -56,6 +59,53 @@ Float64Buffer = list[float]
 PrimeFieldMatrix: TypeAlias = Any
 # Exact public modulus value used with explicit packed prime-field storage.
 PrimeFieldModulus: TypeAlias = int
+
+
+class NativeRecord:
+    """A fixed-schema value record shared by fallback and native kernels.
+
+    Subclasses declare fields using ordinary annotations.  The Python
+    fallback stores those values as normal attributes; the native compiler
+    gives the same schema a fixed C value layout with no user-visible pointer.
+    Buffer fields are borrowed for the duration of a synchronous kernel call.
+
+    Native records deliberately do not expose addresses, allocation, cleanup,
+    or arbitrary attributes to compiled code.  They are a safe compiler-owned
+    replacement for the common C idiom of passing a small struct containing
+    dimensions and borrowed spans.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        fields = tuple(getattr(type(self), '__annotations__', ()))
+        if len(args) > len(fields):
+            raise TypeError(
+                f'{type(self).__name__} expects {len(fields)} field(s), '
+                f'got {len(args)} positional arguments')
+        assigned = set()
+        for index, value in enumerate(args):
+            name = fields[index]
+            setattr(self, name, value)
+            assigned.add(name)
+        for name in fields[len(args):]:
+            if name not in kwargs:
+                raise TypeError(
+                    f'{type(self).__name__} is missing required field {name!r}')
+            setattr(self, name, kwargs.pop(name))
+            assigned.add(name)
+        duplicate = assigned.intersection(kwargs)
+        if duplicate:
+            name = sorted(duplicate)[0]
+            raise TypeError(
+                f'{type(self).__name__} got multiple values for field {name!r}')
+        if kwargs:
+            name = next(iter(kwargs))
+            raise TypeError(
+                f'{type(self).__name__} has no field {name!r}')
+
+    def __repr__(self) -> str:
+        fields = tuple(getattr(type(self), '__annotations__', ()))
+        values = ', '.join(f'{name}={getattr(self, name)!r}' for name in fields)
+        return f'{type(self).__name__}({values})'
 
 
 class Int64Record:
@@ -430,6 +480,7 @@ __all__ = [
     'IntegerBuffer',
     'Int64Buffer',
     'Int64Record',
+    'NativeRecord',
     'PrimeFieldMatrix',
     'PrimeFieldModulus',
     'UInt64Buffer',

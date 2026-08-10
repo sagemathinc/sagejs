@@ -159,13 +159,24 @@ borrow checker: unsupported ownership patterns fail schema validation or
 compilation. Unix native CI exercises real resource/view schedules under
 AddressSanitizer, UndefinedBehaviorSanitizer, and leak detection.
 
+Compiler-owned records are fixed-layout value aggregates declared by an
+ordinary CPython-parseable `NativeRecord` subclass. Their schema—not a host
+object layout—defines the isolated ABI. Record fields are checked scalars or
+borrowed packed storage; generated adapters root every borrowed owner for the
+synchronous call, and direct compiled calls pass records by value. Records do
+not expose pointers, destructors, arbitrary attributes, or host methods.
+Returning or retaining a borrowed record fails compilation. Nested or owned
+records remain unsupported until their construction, cleanup, and escape rules
+are specified here and enforced mechanically.
+
 ## Compiled-kernel witnesses
 
 [`architecture/native-kernels.json`](architecture/native-kernels.json) lists
 representative source-transparent kernels.  At minimum, the witness set covers
 exact integer promotion, dense prime-field computation, packed binary64
-storage, mutable signed exact-integer records, and packed arbitrary-precision
-integer vectors.  Compiler changes preserve their same-source fallback,
+storage, compiler-owned value records, mutable signed exact-integer record
+views, and packed arbitrary-precision integer vectors. Compiler changes
+preserve their same-source fallback,
 provenance, introspection, differential tests, and benchmarks.
 
 Every successful native compilation emits a host-independent `kernel_core.c`

@@ -82,9 +82,10 @@ function booleanLiteral(node) {
   return undefined;
 }
 
-function createContext(fn, signature, signatures, filename, decorated) {
+function createContext(fn, signature, signatures, records, filename, decorated) {
   return {
     body: [],
+    borrowed: new Set(),
     decorated,
     filename,
     functionName: signature.name,
@@ -94,6 +95,7 @@ function createContext(fn, signature, signatures, filename, decorated) {
     params: signature.params,
     returnType: signature.returnType,
     dependencies: new Set(),
+    records,
     signatures,
     variables: new Map(
       signature.params.map((param) => [param.name, param.type]),
@@ -164,6 +166,34 @@ function simpleCall(node, context) {
 function lowerCall(node, context, operations) {
   const name = simpleCall(node, context);
   const argumentNodes = array(node.args);
+  const record = context.records.get(name);
+  if (record !== undefined) {
+    expect(
+      context,
+      node,
+      argumentNodes.length === record.fields.length,
+      `${name} expects ${record.fields.length} fields, got ${argumentNodes.length}`,
+    );
+    const fields = argumentNodes.map((argument, index) => {
+      const value = lowerExpression(argument, context, operations);
+      expectType(
+        context,
+        argument,
+        value,
+        record.fields[index].type,
+        `${name}.${record.fields[index].name}`,
+      );
+      return { ...record.fields[index], value: value.name };
+    });
+    const target = temporary(context, node, record.type);
+    operations.push({
+      kind: "source.record.construct",
+      target,
+      record: name,
+      fields,
+    });
+    return { name: target, type: record.type };
+  }
   const signature = context.signatures.get(name);
   if (signature !== undefined) {
     expect(
@@ -325,7 +355,40 @@ function lowerExpression(node, context, operations) {
     expect(context, node, context.initialized.has(node.name), `${node.name} may be uninitialized`);
     return { name: node.name, type };
   }
-  if (nodeType(node) === "AST_Call") return lowerCall(node, context, operations);
+  if (["AST_Call", "AST_New"].includes(nodeType(node))) {
+    return lowerCall(node, context, operations);
+  }
+  if (nodeType(node) === "AST_Dot") {
+    const source = lowerExpression(node.expression, context, operations);
+    expect(
+      context,
+      node,
+      source.type.startsWith("Record:"),
+      "native attribute access is only supported on compiler-owned records",
+    );
+    const recordName = source.type.slice(7);
+    const record = context.records.get(recordName);
+    const field = record?.fields.find((candidate) =>
+      candidate.name === node.property
+    );
+    expect(
+      context,
+      node,
+      field !== undefined,
+      `${recordName} has no field ${node.property}`,
+    );
+    const target = temporary(context, node, field.type);
+    if (field.type === "UInt64Buffer") context.borrowed.add(target);
+    operations.push({
+      kind: "source.record.get",
+      target,
+      source: source.name,
+      record: recordName,
+      field: field.name,
+      type: field.type,
+    });
+    return { name: target, type: field.type };
+  }
   if (nodeType(node) === "AST_ItemAccess") {
     const buffer = lowerExpression(node.expression, context, operations);
     const index = lowerExpression(node.property, context, operations);
@@ -386,8 +449,8 @@ function lowerExpression(node, context, operations) {
   return { name: target, type: "uint64" };
 }
 
-function copyOperation(type, target, source) {
-  return { kind: "source.copy", type, target, source };
+function copyOperation(type, target, source, borrowed = false) {
+  return { kind: "source.copy", type, target, source, borrowed };
 }
 
 function lowerAssignment(statement, context) {
@@ -424,7 +487,9 @@ function lowerAssignment(statement, context) {
   if (assign.operator === "=") {
     const value = lowerExpression(assign.right, context, operations);
     ensureVariable(context, assign.left, target, value.type);
-    operations.push(copyOperation(value.type, target, value.name));
+    const borrowed = context.borrowed.has(value.name);
+    if (borrowed) context.borrowed.add(target);
+    operations.push(copyOperation(value.type, target, value.name, borrowed));
     context.initialized.add(target);
     return operations;
   }
@@ -559,6 +624,7 @@ function lowerPrimeSourceFunction(
   fn,
   signature,
   signatures,
+  records,
   filename,
   decorated,
 ) {
@@ -566,6 +632,7 @@ function lowerPrimeSourceFunction(
     fn,
     signature,
     signatures,
+    records,
     filename,
     decorated,
   );
@@ -584,10 +651,15 @@ function lowerPrimeSourceFunction(
     sourceTransparent: true,
     params: signature.params,
     returnType: signature.returnType,
-    locals: Array.from(context.locals, ([name, type]) => ({ name, type })),
+    locals: Array.from(context.locals, ([name, type]) => ({
+      name,
+      type,
+      ownership: context.borrowed.has(name) ? "borrowed" : "owned",
+    })),
     body: optimized.body,
     optimizations: optimized.optimizations,
     dependencies: Array.from(context.dependencies).sort(),
+    records: Array.from(records.values()),
   };
   // Optimized operations retain the IDs of the operations they replace and
   // receive a fresh stable ID of their own.

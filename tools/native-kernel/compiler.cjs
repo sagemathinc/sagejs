@@ -180,7 +180,10 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
   );
   const usesExplicitPrimeModulus = ir.functions.some((fn) =>
     fn.kernelKind === "prime-field-source" &&
-    fn.params.some((param) => param.type === "PrimeModulusValue")
+    (fn.params.some((param) => param.type === "PrimeModulusValue") ||
+      (fn.records || []).some((record) =>
+        record.fields.some((field) => field.type === "PrimeModulusValue")
+      ))
   );
   const matrixOnly = ir.functions.every(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
