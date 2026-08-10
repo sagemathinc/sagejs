@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include <flint/nmod_poly.h>
+#include <flint/nmod_mat.h>
 #include <flint/ulong_extras.h>
 
 #ifdef __cplusplus
@@ -52,6 +53,41 @@ static inline int sagejs_flint_nmod_poly_mul_packed(
     nmod_poly_clear(right_poly);
     nmod_poly_clear(left_poly);
     return 1;
+}
+
+/* Copying adapters keep caller-owned packed storage independent of FLINT's
+ * internal matrix representation.  The generated FFI layer initializes and
+ * clears every nmod_mat_t and transactionally copies writable outputs back. */
+static inline slong sagejs_flint_nmod_mat_rref_copy(
+    nmod_mat_t output, const nmod_mat_t source)
+{
+    nmod_mat_set(output, source);
+    return nmod_mat_rref(output);
+}
+
+static inline slong sagejs_flint_nmod_mat_right_kernel(
+    nmod_mat_t output, const nmod_mat_t source)
+{
+    const slong columns = nmod_mat_ncols(source);
+    const slong rank = nmod_mat_rank(source);
+    const slong nullity = columns - rank;
+    nmod_mat_t basis_columns;
+    nmod_mat_init(basis_columns, columns, columns, source->mod.n);
+    nmod_mat_nullspace(basis_columns, source);
+    nmod_mat_zero(output);
+    for (slong row = 0; row < nullity; row++)
+        for (slong column = 0; column < columns; column++)
+            nmod_mat_entry(output, row, column) =
+                nmod_mat_entry(basis_columns, column, row);
+    nmod_mat_rref(output);
+    nmod_mat_clear(basis_columns);
+    return nullity;
+}
+
+static inline int sagejs_flint_nmod_mat_solve(
+    nmod_mat_t output, const nmod_mat_t left, const nmod_mat_t right)
+{
+    return nmod_mat_solve(output, left, right);
 }
 
 #ifdef __cplusplus

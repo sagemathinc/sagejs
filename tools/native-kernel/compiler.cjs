@@ -41,6 +41,11 @@ const nativeMpcLibrary = join(
   "lib",
   process.platform === "win32" ? "mpc.lib" : "libmpc.a",
 );
+const nativeFlintLibrary = join(
+  nativePrefix,
+  "lib",
+  process.platform === "win32" ? "flint.lib" : "libflint.a",
+);
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -173,6 +178,10 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
   const usesSpecializedPrimeField = ir.functions.some(
     (fn) => fn.kernelKind === "prime-field-matrix",
   );
+  const usesExplicitPrimeModulus = ir.functions.some((fn) =>
+    fn.kernelKind === "prime-field-source" &&
+    fn.params.some((param) => param.type === "PrimeModulusValue")
+  );
   const matrixOnly = ir.functions.every(
     (fn) => ["prime-field-matrix", "prime-field-source"].includes(fn.kernelKind),
   );
@@ -224,6 +233,7 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
   if (process.platform === "win32") {
     target.libraries = [
       ...foreignLibraries,
+      ...(usesExplicitPrimeModulus ? [nativeFlintLibrary] : []),
       ...(!matrixOnly
         ? [
           nativeMpcLibrary,
@@ -255,6 +265,7 @@ function bindingGyp(ir, sourceBoundsChecked, hasExceptionShims = false) {
   } else {
     target.libraries = [
       ...foreignLibraries,
+      ...(usesExplicitPrimeModulus ? [nativeFlintLibrary] : []),
       ...(!matrixOnly
         ? [
           nativeMpcLibrary,

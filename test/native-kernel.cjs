@@ -476,13 +476,13 @@ assert.deepEqual(
       "source_prime_rank",
       "prime-field-source",
       true,
-      { rowSubmul: 1, dotAccumulate: 0 },
+      { rowSubmul: 1, dotAccumulate: 0, panelUpdate: 0 },
     ],
     [
       "source_prime_matmul",
       "prime-field-source",
       true,
-      { rowSubmul: 0, dotAccumulate: 1 },
+      { rowSubmul: 0, dotAccumulate: 1, panelUpdate: 0 },
     ],
   ],
 );

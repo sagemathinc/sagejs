@@ -14,7 +14,7 @@
   },
   "counts": {
     "classified-native-file": 53,
-    "declared-ffi": 15,
+    "declared-ffi": 18,
     "declared-ffi-resource": 3,
     "napi-export": 291,
     "runtime-intrinsic": 113,
@@ -129,6 +129,39 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNmodMatRank",
       "symbol": "nmod_mat_rank",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_mat_right_kernel",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_mat_right_kernel",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatRightKernel",
+      "symbol": "sagejs_flint_nmod_mat_right_kernel",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_mat_rref",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_mat_rref",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatRref",
+      "symbol": "sagejs_flint_nmod_mat_rref_copy",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_mat_solve",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_mat_solve",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatSolve",
+      "symbol": "sagejs_flint_nmod_mat_solve",
       "disposition": "declared-safe-ffi"
     },
     {

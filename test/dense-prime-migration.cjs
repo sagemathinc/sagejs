@@ -1,0 +1,426 @@
+#!/usr/bin/env node
+"use strict";
+
+const assert = require("node:assert/strict");
+const {
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} = require("node:fs");
+const { tmpdir } = require("node:os");
+const { join } = require("node:path");
+const { spawnSync } = require("node:child_process");
+const { compile } = require("@sagemath/sagejs/native");
+const flint = require("../packages/flint");
+
+const root = join(__dirname, "..");
+const sourcePath = join(
+  root, "src", "lib", "sagejs", "kernels", "dense_prime.py",
+);
+const flintSourcePath = join(
+  root, "src", "lib", "sagejs", "kernels", "dense_prime_flint.py",
+);
+
+function randomEntries(rows, columns, modulus, initialSeed) {
+  let seed = BigInt(initialSeed) & ((1n << 64n) - 1n);
+  const entries = [];
+  for (let index = 0; index < rows * columns; index += 1) {
+    seed = (seed * 6364136223846793005n + 1442695040888963407n) &
+      ((1n << 64n) - 1n);
+    entries.push(seed % modulus);
+  }
+  return entries;
+}
+
+function matrix(rows, columns, modulus, entries) {
+  return flint.nmodMatrix(rows, columns, entries, modulus);
+}
+
+function triangularEntries(size, modulus, seed) {
+  const entries = [];
+  for (let row = 0; row < size; row += 1) {
+    for (let column = 0; column < size; column += 1) {
+      entries.push(column > row
+        ? 0n
+        : column === row
+          ? BigInt((row + seed) % Number(modulus - 1n) + 1)
+          : BigInt((row * 17 + column * 29 + seed) % Number(modulus)));
+    }
+  }
+  return entries;
+}
+
+function denseTriangularProduct(size, modulus, singular) {
+  const lower = [];
+  const upper = [];
+  for (let row = 0; row < size; row += 1) {
+    for (let column = 0; column < size; column += 1) {
+      lower.push(column > row
+        ? 0n
+        : column === row
+          ? 1n
+          : BigInt(row * 104729 + column * 13007 + 17) % modulus);
+      upper.push(column < row || (singular && row === size - 1)
+        ? 0n
+        : column === row
+          ? BigInt(row + 1)
+          : BigInt(row * 65537 + column * 8191 + 29) % modulus);
+    }
+  }
+  const product = [];
+  for (let row = 0; row < size; row += 1) {
+    for (let column = 0; column < size; column += 1) {
+      let value = 0n;
+      for (let inner = 0; inner < size; inner += 1) {
+        value += lower[row * size + inner] * upper[inner * size + column];
+      }
+      product.push(value % modulus);
+    }
+  }
+  return product;
+}
+
+function packed(kernel, entriesOrLength) {
+  return kernel.createUInt64Buffer(entriesOrLength);
+}
+
+function runSage(source, environment) {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-dense-prime-script-"));
+  try {
+    const scriptPath = join(directory, "production.py");
+    writeFileSync(scriptPath, source);
+    const result = spawnSync(
+      process.execPath,
+      [join(root, "bin", "sagejs"), scriptPath],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: { ...process.env, ...environment },
+      },
+    );
+    if (result.error) throw result.error;
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    return result.stdout.trim();
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+const productionScript = String.raw`
+import sagejs.runtime as runtime
+from sagejs.kernels.dense_prime import (
+    dense_prime_rank,
+    dense_prime_rref,
+    dense_prime_right_kernel,
+    dense_prime_solve,
+)
+
+backend = runtime.flint_backend()
+for modulus in [2, 3, 5, 101, 65521, 4294967291]:
+    field = GF(modulus)
+    for rows, columns in [(0, 0), (0, 4), (4, 0), (1, 1), (2, 5), (5, 2), (7, 7)]:
+        entries = [
+            (row * 97 + column * 53 + modulus + rows) % modulus
+            for row in range(rows)
+            for column in range(columns)
+        ]
+        source = matrix(field, rows, columns, entries)
+        legacy_rank = int(backend.matrixRank(source._native))
+        legacy_rref = source._new(backend.matrixRref(source._native))
+        legacy_kernel = source._new_shape(
+            backend.matrixRightKernel(source._native),
+            columns - legacy_rank,
+            columns,
+        )
+        source_buffer = list(entries)
+        rank_workspace = [0 for _index in range(rows * columns)]
+        assert dense_prime_rank(
+            source_buffer, rank_workspace, rows, columns, modulus,
+        ) == legacy_rank
+        rref_output = [0 for _index in range(rows * columns)]
+        rref_rank = dense_prime_rref(
+            source_buffer, rref_output, rows, columns, modulus)
+        assert rref_rank == legacy_rank
+        assert matrix(field, rows, columns, rref_output) == legacy_rref
+        kernel_workspace = [0 for _index in range(rows * columns)]
+        kernel_output = [0 for _index in range(columns * columns)]
+        nullity = dense_prime_right_kernel(
+            source_buffer,
+            kernel_workspace,
+            kernel_output,
+            rows,
+            columns,
+            modulus,
+        )
+        assert matrix(
+            field,
+            nullity,
+            columns,
+            kernel_output[:nullity * columns],
+        ) == legacy_kernel
+        assert source.rank() == legacy_rank
+        assert source.rref() == legacy_rref
+        assert source.right_kernel_matrix() == legacy_kernel
+
+    size = 6
+    left_entries = []
+    for row in range(size):
+        for column in range(size):
+            if column > row:
+                left_entries.append(0)
+            elif column == row:
+                left_entries.append((row + 1) % modulus or 1)
+            else:
+                left_entries.append((row * 11 + column * 7 + 1) % modulus)
+    right_entries = [
+        (row * 13 + column * 19 + 2) % modulus
+        for row in range(size)
+        for column in range(3)
+    ]
+    left = matrix(field, size, size, left_entries)
+    right = matrix(field, size, 3, right_entries)
+    legacy_solution = left._new_shape(
+        backend.matrixSolve(left._native, right._native), size, 3)
+    solve_workspace = [0 for _index in range(size * (size + 3))]
+    solve_output = [0 for _index in range(size * 3)]
+    assert dense_prime_solve(
+        left_entries,
+        right_entries,
+        solve_workspace,
+        solve_output,
+        size,
+        3,
+        modulus,
+    ) == 1
+    assert matrix(field, size, 3, solve_output) == legacy_solution
+    assert left.solve_right(right) == legacy_solution
+    assert left * legacy_solution == right
+print("dense-prime-production-ok")
+`;
+
+(async () => {
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-dense-prime-"));
+  try {
+    const compiled = await compile({ sourcePath, cacheRoot: temporary });
+    const compiledFlint = await compile({
+      sourcePath: flintSourcePath,
+      cacheRoot: temporary,
+    });
+    const kernel = require(compiled.modulePath);
+    const flintKernel = require(compiledFlint.modulePath);
+    const functions = new Map(
+      compiled.ir.functions.map((fn) => [fn.name, fn]),
+    );
+    assert.deepEqual(
+      functions.get("dense_prime_rank").dependencies,
+      ["_dense_prime_blocked_full_rank", "_dense_prime_rank_inplace"],
+    );
+    assert.deepEqual(
+      functions.get("dense_prime_right_kernel").dependencies,
+      ["_dense_prime_rref_inplace", "dense_prime_rref"],
+    );
+    assert.deepEqual(
+      functions.get("dense_prime_solve").dependencies,
+      ["_dense_prime_rref_inplace"],
+    );
+    const core = readFileSync(compiled.coreSourcePath, "utf8");
+    const header = readFileSync(compiled.coreHeaderPath, "utf8");
+    assert.doesNotMatch(core, /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/);
+    assert.match(header, /sagejs_source_u64_buffer/);
+    assert.doesNotMatch(header, /sagejs_matrix|napi_value/);
+
+    const shapes = [
+      [0, 0], [0, 5], [5, 0], [1, 1], [2, 7], [7, 2], [8, 8],
+    ];
+    for (const modulus of [2n, 3n, 5n, 101n, 65521n, 4294967291n]) {
+      for (const [rows, columns] of shapes) {
+        for (let seed = 1; seed <= 5; seed += 1) {
+          const entries = randomEntries(
+            rows, columns, modulus, seed * 101,
+          );
+          const sourceMatrix = matrix(rows, columns, modulus, entries);
+          const expectedRank = flint.matrixRank(sourceMatrix);
+          const expectedRref = flint.matrixRref(sourceMatrix);
+          const expectedKernel = flint.matrixRightKernel(sourceMatrix);
+          const source = packed(kernel, entries);
+          const original = Array.from(source);
+
+          const rankWorkspace = packed(kernel, rows * columns);
+          assert.equal(
+            kernel.dense_prime_rank(
+              source, rankWorkspace, rows, columns, modulus,
+            ),
+            expectedRank,
+          );
+
+          const rref = packed(kernel, rows * columns);
+          assert.equal(
+            kernel.dense_prime_rref(source, rref, rows, columns, modulus),
+            expectedRank,
+          );
+          assert.equal(
+            flint.matrixEqual(
+              matrix(rows, columns, modulus, Array.from(rref)),
+              expectedRref,
+            ),
+            true,
+          );
+
+          const kernelWorkspace = packed(kernel, rows * columns);
+          const kernelOutput = packed(kernel, columns * columns);
+          const nullity = kernel.dense_prime_right_kernel(
+            source,
+            kernelWorkspace,
+            kernelOutput,
+            rows,
+            columns,
+            modulus,
+          );
+          assert.equal(nullity, columns - expectedRank);
+          assert.equal(
+            flint.matrixEqual(
+              matrix(
+                nullity,
+                columns,
+                modulus,
+                Array.from(kernelOutput).slice(0, nullity * columns),
+              ),
+              expectedKernel,
+            ),
+            true,
+          );
+          assert.deepEqual(Array.from(source), original);
+
+          assert.equal(Number(flintKernel.flint_dense_prime_rank(
+            source, rows, columns, modulus,
+          )), expectedRank);
+          const flintRref = packed(kernel, rows * columns);
+          assert.equal(Number(flintKernel.flint_dense_prime_rref(
+            flintRref, source, rows, columns, modulus,
+          )), expectedRank);
+          assert.equal(flint.matrixEqual(
+            matrix(rows, columns, modulus, Array.from(flintRref)),
+            expectedRref,
+          ), true);
+          const flintKernelOutput = packed(kernel, columns * columns);
+          assert.equal(Number(flintKernel.flint_dense_prime_right_kernel(
+            flintKernelOutput, source, rows, columns, modulus,
+          )), nullity);
+          assert.equal(flint.matrixEqual(
+            matrix(
+              nullity,
+              columns,
+              modulus,
+              Array.from(flintKernelOutput).slice(
+                0, nullity * columns,
+              ),
+            ),
+            expectedKernel,
+          ), true);
+        }
+      }
+
+      for (let size = 0; size <= 12; size += 1) {
+        const leftEntries = triangularEntries(size, modulus, size + 3);
+        const rightEntries = randomEntries(size, 3, modulus, size + 701);
+        const leftMatrix = matrix(size, size, modulus, leftEntries);
+        const rightMatrix = matrix(size, 3, modulus, rightEntries);
+        const expected = flint.matrixSolve(leftMatrix, rightMatrix);
+        const left = packed(kernel, leftEntries);
+        const right = packed(kernel, rightEntries);
+        const workspace = packed(kernel, size * (size + 3));
+        const output = packed(kernel, size * 3);
+        assert.equal(
+          kernel.dense_prime_solve(
+            left, right, workspace, output, size, 3, modulus,
+          ),
+          1,
+        );
+        const flintOutput = packed(kernel, size * 3);
+        assert.equal(flintKernel.flint_dense_prime_solve(
+          flintOutput,
+          left,
+          right,
+          size,
+          3,
+          modulus,
+        ), true);
+        assert.equal(flint.matrixEqual(
+          matrix(size, 3, modulus, Array.from(flintOutput)),
+          expected,
+        ), true);
+        const actual = matrix(size, 3, modulus, Array.from(output));
+        assert.equal(flint.matrixEqual(actual, expected), true);
+        assert.equal(
+          flint.matrixEqual(flint.matrixMul(leftMatrix, actual), rightMatrix),
+          true,
+        );
+      }
+    }
+
+    // Exercise the blocked panel update at the largest 32-bit prime.  The
+    // rank-(n-1) product detects accidental uint64 accumulation wraparound:
+    // an incorrect Schur complement would usually invent a final pivot.
+    const boundaryPrime = 4294967291n;
+    const blockedSize = 40;
+    for (const singular of [false, true]) {
+      const entries = denseTriangularProduct(
+        blockedSize, boundaryPrime, singular,
+      );
+      const source = packed(kernel, entries);
+      const workspace = packed(kernel, blockedSize * blockedSize);
+      assert.equal(
+        kernel.dense_prime_rank(
+          source,
+          workspace,
+          blockedSize,
+          blockedSize,
+          boundaryPrime,
+        ),
+        singular ? blockedSize - 1 : blockedSize,
+      );
+    }
+
+    const singularLeft = packed(kernel, [1n, 2n, 2n, 4n]);
+    const singularRight = packed(kernel, [1n, 0n]);
+    assert.equal(
+      kernel.dense_prime_solve(
+        singularLeft,
+        singularRight,
+        packed(kernel, 6),
+        packed(kernel, 2),
+        2,
+        1,
+        5n,
+      ),
+      0,
+    );
+    assert.throws(
+      () => kernel.dense_prime_rank(
+        packed(kernel, 3), packed(kernel, 4), 2, 2, 5n,
+      ),
+      /shape mismatch/,
+    );
+
+    assert.equal(
+      runSage(productionScript, { SAGEJS_NATIVE_CACHE_DIR: temporary }),
+      "dense-prime-production-ok",
+    );
+    assert.equal(
+      runSage(productionScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_AUTOLOAD: "0",
+      }),
+      "dense-prime-production-ok",
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+  console.log(
+    "Packed typed Python, production Matrix, dynamic fallback, current N-API, and FLINT dense GF(p) oracles passed.",
+  );
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

@@ -67,6 +67,102 @@ binding.ffiNmodMatInv = function ffiNmodMatInv(
   return true;
 };
 
+function ffiWriteMatrix(output, matrix, rows, columns) {
+  ffiEntries(output, rows * columns, "output");
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const value = binding.matrixEntry(matrix, row, column);
+      if (!Reflect.set(
+        output,
+        String(row * columns + column),
+        BigInt(value),
+      )) {
+        throw new TypeError("output buffer is not writable");
+      }
+    }
+  }
+}
+
+binding.ffiNmodMatRref = function ffiNmodMatRref(
+  output, source, rowsValue, columnsValue, modulus,
+) {
+  const rows = ffiDimension(rowsValue, "rows");
+  const columns = ffiDimension(columnsValue, "columns");
+  const count = rows * columns;
+  if (!Number.isSafeInteger(count)) throw new RangeError("matrix is too large");
+  const matrix = binding.nmodMatrix(
+    rows, columns, ffiEntries(source, count, "source"), BigInt(modulus),
+  );
+  const rank = binding.matrixRank(matrix);
+  ffiWriteMatrix(output, binding.matrixRref(matrix), rows, columns);
+  return BigInt(rank);
+};
+
+binding.ffiNmodMatRightKernel = function ffiNmodMatRightKernel(
+  output, source, rowsValue, columnsValue, modulus,
+) {
+  const rows = ffiDimension(rowsValue, "rows");
+  const columns = ffiDimension(columnsValue, "columns");
+  const count = rows * columns;
+  if (!Number.isSafeInteger(count) ||
+      !Number.isSafeInteger(columns * columns)) {
+    throw new RangeError("matrix is too large");
+  }
+  const matrix = binding.nmodMatrix(
+    rows, columns, ffiEntries(source, count, "source"), BigInt(modulus),
+  );
+  const basis = binding.matrixRightKernel(matrix);
+  const nullity = columns - binding.matrixRank(matrix);
+  ffiEntries(output, columns * columns, "output");
+  for (let index = 0; index < columns * columns; index += 1) {
+    if (!Reflect.set(output, String(index), 0n)) {
+      throw new TypeError("output buffer is not writable");
+    }
+  }
+  for (let row = 0; row < nullity; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      if (!Reflect.set(
+        output,
+        String(row * columns + column),
+        BigInt(binding.matrixEntry(basis, row, column)),
+      )) {
+        throw new TypeError("output buffer is not writable");
+      }
+    }
+  }
+  return BigInt(nullity);
+};
+
+binding.ffiNmodMatSolve = function ffiNmodMatSolve(
+  output, left, right, sizeValue, rightColumnsValue, modulus,
+) {
+  const size = ffiDimension(sizeValue, "size");
+  const rightColumns = ffiDimension(rightColumnsValue, "right_columns");
+  const leftCount = size * size;
+  const rightCount = size * rightColumns;
+  if (!Number.isSafeInteger(leftCount) || !Number.isSafeInteger(rightCount)) {
+    throw new RangeError("matrix is too large");
+  }
+  const leftMatrix = binding.nmodMatrix(
+    size, size, ffiEntries(left, leftCount, "left"), BigInt(modulus),
+  );
+  const rightMatrix = binding.nmodMatrix(
+    size,
+    rightColumns,
+    ffiEntries(right, rightCount, "right"),
+    BigInt(modulus),
+  );
+  let solution;
+  try {
+    solution = binding.matrixSolve(leftMatrix, rightMatrix);
+  } catch (error) {
+    if (String(error?.message || error).includes("singular")) return false;
+    throw error;
+  }
+  ffiWriteMatrix(output, solution, size, rightColumns);
+  return true;
+};
+
 function ffiNmodPolynomial(coefficients, modulus) {
   const x = binding.nmodPolyGen(modulus);
   let result = binding.nmodPolyConstant(0n, modulus);

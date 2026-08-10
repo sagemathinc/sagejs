@@ -50,6 +50,12 @@ UInt64Buffer = list[int]
 IntegerBuffer = list[int]
 Int64Buffer = list[int]
 Float64Buffer = list[float]
+# Legacy annotation-only witness for an opaque dense matrix over ``GF(p)``.
+# Production kernels instead use UInt64Buffer plus PrimeFieldModulus so their
+# public ABI is independent of a host matrix object.
+PrimeFieldMatrix: TypeAlias = Any
+# Exact public modulus value used with explicit packed prime-field storage.
+PrimeFieldModulus: TypeAlias = int
 
 
 class Int64Record:
@@ -424,6 +430,8 @@ __all__ = [
     'IntegerBuffer',
     'Int64Buffer',
     'Int64Record',
+    'PrimeFieldMatrix',
+    'PrimeFieldModulus',
     'UInt64Buffer',
     'uint64',
     'float64_buffer',

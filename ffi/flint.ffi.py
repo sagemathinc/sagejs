@@ -210,6 +210,173 @@ def nmod_mat_inv(
 
 
 @flint.function(
+    dynamic="ffiNmodMatRref",
+    symbol="sagejs_flint_nmod_mat_rref_copy",
+    returns=slong,
+    abi=[
+        out(
+            "reduced",
+            nmod_mat_t,
+            packed_nmod_matrix(
+                data="output",
+                rows="rows",
+                columns="columns",
+                modulus="modulus",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "matrix",
+            nmod_mat_t,
+            packed_nmod_matrix(
+                data="source",
+                rows="rows",
+                columns="columns",
+                modulus="modulus",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_mat_rref(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+) -> uint64:
+    ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatRightKernel",
+    symbol="sagejs_flint_nmod_mat_right_kernel",
+    returns=slong,
+    abi=[
+        out(
+            "basis",
+            nmod_mat_t,
+            packed_nmod_matrix(
+                data="output",
+                rows="columns",
+                columns="columns",
+                modulus="modulus",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "matrix",
+            nmod_mat_t,
+            packed_nmod_matrix(
+                data="source",
+                rows="rows",
+                columns="columns",
+                modulus="modulus",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_mat_right_kernel(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    modulus: uint64,
+) -> uint64:
+    ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatSolve",
+    symbol="sagejs_flint_nmod_mat_solve",
+    returns=int,
+    abi=[
+        out(
+            "solution",
+            nmod_mat_t,
+            packed_nmod_matrix(
+                data="output",
+                rows="size",
+                columns="right_columns",
+                modulus="modulus",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_matrix",
+            nmod_mat_t,
+            packed_nmod_matrix(
+                data="left",
+                rows="size",
+                columns="size",
+                modulus="modulus",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_matrix",
+            nmod_mat_t,
+            packed_nmod_matrix(
+                data="right",
+                rows="size",
+                columns="right_columns",
+                modulus="modulus",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_mat_solve(
+    output: Writable[UInt64Buffer],
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    size: uint64,
+    right_columns: uint64,
+    modulus: uint64,
+) -> bool:
+    ...
+
+
+@flint.function(
     dynamic="ffiNmodPolyMul",
     symbol="sagejs_flint_nmod_poly_mul_packed",
     returns=int,

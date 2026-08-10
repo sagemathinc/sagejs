@@ -21,6 +21,7 @@ const TYPE_ALIASES = new Map([
   ["PrimeFieldElement", "PrimeFieldElement"],
   ["PrimeFieldMatrix", "PrimeFieldMatrix"],
   ["PrimeFieldDecomposition", "PrimeFieldDecomposition"],
+  ["PrimeFieldModulus", "PrimeModulusValue"],
   ["UInt64Buffer", "UInt64Buffer"],
 ]);
 const INT64_BUFFER_TYPES = new Set(["Int64Buffer", "Int64Record"]);

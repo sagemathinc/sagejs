@@ -6,7 +6,7 @@ from typing import Any
 
 import sagejs.runtime as _runtime
 
-__sagejs_ffi_declaration__ = "flint@f0ee388f298205c41d863062c70596200bf2b0e9dc1bc4f73e0639978ded6c68"
+__sagejs_ffi_declaration__ = "flint@f1583e1fce0a7c69abed6004aa21f7dd64d4e962a662ccbaf0e3c3e40ca4a6f8"
 
 
 class DirichletGroup:
@@ -24,7 +24,7 @@ class DirichletGroup:
 
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
-            self._token, "resource:flint@f0ee388f298205c41d863062c70596200bf2b0e9dc1bc4f73e0639978ded6c68:dirichlet_group"
+            self._token, "resource:flint@f1583e1fce0a7c69abed6004aa21f7dd64d4e962a662ccbaf0e3c3e40ca4a6f8:dirichlet_group"
         )
 
     def __enter__(self) -> DirichletGroup:
@@ -41,7 +41,7 @@ def dirichlet_group(modulus: int) -> DirichletGroup:
     """Call declared flint:dirichlet_group_init."""
     return DirichletGroup(_runtime.ffi_resource_create(
         __sagejs_ffi_declaration__ + ":dirichlet_group_init",
-        "resource:flint@f0ee388f298205c41d863062c70596200bf2b0e9dc1bc4f73e0639978ded6c68:dirichlet_group",
+        "resource:flint@f1583e1fce0a7c69abed6004aa21f7dd64d4e962a662ccbaf0e3c3e40ca4a6f8:dirichlet_group",
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupCreate",
         "ffiDirichletGroupClose",
@@ -61,7 +61,7 @@ def dirichlet_group_size(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupSize",
         [group._ffi_borrow()],
-        ["resource:flint@f0ee388f298205c41d863062c70596200bf2b0e9dc1bc4f73e0639978ded6c68:dirichlet_group"],
+        ["resource:flint@f1583e1fce0a7c69abed6004aa21f7dd64d4e962a662ccbaf0e3c3e40ca4a6f8:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,
@@ -77,7 +77,7 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupNumPrimitive",
         [group._ffi_borrow()],
-        ["resource:flint@f0ee388f298205c41d863062c70596200bf2b0e9dc1bc4f73e0639978ded6c68:dirichlet_group"],
+        ["resource:flint@f1583e1fce0a7c69abed6004aa21f7dd64d4e962a662ccbaf0e3c3e40ca4a6f8:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,
@@ -147,6 +147,54 @@ def nmod_mat_inv(output: list[int], source: list[int], size: int, modulus: int) 
         "ValueError",
         "matrix is singular",
         [["buffer_length","output",["size","size"],["output","source","size","modulus"]],["buffer_length","source",["size","size"],["output","source","size","modulus"]]],
+    )
+
+
+def nmod_mat_rref(output: list[int], source: list[int], rows: int, columns: int, modulus: int) -> int:
+    """Call declared flint:nmod_mat_rref."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":nmod_mat_rref",
+        "@sagemath/sagejs-flint",
+        "ffiNmodMatRref",
+        [output, source, rows, columns, modulus],
+        ["UInt64Buffer", "UInt64Buffer", "uint64", "uint64", "uint64"],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [["buffer_length","output",["rows","columns"],["output","source","rows","columns","modulus"]],["buffer_length","source",["rows","columns"],["output","source","rows","columns","modulus"]]],
+    )
+
+
+def nmod_mat_right_kernel(output: list[int], source: list[int], rows: int, columns: int, modulus: int) -> int:
+    """Call declared flint:nmod_mat_right_kernel."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":nmod_mat_right_kernel",
+        "@sagemath/sagejs-flint",
+        "ffiNmodMatRightKernel",
+        [output, source, rows, columns, modulus],
+        ["UInt64Buffer", "UInt64Buffer", "uint64", "uint64", "uint64"],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [["buffer_length","output",["columns","columns"],["output","source","rows","columns","modulus"]],["buffer_length","source",["rows","columns"],["output","source","rows","columns","modulus"]]],
+    )
+
+
+def nmod_mat_solve(output: list[int], left: list[int], right: list[int], size: int, right_columns: int, modulus: int) -> bool:
+    """Call declared flint:nmod_mat_solve."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":nmod_mat_solve",
+        "@sagemath/sagejs-flint",
+        "ffiNmodMatSolve",
+        [output, left, right, size, right_columns, modulus],
+        ["UInt64Buffer", "UInt64Buffer", "UInt64Buffer", "uint64", "uint64", "uint64"],
+        "bool",
+        ["direct", [], None],
+        None,
+        None,
+        [["buffer_length","output",["size","right_columns"],["output","left","right","size","right_columns","modulus"]],["buffer_length","left",["size","size"],["output","left","right","size","right_columns","modulus"]],["buffer_length","right",["size","right_columns"],["output","left","right","size","right_columns","modulus"]]],
     )
 
 

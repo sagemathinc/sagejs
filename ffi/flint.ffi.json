@@ -597,6 +597,376 @@
       }
     },
     {
+      "id": "nmod_mat_rref",
+      "python_name": "nmod_mat_rref",
+      "signature": {
+        "parameters": [
+          {
+            "name": "output",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "modulus",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatRref"
+      },
+      "native": {
+        "symbol": "sagejs_flint_nmod_mat_rref_copy",
+        "return_type": "slong",
+        "arguments": [
+          {
+            "source": "reduced",
+            "abi_type": "nmod_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_nmod_matrix",
+              "data": "output",
+              "rows": "rows",
+              "columns": "columns",
+              "modulus": "modulus",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "matrix",
+            "abi_type": "nmod_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_nmod_matrix",
+              "data": "source",
+              "rows": "rows",
+              "columns": "columns",
+              "modulus": "modulus",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output"
+        ]
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_mat_right_kernel",
+      "python_name": "nmod_mat_right_kernel",
+      "signature": {
+        "parameters": [
+          {
+            "name": "output",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "modulus",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "uint64",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatRightKernel"
+      },
+      "native": {
+        "symbol": "sagejs_flint_nmod_mat_right_kernel",
+        "return_type": "slong",
+        "arguments": [
+          {
+            "source": "basis",
+            "abi_type": "nmod_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_nmod_matrix",
+              "data": "output",
+              "rows": "columns",
+              "columns": "columns",
+              "modulus": "modulus",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "matrix",
+            "abi_type": "nmod_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_nmod_matrix",
+              "data": "source",
+              "rows": "rows",
+              "columns": "columns",
+              "modulus": "modulus",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output"
+        ]
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
+      "id": "nmod_mat_solve",
+      "python_name": "nmod_mat_solve",
+      "signature": {
+        "parameters": [
+          {
+            "name": "output",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "left",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "size",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "right_columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "modulus",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
+        ],
+        "return_type": "bool",
+        "return_ownership": "value",
+        "borrow_from": null
+      },
+      "dynamic": {
+        "export": "ffiNmodMatSolve"
+      },
+      "native": {
+        "symbol": "sagejs_flint_nmod_mat_solve",
+        "return_type": "int",
+        "arguments": [
+          {
+            "source": "solution",
+            "abi_type": "nmod_mat_t",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_nmod_matrix",
+              "data": "output",
+              "rows": "size",
+              "columns": "right_columns",
+              "modulus": "modulus",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "left_matrix",
+            "abi_type": "nmod_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_nmod_matrix",
+              "data": "left",
+              "rows": "size",
+              "columns": "size",
+              "modulus": "modulus",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "right_matrix",
+            "abi_type": "nmod_mat_t",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_nmod_matrix",
+              "data": "right",
+              "rows": "size",
+              "columns": "right_columns",
+              "modulus": "modulus",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          }
+        ]
+      },
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output"
+        ]
+      },
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
+    },
+    {
       "id": "nmod_poly_mul",
       "python_name": "nmod_poly_mul",
       "signature": {

@@ -24,11 +24,23 @@ registered matrix callback without failing `pnpm architecture:check`. It does
 physical migrations are visible work, rather than architecture hidden inside a
 large addon.
 
-The first declared matrix contracts are already real: FLINT `nmod_mat_rank`
-and `nmod_mat_inv` use packed matrices, generated dynamic wrappers, isolated
+The first declared matrix contracts are already real: FLINT `nmod_mat_rank`,
+`nmod_mat_inv`, `nmod_mat_rref`, `nmod_mat_nullspace`, and `nmod_mat_solve`
+use packed matrices, generated dynamic wrappers, isolated
 native lowering, checked dimensions and status results, all-exit cleanup, and
 transactional output. They establish the reusable route for the 21 foreign and
 thin operations without adding function-name substitutions to the compiler.
+
+Dense matrices over primes at most 32 bits are now physically migrated. Their
+canonical algorithmic storage is a caller-owned row-major `UInt64Buffer` with
+explicit dimensions and modulus. Production rank, RREF, right kernel, and
+square solve select between the actual typed-Python bodies and declaration-
+driven FLINT from the measured crossover in
+[`../bench/DENSE-PRIME-MIGRATION.md`](../bench/DENSE-PRIME-MIGRATION.md).
+Neither production route calls the old matrix N-API callbacks. Those callbacks
+remain frozen only as differential oracles and as the capability fallback for
+prime moduli outside the current packed compiler domain; they are no longer
+the small-prime production implementation.
 
 ## Retained representation primitives
 
@@ -71,8 +83,9 @@ residue-ring policy, or mixed-ring dispatch. Calling the whole callback a
 remains useful as an oracle; production migration requires ordinary Python
 bodies plus the packed numeric domains needed to compile those bodies well.
 
-The existing dense prime-field typed-Python witnesses show that nested matrix
-loops can reach native performance. They do not by themselves prove the
+The production dense prime-field typed-Python kernels show that nested matrix
+loops can reach native performance and can share one storage contract with
+mature FLINT. They do not by themselves prove the
 cyclotomic, algebraic, approximate, rational, and residue-ring algorithms above
 are migrated, so this document does not claim that.
 

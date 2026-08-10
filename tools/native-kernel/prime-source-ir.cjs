@@ -82,7 +82,7 @@ function booleanLiteral(node) {
   return undefined;
 }
 
-function createContext(fn, signature, filename, decorated) {
+function createContext(fn, signature, signatures, filename, decorated) {
   return {
     body: [],
     decorated,
@@ -93,6 +93,8 @@ function createContext(fn, signature, filename, decorated) {
     nextTemporary: 0,
     params: signature.params,
     returnType: signature.returnType,
+    dependencies: new Set(),
+    signatures,
     variables: new Map(
       signature.params.map((param) => [param.name, param.type]),
     ),
@@ -161,9 +163,57 @@ function simpleCall(node, context) {
 
 function lowerCall(node, context, operations) {
   const name = simpleCall(node, context);
-  const args = array(node.args).map((arg) =>
+  const argumentNodes = array(node.args);
+  const signature = context.signatures.get(name);
+  if (signature !== undefined) {
+    expect(
+      context,
+      node,
+      argumentNodes.length === signature.params.length,
+      `${name} expects ${signature.params.length} arguments, got ${argumentNodes.length}`,
+    );
+    const args = argumentNodes.map((arg, index) => {
+      const value = lowerExpression(arg, context, operations);
+      expectType(
+        context,
+        arg,
+        value,
+        signature.params[index].type,
+        `${name} argument ${index + 1}`,
+      );
+      return value;
+    });
+    expect(
+      context,
+      node,
+      ["uint64", "PrimeFieldMatrix"].includes(signature.returnType),
+      `${name} has unsupported source-transparent result ${signature.returnType}`,
+    );
+    const target = temporary(context, node, signature.returnType);
+    operations.push({
+      kind: "source.call",
+      target,
+      function: name,
+      arguments: args,
+      returnType: signature.returnType,
+    });
+    context.dependencies.add(name);
+    return { name: target, type: signature.returnType };
+  }
+  const args = argumentNodes.map((arg) =>
     lowerExpression(arg, context, operations)
   );
+  if (name === "len") {
+    expect(context, node, args.length === 1, "len expects one argument");
+    expectType(context, node, args[0], "UInt64Buffer", name);
+    const target = temporary(context, node, "uint64");
+    operations.push({
+      kind: "source.buffer.length",
+      target,
+      buffer: args[0].name,
+    });
+    return { name: target, type: "uint64" };
+  }
   const unaryMatrix = new Map([
     ["prime_rows", "rows"],
     ["prime_columns", "columns"],
@@ -225,7 +275,12 @@ function lowerCall(node, context, operations) {
     expect(context, node, args.length === 3, `${name} expects three arguments`);
     expectType(context, node, args[0], "uint64", name);
     expectType(context, node, args[1], "uint64", name);
-    expectType(context, node, args[2], "PrimeModulus", name);
+    expect(
+      context,
+      node,
+      ["PrimeModulus", "PrimeModulusValue"].includes(args[2].type),
+      `${name} modulus expects PrimeModulus, got ${args[2].type}`,
+    );
     const target = temporary(context, node, "uint64");
     operations.push({
       kind: `source.prime.${name.slice(6)}`,
@@ -233,19 +288,26 @@ function lowerCall(node, context, operations) {
       left: args[0].name,
       right: args[1].name,
       modulus: args[2].name,
+      modulusType: args[2].type,
     });
     return { name: target, type: "uint64" };
   }
   if (name === "prime_inverse") {
     expect(context, node, args.length === 2, "prime_inverse expects two arguments");
     expectType(context, node, args[0], "uint64", name);
-    expectType(context, node, args[1], "PrimeModulus", name);
+    expect(
+      context,
+      node,
+      ["PrimeModulus", "PrimeModulusValue"].includes(args[1].type),
+      `${name} modulus expects PrimeModulus, got ${args[1].type}`,
+    );
     const target = temporary(context, node, "uint64");
     operations.push({
       kind: "source.prime.inverse",
       target,
       value: args[0].name,
       modulus: args[1].name,
+      modulusType: args[1].type,
     });
     return { name: target, type: "uint64" };
   }
@@ -302,7 +364,12 @@ function lowerExpression(node, context, operations) {
   const comparison = COMPARISONS.get(node.operator);
   if (comparison !== undefined) {
     expect(context, node, left.type === right.type &&
-      ["uint64", "bool", "PrimeModulus"].includes(left.type),
+      [
+        "uint64",
+        "bool",
+        "PrimeModulus",
+        "PrimeModulusValue",
+      ].includes(left.type),
       `cannot compare ${left.type} and ${right.type}`);
     const target = temporary(context, node, "bool");
     operations.push({ kind: "source.compare", operation: comparison, target,
@@ -488,8 +555,20 @@ function containsReturn(statements) {
   );
 }
 
-function lowerPrimeSourceFunction(fn, signature, filename, decorated) {
-  const context = createContext(fn, signature, filename, decorated);
+function lowerPrimeSourceFunction(
+  fn,
+  signature,
+  signatures,
+  filename,
+  decorated,
+) {
+  const context = createContext(
+    fn,
+    signature,
+    signatures,
+    filename,
+    decorated,
+  );
   const loweredBody = lowerStatements(array(fn.body), context);
   expect(context, fn, containsReturn(loweredBody), "function has no return");
   const lowered = {
@@ -508,7 +587,7 @@ function lowerPrimeSourceFunction(fn, signature, filename, decorated) {
     locals: Array.from(context.locals, ([name, type]) => ({ name, type })),
     body: optimized.body,
     optimizations: optimized.optimizations,
-    dependencies: [],
+    dependencies: Array.from(context.dependencies).sort(),
   };
   // Optimized operations retain the IDs of the operations they replace and
   // receive a fresh stable ID of their own.

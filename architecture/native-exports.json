@@ -4647,7 +4647,8 @@
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "src/baselib/matrix.py",
+        "test/dense-prime-migration.cjs"
       ],
       "declared_ffi": null
     },
@@ -5004,7 +5005,8 @@
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "src/baselib/matrix.py",
+        "test/dense-prime-migration.cjs"
       ],
       "declared_ffi": null
     },
@@ -5194,7 +5196,8 @@
         "packages/flint/index.cjs",
         "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "src/baselib/matrix.py",
+        "test/dense-prime-migration.cjs"
       ],
       "declared_ffi": null
     },
@@ -5280,8 +5283,10 @@
         "packages/flint-wasm/index.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "src/baselib/matrix.py",
+        "test/dense-prime-migration.cjs"
       ],
       "declared_ffi": null
     },
@@ -5335,8 +5340,10 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/matrix.test.mjs",
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "src/baselib/matrix.py",
+        "test/dense-prime-migration.cjs"
       ],
       "declared_ffi": null
     },
@@ -5556,7 +5563,9 @@
       ],
       "consumers": [
         "packages/flint-wasm/test/matrix.test.mjs",
-        "src/baselib/matrix.py"
+        "packages/flint/index.cjs",
+        "src/baselib/matrix.py",
+        "test/dense-prime-migration.cjs"
       ],
       "declared_ffi": null
     },
@@ -6854,7 +6863,8 @@
       "consumers": [
         "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "src/baselib/matrix.py",
+        "test/dense-prime-migration.cjs"
       ],
       "declared_ffi": null
     },

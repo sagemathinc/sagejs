@@ -37,7 +37,7 @@
       "id": "core-runtime",
       "layer": 0,
       "startup": "bootstrap",
-      "max_source_bytes": 580000,
+      "max_source_bytes": 582000,
       "depends_on": [],
       "modules": ["sagejs", "sagejs.runtime"],
       "files": [
@@ -84,7 +84,7 @@
       "id": "linear-algebra",
       "layer": 2,
       "startup": "bootstrap",
-      "max_source_bytes": 112000,
+      "max_source_bytes": 122000,
       "depends_on": ["core-runtime", "arithmetic"],
       "files": ["src/baselib/matrix.py"],
       "typescript_files": ["tools/serialization-codecs/linear-algebra.ts"],
@@ -166,7 +166,7 @@
       "id": "python-stdlib",
       "layer": 1,
       "startup": "lazy",
-      "max_source_bytes": 600000,
+      "max_source_bytes": 613000,
       "depends_on": ["core-runtime"],
       "modules": [
         "_dummy_thread", "_thread", "abc", "aes", "annotationlib", "argparse", "array", "ast", "atexit", "base64", "bdb", "bisect", "calendar", "cmath", "codecs", "collections", "colorsys", "contextlib", "copy", "decimal",

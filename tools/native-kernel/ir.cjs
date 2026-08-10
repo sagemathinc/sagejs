@@ -816,6 +816,7 @@ async function lowerSource(source, filename, options = {}) {
           : lowerPrimeSourceFunction(
               fn,
               signature,
+              signatures,
               filename,
               decoratedMode,
             )

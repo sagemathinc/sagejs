@@ -24,11 +24,14 @@ function generatePrimeSourceSupport() {
 #define SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK 0
 #endif
 
+#ifndef SAGEJS_SOURCE_U64_BUFFER_DEFINED
+#define SAGEJS_SOURCE_U64_BUFFER_DEFINED
 typedef struct
 {
-    ulong *data;
+    uint64_t *data;
     size_t length;
 } sagejs_source_u64_buffer;
+#endif
 
 static void sagejs_source_buffer_clear(sagejs_source_u64_buffer *buffer)
 {
@@ -54,13 +57,14 @@ static int sagejs_source_buffer_copy_matrix(
         return 0;
     }
     count = (size_t) rows * (size_t) columns;
-    if (count > SIZE_MAX / sizeof(ulong))
+    if (count > SIZE_MAX / sizeof(uint64_t))
     {
         sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
             "prime-field matrix is too large");
         return 0;
     }
-    buffer->data = count == 0 ? NULL : (ulong *) malloc(count * sizeof(ulong));
+    buffer->data = count == 0 ? NULL :
+        (uint64_t *) malloc(count * sizeof(uint64_t));
     if (count != 0 && buffer->data == NULL)
     {
         sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
@@ -68,13 +72,11 @@ static int sagejs_source_buffer_copy_matrix(
         return 0;
     }
     buffer->length = count;
-    if (columns != 0)
-    {
-        for (slong row = 0; row < rows; row++)
-            memcpy(buffer->data + (size_t) row * (size_t) columns,
-                nmod_mat_row_ptr(matrix, row),
-                (size_t) columns * sizeof(ulong));
-    }
+    for (slong row = 0; row < rows; row++)
+        for (slong column = 0; column < columns; column++)
+            buffer->data[(size_t) row * (size_t) columns +
+                (size_t) column] =
+                (uint64_t) nmod_mat_entry(matrix, row, column);
     return 1;
 }
 
@@ -83,7 +85,7 @@ static int sagejs_source_buffer_zeros(
     sagejs_source_u64_buffer *buffer,
     uint64_t length)
 {
-    if (length > SIZE_MAX / sizeof(ulong))
+    if (length > SIZE_MAX / sizeof(uint64_t))
     {
         sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
             "native source buffer is too large");
@@ -91,7 +93,7 @@ static int sagejs_source_buffer_zeros(
     }
     buffer->data = length == 0
         ? NULL
-        : (ulong *) calloc((size_t) length, sizeof(ulong));
+        : (uint64_t *) calloc((size_t) length, sizeof(uint64_t));
     if (length != 0 && buffer->data == NULL)
     {
         sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
@@ -225,7 +227,7 @@ static int sagejs_source_prime_row_submul(
 
 static int sagejs_source_prime_dot_accumulate(
     sagejs_native_status *status,
-    ulong *accumulator,
+    uint64_t *accumulator,
     const sagejs_source_u64_buffer *left,
     const sagejs_source_u64_buffer *right,
     uint64_t left_row,
@@ -234,6 +236,7 @@ static int sagejs_source_prime_dot_accumulate(
     uint64_t column,
     uint64_t start,
     uint64_t stop,
+    int subtract,
     const nmod_t *modulus)
 {
     uint64_t left_base;
@@ -272,13 +275,102 @@ static int sagejs_source_prime_dot_accumulate(
                 (uint64_t) right->data[
                     position * right_columns + column];
         }
-        *accumulator = _nmod_add(
-            *accumulator, (ulong) (sum % modulus->n), *modulus);
+        if (subtract)
+            *accumulator = (uint64_t) nmod_sub(
+                (ulong) *accumulator,
+                (ulong) (sum % modulus->n), *modulus);
+        else
+            *accumulator = (uint64_t) _nmod_add(
+                (ulong) *accumulator,
+                (ulong) (sum % modulus->n), *modulus);
     }
     return 1;
 invalid:
     sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
         "native source dot-product span is out of range");
+    return 0;
+}
+
+static int sagejs_source_prime_panel_update(
+    sagejs_native_status *status,
+    sagejs_source_u64_buffer *buffer,
+    uint64_t rows_start,
+    uint64_t rows_stop,
+    uint64_t columns_start,
+    uint64_t columns_stop,
+    uint64_t panel_start,
+    uint64_t panel_stop,
+    uint64_t stride,
+    const nmod_t *modulus)
+{
+    const uint64_t tile_capacity = UINT64_C(512);
+    const uint64_t count = panel_stop - panel_start;
+    const uint64_t magnitude = (uint64_t) modulus->n - UINT64_C(1);
+    const uint64_t product_bound = magnitude * magnitude;
+    uint64_t batch = product_bound == 0
+        ? count : UINT64_MAX / product_bound;
+    uint64_t *packed = NULL;
+    if (rows_start > rows_stop || columns_start > columns_stop ||
+        panel_start > panel_stop ||
+        (stride != 0 && rows_stop > UINT64_MAX / stride) ||
+        panel_stop > rows_start || columns_stop > stride ||
+        rows_stop * stride > (uint64_t) buffer->length)
+        goto invalid;
+    if (batch < 1)
+        batch = 1;
+    if (batch > count)
+        batch = count;
+    if (count != 0 &&
+        count > SIZE_MAX / tile_capacity / sizeof(uint64_t))
+        goto invalid;
+    packed = count == 0 ? NULL : (uint64_t *) malloc(
+        (size_t) count * (size_t) tile_capacity * sizeof(uint64_t));
+    if (count != 0 && packed == NULL)
+    {
+        sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
+            "unable to allocate native panel workspace");
+        return 0;
+    }
+    for (uint64_t column_start = columns_start;
+         column_start < columns_stop; column_start += tile_capacity)
+    {
+        const uint64_t available = columns_stop - column_start;
+        const uint64_t length = available < tile_capacity
+            ? available : tile_capacity;
+        for (uint64_t column = 0; column < length; column++)
+            for (uint64_t prior = 0; prior < count; prior++)
+                packed[column * count + prior] = buffer->data[
+                    (panel_start + prior) * stride + column_start + column];
+        for (uint64_t row = rows_start; row < rows_stop; row++)
+        {
+            const uint64_t *factors =
+                buffer->data + row * stride + panel_start;
+            uint64_t *target = buffer->data + row * stride + column_start;
+            for (uint64_t column = 0; column < length; column++)
+            {
+                for (uint64_t offset = 0; offset < count; offset += batch)
+                {
+                    const uint64_t available = count - offset;
+                    const uint64_t length = batch < available
+                        ? batch : available;
+                    uint64_t sum = 0;
+                    for (uint64_t prior = 0; prior < length; prior++)
+                        sum += (uint64_t) factors[offset + prior] *
+                            (uint64_t) packed[
+                                column * count + offset + prior];
+                    target[column] = (uint64_t) nmod_sub(
+                        (ulong) target[column],
+                        (ulong) (sum % modulus->n), *modulus);
+                }
+            }
+        }
+    }
+    free(packed);
+    return 1;
+invalid:
+    free(packed);
+    sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,
+        "native source panel update is out of range");
     return 0;
 }
 
@@ -325,9 +417,8 @@ static nmod_mat_struct *sagejs_source_matrix_from_buffer(
             "unable to allocate result matrix entries");
         return NULL;
     }
-    if (count != 0)
-        memcpy(answer->entries, buffer->data,
-            count * sizeof(ulong));
+    for (size_t index = 0; index < count; index++)
+        answer->entries[index] = (ulong) buffer->data[index];
     return answer;
 }
 
@@ -343,6 +434,31 @@ static void sagejs_source_matrix_clear(nmod_mat_struct *matrix)
 
 function generatePrimeSourceNodeSupport() {
   return String.raw`
+static int sagejs_source_get_u64_buffer(
+    napi_env env,
+    napi_value value,
+    sagejs_source_u64_buffer *result,
+    const char *argument)
+{
+    bool typed = false;
+    napi_typedarray_type type;
+    size_t length = 0;
+    void *data = NULL;
+    napi_value array_buffer;
+    size_t byte_offset = 0;
+    if (napi_is_typedarray(env, value, &typed) != napi_ok || !typed ||
+        napi_get_typedarray_info(env, value, &type, &length, &data,
+            &array_buffer, &byte_offset) != napi_ok ||
+        type != napi_biguint64_array)
+    {
+        napi_throw_type_error(env, NULL, argument);
+        return 0;
+    }
+    result->data = (uint64_t *) data;
+    result->length = length;
+    return 1;
+}
+
 static napi_value sagejs_source_wrap_matrix(
     napi_env env, nmod_mat_struct *source)
 {
@@ -381,6 +497,9 @@ static napi_value sagejs_source_wrap_matrix(
 
 function declaration(local) {
   if (local.type === "uint64") return `    uint64_t ${cName(local.name)} = 0;`;
+  if (local.type === "PrimeModulusValue") {
+    return `    uint64_t ${cName(local.name)} = 0;`;
+  }
   if (local.type === "bool") return `    int ${cName(local.name)} = 0;`;
   if (local.type === "UInt64Buffer") {
     return `    sagejs_source_u64_buffer ${cName(local.name)} = {NULL, 0};`;
@@ -392,6 +511,12 @@ function declaration(local) {
     return `    const nmod_t *${cName(local.name)} = NULL;`;
   }
   throw new Error(`unsupported source-transparent local ${local.type}`);
+}
+
+function modulusExpression(operation) {
+  return operation.modulusType === "PrimeModulusValue"
+    ? `&${cName(operation.modulus)}_nmod`
+    : cName(operation.modulus);
 }
 
 function comparison(operation) {
@@ -460,6 +585,10 @@ function emitStatementBody(operation, indent) {
       `${indent}    goto fail;`,
     ].join("\n");
   }
+  if (operation.kind === "source.buffer.length") {
+    return `${indent}${target} = (uint64_t) ` +
+      `${cName(operation.buffer)}.length;`;
+  }
   if (operation.kind === "source.buffer.get") {
     return [
       "#if SAGEJS_NATIVE_SOURCE_BOUNDS_CHECK",
@@ -490,6 +619,17 @@ function emitStatementBody(operation, indent) {
       `${indent}    status, ${cName(operation.model)}, ${cName(operation.rows)},`,
       `${indent}    ${cName(operation.columns)}, &${cName(operation.buffer)});`,
       `${indent}if (${target} == NULL) goto fail;`,
+    ].join("\n");
+  }
+  if (operation.kind === "source.call") {
+    const argumentsList = operation.arguments.map((argument) =>
+      cName(argument.name)
+    );
+    return [
+      `${indent}if (!sagejs_kernel_${operation.function}(`,
+      `${indent}        status, &${target}` +
+        `${argumentsList.length ? `, ${argumentsList.join(", ")}` : ""}))`,
+      `${indent}    goto fail;`,
     ].join("\n");
   }
   if (operation.kind === "source.uint64.binary") {
@@ -534,6 +674,17 @@ function emitStatementBody(operation, indent) {
   }
   if (operation.kind.startsWith("source.prime.")) {
     const name = operation.kind.slice(13);
+    if (name === "panel_update") {
+      return [
+        `${indent}if (!sagejs_source_prime_panel_update(`,
+        `${indent}        status, &${cName(operation.buffer)},`,
+        `${indent}        ${cName(operation.rowsStart)}, ${cName(operation.rowsStop)},`,
+        `${indent}        ${cName(operation.columnsStart)}, ${cName(operation.columnsStop)},`,
+        `${indent}        ${cName(operation.panelStart)}, ${cName(operation.panelStop)},`,
+        `${indent}        ${cName(operation.stride)}, ${modulusExpression(operation)}))`,
+        `${indent}    goto fail;`,
+      ].join("\n");
+    }
     if (name === "row_submul") {
       return [
         `${indent}if (!sagejs_source_prime_row_submul(`,
@@ -541,7 +692,7 @@ function emitStatementBody(operation, indent) {
         `${indent}        ${cName(operation.targetRow)}, ${cName(operation.sourceRow)},`,
         `${indent}        ${cName(operation.stride)}, ${cName(operation.start)},`,
         `${indent}        ${cName(operation.stop)}, ${cName(operation.factor)},`,
-        `${indent}        ${cName(operation.modulus)}))`,
+        `${indent}        ${modulusExpression(operation)}))`,
         `${indent}    goto fail;`,
       ].join("\n");
     }
@@ -554,17 +705,18 @@ function emitStatementBody(operation, indent) {
         `${indent}        ${cName(operation.leftRow)}, ${cName(operation.inner)},`,
         `${indent}        ${cName(operation.rightColumns)}, ${cName(operation.column)},`,
         `${indent}        ${cName(operation.start)}, ${cName(operation.stop)},`,
-        `${indent}        ${cName(operation.modulus)}))`,
+        `${indent}        ${operation.operation === "sub" ? 1 : 0},`,
+        `${indent}        ${modulusExpression(operation)}))`,
         `${indent}    goto fail;`,
       ].join("\n");
     }
     if (name === "inverse") {
       return `${indent}${target} = sagejs_source_prime_inverse(` +
-        `${cName(operation.value)}, ${cName(operation.modulus)});`;
+        `${cName(operation.value)}, ${modulusExpression(operation)});`;
     }
     return `${indent}${target} = sagejs_source_prime_${name}(` +
       `${cName(operation.left)}, ${cName(operation.right)}, ` +
-      `${cName(operation.modulus)});`;
+      `${modulusExpression(operation)});`;
   }
   if (operation.kind === "source.if") {
     const lines = [
@@ -640,10 +792,16 @@ function primeSourceCoreSignature(fn, prototype = false) {
     ? "nmod_mat_struct **sagejs_native_output"
     : "uint64_t *sagejs_native_output";
   const params = fn.params.map((param) => {
-    if (param.type !== "PrimeFieldMatrix") {
-      throw new Error(`unsupported source-transparent parameter ${param.type}`);
+    if (param.type === "PrimeFieldMatrix") {
+      return `const nmod_mat_struct *${cName(param.name)}`;
     }
-    return `const nmod_mat_struct *${cName(param.name)}`;
+    if (param.type === "UInt64Buffer") {
+      return `sagejs_source_u64_buffer ${cName(param.name)}`;
+    }
+    if (["uint64", "PrimeModulusValue"].includes(param.type)) {
+      return `uint64_t ${cName(param.name)}`;
+    }
+    throw new Error(`unsupported source-transparent parameter ${param.type}`);
   });
   return `int sagejs_kernel_${fn.name}(` + [
     "sagejs_native_status *status", output, ...params,
@@ -662,12 +820,31 @@ function emitPrimeSourceCoreFunction(fn) {
       `        sagejs_source_matrix_clear(${cName(local.name)});`,
     ].join("\n")),
   ].join("\n");
+  const modulusDeclarations = fn.params
+    .filter((param) => param.type === "PrimeModulusValue")
+    .map((param) => `    nmod_t ${cName(param.name)}_nmod;`)
+    .join("\n");
+  const modulusInitialization = fn.params
+    .filter((param) => param.type === "PrimeModulusValue")
+    .map((param) => [
+      `    if (${cName(param.name)} < UINT64_C(2) ||`,
+      `        ${cName(param.name)} > (uint64_t) UINT32_MAX)`,
+      "    {",
+      `        sagejs_native_status_set(status, SAGEJS_NATIVE_RANGE_ERROR,`,
+      `            ${cString(param.name + " must be a prime between 2 and 2^32 - 1")});`,
+      "        goto fail;",
+      "    }",
+      `    nmod_init(&${cName(param.name)}_nmod, (ulong) ${cName(param.name)});`,
+    ].join("\n"))
+    .join("\n");
   return `${primeSourceCoreSignature(fn)}
 {
+${modulusDeclarations}
 ${fn.locals.map(declaration).join("\n")}
     sagejs_native_status_reset(status);
     ${fn.returnType === "PrimeFieldMatrix"
       ? "*sagejs_native_output = NULL;" : "*sagejs_native_output = 0;"}
+${modulusInitialization}
 
 ${fn.body.map((item) => emitStatement(item, "    ")).join("\n")}
     sagejs_native_status_set(status, SAGEJS_NATIVE_ERROR,
@@ -685,24 +862,57 @@ ${cleanup}
 }
 
 function emitPrimeSourceNodeAdapter(fn) {
-  const declarations = fn.params.map((param) =>
-    `    sagejs_matrix *sagejs_wrapper_${param.name};`
-  ).join("\n");
-  const parse = fn.params.map((param, index) => [
-    `    sagejs_wrapper_${param.name} = ` +
-      `sagejs_native_unwrap_prime_matrix(env, args[${index}]);`,
-    `    if (sagejs_wrapper_${param.name} == NULL) return NULL;`,
-    `    if (sagejs_wrapper_${param.name}->modular->mod.n > ` +
-      `(ulong) UINT32_MAX)`,
-    "    {",
-    "        napi_throw_range_error(env, NULL,",
-    '            "source-transparent kernel currently requires a 32-bit prime");',
-    "        return NULL;",
-    "    }",
-  ].join("\n")).join("\n");
-  const args = fn.params.map((param) =>
-    `sagejs_wrapper_${param.name}->modular`
-  );
+  const declarations = [];
+  const parse = [];
+  const args = [];
+  for (const [index, param] of fn.params.entries()) {
+    if (param.type === "PrimeFieldMatrix") {
+      declarations.push(`    sagejs_matrix *sagejs_wrapper_${param.name};`);
+      parse.push([
+        `    sagejs_wrapper_${param.name} = ` +
+          `sagejs_native_unwrap_prime_matrix(env, args[${index}]);`,
+        `    if (sagejs_wrapper_${param.name} == NULL) return NULL;`,
+        `    if (sagejs_wrapper_${param.name}->modular->mod.n > ` +
+          `(ulong) UINT32_MAX)`,
+        "    {",
+        "        napi_throw_range_error(env, NULL,",
+        '            "source-transparent kernel currently requires a 32-bit prime");',
+        "        return NULL;",
+        "    }",
+      ].join("\n"));
+      args.push(`sagejs_wrapper_${param.name}->modular`);
+    } else if (param.type === "UInt64Buffer") {
+      declarations.push(
+        `    sagejs_source_u64_buffer ${cName(param.name)} = {NULL, 0};`,
+      );
+      parse.push(
+        `    if (!sagejs_source_get_u64_buffer(env, args[${index}], ` +
+          `&${cName(param.name)}, ` +
+          `${cString(param.name + " must be a BigUint64Array")})) return NULL;`,
+      );
+      args.push(cName(param.name));
+    } else if (["uint64", "PrimeModulusValue"].includes(param.type)) {
+      declarations.push(`    uint64_t ${cName(param.name)} = 0;`);
+      parse.push(
+        `    if (!get_uint64(env, args[${index}], ` +
+          `&${cName(param.name)})) return NULL;`,
+      );
+      if (param.type === "PrimeModulusValue") {
+        parse.push([
+          `    if (${cName(param.name)} < UINT64_C(2) ||`,
+          `        ${cName(param.name)} > (uint64_t) UINT32_MAX)`,
+          "    {",
+          "        napi_throw_range_error(env, NULL,",
+          `            ${cString(param.name + " must be a prime between 2 and 2^32 - 1")});`,
+          "        return NULL;",
+          "    }",
+        ].join("\n"));
+      }
+      args.push(cName(param.name));
+    } else {
+      throw new Error(`unsupported source-transparent parameter ${param.type}`);
+    }
+  }
   const outputDeclaration = fn.returnType === "PrimeFieldMatrix"
     ? "    nmod_mat_struct *output = NULL;"
     : "    uint64_t output = 0;";
@@ -724,7 +934,7 @@ function emitPrimeSourceNodeAdapter(fn) {
     napi_value args[${Math.max(1, fn.params.length)}];
     size_t argc = ${fn.params.length};
     sagejs_native_status status = {0, NULL};
-${declarations}
+${declarations.join("\n")}
 ${outputDeclaration}
     napi_value result = NULL;
     if (!sagejs_native_check_napi(env,
@@ -735,7 +945,7 @@ ${outputDeclaration}
         napi_throw_type_error(env, NULL, "wrong native argument count");
         return NULL;
     }
-${parse}
+${parse.join("\n")}
     if (!sagejs_kernel_${fn.name}(&status, &output,
             ${args.join(", ")}))
     {

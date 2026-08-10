@@ -1884,6 +1884,16 @@ extern "C" {
 ${generateStatusDeclarations()}
 ${primeFields.length > 0
     ? "typedef struct sagejs_prime_factor sagejs_prime_factor;" : ""}
+${primeSources.length > 0 ? `
+#ifndef SAGEJS_SOURCE_U64_BUFFER_DEFINED
+#define SAGEJS_SOURCE_U64_BUFFER_DEFINED
+typedef struct
+{
+    uint64_t *data;
+    size_t length;
+} sagejs_source_u64_buffer;
+#endif
+` : ""}
 ${usesInt64Buffers ? `
 typedef struct
 {

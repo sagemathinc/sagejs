@@ -72,6 +72,7 @@ function matchRowSubmul(loop) {
     stop: loop.stop,
     factor,
     modulus: multiply.modulus,
+    modulusType: multiply.modulusType,
   });
 }
 
@@ -79,7 +80,7 @@ function matchDotAccumulate(loop) {
   const body = loop.body;
   if (body.length !== 10) return null;
   const [leftMul, leftAdd, leftGet, rightMul, rightAdd, rightGet,
-    multiply, productCopy, add, accumulatorCopy] = body;
+    multiply, productCopy, accumulate, accumulatorCopy] = body;
   if (leftMul?.kind !== "source.uint64.binary" ||
       leftMul.operation !== "*" ||
       !binary(leftAdd, "+", leftMul.target, loop.index) ||
@@ -95,11 +96,11 @@ function matchDotAccumulate(loop) {
         (multiply.left === rightGet.target &&
           multiply.right === leftGet.target)) ||
       !copy(productCopy, multiply.target) ||
-      add?.kind !== "source.prime.add" ||
-      add.right !== productCopy.target ||
-      add.modulus !== multiply.modulus ||
-      !copy(accumulatorCopy, add.target) ||
-      add.left !== accumulatorCopy.target) {
+      !["source.prime.add", "source.prime.sub"].includes(accumulate?.kind) ||
+      accumulate.right !== productCopy.target ||
+      accumulate.modulus !== multiply.modulus ||
+      !copy(accumulatorCopy, accumulate.target) ||
+      accumulate.left !== accumulatorCopy.target) {
     return null;
   }
   return generatedOperation(loop, {
@@ -114,6 +115,50 @@ function matchDotAccumulate(loop) {
     stop: loop.stop,
     accumulator: accumulatorCopy.target,
     modulus: multiply.modulus,
+    modulusType: multiply.modulusType,
+    operation: accumulate.kind === "source.prime.sub" ? "sub" : "add",
+  });
+}
+
+function matchPanelUpdate(loop) {
+  if (loop.body?.length !== 1) return null;
+  const columns = loop.body[0];
+  if (columns?.kind !== "source.loop.range" || columns.body?.length !== 7) {
+    return null;
+  }
+  const [rowMultiply, indexAdd, indexCopy, targetGet, valueCopy,
+    dot, targetSet] = columns.body;
+  if (rowMultiply?.kind !== "source.uint64.binary" ||
+      rowMultiply.operation !== "*" || rowMultiply.left !== loop.index ||
+      !binary(indexAdd, "+", rowMultiply.target, columns.index) ||
+      !copy(indexCopy, indexAdd.target) ||
+      targetGet?.kind !== "source.buffer.get" ||
+      targetGet.index !== indexCopy.target ||
+      !copy(valueCopy, targetGet.target) ||
+      dot?.kind !== "source.prime.dot_accumulate" ||
+      dot.operation !== "sub" || dot.accumulator !== valueCopy.target ||
+      dot.leftBuffer !== targetGet.buffer ||
+      dot.rightBuffer !== targetGet.buffer ||
+      dot.leftRow !== loop.index || dot.inner !== rowMultiply.right ||
+      dot.rightColumns !== rowMultiply.right || dot.column !== columns.index ||
+      dot.stop !== loop.start || columns.start !== loop.start ||
+      targetSet?.kind !== "source.buffer.set" ||
+      targetSet.buffer !== targetGet.buffer ||
+      targetSet.index !== indexCopy.target || targetSet.value !== valueCopy.target) {
+    return null;
+  }
+  return generatedOperation(loop, {
+    kind: "source.prime.panel_update",
+    buffer: targetGet.buffer,
+    rowsStart: loop.start,
+    rowsStop: loop.stop,
+    columnsStart: columns.start,
+    columnsStop: columns.stop,
+    panelStart: dot.start,
+    panelStop: dot.stop,
+    stride: rowMultiply.right,
+    modulus: dot.modulus,
+    modulusType: dot.modulusType,
   });
 }
 
@@ -125,6 +170,11 @@ function optimizeStatements(statements, counts) {
     if (Array.isArray(current.alternative))
       current.alternative = optimizeStatements(current.alternative, counts);
     if (current.kind !== "source.loop.range") return current;
+    const panelUpdate = matchPanelUpdate(current);
+    if (panelUpdate !== null) {
+      counts.panelUpdate += 1;
+      return panelUpdate;
+    }
     const rowSubmul = matchRowSubmul(current);
     if (rowSubmul !== null) {
       counts.rowSubmul += 1;
@@ -140,7 +190,7 @@ function optimizeStatements(statements, counts) {
 }
 
 function optimizePrimeSourceBody(body) {
-  const counts = { rowSubmul: 0, dotAccumulate: 0 };
+  const counts = { rowSubmul: 0, dotAccumulate: 0, panelUpdate: 0 };
   return {
     body: optimizeStatements(body, counts),
     optimizations: counts,

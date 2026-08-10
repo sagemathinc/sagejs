@@ -12,8 +12,6 @@
     "src/sage/matrix/matrix_integer_dense.pyx:5796": "Sage.js exposes its own Matrix class rather than claiming Sage's Python module path"
   },
   "xfail": {
-    "src/sage/matrix/matrix_integer_dense.pyx:974": "chained comparison lowering mishandles this mix of Sage-preparsed and raw integer exponents; each pairwise comparison passes",
-    "src/sage/matrix/matrix_integer_dense.pyx:995": "the compiler's native left-power fast path currently bypasses Matrix.__rpow__ for None",
     "src/sage/matrix/matrix_integer_dense.pyx:3861": "the deprecated LinBox selector computes the correct determinant but does not yet emit Sage's deprecation warning"
   }
 }

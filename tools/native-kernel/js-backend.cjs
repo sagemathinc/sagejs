@@ -778,22 +778,49 @@ ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 function emitPrimeSourcePublicFunction(fn) {
   const declaredParams = fn.params.map((param) => param.name).join(", ");
   const descriptors = fn.params.map((param) => {
-    if (param.type !== "PrimeFieldMatrix") {
-      throw new Error(`unsupported source-transparent argument ${param.type}`);
+    if (param.type === "PrimeFieldMatrix") {
+      return `  const sagejs_${param.name} = primeFieldMatrix(` +
+        `${param.name}, ${jsString(param.name)});`;
     }
-    return `  const sagejs_${param.name} = primeFieldMatrix(` +
-      `${param.name}, ${jsString(param.name)});`;
+    if (param.type === "UInt64Buffer") {
+      return `  const sagejs_${param.name} = uint64NativeBuffer(` +
+        `${param.name}, ${jsString(param.name)});`;
+    }
+    if (param.type === "uint64") return uint64Validation(param.name);
+    if (param.type === "PrimeModulusValue") {
+      return uint64Validation(param.name) + "\n" +
+        `  if (${param.name} < 2 || ${param.name} > 4294967295n) {\n` +
+        `    nativeRaise("ValueError", ` +
+          `${jsString(param.name + " must be a prime between 2 and 2^32 - 1")});\n` +
+        "  }";
+    }
+    throw new Error(`unsupported source-transparent argument ${param.type}`);
   }).join("\n");
   const nativeArguments = fn.params
-    .map((param) => `sagejs_${param.name}.native`)
+    .map((param) => param.type === "PrimeFieldMatrix"
+      ? `sagejs_${param.name}.native`
+      : param.type === "UInt64Buffer"
+        ? `sagejs_${param.name}.typed`
+        : param.name)
     .join(", ");
+  const buffers = fn.params.filter((param) => param.type === "UInt64Buffer");
+  const nativeCall = `primeFieldNativeCall(${jsString(fn.name)}, ` +
+    `[${nativeArguments}])`;
   let result;
   if (fn.returnType === "uint64") {
-    result = `return primeFieldNativeCall(${jsString(fn.name)}, ` +
-      `[${nativeArguments}]);`;
+    result = buffers.length === 0
+      ? `return ${nativeCall};`
+      : [
+          "try {",
+          `    return ${nativeCall};`,
+          "  } finally {",
+          ...buffers.map((param) =>
+            `    sagejs_${param.name}.copyBack();`
+          ),
+          "  }",
+        ].join("\n  ");
   } else if (fn.returnType === "PrimeFieldMatrix") {
-    result = `const native = primeFieldNativeCall(${jsString(fn.name)}, ` +
-      `[${nativeArguments}]);\n` +
+    result = `const native = ${nativeCall};\n` +
       `  return primeFieldMethod(sagejs_${fn.params[0].name}.value, ` +
       `"_new_shape", [native, ` +
       `Reflect.get(native, "__sagejs_native_rows__"), ` +
@@ -815,9 +842,14 @@ ${descriptors}
 ${fn.name}.sourceTransparent = true;
 ${fn.name}.backendPolicy = Object.freeze({
   kind: "compiled-python-body",
-  representation: "owned-row-major-u64-buffer",
+  representation: ${JSON.stringify(
+    buffers.length === 0
+      ? "owned-row-major-u64-buffer"
+      : "borrowed-explicit-row-major-uint64-buffer",
+  )},
   arithmetic: "u32-prime"
 });
+${buffers.length === 0 ? "" : `${fn.name}.createUInt64Buffer = createUInt64Buffer;`}
 ${fn.name}.nativeAvailable = nativeAddon !== null;`;
 }
 
@@ -1147,6 +1179,11 @@ function createUInt64Buffer(source) {
   return BigUint64Array.from(source, (value) => BigInt(value));
 }
 
+function asUInt64Buffer(source) {
+  return source instanceof BigUint64Array
+    ? source : createUInt64Buffer(source);
+}
+
 function uint64BufferView(value, argument = "buffer") {
   if (value === null || (typeof value !== "object" &&
       typeof value !== "function")) {
@@ -1156,6 +1193,9 @@ function uint64BufferView(value, argument = "buffer") {
   if (!Number.isSafeInteger(length) || length < 0) {
     throw new TypeError(argument + " must have a nonnegative safe length");
   }
+  // BigUint64Array is already a complete representation/range proof.  Do not
+  // turn a constant-time packed ABI check into a full matrix scan.
+  if (value instanceof BigUint64Array) return value;
   for (let index = 0; index < length; index += 1) {
     const entry = Reflect.get(value, String(index));
     const exact = typeof entry === "bigint"
@@ -1589,6 +1629,8 @@ for (const fn of Object.values(nativeFunctions)) {
   fn.__sagejs_native_execution_mode__ = compiledExecutionMode;
   fn.__sagejs_native_boundary__ = compiledHostBoundary;
   fn.createFloat64Buffer = createFloat64Buffer;
+  fn.createUInt64Buffer = createUInt64Buffer;
+  fn.asUInt64Buffer = asUInt64Buffer;
 }
 const nativeRegister = globalThis.__sagejs_native_register__;
 if (typeof nativeRegister === "function") {

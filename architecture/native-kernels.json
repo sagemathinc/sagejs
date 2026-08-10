@@ -32,6 +32,22 @@
       "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
     },
     {
+      "id": "dense-prime-production",
+      "source": "src/lib/sagejs/kernels/dense_prime.py",
+      "functions": [
+        "dense_prime_rank",
+        "dense_prime_rref",
+        "dense_prime_right_kernel",
+        "dense_prime_solve"
+      ],
+      "semantic_domain": "production rank, RREF, right kernel, and solve over canonical packed GF(p) storage",
+      "fallback": "same-source",
+      "host_isolation": "certified",
+      "oracles": ["cpython", "javascript", "flint", "legacy-napi"],
+      "benchmark": "bench:native:dense-prime",
+      "platforms": ["linux-x64", "linux-arm64", "windows-x64", "macos-arm64"]
+    },
+    {
       "id": "packed-binary64-witness",
       "source": "bench/cowasm/native/numerical_buffers.py",
       "functions": ["nbody_advance_energy", "matrix_multiply_repeated"],
