@@ -40,7 +40,7 @@
         "dense_prime_right_kernel",
         "dense_prime_solve"
       ],
-      "semantic_domain": "production rank, RREF, right kernel, and solve over compiler-owned matrix records with canonical packed GF(p) storage",
+      "semantic_domain": "packed candidate rank, RREF, right kernel, and solve over compiler-owned GF(p) matrix records; production Matrix remains FLINT-backed until packed storage is canonical",
       "fallback": "same-source",
       "host_isolation": "certified",
       "oracles": ["cpython", "javascript", "flint", "legacy-napi"],

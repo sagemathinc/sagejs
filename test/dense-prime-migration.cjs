@@ -111,6 +111,28 @@ function runSage(source, environment) {
   }
 }
 
+function runSageFailure(source, environment) {
+  const directory = mkdtempSync(join(tmpdir(), "sagejs-native-failure-"));
+  try {
+    const scriptPath = join(directory, "failure.py");
+    writeFileSync(scriptPath, source);
+    const result = spawnSync(
+      process.execPath,
+      [join(root, "bin", "sagejs"), scriptPath],
+      {
+        cwd: root,
+        encoding: "utf8",
+        env: { ...process.env, ...environment },
+      },
+    );
+    if (result.error) throw result.error;
+    assert.notEqual(result.status, 0, "script unexpectedly succeeded");
+    return `${result.stdout}\n${result.stderr}`;
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
 const productionScript = String.raw`
 import sagejs.runtime as runtime
 from sagejs.kernels.dense_prime import (
@@ -403,7 +425,9 @@ print("dense-prime-production-ok")
     );
 
     assert.equal(
-      runSage(productionScript, { SAGEJS_NATIVE_CACHE_DIR: temporary }),
+      runSage(productionScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+      }),
       "dense-prime-production-ok",
     );
     assert.equal(
@@ -412,6 +436,51 @@ print("dense-prime-production-ok")
         SAGEJS_NATIVE_AUTOLOAD: "0",
       }),
       "dense-prime-production-ok",
+    );
+
+    const traceScript = String.raw`
+source = matrix(GF(97), 2, 2, [1, 2, 3, 4])
+source.rref()
+print("trace-ok")
+`;
+    assert.match(
+      runSage(traceScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_TRACE: "1",
+      }),
+      /Matrix\.rref GF\(97\) 2x2 -> legacy-flint/,
+    );
+    assert.match(
+      runSage(traceScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_AUTOLOAD: "0",
+        SAGEJS_NATIVE_TRACE: "1",
+      }),
+      /Matrix\.rref GF\(97\) 2x2 -> legacy-flint/,
+    );
+
+    const importKernel = String.raw`
+from sagejs.kernels.dense_prime import dense_prime_rref
+print("import-ok")
+`;
+    const warning = runSage(importKernel, {
+      SAGEJS_NATIVE_CACHE_DIR: temporary,
+      SAGEJS_NATIVE_AUTOLOAD: "0",
+      SAGEJS_NATIVE_WARN_FALLBACK: "1",
+    });
+    assert.match(warning, /using dynamic fallbacks/);
+    assert.equal(
+      warning.match(/using dynamic fallbacks/g)?.length,
+      1,
+      "fallback diagnostics must warn once per source",
+    );
+    assert.match(
+      runSageFailure(importKernel, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_AUTOLOAD: "0",
+        SAGEJS_NATIVE_REQUIRED: "1",
+      }),
+      /has no matching compiled artifact/,
     );
   } finally {
     rmSync(temporary, { recursive: true, force: true });

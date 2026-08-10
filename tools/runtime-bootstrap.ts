@@ -219,6 +219,24 @@ export function runRuntimeBootstrap(
       "SAGEJS_NATIVE_MODE must be auto, dynamic, javascript, or native",
     );
   }
+  const nativeFallbackPolicy =
+    requestedNativeMode === "native" ||
+    (requestedNativeMode === "auto" &&
+      process.env.SAGEJS_NATIVE_REQUIRED === "1")
+      ? "required"
+      : process.env.SAGEJS_NATIVE_WARN_FALLBACK === "1"
+        ? "warn"
+        : "allow";
+  Reflect.set(
+    globalThis,
+    "__sagejs_native_fallback_policy__",
+    nativeFallbackPolicy,
+  );
+  Reflect.set(
+    globalThis,
+    "__sagejs_native_trace_enabled__",
+    process.env.SAGEJS_NATIVE_TRACE === "1",
+  );
   const nativeModules = new Map<
     string,
     { sourceHash: string; functions: Record<string, unknown> }

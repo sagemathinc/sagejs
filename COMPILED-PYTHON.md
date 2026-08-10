@@ -85,6 +85,22 @@ The default `auto` mode resolves an artifact when present and applies its
 backend policy. The older `SAGEJS_NATIVE_AUTOLOAD`, `SAGEJS_NATIVE_DISABLE`,
 and `SAGEJS_NATIVE_REQUIRED` controls remain available in `auto` mode.
 
+When implementation identity matters, make it observable instead of inferring
+it from speed. `SAGEJS_NATIVE_WARN_FALLBACK=1` warns once per source file when
+marked functions resolve to their dynamic bodies. `SAGEJS_NATIVE_REQUIRED=1`
+fails while importing a marked function if its source-hash-matched artifact is
+missing. `SAGEJS_NATIVE_TRACE=1` reports higher-level production dispatches
+that can choose among several implementations.
+
+For example, `SAGEJS_NATIVE_TRACE=1 sagejs` reports that current production
+dense prime-field matrix operations select `legacy-flint`. `Matrix` still
+canonically owns a native FLINT object, so exporting every residue into a
+packed kernel costs more end to end than the fast kernel saves. Typed-Python
+and declared-FLINT kernels are benchmarked directly with `sagejs native
+benchmark`; production dispatch should change only when packed storage itself
+becomes canonical. This N-API-owned representation is transitional and is
+intended to be deleted, not preserved as a parallel production architecture.
+
 Code can inspect this distinction without guessing from a timing:
 
 ```python
@@ -694,6 +710,12 @@ Report at least:
 A 50-microsecond kernel that excludes 500 milliseconds of setup is not an
 end-to-end 10,000-fold speedup. Microbenchmarks diagnose compiler behavior;
 public-operation benchmarks guide architecture.
+
+In particular, distinguish a packed-kernel benchmark from a public matrix
+benchmark. If the public object is stored by a foreign library, exporting its
+entries, validating buffers, and reconstructing the result are part of the
+operation. Use `SAGEJS_NATIVE_TRACE=1` to record which production matrix
+implementation ran alongside the timing.
 
 ## Compilation, caching, and distribution
 

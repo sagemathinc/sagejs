@@ -31,16 +31,20 @@ native lowering, checked dimensions and status results, all-exit cleanup, and
 transactional output. They establish the reusable route for the 21 foreign and
 thin operations without adding function-name substitutions to the compiler.
 
-Dense matrices over primes at most 32 bits are now physically migrated. Their
-canonical algorithmic storage is a caller-owned row-major `UInt64Buffer` with
-explicit dimensions and modulus. Production rank, RREF, right kernel, and
-square solve select between the actual typed-Python bodies and declaration-
-driven FLINT from the measured crossover in
+Dense rank, RREF, right-kernel, and solve algorithms over primes at most 32
+bits now exist as real typed-Python packed kernels, with declaration-driven
+FLINT using the same kernel ABI. They are compiler witnesses and differential
+oracles, not yet the default `Matrix` representation. Production `Matrix`
+still canonically owns an opaque FLINT object; exporting all of its residues
+before a packed call overwhelms the fast kernel. Production therefore retains
+the existing FLINT N-API operations until caller-owned row-major packed storage
+is canonical from matrix construction onward. The corrected scope and both
+kernel-level and public-operation evidence are recorded in
 [`../bench/DENSE-PRIME-MIGRATION.md`](../bench/DENSE-PRIME-MIGRATION.md).
-Neither production route calls the old matrix N-API callbacks. Those callbacks
-remain frozen only as differential oracles and as the capability fallback for
-prime moduli outside the current packed compiler domain; they are no longer
-the small-prime production implementation.
+This is a bounded migration state, not an accepted permanent architecture.
+Completion requires deleting the small-prime N-API matrix representation and
+callbacks after packed construction, mutation, algorithms, FFI adaptation,
+serialization, and result materialization form one verified vertical slice.
 
 ## Retained representation primitives
 
@@ -83,9 +87,9 @@ residue-ring policy, or mixed-ring dispatch. Calling the whole callback a
 remains useful as an oracle; production migration requires ordinary Python
 bodies plus the packed numeric domains needed to compile those bodies well.
 
-The production dense prime-field typed-Python kernels show that nested matrix
-loops can reach native performance and can share one storage contract with
-mature FLINT. They do not by themselves prove the
+The dense prime-field typed-Python kernels show that nested matrix loops can
+reach native performance and can share one storage contract with mature
+FLINT. They do not by themselves prove the
 cyclotomic, algebraic, approximate, rational, and residue-ring algorithms above
 are migrated, so this document does not claim that.
 

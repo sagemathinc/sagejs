@@ -25,21 +25,25 @@ def _dense_prime_kernel_module() -> Any:
         loader, runtime.undefined, ['sagejs.kernels.dense_prime'])
 
 
-def _dense_prime_flint_kernel_module() -> Any:
-    """Load declaration-driven packed FLINT crossover kernels lazily."""
-    loader = runtime.reflect.get(
-        runtime.global_object, '__sagejs_load_module__')
-    if loader is runtime.undefined:
-        raise RuntimeError('the packed FLINT kernel loader is unavailable')
-    return runtime.reflect.apply(
-        loader,
-        runtime.undefined,
-        ['sagejs.kernels.dense_prime_flint'],
-    )
-
-
 def _native_kernel_available(kernel_function: Any) -> bool:
     return bool(getattr(kernel_function, 'nativeAvailable', False))
+
+
+def _trace_dense_prime_selection(
+    operation: str,
+    implementation: str,
+    rows: int,
+    columns: int,
+    modulus: int,
+) -> None:
+    """Report an explicitly requested production-kernel selection."""
+    if runtime.reflect.get(
+        runtime.global_object,
+        '__sagejs_native_trace_enabled__',
+    ) is True:
+        print(
+            f'[sagejs native] Matrix.{operation} GF({modulus}) '
+            f'{rows}x{columns} -> {implementation}')
 
 
 def _dense_prime_kernel_loader_available() -> bool:
@@ -48,12 +52,9 @@ def _dense_prime_kernel_loader_available() -> bool:
         runtime.global_object, '__sagejs_load_module__') is not runtime.undefined
 
 
-# Dedicated measurement compares both implementations from the same packed
-# input. FLINT wins rank throughout; source-transparent Python wins the output
-# operations only for tiny matrices where both paths take microseconds.
-_DENSE_PRIME_RREF_PYTHON_MAX = 4
-_DENSE_PRIME_RIGHT_KERNEL_PYTHON_MAX = 16
-_DENSE_PRIME_SOLVE_PYTHON_MAX = 8
+# Matrix currently owns a native FLINT object, so exporting residues dominates
+# the otherwise-fast packed kernels. Production operations retain the
+# end-to-end FLINT winner until packed storage itself becomes canonical.
 
 
 def _uses_dense_prime_kernel(base: sage.Parent) -> bool:
@@ -1641,54 +1642,41 @@ class Matrix(sage.Element):
                 self._rank_cache = backend.fqMatrixRank(
                     self._native)
             elif (
-                algorithm != 'flint'
+                algorithm == 'modp'
                 and _uses_dense_prime_kernel(self.base_ring())
             ):
-                flint_function = (
-                    _dense_prime_flint_kernel_module()
-                    .flint_dense_prime_rank)
-                if _native_kernel_available(flint_function):
-                    source = self._prime_kernel_buffer(flint_function)
-                    self._rank_cache = int(flint_function(
-                        source,
-                        self.nrows(),
-                        self.ncols(),
-                        int(_untyped(self.base_ring()).characteristic()),
-                    ))
-                else:
-                    kernel_module = _dense_prime_kernel_module()
-                    kernel_function = kernel_module.dense_prime_rank
-                    count = self.nrows() * self.ncols()
-                    source = self._prime_kernel_buffer(kernel_function)
-                    workspace = _dense_prime_zeros(
-                        kernel_function, count)
-                    source_record = kernel_module.DensePrimeMatrix(
-                        source,
-                        self.nrows(),
-                        self.ncols(),
-                        int(_untyped(self.base_ring()).characteristic()),
-                    )
-                    self._rank_cache = int(kernel_function(
-                        source_record,
-                        workspace,
-                    ))
-            elif (
-                algorithm == 'flint'
-                and _uses_dense_prime_kernel(self.base_ring())
-            ):
-                flint_function = (
-                    _dense_prime_flint_kernel_module()
-                    .flint_dense_prime_rank)
-                source = self._prime_kernel_buffer(flint_function)
-                self._rank_cache = int(flint_function(
+                kernel_module = _dense_prime_kernel_module()
+                kernel_function = kernel_module.dense_prime_rank
+                count = self.nrows() * self.ncols()
+                source = self._prime_kernel_buffer(kernel_function)
+                workspace = _dense_prime_zeros(kernel_function, count)
+                source_record = kernel_module.DensePrimeMatrix(
                     source,
                     self.nrows(),
                     self.ncols(),
                     int(_untyped(self.base_ring()).characteristic()),
-                ))
+                )
+                self._rank_cache = int(kernel_function(
+                    source_record, workspace))
+                _trace_dense_prime_selection(
+                    'rank', (
+                        'typed-python'
+                        if _native_kernel_available(kernel_function)
+                        else 'dynamic-python-explicit'
+                    ),
+                    self.nrows(), self.ncols(),
+                    int(_untyped(self.base_ring()).characteristic()),
+                )
             else:
                 self._rank_cache = backend.matrixRank(
                     self._native)
+                if _uses_dense_prime_kernel(self.base_ring()):
+                    _trace_dense_prime_selection(
+                        'rank', 'legacy-flint',
+                        self.nrows(),
+                        self.ncols(),
+                        int(_untyped(self.base_ring()).characteristic()),
+                    )
         return self._rank_cache
 
     def nullity(self) -> int:
@@ -1724,48 +1712,15 @@ class Matrix(sage.Element):
             backend = runtime.flint_backend()
             if _is_extension_field_base(self.base_ring()):
                 native_value = backend.fqMatrixRref(self._native)
-            elif _uses_dense_prime_kernel(self.base_ring()):
-                kernel_module = _dense_prime_kernel_module()
-                python_function = kernel_module.dense_prime_rref
-                flint_function = (
-                    _dense_prime_flint_kernel_module()
-                    .flint_dense_prime_rref)
-                count = self.nrows() * self.ncols()
-                use_python = (
-                    not _native_kernel_available(flint_function)
-                    or max(self.nrows(), self.ncols())
-                    <= _DENSE_PRIME_RREF_PYTHON_MAX
-                )
-                kernel_function = (
-                    python_function if use_python else flint_function)
-                source = self._prime_kernel_buffer(kernel_function)
-                output = _dense_prime_zeros(kernel_function, count)
-                if use_python:
-                    source_record = kernel_module.DensePrimeMatrix(
-                        source,
+            else:
+                native_value = backend.matrixRref(self._native)
+                if _uses_dense_prime_kernel(self.base_ring()):
+                    _trace_dense_prime_selection(
+                        'rref', 'legacy-flint',
                         self.nrows(),
                         self.ncols(),
                         int(_untyped(self.base_ring()).characteristic()),
                     )
-                    rank = int(kernel_function(
-                        source_record,
-                        output,
-                    ))
-                else:
-                    rank = int(kernel_function(
-                        output,
-                        source,
-                        self.nrows(),
-                        self.ncols(),
-                        int(_untyped(self.base_ring()).characteristic()),
-                    ))
-                self._rank_cache = rank
-                self._rref_cache = self._parent._from_uint64_residues(
-                    output)
-                self._rref_cache._rank_cache = rank
-                return self._rref_cache
-            else:
-                native_value = backend.matrixRref(self._native)
             self._rref_cache = Matrix(
                 MatrixSpace(base, self.nrows(), self.ncols()),
                 native_value,
@@ -1919,60 +1874,6 @@ class Matrix(sage.Element):
                 nullity = self.ncols() - self.rank()
                 native_value = backend.fqMatrixRightKernel(
                     self._native)
-            elif _uses_dense_prime_kernel(self.base_ring()):
-                kernel_module = _dense_prime_kernel_module()
-                python_function = kernel_module.dense_prime_right_kernel
-                flint_function = (
-                    _dense_prime_flint_kernel_module()
-                    .flint_dense_prime_right_kernel)
-                source_count = self.nrows() * self.ncols()
-                use_python = (
-                    not _native_kernel_available(flint_function)
-                    or max(self.nrows(), self.ncols())
-                    <= _DENSE_PRIME_RIGHT_KERNEL_PYTHON_MAX
-                )
-                kernel_function = (
-                    python_function if use_python else flint_function)
-                source = self._prime_kernel_buffer(kernel_function)
-                output = _dense_prime_zeros(
-                    kernel_function, self.ncols() * self.ncols())
-                if use_python:
-                    workspace = _dense_prime_zeros(
-                        kernel_function, source_count)
-                    source_record = kernel_module.DensePrimeMatrix(
-                        source,
-                        self.nrows(),
-                        self.ncols(),
-                        int(_untyped(self.base_ring()).characteristic()),
-                    )
-                    nullity = int(kernel_function(
-                        source_record,
-                        workspace,
-                        output,
-                    ))
-                else:
-                    nullity = int(kernel_function(
-                        output,
-                        source,
-                        self.nrows(),
-                        self.ncols(),
-                        int(_untyped(self.base_ring()).characteristic()),
-                    ))
-                entries = [
-                    output[index]
-                    for index in range(nullity * self.ncols())]
-                basis = MatrixSpace(
-                    self.base_ring(), nullity, self.ncols(),
-                )._from_uint64_residues(entries)
-                self._rank_cache = self.ncols() - nullity
-                basis._rref_cache = basis
-                self._right_kernel_cache = VectorSubspaceParent(
-                    VectorSpace(self.base_ring(), self.ncols()),
-                    basis,
-                    self,
-                    False,
-                )
-                return self._right_kernel_cache
             elif getattr(
                 self.base_ring(), '_kind', None
             ) == 'CyclotomicField':
@@ -1998,6 +1899,13 @@ class Matrix(sage.Element):
                 nullity = self.ncols() - self.rank()
                 native_value = backend.matrixRightKernel(
                     self._native)
+                if _uses_dense_prime_kernel(self.base_ring()):
+                    _trace_dense_prime_selection(
+                        'right_kernel', 'legacy-flint',
+                        self.nrows(),
+                        self.ncols(),
+                        int(_untyped(self.base_ring()).characteristic()),
+                    )
             basis = Matrix(
                 MatrixSpace(
                     self.base_ring(), nullity, self.ncols()),
@@ -2478,59 +2386,13 @@ class Matrix(sage.Element):
             self.base_ring(), right_matrix.base_ring())
         left_matrix = self.change_ring(base)
         right_matrix = right_matrix.change_ring(base)
-        if (
-            _uses_dense_prime_kernel(base)
-            and left_matrix.is_square()
-        ):
-            kernel_module = _dense_prime_kernel_module()
-            python_function = kernel_module.dense_prime_solve
-            flint_function = (
-                _dense_prime_flint_kernel_module()
-                .flint_dense_prime_solve)
-            size = left_matrix.nrows()
-            right_columns = right_matrix.ncols()
-            use_python = (
-                not _native_kernel_available(flint_function)
-                or size <= _DENSE_PRIME_SOLVE_PYTHON_MAX
+        if _uses_dense_prime_kernel(base) and left_matrix.is_square():
+            _trace_dense_prime_selection(
+                'solve_right', 'legacy-flint',
+                left_matrix.nrows(),
+                right_matrix.ncols(),
+                int(_untyped(base).characteristic()),
             )
-            kernel_function = (
-                python_function if use_python else flint_function)
-            left = left_matrix._prime_kernel_buffer(kernel_function)
-            right_buffer = right_matrix._prime_kernel_buffer(
-                kernel_function)
-            output = _dense_prime_zeros(
-                kernel_function, size * right_columns)
-            if use_python:
-                workspace = _dense_prime_zeros(
-                    kernel_function, size * (size + right_columns))
-                modulus = int(_untyped(base).characteristic())
-                left_record = kernel_module.DensePrimeMatrix(
-                    left, size, size, modulus)
-                right_record = kernel_module.DensePrimeMatrix(
-                    right_buffer, size, right_columns, modulus)
-                solved = int(kernel_function(
-                    left_record,
-                    right_record,
-                    workspace,
-                    output,
-                ))
-            else:
-                solved = int(kernel_function(
-                    output,
-                    left,
-                    right_buffer,
-                    size,
-                    right_columns,
-                    int(_untyped(base).characteristic()),
-                ))
-            if solved != 0:
-                result = MatrixSpace(
-                    base, size, right_columns,
-                )._from_uint64_residues(output)
-                return result.column(0) if vector_result else result
-            # A singular square matrix may still define a consistent
-            # underdetermined system. Preserve Sage semantics through the
-            # general exact fallback below.
         native_value = runtime.undefined
         try:
             backend = runtime.flint_backend()

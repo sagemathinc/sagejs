@@ -59,6 +59,7 @@ Float64Buffer = list[float]
 PrimeFieldMatrix: TypeAlias = Any
 # Exact public modulus value used with explicit packed prime-field storage.
 PrimeFieldModulus: TypeAlias = int
+_warned_fallback_sources: set[str] = set()
 
 
 class NativeRecord:
@@ -429,6 +430,23 @@ def native(function: Any) -> Any:
         raise TypeError('@native expects a callable')
     replacement = _compiled(function)
     if replacement is None:
+        policy = getattr(
+            builtins, '__sagejs_native_fallback_policy__', 'allow')
+        code = getattr(function, '__code__', None)
+        filename = getattr(code, 'co_filename', '<unknown>')
+        name = getattr(function, '__name__', '<anonymous>')
+        if policy == 'required':
+            raise RuntimeError(
+                f'native kernel {name} from {filename} has no matching '
+                'compiled artifact; run `sagejs native compile '
+                f'{filename}`')
+        if policy == 'warn':
+            if filename not in _warned_fallback_sources:
+                _warned_fallback_sources.add(filename)
+                print(
+                    f'warning: native kernels from {filename} are using '
+                    'dynamic fallbacks (first function: '
+                    f'{name}); run `sagejs native compile {filename}`')
         replacement = function
     else:
         _copy_metadata(function, replacement)
