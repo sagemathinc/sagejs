@@ -8,11 +8,12 @@ same caller-owned row-major `UInt64Buffer`:
 - generated FFI calls to mature FLINT in
   `src/lib/sagejs/kernels/dense_prime_flint.py`.
 
-The declared-FLINT timing includes reconstructing FLINT matrices from packed
-storage. The legacy N-API timing starts with an already constructed opaque
-FLINT matrix. Consequently this table measures a valid crossover only for a
-caller that already owns canonical packed storage; it does not by itself
-decide the current public `Matrix` dispatch.
+The declared-FLINT timing includes reconstructing transient FLINT matrices from
+packed storage. The legacy N-API timing starts with an already constructed
+opaque FLINT matrix. Consequently the table measures the implementation
+crossover after the public matrix already owns canonical packed storage. That
+is now the production representation for dense matrices over prime fields of
+characteristic at most 32 bits.
 
 ## Dedicated-host result
 
@@ -40,30 +41,80 @@ Within an already-packed kernel pipeline, the measured crossover is:
 - right kernel uses typed Python through size 16; and
 - solve uses typed Python through size 8.
 
-These thresholds are kernel tuning evidence, not current production policy.
+These thresholds are kernel tuning evidence. Production currently chooses the
+declared-FLINT isolated route by default because it is the robust winner beyond
+very small matrices; typed Python remains available explicitly and supplies an
+independent same-ABI oracle.
 
-## End-to-end correction
+## End-to-end migration
 
-On 2026-08-10, a public `random_matrix(GF(97), 200).rref()` exposed that
-`Matrix` still canonically owned a native FLINT object. Automatic dispatch had
-to export and decode 40,000 residues in the dynamic host before entering the
-packed kernel. On the development host, labeled fresh-process measurements
-were approximately 189 ms for typed Python, 271 ms for declared FLINT through
-the packed ABI, and 2 ms for the existing FLINT operation after module warmup.
-An absent artifact was worse: it silently interpreted the cubic Python body
-and took about 1.9 seconds.
+On 2026-08-10, a public `random_matrix(GF(97), 200).rref()` exposed that the
+then-current `Matrix` canonically owned a native FLINT object. Automatic
+dispatch had to export and decode 40,000 residues in the dynamic host before
+entering the packed kernel. On the development host, labeled fresh-process
+measurements were approximately 189 ms for typed Python, 271 ms for declared
+FLINT through the packed ABI, and 2 ms for the existing FLINT operation after
+module warmup. An absent artifact was worse: it silently interpreted the cubic
+Python body and took about 1.9 seconds. That was a representation failure, not
+evidence against the generated kernel.
 
-Production now retains the FLINT-backed matrix operation and never implicitly
-interprets the packed algorithm. `SAGEJS_NATIVE_TRACE=1` reports that choice.
-The packed kernels remain real, independently useful compiler artifacts and
-oracles. Production crossover will be reconsidered only after GF(p) matrices
-own packed storage from construction onward, so export cost is not hidden from
-the decision.
+The public small-prime matrix now owns a `BigUint64Array` from construction
+onward. Entry mutation changes that buffer directly and invalidates cached
+mathematical results. RREF enters the declared FFI with the canonical buffer
+and constructs its immutable packed result without creating a persistent
+N-API object. A typed-Python bulk random filler writes that same final storage
+without 250,000 dynamic calls.
+
+On the development host, after one warmup and using the median of nine fresh
+matrices, the public benchmark measured:
+
+| operation | 200 by 200 | 500 by 500 |
+|---|---:|---:|
+| `random_matrix(GF(97), n)` | 0.28 ms | 0.78 ms |
+| `.rref()` on a fresh random matrix | 4.81 ms | 19.00 ms |
+
+The pre-migration 200-by-200 RREF took about 1.9 seconds, so the meaningful
+result is the disappearance of the dynamic representation cliff. The host's
+reported SageMath/FLINT 200-by-200 RREF was about 0.8 ms; Sage.js is therefore
+still roughly six times slower in this particular public comparison, leaving
+useful adapter and packing optimization work rather than concealing it. The
+reported SageMath 500-by-500 random construction was 14.3 ms, but PRNG and
+random-element policies differ, so that construction ratio is not a general
+linear-algebra claim. Fresh-process startup is measured separately. Precise
+ratios require dedicated-host repetitions, so these development-host numbers
+are evidence and regression targets rather than cross-machine constants.
+
+`SAGEJS_NATIVE_TRACE=1` must report `declared-flint-isolated` for the compiled
+route. With native autoload deliberately disabled it reports
+`declared-flint-adapter`; it never silently interprets the cubic typed-Python
+algorithm as the default. Accessing an operation not yet migrated may report
+`Matrix.legacy_adapter ... -> napi-oracle`, which identifies remaining work
+rather than hidden canonical storage.
+
+The pre-existing `random_matrix(GF(7),300)^2` performance ratchet also covers
+the next packed result boundary. Before multiplication migrated, it lazily
+materialized two N-API oracle objects and measured 147 ms raw (94 ms normalized)
+on the development host. Declared `nmod_mat_mul` now consumes both canonical
+buffers and writes a canonical result. The gate now builds both artifacts into
+a fresh cache, requires both isolated implementations, warms them, and reports
+min/median/max separately for the mathematical expression and the complete
+session request. One noisy development-host run measured the expression at
+3.2/4.4/31.4 ms, the complete request at 5.6/9.0/37.6 ms, and the direct
+FLINT/N-API reference at 1.4/1.5/1.7 ms. Thus a REPL report near 3 ms is real,
+but one such sample is not a stable estimate. The unchanged regression limit
+is the normalized median of seven warm expression samples, with an independent
+catastrophic raw ceiling.
 
 Run the standard comparison with:
 
 ```sh
 pnpm bench:native:dense-prime
+```
+
+Run the host-independent public storage path directly with:
+
+```sh
+./bin/sagejs bench/packed-dense-prime-public.sage
 ```
 
 Override `SAGEJS_DENSE_PRIME_SIZES`, `SAGEJS_DENSE_PRIME_SAMPLES`, and

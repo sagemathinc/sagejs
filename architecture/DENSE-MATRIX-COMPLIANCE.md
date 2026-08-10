@@ -25,26 +25,32 @@ physical migrations are visible work, rather than architecture hidden inside a
 large addon.
 
 The first declared matrix contracts are already real: FLINT `nmod_mat_rank`,
-`nmod_mat_inv`, `nmod_mat_rref`, `nmod_mat_nullspace`, and `nmod_mat_solve`
-use packed matrices, generated dynamic wrappers, isolated
+`nmod_mat_inv`, `nmod_mat_mul`, `nmod_mat_rref`, `nmod_mat_nullspace`, and
+`nmod_mat_solve` use packed matrices, generated dynamic wrappers, isolated
 native lowering, checked dimensions and status results, all-exit cleanup, and
 transactional output. They establish the reusable route for the 21 foreign and
 thin operations without adding function-name substitutions to the compiler.
 
-Dense rank, RREF, right-kernel, and solve algorithms over primes at most 32
-bits now exist as real typed-Python packed kernels, with declaration-driven
-FLINT using the same kernel ABI. They are compiler witnesses and differential
-oracles, not yet the default `Matrix` representation. Production `Matrix`
-still canonically owns an opaque FLINT object; exporting all of its residues
-before a packed call overwhelms the fast kernel. Production therefore retains
-the existing FLINT N-API operations until caller-owned row-major packed storage
-is canonical from matrix construction onward. The corrected scope and both
-kernel-level and public-operation evidence are recorded in
+Dense matrices over prime fields of characteristic at most 32 bits now
+canonically own caller-visible row-major `BigUint64Array` storage. Construction,
+indexing, mutation, copying, packed serialization, multiplication, rank, RREF,
+right kernel, square solve, inverse, and result construction preserve that
+representation.
+The default elimination route is declaration-driven FLINT over the same packed
+kernel ABI; the readable typed-Python algorithms remain executable compiler
+witnesses, small-size candidates, and differential oracles. Neither source nor
+result must own an N-API matrix object.
+
+The old N-API representation is now a lazy compatibility adapter for matrix
+operations outside this completed vertical slice and an explicit differential
+oracle in tests and benchmarks. It is no longer the canonical small-prime
+matrix representation. Determinant, advanced decompositions, and the larger
+collection of non-prime-field rings still expose the remaining physical
+migration work. Any implicit materialization of the compatibility
+object is traceable as `Matrix.legacy_adapter ... -> napi-oracle`; it must not
+be mistaken for the intended production endpoint. The kernel-level and public
+operation evidence is recorded in
 [`../bench/DENSE-PRIME-MIGRATION.md`](../bench/DENSE-PRIME-MIGRATION.md).
-This is a bounded migration state, not an accepted permanent architecture.
-Completion requires deleting the small-prime N-API matrix representation and
-callbacks after packed construction, mutation, algorithms, FFI adaptation,
-serialization, and result materialization form one verified vertical slice.
 
 ## Retained representation primitives
 

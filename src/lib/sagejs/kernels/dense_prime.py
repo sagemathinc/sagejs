@@ -31,6 +31,32 @@ class DensePrimeMatrix(NativeRecord):
 
 
 @native
+def dense_prime_random_fill(
+    target: UInt64Buffer,
+    modulus: PrimeFieldModulus,
+    initial_state: uint64,
+) -> uint64:
+    """Fill ``target`` uniformly using Sage.js's deterministic 32-bit LCG.
+
+    Rejection sampling avoids reducing a non-divisible 32-bit interval
+    directly modulo ``modulus``.  The returned state lets the dynamic host
+    preserve the one shared reproducible random stream without entering the
+    host once per matrix entry.
+    """
+    word_base = 4294967296
+    limit = word_base - word_base % modulus
+    state = initial_state
+    count = len(target)
+    for index in range(count):
+        while state >= limit:
+            state = (1664525 * state + 1013904223) % word_base
+        target[index] = state % modulus
+        if index + 1 < count:
+            state = (1664525 * state + 1013904223) % word_base
+    return state
+
+
+@native
 def _dense_prime_blocked_full_rank(
     matrix: DensePrimeMatrix,
 ) -> uint64:

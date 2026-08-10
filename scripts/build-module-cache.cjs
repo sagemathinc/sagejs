@@ -2,12 +2,17 @@
 
 const {
   copyFileSync,
+  existsSync,
   mkdirSync,
   readdirSync,
   rmSync,
 } = require("node:fs");
 const { join } = require("node:path");
 const { spawnSync } = require("node:child_process");
+const {
+  BASELIB_STANDALONE_CACHE_MODULES,
+  BASELIB_STANDALONE_MODULES,
+} = require("../tools/standalone-library.cjs");
 
 const root = join(__dirname, "..");
 const libraryDirectory = join(root, "src", "lib");
@@ -24,10 +29,33 @@ function compilerCacheFilename(sourceFilename) {
   );
 }
 
-const modules = readdirSync(libraryDirectory)
+function sourceFilenameForModule(name) {
+  const base = join(libraryDirectory, ...name.split("."));
+  const moduleFilename = `${base}.py`;
+  if (existsSync(moduleFilename)) return moduleFilename;
+  const packageFilename = join(base, "__init__.py");
+  if (existsSync(packageFilename)) return packageFilename;
+  throw new Error(`source for cached module ${name} does not exist`);
+}
+
+const standardModules = readdirSync(libraryDirectory)
   .filter((filename) => filename.endsWith(".py"))
   .map((filename) => filename.slice(0, -3))
   .sort();
+const modules = [
+  ...standardModules.map((name) => ({
+    name,
+    sourceFilename: join(libraryDirectory, `${name}.py`),
+  })),
+  ...BASELIB_STANDALONE_CACHE_MODULES.map((name) => ({
+    name,
+    sourceFilename: sourceFilenameForModule(name),
+  })),
+];
+const requestedModules = [
+  ...standardModules,
+  ...BASELIB_STANDALONE_MODULES,
+];
 
 rmSync(outputDirectory, { recursive: true, force: true });
 rmSync(temporaryDirectory, { recursive: true, force: true });
@@ -47,15 +75,14 @@ const result = spawnSync(
   {
     cwd: root,
     encoding: "utf8",
-    input: `${modules.map((name) => `import ${name}`).join("\n")}\n`,
+    input: `${requestedModules.map((name) => `import ${name}`).join("\n")}\n`,
     stdio: ["pipe", "ignore", "inherit"],
   },
 );
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status ?? 1);
 
-for (const name of modules) {
-  const sourceFilename = join(libraryDirectory, `${name}.py`);
+for (const { name, sourceFilename } of modules) {
   const generated = join(
     temporaryDirectory,
     compilerCacheFilename(sourceFilename),
@@ -64,4 +91,7 @@ for (const name of modules) {
 }
 
 rmSync(temporaryDirectory, { recursive: true, force: true });
-console.log(`Precompiled ${modules.length} standard-library modules`);
+console.log(
+  `Precompiled ${standardModules.length} standard-library modules and ` +
+  `${BASELIB_STANDALONE_CACHE_MODULES.length} baselib dependencies`,
+);

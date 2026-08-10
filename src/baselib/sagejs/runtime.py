@@ -6,7 +6,7 @@ lowered directly to their corresponding runtime globals.  These assignments
 are the bootstrap implementation used by older checked-in compilers.
 """
 
-# globals: Array, Atomics, BigInt, console, Date, Element, Error, Function
+# globals: Array, Atomics, BigInt, BigUint64Array, console, Date, Element, Error, Function
 # globals: FinalizationRegistry, Int32Array, IntegerFactorization, Map, Math
 # globals: Number, Object, PolynomialRing, Proxy
 # globals: RuntimeError, SharedArrayBuffer
@@ -119,6 +119,21 @@ def native_get(value, property_name):
     return r"%js value[property_name]"
 
 
+def uint64_buffer(source):
+    """Return owned packed unsigned-64-bit storage.
+
+    ``source`` may be a nonnegative length or an iterable of exact unsigned
+    integers.  This is a representation primitive: mathematical modules use
+    it instead of naming a JavaScript typed-array constructor directly.
+    """
+    return r"""%js (() => {
+        if (Number.isSafeInteger(source) && source >= 0) {
+            return new BigUint64Array(source);
+        }
+        return BigUint64Array.from(source, (value) => BigInt(value));
+    })()"""
+
+
 def native_freeze_tuple(values, prototype):
     """Install the shared tuple prototype and freeze a fresh native array."""
     return r"""%js (
@@ -130,7 +145,12 @@ def native_freeze_tuple(values, prototype):
 
 def wall_time():
     """Return Unix time as a native JavaScript floating-point number."""
-    return r"%js Date.now() / 1000"
+    return r"""%js (
+        typeof globalThis.performance !== "undefined"
+        && typeof globalThis.performance.now === "function"
+        ? (globalThis.performance.timeOrigin + globalThis.performance.now()) / 1000
+        : Date.now() / 1000
+    )"""
 
 
 def check_interrupt():

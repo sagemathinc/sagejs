@@ -261,6 +261,76 @@ def nmod_mat_rref(
 
 
 @flint.function(
+    dynamic="ffiNmodMatMul",
+    symbol="sagejs_flint_nmod_mat_mul",
+    returns=int,
+    abi=[
+        out(
+            "product",
+            nmod_mat_t,
+            packed_nmod_matrix(
+                data="output",
+                rows="left_rows",
+                columns="right_columns",
+                modulus="modulus",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "left_matrix",
+            nmod_mat_t,
+            packed_nmod_matrix(
+                data="left",
+                rows="left_rows",
+                columns="inner",
+                modulus="modulus",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_(
+            "right_matrix",
+            nmod_mat_t,
+            packed_nmod_matrix(
+                data="right",
+                rows="inner",
+                columns="right_columns",
+                modulus="modulus",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT matrix multiplication failed",
+    ),
+    wasm=True,
+)
+def nmod_mat_mul(
+    output: Writable[UInt64Buffer],
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    left_rows: uint64,
+    inner: uint64,
+    right_columns: uint64,
+    modulus: uint64,
+) -> bool:
+    ...
+
+
+@flint.function(
     dynamic="ffiNmodMatRightKernel",
     symbol="sagejs_flint_nmod_mat_right_kernel",
     returns=slong,

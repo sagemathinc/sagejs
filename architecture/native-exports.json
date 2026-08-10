@@ -4745,6 +4745,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py"
       ],
@@ -5004,6 +5005,7 @@
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/bench/benchmark.cjs",
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
         "test/dense-prime-migration.cjs"
@@ -6896,6 +6898,7 @@
         "FLINT"
       ],
       "consumers": [
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py"
       ],

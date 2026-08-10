@@ -27,6 +27,7 @@ import { installNodeHost } from "./host";
 import { installNodeGraphicsSaveHook } from "./graphics-export";
 import { runRuntimeBootstrap } from "./runtime-bootstrap";
 import { createPythonCompilerFrontend } from "./python/compiler-frontend";
+import { baselibStandaloneImportPrelude } from "./standalone-library.cjs";
 
 // TODO
 type Parsed = any;
@@ -242,6 +243,7 @@ export default async function Compile({
       if (includeAdvancedInStandalone) {
         code =
           `import sagejs_elliptic_advanced\n` +
+          baselibStandaloneImportPrelude() +
           `_elliptic_advanced_state["module"] = sagejs_elliptic_advanced\n` +
           `sagejs_elliptic_advanced._ec_bigint_power = _ec_bigint_power\n` +
           `sagejs_elliptic_advanced._ec_change_rst = _ec_change_rst\n` +

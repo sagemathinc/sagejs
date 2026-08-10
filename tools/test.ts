@@ -12,6 +12,8 @@ import createCompiler from "./compiler";
 import { createPythonCompilerFrontend } from "./python/compiler-frontend";
 import { colored } from "./utils";
 import { tmpdir } from "os";
+import { standardLibraryCacheDirectory } from "./resources";
+import { baselibStandaloneImportPrelude } from "./standalone-library.cjs";
 
 export interface CompilerTestResult {
   durationMs: number;
@@ -59,12 +61,28 @@ export async function createCompilerTestHarness(
         skipReason: disabled ? "disabled" : "stage-zero-only",
       };
     }
-    const toplevel = frontend.parse(file, {
+    // The historical matrix fixture exercises baselib operations whose
+    // implementation now lives in public, host-independent kernel modules.
+    // Keep those dependencies explicit for that vertical-slice fixture; do
+    // not make every unrelated compiler fixture initialize them eagerly.
+    const standalonePrelude = basename(filename) === "matrix.py"
+      ? baselibStandaloneImportPrelude()
+      : "";
+    const parseOptions: Record<string, unknown> = {
       filename,
       toplevel: undefined,
       basedir: testPath,
       libdir: join(srcPath, "lib"),
-    });
+    };
+    if (standalonePrelude) {
+      parseOptions.precompiled_module_cache_dir = standardLibraryCacheDirectory(
+        join(__dirname, "..", "module-cache"),
+      );
+    }
+    const toplevel = frontend.parse(
+      standalonePrelude + file,
+      parseOptions,
+    );
 
     const output = new PyLang.OutputStream({
       baselib_plain: baselib,

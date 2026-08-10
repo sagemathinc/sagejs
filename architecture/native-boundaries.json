@@ -14,10 +14,10 @@
   },
   "counts": {
     "classified-native-file": 53,
-    "declared-ffi": 18,
+    "declared-ffi": 19,
     "declared-ffi-resource": 3,
     "napi-export": 291,
-    "runtime-intrinsic": 113,
+    "runtime-intrinsic": 114,
     "wasm-export": 46
   },
   "boundaries": [
@@ -118,6 +118,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNmodMatInv",
       "symbol": "nmod_mat_inv",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_mat_mul",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_mat_mul",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatMul",
+      "symbol": "sagejs_flint_nmod_mat_mul",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -4455,6 +4466,14 @@
       "path": "tools/python/contract.ts",
       "export": "type_error",
       "symbol": "TypeError",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:uint64_buffer",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "uint64_buffer",
+      "symbol": "ρσ_uint64_buffer",
       "disposition": "runtime-primitive"
     },
     {

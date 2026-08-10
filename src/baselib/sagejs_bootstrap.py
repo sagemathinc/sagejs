@@ -131,7 +131,22 @@ def ρσ_output_write(text):
 
 
 def ρσ_wall_time():
-    return r"%js Date.now() / 1000"
+    return r"""%js (
+        typeof globalThis.performance !== "undefined"
+        && typeof globalThis.performance.now === "function"
+        ? (globalThis.performance.timeOrigin + globalThis.performance.now()) / 1000
+        : Date.now() / 1000
+    )"""
+
+
+def ρσ_uint64_buffer(source):
+    """Allocate canonical host-owned unsigned-64-bit packed storage."""
+    return r"""%js (() => {
+        if (Number.isSafeInteger(source) && source >= 0) {
+            return new BigUint64Array(source);
+        }
+        return BigUint64Array.from(source, (value) => BigInt(value));
+    })()"""
 
 
 def ρσ_dynamic_eval(javascript, input_namespace, module_id):
@@ -243,6 +258,10 @@ def ρσ_ffi_call(
                 ) {
                     const length = Number(Reflect.get(value, "length"));
                     if (Number.isSafeInteger(length) && length >= 0) {
+                        // A BigUint64Array is already a constant-time proof of
+                        // the complete packed ABI contract.  Canonical matrix
+                        // storage must not be rescanned at every FFI call.
+                        if (value instanceof BigUint64Array) return value;
                         for (let position = 0; position < length; position++) {
                             const entry = Reflect.get(value, String(position));
                             const exact = typeof entry === "bigint"

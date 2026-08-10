@@ -6,7 +6,7 @@ from typing import Any
 
 import sagejs.runtime as _runtime
 
-__sagejs_ffi_declaration__ = "flint@f1583e1fce0a7c69abed6004aa21f7dd64d4e962a662ccbaf0e3c3e40ca4a6f8"
+__sagejs_ffi_declaration__ = "flint@ec9615793fffe139f82c1a8f59f32d83e94decfd977d0591bf517293c636d4eb"
 
 
 class DirichletGroup:
@@ -24,7 +24,7 @@ class DirichletGroup:
 
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
-            self._token, "resource:flint@f1583e1fce0a7c69abed6004aa21f7dd64d4e962a662ccbaf0e3c3e40ca4a6f8:dirichlet_group"
+            self._token, "resource:flint@ec9615793fffe139f82c1a8f59f32d83e94decfd977d0591bf517293c636d4eb:dirichlet_group"
         )
 
     def __enter__(self) -> DirichletGroup:
@@ -41,7 +41,7 @@ def dirichlet_group(modulus: int) -> DirichletGroup:
     """Call declared flint:dirichlet_group_init."""
     return DirichletGroup(_runtime.ffi_resource_create(
         __sagejs_ffi_declaration__ + ":dirichlet_group_init",
-        "resource:flint@f1583e1fce0a7c69abed6004aa21f7dd64d4e962a662ccbaf0e3c3e40ca4a6f8:dirichlet_group",
+        "resource:flint@ec9615793fffe139f82c1a8f59f32d83e94decfd977d0591bf517293c636d4eb:dirichlet_group",
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupCreate",
         "ffiDirichletGroupClose",
@@ -61,7 +61,7 @@ def dirichlet_group_size(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupSize",
         [group._ffi_borrow()],
-        ["resource:flint@f1583e1fce0a7c69abed6004aa21f7dd64d4e962a662ccbaf0e3c3e40ca4a6f8:dirichlet_group"],
+        ["resource:flint@ec9615793fffe139f82c1a8f59f32d83e94decfd977d0591bf517293c636d4eb:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,
@@ -77,7 +77,7 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupNumPrimitive",
         [group._ffi_borrow()],
-        ["resource:flint@f1583e1fce0a7c69abed6004aa21f7dd64d4e962a662ccbaf0e3c3e40ca4a6f8:dirichlet_group"],
+        ["resource:flint@ec9615793fffe139f82c1a8f59f32d83e94decfd977d0591bf517293c636d4eb:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,
@@ -163,6 +163,22 @@ def nmod_mat_rref(output: list[int], source: list[int], rows: int, columns: int,
         None,
         None,
         [["buffer_length","output",["rows","columns"],["output","source","rows","columns","modulus"]],["buffer_length","source",["rows","columns"],["output","source","rows","columns","modulus"]]],
+    )
+
+
+def nmod_mat_mul(output: list[int], left: list[int], right: list[int], left_rows: int, inner: int, right_columns: int, modulus: int) -> bool:
+    """Call declared flint:nmod_mat_mul."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":nmod_mat_mul",
+        "@sagemath/sagejs-flint",
+        "ffiNmodMatMul",
+        [output, left, right, left_rows, inner, right_columns, modulus],
+        ["UInt64Buffer", "UInt64Buffer", "UInt64Buffer", "uint64", "uint64", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT matrix multiplication failed",
+        [["buffer_length","output",["left_rows","right_columns"],["output","left","right","left_rows","inner","right_columns","modulus"]],["buffer_length","left",["left_rows","inner"],["output","left","right","left_rows","inner","right_columns","modulus"]],["buffer_length","right",["inner","right_columns"],["output","left","right","left_rows","inner","right_columns","modulus"]]],
     )
 
 

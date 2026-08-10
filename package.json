@@ -179,6 +179,7 @@
     "bench:native:prime-field": "node bench/compare-native-prime-field-matrix.cjs",
     "bench:native:prime-source": "node bench/compare-native-prime-field-source.cjs",
     "bench:native:dense-prime": "node bench/compare-dense-prime-migration.cjs",
+    "bench:native:dense-prime:public": "bin/sagejs bench/packed-dense-prime-public.sage",
     "bench:native:tate": "node bench/compare-native-tate.cjs",
     "bench:native:p1": "node bench/compare-native-p1.cjs",
     "bench:native:tate:corpus": "node bench/generate-native-tate-corpus.cjs",

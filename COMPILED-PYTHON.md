@@ -113,10 +113,11 @@ execution_mode(sum_gcds, 10**6)   # javascript or native for these arguments
 Compilation is an optimization and distribution choice, not a condition for
 mathematical correctness.
 
-If your mental model is handwritten C/N-API, Cython, Julia, or Mojo, see
+If your mental model is handwritten C/N-API, Cython, Numba, Julia, or Mojo, see
 [How this differs from handwritten C and N-API](#how-this-differs-from-handwritten-c-and-n-api),
 [How this differs from Cython](#how-this-differs-from-cython), [How this differs
-from Julia](#how-this-differs-from-julia), and [How this differs from
+from Numba](#how-this-differs-from-numba), [How this differs from
+Julia](#how-this-differs-from-julia), and [How this differs from
 Mojo](#how-this-differs-from-mojo). Similar-looking syntax and machine-code
 results can hide importantly different maintenance and execution contracts.
 
@@ -918,6 +919,59 @@ This stricter subset gives up transparent compilation of arbitrary Python in
 exchange for a clearer performance model, portable kernel boundary, and a
 smaller semantic gap between the code people read and the code that runs.
 
+## How this differs from Numba
+
+Numba is one of the strongest demonstrations that ordinary-looking Python can
+become excellent machine code without first translating an algorithm by hand
+into C. Its central interface is a decorator such as `@jit` or `@njit`.
+Typically, Numba specializes a function for the concrete argument types seen
+on its first calls, caches those specializations in memory, and may cache
+compiled code on disk. Explicit signatures can instead request eager
+compilation. Its especially successful domain is numerical Python: loops over
+fixed-width scalars and NumPy arrays. See Numba's official
+[five-minute guide](https://numba.readthedocs.io/en/stable/user/5minguide.html)
+and [`@jit` reference](https://numba.readthedocs.io/en/stable/user/jit.html).
+
+That makes Numba an important predecessor and a useful benchmark, but Sage.js
+compiled Python is not intended to be a Numba clone:
+
+| Question | Typical Numba model | Sage.js compiled-Python target |
+|---|---|---|
+| What system does it extend? | CPython and the scientific-Python ecosystem, especially NumPy. | Sage.js's Python/Sage language, mathematical object model, JavaScript fallback, and isolated kernel ABI. |
+| When is compilation normally performed? | Lazily for runtime argument-type specializations, although explicit signatures and ahead-of-time workflows also exist. | Explicitly ahead of execution with `sagejs native compile`; the content-addressed artifact and its ABI are first-class outputs. |
+| What determines the native signature? | Runtime argument types or an optional explicit Numba signature; one function may have several compiled overloads. | One declared ABI signature per accepted `@native` function. Sage.js deliberately does not add Julia-style multiple dispatch. |
+| Can compiled execution use Python objects? | Numba's fast nopython mode avoids the interpreter; object mode and object-mode loop lifting are separate compatibility mechanisms. Modern `@jit` defaults to nopython compilation. | No host-object mode exists inside an accepted kernel. An unsupported operation rejects compilation; the original whole function remains the dynamic fallback outside the artifact. |
+| What arithmetic is central? | Fixed-width CPU scalars, NumPy dtypes, arrays, and numerical operations. Python integer behavior inside compiled code depends on Numba's supported typing and lowering rules. | Exact computer-algebra types are part of the contract. `Integer`, for example, uses checked machine words with transparent GMP promotion rather than silent fixed-width overflow. |
+| What is the data boundary? | Primarily Python/NumPy values managed by the CPython and NumPy runtimes. | Versioned scalar, packed-buffer, record, ownership, status, and declared-FFI contracts designed to be callable without Python, JavaScript, Node, or Sage.js in the core. |
+| Is the artifact intended to be host independent? | Numba normally accelerates functions within a CPython process and uses its runtime machinery for dispatch and integration. | Yes. A compiled core is intended to be callable from Node, standalone C, WebAssembly, a future CPython-hosted `sage.py`, or an accelerator adapter. |
+| What happens without compilation? | The undecorated Python function can run, but a decorated function's normal execution goes through Numba's dispatcher and compilation policy. | The exact decorated source body is required to remain a correct ordinary Python/Sage.js implementation, and native execution can be disabled explicitly. |
+
+The phrase “nopython mode” can make the two systems sound identical. At the
+innermost loop they may indeed have the same desirable property: neither is
+executing Python bytecode. The architectural boundary is different. Numba's
+native code is normally a specialization managed by a CPython extension and
+Numba runtime. Sage.js treats the closed, host-isolated core and its small ABI
+as the product. The JavaScript or Python host chooses a kernel and validates
+its boundary, but an accepted kernel cannot pause midway to ask that host to
+perform a dynamic operation.
+
+The exact-mathematics emphasis is equally important. Numba should remain an
+excellent option for existing NumPy algorithms, and Sage.js should not try to
+duplicate its enormous supported NumPy surface merely to claim breadth. The
+Sage.js compiler should concentrate on representations and transformations
+that a pure-math system repeatedly needs: exact-integer promotion, finite-field
+arithmetic, packed mathematical records, reusable scratch storage, declared
+FLINT/PARI-style calls, and differential execution against the same readable
+source body.
+
+Numba also sets standards Sage.js should learn from. It has mature type-driven
+specialization, cache controls, parallel-loop transformations, `nogil`
+execution, diagnostics, and a long history of discovering where Python syntax
+helps or obscures optimization. Sage.js's narrower admission rule is not a
+claim that it is already broader or more mature. It is a deliberate foundation
+for artifacts with stronger exactness, provenance, fallback, and host-isolation
+guarantees.
+
 ## How this differs from Julia
 
 Julia is the closest comparison in spirit. It was designed for technical
@@ -1151,3 +1205,7 @@ the library into an invisible second codebase.
   status, supported constructs, and benchmark history.
 - [`architecture/decisions/0001-three-layer-mathematics.md`](architecture/decisions/0001-three-layer-mathematics.md)
   — rationale for the mathematical implementation layers.
+- [Numba source](https://github.com/numba/numba) — a mature BSD-2-Clause
+  reference for Python type specialization, caching, loop analysis, and
+  diagnostics. Sage.js contributors may compare mechanisms without importing
+  Numba's CPython/NumPy runtime assumptions into the isolated-kernel contract.

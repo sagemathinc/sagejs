@@ -65,6 +65,13 @@ static inline slong sagejs_flint_nmod_mat_rref_copy(
     return nmod_mat_rref(output);
 }
 
+static inline int sagejs_flint_nmod_mat_mul(
+    nmod_mat_t output, const nmod_mat_t left, const nmod_mat_t right)
+{
+    nmod_mat_mul(output, left, right);
+    return 1;
+}
+
 static inline slong sagejs_flint_nmod_mat_right_kernel(
     nmod_mat_t output, const nmod_mat_t source)
 {

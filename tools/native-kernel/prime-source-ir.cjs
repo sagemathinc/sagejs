@@ -441,8 +441,18 @@ function lowerExpression(node, context, operations) {
   }
   expect(context, node, ["+", "-", "*", "%"].includes(node.operator),
     `unsupported source-transparent operator ${node.operator}`);
-  expectType(context, node.left, left, "uint64", "machine arithmetic");
-  expectType(context, node.right, right, "uint64", "machine arithmetic");
+  expect(
+    context,
+    node.left,
+    ["uint64", "PrimeModulusValue"].includes(left.type),
+    `machine arithmetic expects uint64 or PrimeFieldModulus, got ${left.type}`,
+  );
+  expect(
+    context,
+    node.right,
+    ["uint64", "PrimeModulusValue"].includes(right.type),
+    `machine arithmetic expects uint64 or PrimeFieldModulus, got ${right.type}`,
+  );
   const target = temporary(context, node, "uint64");
   operations.push({ kind: "source.uint64.binary", operation: node.operator,
     target, left: left.name, right: right.name });

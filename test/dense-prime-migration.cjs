@@ -21,6 +21,7 @@ const sourcePath = join(
 const flintSourcePath = join(
   root, "src", "lib", "sagejs", "kernels", "dense_prime_flint.py",
 );
+const matrixSourcePath = join(root, "src", "baselib", "matrix.py");
 
 function randomEntries(rows, columns, modulus, initialSeed) {
   let seed = BigInt(initialSeed) & ((1n << 64n) - 1n);
@@ -31,6 +32,23 @@ function randomEntries(rows, columns, modulus, initialSeed) {
     entries.push(seed % modulus);
   }
   return entries;
+}
+
+function sageRandomResidues(length, modulus, initialState) {
+  const wordBase = 4294967296n;
+  const limit = wordBase - wordBase % modulus;
+  let state = BigInt(initialState);
+  const entries = [];
+  for (let index = 0; index < length; index += 1) {
+    while (state >= limit) {
+      state = (1664525n * state + 1013904223n) % wordBase;
+    }
+    entries.push(state % modulus);
+    if (index + 1 < length) {
+      state = (1664525n * state + 1013904223n) % wordBase;
+    }
+  }
+  return { entries, state };
 }
 
 function matrix(rows, columns, modulus, entries) {
@@ -144,6 +162,32 @@ from sagejs.kernels.dense_prime import (
 )
 
 backend = runtime.flint_backend()
+packed_source = matrix(GF(97), 3, 3, range(9))
+assert not hasattr(packed_source, '_native_handle')
+assert packed_source.is_mutable()
+packed_source[1, 2] = -1
+assert packed_source[1, 2] == 96
+packed_reduced = packed_source.rref()
+assert not hasattr(packed_source, '_native_handle')
+assert not hasattr(packed_reduced, '_native_handle')
+assert packed_reduced.is_immutable()
+try:
+    packed_reduced[0, 0] = 0
+    raise AssertionError('immutable RREF accepted mutation')
+except ValueError:
+    pass
+set_random_seed(1729)
+random_source = random_matrix(GF(97), 12, 9)
+assert not hasattr(random_source, '_native_handle')
+set_random_seed(1729)
+assert random_matrix(GF(97), 12, 9) == random_source
+packed_left = matrix(GF(97), 2, 3, [1, 2, 3, 4, 5, 6])
+packed_right = matrix(GF(97), 3, 2, [7, 8, 9, 10, 11, 12])
+packed_product = packed_left * packed_right
+assert not hasattr(packed_left, '_native_handle')
+assert not hasattr(packed_right, '_native_handle')
+assert not hasattr(packed_product, '_native_handle')
+assert packed_product == matrix(GF(97), 2, 2, [58, 64, 42, 57])
 for modulus in [2, 3, 5, 101, 65521, 4294967291]:
     field = GF(modulus)
     for rows, columns in [(0, 0), (0, 4), (4, 0), (1, 1), (2, 5), (5, 2), (7, 7)]:
@@ -225,6 +269,12 @@ print("dense-prime-production-ok")
 (async () => {
   const temporary = mkdtempSync(join(tmpdir(), "sagejs-dense-prime-"));
   try {
+    const matrixSource = readFileSync(matrixSourcePath, "utf8");
+    assert.doesNotMatch(matrixSource, /__sagejs_load_module__|Reflect\.apply/);
+    assert.match(
+      matrixSource,
+      /__import__\(\s*['"]sagejs\.kernels\.dense_prime['"]/,
+    );
     const compiled = await compile({ sourcePath, cacheRoot: temporary });
     const compiledFlint = await compile({
       sourcePath: flintSourcePath,
@@ -247,12 +297,37 @@ print("dense-prime-production-ok")
       functions.get("dense_prime_solve").dependencies,
       ["_dense_prime_rref_inplace"],
     );
+    assert.equal(
+      functions.get("dense_prime_random_fill").kernelKind,
+      "prime-field-source",
+    );
+    assert.match(
+      compiledFlint.ir.functions.find(
+        (fn) => fn.name === "flint_dense_prime_mul",
+      ).foreignDependencies[0],
+      /^flint@[a-f0-9]{64}:nmod_mat_mul$/,
+    );
     const core = readFileSync(compiled.coreSourcePath, "utf8");
     const header = readFileSync(compiled.coreHeaderPath, "utf8");
     assert.doesNotMatch(core, /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/);
     assert.match(header, /sagejs_source_u64_buffer/);
     assert.match(header, /sagejs_native_record_DensePrimeMatrix/);
     assert.doesNotMatch(header, /\bsagejs_matrix\s*\*|napi_value/);
+
+    for (const [length, modulus, seed] of [
+      [0, 2n, 0n],
+      [1, 97n, 1729n],
+      [1000, 97n, 0xffffffffn],
+      [1000, 4294967291n, 4000000000n],
+    ]) {
+      const target = packed(kernel, length);
+      const expected = sageRandomResidues(length, modulus, seed);
+      const finalState = kernel.dense_prime_random_fill(
+        target, modulus, seed,
+      );
+      assert.deepEqual(Array.from(target), expected.entries);
+      assert.equal(BigInt(finalState), expected.state);
+    }
 
     const shapes = [
       [0, 0], [0, 5], [5, 0], [1, 1], [2, 7], [7, 2], [8, 8],
@@ -384,6 +459,33 @@ print("dense-prime-production-ok")
           true,
         );
       }
+
+      const leftRows = 7;
+      const inner = 5;
+      const rightColumns = 9;
+      const leftEntries = randomEntries(
+        leftRows, inner, modulus, Number(modulus % 7919n) + 31,
+      );
+      const rightEntries = randomEntries(
+        inner, rightColumns, modulus, Number(modulus % 7877n) + 73,
+      );
+      const product = packed(kernel, leftRows * rightColumns);
+      assert.equal(flintKernel.flint_dense_prime_mul(
+        product,
+        packed(kernel, leftEntries),
+        packed(kernel, rightEntries),
+        leftRows,
+        inner,
+        rightColumns,
+        modulus,
+      ), true);
+      assert.equal(flint.matrixEqual(
+        matrix(leftRows, rightColumns, modulus, Array.from(product)),
+        flint.matrixMul(
+          matrix(leftRows, inner, modulus, leftEntries),
+          matrix(inner, rightColumns, modulus, rightEntries),
+        ),
+      ), true);
     }
 
     // Exercise the blocked panel update at the largest 32-bit prime.  The
@@ -440,6 +542,8 @@ print("dense-prime-production-ok")
 
     const traceScript = String.raw`
 source = matrix(GF(97), 2, 2, [1, 2, 3, 4])
+random_matrix(GF(97), 2, 2)
+source * source
 source.rref()
 print("trace-ok")
 `;
@@ -448,7 +552,21 @@ print("trace-ok")
         SAGEJS_NATIVE_CACHE_DIR: temporary,
         SAGEJS_NATIVE_TRACE: "1",
       }),
-      /Matrix\.rref GF\(97\) 2x2 -> legacy-flint/,
+      /Matrix\.random_matrix GF\(97\) 2x2 -> typed-python-isolated/,
+    );
+    assert.match(
+      runSage(traceScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_TRACE: "1",
+      }),
+      /Matrix\.multiply GF\(97\) 2x2 -> declared-flint-isolated/,
+    );
+    assert.match(
+      runSage(traceScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_TRACE: "1",
+      }),
+      /Matrix\.rref GF\(97\) 2x2 -> declared-flint-isolated/,
     );
     assert.match(
       runSage(traceScript, {
@@ -456,7 +574,23 @@ print("trace-ok")
         SAGEJS_NATIVE_AUTOLOAD: "0",
         SAGEJS_NATIVE_TRACE: "1",
       }),
-      /Matrix\.rref GF\(97\) 2x2 -> legacy-flint/,
+      /Matrix\.random_matrix GF\(97\) 2x2 -> typed-python-dynamic-fallback/,
+    );
+    assert.match(
+      runSage(traceScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_AUTOLOAD: "0",
+        SAGEJS_NATIVE_TRACE: "1",
+      }),
+      /Matrix\.multiply GF\(97\) 2x2 -> declared-flint-adapter/,
+    );
+    assert.match(
+      runSage(traceScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_AUTOLOAD: "0",
+        SAGEJS_NATIVE_TRACE: "1",
+      }),
+      /Matrix\.rref GF\(97\) 2x2 -> declared-flint-adapter/,
     );
 
     const importKernel = String.raw`
@@ -486,7 +620,7 @@ print("import-ok")
     rmSync(temporary, { recursive: true, force: true });
   }
   console.log(
-    "Packed typed Python, production Matrix, dynamic fallback, current N-API, and FLINT dense GF(p) oracles passed.",
+    "Packed production Matrix, typed Python, declared FFI, mutation, and FLINT dense GF(p) oracles passed.",
   );
 })().catch((error) => {
   console.error(error);

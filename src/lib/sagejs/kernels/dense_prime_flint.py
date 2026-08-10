@@ -13,11 +13,44 @@ from __future__ import annotations
 
 from sagejs.native import UInt64Buffer, native, uint64
 from sagejs.ffi.flint import (
+    nmod_mat_inv,
+    nmod_mat_mul,
     nmod_mat_rank,
     nmod_mat_right_kernel,
     nmod_mat_rref,
     nmod_mat_solve,
 )
+
+
+@native
+def flint_dense_prime_mul(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    left_rows: uint64,
+    inner: uint64,
+    right_columns: uint64,
+    modulus: uint64,
+) -> bool:
+    return nmod_mat_mul(
+        output,
+        left,
+        right,
+        left_rows,
+        inner,
+        right_columns,
+        modulus,
+    )
+
+
+@native
+def flint_dense_prime_inverse(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    size: uint64,
+    modulus: uint64,
+) -> bool:
+    return nmod_mat_inv(output, source, size, modulus)
 
 
 @native
@@ -73,6 +106,8 @@ def flint_dense_prime_solve(
 
 
 __all__ = [
+    'flint_dense_prime_inverse',
+    'flint_dense_prime_mul',
     'flint_dense_prime_rank',
     'flint_dense_prime_rref',
     'flint_dense_prime_right_kernel',

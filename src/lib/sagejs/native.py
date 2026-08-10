@@ -56,7 +56,7 @@ Float64Buffer = list[float]
 # Legacy annotation-only witness for an opaque dense matrix over ``GF(p)``.
 # Production kernels instead use UInt64Buffer plus PrimeFieldModulus so their
 # public ABI is independent of a host matrix object.
-PrimeFieldMatrix: TypeAlias = Any
+PrimeFieldMatrix: TypeAlias = object
 # Exact public modulus value used with explicit packed prime-field storage.
 PrimeFieldModulus: TypeAlias = int
 _warned_fallback_sources: set[str] = set()
