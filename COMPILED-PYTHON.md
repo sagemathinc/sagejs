@@ -97,8 +97,9 @@ execution_mode(sum_gcds, 10**6)   # javascript or native for these arguments
 Compilation is an optimization and distribution choice, not a condition for
 mathematical correctness.
 
-If your mental model is Cython or Mojo, see [How this differs from
-Cython](#how-this-differs-from-cython) and [How this differs from
+If your mental model is Cython, Julia, or Mojo, see [How this differs from
+Cython](#how-this-differs-from-cython), [How this differs from
+Julia](#how-this-differs-from-julia), and [How this differs from
 Mojo](#how-this-differs-from-mojo). Similar-looking syntax hides importantly
 different language and execution contracts.
 
@@ -689,6 +690,67 @@ This stricter subset gives up transparent compilation of arbitrary Python in
 exchange for a clearer performance model, portable kernel boundary, and a
 smaller semantic gap between the code people read and the code that runs.
 
+## How this differs from Julia
+
+Julia is the closest comparison in spirit. It was designed for technical
+computing, can express generic mathematical algorithms at a high level, and
+specializes methods into efficient native code. Its
+[multiple dispatch](https://docs.julialang.org/en/v1/manual/methods/) is a
+particularly powerful way to organize a mathematical library. Mature systems
+such as Nemo and Oscar also demonstrate that Julia can be an excellent host
+for serious computer algebra.
+
+Sage.js compiled Python is nevertheless not “Julia with Python syntax.” The
+two systems choose different language, arithmetic, compilation, and runtime
+contracts:
+
+| Question | Julia | Sage.js compiled-Python target |
+|---|---|---|
+| What language is maintained? | Julia, a distinct dynamic language designed for technical computing. | A strict subset of ordinary CPython-parseable Python; the file remains a Python module. |
+| What happens without native compilation? | The source executes as Julia and is normally specialized by Julia's compiler when called. | The original function body remains the required dynamic Python/Sage.js implementation. |
+| When is code compiled? | Concrete method specializations are normally compiled just in time; Julia also supports AOT system and package images. | `sagejs native compile` explicitly lowers a declared function graph ahead of execution into a content-addressed isolated core. |
+| Does an AOT artifact require the language runtime? | A Julia image contains native code plus Julia types, methods, and runtime state restored by Julia. | The isolated core has a small versioned C ABI and no Python, JavaScript, Node, or Sage.js runtime dependency. Arithmetic libraries such as GMP and declared foreign libraries may still be dependencies. |
+| Is there multiple dispatch? | Yes. Dispatch on all argument types is central to the language and library architecture. | No. Each accepted `@native` function has one explicit ABI signature. Put rich dispatch in ordinary Python and call a selected typed kernel. |
+| What does an integer mean? | `Int` is machine-sized and wraps on overflow; exact unbounded arithmetic uses an explicitly selected `BigInt`. | `Integer` is exact and automatically promotes from checked machine-word storage to GMP. Bounded types such as `uint64` are explicit alternatives. |
+| How is generic code optimized? | The compiler specializes generic methods for concrete argument types, often allowing abstractions to disappear. | The compiler accepts a deliberately bounded typed subset and builds a closed dependency graph; unsupported dynamic behavior is a compile-time error. |
+| What owns memory? | Julia garbage-collects managed objects. Its C interface also exposes pointers and operations whose correctness depends on signatures, rooting, and lifetimes. | Kernel authors see values, records, and bounded buffers rather than raw pointers. Generated call plans enforce declared ownership; a leak or crash is a compiler, adapter, or foreign-library defect. |
+| How are C libraries called? | Directly through `@ccall`/`ccall`, with safe wrappers commonly built in Julia around lower-level declarations. | Through auditable Sage FFI declarations that generate checked host and isolated-core adapters, ownership cleanup, status handling, and dynamic fallbacks. |
+| How is generated code inspected? | Julia provides mature introspection including method tables, typed IR, LLVM IR, and native code. | `native explain`, `native ir`, `native emit-c`, source maps, and differential benchmarks are required developer interfaces. |
+| How broad is the compiler? | A mature general technical-computing compiler with parametric types, dynamic dispatch, metaprogramming, concurrency, and accelerator ecosystems. | An experimental mathematics-specific kernel compiler. Dynamic orchestration deliberately stays outside its smaller accepted language. |
+
+The integer distinction deserves emphasis. Julia documents that overflowing a
+fixed-width integer wraps and recommends checked operations or `BigInt` when
+overflow is unacceptable; conversion to arbitrary precision must be chosen
+explicitly. Sage.js `Integer` instead encodes the computer-algebra expectation
+that an integer remains mathematically exact while the compiler may represent
+each value as a machine word until promotion is necessary. This is not
+inherently faster than every Julia implementation: it is a different default
+semantic contract that the compiler is designed to optimize.
+
+The compilation distinction is equally important. Julia
+[normally specializes methods at runtime](https://docs.julialang.org/en/v1/manual/methods/#Method-specializations),
+although it also has an
+[AOT image pipeline](https://docs.julialang.org/en/v1/devdocs/aot/). A Julia
+image preserves Julia method and runtime state. A Sage.js isolated artifact is
+instead intended to be a small standalone mathematical kernel with an explicit
+ABI. It can be called by Sage.js, a C program, WebAssembly, or another future
+host without bringing an interpreter into the core.
+
+Julia is substantially more expressive inside optimized code today. Sage.js
+should not recreate multiple dispatch, unconstrained dynamic types, or Julia's
+entire compiler inside `@native`. If an algorithm naturally requires rich
+dispatch, keep that policy in readable ordinary Python and make the selected
+kernel call coarse-grained. That separation is a design feature, not an
+embarrassing compiler failure.
+
+Likewise, benchmark claims must remain narrow. A result showing one Sage.js
+kernel beating one Julia implementation establishes something about those
+implementations, input distributions, and arithmetic contracts—not a general
+limit on Julia. The meaningful Sage.js goal is more concrete: source-transparent
+typed Python should approach excellent handwritten native implementations for
+important mathematical kernels while preserving exact semantics and a correct
+same-body fallback.
+
 ## How this differs from Mojo
 
 Mojo is an ambitious systems language with Pythonic syntax, bidirectional
@@ -741,6 +803,36 @@ branches in ordinary Python until measurements justify moving a boundary.
 Keep the fallback, record the benchmark, and inspect packing, call size,
 algorithm choice, bounds checks, and backend selection. `@native` is not a
 promise that every accepted function wins at every input size.
+
+The simplest counterexample is a function whose body is cheaper than crossing
+the native boundary:
+
+```python
+@native
+def add_one(value: Integer) -> Integer:
+    return value + 1
+```
+
+A call must still validate and convert the argument, enter the adapter, execute
+the core, check its status, and convert the result. The dynamic fallback may do
+the single addition faster. Calling this tiny kernel repeatedly from dynamic
+Python makes the boundary problem worse:
+
+```python
+sum(add_one(k) for k in range(count))  # one boundary crossing per item
+```
+
+Move the loop across the boundary instead:
+
+```python
+@native
+def sum_successors(count: uint64) -> Integer:
+    return sum(k + 1 for k in range(count))
+```
+
+Now one checked call contains the entire reduction, giving the compiler enough
+work to repay the boundary cost. The useful question is therefore not merely
+“is this function native?” but “how much work occurs per native call?”
 
 ### Can a compiled kernel segfault?
 
