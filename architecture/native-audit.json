@@ -13,8 +13,8 @@
   "files": [
     {
       "path": "packages/flint/src/addon.c",
-      "lines": 4401,
-      "bytes": 141317,
+      "lines": 4403,
+      "bytes": 141423,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -61,8 +61,8 @@
     },
     {
       "path": "packages/flint/src/matrix.c",
-      "lines": 5803,
-      "bytes": 189778,
+      "lines": 5851,
+      "bytes": 191200,
       "decision": "split-and-migrate",
       "priority": "high",
       "responsibilities": [
@@ -73,7 +73,7 @@
       "rationale": "The largest mixed native source combines an essential packed FLINT boundary with Sage.js-owned algorithms. Retain mature FLINT calls, split the ABI by representation, and use existing prime-field typed witnesses to migrate local control flow where it is competitive.",
       "fallback": "Every matrix operation retains its tested Python/JavaScript implementation or an explicit native capability diagnostic.",
       "oracles": ["CPython", "Sage.js JavaScript fallback", "FLINT"],
-      "next": "Preserve the exact 49-export symbol ratchet, migrate the 21 thin operations through declarations, and replace the 12 documented source-owned exceptions one typed algorithm at a time."
+      "next": "Preserve the exact 50-export symbol ratchet, migrate the 22 thin operations through declarations, and replace the 12 documented source-owned exceptions one typed algorithm at a time."
     },
     {
       "path": "packages/flint/src/modsym_core.c",

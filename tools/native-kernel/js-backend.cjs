@@ -852,7 +852,7 @@ function emitPrimeSourcePublicFunction(fn) {
   const nativeCall = `primeFieldNativeCall(${jsString(fn.name)}, ` +
     `[${nativeArguments}])`;
   let result;
-  if (fn.returnType === "uint64") {
+  if (["uint64", "bool"].includes(fn.returnType)) {
     result = buffers.length === 0
       ? `return ${nativeCall};`
       : [

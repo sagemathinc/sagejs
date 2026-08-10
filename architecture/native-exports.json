@@ -3,7 +3,7 @@
   "policy": "architecture/native-export-policy.json",
   "counts": {
     "declared-ffi": 7,
-    "migrate-to-declared-ffi": 212,
+    "migrate-to-declared-ffi": 213,
     "migrate-to-typed-python": 34,
     "retain-differential-oracle": 1,
     "retain-host-adapter": 8,
@@ -4009,7 +4009,8 @@
         "bench/compare-native-ffi.cjs",
         "packages/flint/bench/benchmark.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/builtins.py"
+        "src/baselib/builtins.py",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": "flint:fmpz_gcd"
     },
@@ -4076,7 +4077,8 @@
         "PARI/GP"
       ],
       "consumers": [
-        "src/baselib/modular.py"
+        "src/baselib/modular.py",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -4323,7 +4325,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5666,
+        "line": 5714,
         "lines": 138,
         "sha256": "c0321410e8f404d1c1f2fee1aff7924d7ed1b5735699c0378d720c118d625d41",
         "calls": [
@@ -4483,6 +4485,7 @@
         "packages/flint-wasm/index.mjs",
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py"
       ],
@@ -4545,8 +4548,10 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint-wasm/test/matrix.test.mjs",
+        "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "src/baselib/matrix.py",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -4600,7 +4605,8 @@
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "src/baselib/matrix.py",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -4648,7 +4654,8 @@
         "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
-        "test/dense-prime-migration.cjs"
+        "test/dense-prime-migration.cjs",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -4662,7 +4669,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5423,
+        "line": 5471,
         "lines": 105,
         "sha256": "61e864471287c4814458b9ccc4b2d42fa8b3e8a786d23e5c70b89e182a0a56ec",
         "calls": [
@@ -4890,7 +4897,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5328,
+        "line": 5376,
         "lines": 94,
         "sha256": "163a86c7b90e6c95dad45f1e6e5eca2307c8f56021288c76018aa697772cfd3f",
         "calls": [
@@ -4975,6 +4982,53 @@
       "declared_ffi": null
     },
     {
+      "id": "napi:@sagemath/sagejs-flint:matrixMinpoly",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixMinpoly",
+      "callback": "sagejs_matrix_minpoly",
+      "registration": {
+        "path": "packages/flint/src/addon.c"
+      },
+      "implementation": {
+        "path": "packages/flint/src/matrix.c",
+        "line": 5078,
+        "lines": 47,
+        "sha256": "02aeaa3b720fef515576dcf6fa0b3bd1bc658281c70d2e58d7b78942172474c7",
+        "calls": [
+          "check_napi",
+          "matrix_modulus",
+          "matrix_ncols",
+          "matrix_nrows",
+          "napi_create_array_with_length",
+          "napi_set_element",
+          "napi_throw_type_error",
+          "nmod_mat_minpoly",
+          "nmod_poly_clear",
+          "nmod_poly_get_coeff_ui",
+          "nmod_poly_init",
+          "nmod_poly_length",
+          "require_arguments",
+          "ulong_to_bigint",
+          "unwrap_matrix"
+        ]
+      },
+      "family": "dense-matrix-algorithms",
+      "decision": "migrate-to-declared-ffi",
+      "note": null,
+      "rationale": "Dense matrix operations must separate mature FLINT algorithms from locally implemented control flow and Node conversion.",
+      "fallback": "The portable matrix backend and ordinary Matrix methods remain correctness fallbacks.",
+      "oracles": [
+        "CPython",
+        "Sage.js JavaScript fallback",
+        "FLINT"
+      ],
+      "consumers": [
+        "packages/flint/index.cjs",
+        "packages/flint/test/test.cjs"
+      ],
+      "declared_ffi": null
+    },
+    {
       "id": "napi:@sagemath/sagejs-flint:matrixMul",
       "package": "@sagemath/sagejs-flint",
       "export": "matrixMul",
@@ -5008,7 +5062,8 @@
         "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
-        "test/dense-prime-migration.cjs"
+        "test/dense-prime-migration.cjs",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -5199,7 +5254,8 @@
         "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
-        "test/dense-prime-migration.cjs"
+        "test/dense-prime-migration.cjs",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -5345,7 +5401,8 @@
         "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
-        "test/dense-prime-migration.cjs"
+        "test/dense-prime-migration.cjs",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -5524,7 +5581,7 @@
       },
       "implementation": {
         "path": "packages/flint/src/matrix.c",
-        "line": 5148,
+        "line": 5196,
         "lines": 179,
         "sha256": "da462d027e6967f0930906a1721b57c7a0764e5fdde06f2286d55cc253522d63",
         "calls": [
@@ -5567,7 +5624,8 @@
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/index.cjs",
         "src/baselib/matrix.py",
-        "test/dense-prime-migration.cjs"
+        "test/dense-prime-migration.cjs",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -6866,7 +6924,8 @@
         "packages/flint/index.cjs",
         "packages/flint/test/test.cjs",
         "src/baselib/matrix.py",
-        "test/dense-prime-migration.cjs"
+        "test/dense-prime-migration.cjs",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -6934,7 +6993,8 @@
       "consumers": [
         "packages/flint-wasm/test/matrix.test.mjs",
         "packages/flint/bench/benchmark.cjs",
-        "packages/flint/test/test.cjs"
+        "packages/flint/test/test.cjs",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -7219,7 +7279,8 @@
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/modular.cjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/modular.py"
+        "src/baselib/modular.py",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -7563,7 +7624,8 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/modular.py"
+        "src/baselib/modular.py",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -7684,7 +7746,8 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/modular.py"
+        "src/baselib/modular.py",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -7842,7 +7905,8 @@
         "PARI/GP"
       ],
       "consumers": [
-        "src/baselib/modular.py"
+        "src/baselib/modular.py",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -7890,7 +7954,8 @@
         "PARI/GP"
       ],
       "consumers": [
-        "src/baselib/modular.py"
+        "src/baselib/modular.py",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -11106,7 +11171,8 @@
       ],
       "consumers": [
         "packages/flint/test/test.cjs",
-        "src/baselib/real_complex.py"
+        "src/baselib/real_complex.py",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -11173,7 +11239,8 @@
       "consumers": [
         "packages/flint/scripts/build-deps.cjs",
         "packages/flint/test/test.cjs",
-        "test/ffi.cjs"
+        "test/ffi.cjs",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },
@@ -11330,7 +11397,8 @@
       "consumers": [
         "packages/flint-wasm/test/factor.test.mjs",
         "packages/flint/test/test.cjs",
-        "src/baselib/matrix.py"
+        "src/baselib/matrix.py",
+        "test/native-kernel.cjs"
       ],
       "declared_ffi": null
     },

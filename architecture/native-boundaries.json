@@ -14,10 +14,10 @@
   },
   "counts": {
     "classified-native-file": 53,
-    "declared-ffi": 19,
+    "declared-ffi": 22,
     "declared-ffi-resource": 3,
-    "napi-export": 291,
-    "runtime-intrinsic": 114,
+    "napi-export": 292,
+    "runtime-intrinsic": 116,
     "wasm-export": 46
   },
   "boundaries": [
@@ -110,6 +110,28 @@
       "disposition": "declared-safe-ffi"
     },
     {
+      "id": "ffi:flint:nmod_mat_charpoly",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_mat_charpoly",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatCharpoly",
+      "symbol": "sagejs_flint_nmod_mat_charpoly_packed",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_mat_det",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_mat_det",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatDet",
+      "symbol": "nmod_mat_det",
+      "disposition": "declared-safe-ffi"
+    },
+    {
       "id": "ffi:flint:nmod_mat_inv",
       "kind": "declared-ffi",
       "path": "ffi/flint.ffi.json",
@@ -118,6 +140,17 @@
       "dynamic_package": "@sagemath/sagejs-flint",
       "dynamic_export": "ffiNmodMatInv",
       "symbol": "nmod_mat_inv",
+      "disposition": "declared-safe-ffi"
+    },
+    {
+      "id": "ffi:flint:nmod_mat_minpoly",
+      "kind": "declared-ffi",
+      "path": "ffi/flint.ffi.json",
+      "library": "flint",
+      "export": "nmod_mat_minpoly",
+      "dynamic_package": "@sagemath/sagejs-flint",
+      "dynamic_export": "ffiNmodMatMinpoly",
+      "symbol": "sagejs_flint_nmod_mat_minpoly_packed",
       "disposition": "declared-safe-ffi"
     },
     {
@@ -1421,6 +1454,16 @@
       "package": "@sagemath/sagejs-flint",
       "export": "matrixIsZero",
       "symbol": "sagejs_matrix_is_zero",
+      "disposition": "migrate-to-declared-ffi",
+      "family": "dense-matrix-algorithms"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixMinpoly",
+      "kind": "napi-export",
+      "path": "packages/flint/src/addon.c",
+      "package": "@sagemath/sagejs-flint",
+      "export": "matrixMinpoly",
+      "symbol": "sagejs_matrix_minpoly",
       "disposition": "migrate-to-declared-ffi",
       "family": "dense-matrix-algorithms"
     },
@@ -4474,6 +4517,22 @@
       "path": "tools/python/contract.ts",
       "export": "uint64_buffer",
       "symbol": "ρσ_uint64_buffer",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:uint64_buffer_prefix",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "uint64_buffer_prefix",
+      "symbol": "ρσ_uint64_buffer_prefix",
+      "disposition": "runtime-primitive"
+    },
+    {
+      "id": "runtime:uint64_residue_buffer",
+      "kind": "runtime-intrinsic",
+      "path": "tools/python/contract.ts",
+      "export": "uint64_residue_buffer",
+      "symbol": "ρσ_uint64_residue_buffer",
       "disposition": "runtime-primitive"
     },
     {

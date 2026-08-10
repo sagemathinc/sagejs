@@ -1,6 +1,6 @@
 # Dense-matrix native compliance
 
-This is the focused compliance result for the 49 Node-API exports implemented
+This is the focused compliance result for the 50 Node-API exports implemented
 in `packages/flint/src/matrix.c`. The normative, machine-checked assignment is
 `matrix_remediation` in [`native-export-policy.json`](native-export-policy.json);
 the generated export-to-definition evidence is
@@ -14,7 +14,7 @@ separated in policy even where physical source migration is not complete:
 | Layer | Exports | Current rule |
 |---|---:|---|
 | Representation and packed-storage primitives | 16 | Retain as replaceable host adapters. Do not add mathematics. |
-| Mature-library and thin storage operations | 21 | Move their stable ABI into CPython-parseable FFI declarations. Keep N-API only as a compatibility adapter while callers migrate. |
+| Mature-library and thin storage operations | 22 | Move their stable ABI into CPython-parseable FFI declarations. Keep N-API only as a compatibility adapter while callers migrate. |
 | Sage.js-owned algorithmic control flow | 12 | Freeze the C implementation as an explicit exception/oracle and migrate the actual algorithm body to source-transparent typed Python. |
 
 “Compliant” here has a precise meaning: there is no unclassified matrix export,
@@ -24,32 +24,36 @@ registered matrix callback without failing `pnpm architecture:check`. It does
 physical migrations are visible work, rather than architecture hidden inside a
 large addon.
 
-The first declared matrix contracts are already real: FLINT `nmod_mat_rank`,
-`nmod_mat_inv`, `nmod_mat_mul`, `nmod_mat_rref`, `nmod_mat_nullspace`, and
-`nmod_mat_solve` use packed matrices, generated dynamic wrappers, isolated
-native lowering, checked dimensions and status results, all-exit cleanup, and
-transactional output. They establish the reusable route for the 21 foreign and
-thin operations without adding function-name substitutions to the compiler.
+The declared matrix contracts are real: FLINT `nmod_mat_rank`, `nmod_mat_inv`,
+`nmod_mat_mul`, `nmod_mat_rref`, `nmod_mat_nullspace`, `nmod_mat_solve`,
+`nmod_mat_det`, `nmod_mat_charpoly`, and `nmod_mat_minpoly` use packed matrices,
+generated dynamic wrappers, isolated native lowering, checked dimensions and
+status results, all-exit cleanup, and transactional output. They establish the
+reusable route for foreign and thin operations without adding function-name
+substitutions to the compiler.
 
 Dense matrices over prime fields of characteristic at most 32 bits now
 canonically own caller-visible row-major `BigUint64Array` storage. Construction,
-indexing, mutation, copying, packed serialization, multiplication, rank, RREF,
-right kernel, square solve, inverse, and result construction preserve that
-representation.
+random fill, indexing, mutation, copying, packed serialization, arithmetic,
+scalar multiplication, equality, transpose, stacking, augmentation, row and
+column selection, density, trace, multiplication, rank, RREF, right kernel,
+square solve, inverse, determinant, characteristic polynomial, minimal
+polynomial, and result construction preserve that representation.
 The default elimination route is declaration-driven FLINT over the same packed
 kernel ABI; the readable typed-Python algorithms remain executable compiler
 witnesses, small-size candidates, and differential oracles. Neither source nor
 result must own an N-API matrix object.
 
-The old N-API representation is now a lazy compatibility adapter for matrix
-operations outside this completed vertical slice and an explicit differential
-oracle in tests and benchmarks. It is no longer the canonical small-prime
-matrix representation. Determinant, advanced decompositions, and the larger
-collection of non-prime-field rings still expose the remaining physical
-migration work. Any implicit materialization of the compatibility
-object is traceable as `Matrix.legacy_adapter ... -> napi-oracle`; it must not
-be mistaken for the intended production endpoint. The kernel-level and public
-operation evidence is recorded in
+The old N-API representation is an explicit differential oracle in tests and
+benchmarks. It is no longer the canonical small-prime matrix representation,
+and the packed public path has no conversion escape hatch. Generated dynamic
+FFI adapters may construct a temporary host-library value from packed input;
+that is a replaceable declared boundary, not public object ownership. A hard
+integration test forbids every legacy matrix N-API property while exercising
+the complete packed lifecycle with compiled artifacts. Advanced decompositions
+and the larger collection of non-prime-field rings still expose the remaining
+physical migration work. The kernel-level and public-operation evidence is
+recorded in
 [`../bench/DENSE-PRIME-MIGRATION.md`](../bench/DENSE-PRIME-MIGRATION.md).
 
 ## Retained representation primitives
@@ -69,7 +73,7 @@ thin adapters rather than emulate JavaScript object lifetimes.
 `acbMatrixScalarMul`, `matrixAdd`, `matrixAugment`, `matrixDet`,
 `matrixEntry`, `matrixEqual`, `matrixHermite`, `matrixHermiteTransform`,
 `matrixHowell`, `matrixIsZero`, `matrixMul`, `matrixMulBlas`, `matrixNeg`,
-`matrixScalarMul`, `matrixSelectColumns`, `matrixSelectRows`, `matrixSmith`,
+`matrixMinpoly`, `matrixScalarMul`, `matrixSelectColumns`, `matrixSelectRows`, `matrixSmith`,
 `matrixStack`, `matrixSub`, `matrixTranspose`, and `qqbarMatrixScalarMul`.
 
 Most mathematical work in this set is already performed by FLINT. The
@@ -103,9 +107,9 @@ are migrated, so this document does not claim that.
 
 The architecture gate independently checks:
 
-1. the exact set of 291 registered N-API exports;
+1. the exact set of 292 registered N-API exports;
 2. the unique C/C++ definition, line, size, source hash, and direct calls for every callback;
-3. the exact 49-export `matrix.c` set;
+3. the exact 50-export `matrix.c` set;
 4. membership of every matrix export in exactly one remediation group;
 5. agreement between each group's rule and the symbol's policy decision; and
 6. the reviewed byte and line count of the complete mixed translation unit.

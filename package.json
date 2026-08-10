@@ -136,6 +136,7 @@
     "test:upstream:run": "node test/upstream-doctest-tools.cjs && node scripts/run-sage-doctests.cjs upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.doctests.json --expectations upstream-tests/sage/rings/finite_rings/finite_field_prime_modn.expectations.json && node scripts/run-sage-doctests.cjs upstream-tests/sage/graphs/random_gnp.doctests.json --expectations upstream-tests/sage/graphs/random_gnp.expectations.json --optional sage.plot --random-seed 0",
     "test:matrix:corpus": "pnpm run build && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_integer_dense_core.doctests.json --expectations upstream-tests/sage/matrix/matrix_integer_dense_core.expectations.json && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_modn_dense_core.doctests.json --expectations upstream-tests/sage/matrix/matrix_modn_dense_core.expectations.json",
     "test:matrix:performance": "node scripts/check-finite-matrix-budget.cjs",
+    "bench:dense-prime:public": "./bin/sagejs bench/dense-prime-v2.sage",
     "matrix:report": "pnpm run build && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_integer_dense_core.doctests.json --allow-failures --verbose && node scripts/run-sage-doctests.cjs upstream-tests/sage/matrix/matrix_modn_dense_core.doctests.json --allow-failures --verbose",
     "test:cowasm": "pnpm run build && pnpm run test:cowasm:run",
     "test:cowasm:run": "node bench/cowasm/run.cjs --check",

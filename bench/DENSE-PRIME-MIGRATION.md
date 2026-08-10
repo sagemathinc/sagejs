@@ -65,6 +65,15 @@ and constructs its immutable packed result without creating a persistent
 N-API object. A typed-Python bulk random filler writes that same final storage
 without 250,000 dynamic calls.
 
+The completed surface also routes arithmetic, scalar multiplication,
+transpose, equality, zero/identity tests, density, trace, stack, augment, row
+and column selection through source-transparent typed Python. Multiplication,
+rank, RREF, right kernel, solve, inverse, determinant, characteristic
+polynomial, and minimal polynomial enter FLINT only through declarations over
+the same packed ABI. A hard integration run sets both
+`SAGEJS_NATIVE_REQUIRED=1` and `SAGEJS_FORBID_MATRIX_NAPI=1` and exercises this
+entire lifecycle.
+
 On the development host, after one warmup and using the median of nine fresh
 matrices, the public benchmark measured:
 
@@ -84,12 +93,11 @@ linear-algebra claim. Fresh-process startup is measured separately. Precise
 ratios require dedicated-host repetitions, so these development-host numbers
 are evidence and regression targets rather than cross-machine constants.
 
-`SAGEJS_NATIVE_TRACE=1` must report `declared-flint-isolated` for the compiled
-route. With native autoload deliberately disabled it reports
-`declared-flint-adapter`; it never silently interprets the cubic typed-Python
-algorithm as the default. Accessing an operation not yet migrated may report
-`Matrix.legacy_adapter ... -> napi-oracle`, which identifies remaining work
-rather than hidden canonical storage.
+`SAGEJS_NATIVE_TRACE=1` must report `declared-flint-isolated` for a compiled
+foreign route and `typed-python-isolated` for a compiled source route. With
+native autoload deliberately disabled it reports an explicit dynamic fallback
+or declared adapter; it never silently interprets a cubic typed-Python
+algorithm as the default.
 
 The pre-existing `random_matrix(GF(7),300)^2` performance ratchet also covers
 the next packed result boundary. Before multiplication migrated, it lazily
@@ -105,6 +113,22 @@ but one such sample is not a stable estimate. The unchanged regression limit
 is the normalized median of seven warm expression samples, with an independent
 catastrophic raw ceiling.
 
+The ratchet now additionally times 31 public operations independently. On the
+development host after warmup, construction of a 500-by-500 matrix from flat
+integer residues fell from 108 ms to about 1.0 ms by packing primitive exact
+integers directly while preserving the ordinary Sage coercion fallback.
+Right-kernel result construction fell from about 10--12 ms to 3.2 ms by
+copying the significant packed prefix without a Python list. Representative
+medians were 0.2--1.7 ms for structural operations, 1.5 ms for a 200-by-200
+determinant, 1.8 ms for 200-by-200 RREF, 3.2 ms for a 150-by-200 right kernel,
+and 3--6 ms for polynomial and 300-by-300 multiplication workloads. The
+checked normalized budgets are operation-specific: 5--15 ms for the primary
+surface and 25--45 ms for the larger asymptotic witnesses. A separate raw
+ceiling catches catastrophic fallback behavior under load. In a five-sample
+larger-size check, 500-by-500 rank, determinant, and RREF were about 18--20 ms,
+500-by-500 multiplication over `GF(7)` was 5.8 ms, and a 300-by-400 right
+kernel was 20.9 ms.
+
 Run the standard comparison with:
 
 ```sh
@@ -115,6 +139,13 @@ Run the host-independent public storage path directly with:
 
 ```sh
 ./bin/sagejs bench/packed-dense-prime-public.sage
+```
+
+Run the complete public operation matrix with:
+
+```sh
+./bin/sagejs bench/dense-prime-v2.sage
+pnpm test:matrix:performance
 ```
 
 Override `SAGEJS_DENSE_PRIME_SIZES`, `SAGEJS_DENSE_PRIME_SAMPLES`, and

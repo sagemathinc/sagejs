@@ -25,7 +25,7 @@ const runtimeSource = readFileSync(
 const runtimeManifest = Object.entries(SAGEJS_RUNTIME_INTRINSICS);
 const publicManifest = Object.entries(SAGEJS_PUBLIC_INTRINSICS);
 const bootstrapFunctions = Array.from(
-  runtimeSource.matchAll(/^def ([a-z_]+)\(/gm),
+  runtimeSource.matchAll(/^def ([a-z0-9_]+)\(/gm),
   (match) => match[1],
 );
 const bootstrapAssignments = Array.from(

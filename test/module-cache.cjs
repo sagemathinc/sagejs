@@ -111,8 +111,14 @@ try {
   assert.equal(run(compileArgs), expected);
 
   const compilerEntries = filesBelow(compilerCache);
-  assert.equal(compilerEntries.length, 1);
-  const cached = JSON.parse(readFileSync(compilerEntries[0], "utf8"));
+  // Bootstrap modules may declare lazy source-transparent kernel dependencies.
+  // A custom cache therefore contains those reusable dependency artifacts as
+  // well as the project module; identify the project artifact explicitly.
+  const projectEntries = compilerEntries.filter((filename) =>
+    filename.endsWith("cached_value.py.json"),
+  );
+  assert.equal(projectEntries.length, 1);
+  const cached = JSON.parse(readFileSync(projectEntries[0], "utf8"));
   assert.equal(typeof cached.version, "string");
   assert.equal(typeof cached.signature, "string");
   assert.ok(cached.outputs["beautify:true keep_docstrings:false"]);

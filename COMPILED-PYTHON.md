@@ -92,14 +92,14 @@ fails while importing a marked function if its source-hash-matched artifact is
 missing. `SAGEJS_NATIVE_TRACE=1` reports higher-level production dispatches
 that can choose among several implementations.
 
-For example, `SAGEJS_NATIVE_TRACE=1 sagejs` reports that current production
-dense prime-field matrix operations select `legacy-flint`. `Matrix` still
-canonically owns a native FLINT object, so exporting every residue into a
-packed kernel costs more end to end than the fast kernel saves. Typed-Python
-and declared-FLINT kernels are benchmarked directly with `sagejs native
-benchmark`; production dispatch should change only when packed storage itself
-becomes canonical. This N-API-owned representation is transitional and is
-intended to be deleted, not preserved as a parallel production architecture.
+For example, `SAGEJS_NATIVE_TRACE=1 sagejs` reports
+`typed-python-isolated` for source-transparent dense-prime operations and
+`declared-flint-isolated` when a packed matrix enters a declared FLINT call.
+Dense matrices over small prime fields canonically own a row-major
+`BigUint64Array`; they never materialize a persistent N-API matrix object.
+With `SAGEJS_NATIVE_REQUIRED=1`, a missing compiled artifact fails at import
+instead of silently changing the performance tier. The retained legacy N-API
+matrix is a differential oracle, not a parallel production representation.
 
 Code can inspect this distinction without guessing from a timing:
 

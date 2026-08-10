@@ -31,6 +31,281 @@ class DensePrimeMatrix(NativeRecord):
 
 
 @native
+def dense_prime_add(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    count = len(output)
+    valid = 1
+    if len(left) != count:
+        valid = 0
+    if len(right) != count:
+        valid = 0
+    if valid != 0:
+        for index in range(count):
+            output[index] = (left[index] + right[index]) % modulus
+    return valid != 0
+
+
+@native
+def dense_prime_subtract(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    count = len(output)
+    valid = 1
+    if len(left) != count:
+        valid = 0
+    if len(right) != count:
+        valid = 0
+    if valid != 0:
+        for index in range(count):
+            output[index] = prime_sub(left[index], right[index], modulus)
+    return valid != 0
+
+
+@native
+def dense_prime_negate(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    count = len(output)
+    valid = 1
+    if len(source) != count:
+        valid = 0
+    if valid != 0:
+        for index in range(count):
+            value = source[index]
+            if value == 0:
+                output[index] = 0
+            else:
+                output[index] = modulus - value
+    return valid != 0
+
+
+@native
+def dense_prime_scalar_multiply(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    scalar: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    count = len(output)
+    valid = 1
+    if len(source) != count:
+        valid = 0
+    if valid != 0:
+        for index in range(count):
+            output[index] = prime_mul(source[index], scalar, modulus)
+    return valid != 0
+
+
+@native
+def dense_prime_transpose(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    count = rows * columns
+    valid = 1
+    if len(output) != count:
+        valid = 0
+    if len(source) != count:
+        valid = 0
+    if valid != 0:
+        for row in range(rows):
+            for column in range(columns):
+                output[column * rows + row] = source[
+                    row * columns + column]
+    return valid != 0
+
+
+@native
+def dense_prime_equal(
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    count = len(left)
+    equal = 1
+    if len(right) != count:
+        equal = 0
+    if equal != 0:
+        for index in range(count):
+            if left[index] != right[index]:
+                equal = 0
+    return equal != 0
+
+
+@native
+def dense_prime_is_zero(
+    source: UInt64Buffer,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    zero = 1
+    for index in range(len(source)):
+        if source[index] != 0:
+            zero = 0
+    return zero != 0
+
+
+@native
+def dense_prime_is_one(
+    source: UInt64Buffer,
+    rows: uint64,
+    columns: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    one = 1
+    if rows != columns:
+        one = 0
+    if len(source) != rows * columns:
+        one = 0
+    if one != 0:
+        for row in range(rows):
+            for column in range(columns):
+                expected = 0
+                if row == column:
+                    expected = 1
+                if source[row * columns + column] != expected:
+                    one = 0
+    return one != 0
+
+
+@native
+def dense_prime_nonzero_count(
+    source: UInt64Buffer,
+    modulus: PrimeFieldModulus,
+) -> uint64:
+    count = 0
+    for index in range(len(source)):
+        if source[index] != 0:
+            count += 1
+    return count
+
+
+@native
+def dense_prime_trace(
+    source: UInt64Buffer,
+    size: uint64,
+    modulus: PrimeFieldModulus,
+) -> uint64:
+    value = 0
+    if len(source) == size * size:
+        for index in range(size):
+            value = (value + source[index * size + index]) % modulus
+    return value
+
+
+@native
+def dense_prime_stack(
+    output: UInt64Buffer,
+    top: UInt64Buffer,
+    bottom: UInt64Buffer,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    valid = 1
+    if len(output) != len(top) + len(bottom):
+        valid = 0
+    if valid != 0:
+        for index in range(len(top)):
+            output[index] = top[index]
+        offset = len(top)
+        for index in range(len(bottom)):
+            output[offset + index] = bottom[index]
+    return valid != 0
+
+
+@native
+def dense_prime_augment(
+    output: UInt64Buffer,
+    left: UInt64Buffer,
+    right: UInt64Buffer,
+    rows: uint64,
+    left_columns: uint64,
+    right_columns: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    valid = 1
+    if len(left) != rows * left_columns:
+        valid = 0
+    if len(right) != rows * right_columns:
+        valid = 0
+    output_columns = left_columns + right_columns
+    if len(output) != rows * output_columns:
+        valid = 0
+    if valid != 0:
+        for row in range(rows):
+            output_offset = row * output_columns
+            for column in range(left_columns):
+                output[output_offset + column] = (
+                    left[row * left_columns + column])
+            for column in range(right_columns):
+                output[output_offset + left_columns + column] = (
+                    right[row * right_columns + column])
+    return valid != 0
+
+
+@native
+def dense_prime_select_rows(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    indices: UInt64Buffer,
+    source_rows: uint64,
+    columns: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    valid = 1
+    if len(source) != source_rows * columns:
+        valid = 0
+    if len(output) != len(indices) * columns:
+        valid = 0
+    if valid != 0:
+        for target_row in range(len(indices)):
+            source_row = indices[target_row]
+            if source_row >= source_rows:
+                valid = 0
+            else:
+                for column in range(columns):
+                    output[target_row * columns + column] = (
+                        source[source_row * columns + column])
+    return valid != 0
+
+
+@native
+def dense_prime_select_columns(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    indices: UInt64Buffer,
+    rows: uint64,
+    source_columns: uint64,
+    modulus: PrimeFieldModulus,
+) -> bool:
+    valid = 1
+    if len(source) != rows * source_columns:
+        valid = 0
+    if len(output) != rows * len(indices):
+        valid = 0
+    if valid != 0:
+        for row in range(rows):
+            for target_column in range(len(indices)):
+                source_column = indices[target_column]
+                if source_column >= source_columns:
+                    valid = 0
+                else:
+                    output[row * len(indices) + target_column] = (
+                        source[row * source_columns + source_column])
+    return valid != 0
+
+
+@native
 def dense_prime_random_fill(
     target: UInt64Buffer,
     modulus: PrimeFieldModulus,

@@ -149,6 +149,8 @@ export const SAGEJS_RUNTIME_INTRINSICS: Record<string, string> = {
   type_error: "TypeError",
   tuple_builtin: "ρσ_tuple",
   uint64_buffer: "ρσ_uint64_buffer",
+  uint64_buffer_prefix: "ρσ_uint64_buffer_prefix",
+  uint64_residue_buffer: "ρσ_uint64_residue_buffer",
   undefined: "undefined",
   wall_time: "ρσ_wall_time",
   weak_ref_class: "WeakRef",

@@ -1934,20 +1934,29 @@ from native_prime_field_matrix import (
     prime_field_factor_solve,
 )
 from sagejs.native import is_compiled
+import sagejs.runtime as runtime
 
-A = matrix(GF(5), 2, 2, [1, 2, 3, 4])
-B = matrix(GF(5), 2, 1, [1, 0])
+backend = runtime.flint_backend()
+def legacy_oracle(source):
+    return source._new(backend.nmodMatrix(
+        source.nrows(), source.ncols(),
+        [runtime.integer_bigint(value.lift()) for value in source.list()],
+        runtime.integer_bigint(source.base_ring().characteristic()),
+    ))
+
+A = legacy_oracle(matrix(GF(5), 2, 2, [1, 2, 3, 4]))
+B = legacy_oracle(matrix(GF(5), 2, 1, [1, 0]))
 C = matrix(GF(2305843009213693951), 1, 1, [1])
 X = prime_field_solve(A, B)
 D = prime_field_factor(A)
 print(prime_field_rank(A))
 print(prime_field_determinant(A))
-print(prime_field_echelon(A) == A.echelon_form())
-print(A * X == B)
+print(prime_field_echelon(A).list() == A.echelon_form().list())
+print(X.list() == [GF(5)(3), GF(5)(4)])
 print(D.rank())
 print(D.determinant())
-print(D.echelon() == A.echelon_form())
-print(A * D.solve(B) == B)
+print(D.echelon().list() == A.echelon_form().list())
+print(D.solve(B).list() == X.list())
 print(D.algorithm)
 print(is_compiled(prime_field_rank))
 print(prime_field_rank.backendFor(A) if is_compiled(prime_field_rank) else 'fallback')
@@ -1957,7 +1966,8 @@ try:
 except Exception as error:
     print(isinstance(error, TypeError))
 try:
-    prime_field_solve(A, matrix(GF(7), 2, 1, [1, 0]))
+    prime_field_solve(
+        A, legacy_oracle(matrix(GF(7), 2, 1, [1, 0])))
 except Exception as error:
     print(isinstance(error, ValueError))
 `;
@@ -1988,21 +1998,32 @@ sys.path.append(${JSON.stringify(join(root, "bench"))})
 
 from native_prime_field_source import source_prime_matmul, source_prime_rank
 from sagejs.native import is_compiled
+import sagejs.runtime as runtime
 
-A = matrix(GF(5), 3, 3, [1, 2, 3, 0, 1, 4, 2, 0, 1])
-B = matrix(GF(5), 3, 2, [1, 2, 3, 4, 0, 1])
+backend = runtime.flint_backend()
+def legacy_oracle(source):
+    return source._new(backend.nmodMatrix(
+        source.nrows(), source.ncols(),
+        [runtime.integer_bigint(value.lift()) for value in source.list()],
+        runtime.integer_bigint(source.base_ring().characteristic()),
+    ))
+
+A = legacy_oracle(matrix(GF(5), 3, 3, [1, 2, 3, 0, 1, 4, 2, 0, 1]))
+B = legacy_oracle(matrix(GF(5), 3, 2, [1, 2, 3, 4, 0, 1]))
 expected = matrix(GF(5), 3, 2, [2, 3, 3, 3, 2, 0])
 answer = source_prime_matmul(A, B)
 print(source_prime_rank(A))
-print(answer == expected)
+print(answer.list() == expected.list())
 print(answer.dimensions())
 print(is_compiled(source_prime_rank))
 try:
-    source_prime_matmul(A, matrix(GF(5), 2, 1, [1, 2]))
+    source_prime_matmul(
+        A, legacy_oracle(matrix(GF(5), 2, 1, [1, 2])))
 except Exception as error:
     print(isinstance(error, ValueError))
 try:
-    source_prime_matmul(A, matrix(GF(7), 3, 1, [1, 2, 3]))
+    source_prime_matmul(
+        A, legacy_oracle(matrix(GF(7), 3, 1, [1, 2, 3])))
 except Exception as error:
     print(isinstance(error, ValueError))
 `;

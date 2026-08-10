@@ -162,6 +162,18 @@ from sagejs.kernels.dense_prime import (
 )
 
 backend = runtime.flint_backend()
+
+def legacy_handle(source):
+    return backend.nmodMatrix(
+        source.nrows(),
+        source.ncols(),
+        [runtime.integer_bigint(value.lift()) for value in source.list()],
+        runtime.integer_bigint(source.base_ring().characteristic()),
+    )
+
+def same_entries(left, right):
+    return left.dimensions() == right.dimensions() and left.list() == right.list()
+
 packed_source = matrix(GF(97), 3, 3, range(9))
 assert not hasattr(packed_source, '_native_handle')
 assert packed_source.is_mutable()
@@ -176,6 +188,13 @@ try:
     raise AssertionError('immutable RREF accepted mutation')
 except ValueError:
     pass
+constructor_values = [-1, 98, 10**30, -(10**30)]
+constructor_source = list(constructor_values)
+constructed = matrix(GF(97), 2, 2, constructor_source)
+constructor_source[0] = 0
+assert constructed.list() == [GF(97)(value) for value in constructor_values]
+mixed = matrix(GF(97), 1, 3, [GF(97)(-2), 196, GF(97)(5)])
+assert mixed.list() == [GF(97)(95), GF(97)(2), GF(97)(5)]
 set_random_seed(1729)
 random_source = random_matrix(GF(97), 12, 9)
 assert not hasattr(random_source, '_native_handle')
@@ -188,6 +207,39 @@ assert not hasattr(packed_left, '_native_handle')
 assert not hasattr(packed_right, '_native_handle')
 assert not hasattr(packed_product, '_native_handle')
 assert packed_product == matrix(GF(97), 2, 2, [58, 64, 42, 57])
+try:
+    packed_product._native
+    raise AssertionError('packed matrix exposed an N-API handle')
+except RuntimeError:
+    pass
+packed_a = matrix(GF(97), 3, 3, [1, 2, 3, 4, 5, 6, 7, 8, 10])
+packed_b = matrix(GF(97), 3, 3, [9, 8, 7, 6, 5, 4, 3, 2, 1])
+assert packed_a + packed_b == matrix(
+    GF(97), 3, 3, [10, 10, 10, 10, 10, 10, 10, 10, 11])
+assert packed_a - packed_b == matrix(
+    GF(97), 3, 3, [89, 91, 93, 95, 0, 2, 4, 6, 9])
+assert -packed_a + packed_a == zero_matrix(GF(97), 3)
+assert 11 * packed_a == packed_a * 11
+assert packed_a.transpose().transpose() == packed_a
+assert packed_a.trace() == 16
+assert packed_a.density() == 1
+assert not packed_a.is_zero()
+assert identity_matrix(GF(97), 3).is_one()
+assert not matrix(GF(97), 2, 3, 0).is_one()
+assert packed_a.stack(packed_b).dimensions() == (6, 3)
+assert packed_a.augment(packed_b).dimensions() == (3, 6)
+assert packed_a.matrix_from_rows([2, 0]) == matrix(
+    GF(97), 2, 3, [7, 8, 10, 1, 2, 3])
+assert packed_a.matrix_from_columns([2, 0]) == matrix(
+    GF(97), 3, 2, [3, 1, 6, 4, 10, 7])
+packed_a_oracle = packed_a._new(legacy_handle(packed_a))
+assert packed_a.det() == packed_a_oracle.det()
+assert packed_a.charpoly() == packed_a_oracle.charpoly()
+assert [
+    coefficient.lift()
+    for coefficient in packed_a.minpoly().coefficients()
+] == [
+    3, 85, 81, 1]
 for modulus in [2, 3, 5, 101, 65521, 4294967291]:
     field = GF(modulus)
     for rows, columns in [(0, 0), (0, 4), (4, 0), (1, 1), (2, 5), (5, 2), (7, 7)]:
@@ -197,10 +249,11 @@ for modulus in [2, 3, 5, 101, 65521, 4294967291]:
             for column in range(columns)
         ]
         source = matrix(field, rows, columns, entries)
-        legacy_rank = int(backend.matrixRank(source._native))
-        legacy_rref = source._new(backend.matrixRref(source._native))
+        source_oracle = legacy_handle(source)
+        legacy_rank = int(backend.matrixRank(source_oracle))
+        legacy_rref = source._new(backend.matrixRref(source_oracle))
         legacy_kernel = source._new_shape(
-            backend.matrixRightKernel(source._native),
+            backend.matrixRightKernel(source_oracle),
             columns - legacy_rank,
             columns,
         )
@@ -215,7 +268,8 @@ for modulus in [2, 3, 5, 101, 65521, 4294967291]:
         rref_rank = dense_prime_rref(
             source_record, rref_output)
         assert rref_rank == legacy_rank
-        assert matrix(field, rows, columns, rref_output) == legacy_rref
+        assert same_entries(
+            matrix(field, rows, columns, rref_output), legacy_rref)
         kernel_workspace = [0 for _index in range(rows * columns)]
         kernel_output = [0 for _index in range(columns * columns)]
         nullity = dense_prime_right_kernel(
@@ -223,15 +277,18 @@ for modulus in [2, 3, 5, 101, 65521, 4294967291]:
             kernel_workspace,
             kernel_output,
         )
-        assert matrix(
-            field,
-            nullity,
-            columns,
-            kernel_output[:nullity * columns],
-        ) == legacy_kernel
+        assert same_entries(
+            matrix(
+                field,
+                nullity,
+                columns,
+                kernel_output[:nullity * columns],
+            ),
+            legacy_kernel,
+        )
         assert source.rank() == legacy_rank
-        assert source.rref() == legacy_rref
-        assert source.right_kernel_matrix() == legacy_kernel
+        assert same_entries(source.rref(), legacy_rref)
+        assert same_entries(source.right_kernel_matrix(), legacy_kernel)
 
     size = 6
     left_entries = []
@@ -250,8 +307,10 @@ for modulus in [2, 3, 5, 101, 65521, 4294967291]:
     ]
     left = matrix(field, size, size, left_entries)
     right = matrix(field, size, 3, right_entries)
+    left_oracle = legacy_handle(left)
+    right_oracle = legacy_handle(right)
     legacy_solution = left._new_shape(
-        backend.matrixSolve(left._native, right._native), size, 3)
+        backend.matrixSolve(left_oracle, right_oracle), size, 3)
     solve_workspace = [0 for _index in range(size * (size + 3))]
     solve_output = [0 for _index in range(size * 3)]
     assert dense_prime_solve(
@@ -260,10 +319,57 @@ for modulus in [2, 3, 5, 101, 65521, 4294967291]:
         solve_workspace,
         solve_output,
     ) == 1
-    assert matrix(field, size, 3, solve_output) == legacy_solution
-    assert left.solve_right(right) == legacy_solution
-    assert left * legacy_solution == right
+    assert same_entries(
+        matrix(field, size, 3, solve_output), legacy_solution)
+    assert same_entries(left.solve_right(right), legacy_solution)
+    packed_legacy_solution = matrix(
+        field, size, 3, legacy_solution.list())
+    assert left * packed_legacy_solution == right
 print("dense-prime-production-ok")
+`;
+
+const independenceScript = String.raw`
+field = GF(97)
+source = matrix(field, 4, 4, [
+    1, 2, 3, 4,
+    5, 7, 8, 9,
+    2, 6, 4, 1,
+    8, 3, 5, 2,
+])
+other = matrix(field, 4, 4, range(16))
+identity = identity_matrix(field, 4)
+constructor_values = [-1, 98, 10**30, -(10**30)]
+constructed = matrix(field, 2, 2, constructor_values)
+assert constructed.list() == [field(value) for value in constructor_values]
+assert source + other - other == source
+assert -source + source == zero_matrix(field, 4)
+assert 7 * source == source * 7
+assert source.transpose().transpose() == source
+assert source.stack(other).dimensions() == (8, 4)
+assert source.augment(other).dimensions() == (4, 8)
+assert source.matrix_from_rows([3, 1]).dimensions() == (2, 4)
+assert source.matrix_from_columns([2, 0]).dimensions() == (4, 2)
+assert source.trace() == 14
+assert source.density() == 1
+assert not source.is_zero()
+assert identity.is_one()
+assert source.rank() == 4
+assert source.rref() == identity
+assert source.right_kernel_matrix().nrows() == 0
+assert source.det() != 0
+assert len(source.charpoly().coefficients()) == 5
+assert len(source.minpoly().coefficients()) <= 5
+inverse = source.inverse()
+assert source * inverse == identity
+assert source.solve_right(identity) == inverse
+random_source = random_matrix(field, 32)
+assert (random_source * random_source).dimensions() == (32, 32)
+try:
+    source._native
+    raise AssertionError('packed matrix exposed an N-API handle')
+except RuntimeError:
+    pass
+print("dense-prime-independent-ok")
 `;
 
 (async () => {
@@ -531,6 +637,14 @@ print("dense-prime-production-ok")
         SAGEJS_NATIVE_CACHE_DIR: temporary,
       }),
       "dense-prime-production-ok",
+    );
+    assert.equal(
+      runSage(independenceScript, {
+        SAGEJS_NATIVE_CACHE_DIR: temporary,
+        SAGEJS_NATIVE_REQUIRED: "1",
+        SAGEJS_FORBID_MATRIX_NAPI: "1",
+      }),
+      "dense-prime-independent-ok",
     );
     assert.equal(
       runSage(productionScript, {

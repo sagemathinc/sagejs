@@ -64,8 +64,8 @@ function loadNativeExportPolicy(options = {}) {
   const matrix = document.matrix_remediation;
   if (matrix?.scope !== "packages/flint/src/matrix.c" ||
       matrix.status !== "compliant-and-frozen" ||
-      matrix.registered_exports !== 49) {
-    fail(filename, "matrix remediation must freeze all 49 matrix.c exports");
+      matrix.registered_exports !== 50) {
+    fail(filename, "matrix remediation must freeze all 50 matrix.c exports");
   }
   if (!substantive(matrix.policy) ||
       !Array.isArray(matrix.declared_foreign_contracts) ||

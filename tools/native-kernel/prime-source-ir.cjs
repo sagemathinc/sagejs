@@ -216,7 +216,9 @@ function lowerCall(node, context, operations) {
     expect(
       context,
       node,
-      ["uint64", "PrimeFieldMatrix"].includes(signature.returnType),
+      ["uint64", "bool", "PrimeFieldMatrix"].includes(
+        signature.returnType,
+      ),
       `${name} has unsupported source-transparent result ${signature.returnType}`,
     );
     const target = temporary(context, node, signature.returnType);

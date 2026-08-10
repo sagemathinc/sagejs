@@ -133,11 +133,18 @@
   "matrix_remediation": {
     "scope": "packages/flint/src/matrix.c",
     "status": "compliant-and-frozen",
-    "registered_exports": 49,
+    "registered_exports": 50,
     "policy": "Every registered export is assigned exactly once below. Representation boundaries are retained, thin or mature-library operations move behind declarations, and Sage.js-owned control flow is an explicit typed-Python migration exception.",
     "declared_foreign_contracts": [
       "flint:nmod_mat_rank",
-      "flint:nmod_mat_inv"
+      "flint:nmod_mat_inv",
+      "flint:nmod_mat_mul",
+      "flint:nmod_mat_rref",
+      "flint:nmod_mat_nullspace",
+      "flint:nmod_mat_solve",
+      "flint:nmod_mat_det",
+      "flint:nmod_mat_charpoly",
+      "flint:nmod_mat_minpoly"
     ],
     "groups": {
       "representation-primitives": {
@@ -176,6 +183,7 @@
           "matrixHermiteTransform",
           "matrixHowell",
           "matrixIsZero",
+          "matrixMinpoly",
           "matrixMul",
           "matrixMulBlas",
           "matrixNeg",
@@ -787,6 +795,11 @@
     },
     {
       "id": "napi:@sagemath/sagejs-flint:matrixIsZero",
+      "family": "dense-matrix-algorithms",
+      "decision": "migrate-to-declared-ffi"
+    },
+    {
+      "id": "napi:@sagemath/sagejs-flint:matrixMinpoly",
       "family": "dense-matrix-algorithms",
       "decision": "migrate-to-declared-ffi"
     },

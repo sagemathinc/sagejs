@@ -130,7 +130,69 @@ def uint64_buffer(source):
         if (Number.isSafeInteger(source) && source >= 0) {
             return new BigUint64Array(source);
         }
+        if (source instanceof BigUint64Array) {
+            const start = source.byteOffset;
+            const stop = start + source.byteLength;
+            return new BigUint64Array(source.buffer.slice(start, stop));
+        }
         return BigUint64Array.from(source, (value) => BigInt(value));
+    })()"""
+
+
+def uint64_buffer_prefix(source, length):
+    """Copy the first ``length`` entries into owned unsigned-64-bit storage.
+
+    This representation primitive keeps packed result truncation out of the
+    mathematical host language.  It validates the requested prefix before
+    borrowing the source buffer and always returns independently owned bytes.
+    """
+    return r"""%js (() => {
+        if (!(source instanceof BigUint64Array)) {
+            throw new TypeError("source must be a BigUint64Array");
+        }
+        if (
+            !Number.isSafeInteger(length)
+            || length < 0
+            || length > source.length
+        ) {
+            throw new RangeError("invalid uint64 buffer prefix length");
+        }
+        const start = source.byteOffset;
+        const stop = start + length * BigUint64Array.BYTES_PER_ELEMENT;
+        return new BigUint64Array(source.buffer.slice(start, stop));
+    })()"""
+
+
+def uint64_residue_buffer(source, modulus):
+    """Pack primitive exact integers as canonical residues, or return undefined.
+
+    The caller retains the ordinary coercion path for mathematical elements.
+    This primitive handles the overwhelmingly common flat-list constructor
+    without allocating one host-language object per residue.
+    """
+    return r"""%js (() => {
+        const prime = BigInt(modulus);
+        if (prime <= 0n || prime > 0xffffffffffffffffn) {
+            throw new RangeError("invalid uint64 residue modulus");
+        }
+        const length = source.length;
+        if (!Number.isSafeInteger(length) || length < 0) return undefined;
+        const output = new BigUint64Array(length);
+        for (let index = 0; index < length; index += 1) {
+            const value = source[index];
+            let exact;
+            if (typeof value === "bigint") {
+                exact = value;
+            } else if (Number.isSafeInteger(value)) {
+                exact = BigInt(value);
+            } else {
+                return undefined;
+            }
+            let residue = exact % prime;
+            if (residue < 0n) residue += prime;
+            output[index] = residue;
+        }
+        return output;
     })()"""
 
 

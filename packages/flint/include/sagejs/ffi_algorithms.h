@@ -55,6 +55,74 @@ static inline int sagejs_flint_nmod_poly_mul_packed(
     return 1;
 }
 
+/* Host-neutral characteristic polynomial adapter.  Both buffers have a
+ * stable row-major/scalar ABI; no FLINT object or host runtime handle crosses
+ * this boundary. */
+static inline int sagejs_flint_nmod_mat_charpoly_packed(
+    uint64_t *output,
+    uint64_t *source,
+    uint64_t output_length,
+    uint64_t source_length,
+    uint64_t size,
+    uint64_t modulus)
+{
+    nmod_mat_t matrix;
+    nmod_poly_t polynomial;
+
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        size > (uint64_t) WORD_MAX ||
+        (size != 0 && size > UINT64_MAX / size) ||
+        source_length != size * size ||
+        size == UINT64_MAX || output_length != size + 1)
+        return 0;
+    nmod_mat_init(matrix, (slong) size, (slong) size, (ulong) modulus);
+    nmod_poly_init(polynomial, (ulong) modulus);
+    for (uint64_t row = 0; row < size; row++)
+        for (uint64_t column = 0; column < size; column++)
+            nmod_mat_entry(matrix, (slong) row, (slong) column) =
+                (ulong) (source[row * size + column] % modulus);
+    nmod_mat_charpoly(polynomial, matrix);
+    for (uint64_t index = 0; index < output_length; index++)
+        output[index] = (uint64_t) nmod_poly_get_coeff_ui(
+            polynomial, (slong) index);
+    nmod_poly_clear(polynomial);
+    nmod_mat_clear(matrix);
+    return 1;
+}
+
+static inline int sagejs_flint_nmod_mat_minpoly_packed(
+    uint64_t *output,
+    uint64_t *source,
+    uint64_t output_length,
+    uint64_t source_length,
+    uint64_t size,
+    uint64_t modulus)
+{
+    nmod_mat_t matrix;
+    nmod_poly_t polynomial;
+
+    if (modulus < 2 || !n_is_prime((ulong) modulus) ||
+        size > (uint64_t) WORD_MAX ||
+        (size != 0 && size > UINT64_MAX / size) ||
+        source_length != size * size ||
+        size == UINT64_MAX || output_length != size + 1)
+        return 0;
+    nmod_mat_init(matrix, (slong) size, (slong) size, (ulong) modulus);
+    nmod_poly_init(polynomial, (ulong) modulus);
+    for (uint64_t row = 0; row < size; row++)
+        for (uint64_t column = 0; column < size; column++)
+            nmod_mat_entry(matrix, (slong) row, (slong) column) =
+                (ulong) (source[row * size + column] % modulus);
+    nmod_mat_minpoly(polynomial, matrix);
+    for (uint64_t index = 0; index < output_length; index++)
+        output[index] = index < (uint64_t) nmod_poly_length(polynomial)
+            ? (uint64_t) nmod_poly_get_coeff_ui(polynomial, (slong) index)
+            : 0;
+    nmod_poly_clear(polynomial);
+    nmod_mat_clear(matrix);
+    return 1;
+}
+
 /* Copying adapters keep caller-owned packed storage independent of FLINT's
  * internal matrix representation.  The generated FFI layer initializes and
  * clears every nmod_mat_t and transactionally copies writable outputs back. */

@@ -815,7 +815,7 @@ function emitStatementBody(operation, indent) {
     ].join("\n");
   }
   if (operation.kind === "source.return") {
-    if (operation.type === "uint64") {
+    if (["uint64", "bool"].includes(operation.type)) {
       return [
         `${indent}*sagejs_native_output = ${cName(operation.value)};`,
         `${indent}goto success;`,
@@ -1040,12 +1040,19 @@ function emitPrimeSourceNodeAdapter(fn) {
       "    output = NULL;",
       "    return result;",
     ].join("\n")
-    : [
+    : fn.returnType === "bool"
+      ? [
+        "    if (!sagejs_native_check_napi(env,",
+        "            napi_get_boolean(env, output != 0, &result)))",
+        "        return NULL;",
+        "    return result;",
+      ].join("\n")
+      : [
       "    if (!sagejs_native_check_napi(env,",
       "            napi_create_int64(env, (int64_t) output, &result)))",
       "        return NULL;",
       "    return result;",
-    ].join("\n");
+      ].join("\n");
   return `static napi_value compiled_${fn.name}(
     napi_env env, napi_callback_info info)
 {

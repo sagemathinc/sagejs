@@ -73,7 +73,8 @@ test("FFI declarations are strict and generated modules are current", () => {
     [
       "dirichlet_group_init", "dirichlet_group_size",
       "dirichlet_group_num_primitive", "n_is_prime", "fmpz_gcd",
-      "nmod_mat_rank", "nmod_mat_inv", "nmod_mat_rref",
+      "nmod_mat_rank", "nmod_mat_det", "nmod_mat_charpoly",
+      "nmod_mat_minpoly", "nmod_mat_inv", "nmod_mat_rref",
       "nmod_mat_mul", "nmod_mat_right_kernel", "nmod_mat_solve",
       "nmod_poly_mul",
     ],
@@ -102,7 +103,7 @@ test("FFI declarations are strict and generated modules are current", () => {
     { resource: "graph", ownership: "owned", owner: null, root: "graph" },
     { resource: "edges", ownership: "borrowed", owner: "graph", root: "graph" },
   ]);
-  assert.match(runSage(["ffi", "check"]), /19 function\(s\)/);
+  assert.match(runSage(["ffi", "check"]), /22 function\(s\)/);
   const inspection = JSON.parse(
     runSage(["ffi", "explain", "flint", "--json"]),
   );
@@ -205,7 +206,7 @@ test("native-boundary audit is a reviewed exact ratchet", () => {
   const current = boundaryAudit.validateBoundarySnapshot(snapshot, { root });
   assert.ok(current.counts["napi-export"] >= 280);
   assert.ok(current.counts["runtime-intrinsic"] >= 100);
-  assert.equal(current.counts["declared-ffi"], 19);
+  assert.equal(current.counts["declared-ffi"], 22);
   assert.equal(current.counts["declared-ffi-resource"], 3);
   assert.match(runSage(["ffi", "audit"]), /inventoried native boundaries/);
   assert.equal(
@@ -229,11 +230,11 @@ test("every N-API export has an exact symbol-level architecture decision", () =>
     JSON.parse(readFileSync(filename, "utf8")), { root },
   );
   assert.equal(inventory.schema, "sagejs.native-export-inventory/v1");
-  assert.equal(inventory.exports.length, 291);
+  assert.equal(inventory.exports.length, 292);
   assert.equal(inventory.exports.filter((item) =>
-    item.family.startsWith("dense-matrix")).length, 49);
+    item.family.startsWith("dense-matrix")).length, 50);
   assert.equal(inventory.exports.filter((item) =>
-    item.implementation.path === "packages/flint/src/matrix.c").length, 49);
+    item.implementation.path === "packages/flint/src/matrix.c").length, 50);
   assert.ok(inventory.exports.every((item) =>
     /^[0-9a-f]{64}$/.test(item.implementation.sha256)));
   assert.equal(inventory.exports.filter((item) =>
@@ -244,11 +245,11 @@ test("every N-API export has an exact symbol-level architecture decision", () =>
       .map(([id, group]) => [id, group.exports.length])),
     {
       "representation-primitives": 16,
-      "foreign-and-thin-bridges": 21,
+      "foreign-and-thin-bridges": 22,
       "source-owned-algorithm-exceptions": 12,
     },
   );
-  assert.equal(policy.matrixExports.size, 49);
+  assert.equal(policy.matrixExports.size, 50);
   const missing = structuredClone(
     inventory.exports.map((item) => ({
       id: item.id,
@@ -331,13 +332,17 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
   );
   invalid(
     (document) => {
-      document.functions[6].effects.pure = true;
+      document.functions.find(
+        (fn) => fn.id === "nmod_mat_inv",
+      ).effects.pure = true;
     },
     /effects.pure functions may not declare writes/,
   );
   invalid(
     (document) => {
-      document.functions[6].errors.exception = "KeyError";
+      document.functions.find(
+        (fn) => fn.id === "nmod_mat_inv",
+      ).errors.exception = "KeyError";
     },
     /uses unsupported error exception KeyError/,
   );
@@ -355,7 +360,9 @@ test("FFI declarations reject incompatible ownership and ABI mappings", () => {
   );
   invalid(
     (document) => {
-      document.functions[6].exceptions = {
+      document.functions.find(
+        (fn) => fn.id === "nmod_mat_inv",
+      ).exceptions = {
         policy: "cxx_to_status", failure_status: 0,
       };
     },

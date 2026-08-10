@@ -1349,6 +1349,7 @@ assert.equal(
 assert.equal(flint.matrixDet(finiteMatrix), 3n);
 assert.equal(flint.matrixRank(finiteMatrix), 2);
 assert.deepEqual(flint.matrixCharpoly(finiteMatrix), [3n, 0n, 1n]);
+assert.deepEqual(flint.matrixMinpoly(finiteMatrix), [3n, 0n, 1n]);
 const finiteInverse = flint.matrixInverse(finiteMatrix);
 assert.deepEqual(
   [0, 1, 2, 3].map((index) =>
@@ -1489,6 +1490,20 @@ assert.equal(
 );
 
 const packedProduct = Array(5).fill(99n);
+const packedFiniteSource = [1n, 2n, 3n, 4n];
+assert.equal(flint.ffiNmodMatDet(
+  packedFiniteSource, 2n, 5n,
+), 3n);
+const packedCharpoly = Array(3).fill(99n);
+assert.equal(flint.ffiNmodMatCharpoly(
+  packedCharpoly, packedFiniteSource, 3n, 4n, 2n, 5n,
+), true);
+assert.deepEqual(packedCharpoly, [3n, 0n, 1n]);
+const packedMinpoly = Array(3).fill(99n);
+assert.equal(flint.ffiNmodMatMinpoly(
+  packedMinpoly, packedFiniteSource, 3n, 4n, 2n, 5n,
+), true);
+assert.deepEqual(packedMinpoly, [3n, 0n, 1n]);
 assert.equal(flint.ffiNmodPolyMul(
   packedProduct, [1n, 2n, 3n], [4n, 5n, 6n], 5n, 3n, 3n, 101n,
 ), true);

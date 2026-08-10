@@ -63,6 +63,61 @@ binding.ffiNmodMatRank = function ffiNmodMatRank(
   return BigInt(binding.matrixRank(matrix));
 };
 
+binding.ffiNmodMatDet = function ffiNmodMatDet(
+  source, sizeValue, modulus,
+) {
+  const size = ffiDimension(sizeValue, "size");
+  const count = size * size;
+  if (!Number.isSafeInteger(count)) throw new RangeError("matrix is too large");
+  return BigInt(binding.matrixDet(
+    ffiNmodMatrix(source, size, size, modulus, "source"),
+  ));
+};
+
+binding.ffiNmodMatCharpoly = function ffiNmodMatCharpoly(
+  output, source, outputLengthValue, sourceLengthValue, sizeValue, modulus,
+) {
+  const outputLength = ffiDimension(outputLengthValue, "output_length");
+  const sourceLength = ffiDimension(sourceLengthValue, "source_length");
+  const size = ffiDimension(sizeValue, "size");
+  if (!Number.isSafeInteger(size * size) || sourceLength !== size * size ||
+      outputLength !== size + 1) return false;
+  ffiEntries(output, outputLength, "output");
+  const coefficients = binding.matrixCharpoly(
+    ffiNmodMatrix(source, size, size, modulus, "source"),
+  );
+  for (let index = 0; index < outputLength; index += 1) {
+    if (!Reflect.set(output, String(index), BigInt(coefficients[index]))) {
+      throw new TypeError("output buffer is not writable");
+    }
+  }
+  return true;
+};
+
+binding.ffiNmodMatMinpoly = function ffiNmodMatMinpoly(
+  output, source, outputLengthValue, sourceLengthValue, sizeValue, modulus,
+) {
+  const outputLength = ffiDimension(outputLengthValue, "output_length");
+  const sourceLength = ffiDimension(sourceLengthValue, "source_length");
+  const size = ffiDimension(sizeValue, "size");
+  if (!Number.isSafeInteger(size * size) || sourceLength !== size * size ||
+      outputLength !== size + 1) return false;
+  ffiEntries(output, outputLength, "output");
+  const coefficients = binding.matrixMinpoly(
+    ffiNmodMatrix(source, size, size, modulus, "source"),
+  );
+  for (let index = 0; index < outputLength; index += 1) {
+    if (!Reflect.set(
+      output,
+      String(index),
+      BigInt(coefficients[index] ?? 0n),
+    )) {
+      throw new TypeError("output buffer is not writable");
+    }
+  }
+  return true;
+};
+
 binding.ffiNmodMatInv = function ffiNmodMatInv(
   output, source, sizeValue, modulus,
 ) {
@@ -288,4 +343,20 @@ function ffiDirichletGroupNumPrimitive(group) {
   return BigInt(binding.dirichletGroupData(group).numberPrimitive);
 };
 
-module.exports = binding;
+/* A diagnostic hard boundary for the packed-matrix architecture tests.  The
+ * proxy leaves declared FFI exports available but makes any accidental use of
+ * the historical high-level N-API matrix surface fail at its first call. */
+module.exports = process.env.SAGEJS_FORBID_MATRIX_NAPI === "1"
+  ? new Proxy(binding, {
+    get(target, property, receiver) {
+      if (typeof property === "string" &&
+          (property === "nmodMatrix" || property === "nmodMatrixPacked" ||
+           /^matrix[A-Z]/.test(property))) {
+        return function forbiddenMatrixNapi() {
+          throw new Error(`forbidden legacy matrix N-API call: ${property}`);
+        };
+      }
+      return Reflect.get(target, property, receiver);
+    },
+  })
+  : binding;

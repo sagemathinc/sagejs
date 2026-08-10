@@ -49,6 +49,94 @@ function nativeSample(seed) {
   return performance.now() - started;
 }
 
+const surfaceCases = [
+  { name: "random_500", expression: "random_matrix(GF(97), 500)", budget: 8 },
+  {
+    name: "construct_500",
+    expression: "matrix(GF(97), 500, 500, _matrix_budget_values)",
+    budget: 8,
+  },
+  { name: "add_500", expression: "_matrix_budget_left + _matrix_budget_right", budget: 8 },
+  { name: "subtract_500", expression: "_matrix_budget_left - _matrix_budget_right", budget: 8 },
+  { name: "negate_500", expression: "-_matrix_budget_left", budget: 8 },
+  { name: "scalar_500", expression: "13 * _matrix_budget_left", budget: 8 },
+  { name: "transpose_500", expression: "_matrix_budget_left.transpose()", budget: 8 },
+  { name: "equal_500", expression: "_matrix_budget_left == _matrix_budget_equal", budget: 5 },
+  { name: "copy_500", expression: "_matrix_budget_left.__copy__()", budget: 8 },
+  { name: "is_zero_500", expression: "_matrix_budget_zero.is_zero()", budget: 5 },
+  { name: "is_one_500", expression: "_matrix_budget_one.is_one()", budget: 5 },
+  { name: "trace_500", expression: "_matrix_budget_left.trace()", budget: 5 },
+  { name: "density_500", expression: "_matrix_budget_left.density()", budget: 5 },
+  { name: "stack_500", expression: "_matrix_budget_top.stack(_matrix_budget_bottom)", budget: 8 },
+  { name: "augment_500", expression: "_matrix_budget_al.augment(_matrix_budget_ar)", budget: 8 },
+  {
+    name: "select_rows_250x500",
+    expression: "_matrix_budget_left.matrix_from_rows(_matrix_budget_indices)",
+    budget: 8,
+  },
+  {
+    name: "select_columns_500x250",
+    expression: "_matrix_budget_left.matrix_from_columns(_matrix_budget_indices)",
+    budget: 8,
+  },
+  { name: "determinant_200", expression: "_matrix_budget_square.__copy__().det()", budget: 10 },
+  { name: "charpoly_80", expression: "_matrix_budget_polynomial.__copy__().charpoly()", budget: 15 },
+  { name: "minpoly_80", expression: "_matrix_budget_polynomial.__copy__().minpoly()", budget: 15 },
+  { name: "multiply_300", expression: "_matrix_budget_multiply * _matrix_budget_multiply", budget: 15 },
+  { name: "rank_200", expression: "_matrix_budget_square.__copy__().rank()", budget: 10 },
+  { name: "rref_200", expression: "_matrix_budget_square.__copy__().rref()", budget: 10 },
+  {
+    name: "right_kernel_150x200",
+    expression: "_matrix_budget_wide.__copy__().right_kernel_matrix()",
+    budget: 15,
+  },
+  { name: "inverse_100", expression: "_matrix_budget_solve_left.__copy__().inverse()", budget: 10 },
+  {
+    name: "solve_100x8",
+    expression: "_matrix_budget_solve_left.__copy__().solve_right(_matrix_budget_solve_right)",
+    budget: 10,
+  },
+  { name: "determinant_500", expression: "_matrix_budget_left.__copy__().det()", budget: 40 },
+  { name: "multiply_500", expression: "_matrix_budget_multiply_large * _matrix_budget_multiply_large", budget: 25 },
+  { name: "rank_500", expression: "_matrix_budget_left.__copy__().rank()", budget: 40 },
+  { name: "rref_500", expression: "_matrix_budget_left.__copy__().rref()", budget: 45 },
+  {
+    name: "right_kernel_300x400",
+    expression: "_matrix_budget_wide_large.__copy__().right_kernel_matrix()",
+    budget: 45,
+  },
+];
+
+const typedWitnesses = [
+  "dense_prime_add",
+  "dense_prime_subtract",
+  "dense_prime_negate",
+  "dense_prime_scalar_multiply",
+  "dense_prime_transpose",
+  "dense_prime_equal",
+  "dense_prime_is_zero",
+  "dense_prime_is_one",
+  "dense_prime_nonzero_count",
+  "dense_prime_trace",
+  "dense_prime_stack",
+  "dense_prime_augment",
+  "dense_prime_select_rows",
+  "dense_prime_select_columns",
+  "dense_prime_random_fill",
+];
+
+const ffiWitnesses = [
+  "flint_dense_prime_mul",
+  "flint_dense_prime_rank",
+  "flint_dense_prime_rref",
+  "flint_dense_prime_right_kernel",
+  "flint_dense_prime_determinant",
+  "flint_dense_prime_charpoly",
+  "flint_dense_prime_minpoly",
+  "flint_dense_prime_inverse",
+  "flint_dense_prime_solve",
+];
+
 async function run(environment = process.env) {
   if (!flint.blasEnabled()) {
     throw new Error("native FLINT was built without CBLAS acceleration");
@@ -74,6 +162,11 @@ async function run(environment = process.env) {
     "SAGEJS_FINITE_MATRIX_HARD_LIMIT_MS",
     300,
   );
+  const surfaceBudgetScale = positiveNumber(
+    environment.SAGEJS_DENSE_MATRIX_BUDGET_SCALE,
+    "SAGEJS_DENSE_MATRIX_BUDGET_SCALE",
+    1,
+  );
 
   const nativeCache = mkdtempSync(join(tmpdir(), "sagejs-matrix-budget-"));
   const savedNativeCache = process.env.SAGEJS_NATIVE_CACHE_DIR;
@@ -97,16 +190,19 @@ async function run(environment = process.env) {
     const session = await createSage();
     const targetTimes = [];
     const requestTimes = [];
+    const surfaceResults = [];
     try {
       const tiers = await session.evaluate([
-        "from sagejs.kernels.dense_prime import dense_prime_random_fill",
-        "from sagejs.kernels.dense_prime_flint import flint_dense_prime_mul",
-        "print(dense_prime_random_fill.nativeAvailable)",
-        "print(flint_dense_prime_mul.nativeAvailable)",
+        `from sagejs.kernels.dense_prime import ${typedWitnesses.join(", ")}`,
+        `from sagejs.kernels.dense_prime_flint import ${ffiWitnesses.join(", ")}`,
+        ...typedWitnesses.map((name) => `print(${name}.nativeAvailable)`),
+        ...ffiWitnesses.map((name) => `print(${name}.nativeAvailable)`),
       ].join("\n"));
-      if (tiers.stdout.trim() !== "True\nTrue") {
+      const expectedTiers = [...typedWitnesses, ...ffiWitnesses]
+        .map(() => "True").join("\n");
+      if (tiers.stdout.trim() !== expectedTiers) {
         throw new Error(
-          `matrix performance gate did not resolve isolated kernels: ` +
+          `matrix surface gate did not resolve every isolated kernel: ` +
           JSON.stringify(tiers.stdout.trim()),
         );
       }
@@ -128,6 +224,63 @@ async function run(environment = process.env) {
         }
         targetTimes.push(elapsed);
       }
+
+      const functionDefinitions = surfaceCases.flatMap((testCase) => [
+        `def _matrix_surface_${testCase.name}():`,
+        "    started = _matrix_budget_runtime.wall_time()",
+        `    result = ${testCase.expression}`,
+        "    if result is None:",
+        "        raise RuntimeError('matrix surface operation returned None')",
+        "    return (_matrix_budget_runtime.wall_time() - started) * 1000",
+      ]);
+      await session.evaluate([
+        "import sagejs.runtime as _matrix_budget_runtime",
+        "set_random_seed(20260810)",
+        "_matrix_budget_values = [index % 97 for index in range(500 * 500)]",
+        "_matrix_budget_left = random_matrix(GF(97), 500)",
+        "_matrix_budget_right = random_matrix(GF(97), 500)",
+        "_matrix_budget_equal = _matrix_budget_left.__copy__()",
+        "_matrix_budget_zero = zero_matrix(GF(97), 500)",
+        "_matrix_budget_one = identity_matrix(GF(97), 500)",
+        "_matrix_budget_top = random_matrix(GF(97), 250, 500)",
+        "_matrix_budget_bottom = random_matrix(GF(97), 250, 500)",
+        "_matrix_budget_al = random_matrix(GF(97), 500, 250)",
+        "_matrix_budget_ar = random_matrix(GF(97), 500, 250)",
+        "_matrix_budget_indices = list(range(0, 500, 2))",
+        "_matrix_budget_square = random_matrix(GF(97), 200)",
+        "_matrix_budget_polynomial = random_matrix(GF(97), 80)",
+        "_matrix_budget_multiply = random_matrix(GF(7), 300)",
+        "_matrix_budget_multiply_large = random_matrix(GF(7), 500)",
+        "_matrix_budget_wide = random_matrix(GF(97), 150, 200)",
+        "_matrix_budget_wide_large = random_matrix(GF(97), 300, 400)",
+        "_matrix_budget_solve_left = random_matrix(GF(97), 100)",
+        "_matrix_budget_solve_right = random_matrix(GF(97), 100, 8)",
+        ...functionDefinitions,
+      ].join("\n"));
+      for (const testCase of surfaceCases) {
+        await session.evaluate(`_matrix_surface_${testCase.name}()`);
+        const times = [];
+        for (let index = 0; index < samples; index += 1) {
+          const result = await session.evaluate(
+            `_matrix_surface_${testCase.name}()`,
+          );
+          const elapsed = Number(result.repr);
+          if (!Number.isFinite(elapsed) || elapsed <= 0) {
+            throw new Error(
+              `unexpected ${testCase.name} timing: ${result.repr}`,
+            );
+          }
+          times.push(elapsed);
+        }
+        const rawMedianMs = median(times);
+        surfaceResults.push({
+          ...testCase,
+          times,
+          rawMedianMs,
+          normalizedMs: rawMedianMs / loadFactor,
+          scaledBudgetMs: testCase.budget * surfaceBudgetScale,
+        });
+      }
     } finally {
       session.close();
     }
@@ -147,6 +300,28 @@ async function run(environment = process.env) {
     if (normalizedMs > budgetMs || targetMedianMs > hardLimitMs) {
       throw new Error(
         "finite-field random_matrix(GF(7),300)^2 performance regression",
+      );
+    }
+    console.log("\nDense GF(p) public surface (raw median / normalized / budget)");
+    const failures = [];
+    for (const result of surfaceResults) {
+      console.log(
+        `  ${result.name.padEnd(28)} ` +
+        `${result.rawMedianMs.toFixed(2).padStart(7)} / ` +
+        `${result.normalizedMs.toFixed(2).padStart(7)} / ` +
+        `${result.scaledBudgetMs.toFixed(2).padStart(7)} ms`,
+      );
+      if (
+        result.normalizedMs > result.scaledBudgetMs ||
+        result.rawMedianMs > hardLimitMs
+      ) {
+        failures.push(result.name);
+      }
+    }
+    if (failures.length > 0) {
+      throw new Error(
+        `dense GF(p) public-surface performance regression: ` +
+        failures.join(", "),
       );
     }
   } finally {
@@ -178,4 +353,5 @@ module.exports = {
   positiveNumber,
   range,
   run,
+  surfaceCases,
 };

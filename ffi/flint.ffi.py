@@ -160,6 +160,153 @@ def nmod_mat_rank(
 
 
 @flint.function(
+    dynamic="ffiNmodMatDet",
+    symbol="nmod_mat_det",
+    returns=ulong,
+    abi=[
+        in_(
+            "matrix",
+            nmod_mat_t,
+            packed_nmod_matrix(
+                data="source",
+                rows="size",
+                columns="size",
+                modulus="modulus",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+    ],
+    effects=Effects(
+        pure=True,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+    ),
+    result=Direct(),
+    wasm=True,
+)
+def nmod_mat_det(
+    source: UInt64Buffer,
+    size: uint64,
+    modulus: uint64,
+) -> uint64:
+    ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatCharpoly",
+    symbol="sagejs_flint_nmod_mat_charpoly_packed",
+    returns=int,
+    abi=[
+        out(
+            "coefficients",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "entries",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("size", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT characteristic polynomial failed",
+    ),
+    wasm=True,
+)
+def nmod_mat_charpoly(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    size: uint64,
+    modulus: uint64,
+) -> bool:
+    ...
+
+
+@flint.function(
+    dynamic="ffiNmodMatMinpoly",
+    symbol="sagejs_flint_nmod_mat_minpoly_packed",
+    returns=int,
+    abi=[
+        out(
+            "coefficients",
+            uint64_t_ptr,
+            packed_slice(
+                data="output",
+                length="output_length",
+                access="write",
+                aliasing="allowed",
+                transactional=True,
+            ),
+        ),
+        in_(
+            "entries",
+            uint64_t_ptr,
+            packed_slice(
+                data="source",
+                length="source_length",
+                access="read",
+                aliasing="allowed",
+                transactional=False,
+            ),
+        ),
+        in_("output_length", uint64_t),
+        in_("source_length", uint64_t),
+        in_("size", uint64_t),
+        in_("modulus", uint64_t),
+    ],
+    effects=Effects(
+        pure=False,
+        allocates=True,
+        raises=[ValueError, OverflowError],
+        writes=["output"],
+    ),
+    result=Status(
+        1,
+        exception=ValueError,
+        message="FLINT minimal polynomial failed",
+    ),
+    wasm=True,
+)
+def nmod_mat_minpoly(
+    output: Writable[UInt64Buffer],
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    size: uint64,
+    modulus: uint64,
+) -> bool:
+    ...
+
+
+@flint.function(
     dynamic="ffiNmodMatInv",
     symbol="nmod_mat_inv",
     returns=int,

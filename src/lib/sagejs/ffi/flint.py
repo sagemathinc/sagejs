@@ -6,7 +6,7 @@ from typing import Any
 
 import sagejs.runtime as _runtime
 
-__sagejs_ffi_declaration__ = "flint@ec9615793fffe139f82c1a8f59f32d83e94decfd977d0591bf517293c636d4eb"
+__sagejs_ffi_declaration__ = "flint@875d307463bfedb74ccb869ca7494d77b7a99baf1bebd8e3cf94c3c999b8147c"
 
 
 class DirichletGroup:
@@ -24,7 +24,7 @@ class DirichletGroup:
 
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
-            self._token, "resource:flint@ec9615793fffe139f82c1a8f59f32d83e94decfd977d0591bf517293c636d4eb:dirichlet_group"
+            self._token, "resource:flint@875d307463bfedb74ccb869ca7494d77b7a99baf1bebd8e3cf94c3c999b8147c:dirichlet_group"
         )
 
     def __enter__(self) -> DirichletGroup:
@@ -41,7 +41,7 @@ def dirichlet_group(modulus: int) -> DirichletGroup:
     """Call declared flint:dirichlet_group_init."""
     return DirichletGroup(_runtime.ffi_resource_create(
         __sagejs_ffi_declaration__ + ":dirichlet_group_init",
-        "resource:flint@ec9615793fffe139f82c1a8f59f32d83e94decfd977d0591bf517293c636d4eb:dirichlet_group",
+        "resource:flint@875d307463bfedb74ccb869ca7494d77b7a99baf1bebd8e3cf94c3c999b8147c:dirichlet_group",
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupCreate",
         "ffiDirichletGroupClose",
@@ -61,7 +61,7 @@ def dirichlet_group_size(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupSize",
         [group._ffi_borrow()],
-        ["resource:flint@ec9615793fffe139f82c1a8f59f32d83e94decfd977d0591bf517293c636d4eb:dirichlet_group"],
+        ["resource:flint@875d307463bfedb74ccb869ca7494d77b7a99baf1bebd8e3cf94c3c999b8147c:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,
@@ -77,7 +77,7 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupNumPrimitive",
         [group._ffi_borrow()],
-        ["resource:flint@ec9615793fffe139f82c1a8f59f32d83e94decfd977d0591bf517293c636d4eb:dirichlet_group"],
+        ["resource:flint@875d307463bfedb74ccb869ca7494d77b7a99baf1bebd8e3cf94c3c999b8147c:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,
@@ -131,6 +131,54 @@ def nmod_mat_rank(entries: list[int], rows: int, columns: int, modulus: int) -> 
         None,
         None,
         [["buffer_length","entries",["rows","columns"],["entries","rows","columns","modulus"]]],
+    )
+
+
+def nmod_mat_det(source: list[int], size: int, modulus: int) -> int:
+    """Call declared flint:nmod_mat_det."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":nmod_mat_det",
+        "@sagemath/sagejs-flint",
+        "ffiNmodMatDet",
+        [source, size, modulus],
+        ["UInt64Buffer", "uint64", "uint64"],
+        "uint64",
+        ["direct", [], None],
+        None,
+        None,
+        [["buffer_length","source",["size","size"],["source","size","modulus"]]],
+    )
+
+
+def nmod_mat_charpoly(output: list[int], source: list[int], output_length: int, source_length: int, size: int, modulus: int) -> bool:
+    """Call declared flint:nmod_mat_charpoly."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":nmod_mat_charpoly",
+        "@sagemath/sagejs-flint",
+        "ffiNmodMatCharpoly",
+        [output, source, output_length, source_length, size, modulus],
+        ["UInt64Buffer", "UInt64Buffer", "uint64", "uint64", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT characteristic polynomial failed",
+        [["buffer_length","output",["output_length"],["output","source","output_length","source_length","size","modulus"]],["buffer_length","source",["source_length"],["output","source","output_length","source_length","size","modulus"]]],
+    )
+
+
+def nmod_mat_minpoly(output: list[int], source: list[int], output_length: int, source_length: int, size: int, modulus: int) -> bool:
+    """Call declared flint:nmod_mat_minpoly."""
+    return _runtime.ffi_call(
+        __sagejs_ffi_declaration__ + ":nmod_mat_minpoly",
+        "@sagemath/sagejs-flint",
+        "ffiNmodMatMinpoly",
+        [output, source, output_length, source_length, size, modulus],
+        ["UInt64Buffer", "UInt64Buffer", "uint64", "uint64", "uint64", "uint64"],
+        "bool",
+        ["status", [1], None],
+        "ValueError",
+        "FLINT minimal polynomial failed",
+        [["buffer_length","output",["output_length"],["output","source","output_length","source_length","size","modulus"]],["buffer_length","source",["source_length"],["output","source","output_length","source_length","size","modulus"]]],
     )
 
 

@@ -13,13 +13,63 @@ from __future__ import annotations
 
 from sagejs.native import UInt64Buffer, native, uint64
 from sagejs.ffi.flint import (
+    nmod_mat_charpoly,
+    nmod_mat_det,
     nmod_mat_inv,
+    nmod_mat_minpoly,
     nmod_mat_mul,
     nmod_mat_rank,
     nmod_mat_right_kernel,
     nmod_mat_rref,
     nmod_mat_solve,
 )
+
+
+@native
+def flint_dense_prime_determinant(
+    source: UInt64Buffer,
+    size: uint64,
+    modulus: uint64,
+) -> uint64:
+    return nmod_mat_det(source, size, modulus)
+
+
+@native
+def flint_dense_prime_charpoly(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    size: uint64,
+    modulus: uint64,
+) -> bool:
+    return nmod_mat_charpoly(
+        output,
+        source,
+        output_length,
+        source_length,
+        size,
+        modulus,
+    )
+
+
+@native
+def flint_dense_prime_minpoly(
+    output: UInt64Buffer,
+    source: UInt64Buffer,
+    output_length: uint64,
+    source_length: uint64,
+    size: uint64,
+    modulus: uint64,
+) -> bool:
+    return nmod_mat_minpoly(
+        output,
+        source,
+        output_length,
+        source_length,
+        size,
+        modulus,
+    )
 
 
 @native
@@ -106,7 +156,10 @@ def flint_dense_prime_solve(
 
 
 __all__ = [
+    'flint_dense_prime_charpoly',
+    'flint_dense_prime_determinant',
     'flint_dense_prime_inverse',
+    'flint_dense_prime_minpoly',
     'flint_dense_prime_mul',
     'flint_dense_prime_rank',
     'flint_dense_prime_rref',

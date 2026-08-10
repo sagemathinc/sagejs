@@ -4078,6 +4078,8 @@ static napi_value initialize(napi_env env, napi_value exports)
             NULL, NULL, NULL, napi_default, NULL},
         {"matrixCharpoly", NULL, sagejs_matrix_charpoly,
             NULL, NULL, NULL, napi_default, NULL},
+        {"matrixMinpoly", NULL, sagejs_matrix_minpoly,
+            NULL, NULL, NULL, napi_default, NULL},
         {"matrixSolve", NULL, sagejs_matrix_solve, NULL, NULL, NULL,
             napi_default, NULL},
         {"matrixInverse", NULL, sagejs_matrix_inverse, NULL, NULL, NULL,

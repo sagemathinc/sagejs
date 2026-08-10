@@ -5075,6 +5075,54 @@ napi_value sagejs_matrix_charpoly(
     return coefficients;
 }
 
+napi_value sagejs_matrix_minpoly(
+    napi_env env,
+    napi_callback_info info)
+{
+    napi_value args[1];
+    napi_value coefficients;
+    napi_value coefficient;
+    sagejs_matrix *source;
+    nmod_poly_t polynomial;
+    slong length;
+
+    if (!require_arguments(env, info, 1, args))
+        return NULL;
+    source = unwrap_matrix(env, args[0]);
+    if (source == NULL)
+        return NULL;
+    if (source->kind != SAGEJS_MATRIX_NMOD ||
+        matrix_nrows(source) != matrix_ncols(source))
+    {
+        napi_throw_type_error(env, NULL,
+            "minimal polynomial requires a square prime-field matrix");
+        return NULL;
+    }
+    nmod_poly_init(polynomial, matrix_modulus(source));
+    nmod_mat_minpoly(polynomial, source->modular);
+    length = nmod_poly_length(polynomial);
+    if (!check_napi(env,
+        napi_create_array_with_length(env, (size_t) length, &coefficients)))
+    {
+        nmod_poly_clear(polynomial);
+        return NULL;
+    }
+    for (slong index = 0; index < length; index++)
+    {
+        coefficient = ulong_to_bigint(
+            env, nmod_poly_get_coeff_ui(polynomial, index));
+        if (coefficient == NULL || !check_napi(env,
+            napi_set_element(
+                env, coefficients, (uint32_t) index, coefficient)))
+        {
+            nmod_poly_clear(polynomial);
+            return NULL;
+        }
+    }
+    nmod_poly_clear(polynomial);
+    return coefficients;
+}
+
 static void matrix_to_rational(
     fmpq_mat_t answer,
     const sagejs_matrix *source)
