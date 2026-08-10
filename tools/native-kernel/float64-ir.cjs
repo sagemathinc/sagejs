@@ -392,33 +392,92 @@ function bufferSet(assign, context, operator = "=") {
 
 function assign(statement, context) {
   const node = statement.body;
-  if (nodeType(node) === "AST_ItemAccess" && node.assignment !== undefined) {
+  let declaredType;
+  let targetNode;
+  let rightNode;
+  let operator;
+  if (nodeType(node) === "AST_AnnotatedAssignment") {
+    expect(
+      context,
+      node.target,
+      nodeType(node.target) === "AST_SymbolRef",
+      "binary64 local annotations require a local-name target",
+    );
+    expect(
+      context,
+      node,
+      node.value !== null && node.value !== undefined,
+      "binary64 local annotations require an initializer",
+    );
+    const annotation = node.annotation;
+    const raw = nodeType(annotation) === "AST_SymbolRef" ||
+      nodeType(annotation) === "AST_String"
+      ? annotation.name ?? annotation.value
+      : undefined;
+    declaredType = raw === "float" || raw === "Float64"
+      ? "Float64"
+      : raw === "uint64"
+        ? "uint64"
+        : raw === "Float64Buffer"
+          ? "Float64Buffer"
+          : raw === "Float64Record"
+            ? "Float64Record"
+            : undefined;
+    expect(
+      context,
+      annotation,
+      declaredType !== undefined,
+      "binary64 local annotation must be float, Float64, uint64, " +
+        "Float64Buffer, or Float64Record",
+    );
+    targetNode = node.target;
+    rightNode = node.value;
+    operator = "=";
+  } else if (
+    nodeType(node) === "AST_ItemAccess" && node.assignment !== undefined
+  ) {
     return bufferSet(node, context, node.operator || "=");
+  } else {
+    expect(
+      context,
+      statement,
+      nodeType(statement) === "AST_SimpleStatement" &&
+        nodeType(node) === "AST_Assign",
+      "binary64 assignment expected",
+    );
+    if (nodeType(node.left) === "AST_ItemAccess") {
+      const item = node.left;
+      item.assignment = node.right;
+      return bufferSet(item, context, node.operator);
+    }
+    targetNode = node.left;
+    rightNode = node.right;
+    operator = node.operator;
   }
   expect(
     context,
-    statement,
-    nodeType(statement) === "AST_SimpleStatement" &&
-      nodeType(node) === "AST_Assign",
-    "binary64 assignment expected",
-  );
-  if (nodeType(node.left) === "AST_ItemAccess") {
-    const item = node.left;
-    item.assignment = node.right;
-    return bufferSet(item, context, node.operator);
-  }
-  expect(
-    context,
-    node.left,
-    nodeType(node.left) === "AST_SymbolRef",
+    targetNode,
+    nodeType(targetNode) === "AST_SymbolRef",
     "binary64 assignments require a local-name or indexed target",
   );
   const operations = [];
-  const target = node.left.name;
-  if (node.operator === "=") {
+  const target = targetNode.name;
+  if (operator === "=") {
     const desired = context.variables.get(target);
-    const value = lowerExpression(node.right, context, operations, desired);
-    ensureVariable(context, node.left, target, value.type);
+    const value = lowerExpression(
+      rightNode,
+      context,
+      operations,
+      declaredType ?? desired,
+    );
+    expect(
+      context,
+      rightNode,
+      declaredType === undefined || value.type === declaredType,
+      "local " + target + " declares " + declaredType +
+        ", got " + value.type,
+    );
+    ensureVariable(context, targetNode, target, value.type);
     operations.push({
       kind: value.type === "Float64"
         ? "float64.copy"
@@ -433,16 +492,16 @@ function assign(statement, context) {
     expect(
       context,
       node,
-      ["+=", "-=", "*=", "/="].includes(node.operator) &&
+      ["+=", "-=", "*=", "/="].includes(operator) &&
         context.variables.get(target) === "Float64" &&
         context.initialized.has(target),
-      "unsupported binary64 augmented assignment " + node.operator,
+      "unsupported binary64 augmented assignment " + operator,
     );
-    const value = lowerExpression(node.right, context, operations, "Float64");
+    const value = lowerExpression(rightNode, context, operations, "Float64");
     operations.push({
       kind: "float64.binary",
       operation: { "+=": "add", "-=": "sub", "*=": "mul", "/=": "div" }[
-        node.operator
+        operator
       ],
       target,
       left: target,

@@ -18,7 +18,7 @@ of the algorithm or changing their call sites.
     True
 ```
 
-Native Kernel v19 currently accepts a deliberately narrow typed numerical
+Native Kernel v20 currently accepts a deliberately narrow typed numerical
 subset, including exact ``Integer``/GMP kernels and reusable dense
 decompositions over prime fields. It also supports packed binary64 buffers and
 mutable signed exact-integer buffers with bounded record views. Mutable
@@ -242,6 +242,22 @@ def float64_record(
     return Float64Record(buffer, start, length)
 
 
+def kernel_float64_buffer(kernel: Any, source: Any) -> Any:
+    """Pack binary64 input once when ``kernel`` is compiled."""
+    factory = getattr(kernel, 'createFloat64Buffer', None)
+    if is_compiled(kernel) and callable(factory):
+        return factory(source)
+    return float64_buffer(source)
+
+
+def kernel_float64_zeros(kernel: Any, length: int) -> Any:
+    """Allocate caller-owned binary64 output for a compiled kernel."""
+    factory = getattr(kernel, 'createFloat64Buffer', None)
+    if is_compiled(kernel) and callable(factory):
+        return factory(length)
+    return float64_zeros(length)
+
+
 def prime_rows(source: Any) -> int:
     """Return the row count used by a source-transparent native kernel."""
     return source.nrows()
@@ -377,6 +393,31 @@ def is_compiled(function: Any) -> bool:
     return bool(getattr(function, '__sagejs_native_compiled__', False))
 
 
+def execution_mode(function: Any, *args: Any) -> str:
+    """Return the execution tier selected for a callable and optional inputs.
+
+    The result is ``'dynamic'`` for the original Python/Sage.js function,
+    ``'javascript'`` for the portable typed-IR kernel, ``'native'`` when the
+    supplied arguments select an available machine-code backend, or
+    ``'native-capable'`` when a compiled artifact has machine code but the
+    argument-dependent backend has not been queried.
+    """
+    if not is_compiled(function):
+        return 'dynamic'
+    backend_for = getattr(function, 'backendFor', None)
+    if args and callable(backend_for):
+        backend = backend_for(*args)
+        return (
+            'javascript'
+            if backend in ('bigint', 'javascript-number')
+            else 'native'
+        )
+    return getattr(
+        function, '__sagejs_native_execution_mode__',
+        'native-capable' if getattr(function, 'nativeAvailable', False)
+        else 'javascript')
+
+
 __all__ = [
     'Float64Buffer',
     'Float64Record',
@@ -394,12 +435,15 @@ __all__ = [
     'integer_buffer',
     'integer_buffer_values',
     'integer_zeros',
+    'execution_mode',
     'is_compiled',
     'is_native',
     'kernel_int64_buffer',
     'kernel_int64_zeros',
     'kernel_integer_buffer',
     'kernel_integer_zeros',
+    'kernel_float64_buffer',
+    'kernel_float64_zeros',
     'kernel_uint64_buffer',
     'kernel_uint64_zeros',
     'native',

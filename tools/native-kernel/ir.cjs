@@ -25,7 +25,7 @@ const {
 } = require("./provenance.cjs");
 const { loadRegistry: loadFfiRegistry } = require("../ffi/declarations.cjs");
 
-const IR_VERSION = 19;
+const IR_VERSION = 20;
 const MAX_SMALL_POWER = 64n;
 const MAX_SAFE_START = BigInt(Number.MAX_SAFE_INTEGER);
 const PARENT_ELEMENT_TYPES = new Map([
@@ -757,12 +757,22 @@ async function lowerSource(source, filename, options = {}) {
     const paramTypes = array(fn.argnames).map((arg) =>
       canonicalType(arg.annotation)
     );
+    const legacyFieldSignature = [
+      fn.return_annotation,
+      ...array(fn.argnames).map((arg) => arg.annotation),
+    ].some((annotation) =>
+      ["RealField", "RealNumber", "ComplexField", "ComplexNumber"].includes(
+        annotation?.name ?? annotation?.value,
+      )
+    );
     const completeSignature = returnType !== undefined &&
       paramTypes.every((type) => type !== undefined);
-    const partiallyTypedSelected = initiallySelected.has(fn.name.name) && (
+    const partiallyTypedSelected = decoratedMode && !legacyFieldSignature &&
+      initiallySelected.has(fn.name.name) && (
       returnType !== undefined ||
       paramTypes.some((type) =>
-        type === "Integer" || type === "bool" || type === "Float64" ||
+        type === "Integer" || type === "uint64" || type === "bool" ||
+        type === "Float64" ||
         type === "Float64Buffer" || type === "Int64Buffer" ||
         type === "Int64Record" || type === "IntegerBuffer" ||
         type === "UInt64Buffer"

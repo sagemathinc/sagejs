@@ -68,6 +68,8 @@ const numericalBuffersPath = join(
 );
 const signedBuffersPath = join(root, "bench", "native_signed_buffers.py");
 const integerBuffersPath = join(root, "bench", "native_integer_buffers.py");
+const reductionsPath = join(root, "bench", "native_reductions.py");
+const ergonomicsPath = join(root, "bench", "native_v20_ergonomics.py");
 const primeFieldMatrixPath = join(
   root,
   "bench",
@@ -179,6 +181,48 @@ const signedBuffersIr = await lowerSource(
 );
 const signedBuffersAdapterC = generateC(signedBuffersIr);
 const signedBuffersC = generateHostCore(signedBuffersIr).source;
+const reductionsIr = await lowerSource(
+  readFileSync(reductionsPath, "utf8"),
+  reductionsPath,
+);
+const reductionsCore = generateHostCore(reductionsIr);
+const ergonomicsIr = await lowerSource(
+  readFileSync(ergonomicsPath, "utf8"),
+  ergonomicsPath,
+);
+assert.deepEqual(
+  ergonomicsIr.functions.map((fn) => [fn.name, fn.kernelKind]),
+  [
+    ["quadratic_sum", "integer"],
+    ["quadratic_sum_declared", "integer"],
+    ["float64_record_at", "float64"],
+  ],
+);
+for (const name of ["quadratic_sum", "quadratic_sum_declared"]) {
+  assert.equal(
+    ergonomicsIr.functions.find((fn) => fn.name === name)
+      .locals.find((local) => local.name === "total").type,
+    "Integer",
+  );
+}
+const reductionFunction = reductionsIr.functions.find(
+  (fn) => fn.name === "sum_gcd_reduction",
+);
+assert.deepEqual(reductionsIr.callGraph, {
+  reduction_gcd: [],
+  sum_gcd_reduction: ["reduction_gcd"],
+  sum_gcd_loop: ["reduction_gcd"],
+  filtered_square_sum: [],
+  eager_square_sum: [],
+});
+assert.equal(reductionFunction.analysis.execution.rangeLoops, 1);
+assert.equal(reductionFunction.analysis.execution.nativeCalls, 1);
+assert.equal(reductionsCore.audit.isolated, true);
+assert.equal(reductionsCore.audit.hostCallbacks, 0);
+assert.doesNotMatch(
+  reductionsCore.source,
+  /\b(?:napi_|node_api|PyObject|Py_|JSValue|v8::)/,
+);
 assert.match(integerAlgorithmsAdapterC, /#include "kernel_core\.c"/);
 const primeFieldMatrixIr = await lowerSource(
   readFileSync(primeFieldMatrixPath, "utf8"),
@@ -199,9 +243,10 @@ const renamedPrimeFieldSourceIr = await lowerSource(
   "renamed-prime-field-source.py",
 );
 
-assert.equal(ir.version, 19);
-assert.equal(scalarExactIr.version, 19);
-assert.equal(scalarFloatIr.version, 19);
+assert.equal(ir.version, 20);
+assert.equal(scalarExactIr.version, 20);
+assert.equal(scalarFloatIr.version, 20);
+assert.equal(reductionsIr.version, 20);
 assert.deepEqual(
   scalarFloatIr.functions.map((fn) => [fn.name, fn.kernelKind]),
   [["int_to_float", "float64"], ["float_abs", "float64"]],
@@ -694,6 +739,69 @@ await assert.rejects(
     ),
   /unsupported call to print/,
 );
+await assert.rejects(
+  () => lowerSource(
+    "from sagejs.native import native\n" +
+      "@native\n" +
+      "def f(n: Integer) -> Integer:\n" +
+      "    return sum(i * j for i in range(n) for j in range(i))\n",
+    "nested-reduction.py",
+  ),
+  /sum\(\) currently supports one range-comprehension clause/,
+);
+await assert.rejects(
+  () => lowerSource(
+    "from sagejs.native import native\n" +
+      "@native\n" +
+      "def f(count) -> Integer:\n" +
+      "    return count\n",
+    "missing-native-type.py",
+  ),
+  /parameter count requires a native type annotation/,
+);
+await assert.rejects(
+  () => lowerSource(
+    "from sagejs.native import native\n" +
+      "@native\n" +
+      "def f(count: uint64) -> str:\n" +
+      "    return count\n",
+    "unsupported-native-result.py",
+  ),
+  /unsupported return annotation str/,
+);
+await assert.rejects(
+  () => lowerSource(
+    "from sagejs.native import native\n" +
+      "@native\n" +
+      "def f(count: uint64) -> Integer:\n" +
+      "    total: bool = 0\n" +
+      "    return count\n",
+    "inconsistent-local-type.py",
+  ),
+  /local total declares bool, got Integer/,
+);
+await assert.rejects(
+  () => lowerSource(
+    "from sagejs.native import native\n" +
+      "@native\n" +
+      "def f(count: uint64) -> Integer:\n" +
+      "    total: Integer\n" +
+      "    return count\n",
+    "uninitialized-annotated-local.py",
+  ),
+  /native local annotations require an initializer/,
+);
+const shadowedSum = await lowerSource(
+  "from sagejs.native import native\n" +
+    "@native\n" +
+    "def sum(value: Integer) -> Integer:\n" +
+    "    return value + 1\n" +
+    "@native\n" +
+    "def f(value: Integer) -> Integer:\n" +
+    "    return sum(value)\n",
+  "shadowed-sum.py",
+);
+assert.deepEqual(shadowedSum.callGraph, { sum: [], f: ["sum"] });
 
 const temporary = mkdtempSync(join(tmpdir(), "sagejs-native-kernel-"));
 
@@ -899,6 +1007,71 @@ try {
   const scalarExactModule = require(scalarExactKernel.modulePath);
   assert.equal(scalarExactModule.sum_stride(), 333334n);
   assert.equal(scalarExactModule.xgcd_loop(), 2414484n);
+
+  const reductionsKernel = await compileKernel({
+    sourcePath: reductionsPath,
+    cacheRoot: join(temporary, "reductions-cache"),
+  });
+  const reductionsModule = require(reductionsKernel.modulePath);
+  for (const backend of ["javascript", "tagged", "gmp"]) {
+    assert.equal(reductionsModule.sum_gcd_reduction[backend](1000), 1500n);
+    assert.equal(
+      reductionsModule.sum_gcd_reduction[backend](1000),
+      reductionsModule.sum_gcd_loop[backend](1000),
+    );
+    assert.equal(reductionsModule.filtered_square_sum[backend](10), 272n);
+    assert.equal(reductionsModule.filtered_square_sum[backend](0, -5), 95n);
+    assert.equal(reductionsModule.eager_square_sum[backend](5), 33n);
+  }
+  assert.equal(reductionsModule.executionMode, "native-capable");
+  assert.deepEqual(
+    reductionsModule.sum_gcd_reduction.__sagejs_native_boundary__,
+    {
+      publicCrossingsPerCall: 1,
+      callbacksInsideCore: 0,
+      dependenciesStayInsideCore: true,
+    },
+  );
+
+  const ergonomicsKernel = await compileKernel({
+    sourcePath: ergonomicsPath,
+    cacheRoot: join(temporary, "ergonomics-cache"),
+  });
+  const ergonomicsModule = require(ergonomicsKernel.modulePath);
+  assert.equal(ergonomicsModule.quadratic_sum(1000), 332833500n);
+  assert.equal(
+    ergonomicsModule.quadratic_sum(1000),
+    ergonomicsModule.quadratic_sum_declared(1000),
+  );
+  for (const invalid of [1.5, "10"]) {
+    assert.throws(
+      () => ergonomicsModule.quadratic_sum(invalid),
+      /must be an exact integer/,
+    );
+  }
+  for (const invalid of [-1, 1n << 64n]) {
+    assert.throws(
+      () => ergonomicsModule.quadratic_sum(invalid),
+      /outside uint64/,
+    );
+  }
+  const floatState = ergonomicsModule.createFloat64Buffer([
+    0, 1, 2, 3, 4, 5, 6,
+  ]);
+  assert.ok(floatState instanceof Float64Array);
+  assert.equal(
+    ergonomicsModule.float64_record_at(floatState, 0, 7, 6),
+    6,
+  );
+  for (const implementation of [
+    ergonomicsModule.float64_record_at,
+    ergonomicsModule.float64_record_at.javascript,
+  ]) {
+    assert.throws(() => implementation(floatState, 4, 7, 0),
+      /Float64Record is outside its buffer/);
+    assert.throws(() => implementation(floatState, 0, 7, 100),
+      /Float64 buffer index out of range/);
+  }
 
   const mpmathKernel = await compileKernel({
     sourcePath: mpmathSourcePath,
@@ -2532,6 +2705,89 @@ print(getattr(integer_quadratic_sum, 'nativeAvailable', None))
       "None",
     ],
   );
+  const reductionsScript = `import sys
+sys.path.append(${JSON.stringify(join(root, "bench"))})
+
+from native_reductions import sum_gcd_reduction
+from sagejs.native import execution_mode, is_compiled
+
+print(sum_gcd_reduction(1000))
+print(is_compiled(sum_gcd_reduction))
+print(execution_mode(sum_gcd_reduction))
+print(execution_mode(sum_gcd_reduction, 1000))
+print(getattr(sum_gcd_reduction, 'nativeAvailable', None))
+`;
+  const reductionsEnvironment = {
+    SAGEJS_NATIVE_CACHE_DIR: join(temporary, "reductions-cache"),
+  };
+  assert.deepEqual(runSage(reductionsScript, reductionsEnvironment), [
+    "1500", "True", "native-capable", "native", "True",
+  ]);
+  assert.deepEqual(
+    runSage(reductionsScript, {
+      ...reductionsEnvironment,
+      SAGEJS_NATIVE_MODE: "javascript",
+    }),
+    ["1500", "True", "javascript", "javascript", "False"],
+  );
+  assert.deepEqual(
+    runSage(reductionsScript, {
+      ...reductionsEnvironment,
+      SAGEJS_NATIVE_MODE: "dynamic",
+    }),
+    ["1500", "False", "dynamic", "dynamic", "None"],
+  );
+  assert.deepEqual(
+    runSage(reductionsScript, {
+      ...reductionsEnvironment,
+      SAGEJS_NATIVE_MODE: "native",
+    }),
+    ["1500", "True", "native", "native", "True"],
+  );
+  const ergonomicsScript = `import sys
+sys.path.append(${JSON.stringify(join(root, "bench"))})
+
+from native_v20_ergonomics import quadratic_sum, quadratic_sum_declared
+from native_v20_ergonomics import float64_record_at
+from sagejs.native import kernel_float64_buffer
+
+print(quadratic_sum(1000))
+print(quadratic_sum_declared(1000))
+for value in (1.0, 1.5, '10'):
+    try:
+        quadratic_sum(value)
+    except TypeError as error:
+        print('TypeError', str(error))
+for value in (-1, 2**64):
+    try:
+        quadratic_sum(value)
+    except OverflowError as error:
+        print('OverflowError', str(error))
+state = kernel_float64_buffer(float64_record_at, [0,1,2,3,4,5,6])
+print(float64_record_at(state, 0, 7, 6))
+for args in ((state,4,7,0),(state,0,7,100)):
+    try:
+        float64_record_at(*args)
+    except IndexError as error:
+        print('IndexError', str(error))
+`;
+  assert.deepEqual(
+    runSage(ergonomicsScript, {
+      SAGEJS_NATIVE_CACHE_DIR: join(temporary, "ergonomics-cache"),
+    }),
+    [
+      "332833500",
+      "332833500",
+      "TypeError n must be an exact integer",
+      "TypeError n must be an exact integer",
+      "TypeError n must be an exact integer",
+      "OverflowError n is outside uint64",
+      "OverflowError n is outside uint64",
+      "6",
+      "IndexError Float64Record is outside its buffer",
+      "IndexError Float64 buffer index out of range",
+    ],
+  );
   const integerAlgorithmsScript = `import sys
 sys.path.append(${JSON.stringify(join(root, "bench"))})
 
@@ -2571,7 +2827,7 @@ print(is_compiled(native_powmod))
 }
 
 console.log(
-  "Native Kernel v19 canonical isolated cores, buffers, provenance, P1, ABI, FFI, and fallback passed.",
+  "Native Kernel v20 canonical isolated cores, reductions, buffers, provenance, P1, ABI, FFI, and fallback passed.",
 );
 })().catch((error) => {
   console.error(error);

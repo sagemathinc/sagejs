@@ -209,6 +209,16 @@ export function runRuntimeBootstrap(
     }
   }
   Reflect.set(globalThis, "__sagejs_module_namespaces__", moduleNamespaces);
+  const requestedNativeMode = process.env.SAGEJS_NATIVE_MODE || "auto";
+  if (
+    !["auto", "dynamic", "javascript", "native"].includes(
+      requestedNativeMode,
+    )
+  ) {
+    throw new RangeError(
+      "SAGEJS_NATIVE_MODE must be auto, dynamic, javascript, or native",
+    );
+  }
   const nativeModules = new Map<
     string,
     { sourceHash: string; functions: Record<string, unknown> }
@@ -251,7 +261,9 @@ export function runRuntimeBootstrap(
     name: string,
   ): unknown => {
     if (
-      process.env.SAGEJS_NATIVE_AUTOLOAD === "0" ||
+      requestedNativeMode === "dynamic" ||
+      (requestedNativeMode === "auto" &&
+        process.env.SAGEJS_NATIVE_AUTOLOAD === "0") ||
       typeof internalRequire !== "function" ||
       typeof filename !== "string" ||
       !filename ||

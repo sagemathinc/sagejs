@@ -126,11 +126,7 @@ function validate_${fn.name}(${params}) {
       typeof ${parent.name}._fromNative !== "function") {
     throw new TypeError("${parent.name} must be a Sage.js ${parent.type}");
   }
-  if (!(typeof ${iterations.name} === "bigint"
-        ? ${iterations.name} >= 0n && ${iterations.name} <= 18446744073709551615n
-        : Number.isSafeInteger(${iterations.name}) && ${iterations.name} >= 0)) {
-    throw new RangeError("${iterations.name} must be a nonnegative uint64");
-  }
+${uint64Validation(iterations.name)}
 }
 
 function ${fn.name}(${params}) {
@@ -161,11 +157,7 @@ function emitIntegerPublicFunction(fn) {
   return `${emitFallback(fn)}
 
 function validate_${fn.name}(${params}) {
-  if (!(typeof ${iterations.name} === "bigint"
-        ? ${iterations.name} >= 0n && ${iterations.name} <= 18446744073709551615n
-        : Number.isSafeInteger(${iterations.name}) && ${iterations.name} >= 0)) {
-    throw new RangeError("${iterations.name} must be a nonnegative uint64");
-  }
+${uint64Validation(iterations.name)}
 }
 
 function ${fn.name}(${params}) {
@@ -449,11 +441,7 @@ function exactValidation(param) {
       "  }";
   }
   if (param.type === "uint64") {
-    return `  if (!(typeof ${param.name} === "bigint"\n` +
-      `        ? ${param.name} >= 0n && ${param.name} <= 18446744073709551615n\n` +
-      `        : Number.isSafeInteger(${param.name}) && ${param.name} >= 0)) {\n` +
-      `    throw new RangeError("${param.name} must be a nonnegative uint64");\n` +
-      "  }";
+    return uint64Validation(param.name);
   }
   if (param.type === "Int64Buffer" || param.type === "Int64Record") {
     return `  int64BufferView(${param.name}, ${jsString(param.name)});`;
@@ -466,6 +454,15 @@ function exactValidation(param) {
   }
   return `  if (typeof ${param.name} !== "boolean") {\n` +
     `    throw new TypeError("${param.name} must be a bool");\n` +
+    "  }";
+}
+
+function uint64Validation(name) {
+  return `  if (!(typeof ${name} === "bigint" || Number.isSafeInteger(${name}))) {\n` +
+    `    nativeRaise("TypeError", "${name} must be an exact integer");\n` +
+    `  }\n` +
+    `  if (${name} < 0 || ${name} > 18446744073709551615n) {\n` +
+    `    nativeRaise("OverflowError", "${name} is outside uint64");\n` +
     "  }";
 }
 
@@ -912,11 +909,7 @@ function generateJavaScript(ir, options = {}) {
         emitFloat64Statement(operation, "  ")
       ).join("\n") + "\n}";
     const validation = fn.params.map((param) => param.type === "uint64"
-      ? `  if (!(typeof ${param.name} === "bigint"\n` +
-        `        ? ${param.name} >= 0n && ${param.name} <= 18446744073709551615n\n` +
-        `        : Number.isSafeInteger(${param.name}) && ${param.name} >= 0)) {\n` +
-        `    throw new RangeError("${param.name} must be a nonnegative uint64");\n` +
-        "  }"
+      ? uint64Validation(param.name)
       : param.type === "Float64"
       ? `  if (typeof ${param.name} !== "number") {\n` +
         `    throw new TypeError("${param.name} must be a binary64 float");\n` +
@@ -940,10 +933,11 @@ function generateJavaScript(ir, options = {}) {
     const nativeCall = copyBack
       ? `  let sagejs_native_result;\n` +
         `  try {\n` +
-        `    sagejs_native_result = nativeAddon.${fn.name}(${nativeArgs});\n` +
+        `    sagejs_native_result = nativeFloat64Call(` +
+          `${jsString(fn.name)}, [${nativeArgs}]);\n` +
         `  } finally {\n${copyBack}\n  }\n` +
         `  return sagejs_native_result;`
-      : `  return nativeAddon.${fn.name}(${nativeArgs});`;
+      : `  return nativeFloat64Call(${jsString(fn.name)}, [${nativeArgs}]);`;
     return `${fallback}\n\nfunction ${fn.name}(${params}) {\n` +
       `  if (arguments.length !== ${fn.params.length}) {\n` +
       `    throw new TypeError("${fn.name}() expects exactly ` +
@@ -962,20 +956,36 @@ function generateJavaScript(ir, options = {}) {
   const exports = ir.functions.map((fn) => fn.name).join(", ");
   return `"use strict";
 
+const requestedNativeMode = process.env.SAGEJS_NATIVE_MODE || "auto";
+if (!["auto", "dynamic", "javascript", "native"].includes(
+    requestedNativeMode)) {
+  throw new RangeError(
+    "SAGEJS_NATIVE_MODE must be auto, dynamic, javascript, or native");
+}
+const nativeAddonDisabled =
+  requestedNativeMode === "dynamic" ||
+  requestedNativeMode === "javascript" ||
+  (requestedNativeMode === "auto" &&
+    process.env.SAGEJS_NATIVE_DISABLE === "1");
+const nativeAddonRequired =
+  requestedNativeMode === "native" ||
+  (requestedNativeMode === "auto" &&
+    process.env.SAGEJS_NATIVE_REQUIRED === "1");
 let nativeAddon = null;
-if (process.env.SAGEJS_NATIVE_DISABLE !== "1") {
+if (!nativeAddonDisabled) {
   try {
     nativeAddon = require("./build/Release/sagejs_native_kernel.node");
   } catch (error) {
-    if (process.env.SAGEJS_NATIVE_REQUIRED === "1") throw error;
+    if (nativeAddonRequired) throw error;
   }
 }
 
 const integerBackendOverride =
-  process.env.SAGEJS_NATIVE_INTEGER_BACKEND || "auto";
-if (!["auto", "bigint", "gmp"].includes(integerBackendOverride)) {
+  process.env.SAGEJS_NATIVE_INTEGER_BACKEND ||
+  (requestedNativeMode === "native" ? "tagged" : "auto");
+if (!["auto", "bigint", "tagged", "gmp"].includes(integerBackendOverride)) {
   throw new RangeError(
-    "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, or gmp");
+    "SAGEJS_NATIVE_INTEGER_BACKEND must be auto, bigint, tagged, or gmp");
 }
 
 ${javascriptRuntime(ir)}
@@ -1121,6 +1131,13 @@ function createInt64Buffer(source) {
     return new BigInt64Array(source);
   }
   return BigInt64Array.from(source, (value) => BigInt(value));
+}
+
+function createFloat64Buffer(source) {
+  if (Number.isSafeInteger(source) && source >= 0) {
+    return new Float64Array(source);
+  }
+  return Float64Array.from(source, (value) => Number(value));
 }
 
 function createUInt64Buffer(source) {
@@ -1301,7 +1318,7 @@ function float64RecordView(buffer, start, length) {
   if (!Number.isSafeInteger(start) || !Number.isSafeInteger(length) ||
       start < 0 || length < 0 || start > view.length ||
       length > view.length - start) {
-    throw new RangeError("Float64Record is outside its buffer");
+    nativeRaise("IndexError", "Float64Record is outside its buffer");
   }
   return {
     [float64BufferViewTag]: true,
@@ -1314,7 +1331,7 @@ function float64RecordView(buffer, start, length) {
 function float64BufferGet(buffer, index) {
   const view = float64BufferView(buffer);
   if (!Number.isSafeInteger(index) || index < 0 || index >= view.length) {
-    throw new RangeError("Float64 buffer index out of range");
+    nativeRaise("IndexError", "Float64 buffer index out of range");
   }
   return Number(Reflect.get(view.data, String(view.offset + index)));
 }
@@ -1322,7 +1339,7 @@ function float64BufferGet(buffer, index) {
 function float64BufferSet(buffer, index, value) {
   const view = float64BufferView(buffer);
   if (!Number.isSafeInteger(index) || index < 0 || index >= view.length) {
-    throw new RangeError("Float64 buffer index out of range");
+    nativeRaise("IndexError", "Float64 buffer index out of range");
   }
   if (!Reflect.set(view.data, String(view.offset + index), Number(value))) {
     throw new TypeError("Float64 buffer is not writable");
@@ -1451,6 +1468,23 @@ function nativeExactCall(name, args, backend = "tagged", declaredErrors = null) 
   }
 }
 
+function nativeFloat64Call(name, args) {
+  try {
+    return nativeAddon[name](...args);
+  } catch (error) {
+    const message = String(error && error.message || error);
+    if (message.includes("Float64Record") ||
+        message.includes("Float64 buffer index")) {
+      nativeRaise("IndexError", message);
+    }
+    if (message.includes("division by zero")) {
+      nativeRaise("ZeroDivisionError", message);
+    }
+    if (message.includes("math domain")) nativeRaise("ValueError", message);
+    throw error;
+  }
+}
+
 function primeFieldMatrix(value, argument) {
   if (value === null || (typeof value !== "object" &&
       typeof value !== "function")) {
@@ -1541,6 +1575,21 @@ ${ir.functions.map((fn) =>
   ).join("\n\n")}
 
 const nativeFunctions = { ${exports} };
+const compiledExecutionMode = nativeAddon === null
+  ? "javascript"
+  : requestedNativeMode === "native"
+    ? "native"
+    : "native-capable";
+const compiledHostBoundary = Object.freeze({
+  publicCrossingsPerCall: 1,
+  callbacksInsideCore: 0,
+  dependenciesStayInsideCore: true,
+});
+for (const fn of Object.values(nativeFunctions)) {
+  fn.__sagejs_native_execution_mode__ = compiledExecutionMode;
+  fn.__sagejs_native_boundary__ = compiledHostBoundary;
+  fn.createFloat64Buffer = createFloat64Buffer;
+}
 const nativeRegister = globalThis.__sagejs_native_register__;
 if (typeof nativeRegister === "function") {
   nativeRegister(
@@ -1553,8 +1602,10 @@ if (typeof nativeRegister === "function") {
 module.exports = {
   ...nativeFunctions,
   createIntegerBuffer,
+  createFloat64Buffer,
   createUInt64Buffer,
   cacheKey: ${jsString(options.cacheKey || "")},
+  executionMode: compiledExecutionMode,
   nativeAvailable: nativeAddon !== null,
   primeFieldTuning: Object.freeze(${JSON.stringify(
     options.primeFieldTuning || {},

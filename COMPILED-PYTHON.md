@@ -38,6 +38,11 @@ def gcd(a: Integer, b: Integer) -> Integer:
     while b:
         a, b = b, a % b
     return abs(a)
+
+
+@native
+def sum_gcds(n: Integer) -> Integer:
+    return sum(gcd(i, i + 2) for i in range(n))
 ```
 
 This is ordinary CPython-parseable Python. The decorator is a no-op when no
@@ -66,23 +71,45 @@ sagejs native emit-core-c euclid.py --function gcd
 sagejs native benchmark euclid.py --function gcd --args '[92250, 922350]'
 ```
 
-Force the portable implementation when debugging:
+Select an execution tier explicitly when debugging or benchmarking:
 
 ```sh
-SAGEJS_NATIVE_DISABLE=1 sagejs --python my_program.py
+SAGEJS_NATIVE_MODE=dynamic sagejs --python my_program.py
+SAGEJS_NATIVE_MODE=javascript sagejs --python my_program.py
+SAGEJS_NATIVE_MODE=native sagejs --python my_program.py
+```
+
+`dynamic` uses the original function, `javascript` uses the compiler-generated
+portable typed-IR kernel, and `native` requires the machine-code artifact.
+The default `auto` mode resolves an artifact when present and applies its
+backend policy. The older `SAGEJS_NATIVE_AUTOLOAD`, `SAGEJS_NATIVE_DISABLE`,
+and `SAGEJS_NATIVE_REQUIRED` controls remain available in `auto` mode.
+
+Code can inspect this distinction without guessing from a timing:
+
+```python
+from sagejs.native import execution_mode
+
+execution_mode(sum_gcds)          # dynamic, javascript, or native-capable
+execution_mode(sum_gcds, 10**6)   # javascript or native for these arguments
 ```
 
 Compilation is an optimization and distribution choice, not a condition for
 mathematical correctness.
 
+If your mental model is Cython or Mojo, see [How this differs from
+Cython](#how-this-differs-from-cython) and [How this differs from
+Mojo](#how-this-differs-from-mojo). Similar-looking syntax hides importantly
+different language and execution contracts.
+
 ## The fundamental promise
 
-An accepted `@native` function has two implementations of one source body:
+An accepted `@native` function has three execution tiers for one source body:
 
 ```text
-                         +--> ordinary Python / JavaScript fallback
-typed Python source ----+
-                         +--> typed IR --> isolated native core --> host adapter
+                         +--> ordinary dynamic Python / Sage.js
+typed Python source --> typed IR --> portable typed JavaScript kernel
+                              +--> isolated native core --> host adapter
 ```
 
 The isolated core is a real compiled program. Its transitive call graph may
@@ -138,6 +165,27 @@ def quadratic_sum(n: uint64) -> Integer:
     return total
 ```
 
+You do **not** need to annotate `total`. The compiler infers `Integer` from
+`0`, the exact arithmetic that follows, and the return contract. You may make
+the local contract explicit when it improves the explanation of the
+algorithm:
+
+```python
+@native
+def quadratic_sum(n: uint64) -> Integer:
+    total: Integer = 0
+    for k in range(n):
+        total += k * k
+    return total
+```
+
+`int` and `Integer` both mean exact `Integer` in a native annotation. An
+explicit local annotation is checked rather than used as a cast; declaring the
+integer initializer `0` as a `bool`, for example, is a compile-time type error.
+Annotation-only native locals such as
+`total: Integer` are rejected until definite-assignment analysis can prove
+their initialization; initialize the local where it is declared.
+
 The compiler may begin with checked machine arithmetic and promote the live
 value to GMP at the operation that overflows. That representation change is an
 optimization. It does not change the mathematical value and does not replay
@@ -145,6 +193,56 @@ visible effects.
 
 This policy is crucial for pure mathematics: “fast integer” means exact by
 default, not a machine integer that happens to be fast until it wraps.
+
+### Public annotations define one checked ABI
+
+Every parameter and result of a compiled function must have a supported native
+annotation. Sage.js does not infer a public ABI from whichever values happen to
+arrive first:
+
+```python
+@native
+def sum_gcds(count) -> Integer:       # rejected: count has no native type
+    return sum(gcd(92250, 922350 + k) for k in range(count))
+```
+
+Nor are annotations requests for a conversion of the result:
+
+```python
+@native
+def sum_gcds(count: uint64) -> str:   # rejected: unsupported ABI result
+    return sum(gcd(92250, 922350 + k) for k in range(count))
+```
+
+If strings become a supported result type, this body will still fail because
+the inferred result is `Integer`, not `str`. This is deliberately stricter
+than ordinary Python, which records annotations but does not enforce them.
+
+At a compiled `uint64` entry, an exact integer from `0` through `2**64 - 1` is
+accepted. A float—including an integral-valued `1.0`—or string raises
+`TypeError`; a negative or too-large exact integer raises `OverflowError`.
+Validation happens once in the thin public
+adapter before the isolated core starts. The portable dynamic fallback remains
+ordinary Python and can therefore fail differently when given values outside
+the declared contract. Programs should regard such calls as invalid in every
+mode.
+
+There is no annotation-based overloading or multiple dispatch. One `@native`
+function name has one ABI signature. When a public operation accepts genuinely
+different domains, keep the dispatcher ordinary Python and call separately
+named kernels after validation and conversion:
+
+```python
+def parse_and_sum(value):
+    if isinstance(value, str):
+        return sum_gcds_from_decimal(value)
+    if isinstance(value, int):
+        return sum_gcds_uint64(value)
+    raise TypeError("expected int or str")
+```
+
+This keeps dispatch policy, error messages, and conversions visible instead of
+building an implicit runtime method table into the kernel ABI.
 
 ### Put loops over packed data inside the kernel
 
@@ -154,7 +252,13 @@ Prefer a packed buffer and one coarse-grained call:
 ```python
 from math import sqrt
 
-from sagejs.native import Float64Buffer, float64_record, native, uint64
+from sagejs.native import (
+    Float64Buffer,
+    float64_record,
+    kernel_float64_buffer,
+    native,
+    uint64,
+)
 
 
 @native
@@ -168,11 +272,30 @@ def kinetic_energy(state: Float64Buffer, bodies: uint64) -> float:
             + body[5] * body[5]
         ) / 2.0
     return energy
+
+
+state = kernel_float64_buffer(
+    kinetic_energy,
+    [0, 0, 0, 3, 4, 0, 2],
+)
+assert kinetic_energy(state, 1) == 25.0
 ```
 
-A record is a bounded view, not a pointer exposed to Python. The compiler may
-prove repeated bounds checks unnecessary, but the fallback and native entry
-still share one checked shape contract.
+`Float64Buffer` is an annotation describing storage; it is not a constructor.
+`kernel_float64_buffer(kernel, iterable)` returns an ordinary list for the
+dynamic fallback and packed storage when `kernel` resolves to a compiled
+artifact. `kernel_float64_zeros(kernel, length)` similarly allocates reusable
+caller-owned output. Passing a list directly is also correct, but a compiled
+call must pack it temporarily, so repeated calls should normally pack once and
+reuse the result.
+
+A record is a bounded view, not a pointer exposed to Python. Constructing
+`float64_record(state, start, length)` raises `IndexError` if the requested
+span is outside `state`; accessing `body[100]` raises `IndexError` when the
+record has fewer than 101 entries. Generated C checks both conditions and
+reports a status through the adapter—it does not perform an unchecked pointer
+read. The compiler may eliminate a check only after proving it from shapes and
+loop bounds.
 
 Ordinary lists are useful for the fallback and small calls. Long-running code
 should generally pack data once, reuse storage across calls, and avoid
@@ -192,15 +315,34 @@ def gcd(a: Integer, b: Integer) -> Integer:
 
 @native
 def sum_gcds(count: uint64) -> Integer:
-    total = 0
-    for k in range(count):
-        total += gcd(92250, 922350 + k)
-    return total
+    return sum(gcd(92250, 922350 + k) for k in range(count))
 ```
 
 The compiler builds the dependency graph and emits a direct private native
 call. It does not return through a Python wrapper between `sum_gcds` and
 `gcd`. Recursion follows the same rule when its types and effects are accepted.
+
+### Natural reductions stay inside the kernel
+
+Exact `sum` over a one-clause `range` generator or list comprehension lowers
+to a counted accumulator loop; it does not construct a Python generator, list,
+or call back to the host's `sum`. The optional positional or keyword `start`
+and a comprehension filter are supported:
+
+```python
+@native
+def odd_square_sum(n: Integer, start: Integer = 0) -> Integer:
+    return sum(
+        (k * k for k in range(1, n) if k % 2),
+        start=start,
+    )
+```
+
+Comprehension indices have Python 3 scope and do not overwrite a surrounding
+local with the same spelling. `native explain` reports the resulting range
+loop and direct dependency graph. Nested clauses and reductions whose empty
+case requires a new exception contract remain explicit compile-time
+rejections rather than hidden dynamic execution.
 
 ## Calling FLINT, PARI, igraph, msolve, and other libraries
 
@@ -310,6 +452,23 @@ unsafe surface into small, explicit, sanitizer-tested adapters instead of
 spreading pointers and cleanup conventions throughout the mathematical code.
 The aim is useful safety and reviewability, not a new general-purpose borrow
 checker.
+
+**A valid function admitted to the safe `@native` subset must not segfault,
+use freed memory, double-free, or leak. If it does, that is a bug in the Sage.js
+compiler, generated runtime/ABI support, toolchain, or declared external C/C++
+library—not an accepted consequence of the user's typed Python.** An explicit
+architecture exception containing handwritten native code is itself part of
+that trusted unsafe implementation and must be classified and audited.
+
+From the kernel author's perspective, this is closer to Go's safe-default
+programming model than to writing Rust, Zig, C, or low-level Cython. Authors do
+not manipulate pointers, write destructors, prove lifetimes with source-level
+borrow syntax, or manually pair allocations and frees. Unlike Go, an isolated
+kernel does not rely on a garbage collector while it runs: bounded borrowed
+spans, lexical values, compiler-generated cleanup, and declared FFI ownership
+make the closed native lifetime explicit. Sage.js therefore owes users the
+same practical outcome—a memory-safe accepted program—without asking every
+mathematical author to become a memory-management programmer.
 
 ## Errors and observable effects
 
@@ -507,6 +666,14 @@ Cython demonstrated that Python-shaped native programming can transform a
 mathematical ecosystem. Sage.js compiled Python deliberately makes a different
 tradeoff.
 
+Cython spans a continuum: ordinary Python operations can coexist with typed C
+operations, and carefully written `nogil` regions can avoid the Python runtime.
+That flexibility is valuable, but high-performance Cython commonly introduces
+Cython-only declarations, extension types, pointers, manual library APIs, or a
+separate pure-Python implementation. Sage.js instead makes host isolation and
+same-body fallback admission requirements for every accepted kernel. It is not
+“Cython with a different code generator.”
+
 | Question | Typical Cython model | Sage.js compiled-Python target |
 |---|---|---|
 | What is maintained? | Python-like code that may freely mix Python/C API and C-level operations. | Ordinary Python containing the actual mathematical algorithm. |
@@ -516,10 +683,50 @@ tradeoff.
 | Does the source run without compilation? | Pure-Python mode can; many Cython-specific programs cannot. | The same body is required to retain a correct fallback. |
 | How are internal native calls expressed? | `cdef`/`cpdef` and Cython declarations. | Ordinary typed functions in a compiler-built dependency graph. |
 | What is the native artifact? | Usually a CPython extension module. | A host-independent isolated core plus thin adapters. |
+| Who handles memory safety? | Authors using C-level constructs can manipulate pointers and resource lifetimes directly. | The accepted language exposes no raw pointer or manual lifetime; a crash or leak is an implementation defect. |
 
 This stricter subset gives up transparent compilation of arbitrary Python in
 exchange for a clearer performance model, portable kernel boundary, and a
 smaller semantic gap between the code people read and the code that runs.
+
+## How this differs from Mojo
+
+Mojo is an ambitious systems language with Pythonic syntax, bidirectional
+Python interoperability, a rich struct/trait type system, explicit value
+ownership, and first-class heterogeneous CPU/GPU compilation. Its own manual
+describes it as a language for high-performance AI infrastructure and
+heterogeneous hardware, built on MLIR. See the current [Mojo
+Manual](https://docs.modular.com/mojo/manual/), [ownership
+model](https://docs.modular.com/mojo/manual/values/ownership/), and
+[compilation targets](https://docs.modular.com/mojo/tools/compilation/).
+
+Sage.js compiled Python is not an attempt to reproduce that general-purpose
+systems language. It makes a narrower trade:
+
+| Question | Mojo | Sage.js compiled-Python target |
+|---|---|---|
+| What language is maintained? | A distinct Python-family systems language that adopts and extends Python syntax. | A strict subset of ordinary CPython-parseable Python; the file remains a Python module. |
+| What is the primary domain? | AI infrastructure, systems programming, and heterogeneous CPU/GPU hardware. | Exact and numerical mathematics, computer algebra, and readable mathematical algorithms. |
+| Is the source itself the fallback? | Python interoperability can call existing Python, but a Mojo function is not itself an ordinary Python function. | Yes. The original body is the required dynamic Python/Sage.js implementation. |
+| How broad is the type system? | User-defined structs, traits, parameters, ownership conventions, lifetimes, and low-level control. | A deliberately small mathematical and storage vocabulary with checked ABI semantics. |
+| Who expresses ownership? | The language gives authors explicit ownership and reference conventions. | Kernel authors use values and bounded storage; the compiler and FFI call plan generate native ownership and cleanup. |
+| What happens inside compiled code? | Native Mojo code may use its systems runtime and supported Python/C interoperability according to the target. | An accepted isolated kernel has no Python, JavaScript, Node, or interpreter callback in its transitive core. |
+| What does an integer annotation promise? | The selected Mojo type's declared systems semantics. | `Integer` specifically promises exact machine-word/GMP promotion without silent wrap; `uint64` specifically promises a checked bounded ABI value. |
+| How are mature math libraries used? | Through Mojo's interoperability and bindings. | Through Sage.js declarations carrying shapes, ownership, effects, errors, dynamic fallback, and direct isolated-core lowering. |
+| Accelerator status | A central, shipping compiler capability across supported GPU targets. | A future backend made possible by isolated cores and packed ABI storage; not yet a claim of comparable GPU support. |
+
+The central positioning difference is therefore not “our compiler versus their
+compiler.” Mojo asks developers to adopt a new systems language in exchange
+for broad low-level and accelerator power. Sage.js asks mathematical library
+authors to identify a statically meaningful subset of the Python they already
+maintain, preserving that Python as the executable specification while adding
+mathematics-specific compilation semantics.
+
+There is room for both approaches. Mojo is a useful standard against which to
+measure compiler diagnostics, ownership design, target support, and generated
+performance. Sage.js should not imitate its language breadth at the cost of
+the same-source fallback or the exact-mathematics contract that makes this
+architecture distinctive.
 
 ## Frequently asked questions
 

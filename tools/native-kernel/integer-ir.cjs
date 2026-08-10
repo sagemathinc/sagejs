@@ -184,6 +184,12 @@ function signatureFromFunction(fn, filename) {
   );
   const defaults = fn.argnames?.defaults || {};
   const params = array(fn.argnames).map((arg) => {
+    expect(
+      context,
+      arg,
+      arg.annotation !== undefined && arg.annotation !== null,
+      `parameter ${arg.name} requires a native type annotation`,
+    );
     const type = canonicalType(arg.annotation);
     expect(
       context,
@@ -301,6 +307,7 @@ function createContext(
     scalarCoercions: new Map(),
     sequenceConstants: new Map(),
     signatures,
+    symbolAliases: new Map(),
     usedForeignResources: new Map(),
     variables,
     fn,
@@ -355,6 +362,10 @@ function emitBoolean(context, node, operations, value) {
   return { name: target, type: "bool" };
 }
 
+function resolvedSymbol(context, name) {
+  return context.symbolAliases.get(name) || name;
+}
+
 function coerceInteger(value, context, node, operations) {
   if (value.type === "Integer") return value;
   expect(
@@ -373,6 +384,151 @@ function coerceInteger(value, context, node, operations) {
     source: value.name,
   });
   return { name: target, type: "Integer" };
+}
+
+/*
+ * Lower the useful mathematical spelling
+ *
+ *     sum(expression for index in range(...), start)
+ *
+ * directly to the same counted-loop IR as a handwritten accumulator.  This
+ * is a source construct, not a call to the host's ``sum`` implementation: the
+ * complete producer, reduction, and compiled dependency graph remain inside
+ * the isolated core.  A hidden index preserves Python 3 comprehension scope,
+ * including when the surrounding function already has a local of the same
+ * name.
+ */
+function lowerExactSum(node, args, context, operations) {
+  expect(
+    context,
+    node,
+    args.length === 1 || args.length === 2,
+    "native sum() accepts an exact comprehension and optional start",
+  );
+  const comprehension = args[0];
+  expect(
+    context,
+    comprehension,
+    nodeType(comprehension) === "AST_GeneratorComprehension" ||
+      nodeType(comprehension) === "AST_ListComprehension",
+    "native sum() currently requires a range comprehension",
+  );
+  const clauses = array(comprehension.clauses);
+  expect(
+    context,
+    comprehension,
+    clauses.length === 1,
+    "native sum() currently supports one range-comprehension clause",
+  );
+  const clause = clauses[0];
+  const indexNode = clause.init || comprehension.init;
+  const iterable = clause.object || comprehension.object;
+  expect(
+    context,
+    indexNode,
+    nodeType(indexNode) === "AST_SymbolRef",
+    "native sum() comprehension requires a local-name index",
+  );
+
+  // Python evaluates the outermost generator iterable before the optional
+  // start argument.  Retain that order even though native range bounds are
+  // normally pure scalar expressions.
+  const range = lowerRange(iterable, context);
+  operations.push(...range.operations);
+  const initialOperations = [];
+  let initial = args.length === 2
+    ? lowerExpression(args[1], context, initialOperations)
+    : emitConstant(context, node, initialOperations, 0n);
+  initial = coerceInteger(
+    initial,
+    context,
+    args[1] || node,
+    initialOperations,
+  );
+  operations.push(...initialOperations);
+  const accumulator = temporary(context, node, "Integer");
+  operations.push({
+    kind: "integer.copy",
+    target: accumulator,
+    source: initial.name,
+  });
+
+  const hiddenIndex = temporary(context, indexNode, range.indexType);
+  const sourceIndex = indexNode.name;
+  const previousAlias = context.symbolAliases.get(sourceIndex);
+  const initializedBefore = new Set(context.initialized);
+  context.symbolAliases.set(sourceIndex, hiddenIndex);
+  context.initialized.add(hiddenIndex);
+  context.controlDepth += 1;
+
+  let condition;
+  if (comprehension.condition !== undefined &&
+      comprehension.condition !== null) {
+    const conditionOperations = [];
+    const value = lowerCondition(
+      comprehension.condition,
+      context,
+      conditionOperations,
+    );
+    condition = { operations: conditionOperations, value: value.name };
+  }
+  const reductionOperations = [];
+  let value = lowerExpression(
+    comprehension.statement,
+    context,
+    reductionOperations,
+  );
+  value = coerceInteger(
+    value,
+    context,
+    comprehension.statement,
+    reductionOperations,
+  );
+  reductionOperations.push({
+    kind: "integer.binary",
+    operation: "add",
+    target: accumulator,
+    left: accumulator,
+    right: value.name,
+  });
+  context.controlDepth -= 1;
+  context.initialized = initializedBefore;
+  if (previousAlias === undefined) context.symbolAliases.delete(sourceIndex);
+  else context.symbolAliases.set(sourceIndex, previousAlias);
+
+  // Match ordinary range-loop lowering by lifting immutable exact constants
+  // out of the hot loop.  Conditions and producer expressions keep their
+  // original relative evaluation order for every iteration.
+  const hoisted = [];
+  const retain = (body) => body.filter((operation) => {
+    if (operation.kind === "integer.constant" &&
+        operation.target.startsWith("sagejs_native_tmp_")) {
+      hoisted.push(operation);
+      return false;
+    }
+    return true;
+  });
+  if (condition !== undefined) {
+    condition.operations = retain(condition.operations);
+  }
+  const reducedBody = retain(reductionOperations);
+  const body = condition === undefined
+    ? reducedBody
+    : [{ kind: "if", condition, body: reducedBody, alternative: [] }];
+  operations.push(...hoisted, {
+    kind: range.kind,
+    index: hiddenIndex,
+    ...(range.kind === "loop.range"
+      ? {
+          start: range.start,
+          count: range.count,
+          step: range.step,
+          boundIsStop: range.boundIsStop,
+        }
+      : { start: range.start, stop: range.stop }),
+    body,
+  });
+  return { name: accumulator, type: "Integer" };
 }
 
 function lowerCall(node, context, operations) {
@@ -443,6 +599,23 @@ function lowerCall(node, context, operations) {
     });
     context.foreignDependencies.add(foreign.declarationIdentity);
     return { name: target, type: signature.return_type };
+  }
+
+  if (name === "sum" && !context.signatures.has(name)) {
+    const keywords = array(node.args?.kwargs);
+    expect(
+      context,
+      node,
+      array(node.args?.kwarg_items).length === 0 && !node.args?.starargs &&
+        keywords.length <= 1 &&
+        keywords.every(([keyword]) => keyword?.name === "start") &&
+        !(args.length === 2 && keywords.length === 1),
+      "native sum() only accepts one optional positional or keyword start",
+    );
+    const reductionArgs = keywords.length === 0
+      ? args
+      : [...args, keywords[0][1]];
+    return lowerExactSum(node, reductionArgs, context, operations);
   }
 
   if (name === "len") {
@@ -657,16 +830,17 @@ function lowerExpression(node, context, operations) {
     return emitBoolean(context, node, operations, boolean);
   }
   if (nodeType(node) === "AST_SymbolRef") {
-    const type = context.variables.get(node.name);
+    const name = resolvedSymbol(context, node.name);
+    const type = context.variables.get(name);
     expect(context, node, type !== undefined, `unknown native value ${node.name}`);
     expect(
       context,
       node,
-      context.initialized.has(node.name),
+      context.initialized.has(name),
       `native value ${node.name} may be uninitialized`,
     );
     return {
-      name: context.resourceAliases.get(node.name) || node.name,
+      name: context.resourceAliases.get(name) || name,
       type,
     };
   }
@@ -989,6 +1163,40 @@ function lowerBufferAssignment(item, right, operator, context) {
 function lowerAssignment(statement, context) {
   context.scalarCoercions = new Map();
   const assign = statement.body;
+  if (nodeType(assign) === "AST_AnnotatedAssignment") {
+    expect(
+      context,
+      assign.target,
+      nodeType(assign.target) === "AST_SymbolRef",
+      "native local annotations require a local-name target",
+    );
+    expect(
+      context,
+      assign,
+      assign.value !== null && assign.value !== undefined,
+      "native local annotations require an initializer",
+    );
+    const declaredType = canonicalType(assign.annotation);
+    expect(
+      context,
+      assign.annotation,
+      ["Integer", "uint64", "bool"].includes(declaredType),
+      "native exact local annotation must be Integer, int, uint64, or bool",
+    );
+    const operations = [];
+    let value = lowerExpression(assign.value, context, operations);
+    if (declaredType === "Integer") {
+      value = coerceInteger(value, context, assign.value, operations);
+    }
+    expect(
+      context,
+      assign.value,
+      value.type === declaredType,
+      `local ${assign.target.name} declares ${declaredType}, got ${value.type}`,
+    );
+    assignScalar(assign.target, value, context, operations);
+    return operations;
+  }
   if (nodeType(assign) === "AST_ItemAccess" && assign.assignment !== undefined) {
     return lowerBufferAssignment(
       assign,
@@ -1151,9 +1359,9 @@ function lowerRange(node, context) {
     start !== undefined && start >= 0n &&
     start <= BigInt(Number.MAX_SAFE_INTEGER) &&
     nodeType(countNode) === "AST_SymbolRef" &&
-    context.variables.get(countNode.name) === "uint64"
+    context.variables.get(resolvedSymbol(context, countNode.name)) === "uint64"
   ) {
-    countName = countNode.name;
+    countName = resolvedSymbol(context, countNode.name);
     boundIsStop = true;
   } else if (
     start !== undefined && start >= 0n &&
@@ -1161,10 +1369,12 @@ function lowerRange(node, context) {
     nodeType(countNode) === "AST_Binary" &&
     countNode.operator === "+" &&
     nodeType(countNode.left) === "AST_SymbolRef" &&
-    context.variables.get(countNode.left.name) === "uint64" &&
+    context.variables.get(
+      resolvedSymbol(context, countNode.left.name),
+    ) === "uint64" &&
     integerLiteral(countNode.right) === start
   ) {
-    countName = countNode.left.name;
+    countName = resolvedSymbol(context, countNode.left.name);
   }
   if (countName !== undefined) {
     return {

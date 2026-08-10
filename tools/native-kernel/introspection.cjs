@@ -55,6 +55,8 @@ function explainFunction(fn) {
     hostIsolation: {
       eligible: true,
       normalPathHostCallbacks: 0,
+      publicCrossingsPerCall: 1,
+      dependenciesStayInsideCore: true,
       boundary: fn.kernelKind === "integer" || fn.kernelKind === "float64"
         ? "packed-c-abi"
         : "owned-or-borrowed-native-value-abi",

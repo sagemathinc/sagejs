@@ -1,6 +1,6 @@
-# Native Kernel v19
+# Native Kernel v20
 
-Native Kernel v19 asks whether selected Sage.js library functions can compile
+Native Kernel v20 asks whether selected Sage.js library functions can compile
 as whole native algorithms instead of crossing Node-API for every scalar
 operation. Its exact-integer backend uses checked machine words until an
 operation cannot fit, promotes the live frame to lazy GMP-backed tagged values,
@@ -65,7 +65,7 @@ The command prints the content-addressed generated-module path. A subsequent
 identical build reports `cached`. The cache identity includes source,
 typed IR, all backend source, the shared native header, native ABI, Node module
 ABI, operating system, architecture, and MPFR/MPC versions.
-Native Kernel v19 is currently a source-tree development feature and uses the
+Native Kernel v20 is currently a source-tree development feature and uses the
 MPFR/MPC prefix built by `packages/flint`.
 
 Importing `algorithms` normally in a fresh Sage.js process then resolves every
@@ -140,7 +140,7 @@ than opaque generated code.
 ## Pipeline
 
 `tools/native-kernel/ir.cjs` parses source with the real Sage.js compiler and
-lowers marked functions to typed IR. Native Kernel v19 supports:
+lowers marked functions to typed IR. Native Kernel v20 supports:
 
 - multi-function exact `int`/`Integer` modules backed by GMP, with multiple
   exact arguments and exact `BigInt` fallback;
@@ -150,6 +150,12 @@ lowers marked functions to typed IR. Native Kernel v19 supports:
   positional defaults, fixed local integer sequences and checked indexing;
 - exact-Integer `range` loops, `round(sqrt(Integer))`, and propagation of
   `ZeroDivisionError` through both generated backends;
+- exact `sum` over one-clause range generator/list comprehensions, including
+  optional starts, filters, Python 3 comprehension scope, loop fusion, and
+  direct compiled calls in the producer expression;
+- inferred scalar locals plus optional checked PEP 526 declarations such as
+  `total: Integer = 0`; public parameter and result annotations remain
+  mandatory because they define the stable native ABI;
 - a module dependency graph and direct private-C calls among compiled exact
   functions, including recursion;
 - conservative exact-value mutability, escape, and lifetime analysis, with
@@ -210,10 +216,11 @@ Four exact execution forms consume the same IR:
 - the forced native entry starts with GMP, MPFR, or MPC and mutates
   non-escaping native locals in place.
 
-The generated module validates the Sage.js parent and iteration count. It uses
-the C addon when available and otherwise uses the JavaScript implementation.
-`SAGEJS_NATIVE_DISABLE=1` forces the fallback, while
-`SAGEJS_NATIVE_REQUIRED=1` makes a missing or unloadable addon an error.
+The generated module validates its public arguments once before core entry.
+`SAGEJS_NATIVE_MODE=dynamic`, `javascript`, or `native` respectively selects
+the ordinary source fallback, portable typed-IR artifact, or required native
+addon; `auto` is the default. The older `SAGEJS_NATIVE_DISABLE` and
+`SAGEJS_NATIVE_REQUIRED` switches remain compatibility controls in `auto`.
 
 ## Exact storage and backend selection
 
@@ -243,10 +250,10 @@ kernel.native_gcd.gmp(a, b);    // force GMP from function entry
 ```
 
 Automatic dispatch first honors addon availability, then uses the generated
-policy. `SAGEJS_NATIVE_INTEGER_BACKEND=bigint`, `gmp`, or `auto` provides an
-explicit process-wide override; `gmp` bypasses tagged word execution and
-`auto` is the default. The policy is deliberately simple and auditable rather
-than a hidden online benchmark.
+policy. `SAGEJS_NATIVE_INTEGER_BACKEND=bigint`, `tagged`, `gmp`, or `auto`
+provides an explicit process-wide override; `gmp` bypasses tagged word
+execution and `auto` is the default. The policy is deliberately simple and
+auditable rather than a hidden online benchmark.
 
 For an eligible function, `taggedInteger` records the small and large
 representations, guarded parameters, checked operation classes, promotion
@@ -311,6 +318,9 @@ def advance(records: Float64Buffer, count: uint64) -> float:
 The addon borrows `Float64Array` memory directly for the duration of the call.
 Ordinary Python/Sage.js lists remain supported by the generated module through
 a temporary packed copy whose mutations are copied back in a `finally` block.
+`kernel_float64_buffer(function, iterable)` and
+`kernel_float64_zeros(function, length)` choose reusable packed storage for a
+compiled function and ordinary lists for the dynamic fallback.
 The portable implementation executes the same IR against arrays or lists.
 Every view construction and indexed access is bounds checked; generated C does
 not retain a borrowed pointer after returning.
@@ -513,6 +523,33 @@ pnpm run bench:native:cowasm
 SAGEJS_NATIVE_INTEGER_TERMS=4000000 pnpm run bench:native:integer
 ```
 
+### Natural exact reductions
+
+V20 lowers the actual `sum(gcd(...) for ... in range(...))` source in
+[`native_reductions.py`](native_reductions.py) to the same counted IR as the
+handwritten accumulator beside it. On the dedicated 16-vCPU AMD EPYC 7B13
+host with Node 26.7.0, one million terms produced these warmed whole-call
+medians (five samples after two warmups):
+
+| Source spelling | Native core | Typed JavaScript | Dynamic Sage.js |
+|---|---:|---:|---:|
+| `sum(...)` generator | 8 ms | 60 ms | 441 ms |
+| explicit accumulator loop | 8 ms | 58 ms | 143 ms |
+
+Both forms returned `1500000`. Thus the natural source has no measurable
+native penalty at this timer resolution and is about 55x faster than its own
+dynamic execution. The slower dynamic-generator result is not hidden from the
+comparison: compilation removes generator allocation and dispatch because the
+lowered producer and direct `gcd` dependency remain inside the isolated core.
+Reproduce it with:
+
+```sh
+sagejs native compile bench/native_reductions.py
+for mode in native javascript dynamic; do
+  SAGEJS_NATIVE_MODE=$mode sagejs bench/benchmark_native_reductions.py
+done
+```
+
 ## Dense prime-field matrices
 
 V9 adds domain-specific lowering for annotated rank, determinant, reduced
@@ -594,7 +631,7 @@ coefficient lists and more involved structured state make it the next honest
 compiler-capability test rather than a reason to introduce a hidden native
 Tate implementation.
 
-## Deliberate v17 limits
+## Deliberate v20 limits
 
 This is not yet a general Cython replacement or transparent JIT. It does not
 infer argument types, compile arbitrary control flow, accept native elements

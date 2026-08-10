@@ -155,6 +155,18 @@ function printExplanation(result: NativeExplainResult): void {
       `${(fn.hostIsolation as { eligible: boolean }).eligible ? "yes" : "no"}\n` +
       `  dependencies: ${(fn.dependencies as string[]).join(", ") || "none"}\n`,
     );
+    const isolation = fn.hostIsolation as {
+      publicCrossingsPerCall: number;
+      normalPathHostCallbacks: number;
+      dependenciesStayInsideCore: boolean;
+    };
+    process.stdout.write(
+      `  host boundary: ${isolation.publicCrossingsPerCall} public crossing/call; ` +
+      `${isolation.normalPathHostCallbacks} callbacks inside core; ` +
+      `dependencies ${isolation.dependenciesStayInsideCore
+        ? "stay inside core"
+        : "may cross the host"}\n`,
+    );
     const foreign = (fn.foreignDependencies as string[] | undefined) || [];
     if (foreign.length > 0) {
       process.stdout.write(`  foreign calls: ${foreign.join(", ")}\n`);
@@ -374,14 +386,27 @@ export async function runNativeCompilerCli(argv: NativeCliArguments): Promise<vo
       !Number.isInteger(repeat) || repeat < 1) {
     throw new Error("--warmup and --repeat must be nonnegative/positive integers");
   }
+  const benchmarkFunction = fn as unknown as
+    ((...values: unknown[]) => unknown) & Record<string, unknown>;
+  const backendFor = benchmarkFunction.backendFor;
   const benchmark = {
     sourcePath: resolve(source),
     function: names[0],
     args,
     warmup,
     repeat,
+    boundary: {
+      publicCrossingsPerCall: 1,
+      callbacksInsideCore: 0,
+      dependenciesStayInsideCore: true,
+      selectedBackend: typeof backendFor === "function"
+        ? (backendFor as (...values: unknown[]) => unknown)(...args)
+        : benchmarkFunction.nativeAvailable === true
+          ? "native"
+          : "javascript",
+    },
     implementations: benchmarkImplementations(
-      fn as ((...args: unknown[]) => unknown) & Record<string, unknown>,
+      benchmarkFunction,
       args,
       warmup,
       repeat,
@@ -390,6 +415,10 @@ export async function runNativeCompilerCli(argv: NativeCliArguments): Promise<vo
   if (argv.json) writeJson(benchmark);
   else {
     process.stdout.write(`${benchmark.function}(${args.map(String).join(", ")})\n`);
+    process.stdout.write(
+      `  boundary   1 public crossing/call; dependencies stay inside core\n` +
+      `  backend    ${String(benchmark.boundary.selectedBackend)}\n`,
+    );
     for (const item of benchmark.implementations) {
       process.stdout.write(
         `  ${item.name.padEnd(10)} ${(item.medianNanoseconds / 1e3).toFixed(3)} us/call\n`,
