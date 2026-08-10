@@ -9,6 +9,8 @@
  */
 
 const BASELIB_STANDALONE_MODULES = Object.freeze([
+  "sagejs.kernels.dense_integer",
+  "sagejs.kernels.dense_integer_flint",
   "sagejs.kernels.dense_prime",
   "sagejs.kernels.dense_prime_flint",
 ]);
@@ -22,6 +24,8 @@ const BASELIB_STANDALONE_CACHE_MODULES = Object.freeze([
   "sagejs.ffi",
   "sagejs.ffi.flint",
   "sagejs.kernels",
+  "sagejs.kernels.dense_integer",
+  "sagejs.kernels.dense_integer_flint",
   "sagejs.kernels.dense_prime",
   "sagejs.kernels.dense_prime_flint",
   "sagejs.native",

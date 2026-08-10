@@ -1206,6 +1206,26 @@ def ρσ_operator_mul(left: Any, right: Any) -> Any:
     ):
         return _builtins_numeric_result(
             runtime.native_mul(left, right), left, right)
+    if (
+        runtime.strict_equal(left_type, 'bigint')
+        or runtime.strict_equal(right_type, 'bigint')
+    ):
+        if (
+            _builtins_exact_integer_primitive(left)
+            and _builtins_exact_integer_primitive(right)
+        ):
+            return runtime.native_mul(
+                runtime.bigint(left), runtime.bigint(right))
+        if (
+            runtime.strict_equal(left_type, 'number')
+            or runtime.strict_equal(right_type, 'number')
+        ):
+            return _builtins_numeric_result(
+                runtime.native_mul(
+                    runtime.number(left), runtime.number(right)),
+                left,
+                right,
+            )
     if runtime.is_math_element(left) or runtime.is_math_element(right):
         return runtime.coercion_model.binOp('mul', left, right)
     if (

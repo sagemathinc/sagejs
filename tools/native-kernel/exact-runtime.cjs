@@ -37,6 +37,10 @@ static int mpz_to_int64(const mpz_t value, int64_t *result)
         *result = 0;
         return 1;
     }
+    /* mpz_export writes every requested word to its destination.  Reject a
+       multiword magnitude before exporting into this single-word scalar. */
+    if (mpz_sizeinbase(value, 2) > 64)
+        return 0;
     mpz_export(&magnitude, &count, -1, sizeof(magnitude), 0, 0, value);
     if (count > 1)
         return 0;

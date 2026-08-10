@@ -76,6 +76,11 @@ assert A.matrix_from_columns([2, 0]).dimensions() == (3, 2)
 assert A.stack(B).dimensions() == (6, 3)
 assert A.augment(B).dimensions() == (3, 6)
 
+edge = matrix(ZZ, 1, 1, [2**64 - 1])
+assert (edge + edge)[0, 0] == 2**65 - 2
+assert (edge - edge).is_zero()
+assert ((2**64 - 1)*edge)[0, 0] == (2**64 - 1)**2
+
 C = matrix(ZZ, 3, 3, [2, 4, 4, 6, 6, 12, 10, 4, 16])
 assert C.det() == 48
 assert C.rank() == 3
@@ -181,6 +186,11 @@ print('dense-integer-independent-ok')
       );
     }
     assert.match(core, /sagejs_tagged_int/);
+    assert.match(
+      core,
+      /int sagejs_kernel_dense_integer_add[\s\S]*?tagged_dense_integer_add/,
+    );
+    assert.match(core, /mpz_sizeinbase\(value, 2\) > 64/);
     assert.match(flintCore, /fmpz_mat_init/);
     assert.match(flintCore, /IntegerBuffer word capacity exceeded/);
 

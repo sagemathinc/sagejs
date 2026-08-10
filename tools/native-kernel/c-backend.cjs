@@ -48,7 +48,7 @@ const {
   resourceForFunctionType,
 } = require("./ffi-codegen.cjs");
 
-const NATIVE_ABI_VERSION = 19;
+const NATIVE_ABI_VERSION = 20;
 
 function statusFailure(kind, message, indent) {
   const code = {
@@ -1745,7 +1745,9 @@ static void sagejs_integer_buffer_set_int64(
         ? (uint64_t) (-(value + 1)) + UINT64_C(1)
         : (uint64_t) value;
     uint64_t *slot = buffer->limbs + position * buffer->word_capacity;
-    memset(slot, 0, buffer->word_capacity * sizeof(*slot));
+    /* sizes[position] is authoritative; spare limbs are intentionally
+       unspecified.  Clearing every reserved limb here made small-integer
+       loops proportional to capacity and rewrote slot[0] immediately. */
     slot[0] = magnitude;
     buffer->sizes[position] = magnitude == 0 ? 0 : (negative ? -1 : 1);
 }
@@ -1854,6 +1856,73 @@ function publicCoreSignature(fn, prototype = false) {
 }
 
 function publicCoreFunction(fn) {
+  if (fn.analysis?.backend?.kind === "tagged") {
+    const declarations = ["    int sagejs_core_ok;"];
+    const initialization = [];
+    const cleanup = [];
+    const arguments_ = [];
+    const conversions = [];
+    for (const param of fn.params) {
+      if (param.type !== "Integer") {
+        arguments_.push(`sagejs_arg_${param.name}`);
+        continue;
+      }
+      const value = `sagejs_core_arg_${cName(param.name)}`;
+      const small = `${value}_small`;
+      declarations.push(
+        `    sagejs_tagged_int ${value};`,
+        `    int64_t ${small};`,
+      );
+      initialization.push(
+        `    sagejs_tagged_init(&${value});`,
+        `    if (mpz_to_int64(sagejs_arg_${param.name}, &${small}))`,
+        `        sagejs_tagged_set_small(&${value}, ${small});`,
+        "    else",
+        "    {",
+        `        sagejs_tagged_make_big(&${value});`,
+        `        mpz_set(${value}.big, sagejs_arg_${param.name});`,
+        "    }",
+      );
+      cleanup.unshift(`    sagejs_tagged_clear(&${value});`);
+      arguments_.push(`&${value}`);
+    }
+    const resultTypes = tupleElementTypes(fn.returnType) || [fn.returnType];
+    const resultArguments = [];
+    resultTypes.forEach((type, index) => {
+      const output = tupleElementTypes(fn.returnType) === undefined
+        ? "sagejs_native_output"
+        : `sagejs_native_output_${index}`;
+      if (type !== "Integer") {
+        resultArguments.push(output);
+        return;
+      }
+      const value = `sagejs_core_result_${index}`;
+      declarations.push(`    sagejs_tagged_int ${value};`);
+      initialization.push(`    sagejs_tagged_init(&${value});`);
+      cleanup.unshift(`    sagejs_tagged_clear(&${value});`);
+      resultArguments.push(`&${value}`);
+      conversions.push(
+        `        if (${value}.is_big)`,
+        `            mpz_set(${output}, ${value}.big);`,
+        "        else",
+        `            set_mpz_int64(${output}, ${value}.small);`,
+      );
+    });
+    const copyResults = conversions.length === 0
+      ? ""
+      : `    if (sagejs_core_ok)\n    {\n${conversions.join("\n")}\n    }\n`;
+    return `${publicCoreSignature(fn)}
+{
+${declarations.join("\n")}
+    sagejs_native_status_reset(status);
+${initialization.join("\n")}
+    sagejs_core_ok = tagged_${fn.name}(status, ${resultArguments.join(", ")}` +
+      `${arguments_.length ? `, ${arguments_.join(", ")}` : ""});
+${copyResults}
+${cleanup.join("\n")}
+    return sagejs_core_ok;
+}`;
+  }
   const outputs = tupleElementTypes(fn.returnType) === undefined
     ? ["sagejs_native_output"]
     : tupleElementTypes(fn.returnType).map((_type, index) =>

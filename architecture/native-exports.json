@@ -11627,7 +11627,8 @@
         "FLINT"
       ],
       "consumers": [
-        "packages/flint/test/test.cjs"
+        "packages/flint/test/test.cjs",
+        "src/baselib/matrix.py"
       ],
       "declared_ffi": null
     },

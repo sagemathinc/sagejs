@@ -1427,19 +1427,29 @@ class Matrix(sage.Element):
                 )
             else:
                 native_value = source._native
+        if (
+            parent.base_ring() is sage.ZZ
+            and not isinstance(native_value, _PackedIntegerStorage)
+        ):
+            # Legacy mathematical producers outside the dense-matrix slice
+            # may still return an opaque FLINT matrix.  Convert at this single
+            # audited ingress and discard the handle immediately: no public
+            # ZZ Matrix may own, cache, or later recover it.
+            packed_bytes = runtime.flint_backend().zzMatrixExportPacked(
+                native_value)
+            packed_entries = runtime.integer_buffer_from_packed_bytes(
+                packed_bytes, parent.nrows() * parent.ncols())
+            native_value = _PackedIntegerStorage(packed_entries)
         self._parent = parent
+        self._native_handle: Any = runtime.undefined
+        self._prime_residues_cache: Any = runtime.undefined
+        self._integer_entries_cache: Any = runtime.undefined
         if _is_packed_uint64(native_value):
-            self._native_handle = runtime.undefined
             self._prime_residues_cache = native_value
-            self._integer_entries_cache = runtime.undefined
         elif isinstance(native_value, _PackedIntegerStorage):
-            self._native_handle = runtime.undefined
-            self._prime_residues_cache = runtime.undefined
             self._integer_entries_cache = native_value.entries
         else:
             self._native_handle = native_value
-            self._prime_residues_cache = runtime.undefined
-            self._integer_entries_cache = runtime.undefined
         self._immutable = False
         self._row_subdivisions = []
         self._col_subdivisions = []
@@ -1830,17 +1840,20 @@ class Matrix(sage.Element):
             and right._has_packed_integer_storage()
         ):
             kernel = _dense_integer_kernel_module().dense_integer_add
-            entries = _dense_integer_zeros(
+            def invoke_integer_add(values: list[Any]) -> None:
+                if not kernel(
+                    values[0],
+                    left._integer_kernel_buffer(kernel),
+                    right._integer_kernel_buffer(kernel),
+                ):
+                    raise RuntimeError(
+                        'dense integer addition buffer mismatch')
+            entries = _run_integer_outputs(
                 kernel,
-                left.nrows() * left.ncols(),
-                max(left._integer_capacity(), right._integer_capacity()) + 1,
-            )
-            if not kernel(
-                entries,
-                left._integer_kernel_buffer(kernel),
-                right._integer_kernel_buffer(kernel),
-            ):
-                raise RuntimeError('dense integer addition buffer mismatch')
+                [left.nrows() * left.ncols()],
+                invoke_integer_add,
+                max(left._integer_capacity(), right._integer_capacity()),
+            )[0]
             _trace_dense_integer_selection(
                 'add', _typed_python_implementation(kernel),
                 left.nrows(), left.ncols(),
@@ -1887,18 +1900,20 @@ class Matrix(sage.Element):
             and right._has_packed_integer_storage()
         ):
             kernel = _dense_integer_kernel_module().dense_integer_subtract
-            entries = _dense_integer_zeros(
+            def invoke_integer_subtract(values: list[Any]) -> None:
+                if not kernel(
+                    values[0],
+                    left._integer_kernel_buffer(kernel),
+                    right._integer_kernel_buffer(kernel),
+                ):
+                    raise RuntimeError(
+                        'dense integer subtraction buffer mismatch')
+            entries = _run_integer_outputs(
                 kernel,
-                left.nrows() * left.ncols(),
-                max(left._integer_capacity(), right._integer_capacity()) + 1,
-            )
-            if not kernel(
-                entries,
-                left._integer_kernel_buffer(kernel),
-                right._integer_kernel_buffer(kernel),
-            ):
-                raise RuntimeError(
-                    'dense integer subtraction buffer mismatch')
+                [left.nrows() * left.ncols()],
+                invoke_integer_subtract,
+                max(left._integer_capacity(), right._integer_capacity()),
+            )[0]
             _trace_dense_integer_selection(
                 'subtract', _typed_python_implementation(kernel),
                 left.nrows(), left.ncols(),
@@ -2037,21 +2052,32 @@ class Matrix(sage.Element):
             return self._parent._from_canonical_uint64_residues(
                 entries)
         if self._has_packed_integer_storage():
+            scalar_base, _numerator, _denominator = _matrix_scalar_parts(
+                self.base_ring(), scalar)
+            if scalar_base is not sage.ZZ:
+                result_base = _common_base(
+                    self.base_ring(), scalar_base)
+                return self.change_ring(result_base)._scalar_mul(scalar)
             factor = sage.ZZ(scalar)
             kernel = (
                 _dense_integer_kernel_module().dense_integer_scalar_multiply)
-            entries = _dense_integer_zeros(
+            def invoke_integer_scalar(values: list[Any]) -> None:
+                if not kernel(
+                    values[0],
+                    self._integer_kernel_buffer(kernel),
+                    factor,
+                ):
+                    raise RuntimeError(
+                        'dense integer scalar-multiplication buffer mismatch')
+            entries = _run_integer_outputs(
                 kernel,
-                self.nrows() * self.ncols(),
-                self._integer_capacity() + _integer_value_capacity(factor),
-            )
-            if not kernel(
-                entries,
-                self._integer_kernel_buffer(kernel),
-                factor,
-            ):
-                raise RuntimeError(
-                    'dense integer scalar-multiplication buffer mismatch')
+                [self.nrows() * self.ncols()],
+                invoke_integer_scalar,
+                max(
+                    self._integer_capacity(),
+                    _integer_value_capacity(factor),
+                ),
+            )[0]
             _trace_dense_integer_selection(
                 'scalar_multiply', _typed_python_implementation(kernel),
                 self.nrows(), self.ncols(),
@@ -4864,12 +4890,12 @@ def random_matrix(
                 state = _random_int(0, 4294967295)
                 final_state = kernel(
                     storage,
-                    integer_fast_lower,
-                    span,
+                    runtime.normalize_integer(integer_fast_lower),
+                    runtime.normalize_integer(span),
                     state,
-                    4294967296,
-                    1664525,
-                    1013904223,
+                    runtime.bigint(4294967296),
+                    runtime.bigint(1664525),
+                    runtime.bigint(1013904223),
                 )
                 _set_random_word_state(final_state)
             _trace_dense_integer_selection(
@@ -4894,11 +4920,11 @@ def random_matrix(
             final_state = kernel(
                 storage,
                 state,
-                4294967296,
-                858993459,
-                2147483648,
-                1664525,
-                1013904223,
+                runtime.bigint(4294967296),
+                runtime.bigint(858993459),
+                runtime.bigint(2147483648),
+                runtime.bigint(1664525),
+                runtime.bigint(1013904223),
             )
             _set_random_word_state(final_state)
         _trace_dense_integer_selection(

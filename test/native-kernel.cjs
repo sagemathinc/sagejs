@@ -2058,15 +2058,30 @@ except Exception as error:
 #include "kernel_core.h"
 int main(void)
 {
-    mpz_t answer;
+    mpz_t answer, large;
     sagejs_native_status status = {SAGEJS_NATIVE_OK, NULL};
     mpz_init(answer);
+    mpz_init_set_ui(large, 1);
+    mpz_mul_2exp(large, large, 190);
+    mpz_add_ui(large, large, 17);
     if (!sagejs_kernel_integer_quadratic_sum(&status, answer, 10))
     {
         fprintf(stderr, "%s\\n", status.message);
         return 1;
     }
     gmp_printf("%Zd\\n", answer);
+    if (!sagejs_kernel_integer_round_trip(&status, answer, large))
+    {
+        fprintf(stderr, "%s\\n", status.message);
+        return 1;
+    }
+    if (mpz_cmp(answer, large) != 0)
+    {
+        fprintf(stderr, "large exact scalar did not round trip\\n");
+        return 1;
+    }
+    gmp_printf("%Zd\\n", answer);
+    mpz_clear(large);
     mpz_clear(answer);
     return 0;
 }
@@ -2088,7 +2103,10 @@ int main(void)
     assert.equal(buildStandalone.status, 0, buildStandalone.stderr);
     const runStandalone = spawnSync(standalone, [], { encoding: "utf8" });
     assert.equal(runStandalone.status, 0, runStandalone.stderr);
-    assert.equal(runStandalone.stdout.trim(), "-275");
+    assert.deepEqual(
+      runStandalone.stdout.trim().split("\n"),
+      ["-275", ((1n << 190n) + 17n).toString()],
+    );
 
     const cowasmRoot = join(root, "..", "cowasm");
     const wasiSdk = join(
@@ -2119,7 +2137,10 @@ int main(void)
       assert.equal(buildWasm.status, 0, buildWasm.stderr);
       const runWasm = spawnSync(wasiRun, [wasm], { encoding: "utf8" });
       assert.equal(runWasm.status, 0, runWasm.stderr);
-      assert.equal(runWasm.stdout.trim(), "-275");
+      assert.deepEqual(
+        runWasm.stdout.trim().split("\n"),
+        ["-275", ((1n << 190n) + 17n).toString()],
+      );
     }
   }
   const integerModule = require(integerKernel.modulePath);
