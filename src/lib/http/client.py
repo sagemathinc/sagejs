@@ -1,7 +1,7 @@
 """Synchronous HTTP client compatibility over Sage.js host networking.
 
 The first implementation buffers each response, matching the synchronous
-surface of ``http.client`` while keeping Node and browser capabilities behind
+surface of `http.client` while keeping Node and browser capabilities behind
 the ordinary Python module boundary.
 """
 

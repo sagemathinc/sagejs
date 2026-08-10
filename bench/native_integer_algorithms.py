@@ -61,7 +61,7 @@ def native_divmod(a: int, b: int) -> Tuple[int, int]:
 
 @native
 def native_gcd(a: int, b: int) -> int:
-    """Return the nonnegative greatest common divisor of ``a`` and ``b``."""
+    """Return the nonnegative greatest common divisor of `a` and `b`."""
     a = abs(a)
     b = abs(b)
     while b != 0:
@@ -73,7 +73,7 @@ def native_gcd(a: int, b: int) -> int:
 
 @native
 def native_lcm(a: int, b: int) -> int:
-    """Return the nonnegative least common multiple of ``a`` and ``b``."""
+    """Return the nonnegative least common multiple of `a` and `b`."""
     if a == 0 or b == 0:
         return 0
     return abs((a // native_gcd(a, b)) * b)
@@ -81,7 +81,7 @@ def native_lcm(a: int, b: int) -> int:
 
 @native
 def native_powmod(base: int, exponent: int, modulus: int) -> int:
-    """Return ``base**exponent`` modulo a positive ``modulus``."""
+    """Return `base**exponent` modulo a positive `modulus`."""
     result = 1
     base = base % modulus
     while exponent > 0:
@@ -94,7 +94,7 @@ def native_powmod(base: int, exponent: int, modulus: int) -> int:
 
 @native
 def native_coprime(a: int, b: int) -> bool:
-    """Return whether ``a`` and ``b`` are coprime."""
+    """Return whether `a` and `b` are coprime."""
     return native_gcd(a, b) == 1
 
 
@@ -112,5 +112,5 @@ def native_mod(a: int, b: int) -> int:
 
 @native
 def native_zero_or_divides(divisor: int, value: int) -> bool:
-    """Exercise Python's short-circuit ``or`` semantics."""
+    """Exercise Python's short-circuit `or` semantics."""
     return divisor == 0 or value % divisor == 0

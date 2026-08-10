@@ -190,7 +190,7 @@ _default_random = random
 class Random:
     """Deterministic random-number generator with independent state.
 
-    This implements the core CPython ``random.Random`` interface with the
+    This implements the core CPython `random.Random` interface with the
     same MT19937 stream for integer seeds.
     """
 

@@ -203,7 +203,7 @@ def print_bracketed(node, output, complex, function_preamble, before, after):
 
 
 def print_await_expression(output, print_expression):
-    """Emit generator-based ``await`` around an expression."""
+    """Emit generator-based `await` around an expression."""
     output.print(
         "(yield* (function* () {try { var ρσ_await_iterator = ρσ_yield_from_impl("
     )

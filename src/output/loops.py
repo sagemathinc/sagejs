@@ -23,7 +23,7 @@ from output.statements import force_statement, print_await_expression
 
 
 def print_unpack_pattern(node, output):
-    """Emit the shape consumed by ``ρσ_unpack_nested`` for a target."""
+    """Emit the shape consumed by `ρσ_unpack_nested` for a target."""
     if is_node_type(node, AST_Seq):
         node = AST_Array({"elements": node.to_array()})
     if is_node_type(node, AST_Array):

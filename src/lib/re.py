@@ -1,4 +1,4 @@
-"""Python-shaped regular expressions backed by ECMAScript ``RegExp``.
+"""Python-shaped regular expressions backed by ECMAScript `RegExp`.
 
 Modern JavaScript supplies named groups, lookbehind, dot-all mode, and match
 indices.  This module translates the small syntax differences and implements

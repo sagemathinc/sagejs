@@ -16,7 +16,7 @@ def native_gcd(a: Integer, b: Integer) -> Integer:
 
 @native
 def native_bench_gcd(iterations: uint64) -> Integer:
-    """The ``numbers.py`` GCD workload with the loop inside native code."""
+    """The `numbers.py` GCD workload with the loop inside native code."""
     total = 0
     for index in range(iterations):
         total += native_gcd(92250, 922350 + index)
@@ -37,7 +37,7 @@ def native_bench_large_gcd(iterations: uint64) -> Integer:
 
 @native
 def native_rfib(n: Integer) -> Integer:
-    """The deliberately recursive Fibonacci workload from ``fib.py``."""
+    """The deliberately recursive Fibonacci workload from `fib.py`."""
     if n == 1 or n == 0:
         return 1
     return native_rfib(n - 1) + native_rfib(n - 2)

@@ -3,7 +3,7 @@
 The implementation intentionally covers the portable core used by ordinary
 pure-Python libraries: test cases and assertions, exception/warning context
 managers, suites, results, a text runner, and the standard decorators.  Test
-discovery and ``unittest.mock`` remain separate compatibility milestones.
+discovery and `unittest.mock` remain separate compatibility milestones.
 """
 
 from __future__ import annotations

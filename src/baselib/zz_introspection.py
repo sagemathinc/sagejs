@@ -2,7 +2,7 @@
 
 The base library is compiled into one global JavaScript scope for historical
 and startup-performance reasons.  Record its private implementation names once
-initialization is complete so that ``dir()`` and REPL completion can hide them
+initialization is complete so that `dir()` and REPL completion can hide them
 without hiding private names subsequently created by user code.
 """
 

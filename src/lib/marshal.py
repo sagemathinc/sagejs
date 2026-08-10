@@ -1,6 +1,6 @@
 """Compatibility surface for Python's private marshal format.
 
-Sage.js does not consume CPython ``.pyc`` files.  The module exists so tools
+Sage.js does not consume CPython `.pyc` files.  The module exists so tools
 which optionally manage CPython bytecode caches can import unchanged; trying
 to serialize a code object remains an explicit unsupported operation.
 """

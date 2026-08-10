@@ -1,7 +1,7 @@
 """Portable subset of Python's :mod:`time` module.
 
 Clock and sleep primitives use the explicit Sage.js runtime boundary.  Calendar
-conversion is delegated to the host's ECMAScript ``Date`` implementation.
+conversion is delegated to the host's ECMAScript `Date` implementation.
 """
 
 import sagejs.runtime as runtime

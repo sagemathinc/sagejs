@@ -1,7 +1,7 @@
 """Import machinery exposed to ordinary pure-Python packages.
 
 The actual synchronous loader lives in the Sage.js host.  This module provides
-the public convenience API on top of the same ``__import__`` hook used by
+the public convenience API on top of the same `__import__` hook used by
 compiled import statements.
 """
 

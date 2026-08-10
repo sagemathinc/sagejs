@@ -22,7 +22,7 @@ class ABC:
 
 
 def _register(cls, subclass):
-    """Register *subclass* as a virtual subclass of ``cls`` and its ABCs."""
+    """Register *subclass* as a virtual subclass of `cls` and its ABCs."""
     global _abc_cache_token
     # Sage.js represents fundamental types such as ``list`` and ``dict`` by
     # callable host constructors without a writable CPython ``__bases__``

@@ -1,10 +1,10 @@
 """Source-transparent typed Tate reduction at primes greater than three.
 
 This is a compiler research workload, not a second production
-implementation.  Its mathematical branches mirror ``_ec_tate_large_prime``
+implementation.  Its mathematical branches mirror `_ec_tate_large_prime`
 and it remains executable by ordinary CPython.  The scalar coefficient
 signature deliberately avoids teaching the compiler an algorithm-specific
-Tate intrinsic while its native result uses ``0`` for the good-reduction
+Tate intrinsic while its native result uses `0` for the good-reduction
 branch's otherwise optional reduction marker.
 """
 
@@ -73,7 +73,7 @@ def tate_legendre(value: int, prime: int) -> int:
 
 @native
 def tate_inverse_mod(value: int, prime: int) -> int:
-    """Invert a nonzero residue modulo ``prime`` by extended Euclid."""
+    """Invert a nonzero residue modulo `prime` by extended Euclid."""
     old_remainder = prime
     remainder = value % prime
     old_coefficient = 0
@@ -101,7 +101,7 @@ def tate_cubic_multiply_mod(
     cubic_b: int,
     prime: int,
 ) -> Tuple[int, int, int]:
-    """Multiply modulo ``x^3 + cubic_a*x + cubic_b`` over ``GF(prime)``."""
+    """Multiply modulo `x^3 + cubic_a*x + cubic_b` over `GF(prime)`."""
     product0 = left0 * right0
     product1 = left0 * right1 + left1 * right0
     product2 = left0 * right2 + left1 * right1 + left2 * right0
@@ -120,7 +120,7 @@ def tate_x_power_mod_cubic(
     cubic_b: int,
     prime: int,
 ) -> Tuple[int, int, int]:
-    """Return the coefficients of ``x^exponent`` modulo a depressed cubic."""
+    """Return the coefficients of `x^exponent` modulo a depressed cubic."""
     result0 = 1
     result1 = 0
     result2 = 0
@@ -158,9 +158,9 @@ def tate_x_power_mod_cubic(
 
 @native
 def tate_cubic_root_count(a_value: int, b_value: int, prime: int) -> int:
-    """Count roots of ``x^3 + a*x + b`` over the prime field.
+    """Count roots of `x^3 + a*x + b` over the prime field.
 
-    Compute the degree of ``gcd(x^3+a*x+b, x^p-x)``.  Since the first
+    Compute the degree of `gcd(x^3+a*x+b, x^p-x)`.  Since the first
     polynomial is cubic, modular polynomial arithmetic and the final Euclidean
     step fit in a handful of scalar locals; no container or polynomial
     intrinsic is hidden from the compiler.
@@ -271,7 +271,7 @@ def tate_large_prime(
     a6: int,
     prime: int,
 ) -> Tuple[int, int, int]:
-    """Return ``(f, Kodaira code, c_p)`` for ``p > 3``."""
+    """Return `(f, Kodaira code, c_p)` for `p > 3`."""
     b2 = a1 * a1 + 4 * a2
     b4 = a1 * a3 + 2 * a4
     b6 = a3 * a3 + 4 * a6

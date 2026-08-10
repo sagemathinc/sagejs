@@ -13,7 +13,7 @@ def _module(anchor):
 
 
 def files(anchor):
-    """Return the package directory as a ``pathlib.Path`` traversable."""
+    """Return the package directory as a `pathlib.Path` traversable."""
     module = _module(anchor)
     filename = getattr(module, "__file__", None)
     if filename is None:

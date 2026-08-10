@@ -1,8 +1,8 @@
 """A small NumPy-compatible facade backed by :mod:`numpy-ts`.
 
-This module intentionally owns the Python-visible semantics.  ``numpy-ts`` is
+This module intentionally owns the Python-visible semantics.  `numpy-ts` is
 an implementation backend, not the public contract, so callers never receive
-its raw ``NDArray`` objects.
+its raw `NDArray` objects.
 
 The first vertical slice covers dense array construction, basic slicing and
 views, mutation, element-wise arithmetic, reductions, matrix multiplication,
@@ -276,7 +276,7 @@ def _python_values(value: Any, dtype_name: str) -> Any:
 
 
 class ndarray:
-    """A Python wrapper around a dense ``numpy-ts`` array."""
+    """A Python wrapper around a dense `numpy-ts` array."""
 
     def __init__(
         self,

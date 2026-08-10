@@ -1,4 +1,4 @@
-"""Small Python ``types`` compatibility layer used by Sage.js."""
+"""Small Python `types` compatibility layer used by Sage.js."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sagejs.runtime as runtime
 
 
 class ModuleType:
-    """Mutable module namespace compatible with ``types.ModuleType``."""
+    """Mutable module namespace compatible with `types.ModuleType`."""
 
     __sagejs_module_type__ = True
 
@@ -130,7 +130,7 @@ def coroutine(function: Callable[..., Any]) -> Callable[..., Any]:
     """Mark a generator function as awaitable.
 
     Sage.js represents both generator-based coroutines and native
-    ``async def`` coroutines with its generator protocol, so the marker does
+    `async def` coroutines with its generator protocol, so the marker does
     not require a wrapper.
     """
     return function

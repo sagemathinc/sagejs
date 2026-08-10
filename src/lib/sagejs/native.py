@@ -19,10 +19,10 @@ of the algorithm or changing their call sites.
 ```
 
 Native Kernel v21 currently accepts a deliberately narrow typed numerical
-subset, including exact ``Integer``/GMP kernels and reusable dense
+subset, including exact `Integer`/GMP kernels and reusable dense
 decompositions over prime fields. It also supports packed binary64 buffers and
 mutable signed exact-integer buffers with bounded record views. Mutable
-``IntegerBuffer`` values retain arbitrary precision through an explicit packed
+`IntegerBuffer` values retain arbitrary precision through an explicit packed
 signed-limb ABI, so source-transparent algebraic loops can exchange whole GMP
 vectors without object-at-a-time host calls. Explicit AOT compilation produces
 a host-independent C core, a thin host adapter, and an exact fallback, or
@@ -30,7 +30,7 @@ reports a compile-time diagnostic. After argument marshalling, the core cannot
 call Python, JavaScript, Node-API, or another interpreter runtime; unsupported
 source fails compilation instead of silently inserting a callback.
 
-Explicit imports from generated ``sagejs.ffi`` modules are also declaration-
+Explicit imports from generated `sagejs.ffi` modules are also declaration-
 checked at compile time. Supported calls lower directly into the isolated core
 using generic ABI type adapters; they never become a host callback or a
 function-name-based compiler substitution.
@@ -66,13 +66,13 @@ class RationalBuffer:
     """Owned normalized exact-rational storage for fallback execution.
 
     Native hosts replace each component with the compiler's packed
-    ``IntegerBuffer`` representation.  Keeping the two spans explicit makes
+    `IntegerBuffer` representation.  Keeping the two spans explicit makes
     the ownership and standalone ABI independent of Python, JavaScript, and
     Node-API object layouts.  Every entry is reduced and has a positive
-    denominator; zero is represented as ``0/1``.
+    denominator; zero is represented as `0/1`.
 
     Source-transparent kernels currently receive the two component buffers
-    as ordinary ``IntegerBuffer`` parameters.  This makes every arithmetic
+    as ordinary `IntegerBuffer` parameters.  This makes every arithmetic
     operation visible in their Python bodies while this class provides the
     canonical aggregate at mathematical object boundaries.
     """
@@ -238,7 +238,7 @@ def integer_zeros(length: int) -> IntegerBuffer:
 
 
 def kernel_int64_buffer(kernel: Any, source: Any) -> Any:
-    """Pack a signed span when ``kernel`` is compiled, else return a list."""
+    """Pack a signed span when `kernel` is compiled, else return a list."""
     factory = getattr(kernel, "createInt64Buffer", None)
     if is_compiled(kernel) and callable(factory):
         return factory(source)
@@ -296,7 +296,7 @@ def uint64_zeros(length: int) -> UInt64Buffer:
 
 
 def kernel_uint64_buffer(kernel: Any, source: Any) -> Any:
-    """Pack an unsigned span when ``kernel`` is compiled, else return a list."""
+    """Pack an unsigned span when `kernel` is compiled, else return a list."""
     factory = getattr(kernel, "createUInt64Buffer", None)
     if is_compiled(kernel) and callable(factory):
         return factory(source)
@@ -359,12 +359,12 @@ def float64_record(
     start: int,
     length: int,
 ) -> Float64Record:
-    """Return a bounded mutable record view into ``buffer``."""
+    """Return a bounded mutable record view into `buffer`."""
     return Float64Record(buffer, start, length)
 
 
 def kernel_float64_buffer(kernel: Any, source: Any) -> Any:
-    """Pack binary64 input once when ``kernel`` is compiled."""
+    """Pack binary64 input once when `kernel` is compiled."""
     factory = getattr(kernel, "createFloat64Buffer", None)
     if is_compiled(kernel) and callable(factory):
         return factory(source)
@@ -410,7 +410,7 @@ def prime_matrix(
     columns: int,
     entries: UInt64Buffer,
 ) -> Any:
-    """Construct a matrix over ``model``'s field from row-major residues."""
+    """Construct a matrix over `model`'s field from row-major residues."""
     return model.parent().matrix_space(rows, columns)(entries)
 
 
@@ -483,11 +483,11 @@ def _set_metadata(target: Any, name: str, value: Any) -> None:
 
 
 def native(function: Any) -> Any:
-    """Mark ``function`` as an experimental native-compilation candidate.
+    """Mark `function` as an experimental native-compilation candidate.
 
     CPython and Sage.js without a matching compiled artifact receive the
     unmodified callable. Sage.js otherwise returns the verified compiled
-    implementation while retaining the source function as ``__wrapped__``.
+    implementation while retaining the source function as `__wrapped__`.
     """
     if not callable(function):
         raise TypeError("@native expects a callable")
@@ -522,22 +522,22 @@ def native(function: Any) -> Any:
 
 
 def is_native(function: Any) -> bool:
-    """Return whether ``function`` carries the :func:`native` marker."""
+    """Return whether `function` carries the :func:`native` marker."""
     return bool(getattr(function, "__sagejs_native__", False))
 
 
 def is_compiled(function: Any) -> bool:
-    """Return whether ``function`` resolved to a compiled implementation."""
+    """Return whether `function` resolved to a compiled implementation."""
     return bool(getattr(function, "__sagejs_native_compiled__", False))
 
 
 def execution_mode(function: Any, *args: Any) -> str:
     """Return the execution tier selected for a callable and optional inputs.
 
-    The result is ``'dynamic'`` for the original Python/Sage.js function,
-    ``'javascript'`` for the portable typed-IR kernel, ``'native'`` when the
+    The result is `'dynamic'` for the original Python/Sage.js function,
+    `'javascript'` for the portable typed-IR kernel, `'native'` when the
     supplied arguments select an available machine-code backend, or
-    ``'native-capable'`` when a compiled artifact has machine code but the
+    `'native-capable'` when a compiled artifact has machine code but the
     argument-dependent backend has not been queried.
     """
     if not is_compiled(function):

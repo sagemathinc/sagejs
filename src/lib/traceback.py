@@ -122,7 +122,7 @@ def _frame_from_native_line(text):
 
 
 def extract_stack(frame=None, limit=None):
-    """Extract the current native stack as ``FrameSummary`` objects."""
+    """Extract the current native stack as `FrameSummary` objects."""
     error = runtime.reflect.construct(runtime.error, [])
     lines = _stack(error).splitlines()[1:]
     for index in range(len(lines)):

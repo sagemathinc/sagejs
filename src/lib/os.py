@@ -1,10 +1,10 @@
 """Miscellaneous operating system interfaces.
 
-Sage.js implements the most commonly used CPython ``os`` APIs through an
+Sage.js implements the most commonly used CPython `os` APIs through an
 explicit host capability.  Node.js installs that capability per evaluator,
 including a session-local current directory.  Browser and WASM builds can
-import this module and use ``os.path``; filesystem calls raise
-``NotImplementedError`` when no host capability is installed.
+import this module and use `os.path`; filesystem calls raise
+`NotImplementedError` when no host capability is installed.
 """
 
 import sagejs.runtime as runtime

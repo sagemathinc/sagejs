@@ -1,4 +1,4 @@
-"""Interpreter-side workloads matched by ``compare-native-cowasm.cjs``."""
+"""Interpreter-side workloads matched by `compare-native-cowasm.cjs`."""
 
 import os
 import sys

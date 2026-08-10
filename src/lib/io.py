@@ -1,7 +1,7 @@
-"""In-memory text and binary streams, plus the host-backed ``open``.
+"""In-memory text and binary streams, plus the host-backed `open`.
 
 This is the portable core of Python's :mod:`io` interface.  The built-in
-``open`` uses an embedding-provided filesystem capability and is re-exported
+`open` uses an embedding-provided filesystem capability and is re-exported
 here just as it is by CPython's :mod:`io` module.
 """
 

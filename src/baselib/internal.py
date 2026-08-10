@@ -159,7 +159,7 @@ def ρσ_yield_from_impl(iterable: Any) -> Any:
 
 @runtime.sequence_class
 class _PythonSequenceIterator:
-    """Adapt Python's legacy ``__getitem__`` iteration protocol to ES."""
+    """Adapt Python's legacy `__getitem__` iteration protocol to ES."""
 
     def __init__(self, sequence: Any) -> None:
         self._sequence = sequence
@@ -355,7 +355,7 @@ def ρσ_validate_class_bases(bases: Any) -> None:
 
 
 def ρσ_native_method(target_function: Any) -> Any:
-    """Adapt an ordinary ``(self, *args)`` function to a JS object method."""
+    """Adapt an ordinary `(self, *args)` function to a JS object method."""
     return runtime.native_method_adapter(target_function)
 
 
@@ -928,7 +928,7 @@ def ρσ_type_union(left: Any, right: Any) -> Any:
 
 
 def ρσ_match_pattern(subject: Any, pattern: Any) -> Any:
-    """Return structural-pattern captures, or ``None`` when it does not match.
+    """Return structural-pattern captures, or `None` when it does not match.
 
     The compiler represents patterns as small tagged lists.  Keeping the
     matching rules here gives every backend the same semantics and avoids
@@ -1452,7 +1452,7 @@ def ρσ_mixin(*classes: Any) -> None:
 
 
 def ρσ_instanceof_one(value: Any, candidate: Any) -> bool:
-    """Test one ``isinstance`` candidate without a variadic call frame."""
+    """Test one `isinstance` candidate without a variadic call frame."""
     value_type = runtime.jstype(value)
     if (
         value is None

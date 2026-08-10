@@ -1,7 +1,7 @@
 """JSON encoding and decoding with Python-compatible exact integers.
 
 The implementation is deliberately portable Python instead of a thin wrapper
-around ``JSON.parse``: JavaScript's parser rounds integers above ``2**53``,
+around `JSON.parse`: JavaScript's parser rounds integers above `2**53`,
 which is unacceptable in a computer algebra system.
 """
 

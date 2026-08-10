@@ -729,7 +729,7 @@ class EisensteinSeriesElement(sage.Element):
         return self._parent.weight()
 
     def __getitem__(self, exponent: Any) -> Any:
-        """Return the coefficient of ``q^exponent``."""
+        """Return the coefficient of `q^exponent`."""
         return self.q_expansion(
             _exact_nonnegative_integer(exponent, "coefficient exponent") + 1
         )[exponent]
@@ -1257,7 +1257,7 @@ def _gamma0_cusp_equivalence_scalar(
     right: ModularCusp,
     level: int,
 ) -> Any:
-    """Return the lower-right character scalar, or ``None``."""
+    """Return the lower-right character scalar, or `None`."""
     return _gamma0_cusp_equivalence_scalar_values(
         left.numerator(),
         left.denominator(),
@@ -2297,8 +2297,8 @@ class P1List:
         r"""Return an exact higher-weight level-lowering degeneracy matrix.
 
         Rows act on the right. Polynomial action by Merel's determinant-
-        ``index`` Heilbronn operator and reduction into the target Manin
-        quotient both happen natively over ``QQ``.
+        `index` Heilbronn operator and reduction into the target Manin
+        quotient both happen natively over `QQ`.
         """
         if not isinstance(target, P1List):
             raise TypeError("degeneracy-map target must be a P1List")
@@ -3505,7 +3505,7 @@ class ModularSymbolsSpace(sage.Parent):
         return finished + remaining
 
     def _bad_hecke_primes(self) -> list[int]:
-        """Return the prime divisors whose operators are ``U_p``."""
+        """Return the prime divisors whose operators are `U_p`."""
         return [runtime.number(pair[0]) for pair in sage.factor(self.level())]
 
     def decomposition(

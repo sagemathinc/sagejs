@@ -104,7 +104,7 @@ def isnan(x):
 
 
 def frexp(x):
-    """Return the mantissa and exponent satisfying ``x == m * 2**e``."""
+    """Return the mantissa and exponent satisfying `x == m * 2**e`."""
     x = float(x)
     if x == 0.0 or isinf(x) or isnan(x):
         return x, 0
@@ -114,7 +114,7 @@ def frexp(x):
 
 
 def ldexp(x, i):
-    """Return ``x * (2**i)`` using the platform floating-point format."""
+    """Return `x * (2**i)` using the platform floating-point format."""
     x = float(x)
     i = int(i)
     # Python integers are represented exactly with BigInt when necessary,

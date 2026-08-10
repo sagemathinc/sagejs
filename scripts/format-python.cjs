@@ -2,17 +2,13 @@
 "use strict";
 
 const {
-  existsSync,
   readFileSync,
-  readdirSync,
   writeFileSync,
 } = require("node:fs");
-const { join, relative, sep } = require("node:path");
+const { join } = require("node:path");
 const {
-  PYTHON_FORMAT_EXCLUDES,
-  PYTHON_FORMAT_ROOTS,
-  PYTHON_FORMAT_SKIP_DIRECTORIES,
   RUFF_VERSION,
+  discoverPythonFiles,
   formatPythonSource,
   ruffToml,
 } = require("../tools/python-format.cjs");
@@ -30,37 +26,7 @@ if (configured !== ruffToml()) {
   );
 }
 
-const excluded = new Set(PYTHON_FORMAT_EXCLUDES);
-const skippedDirectories = new Set(PYTHON_FORMAT_SKIP_DIRECTORIES);
-
-function repositoryPath(filename) {
-  return relative(root, filename).split(sep).join("/");
-}
-
-function discover(directory, files) {
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const filename = join(directory, entry.name);
-    if (entry.isDirectory()) {
-      if (
-        !skippedDirectories.has(entry.name) &&
-        !excluded.has(repositoryPath(filename))
-      ) {
-        discover(filename, files);
-      }
-      continue;
-    }
-    if (!entry.isFile() || !entry.name.endsWith(".py")) continue;
-    const path = repositoryPath(filename);
-    if (!excluded.has(path)) files.push([path, filename]);
-  }
-}
-
-const files = [];
-for (const directory of PYTHON_FORMAT_ROOTS) {
-  const path = join(root, directory);
-  if (existsSync(path)) discover(path, files);
-}
-files.sort(([left], [right]) => left.localeCompare(right));
+const files = discoverPythonFiles(root);
 
 const changed = [];
 for (const [path, filename] of files) {

@@ -1,6 +1,6 @@
 """A compact Python-object pickle compatibility layer for Sage.js.
 
-This module implements the public ``dump``/``dumps``/``load``/``loads`` API
+This module implements the public `dump`/`dumps`/`load`/`loads` API
 needed by pure-Python libraries.  Its wire format is Sage.js-specific and is
 not compatible with CPython's pickle opcodes.  Like CPython pickle, loading
 may import modules and invoke object reconstruction hooks, so data from an

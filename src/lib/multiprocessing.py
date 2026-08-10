@@ -1,13 +1,13 @@
 """Process-like parallelism backed by Sage.js worker threads.
 
-Sage.js provides the familiar synchronous and asynchronous ``Pool``
+Sage.js provides the familiar synchronous and asynchronous `Pool`
 interfaces. Workers are persistent isolated Sage.js evaluators in one
 operating-system process. This is well suited to CPU-bound research
 computations and avoids exposing Node.js primitives to Python code.
 
 Task functions and values cross an isolation boundary.  Module-level
 functions and self-contained top-level functions work; closures do not yet.
-The first serializer supports ``None``, booleans, strings, numbers, exact
+The first serializer supports `None`, booleans, strings, numbers, exact
 integers, and nested lists or tuples.
 """
 
@@ -179,14 +179,14 @@ def cpu_count():
 
 
 def _apply_call(func, args, kwds):
-    """Worker-side adapter for ``Pool.apply`` keyword arguments."""
+    """Worker-side adapter for `Pool.apply` keyword arguments."""
     return func(*args, **kwds)
 
 
 class Pool:
     """A persistent pool of isolated Sage.js worker evaluators.
 
-    ``processes`` defaults to :func:`cpu_count`. Results preserve input order;
+    `processes` defaults to :func:`cpu_count`. Results preserve input order;
     unordered iterators may return any completion order.
     """
 
@@ -217,7 +217,7 @@ class Pool:
             raise ValueError("Pool not running")
 
     def map(self, func, iterable, chunksize=None):
-        """Apply ``func`` to every item and return results in input order."""
+        """Apply `func` to every item and return results in input order."""
         self._check_running()
         if chunksize is not None and chunksize < 1:
             raise ValueError("Chunksize must be 1+, not " + repr(chunksize))
@@ -227,7 +227,7 @@ class Pool:
         )
 
     def apply(self, func, args=(), kwds=None):
-        """Apply ``func`` once in a worker and return its result."""
+        """Apply `func` once in a worker and return its result."""
         self._check_running()
         if kwds is None:
             kwds = {}
@@ -300,7 +300,7 @@ class Pool:
         )
 
     def starmap(self, func, iterable, chunksize=None):
-        """Apply ``func(*args)`` to each argument sequence in order."""
+        """Apply `func(*args)` to each argument sequence in order."""
         self._check_running()
         if chunksize is not None and chunksize < 1:
             raise ValueError("Chunksize must be 1+, not " + repr(chunksize))
@@ -310,7 +310,7 @@ class Pool:
     def starmap_async(
         self, func, iterable, chunksize=None, callback=None, error_callback=None
     ):
-        """Submit ``func(*args)`` calls and return a :class:`MapResult`."""
+        """Submit `func(*args)` calls and return a :class:`MapResult`."""
         if chunksize is not None and chunksize < 1:
             raise ValueError("Chunksize must be 1+, not " + repr(chunksize))
         values = [list(argument_values) for argument_values in iterable]
@@ -373,7 +373,7 @@ class Pool:
 
 
 def get_start_method(allow_none=False):
-    """Return ``'sagejs-worker'`` for the worker-thread execution model."""
+    """Return `'sagejs-worker'` for the worker-thread execution model."""
     return "sagejs-worker"
 
 

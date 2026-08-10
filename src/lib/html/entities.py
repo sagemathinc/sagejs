@@ -1,6 +1,6 @@
 """Common HTML named character references.
 
-This module provides the CPython ``html.entities`` API.  The compact table
+This module provides the CPython `html.entities` API.  The compact table
 covers the named references used most frequently by text-processing packages;
 the full WHATWG table remains an explicitly measured standard-library gap.
 """

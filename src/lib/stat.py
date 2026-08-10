@@ -1,4 +1,4 @@
-"""Helpers for interpreting POSIX-compatible ``st_mode`` values."""
+"""Helpers for interpreting POSIX-compatible `st_mode` values."""
 
 ST_MODE = 0
 ST_INO = 1

@@ -2,7 +2,7 @@
 
 Unlike Python pickle, this format contains data only: loading it never imports
 modules or executes source code.  The same v1 object graph is used by
-``multiprocessing`` worker threads and by these durable-storage helpers.
+`multiprocessing` worker threads and by these durable-storage helpers.
 Parents are serialized explicitly and shared references are preserved.
 """
 
@@ -48,7 +48,7 @@ def loads(source):
 
 
 def dump(value, file):
-    """Write ``value`` to a binary file-like object and return ``None``."""
+    """Write `value` to a binary file-like object and return `None`."""
     file.write(dumps(value))
 
 

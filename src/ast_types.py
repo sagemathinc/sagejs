@@ -179,7 +179,7 @@ class AST_SimpleStatement(AST_Statement):
 
 
 class AST_TimedStatement(AST_Statement):
-    """A Sage ``%time`` statement evaluated with host wall-clock timing."""
+    """A Sage `%time` statement evaluated with host wall-clock timing."""
 
     properties = {
         "body": "[AST_Statement] the statement whose execution is timed",
@@ -322,7 +322,7 @@ class AST_ForIn(AST_StatementWithBody):
 
 
 class AST_AsyncFor(AST_ForIn):
-    "An ``async for`` statement lowered to the generator protocol"
+    "An `async for` statement lowered to the generator protocol"
 
 
 class AST_ForJS(AST_StatementWithBody):

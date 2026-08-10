@@ -466,7 +466,7 @@ class GraphPlot:
         )
 
     def plot(self) -> Any:
-        """Return this renderer as an ordinary composable ``Graphics``."""
+        """Return this renderer as an ordinary composable `Graphics`."""
         adapter = runtime.reflect.get(
             runtime.global_object, "__sagejs_graphics_from_plotly__"
         )
@@ -868,7 +868,7 @@ class GenericGraph:
         """Return vertex coordinates, using igraph for force layouts.
 
         Authored positions on Sage's named graph families remain the default.
-        Explicit ``spring``/``fr`` and ``kamada_kawai``/``kk`` requests use
+        Explicit `spring`/`fr` and `kamada_kawai`/`kk` requests use
         the isolated native backend when present and a deterministic circular
         layout otherwise.
         """
@@ -916,7 +916,7 @@ class GenericGraph:
         angle: Any = 0,
         return_dict: bool = False,
     ) -> Any:
-        """Place ``vertices`` on a circle, matching Sage's layout helper."""
+        """Place `vertices` on a circle, matching Sage's layout helper."""
         if center is None:
             center = (0, 0)
         ordered = list(vertices)
@@ -942,7 +942,7 @@ class GenericGraph:
         last: Any = None,
         return_dict: bool = False,
     ) -> Any:
-        """Place ``vertices`` evenly on a line, matching Sage's helper."""
+        """Place `vertices` evenly on a line, matching Sage's helper."""
         if first is None:
             first = (0, 0)
         if last is None:
@@ -2359,7 +2359,7 @@ class DiGraph(GenericGraph):
 
 
 class GraphGenerators:
-    """Sage's ``graphs`` namespace of named and parametric graphs."""
+    """Sage's `graphs` namespace of named and parametric graphs."""
 
     def EmptyGraph(self, immutable: bool = False) -> Graph:
         del immutable
@@ -2871,7 +2871,7 @@ graphs = GraphGenerators()
 
 
 class DigraphGenerators:
-    """Sage's ``digraphs`` namespace."""
+    """Sage's `digraphs` namespace."""
 
     def Path(self, order: int) -> DiGraph:
         graph = DiGraph(order, name="Path digraph")

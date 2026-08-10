@@ -1,8 +1,8 @@
 """A compact, compatible implementation of Python's :mod:`logging` API.
 
 The module deliberately implements the standard handler/formatter/logger
-protocol rather than redirecting Python logging to ``console.log``.  That
-keeps capture tools such as pytest's ``caplog`` fixture deterministic.
+protocol rather than redirecting Python logging to `console.log`.  That
+keeps capture tools such as pytest's `caplog` fixture deterministic.
 """
 
 import os

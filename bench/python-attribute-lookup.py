@@ -1,6 +1,6 @@
 """Focused Python attribute/descriptor lookup benchmark.
 
-Run this unchanged under CPython and ``sagejs --python``.  The final checksum
+Run this unchanged under CPython and `sagejs --python`.  The final checksum
 keeps each lookup observable while the separate rows distinguish the common
 own-field path from Python's descriptor and method-binding semantics.
 """

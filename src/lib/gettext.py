@@ -2,7 +2,7 @@
 
 Translation catalogs used by Sage.js are already decoded mappings.  The only
 nontrivial part is evaluating the restricted C-like plural expression; the
-recursive-descent parser below intentionally does not use ``eval``.
+recursive-descent parser below intentionally does not use `eval`.
 """
 
 

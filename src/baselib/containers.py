@@ -2,7 +2,7 @@
 
 Lists remain decorated JavaScript arrays because generated Sage.js code relies
 on their native indexing and performance. Sets and dictionaries are small
-Python classes backed by the native JavaScript ``Set`` and ``Map`` types.
+Python classes backed by the native JavaScript `Set` and `Map` types.
 """
 
 from __future__ import annotations
@@ -65,7 +65,7 @@ def _call_member(value: Any, name: str, args: Any) -> Any:
 
 
 def _has_concrete_override(value: Any, name: Any) -> bool:
-    """Return whether the concrete Python class owns ``name``."""
+    """Return whether the concrete Python class owns `name`."""
     owner = runtime.native_get(value, "__class__")
     if owner is None or owner is runtime.undefined:
         owner = runtime.native_get(value, "constructor")
@@ -355,7 +355,7 @@ def _list_static_init(
     self: Any,
     iterable: Any = runtime.undefined,
 ) -> None:
-    """Unbound descriptor form used by ``list.__init__(self, values)``."""
+    """Unbound descriptor form used by `list.__init__(self, values)`."""
     self.length = 0
     if iterable is not runtime.undefined:
         runtime.reflect.apply(_list_extend, self, [iterable])
@@ -1150,11 +1150,11 @@ def _dict_normalize_key(key: Any) -> Any:
 def _dict_resolve_key(mapping: Any, key: Any) -> Any:
     """Return the stored identity for an equal Python key.
 
-    Native JavaScript ``Map`` compares objects by identity, whereas Python
-    dictionaries use ``__hash__`` followed by ``__eq__``.  Keep the fast
+    Native JavaScript `Map` compares objects by identity, whereas Python
+    dictionaries use `__hash__` followed by `__eq__`.  Keep the fast
     primitive and identity paths, then scan existing keys for an equal object
     only after an identity miss.  Besides structural tuple keys, this is
-    required for cross-type numeric equality such as ``mpf(0) == 0``.  This
+    required for cross-type numeric equality such as `mpf(0) == 0`.  This
     is intentionally a correctness-first fallback; a hash-bucket index can
     replace the scan when object-key workloads warrant it.
     """

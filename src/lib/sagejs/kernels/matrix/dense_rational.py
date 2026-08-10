@@ -1,8 +1,8 @@
 """Source-transparent structural kernels for dense rational matrices.
 
-The canonical ``RationalBuffer`` aggregate consists of parallel row-major
-``IntegerBuffer`` values.  Numerators and denominators are coprime,
-denominators are positive, and zero is always ``0/1``.  The aggregate is
+The canonical `RationalBuffer` aggregate consists of parallel row-major
+`IntegerBuffer` values.  Numerators and denominators are coprime,
+denominators are positive, and zero is always `0/1`.  The aggregate is
 owned by the mathematical matrix object; its component buffers form the
 explicit isolated-kernel ABI used below.
 """
@@ -543,8 +543,8 @@ def dense_rational_matrix_kernel_from_rref(
 ) -> uint64:
     """Construct a right-kernel spanning set from an RREF matrix.
 
-    The output is a ``columns`` by ``columns`` scratch matrix.  Its leading
-    ``nullity`` rows contain one basis vector for each free column; callers
+    The output is a `columns` by `columns` scratch matrix.  Its leading
+    `nullity` rows contain one basis vector for each free column; callers
     may row-reduce that small result when they require Sage's canonical
     echelon basis.  Keeping this bookkeeping here makes it source-visible
     typed Python instead of a private C matrix-layout algorithm.

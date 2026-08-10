@@ -1,9 +1,9 @@
 """Source-transparent packed binary64 kernels from the CoWasm corpus.
 
-The bodies deliberately spell out the algorithms.  ``float64_record`` is a
+The bodies deliberately spell out the algorithms.  `float64_record` is a
 bounded view into a flat buffer, not an n-body or matrix intrinsic.  CPython
 executes the same functions against ordinary lists; the Native Kernel borrows
-``Float64Array`` storage and lowers every indexed operation and nested loop.
+`Float64Array` storage and lowers every indexed operation and nested loop.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ def nbody_advance_energy(
     steps: uint64,
     bodies: uint64,
 ) -> float:
-    """Advance packed ``[x,y,z,vx,vy,vz,mass]`` records and return energy."""
+    """Advance packed `[x,y,z,vx,vy,vz,mass]` records and return energy."""
     for _step in range(steps):
         for left_index in range(bodies):
             left = float64_record(state, left_index * 7, 7)

@@ -1619,7 +1619,7 @@ class Graphics:
 
 
 def _graphics_from_plotly(figure: Any) -> Graphics:
-    """Convert a renderer-neutral Plotly figure to composable ``Graphics``."""
+    """Convert a renderer-neutral Plotly figure to composable `Graphics`."""
     answer = Graphics()
     data = runtime.reflect.get(figure, "data")
     if data is not runtime.undefined:

@@ -484,7 +484,6 @@ function yamlString(value: string): string {
 function docstringToMarkdown(doc: string): string {
   return doc
     .replace(/:meth:`([^`]+)`/g, "`$1`")
-    .replace(/``([^`\n]+)``/g, "`$1`")
     .replace(/^([A-Z][A-Z ]+):{1,2}$/gm, (_match, heading: string) =>
       `### ${heading.charAt(0)}${heading.slice(1).toLowerCase()}`)
     .replace(/([^:\n])::$/gm, "$1:");
@@ -579,7 +578,7 @@ export function renderDocumentationMarkdown(
 
 export function documentationMarkdownIssues(doc: string): string[] {
   const issues: string[] = [];
-  if (/(^|[^`])``([^`]|$)/m.test(doc)) {
+  if (/(?<!`)``(?!`)/.test(doc)) {
     issues.push("reStructuredText doubled-backtick literal");
   }
   if (/^\s*(?:EXAMPLES|INPUT|OUTPUT|IMPLEMENTATION)::?\s*$/m.test(doc)) {

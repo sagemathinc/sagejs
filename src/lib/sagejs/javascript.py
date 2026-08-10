@@ -3,7 +3,7 @@ r"""Explicit access to JavaScript and project-local Node modules.
 This is the public interoperability boundary for trusted Node.js hosts.  It
 does not expose Sage.js's internal loader: package lookup begins in the current
 working directory, or in an explicitly supplied directory, and follows Node's
-normal ``node_modules`` rules.
+normal `node_modules` rules.
 
 CommonJS and synchronously-requireable ESM packages can be loaded directly:
 
@@ -15,7 +15,7 @@ CommonJS and synchronously-requireable ESM packages can be loaded directly:
 ```
 
 Locally installed packages use the same API.  For example, after
-``pnpm add express`` in the current project:
+`pnpm add express` in the current project:
 
 ```python
 from sagejs.javascript import require
@@ -25,7 +25,7 @@ app = express()
 ```
 
 The package name remains a string so scoped packages, hyphenated names, and
-subpath exports are unambiguous.  Ordinary ``import name`` continues to mean
+subpath exports are unambiguous.  Ordinary `import name` continues to mean
 a Python package and never silently falls back to npm.
 """
 
@@ -67,9 +67,9 @@ def is_available() -> bool:
 def require(specifier: str, directory: str | None = None) -> Any:
     """Load a project-local CommonJS or synchronously loadable ESM module.
 
-    ``directory`` defaults to the process's current working directory.  A
+    `directory` defaults to the process's current working directory.  A
     relative directory is interpreted relative to that working directory.
-    Node built-ins use their standard ``node:`` names.
+    Node built-ins use their standard `node:` names.
 
     ```sage
         sage: from sagejs.javascript import require

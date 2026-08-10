@@ -1,7 +1,7 @@
 """Declared-FLINT crossover kernels for packed dense prime matrices.
 
 These tiny typed functions share the exact public buffers used by
-``dense_prime``.  Their bodies name explicit generated FFI declarations, so
+`dense_prime`.  Their bodies name explicit generated FFI declarations, so
 the compiler emits FLINT calls inside the isolated core without an N-API or
 JavaScript callback.  The ordinary path calls the generated safe wrappers.
 """

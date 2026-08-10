@@ -26,7 +26,7 @@ _ntuple_terminal_size = namedtuple("terminal_size", "columns lines")
 
 
 def get_terminal_size(fallback=(80, 24)):
-    """Return the terminal dimensions, using ``fallback`` when unavailable.
+    """Return the terminal dimensions, using `fallback` when unavailable.
 
     Kernel and SEA hosts do not consistently expose a controlling TTY to the
     Python runtime.  Falling back is CPython's documented behavior and keeps

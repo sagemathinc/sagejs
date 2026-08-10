@@ -156,7 +156,7 @@ class KodairaSymbol:
 
 
 class EllipticCurveLocalData:
-    """Exact output of Tate's algorithm for an elliptic curve over ``QQ``."""
+    """Exact output of Tate's algorithm for an elliptic curve over `QQ`."""
 
     def __init__(
         self,
@@ -260,7 +260,7 @@ def _ec_tate_large_prime(
     values: list[Any],
     prime: int,
 ) -> tuple[int, int, int, Any]:
-    """Tate's algorithm for a minimal integral model at ``p > 3``."""
+    """Tate's algorithm for a minimal integral model at `p > 3`."""
     invariants = _ec_invariants(values)
     c4 = invariants["c4"]
     c6 = invariants["c6"]
@@ -339,9 +339,9 @@ def _ec_tate_small_prime(
 ) -> tuple[int, int, int, Any]:
     """The long form of Tate's algorithm at 2 and 3.
 
-    The branch structure follows PARI's GPL-licensed ``localred_23``;
+    The branch structure follows PARI's GPL-licensed `localred_23`;
     arithmetic is expressed here using Sage.js exact integers and immutable
-    coefficient lists instead of PARI's stack-based ``GEN`` objects.
+    coefficient lists instead of PARI's stack-based `GEN` objects.
     """
     values = list(original_values)
     invariants = _ec_invariants(values)

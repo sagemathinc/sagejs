@@ -1,7 +1,7 @@
 """Source-transparent dense linear algebra over small prime fields.
 
 The public ABI is deliberately independent of Node and FLINT: a compiler-owned
-matrix value containing caller-owned row-major ``UInt64Buffer`` storage,
+matrix value containing caller-owned row-major `UInt64Buffer` storage,
 explicit dimensions, and an explicit prime. Every public function validates
 the complete storage shape before indexing it. The same ordinary Python bodies
 are the dynamic fallback and the input to the host-isolated native compiler.
@@ -22,7 +22,7 @@ from sagejs.native import (
 
 
 class DensePrimeMatrix(NativeRecord):
-    """Borrowed packed storage and shape for a matrix over ``GF(modulus)``."""
+    """Borrowed packed storage and shape for a matrix over `GF(modulus)`."""
 
     entries: UInt64Buffer
     rows: uint64
@@ -312,10 +312,10 @@ def dense_prime_field_matrix_random_fill(
     modulus: PrimeFieldModulus,
     initial_state: uint64,
 ) -> uint64:
-    """Fill ``target`` uniformly using Sage.js's deterministic 32-bit LCG.
+    """Fill `target` uniformly using Sage.js's deterministic 32-bit LCG.
 
     Rejection sampling avoids reducing a non-divisible 32-bit interval
-    directly modulo ``modulus``.  The returned state lets the dynamic host
+    directly modulo `modulus`.  The returned state lets the dynamic host
     preserve the one shared reproducible random stream without entering the
     host once per matrix entry.
     """
@@ -504,7 +504,7 @@ def dense_prime_field_matrix_rank(
     source: DensePrimeMatrix,
     workspace: UInt64Buffer,
 ) -> uint64:
-    """Return rank without mutating ``source``; ``workspace`` is scratch."""
+    """Return rank without mutating `source`; `workspace` is scratch."""
     rows = source.rows
     columns = source.columns
     entries = source.entries
@@ -530,7 +530,7 @@ def dense_prime_field_matrix_rref(
     source: DensePrimeMatrix,
     output: UInt64Buffer,
 ) -> uint64:
-    """Write canonical RREF to ``output`` and return its rank."""
+    """Write canonical RREF to `output` and return its rank."""
     rows = source.rows
     columns = source.columns
     entries = source.entries
@@ -563,9 +563,9 @@ def dense_prime_field_matrix_right_kernel(
 ) -> uint64:
     """Write a canonical RREF row basis of the right kernel.
 
-    ``workspace`` has ``rows * columns`` entries. ``output`` has
-    ``columns * columns`` entries, of which the returned nullity times
-    ``columns`` entries are significant.
+    `workspace` has `rows * columns` entries. `output` has
+    `columns * columns` entries, of which the returned nullity times
+    `columns` entries are significant.
     """
     rows = source.rows
     columns = source.columns
@@ -619,7 +619,7 @@ def dense_prime_field_matrix_solve(
     workspace: UInt64Buffer,
     output: UInt64Buffer,
 ) -> uint64:
-    """Solve ``left * output == right``; return zero when singular."""
+    """Solve `left * output == right`; return zero when singular."""
     size = left.rows
     right_columns = right.columns
     modulus = left.modulus

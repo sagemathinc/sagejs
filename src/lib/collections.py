@@ -770,7 +770,7 @@ class ChainMap:
 
 
 class UserDict:
-    """Dictionary wrapper compatible with ``collections.UserDict``."""
+    """Dictionary wrapper compatible with `collections.UserDict`."""
 
     def __init__(self, initialdata: Any = None, **keywords: Any) -> None:
         self.data = {}
@@ -820,7 +820,7 @@ class UserDict:
 
 
 class UserList:
-    """List wrapper compatible with ``collections.UserList``."""
+    """List wrapper compatible with `collections.UserList`."""
 
     def __init__(self, initiallist: Any = None) -> None:
         self.data = [] if initiallist is None else list(initiallist)
@@ -848,7 +848,7 @@ class UserList:
 
 
 class UserString:
-    """String wrapper compatible with ``collections.UserString``."""
+    """String wrapper compatible with `collections.UserString`."""
 
     def __init__(self, sequence: Any) -> None:
         self.data = str(sequence)

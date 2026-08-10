@@ -16,7 +16,7 @@ def capwords(value, sep=None):
 
 
 class Template:
-    """Perform ``$identifier`` and ``${identifier}`` substitutions."""
+    """Perform `$identifier` and `${identifier}` substitutions."""
 
     delimiter = "$"
     idpattern = r"(?a:[_a-z][_a-z0-9]*)"

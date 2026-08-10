@@ -2,7 +2,7 @@
 
 The implementation intentionally concentrates on the data-model surface used
 by libraries: member construction, aliases, iteration, lookup by value or
-name, identity, and the standard ``name``/``value`` attributes.  Bitwise Flag
+name, identity, and the standard `name`/`value` attributes.  Bitwise Flag
 combination remains a later compatibility layer.
 """
 

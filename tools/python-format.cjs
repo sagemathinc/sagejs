@@ -1,5 +1,7 @@
 "use strict";
 
+const { existsSync, readdirSync } = require("node:fs");
+const { join, relative, sep } = require("node:path");
 const {
   PositionEncoding,
   Workspace,
@@ -70,6 +72,41 @@ function formatPythonSource(source) {
   return pythonFormatter().format(source);
 }
 
+function discoverPythonFiles(root) {
+  const excluded = new Set(PYTHON_FORMAT_EXCLUDES);
+  const skippedDirectories = new Set(PYTHON_FORMAT_SKIP_DIRECTORIES);
+
+  function repositoryPath(filename) {
+    return relative(root, filename).split(sep).join("/");
+  }
+
+  function discover(directory, files) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const filename = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (
+          !skippedDirectories.has(entry.name) &&
+          !excluded.has(repositoryPath(filename))
+        ) {
+          discover(filename, files);
+        }
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith(".py")) continue;
+      const path = repositoryPath(filename);
+      if (!excluded.has(path)) files.push([path, filename]);
+    }
+  }
+
+  const files = [];
+  for (const directory of PYTHON_FORMAT_ROOTS) {
+    const path = join(root, directory);
+    if (existsSync(path)) discover(path, files);
+  }
+  files.sort(([left], [right]) => left.localeCompare(right));
+  return files;
+}
+
 function ruffToml() {
   const excluded = PYTHON_FORMAT_EXCLUDES
     .map((filename) => `  "${filename}",`)
@@ -97,6 +134,7 @@ module.exports = {
   PYTHON_FORMAT_ROOTS,
   PYTHON_FORMAT_SKIP_DIRECTORIES,
   RUFF_VERSION,
+  discoverPythonFiles,
   formatPythonSource,
   ruffToml,
 };

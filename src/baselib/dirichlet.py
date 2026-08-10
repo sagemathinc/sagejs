@@ -666,7 +666,7 @@ class DirichletCharacter(sage.Element):
         cache: bool = True,
         **opts: Any,
     ) -> Any:
-        """Return the exact generalized Bernoulli number ``B_(k,chi)``."""
+        """Return the exact generalized Bernoulli number `B_(k,chi)`."""
         index = runtime.normalize_integer(k)
         if (
             runtime.jstype(index) != "number"

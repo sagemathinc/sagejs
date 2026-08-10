@@ -40,7 +40,7 @@ class _PackedRationalStorage:
 
 
 def _dense_integer_kernel_module() -> Any:
-    """Load source-transparent dense ``ZZ`` structural kernels lazily."""
+    """Load source-transparent dense `ZZ` structural kernels lazily."""
     global _dense_integer_kernel_module_cache
     if _dense_integer_kernel_module_cache is runtime.undefined:
         _dense_integer_kernel_module_cache = __import__(
@@ -61,7 +61,7 @@ def _dense_integer_flint_module() -> Any:
 
 
 def _dense_rational_kernel_module() -> Any:
-    """Load source-transparent dense ``QQ`` structural kernels lazily."""
+    """Load source-transparent dense `QQ` structural kernels lazily."""
     global _dense_rational_kernel_module_cache
     if _dense_rational_kernel_module_cache is runtime.undefined:
         _dense_rational_kernel_module_cache = __import__(
@@ -82,7 +82,7 @@ def _dense_rational_flint_module() -> Any:
 
 
 def _dense_prime_kernel_module() -> Any:
-    """Load the source-transparent dense ``GF(p)`` kernel lazily."""
+    """Load the source-transparent dense `GF(p)` kernel lazily."""
     # ``matrix.py`` is part of the bootstrap baselib, which is evaluated
     # before public library modules.  Calling Python's import protocol here
     # delays that dependency without exposing a JavaScript loader to this
@@ -492,7 +492,7 @@ def _prime_residue_values(
     base: sage.Parent,
     values: list[Any],
 ) -> Any:
-    """Coerce values once into canonical caller-owned ``uint64`` storage."""
+    """Coerce values once into canonical caller-owned `uint64` storage."""
     modulus = int(_untyped(base).characteristic())
     packed = runtime.uint64_residue_buffer(values, modulus)
     if packed is not runtime.undefined:
@@ -888,7 +888,7 @@ class MatrixSpaceParent(sage.Parent):
         return Matrix(self, native)
 
     def _from_uint64_residues(self, entries: Any) -> Matrix:
-        """Construct ``GF(p)`` storage from canonical row-major residues."""
+        """Construct `GF(p)` storage from canonical row-major residues."""
         if not _is_packed_dense_prime_base(self._base):
             raise TypeError("uint64 residues require a prime field")
         if len(entries) != self._rows * self._cols:
@@ -922,7 +922,7 @@ class MatrixSpaceParent(sage.Parent):
         return self._from_canonical_integer_entries(packed)
 
     def _from_integer_values(self, entries: Any) -> Matrix:
-        """Coerce and pack row-major entries for a dense ``ZZ`` matrix."""
+        """Coerce and pack row-major entries for a dense `ZZ` matrix."""
         if self._base is not sage.ZZ:
             raise TypeError("integer storage requires ZZ")
         if len(entries) != self._rows * self._cols:
@@ -962,7 +962,7 @@ class MatrixSpaceParent(sage.Parent):
         return self._from_canonical_rational_entries(buffers[0], buffers[1])
 
     def _from_rational_values(self, entries: Any) -> Matrix:
-        """Coerce and pack row-major entries for a dense ``QQ`` matrix."""
+        """Coerce and pack row-major entries for a dense `QQ` matrix."""
         if self._base is not sage.QQ:
             raise TypeError("rational storage requires QQ")
         if len(entries) != self._rows * self._cols:
@@ -1652,7 +1652,7 @@ class Matrix(sage.Element):
     def _native(self) -> Any:
         """Return a legacy handle only for matrix representations that own it.
 
-        Packed ``GF(p)``, ``ZZ``, and ``QQ`` matrices deliberately have no
+        Packed `GF(p)`, `ZZ`, and `QQ` matrices deliberately have no
         conversion escape hatch here. Tests that compare with the former
         N-API implementation construct a separate oracle explicitly;
         production code cannot accidentally make a host object canonical.
@@ -1747,7 +1747,7 @@ class Matrix(sage.Element):
         rows: int,
         columns: int,
     ) -> Matrix:
-        """Wrap a native matrix whose dimensions differ from ``self``."""
+        """Wrap a native matrix whose dimensions differ from `self`."""
         return Matrix(
             self._parent.matrix_space(rows, columns),
             native_value,

@@ -2,7 +2,7 @@
 
 The implementation is deliberately written in Python.  Integer formats are
 handled with exact arithmetic, which keeps the module portable and avoids a
-round trip through JavaScript ``Number`` for 64-bit values.
+round trip through JavaScript `Number` for 64-bit values.
 """
 
 

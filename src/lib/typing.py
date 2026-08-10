@@ -3,8 +3,8 @@
 Sage.js erases most annotations, as CPython does unless an application asks
 for them explicitly.  The objects below preserve the runtime behavior that
 packages commonly depend on: subscription, type variables, identity
-decorators, ``TYPE_CHECKING``, and the marker bases used by ``Generic``,
-``Protocol``, ``NamedTuple``, and ``TypedDict``.
+decorators, `TYPE_CHECKING`, and the marker bases used by `Generic`,
+`Protocol`, `NamedTuple`, and `TypedDict`.
 """
 
 TYPE_CHECKING = False

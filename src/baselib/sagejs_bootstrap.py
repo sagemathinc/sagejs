@@ -2,7 +2,7 @@
 
 This is the sole top-level baselib module which is intentionally not strict
 mathematical Python. The aliases break the compiler's bootstrap import cycle;
-the adapter below captures JavaScript's dynamic ``this`` value, which Python
+the adapter below captures JavaScript's dynamic `this` value, which Python
 has no source-level spelling for.
 """
 
@@ -66,7 +66,7 @@ def ρσ_native_method_adapter(target_function):
 
 
 def ρσ_unbound_method_adapter(target_function):
-    """Expose a JavaScript-receiver method as ``method(self, *args)``."""
+    """Expose a JavaScript-receiver method as `method(self, *args)`."""
     return r"""%js (() => {
         if (target_function.__sagejs_unbound_adapter__) {
             return target_function.__sagejs_unbound_adapter__;
@@ -557,7 +557,7 @@ def ρσ_integer_buffer_used_word_capacity(source):
 
 
 def ρσ_uint64_residue_buffer(source, modulus):
-    """Pack primitive exact integers modulo ``modulus`` when possible."""
+    """Pack primitive exact integers modulo `modulus` when possible."""
     return r"""%js (() => {
         const prime = BigInt(modulus);
         if (prime <= 0n || prime > 0xffffffffffffffffn) {

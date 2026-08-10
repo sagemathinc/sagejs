@@ -1,4 +1,4 @@
-"""Shell-style pathname expansion with recursive ``**`` support."""
+"""Shell-style pathname expansion with recursive `**` support."""
 
 import os
 import fnmatch

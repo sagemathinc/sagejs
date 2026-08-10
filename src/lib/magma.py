@@ -1,7 +1,7 @@
 """Small compatibility runtime for the experimental Magma frontend.
 
 The parser preserves Magma's global intrinsic-call programming model.  Each
-``MagmaIntrinsic`` contains independently registered implementations selected
+`MagmaIntrinsic` contains independently registered implementations selected
 from the complete runtime argument signature.  The first compatibility
 methods mostly delegate to Sage's existing generic operations; the registry
 is deliberately present now so future Magma categories do not have to be

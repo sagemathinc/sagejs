@@ -509,7 +509,7 @@ class EllipticCurvePoint(sage.Element):
         """Multiply using Jacobian coordinates and one final inversion.
 
         A general Weierstrass model in characteristic different from two and
-        three is moved to ``Y^2 = X^3 + A*X + B``.  The loop keeps the
+        three is moved to `Y^2 = X^3 + A*X + B`.  The loop keeps the
         accumulator in Jacobian coordinates and uses mixed additions by the
         fixed affine input point.  Consequently a scalar multiplication costs
         one field inversion instead of one inversion per group operation.

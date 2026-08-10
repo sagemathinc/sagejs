@@ -41,7 +41,7 @@ _TOKEN = re.compile(
 
 
 def generate_tokens(readline):
-    """Yield the five-field token tuples accepted by ``inspect.BlockFinder``."""
+    """Yield the five-field token tuples accepted by `inspect.BlockFinder`."""
     lineno = 0
     indent_stack = [0]
     while True:

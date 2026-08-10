@@ -18,6 +18,9 @@
   `pnpm test:baselib:strict` at zero errors.
 - Format first-party Python with `pnpm format:python`; the repository pins
   stable Ruff formatting to Python 3.11 syntax and checks it automatically.
+- Write Python docstrings as Markdown: use single backticks for inline code and
+  triple backticks for fenced blocks. The formatter rejects reStructuredText
+  doubled-backtick literals.
 - Use `sagejs.runtime` for explicit low-level boundaries; do not add verbatim
   JavaScript or `# globals` declarations to strict mathematical modules.
 - Treat native Windows x64 as a first-class target. New native dependencies

@@ -127,7 +127,7 @@ def native_get(value, property_name):
 def uint64_buffer(source):
     """Return owned packed unsigned-64-bit storage.
 
-    ``source`` may be a nonnegative length or an iterable of exact unsigned
+    `source` may be a nonnegative length or an iterable of exact unsigned
     integers.  This is a representation primitive: mathematical modules use
     it instead of naming a JavaScript typed-array constructor directly.
     """
@@ -165,7 +165,7 @@ def rational_buffers_from_packed_bytes(source, length):
 
 
 def uint64_buffer_prefix(source, length):
-    """Copy the first ``length`` entries into owned unsigned-64-bit storage.
+    """Copy the first `length` entries into owned unsigned-64-bit storage.
 
     This representation primitive keeps packed result truncation out of the
     mathematical host language.  It validates the requested prefix before

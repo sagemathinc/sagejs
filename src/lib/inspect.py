@@ -2,7 +2,7 @@
 
 The compiler records argument names, defaults, varargs, keyword-only names,
 and annotations on every generated function.  This module exposes that data
-through the familiar :mod:`inspect` ``Signature`` API used by decorators and
+through the familiar :mod:`inspect` `Signature` API used by decorators and
 pure-Python frameworks.
 """
 
@@ -352,9 +352,9 @@ def get_annotations(obj, *, globals=None, locals=None, eval_str=False):
 
 
 def unwrap(func, *, stop=None):
-    """Follow ``__wrapped__`` links and return the innermost callable.
+    """Follow `__wrapped__` links and return the innermost callable.
 
-    ``stop`` has the same meaning as in CPython: it is tested before each
+    `stop` has the same meaning as in CPython: it is tested before each
     link is followed. Wrapper cycles are rejected instead of looping.
     """
     seen = set()

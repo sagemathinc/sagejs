@@ -1,11 +1,11 @@
 """Run mpmath's upstream test functions with machine-readable timings.
 
 The default is the dependency-light compatibility slice used by the regular
-benchmark.  ``SAGEJS_MPMATH_FULL_SUITE=1`` selects every ``test_*.py`` module
+benchmark.  `SAGEJS_MPMATH_FULL_SUITE=1` selects every `test_*.py` module
 shipped in mpmath 1.3.0.  The JavaScript driver discovers the tests passing on
 every runtime, then sums timings for that identical successful set.  Every run
 still executes the entire selected corpus so upstream ordering and shared
-module state stay identical across runtimes.  ``SAGEJS_MPMATH_SUITE_TESTS``
+module state stay identical across runtimes.  `SAGEJS_MPMATH_SUITE_TESTS`
 remains available for focused diagnosis.
 """
 

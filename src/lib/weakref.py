@@ -2,7 +2,7 @@
 
 V8 controls collection scheduling, so :func:`gc.collect` cannot promise the
 synchronous finalization timing provided by CPython's reference counting.
-The weak references themselves and explicit ``finalize`` operations retain
+The weak references themselves and explicit `finalize` operations retain
 their normal Python behavior.
 """
 
@@ -89,7 +89,7 @@ class WeakKeyDictionary(dict):
 
 
 class WeakValueDictionary(dict):
-    """Mapping-compatible weak-value surface; see ``WeakKeyDictionary``."""
+    """Mapping-compatible weak-value surface; see `WeakKeyDictionary`."""
 
 
 class finalize:

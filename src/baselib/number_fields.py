@@ -605,7 +605,7 @@ def _galois_group_data(
 
     Cubics use the discriminant-square criterion.  Quartics use the cubic
     resolvent and the Kappe--Warren square tests, so the cyclic and dihedral
-    cases are distinguished exactly over ``QQ``.
+    cases are distinguished exactly over `QQ`.
     """
     degree = len(coefficients) - 1
     if degree == 1:
@@ -903,7 +903,7 @@ class NumberFieldPolynomialQuotient:
 
 @runtime.lightweight_math_class
 class NumberFieldElement(sage.Element):
-    """An exact element of a simple number field over ``QQ``."""
+    """An exact element of a simple number field over `QQ`."""
 
     def __init__(
         self,
@@ -1580,7 +1580,7 @@ class NumberFieldOrder(sage.Parent):
 
 @runtime.callable_instance_class
 class NumberFieldParent(sage.Parent):
-    """A simple exact number field represented as ``QQ[a]/(f)``."""
+    """A simple exact number field represented as `QQ[a]/(f)`."""
 
     def __init__(self, polynomial: Any, name: str) -> None:
         coefficients = [sage.QQ(value) for value in polynomial.coefficients()]
@@ -1780,12 +1780,12 @@ class NumberFieldParent(sage.Parent):
         return self.maximal_order().discriminant()
 
     def _quadratic_backend(self) -> Any:
-        """Return an equivalent ``QuadraticField`` for degree-two fields.
+        """Return an equivalent `QuadraticField` for degree-two fields.
 
-        If ``a`` satisfies ``a^2 + b*a + c``, its polynomial
-        discriminant is ``delta = b^2 - 4*c``.  Writing
-        ``delta = numerator/denominator`` in lowest terms gives the
-        equivalent integral radicand ``numerator*denominator``.
+        If `a` satisfies `a^2 + b*a + c`, its polynomial
+        discriminant is `delta = b^2 - 4*c`.  Writing
+        `delta = numerator/denominator` in lowest terms gives the
+        equivalent integral radicand `numerator*denominator`.
         """
         if self.degree() != 2:
             raise NotImplementedError(
@@ -2191,7 +2191,7 @@ def _quadratic_squarefree_data(
 
 @runtime.lightweight_math_class
 class GaussianInteger(sage.Element):
-    """An exact element ``r + s*a`` of an imaginary quadratic field."""
+    """An exact element `r + s*a` of an imaginary quadratic field."""
 
     def __init__(
         self,

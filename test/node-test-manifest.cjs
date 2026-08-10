@@ -12,6 +12,7 @@ const unit = [
   "test/lint-authoritative.cjs",
   "test/baselib-boundaries.cjs",
   "test/documentation.cjs",
+  "test/python-docstring-markdown.cjs",
   "test/magma.cjs",
   "test/foreign-languages.cjs",
   "test/python-syntax-frontend.cjs",

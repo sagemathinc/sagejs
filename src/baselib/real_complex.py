@@ -577,7 +577,7 @@ def Ei(value: Any) -> ComplexNumberElement:
 
 
 def Li(value: Any) -> float:
-    """Numerically evaluate the logarithmic integral ``li(value)``."""
+    """Numerically evaluate the logarithmic integral `li(value)`."""
     real_value = float(value)
     if real_value <= 0:
         raise ValueError("Li() currently requires a positive real argument")
@@ -640,7 +640,7 @@ def _python_complex_parts(
 
 @runtime.lightweight_math_class
 class PythonComplex:
-    """The ordinary Python double-precision ``complex`` builtin."""
+    """The ordinary Python double-precision `complex` builtin."""
 
     from __python__ import no_bound_methods  # type: ignore
 
@@ -748,7 +748,7 @@ class PythonComplex:
         Integer powers use exponentiation by squaring.  Besides avoiding
         branch-cut roundoff for the overwhelmingly common case, this also
         handles negative integer powers without ever handing a PythonComplex
-        object to JavaScript's native ``**`` operator.
+        object to JavaScript's native `**` operator.
         """
         if runtime.is_exact_integer(exponent):
             negative = exponent < 0

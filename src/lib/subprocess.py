@@ -1,7 +1,7 @@
 """Python subprocess API backed by a cross-platform Node host capability.
 
 The first backend executes eagerly and buffers output, while preserving the
-public ``Popen``/``run`` contracts used by deterministic research scripts.
+public `Popen`/`run` contracts used by deterministic research scripts.
 """
 
 import os

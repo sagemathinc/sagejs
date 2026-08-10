@@ -954,7 +954,7 @@ def _tuple_append(self: Any, _value: Any) -> None:
 
 @runtime.native_method
 def _tuple_slice(self: Any, *slice_args: Any) -> Any:
-    """Return a tuple when optimized subscripting delegates to JS ``slice``."""
+    """Return a tuple when optimized subscripting delegates to JS `slice`."""
     values = runtime.reflect.apply(runtime.array.prototype.slice, self, slice_args)
     return math_tuple(values)
 
@@ -1047,7 +1047,7 @@ def math_tuple(values: list[Any]) -> Any:
 def _install_type_tuple_metadata() -> None:
     """Upgrade bootstrap type metadata to ordinary Python tuples.
 
-    ``builtins`` must create ``type.__bases__`` and ``type.__mro__`` before
+    `builtins` must create `type.__bases__` and `type.__mro__` before
     the tuple runtime is initialized.  Once this module has installed tuple
     behavior, replace those bootstrap arrays with canonical tuples.
     """

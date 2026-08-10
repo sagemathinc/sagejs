@@ -401,7 +401,7 @@ def parse(
 
     This intentionally does not promise CPython compiler nodes.  It supplies
     the statement boundaries consumed by traceback and test-reporting tools.
-    Assertion rewriting must use ``--assert=plain`` in this compatibility
+    Assertion rewriting must use `--assert=plain` in this compatibility
     phase.
     """
     del filename, type_comments, feature_version, optimize

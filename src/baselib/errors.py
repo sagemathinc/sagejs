@@ -81,7 +81,7 @@ class Exception(BaseException):
 class BaseExceptionGroup(BaseException):
     """A group of exceptions, compatible with Python 3.11's core surface.
 
-    Sage.js does not yet implement ``except*`` lowering, but ordinary Python
+    Sage.js does not yet implement `except*` lowering, but ordinary Python
     libraries use the group classes for annotations and explicit inspection.
     Keeping the standard constructor and attributes makes those uses work
     without pretending that exception-group control flow is complete.

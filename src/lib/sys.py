@@ -116,7 +116,7 @@ def exc_info():
     than CPython frame objects.  The third tuple entry is therefore an empty
     traceback sequence: consumers can format the value and native stack,
     while frame-oriented tools see no invented Python frames instead of
-    accidentally iterating a host ``Error`` object.
+    accidentally iterating a host `Error` object.
     """
     error = runtime.reflect.get(runtime.global_object, "__sagejs_last_exception__")
     if error is runtime.undefined or error is None:

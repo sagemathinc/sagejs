@@ -1,7 +1,7 @@
 """Calendar utilities for the proleptic Gregorian calendar.
 
 This compact implementation follows the public contracts of Python's
-``calendar`` module that pure-Python date libraries commonly depend on.  Day
+`calendar` module that pure-Python date libraries commonly depend on.  Day
 numbers use Monday as zero, matching :meth:`datetime.date.weekday`.
 """
 
@@ -62,7 +62,7 @@ def isleap(year):
 
 
 def leapdays(year1, year2):
-    """Return the number of leap years in ``range(year1, year2)``."""
+    """Return the number of leap years in `range(year1, year2)`."""
     year1 -= 1
     year2 -= 1
     return (
@@ -96,7 +96,7 @@ def weekday(year, month, day):
 
 
 def monthrange(year, month):
-    """Return ``(first_weekday, number_of_days)`` for a month."""
+    """Return `(first_weekday, number_of_days)` for a month."""
     if month < 1 or month > 12:
         raise IllegalMonthError(month)
     days = _month_lengths[month]

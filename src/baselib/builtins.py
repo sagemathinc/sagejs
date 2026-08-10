@@ -26,7 +26,7 @@ def _builtins_default_build_class(
     """Marker used when class statements use Sage.js's native lowering.
 
     The compiler already lowers ordinary classes directly.  Replacing
-    ``builtins.__build_class__`` switches class statements to the public
+    `builtins.__build_class__` switches class statements to the public
     Python hook instead.
     """
     return runtime.undefined
@@ -126,7 +126,7 @@ def _builtins_as_any(value: Any) -> Any:
 def cached_function(
     func: Any,
 ) -> Any:
-    """Cache calls to ``func`` by their positional and keyword arguments.
+    """Cache calls to `func` by their positional and keyword arguments.
 
     This intentionally uses equality comparisons instead of JavaScript object
     identity.  Sage functions commonly receive freshly constructed exact
@@ -407,7 +407,7 @@ def ρσ_call_set_names(
     names: list[Any],
     values: list[Any],
 ) -> None:
-    """Register descriptors and call ``__set_name__`` from a namespace."""
+    """Register descriptors and call `__set_name__` from a namespace."""
     global _builtins_descriptor_epoch
     # Class construction first writes its namespace to the native prototype
     # and constructor, then calls this finalizer.  Earlier class-body/default
@@ -505,7 +505,7 @@ def _builtins_exact_integer_primitive(value: Any) -> _Bool:
 
 
 def _builtins_is_boxed_float(value: Any) -> _Bool:
-    """Return whether ``value`` is Sage.js's integral-float wrapper."""
+    """Return whether `value` is Sage.js's integral-float wrapper."""
     return (
         runtime.strict_equal(runtime.jstype(value), "object")
         and value is not None
@@ -613,7 +613,7 @@ NotImplemented = NotImplementedType()
 
 
 class _NoneType:
-    """Runtime type object for JavaScript's null-backed Python ``None``."""
+    """Runtime type object for JavaScript's null-backed Python `None`."""
 
     pass
 
@@ -1411,7 +1411,7 @@ def ρσ_operator_idiv(left: Any, right: Any) -> Any:
 
 
 def ρσ_operator_idiv_python(left: Any, right: Any) -> Any:
-    """Implement Python 3 ``/=`` independently of Sage rational division."""
+    """Implement Python 3 `/=` independently of Sage rational division."""
     return _builtins_inplace(left, right, "__itruediv__", ρσ_operator_truediv)
 
 
@@ -2427,7 +2427,7 @@ def _builtins_namespace_dict(value: Any) -> Any:
 
 
 def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
-    """Return the sorted Python-facing attributes available on ``item``."""
+    """Return the sorted Python-facing attributes available on `item`."""
     if item is runtime.undefined:
         item = runtime.global_object
     elif _builtins_member_is_function(item, "__dir__"):
@@ -2492,8 +2492,8 @@ def ρσ_dir(item: Any = runtime.undefined) -> list[_Str]:
 def ρσ_vars(item: Any = _BUILTINS_MISSING) -> Any:
     """Return an object's writable Python namespace.
 
-    The compiler emits no-argument ``vars()`` directly from the current
-    lexical scope.  This runtime path implements ``vars(object)`` and remains
+    The compiler emits no-argument `vars()` directly from the current
+    lexical scope.  This runtime path implements `vars(object)` and remains
     a useful fallback for dynamically compiled code.
     """
     if item is _BUILTINS_MISSING:
@@ -2515,7 +2515,7 @@ def ρσ_vars(item: Any = _BUILTINS_MISSING) -> Any:
 
 
 def ρσ_resolve_callable(value: Any) -> Any:
-    """Return a host function or an object's bound ``__call__`` method."""
+    """Return a host function or an object's bound `__call__` method."""
     if runtime.strict_equal(runtime.jstype(value), "function"):
         return value
     return ρσ_getattr(value, "__call__")
@@ -3345,7 +3345,7 @@ def ρσ_finalize_namedtuple_class(
     cls: Any,
     field_names: Any,
 ) -> Any:
-    """Complete a class-syntax ``typing.NamedTuple`` declaration.
+    """Complete a class-syntax `typing.NamedTuple` declaration.
 
     Annotations are normally erased by the compiler.  For a NamedTuple they
     also define the immutable tuple layout, so the lowerer records just those
@@ -3466,7 +3466,7 @@ def _builtins_native_map(value: Any) -> _Bool:
 
 @runtime.sequence_class
 class _BuiltinsSequenceIterator:
-    """Iterator for objects implementing only Python's ``__getitem__``."""
+    """Iterator for objects implementing only Python's `__getitem__`."""
 
     def __init__(self, sequence: Any) -> None:
         self._sequence = sequence
@@ -4260,7 +4260,7 @@ def ρσ_getattr(
     name: _Str,
     default_value: Any = _BUILTINS_MISSING,
 ) -> Any:
-    """Public Python ``getattr`` wrapper around fixed-arity lookup."""
+    """Public Python `getattr` wrapper around fixed-arity lookup."""
     return ρσ_getattr_internal(value, name, default_value)
 
 
@@ -4330,10 +4330,10 @@ def ρσ_resolve_module_name(
 ) -> Any:
     """Resolve a module name declared only inside control flow.
 
-    CPython's module ``LOAD_NAME`` checks the module namespace and then its
-    builtins.  A JavaScript ``var`` emitted for a conditional import is
-    hoisted, so a direct read would instead yield ``undefined`` and suppress
-    idioms such as ``try: set; except NameError: ...``.
+    CPython's module `LOAD_NAME` checks the module namespace and then its
+    builtins.  A JavaScript `var` emitted for a conditional import is
+    hoisted, so a direct read would instead yield `undefined` and suppress
+    idioms such as `try: set; except NameError: ...`.
     """
     if value is not runtime.undefined:
         return value
@@ -4940,7 +4940,7 @@ def ρσ_pow(
 
 
 def _builtins_type_call(cls: Any, *args: Any, **keywords: Any) -> Any:
-    """Implement ``type.__call__`` after a custom metaclass delegates."""
+    """Implement `type.__call__` after a custom metaclass delegates."""
     interpolate = runtime.reflect.get(runtime.global_object, "ρσ_interpolate_kwargs")
     call_args = list(args)
     runtime.reflect.apply(runtime.array.prototype.push, call_args, [keywords])
@@ -5127,7 +5127,7 @@ def _builtins_type_new(
     bases: Any,
     namespace: Any,
 ) -> Any:
-    """Implement the unbound ``type.__new__`` protocol used by metaclasses."""
+    """Implement the unbound `type.__new__` protocol used by metaclasses."""
     # This is the allocation half of the metaclass protocol, so it must call
     # the builtin implementation directly.  An ordinary Python-level
     # ``ρσ_type(...)`` call is deliberately dispatched through
@@ -5151,7 +5151,7 @@ def ρσ_apply_metaclass(
     bases: Any,
     compiled_class: Any,
 ) -> Any:
-    """Create a class through ``metaclass`` from a compiled class body."""
+    """Create a class through `metaclass` from a compiled class body."""
     namespace = _builtins_namespace_dict(compiled_class)
     # Class construction invokes ``type(metaclass).__call__``.  It must not
     # invoke a ``__call__`` defined *by* the metaclass: that hook constructs
@@ -5525,7 +5525,7 @@ def discrete_log(
     operation: Any = "*",
 ) -> Any:
     r"""
-    Return an exponent `x` such that ``base^x == target``.
+    Return an exponent `x` such that `base^x == target`.
 
     The group order is factored and Pohlig–Hellman digit lifting reduces each
     prime-power component to baby-step/giant-step problems of prime order.
@@ -5647,7 +5647,7 @@ class LatexExpr:
 
 
 def latex(value: Any) -> LatexExpr:
-    """Return a compact LaTeX expression for ``value``."""
+    """Return a compact LaTeX expression for `value`."""
     if _builtins_member_is_function(value, "_latex_"):
         return LatexExpr(_builtins_call_member(value, "_latex_", []))
     return LatexExpr(value)
@@ -6976,10 +6976,10 @@ def ρσ_open(
 
 
 def dumps(value: Any, compress: _Bool = True, **keywords: Any) -> bytes:
-    r"""Return ``value`` as safe binary SagePack data.
+    r"""Return `value` as safe binary SagePack data.
 
-    This is Sage.js's data-only counterpart to Sage's global ``dumps``.  The
-    ``compress`` argument is accepted for source compatibility; SagePack v1
+    This is Sage.js's data-only counterpart to Sage's global `dumps`.  The
+    `compress` argument is accepted for source compatibility; SagePack v1
     stores compact native binary blocks without an additional compression
     layer.  Pickle-specific keyword arguments are intentionally unsupported.
     """
@@ -7024,12 +7024,12 @@ def save(
     compress: _Bool = True,
     **keywords: Any,
 ) -> None:
-    r"""Save ``value`` to a Sage object file.
+    r"""Save `value` to a Sage object file.
 
     Generic mathematical objects are written as safe binary SagePack data and
-    ``.sobj`` is appended when needed, matching Sage's common filename
-    convention.  Objects with their own ``save`` method still handle explicit
-    non-``.sobj`` extensions such as ``.png``.
+    `.sobj` is appended when needed, matching Sage's common filename
+    convention.  Objects with their own `save` method still handle explicit
+    non-`.sobj` extensions such as `.png`.
     """
     path = _builtins_file_path(filename)
     separator = max(path.rfind("/"), path.rfind("\\"))
@@ -7054,7 +7054,7 @@ def load(
 ) -> Any:
     r"""Load one or more safe Sage object files.
 
-    ``.sobj`` is appended to each filename when absent.  Multiple filenames
+    `.sobj` is appended to each filename when absent.  Multiple filenames
     return a list, as in Sage.  Loading source files and remote URLs is outside
     this data-only persistence API.
     """

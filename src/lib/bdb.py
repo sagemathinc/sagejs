@@ -1,7 +1,7 @@
 """Minimal debugger exceptions used by test runners.
 
 Interactive tracing and breakpoint control are host-integration features and
-are intentionally deferred; ``BdbQuit`` is part of the public exception
+are intentionally deferred; `BdbQuit` is part of the public exception
 surface consumed by pytest even when debugging is disabled.
 """
 

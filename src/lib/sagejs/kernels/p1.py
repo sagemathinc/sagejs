@@ -2,7 +2,7 @@
 
 The functions in this module are intentionally ordinary CPython source.  They
 are a readable transcription of the continued-fraction representative code in
-``packages/flint/src/p1.c`` and retain that body as their dynamic fallback.
+`packages/flint/src/p1.c` and retain that body as their dynamic fallback.
 This module is initially a differential compiler witness; production callers
 move here only after the packed output ABI and distribution path are proven.
 """
@@ -34,7 +34,7 @@ def p1_gcd(left: int, right: int) -> int:
 
 @native
 def p1_xgcd_left(left: int, right: int) -> Tuple[int, int]:
-    """Return ``gcd(left, right)`` and the Bezout coefficient of ``left``."""
+    """Return `gcd(left, right)` and the Bezout coefficient of `left`."""
     old_remainder = left
     remainder = right
     old_coefficient = 1
@@ -56,10 +56,10 @@ def p1_normalize_with_scalar(
     input_u: int,
     input_v: int,
 ) -> Tuple[bool, int, int, int]:
-    """Normalize a pair in ``P^1(Z/level Z)`` and return its unit scalar.
+    """Normalize a pair in `P^1(Z/level Z)` and return its unit scalar.
 
     A false first component denotes a non-projective pair.  This is the same
-    algorithm as ``p1_normalize_pair`` in ``p1_core.c``, expressed without
+    algorithm as `p1_normalize_pair` in `p1_core.c`, expressed without
     pointer outputs or fixed-width storage bookkeeping.
     """
     exact_level = level + 0
@@ -119,7 +119,7 @@ def p1_round_quotient(numerator: int, denominator: int) -> int:
 
 @native
 def heilbronn_cremona_count(prime: uint64) -> int:
-    """Count Cremona's continued-fraction Heilbronn representatives for ``T_p``."""
+    """Count Cremona's continued-fraction Heilbronn representatives for `T_p`."""
     if prime == 2:
         return 4
     count = 1
@@ -203,7 +203,7 @@ def heilbronn_cremona_entry(
     prime: uint64,
     target: uint64,
 ) -> Tuple[bool, int, int, int, int]:
-    """Return representative ``target`` without maintaining a second algorithm."""
+    """Return representative `target` without maintaining a second algorithm."""
     exact_prime = prime + 0
     position = 0
     if target == position:
@@ -254,8 +254,8 @@ def heilbronn_cremona_fill(
 ) -> int:
     """Write all Cremona representatives to a packed signed buffer.
 
-    Each consecutive record is ``(a, b, c, d)``.  The caller allocates
-    ``4 * heilbronn_cremona_count(prime)`` entries.  Bounds and signed-64-bit
+    Each consecutive record is `(a, b, c, d)`.  The caller allocates
+    `4 * heilbronn_cremona_count(prime)` entries.  Bounds and signed-64-bit
     representability are checked identically by the native and Python paths.
     """
     exact_prime = prime + 0
@@ -323,7 +323,7 @@ def heilbronn_cremona_fill(
 def heilbronn_merel_digest(
     index: uint64,
 ) -> Tuple[int, int, int, int, int, int]:
-    """Return ordered moments for Merel's determinant-``index`` matrices."""
+    """Return ordered moments for Merel's determinant-`index` matrices."""
     exact_index = index + 0
     count = 0
     sum_a = 0
@@ -397,7 +397,7 @@ def heilbronn_merel_fill(
     index: uint64,
     output: Int64Buffer,
 ) -> int:
-    """Write Merel's determinant-``index`` representatives in source order."""
+    """Write Merel's determinant-`index` representatives in source order."""
     exact_index = index + 0
     position = 0
     for a in range(1, exact_index + 1):
@@ -466,7 +466,7 @@ def p1_monomial_matrix_coefficient(
     """Coefficient of one transformed homogeneous monomial.
 
     This is the ordinary-Python body corresponding to
-    ``p1_monomial_matrix_coefficient`` in ``p1.c``.
+    `p1_monomial_matrix_coefficient` in `p1.c`.
     """
     right_degree = weight_degree - source_degree
     answer = 0
@@ -493,7 +493,7 @@ def heilbronn_higher_weight_action_fill(
 ) -> int:
     """Assemble every homogeneous-polynomial action block.
 
-    For each packed Heilbronn matrix, write the full ``(weight - 1)`` square
+    For each packed Heilbronn matrix, write the full `(weight - 1)` square
     monomial-action matrix in row-major order.  This is the complete
     higher-weight coefficient-assembly stage used inside the P1 Hecke loop;
     coset transport and quotient-presentation reduction remain separate.
@@ -617,9 +617,9 @@ def heilbronn_transported_action_fill(
     """Emit the complete exact pre-reduction higher-weight Hecke stream.
 
     Each source triple and Heilbronn representative contributes one entry for
-    every target monomial. ``image_generators`` records the transported triple
-    index (or ``-1`` for a non-projective bad-prime image), while
-    ``coefficients`` retains the unbounded exact polynomial coefficient.
+    every target monomial. `image_generators` records the transported triple
+    index (or `-1` for a non-projective bad-prime image), while
+    `coefficients` retains the unbounded exact polynomial coefficient.
     Quotient-presentation reduction is deliberately emitted as the separate
     stage below so both representations remain inspectable.
     """
@@ -677,7 +677,7 @@ def p1_rational_add_scaled_at(
     term_denominator: int,
     scale: int,
 ) -> int:
-    """Add ``scale * term_numerator / term_denominator`` in canonical form."""
+    """Add `scale * term_numerator / term_denominator` in canonical form."""
     old_numerator = numerators[index]
     old_denominator = denominators[index]
     if old_denominator == 1 and term_denominator == 1:
@@ -722,7 +722,7 @@ def heilbronn_reduce_transported_action(
 ) -> int:
     """Reduce the exact transported stream to the quotient basis.
 
-    ``reduction_*`` is the explicit row-major map from every original triple
+    `reduction_*` is the explicit row-major map from every original triple
     generator to the chosen quotient basis.  Keeping this matrix an input
     makes the compiler boundary mathematical and inspectable: construction of
     the Manin presentation can remain in a mature backend while the actual

@@ -76,8 +76,8 @@ def mktemp(suffix=None, prefix=None, dir=None):
     """Return an unused temporary pathname without creating it.
 
     This deprecated CPython compatibility API is inherently subject to a
-    create-after-check race.  New code should use ``mkstemp`` or
-    ``NamedTemporaryFile`` instead.
+    create-after-check race.  New code should use `mkstemp` or
+    `NamedTemporaryFile` instead.
     """
     for _attempt in range(TMP_MAX):
         filename = _candidate(suffix, prefix, dir)

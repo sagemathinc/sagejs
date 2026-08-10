@@ -1,7 +1,7 @@
 """Small binary encoding helpers used by the Sage.js compatibility library.
 
 Unlike the historical RapydScript implementation this module is ordinary
-Python.  It deliberately returns Sage.js ``bytes`` objects, which are accepted
+Python.  It deliberately returns Sage.js `bytes` objects, which are accepted
 by both Python-facing code and native typed-array boundaries.
 """
 
@@ -19,8 +19,8 @@ def _altchars(value):
 def base64encode(value, altchars=None, pad_char="="):
     """Return *value* as a Base64 ASCII string.
 
-    ``altchars`` is the optional two-character replacement for ``+/`` and
-    ``pad_char`` may be changed or set to the empty string.
+    `altchars` is the optional two-character replacement for `+/` and
+    `pad_char` may be changed or set to the empty string.
     """
     answer = base64.b64encode(bytes(value), _altchars(altchars)).decode("ascii")
     if pad_char != "=":
@@ -61,7 +61,7 @@ def unhexlify(value):
 def utf8_decode(value, errors="strict", replacement="?"):
     """Decode UTF-8 bytes.
 
-    The optional ``replacement`` argument is retained for compatibility with
+    The optional `replacement` argument is retained for compatibility with
     the original Sage.js helper.
     """
     if errors == "replace" and replacement != "\ufffd":

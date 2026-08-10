@@ -1,6 +1,6 @@
 """Source-transparent structural kernels for dense integer matrices.
 
-Matrices are row-major ``IntegerBuffer`` values.  Their packed ABI stores a
+Matrices are row-major `IntegerBuffer` values.  Their packed ABI stores a
 signed limb count plus fixed-capacity limbs per entry; compiled loads become
 tagged machine-word/GMP values and promote locally on overflow.  These Python
 bodies are also the exact dynamic fallback.
@@ -264,7 +264,7 @@ def dense_integer_matrix_random_fill(
     multiplier: uint64,
     increment: uint64,
 ) -> uint64:
-    """Fill from ``range(lower, lower + span)`` using rejection sampling."""
+    """Fill from `range(lower, lower + span)` using rejection sampling."""
     limit: uint64 = word_base - word_base % span
     state: uint64 = initial_state
     for index in range(len(target)):

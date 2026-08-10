@@ -1,6 +1,6 @@
 """Strict runner for the vendored CoWasm Python benchmark corpus.
 
-The original ``bench.py`` runner deliberately catches exceptions so that one
+The original `bench.py` runner deliberately catches exceptions so that one
 failed experiment does not stop an exploratory benchmark run.  A compatibility
 corpus needs the opposite behavior: the first semantic or runtime failure must
 make the process fail.

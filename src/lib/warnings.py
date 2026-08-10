@@ -1,7 +1,7 @@
 """Compatible core of :mod:`warnings` for pure-Python packages.
 
 Node does not expose CPython's warning registry, but package initialization
-mostly needs filtering, ``catch_warnings``, and the modern ``deprecated``
+mostly needs filtering, `catch_warnings`, and the modern `deprecated`
 decorator.  This module keeps those APIs deterministic and sends visible
 warnings through the host console.
 """
