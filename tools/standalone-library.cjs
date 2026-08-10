@@ -9,12 +9,12 @@
  */
 
 const BASELIB_STANDALONE_MODULES = Object.freeze([
-  "sagejs.kernels.dense_integer",
-  "sagejs.kernels.dense_integer_flint",
-  "sagejs.kernels.dense_prime",
-  "sagejs.kernels.dense_prime_flint",
-  "sagejs.kernels.dense_rational",
-  "sagejs.kernels.dense_rational_flint",
+  "sagejs.kernels.matrix.dense_integer",
+  "sagejs.kernels.matrix.dense_integer_flint",
+  "sagejs.kernels.matrix.dense_prime_field",
+  "sagejs.kernels.matrix.dense_prime_field_flint",
+  "sagejs.kernels.matrix.dense_rational",
+  "sagejs.kernels.matrix.dense_rational_flint",
 ]);
 
 // Cache the complete static dependency closure as separate module artifacts.
@@ -26,12 +26,13 @@ const BASELIB_STANDALONE_CACHE_MODULES = Object.freeze([
   "sagejs.ffi",
   "sagejs.ffi.flint",
   "sagejs.kernels",
-  "sagejs.kernels.dense_integer",
-  "sagejs.kernels.dense_integer_flint",
-  "sagejs.kernels.dense_prime",
-  "sagejs.kernels.dense_prime_flint",
-  "sagejs.kernels.dense_rational",
-  "sagejs.kernels.dense_rational_flint",
+  "sagejs.kernels.matrix",
+  "sagejs.kernels.matrix.dense_integer",
+  "sagejs.kernels.matrix.dense_integer_flint",
+  "sagejs.kernels.matrix.dense_prime_field",
+  "sagejs.kernels.matrix.dense_prime_field_flint",
+  "sagejs.kernels.matrix.dense_rational",
+  "sagejs.kernels.matrix.dense_rational_flint",
   "sagejs.native",
 ]);
 

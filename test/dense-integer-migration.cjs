@@ -15,10 +15,11 @@ const { compile } = require("@sagemath/sagejs/native");
 
 const root = join(__dirname, "..");
 const sourcePath = join(
-  root, "src", "lib", "sagejs", "kernels", "dense_integer.py",
+  root, "src", "lib", "sagejs", "kernels", "matrix", "dense_integer.py",
 );
 const flintSourcePath = join(
-  root, "src", "lib", "sagejs", "kernels", "dense_integer_flint.py",
+  root, "src", "lib", "sagejs", "kernels", "matrix",
+  "dense_integer_flint.py",
 );
 const matrixSourcePath = join(root, "src", "baselib", "matrix.py");
 
@@ -128,7 +129,7 @@ print('dense-integer-independent-ok')
     const matrixSource = readFileSync(matrixSourcePath, "utf8");
     assert.match(
       matrixSource,
-      /__import__\(\s*['"]sagejs\.kernels\.dense_integer['"]/,
+      /__import__\(\s*['"]sagejs\.kernels\.matrix\.dense_integer['"]/,
     );
     assert.doesNotMatch(matrixSource, /\.zzMatrix\s*\(/);
 
@@ -144,15 +145,15 @@ print('dense-integer-independent-ok')
       compiled.ir.functions.map((fn) => [fn.name, fn]),
     );
     assert.equal(
-      exactFunctions.get("dense_integer_add").analysis.backend.kind,
+      exactFunctions.get("dense_integer_matrix_add").analysis.backend.kind,
       "tagged",
     );
     assert.equal(
-      exactFunctions.get("dense_integer_add").analysis
+      exactFunctions.get("dense_integer_matrix_add").analysis
         .taggedInteger.representation,
       "tagged-int64-gmp",
     );
-    const randomFunction = exactFunctions.get("dense_integer_random_fill");
+    const randomFunction = exactFunctions.get("dense_integer_matrix_random_fill");
     assert.ok(
       randomFunction.body.some((operation) =>
         operation.kind === "uint64.binary" || operation.kind === "loop.range"
@@ -160,14 +161,14 @@ print('dense-integer-independent-ok')
     );
 
     for (const name of [
-      "flint_dense_integer_mul",
-      "flint_dense_integer_determinant",
-      "flint_dense_integer_charpoly",
-      "flint_dense_integer_rank",
-      "flint_dense_integer_hnf",
-      "flint_dense_integer_hnf_transform",
-      "flint_dense_integer_snf_transform",
-      "flint_dense_integer_right_kernel",
+      "flint_dense_integer_matrix_mul",
+      "flint_dense_integer_matrix_determinant",
+      "flint_dense_integer_matrix_charpoly",
+      "flint_dense_integer_matrix_rank",
+      "flint_dense_integer_matrix_hnf",
+      "flint_dense_integer_matrix_hnf_transform",
+      "flint_dense_integer_matrix_snf_transform",
+      "flint_dense_integer_matrix_right_kernel",
     ]) {
       const fn = compiledFlint.ir.functions.find((candidate) =>
         candidate.name === name
@@ -188,28 +189,28 @@ print('dense-integer-independent-ok')
     assert.match(core, /sagejs_tagged_int/);
     assert.match(
       core,
-      /int sagejs_kernel_dense_integer_add[\s\S]*?tagged_dense_integer_add/,
+      /int sagejs_kernel_dense_integer_matrix_add[\s\S]*?tagged_dense_integer_matrix_add/,
     );
     assert.match(core, /mpz_sizeinbase\(value, 2\) > 64/);
     assert.match(flintCore, /fmpz_mat_init/);
     assert.match(flintCore, /IntegerBuffer word capacity exceeded/);
 
     const values = randomExactEntries(12, 1729n);
-    const left = kernel.dense_integer_add.packIntegerBuffer(values);
-    const right = kernel.dense_integer_add.packIntegerBuffer(
+    const left = kernel.dense_integer_matrix_add.packIntegerBuffer(values);
+    const right = kernel.dense_integer_matrix_add.packIntegerBuffer(
       values.map((value) => -value),
     );
     const output = kernel.createIntegerBuffer(values.length, 8);
-    assert.equal(kernel.dense_integer_add(output, left, right), true);
+    assert.equal(kernel.dense_integer_matrix_add(output, left, right), true);
     assert.deepEqual(output.toArray(), values.map(() => 0n));
-    assert.equal(kernel.dense_integer_equal(left, left), true);
-    assert.equal(kernel.dense_integer_equal(left, right), false);
+    assert.equal(kernel.dense_integer_matrix_equal(left, left), true);
+    assert.equal(kernel.dense_integer_matrix_equal(left, right), false);
 
     const tooSmall = kernel.createIntegerBuffer(1, 1);
     assert.throws(
-      () => kernel.dense_integer_scalar_multiply(
+      () => kernel.dense_integer_matrix_scalar_multiply(
         tooSmall,
-        kernel.dense_integer_add.packIntegerBuffer([1n << 127n]),
+        kernel.dense_integer_matrix_add.packIntegerBuffer([1n << 127n]),
         1n << 127n,
       ),
       /IntegerBuffer word capacity exceeded/,

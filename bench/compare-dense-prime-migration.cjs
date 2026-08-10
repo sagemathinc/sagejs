@@ -12,10 +12,11 @@ const flint = require("../packages/flint");
 
 const root = join(__dirname, "..");
 const sourcePath = join(
-  root, "src", "lib", "sagejs", "kernels", "dense_prime.py",
+  root, "src", "lib", "sagejs", "kernels", "matrix", "dense_prime_field.py",
 );
 const flintSourcePath = join(
-  root, "src", "lib", "sagejs", "kernels", "dense_prime_flint.py",
+  root, "src", "lib", "sagejs", "kernels", "matrix",
+  "dense_prime_field_flint.py",
 );
 const cacheRoot = process.env.SAGEJS_DENSE_PRIME_CACHE_ROOT ||
   join(__dirname, ".dense-prime-migration-cache");
@@ -165,10 +166,10 @@ function firstWin(rows, operation, implementation, baseline) {
     const declaredSolveOutput = packed(size * 4);
 
     const expectedRank = flint.matrixRank(square);
-    assert.equal(kernel.dense_prime_rank(
+    assert.equal(kernel.dense_prime_field_matrix_rank(
       squareRecord, rankWorkspace,
     ), expectedRank);
-    assert.equal(kernel.dense_prime_rref(
+    assert.equal(kernel.dense_prime_field_matrix_rref(
       squareRecord, rrefOutput,
     ), expectedRank);
     assert.equal(flint.matrixEqual(
@@ -176,7 +177,7 @@ function firstWin(rows, operation, implementation, baseline) {
       flint.matrixRref(square),
     ), true);
     const expectedWideRank = flint.matrixRank(wide);
-    const nullity = kernel.dense_prime_right_kernel(
+    const nullity = kernel.dense_prime_field_matrix_right_kernel(
       wideRecord,
       kernelWorkspace,
       kernelOutput,
@@ -191,7 +192,7 @@ function firstWin(rows, operation, implementation, baseline) {
       ),
       flint.matrixRightKernel(wide),
     ), true);
-    assert.equal(kernel.dense_prime_solve(
+    assert.equal(kernel.dense_prime_field_matrix_solve(
       leftRecord,
       rightRecord,
       solveWorkspace,
@@ -202,24 +203,24 @@ function firstWin(rows, operation, implementation, baseline) {
       flint.matrixSolve(left, right),
     ), true);
     assert.equal(
-      Number(flintKernel.flint_dense_prime_rank(
+      Number(flintKernel.flint_dense_prime_field_matrix_rank(
         squareSource, size, size, modulus,
       )),
       expectedRank,
     );
     assert.equal(
-      Number(flintKernel.flint_dense_prime_rref(
+      Number(flintKernel.flint_dense_prime_field_matrix_rref(
         declaredRrefOutput, squareSource, size, size, modulus,
       )),
       expectedRank,
     );
     assert.equal(
-      Number(flintKernel.flint_dense_prime_right_kernel(
+      Number(flintKernel.flint_dense_prime_field_matrix_right_kernel(
         declaredKernelOutput, wideSource, wideRows, size, modulus,
       )),
       nullity,
     );
-    assert.equal(flintKernel.flint_dense_prime_solve(
+    assert.equal(flintKernel.flint_dense_prime_field_matrix_solve(
       declaredSolveOutput,
       leftSource,
       rightSource,
@@ -232,61 +233,61 @@ function firstWin(rows, operation, implementation, baseline) {
     rows.push({
       size,
       rank: operationTimes(
-        () => kernel.dense_prime_rank(
+        () => kernel.dense_prime_field_matrix_rank(
           squareRecord, rankWorkspace),
-        () => kernel.dense_prime_rank(
+        () => kernel.dense_prime_field_matrix_rank(
           squareRecord, packed(size * size)),
-        () => flintKernel.flint_dense_prime_rank(
+        () => flintKernel.flint_dense_prime_field_matrix_rank(
           squareSource, size, size, modulus),
-        () => flintKernel.flint_dense_prime_rank(
+        () => flintKernel.flint_dense_prime_field_matrix_rank(
           squareSource, size, size, modulus),
         () => flint.matrixRank(square),
         count,
       ),
       rref: operationTimes(
-        () => kernel.dense_prime_rref(
+        () => kernel.dense_prime_field_matrix_rref(
           squareRecord, rrefOutput),
-        () => kernel.dense_prime_rref(
+        () => kernel.dense_prime_field_matrix_rref(
           squareRecord, packed(size * size)),
-        () => flintKernel.flint_dense_prime_rref(
+        () => flintKernel.flint_dense_prime_field_matrix_rref(
           declaredRrefOutput, squareSource, size, size, modulus),
-        () => flintKernel.flint_dense_prime_rref(
+        () => flintKernel.flint_dense_prime_field_matrix_rref(
           packed(size * size), squareSource, size, size, modulus),
         () => flint.matrixRref(square),
         count,
       ),
       rightKernel: operationTimes(
-        () => kernel.dense_prime_right_kernel(
+        () => kernel.dense_prime_field_matrix_right_kernel(
           wideRecord,
           kernelWorkspace,
           kernelOutput,
         ),
-        () => kernel.dense_prime_right_kernel(
+        () => kernel.dense_prime_field_matrix_right_kernel(
           wideRecord,
           packed(wideRows * size),
           packed(size * size),
         ),
-        () => flintKernel.flint_dense_prime_right_kernel(
+        () => flintKernel.flint_dense_prime_field_matrix_right_kernel(
           declaredKernelOutput, wideSource, wideRows, size, modulus),
-        () => flintKernel.flint_dense_prime_right_kernel(
+        () => flintKernel.flint_dense_prime_field_matrix_right_kernel(
           packed(size * size), wideSource, wideRows, size, modulus),
         () => flint.matrixRightKernel(wide),
         count,
       ),
       solve: operationTimes(
-        () => kernel.dense_prime_solve(
+        () => kernel.dense_prime_field_matrix_solve(
           leftRecord,
           rightRecord,
           solveWorkspace,
           solveOutput,
         ),
-        () => kernel.dense_prime_solve(
+        () => kernel.dense_prime_field_matrix_solve(
           leftRecord,
           rightRecord,
           packed(size * (size + 4)),
           packed(size * 4),
         ),
-        () => flintKernel.flint_dense_prime_solve(
+        () => flintKernel.flint_dense_prime_field_matrix_solve(
           declaredSolveOutput,
           leftSource,
           rightSource,
@@ -294,7 +295,7 @@ function firstWin(rows, operation, implementation, baseline) {
           4,
           modulus,
         ),
-        () => flintKernel.flint_dense_prime_solve(
+        () => flintKernel.flint_dense_prime_field_matrix_solve(
           packed(size * 4),
           leftSource,
           rightSource,

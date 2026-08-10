@@ -9,9 +9,9 @@ complete result or raises before changing the caller-owned output, after which
 the public matrix layer retries with a larger buffer.
 
 The source-transparent structural algorithms are in
-`src/lib/sagejs/kernels/dense_integer.py`. Multiplication and mature exact
+`src/lib/sagejs/kernels/matrix/dense_integer.py`. Multiplication and mature exact
 linear-algebra algorithms cross the declarations in
-`src/lib/sagejs/kernels/dense_integer_flint.py`. Generated adapters construct
+`src/lib/sagejs/kernels/matrix/dense_integer_flint.py`. Generated adapters construct
 lexical FLINT matrices from packed input, preflight output capacity, copy the
 result, and clear every temporary. FLINT never becomes the public object's
 owner.

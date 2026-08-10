@@ -88,12 +88,13 @@
       "depends_on": ["core-runtime", "arithmetic"],
       "files": [
         "src/baselib/matrix.py",
-        "src/lib/sagejs/kernels/dense_integer.py",
-        "src/lib/sagejs/kernels/dense_integer_flint.py",
-        "src/lib/sagejs/kernels/dense_prime.py",
-        "src/lib/sagejs/kernels/dense_prime_flint.py",
-        "src/lib/sagejs/kernels/dense_rational.py",
-        "src/lib/sagejs/kernels/dense_rational_flint.py"
+        "src/lib/sagejs/kernels/matrix/__init__.py",
+        "src/lib/sagejs/kernels/matrix/dense_integer.py",
+        "src/lib/sagejs/kernels/matrix/dense_integer_flint.py",
+        "src/lib/sagejs/kernels/matrix/dense_prime_field.py",
+        "src/lib/sagejs/kernels/matrix/dense_prime_field_flint.py",
+        "src/lib/sagejs/kernels/matrix/dense_rational.py",
+        "src/lib/sagejs/kernels/matrix/dense_rational_flint.py"
       ],
       "typescript_files": ["tools/serialization-codecs/linear-algebra.ts"],
       "prefixes": []

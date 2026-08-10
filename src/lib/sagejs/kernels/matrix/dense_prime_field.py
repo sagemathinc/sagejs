@@ -31,7 +31,7 @@ class DensePrimeMatrix(NativeRecord):
 
 
 @native
-def dense_prime_add(
+def dense_prime_field_matrix_add(
     output: UInt64Buffer,
     left: UInt64Buffer,
     right: UInt64Buffer,
@@ -50,7 +50,7 @@ def dense_prime_add(
 
 
 @native
-def dense_prime_subtract(
+def dense_prime_field_matrix_subtract(
     output: UInt64Buffer,
     left: UInt64Buffer,
     right: UInt64Buffer,
@@ -69,7 +69,7 @@ def dense_prime_subtract(
 
 
 @native
-def dense_prime_negate(
+def dense_prime_field_matrix_negate(
     output: UInt64Buffer,
     source: UInt64Buffer,
     modulus: PrimeFieldModulus,
@@ -89,7 +89,7 @@ def dense_prime_negate(
 
 
 @native
-def dense_prime_scalar_multiply(
+def dense_prime_field_matrix_scalar_multiply(
     output: UInt64Buffer,
     source: UInt64Buffer,
     scalar: uint64,
@@ -106,7 +106,7 @@ def dense_prime_scalar_multiply(
 
 
 @native
-def dense_prime_transpose(
+def dense_prime_field_matrix_transpose(
     output: UInt64Buffer,
     source: UInt64Buffer,
     rows: uint64,
@@ -128,7 +128,7 @@ def dense_prime_transpose(
 
 
 @native
-def dense_prime_equal(
+def dense_prime_field_matrix_equal(
     left: UInt64Buffer,
     right: UInt64Buffer,
     modulus: PrimeFieldModulus,
@@ -145,7 +145,7 @@ def dense_prime_equal(
 
 
 @native
-def dense_prime_is_zero(
+def dense_prime_field_matrix_is_zero(
     source: UInt64Buffer,
     modulus: PrimeFieldModulus,
 ) -> bool:
@@ -157,7 +157,7 @@ def dense_prime_is_zero(
 
 
 @native
-def dense_prime_is_one(
+def dense_prime_field_matrix_is_one(
     source: UInt64Buffer,
     rows: uint64,
     columns: uint64,
@@ -180,7 +180,7 @@ def dense_prime_is_one(
 
 
 @native
-def dense_prime_nonzero_count(
+def dense_prime_field_matrix_nonzero_count(
     source: UInt64Buffer,
     modulus: PrimeFieldModulus,
 ) -> uint64:
@@ -192,7 +192,7 @@ def dense_prime_nonzero_count(
 
 
 @native
-def dense_prime_trace(
+def dense_prime_field_matrix_trace(
     source: UInt64Buffer,
     size: uint64,
     modulus: PrimeFieldModulus,
@@ -205,7 +205,7 @@ def dense_prime_trace(
 
 
 @native
-def dense_prime_stack(
+def dense_prime_field_matrix_stack(
     output: UInt64Buffer,
     top: UInt64Buffer,
     bottom: UInt64Buffer,
@@ -224,7 +224,7 @@ def dense_prime_stack(
 
 
 @native
-def dense_prime_augment(
+def dense_prime_field_matrix_augment(
     output: UInt64Buffer,
     left: UInt64Buffer,
     right: UInt64Buffer,
@@ -254,7 +254,7 @@ def dense_prime_augment(
 
 
 @native
-def dense_prime_select_rows(
+def dense_prime_field_matrix_select_rows(
     output: UInt64Buffer,
     source: UInt64Buffer,
     indices: UInt64Buffer,
@@ -280,7 +280,7 @@ def dense_prime_select_rows(
 
 
 @native
-def dense_prime_select_columns(
+def dense_prime_field_matrix_select_columns(
     output: UInt64Buffer,
     source: UInt64Buffer,
     indices: UInt64Buffer,
@@ -306,7 +306,7 @@ def dense_prime_select_columns(
 
 
 @native
-def dense_prime_random_fill(
+def dense_prime_field_matrix_random_fill(
     target: UInt64Buffer,
     modulus: PrimeFieldModulus,
     initial_state: uint64,
@@ -332,7 +332,7 @@ def dense_prime_random_fill(
 
 
 @native
-def _dense_prime_blocked_full_rank(
+def _dense_prime_field_matrix_blocked_full_rank(
     matrix: DensePrimeMatrix,
 ) -> uint64:
     """Try a cache-aware row-pivoted panel LU factorization in place."""
@@ -408,7 +408,7 @@ def _dense_prime_blocked_full_rank(
 
 
 @native
-def _dense_prime_rank_inplace(
+def _dense_prime_field_matrix_rank_inplace(
     matrix: DensePrimeMatrix,
 ) -> uint64:
     entries = matrix.entries
@@ -453,7 +453,7 @@ def _dense_prime_rank_inplace(
 
 
 @native
-def _dense_prime_rref_inplace(
+def _dense_prime_field_matrix_rref_inplace(
     matrix: DensePrimeMatrix,
 ) -> uint64:
     entries = matrix.entries
@@ -500,7 +500,7 @@ def _dense_prime_rref_inplace(
 
 
 @native
-def dense_prime_rank(
+def dense_prime_field_matrix_rank(
     source: DensePrimeMatrix,
     workspace: UInt64Buffer,
 ) -> uint64:
@@ -518,15 +518,15 @@ def dense_prime_rank(
         workspace[index] = entries[index]
     working = DensePrimeMatrix(workspace, rows, columns, modulus)
     if rows == columns and rows >= 32:
-        if _dense_prime_blocked_full_rank(working) != 0:
+        if _dense_prime_field_matrix_blocked_full_rank(working) != 0:
             return rows
         for index in range(count):
             workspace[index] = entries[index]
-    return _dense_prime_rank_inplace(working)
+    return _dense_prime_field_matrix_rank_inplace(working)
 
 
 @native
-def dense_prime_rref(
+def dense_prime_field_matrix_rref(
     source: DensePrimeMatrix,
     output: UInt64Buffer,
 ) -> uint64:
@@ -544,7 +544,7 @@ def dense_prime_rref(
         output[index] = entries[index]
     working = DensePrimeMatrix(output, rows, columns, modulus)
     if rows == columns and rows >= 32:
-        if _dense_prime_blocked_full_rank(working) != 0:
+        if _dense_prime_field_matrix_blocked_full_rank(working) != 0:
             for index in range(count):
                 output[index] = 0
             for index in range(rows):
@@ -552,11 +552,11 @@ def dense_prime_rref(
             return rows
         for index in range(count):
             output[index] = entries[index]
-    return _dense_prime_rref_inplace(working)
+    return _dense_prime_field_matrix_rref_inplace(working)
 
 
 @native
-def dense_prime_right_kernel(
+def dense_prime_field_matrix_right_kernel(
     source: DensePrimeMatrix,
     workspace: UInt64Buffer,
     output: UInt64Buffer,
@@ -579,7 +579,7 @@ def dense_prime_right_kernel(
         raise ValueError('dense prime right-kernel input shape mismatch')
     if len(output) != output_count:
         raise ValueError('dense prime right-kernel output shape mismatch')
-    rank = dense_prime_rref(source, workspace)
+    rank = dense_prime_field_matrix_rref(source, workspace)
     nullity = columns - rank
     active = nullity * columns
     for index in range(active):
@@ -606,14 +606,14 @@ def dense_prime_right_kernel(
                 )
             basis_row += 1
     basis = DensePrimeMatrix(output, nullity, columns, modulus)
-    normalized_rank = _dense_prime_rref_inplace(basis)
+    normalized_rank = _dense_prime_field_matrix_rref_inplace(basis)
     if normalized_rank != nullity:
         raise ValueError('internal right-kernel basis lost rank')
     return nullity
 
 
 @native
-def dense_prime_solve(
+def dense_prime_field_matrix_solve(
     left: DensePrimeMatrix,
     right: DensePrimeMatrix,
     workspace: UInt64Buffer,
@@ -648,7 +648,7 @@ def dense_prime_solve(
                 right_entries[row * right_columns + column])
     augmented = DensePrimeMatrix(
         workspace, size, augmented_columns, modulus)
-    rank = _dense_prime_rref_inplace(augmented)
+    rank = _dense_prime_field_matrix_rref_inplace(augmented)
     if rank != size:
         return 0
     for row in range(size):
@@ -667,8 +667,8 @@ def dense_prime_solve(
 
 __all__ = [
     'DensePrimeMatrix',
-    'dense_prime_rank',
-    'dense_prime_rref',
-    'dense_prime_right_kernel',
-    'dense_prime_solve',
+    'dense_prime_field_matrix_rank',
+    'dense_prime_field_matrix_rref',
+    'dense_prime_field_matrix_right_kernel',
+    'dense_prime_field_matrix_solve',
 ]

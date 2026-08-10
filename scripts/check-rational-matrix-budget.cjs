@@ -70,33 +70,33 @@ const cases = [
 ];
 
 const structural = [
-  "dense_rational_add",
-  "dense_rational_subtract",
-  "dense_rational_negate",
-  "dense_rational_scalar_multiply",
-  "dense_rational_transpose",
-  "dense_rational_equal",
-  "dense_rational_is_zero",
-  "dense_rational_is_one",
-  "dense_rational_nonzero_count",
-  "dense_rational_trace",
-  "dense_rational_stack",
-  "dense_rational_augment",
-  "dense_rational_select_rows",
-  "dense_rational_select_columns",
-  "dense_rational_fill_denominator_one",
-  "dense_rational_identity",
-  "dense_rational_kernel_from_rref",
+  "dense_rational_matrix_add",
+  "dense_rational_matrix_subtract",
+  "dense_rational_matrix_negate",
+  "dense_rational_matrix_scalar_multiply",
+  "dense_rational_matrix_transpose",
+  "dense_rational_matrix_equal",
+  "dense_rational_matrix_is_zero",
+  "dense_rational_matrix_is_one",
+  "dense_rational_matrix_nonzero_count",
+  "dense_rational_matrix_trace",
+  "dense_rational_matrix_stack",
+  "dense_rational_matrix_augment",
+  "dense_rational_matrix_select_rows",
+  "dense_rational_matrix_select_columns",
+  "dense_rational_matrix_fill_denominator_one",
+  "dense_rational_matrix_identity",
+  "dense_rational_matrix_kernel_from_rref",
 ];
 
 const advanced = [
-  "flint_dense_rational_mul",
-  "flint_dense_rational_rank",
-  "flint_dense_rational_rref",
-  "flint_dense_rational_inverse",
-  "flint_dense_rational_solve",
-  "flint_dense_rational_determinant",
-  "flint_dense_rational_charpoly",
+  "flint_dense_rational_matrix_mul",
+  "flint_dense_rational_matrix_rank",
+  "flint_dense_rational_matrix_rref",
+  "flint_dense_rational_matrix_inverse",
+  "flint_dense_rational_matrix_solve",
+  "flint_dense_rational_matrix_determinant",
+  "flint_dense_rational_matrix_charpoly",
 ];
 
 async function run(environment = process.env) {
@@ -126,7 +126,9 @@ async function run(environment = process.env) {
       "dense_rational_flint.py",
     ]) {
       await compile({
-        sourcePath: join(root, "src", "lib", "sagejs", "kernels", filename),
+        sourcePath: join(
+          root, "src", "lib", "sagejs", "kernels", "matrix", filename,
+        ),
         cacheRoot: cache,
       });
     }
@@ -144,8 +146,8 @@ async function run(environment = process.env) {
     const results = [];
     try {
       const witnesses = await session.evaluate([
-        `from sagejs.kernels.dense_rational import ${structural.join(", ")}`,
-        `from sagejs.kernels.dense_rational_flint import ${advanced.join(", ")}`,
+        `from sagejs.kernels.matrix.dense_rational import ${structural.join(", ")}`,
+        `from sagejs.kernels.matrix.dense_rational_flint import ${advanced.join(", ")}`,
         ...[...structural, ...advanced].map((name) =>
           `print(${name}.nativeAvailable)`
         ),

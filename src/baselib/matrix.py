@@ -46,7 +46,7 @@ def _dense_integer_kernel_module() -> Any:
     global _dense_integer_kernel_module_cache
     if _dense_integer_kernel_module_cache is runtime.undefined:
         _dense_integer_kernel_module_cache = __import__(
-            'sagejs.kernels.dense_integer', fromlist=['dense_integer'])
+            'sagejs.kernels.matrix.dense_integer', fromlist=['dense_integer'])
     return _dense_integer_kernel_module_cache
 
 
@@ -55,7 +55,7 @@ def _dense_integer_flint_module() -> Any:
     global _dense_integer_flint_module_cache
     if _dense_integer_flint_module_cache is runtime.undefined:
         _dense_integer_flint_module_cache = __import__(
-            'sagejs.kernels.dense_integer_flint',
+            'sagejs.kernels.matrix.dense_integer_flint',
             fromlist=['dense_integer_flint'],
         )
     return _dense_integer_flint_module_cache
@@ -66,7 +66,7 @@ def _dense_rational_kernel_module() -> Any:
     global _dense_rational_kernel_module_cache
     if _dense_rational_kernel_module_cache is runtime.undefined:
         _dense_rational_kernel_module_cache = __import__(
-            'sagejs.kernels.dense_rational', fromlist=['dense_rational'])
+            'sagejs.kernels.matrix.dense_rational', fromlist=['dense_rational'])
     return _dense_rational_kernel_module_cache
 
 
@@ -75,7 +75,7 @@ def _dense_rational_flint_module() -> Any:
     global _dense_rational_flint_module_cache
     if _dense_rational_flint_module_cache is runtime.undefined:
         _dense_rational_flint_module_cache = __import__(
-            'sagejs.kernels.dense_rational_flint',
+            'sagejs.kernels.matrix.dense_rational_flint',
             fromlist=['dense_rational_flint'],
         )
     return _dense_rational_flint_module_cache
@@ -90,7 +90,9 @@ def _dense_prime_kernel_module() -> Any:
     global _dense_prime_kernel_module_cache
     if _dense_prime_kernel_module_cache is runtime.undefined:
         _dense_prime_kernel_module_cache = __import__(
-            'sagejs.kernels.dense_prime', fromlist=['dense_prime'])
+            'sagejs.kernels.matrix.dense_prime_field',
+            fromlist=['dense_prime_field'],
+        )
     return _dense_prime_kernel_module_cache
 
 
@@ -99,8 +101,8 @@ def _dense_prime_flint_module() -> Any:
     global _dense_prime_flint_module_cache
     if _dense_prime_flint_module_cache is runtime.undefined:
         _dense_prime_flint_module_cache = __import__(
-            'sagejs.kernels.dense_prime_flint',
-            fromlist=['dense_prime_flint'],
+            'sagejs.kernels.matrix.dense_prime_field_flint',
+            fromlist=['dense_prime_field_flint'],
         )
     return _dense_prime_flint_module_cache
 
@@ -255,7 +257,7 @@ def _dense_integer_zeros(
 
 def _compact_integer_buffer(source: Any) -> Any:
     """Shrink spare per-entry limbs without decoding exact values."""
-    kernel = _dense_integer_kernel_module().dense_integer_copy
+    kernel = _dense_integer_kernel_module().dense_integer_matrix_copy
     if not _native_kernel_available(kernel):
         return source
     current = runtime.reflect.get(source, 'wordCapacity')
@@ -951,7 +953,7 @@ class MatrixSpaceParent(sage.Parent):
             raise TypeError('integer storage requires ZZ')
         if len(entries) != self._rows * self._cols:
             raise ValueError('matrix entry count does not match dimensions')
-        kernel = _dense_integer_kernel_module().dense_integer_copy
+        kernel = _dense_integer_kernel_module().dense_integer_matrix_copy
         storage = runtime.undefined
         if _native_kernel_available(kernel):
             try:
@@ -1007,7 +1009,7 @@ class MatrixSpaceParent(sage.Parent):
         # Every path above produced a canonical pair.  Pack exactly once;
         # routing back through ``_from_rational_parts`` would repeat 2n GCDs
         # at the public construction boundary.
-        kernel = _dense_rational_kernel_module().dense_rational_copy
+        kernel = _dense_rational_kernel_module().dense_rational_matrix_copy
         return self._from_canonical_rational_entries(
             _dense_integer_buffer(kernel, numerators, 1),
             _dense_integer_buffer(kernel, denominators, 1),
@@ -1029,7 +1031,7 @@ class MatrixSpaceParent(sage.Parent):
                 numerators[index], denominators[index])
             normalized_numerators.append(rational._numerator)
             normalized_denominators.append(rational._denominator)
-        kernel = _dense_rational_kernel_module().dense_rational_copy
+        kernel = _dense_rational_kernel_module().dense_rational_matrix_copy
         return self._from_canonical_rational_entries(
             _dense_integer_buffer(kernel, normalized_numerators, 1),
             _dense_integer_buffer(kernel, normalized_denominators, 1),
@@ -1109,7 +1111,7 @@ class MatrixSpaceParent(sage.Parent):
             if self._base is sage.QQ:
                 kernel = (
                     _dense_rational_kernel_module()
-                    .dense_rational_fill_denominator_one)
+                    .dense_rational_matrix_fill_denominator_one)
                 count = self._rows * self._cols
                 numerators = _dense_integer_zeros(kernel, count, 1)
                 denominators = _dense_integer_zeros(kernel, count, 1)
@@ -1624,7 +1626,7 @@ class Matrix(sage.Element):
                 native_value = _copy_packed_uint64(
                     source._prime_residues())
             elif source._has_packed_integer_storage():
-                kernel = _dense_integer_kernel_module().dense_integer_copy
+                kernel = _dense_integer_kernel_module().dense_integer_matrix_copy
                 native_value = _PackedIntegerStorage(
                     _dense_integer_buffer(
                         kernel,
@@ -1633,7 +1635,7 @@ class Matrix(sage.Element):
                     )
                 )
             elif source._has_packed_rational_storage():
-                kernel = _dense_rational_kernel_module().dense_rational_copy
+                kernel = _dense_rational_kernel_module().dense_rational_matrix_copy
                 native_value = _PackedRationalStorage(
                     _dense_integer_buffer(
                         kernel,
@@ -1914,7 +1916,7 @@ class Matrix(sage.Element):
 
     def is_zero(self) -> bool:
         if self._has_packed_rational_storage():
-            kernel = _dense_rational_kernel_module().dense_rational_is_zero
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_is_zero
             numerators, _denominators = self._rational_kernel_parts(kernel)
             result = bool(kernel(numerators))
             _trace_dense_rational_selection(
@@ -1923,7 +1925,7 @@ class Matrix(sage.Element):
             )
             return result
         if self._has_packed_integer_storage():
-            kernel = _dense_integer_kernel_module().dense_integer_is_zero
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_is_zero
             result = bool(kernel(self._integer_kernel_buffer(kernel)))
             _trace_dense_integer_selection(
                 'is_zero', _typed_python_implementation(kernel),
@@ -1931,7 +1933,7 @@ class Matrix(sage.Element):
             )
             return result
         if self._has_packed_prime_storage():
-            kernel = _dense_prime_kernel_module().dense_prime_is_zero
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_is_zero
             result = bool(kernel(
                 self._prime_kernel_buffer(kernel),
                 int(_untyped(self.base_ring()).characteristic()),
@@ -1949,7 +1951,7 @@ class Matrix(sage.Element):
 
     def is_one(self) -> bool:
         if self._has_packed_rational_storage():
-            kernel = _dense_rational_kernel_module().dense_rational_is_one
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_is_one
             numerators, denominators = self._rational_kernel_parts(kernel)
             result = bool(kernel(
                 numerators, denominators, self.nrows(), self.ncols()))
@@ -1959,7 +1961,7 @@ class Matrix(sage.Element):
             )
             return result
         if self._has_packed_integer_storage():
-            kernel = _dense_integer_kernel_module().dense_integer_is_one
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_is_one
             result = bool(kernel(
                 self._integer_kernel_buffer(kernel),
                 self.nrows(),
@@ -1971,7 +1973,7 @@ class Matrix(sage.Element):
             )
             return result
         if self._has_packed_prime_storage():
-            kernel = _dense_prime_kernel_module().dense_prime_is_one
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_is_one
             result = bool(kernel(
                 self._prime_kernel_buffer(kernel),
                 self.nrows(),
@@ -2004,14 +2006,14 @@ class Matrix(sage.Element):
                 self._prime_residues_cache[row * self.ncols() + col])
             return self.base_ring()(residue)
         if self._has_packed_integer_storage():
-            kernel = _dense_integer_kernel_module().dense_integer_get
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_get
             value = kernel(
                 self._integer_kernel_buffer(kernel),
                 row * self.ncols() + col,
             )
             return runtime.normalize_integer(value)
         if self._has_packed_rational_storage():
-            kernel = _dense_rational_kernel_module().dense_rational_get
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_get
             numerators, denominators = self._rational_kernel_parts(kernel)
             parts = kernel(
                 numerators,
@@ -2057,7 +2059,7 @@ class Matrix(sage.Element):
             self._clear_cache()
             return
         if self._has_packed_integer_storage():
-            kernel = _dense_integer_kernel_module().dense_integer_set
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_set
             exact = sage.ZZ(value)
             while True:
                 try:
@@ -2081,7 +2083,7 @@ class Matrix(sage.Element):
             self._clear_cache()
             return
         if self._has_packed_rational_storage():
-            kernel = _dense_rational_kernel_module().dense_rational_set
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_set
             rational = sage.QQ(value)
             while True:
                 try:
@@ -2176,7 +2178,7 @@ class Matrix(sage.Element):
             return self
         if base is sage.QQ and self.base_ring() is sage.ZZ:
             if self._has_packed_integer_storage():
-                kernel = _dense_rational_kernel_module().dense_rational_copy
+                kernel = _dense_rational_kernel_module().dense_rational_matrix_copy
                 numerators = _dense_integer_buffer(
                     kernel,
                     self._integer_entries(),
@@ -2249,7 +2251,7 @@ class Matrix(sage.Element):
             left._has_packed_rational_storage()
             and right._has_packed_rational_storage()
         ):
-            kernel = _dense_rational_kernel_module().dense_rational_add
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_add
             left_numerators, left_denominators = (
                 left._rational_kernel_parts(kernel))
             right_numerators, right_denominators = (
@@ -2284,7 +2286,7 @@ class Matrix(sage.Element):
             left._has_packed_integer_storage()
             and right._has_packed_integer_storage()
         ):
-            kernel = _dense_integer_kernel_module().dense_integer_add
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_add
             def invoke_integer_add(values: list[Any]) -> None:
                 if not kernel(
                     values[0],
@@ -2308,7 +2310,7 @@ class Matrix(sage.Element):
             left._has_packed_prime_storage()
             and right._has_packed_prime_storage()
         ):
-            kernel = _dense_prime_kernel_module().dense_prime_add
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_add
             modulus = int(_untyped(left.base_ring()).characteristic())
             entries = _dense_prime_zeros(
                 kernel, left.nrows() * left.ncols())
@@ -2344,7 +2346,7 @@ class Matrix(sage.Element):
             left._has_packed_rational_storage()
             and right._has_packed_rational_storage()
         ):
-            kernel = _dense_rational_kernel_module().dense_rational_subtract
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_subtract
             left_numerators, left_denominators = (
                 left._rational_kernel_parts(kernel))
             right_numerators, right_denominators = (
@@ -2379,7 +2381,7 @@ class Matrix(sage.Element):
             left._has_packed_integer_storage()
             and right._has_packed_integer_storage()
         ):
-            kernel = _dense_integer_kernel_module().dense_integer_subtract
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_subtract
             def invoke_integer_subtract(values: list[Any]) -> None:
                 if not kernel(
                     values[0],
@@ -2403,7 +2405,7 @@ class Matrix(sage.Element):
             left._has_packed_prime_storage()
             and right._has_packed_prime_storage()
         ):
-            kernel = _dense_prime_kernel_module().dense_prime_subtract
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_subtract
             modulus = int(_untyped(left.base_ring()).characteristic())
             entries = _dense_prime_zeros(
                 kernel, left.nrows() * left.ncols())
@@ -2435,7 +2437,7 @@ class Matrix(sage.Element):
 
     def __neg__(self) -> Matrix:
         if self._has_packed_rational_storage():
-            kernel = _dense_rational_kernel_module().dense_rational_negate
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_negate
             source_numerators, source_denominators = (
                 self._rational_kernel_parts(kernel))
 
@@ -2463,7 +2465,7 @@ class Matrix(sage.Element):
             return self._parent._from_canonical_rational_entries(
                 storage.numerators, storage.denominators)
         if self._has_packed_integer_storage():
-            kernel = _dense_integer_kernel_module().dense_integer_negate
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_negate
             entries = _dense_integer_zeros(
                 kernel,
                 self.nrows() * self.ncols(),
@@ -2477,7 +2479,7 @@ class Matrix(sage.Element):
             )
             return self._parent._from_canonical_integer_entries(entries)
         if self._has_packed_prime_storage():
-            kernel = _dense_prime_kernel_module().dense_prime_negate
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_negate
             modulus = int(_untyped(self.base_ring()).characteristic())
             entries = _dense_prime_zeros(
                 kernel, self.nrows() * self.ncols())
@@ -2539,7 +2541,7 @@ class Matrix(sage.Element):
             )
         if self._has_packed_prime_storage():
             kernel = (
-                _dense_prime_kernel_module().dense_prime_scalar_multiply)
+                _dense_prime_kernel_module().dense_prime_field_matrix_scalar_multiply)
             modulus = int(_untyped(self.base_ring()).characteristic())
             factor = int(_untyped(self.base_ring()(scalar))._value)
             entries = _dense_prime_zeros(
@@ -2568,7 +2570,7 @@ class Matrix(sage.Element):
                 return self.change_ring(result_base)._scalar_mul(scalar)
             factor = sage.ZZ(scalar)
             kernel = (
-                _dense_integer_kernel_module().dense_integer_scalar_multiply)
+                _dense_integer_kernel_module().dense_integer_matrix_scalar_multiply)
             def invoke_integer_scalar(values: list[Any]) -> None:
                 if not kernel(
                     values[0],
@@ -2595,7 +2597,7 @@ class Matrix(sage.Element):
             rational = sage.QQ(scalar)
             kernel = (
                 _dense_rational_kernel_module()
-                .dense_rational_scalar_multiply)
+                .dense_rational_matrix_scalar_multiply)
             source_numerators, source_denominators = (
                 self._rational_kernel_parts(kernel))
 
@@ -2662,7 +2664,7 @@ class Matrix(sage.Element):
                 and right._has_packed_prime_storage()
             ):
                 ffi_module = _dense_prime_flint_module()
-                kernel_function = ffi_module.flint_dense_prime_mul
+                kernel_function = ffi_module.flint_dense_prime_field_matrix_mul
                 output = _dense_prime_zeros(
                     kernel_function,
                     left.nrows() * right.ncols(),
@@ -2697,7 +2699,7 @@ class Matrix(sage.Element):
                 and right._has_packed_integer_storage()
             ):
                 kernel = (
-                    _dense_integer_flint_module().flint_dense_integer_mul)
+                    _dense_integer_flint_module().flint_dense_integer_matrix_mul)
                 def invoke_integer_multiply(values: list[Any]) -> None:
                     kernel(
                         values[0],
@@ -2730,7 +2732,7 @@ class Matrix(sage.Element):
                 and right._has_packed_rational_storage()
             ):
                 kernel = (
-                    _dense_rational_flint_module().flint_dense_rational_mul)
+                    _dense_rational_flint_module().flint_dense_rational_matrix_mul)
                 left_numerators, left_denominators = (
                     left._rational_kernel_parts(kernel))
                 right_numerators, right_denominators = (
@@ -2891,7 +2893,7 @@ class Matrix(sage.Element):
 
     def transpose(self) -> Matrix:
         if self._has_packed_rational_storage():
-            kernel = _dense_rational_kernel_module().dense_rational_transpose
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_transpose
             source_numerators, source_denominators = (
                 self._rational_kernel_parts(kernel))
 
@@ -2926,7 +2928,7 @@ class Matrix(sage.Element):
             )
             return answer
         if self._has_packed_integer_storage():
-            kernel = _dense_integer_kernel_module().dense_integer_transpose
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_transpose
             entries = _dense_integer_zeros(
                 kernel,
                 self.nrows() * self.ncols(),
@@ -2950,7 +2952,7 @@ class Matrix(sage.Element):
             )
             return answer
         if self._has_packed_prime_storage():
-            kernel = _dense_prime_kernel_module().dense_prime_transpose
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_transpose
             entries = _dense_prime_zeros(
                 kernel, self.nrows() * self.ncols())
             modulus = int(_untyped(self.base_ring()).characteristic())
@@ -3013,7 +3015,7 @@ class Matrix(sage.Element):
         if self._has_packed_rational_storage():
             kernel = (
                 _dense_rational_flint_module()
-                .flint_dense_rational_determinant)
+                .flint_dense_rational_matrix_determinant)
             source_numerators, source_denominators = (
                 self._rational_kernel_parts(kernel))
 
@@ -3051,7 +3053,7 @@ class Matrix(sage.Element):
             return self._determinant_cache
         if self._has_packed_integer_storage():
             kernel = (
-                _dense_integer_flint_module().flint_dense_integer_determinant)
+                _dense_integer_flint_module().flint_dense_integer_matrix_determinant)
             def invoke_integer_determinant(values: list[Any]) -> None:
                 kernel(
                     values[0],
@@ -3078,7 +3080,7 @@ class Matrix(sage.Element):
             return self._determinant_cache
         if self._has_packed_prime_storage():
             kernel = (
-                _dense_prime_flint_module().flint_dense_prime_determinant)
+                _dense_prime_flint_module().flint_dense_prime_field_matrix_determinant)
             modulus = int(_untyped(self.base_ring()).characteristic())
             residue = kernel(
                 self._prime_kernel_buffer(kernel),
@@ -3129,7 +3131,7 @@ class Matrix(sage.Element):
             if self._has_packed_rational_storage():
                 kernel_function = (
                     _dense_rational_flint_module()
-                    .flint_dense_rational_rank)
+                    .flint_dense_rational_matrix_rank)
                 numerators, denominators = self._rational_kernel_parts(
                     kernel_function)
                 rank_output = _dense_integer_zeros(kernel_function, 1, 1)
@@ -3154,7 +3156,7 @@ class Matrix(sage.Element):
                 )
             elif self._has_packed_integer_storage():
                 kernel_function = (
-                    _dense_integer_flint_module().flint_dense_integer_rank)
+                    _dense_integer_flint_module().flint_dense_integer_matrix_rank)
                 self._rank_cache = runtime.number(kernel_function(
                     self._integer_kernel_buffer(kernel_function),
                     self.nrows(),
@@ -3174,7 +3176,7 @@ class Matrix(sage.Element):
                 and algorithm != 'modp'
             ):
                 ffi_module = _dense_prime_flint_module()
-                kernel_function = ffi_module.flint_dense_prime_rank
+                kernel_function = ffi_module.flint_dense_prime_field_matrix_rank
                 self._rank_cache = runtime.number(kernel_function(
                     self._prime_kernel_buffer(kernel_function),
                     self.nrows(),
@@ -3198,7 +3200,7 @@ class Matrix(sage.Element):
                 and _uses_dense_prime_kernel(self.base_ring())
             ):
                 kernel_module = _dense_prime_kernel_module()
-                kernel_function = kernel_module.dense_prime_rank
+                kernel_function = kernel_module.dense_prime_field_matrix_rank
                 count = self.nrows() * self.ncols()
                 source = self._prime_kernel_buffer(kernel_function)
                 workspace = _dense_prime_zeros(kernel_function, count)
@@ -3242,7 +3244,7 @@ class Matrix(sage.Element):
             return 0.0
         if self._has_packed_prime_storage():
             kernel = (
-                _dense_prime_kernel_module().dense_prime_nonzero_count)
+                _dense_prime_kernel_module().dense_prime_field_matrix_nonzero_count)
             modulus = int(_untyped(self.base_ring()).characteristic())
             nonzero = runtime.number(kernel(
                 self._prime_kernel_buffer(kernel), modulus))
@@ -3253,7 +3255,7 @@ class Matrix(sage.Element):
             return nonzero / (self.nrows() * self.ncols())
         if self._has_packed_integer_storage():
             kernel = (
-                _dense_integer_kernel_module().dense_integer_nonzero_count)
+                _dense_integer_kernel_module().dense_integer_matrix_nonzero_count)
             nonzero = runtime.number(kernel(
                 self._integer_kernel_buffer(kernel)))
             _trace_dense_integer_selection(
@@ -3263,7 +3265,7 @@ class Matrix(sage.Element):
             return nonzero / (self.nrows() * self.ncols())
         if self._has_packed_rational_storage():
             kernel = (
-                _dense_rational_kernel_module().dense_rational_nonzero_count)
+                _dense_rational_kernel_module().dense_rational_matrix_nonzero_count)
             numerators, _denominators = self._rational_kernel_parts(kernel)
             nonzero = runtime.number(kernel(numerators))
             _trace_dense_rational_selection(
@@ -3291,7 +3293,7 @@ class Matrix(sage.Element):
             if self._has_packed_rational_storage():
                 kernel = (
                     _dense_rational_flint_module()
-                    .flint_dense_rational_rref)
+                    .flint_dense_rational_matrix_rref)
                 source_numerators, source_denominators = (
                     self._rational_kernel_parts(kernel))
                 rank_output = _dense_integer_zeros(kernel, 1, 1)
@@ -3347,7 +3349,7 @@ class Matrix(sage.Element):
             if self._has_packed_prime_storage():
                 if algorithm == 'modp':
                     kernel_module = _dense_prime_kernel_module()
-                    kernel_function = kernel_module.dense_prime_rref
+                    kernel_function = kernel_module.dense_prime_field_matrix_rref
                     implementation = (
                         'typed-python'
                         if _native_kernel_available(kernel_function)
@@ -3366,7 +3368,7 @@ class Matrix(sage.Element):
                         kernel_function(source_record, output))
                 else:
                     ffi_module = _dense_prime_flint_module()
-                    kernel_function = ffi_module.flint_dense_prime_rref
+                    kernel_function = ffi_module.flint_dense_prime_field_matrix_rref
                     implementation = (
                         'declared-flint-isolated'
                         if _native_kernel_available(kernel_function)
@@ -3436,7 +3438,7 @@ class Matrix(sage.Element):
             if self._hermite_transform_cache is runtime.undefined:
                 kernel = (
                     _dense_integer_flint_module()
-                    .flint_dense_integer_hnf_transform
+                    .flint_dense_integer_matrix_hnf_transform
                 )
                 count = self.nrows() * self.ncols()
                 transform_count = self.nrows() * self.nrows()
@@ -3478,7 +3480,7 @@ class Matrix(sage.Element):
                 transform = transform.matrix_from_rows(indices)
             return runtime.math_tuple([hermite, transform])
         if self._hermite_cache is runtime.undefined:
-            kernel = _dense_integer_flint_module().flint_dense_integer_hnf
+            kernel = _dense_integer_flint_module().flint_dense_integer_matrix_hnf
             def invoke_integer_hnf(values: list[Any]) -> None:
                 kernel(
                     values[0],
@@ -3516,7 +3518,7 @@ class Matrix(sage.Element):
                 'Smith form currently requires an integer matrix')
         if self._smith_cache is runtime.undefined:
             kernel = (
-                _dense_integer_flint_module().flint_dense_integer_snf_transform)
+                _dense_integer_flint_module().flint_dense_integer_matrix_snf_transform)
             def invoke_integer_snf_transform(values: list[Any]) -> None:
                 kernel(
                     values[0],
@@ -3662,7 +3664,7 @@ class Matrix(sage.Element):
                 columns = int(self.ncols())
                 kernel_function = (
                     _dense_integer_flint_module()
-                    .flint_dense_integer_right_kernel
+                    .flint_dense_integer_matrix_right_kernel
                 )
                 captured_nullity = [0]
 
@@ -3701,7 +3703,7 @@ class Matrix(sage.Element):
                 reduced = self.rref()
                 kernel_function = (
                     _dense_rational_kernel_module()
-                    .dense_rational_kernel_from_rref)
+                    .dense_rational_matrix_kernel_from_rref)
                 reduced_numerators, reduced_denominators = (
                     reduced._rational_kernel_parts(kernel_function))
                 captured_nullity = [0]
@@ -3753,7 +3755,7 @@ class Matrix(sage.Element):
             elif self._has_packed_prime_storage():
                 columns = int(self.ncols())
                 ffi_module = _dense_prime_flint_module()
-                kernel_function = ffi_module.flint_dense_prime_right_kernel
+                kernel_function = ffi_module.flint_dense_prime_field_matrix_right_kernel
                 output = _dense_prime_zeros(
                     kernel_function, columns * columns)
                 nullity = runtime.number(kernel_function(
@@ -4145,7 +4147,7 @@ class Matrix(sage.Element):
         if self._has_packed_rational_storage():
             kernel = (
                 _dense_rational_flint_module()
-                .flint_dense_rational_charpoly)
+                .flint_dense_rational_matrix_charpoly)
             coefficient_count = self.nrows() + 1
             source_numerators, source_denominators = (
                 self._rational_kernel_parts(kernel))
@@ -4190,7 +4192,7 @@ class Matrix(sage.Element):
             return answer
         if self._has_packed_integer_storage():
             kernel = (
-                _dense_integer_flint_module().flint_dense_integer_charpoly)
+                _dense_integer_flint_module().flint_dense_integer_matrix_charpoly)
             coefficient_count = self.nrows() + 1
             def invoke_integer_charpoly(values: list[Any]) -> None:
                 kernel(
@@ -4220,7 +4222,7 @@ class Matrix(sage.Element):
             )
             return answer
         if self._has_packed_prime_storage():
-            kernel = _dense_prime_flint_module().flint_dense_prime_charpoly
+            kernel = _dense_prime_flint_module().flint_dense_prime_field_matrix_charpoly
             modulus = int(_untyped(self.base_ring()).characteristic())
             coefficient_count = self.nrows() + 1
             source_count = self.nrows() * self.ncols()
@@ -4283,7 +4285,7 @@ class Matrix(sage.Element):
             return cached
         if self._has_packed_prime_storage():
             ring = sage.PolynomialRing(self.base_ring(), variable)
-            kernel = _dense_prime_flint_module().flint_dense_prime_minpoly
+            kernel = _dense_prime_flint_module().flint_dense_prime_field_matrix_minpoly
             modulus = int(_untyped(self.base_ring()).characteristic())
             coefficient_count = self.nrows() + 1
             source_count = self.nrows() * self.ncols()
@@ -4389,7 +4391,7 @@ class Matrix(sage.Element):
         if self._has_packed_rational_storage():
             kernel = (
                 _dense_rational_flint_module()
-                .flint_dense_rational_inverse)
+                .flint_dense_rational_matrix_inverse)
             source_numerators, source_denominators = (
                 self._rational_kernel_parts(kernel))
 
@@ -4432,7 +4434,7 @@ class Matrix(sage.Element):
             return self._inverse_cache
         if self._has_packed_prime_storage():
             ffi_module = _dense_prime_flint_module()
-            kernel_function = ffi_module.flint_dense_prime_inverse
+            kernel_function = ffi_module.flint_dense_prime_field_matrix_inverse
             output = _dense_prime_zeros(
                 kernel_function, self.nrows() * self.ncols())
             try:
@@ -4524,7 +4526,7 @@ class Matrix(sage.Element):
         ):
             kernel = (
                 _dense_rational_flint_module()
-                .flint_dense_rational_solve)
+                .flint_dense_rational_matrix_solve)
             left_numerators, left_denominators = (
                 left_matrix._rational_kernel_parts(kernel))
             right_numerators, right_denominators = (
@@ -4578,7 +4580,7 @@ class Matrix(sage.Element):
             and left_matrix.is_square()
         ):
             ffi_module = _dense_prime_flint_module()
-            kernel_function = ffi_module.flint_dense_prime_solve
+            kernel_function = ffi_module.flint_dense_prime_field_matrix_solve
             output = _dense_prime_zeros(
                 kernel_function,
                 left_matrix.ncols() * right_matrix.ncols(),
@@ -4710,7 +4712,7 @@ class Matrix(sage.Element):
             top._has_packed_rational_storage()
             and bottom._has_packed_rational_storage()
         ):
-            kernel = _dense_rational_kernel_module().dense_rational_stack
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_stack
             top_numerators, top_denominators = (
                 top._rational_kernel_parts(kernel))
             bottom_numerators, bottom_denominators = (
@@ -4750,7 +4752,7 @@ class Matrix(sage.Element):
             top._has_packed_integer_storage()
             and bottom._has_packed_integer_storage()
         ):
-            kernel = _dense_integer_kernel_module().dense_integer_stack
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_stack
             output = _dense_integer_zeros(
                 kernel,
                 (top.nrows() + bottom.nrows()) * top.ncols(),
@@ -4776,7 +4778,7 @@ class Matrix(sage.Element):
             top._has_packed_prime_storage()
             and bottom._has_packed_prime_storage()
         ):
-            kernel = _dense_prime_kernel_module().dense_prime_stack
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_stack
             modulus = int(_untyped(base).characteristic())
             output = _dense_prime_zeros(
                 kernel,
@@ -4846,7 +4848,7 @@ class Matrix(sage.Element):
             left._has_packed_rational_storage()
             and right._has_packed_rational_storage()
         ):
-            kernel = _dense_rational_kernel_module().dense_rational_augment
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_augment
             left_numerators, left_denominators = (
                 left._rational_kernel_parts(kernel))
             right_numerators, right_denominators = (
@@ -4889,7 +4891,7 @@ class Matrix(sage.Element):
             left._has_packed_integer_storage()
             and right._has_packed_integer_storage()
         ):
-            kernel = _dense_integer_kernel_module().dense_integer_augment
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_augment
             output = _dense_integer_zeros(
                 kernel,
                 left.nrows() * (left.ncols() + right.ncols()),
@@ -4920,7 +4922,7 @@ class Matrix(sage.Element):
             left._has_packed_prime_storage()
             and right._has_packed_prime_storage()
         ):
-            kernel = _dense_prime_kernel_module().dense_prime_augment
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_augment
             modulus = int(_untyped(base).characteristic())
             output = _dense_prime_zeros(
                 kernel,
@@ -4997,7 +4999,7 @@ class Matrix(sage.Element):
             indices = [
                 _normalize_index(row, self.nrows()) for row in indices]
             kernel = (
-                _dense_rational_kernel_module().dense_rational_select_rows)
+                _dense_rational_kernel_module().dense_rational_matrix_select_rows)
             source_numerators, source_denominators = (
                 self._rational_kernel_parts(kernel))
             index_buffer = _dense_integer_buffer(kernel, indices, 1)
@@ -5033,7 +5035,7 @@ class Matrix(sage.Element):
         if self._has_packed_integer_storage():
             indices = [
                 _normalize_index(row, self.nrows()) for row in indices]
-            kernel = _dense_integer_kernel_module().dense_integer_select_rows
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_select_rows
             output = _dense_integer_zeros(
                 kernel,
                 len(indices) * self.ncols(),
@@ -5059,7 +5061,7 @@ class Matrix(sage.Element):
         if self._has_packed_prime_storage():
             indices = [
                 _normalize_index(row, self.nrows()) for row in indices]
-            kernel = _dense_prime_kernel_module().dense_prime_select_rows
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_select_rows
             modulus = int(_untyped(self.base_ring()).characteristic())
             entries = _dense_prime_zeros(
                 kernel, len(indices) * self.ncols())
@@ -5098,7 +5100,7 @@ class Matrix(sage.Element):
             ]
             kernel = (
                 _dense_rational_kernel_module()
-                .dense_rational_select_columns)
+                .dense_rational_matrix_select_columns)
             source_numerators, source_denominators = (
                 self._rational_kernel_parts(kernel))
             index_buffer = _dense_integer_buffer(kernel, indices, 1)
@@ -5138,7 +5140,7 @@ class Matrix(sage.Element):
                 for column in indices
             ]
             kernel = (
-                _dense_integer_kernel_module().dense_integer_select_columns)
+                _dense_integer_kernel_module().dense_integer_matrix_select_columns)
             output = _dense_integer_zeros(
                 kernel,
                 self.nrows() * len(indices),
@@ -5167,7 +5169,7 @@ class Matrix(sage.Element):
                 for column in indices
             ]
             kernel = (
-                _dense_prime_kernel_module().dense_prime_select_columns)
+                _dense_prime_kernel_module().dense_prime_field_matrix_select_columns)
             modulus = int(_untyped(self.base_ring()).characteristic())
             entries = _dense_prime_zeros(
                 kernel, self.nrows() * len(indices))
@@ -5208,7 +5210,7 @@ class Matrix(sage.Element):
         if not self.is_square():
             raise ValueError('trace is only defined for square matrices')
         if self._has_packed_prime_storage():
-            kernel = _dense_prime_kernel_module().dense_prime_trace
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_trace
             modulus = int(_untyped(self.base_ring()).characteristic())
             residue = kernel(
                 self._prime_kernel_buffer(kernel), self.nrows(), modulus)
@@ -5218,7 +5220,7 @@ class Matrix(sage.Element):
             )
             return self.base_ring()(residue)
         if self._has_packed_integer_storage():
-            kernel = _dense_integer_kernel_module().dense_integer_trace
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_trace
             value = kernel(
                 self._integer_kernel_buffer(kernel), self.nrows())
             _trace_dense_integer_selection(
@@ -5227,7 +5229,7 @@ class Matrix(sage.Element):
             )
             return runtime.normalize_integer(value)
         if self._has_packed_rational_storage():
-            kernel = _dense_rational_kernel_module().dense_rational_trace
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_trace
             source_numerators, source_denominators = (
                 self._rational_kernel_parts(kernel))
 
@@ -5282,7 +5284,7 @@ class Matrix(sage.Element):
             left._has_packed_rational_storage()
             and right._has_packed_rational_storage()
         ):
-            kernel = _dense_rational_kernel_module().dense_rational_equal
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_equal
             left_numerators, left_denominators = (
                 left._rational_kernel_parts(kernel))
             right_numerators, right_denominators = (
@@ -5302,7 +5304,7 @@ class Matrix(sage.Element):
             left._has_packed_integer_storage()
             and right._has_packed_integer_storage()
         ):
-            kernel = _dense_integer_kernel_module().dense_integer_equal
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_equal
             result = bool(kernel(
                 left._integer_kernel_buffer(kernel),
                 right._integer_kernel_buffer(kernel),
@@ -5316,7 +5318,7 @@ class Matrix(sage.Element):
             left._has_packed_prime_storage()
             and right._has_packed_prime_storage()
         ):
-            kernel = _dense_prime_kernel_module().dense_prime_equal
+            kernel = _dense_prime_kernel_module().dense_prime_field_matrix_equal
             modulus = int(_untyped(base).characteristic())
             result = bool(kernel(
                 left._prime_kernel_buffer(kernel),
@@ -5336,7 +5338,7 @@ class Matrix(sage.Element):
 
     def __copy__(self) -> Matrix:
         if self._has_packed_rational_storage():
-            kernel = _dense_rational_kernel_module().dense_rational_copy
+            kernel = _dense_rational_kernel_module().dense_rational_matrix_copy
             source_numerators, source_denominators = (
                 self._rational_kernel_parts(kernel))
 
@@ -5363,7 +5365,7 @@ class Matrix(sage.Element):
             answer._col_subdivisions = list(self._col_subdivisions)
             return answer
         if self._has_packed_integer_storage():
-            kernel = _dense_integer_kernel_module().dense_integer_copy
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_copy
             entries = _dense_integer_buffer(
                 kernel,
                 self._integer_entries(),
@@ -5767,7 +5769,7 @@ def zero_matrix(
 
 def identity_matrix(base: sage.Parent, size: int) -> Matrix:
     if base is sage.QQ:
-        kernel = _dense_rational_kernel_module().dense_rational_identity
+        kernel = _dense_rational_kernel_module().dense_rational_matrix_identity
         numerators = _dense_integer_zeros(kernel, size * size, 1)
         denominators = _dense_integer_zeros(kernel, size * size, 1)
         if not kernel(numerators, denominators, size):
@@ -6027,7 +6029,7 @@ def random_matrix(
         storage = _packed_uint64(count)
         if count != 0:
             kernel = _dense_prime_kernel_module()
-            filler = kernel.dense_prime_random_fill
+            filler = kernel.dense_prime_field_matrix_random_fill
             native_filler = _native_kernel_available(filler)
             _trace_dense_prime_selection(
                 'random_matrix',
@@ -6071,7 +6073,7 @@ def random_matrix(
     if integer_fast_lower is not None and integer_fast_upper is not None:
         span = integer_fast_upper - integer_fast_lower
         if span <= 4294967296:
-            kernel = _dense_integer_kernel_module().dense_integer_random_fill
+            kernel = _dense_integer_kernel_module().dense_integer_matrix_random_fill
             capacity = max(
                 _integer_value_capacity(integer_fast_lower),
                 _integer_value_capacity(integer_fast_upper - 1),
@@ -6105,7 +6107,7 @@ def random_matrix(
         and distribution is None
     ):
         kernel = (
-            _dense_integer_kernel_module().dense_integer_random_fill_default)
+            _dense_integer_kernel_module().dense_integer_matrix_random_fill_default)
         storage = _dense_integer_zeros(kernel, rows * cols, 1)
         if rows * cols != 0:
             state = _random_int(0, 4294967295)
@@ -6134,10 +6136,10 @@ def random_matrix(
         and distribution is None
     ):
         numerator_kernel = (
-            _dense_integer_kernel_module().dense_integer_random_fill_default)
+            _dense_integer_kernel_module().dense_integer_matrix_random_fill_default)
         denominator_kernel = (
             _dense_rational_kernel_module()
-            .dense_rational_fill_denominator_one)
+            .dense_rational_matrix_fill_denominator_one)
         numerators = _dense_integer_zeros(
             numerator_kernel, rows * cols, 1)
         denominators = _dense_integer_zeros(

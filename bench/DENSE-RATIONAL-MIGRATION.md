@@ -15,7 +15,7 @@ updates a normalized pair transactionally, and no raw pointer or foreign
 object escapes into mathematical source.
 
 Source-transparent structural algorithms live in
-`src/lib/sagejs/kernels/dense_rational.py`. They include normalization,
+`src/lib/sagejs/kernels/matrix/dense_rational.py`. They include normalization,
 cross-cancelled arithmetic, copying, indexing, mutation, elementwise
 operations, scalar multiplication, transpose, selection, stacking,
 augmentation, predicates, trace, and construction of a right-kernel spanning
@@ -23,7 +23,7 @@ set from RREF. The ordinary Python bodies are the executable fallback and the
 actual compiler input.
 
 Multiplication and mature exact linear algebra cross the declarations in
-`src/lib/sagejs/kernels/dense_rational_flint.py`. Generated adapters construct
+`src/lib/sagejs/kernels/matrix/dense_rational_flint.py`. Generated adapters construct
 lexical `fmpq_mat` values from the packed pairs, preflight both result
 components, copy back transactionally, and clear every temporary. FLINT never
 becomes the public object's owner. This declared route currently covers

@@ -16,10 +16,11 @@ const flint = require("../packages/flint");
 
 const root = join(__dirname, "..");
 const sourcePath = join(
-  root, "src", "lib", "sagejs", "kernels", "dense_prime.py",
+  root, "src", "lib", "sagejs", "kernels", "matrix", "dense_prime_field.py",
 );
 const flintSourcePath = join(
-  root, "src", "lib", "sagejs", "kernels", "dense_prime_flint.py",
+  root, "src", "lib", "sagejs", "kernels", "matrix",
+  "dense_prime_field_flint.py",
 );
 const matrixSourcePath = join(root, "src", "baselib", "matrix.py");
 
@@ -153,12 +154,12 @@ function runSageFailure(source, environment) {
 
 const productionScript = String.raw`
 import sagejs.runtime as runtime
-from sagejs.kernels.dense_prime import (
+from sagejs.kernels.matrix.dense_prime_field import (
     DensePrimeMatrix,
-    dense_prime_rank,
-    dense_prime_rref,
-    dense_prime_right_kernel,
-    dense_prime_solve,
+    dense_prime_field_matrix_rank,
+    dense_prime_field_matrix_rref,
+    dense_prime_field_matrix_right_kernel,
+    dense_prime_field_matrix_solve,
 )
 
 backend = runtime.flint_backend()
@@ -261,18 +262,18 @@ for modulus in [2, 3, 5, 101, 65521, 4294967291]:
         source_record = DensePrimeMatrix(
             source_buffer, rows, columns, modulus)
         rank_workspace = [0 for _index in range(rows * columns)]
-        assert dense_prime_rank(
+        assert dense_prime_field_matrix_rank(
             source_record, rank_workspace,
         ) == legacy_rank
         rref_output = [0 for _index in range(rows * columns)]
-        rref_rank = dense_prime_rref(
+        rref_rank = dense_prime_field_matrix_rref(
             source_record, rref_output)
         assert rref_rank == legacy_rank
         assert same_entries(
             matrix(field, rows, columns, rref_output), legacy_rref)
         kernel_workspace = [0 for _index in range(rows * columns)]
         kernel_output = [0 for _index in range(columns * columns)]
-        nullity = dense_prime_right_kernel(
+        nullity = dense_prime_field_matrix_right_kernel(
             source_record,
             kernel_workspace,
             kernel_output,
@@ -313,7 +314,7 @@ for modulus in [2, 3, 5, 101, 65521, 4294967291]:
         backend.matrixSolve(left_oracle, right_oracle), size, 3)
     solve_workspace = [0 for _index in range(size * (size + 3))]
     solve_output = [0 for _index in range(size * 3)]
-    assert dense_prime_solve(
+    assert dense_prime_field_matrix_solve(
         DensePrimeMatrix(left_entries, size, size, modulus),
         DensePrimeMatrix(right_entries, size, 3, modulus),
         solve_workspace,
@@ -379,7 +380,7 @@ print("dense-prime-independent-ok")
     assert.doesNotMatch(matrixSource, /__sagejs_load_module__|Reflect\.apply/);
     assert.match(
       matrixSource,
-      /__import__\(\s*['"]sagejs\.kernels\.dense_prime['"]/,
+      /__import__\(\s*['"]sagejs\.kernels\.matrix\.dense_prime_field['"]/,
     );
     const compiled = await compile({ sourcePath, cacheRoot: temporary });
     const compiledFlint = await compile({
@@ -392,24 +393,27 @@ print("dense-prime-independent-ok")
       compiled.ir.functions.map((fn) => [fn.name, fn]),
     );
     assert.deepEqual(
-      functions.get("dense_prime_rank").dependencies,
-      ["_dense_prime_blocked_full_rank", "_dense_prime_rank_inplace"],
+      functions.get("dense_prime_field_matrix_rank").dependencies,
+      [
+        "_dense_prime_field_matrix_blocked_full_rank",
+        "_dense_prime_field_matrix_rank_inplace",
+      ],
     );
     assert.deepEqual(
-      functions.get("dense_prime_right_kernel").dependencies,
-      ["_dense_prime_rref_inplace", "dense_prime_rref"],
+      functions.get("dense_prime_field_matrix_right_kernel").dependencies,
+      ["_dense_prime_field_matrix_rref_inplace", "dense_prime_field_matrix_rref"],
     );
     assert.deepEqual(
-      functions.get("dense_prime_solve").dependencies,
-      ["_dense_prime_rref_inplace"],
+      functions.get("dense_prime_field_matrix_solve").dependencies,
+      ["_dense_prime_field_matrix_rref_inplace"],
     );
     assert.equal(
-      functions.get("dense_prime_random_fill").kernelKind,
+      functions.get("dense_prime_field_matrix_random_fill").kernelKind,
       "prime-field-source",
     );
     assert.match(
       compiledFlint.ir.functions.find(
-        (fn) => fn.name === "flint_dense_prime_mul",
+        (fn) => fn.name === "flint_dense_prime_field_matrix_mul",
       ).foreignDependencies[0],
       /^flint@[a-f0-9]{64}:nmod_mat_mul$/,
     );
@@ -428,7 +432,7 @@ print("dense-prime-independent-ok")
     ]) {
       const target = packed(kernel, length);
       const expected = sageRandomResidues(length, modulus, seed);
-      const finalState = kernel.dense_prime_random_fill(
+      const finalState = kernel.dense_prime_field_matrix_random_fill(
         target, modulus, seed,
       );
       assert.deepEqual(Array.from(target), expected.entries);
@@ -456,7 +460,7 @@ print("dense-prime-independent-ok")
 
           const rankWorkspace = packed(kernel, rows * columns);
           assert.equal(
-            kernel.dense_prime_rank(
+            kernel.dense_prime_field_matrix_rank(
               sourceRecord, rankWorkspace,
             ),
             expectedRank,
@@ -464,7 +468,7 @@ print("dense-prime-independent-ok")
 
           const rref = packed(kernel, rows * columns);
           assert.equal(
-            kernel.dense_prime_rref(sourceRecord, rref),
+            kernel.dense_prime_field_matrix_rref(sourceRecord, rref),
             expectedRank,
           );
           assert.equal(
@@ -477,7 +481,7 @@ print("dense-prime-independent-ok")
 
           const kernelWorkspace = packed(kernel, rows * columns);
           const kernelOutput = packed(kernel, columns * columns);
-          const nullity = kernel.dense_prime_right_kernel(
+          const nullity = kernel.dense_prime_field_matrix_right_kernel(
             sourceRecord,
             kernelWorkspace,
             kernelOutput,
@@ -497,11 +501,11 @@ print("dense-prime-independent-ok")
           );
           assert.deepEqual(Array.from(source), original);
 
-          assert.equal(Number(flintKernel.flint_dense_prime_rank(
+          assert.equal(Number(flintKernel.flint_dense_prime_field_matrix_rank(
             source, rows, columns, modulus,
           )), expectedRank);
           const flintRref = packed(kernel, rows * columns);
-          assert.equal(Number(flintKernel.flint_dense_prime_rref(
+          assert.equal(Number(flintKernel.flint_dense_prime_field_matrix_rref(
             flintRref, source, rows, columns, modulus,
           )), expectedRank);
           assert.equal(flint.matrixEqual(
@@ -509,7 +513,7 @@ print("dense-prime-independent-ok")
             expectedRref,
           ), true);
           const flintKernelOutput = packed(kernel, columns * columns);
-          assert.equal(Number(flintKernel.flint_dense_prime_right_kernel(
+          assert.equal(Number(flintKernel.flint_dense_prime_field_matrix_right_kernel(
             flintKernelOutput, source, rows, columns, modulus,
           )), nullity);
           assert.equal(flint.matrixEqual(
@@ -537,7 +541,7 @@ print("dense-prime-independent-ok")
         const workspace = packed(kernel, size * (size + 3));
         const output = packed(kernel, size * 3);
         assert.equal(
-          kernel.dense_prime_solve(
+          kernel.dense_prime_field_matrix_solve(
             denseRecord(left, size, size, modulus),
             denseRecord(right, size, 3, modulus),
             workspace,
@@ -546,7 +550,7 @@ print("dense-prime-independent-ok")
           1,
         );
         const flintOutput = packed(kernel, size * 3);
-        assert.equal(flintKernel.flint_dense_prime_solve(
+        assert.equal(flintKernel.flint_dense_prime_field_matrix_solve(
           flintOutput,
           left,
           right,
@@ -576,7 +580,7 @@ print("dense-prime-independent-ok")
         inner, rightColumns, modulus, Number(modulus % 7877n) + 73,
       );
       const product = packed(kernel, leftRows * rightColumns);
-      assert.equal(flintKernel.flint_dense_prime_mul(
+      assert.equal(flintKernel.flint_dense_prime_field_matrix_mul(
         product,
         packed(kernel, leftEntries),
         packed(kernel, rightEntries),
@@ -606,7 +610,7 @@ print("dense-prime-independent-ok")
       const source = packed(kernel, entries);
       const workspace = packed(kernel, blockedSize * blockedSize);
       assert.equal(
-        kernel.dense_prime_rank(
+        kernel.dense_prime_field_matrix_rank(
           denseRecord(source, blockedSize, blockedSize, boundaryPrime),
           workspace,
         ),
@@ -617,7 +621,7 @@ print("dense-prime-independent-ok")
     const singularLeft = packed(kernel, [1n, 2n, 2n, 4n]);
     const singularRight = packed(kernel, [1n, 0n]);
     assert.equal(
-      kernel.dense_prime_solve(
+      kernel.dense_prime_field_matrix_solve(
         denseRecord(singularLeft, 2, 2, 5n),
         denseRecord(singularRight, 2, 1, 5n),
         packed(kernel, 6),
@@ -626,7 +630,7 @@ print("dense-prime-independent-ok")
       0,
     );
     assert.throws(
-      () => kernel.dense_prime_rank(
+      () => kernel.dense_prime_field_matrix_rank(
         denseRecord(packed(kernel, 3), 2, 2, 5n), packed(kernel, 4),
       ),
       /shape mismatch/,
@@ -708,7 +712,7 @@ print("trace-ok")
     );
 
     const importKernel = String.raw`
-from sagejs.kernels.dense_prime import dense_prime_rref
+from sagejs.kernels.matrix.dense_prime_field import dense_prime_field_matrix_rref
 print("import-ok")
 `;
     const warning = runSage(importKernel, {

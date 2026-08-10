@@ -4,9 +4,9 @@ This benchmark compares two isolated kernel implementations that consume the
 same caller-owned row-major `UInt64Buffer`:
 
 - the actual typed-Python bodies in
-  `src/lib/sagejs/kernels/dense_prime.py`; and
+  `src/lib/sagejs/kernels/matrix/dense_prime_field.py`; and
 - generated FFI calls to mature FLINT in
-  `src/lib/sagejs/kernels/dense_prime_flint.py`.
+  `src/lib/sagejs/kernels/matrix/dense_prime_field_flint.py`.
 
 The declared-FLINT timing includes reconstructing transient FLINT matrices from
 packed storage. The legacy N-API timing starts with an already constructed

@@ -1,5 +1,12 @@
 # Sage.js contributor notes
 
+> **Greenfield rule:** Sage.js currently has no external compatibility burden.
+> Prefer correcting names, APIs, layouts, and representations directly instead
+> of preserving accidental designs with aliases, migrations, or deprecation
+> shims. Preserve Sage/Python semantics and documented external formats; this
+> freedom ends when the project explicitly declares a stable compatibility
+> contract.
+
 - Use `pnpm`, not `npm`; keep `pnpm-lock.yaml` and do not add `package-lock.json`.
 - Support Node.js 22.22.2 or newer.
 - Keep Sage mode mathematics-friendly without changing Python mode accidentally.

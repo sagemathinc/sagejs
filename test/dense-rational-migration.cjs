@@ -15,13 +15,14 @@ const { compile } = require("@sagemath/sagejs/native");
 
 const root = join(__dirname, "..");
 const sourcePath = join(
-  root, "src", "lib", "sagejs", "kernels", "dense_rational.py",
+  root, "src", "lib", "sagejs", "kernels", "matrix", "dense_rational.py",
 );
 const flintSourcePath = join(
-  root, "src", "lib", "sagejs", "kernels", "dense_rational_flint.py",
+  root, "src", "lib", "sagejs", "kernels", "matrix",
+  "dense_rational_flint.py",
 );
 const integerSourcePath = join(
-  root, "src", "lib", "sagejs", "kernels", "dense_integer.py",
+  root, "src", "lib", "sagejs", "kernels", "matrix", "dense_integer.py",
 );
 const matrixSourcePath = join(root, "src", "baselib", "matrix.py");
 
@@ -122,7 +123,7 @@ print('dense-rational-independent-ok')
     const matrixSource = readFileSync(matrixSourcePath, "utf8");
     assert.match(
       matrixSource,
-      /__import__\(\s*['"]sagejs\.kernels\.dense_rational['"]/,
+      /__import__\(\s*['"]sagejs\.kernels\.matrix\.dense_rational['"]/,
     );
     assert.doesNotMatch(matrixSource, /\.qqMatrix\s*\(/);
 
@@ -139,24 +140,24 @@ print('dense-rational-independent-ok')
       compiled.ir.functions.map((fn) => [fn.name, fn]),
     );
     assert.equal(
-      functions.get("dense_rational_add").analysis.backend.kind,
+      functions.get("dense_rational_matrix_add").analysis.backend.kind,
       "tagged",
     );
     assert.equal(
-      functions.get("dense_rational_add").analysis
+      functions.get("dense_rational_matrix_add").analysis
         .taggedInteger.representation,
       "tagged-int64-gmp",
     );
-    assert.ok(functions.has("dense_rational_kernel_from_rref"));
+    assert.ok(functions.has("dense_rational_matrix_kernel_from_rref"));
 
     for (const name of [
-      "flint_dense_rational_mul",
-      "flint_dense_rational_rank",
-      "flint_dense_rational_rref",
-      "flint_dense_rational_inverse",
-      "flint_dense_rational_solve",
-      "flint_dense_rational_determinant",
-      "flint_dense_rational_charpoly",
+      "flint_dense_rational_matrix_mul",
+      "flint_dense_rational_matrix_rank",
+      "flint_dense_rational_matrix_rref",
+      "flint_dense_rational_matrix_inverse",
+      "flint_dense_rational_matrix_solve",
+      "flint_dense_rational_matrix_determinant",
+      "flint_dense_rational_matrix_charpoly",
     ]) {
       const fn = compiledFlint.ir.functions.find((candidate) =>
         candidate.name === name
@@ -176,14 +177,14 @@ print('dense-rational-independent-ok')
       );
     }
 
-    const pack = kernel.dense_rational_add.packIntegerBuffer;
+    const pack = kernel.dense_rational_matrix_add.packIntegerBuffer;
     const leftNumerators = pack([1n, 2n]);
     const leftDenominators = pack([2n, 3n]);
     const rightNumerators = pack([3n, -5n]);
     const rightDenominators = pack([7n, 11n]);
     const outputNumerators = kernel.createIntegerBuffer(2, 4);
     const outputDenominators = kernel.createIntegerBuffer(2, 4);
-    assert.equal(kernel.dense_rational_add(
+    assert.equal(kernel.dense_rational_matrix_add(
       outputNumerators,
       outputDenominators,
       leftNumerators,
@@ -197,12 +198,12 @@ print('dense-rational-independent-ok')
     // Paired rational output is one transaction: an undersized denominator
     // component must not commit the already-valid numerator component.
     const flintPack =
-      flintKernel.flint_dense_rational_mul.packIntegerBuffer;
+      flintKernel.flint_dense_rational_matrix_mul.packIntegerBuffer;
     const transactionalNumerator = flintPack([17n]);
     const transactionalDenominator =
       flintKernel.createIntegerBuffer(1, 1);
     assert.throws(
-      () => flintKernel.flint_dense_rational_mul(
+      () => flintKernel.flint_dense_rational_matrix_mul(
         transactionalNumerator,
         transactionalDenominator,
         flintPack([1n]),
@@ -222,7 +223,7 @@ print('dense-rational-independent-ok')
     // an invalid denominator cannot leak the C sentinel through uint64.
     const checkedRank = flintKernel.createIntegerBuffer(1, 1);
     assert.throws(
-      () => flintKernel.flint_dense_rational_rank(
+      () => flintKernel.flint_dense_rational_matrix_rank(
         checkedRank,
         flintPack([1n]),
         flintPack([0n]),

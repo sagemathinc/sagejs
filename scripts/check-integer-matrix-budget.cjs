@@ -88,33 +88,33 @@ const cases = [
 ];
 
 const structural = [
-  "dense_integer_add",
-  "dense_integer_subtract",
-  "dense_integer_negate",
-  "dense_integer_scalar_multiply",
-  "dense_integer_transpose",
-  "dense_integer_equal",
-  "dense_integer_is_zero",
-  "dense_integer_is_one",
-  "dense_integer_nonzero_count",
-  "dense_integer_trace",
-  "dense_integer_stack",
-  "dense_integer_augment",
-  "dense_integer_select_rows",
-  "dense_integer_select_columns",
-  "dense_integer_random_fill",
-  "dense_integer_random_fill_default",
+  "dense_integer_matrix_add",
+  "dense_integer_matrix_subtract",
+  "dense_integer_matrix_negate",
+  "dense_integer_matrix_scalar_multiply",
+  "dense_integer_matrix_transpose",
+  "dense_integer_matrix_equal",
+  "dense_integer_matrix_is_zero",
+  "dense_integer_matrix_is_one",
+  "dense_integer_matrix_nonzero_count",
+  "dense_integer_matrix_trace",
+  "dense_integer_matrix_stack",
+  "dense_integer_matrix_augment",
+  "dense_integer_matrix_select_rows",
+  "dense_integer_matrix_select_columns",
+  "dense_integer_matrix_random_fill",
+  "dense_integer_matrix_random_fill_default",
 ];
 
 const advanced = [
-  "flint_dense_integer_mul",
-  "flint_dense_integer_determinant",
-  "flint_dense_integer_charpoly",
-  "flint_dense_integer_rank",
-  "flint_dense_integer_hnf",
-  "flint_dense_integer_hnf_transform",
-  "flint_dense_integer_snf_transform",
-  "flint_dense_integer_right_kernel",
+  "flint_dense_integer_matrix_mul",
+  "flint_dense_integer_matrix_determinant",
+  "flint_dense_integer_matrix_charpoly",
+  "flint_dense_integer_matrix_rank",
+  "flint_dense_integer_matrix_hnf",
+  "flint_dense_integer_matrix_hnf_transform",
+  "flint_dense_integer_matrix_snf_transform",
+  "flint_dense_integer_matrix_right_kernel",
 ];
 
 async function run(environment = process.env) {
@@ -140,7 +140,9 @@ async function run(environment = process.env) {
   try {
     for (const filename of ["dense_integer.py", "dense_integer_flint.py"]) {
       await compile({
-        sourcePath: join(root, "src", "lib", "sagejs", "kernels", filename),
+        sourcePath: join(
+          root, "src", "lib", "sagejs", "kernels", "matrix", filename,
+        ),
         cacheRoot: cache,
       });
     }
@@ -158,8 +160,8 @@ async function run(environment = process.env) {
     const results = [];
     try {
       const witnesses = await session.evaluate([
-        `from sagejs.kernels.dense_integer import ${structural.join(", ")}`,
-        `from sagejs.kernels.dense_integer_flint import ${advanced.join(", ")}`,
+        `from sagejs.kernels.matrix.dense_integer import ${structural.join(", ")}`,
+        `from sagejs.kernels.matrix.dense_integer_flint import ${advanced.join(", ")}`,
         ...[...structural, ...advanced].map((name) =>
           `print(${name}.nativeAvailable)`
         ),

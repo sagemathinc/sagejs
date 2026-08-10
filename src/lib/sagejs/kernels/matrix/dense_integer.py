@@ -12,12 +12,12 @@ from sagejs.native import IntegerBuffer, native, uint64
 
 
 @native
-def dense_integer_get(source: IntegerBuffer, index: int) -> int:
+def dense_integer_matrix_get(source: IntegerBuffer, index: int) -> int:
     return source[index]
 
 
 @native
-def dense_integer_set(
+def dense_integer_matrix_set(
     target: IntegerBuffer, index: int, value: int,
 ) -> bool:
     target[index] = value
@@ -25,7 +25,7 @@ def dense_integer_set(
 
 
 @native
-def dense_integer_copy(
+def dense_integer_matrix_copy(
     output: IntegerBuffer, source: IntegerBuffer,
 ) -> bool:
     valid = len(output) == len(source)
@@ -36,7 +36,7 @@ def dense_integer_copy(
 
 
 @native
-def dense_integer_add(
+def dense_integer_matrix_add(
     output: IntegerBuffer,
     left: IntegerBuffer,
     right: IntegerBuffer,
@@ -49,7 +49,7 @@ def dense_integer_add(
 
 
 @native
-def dense_integer_subtract(
+def dense_integer_matrix_subtract(
     output: IntegerBuffer,
     left: IntegerBuffer,
     right: IntegerBuffer,
@@ -62,7 +62,7 @@ def dense_integer_subtract(
 
 
 @native
-def dense_integer_negate(
+def dense_integer_matrix_negate(
     output: IntegerBuffer, source: IntegerBuffer,
 ) -> bool:
     valid = len(output) == len(source)
@@ -73,7 +73,7 @@ def dense_integer_negate(
 
 
 @native
-def dense_integer_scalar_multiply(
+def dense_integer_matrix_scalar_multiply(
     output: IntegerBuffer,
     source: IntegerBuffer,
     scalar: int,
@@ -86,7 +86,7 @@ def dense_integer_scalar_multiply(
 
 
 @native
-def dense_integer_transpose(
+def dense_integer_matrix_transpose(
     output: IntegerBuffer,
     source: IntegerBuffer,
     rows: uint64,
@@ -103,7 +103,7 @@ def dense_integer_transpose(
 
 
 @native
-def dense_integer_equal(
+def dense_integer_matrix_equal(
     left: IntegerBuffer, right: IntegerBuffer,
 ) -> bool:
     equal = len(left) == len(right)
@@ -115,7 +115,7 @@ def dense_integer_equal(
 
 
 @native
-def dense_integer_is_zero(source: IntegerBuffer) -> bool:
+def dense_integer_matrix_is_zero(source: IntegerBuffer) -> bool:
     answer = True
     for index in range(len(source)):
         if source[index] != 0:
@@ -124,7 +124,7 @@ def dense_integer_is_zero(source: IntegerBuffer) -> bool:
 
 
 @native
-def dense_integer_is_one(
+def dense_integer_matrix_is_one(
     source: IntegerBuffer, rows: uint64, columns: uint64,
 ) -> bool:
     answer = rows == columns and len(source) == rows * columns
@@ -140,7 +140,7 @@ def dense_integer_is_one(
 
 
 @native
-def dense_integer_nonzero_count(source: IntegerBuffer) -> int:
+def dense_integer_matrix_nonzero_count(source: IntegerBuffer) -> int:
     count = 0
     for index in range(len(source)):
         if source[index] != 0:
@@ -149,7 +149,7 @@ def dense_integer_nonzero_count(source: IntegerBuffer) -> int:
 
 
 @native
-def dense_integer_trace(source: IntegerBuffer, size: uint64) -> int:
+def dense_integer_matrix_trace(source: IntegerBuffer, size: uint64) -> int:
     value = 0
     if len(source) == size * size:
         for index in range(size):
@@ -158,7 +158,7 @@ def dense_integer_trace(source: IntegerBuffer, size: uint64) -> int:
 
 
 @native
-def dense_integer_stack(
+def dense_integer_matrix_stack(
     output: IntegerBuffer,
     top: IntegerBuffer,
     bottom: IntegerBuffer,
@@ -173,7 +173,7 @@ def dense_integer_stack(
 
 
 @native
-def dense_integer_augment(
+def dense_integer_matrix_augment(
     output: IntegerBuffer,
     left: IntegerBuffer,
     right: IntegerBuffer,
@@ -200,7 +200,7 @@ def dense_integer_augment(
 
 
 @native
-def dense_integer_select_rows(
+def dense_integer_matrix_select_rows(
     output: IntegerBuffer,
     source: IntegerBuffer,
     indices: IntegerBuffer,
@@ -224,7 +224,7 @@ def dense_integer_select_rows(
 
 
 @native
-def dense_integer_select_columns(
+def dense_integer_matrix_select_columns(
     output: IntegerBuffer,
     source: IntegerBuffer,
     indices: IntegerBuffer,
@@ -248,7 +248,7 @@ def dense_integer_select_columns(
 
 
 @native
-def dense_integer_random_fill(
+def dense_integer_matrix_random_fill(
     target: IntegerBuffer,
     lower: int,
     span: uint64,
@@ -270,7 +270,7 @@ def dense_integer_random_fill(
 
 
 @native
-def dense_integer_random_fill_default(
+def dense_integer_matrix_random_fill_default(
     target: IntegerBuffer,
     initial_state: uint64,
     word_base: uint64,
@@ -302,23 +302,23 @@ def dense_integer_random_fill_default(
 
 
 __all__ = [
-    'dense_integer_add',
-    'dense_integer_augment',
-    'dense_integer_copy',
-    'dense_integer_equal',
-    'dense_integer_get',
-    'dense_integer_is_one',
-    'dense_integer_is_zero',
-    'dense_integer_negate',
-    'dense_integer_nonzero_count',
-    'dense_integer_random_fill',
-    'dense_integer_random_fill_default',
-    'dense_integer_scalar_multiply',
-    'dense_integer_select_columns',
-    'dense_integer_select_rows',
-    'dense_integer_stack',
-    'dense_integer_set',
-    'dense_integer_subtract',
-    'dense_integer_trace',
-    'dense_integer_transpose',
+    'dense_integer_matrix_add',
+    'dense_integer_matrix_augment',
+    'dense_integer_matrix_copy',
+    'dense_integer_matrix_equal',
+    'dense_integer_matrix_get',
+    'dense_integer_matrix_is_one',
+    'dense_integer_matrix_is_zero',
+    'dense_integer_matrix_negate',
+    'dense_integer_matrix_nonzero_count',
+    'dense_integer_matrix_random_fill',
+    'dense_integer_matrix_random_fill_default',
+    'dense_integer_matrix_scalar_multiply',
+    'dense_integer_matrix_select_columns',
+    'dense_integer_matrix_select_rows',
+    'dense_integer_matrix_stack',
+    'dense_integer_matrix_set',
+    'dense_integer_matrix_subtract',
+    'dense_integer_matrix_trace',
+    'dense_integer_matrix_transpose',
 ]

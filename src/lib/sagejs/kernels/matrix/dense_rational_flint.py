@@ -15,7 +15,7 @@ from sagejs.native import IntegerBuffer, native, uint64
 
 
 @native
-def flint_dense_rational_mul(
+def flint_dense_rational_matrix_mul(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     left_numerators: IntegerBuffer,
@@ -40,7 +40,7 @@ def flint_dense_rational_mul(
 
 
 @native
-def flint_dense_rational_rank(
+def flint_dense_rational_matrix_rank(
     rank: IntegerBuffer,
     numerators: IntegerBuffer,
     denominators: IntegerBuffer,
@@ -53,7 +53,7 @@ def flint_dense_rational_rank(
 
 
 @native
-def flint_dense_rational_rref(
+def flint_dense_rational_matrix_rref(
     rank: IntegerBuffer,
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
@@ -76,7 +76,7 @@ def flint_dense_rational_rref(
 
 
 @native
-def flint_dense_rational_inverse(
+def flint_dense_rational_matrix_inverse(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     source_numerators: IntegerBuffer,
@@ -93,7 +93,7 @@ def flint_dense_rational_inverse(
 
 
 @native
-def flint_dense_rational_solve(
+def flint_dense_rational_matrix_solve(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     left_numerators: IntegerBuffer,
@@ -116,7 +116,7 @@ def flint_dense_rational_solve(
 
 
 @native
-def flint_dense_rational_determinant(
+def flint_dense_rational_matrix_determinant(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     source_numerators: IntegerBuffer,
@@ -135,7 +135,7 @@ def flint_dense_rational_determinant(
 
 
 @native
-def flint_dense_rational_charpoly(
+def flint_dense_rational_matrix_charpoly(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     source_numerators: IntegerBuffer,

@@ -108,33 +108,33 @@ const surfaceCases = [
 ];
 
 const typedWitnesses = [
-  "dense_prime_add",
-  "dense_prime_subtract",
-  "dense_prime_negate",
-  "dense_prime_scalar_multiply",
-  "dense_prime_transpose",
-  "dense_prime_equal",
-  "dense_prime_is_zero",
-  "dense_prime_is_one",
-  "dense_prime_nonzero_count",
-  "dense_prime_trace",
-  "dense_prime_stack",
-  "dense_prime_augment",
-  "dense_prime_select_rows",
-  "dense_prime_select_columns",
-  "dense_prime_random_fill",
+  "dense_prime_field_matrix_add",
+  "dense_prime_field_matrix_subtract",
+  "dense_prime_field_matrix_negate",
+  "dense_prime_field_matrix_scalar_multiply",
+  "dense_prime_field_matrix_transpose",
+  "dense_prime_field_matrix_equal",
+  "dense_prime_field_matrix_is_zero",
+  "dense_prime_field_matrix_is_one",
+  "dense_prime_field_matrix_nonzero_count",
+  "dense_prime_field_matrix_trace",
+  "dense_prime_field_matrix_stack",
+  "dense_prime_field_matrix_augment",
+  "dense_prime_field_matrix_select_rows",
+  "dense_prime_field_matrix_select_columns",
+  "dense_prime_field_matrix_random_fill",
 ];
 
 const ffiWitnesses = [
-  "flint_dense_prime_mul",
-  "flint_dense_prime_rank",
-  "flint_dense_prime_rref",
-  "flint_dense_prime_right_kernel",
-  "flint_dense_prime_determinant",
-  "flint_dense_prime_charpoly",
-  "flint_dense_prime_minpoly",
-  "flint_dense_prime_inverse",
-  "flint_dense_prime_solve",
+  "flint_dense_prime_field_matrix_mul",
+  "flint_dense_prime_field_matrix_rank",
+  "flint_dense_prime_field_matrix_rref",
+  "flint_dense_prime_field_matrix_right_kernel",
+  "flint_dense_prime_field_matrix_determinant",
+  "flint_dense_prime_field_matrix_charpoly",
+  "flint_dense_prime_field_matrix_minpoly",
+  "flint_dense_prime_field_matrix_inverse",
+  "flint_dense_prime_field_matrix_solve",
 ];
 
 async function run(environment = process.env) {
@@ -173,8 +173,10 @@ async function run(environment = process.env) {
   const savedNativeRequired = process.env.SAGEJS_NATIVE_REQUIRED;
   try {
     for (const sourcePath of [
-      join(root, "src", "lib", "sagejs", "kernels", "dense_prime.py"),
-      join(root, "src", "lib", "sagejs", "kernels", "dense_prime_flint.py"),
+      join(root, "src", "lib", "sagejs", "kernels", "matrix",
+        "dense_prime_field.py"),
+      join(root, "src", "lib", "sagejs", "kernels", "matrix",
+        "dense_prime_field_flint.py"),
     ]) {
       await compile({ sourcePath, cacheRoot: nativeCache });
     }
@@ -193,8 +195,8 @@ async function run(environment = process.env) {
     const surfaceResults = [];
     try {
       const tiers = await session.evaluate([
-        `from sagejs.kernels.dense_prime import ${typedWitnesses.join(", ")}`,
-        `from sagejs.kernels.dense_prime_flint import ${ffiWitnesses.join(", ")}`,
+        `from sagejs.kernels.matrix.dense_prime_field import ${typedWitnesses.join(", ")}`,
+        `from sagejs.kernels.matrix.dense_prime_field_flint import ${ffiWitnesses.join(", ")}`,
         ...typedWitnesses.map((name) => `print(${name}.nativeAvailable)`),
         ...ffiWitnesses.map((name) => `print(${name}.nativeAvailable)`),
       ].join("\n"));

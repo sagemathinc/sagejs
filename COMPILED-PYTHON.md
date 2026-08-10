@@ -103,7 +103,7 @@ matrix is a differential oracle, not a parallel production representation.
 
 Dense `ZZ` matrices use the analogous exact representation: signed limb counts
 plus caller-owned row-major 64-bit limbs. Structural operations execute the
-typed bodies in `sagejs.kernels.dense_integer`; machine-sized entries stay in
+typed bodies in `sagejs.kernels.matrix.dense_integer`; machine-sized entries stay in
 checked signed words and promote per value to GMP when required. Mature
 algorithms such as determinant, HNF, SNF, and characteristic polynomial enter
 FLINT only through declared packed FFI. The Python `Matrix` object never owns a

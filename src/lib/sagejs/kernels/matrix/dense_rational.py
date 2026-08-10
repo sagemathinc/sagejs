@@ -13,7 +13,7 @@ from sagejs.native import IntegerBuffer, native, uint64
 
 
 @native
-def dense_rational_gcd(left: int, right: int) -> int:
+def dense_rational_matrix_gcd(left: int, right: int) -> int:
     """Return the nonnegative greatest common divisor."""
     left = abs(left)
     right = abs(right)
@@ -23,7 +23,7 @@ def dense_rational_gcd(left: int, right: int) -> int:
 
 
 @native
-def dense_rational_normalize(
+def dense_rational_matrix_normalize(
     numerator: int, denominator: int,
 ) -> tuple[int, int]:
     if denominator == 0:
@@ -33,19 +33,19 @@ def dense_rational_normalize(
     if denominator < 0:
         numerator = -numerator
         denominator = -denominator
-    common = dense_rational_gcd(numerator, denominator)
+    common = dense_rational_matrix_gcd(numerator, denominator)
     return numerator // common, denominator // common
 
 
 @native
-def dense_rational_add_pair(
+def dense_rational_matrix_add_pair(
     left_numerator: int,
     left_denominator: int,
     right_numerator: int,
     right_denominator: int,
 ) -> tuple[int, int]:
     """Add two canonical pairs while limiting intermediate growth."""
-    common = dense_rational_gcd(left_denominator, right_denominator)
+    common = dense_rational_matrix_gcd(left_denominator, right_denominator)
     left_scale = left_denominator // common
     right_scale = right_denominator // common
     numerator = (
@@ -54,20 +54,20 @@ def dense_rational_add_pair(
     )
     if numerator == 0:
         return 0, 1
-    remaining = dense_rational_gcd(numerator, common)
+    remaining = dense_rational_matrix_gcd(numerator, common)
     numerator //= remaining
     denominator = left_scale * (right_denominator // remaining)
     return numerator, denominator
 
 
 @native
-def dense_rational_subtract_pair(
+def dense_rational_matrix_subtract_pair(
     left_numerator: int,
     left_denominator: int,
     right_numerator: int,
     right_denominator: int,
 ) -> tuple[int, int]:
-    return dense_rational_add_pair(
+    return dense_rational_matrix_add_pair(
         left_numerator,
         left_denominator,
         -right_numerator,
@@ -76,7 +76,7 @@ def dense_rational_subtract_pair(
 
 
 @native
-def dense_rational_multiply_pair(
+def dense_rational_matrix_multiply_pair(
     left_numerator: int,
     left_denominator: int,
     right_numerator: int,
@@ -85,9 +85,9 @@ def dense_rational_multiply_pair(
     """Multiply canonical pairs with cross-cancellation before products."""
     if left_numerator == 0 or right_numerator == 0:
         return 0, 1
-    left_common = dense_rational_gcd(
+    left_common = dense_rational_matrix_gcd(
         left_numerator, right_denominator)
-    right_common = dense_rational_gcd(
+    right_common = dense_rational_matrix_gcd(
         right_numerator, left_denominator)
     numerator = (
         (left_numerator // left_common)
@@ -104,7 +104,7 @@ def dense_rational_multiply_pair(
 
 
 @native
-def dense_rational_get(
+def dense_rational_matrix_get(
     numerators: IntegerBuffer,
     denominators: IntegerBuffer,
     index: int,
@@ -113,14 +113,14 @@ def dense_rational_get(
 
 
 @native
-def dense_rational_set(
+def dense_rational_matrix_set(
     numerators: IntegerBuffer,
     denominators: IntegerBuffer,
     index: int,
     numerator: int,
     denominator: int,
 ) -> bool:
-    numerator, denominator = dense_rational_normalize(
+    numerator, denominator = dense_rational_matrix_normalize(
         numerator, denominator)
     numerators[index] = numerator
     denominators[index] = denominator
@@ -128,7 +128,7 @@ def dense_rational_set(
 
 
 @native
-def dense_rational_copy(
+def dense_rational_matrix_copy(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     source_numerators: IntegerBuffer,
@@ -147,7 +147,7 @@ def dense_rational_copy(
 
 
 @native
-def dense_rational_fill_denominator_one(
+def dense_rational_matrix_fill_denominator_one(
     denominators: IntegerBuffer,
 ) -> bool:
     """Initialize the canonical denominator component for integral entries."""
@@ -157,7 +157,7 @@ def dense_rational_fill_denominator_one(
 
 
 @native
-def dense_rational_identity(
+def dense_rational_matrix_identity(
     numerators: IntegerBuffer,
     denominators: IntegerBuffer,
     size: uint64,
@@ -177,7 +177,7 @@ def dense_rational_identity(
 
 
 @native
-def dense_rational_add(
+def dense_rational_matrix_add(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     left_numerators: IntegerBuffer,
@@ -197,7 +197,7 @@ def dense_rational_add(
         valid = False
     if valid:
         for index in range(length):
-            numerator, denominator = dense_rational_add_pair(
+            numerator, denominator = dense_rational_matrix_add_pair(
                 left_numerators[index],
                 left_denominators[index],
                 right_numerators[index],
@@ -209,7 +209,7 @@ def dense_rational_add(
 
 
 @native
-def dense_rational_subtract(
+def dense_rational_matrix_subtract(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     left_numerators: IntegerBuffer,
@@ -229,7 +229,7 @@ def dense_rational_subtract(
         valid = False
     if valid:
         for index in range(length):
-            numerator, denominator = dense_rational_subtract_pair(
+            numerator, denominator = dense_rational_matrix_subtract_pair(
                 left_numerators[index],
                 left_denominators[index],
                 right_numerators[index],
@@ -241,7 +241,7 @@ def dense_rational_subtract(
 
 
 @native
-def dense_rational_negate(
+def dense_rational_matrix_negate(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     source_numerators: IntegerBuffer,
@@ -261,7 +261,7 @@ def dense_rational_negate(
 
 
 @native
-def dense_rational_scalar_multiply(
+def dense_rational_matrix_scalar_multiply(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     source_numerators: IntegerBuffer,
@@ -269,7 +269,7 @@ def dense_rational_scalar_multiply(
     scalar_numerator: int,
     scalar_denominator: int,
 ) -> bool:
-    scalar_numerator, scalar_denominator = dense_rational_normalize(
+    scalar_numerator, scalar_denominator = dense_rational_matrix_normalize(
         scalar_numerator, scalar_denominator)
     length = len(source_numerators)
     valid = len(source_denominators) == length
@@ -279,7 +279,7 @@ def dense_rational_scalar_multiply(
         valid = False
     if valid:
         for index in range(length):
-            numerator, denominator = dense_rational_multiply_pair(
+            numerator, denominator = dense_rational_matrix_multiply_pair(
                 source_numerators[index],
                 source_denominators[index],
                 scalar_numerator,
@@ -291,7 +291,7 @@ def dense_rational_scalar_multiply(
 
 
 @native
-def dense_rational_transpose(
+def dense_rational_matrix_transpose(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     source_numerators: IntegerBuffer,
@@ -318,7 +318,7 @@ def dense_rational_transpose(
 
 
 @native
-def dense_rational_equal(
+def dense_rational_matrix_equal(
     left_numerators: IntegerBuffer,
     left_denominators: IntegerBuffer,
     right_numerators: IntegerBuffer,
@@ -340,7 +340,7 @@ def dense_rational_equal(
 
 
 @native
-def dense_rational_is_zero(numerators: IntegerBuffer) -> bool:
+def dense_rational_matrix_is_zero(numerators: IntegerBuffer) -> bool:
     answer = True
     for index in range(len(numerators)):
         if numerators[index] != 0:
@@ -349,7 +349,7 @@ def dense_rational_is_zero(numerators: IntegerBuffer) -> bool:
 
 
 @native
-def dense_rational_is_one(
+def dense_rational_matrix_is_one(
     numerators: IntegerBuffer,
     denominators: IntegerBuffer,
     rows: uint64,
@@ -373,7 +373,7 @@ def dense_rational_is_one(
 
 
 @native
-def dense_rational_nonzero_count(numerators: IntegerBuffer) -> int:
+def dense_rational_matrix_nonzero_count(numerators: IntegerBuffer) -> int:
     count = 0
     for index in range(len(numerators)):
         if numerators[index] != 0:
@@ -382,7 +382,7 @@ def dense_rational_nonzero_count(numerators: IntegerBuffer) -> int:
 
 
 @native
-def dense_rational_trace(
+def dense_rational_matrix_trace(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     source_numerators: IntegerBuffer,
@@ -399,7 +399,7 @@ def dense_rational_trace(
         denominator = 1
         for index in range(size):
             source = index * size + index
-            numerator, denominator = dense_rational_add_pair(
+            numerator, denominator = dense_rational_matrix_add_pair(
                 numerator,
                 denominator,
                 source_numerators[source],
@@ -411,7 +411,7 @@ def dense_rational_trace(
 
 
 @native
-def dense_rational_stack(
+def dense_rational_matrix_stack(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     top_numerators: IntegerBuffer,
@@ -439,7 +439,7 @@ def dense_rational_stack(
 
 
 @native
-def dense_rational_augment(
+def dense_rational_matrix_augment(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     left_numerators: IntegerBuffer,
@@ -478,7 +478,7 @@ def dense_rational_augment(
 
 
 @native
-def dense_rational_select_rows(
+def dense_rational_matrix_select_rows(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     source_numerators: IntegerBuffer,
@@ -509,7 +509,7 @@ def dense_rational_select_rows(
 
 
 @native
-def dense_rational_select_columns(
+def dense_rational_matrix_select_columns(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     source_numerators: IntegerBuffer,
@@ -540,7 +540,7 @@ def dense_rational_select_columns(
 
 
 @native
-def dense_rational_kernel_from_rref(
+def dense_rational_matrix_kernel_from_rref(
     output_numerators: IntegerBuffer,
     output_denominators: IntegerBuffer,
     reduced_numerators: IntegerBuffer,

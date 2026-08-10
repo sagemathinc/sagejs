@@ -26,7 +26,7 @@ from sagejs.ffi.flint import (
 
 
 @native
-def flint_dense_prime_determinant(
+def flint_dense_prime_field_matrix_determinant(
     source: UInt64Buffer,
     size: uint64,
     modulus: uint64,
@@ -35,7 +35,7 @@ def flint_dense_prime_determinant(
 
 
 @native
-def flint_dense_prime_charpoly(
+def flint_dense_prime_field_matrix_charpoly(
     output: UInt64Buffer,
     source: UInt64Buffer,
     output_length: uint64,
@@ -54,7 +54,7 @@ def flint_dense_prime_charpoly(
 
 
 @native
-def flint_dense_prime_minpoly(
+def flint_dense_prime_field_matrix_minpoly(
     output: UInt64Buffer,
     source: UInt64Buffer,
     output_length: uint64,
@@ -73,7 +73,7 @@ def flint_dense_prime_minpoly(
 
 
 @native
-def flint_dense_prime_mul(
+def flint_dense_prime_field_matrix_mul(
     output: UInt64Buffer,
     left: UInt64Buffer,
     right: UInt64Buffer,
@@ -94,7 +94,7 @@ def flint_dense_prime_mul(
 
 
 @native
-def flint_dense_prime_inverse(
+def flint_dense_prime_field_matrix_inverse(
     output: UInt64Buffer,
     source: UInt64Buffer,
     size: uint64,
@@ -104,7 +104,7 @@ def flint_dense_prime_inverse(
 
 
 @native
-def flint_dense_prime_rank(
+def flint_dense_prime_field_matrix_rank(
     source: UInt64Buffer,
     rows: uint64,
     columns: uint64,
@@ -114,7 +114,7 @@ def flint_dense_prime_rank(
 
 
 @native
-def flint_dense_prime_rref(
+def flint_dense_prime_field_matrix_rref(
     output: UInt64Buffer,
     source: UInt64Buffer,
     rows: uint64,
@@ -125,7 +125,7 @@ def flint_dense_prime_rref(
 
 
 @native
-def flint_dense_prime_right_kernel(
+def flint_dense_prime_field_matrix_right_kernel(
     output: UInt64Buffer,
     source: UInt64Buffer,
     rows: uint64,
@@ -137,7 +137,7 @@ def flint_dense_prime_right_kernel(
 
 
 @native
-def flint_dense_prime_solve(
+def flint_dense_prime_field_matrix_solve(
     output: UInt64Buffer,
     left: UInt64Buffer,
     right: UInt64Buffer,
@@ -156,13 +156,13 @@ def flint_dense_prime_solve(
 
 
 __all__ = [
-    'flint_dense_prime_charpoly',
-    'flint_dense_prime_determinant',
-    'flint_dense_prime_inverse',
-    'flint_dense_prime_minpoly',
-    'flint_dense_prime_mul',
-    'flint_dense_prime_rank',
-    'flint_dense_prime_rref',
-    'flint_dense_prime_right_kernel',
-    'flint_dense_prime_solve',
+    'flint_dense_prime_field_matrix_charpoly',
+    'flint_dense_prime_field_matrix_determinant',
+    'flint_dense_prime_field_matrix_inverse',
+    'flint_dense_prime_field_matrix_minpoly',
+    'flint_dense_prime_field_matrix_mul',
+    'flint_dense_prime_field_matrix_rank',
+    'flint_dense_prime_field_matrix_rref',
+    'flint_dense_prime_field_matrix_right_kernel',
+    'flint_dense_prime_field_matrix_solve',
 ]

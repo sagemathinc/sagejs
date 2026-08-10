@@ -16,7 +16,7 @@ from sagejs.native import IntegerBuffer, native, uint64
 
 
 @native
-def flint_dense_integer_mul(
+def flint_dense_integer_matrix_mul(
     output: IntegerBuffer,
     left: IntegerBuffer,
     right: IntegerBuffer,
@@ -30,7 +30,7 @@ def flint_dense_integer_mul(
 
 
 @native
-def flint_dense_integer_determinant(
+def flint_dense_integer_matrix_determinant(
     output: IntegerBuffer,
     source: IntegerBuffer,
     size: uint64,
@@ -40,7 +40,7 @@ def flint_dense_integer_determinant(
 
 
 @native
-def flint_dense_integer_charpoly(
+def flint_dense_integer_matrix_charpoly(
     output: IntegerBuffer,
     source: IntegerBuffer,
     output_length: uint64,
@@ -51,14 +51,14 @@ def flint_dense_integer_charpoly(
 
 
 @native
-def flint_dense_integer_rank(
+def flint_dense_integer_matrix_rank(
     source: IntegerBuffer, rows: uint64, columns: uint64,
 ) -> uint64:
     return fmpz_mat_rank(source, rows, columns)
 
 
 @native
-def flint_dense_integer_hnf(
+def flint_dense_integer_matrix_hnf(
     output: IntegerBuffer,
     source: IntegerBuffer,
     rows: uint64,
@@ -68,7 +68,7 @@ def flint_dense_integer_hnf(
 
 
 @native
-def flint_dense_integer_hnf_transform(
+def flint_dense_integer_matrix_hnf_transform(
     output: IntegerBuffer,
     transform: IntegerBuffer,
     source: IntegerBuffer,
@@ -81,7 +81,7 @@ def flint_dense_integer_hnf_transform(
 
 
 @native
-def flint_dense_integer_snf_transform(
+def flint_dense_integer_matrix_snf_transform(
     output: IntegerBuffer,
     left_transform: IntegerBuffer,
     right_transform: IntegerBuffer,
@@ -100,7 +100,7 @@ def flint_dense_integer_snf_transform(
 
 
 @native
-def flint_dense_integer_right_kernel(
+def flint_dense_integer_matrix_right_kernel(
     output: IntegerBuffer,
     source: IntegerBuffer,
     rows: uint64,
@@ -110,12 +110,12 @@ def flint_dense_integer_right_kernel(
 
 
 __all__ = [
-    'flint_dense_integer_charpoly',
-    'flint_dense_integer_determinant',
-    'flint_dense_integer_hnf',
-    'flint_dense_integer_hnf_transform',
-    'flint_dense_integer_mul',
-    'flint_dense_integer_rank',
-    'flint_dense_integer_right_kernel',
-    'flint_dense_integer_snf_transform',
+    'flint_dense_integer_matrix_charpoly',
+    'flint_dense_integer_matrix_determinant',
+    'flint_dense_integer_matrix_hnf',
+    'flint_dense_integer_matrix_hnf_transform',
+    'flint_dense_integer_matrix_mul',
+    'flint_dense_integer_matrix_rank',
+    'flint_dense_integer_matrix_right_kernel',
+    'flint_dense_integer_matrix_snf_transform',
 ]
