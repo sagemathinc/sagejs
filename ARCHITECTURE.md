@@ -89,7 +89,9 @@ Exceptions are allowed and visible.  Quietly bypassing the policy is not.
 ## Declared foreign libraries
 
 Foreign-library calls use the strict declarations documented in
-[`FFI.md`](FFI.md). A declaration is the shared source of truth for the
+[`FFI.md`](FFI.md). The primary declaration is statically parsed,
+CPython-parseable `.ffi.py`; checked `.ffi.json` is its deterministic lowered
+IR. A declaration is the shared source of truth for the
 ordinary dynamic wrapper and host-isolated native lowering. Mathematical code
 imports only generated safe modules under `sagejs.ffi`; it does not load an
 addon, name a C symbol, own a raw pointer, or encode cleanup itself.

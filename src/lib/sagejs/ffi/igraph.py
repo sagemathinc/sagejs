@@ -6,7 +6,7 @@ from typing import Any
 
 import sagejs.runtime as _runtime
 
-__sagejs_ffi_declaration__ = "igraph@3dc348014ab9da0cdc16aac4b3e0817a1e510d95ea6502dbdcf2ea9f87bd2f0f"
+__sagejs_ffi_declaration__ = "igraph@e0798a784147dd6ab13ffc724ea8a70f6372ad05f759ff8f99c35cddead43bf0"
 
 
 class IGraph:
@@ -24,7 +24,7 @@ class IGraph:
 
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
-            self._token, "resource:igraph@3dc348014ab9da0cdc16aac4b3e0817a1e510d95ea6502dbdcf2ea9f87bd2f0f:graph"
+            self._token, "resource:igraph@e0798a784147dd6ab13ffc724ea8a70f6372ad05f759ff8f99c35cddead43bf0:graph"
         )
 
     def __enter__(self) -> IGraph:
@@ -48,7 +48,7 @@ class IGraphEdges:
 
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
-            self._token, "resource:igraph@3dc348014ab9da0cdc16aac4b3e0817a1e510d95ea6502dbdcf2ea9f87bd2f0f:edges"
+            self._token, "resource:igraph@e0798a784147dd6ab13ffc724ea8a70f6372ad05f759ff8f99c35cddead43bf0:edges"
         )
 
 
@@ -57,7 +57,7 @@ def complete_graph(vertex_count: int, directed: bool, loops: bool) -> IGraph:
     """Call declared igraph:complete_graph."""
     return IGraph(_runtime.ffi_resource_create(
         __sagejs_ffi_declaration__ + ":complete_graph",
-        "resource:igraph@3dc348014ab9da0cdc16aac4b3e0817a1e510d95ea6502dbdcf2ea9f87bd2f0f:graph",
+        "resource:igraph@e0798a784147dd6ab13ffc724ea8a70f6372ad05f759ff8f99c35cddead43bf0:graph",
         "@sagemath/sagejs-graph",
         "ffiGraphCompleteCreate",
         "ffiGraphClose",
@@ -77,7 +77,7 @@ def vertex_count(graph: IGraph) -> int:
         "@sagemath/sagejs-graph",
         "ffiGraphVertexCount",
         [graph._ffi_borrow()],
-        ["resource:igraph@3dc348014ab9da0cdc16aac4b3e0817a1e510d95ea6502dbdcf2ea9f87bd2f0f:graph"],
+        ["resource:igraph@e0798a784147dd6ab13ffc724ea8a70f6372ad05f759ff8f99c35cddead43bf0:graph"],
         "uint64",
         ["direct", [], None],
         None,
@@ -90,13 +90,13 @@ def edges(graph: IGraph) -> IGraphEdges:
     """Call declared igraph:edges."""
     return IGraphEdges(_runtime.ffi_view_create(
         __sagejs_ffi_declaration__ + ":edges",
-        "resource:igraph@3dc348014ab9da0cdc16aac4b3e0817a1e510d95ea6502dbdcf2ea9f87bd2f0f:edges",
-        "resource:igraph@3dc348014ab9da0cdc16aac4b3e0817a1e510d95ea6502dbdcf2ea9f87bd2f0f:graph",
+        "resource:igraph@e0798a784147dd6ab13ffc724ea8a70f6372ad05f759ff8f99c35cddead43bf0:edges",
+        "resource:igraph@e0798a784147dd6ab13ffc724ea8a70f6372ad05f759ff8f99c35cddead43bf0:graph",
         graph._ffi_borrow(),
         "@sagemath/sagejs-graph",
         "ffiGraphEdgesBorrow",
         [graph._ffi_borrow()],
-        ["resource:igraph@3dc348014ab9da0cdc16aac4b3e0817a1e510d95ea6502dbdcf2ea9f87bd2f0f:graph"],
+        ["resource:igraph@e0798a784147dd6ab13ffc724ea8a70f6372ad05f759ff8f99c35cddead43bf0:graph"],
         "zero_is_error",
         "RuntimeError",
         "igraph could not borrow edge storage",
@@ -110,7 +110,7 @@ def edge_count(edges: IGraphEdges) -> int:
         "@sagemath/sagejs-graph",
         "ffiGraphEdgeCount",
         [edges._ffi_borrow()],
-        ["resource:igraph@3dc348014ab9da0cdc16aac4b3e0817a1e510d95ea6502dbdcf2ea9f87bd2f0f:edges"],
+        ["resource:igraph@e0798a784147dd6ab13ffc724ea8a70f6372ad05f759ff8f99c35cddead43bf0:edges"],
         "uint64",
         ["direct", [], None],
         None,
@@ -126,7 +126,7 @@ def edge_checksum(edges: IGraphEdges) -> int:
         "@sagemath/sagejs-graph",
         "ffiGraphEdgeChecksum",
         [edges._ffi_borrow()],
-        ["resource:igraph@3dc348014ab9da0cdc16aac4b3e0817a1e510d95ea6502dbdcf2ea9f87bd2f0f:edges"],
+        ["resource:igraph@e0798a784147dd6ab13ffc724ea8a70f6372ad05f759ff8f99c35cddead43bf0:edges"],
         "uint64",
         ["direct", [], None],
         None,

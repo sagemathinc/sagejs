@@ -1,12 +1,15 @@
 # Sage.js foreign-function interface
 
 Sage.js FFI declarations are a checked allowlist between readable mathematical
-Python and mature native libraries. They are not C header ingestion and they
+Python and mature native libraries. Their primary source is statically parsed,
+CPython-parseable `.ffi.py`; deterministic `.ffi.json` is the lowered compiler
+IR, not the human authoring format. Declarations are not C header ingestion and
 do not expose arbitrary pointers. A declaration records the semantic
 signature, concrete C ABI, ownership, effects, error policy, dynamic adapter,
 native link requirements, and supported targets for each callable function.
 
-The first declaration is [`ffi/flint.ffi.json`](ffi/flint.ffi.json). It
+The first declaration is [`ffi/flint.ffi.py`](ffi/flint.ffi.py), lowered to
+[`ffi/flint.ffi.json`](ffi/flint.ffi.json). It
 exports eight deliberately different witnesses:
 
 - `dirichlet_group(uint64) -> DirichletGroup`, a generated opaque owned
@@ -25,7 +28,8 @@ exports eight deliberately different witnesses:
 - `nmod_poly_mul(output, left, right, ...) -> bool`, a substantial mature
   FLINT algorithm reached through reusable packed-slice declarations.
 
-[`ffi/igraph.ffi.json`](ffi/igraph.ffi.json) is the first independent library
+[`ffi/igraph.ffi.py`](ffi/igraph.ffi.py), lowered to
+[`ffi/igraph.ffi.json`](ffi/igraph.ffi.json), is the first independent library
 adapter. It declares an owned `IGraph`, a borrowed `IGraphEdges` view, and an
 acyclic ownership edge from the view to the graph. This is intentionally a
 different native package and toolchain from FLINT. Its packed canonical
@@ -84,6 +88,9 @@ sagejs ffi check
 sagejs ffi audit
 sagejs ffi explain flint
 sagejs ffi explain flint --json
+sagejs ffi emit-json ffi/flint.ffi.py
+sagejs ffi diff flint
+sagejs ffi diff --json
 sagejs ffi generate flint
 sagejs ffi explain igraph --json
 
@@ -96,7 +103,13 @@ pnpm bench:native:ffi:matrix
 pnpm bench:native:ffi:resource
 ```
 
-`ffi check` validates the strict schema and rejects stale generated Python.
+`ffi check` statically parses every `.ffi.py`, validates the strict normalized
+schema, verifies byte-for-byte deterministic JSON lowering, and rejects stale
+generated Python. `ffi emit-json` writes the normalized document to standard
+output without changing the repository. `ffi diff` compares source lowering
+with the checked JSON artifact and reports the first changed line. `ffi
+generate` is the only normal command that rewrites lowered JSON and safe Python
+surfaces.
 `architecture:check` runs the same registry and drift checks, so an agent
 cannot quietly add an unchecked native call.
 
@@ -107,7 +120,64 @@ N-API exports, runtime intrinsics, and visible Wasm exports. A new boundary
 fails CI until `sagejs ffi audit --write` is run and its complete diff is
 reviewed. Regeneration is an explicit acknowledgement, not an allowlist bypass.
 
-## Version 6 declarative ABI and safety envelope
+## Version 7 CPython declaration source
+
+Declaration source is parsed by Sage.js's Python frontend but never executed.
+There is no build-time `eval`, decorator execution, import side effect, or
+dependency on a system CPython. The accepted grammar intentionally contains
+only one `Library(...)`, resource assignments, and ellipsis-bodied functions
+with one library decorator:
+
+```python
+from sagejs.ffi.declare import Direct, Effects, Library, in_
+
+flint = Library(
+    id="flint",
+    python_module="sagejs.ffi.flint",
+    package="@sagemath/sagejs-flint",
+    headers=["flint/ulong_extras.h"],
+    link_unix=["libflint.a"],
+    link_windows=["flint.lib"],
+    dependencies=["GMP"],
+    prefix_environment="SAGEJS_FLINT_PREFIX",
+    unix_default="packages/flint/.native/prefix",
+    windows_default="packages/flint/.native/prefix",
+)
+
+@flint.function(
+    dynamic="wordIsPrime",
+    symbol="n_is_prime",
+    returns=int,
+    abi=[in_("value", ulong)],
+    effects=Effects(pure=True),
+    result=Direct(),
+    wasm=True,
+)
+def n_is_prime(value: uint64) -> bool:
+    ...
+```
+
+The function signature is the semantic interface seen by mathematical Python.
+`Writable[UInt64Buffer]` marks a caller-owned mutable output and
+`Min[uint64, 1]` adds a scalar entry precondition. The decorator records facts
+which cannot be inferred from Python: dynamic export, C symbol and ABI order,
+effects, result domain, exception shield, adapters, and target availability.
+Resources are named assignments so later annotations can refer to them.
+
+Only static literals and the documented helper calls are accepted. Arbitrary
+expressions, helper functions, conditional declarations, star arguments,
+extra decorators, or executable function bodies fail with `.ffi.py` line and
+column diagnostics. Formatting and comments do not affect the normalized
+document or declaration hash. `ffi explain --json` includes both source and
+lowered filenames plus a source map for the library, resources, and functions.
+
+The JSON artifacts remain checked in. They are compact enough for agents and
+reviewers to audit, allow the runtime native compiler to load declarations
+synchronously without initializing a parser, and make schema drift explicit.
+Every `.ffi.json` must have a matching `.ffi.py`; CI rejects either stale
+lowering or an orphaned JSON declaration.
+
+## Version 6 normalized ABI and safety envelope
 
 [`ffi/abi-types.json`](ffi/abi-types.json) is the checked catalog of semantic
 types, C ABI representations, and reusable adapters. Declarations can add a
@@ -221,10 +291,11 @@ compiler branches for individual symbols.
 
 ## Adding a binding
 
-1. Add or extend a `ffi/*.ffi.json` declaration.
+1. Add or extend a `ffi/*.ffi.py` declaration.
 2. Declare semantic and ABI types, argument direction/order, ownership,
    effects, error policy, targets, headers, and link dependencies.
-3. Run `sagejs ffi generate <library>` and inspect the generated safe module.
+3. Run `sagejs ffi diff <library>`, then `sagejs ffi generate <library>` and
+   inspect the normalized JSON and generated safe module.
 4. Add dynamic and host-isolated native differential tests.
 5. Inspect `native ir` and `native emit-core-c`; ensure the core has no host
    callbacks.

@@ -8,9 +8,14 @@ import { dirname, relative } from "node:path";
 
 const declarations = require("../../tools/ffi/declarations.cjs") as {
   generatePythonModule(declaration: FfiDeclaration): string;
-  generatedModulePath(root: string, declaration: FfiDeclaration): string;
   generatedModulePaths(root: string, declaration: FfiDeclaration): string[];
   loadRegistry(): FfiRegistry;
+};
+const sourceDeclarations = require(
+  "../../tools/ffi/source-declarations.cjs"
+) as {
+  loadSourceRegistry(options?: { root?: string }): Promise<FfiSourceRegistry>;
+  selectSource(registry: FfiSourceRegistry, selector?: string): FfiSource[];
 };
 const boundaryAudit = require("../../tools/ffi/boundary-audit.cjs") as {
   createBoundarySnapshot(options?: { root?: string }): Record<string, unknown>;
@@ -33,6 +38,7 @@ interface FfiFunction {
 
 interface FfiDeclaration {
   filename: string;
+  sourceFilename: string | null;
   hash: string;
   identity: string;
   library: {
@@ -51,6 +57,22 @@ interface FfiDeclaration {
   };
 }
 
+interface FfiSource {
+  filename: string;
+  normalizedFilename: string;
+  text: string;
+  document: {
+    library: { id: string };
+    functions: Array<Record<string, unknown>>;
+  };
+  locations: Record<string, unknown>;
+}
+
+interface FfiSourceRegistry {
+  root: string;
+  sources: FfiSource[];
+}
+
 interface FfiRegistry {
   root: string;
   libraries: FfiDeclaration[];
@@ -63,18 +85,16 @@ interface FfiCliArguments {
   write?: boolean;
 }
 
-function selected(registry: FfiRegistry, id?: string): FfiDeclaration[] {
-  if (id === undefined) return registry.libraries;
-  const declaration = registry.byId.get(id);
-  if (declaration === undefined) throw new Error(`unknown FFI library ${id}`);
-  return [declaration];
-}
-
-function publicDescription(root: string, declaration: FfiDeclaration) {
+function publicDescription(
+  root: string, declaration: FfiDeclaration, source?: FfiSource,
+) {
   return {
     schema: "sagejs.ffi/inspection-v1",
     identity: declaration.identity,
     declaration: relative(root, declaration.filename),
+    source: declaration.sourceFilename === null
+      ? null : relative(root, declaration.sourceFilename),
+    source_map: source?.locations ?? null,
     library: declaration.library,
     abi_catalog: {
       schema: declaration.abiCatalog.schema,
@@ -85,6 +105,39 @@ function publicDescription(root: string, declaration: FfiDeclaration) {
     ownership_graph: declaration.ownershipGraph,
     functions: declaration.functions,
   };
+}
+
+function assertLowered(sources: FfiSource[]) {
+  for (const source of sources) {
+    if (!existsSync(source.normalizedFilename)) {
+      throw new Error(
+        `lowered FFI declaration is missing: ${source.normalizedFilename}; ` +
+        "run sagejs ffi generate",
+      );
+    }
+    if (readFileSync(source.normalizedFilename, "utf8") !== source.text) {
+      throw new Error(
+        `lowered FFI declaration is stale: ${source.normalizedFilename}; ` +
+        "run sagejs ffi diff and sagejs ffi generate",
+      );
+    }
+  }
+}
+
+function firstDifference(expected: string, actual: string) {
+  const expectedLines = expected.split("\n");
+  const actualLines = actual.split("\n");
+  const length = Math.max(expectedLines.length, actualLines.length);
+  for (let index = 0; index < length; index += 1) {
+    if (expectedLines[index] !== actualLines[index]) {
+      return {
+        line: index + 1,
+        expected: expectedLines[index] ?? "<end of file>",
+        actual: actualLines[index] ?? "<end of file>",
+      };
+    }
+  }
+  return null;
 }
 
 function checkGenerated(registry: FfiRegistry, libraries: FfiDeclaration[]) {
@@ -108,16 +161,19 @@ function checkGenerated(registry: FfiRegistry, libraries: FfiDeclaration[]) {
 /** Validate, inspect, or generate explicit safe foreign-library interfaces. */
 export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
   const [action = "check", libraryId, ...extra] = argv.files;
-  if (extra.length > 0 || !["audit", "check", "explain", "generate"].includes(action)) {
+  if (extra.length > 0 || ![
+    "audit", "check", "diff", "emit-json", "explain", "generate",
+  ].includes(action)) {
     throw new Error(
-      "usage: sagejs ffi <audit|check|explain|generate> [library] [--json] [--write]",
+      "usage: sagejs ffi <audit|check|diff|emit-json|explain|generate> " +
+      "[library|file.ffi.py] [--json] [--write]",
     );
   }
   if (argv.write && action !== "audit") {
     throw new Error("--write is only valid with sagejs ffi audit");
   }
-  const registry = declarations.loadRegistry();
   if (action === "audit") {
+    const registry = declarations.loadRegistry();
     if (libraryId !== undefined) throw new Error("sagejs ffi audit takes no library");
     const expected = boundaryAudit.createBoundarySnapshot({ root: registry.root });
     const filename = boundaryAudit.snapshotPath(registry.root);
@@ -143,7 +199,66 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
     }
     return;
   }
-  const libraries = selected(registry, libraryId);
+  const sourceRegistry = await sourceDeclarations.loadSourceRegistry();
+  const sources = sourceDeclarations.selectSource(sourceRegistry, libraryId);
+  if (action === "emit-json") {
+    if (sources.length !== 1) {
+      throw new Error("sagejs ffi emit-json requires one library or .ffi.py file");
+    }
+    process.stdout.write(sources[0].text);
+    return;
+  }
+  if (action === "diff") {
+    const reports = sources.map((source) => {
+      const actual = existsSync(source.normalizedFilename)
+        ? readFileSync(source.normalizedFilename, "utf8") : "";
+      return {
+        library: source.document.library.id,
+        source: relative(sourceRegistry.root, source.filename),
+        lowered: relative(sourceRegistry.root, source.normalizedFilename),
+        matches: actual === source.text,
+        difference: firstDifference(source.text, actual),
+      };
+    });
+    if (argv.json) {
+      process.stdout.write(`${JSON.stringify(
+        reports.length === 1 ? reports[0] : reports, null, 2,
+      )}\n`);
+    } else {
+      for (const report of reports) {
+        process.stdout.write(
+          `${report.library}: ${report.matches ? "matches" : "differs from"} ` +
+          `${report.lowered}\n`,
+        );
+        if (report.difference !== null) {
+          process.stdout.write(
+            `  first difference at line ${report.difference.line}\n` +
+            `  source: ${report.difference.expected}\n` +
+            `  JSON:   ${report.difference.actual}\n`,
+          );
+        }
+      }
+    }
+    if (reports.some((report) => !report.matches)) process.exitCode = 1;
+    return;
+  }
+  if (action === "generate") {
+    for (const source of sources) {
+      mkdirSync(dirname(source.normalizedFilename), { recursive: true });
+      writeFileSync(source.normalizedFilename, source.text);
+      process.stdout.write(`${relative(sourceRegistry.root, source.normalizedFilename)}\n`);
+    }
+  } else {
+    assertLowered(sources);
+  }
+  const registry = declarations.loadRegistry();
+  const libraries = sources.map((source) => {
+    const declaration = registry.byId.get(source.document.library.id);
+    if (declaration === undefined) {
+      throw new Error(`lowered FFI library is missing: ${source.document.library.id}`);
+    }
+    return declaration;
+  });
   if (action === "check") {
     checkGenerated(registry, libraries);
     const boundaryFilename = boundaryAudit.snapshotPath(registry.root);
@@ -159,13 +274,17 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
         schema: "sagejs.ffi/check-v1",
         libraries: libraries.map((item) => item.identity),
         functions: libraries.reduce((sum, item) => sum + item.functions.length, 0),
+        source_declarations: sources.map((item) =>
+          relative(sourceRegistry.root, item.filename)),
+        lowered: true,
         generated: true,
         native_boundaries: boundaryCount,
       }, null, 2)}\n`);
     } else {
       const count = libraries.reduce((sum, item) => sum + item.functions.length, 0);
       process.stdout.write(
-        `Checked ${libraries.length} FFI declaration(s), ${count} function(s), ` +
+        `Checked ${libraries.length} source declaration(s), ${count} function(s), ` +
+        "deterministic JSON lowering, " +
         `generated safe modules, and ${boundaryCount} native boundaries.\n`,
       );
     }
@@ -183,8 +302,14 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
     }
     return;
   }
+  const sourcesById = new Map(sources.map((source) =>
+    [source.document.library.id, source]));
   const descriptions = libraries.map((declaration) =>
-    publicDescription(registry.root, declaration)
+    publicDescription(
+      registry.root,
+      declaration,
+      sourcesById.get(declaration.library.id),
+    )
   );
   if (argv.json) {
     process.stdout.write(`${JSON.stringify(
@@ -197,6 +322,7 @@ export async function runFfiCompilerCli(argv: FfiCliArguments): Promise<void> {
   for (const description of descriptions) {
     process.stdout.write(
       `${description.identity}\n` +
+      `  source: ${description.source}\n` +
       `  declaration: ${description.declaration}\n` +
       `  Python: ${description.library.python_module}\n` +
       `  dynamic: ${(description.library.dynamic as { package: string }).package}\n`,

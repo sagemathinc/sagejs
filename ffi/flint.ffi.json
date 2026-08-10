@@ -15,16 +15,31 @@
         "sagejs/ffi_algorithms.h"
       ],
       "link": {
-        "unix": ["libflint.a", "libopenblas.a"],
-        "windows": ["flint.lib", "openblas.lib", "pthreadVC3.lib"]
+        "unix": [
+          "libflint.a",
+          "libopenblas.a"
+        ],
+        "windows": [
+          "flint.lib",
+          "openblas.lib",
+          "pthreadVC3.lib"
+        ]
       },
-      "dependencies": ["GMP", "OpenBLAS", "pthreads"],
+      "dependencies": [
+        "GMP",
+        "OpenBLAS",
+        "pthreads"
+      ],
       "toolchain": {
         "prefix_environment": "SAGEJS_FLINT_PREFIX",
         "unix_default": "packages/flint/.native/prefix",
         "windows_default": "packages/flint/.native/vcpkg-installed/x64-windows-static-md-release",
-        "include_dirs": ["include"],
-        "source_include_dirs": ["packages/flint/include"]
+        "include_dirs": [
+          "include"
+        ],
+        "source_include_dirs": [
+          "packages/flint/include"
+        ]
       }
     }
   },
@@ -35,9 +50,17 @@
       "abi_type": "dirichlet_group_t",
       "ownership": "owned",
       "owner": null,
-      "dynamic": {"close_export": "ffiDirichletGroupClose"},
-      "native": {"clear_symbol": "dirichlet_group_clear"},
-      "targets": {"dynamic": true, "native": true, "wasm": true}
+      "dynamic": {
+        "close_export": "ffiDirichletGroupClose"
+      },
+      "native": {
+        "clear_symbol": "dirichlet_group_clear"
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
     }
   ],
   "functions": [
@@ -46,19 +69,38 @@
       "python_name": "dirichlet_group",
       "signature": {
         "parameters": [
-          {"name": "modulus", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable", "minimum": "1"}
+          {
+            "name": "modulus",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable",
+            "minimum": "1"
+          }
         ],
         "return_type": "DirichletGroup",
         "return_ownership": "owned",
         "borrow_from": null
       },
-      "dynamic": {"export": "ffiDirichletGroupCreate"},
+      "dynamic": {
+        "export": "ffiDirichletGroupCreate"
+      },
       "native": {
         "symbol": "dirichlet_group_init",
         "return_type": "int",
         "arguments": [
-          {"source": "result", "abi_type": "dirichlet_group_t", "direction": "out", "adapter": null},
-          {"source": "modulus", "abi_type": "ulong", "direction": "in", "adapter": null}
+          {
+            "source": "result",
+            "abi_type": "dirichlet_group_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "modulus",
+            "abi_type": "ulong",
+            "direction": "in",
+            "adapter": null
+          }
         ]
       },
       "effects": {
@@ -66,34 +108,62 @@
         "deterministic": true,
         "thread_safe": true,
         "may_allocate": true,
-        "may_raise": ["ValueError"],
+        "may_raise": [
+          "ValueError"
+        ],
         "writes": []
       },
-      "result": {"domain": "status", "success": [1], "absence": null},
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
       "errors": {
         "exception": "ValueError",
         "message": "FLINT could not initialize this Dirichlet modulus"
       },
-      "exceptions": {"policy": "none", "failure_status": null},
-      "targets": {"dynamic": true, "native": true, "wasm": true}
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
     },
     {
       "id": "dirichlet_group_size",
       "python_name": "dirichlet_group_size",
       "signature": {
         "parameters": [
-          {"name": "group", "type": "DirichletGroup", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"}
+          {
+            "name": "group",
+            "type": "DirichletGroup",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
         ],
         "return_type": "uint64",
         "return_ownership": "value",
         "borrow_from": null
       },
-      "dynamic": {"export": "ffiDirichletGroupSize"},
+      "dynamic": {
+        "export": "ffiDirichletGroupSize"
+      },
       "native": {
         "symbol": "dirichlet_group_size",
         "return_type": "ulong",
         "arguments": [
-          {"source": "group", "abi_type": "dirichlet_group_t", "direction": "in", "adapter": null}
+          {
+            "source": "group",
+            "abi_type": "dirichlet_group_t",
+            "direction": "in",
+            "adapter": null
+          }
         ]
       },
       "effects": {
@@ -101,31 +171,60 @@
         "deterministic": true,
         "thread_safe": true,
         "may_allocate": false,
-        "may_raise": ["ValueError"],
+        "may_raise": [
+          "ValueError"
+        ],
         "writes": []
       },
-      "result": {"domain": "direct", "success": [], "absence": null},
-      "errors": {"exception": null, "message": null},
-      "exceptions": {"policy": "none", "failure_status": null},
-      "targets": {"dynamic": true, "native": true, "wasm": true}
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
     },
     {
       "id": "dirichlet_group_num_primitive",
       "python_name": "dirichlet_group_num_primitive",
       "signature": {
         "parameters": [
-          {"name": "group", "type": "DirichletGroup", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"}
+          {
+            "name": "group",
+            "type": "DirichletGroup",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
         ],
         "return_type": "uint64",
         "return_ownership": "value",
         "borrow_from": null
       },
-      "dynamic": {"export": "ffiDirichletGroupNumPrimitive"},
+      "dynamic": {
+        "export": "ffiDirichletGroupNumPrimitive"
+      },
       "native": {
         "symbol": "dirichlet_group_num_primitive",
         "return_type": "ulong",
         "arguments": [
-          {"source": "group", "abi_type": "dirichlet_group_t", "direction": "in", "adapter": null}
+          {
+            "source": "group",
+            "abi_type": "dirichlet_group_t",
+            "direction": "in",
+            "adapter": null
+          }
         ]
       },
       "effects": {
@@ -133,20 +232,42 @@
         "deterministic": true,
         "thread_safe": true,
         "may_allocate": false,
-        "may_raise": ["ValueError"],
+        "may_raise": [
+          "ValueError"
+        ],
         "writes": []
       },
-      "result": {"domain": "direct", "success": [], "absence": null},
-      "errors": {"exception": null, "message": null},
-      "exceptions": {"policy": "none", "failure_status": null},
-      "targets": {"dynamic": true, "native": true, "wasm": true}
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
     },
     {
       "id": "n_is_prime",
       "python_name": "n_is_prime",
       "signature": {
         "parameters": [
-          {"name": "value", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"}
+          {
+            "name": "value",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
         ],
         "return_type": "bool",
         "return_ownership": "value",
@@ -159,7 +280,12 @@
         "symbol": "n_is_prime",
         "return_type": "int",
         "arguments": [
-          {"source": "value", "abi_type": "ulong", "direction": "in", "adapter": null}
+          {
+            "source": "value",
+            "abi_type": "ulong",
+            "direction": "in",
+            "adapter": null
+          }
         ]
       },
       "effects": {
@@ -170,18 +296,44 @@
         "may_raise": [],
         "writes": []
       },
-      "result": {"domain": "direct", "success": [], "absence": null},
-      "errors": {"exception": null, "message": null},
-      "exceptions": {"policy": "none", "failure_status": null},
-      "targets": {"dynamic": true, "native": true, "wasm": true}
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
     },
     {
       "id": "fmpz_gcd",
       "python_name": "fmpz_gcd",
       "signature": {
         "parameters": [
-          {"name": "left", "type": "Integer", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"},
-          {"name": "right", "type": "Integer", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"}
+          {
+            "name": "left",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "Integer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          }
         ],
         "return_type": "Integer",
         "return_ownership": "owned",
@@ -194,9 +346,24 @@
         "symbol": "fmpz_gcd",
         "return_type": "void",
         "arguments": [
-          {"source": "result", "abi_type": "fmpz_t", "direction": "out", "adapter": null},
-          {"source": "left", "abi_type": "fmpz_t", "direction": "in", "adapter": null},
-          {"source": "right", "abi_type": "fmpz_t", "direction": "in", "adapter": null}
+          {
+            "source": "result",
+            "abi_type": "fmpz_t",
+            "direction": "out",
+            "adapter": null
+          },
+          {
+            "source": "left",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right",
+            "abi_type": "fmpz_t",
+            "direction": "in",
+            "adapter": null
+          }
         ]
       },
       "effects": {
@@ -207,20 +374,58 @@
         "may_raise": [],
         "writes": []
       },
-      "result": {"domain": "direct", "success": [], "absence": null},
-      "errors": {"exception": null, "message": null},
-      "exceptions": {"policy": "none", "failure_status": null},
-      "targets": {"dynamic": true, "native": true, "wasm": true}
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
     },
     {
       "id": "nmod_mat_rank",
       "python_name": "nmod_mat_rank",
       "signature": {
         "parameters": [
-          {"name": "entries", "type": "UInt64Buffer", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"},
-          {"name": "rows", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
-          {"name": "columns", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
-          {"name": "modulus", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"}
+          {
+            "name": "entries",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "rows",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "columns",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "modulus",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
         ],
         "return_type": "uint64",
         "return_ownership": "value",
@@ -255,23 +460,64 @@
         "deterministic": true,
         "thread_safe": true,
         "may_allocate": true,
-        "may_raise": ["ValueError", "OverflowError"],
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
         "writes": []
       },
-      "result": {"domain": "direct", "success": [], "absence": null},
-      "errors": {"exception": null, "message": null},
-      "exceptions": {"policy": "none", "failure_status": null},
-      "targets": {"dynamic": true, "native": true, "wasm": true}
+      "result": {
+        "domain": "direct",
+        "success": [],
+        "absence": null
+      },
+      "errors": {
+        "exception": null,
+        "message": null
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
     },
     {
       "id": "nmod_mat_inv",
       "python_name": "nmod_mat_inv",
       "signature": {
         "parameters": [
-          {"name": "output", "type": "UInt64Buffer", "ownership": "borrowed_mut", "mutability": "write", "aliasing": "allowed"},
-          {"name": "source", "type": "UInt64Buffer", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"},
-          {"name": "size", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
-          {"name": "modulus", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"}
+          {
+            "name": "output",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "source",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "size",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "modulus",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
         ],
         "return_type": "bool",
         "return_ownership": "value",
@@ -321,53 +567,198 @@
         "deterministic": true,
         "thread_safe": true,
         "may_allocate": true,
-        "may_raise": ["ValueError", "OverflowError"],
-        "writes": ["output"]
+        "may_raise": [
+          "ValueError",
+          "OverflowError"
+        ],
+        "writes": [
+          "output"
+        ]
       },
-      "result": {"domain": "status", "success": [1], "absence": null},
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
       "errors": {
         "exception": "ValueError",
         "message": "matrix is singular"
       },
-      "exceptions": {"policy": "none", "failure_status": null},
-      "targets": {"dynamic": true, "native": true, "wasm": true}
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
     },
     {
       "id": "nmod_poly_mul",
       "python_name": "nmod_poly_mul",
       "signature": {
         "parameters": [
-          {"name": "output", "type": "UInt64Buffer", "ownership": "borrowed_mut", "mutability": "write", "aliasing": "allowed"},
-          {"name": "left", "type": "UInt64Buffer", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"},
-          {"name": "right", "type": "UInt64Buffer", "ownership": "borrowed", "mutability": "read", "aliasing": "allowed"},
-          {"name": "output_length", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
-          {"name": "left_length", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
-          {"name": "right_length", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"},
-          {"name": "modulus", "type": "uint64", "ownership": "value", "mutability": "value", "aliasing": "not_applicable"}
+          {
+            "name": "output",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed_mut",
+            "mutability": "write",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "left",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "right",
+            "type": "UInt64Buffer",
+            "ownership": "borrowed",
+            "mutability": "read",
+            "aliasing": "allowed"
+          },
+          {
+            "name": "output_length",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "left_length",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "right_length",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          },
+          {
+            "name": "modulus",
+            "type": "uint64",
+            "ownership": "value",
+            "mutability": "value",
+            "aliasing": "not_applicable"
+          }
         ],
         "return_type": "bool",
         "return_ownership": "value",
         "borrow_from": null
       },
-      "dynamic": {"export": "ffiNmodPolyMul"},
+      "dynamic": {
+        "export": "ffiNmodPolyMul"
+      },
       "native": {
         "symbol": "sagejs_flint_nmod_poly_mul_packed",
         "return_type": "int",
         "arguments": [
-          {"source": "product", "abi_type": "uint64_t_ptr", "direction": "out", "adapter": {"kind": "packed_slice", "data": "output", "length": "output_length", "access": "write", "aliasing": "allowed", "transactional": true}},
-          {"source": "left_data", "abi_type": "uint64_t_ptr", "direction": "in", "adapter": {"kind": "packed_slice", "data": "left", "length": "left_length", "access": "read", "aliasing": "allowed", "transactional": false}},
-          {"source": "right_data", "abi_type": "uint64_t_ptr", "direction": "in", "adapter": {"kind": "packed_slice", "data": "right", "length": "right_length", "access": "read", "aliasing": "allowed", "transactional": false}},
-          {"source": "output_length", "abi_type": "uint64_t", "direction": "in", "adapter": null},
-          {"source": "left_length", "abi_type": "uint64_t", "direction": "in", "adapter": null},
-          {"source": "right_length", "abi_type": "uint64_t", "direction": "in", "adapter": null},
-          {"source": "modulus", "abi_type": "uint64_t", "direction": "in", "adapter": null}
+          {
+            "source": "product",
+            "abi_type": "uint64_t_ptr",
+            "direction": "out",
+            "adapter": {
+              "kind": "packed_slice",
+              "data": "output",
+              "length": "output_length",
+              "access": "write",
+              "aliasing": "allowed",
+              "transactional": true
+            }
+          },
+          {
+            "source": "left_data",
+            "abi_type": "uint64_t_ptr",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_slice",
+              "data": "left",
+              "length": "left_length",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "right_data",
+            "abi_type": "uint64_t_ptr",
+            "direction": "in",
+            "adapter": {
+              "kind": "packed_slice",
+              "data": "right",
+              "length": "right_length",
+              "access": "read",
+              "aliasing": "allowed",
+              "transactional": false
+            }
+          },
+          {
+            "source": "output_length",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "left_length",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "right_length",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          },
+          {
+            "source": "modulus",
+            "abi_type": "uint64_t",
+            "direction": "in",
+            "adapter": null
+          }
         ]
       },
-      "effects": {"pure": false, "deterministic": true, "thread_safe": true, "may_allocate": true, "may_raise": ["ValueError"], "writes": ["output"]},
-      "result": {"domain": "status", "success": [1], "absence": null},
-      "errors": {"exception": "ValueError", "message": "invalid packed polynomial multiplication"},
-      "exceptions": {"policy": "none", "failure_status": null},
-      "targets": {"dynamic": true, "native": true, "wasm": true}
+      "effects": {
+        "pure": false,
+        "deterministic": true,
+        "thread_safe": true,
+        "may_allocate": true,
+        "may_raise": [
+          "ValueError"
+        ],
+        "writes": [
+          "output"
+        ]
+      },
+      "result": {
+        "domain": "status",
+        "success": [
+          1
+        ],
+        "absence": null
+      },
+      "errors": {
+        "exception": "ValueError",
+        "message": "invalid packed polynomial multiplication"
+      },
+      "exceptions": {
+        "policy": "none",
+        "failure_status": null
+      },
+      "targets": {
+        "dynamic": true,
+        "native": true,
+        "wasm": true
+      }
     }
   ]
 }

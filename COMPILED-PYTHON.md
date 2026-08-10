@@ -381,58 +381,61 @@ dynamic library adapter. In native execution, the compiler consumes the same
 declaration and emits a direct call inside the isolated core. Mathematical
 source never names a raw pointer, performs `memset`, or remembers a destructor.
 
-### Intended declaration-author experience
+### Declaration-author experience
 
-Today, the normalized FFI specification is explicit JSON because strict,
-machine-readable declarations made it possible to establish the architecture
-quickly. JSON is useful for validation, reproducible builds, audits, and coding
-agents. It should not be the only pleasant authoring interface.
-
-The intended direction is a small CPython-parseable declaration language. A
-future declaration might look approximately like this:
+The authoring format is a small CPython-parseable declaration language. Sage.js
+parses it statically—it never executes imports, decorators, or arbitrary code
+during a build. A declaration looks like this:
 
 ```python
-from sagejs.ffi.declare import (
-    Library, UInt64, buffer, effects, out, shape, status,
-)
+from sagejs.ffi.declare import Direct, Effects, Library, in_, out
 
 flint = Library(
-    "flint",
-    headers=["flint/nmod_poly.h", "sagejs/ffi_algorithms.h"],
+    id="flint",
+    python_module="sagejs.ffi.flint",
     package="@sagemath/sagejs-flint",
+    headers=["flint/fmpz.h"],
+    link_unix=["libflint.a"],
+    link_windows=["flint.lib"],
+    dependencies=["GMP"],
+    prefix_environment="SAGEJS_FLINT_PREFIX",
+    unix_default="packages/flint/.native/prefix",
+    windows_default="packages/flint/.native/prefix",
 )
 
 
 @flint.function(
-    symbol="sagejs_flint_nmod_poly_mul_packed",
-    effects=effects(allocates=True, writes="output", deterministic=True),
+    dynamic="gcd",
+    symbol="fmpz_gcd",
+    returns=void,
+    abi=[
+        out("result", fmpz_t),
+        in_("left", fmpz_t),
+        in_("right", fmpz_t),
+    ],
+    effects=Effects(pure=True, allocates=True),
+    result=Direct(),
+    wasm=True,
 )
-def nmod_poly_mul(
-    output: out[buffer[UInt64], shape("output_length")],
-    left: buffer[UInt64, shape("left_length")],
-    right: buffer[UInt64, shape("right_length")],
-    output_length: UInt64,
-    left_length: UInt64,
-    right_length: UInt64,
-    modulus: UInt64,
-) -> status[ValueError, "invalid polynomial multiplication"]:
+def fmpz_gcd(left: Integer, right: Integer) -> Integer:
     ...
 ```
 
-This syntax is illustrative, not yet a compatibility promise. Its important
-properties are:
+The complete production declarations are in `ffi/flint.ffi.py` and
+`ffi/igraph.ffi.py`. Their important properties are:
 
 1. a human can understand the call, shapes, effects, and errors in one place;
 2. an agent can do the tedious one-time work of matching headers, platforms,
    ownership, and upstream tests;
-3. it normalizes deterministically into the checked JSON call plan;
+3. `sagejs ffi emit-json` normalizes it deterministically into the checked JSON
+   call plan;
 4. generated dynamic and native adapters consume that one plan; and
 5. neither the declaration nor the compiler contains a second implementation
    of the mathematical algorithm.
 
-The normalized JSON should remain inspectable build IR. Humans should normally
-write or review the declaration source and `sagejs ffi explain` output. Agents
-may inspect every layer and are especially well suited to generating exhaustive
+The normalized JSON remains inspectable build IR. Humans should normally write
+or review the declaration source and `sagejs ffi explain` output. Agents may
+inspect every layer and are especially well suited to generating exhaustive
 bindings and adversarial lifecycle tests.
 
 ## Memory and ownership

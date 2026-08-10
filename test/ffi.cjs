@@ -15,6 +15,7 @@ const { spawnSync } = require("node:child_process");
 const test = require("node:test");
 
 const declarations = require("../tools/ffi/declarations.cjs");
+const sourceDeclarations = require("../tools/ffi/source-declarations.cjs");
 const boundaryAudit = require("../tools/ffi/boundary-audit.cjs");
 const { compileKernel } = require("../tools/native-kernel/compiler.cjs");
 const { generateHostCore } = require("../tools/native-kernel/c-backend.cjs");
@@ -129,6 +130,69 @@ test("FFI declarations are strict and generated modules are current", () => {
   assert.equal(nullable.result.domain, "nullable");
   assert.equal(nullable.call_plan.native_return_c_type, "const uint64_t *");
   assert.equal(inspection.resources[0].native.clear_symbol, "dirichlet_group_clear");
+});
+
+test("FFI v7 Python declarations lower deterministically to the checked JSON IR", async () => {
+  const sourceRegistry = await sourceDeclarations.loadSourceRegistry({ root });
+  const registry = declarations.loadRegistry({ root });
+  assert.equal(sourceRegistry.schema, "sagejs.ffi/source-declaration-v1");
+  assert.deepEqual(
+    sourceRegistry.sources.map((source) => source.document.library.id),
+    ["flint", "igraph"],
+  );
+  for (const source of sourceRegistry.sources) {
+    const id = source.document.library.id;
+    assert.equal(readFileSync(source.normalizedFilename, "utf8"), source.text);
+    assert.equal(source.declaration.identity, registry.byId.get(id).identity);
+    assert.equal(source.declaration.sourceFilename, source.filename);
+    assert.ok(source.locations.library.line > 0);
+    assert.equal(
+      Object.keys(source.locations.functions).length,
+      source.document.functions.length,
+    );
+    assert.equal(
+      runSage(["ffi", "emit-json", source.filename]),
+      source.text,
+    );
+  }
+  assert.match(runSage(["ffi", "diff"]), /flint: matches[\s\S]*igraph: matches/);
+  const inspection = JSON.parse(runSage(["ffi", "explain", "igraph", "--json"]));
+  assert.equal(inspection.source, "ffi/igraph.ffi.py");
+  assert.equal(inspection.declaration, "ffi/igraph.ffi.json");
+});
+
+test("FFI v7 source parser is formatting-independent and reports source locations", async () => {
+  const registry = declarations.loadRegistry({ root });
+  const temporary = mkdtempSync(join(tmpdir(), "sagejs-ffi-source-"));
+  try {
+    const original = readFileSync(join(root, "ffi", "igraph.ffi.py"), "utf8");
+    const commented = original.replace(
+      "igraph = Library(",
+      "# Formatting and comments are not declaration semantics.\nigraph = Library(",
+    );
+    const commentedFile = join(temporary, "igraph.ffi.py");
+    writeFileSync(commentedFile, commented);
+    const parsed = await sourceDeclarations.parseDeclarationSource(
+      commentedFile, { catalog: registry.catalog },
+    );
+    assert.equal(parsed.text, readFileSync(join(root, "ffi", "igraph.ffi.json"), "utf8"));
+
+    const invalid = original.replace(
+      "effects=Effects(pure=True),",
+      "effects=Effects(pure=True, mystery=True),",
+    );
+    const invalidFile = join(temporary, "invalid.ffi.py");
+    writeFileSync(invalidFile, invalid);
+    await assert.rejects(
+      () => sourceDeclarations.parseDeclarationSource(
+        invalidFile, { catalog: registry.catalog },
+      ),
+      new RegExp(`FFI source .*invalid\\.ffi\\.py:[0-9]+:[0-9]+: ` +
+        "Effects has unknown keyword mystery"),
+    );
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
 });
 
 test("native-boundary audit is a reviewed exact ratchet", () => {

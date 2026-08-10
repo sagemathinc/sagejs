@@ -6,7 +6,7 @@ from typing import Any
 
 import sagejs.runtime as _runtime
 
-__sagejs_ffi_declaration__ = "flint@84072a64703ce953a5b116cb2ad3380a237b4392f6d075a7b73979f4e3e5b73f"
+__sagejs_ffi_declaration__ = "flint@f0ee388f298205c41d863062c70596200bf2b0e9dc1bc4f73e0639978ded6c68"
 
 
 class DirichletGroup:
@@ -24,7 +24,7 @@ class DirichletGroup:
 
     def _ffi_borrow(self) -> Any:
         return _runtime.ffi_resource_borrow(
-            self._token, "resource:flint@84072a64703ce953a5b116cb2ad3380a237b4392f6d075a7b73979f4e3e5b73f:dirichlet_group"
+            self._token, "resource:flint@f0ee388f298205c41d863062c70596200bf2b0e9dc1bc4f73e0639978ded6c68:dirichlet_group"
         )
 
     def __enter__(self) -> DirichletGroup:
@@ -41,7 +41,7 @@ def dirichlet_group(modulus: int) -> DirichletGroup:
     """Call declared flint:dirichlet_group_init."""
     return DirichletGroup(_runtime.ffi_resource_create(
         __sagejs_ffi_declaration__ + ":dirichlet_group_init",
-        "resource:flint@84072a64703ce953a5b116cb2ad3380a237b4392f6d075a7b73979f4e3e5b73f:dirichlet_group",
+        "resource:flint@f0ee388f298205c41d863062c70596200bf2b0e9dc1bc4f73e0639978ded6c68:dirichlet_group",
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupCreate",
         "ffiDirichletGroupClose",
@@ -61,7 +61,7 @@ def dirichlet_group_size(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupSize",
         [group._ffi_borrow()],
-        ["resource:flint@84072a64703ce953a5b116cb2ad3380a237b4392f6d075a7b73979f4e3e5b73f:dirichlet_group"],
+        ["resource:flint@f0ee388f298205c41d863062c70596200bf2b0e9dc1bc4f73e0639978ded6c68:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,
@@ -77,7 +77,7 @@ def dirichlet_group_num_primitive(group: DirichletGroup) -> int:
         "@sagemath/sagejs-flint",
         "ffiDirichletGroupNumPrimitive",
         [group._ffi_borrow()],
-        ["resource:flint@84072a64703ce953a5b116cb2ad3380a237b4392f6d075a7b73979f4e3e5b73f:dirichlet_group"],
+        ["resource:flint@f0ee388f298205c41d863062c70596200bf2b0e9dc1bc4f73e0639978ded6c68:dirichlet_group"],
         "uint64",
         ["direct", [], None],
         None,

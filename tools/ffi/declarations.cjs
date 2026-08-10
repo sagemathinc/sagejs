@@ -603,14 +603,10 @@ function validateFunction(
   return Object.freeze(enriched);
 }
 
-function loadDeclaration(filename, catalog = loadCatalog(repositoryRoot)) {
-  const source = readFileSync(filename, "utf8");
-  let document;
-  try {
-    document = JSON.parse(source);
-  } catch (error) {
-    fail(filename, `invalid JSON: ${error.message}`);
-  }
+function loadDeclarationDocument(document, options = {}) {
+  const filename = options.filename || "<FFI declaration>";
+  const catalog = options.catalog || loadCatalog(options.root || repositoryRoot);
+  const canonicalSource = `${JSON.stringify(document, null, 2)}\n`;
   exactKeys(filename, document, [
     "schema_version", "library", "resources", "functions",
   ],
@@ -702,7 +698,7 @@ function loadDeclaration(filename, catalog = loadCatalog(repositoryRoot)) {
   const ids = new Set();
   const pythonNames = new Set(resourceNames);
   const digest = createHash("sha256")
-    .update(source).update("\0").update(catalog.hash).digest("hex");
+    .update(canonicalSource).update("\0").update(catalog.hash).digest("hex");
   const functions = document.functions.map((fn) =>
     validateFunction(
       filename, library, fn, ids, pythonNames, resourcesByType, catalog,
@@ -725,6 +721,8 @@ function loadDeclaration(filename, catalog = loadCatalog(repositoryRoot)) {
     schema,
     schemaVersion: document.schema_version,
     filename: resolve(filename),
+    sourceFilename: options.sourceFilename === undefined
+      ? null : resolve(options.sourceFilename),
     hash: digest,
     identity: `${library.id}@${digest}`,
     library: Object.freeze(library),
@@ -732,6 +730,22 @@ function loadDeclaration(filename, catalog = loadCatalog(repositoryRoot)) {
     ownershipGraph,
     functions: Object.freeze(functions),
     abiCatalog: catalog,
+  });
+}
+
+function loadDeclaration(filename, catalog = loadCatalog(repositoryRoot)) {
+  const source = readFileSync(filename, "utf8");
+  let document;
+  try {
+    document = JSON.parse(source);
+  } catch (error) {
+    fail(filename, `invalid JSON: ${error.message}`);
+  }
+  const sourceFilename = filename.replace(/\.ffi\.json$/, ".ffi.py");
+  return loadDeclarationDocument(document, {
+    filename,
+    catalog,
+    sourceFilename: existsSync(sourceFilename) ? sourceFilename : undefined,
   });
 }
 
@@ -942,6 +956,7 @@ module.exports = {
   generatedModulePath,
   generatedModulePaths,
   loadDeclaration,
+  loadDeclarationDocument,
   loadRegistry,
   repositoryRoot,
   schema,
