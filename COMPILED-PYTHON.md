@@ -97,11 +97,12 @@ execution_mode(sum_gcds, 10**6)   # javascript or native for these arguments
 Compilation is an optimization and distribution choice, not a condition for
 mathematical correctness.
 
-If your mental model is Cython, Julia, or Mojo, see [How this differs from
-Cython](#how-this-differs-from-cython), [How this differs from
-Julia](#how-this-differs-from-julia), and [How this differs from
-Mojo](#how-this-differs-from-mojo). Similar-looking syntax hides importantly
-different language and execution contracts.
+If your mental model is handwritten C/N-API, Cython, Julia, or Mojo, see
+[How this differs from handwritten C and N-API](#how-this-differs-from-handwritten-c-and-n-api),
+[How this differs from Cython](#how-this-differs-from-cython), [How this differs
+from Julia](#how-this-differs-from-julia), and [How this differs from
+Mojo](#how-this-differs-from-mojo). Similar-looking syntax and machine-code
+results can hide importantly different maintenance and execution contracts.
 
 ## The fundamental promise
 
@@ -663,6 +664,134 @@ ABI, not a Node addon. Node is one adapter.
 Not every kernel suits every target. Target availability and required foreign
 libraries are explicit capabilities, not silent fallbacks to different
 arithmetic.
+
+## Why build on JavaScript and V8?
+
+Sage.js does not use JavaScript because JavaScript is the ideal notation for
+every mathematical algorithm. The mathematical library is ordinary
+CPython-parseable Python, and performance-critical closed computations can
+become host-independent native cores. JavaScript is the mature, portable host
+between those layers.
+
+That host provides a great deal which would otherwise have to become part of a
+new computer-algebra runtime:
+
+- a highly optimized garbage-collected dynamic engine, with V8 able to make
+  ordinary orchestration and fallback code surprisingly fast;
+- Linux, macOS, native Windows, server, desktop, and browser deployment from a
+  broadly shared language and tooling ecosystem;
+- modules, promises, workers, networking, visualization, databases, editors,
+  testing tools, profilers, debuggers, and package distribution;
+- the Node ecosystem for applications and services, plus direct access to the
+  browser ecosystem for interactive mathematics; and
+- continuing engineering by several competing JavaScript engines and a much
+  larger community than a bespoke mathematics VM could support.
+
+The ecosystem also has a conspicuous gap: it has superb application and web
+infrastructure but comparatively little deep exact mathematics and computer
+algebra. Sage.js can fill that gap without recreating the surrounding platform.
+
+Building the whole system from scratch—even in a memory-safe implementation
+language—would mean owning an object model, garbage collector, module loader,
+event loop, debugger, profiler, package system, browser story, platform ports,
+and application ecosystem before those efforts improve a single mathematical
+algorithm. Rust can be excellent for a runtime component or foreign adapter,
+but choosing Rust as the implementation language would not by itself provide
+the Python source model, same-body fallback, or existing JavaScript platform.
+
+Building directly on CPython would provide the mature Python ecosystem and is
+an important compatibility reference. It would, however, center native output
+on the CPython process and extension ABI, and would not directly give Sage.js
+its browser, JavaScript-application, or single-executable distribution model.
+The current design instead keeps mathematical source CPython-parseable while
+allowing the dynamic implementation to live naturally in the JavaScript host.
+CPython remains an essential differential oracle rather than the required
+runtime of every deployed kernel.
+
+This is not lock-in to V8. The architecture deliberately separates:
+
+```text
+ordinary Python/Sage.js API and orchestration
+                    |
+          JavaScript host and adapters
+                    |
+       versioned host-isolated kernel ABI
+              /                 \
+      compiled typed core    declared libraries
+```
+
+Node is one adapter to an isolated core; WebAssembly, a standalone C program,
+or a future accelerator host can use another. JavaScript therefore supplies a
+mature default platform without becoming an invisible callback dependency
+inside accepted native kernels.
+
+## How this differs from handwritten C and N-API
+
+Handwritten C or C++ exposed through N-API can be extremely fast. It also gives
+an expert complete control over representation, allocation, vectorization,
+library calls, and platform-specific instructions. Sage.js used this pattern
+for much of its early native functionality, and it remains an important escape
+hatch. The question is not whether generated code can make C unnecessary. It
+is where the mathematical algorithm should normally be maintained.
+
+A direct N-API implementation commonly combines four concerns in one native
+codebase:
+
+1. the mathematical algorithm;
+2. low-level representations, allocation, and cleanup;
+3. conversion between JavaScript values and native storage; and
+4. Node/N-API error and lifecycle rules.
+
+The same operation usually still needs a separate portable implementation for
+the browser or a build without the addon. The result may be a fast native
+implementation, a readable fallback, and binding code whose agreement must be
+maintained manually.
+
+Compiled Python moves the algorithm back to one readable source body. The
+compiler lowers it into a host-independent core, while generated adapters own
+validation, conversion, statuses, and cleanup. The original body remains the
+dynamic fallback.
+
+| Question | Handwritten C/C++ plus N-API | Sage.js compiled-Python target |
+|---|---|---|
+| Where is the algorithm? | In a native implementation, often separate from the Python/JavaScript fallback. | In one ordinary Python body used by every execution tier. |
+| What must an author review? | Pointer arithmetic, allocation, cleanup, N-API handles, errors, and the algorithm. | The algorithm, types, effects, compiler explanation, and boundary contract; raw machinery is generated. |
+| Can normal algorithm code corrupt memory? | Yes. An incorrect index, lifetime, cast, or cleanup path can crash or leak. | The accepted language exposes bounded values and views, not raw pointers or manual allocation. A crash or leak is a compiler, generated-adapter, or foreign-library defect. |
+| How are exact integers optimized? | Each implementation chooses and maintains its own machine-word/GMP strategy and overflow paths. | `Integer` uses compiler-managed checked machine words with exact GMP promotion. |
+| How are repeated optimizations shared? | Through manually designed C helper libraries and coding conventions. | Through compiler passes and representation rules which benefit every accepted kernel. |
+| How is equivalence checked? | Native and fallback implementations require hand-maintained cross-tests. | The same source provenance supports routine differential execution across dynamic, JavaScript, and native tiers. |
+| Where can formal reasoning focus? | On both the algorithm and C's pointer, aliasing, overflow, and lifetime behavior. | On the typed algorithm and explicit effects, plus reusable proofs of compiler lowerings and stated assumptions about foreign libraries. |
+| What is the host dependency? | Usually a Node addon coupled to N-API, plus any linked libraries. | A host-independent core with a thin Node adapter; other adapters can target standalone C or WebAssembly. |
+| What happens without a native artifact? | A separate fallback must exist or the feature is unavailable. | The same source body remains the required dynamic fallback. |
+| What happens when the compiler lacks a construct? | Not applicable; the C author implements it directly. | Compilation rejects the function clearly; use the fallback, improve a general compiler capability, call a declared library, or record a narrow C exception. |
+
+The “implement once” point is central. Checked machine-word arithmetic with GMP
+promotion is only one example. Escape analysis, scratch-storage reuse, direct
+calls between kernels, bounds-check elimination, packed-record layout,
+transactional outputs, vectorization, parallel scheduling, and target-specific
+code selection can all become compiler capabilities. Once proved and tested,
+each capability applies to many clear Python algorithms. With handwritten C,
+every algorithm author must notice, implement, test, and preserve the same
+optimization without introducing a rare overflow or ownership bug.
+
+This also changes how optimization work compounds. Improving one C function
+makes one C function better. Improving a sound compiler lowering can make an
+entire mathematical corpus better while leaving its reviewed source unchanged.
+The compiler is therefore infrastructure, not merely a convenient C generator.
+
+There are still cases where C or C++ is the right layer:
+
+- a thin host adapter or foreign-library shim;
+- a representation primitive shared by generated kernels;
+- architecture-specific intrinsics which the compiler cannot yet express;
+- integration with an existing mature native library; or
+- a measured compiler limitation whose workaround would make the Python less
+  clear or materially slower.
+
+Those cases should be explicit and classified. A benchmark showing that one
+handwritten kernel is faster is evidence for a compiler improvement or a
+documented exception—not a reason to quietly move the entire mathematical
+implementation into an N-API addon.
 
 ## How this differs from Cython
 
